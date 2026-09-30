@@ -14,13 +14,13 @@ content. (This is the instruction-system form of "derive, don't store.")
 
 | Concept | Owner |
 |---|---|
-| The system: 2 kernel mechanisms + 5 nouns | maintainer-private build tooling — `THEORY.md` carries the public restatement |
+| The system: 2 Core mechanisms + 5 nouns | maintainer-private build tooling — `THEORY.md` carries the public restatement |
 | The `clause.block` seam (fields = protocol, block = presentation) | `CLAUSES.md` § "Clause-spec format" |
-| The coordinator pattern (composing the kernel) | `CONTRACTS.md` § Coordinators |
+| The coordinator pattern (composing the Core) | `CONTRACTS.md` § Coordinators |
 | The data layer — the public/sealed seam, and the rule that decides it | `DATA_LAYER.md` |
 | Open-world lens, composition model, semantic layer | `OPEN_WORLD.md` §1–§3 |
 | The equilibrium theorem and its proof | the asymmetric-bonding paper (`frontend/app/(marketing)/papers/asymmetric-bonding/page.tsx`); its figures once in `sdk/src/equilibrium.json`, guarded |
-| The equilibrium bound to the kernel's transfers, the six properties | `THEORY.md` |
+| The equilibrium bound to the Core's transfers, the six properties | `THEORY.md` |
 | Vision, post-firm economy, where value goes after the firm | `VISION.md` |
 | Intentional vulnerability-lookalike patterns | `DESIGN_DECISIONS.md` |
 | What the protocol has no contract for (not listed = does not exist) | `CONTRACTS.md` § "What the protocol has no contract for" |
@@ -98,7 +98,7 @@ Each layer owns one thing; every other layer states it as a summary plus a point
 ## Start Here
 
 1. `VISION.md` — protocol vision (post-firm economy, bonded commitment, the florin)
-2. `THEORY.md` — the equilibrium bound to the kernel's transfers, and the six properties; the theorem itself is the asymmetric-bonding paper's
+2. `THEORY.md` — the equilibrium bound to the Core's transfers, and the six properties; the theorem itself is the asymmetric-bonding paper's
 3. `FLORIN_TOKEN.md` — token canonical reference (`DESIGNER_REWARDS.md` and `DAO.md` sit beside it: three concepts, three files)
 
 ## Main Groups
