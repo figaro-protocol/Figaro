@@ -68,7 +68,7 @@ export interface InstantiateParams {
 export function instantiateRootAgreement(template: AssemblyTemplate, params: InstantiateParams): Agreement {
     const root = template.agreements.find(isRootAgreement) ?? template.agreements[0];
     if (!root) throw new Error("assembly template has no agreements to instantiate");
-    // THE ASSEMBLY-SCOPE FOLD (ruled 2026-07-28), exactly as the walk performs
+    // THE ASSEMBLY-SCOPE FOLD, exactly as the walk performs
     // it: the template's assembly-scoped sections — terms of the composition
     // itself (a denomination pin, the provenance record) — fold into the root
     // clause bag, so the agreement carries them and every party signs them.
@@ -267,7 +267,7 @@ export function checkOfferPolicy(c: Commitment, policy: OfferPolicy): OfferCheck
  * TWO FLOORS, both operator-supplied, both opt-IN (autonomy is never the
  * default), both DECLINE (`null`) rather than throw — a throw is reserved for a
  * tampered/forged offer:
- *   - REFUSE-ALL FLOOR (maintainer ruling 2026-07-07): `accept` is the business
+ *   - REFUSE-ALL FLOOR (maintainer ruling): `accept` is the business
  *     gate. A clean offer counter-signs ONLY when an explicit `accept` returns
  *     true; omit it (or return false) and the offer is declined.
  *   - ECONOMIC FLOOR: `policy` bounds the economic fields the seller bonds
@@ -386,7 +386,7 @@ export interface SellerOfferHandlerOpts {
     /** Business gate (the refuse-all floor): the handler counter-signs ONLY when
      *  this returns true. OMIT it and the handler declines every offer — a fresh
      *  integration is autonomous-inert by default; enabling autonomy means
-     *  writing this rule (maintainer ruling 2026-07-07). */
+     *  writing this rule (maintainer ruling). */
     accept?: (offer: CommitmentPayload) => boolean;
     /** Economic floor: the operator's bounds on the offer's economic fields
      *  (root-shape, currency allowlist, magnitude cap). OMIT it and the handler

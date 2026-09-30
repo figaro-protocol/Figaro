@@ -27,7 +27,7 @@ import { resolveDidWeb, didDocumentMatchesAddress, extractServiceEndpoints } fro
  * participant. Buffering its response whole (`res.text()`) before the
  * content-verification that would reject it lets a hostile candidate stream an
  * unbounded body and OOM the buyer's tab / an agent process (frontend security
- * audit 2026-07-22, finding 6). An offer envelope is KB-scale; 8 MB clears every
+ * audit, finding 6). An offer envelope is KB-scale; 8 MB clears every
  * real reply with margin. Mirrors the IPFS document cap.
  */
 export const MAX_OFFER_RESPONSE_BYTES = 8 * 1024 * 1024;

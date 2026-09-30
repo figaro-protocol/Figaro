@@ -68,7 +68,7 @@ contract RpgfMinterTest is Test {
     bytes32 constant B_KEY = keccak256(abi.encode("clause-b", uint64(1)));
     bytes32 constant ASM = keccak256("an-assembly");
 
-    // The reference per-year slices (ruled 2026-07-31): a first-tranche year,
+    // The reference per-year slices: a first-tranche year,
     // a second-tranche year, a third-tranche year. The grouping itself is
     // deploy-script data; the minter sees only per-period budgets.
     uint256 constant T0 = 45_000_000 ether;
@@ -196,7 +196,7 @@ contract RpgfMinterTest is Test {
         // purpose: `_isAuthor` has two arms and the 600M pays through BOTH — a
         // clause author and an assembly designer of record earn on identical
         // terms. Testing only the clause arm is the same asymmetry that let the
-        // assembly-credit leg sit dead end-to-end (fixed 2026-07-30); the arms
+        // assembly-credit leg sit dead end-to-end; the arms
         // get covered together or the next reader learns the wrong lesson.
         counter.setScore(ASM, 0, 100);
         counter.setClosed(0, true);
@@ -378,7 +378,7 @@ contract RpgfMinterTest is Test {
     /// The `PeriodBudgetExceeded` backstop is STRUCTURALLY UNREACHABLE while
     /// the counter's data is consistent (duplicate-free lists + one author of
     /// record per clause or assembly + closed-period totals keep every pro-rata sum
-    /// within the budget — the 2026-08-01 audit's finding), so no honest-data
+    /// within the budget — an audit finding), so no honest-data
     /// test can reach it and deleting the line would change no other test's
     /// outcome. It is still the LAST line of defense for the fixed pool if the
     /// accrual ever misreports: feed the minter a counter whose per-clause-or-assembly

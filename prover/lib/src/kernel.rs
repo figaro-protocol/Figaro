@@ -730,7 +730,7 @@ fn apply_usage_claims(
 
         // 4. Accrue. Every admitted claim feeds `c`; the first claim from
         //    each seller in this period also feeds `d` — breadth counts
-        //    distinct STAKED sellers (ruled 2026-07-31). The stake check
+        //    distinct STAKED sellers. The stake check
         //    itself is on-chain: the counter gates the declared seller
         //    list, so the guest counts and the chain prices.
         let first_seller = state

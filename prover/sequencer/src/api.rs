@@ -51,8 +51,8 @@ pub struct AppState {
 }
 
 /// Cumulative failure facts, surfaced on `/status` so a polling driver SEES a
-/// death instead of waiting out a batch that will never come (the 2026-08-20
-/// gap: ops were dead-lettered and every observer kept polling a surface that
+/// death instead of waiting out a batch that will never come (the
+/// gap it closes: ops were dead-lettered and every observer kept polling a surface that
 /// could not say so). Counts OPS dead-lettered — dropped without resolving —
 /// whatever the path (deterministic resolve revert, prove failure); the last
 /// error is kept verbatim for the reader.

@@ -10,7 +10,7 @@ the change policy, the validation gate, accepted risks — is
 ## Deployment Targets
 
 The public deployment target is **Ethereum mainnet**.
-**Polygon** is a possible additional deployment. A **Cairo rewrite** of the contracts
+**Polygon** is an intended additional deployment. A **Cairo rewrite** of the contracts
 (Starknet) is planned as a later line of work. Testnet rehearses the mainnet deployment
 (testnet = mainnet rehearsal); chain-coupled compositions resolve against these targets —
 Kleros courts are live on Ethereum mainnet.

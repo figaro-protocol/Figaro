@@ -16,7 +16,7 @@ use crate::prover::ProveResult;
 /// A resolve failure, classified. DETERMINISTIC means the chain evaluated the
 /// transaction and rejected it — a revert reproduces on every retry, so
 /// re-proving the identical batch burns minutes per attempt for the same
-/// refusal (the 2026-08-20 ProofInvalid loop: three ~7-minute proofs before
+/// refusal (the ProofInvalid loop: three ~7-minute proofs before
 /// DeadlineExpired poison-dropped the ops). Deterministic failures are
 /// dead-lettered by the caller; transient transport trouble is re-queued.
 #[derive(Debug)]
@@ -600,7 +600,7 @@ mod tests {
 
     /// The classifier's whole contract: the chain's evaluated refusal is
     /// deterministic; everything transport-shaped is not. The first case is
-    /// the exact string of the 2026-08-20 ProofInvalid loop.
+    /// the exact string of the ProofInvalid loop.
     #[test]
     fn send_error_classification() {
         assert!(is_deterministic_send_error(

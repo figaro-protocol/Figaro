@@ -95,10 +95,10 @@ methods {
     function FigaroBatchVerifier._hashSpecBindings(FigaroBatchVerifier.SpecBinding[] calldata) internal returns (bytes32) => NONDET;
     function FigaroBatchVerifier._emitAttestations(FigaroBatchVerifier.AttestationData[] calldata) internal => NONDET;
 
-    // The usage-bridge amendment's additions (2026-07-30), same idiom as the
+    // The usage-bridge amendment's additions, same idiom as the
     // three hash summaries above. `_hashUsage`'s assembly-packed hashing of a
-    // nested-dynamic-array struct defeats the prover's pointer analysis (the
-    // 2026-08-03 run burned the 2h global timeout inside it before reaching
+    // nested-dynamic-array struct defeats the prover's pointer analysis (a
+    // run burned the 2h global timeout inside it before reaching
     // any rule); its result only gates resolution against the proof's public
     // values — revert-only power, no token movement — so NONDET is sound for
     // balance rules. The counter's accrual call is a reward-tier write behind
@@ -145,7 +145,7 @@ function validSinglePositionBatch(
         // any event-re-emission or anchor-check property here.
         batchEvents.attestations.length == 0 &&
         batchEvents.specBindings.length == 0 &&
-        // Same strategy for the usage bridge (2026-07-30 amendment): the
+        // Same strategy for the usage bridge amendment: the
         // accrual loops are not token-flow paths — the counter call is
         // try/catch decoupled from resolution — so collapse them too.
         usage.accruals.length == 0 &&

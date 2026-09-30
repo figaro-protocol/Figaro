@@ -37,11 +37,11 @@ export const RPGF_FORMULA = formula;
 /** The fixed-point scale inside the cube root (10^18). */
 export const RPGF_SCORE_SCALE = BigInt(formula.parameters.scoreScale);
 /** The reference schedule's period count — nine annual accrual periods,
- *  budgets grouped 15/30/55 into three rising tranches (ruled 2026-07-31).
+ *  budgets grouped 15/30/55 into three rising tranches.
  *  The live count is `UsageCounter.periodCount()`; read the chain when it
  *  matters, this constant is the reference shape. */
 export const RPGF_PERIOD_COUNT: number = formula.parameters.periodCount;
-/** `UsageCounter.minSellers` — the minimum-support floor (ruled 2026-07-31):
+/** `UsageCounter.minSellers` — the minimum-support floor:
  *  a clause or assembly scores zero in a period until this many DISTINCT STAKED
  *  SELLERS carried it there. Reference value; the live one is on chain. */
 export const RPGF_MIN_SELLERS = BigInt(formula.parameters.minSellers);
@@ -51,8 +51,8 @@ export const RPGF_MIN_SELLERS = BigInt(formula.parameters.minSellers);
 /** Floor cube root over non-negative bigints (binary search). Mirrors
  *  `UsageCounter.icbrt` exactly. The Solidity side clamps its search ceiling to
  *  floor(cbrt(2^256 - 1)) so its cube cannot overflow; bigints have no such
- *  limit, so the two agree for every input the chain can represent. (Until
- *  2026-07-30 the Solidity ceiling was floor(cbrt(2^64 - 1)) and the two
+ *  limit, so the two agree for every input the chain can represent. (The
+ *  Solidity ceiling was once floor(cbrt(2^64 - 1)) and the two
  *  DISAGREED for every score above `c * d^2 >= 19` — the on-chain value
  *  saturated. If you are changing either side, the invariant is that both are
  *  the true floor cube root; test the property, never a bounded domain.) */
@@ -153,7 +153,7 @@ function emptyAccrual(): UsageAccrual {
 /** Replay the counter's counting rules over a record stream: idempotence per
  *  (clause or assembly, process) — GLOBAL, so a process counts once ever and a later
  *  period is never paid for an earlier period's trade — then the
- *  distinct-STAKED-SELLER count PER PERIOD (ruled 2026-07-31: breadth counts
+ *  distinct-STAKED-SELLER count PER PERIOD (breadth counts
  *  only what a stake has priced; pairs were free to mint on the buyer side)
  *  and the uniform floored score. Records are replayed in (blockNumber,
  *  logIndex) order, the order the chain applied them in. `minSellers`
@@ -256,7 +256,7 @@ export function computeRpgfAllocations(
 
     // No clamp to `totalScore`: scores are summed per author over DISTINCT
     // clauses or assemblies (`byClauseOrAssembly` is keyed by clause or assembly), so `score <= totalScore`
-    // holds structurally. The chain dropped its equivalent clamp on 2026-07-30 —
+    // holds structurally. The chain dropped its equivalent clamp —
     // there it was reachable via a duplicate-stuffed clause-or-assembly list, and clamping
     // silently rounded such a claim UP to the entire period budget instead of
     // rejecting it. Mirror the contract: nothing to clamp, and a violation
@@ -378,7 +378,7 @@ export interface UsageClaimContext {
  *    carries the compositionHash is exactly the one the clause leg discards.
  *    Sequencing the assembly credit behind the clause credit is how the
  *    designer half of the 600M recorded nothing on the direct path for months
- *    (fixed 2026-07-30). Here the two legs never touch.
+ *    (since fixed). Here the two legs never touch.
  */
 export function buildUsageClaims(
     order: Commitment,

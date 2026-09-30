@@ -77,7 +77,7 @@ export function planTemplateOrders(template: AssemblyTemplate): PlannedTemplateO
         (id) => [...templateParentOrderHashes(byId.get(id) as TemplateAgreement)],
         "throw",
     );
-    // THE ASSEMBLY-SCOPE FOLD (ruled 2026-07-28): the template's
+    // THE ASSEMBLY-SCOPE FOLD: the template's
     // assembly-scoped sections — terms of the composition itself (a
     // denomination pin, a dispute forum) — fold into EVERY node's clause bag,
     // so every agreement carries them and every party signs them. Mechanical:
@@ -173,8 +173,8 @@ export interface ReconstructParams {
     specs?: SpecSource;
     /** Optional deterministic salt per node (testing). */
     salt?: (nodeId: string) => bigint | undefined;
-    /** CHAIN-time deadline for every reconstructed commitment (maintainer rule
-     *  2026-08-06): `computeDeadline(await readChainTimestamp(client))`. */
+    /** CHAIN-time deadline for every reconstructed commitment (maintainer
+     *  rule): `computeDeadline(await readChainTimestamp(client))`. */
     deadline: bigint;
     /** Per-node seam, invoked in commit order as each order is realized —
      *  where a caller signs (`order.typedData`), shares, or composes. */

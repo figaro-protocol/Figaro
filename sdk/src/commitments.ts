@@ -263,8 +263,8 @@ const DEFAULT_TTL_SECONDS = 3600;
 
 /**
  * The CHAIN's clock — `block.timestamp` of the latest block. Protocol time
- * variables MUST come from here, never from the machine clock (maintainer rule
- * 2026-08-06): the kernel's DeadlineExpired guard compares against
+ * variables MUST come from here, never from the machine clock (maintainer
+ * rule): the kernel's DeadlineExpired guard compares against
  * `block.timestamp`, so a wall-clock deadline silently expires — or silently
  * over-lives — whenever the device clock and the chain disagree (a skewed
  * device on mainnet; a time-traveled devnet).
@@ -327,8 +327,8 @@ export interface CommitmentParams {
     /** Override random salt. Useful for deterministic testing. */
     salt?: bigint;
     /** Deadline in CHAIN time — `computeDeadline(await readChainTimestamp(client))`.
-     *  REQUIRED: there is deliberately no machine-clock default (maintainer rule
-     *  2026-08-06 — the kernel checks `block.timestamp`, not your clock). */
+     *  REQUIRED: there is deliberately no machine-clock default (maintainer
+     *  rule — the kernel checks `block.timestamp`, not your clock). */
     deadline: bigint;
 }
 

@@ -9,7 +9,7 @@ registers it from its owner's wallet — every member from its own balance
 (RELEASE_READINESS Task 13), the profile CID bound first-write-wins on
 `MembersRegistry`.
 
-- `founder.json` — the founder as a BUYER-side member (ruled 2026-08-18: a
+- `founder.json` — the founder as a BUYER-side member (a
   profile holds both postures; every buyer is a seller of its data): buyer
   assembly subscriptions (`buyerAssemblies`, keyed by content-derived
   compositionHash — stable across redeploys) and buyer-posture

@@ -11,7 +11,7 @@
 # (`bytes4(SP1Verifier<Form>.VERIFIER_HASH())`). Bind the wrong gateway and
 # every real proof reverts `RouteNotFound`; the pointer is immutable and
 # UsageCounter is bound to the verifier, so the whole stack redeploys. The
-# Sepolia stack of 2026-08-14 bound the OLD PLONK gateway (PLONK routes only,
+# first Sepolia stack bound the OLD PLONK gateway (PLONK routes only,
 # no Groth16) — this guard is that lesson.
 #
 # Inputs (env): SP1_VERIFIER_GATEWAY, RPC_URL; SP1_PROOF_MODE (groth16|plonk,

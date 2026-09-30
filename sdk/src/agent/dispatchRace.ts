@@ -1,7 +1,7 @@
 /**
  * @figaro-protocol/sdk/agent — The dispatch race: market formation with zero contracts.
  *
- * Countersign-first choreography (maintainer-ruled 2026-07-20). An unbound
+ * Countersign-first choreography (maintainer-ruled). An unbound
  * sub-order position is filled by racing the market instead of a manual pick:
  * the buyer sends the SAME unsigned draft shape to k candidate sellers — each
  * draft naming that candidate as `seller` at the candidate's own posted
@@ -413,7 +413,7 @@ export async function verifyQuoteReply(
     return { ok: true };
 }
 
-// ── THE race engine — one choreography, every surface (ruled 2026-08-14) ────
+// ── THE race engine — one choreography, every surface ────────────────────────
 //
 // The dispatch race races over the CoordinationChannel interface, period: the
 // same fan-out / verify / arrival-order accumulation / selection runs whether
@@ -422,7 +422,7 @@ export async function verifyQuoteReply(
 // is a batch script or an interactive checkout. Surface concerns stay with the
 // caller: WINDOW duration (call `finish()` on a timer), buyer overrides
 // (`finish(pick)`), and progressive UI (`onReply`). A second authored loop is
-// the drift the 2026-08-14 channel-seam audit exists to prevent — extend this
+// the drift the channel-seam audit exists to prevent — extend this
 // engine, never re-author it.
 
 /** Per-candidate channel selection — the profile-keyed routing rule lives in

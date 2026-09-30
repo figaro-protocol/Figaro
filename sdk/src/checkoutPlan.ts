@@ -634,7 +634,7 @@ function resolveOrderGeodistance(ctx: RateQuantityContext): number | null {
     // Found by declared fields, never by clause id: any clause carrying a
     // geocodeStandard with origin/destination participates. Distance is
     // derivable only for standards this resolver knows — geohash today
-    // (2026-07-28: the geolocation clause is standards-agnostic; the
+    // (the geolocation clause is standards-agnostic; the
     // standard is committed content, so the gate reads the SECTION, not the
     // spec). An unknown standard is unresolvable, never junk-priced.
     const geoClauseId = Object.keys(ctx.clauses).find((clauseId) => {

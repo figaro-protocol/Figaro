@@ -7,7 +7,7 @@ import {
 
 /**
  * ReDoS defence for an attacker-authored clause `pattern` (frontend security
- * audit 2026-07-22, finding 5). The binding property is that a pathological
+ * audit, finding 5). The binding property is that a pathological
  * pattern cannot hang the caller — it must return quickly and treat the pattern
  * as satisfied.
  */

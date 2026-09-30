@@ -61,7 +61,7 @@ export interface ResolveCapReader extends BlockGasReader {
  * order's distinct `orderStatus`/balance slots pay COLD access — the all-in
  * per-order is ~23,000 (two ERC-20 transfers + struct keccaks + SSTORE + LOG +
  * the order's calldata). Receipt points: N=2→83,949, N=10→267,772, N=15→382,930
- * (marginal flat at ~22,997). Measured 2026-06-25 against `FigaroCore` on Anvil.
+ * (marginal flat at ~22,997). Measured against `FigaroCore` on Anvil.
  *
  * Linted against the matching `RESOLVE_GAS_PER_ORDER` constant in
  * the Foundry test; either side moves, the other must move too.

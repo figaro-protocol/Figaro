@@ -1,7 +1,7 @@
 /**
  * verifyCommitmentSignature.test.ts — the canonical EIP-712 Commitment
  * signature check (the primitive the frontend pin-gate and acceptOrder
- * hardenings depend on; audit 2026-07-23). A real signature recovers to its
+ * hardenings depend on). A real signature recovers to its
  * signer; a forged one, a cross-party one, or one against a tampered struct
  * does not.
  */

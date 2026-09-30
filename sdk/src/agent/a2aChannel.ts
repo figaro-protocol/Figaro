@@ -147,7 +147,7 @@ export class A2aChannel implements CoordinationChannel {
         if (!res.ok) throw new Error(`A2aChannel: offer to ${url} failed — HTTP ${res.status}`);
         // The endpoint is an attacker-authorable advertised URL: cap the body
         // read exactly as the HTTP sibling does (same threat, same mitigation —
-        // frontend security audit 2026-07-22 finding 6). The cap is the ONE
+        // frontend security audit, finding 6). The cap is the ONE
         // payload ceiling; the JSON-RPC wrapper is bytes of overhead, not scale.
         const reply = JSON.parse(await readCappedResponseText(res, MAX_COMMITMENT_PAYLOAD_BYTES)) as A2aResponse;
         if (reply.error) {

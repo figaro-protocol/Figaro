@@ -2,7 +2,7 @@
  * @figaro-protocol/sdk — Cross-endpoint log agreement
  *
  * Load-balanced public RPC endpoints can return DIVERGENT event sets over the
- * same pinned block range (observed 2026-08-26: one provider's rotation
+ * same pinned block range (observed: one provider's rotation
  * answered the same query with 2 vs 0 orders, 0 vs 16 clause registrations) —
  * a reader on one endpoint silently under-reports and never learns it. This
  * module makes that divergence a checkable fact: given what N endpoints each

@@ -19,7 +19,7 @@ pub struct KernelState {
     /// `KernelStateSnapshot`.
     pub usage_counted: BTreeSet<(B256, B256)>,
     /// (clauseOrAssembly, period, seller) — breadth counts distinct staked
-    /// sellers per period (ruled 2026-07-31; the stake itself is checked
+    /// sellers per period (the stake itself is checked
     /// on-chain against the declared seller list).
     pub usage_seller_seen: BTreeSet<(B256, u8, Address)>,
     /// (clauseOrAssembly, period) → (c, d), the running batch-path accrual.

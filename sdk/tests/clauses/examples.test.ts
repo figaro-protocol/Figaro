@@ -164,7 +164,7 @@ describe("example clause specs — parse + validate sample content", () => {
     it("figaro-geolocation accepts a jurisdiction-grade pair under a declared standard (open axis — digital chains)", () => {
         const parsed = parseClauseSpec(geolocationSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
-        // The standards axis is OPEN (ruled 2026-07-28): iso3166-2 territory
+        // The standards axis is OPEN: iso3166-2 territory
         // codes serve digital-delivery jurisdictions; off-chain validation checks shape
         // (length caps), the standard's own grammar is the reader's per-
         // standard knowledge — exactly the emissions-methodology pattern.

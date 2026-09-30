@@ -2,10 +2,10 @@
 # Provision a fresh Ubuntu x86_64 host as a Figaro prover box — the rented
 # machine that builds the reproducible guest and runs the sequencer in
 # real-Groth16 mode (the relay-operator role; the laptop is not a proving
-# host). Sizing that carried the 2026-08-20 run: 16 cores / 30 GB RAM /
+# host). Sizing that carried the first real run: 16 cores / 30 GB RAM /
 # 150 GB disk, ~19 GB used after all builds.
 #
-# Reconstructed 2026-08-20 from the first box's requirements (its scripts
+# Reconstructed from the first box's requirements (its scripts
 # lived only on the deleted host); the build/run scripts beside this one are
 # verbatim from that session.
 set -euxo pipefail

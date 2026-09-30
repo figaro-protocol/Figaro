@@ -22,16 +22,15 @@ import "../src/mocks/MockTreasuryMultisig.sol";
 ///         deviation from the mainnet script is a TESTNET DIVERGENCE listed here;
 ///         anything not listed is byte-for-byte the mainnet parameterization.
 ///
-/// TESTNET DIVERGENCE (exactly one; ruled 2026-08-14 — the weekly-period
-/// compression originally carried here was REVERTED the same day it landed:
-/// this Sepolia deployment is the public incremental release, so it runs the
+/// TESTNET DIVERGENCE (exactly one — no weekly-period compression: this
+/// Sepolia deployment is the public incremental release, so it runs the
 /// REAL yearly schedule and the real 28-day cooldown; compressed-time claim
 /// rehearsal is devnet's job):
 ///   1. DAO_WALLET is not read from env. The script deploys
 ///      `MockTreasuryMultisig([FOUNDER_WALLET, SUPPORTERS_WALLET, deployer], 2)`
 ///      and mints the 300M DAO allocation to it — the mock-as-code divergence
 ///      (mainnet: a canonical Safe at DAO_WALLET, config never code —
-///      RELEASE_READINESS Task 9; mock posture re-affirmed 2026-08-14).
+///      RELEASE_READINESS Task 9).
 ///
 /// Required environment variables:
 ///   PRIVATE_KEY                — deployer private key
@@ -47,8 +46,8 @@ contract DeploySepolia is Script {
     uint256 constant DAO_ALLOC = 300_000_000 ether; // 30%
     uint256 constant RPGF_ALLOC = 600_000_000 ether; // 60%
 
-    /// @dev The REAL accrual period — mainnet's value (weekly compression
-    ///      reverted by ruling 2026-08-14; this deployment is the release).
+    /// @dev The REAL accrual period — mainnet's value (no weekly compression;
+    ///      this deployment is the release).
     uint64 constant PERIOD = 365 days;
     /// @dev Mainnet's cooldown — its compression fell with the period's.
     uint256 constant MEMBER_COOLDOWN = 28 days;
@@ -115,9 +114,8 @@ contract DeploySepolia is Script {
         // the chain's Uniswap SwapRouter02 (env — from Uniswap's deployment docs).
         // The router is probed for BEHAVIOUR (factory() + WETH9() answer with
         // contracts): an address is never trusted for existing alone (the SP1
-        // gateway lesson, RELEASE_READINESS 7.3(c)). Omitted from this script
-        // until 2026-08-18 — an omission, not a decision; deployed alone onto
-        // the live Sepolia stack that day (script/DeploySwapCoordinator.s.sol).
+        // gateway lesson, RELEASE_READINESS 7.3(c)). A stack already live
+        // without it takes it alone via script/DeploySwapCoordinator.s.sol.
         {
             address permit2 = vm.envAddress("PERMIT2");
             address router = vm.envAddress("SWAP_ROUTER");
@@ -139,7 +137,7 @@ contract DeploySepolia is Script {
         }
 
         // Author-side stakes — the ratified mainnet values (0.05 ether, sized
-        // 2026-07-31 from RPGF paper §7; deposits do not compress).
+        // from RPGF paper §7; deposits do not compress).
         ClauseRegistry clauses = new ClauseRegistry(0.05 ether);
         _clauses = address(clauses);
         console.log("ClauseRegistry:         ", _clauses);
@@ -183,7 +181,7 @@ contract DeploySepolia is Script {
             periods[i] = genesis + uint64((i + 1)) * PERIOD;
         }
 
-        // The mandatory clauses EARN (ruled 2026-08-13); only the
+        // The mandatory clauses EARN; only the
         // assembly-provenance clause stays excluded (attribution plumbing).
         bytes32[] memory excluded = new bytes32[](1);
         excluded[0] = keccak256(abi.encode("figaro-assembly-provenance", uint64(1)));
@@ -196,7 +194,7 @@ contract DeploySepolia is Script {
             batchVerifier_,
             keccak256(abi.encode("figaro-assembly-provenance", uint64(1))),
             excluded,
-            3, // minimum-support floor (ruled 2026-07-31)
+            3, // minimum-support floor
             periods
         );
         _usageCounter = address(usageCounter);
@@ -210,7 +208,7 @@ contract DeploySepolia is Script {
         _florin = address(florin);
         console.log("FlorinToken:               ", _florin);
 
-        // Nine slices, three rising tranches (ruled 2026-07-31) — the budgets
+        // Nine slices, three rising tranches — the budgets
         // are the mainnet values; only the period LENGTH compressed.
         uint256[] memory amounts = new uint256[](9);
         amounts[0] = 45_000_000 ether;

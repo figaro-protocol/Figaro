@@ -7,7 +7,7 @@ never to the protocol or its users. The laptop is not a proving host
 (Succinct's Groth16 wrap floor is ~14 GB through the `sp1-gnark` docker image;
 measured peak ~18 GB, ~6–7 min per wrap on 16 CPU cores).
 
-First run: 2026-08-20 — the layered rehearsal that caught the guest's
+First run: the layered rehearsal that caught the guest's
 public-values encoding bug on a fork before a live wei moved, then resolved the
 first two real batches on public Sepolia.
 

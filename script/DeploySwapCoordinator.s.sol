@@ -12,9 +12,7 @@ import {WitnessSwapAndCommitCoordinator} from "../src/app/WitnessSwapAndCommitCo
 ///         `FigaroCore` and the chain's canonical Permit2 + Uniswap SwapRouter02.
 ///         The coordinator is a fifth-noun composition: it points at the kernel
 ///         (immutably) and nothing points back at it, so it deploys ALONE onto a
-///         stack that is already live — no redeploy of anything else (2026-08-18:
-///         it had been omitted from the public deploy scripts since it landed on
-///         2026-07-12; this script closes that on Sepolia, then mainnet).
+///         stack that is already live — no redeploy of anything else.
 ///
 /// @dev The venue is SwapRouter02, not the Universal Router: the coordinator
 ///      approves the router for the input token and forwards the party's signed

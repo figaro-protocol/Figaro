@@ -32,9 +32,8 @@ import "../src/core/verifier/FigaroBatchVerifier.sol";
 ///                                it (ends at years 1..9); per-period budgets
 ///                                group into three RISING tranches — 15% over
 ///                                years 1–2, 30% over 3–5, 55% over 6–9, equal
-///                                slices within each (ruled 2026-07-31). Sepolia
-///                                runs this same real schedule (its weekly
-///                                compression was reverted 2026-08-14); only
+///                                slices within each. Sepolia runs this same
+///                                real schedule (no weekly compression); only
 ///                                devnet compresses (minutes — Deploy.s.sol)
 ///
 /// florin allocation (1B cap):
@@ -121,9 +120,8 @@ contract DeployMainnet is Script {
         // the chain's Uniswap SwapRouter02 (env — from Uniswap's deployment docs).
         // The router is probed for BEHAVIOUR (factory() + WETH9() answer with
         // contracts): an address is never trusted for existing alone (the SP1
-        // gateway lesson, RELEASE_READINESS 7.3(c)). Omitted from this script
-        // until 2026-08-18 — an omission, not a decision; deployed alone onto
-        // the live Sepolia stack that day (script/DeploySwapCoordinator.s.sol).
+        // gateway lesson, RELEASE_READINESS 7.3(c)). A stack already live
+        // without it takes it alone via script/DeploySwapCoordinator.s.sol.
         {
             address permit2 = vm.envAddress("PERMIT2");
             address router = vm.envAddress("SWAP_ROUTER");
@@ -144,7 +142,7 @@ contract DeployMainnet is Script {
             console.log("WitnessSwapAndCommitCoordinator:", _swapCoordinator);
         }
 
-        // ── Author-side stakes (Clause / Assembly) — sized 2026-07-31 ──
+        // ── Author-side stakes (Clause / Assembly) ──
         // 0.05 ETH per registration, NO cooldown (withdrawal is one-shot per key
         // with a permanent binding — nothing can be recycled). What sizes it:
         // author-side RPGF eligibility requires the deposit LIVE AT CLAIM
@@ -175,7 +173,7 @@ contract DeployMainnet is Script {
         // the chain merkle-binds and content-hash-binds attestations and does not
         // validate content shape. Run populate-clauses.mjs after broadcast.
 
-        // ── MembersRegistry — sized 2026-07-31 from the published bound ──
+        // ── MembersRegistry — sized from the published bound ──
         // The two parameters are ONE Sybil price (RPGF paper §7 is the proof;
         // RELEASE_READINESS "Resolve Mainnet Registry Parameters" the working):
         // a fabricated staked-seller identity costs δ = D·T/P of committed
@@ -185,8 +183,7 @@ contract DeployMainnet is Script {
         // — linear in score, published, recomputable by anyone.
         //   - D = 0.05 ether: ~100× the registration gas (the spam floor) while
         //     staying inside what a genuine small seller commits to be
-        //     discoverable at all; denominated in ETH only — no fiat anchor,
-        //     per the 2026-07-30 ruling.
+        //     discoverable at all; denominated in ETH only — no fiat anchor.
         //   - T = 28 days: against P = 365 days this makes P/T ≈ 13, so
         //     δ = D/13 ≈ 3.8e-3 ETH per identity-period. De-surfacing stays
         //     immediate at request; only the ETH release waits. Costless to a
@@ -251,7 +248,7 @@ contract DeployMainnet is Script {
             periods[i] = genesis + uint64((i + 1) * 365 days);
         }
 
-        // The mandatory clauses EARN (ruled 2026-08-13): commerce and topology ride
+        // The mandatory clauses EARN: commerce and topology ride
         // on every order, so scoring them levies every resolved process for their
         // author-of-record — the DAO treasury under the genesis registration, the
         // commons taxing its own unavoidable usage into the commons pot. Only the
@@ -269,7 +266,7 @@ contract DeployMainnet is Script {
             batchVerifier_, // proof-gated writer of the batch-path accrual
             keccak256(abi.encode("figaro-assembly-provenance", uint64(1))),
             excluded,
-            3, // minimum-support floor (ruled 2026-07-31): d' >= 3 distinct staked sellers before a clause or assembly scores
+            3, // minimum-support floor: d' >= 3 distinct staked sellers before a clause or assembly scores
             periods
         );
         _usageCounter = address(usageCounter);
@@ -288,7 +285,7 @@ contract DeployMainnet is Script {
         // bonded, or challenged: the counter (already deployed beside the
         // batch verifier) records verified usage as it happens and the minter
         // pays pro rata from a period that has closed.
-        // Nine annual slices, three rising tranches (ruled 2026-07-31):
+        // Nine annual slices, three rising tranches:
         // 15% over years 1-2, 30% over 3-5, 55% over 6-9, equal within each.
         uint256[] memory amounts = new uint256[](9);
         amounts[0] = 45_000_000 ether;

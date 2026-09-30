@@ -33,7 +33,7 @@ export interface SignerCeilings {
  *
  * `verifyingContracts` carries BOTH EIP-712 domains a Figaro wallet signs
  * under: `FigaroCore` (the direct path) and `FigaroBatchVerifier` (the batch
- * universe signs over the VERIFIER's domain — ruled 2026-08-20). A typed-data
+ * universe signs over the VERIFIER's domain). A typed-data
  * request binding any other domain is refused outright.
  */
 export interface SignerPolicy {

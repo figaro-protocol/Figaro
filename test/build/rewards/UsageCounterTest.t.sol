@@ -114,7 +114,7 @@ contract UsageCounterTest is Test {
 
     /// @dev The one clause excluded from scoring on every deployment:
     ///      assembly-provenance — attribution plumbing, not an earnable term
-    ///      (the mandatory clauses EARN, ruled 2026-08-13).
+    ///      (the mandatory clauses EARN).
     function _excluded() internal pure returns (bytes32[] memory e) {
         e = new bytes32[](1);
         e[0] = keccak256(abi.encode("figaro-assembly-provenance", uint64(1)));
@@ -312,7 +312,7 @@ contract UsageCounterTest is Test {
         // The CLAUSE-OR-ASSEMBLY-side twin of the seller-stake gate: a clause earns only
         // while its own registration deposit is live. Without it a self-authored
         // agreement could commit any bytes32 leaf key and accrue score to it,
-        // inflating the shared denominator at gas cost (audit M-2, 2026-08-01).
+        // inflating the shared denominator at gas cost (audit M-2).
         stake.kill(CARGO_KEY);
         CommitmentTypes.Commitment memory c = _settledOrder(CARGO_KEY, buyer, BUYER_KEY, seller1, SELLER1_KEY, 1);
         vm.expectRevert(abi.encodeWithSelector(UsageCounter.ClauseOrAssemblyNotRegistered.selector, CARGO_KEY));
@@ -445,7 +445,7 @@ contract UsageCounterTest is Test {
     function test_mandatoryClausesEarnForTheirAuthor() public {
         // figaro-commerce and figaro-topology ride on EVERY order, so scoring
         // them levies every resolved process for their author-of-record — the
-        // DAO treasury under the ruled genesis registration (2026-08-13): the
+        // DAO treasury under the ruled genesis registration: the
         // commons taxing its own unavoidable usage into the commons pot.
         bytes32 commerceKey = keccak256(abi.encode("figaro-commerce", uint64(1)));
 
@@ -604,11 +604,11 @@ contract UsageCounterTest is Test {
     ///         plus the 21,000 tx base cost, never a re-derivation. If the band
     ///         below breaks, the accrual path changed: re-measure, update this
     ///         anchor, and revisit the bound — γ is what prices Sybil resistance.
-    ///         REPRICED 2026-07-31 with the seller-statistic ruling: the seller
+    ///         REPRICED with the seller-statistic ruling: the seller
     ///         write replaced the pairKey derivation, measuring 169,241 all-in
     ///         under legacy codegen (less under --via-ir, which is why the
     ///         via-ir suite runs never tripped the old 169,000 ceiling).
-    uint256 internal constant RECORD_USAGE_GAS = 180_000; // repriced 2026-08-05: measured 175,250 after the clauseOrAssembly rename wave (drift predates it; anchor is a drift alarm)
+    uint256 internal constant RECORD_USAGE_GAS = 180_000; // measured 175,250 after the clauseOrAssembly rename wave (drift predates it; anchor is a drift alarm)
 
     function test_Gas_recordUsageStaysAtItsAnchor() public {
         CommitmentTypes.Commitment memory c = _settledOrder(CARGO_KEY, buyer, BUYER_KEY, seller1, SELLER1_KEY, 0xA45);
@@ -666,7 +666,7 @@ contract UsageCounterTest is Test {
         assertEq(counter.totalScoreIn(0), geoScore + cargoScore);
     }
 
-    // ── Minimum-support floor (ruled 2026-07-31) ────────────────────
+    // ── Minimum-support floor ───────────────────────────────────────
     //
     // Below the floor sit exactly the clauses and assemblies one actor can fabricate alone —
     // self-farms, fragmentation shards, squatted names, trivial riders. These
@@ -926,8 +926,8 @@ contract UsageCounterTest is Test {
         // SKIP, never revert: this runs inside settleBatch, so a revert would
         // take down the whole batch's token resolution. An excluded clause or assembly
         // simply earns nothing — not written, total untouched, trade resolves.
-        // PROV_KEY doubles as the excluded exemplar — the deploy shape (ruled
-        // 2026-08-13) excludes only the attribution-plumbing provenance clause.
+        // PROV_KEY doubles as the excluded exemplar — the deploy shape
+        // excludes only the attribution-plumbing provenance clause.
         uint256 totalBefore = counter.totalScoreIn(0);
         vm.prank(batchVerifier);
         counter.applyBatchAccrual(0, PROV_KEY, _accrual(PROV_KEY, 9, 9), _sellers(seller1));

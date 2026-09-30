@@ -186,8 +186,8 @@ describe("A2aChannel over a real socket", () => {
 // A2aChannelOptions doc promises (`didWebEndpointResolver(...,
 // { serviceType: "A2AEndpoint" })`): a seller's DID document declares its A2A
 // endpoint, the resolver verifies the wallet binding, and a full offer →
-// counter-sign handshake rides the resolved endpoint. Before 2026-08-14 the
-// A2A leg had no resolver coverage at all (channel-seam audit, finding 10).
+// counter-sign handshake rides the resolved endpoint. This is the A2A leg's
+// resolver coverage (channel-seam audit, finding 10).
 
 import { didWebEndpointResolver } from "../src/agent/httpChannel.js";
 import type { DIDDocument } from "../src/agent/did.js";

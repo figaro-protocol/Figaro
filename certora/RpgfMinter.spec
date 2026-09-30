@@ -2,7 +2,7 @@
 // Certora CVL specification for RpgfMinter — the 600M retroactive florin
 // distribution. This is the maintainer-approved formal-coverage gap: RpgfMinter
 // mints florins, and its two worst historical bugs (a tranche-overdraw class,
-// fixed pre-squash, and the pre-2026-07-30 clamp that let a repeated clause-or-assembly entry
+// fixed pre-squash, and the former clamp that let a repeated clause-or-assembly entry
 // mint an entire tranche — see the `_entitlement` doc comment in the .sol)
 // were both caught by audit, never by the Foundry suite. This spec proves the
 // six properties that class of bug would have violated.
@@ -168,7 +168,7 @@ rule cannotClaimWhilePeriodOpen(uint8 periodId, bytes32[] clausesOrAssemblies) {
 //
 // Matches the contract's ACTUAL mechanism: `_entitlement`'s inner loop
 // reverts with `DuplicateClauseOrAssembly` the moment any two entries repeat, rather
-// than silently deduplicating or (the pre-2026-07-30 bug) clamping the sum
+// than silently deduplicating or (the former bug) clamping the sum
 // up to the period total. Proved for an arbitrary repeated pair (i, j) at any
 // positions in an arbitrary-length list — not one example list.
 // ═══════════════════════════════════════════════════════════════════

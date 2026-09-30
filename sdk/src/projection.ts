@@ -670,7 +670,7 @@ export function buildAssemblyTemplate(args: {
 }): AssemblyTemplate {
     const { name, summary, description, orders, clausesByOrderId, clauseVersionsByOrderId,
         assemblyClauses, assemblyClauseVersions, specs } = args;
-    // SCOPE VERIFICATION (ruled 2026-07-28): a clause binds where its spec
+    // SCOPE VERIFICATION: a clause binds where its spec
     // declares — an assembly-scoped clause composed on an order (or an
     // agreement-scoped clause composed at assembly level) is a build error,
     // never a silent no-op. Duplicates across levels are impossible once both
@@ -698,7 +698,7 @@ export function buildAssemblyTemplate(args: {
     }
     // Dedupe by clauseId (list() is per-version): the fold wants each
     // mandatory clause once, at its highest loaded version. A MANDATORY
-    // clause folds AT THE LEVEL ITS SCOPE NAMES (ruled 2026-07-28):
+    // clause folds AT THE LEVEL ITS SCOPE NAMES:
     // agreement-scoped mandatory (commerce, topology) folds into every
     // agreement; assembly-scoped mandatory (assembly-provenance) folds into
     // every published assembly's terms below.
@@ -749,7 +749,7 @@ export function buildAssemblyTemplate(args: {
         ...(Object.keys(assemblySelection).length > 0 ? { assemblyClauses: assemblySelection } : {}),
         ...(Object.keys(assemblyVersions).length > 0 ? { assemblyClauseVersions: assemblyVersions } : {}),
         agreements: orders.map((order, i) => {
-            // Design time is STRUCTURAL (ruled 2026-07-14): the template keeps
+            // Design time is STRUCTURAL: the template keeps
             // the designer's clause SELECTION, but a clause's field values are
             // transaction particulars — filled at checkout, never composed.
             // Only clauses declaring designer fills (block.design.fills — the

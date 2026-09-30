@@ -317,7 +317,7 @@ fn a_second_clause_or_assembly_from_the_same_process_still_counts() {
 
 // ── Breadth ───────────────────────────────────────────────────────
 
-/// `d` counts DISTINCT STAKED SELLERS (ruled 2026-07-31). Many buyers
+/// `d` counts DISTINCT STAKED SELLERS. Many buyers
 /// through ONE seller add depth, not breadth — buyer wallets are free, so
 /// breadth follows the priced identity; the `c^(1/3)` term discounts the
 /// repetition.

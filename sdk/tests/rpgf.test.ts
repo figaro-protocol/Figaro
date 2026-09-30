@@ -77,7 +77,7 @@ describe("usageScore", () => {
         expect(usageScore(1n, 1n, 1n)).toBe(10n ** 6n); // icbrt(1e18), floor disabled
     });
 
-    it("floors below minSellers — the minimum-support floor (ruled 2026-07-31)", () => {
+    it("floors below minSellers — the minimum-support floor", () => {
         // Default is the formula reference (3): below it nothing scores,
         // at it the FULL score springs — deferred, never lost.
         expect(RPGF_MIN_SELLERS).toBe(3n);
@@ -140,7 +140,7 @@ describe("computeUsageAccruals", () => {
         expect(period.totalScore).toBe(usageScore(2n, 2n, 1n) + usageScore(1n, 1n, 1n));
     });
 
-    it("many buyers through one seller are volume, never breadth (ruled 2026-07-31)", () => {
+    it("many buyers through one seller are volume, never breadth", () => {
         // The exact shape a farmer fabricates for free — buyer wallets cost
         // nothing. Breadth follows the priced identity: one seller, d = 1,
         // however many buyers arrive. (The old pair statistic gave d = N here.)
@@ -161,7 +161,7 @@ describe("computeUsageAccruals", () => {
     });
 
     it("counts a process ONCE EVER — re-recording it in a later period adds nothing", () => {
-        // Global idempotence (ruled 2026-07-30): a resolved order stays resolved
+        // Global idempotence: a resolved order stays resolved
         // and its struct is public, so a per-period key would let the same trade
         // be re-presented every period — paying for recording gas, not adoption.
         const s1 = sellerOf("seller1");
@@ -319,7 +319,7 @@ describe("computeUsageAccruals", () => {
         expect(reversed.totalScore).toBe(forward.totalScore);
     });
 
-    // ── The minimum-support floor (ruled 2026-07-31) ────────────────
+    // ── The minimum-support floor ───────────────────────────────────
 
     it("scores nothing below the floor, and the full score springs when it is crossed", () => {
         const below = computeUsageAccruals([

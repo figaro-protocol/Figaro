@@ -3,7 +3,7 @@ import { readCappedResponseText, MAX_OFFER_RESPONSE_BYTES } from "../src/agent/h
 
 /**
  * Regression for the unbounded offer-endpoint read (frontend security audit
- * 2026-07-22, finding 6). The endpoint is a counterparty's advertised URL, so a
+ * finding 6). The endpoint is a counterparty's advertised URL, so a
  * hostile candidate could stream an unbounded body and OOM the reader before any
  * verification runs. The cap must reject both an over-declared Content-Length and
  * a body that streams past the ceiling.

@@ -33,7 +33,7 @@ contract GasCeilingTest is Test {
     uint256 internal constant INITIAL_BALANCE = 1_000_000 ether;
 
     // ── Per-order gas anchors (mirror frontend/lib/shared/chainGasCeilings.ts) ──
-    // Measured on real Anvil transaction receipts (2026-06-25): resolveProcess(N)
+    // Measured on real Anvil transaction receipts: resolveProcess(N)
     // = ~38,000 + ~23,000·N (all-in, cold per-tx); a sub-order commit is ~144k
     // (root ~235k). `scripts/lint-chain-gas.sh` asserts byte-equality with the TS
     // module — if you bump one, bump both.

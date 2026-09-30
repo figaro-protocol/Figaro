@@ -48,7 +48,7 @@ contract RpgfIntegrationTest is Test {
 
     /// @dev Stands in for FigaroBatchVerifier — see UsageCounterTest.
     address constant batchVerifier = address(0xBA7C);
-    // Reference per-year slices (ruled 2026-07-31); the tranche grouping is
+    // Reference per-year slices; the tranche grouping is
     // deploy-script data, the minter sees only per-period budgets.
     uint256 constant T0 = 45_000_000 ether;
     uint256 constant T1 = 60_000_000 ether;
@@ -109,7 +109,7 @@ contract RpgfIntegrationTest is Test {
 
     /// @dev The one clause excluded from scoring on every deployment:
     ///      assembly-provenance — attribution plumbing (the mandatory clauses
-    ///      EARN, ruled 2026-08-13).
+    ///      EARN).
     function _excluded() internal pure returns (bytes32[] memory e) {
         e = new bytes32[](1);
         e[0] = keccak256(abi.encode("figaro-assembly-provenance", uint64(1)));

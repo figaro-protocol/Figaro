@@ -156,7 +156,7 @@ contract Deploy is Script {
         // to earmarked addresses) — is COMPOSED, not owned: mainnet uses
         // the canonical public Disperse deployment
         // (0xD152f549545093347A162Dce210e7293f1452150, same address across
-        // 16 chains, ownerless since 2018). MockDisperse mirrors its
+        // 16 chains, ownerless). MockDisperse mirrors its
         // verified interface so devnet rehearses the composition.
         // Scoped block: the address is only logged, and run() compiles at the
         // stack limit under the legacy codegen (via_ir=false by design).
@@ -346,7 +346,7 @@ contract Deploy is Script {
     ) internal {
         // Accrual periods and per-period RPGF budgets are ONE schedule (the
         // minter validates its budget array against `periodCount()` at
-        // deploy). The reference shape (ruled 2026-07-31) is NINE ANNUAL
+        // deploy). The reference shape is NINE ANNUAL
         // periods whose budgets group into three rising tranches; devnet
         // rehearses the same nine-period structure.
         //
@@ -354,12 +354,11 @@ contract Deploy is Script {
         // gates on `periodClosed`, so a schedule measured in days makes the
         // whole reward leg undrivable in a test run: usage accrues and nothing
         // can ever be claimed. (Devnet is the ONLY compressed deployment —
-        // public networks, Sepolia included, run the real annual schedule;
-        // the testnet weekly compression was reverted 2026-08-14.)
+        // public networks, Sepolia included, run the real annual schedule.)
         //
         // Thirty-minute periods, not seconds or ten minutes: deploy + clause
         // population alone takes over a minute, and RESOLVE-TIME USAGE
-        // RECORDING (ruled 2026-07-28: the resolve capability records every
+        // RECORDING (the resolve capability records every
         // committed clause or assembly) needs accrual OPEN for every value-legs spec in
         // a full suite run — a 3×10-minute schedule closed the book ~30
         // minutes after deploy and every later recordClauseUsage reverted
@@ -373,7 +372,7 @@ contract Deploy is Script {
             periods[i] = uint64(block.timestamp + (i + 1) * 30 minutes);
         }
 
-        // The mandatory clauses EARN (ruled 2026-08-13; mirrors DeployMainnet):
+        // The mandatory clauses EARN (mirrors DeployMainnet):
         // scoring commerce and topology levies every resolved process for their
         // author-of-record. Only assembly-provenance stays excluded — attribution
         // plumbing; scoring it would double-pay every assembly trade. (Assembly
@@ -389,7 +388,7 @@ contract Deploy is Script {
             batchVerifier_, // proof-gated writer of the batch-path accrual
             keccak256(abi.encode("figaro-assembly-provenance", uint64(1))), // proves the assembly leg
             excluded,
-            3, // minimum-support floor (ruled 2026-07-31): mainnet value, rehearsed on devnet
+            3, // minimum-support floor: mainnet value, rehearsed on devnet
             periods
         );
         _usageCounter = address(counter);
@@ -416,7 +415,7 @@ contract Deploy is Script {
         florin.registerMinter(address(rpgfMinter), 600_000_000 ether);
     }
 
-    /// @dev The 600M split into nine annual slices (ruled 2026-07-31): three
+    /// @dev The 600M split into nine annual slices: three
     ///      RISING tranches — 15% over years 1–2, 30% over years 3–5, 55% over
     ///      years 6–9 — each split equally across its years. Rising, so the
     ///      largest share pays on the most-measured evidence; the cold-start

@@ -132,7 +132,7 @@ describe("assertAgreementSignable — the shared sign gate", () => {
 describe("the sign gate's denomination chain — pin == leaf == struct", () => {
     // Every term is a merkle leaf; the kernel struct is the EXECUTION mirror
     // of the currency term, so the gate asserts the copy across the two layers
-    // (docs/CLAUSES.md § "Every clause is a merkle leaf", ruled 2026-08-11).
+    // (docs/CLAUSES.md § "Every clause is a merkle leaf").
     const build = (clauses: Record<string, Record<string, unknown>>) =>
         buildOrderAgreement(BUYER, SELLER, clauses, SPECS);
 
@@ -244,7 +244,7 @@ describe("projection — golden-vector byte-exactness", () => {
 
     it("mandatory fold + relabeling + assembly-scope fold reproduce the frozen template + compositionHash", () => {
         // figaro-applicable-law is ASSEMBLY-SCOPED (design.scope: "assembly")
-        // and DESIGNER-AUTHORED (design.fills — ruled 2026-07-28: recourse
+        // and DESIGNER-AUTHORED (design.fills — recourse
         // terms are part of the assembly's identity, never buyer-authored),
         // so its typed value SURVIVES into the frozen output.
         const template = serializeAssemblyTemplate(
@@ -263,7 +263,7 @@ describe("projection — golden-vector byte-exactness", () => {
         expect(template.compositionHash).toBe(vectors.assemblyTemplate.compositionHash);
     });
 
-    it("refuses wrong-level composition (scope verification, ruled 2026-07-28)", () => {
+    it("refuses wrong-level composition (scope verification)", () => {
         // An assembly-scoped clause on an order is a BUILD error, never a
         // silent no-op…
         expect(() => buildAssemblyTemplate({

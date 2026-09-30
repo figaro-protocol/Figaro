@@ -233,8 +233,7 @@ So the triage before scoping any integration is one question — **who signs the
 - **A contract** (aggregator, oracle, bridge, router) → cannot sign EIP-712 → not a seller →
   **Path A**, placement 3 above: the buyer transacts with it directly, then attests the receipt
   against the root order. Evidence, not entanglement — no bonding, no second signature, no
-  atomic-resolution coupling. (The offset apparatus that first demonstrated Path A is
-  gone; the pattern is what survives.)
+  atomic-resolution coupling.
 
 Never invent a "wrapper operator" to drag a contract into the bonded model — that only moves the
 problem to whoever must run the wrapper, online and signing, indefinitely.

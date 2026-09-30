@@ -19,7 +19,7 @@ export interface TemplateAgreement {
      *  party — the template is party-agnostic. */
     id: string;
     /** clauseId → the designer's composed clause map. Design time is
-     *  STRUCTURAL (ruled 2026-07-14): a clause with no designer fills carries
+     *  STRUCTURAL: a clause with no designer fills carries
      *  `{}` — the selection only; its fields are transaction particulars
      *  filled at checkout. Exactly two kinds of values exist here: the
      *  mandatory topology clause's `{ parentOrderHashes }` (root = [] — the
