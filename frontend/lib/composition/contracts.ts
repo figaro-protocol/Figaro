@@ -73,7 +73,7 @@ export function getRpgfMinter(): `0x${string}` | null {
  *  happens. The minter rewards from its periods; this resolver is what the
  *  rewards surface reads accrual (c, d, score) and period-closure from.
  *  Resolved-empty: null = accrual is unreadable on this network. Delegates to
- *  the kernel's validated accessor (the canonical env parse for
+ *  FigaroCore's validated accessor (the canonical env parse for
  *  `NEXT_PUBLIC_USAGE_COUNTER`) rather than re-reading the env itself — one
  *  source, one behavior for a malformed address. */
 export function getUsageCounter(): `0x${string}` | null {
@@ -81,9 +81,9 @@ export function getUsageCounter(): `0x${string}` | null {
 }
 
 /** The FigaroBatchVerifier — the batch path, the second of the two resolution paths. It shares no state
- *  with FigaroCore and never calls it, so it is not a kernel contract and does
+ *  with FigaroCore and never calls it, so it is not a Core contract and does
  *  not belong in `lib/kernel/contracts.ts`: a batch-resolved process never
- *  acquires kernel status (docs/SCALING_STRATEGY.md § "The two paths share no
+ *  acquires FigaroCore status (docs/SCALING_STRATEGY.md § "The two paths share no
  *  state"). Readers that fold both paths resolve the address here. Resolved-empty: null = the batch path is unreadable on this
  *  network, which is absence, never "not resolved". */
 export function getBatchVerifier(): `0x${string}` | null {

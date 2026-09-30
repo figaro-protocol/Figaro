@@ -7,7 +7,7 @@
  * Same shape as `useFigaroActions.commit` (simulate → write), but the write
  * targets the coordinator: it pulls each funded party's input token via their
  * witness-signed Permit2 permit, swaps it at the immutable venue, forwards
- * the proceeds to that party, then calls the kernel's `commit`. Composition
+ * the proceeds to that party, then calls FigaroCore's `commit`. Composition
  * layer — the coordinator is a contract the frontend composes with, never
  * core (`lib/kernel` carries only the five core ABIs).
  */
@@ -47,8 +47,8 @@ export function useSwapAndCommitActions() {
             buyerFunding ?? DISABLED_SWAP_FUNDING_LEG,
             sellerFunding ?? DISABLED_SWAP_FUNDING_LEG,
         ] as const;
-        // Same pre-flight dry-run as the kernel commit path: any coordinator or
-        // kernel revert (witness mismatch, output below bond, allowance gap)
+        // Same pre-flight dry-run as FigaroCore commit path: any coordinator or
+        // FigaroCore revert (witness mismatch, output below bond, allowance gap)
         // surfaces BEFORE the wallet prompt opens.
         if (publicClient) {
             await publicClient.simulateContract({

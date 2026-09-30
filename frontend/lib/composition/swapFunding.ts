@@ -4,7 +4,7 @@
  *
  * A party holds a token that is not the process denomination; the
  * WitnessSwapAndCommitCoordinator swaps it at commit time (the buyer's leg at
- * commit, the seller's leg at accept — the same atomic call) and the kernel
+ * commit, the seller's leg at accept — the same atomic call) and FigaroCore
  * pulls the bond as always: swap-and-commit is the ON-RAMP into the process
  * denomination, never the order's denomination itself. This module quotes the
  * venue, builds the exact swap route, and produces the witness-signed
@@ -90,7 +90,7 @@ export interface QuoteFundingLegArgs {
     inputToken: Hex;
     /** The process denomination the swap must yield. */
     currency: Hex;
-    /** The signing party's bond for this order (the kernel pull: 2·payment
+    /** The signing party's bond for this order (FigaroCore pull: 2·payment
      *  for the buyer, 2·expectedCumulativeValue for the seller). */
     bondAmount: bigint;
     /** Signature window — the order's own deadline. */
@@ -131,7 +131,7 @@ export async function quoteFundingLeg(
     // that quote plus the venue's headroom (0 on the fixed-rate mock). The
     // exact route the witness binds: input → the process denomination,
     // proceeds to the coordinator (it forwards them to the funded party
-    // before the kernel pull, and refunds any input the swap did not spend).
+    // before FigaroCore pull, and refunds any input the swap did not spend).
     const venue = await detectSwapVenue(args.publicClient, contracts.router);
     const quote = await venue.quote(args.inputToken, args.currency, args.bondAmount);
     const maxInput = capWithSlippage(quote.amountIn, venue.slippageBps);

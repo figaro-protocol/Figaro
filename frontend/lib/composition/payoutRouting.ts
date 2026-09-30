@@ -6,7 +6,7 @@
  * multisender (fifth-noun composition — mainnet composes the canonical
  * Disperse deployment; devnet rehearses against MockDisperse,
  * which mirrors its verified interface). Wallet-side and post-resolution by
- * design: the kernel has already paid out, so this is a wallet spending its
+ * design: FigaroCore has already paid out, so this is a wallet spending its
  * own balance — no batch-path work, no process state, no new contract. The
  * self-sovereign fiscal trail (which address got which share of which
  * receipt) falls out of the chain record as a byproduct.
@@ -20,7 +20,7 @@ import { isValidAddress } from "@/lib/shared/evm";
 
 /** The verified Disperse interface (0xD152f5…2150, same address across 16
  *  chains; MockDisperse mirrors it on devnet). A composed third-party ABI —
- *  not a kernel ABI, so it lives with the composition, not `lib/kernel`. */
+ *  not a FigaroCore ABI, so it lives with the composition, not `lib/kernel`. */
 export const DISPERSE_ABI = [
     {
         type: "function",
