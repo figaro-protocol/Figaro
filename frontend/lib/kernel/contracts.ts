@@ -1,5 +1,5 @@
 // Figaro contract configuration — the five core Figaro contracts only
-// (kernel + Clause/Seller/Assembly registries + florin token) plus the agnostic ERC-20.
+// (the Core + Clause/Seller/Assembly registries + florin token) plus the agnostic ERC-20.
 // Addresses are sourced from environment variables written by deploy-local.sh.
 // ABIs are re-exported from the canonical SDK (@figaro-protocol/sdk).
 // Any contract the frontend merely COMPOSES with lives in lib/composition/, not here.
@@ -26,7 +26,7 @@ export {
 } from "@figaro-protocol/sdk";
 
 export interface ChainConfig {
-    /** FigaroCore — the kernel. */
+    /** FigaroCore — FigaroCore. */
     core: `0x${string}`;
     /** ClauseRegistry. */
     clauseRegistry: `0x${string}`;
@@ -57,7 +57,7 @@ export function getMembersRegistry(): `0x${string}` | null {
 
 /** The UsageCounter address if it's a well-formed address, else null. The
  *  canonical parse of `NEXT_PUBLIC_USAGE_COUNTER` — `lib/composition/contracts.ts`'s
- *  `getUsageCounter()` delegates here (composition may import from kernel; the
+ *  `getUsageCounter()` delegates here (composition may import from lib/kernel; the
  *  reverse never happens) instead of re-reading the env itself, and
  *  `useUsageRecorder` consumes this validated path so a malformed env var
  *  resolves null and fails loudly at the call site, never reaching a

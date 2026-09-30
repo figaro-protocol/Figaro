@@ -48,7 +48,7 @@ export const useFigaroActions = () => {
     ): Promise<`0x${string}`> => {
         // Pre-flight dry-run via eth_call. Catches: wrong contract address
         // (no method match), insufficient ERC20 allowance, invalid sig, any
-        // kernel revert path — all BEFORE the wallet prompt opens. If a
+        // FigaroCore revert path — all BEFORE the wallet prompt opens. If a
         // browser extension swapped calldata between simulate and write,
         // simulate would still have used clean data, so the simulate-pass
         // is a strong "this would work" signal even if the write differs.
@@ -71,7 +71,7 @@ export const useFigaroActions = () => {
         });
     };
 
-    // Resolve process: takes full Commitment[] (kernel re-derives orderHash from each).
+    // Resolve process: takes full Commitment[] (FigaroCore re-derives orderHash from each).
     const resolveProcess = async (
         processId: string,
         commitments: Commitment[]

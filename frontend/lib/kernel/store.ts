@@ -29,9 +29,9 @@ export interface Order {
     cumulativeValue: bigint;
     payment: bigint;
     state: OrderState;
-    /** Computed: 2 × cumulativeValue. Not carried directly on the kernel event. */
+    /** Computed: 2 × cumulativeValue. Not carried directly on FigaroCore event. */
     sellerBond: bigint;
-    /** Computed: 2 × payment. Not carried directly on the kernel event. */
+    /** Computed: 2 × payment. Not carried directly on FigaroCore event. */
     buyerBond: bigint;
     /** Salt from the commitment (for full reconstruction at resolution). */
     salt: bigint;
@@ -46,7 +46,7 @@ export interface Order {
 /**
  * Project the SDK fold's `Order` (what `reconstruct`/`Topology` build from
  * OrderCommitted/OrderResolved) into the UI shape above — the ONE mapping
- * every log-fed hook shares. Bonds are derived by the SDK's kernel math
+ * every log-fed hook shares. Bonds are derived by the SDK's FigaroCore math
  * (never read from args that don't exist, never a re-implemented 2× rule);
  * the fold-carried payout fields stay on the SDK order.
  */

@@ -8,7 +8,7 @@
  *
  * No body cache, no store of record: the in-memory `useProcessAgreements`
  * singleton holds bodies for the session (pure UX), and re-fetches from IPFS
- * each load. The ONLY local state here is the witnessed-URI pointer — the kernel
+ * each load. The ONLY local state here is the witnessed-URI pointer — FigaroCore
  * never puts the URI on-chain, so "which URI for this hash" is event-driven
  * local knowledge of orders this wallet saw (like a draft: data not on the
  * network). A wallet that didn't witness an order has no URI and gets null —
@@ -163,7 +163,7 @@ async function warmAgreementSpecs(agreement: Agreement): Promise<void> {
     let registered;
     try {
         // Minimal ClauseRegistered read via the standalone client + SDK log
-        // parser (kernel-layer legal — no protocol/ import). The withdraw fold is
+        // parser (legal in lib/kernel — no protocol/ import). The withdraw fold is
         // irrelevant here: a committed agreement resolves its clauses regardless
         // of whether the registration stake was later reclaimed.
         const logs = await cachedGetContractEvents(publicClient, publicClient.chain?.id ?? activeChain.id, {

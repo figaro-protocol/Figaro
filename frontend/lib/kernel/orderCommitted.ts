@@ -2,7 +2,7 @@
  * orderCommitted.ts — the order once the SELLER has signed: broadcast on-chain.
  *
  * Both signatures are in hand, so the fully-signed commitment is submitted to
- * FigaroCore's unified `commit`. The kernel pulls both bonds (buyer + seller
+ * FigaroCore's unified `commit`. FigaroCore pulls both bonds (buyer + seller
  * must already have approved — see orderCommitmentFlow) and the order becomes a
  * live, bonded process. This is the only state that touches the chain.
  *
@@ -43,7 +43,7 @@ function canReadCap(client: unknown): client is CapReadClient {
  * Before broadcasting a SUB-ORDER, refuses any commit that would push the
  * live process past the chain's resolve ceiling (`assertOrderFitsResolveCap`)
  * — past it, `resolveProcess` cannot fit in one block and every bond in the
- * process is locked forever. The kernel cannot enforce the ceiling; this
+ * process is locked forever. FigaroCore cannot enforce the ceiling; this
  * choke point covers every UI commit path (buyer, seller accept, relay).
  */
 export async function commitSignedOrder(params: {

@@ -6,7 +6,7 @@
  * order the wallet is on. One row per commitment the wallet holds in a given
  * role, plus that order's metadata (counterparty, payment, currency, status).
  *
- * Role asymmetry, straight from the kernel's star shape:
+ * Role asymmetry, straight from FigaroCore's star shape:
  *  - BUYER: the buyer is the buyer on EVERY order in its process
  *    (buyer == rootBuyer, FigaroCore commit invariant), so buyer rows
  *    dedupe to the ROOT commit — one row per process.
@@ -123,7 +123,7 @@ export function useWalletProcessRows(role: PartyRole, subject?: `0x${string}`): 
                 });
 
                 // BUYER rows dedupe to the root commit — the buyer is buyer
-                // on every order in its process (kernel star shape), so the
+                // on every order in its process (star shape), so the
                 // fold's per-root-buyer processes give one row each. Root
                 // detection within the process: cumulativeValue == payment
                 // iff this is the root commit (FigaroCore.sol:177; every
