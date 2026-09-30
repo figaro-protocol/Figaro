@@ -6,9 +6,10 @@ type DisciplineIndex = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
  * Systems" (Working Paper Series 1/2020, Research Institute for Cryptoeconomics,
  * WU Vienna, 2020; §3 + Fig. 2 — the paper:
  * https://research.wu.ac.at/en/publications/foundations-of-cryptoeconomic-systems-6/).
- * Eight disciplines, VERBATIM from the paper's list. Each discipline is a
- * stable lens for reading the substrate; the list cannot grow or shrink
- * without departing from the taxonomy.
+ * Eight disciplines, VERBATIM from the paper's list. The disciplines sort the
+ * papers; a working group is an interdisciplinary group of people, the
+ * disciplines intersecting, never one group per discipline. The list cannot
+ * grow or shrink without departing from the taxonomy.
  *
  * Papers and `venue` are optional. Every
  * discipline always has a definition; `/working-groups` renders the
@@ -56,7 +57,7 @@ export interface PaperGroup {
     /** One-paragraph introduction of the discipline, derived from the
      *  Voshmgir & Zargham paper (sourced once, via the page footnote). */
     intro: string;
-    /** The project-specific paragraph: what this group reads in Figaro. */
+    /** The project-specific paragraph: what this discipline addresses in Figaro. */
     definition: string;
     /** Papers primarily assigned to this discipline. Empty array means
      *  the discipline is an open call — no canonical work convened yet. */
