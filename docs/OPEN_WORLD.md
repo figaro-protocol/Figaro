@@ -17,7 +17,7 @@ lists, stored meaning). Figaro is the inverse. Each pattern below **leads with t
 positive form** (do this) and names the closed-world tell second (not that) — a
 prohibition-only frame leaves a vacuum the base model fills with its default.
 
-1. **WHO acts — name the role + its surface.** Party = buyer/seller at the kernel;
+1. **WHO acts — name the role + its surface.** Party = buyer/seller at the Core;
    the runtime roles are DISTINCT surfaces & projections — DESIGNER composes
    (`/assemblies/designer`), SELLER binds published assemblies (profile array), BUYER
    selects + fills at checkout, the order's SELLER attests at runtime, SPECTATOR
@@ -58,7 +58,7 @@ prohibition-only frame leaves a vacuum the base model fills with its default.
    name.
 
 5. **A clause encodes ANY relationship.** A clause is a composable buyer↔seller /
-   seller↔seller relationship; the SAME kernel serves a market-liberal, cooperative,
+   seller↔seller relationship; the SAME Core serves a market-liberal, cooperative,
    mutual-aid, or Islamic-finance graph; examples are explicitly one-of-many. *Tell:*
    logistics / shipping-a-good / restaurant as the implicit default; mass/volume/
    class treated as mandatory.
@@ -87,7 +87,7 @@ Three legitimately bundled categories (do NOT flag):
 1. **Deployment config** — contract addresses from `NEXT_PUBLIC_*` env vars; you
    can't read an address event-driven without already knowing one.
 2. **Constructor-set protocol constants** — immutable values set at construction
-   (the kernel's 2× bond ratio, a token's max supply); bundle the constant, read
+   (the Core's 2× bond ratio, a token's max supply); bundle the constant, read
    live state for the variable part.
 3. **Off-chain content the chain commits only a hash/URI of** — clause specs,
    agreements, profiles/catalogues. Fetching the pre-image of an on-chain
@@ -103,7 +103,7 @@ pill/badge for an empty result. A resolved-empty read renders as absence; a
 
 ## 2. Extending the ecosystem — bounded, versioned, spec-declared
 
-How the network grows with **zero code change and zero kernel change**. The emissions,
+How the network grows with **zero code change and zero Core change**. The emissions,
 hazmat, and cold-chain handling clauses are the worked example; the model for
 every composition.
 
@@ -129,7 +129,7 @@ every composition.
 
 - **Code stays fixed; the spec carries the knowledge.** One generic spec-driven encoder
   reads the option set from the spec — no per-clause encoders, no hardcoded INDEX tables.
-  New option / new version = edit-or-add JSON + register; zero code, zero kernel change.
+  New option / new version = edit-or-add JSON + register; zero code, zero Core change.
 
 - **Composition through the boundary is STRUCTURAL, not a product roster.** Figaro is
   ERC-20/contract-agnostic; anything a wallet holds, or any on-chain contract, composes
@@ -152,9 +152,9 @@ Relative to the bilateral signature, a composed contract stands in exactly four 
 | # | Placement | Relative to the signature | What the contract supplies |
 |---|---|---|---|
 | 1 | **Terms in** | before | deterministic output that becomes content `fields` both parties sign under `agreementHash` |
-| 2 | **Funding at the kernel-pull** | inside the `commit` tx | bond currency, delivered to the party's own EOA |
+| 2 | **Funding at the Core's pull** | inside the `commit` tx | bond currency, delivered to the party's own EOA |
 | 3 | **Attested auxiliary** (Path A) | after commit, off the bond path | an external receipt, attested against the root order under a purpose-built clause |
-| 4 | **Resolution consumer** | after resolution | consequences derived from kernel state |
+| 4 | **Resolution consumer** | after resolution | consequences derived from Core state |
 
 **The invariant: a composed contract supplies terms, funding, evidence, or consequences —
 NEVER a signature.**
@@ -169,7 +169,7 @@ NEVER a signature.**
   (`WitnessSwapAndCommitCoordinator` demonstrates the shape). Swap-and-commit is therefore the
   WHOLE family, not the first of many: an off-protocol auxiliary needs no such helper because
   Figaro never pulls its token.
-- **Placement 4 constraint — read, never intercept.** A frozen kernel is a frozen ABI: its
+- **Placement 4 constraint — read, never intercept.** A deployed Core is a fixed ABI: its
   events and getters ARE the standard API, so a resolution consumer is a parallel contract family
   that reads it (`AttestationCoordinator` reads `core.orderStatus` for an OPEN process;
   `UsageCounter` reads the same getter for a RESOLVED one). A consumer that inserts itself into
@@ -178,27 +178,27 @@ NEVER a signature.**
 #### The five conditions a composed contract satisfies
 
 A contract stands in one of the four placements only if all five hold. Together they keep
-every invariant of the kernel true under composition and open no second route to the bonded
+every invariant of the Core true under composition and open no second route to the bonded
 tokens or to a payoff indexed on how they resolve; what they do NOT do is re-derive the
 equilibrium — that is `THEORY.md`'s, and a contract meeting the five inherits it.
 
-1. **It writes no kernel state on its own account.** It may read everything: the mappings,
-   the kernel's token balance, the events. `commit` admits a relay — the call may carry both
-   parties' signatures, which the kernel recovers itself before pulling each bond from the
-   party named — so the kernel stays the writer. `resolveProcess` admits no relay at all: it
+1. **It writes no Core state on its own account.** It may read everything: the mappings,
+   the Core's token balance, the events. `commit` admits a relay — the call may carry both
+   parties' signatures, which `FigaroCore` recovers itself before pulling each bond from the
+   party named — so the Core stays the writer. `resolveProcess` admits no relay at all: it
    authorizes on the calling address, so no contract can resolve for a buyer even holding a
    buyer signature. And no contract can hold a party role (the seller problem below).
 2. **It offers no second way to resolve.** Nothing it does produces the value flows of
    resolution while bypassing it or changing its preconditions, and it holds no discretion
    over a live process.
-3. **It holds no kernel bonds and releases none.** Bonded tokens leave the kernel on the
-   kernel's terms only.
+3. **It holds no Core bonds and releases none.** Bonded tokens leave the Core on the
+   Core's terms only.
 4. **Content it accepts under a clauseId is content the parties signed for.** It admits such
    content only against an order whose signed agreement included that clause, proved by
    merkle inclusion against `agreementHash`; content for a clause absent from the agreement
    is refused.
-5. **It promises no off-kernel payout indexed to how the kernel resolves.** A contract can
-   meet 1–4, hold a stake of its own beside the kernel, and pay a party out of it according
+5. **It promises no off-Core payout indexed to how the Core resolves.** A contract can
+   meet 1–4, hold a stake of its own beside the Core, and pay a party out of it according
    to the resolved outcome — which puts an unbonded actor back into the parties' arithmetic
    so that the bond posture stops being the only signal. This condition comes from
    inspection, not from the other four, which is why it is listed.
@@ -208,18 +208,18 @@ checkable conditions is that an arbitrary candidate can be tested against them b
 deployed. In the verification literature this is the non-circular case of assume-guarantee
 composition — Jones's rely-guarantee (1983), Abadi and Lamport's composition rule (1993),
 de Alfaro and Henzinger's interface automata (2001): the five are the assumption a composer
-must meet, and the kernel's invariants are the guarantee that survives under it. What is
+must meet, and the Core's invariants are the guarantee that survives under it. What is
 unusual is what is being preserved — a payoff-relevant state invariant under adversarial
 callers, which is why condition 5 reaches past state and value flow to a promise.
 
 `AttestationCoordinator` and `WitnessSwapAndCommitCoordinator` (`CONTRACTS.md`
 § Coordinators) are the two contracts in the tree that discharge all five; the first by
-touching no kernel operation, the second by relaying a bilaterally signed commitment with
+touching no Core operation, the second by relaying a bilaterally signed commitment with
 the conversion route bound under the funding party's separate witness signature.
 
 #### The seller problem is a boundary detector, not a composability defect
 
-Every composition that has failed here put a contract in a **party slot**. The kernel rejects that
+Every composition that has failed here put a contract in a **party slot**. `FigaroCore` rejects that
 by construction — ECDSA-only recovery (`src/core/kernel/FigaroCore.sol:161`), no EIP-1271 — and the rejection is
 load-bearing: **a bond prices conduct, and a contract has no conduct to deter.** There is no
 external standard to adopt: EIP-1271, ERC-4337, Safe modules, and hooks all standardize
@@ -250,7 +250,7 @@ surface, or agent control plane without redefining the protocol each time. The g
 
 ### Four architecture layers (must stay distinct)
 
-1. **Protocol kernel** — determines what resolution moves.
+1. **The Core** — determines what resolution moves.
 2. **Semantic derivation** — institution-aware meaning (§4).
 3. **Assembly + mechanism layer** — what is shown and how capabilities are grouped.
 4. **Party-specific presentation** — branding, media, presentation overrides.
