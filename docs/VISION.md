@@ -29,14 +29,14 @@ more behind. Only the buyer resolves the process, and resolution pays every
 seller and refunds every bond at once. Keeping one's word is each party's best
 move on every order, and the process holds as one: nobody is paid until the
 buyer resolves, so every seller has a live interest in putting right any one
-seller's fault before that signature. Two frozen contracts — the kernel — do
+seller's fault before that signature. Four contracts — the Core — do
 this and nothing else.
 
-Everything people touch is built above the kernel. Terms are the agreement:
+Everything people touch is built above the Core. Terms are the agreement:
 clauses, written once and registered for anyone to compose, composed into an
 assembly and filled at checkout with real parties and amounts. Offer is the
 buyer's signature over the commitment, carried to the seller; acceptance is the
-seller's counter-signature; mutual assent is the kernel's check of both at
+seller's counter-signature; mutual assent is the Core's check of both at
 commit. Warranties and representations are the attestations, given while the
 process is open. Capacity is any wallet that can sign and fund its bond, a
 person's or an agent's. Legality composes in: name an arbitration forum in the
@@ -110,13 +110,13 @@ reserved for designer rewards. `FLORIN_TOKEN.md` holds the token's design;
 
 ## One deployment, anyone builds
 
-The kernel is deployed once; it is decentralized and permissionless, with no admin. One contract everyone reads is
+The Core is deployed once; it is decentralized and permissionless, with no admin. One contract everyone reads is
 worth more than a thousand forks of it: the same tooling, the same indexers,
 the same wallets serve every process, and every process's public data lies on
-one map. The network grows by what is built above the kernel, by anyone —
+one map. The network grows by what is built above the Core, by anyone —
 clauses, assemblies, interfaces, other contracts — and designer rewards follow
 that growth in proportion to use. `DATA_LAYER.md` describes the map;
-`OPEN_WORLD.md` describes how the layers above the kernel are composed.
+`OPEN_WORLD.md` describes how the layers above the Core are composed.
 
 ## Recourse
 
