@@ -57,7 +57,7 @@ the single mistake that makes an analyst wrong about a market it has never seen.
   record touches. A swap venue gives you value-flow between denominations; a multisender
   gives you post-payout fiscal routing; a forum venue gives you a rulings overlay. Truth
   boundary: **composition-derived** — true per that contract's own rules, outside the
-  kernel's guarantees.
+  the Core's guarantees.
 
 **Venues are DISCOVERED, never listed.** You find them from three places, all of them
 live: the fields a clause DECLARES (an arbitration clause naming its forum, a routing
@@ -105,7 +105,7 @@ close its own frame.
 - **Redistribution terms are co-signed obligations — honor them.** A `redistribution:
   "prohibited"` term on a license you hold is not enforced on chain and cannot be; copying
   cannot be prevented by a contract. It is timestamped evidence in front of every layer
-  outside the kernel — the co-sellers' live interest, a composed forum, ordinary courts.
+  outside the Core — the co-sellers' live interest, a composed forum, ordinary courts.
   Treat it as binding on you, and say plainly to whoever you build for that its force is
   evidentiary, not mechanical. Never imply enforcement the protocol does not have.
 - **Never present a declaration as a fact.** The record proves that this content sat under
@@ -297,7 +297,7 @@ and lets you buy telemetry on the fly instead of a stale snapshot.
 ## Two resolution universes — never conclude "not resolved" from an absent event
 
 `FigaroCore` (direct) and `FigaroBatchVerifier` (batched, proof-based) are DISJOINT state
-universes; a batch-resolved process acquires no kernel status and emits no kernel order
+universes; a batch-resolved process acquires no `FigaroCore` status and emits no `FigaroCore` order
 event, permanently. For an analyst that has one consequence and it is large: **absence from
 the process graph is not absence from the network.** Report it as "not in this corpus", name
 the two live possibilities (batch-resolved, or outside your synced range), and check the
