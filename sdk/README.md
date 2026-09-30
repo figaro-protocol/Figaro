@@ -206,7 +206,7 @@ mechanism's uniformity across actors is exactly this call.
 *The two `processId`s — the DERIVED id and the SIGNED id.* `resolveProcess(bytes32
 processId, Commitment[] commitments)` takes **two different ids that share a
 name**, and they are not interchangeable: the ARGUMENT is the DERIVED id — the
-kernel's storage key, the one `OrderCommitted` carries — while every struct
+`FigaroCore`'s storage key, the one `OrderCommitted` carries — while every struct
 INSIDE `commitments` must carry the SIGNED id, the one the parties put under
 their signatures — and a root order signed `processId = 0`. `FigaroCore`
 recomputes `keccak256(processId ‖ hashStruct(c))` from both
@@ -587,11 +587,11 @@ returns it); a sub-order carries the root's derived `processId`. `buyerSig` /
 `{ name: "FigaroCore", version: "3", chainId, verifyingContract: <core> }`. The
 SDK wrappers (`buildDomain` + `buildCommitment`) encode exactly these EIP-712
 type/domain details — a raw caller must reproduce them byte-for-byte or the
-kernel's on-chain recovery rejects the bond. Reach for the wrappers unless you
+`FigaroCore`'s on-chain recovery rejects the bond. Reach for the wrappers unless you
 have a reason not to; this sketch is only enough to orient a raw caller.
 
 **Token approvals before commit — the whole per-order bond, every time.** The
-kernel pulls the FULL per-order bonds on EVERY `commit`, root or sub-order, and
+`FigaroCore` pulls the FULL per-order bonds on EVERY `commit`, root or sub-order, and
 nets nothing against bonds it already holds from earlier orders in the process.
 
 Two different things state that, and it is worth keeping them apart. The
@@ -799,7 +799,7 @@ in any token you hold, for receipts from either path.
 ## Verifying what you are about to sign
 
 **Resolution is UI-independent; presentation at the signing moment is not.** The
-kernel verifies both EIP-712 signatures itself over a struct whose
+`FigaroCore` verifies both EIP-712 signatures itself over a struct whose
 `agreementHash` is the merkle ROOT of the agreement's sections — so what was
 agreed is fixed by arithmetic once committed, and no origin can restate it. But
 the wallet prompt shows 32 bytes, and the readable document sits beside it on
@@ -854,7 +854,7 @@ salt, deadline` — everything except the two signatures).
 3. Continue: re-request the missing counter-signature for that struct and
    re-broadcast the `commit`, or — as the buyer — `resolveProcess` the orders
    that DID commit. Nothing the chain can't re-derive is stranded; the bonds the
-   kernel already pulled stay against their orders until the buyer resolves.
+   `FigaroCore` already pulled stay against their orders until the buyer resolves.
 
 ### `@figaro-protocol/sdk/agent` — Agent Coordination
 
@@ -1090,7 +1090,7 @@ import { deserializeCommitmentPayload } from "@figaro-protocol/sdk/agent";
 // endpoint accepts — never hand-roll the JSON.
 //
 // A RELAY, NOT AN AUTHORITY: it holds no key of yours, its admission checks
-// call the same kernel functions the proof runs (so it rejects earlier than
+// call the same FigaroCore functions the proof runs (so it rejects earlier than
 // the proof, never accepts more), and its honest powers are censor and delay —
 // never forge. Fall back to direct FigaroCore submission with the SAME
 // signed operations. There is no hosted public endpoint today; the URL is deployment
@@ -1100,7 +1100,7 @@ import { deserializeCommitmentPayload } from "@figaro-protocol/sdk/agent";
 // funding leg, so swap-and-commit does not exist here. Bonding in a token you
 // do not hold means swapping in your own WALLET first, then submitting; and
 // settleBatch pulls your net deposit, so approve FigaroBatchVerifier, not the
-// kernel. (See "Bonding in a token you do not hold" above.)
+// FigaroCore. (See "Bonding in a token you do not hold" above.)
 import { SequencerClient } from "@figaro-protocol/sdk/agent";
 const seq = new SequencerClient({ url: SEQUENCER_URL });
 if (!(await seq.isAvailable())) { /* direct path instead */ }
@@ -1118,7 +1118,7 @@ await seq.submitAttestAsSeller({ role, target, clauseId, stage, contentRef, sell
 await seq.submitUsageClaim(claim);  // the usage-claim leg — build with buildUsageClaims
 await seq.status();  // { state_root, pending_ops, pending_usage_claims, batches_settled, archive }
 
-// READING BATCHED TRADE BACK. A batch-resolved order has no kernel event and no
+// READING BATCHED TRADE BACK. A batch-resolved order has no FigaroCore event and no
 // per-order flag on chain, so do NOT chase stateRoot() and BatchSettled by
 // hand: the relay PUBLISHES the batch path's mirror of FigaroCore's
 // events, and the client encodes the 404 rule you must not get wrong.
@@ -1758,7 +1758,7 @@ const planned = planTemplateOrders(template);
 //    projection via buildOrderAgreement, process-log clauses stay empty
 //    anchors); omit it for the raw override-merge (agent-origination semantics).
 //    Commits MUST be submitted in the returned order — root first — so the
-//    kernel sees a consistent running cumulative total.
+//    FigaroCore sees a consistent running cumulative total.
 const orders = await reconstructOrdersFromTemplate(template, {
   buyer, currency, chainId, core: addresses.core, specs,
   // One ReconstructNodeSpec per template node: who sells it, what it pays, and
@@ -1783,7 +1783,7 @@ const orders = await reconstructOrdersFromTemplate(template, {
   // never the sender.
   onOrder: async (order) => {
     const buyerSig = await buyerWallet.signTypedData(order.typedData);
-    // order.isRoot ⇒ processId ZERO on the signed struct (kernel derives it);
+    // order.isRoot ⇒ processId ZERO on the signed struct (FigaroCore derives it);
     // sub-orders carry the root's derived processId and their parents' REAL
     // order hashes. order.cumulativeValue is the running total AFTER this order.
     // Pin order.agreement (party-private evidence, referenced on-chain by hash),
