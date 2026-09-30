@@ -55,7 +55,7 @@ export default function WorkedExample() {
                     The human version of this story is one trade &mdash; three strangers,
                     peer-to-peer:{" "}
                     <Link href="/trade" className="underline">Trade</Link>. Here
-                    the same kernel carries two software agents through a digital value chain.
+                    the same Core carries two software agents through a digital value chain.
                 </p>
             </MarketingHero>
 
@@ -137,7 +137,7 @@ export default function WorkedExample() {
                     The same shape carries any digital value chain &mdash; a data pipeline whose
                     stages each add something, a research task split across models, a render queue,
                     a translation passed down a line of hands. The participants can be people,
-                    software, or a mix of both, because the kernel reads a signature and never asks
+                    software, or a mix of both, because the Core reads a signature and never asks
                     what produced it; the whole of that argument is on{" "}
                     <Link href="/agents" className="text-ink-heading font-medium hover:underline">Agents</Link>.
                 </p>
