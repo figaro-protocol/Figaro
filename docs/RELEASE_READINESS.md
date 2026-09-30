@@ -3,8 +3,9 @@
 Status: the open work between here and the public releases — the testnet line
 (live, rehearsing mainnet) and the Ethereum mainnet release. TODO tasks only:
 closed work is deleted in the session that closes it, and `git log` is the history.
-The external-audit handover — freeze notice + stamp, post-audit policy, the
-validation-command gate, accepted risks — is `docs/AUDITOR_HANDOVER.md`.
+The external-audit handover — the scope in both languages, the audit commit,
+the change policy, the validation gate, accepted risks — is
+`docs/AUDITOR_HANDOVER.md`.
 
 ## Deployment Targets
 
@@ -27,7 +28,7 @@ Task numbers are stable; missing numbers are closed tasks — `git log` has each
 ### Task 2: Run The Final External Audit Pass
 
 1. choose the auditor or audit process
-2. hand over the frozen Solidity surface and active docs (`docs/AUDITOR_HANDOVER.md`)
+2. hand over the audit commit — the Solidity and the Rust in scope — and the active docs (`docs/AUDITOR_HANDOVER.md`)
 3. resolve findings or explicitly accept non-critical findings in writing
 4. state the final audit outcome in the release docs
 
