@@ -6,7 +6,7 @@
  * one configured.
  *
  * The IA is `docs/DATA_LAYER.md` § "Truth boundaries": one
- * layer at a time, each carrying its own truth boundary, so a kernel guarantee
+ * layer at a time, each carrying its own truth boundary, so a Core guarantee
  * and an institution's declaration are never rendered as the same kind of
  * fact. The rows inside a layer are derived from the record — the overlay list
  * is a census of the clause families this corpus contains, never a menu this
@@ -279,7 +279,7 @@ function MarketView({ corpus, state, onQuery }: { corpus: GraphCorpus; state: Da
                 </ul>
             )}
             <p className="text-xs text-ink-muted leading-relaxed max-w-3xl">
-                Chain shapes are the kernel&apos;s own LINEAR view &mdash; a chain of commits against a
+                Chain shapes are FigaroCore&apos;s own LINEAR view &mdash; a chain of commits against a
                 monotonic accumulator. How orders relate as a DAG is declared in each
                 agreement&apos;s topology section, which is committed rather than attested, so it is
                 not recoverable from public events here.
