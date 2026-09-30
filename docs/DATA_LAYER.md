@@ -47,7 +47,7 @@ private data can already do so through the same bonded commitment as any other
 sale — the content-handoff clause family names datasets and access credentials
 as digital value-added, delivered over the sealed channel.
 
-The voluntary data market around that capacity is kernel-native and needs no
+The voluntary data market around that capacity is Core-native and needs no
 contract of its own: data products are catalogue items; the disclosure regime for
 a process's own data is the composable
 `figaro-data-terms` clause (designer-set regime, buyer-committed choice over
@@ -94,7 +94,7 @@ this is the instrument they are derived with. The 600M exists to incentivize the
 the protocol-layer **public graphs** — the coordination commons agents and humans
 (same level) learn from for free. Platforms' moat is privately holding
 who-moves-what-where, reputation, and demand; make that a public good and the moat
-dissolves. The kernel is fixed and neutral — **it's what we and others put in the
+dissolves. The Core is fixed and neutral — **it's what we and others put in the
 protocol layer that makes the difference.** Every mechanism proposal is checked
 against three forward-looking stress tests:
 
@@ -204,20 +204,20 @@ the labels and the one-line gloss for each (`TruthBoundary` and
 `TRUTH_BOUNDARY_GLOSS`, `sdk/src/derive/truth.ts`), and a projection picks from
 them rather than coining its own.
 
-Briefly: **protocol-enforced** rows are economically backed by the kernel, bonds
+Briefly: **protocol-enforced** rows are economically backed by the Core, bonds
 locked at commit and payouts at resolution. **Institution-declared** rows are what a
 runtime encoded and the protocol never validated — bonding pressure is what
 incentivizes their accuracy. **Protocol-derived** rows are anchored on chain, with
 the content behind the fingerprint living off it: referential integrity, never
 substantive accuracy. **Composition-derived** rows are read from a composed venue's
 own events — a swap pool, the multisender, a forum — true per that contract's rules
-and outside the kernel's guarantees.
+and outside the Core's guarantees.
 
 A third party that relies on the corpus — a lender, an insurer, a court — reads the
 boundary with the row. The chain enforced the bonds and the payment; every claim
 about the world entered as a party's signed claim, and parties acting together can
 emit perfectly formed books for a trade whose service was never rendered. The data
-proves what the kernel enforced, never the world, and whoever builds a decision on
+proves what the Core enforced, never the world, and whoever builds a decision on
 the books carries that boundary into the decision.
 
 A surface that renders this data should keep the boundaries visibly apart rather
