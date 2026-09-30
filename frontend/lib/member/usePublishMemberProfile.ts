@@ -52,7 +52,7 @@ export interface PublishMemberInput {
     /** Profile fields collected by the wizard, MINUS the catalogueURI
      *  (which the hook fills in after pinning the catalogue). */
     profileTemplate: Omit<MemberProfileMetadata, "catalogueURI">;
-    /** Catalogue items to pin. Must be non-empty — the kernel doesn't
+    /** Catalogue items to pin. Must be non-empty — FigaroCore doesn't
      *  enforce this but the onboarding UX expects it (the catalogue step's
      *  own gate refuses an empty list). */
     items: CatalogueItemMetadata[];

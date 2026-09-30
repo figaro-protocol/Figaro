@@ -122,7 +122,7 @@ export function useMemberProfile(address: `0x${string}` | undefined) {
 // Each write hook below follows the canonical 4-step pattern:
 //   simulate → write → wait → status-check
 // Simulate runs before the wallet opens so the user sees a typed revert
-// (kernel error name, decoded via the merged extractErrorMessage) instead
+// (FigaroCore error name, decoded via the merged extractErrorMessage) instead
 // of a silent on-chain revert after submission. The returned `isSuccess`
 // is gated on `receipt.status === "success"` — `useWaitForTransactionReceipt`'s
 // own `isSuccess` flag fires on receipt-fetched, which is true even when
