@@ -52,7 +52,7 @@ async function fetchProfileAsListing(
     // Cross-check the profile's CLAIMED bindings against the
     // AssemblyRegistry — the registry is the authority, the profile is an
     // assertion. Only anchored bindings survive; a seller with none does
-    // not surface on discover at all (user rule 2026-06-12: no seller
+    // not surface on discover at all (no seller
     // without a properly anchored assembly).
     const anchored = listing.bindings.filter((b) => publishedSlugs.has(b.assemblySlug));
     if (anchored.length === 0) return null;

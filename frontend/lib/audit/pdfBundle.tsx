@@ -40,7 +40,7 @@ import { truncateHex } from "@/lib/shared/formatHex";
 
 // ── Styles ──────────────────────────────────────────────────────────────────
 //
-// DELIBERATELY OUTSIDE the screen palette (ruled 2026-08-25) — not an
+// DELIBERATELY OUTSIDE the screen palette — not an
 // un-migrated raw-hex site, and not a finding. Print is a second medium: this
 // bundle is an evidence document meant to survive photocopying, faxing and
 // black-and-white laser output, where the MUJI warm-neutral ramp collapses

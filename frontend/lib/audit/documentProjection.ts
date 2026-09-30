@@ -11,7 +11,7 @@
  * template projects identically over an assembly this codebase has never seen.
  *
  * The templates are a hardcoded array in `documentTemplates.ts`. Per maintainer
- * decision (2026-07-08) they stay there — NO on-chain document registry at this
+ * decision they stay there — NO on-chain document registry at this
  * time. The engine only knows templates + committed data, so this is open-world
  * regardless: no template carries clause-specific knowledge.
  */

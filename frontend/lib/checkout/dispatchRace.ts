@@ -2,7 +2,7 @@
 
 /**
  * dispatchRace.ts — the buyer-side dispatch race: market formation with zero
- * contracts (maintainer-ruled 2026-07-20).
+ * contracts.
  *
  * An unbound sub-order (a node the adopting seller's profile leaves without a
  * counterparty — the SAME derived absence the manual picker resolves) can be
@@ -28,8 +28,8 @@
  * The race window and the candidate count are checkout-time buyer policy —
  * never a stored field on the payload, the template, or any profile.
  *
- * THE CHOREOGRAPHY IS THE SDK'S (`startRace` — one authored loop, ruled
- * 2026-08-14): this surface drafts the candidates, supplies each one's
+ * THE CHOREOGRAPHY IS THE SDK'S (`startRace` — one authored loop):
+ * this surface drafts the candidates, supplies each one's
  * channel (declared endpoint → the offer wire behind the browser-edge https
  * guard, resolved through the DID-verifying resolver when the profile
  * declares `services.did` — see `resolveAgentEndpoint`; no endpoint → the
@@ -84,8 +84,8 @@ const timedDidFetch: typeof fetch = (input, init) =>
     fetch(input, { ...init, signal: AbortSignal.timeout(DID_RESOLUTION_TIMEOUT_MS) });
 
 /**
- * The profile-keyed routing rule's endpoint half (channel-seam ruling,
- * 2026-08-14): a candidate declaring `services.did` (did:web) routes through
+ * The profile-keyed routing rule's endpoint half (the channel seam):
+ * a candidate declaring `services.did` (did:web) routes through
  * the DID-VERIFYING resolver — document fetched, the address binding checked
  * on this chain, the `RESTEndpoint` service extracted. A declared did:web
  * that fails any of it yields NO endpoint — the candidate races over the
@@ -158,7 +158,7 @@ export async function postToAgentEndpoint(
     // consistent DID vouches for the binding, not for the host) — the buyer's
     // browser POSTs to it. Restrict to https so it
     // can't be aimed at an internal/loopback/link-local host or a non-http
-    // scheme (audit 2026-07-23, SSRF-shaped fan-out). new URL() rejects
+    // scheme (SSRF-shaped fan-out). new URL() rejects
     // malformed values; the CORS preflight already blocks reading a cross-origin
     // response, this stops the request from firing at a non-web target at all.
     // The e2e agent runs an http-loopback node server — relaxed ONLY inside a
@@ -207,7 +207,7 @@ export function useDispatchRace() {
     const [result, setResult] = useState<DispatchRaceResult | null>(null);
 
     // The choreography lives in the SDK's race engine (`startRace` — the one
-    // authored loop, ruled 2026-08-14); these refs hold only SURFACE state:
+    // authored loop); these refs hold only SURFACE state:
     // the drafted candidates (render + winner mapping), the run handle (buyer
     // overrides call its finish), the relay adapter (closed on cleanup), and
     // the window timer (window duration is checkout policy).

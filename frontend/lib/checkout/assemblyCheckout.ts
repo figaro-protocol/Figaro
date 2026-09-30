@@ -138,7 +138,7 @@ export interface AssemblyCheckoutParams {
     subOrderQuantities?: Record<string, number>;
     /** The buyer's checkout-time GENERAL-clause field fills, keyed by
      *  template node id → clauseId → field values. Design time is
-     *  structural (ruled 2026-07-14): a general clause arrives from the
+     *  structural: a general clause arrives from the
      *  template as `{}` and its transaction particulars are authored
      *  HERE. Specific-T&C values (consent's affix) come from the template
      *  and are never overridden by this map. Spec-routed — no clause is
@@ -172,7 +172,7 @@ export async function executeAssemblyCheckout(
     const specs = specSource();
     const template = assembly.assemblyTemplate;
 
-    // UTILITY-TOKEN PIN VERIFICATION (ruled 2026-07-28): when the assembly pins
+    // UTILITY-TOKEN PIN VERIFICATION: when the assembly pins
     // its denomination (an assembly-scoped term, part of the
     // compositionHash), the commitment currency MUST be that token — refuse
     // before any signature rather than let the signed struct contradict the

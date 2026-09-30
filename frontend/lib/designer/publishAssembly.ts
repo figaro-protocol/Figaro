@@ -99,7 +99,7 @@ export function usePublishAssembly() {
         // at checkout when the parties fill the clause fields.
         // The ONE draft→template walk (`draftToAssemblyTemplate`), shared with
         // the hand-off panel and the canvas identity readout. It VERIFIES scope
-        // placement (ruled 2026-07-28): an assembly-scoped clause on an order,
+        // placement: an assembly-scoped clause on an order,
         // or an agreement-scoped one at assembly level, throws here — publish
         // refuses, never a silent no-op.
         const template = snapshotToAssemblyTemplate(snapshot);

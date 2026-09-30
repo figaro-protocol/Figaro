@@ -259,8 +259,8 @@ export function clauseNestsUnder(clauseId: string, version?: number): string | n
 
 /** True if a clause is MANDATORY — on every order, composed by the build
  *  (commerce + topology), not a designer choice. Classified by its sole block
- *  article `mandatory` (one word for one concept — renamed from `structural`
- *  2026-07-14, which collided with the design/DAG sense); generic surfaces
+ *  article `mandatory` (one word for one concept — renamed from `structural`,
+ *  which collided with the design/DAG sense); generic surfaces
  *  exclude mandatory clauses from selectable lists and fold them in
  *  automatically. ANY registered clause declaring `block.design.article:
  *  "mandatory"` participates — including one this codebase has never seen. */

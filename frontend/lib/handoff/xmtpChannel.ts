@@ -85,7 +85,7 @@ function isInstallationCapError(err: unknown): boolean {
 /**
  * Does this wallet already have an XMTP inbox? A static, signature-free
  * network read (`Client.canMessage`) — THE derived fact that replaces the
- * deleted per-wallet transport toggle (one-seam ruling 2026-08-14): a wallet
+ * deleted per-wallet transport toggle (the one-seam rule): a wallet
  * with an inbox chose XMTP somewhere, so connecting it here is continuation,
  * not seizure; a wallet without one stays on the links-only floor. Fails
  * CLOSED (no inbox) on network errors — the floor always works.
@@ -181,7 +181,7 @@ export async function createXmtpChannel(
 
     // ── THE ONE MESSAGE PUMP ────────────────────────────────────────────
     //
-    // Receive-path rewrite (2026-07-22, the smoke-reproduced bug): the prior
+    // Receive-path rewrite (the smoke-reproduced bug): the prior
     // shape gave EVERY subscriber its own sync→list→scan→streamAllMessages
     // loop. Three structural failures, each observed or implied on the real
     // dev network:

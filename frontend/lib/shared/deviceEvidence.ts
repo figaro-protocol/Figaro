@@ -5,7 +5,7 @@
  * witnessing (the proximity clause's stage-1 `evidenceUri`, and any other
  * field that declares `format: "evidence-capture"`).
  *
- * SCOPE (the recorded 2026-07-20 ruling — browser AND mobile, one surface):
+ * SCOPE (browser AND mobile, one surface):
  * browsers expose NO Wi-Fi BSSID and no UWB; Web Bluetooth is Chromium-only
  * and Web NFC is Android-Chrome-only. Browser v1 is therefore exactly what
  * exists, detected at runtime per device:

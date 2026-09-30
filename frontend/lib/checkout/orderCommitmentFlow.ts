@@ -287,7 +287,7 @@ export function useOrderCommitmentFlow() {
             const role: PartyRole = hexEqual(address, incoming.commitment.buyer) ? "buyer" : "seller";
 
             // Verify the COUNTERPARTY's existing signature before we sign and
-            // broadcast (audit 2026-07-23, acceptOrder): a relayed payload
+            // broadcast (acceptOrder): a relayed payload
             // carrying a forged/absent counterparty sig would revert on-chain
             // after we spent gas — refuse early with a clean error. The kernel
             // re-verifies; this only moves the failure off-chain.

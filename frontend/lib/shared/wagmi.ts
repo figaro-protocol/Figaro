@@ -74,7 +74,7 @@ export const config = createConfig({
     multiInjectedProviderDiscovery: true,
     // NOT ssr:true — deferring wallet restore to post-mount broke flows that
     // assume synchronous reconnect (/members/edit/*, chain scenarios; verified by
-    // e2e regression 2026-07-04). Hydration safety is handled at the render
+    // e2e). Hydration safety is handled at the render
     // layer instead: connection-branching UI gates on useMounted().
 });
 

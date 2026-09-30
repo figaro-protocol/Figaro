@@ -27,7 +27,7 @@ const config: Config = {
             colors: colorTokens,
             // ring-offset gaps draw in the page's own ground, not Tailwind's
             // default white — on canvas/subtle surfaces a white gap read as a
-            // halo (ruled 2026-08-25). canvas ≈ paper to the eye, so one
+            // halo. canvas ≈ paper to the eye, so one
             // default serves every surface; override per-site only if a ring
             // ever sits on a dark fill.
             ringOffsetColor: { DEFAULT: colorTokens.canvas },

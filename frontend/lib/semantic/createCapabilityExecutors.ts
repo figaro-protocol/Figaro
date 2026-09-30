@@ -92,7 +92,7 @@ export function createCapabilityExecutors(deps: CapabilityExecutorDeps) {
 
         const resolveTx = await deps.resolveProcess(targetProcessId, commitments);
 
-        // ── RPGF USAGE RECORDING (ruled 2026-07-28): count usage when it
+        // ── RPGF USAGE RECORDING: count usage when it
         // happens — the buyer's app, holding every agreement and proof at
         // the moment of resolve, records each committed clause's or
         // assembly's use.
@@ -217,7 +217,7 @@ export function createCapabilityExecutors(deps: CapabilityExecutorDeps) {
             content,
             failureMessage: `${action.clauseId} ${action.eventCode ?? (action.reasserts ? "re-assert" : `stage-${action.stage}`)} attestation failed`,
         };
-        // Custody is READER-DERIVED (ruled 2026-07-28): a diary event is one
+        // Custody is READER-DERIVED: a diary event is one
         // custodian's own record, and any transfer-evidence witness (e.g. the
         // proximity clause's) is filed by a party through its OWN standalone
         // capability — the engine declares no pairing and reads no

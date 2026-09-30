@@ -244,7 +244,7 @@ export interface OnboardingStep {
     optional: boolean;
 }
 
-// No welcome step (maintainer rule 2026-08-06): /join owns the membership
+// No welcome step: /join owns the membership
 // pitch, so the wizard opens directly on Identity.
 //
 // Assemblies precede Catalogue because the authority runs that way: the

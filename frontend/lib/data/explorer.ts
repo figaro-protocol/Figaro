@@ -11,7 +11,7 @@
  *
  * The LAYERS are the doc's canonical presentation grouping and are therefore a
  * fixed list here; everything INSIDE a layer is derived from the record. In
- * particular the graph CLASS is open (ratified 2026-08-26): the overlay rows
+ * particular the graph CLASS is open: the overlay rows
  * are one per attestable clause family the corpus actually contains — a family
  * this codebase has never seen draws its own row, and a family whose spec will
  * not resolve renders fingerprint-only rather than being dropped or named.

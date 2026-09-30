@@ -111,7 +111,7 @@ export interface DesignSnapshot {
     orders: Order[];
     /** Per-order clause selection — keyed by order id, then clauseId → the
      *  composed values (design.fills clauses only — consent's affix; other
-     *  clauses carry `{}`, ruled 2026-07-14). Drives the assembly template's
+     *  clauses carry `{}`). Drives the assembly template's
      *  per-order `clauses`; the build strips general values regardless. */
     clausesByOrderId?: Record<string, Record<string, Record<string, unknown>>>;
     /** orderId → clauseId → the registered version picked in the drawer, when

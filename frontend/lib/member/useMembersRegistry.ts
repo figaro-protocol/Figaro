@@ -69,7 +69,7 @@ export function useMemberProfile(address: `0x${string}` | undefined) {
     // → the effect's early return) where consumers saw
     // {data: undefined, isLoading: false} and treated an unscanned wallet
     // as unregistered — the /members/edit/* guards redirected mid-session
-    // on exactly that window, killing in-flight saves (e2e flake 2026-07-09).
+    // on exactly that window, killing in-flight saves.
     const [isLoading, setIsLoading] = useState(true);
     const [generation, setGeneration] = useState(0);
 
@@ -252,7 +252,7 @@ export function useWithdrawalStatus(address: `0x${string}` | undefined) {
     // Whether the claim is DUE is the chain's answer, not a clock comparison:
     // `releaseAt` is a block timestamp, and comparing it against `Date.now()`
     // breaks whenever block time and wall time drift — which disabled a
-    // legitimate claim outright (caught by e2e 2026-07-30).
+    // legitimate claim outright.
     const withdrawable = useReadContract({
         address: registry ?? undefined,
         abi: MEMBERS_REGISTRY_ABI,

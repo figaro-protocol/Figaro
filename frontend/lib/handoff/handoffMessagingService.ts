@@ -2,8 +2,7 @@ import { getHandoffChannel } from "@/lib/handoff/channel";
 import type { EcdhPubkeyMessage, EcdhWrappedKeyMessage, HandoffChannel } from "@figaro-protocol/sdk/handoff";
 
 /** The one wallet-signer shape the handoff surfaces need — exported so
- *  consumers stop re-declaring it locally (three copies before the
- *  2026-08-14 seam consolidation). */
+ *  consumers do not re-declare it locally. */
 export interface WalletMessageSigner {
     signMessage(params: { message: string }): Promise<`0x${string}`>;
 }

@@ -153,8 +153,8 @@ function isCidPath(path: string): boolean {
  * of passing through. Permissionless seller/catalogue/branding data is
  * attacker-authorable, and a hotlinked `<img src="https://attacker/px.png">`
  * beacons every viewer's IP, User-Agent, and load timing to a host the attacker
- * picked — a tracking-pixel / deanonymization vector (frontend security audit
- * 2026-07-22, finding 3). Routing images through IPFS sends every fetch to the
+ * picked — a tracking-pixel / deanonymization vector (frontend security audit,
+ * finding 3). Routing images through IPFS sends every fetch to the
  * user's OWN gateway instead, so the attacker never chooses the host. Callers
  * render their fallback (initials / neutral placeholder) when this returns null.
  */

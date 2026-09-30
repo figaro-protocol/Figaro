@@ -36,7 +36,7 @@ import type { Hex } from "viem";
  * agreement pin below). `COMMITMENT_PAYLOAD` carries no wallet-auth, so any
  * inbox that can DM this wallet can deliver one; without this gate a stranger's
  * payload gets pinned to THIS wallet's own IPFS node before any trust filter
- * (frontend security audit 2026-07-22, finding 2 — pin-to-stranger's-node +
+ * (frontend security audit, finding 2 — pin-to-stranger's-node +
  * storage-amplification). Display filters (`match`) are narrower still; this is
  * the coarse "am I even involved" floor.
  */
@@ -182,8 +182,8 @@ export function usePendingSellerSignature(
                         if (!isCommitmentParty(payload, address)) return;
                         // `isCommitmentParty` reads the sender-controlled buyer/seller
                         // fields, so it alone lets a TARGETED attacker who simply NAMES
-                        // this wallet cause an ≤8 MB pin (audit 2026-07-23,
-                        // pin-amplification). Require a REAL signature: at least one
+                        // this wallet cause an ≤8 MB pin
+                        // (pin-amplification). Require a REAL signature: at least one
                         // present signature must recover to its named party — proving a
                         // genuine counterparty signed, not fabricated JSON. This keeps
                         // both legitimate legs pinning (an outbound order carries this

@@ -50,8 +50,8 @@ export function useRegisteredCatalogues(
     const client = usePublicClient();
     const chainId = useChainId();
     // The AssemblyRegistry read the surfacing rule cross-checks against —
-    // the SAME gate useMemberListings applies (rule applied evenly, maintainer
-    // 2026-07-02). `null` = still reading — that is LOADING, not absence: the
+    // the SAME gate useMemberListings applies (rule applied evenly).
+    // `null` = still reading — that is LOADING, not absence: the
     // unchecked seller list is never rendered (NO FALLBACKS).
     const { data: publishedAssemblies } = usePublishedAssemblies(undefined);
 

@@ -1,6 +1,6 @@
 /**
  * relayChannel — the handoff relay's PRE-COMMIT cell speaking the
- * `CoordinationChannel` interface (the one-seam ruling, 2026-08-14).
+ * `CoordinationChannel` interface (the one-seam rule).
  *
  * The dispatch race races over `CoordinationChannel`, period: agent
  * candidates answer over HTTP/A2A, wallet candidates answer over THIS

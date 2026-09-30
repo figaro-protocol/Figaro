@@ -3,7 +3,7 @@
  * (the wire protocol in `@figaro-protocol/sdk/handoff`) actually runs over.
  *
  * Three implementations, chosen by DERIVED facts, never a setting (the
- * one-seam ruling, 2026-08-14):
+ * one-seam rule):
  *   - Real: XMTP DM via @xmtp/browser-sdk — engaged iff the wallet already
  *     has an XMTP inbox (`walletHasXmtpInbox`, a signature-free probe)
  *   - Null: inert links-only floor (no signer, or no inbox)
@@ -22,7 +22,7 @@ const channelCache = new Map<string, HandoffChannel>();
  *  before `channelCache.set` admits another creation. For XMTP that is not
  *  just waste: two concurrent `Client.create` calls fight over the same
  *  exclusive OPFS sync access handle ("Access Handles cannot be created…",
- *  relay smoke 2026-07-23) and can mint spurious installations. A failed
+ *  as the relay smoke shows) and can mint spurious installations. A failed
  *  flight is removed so the next caller (e.g. one that now HAS the wallet
  *  signer) retries cleanly. */
 const pendingChannel = new Map<string, Promise<HandoffChannel>>();
@@ -70,7 +70,7 @@ export async function getHandoffChannel(
     }
 
     // Outside test mode the transport is DERIVED, never a setting (the
-    // one-seam ruling, 2026-08-14 — the per-wallet toggle is deleted): a
+    // one-seam rule — there is no per-wallet toggle): a
     // wallet that already has an XMTP inbox chose XMTP somewhere, so its
     // channel connects there (continuation, not seizure — the signature on
     // first connect re-establishes the wallet's own chosen channel on this
@@ -87,7 +87,7 @@ export async function getHandoffChannel(
     // ONE flight covers probe + creation: the derived-transport probe is an
     // async gap, and a probe outside the gate would let two concurrent
     // callers each start an XMTP creation — the exact OPFS double-flight the
-    // gate exists to prevent (caught by the single-flight suite, 2026-08-14).
+    // gate exists to prevent (the single-flight suite pins this).
     // The xmtpChannel import is lazy — webpack emits it as its own chunk; the
     // module itself lazy-imports @xmtp/browser-sdk, keeping WASM out of the
     // server bundle.

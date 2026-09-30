@@ -216,7 +216,7 @@ export function mockAwareHttp(
  *
  * The injected connector type covers bare `injected()` and every EIP-6963
  * discovered wallet — the only connector kind this app registers
- * (`lib/shared/connectors.ts` is injected-only since the 2026-08-03 migration dropped
+ * (`lib/shared/connectors.ts` is injected-only, with no
  * RainbowKit/WalletConnect); any other connector type would simply fall
  * through to http.
  *

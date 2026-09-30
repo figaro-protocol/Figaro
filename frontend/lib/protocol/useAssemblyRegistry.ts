@@ -211,7 +211,7 @@ export async function fetchAssemblyTemplate(
         // Reviver-backed parse: the compositionHash proves AUTHOR-integrity,
         // not prototype-pollution safety — the registering wallet is untrusted (the
         // AssemblyRegistry is permissionless), so a hostile template can be
-        // anchored under its own hash and pass verification (audit 2026-07-23).
+        // anchored under its own hash and pass verification.
         // Matches the clause-spec path; strips __proto__/constructor/prototype.
         const template = safeJsonParse<AssemblyTemplate>(await response.text());
         if (!template) return null;
