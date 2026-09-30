@@ -26,9 +26,9 @@ usage claims and no one decides who receives it.
 
 ---
 
-## DAO governance is NOT kernel governance
+## DAO governance is NOT Core governance
 
-The kernel has no governance and never will — no admin and no vote
+The Core has no governance and never will — no admin and no vote
 decides a resolution. Nothing moves a bonded commitment but its buyer.
 
 The DAO governs **its own treasury**: what the 300M is spent on, which public
@@ -39,7 +39,7 @@ or a resolution.
 
 Collapsing these two is the error this section exists to prevent. They are
 different objects at different tiers, and the prohibition on governance over
-kernel resolution says nothing about a body governing its own wallet.
+resolution in the Core says nothing about a body governing its own wallet.
 
 ---
 
@@ -82,7 +82,7 @@ The multisig's authority is an ERC-7710 delegation the operator grants it,
 bounded by caveat enforcers and redeemed through the framework's
 `DelegationManager` to act from the operator's address.
 
-The treasury contract itself can never sign kernel commitments — the kernel is
+The treasury contract itself can never sign commitments — `FigaroCore` is
 ECDSA-only — so the multisig authorises *upstream*: it pays the operator per
 procurement, and through the delegated code it can act from the operator's
 address for `msg.sender`-authorised calls (resolution, recovery) and bound what
@@ -162,6 +162,6 @@ community: donations sustain it if the community wants it sustained; otherwise
 it dies.
 
 There is no self-perpetuation right — no switch to flip, no levy it can raise,
-and no protocol lever reachable by a DAO vote. The kernel-governance boundary
+and no protocol lever reachable by a DAO vote. The Core-governance boundary
 above is absolute, and a body that cannot reach the protocol cannot vote itself
 an income from it.
