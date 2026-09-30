@@ -1,6 +1,6 @@
 # Testing — Harness Inventory
 
-`LOCAL_DEV.md` keeps the run commands; this file is the full inventory of test files, harnesses, and properties across all verification layers.
+`LOCAL_DEV.md` keeps the run commands; this file is the full inventory of test files, harnesses, and properties across all verification layers. Where each layer runs — CI or the maintainer's gate — and which checks were shown to fail under a mutation: `VERIFICATION_MAP.md` § 0. Every name in this file exists in the tree as written.
 
 **What success looks like, per harness** (so a first run is judgeable without
 digging): Foundry — `forge test --via-ir` exits 0 with every suite green and no
@@ -17,8 +17,8 @@ never a variant of success.
 
 The test tree mirrors `src/` (`test/core/{kernel,attestation,verifier}/`, `test/build/{registries,rewards,florin}/`, `test/app/`,
 `test/mocks/`); audit by `find test -name '*.t.sol'`,
-not by this paragraph. Current: `FigaroCoreTest`, `FigaroCoreRevertBranchTest`,
-`FigaroCoreEventEmissionTest`, `AttestationCoordinatorTest`, `ClauseRegistryTest`,
+not by this paragraph. Current: `FigaroCoreTest`, `FigaroCore_RevertBranch`,
+`FigaroCore_EventEmission`, `AttestationCoordinatorTest`, `ClauseRegistryTest`,
 `AssemblyRegistryTest`, `MembersRegistryTest`, `GasCeilingTest`,
 `WitnessSwapAndCommitCoordinatorTest`, `WitnessSwapAndCommitCoordinatorForkTest`,
 `FigaroBatchVerifierTest`, `UsageCounterTest`, `RpgfMinterTest`, `RpgfIntegrationTest`,
@@ -45,7 +45,7 @@ per-tranche budget backstop. `RpgfIntegrationTest` (6) proves the two compose wi
 real bonded process resolves, its usage is counted against the real counter, the period closes,
 and the real minter mints real florins.
 
-`WeirdTokenTest` hands the kernel the ERC-20 shapes beyond fee-on-transfer —
+`WeirdTokenTest` hands `FigaroCore` the ERC-20 shapes beyond fee-on-transfer —
 no return value, six decimals, an issuer blocklist, a rebase — and
 `FigaroBatchVerifierTest` the no-return and blocklist shapes on the batch
 path (`DESIGN_DECISIONS.md` #10 owns what each shape means). `DeployWiringTest`
@@ -108,7 +108,7 @@ it *could* fail.
 | `BatchVerifierTokenOps.spec` | 4 | FigaroBatchVerifier net positions: user delta = payout−deposit, contract delta = deposit−payout, allowance-drain safety, conservation (single-position; inductive generalization documented in-spec). Aligned to the witness model and the usage-bridge `settleBatch` signature (`BatchUsageData` threaded, usage loops bounded). |
 | `RpgfMinter.spec` | 8 | Per-period mint conservation (`minted ≤ periodAmount` under any claim sequence), no double-claim per wallet-period, no claim while the period is open, duplicate-clause-or-assembly rejection, live-stake eligibility (`_isAuthor`, the gate on a live registration), minted monotonicity — plus two supplementary rules proving `claimable`'s view quote matches `claim`'s behavior. Mutation-checked: conservation, double-claim, eligibility. |
 
-Companion: `certora/token-ops.inventory` — declarative inventory of every ERC20 transfer call site in `src/`; a maintainer-side pre-commit guard (run as a `./scripts/test-certora.sh` prelude) fails if a new transfer call merges without an inventory entry.
+Companion: `certora/token-ops.inventory` — declarative inventory of every ERC20 transfer call site in `src/`; `scripts/lint-token-ops.sh` (lint-staged on any staged `.sol` or on the inventory, and the prelude of `./scripts/test-certora.sh`) fails a commit that adds a transfer call without an inventory entry.
 
 ## Echidna — 2 harnesses, 15 properties
 
@@ -187,9 +187,9 @@ it, `cargo test -p figaro-clause -p figaro-kernel` runs the two host-only crates
 the subset `prover-ci` gates on every PR (its `sp1` job runs the other three on
 main). The crates: `figaro-clause`
 (off-chain conformance: every spec in `clauses/` parses — count derived from the
-directory; 11 encode vectors generated from the live TS encoder lock byte
-parity incl. signed int256, stage-scoped witnesses, tuple[] arrays, open
-formats), `figaro-kernel` (frozen Foundry parity vectors for commit/resolve;
+directory; the encode vectors in `prover/clause/tests/encode_conformance.rs`,
+generated from the live TS encoder, lock byte parity — signed int256,
+stage-scoped witnesses, tuple[] arrays, open formats), `figaro-kernel` (frozen Foundry parity vectors for commit/resolve;
 the kernel-transition replay — `prover/lib/tests/transition_vectors.rs` replays
 `test/fixtures/kernel-transition-vectors.json`, harvested from the live kernel
 by `KernelTransitionVectorsTest`, and asserts every id, bond, payout,
@@ -580,16 +580,19 @@ can't render: `navigation.mobile.spec.ts` (Pixel 5 / Chromium).
 — derived, never a stored count; the same rule the spec census above follows).
 Per workflow, what it runs and when:
 
-- **`foundry-ci`** — push/PR, path-filtered. Four jobs: `forge
-  build`/`test`/`fmt`, Forge Coverage (lcov artifact), Halmos symbolic
-  proofs (Certora is excluded by design — it needs the maintainer-held
+- **`foundry-ci`** — push/PR, path-filtered. Five jobs: `forge
+  build`/`test`/`fmt`, the fork tests (mainnet's Permit2, Sepolia's
+  SwapRouter02 — a failure fails, a skip fails), Forge Coverage (lcov
+  artifact), Halmos symbolic proofs (Certora is excluded by design — it needs the maintainer-held
   CERTORAKEY, never stored), and Static Analysis — Slither 0.11.3 over the
   frozen scope, gated to exactly the High and Medium results
   `AUDITOR_HANDOVER.md` § "Static analysis" triages, and Semgrep's
   `p/smart-contracts` rules, failing on any WARNING or ERROR.
-- **`prover-ci`** — path-filtered. Two jobs: `test` on every push/PR —
-  `cargo test` on the two host-only prover crates (`figaro-clause`,
-  `figaro-kernel`); `sp1` on push to main and dispatch — installs the SP1
+- **`prover-ci`** — path-filtered. Three jobs: `test` on every push/PR —
+  `cargo test`, Clippy and Semgrep on the two host-only prover crates
+  (`figaro-clause`, `figaro-kernel`); `cross-impl-fuzz` on every push — four
+  rounds of the differential fuzz seeded from the run id; `sp1` on push to
+  main and dispatch — installs the SP1
   toolchain the way `sequencer-release` does, builds the sequencer, runs
   `cargo test` on `figaro-sequencer` and `figaro-prove-test`, then runs
   `sdk/tests/batch-e2e.test.ts` against a live Anvil with
