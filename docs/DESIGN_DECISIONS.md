@@ -30,17 +30,17 @@ institution that dissolves at resolution (`docs/VISION.md`). The closure is the
 *dissolution*. Parties wanting a follow-on bonded relationship sign a
 fresh root commitment, getting a new `processId`; cross-process
 composition (a sub-order in process A roots process B) carries the
-"this is a continuation" semantic at the assembly layer, not the kernel.
+"this is a continuation" semantic at the assembly layer, not `FigaroCore`.
 
 The gate is implemented in the minimum-possible form: a single comparison
 against the existing `activeOrderCount` field, which `resolveProcess`
 already maintains. There is no new lifecycle enum, no `finalized` flag,
-no additional storage. The closure semantic is derived from data the
-kernel already keeps. This is invariant enforcement using existing state,
+no additional storage. The closure semantic is derived from data
+`FigaroCore` already keeps. This is invariant enforcement using existing state,
 not a state machine added on top.
 
-**The kernel's overall design philosophy**: bilateral EIP-712 signatures
-are the principal enforcement mechanism, and the kernel deliberately
+**`FigaroCore`'s overall design philosophy**: bilateral EIP-712 signatures
+are the principal enforcement mechanism, and `FigaroCore` deliberately
 avoids state that signatures alone could enforce. This entry is the one
 place where state-based enforcement is justified: the bond-locking and
 cumulative-value invariants tie the process together as a single
@@ -65,7 +65,7 @@ consuming the event can always determine who attested and compare that against
 the on-chain commitment events for the target order.
 
 Enforcing "attester must be seller of this specific order" on-chain would
-require storing per-order seller data — state the kernel explicitly avoids.
+require storing per-order seller data — state `FigaroCore` explicitly avoids.
 The on-chain gate correctly answers "is this a process participant?"; the
 semantic question "does this attester have authority over this order?" is
 answered off-chain by indexing commitment events.
@@ -127,10 +127,10 @@ breaks buyer dominance. Breaking buyer dominance breaks the MAD equilibrium
 (if the seller knows the buyer can be timed out, withholding cooperation
 becomes a viable strategy).
 
-**The mitigation matches the kernel**: the kernel verifies
+**The mitigation matches `FigaroCore`**: `FigaroCore` verifies
 both parties by ECDSA recovery alone (`FigaroCore.sol:161-165`), so a contract
 wallet — multi-sig, ERC-1271 smart account — can never hold the buyer role,
-and the frozen kernel forecloses adding contract-signature support. The live
+and `FigaroCore` as deployed forecloses adding contract-signature support. The live
 mitigation is **pre-installed EIP-7702 delegation**: before committing, the
 buyer sets a delegation (carrying its own guardian/recovery authorization) on
 the buyer EOA. `resolveProcess` authorizes by `msg.sender`
@@ -141,7 +141,7 @@ each requires a fresh EIP-712 ECDSA signature from the lost key. The
 delegation must be installed while the key is still held; it cannot be added
 after loss.
 
-(The kernel natspec at `FigaroCore.sol:238-240` still says "use social
+(`FigaroCore`'s NatSpec at `FigaroCore.sol:238-240` still says "use social
 recovery or multi-sig for the buyer role" — a stale comment on a frozen
 contract, contradicted by its own ECDSA-only verification; recorded for
 auditor handover, never edited.)
@@ -247,9 +247,9 @@ looks unfinished.
 
 **Why it is correct**: a mid-chain order whose
 price or counterparty is unknown at signing is structurally incompatible with
-the kernel's exact-match cumulative accumulator (`expectedCumulativeValue`),
-and the workaround (a market contract standing in as the kernel
-seller, bonds borrowed from a float vault) is banned three ways:
+`FigaroCore`'s exact-match cumulative accumulator (`expectedCumulativeValue`),
+and the workaround (a market contract standing in as the seller
+`FigaroCore` sees, bonds borrowed from a float vault) is banned three ways:
 ECDSA-only parties, no bond lending, no intermediary holding. Pricing is a catalogue
 concern (e.g. rate × geohash distance).
 
@@ -260,28 +260,27 @@ concern (e.g. rate × geohash distance).
 **Pattern**: `_pullExact` uses a before/after balance check with strict equality
 around the one `transferFrom` call. Any token that delivers less than requested
 (fee-on-transfer) reverts at commit. A rebasing token passes the check — the
-balance moves at the token's rebase events, not inside the transfer — so the
-kernel does not detect it: a downward rebase between commit and resolve leaves
+balance moves at the token's rebase events, not inside the transfer — so
+`FigaroCore` does not detect it: a downward rebase between commit and resolve leaves
 the contract short and `resolveProcess` reverts on the transfer out; an upward
 rebase strands the surplus in the contract, since nothing sweeps it.
 
 **Why it looks correct and IS correct**: The MAD bonding model requires that
 the exact committed amount is locked. If the received amount differs from the
 committed amount, the bond math is broken. Rejecting fee-on-transfer is the
-correct behavior, and detecting a rebase would need state the kernel does not
+correct behavior, and detecting a rebase would need state `FigaroCore` does not
 keep. Wrapped, non-rebasing variants (e.g., wstETH instead of stETH) must be
-used; the kernel's NatSpec above `_pullExact` states the rebasing case more
-strongly than the check enforces, and this entry is the correction (the kernel
-is frozen). `RELEASE_READINESS.md` carries the deployment precondition.
+used; `FigaroCore`'s NatSpec above `_pullExact` states the rebasing case more
+strongly than the check enforces, and this entry is the correction. `RELEASE_READINESS.md` carries the deployment precondition.
 
 **The same holds for a token with an issuer blocklist.** Resolution is atomic:
 if the currency refuses a transfer to one party, the whole process stays open
 — every bond held, every other seller unpaid — until the issuer relents. That
 is the token's own term, chosen by the parties when they chose the currency;
-the kernel has no path around a currency that will not move. A currency
+`FigaroCore` has no path around a currency that will not move. A currency
 whose issuer can block a wallet is an issuer inside the process. Tokens
 that return nothing from `transfer` (USDT's shape) and tokens with six
-decimals settle exactly; the kernel decodes through `SafeERC20` and never
+decimals settle exactly; `FigaroCore` decodes through `SafeERC20` and never
 reads `decimals()`. `WeirdTokenTest` exercises all four shapes on `commit`
 and `resolveProcess`; `FigaroBatchVerifierTest` the no-return and blocklist
 shapes on `settleBatch`, where a blocked payee reverts the whole batch and
@@ -300,30 +299,30 @@ Nash-stable from chain state alone — no oracle, no DEX dependency, no pre-agre
 FX rate. Mixing currencies within one process would require all three to compare
 "buyer bond" against "seller bond" at resolution, and each reintroduces a
 discretionary actor (oracle seller, DEX router, a counterparty picking the
-rate). Kernel-level single-currency binding is precisely what preserves
+rate). Single-currency binding in `FigaroCore` is precisely what preserves
 trust-minimization.
 
-**The composition patterns** (no kernel change required):
+**The composition patterns** (no Core change required):
 
 1. **Process-DAG composition.** A "single transaction with N vendors in N
    currencies" is N independent monotoken processes, one per vendor relationship,
-   each in the vendor's preferred token. The kernel sees N bonded handshakes; the
+   each in the vendor's preferred token. `FigaroCore` sees N bonded handshakes; the
    UI or wallet correlates them. Closer in spirit to "every participant is an
    independent value-adder." Buyer holds each currency or swaps upstream.
 
 2. **Wallet-side atomic swap → monotoken commit.** Buyer holds DAI, vendor wants
    USDC. The wallet performs a DEX swap, then calls `commit` with USDC in the
-   same transaction. Kernel sees one clean commitment; slippage is absorbed
+   same transaction. `FigaroCore` sees one clean commitment; slippage is absorbed
    pre-bond. Modern wallets (Rabby, MetaMask Swap, Rainbow) do this natively.
    The shipped form of this pattern is `WitnessSwapAndCommitCoordinator`
    (`CONTRACTS.md`): the swap route is bound into the party's Permit2 witness
-   signature, the coordinator supplies the party in-place, and the kernel pulls
+   signature, the coordinator supplies the party in-place, and `FigaroCore` pulls
    the bond as always — still one monotoken process.
 
 3. **Level-3 atomic bundler mechanism.** When all-or-nothing semantics is needed
    across N differently-denominated vendor processes, a Level-3 composition contract
    can orchestrate N monotoken commits as a wallet-bundled group with
-   revert-on-any-fail. Kernel still sees N independent monotoken processes.
+   revert-on-any-fail. `FigaroCore` still sees N independent monotoken processes.
 
 Do not propose adding oracles, DEX routers, or "multi-currency bonds" to
 FigaroCore. The perceived limitation is a misframing — point inquirers at the
@@ -355,12 +354,12 @@ production protocols — and the legal framework all three align to —
 treat transferability as load-bearing. Figaro's absence of any
 equivalent mechanism appears to be a missing feature.
 
-**Why it is correct**: Three independent kernel properties each
+**Why it is correct**: Three independent `FigaroCore` properties each
 separately rule transferability out:
 
 1. **Single-buyer invariant**. A Figaro process has one buyer at
    the root, and every order in the process carries that same buyer on its
-   buyer side. There is no kernel mechanism to fork the buyer (creating
+   buyer side. There is no `FigaroCore` mechanism to fork the buyer (creating
    two buyer-roots) or substitute the buyer (changing the orderHash). A
    "transfer of buyer-side title" mid-process has no representation in the
    `processes` mapping.
@@ -422,7 +421,7 @@ buyer commits upfront.
 
 **Pattern**: The `Commitment` struct carries both a `salt` and a `deadline`;
 `commit` rejects expired commitments (`DeadlineExpired`,
-`FigaroCore.sol:153`) and nothing else in the kernel reads the field.
+`FigaroCore.sol:153`) and nothing else in `FigaroCore` reads the field.
 
 **Why it looks wrong**: `salt` already appears to "secure" the commitment,
 so `deadline` reads as leftover plumbing from an earlier design (it is not).
@@ -436,7 +435,7 @@ signature cannot be revoked (no cancel — revocation is escape-hatch
 machinery), so without a deadline every signed-but-never-committed order
 is a perpetual option on the signer's balance, exercisable whenever standing
 allowances permit. The deadline makes stale signatures die on their own —
-the only passive protection a no-cancel kernel can offer. Doctrinal check:
+the only passive protection a no-cancel `FigaroCore` can offer. Doctrinal check:
 it gates ENTRY only; nothing expires post-commit (bonds have no timeout),
 so it is the mirror image of an escape hatch, not an instance of one.
 
@@ -475,15 +474,15 @@ its owner has explicitly asked for and cannot yet take. There is no admin path, 
 early release, and no way for anyone — including the depositor — to shorten it.
 
 **Why it looks wrong**: it reads as two separate red flags. First, held ETH with a
-timer look like §5's stuck-fund shape, and this file is emphatic that the kernel has
+timer look like §5's stuck-fund shape, and this file is emphatic that the Core has
 no time locks. Second, a mandatory waiting period on someone's own capital looks like
 the "escape hatch in reverse" — a protocol asserting a hold it has no business
 asserting.
 
-**Why it is correct**: the tier is the whole answer. **This is a protocol contract beside the kernel, not the kernel** — and the
-no-time-lock rule is a *kernel* law about bonded commitments, where any timer would
+**Why it is correct**: the tier is the whole answer. **This is a protocol contract beside the Core, not the Core** — and the
+no-time-lock rule is a *Core* law about bonded commitments, where any timer would
 hand a party a unilateral exit and break the MAD equilibrium. Nothing here touches a
-bond, a commitment, or a resolution. Citing the kernel rule at this contract is a tier error.
+bond, a commitment, or a resolution. Citing the Core rule at this contract is a tier error.
 
 What the cooldown does is make the stake *mean* something. Without it,
 withdrawal is a single call that clears the guard and pays out at once,
@@ -559,7 +558,7 @@ the vkey is immutable, and a program change means a NEW verifier deployment,
 reviewed as such.
 
 **Related**: the two paths are DISJOINT — a batch-resolved
-process never acquires kernel status, and a kernel-resolved one is never in a
+process never acquires `FigaroCore` status, and a `FigaroCore`-resolved one is never in a
 batch. That is what makes guest-owned idempotence safe, and why the two
 accruals are merged as SCORES and never as components (`scoreOf`): the chain
 holds counts, not the pair sets needed to union them.
@@ -658,18 +657,18 @@ unrecordable once the period ends. A seller can even do it deliberately to deny 
 designer (withdraw, then re-register). That reads like a griefing hole.
 
 **Is correct because:** the chain cannot
-see WHEN a process resolved (the kernel is frozen and stores no per-order timestamp), which is
+see WHEN a process resolved (`FigaroCore` stores no per-order timestamp), which is
 the same reason `processCounted` is global — so the stake can only be gated at RECORDING time,
 never at resolution time. No stateless on-chain fix exists. The mitigation is a habit, not
 state: usage is recorded AT RESOLUTION (`createCapabilityExecutors.ts`, right after
 `resolveProcess` confirms), when the seller is definitionally still staked, closing the normal
 window. The residual grief is self-limiting — to deny a designer the griefer must stay unstaked
 through the period end, forfeiting their own eligibility and locking their deposit. Accepted as
-the cost of the stateless kernel.
+the cost of the stateless Core.
 
 ## 22. Batch-path resolve is a bare `ResolveProcess(processId)` signature — no nonce, no deadline
 
-**Pattern**: the kernel authorizes resolution by presence — `resolveProcess`
+**Pattern**: `FigaroCore` authorizes resolution by presence — `resolveProcess`
 requires `msg.sender == ps.rootBuyer`. The batch path replaces presence with an
 EIP-712 signature: the guest (`prover/lib/src/kernel.rs` `apply_resolve`)
 recovers a signature over `ResolveProcess(bytes32 processId)` — one field,
@@ -691,7 +690,7 @@ see `SCALING_STRATEGY.md`). A deadline is absent because the message's meaning
 is time-invariant: it authorizes exactly one state transition whose payouts
 are fixed by the signed commitments, so late submission delivers precisely
 what the buyer already accepted — nothing a nonce or expiry would protect.
-The asymmetry against the kernel is the deliberate cost of the batch
+The asymmetry against `FigaroCore` is the deliberate cost of the batch
 universe: `msg.sender` does not exist inside a proof, so authorization must
 be carried as a signature, in its minimal sufficient form.
 
@@ -701,25 +700,25 @@ be carried as a signature, in its minimal sufficient form.
 
 | # | Pattern | Blast radius | Looks wrong because | Is correct because |
 |---|---|---|---|---|
-| 1 | Resolved processId is permanently closed | kernel-critical | Closure-less extension "sounds protocol-aligned" | The closure IS the institution dissolving; follow-on rounds sign a fresh root; the gate derives from existing state |
+| 1 | Resolved processId is permanently closed | Core-critical | Closure-less extension "sounds protocol-aligned" | The closure IS the institution dissolving; follow-on rounds sign a fresh root; the gate derives from existing state |
 | 2 | Cross-order seller attestation | evidence-layer | Wrong role for target order | Attester recorded truthfully; semantics off-chain |
-| 3 | buyer == seller allowed | kernel-critical | Self-dealing vector | Bond math balances; bilateral signature required |
-| 4 | No admin/pause | kernel-critical | No incident response | Admin = trusted third party = breaks mechanism |
-| 5 | Buyer key loss is terminal | kernel-critical | No stuck-fund recovery | Timeout = escape hatch = breaks MAD equilibrium |
-| 6 | No prevrandao salt | kernel-critical | Missing on-chain entropy | Validators predict prevrandao; party-chosen salt sufficient |
+| 3 | buyer == seller allowed | Core-critical | Self-dealing vector | Bond math balances; bilateral signature required |
+| 4 | No admin/pause | Core-critical | No incident response | Admin = trusted third party = breaks mechanism |
+| 5 | Buyer key loss is terminal | Core-critical | No stuck-fund recovery | Timeout = escape hatch = breaks MAD equilibrium |
+| 6 | No prevrandao salt | Core-critical | Missing on-chain entropy | Validators predict prevrandao; party-chosen salt sufficient |
 | 7 | Attestation reverts on resolved orders | evidence-layer | Rejecting legitimate late evidence | Evidence window closes with the institution; forums get the closed data |
 | 8 | Permissionless clause registry | registry/discovery | Namespace squatting | Integrity routes through contentHash, never the registry; squatting pollutes discovery only, priced by the stake |
 | 9 | No competitive-pricing contract | — | A market protocol without a price primitive looks unfinished | Mid-chain unknown price or counterparty is incompatible with the exact-match accumulator; pricing is a catalogue concern |
-| 10 | Strict token compatibility rejection | kernel-critical | Overly restrictive | Bond math requires exact amounts; wrapping is the solution |
-| 11 | Single currency per process | kernel-critical | Can't do multi-token commerce | 2:1 bond ratio is Nash-stable only in one currency; multi-token lives at composition layer (process / wallet swap / Level-3 bundler) |
-| 12 | No `transferTitle` / `endorse` / `nominate` for BoLs | kernel-critical | Industry-standard MLETR-aligned eBLs are negotiable; CargoX / TradeTrust / TradeLens all implement this | Single-buyer invariant + parties-fixed-at-commit + no-escape-hatches each separately rule it out; cargo doesn't carry rights, the commitment does |
-| 13 | `deadline` alongside `salt` | kernel-critical | Redundant / auction residue | Salt is identity, deadline is expiry of the unconsummated signature window; no-cancel kernel needs signatures to age out |
+| 10 | Strict token compatibility rejection | Core-critical | Overly restrictive | Bond math requires exact amounts; wrapping is the solution |
+| 11 | Single currency per process | Core-critical | Can't do multi-token commerce | 2:1 bond ratio is Nash-stable only in one currency; multi-token lives at composition layer (process / wallet swap / Level-3 bundler) |
+| 12 | No `transferTitle` / `endorse` / `nominate` for BoLs | Core-critical | Industry-standard MLETR-aligned eBLs are negotiable; CargoX / TradeTrust / TradeLens all implement this | Single-buyer invariant + parties-fixed-at-commit + no-escape-hatches each separately rule it out; cargo doesn't carry rights, the commitment does |
+| 13 | `deadline` alongside `salt` | Core-critical | Redundant / auction residue | Salt is identity, deadline is expiry of the unconsummated signature window; no-cancel `FigaroCore` needs signatures to age out |
 | 14 | Committed `lineItems.name` / `cargo.marks` are public | privacy/evidence | Wallet-linkable purchase content leaks | Mechanism needs line items beyond the endpoints (invoices, disputes, price checks); mitigation is compositional (discreet catalogue naming, coded marks) + wallet pseudonymity |
-| 15 | `MembersRegistry` withdrawal cooldown holds ETH on a timer | registry/stake | Looks like stuck funds + a kernel-forbidden time lock | PROTOCOL tier, not kernel — no bond or commitment involved; without it one stake is recycled across identities and prices nothing; bounded, immutable, and unconditionally claimable after `releaseAt` |
+| 15 | `MembersRegistry` withdrawal cooldown holds ETH on a timer | registry/stake | Looks like stuck funds + a Core-forbidden time lock | PROTOCOL tier, not the Core — no bond or commitment involved; without it one stake is recycled across identities and prices nothing; bounded, immutable, and unconditionally claimable after `releaseAt` |
 | 16 | `applyBatchAccrual` has one privileged caller | reward-path | A named writer on the reward path is the shape of an admin backdoor | Discretion, not permission, is the test: the caller may only relay numbers an immutable vkey committed; the counter still enforces period, seller stake and exclusions itself |
 | 17 | Recorded usage can score zero (`minSellers` floor) | reward-path | Real resolved trade with `score = 0` reads like lost accrual | Below 3 staked sellers sits what one actor fabricates alone; sub-floor accrual defers within the period (full score springs at the third seller) and expires when the period closes; per-path because the paths' seller sets cannot be unioned |
 | 18 | No per-recording charge or burn | reward-path | Fabricating `c` costs only gas | `c^(1/3)` already crushes volume farming; breadth is deposit-priced; an ETH burn destroys value needlessly and a DAO-routed charge inserts an institution + usage-coupled revenue into an identity-free mechanism |
 | 19 | Usage needs a live clause-or-assembly registration stake | reward-path | A proven, resolved use that scores nothing reads like lost accrual | The clause-or-assembly key is otherwise a free-choice merkle leaf; without the gate a self-dealt process inflates the shared denominator at gas cost; closes the FREE dilution, leaves the accepted stake-priced replication lever |
 | 20 | Rewards accrual never reverts resolution (skip + try/catch) | reward-path | A silently-droppable reward write looks like lost/manipulable accrual | A reward-tier gate must not unwind resolution-tier trade; a dropped batch is recovered by the next cumulative overwrite or forgone (conservative under-pay); sequencer pre-filters so the catch fires only on the stake-race |
-| 21 | Member-stake gate on the seller of record is retroactive | reward-path | A withdrawal makes resolved-but-unrecorded trades unrecordable — looks like a grief hole | Chain can't see resolve time (frozen kernel), so the gate is record-time only; record-at-resolution closes the normal window; residual grief is self-limiting (griefer forfeits own eligibility through period end) |
+| 21 | Member-stake gate on the seller of record is retroactive | reward-path | A withdrawal makes resolved-but-unrecorded trades unrecordable — looks like a grief hole | Chain can't see resolve time (`FigaroCore` stores none), so the gate is record-time only; record-at-resolution closes the normal window; residual grief is self-limiting (griefer forfeits own eligibility through period end) |
 | 22 | Batch resolve: nonce-less, deadline-less `ResolveProcess` signature | batch-path | The canonical EIP-712 replay shape | Resolution is terminal and single-shot — the guest's root-chained state rejects a second resolve; the domain pins chain + verifier so the signature travels nowhere; the message authorizes one time-invariant transition, leaving nothing for a nonce to price |
