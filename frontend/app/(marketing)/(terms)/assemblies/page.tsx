@@ -77,18 +77,18 @@ export default function Assemblies() {
                         "importer → drayage · G6",
                     ]}
                     topologyNote={[
-                        "G is the cumulative value at a link — the running total the kernel keeps,",
+                        "G is the cumulative value at a link — the running total the Core keeps,",
                         "and the only quantity it accumulates. Each seller bonds 2 × G at its own",
                         "commit, so G6 is the whole chain's value. The parent-child links ride in",
                         "the agreement as a topology clause: merkle-bound at commit, never a field",
-                        "the kernel stores — which is why order-1 can hang off order-0 at design",
+                        "the Core stores — which is why order-1 can hang off order-0 at design",
                         "time while order-2 carries the line onward.",
                     ]}
                     figureTitle="A composed assembly, and the commit sequence it becomes"
                     figureDesc={
                         "On the left, an assembly template as composed: six orders, one of " +
                         "them hanging off the first rather than continuing the line. On the " +
-                        "right, what the kernel holds when that template is used: six " +
+                        "right, what the Core holds when that template is used: six " +
                         "commits, every one of them to the same root buyer, extending a " +
                         "single accumulator that only rises. Resolution state records no " +
                         "parent, no child and no branch — the ordering survives only " +
@@ -96,10 +96,10 @@ export default function Assemblies() {
                     }
                     caption={
                         <>
-                            The branch exists at design time and nowhere else. The kernel
+                            The branch exists at design time and nowhere else. The Core
                             sees six commits extending one accumulator, each to the same
                             root buyer &mdash; which is why re-wiring the chain produces a
-                            different assembly, not a different kernel.
+                            different assembly, not a different Core.
                         </>
                     }
                 />
