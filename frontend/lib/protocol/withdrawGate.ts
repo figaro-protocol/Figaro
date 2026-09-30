@@ -7,7 +7,7 @@
  * stake while deals COMPOSED FROM that clause or assembly are still in
  * flight. The whole join lives in `@figaro-protocol/sdk/derive` (`deriveInFlightOrders`
  * + `deriveClauseWithdrawGate` / `deriveAssemblyWithdrawGate`) — this hook does
- * ONLY the I/O the SDK deliberately does not: read the kernel event log from
+ * ONLY the I/O the SDK deliberately does not: read FigaroCore event log from
  * the chain, then fetch each in-flight order's pinned agreement from IPFS. It
  * never re-derives the count.
  *
@@ -18,7 +18,7 @@
  * counts that as unverified and SURFACES it as a caveat, never a block:
  * blocking on unverifiable foreign deals would dead-lock every author's
  * withdraw — and nothing on-chain locks the stake on unrevealed deals anyway
- * (the kernel holds no composition provenance, so this gate has no on-chain
+ * (FigaroCore holds no composition provenance, so this gate has no on-chain
  * enforcement). Only VERIFIED in-flight
  * deals block (`canWithdraw === (inFlightCount === 0)`). A chain-READ failure
  * is different — the chain state is genuinely unknown — so it yields a null
@@ -52,7 +52,7 @@ export type WithdrawClauseOrAssembly =
  *  agreement (best-effort — an un-witnessed order has no URI and resolves to
  *  null, which the SDK gate counts as unverified: surfaced, never blocking). */
 async function resolveInFlightAgreements(coreAddress: `0x${string}`): Promise<InFlightAgreement[]> {
-    // Read the kernel event log directly (the SDK's `fetchCoreEvents` takes a
+    // Read FigaroCore event log directly (the SDK's `fetchCoreEvents` takes a
     // strictly-typed PublicClient the frontend's standalone client doesn't
     // unify with — the registry readers sidestep the same way), then hand the
     // logs to the SDK parsers + the SDK in-flight derivation. The derivation is

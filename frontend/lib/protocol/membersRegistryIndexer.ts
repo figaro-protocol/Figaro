@@ -2,9 +2,9 @@
  * MembersRegistry event reader — the protocol-layer half of the cached indexer.
  *
  * Reads the three surviving MembersRegistry events (registration, profile
- * update, withdrawal) and derives current member state from them. Kernel
- * order events (OrderCommitted/OrderResolved) live in the kernel indexer;
- * this module reads a REGISTRY, which is protocol tier, not kernel tier.
+ * update, withdrawal) and derives current member state from them. FigaroCore
+ * order events (OrderCommitted/OrderResolved) live in FigaroCore indexer;
+ * this module reads a REGISTRY, which is protocol tier, not Core tier.
  *
  * Fetching goes through the cached indexer (`cachedGetLogsMulti`); DECODING
  * and the LIVENESS FOLD are the SDK's (`parseMembersRegistryLogs` +
