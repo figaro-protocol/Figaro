@@ -423,7 +423,7 @@ export function CheckoutView({ sellerAddress }: Props) {
     });
 
     // The buyer commits EVERY order in the plan (buyer == rootBuyer on each
-    // — the kernel star shape): 2× payment locked per order, payment to that
+    // — the star shape): 2× payment locked per order, payment to that
     // order's seller + an equal refundable bond. Aggregate over the WHOLE
     // plan — a root-only figure under-reports every multi-order checkout.
     const planTotal = kitBreakdown ? kitBreakdown.total : cartTotal;
@@ -549,7 +549,7 @@ export function CheckoutView({ sellerAddress }: Props) {
         const leadSellerAddress = memberCatalogue.address as `0x${string}`;
         // Every order commits against a published, profile-bound assembly — no
         // synthesized fallback. `orderReady` already guarantees this; assert it
-        // for the type. The kernel sees a linear commit chain; the parent edges
+        // for the type. FigaroCore sees a linear commit chain; the parent edges
         // are off-chain topology reconstructed from the assembly.
         if (!pickedAssembly) {
             setCheckoutError("This seller has no published assembly to order from.");
