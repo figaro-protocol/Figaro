@@ -244,10 +244,10 @@ export const PAPER_GROUPS: PaperGroup[] = [
                 industries: ["DAOs and governance"],
             },
             {
-                title: "Corridors Without a Hegemon: The Kernel as Common Infrastructure Beneath Rival Trade Corridors",
+                title: "Corridors Without a Hegemon: The Substrate as Common Infrastructure Beneath Rival Trade Corridors",
                 href: "/papers/corridors-without-a-hegemon",
                 summary: "Belt and Road and IMEC contest who controls the corridor. The physical layer stays with whoever finances it; the coordination layer need not, and a decentralized, permissionless one cannot be weaponized by either bloc.",
-                keywords: ["weaponized interdependence", "hegemony", "Belt and Road Initiative", "IMEC", "infrastructure power", "cooperation under anarchy", "permissionless kernel"],
+                keywords: ["weaponized interdependence", "hegemony", "Belt and Road Initiative", "IMEC", "infrastructure power", "cooperation under anarchy", "permissionless substrate"],
                 industries: ["Cross-border trade"],
             },
         ],
