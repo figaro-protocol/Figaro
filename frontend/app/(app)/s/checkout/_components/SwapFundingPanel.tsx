@@ -6,7 +6,7 @@
  * bond. The buyer mounts it at checkout (candidates = the seller's other
  * accepted tokens); the seller mounts it at accept (candidates = their own
  * accepted set). The coordinator swaps the chosen token at commit time and
- * the kernel pulls the bond as always — the order stays denominated in the
+ * the Core pulls the bond as always — the order stays denominated in the
  * one process token; only the funding source changes. Selection + the
  * one-time Permit2 authorization live here; the witness signing itself rides
  * the sign/accept step.
