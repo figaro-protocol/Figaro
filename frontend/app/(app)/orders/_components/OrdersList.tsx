@@ -71,7 +71,7 @@ function YourTurnCard({ payload, onAccept, onDismiss, isAccepting, listings }: {
     const { decimals } = useTokenDecimals(commitment.currency as `0x${string}` | undefined);
     const sellerBond = calculateBonds(commitment.expectedCumulativeValue, commitment.payment).sellerBond;
 
-    // The seller locks 2× cumulative value as bond, so the kernel must be allowed
+    // The seller locks 2× cumulative value as bond, so the Core must be allowed
     // to pull it from this wallet. Mirror the buyer's checkout: if the allowance
     // is short, approve the bond first, then resume the accept once the approve
     // confirms (the buyer approves its own bond at checkout — this is the seller's
