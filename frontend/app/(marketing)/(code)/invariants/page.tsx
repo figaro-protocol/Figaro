@@ -22,7 +22,7 @@ export const metadata: Metadata = withOg({
 // ("What couples to it"), ADMITS (the closing line of "The six." — it was once
 // a three-sentence pointer wearing a section heading, and is not to become one
 // again),
-// EMERGES ("Where the meaning lives"). All four bind the KERNEL ONLY. They
+// EMERGES ("Where the meaning lives"). All four bind the CORE ONLY. They
 // may be reorganized under the invariant list; they may not move to another
 // page.
 export default function Invariants() {
@@ -71,7 +71,7 @@ export default function Invariants() {
                         .
                     </p>
                     <p>
-                        Nobody admits you, either. A wallet to sign with and a bond to lock are all any actor needs &mdash; a person, a business, or a piece of software, on the same footing; the kernel reads a signature, never a species, and the full treatment is on{" "}
+                        Nobody admits you, either. A wallet to sign with and a bond to lock are all any actor needs &mdash; a person, a business, or a piece of software, on the same footing; the Core reads a signature, never a species, and the full treatment is on{" "}
                         <Link href="/agents" className="text-ink-heading font-medium hover:underline">
                             Agents
                         </Link>
