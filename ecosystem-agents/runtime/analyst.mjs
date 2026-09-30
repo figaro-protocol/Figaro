@@ -330,7 +330,7 @@ function assemblyAttribution(corpus) {
  * Parent edges from held agreements' topology sections, found by the declared
  * `parentOrderHashes` field. Returns `undefined` when NO held agreement
  * carries edges — the caller then omits the argument and `marketShape` reports
- * the kernel's own linear view rather than a fabricated DAG.
+ * FigaroCore's own linear view rather than a fabricated DAG.
  */
 function parentEdges(corpus) {
     const byOrder = new Map();
@@ -434,8 +434,8 @@ export function dealStory(corpus, processId) {
         .find((c) => c.processId.toLowerCase() === id);
     if (!chain) {
         // Absence, stated with its two live possibilities — never "it did not
-        // happen". A batch-resolved process acquires no kernel status and emits
-        // no kernel event, so it is absent from this projection by design.
+        // happen". A batch-resolved process acquires no FigaroCore status and emits
+        // no FigaroCore event, so it is absent from this projection by design.
         return {
             processId,
             found: false,
