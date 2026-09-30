@@ -13,8 +13,8 @@ export const metadata: Metadata = withOg({
 });
 
 // THE HOME PAGE, in simplex.chat's shape and nothing more: the headline is the
-// one phrase a reader arrives already believing; the two lines under it are
-// the maintainer's, word for word, and make the phrase a fact; ONE button, the
+// one phrase a reader arrives already believing; the two lines under it make
+// the phrase a fact; ONE button, the
 // real way in (a wallet and a stake: Join); then the ONE PICTURE — the whole of
 // Figaro as six frames in the trade strip's own language (`WholeStripFigure`),
 // each frame with the claim it carries as its heading and one fact under it;

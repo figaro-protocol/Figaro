@@ -156,7 +156,7 @@ contract Deploy is Script {
         // to earmarked addresses) — is COMPOSED, not owned: mainnet uses
         // the canonical public Disperse deployment
         // (0xD152f549545093347A162Dce210e7293f1452150, same address across
-        // 16 chains, ownerless). MockDisperse mirrors its
+        // 16 chains). MockDisperse mirrors its
         // verified interface so devnet rehearses the composition.
         // Scoped block: the address is only logged, and run() compiles at the
         // stack limit under the legacy codegen (via_ir=false by design).

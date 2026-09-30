@@ -6,7 +6,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 /// @title MockDisperse — devnet stand-in for the canonical public multisender
 /// @notice Mirrors the verified interface and behavior of Disperse.app
 ///         (`0xD152f549545093347A162Dce210e7293f1452150`, deployed 2018,
-///         same address across 16 chains, no owner): `disperseEther` sends
+///         same address across 16 chains): `disperseEther` sends
 ///         each leg and refunds any remainder to the caller; `disperseToken`
 ///         pulls the total once then pays each leg; `disperseTokenSimple`
 ///         pulls each leg directly. Every batch is atomic — any failed leg
