@@ -40,8 +40,8 @@ depth = 15
 [profile.halmos]
 via_ir = true
 
-# NOTE: Coverage requires --ir-minimum flag due to instrumentation overhead
-# Usage: ./scripts/coverage.sh (or forge coverage --ir-minimum)
+# Coverage runs under [profile.coverage], the full via-IR pipeline — see
+# scripts/coverage.sh, which is the one way to run it.
 # GasCeilingTest is excluded from coverage because its assertions are calibrated
 # for non-instrumented bytecode — see scripts/coverage.sh.
 
@@ -59,10 +59,10 @@ runs = 10000
 runs = 5120
 depth = 100
 
-# Coverage profile: used by `forge coverage --profile coverage --ir-minimum`.
-# via_ir = true here matches the default profile; --ir-minimum flag further
-# enables full Yul IR for instrumentation, which prevents stack-too-deep
-# under coverage instrumentation overhead.
+# Coverage profile: `FOUNDRY_PROFILE=coverage forge coverage` (scripts/coverage.sh).
+# The full via-IR pipeline with the optimizer's stack allocation: the minimal-
+# optimization path (--ir-minimum) no longer compiles the batch verifier's
+# decoder under coverage instrumentation.
 [profile.coverage]
 optimizer = true
 optimizer_runs = 200
