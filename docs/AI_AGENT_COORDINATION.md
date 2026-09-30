@@ -74,7 +74,7 @@ deadline-is-CHAIN-time rule — is `sdk/README.md` § "The offer envelope".
 
 A chain is N handshakes (one per node, each to that node's own seller);
 any single decline aborts before any commit lands, and commits submit root-first in
-cumulative order so the kernel sees a consistent running total.
+cumulative order so `FigaroCore` sees a consistent running total.
 
 ### The anti-tamper gate (what a seller MUST check before counter-signing)
 
@@ -90,7 +90,7 @@ never silently declines — on a tampered one:
   contradict the struct.** The hash check above proves the document is the one the buyer
   signed; it says nothing about whether that document's TERMS match the execution data.
   Currency and payment live in both places at once — as merkle leaves under
-  `agreementHash` and as fields of the kernel commitment — so the gate additionally
+  `agreementHash` and as fields of the commitment — so the gate additionally
   asserts leaf == struct on both, plus pin == leaf wherever the assembly composes a
   denomination pin, and refuses any section that violates its own clause spec (a missing
   required term included). In the SDK this is `validateOffer`'s fourth parameter, a
@@ -170,17 +170,17 @@ then `reconstruct(events)` (`@figaro-protocol/sdk`) returns the processes as a m
 registry catalogue. What a wallet may then DO is read off that state
 (`proposeActions` / `proposeInitiations`, above), never off a stored role.
 
-Two things the kernel does not hold, which no amount of querying will produce:
+Two things the Core does not hold, which no amount of querying will produce:
 
 - **There is no pending order and no open job board.** `OrderState` is `Active` or
   `Resolved` — an order exists only once BOTH signatures committed it. An offer
   awaiting acceptance lives on the coordination channel, so work reaches a seller by
   being ROUTED to it (`makeSellerOfferHandler`, or the race / RFQ handlers), not by
   the seller finding it on chain.
-- **There is no unfilled edge.** The kernel sees a linear chain of commits against a
+- **There is no unfilled edge.** `FigaroCore` sees a linear chain of commits against a
   monotonic accumulator; parent-order edges are a committed TERM —
   `figaro-topology`'s `parentOrderHashes`, empty for a root — so the DAG is
-  reconstructed off-chain from agreements, never queried from the kernel.
+  reconstructed off-chain from agreements, never queried from the Core.
 
 **Committed content is read against the spec that declares it, never against a
 name.** A clause states the standard its values are in, and the reader takes that
@@ -222,7 +222,7 @@ publishes that comparison nor endorses it.
 `compositionHash` names which registered assembly a process instantiated — the same
 value the once-per-process assembly credit is claimed from, and it counts only while
 that composition holds a live `AssemblyRegistry` binding — and `figaro-topology`'s
-`parentOrderHashes` carries the edges the kernel does not store. Both are merkle
+`parentOrderHashes` carries the edges the Core does not store. Both are merkle
 leaves under `agreementHash`, so a provenance claim is verifiable by inclusion proof
 against the on-chain root instead of trusted from an index. That supports asking
 which processes instantiated a given assembly and how their orders relate. It does
