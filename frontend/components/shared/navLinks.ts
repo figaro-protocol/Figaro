@@ -1,4 +1,4 @@
-// Two nav tiers (per `feedback_two_navs_allowed.md`):
+// Two nav tiers:
 //
 // - `NAV_LINKS` is the publication row. Used by:
 //     - Marketing tier (only nav)

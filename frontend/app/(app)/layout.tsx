@@ -29,7 +29,7 @@ import { Footer } from "@/components/shared/Footer";
  * `/clauses`, `/assemblies`, `/agents`, `/trade`,
  * `/spec`, `/security`, `/clauses` (publication) — are intentionally NOT here:
  * they're publication-shaped and don't pull the wallet provider. Don't
- * cross-list them in (app) navs (see `feedback_two_navs_allowed.md`).
+ * cross-list them in (app) navs.
  *
  * See CLAUDE.md "Wallet-provider scope per route" for the route-tier
  * classification rule.

@@ -9,13 +9,10 @@ import { usePathname } from "next/navigation";
 
 /**
  * Wagmi-aware header for `(app)` routes. Same shell chrome as
- * `MarketingHeader`, with two divergences (per
- * `feedback_two_navs_allowed.md`):
+ * `MarketingHeader`, with two divergences:
  *
  *  1. Right cluster is `<YourTurnBadge>` (when connected) +
- *     `<ConnectWallet>`. Discover is intentionally absent — that rule is
- *     in `feedback_header_buttons.md` and is independent of the two-nav
- *     decision.
+ *     `<ConnectWallet>`. Discover is intentionally absent.
  *  2. The mobile drawer uses `NAV_LINKS_APP_DRAWER` (grouped publication +
  *     transactional sections). There is no second desktop row — the
  *     wallet's personal surfaces attach to their object pages and the

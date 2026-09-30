@@ -144,8 +144,8 @@ Tiered, bottom to top; each tier imports only what sits below it (enforced by th
     seller's at accept; `inputForOutput` converts the seller's default price into
     the buyer's picked payment token; `useSwapAndCommitActions.ts` carries the
     `swapAndCommit` broadcast either funded form routes through. Swap-and-commit is
-    the ON-RAMP into the process denomination, never the denomination itself — the
-    token-layer grid in `LEXICON.md` owns that model.
+    the ON-RAMP into the process denomination, never the denomination itself —
+    `LEXICON.md` (**denomination**, **coordination token**, **utility token**) owns that model.
   - *The attestation choke point:* `useAttestationCoordinatorActions.ts`, which
     every attest surface routes through; calldata carries fingerprints only.
   - *The witness-content seam behind it:* `witnessContent.ts` publishes a
