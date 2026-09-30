@@ -6,7 +6,7 @@
  * to /orders. It is NOT a notification store/feed — "needs my action" is
  * derived from the coordination channel, the same signal the /orders "Your
  * turn" section and an agent's event subscription read, just a different
- * transport. The kernel has no pending state; this is the only off-chain
+ * transport. FigaroCore has no pending state; this is the only off-chain
  * action signal.
  */
 
