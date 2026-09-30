@@ -113,7 +113,7 @@ export const PAPER_GROUPS: PaperGroup[] = [
                 industries: ["Tokens and treasuries"],
             },
             {
-                title: "Self-Authenticating Data Sales: Dissolving Arrow's Information Paradox Through the Kernel",
+                title: "Self-Authenticating Data Sales: Dissolving Arrow's Information Paradox Through the Bonded Commitment",
                 href: "/papers/self-authenticating-data-sales",
                 summary: "Arrow's paradox for data, dissolved economically: each entry sold carries a proof it came from a real resolved trade, the licence carries a proof of the sale, and the doubled bond leaves a misdescribing seller out of pocket.",
                 keywords: ["information paradox", "mechanism design", "merkle proofs", "data markets", "asymmetric bonding", "disclosure", "repeated games"],
