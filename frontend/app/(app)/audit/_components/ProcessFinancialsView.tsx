@@ -69,7 +69,7 @@ export function ProcessFinancialsView({ processId }: Props) {
 
             {orders.length === 0 ? (
                 <p className="text-sm text-ink-muted" data-testid="financials-empty">
-                    No orders found for this process. The kernel published no
+                    No orders found for this process. The Core published no
                     commitment under this processId
                     {batch?.status === "found"
                         ? ", and the batch relay published none that verified."
