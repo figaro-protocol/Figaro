@@ -5,7 +5,7 @@ import { LockedFundsStateFigure } from "@/components/figures/LockedFundsStateFig
 import { StackedBondChainFigure } from "@/components/figures/StackedBondChainFigure";
 import { KERNEL_EQUILIBRIUM } from "@figaro-protocol/sdk";
 
-// Every number and every outcome on this page is rendered from the kernel's
+// Every number and every outcome on this page is rendered from the Core's
 // equilibrium module (sdk/src/equilibrium.json), the one owner of those
 // figures; the theorem itself is the asymmetric-bonding paper's. The guard
 // scripts/lint-equilibrium-owner.sh fails a commit that retypes them here.
@@ -19,7 +19,7 @@ export const metadata: Metadata = withOg({
         "How a Figaro trade works: both sides lock a bond larger than the payment, so cooperation is the equilibrium; the buyer resolves it; every step is written down permanently.",
 });
 
-// FigaroCore's mechanism design, and ONLY that: the kernel page never carries
+// FigaroCore's mechanism design, and ONLY that: the Core page never carries
 // the stack — the stack figure lives on home. Short by intent, ~490 words plus
 // the state figure (which lives here, not on /security, which owns tests and
 // audit results) and the outcome table. Probe-refined sentences are kept
