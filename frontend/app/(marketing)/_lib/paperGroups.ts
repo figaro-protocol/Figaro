@@ -258,7 +258,7 @@ export const PAPER_GROUPS: PaperGroup[] = [
         name: "Operations Research and Management Science",
         discipline: "Resource allocation · accounting · ledger design",
         intro: "Allocation made operational: physical, financial, and social resources allocated among stakeholders with unique preferences, information, and capabilities — and the coordination and scaling of those allocation decisions.",
-        definition: "A Figaro process is a self-closing ledger period. Commits are journal entries; resolution is the closing entry; the agreementHash is the contract document. The papers here ask what operations researchers and accountants ask — the kernel as an accounting primitive, the process topology as a coordination problem, the closure as a scheduling invariant.",
+        definition: "A Figaro process is a self-closing ledger period. Commits are journal entries; resolution is the closing entry; the agreementHash is the contract document. The papers here ask what operations researchers and accountants ask — the mechanism as an accounting primitive, the process topology as a coordination problem, the closure as a scheduling invariant.",
         papers: [
             {
                 title: "Bookkeeping as Protocol Byproduct: Self-Closing Ledger Periods",
