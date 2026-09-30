@@ -134,7 +134,7 @@ What it does, in order:
    floors, approves its 2× bond and counter-signs. The buyer approves its own
    2× bond and submits `FigaroCore.commit`.
 4. **Asserts what landed.** The commit receipt must be `success`: one
-   `OrderCommitted` on the kernel, both bonds pulled into it.
+   `OrderCommitted` on `FigaroCore`, both bonds pulled into it.
 5. **Reads it back out of band.** A second `ctx.sync()`, then
    `ctx.getProcessesAsBuyer(buyer)` — the process is found from chain events,
    not from the return value of the call that created it, carrying the expected
@@ -208,7 +208,7 @@ processId, Commitment[] commitments)` takes **two different ids that share a
 name**, and they are not interchangeable: the ARGUMENT is the DERIVED id — the
 kernel's storage key, the one `OrderCommitted` carries — while every struct
 INSIDE `commitments` must carry the SIGNED id, the one the parties put under
-their signatures — and a root order signed `processId = 0`. The kernel
+their signatures — and a root order signed `processId = 0`. `FigaroCore`
 recomputes `keccak256(processId ‖ hashStruct(c))` from both
 (`src/core/kernel/FigaroCore.sol:280-285`), so putting the derived id inside the root
 struct — the natural move, since that is what `OrderCommitted` carries and what
@@ -239,7 +239,7 @@ is the mechanical form of the at-resolution rule: make the recording in the same
 **6. Know the traps before you extend this.** The site's `/pitfalls` page is the
 canonical list; the first one a chain integration hits is **sub-order
 approval** — every `commit`, root or sub-order, pulls the FULL per-order bond
-and nets nothing against bonds the kernel already holds, so approving the
+and nets nothing against bonds `FigaroCore` already holds, so approving the
 increment reverts inside the token with `ERC20InsufficientAllowance`
 while the earlier bonds stay locked until the buyer resolves. Size it with
 `calculateSubOrderApproval` and check it with `assertApprovalCoversBond` (both
@@ -294,7 +294,7 @@ definition) and `RPGF_*` constant is a **root** export.
 | `ActionQueue` | `/agent` | Typed queue holding proposed actions for human approval before execution. |
 | `addressesFromDeploymentRecord` | root | Map a published deployment record's keys onto `FigaroAddresses` — never spread the record. |
 | `assertAgreementSignable` | root | The ONE pre-signature thrower: every section conforms to its spec, and the terms equal the struct. |
-| `assertApprovalCoversBond` | root | Throws when an approval is short of the full per-order bond the kernel will pull. |
+| `assertApprovalCoversBond` | root | Throws when an approval is short of the full per-order bond `FigaroCore` will pull. |
 | `attestAsSeller` | `/agent` | Submit a seller attestation for one clause section of a committed order. |
 | `buildChainOffers` | `/agent` | Buyer-sign a whole chain's offers, in commit order, through the one template walk. |
 | `buildCommitment` | root | Build the `Commitment` struct and the EIP-712 typed data to sign. |
@@ -305,7 +305,7 @@ definition) and `RPGF_*` constant is a **root** export.
 | `buildSwapWitnessTypedData` | root | Permit2 witness typed data for the swap-and-commit funding leg. |
 | `buildUsageClaims` | root | Turn a batch-resolved order plus its agreement into the usage claims a sequencer proves. |
 | `calculateBonds` | root | `sellerBond = 2 × cumulativeValue`, `buyerBond = 2 × payment`. |
-| `KERNEL_EQUILIBRIUM` | root | The kernel's equilibrium stated once (`sdk/src/equilibrium.json`): bonds, payoffs on both bases, the outcome table, the deterrent gap, the hypotheses, the worked example — render numbers from it, never retype them; the paper owns the theorem. |
+| `KERNEL_EQUILIBRIUM` | root | `FigaroCore`'s equilibrium stated once (`sdk/src/equilibrium.json`): bonds, payoffs on both bases, the outcome table, the deterrent gap, the hypotheses, the worked example — render numbers from it, never retype them; the paper owns the theorem. |
 | `calculateRootApproval` | root | The ERC-20 approval each party needs before a ROOT commit. |
 | `calculateResolution` | root | What each party receives after `resolveProcess`: its bond back, and exactly `payment` crossing. |
 | `calculateSubOrderApproval` | root | The approval before a SUB-order commit — the FULL bond, never the increment. |
@@ -377,7 +377,7 @@ definition) and `RPGF_*` constant is a **root** export.
 | `profileValuesFor` | root | The profile-filled clause values a given seller publishes, read from its catalogue. |
 | `projectAgentServices` | root | Read the agent service endpoints out of a profile document, tolerating partial ones. |
 | `projectProcessGraph` | `/derive` | The process graph, labelled protocol-enforced — `reconstruct()`'s topology as a first-class object. |
-| `projectResolutionGraph` | `/derive` | Per-order bonds locked and payouts at resolve, grouped into the kernel's LINEAR per-process chains. |
+| `projectResolutionGraph` | `/derive` | Per-order bonds locked and payouts at resolve, grouped into `FigaroCore`'s LINEAR per-process chains. |
 | `projectValueFlow` | `/derive` | Denomination nodes and flow edges; venue legs are caller-parsed, so no venue list is bundled. |
 | `proposeActions` | `/agent` | Every action a wallet may take on a process it is already in. |
 | `proposeInitiations` | `/agent` | Every process a wallet could START — one per live-staked assembly. |
@@ -434,7 +434,7 @@ pipeline that reproduces, off chain, what `UsageCounter` + `RpgfMinter` compute
 on chain for the 600M designer-rewards reserve. Usage is counted as the facts
 happen — recorded against a resolved order — so **there is nothing to post,
 nothing to bond and nothing to dispute**. Trade resolved through
-`FigaroBatchVerifier` never acquires kernel status, so it reaches the counter by
+`FigaroBatchVerifier` never acquires `FigaroCore` status, so it reaches the counter by
 a second route: `buildUsageClaims` turns a batch-resolved order plus its
 agreement into the claims a sequencer proves, and the mirror folds BOTH event
 streams (`fetchUsageRecords` + `fetchBatchUsageRecords`). Reading only the first
@@ -475,7 +475,7 @@ const addresses = addressesFromDeploymentRecord(deploymentRecord);
 // each pre-funded to the standard Anvil test keys. `florinToken` is not the
 // denomination on such a record: its deployer mint is renounced and those wallets hold
 // zero, so an order denominated in it reverts `ERC20InsufficientBalance` the moment
-// the kernel pulls a bond. Read balances off the record's tokens, never assume one.
+// FigaroCore pulls a bond. Read balances off the record's tokens, never assume one.
 
 // Fetch all FigaroCore events from a block range. The return is a GROUPED
 // object — { orderCommitted, orderResolved, processResolved }, each a typed
@@ -533,21 +533,21 @@ const resolution = calculateResolution(payment, bonds.sellerBond, bonds.buyerBon
 // At payment = cumulativeValue = 100: bonds 200/200, payouts 300/100, net 100.
 
 // Per-process resolve ceiling on the active chain (a process grown past
-// this can NEVER resolve — check before every commit; the kernel cannot)
+// this can NEVER resolve — check before every commit; FigaroCore cannot)
 const cap = await maxOrdersResolvablePerProcess(client);
 
 // Build EIP-712 typed data for signing.
 //
 // THE FIELD ORDER BELOW IS CANONICAL, NOT STYLISTIC. There is exactly one
 // authoritative ordering: `CommitmentTypes.COMMITMENT_TYPEHASH`
-// (`src/core/kernel/CommitmentTypes.sol:31-33`), the type string the kernel hashes
+// (`src/core/kernel/CommitmentTypes.sol:31-33`), the type string FigaroCore hashes
 // and recovers both signatures against. The SDK derives its own typehash from
 // the same field list and exports it — `COMMITMENT_TYPEHASH` (a root
 // `@figaro-protocol/sdk` export) is
 // 0xea70b4a1b704921c6919c3e8358981256c050e862e155886edf8828ee897f75c.
 // Anything that transcribes the struct (the `cast` tuple below, a non-JS
 // client, a Rust signer) must reproduce that order: permute two fields and the
-// struct hash changes, so the kernel recovers a different address and rejects
+// struct hash changes, so FigaroCore recovers a different address and rejects
 // the bond.
 const domain = buildDomain(chainId, coreAddress);
 const { commitment, typedData } = buildCommitment(
@@ -564,7 +564,7 @@ const { commitment, typedData } = buildCommitment(
 );
 ```
 
-**Calling the kernel without the SDK.** A `cast`-only participant talks to
+**Calling `FigaroCore` without the SDK.** A `cast`-only participant talks to
 `FigaroCore` directly with two functions:
 
 ```
@@ -581,7 +581,7 @@ check either against the SDK's re-export
 (`COMMITMENT_TYPEHASH === keccak256(toBytes(yourTypeString))`) before signing
 anything you hand-rolled.
 
-A ROOT commitment signs `processId = 0` (the kernel derives the real id and
+A ROOT commitment signs `processId = 0` (`FigaroCore` derives the real id and
 returns it); a sub-order carries the root's derived `processId`. `buyerSig` /
 `sellerSig` are EIP-712 signatures over the `Commitment` struct under domain
 `{ name: "FigaroCore", version: "3", chainId, verifyingContract: <core> }`. The
@@ -599,7 +599,7 @@ KERNEL only *pulls exactly*: `src/core/kernel/FigaroCore.sol:208-209` is two
 `_pullExact` transfer calls, `c.payment * 2` from `c.buyer` and
 `c.expectedCumulativeValue * 2` from `c.seller`, with no approval commentary
 and no netting logic anywhere in the file — if the allowance falls short the
-`transferFrom` reverts inside the token and the kernel never sees
+`transferFrom` reverts inside the token and `FigaroCore` never sees
 the reason. WHAT TO APPROVE is therefore an off-chain calculation, and the
 SDK's `calculateRootApproval` / `calculateSubOrderApproval` (`sdk/src/bonds.ts`)
 are the authority for it. Approve the denomination ERC-20 for both legs before
@@ -635,13 +635,13 @@ Read the rows as `calculateRootApproval(100n)` and
 doesn't: the BUYER is charged again on every order (200 + 80 + 50 = 330 pulled
 across the three commits, not 330 total value bonded once), and the seller's
 number GROWS with the chain even though their own link only added 40 or 25.
-Every one of those 330 + 810 units stays locked in the kernel until the buyer
+Every one of those 330 + 810 units stays locked in `FigaroCore` until the buyer
 calls `resolveProcess`; nothing is released order by order.
 
 Approving the *increment* instead of the full `2 × newCumulativeValue` is the
 reverting mistake: `commit` reverts inside the token with
 `ERC20InsufficientAllowance`, and the bonds already pulled for the earlier
-orders stay locked in the kernel until the buyer resolves the process.
+orders stay locked in `FigaroCore` until the buyer resolves the process.
 
 Catch the mistake before it reverts on-chain: pass the approval you're about
 to submit and the calculator's own output to `assertApprovalCoversBond` —
@@ -661,7 +661,7 @@ A party who does not hold the process's denomination can still bond in one
 transaction, through `WitnessSwapAndCommitCoordinator.swapAndCommit`: it pulls
 their input token via a Permit2 WITNESS signature, swaps it at the coordinator's
 immutable venue, forwards the proceeds to the party's own address, then calls
-`FigaroCore.commit`. The kernel still pulls the bond from the named party, so the
+`FigaroCore.commit`. `FigaroCore` still pulls the bond from the named party, so the
 commitment stays bilaterally signed and the coordinator never becomes a
 counterparty. The SDK ships the off-chain half — the typed data whose hash IS the
 digest Permit2 verifies:
@@ -681,9 +681,9 @@ import { encodeFunctionData } from "viem";
 // SWAP_ROUTER_02_ABI, which carries that shape:
 //
 //   recipient       — the COORDINATOR: it measures the output-balance delta,
-//                     then forwards everything to the party, so the kernel's
+//                     then forwards everything to the party, so FigaroCore's
 //                     pull finds the bond and any residual stays the party's.
-//   amountOut       — the leg's bond, mirroring the kernel pull exactly:
+//   amountOut       — the leg's bond, mirroring FigaroCore pull exactly:
 //                     2 × payment (buyer leg) or
 //                     2 × expectedCumulativeValue (seller leg).
 //   amountInMaximum — maxInput, the SAME cap the witness signs below.
@@ -728,7 +728,7 @@ path-blind.
 
 ## Routing what you received — a post-resolution composition
 
-The kernel has already paid out, so this is a wallet spending its own balance:
+`FigaroCore` has already paid out, so this is a wallet spending its own balance:
 one resolved receipt, many earmarked recipients, one atomic transaction — fiscal
 remittance, a savings address, a co-worker's share, an obligation. The network
 already supplies the contract, so the protocol owns none of it: **Disperse**
@@ -832,8 +832,8 @@ await verifyCommitmentSignature(commitment, sig, commitment.buyer,
 `scripts/verify-signed-agreement.mjs` in the repo is a ready-made runner for the
 above (agreement file + typed-data file, optional `--buyer-sig`/`--seller-sig`,
 exit 0 only if every check passed). Struct-level legibility inside the wallet is
-a KERNEL question and is deliberately out of scope: `Commitment` binds the
-agreement by root, the kernel is frozen, and that root-binding is exactly what
+a `FigaroCore` question and is deliberately out of scope: `Commitment` binds the
+agreement by root, and that root-binding is exactly what
 makes this off-origin check possible.
 
 ## Recovering an in-flight process
@@ -1036,7 +1036,7 @@ const { status, body } = await respond(rawRequestBody); // status is always 200 
 // price), candidates counter-sign to answer "available", and the buyer signs
 // EXACTLY ONE winner — the single buyer signature is both the selection event
 // and the seller-address answer. A draft binds nobody and cannot be broadcast
-// (the kernel needs both signatures); a losing countersignature expires inert
+// (FigaroCore needs both signatures); a losing countersignature expires inert
 // at the struct deadline. Same two candidate-side floors as counterSignOffer,
 // and the same optional `specs` merkle-leaf gate: with a SpecSource, a draft
 // whose commerce leaf contradicts the struct is refused before any signature.
@@ -1120,7 +1120,7 @@ await seq.status();  // { state_root, pending_ops, pending_usage_claims, batches
 
 // READING BATCHED TRADE BACK. A batch-resolved order has no kernel event and no
 // per-order flag on chain, so do NOT chase stateRoot() and BatchSettled by
-// hand: the relay PUBLISHES the batch path's mirror of the kernel's
+// hand: the relay PUBLISHES the batch path's mirror of FigaroCore's
 // events, and the client encodes the 404 rule you must not get wrong.
 const view = await seq.process(processId);   // the orders + the resolution facts
 const one  = await seq.order(orderHash);     // one published order
@@ -1133,7 +1133,7 @@ const page = await seq.batches({ from: 0 }); // ≤50 a page; follow next_cursor
 // The relay is untrusted TRANSPORT: verify what it returns against the chain —
 // the ERC-20 transfers settleBatch executed, and scoreOf for the usage leg.
 // Errors are SequencerError with .statusCode: 400 signature/witness-gate
-// rejection (carrying the kernel's own reason string) or malformed JSON, 422
+// rejection (carrying FigaroCore's own reason string) or malformed JSON, 422
 // not a valid operation shape, 413 over the 1 MiB body cap, 503 mempool at
 // capacity — capacity, never rejection; retry after the next batch.
 
@@ -1163,7 +1163,7 @@ can land. The message that carries this is the offer envelope
   "sellerSig":  "0x…",   // filled by the seller on accept; absent until then
   "buyerFunding":  { /* OPTIONAL — the buyer's swap-funded bond leg, witness-signed:
                         when present, whoever broadcasts routes through
-                        WitnessSwapAndCommitCoordinator.swapAndCommit, not the kernel's
+                        WitnessSwapAndCommitCoordinator.swapAndCommit, not FigaroCore's
                         commit. Absent when the buyer self-funds. */ },
   "quoteRequest":  { /* OPTIONAL — present ONLY on an RFQ quote-request draft, naming the
                         pricedFields the candidate may re-price. Absent on every offer. */ }
@@ -1182,9 +1182,9 @@ Two of the commitment's fields carry rules a hand-rolled implementation gets
 wrong:
 
 - **`processId`** — a ROOT commitment signs `ZERO_PROCESS_ID` (32 zero bytes)
-  and the kernel derives the real id at commit; a sub-order carries the root's
+  and `FigaroCore` derives the real id at commit; a sub-order carries the root's
   DERIVED id. Signing a made-up id for a root is a commit that never lands.
-- **`deadline` is CHAIN time, and it is mandatory.** The kernel compares it
+- **`deadline` is CHAIN time, and it is mandatory.** `FigaroCore` compares it
   against `block.timestamp` and reverts `DeadlineExpired`; the SDK's
   origination calls take `deadline` as a REQUIRED parameter with no default,
   precisely so nobody reaches for the host clock. Read it from the chain
@@ -1692,7 +1692,7 @@ and the signed STRUCT, or whose hash mismatches its recomputed root
 `{ ok, issues }`). The mirror check is why the gate takes the commitment's
 `{ currency, payment }` pair (a full `Commitment` satisfies it): both are
 clause leaves under `agreementHash` (the commerce clause's `currency` and
-`payment` fields) AND fields of the kernel commitment, and the gate asserts
+`payment` fields) AND fields of the commitment, and the gate asserts
 each leaf equals its struct mirror — plus, where the assembly composes a
 denomination pin, that the pin equals the currency leaf. The negative half matters just as much: `buildOrderAgreement`
 itself validates NOTHING — it is pure projection (apply spec defaults, sort,
@@ -1721,7 +1721,7 @@ const commerce = sectionByField(agreement, "lineItems", specs);
 
 ## From Adopted Template to Signed Agreement — the ONE walk
 
-Every consumer that turns a template into kernel orders — an agent originating a
+Every consumer that turns a template into `FigaroCore` orders — an agent originating a
 chain (`@figaro-protocol/sdk/agent` `buildChainOffers`), a checkout realizing a bound
 assembly, a designer displaying a draft — performs the same walk: order the
 template agreements so parents precede children, detect the root, replace
@@ -1779,7 +1779,7 @@ const orders = await reconstructOrdersFromTemplate(template, {
   // out-of-band by design: hand the counterparty the pinned agreement URI +
   // the signed commitment over any channel you both reach (the handoff
   // coordination channel, a link, a QR); whoever ends up holding both
-  // signatures may broadcast the commit — the kernel checks signatures,
+  // signatures may broadcast the commit — FigaroCore checks signatures,
   // never the sender.
   onOrder: async (order) => {
     const buyerSig = await buyerWallet.signTypedData(order.typedData);
@@ -1935,7 +1935,7 @@ seller half. It is already split on stable↔volatile (identity envelope here, t
 volatile item list behind `catalogueURI`); a buyer/seller split would be a second,
 crossing axis, and the fields it would divide (`acceptedTokens`, `catalogueURI`,
 location, branding) serve either side unchanged. Registering is how a wallet
-PUBLISHES, never how it QUALIFIES — transacting through the kernel needs no
+PUBLISHES, never how it QUALIFIES — transacting through the Core needs no
 registration at all.
 
 - **Profile** (`MemberProfileMetadata`) — the stable identity envelope pinned at
@@ -2327,7 +2327,7 @@ that *this content sat under that agreement's root, signed by those two parties,
 at that commit* — provenance and integrity, not veracity: no chain can testify
 that a sensor was pointed where its data says. And `redistribution:
 "prohibited"` is not enforcement — copying cannot be prevented on chain. The
-co-signed term is timestamped evidence for the layers outside the kernel (the
+co-signed term is timestamped evidence for the layers outside the Core (the
 co-sellers' live interest in the same unresolved process, a composed arbitration
 forum, ordinary courts), the same posture as every other off-chain obligation.
 
@@ -2344,7 +2344,7 @@ side of the repeated game: their agent re-runs the sign-and-commit ceremony unde
 whatever policy rule the owner set — there is deliberately no on-chain scheduler,
 keeper, or streaming-payment machinery to do it for them, because a standing
 third actor with the power to move the next period is exactly the kind of party
-the kernel exists to remove.
+the Core exists to remove.
 
 A worked reference of exactly this shape ships with the protocol and anchors on
 the devnet "Your first commit" brings up — an assembly composing a license
@@ -2440,11 +2440,11 @@ trade moved to the batch path under-reports.
   an MPC / threshold scheme that outputs one signature. `FigaroCore` verifies both
   commitment signatures by `ECDSA.recover` alone (`src/core/kernel/FigaroCore.sol:161-166`) — it
   runs no ERC-1271 check — so an ERC-1271 contract wallet (a Safe or other smart
-  account) CANNOT hold a kernel party role. A contract that must transact routes
+  account) CANNOT hold a `FigaroCore` party role. A contract that must transact routes
   through a funded EOA it controls (this is how the DAO treasury buys — it never
   signs a commitment itself).
 - **Event-sourced state** — `Topology` reconstructs the full process/order topology from on-chain events. No subgraph dependency.
-- **Live kernel event contract** — reconstruction assumes `OrderCommitted` carries the full commitment payload (`agreementHash`, `salt`, `deadline`) and that order/process closure is derived from `OrderResolved` plus `ProcessResolved`.
+- **Live `FigaroCore` event contract** — reconstruction assumes `OrderCommitted` carries the full commitment payload (`agreementHash`, `salt`, `deadline`) and that order/process closure is derived from `OrderResolved` plus `ProcessResolved`.
 - **Agent-native** — the proposer generates typed actions; the HITL queue and autonomous gateway are two execution modes for the same action type.
 
 ## Versioning & stability
