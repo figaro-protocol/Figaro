@@ -50,7 +50,7 @@ function StatusNotice({ batch }: { batch: VerifiedBatchProcess }) {
         return (
             <p className="text-sm text-ink-body" data-testid="batch-status-no-relay">
                 No batch relay is configured, so batch-resolved trade cannot be read
-                here. This is not a statement that none exists &mdash; the kernel
+                here. This is not a statement that none exists &mdash; the Core
                 publishes direct-path trade as events, but the batch path publishes
                 no per-order data on chain, so reading it needs a relay. Resolving a
                 batch is permissionless, so you can point at any relay, or run your
@@ -108,7 +108,7 @@ export function BatchUniversePanel({ batch }: { batch: VerifiedBatchProcess | nu
             <div className="space-y-2">
                 <h2 className="text-heading-h3 text-ink-heading">Batch-resolved trade</h2>
                 <p className="text-sm text-ink-body max-w-2xl">
-                    A batch-resolved order emits no kernel event &mdash; its struct
+                    A batch-resolved order emits no FigaroCore event &mdash; its struct
                     exists only under the verifier&rsquo;s proven state root &mdash; so
                     reading it means reading a relay. Nothing below is taken on the
                     relay&rsquo;s word: each record&rsquo;s struct must re-derive its own
