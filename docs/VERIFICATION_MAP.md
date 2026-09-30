@@ -15,8 +15,8 @@ This document ties every protocol property to its enforcement across five layers
 The UI column exists to prevent presentation gaps — features enforced in code but invisible to the people using them.
 
 Run evidence — when each layer last ran, at which commit, and the Certora report
-URLs — is `AUDITOR_HANDOVER.md` § "Formal run evidence". This document maps; it
-does not log.
+URLs — is `AUDITOR_HANDOVER.md` § "Verification evidence". This document maps;
+it does not log.
 
 ---
 
@@ -428,7 +428,7 @@ load-bearing, not vacuous.
 **All green** — the full suite verifies with `--wait_for_results all`
 (exit 0 = every rule verified; every `Violated` line in the stream is the
 `rule_not_vacuous` healthy polarity). Which run, when, and the report URLs:
-`AUDITOR_HANDOVER.md` § "Formal run evidence".
+`AUDITOR_HANDOVER.md` § "Verification evidence".
 
 ```bash
 # Install
