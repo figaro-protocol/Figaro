@@ -10,7 +10,7 @@ import { MarketingSection } from "@/components/marketing/MarketingSection";
 // merkle-bound to the signed order, and only while that order is open; one
 // worked example in a non-food vertical (freight emissions reporting) that
 // shows a measured attestation and its correction; and the boundary with
-// adjudication — the kernel never reads the content, a forum may rule on it,
+// adjudication — the Core never reads the content, a forum may rule on it,
 // no forum can call resolve. No registry count, no hash table, no CTA: an
 // attestation is not something you register or design, it is a runtime
 // signature a party files inside a process already running. Companion page
@@ -94,7 +94,7 @@ export default function Attestations() {
 
             <MarketingSection title="Evidence, not adjudication." bottomPad="wide">
                 <p className="text-sm text-ink-body leading-relaxed mb-4">
-                    The kernel never reads what an attestation says. A separate,
+                    The Core never reads what an attestation says. A separate,
                     zero-storage coordinator checks the caller is a party to the signed
                     commitment, checks the inclusion proof, and checks that the order is still open &mdash; it does not
                     decode or judge the content itself. No fingerprint checks a fact: the chain
