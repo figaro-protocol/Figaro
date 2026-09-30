@@ -16,7 +16,7 @@
  *     (`executeCapability`). Add a clause → its capability surfaces here with
  *     no edit to this page. (Enforced by `lint-no-hardcoded-clauses-in-runtime`.)
  *
- * The resolution panel (kernel proceeds — names no clause) renders once the
+ * The resolution panel (FigaroCore proceeds — names no clause) renders once the
  * process is resolved. This page does NOT replace `/audit/view?process=<processId>`.
  */
 
@@ -166,7 +166,7 @@ export function OrderTimelineView({ processId }: Props) {
 
             {/* Post-resolution payout routing — the resolved seller splits its
                 own receipts onward through the composed public multisender.
-                Kernel-core sibling of the proceeds panel (no clause to key
+                Sibling of the proceeds panel (no clause to key
                 on); renders only when a multisender is configured. */}
             {isResolved && isSeller && myOrder && (
                 <PayoutRoutingPanel currency={(myOrder.currency ?? ZERO_ADDRESS) as `0x${string}`} />
@@ -177,7 +177,7 @@ export function OrderTimelineView({ processId }: Props) {
                 block.runtime.interaction this frontend has a registered surface for
                 (a QR order-identity challenge at a handoff, the private
                 address ceremony on a geolocation-committed order). The buyer
-                is a party to every order (kernel star shape); a seller to its
+                is a party to every order (the star shape); a seller to its
                 own. Names no clause; the dispatch key is the spec's own
                 declaration. */}
             {role !== "spectator" && processModel.orders
