@@ -74,7 +74,7 @@ owns the two routes). Nothing is posted, bonded, challenged, or adjudicated,
 and there is no recurring cost to anyone.
 
 The timing is forced, not chosen. **The chain cannot look backwards** — the
-kernel is frozen, never calls the registries, and no contract can read an
+Core never calls the registries, and no contract can read an
 event. Reconstructing usage after the fact is what would require the posting,
 bonding, challenge, and forum apparatus this mechanism does without. So the
 fact is recorded at the moment it occurs, or it is permanently deniable: a
