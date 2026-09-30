@@ -67,7 +67,7 @@ export default function ResearchDoor() {
             </MarketingSection>
             <MarketingSection title="A working group is whoever does this work in a discipline.">
                 <p className="text-base text-ink-body leading-relaxed max-w-2xl">
-                    Groups form wherever their people are. Every paper is signed Figaro, and every claim traces to the kernel, a theorem, or a named source. <Link href="/working-groups" className="text-ink-heading font-medium hover:underline">Working Groups</Link>
+                    Groups form wherever their people are. Every paper is signed Figaro, and every claim traces to the Core, a theorem, or a named source. <Link href="/working-groups" className="text-ink-heading font-medium hover:underline">Working Groups</Link>
                 </p>
             </MarketingSection>
             <MarketingSection bottomPad="wide">
