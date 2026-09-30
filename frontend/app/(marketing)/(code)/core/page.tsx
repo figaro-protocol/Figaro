@@ -20,7 +20,7 @@ export const metadata: Metadata = withOg({
 const SUBJECTS: { line: string; body: string; cta: string; href: string }[] = [
     {
         line: "Four smart contracts, decentralized and permissionless.",
-        body: "FigaroCore holds every bond and resolves a process. CommitmentTypes defines the commitment each party signs. AttestationCoordinator binds what a party attests to the agreement it signed. FigaroBatchVerifier accepts a validity proof of many processes in one transaction. The first two are the kernel, and the kernel is frozen.",
+        body: "FigaroCore holds every bond and resolves a process. CommitmentTypes defines the commitment each party signs. AttestationCoordinator binds what a party attests to the agreement it signed. FigaroBatchVerifier accepts a validity proof of many processes in one transaction.",
         cta: "The spec",
         href: "/spec",
     },
@@ -32,7 +32,7 @@ const SUBJECTS: { line: string; body: string; cta: string; href: string }[] = [
     },
     {
         line: "The contracts are proven and checked on every commit.",
-        body: "The equilibrium is machine-checked in Lean 4. The contracts are checked on every commit by Foundry, Halmos, Certora, TLA+, Echidna, and static analysis. The kernel is frozen.",
+        body: "The equilibrium is machine-checked in Lean 4. The contracts are checked on every commit by Foundry, Halmos, Certora, TLA+, Echidna, and static analysis. The contracts are frozen for the audit.",
         cta: "Security",
         href: "/security",
     },
