@@ -196,7 +196,7 @@ export function projectDocuments(
 // invoice/BoL use and the ONE generic renderer draws them. There is no separate
 // per-order "invoice-style" line-item projection for financials — that would
 // duplicate the invoice document. Per-currency throughout (multi-currency
-// arithmetic is unsafe). The kernel math is never re-implemented:
+// arithmetic is unsafe). FigaroCore math is never re-implemented:
 // bonds are READ from the order, resolution from the SDK's calculateResolution.
 
 interface CurrencyAgg {

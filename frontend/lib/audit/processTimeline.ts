@@ -130,7 +130,7 @@ export async function buildProcessTimeline(
     let totalBuyerPayout = 0n;
 
     // Every scan below rides the event cache (deployment block, adaptive
-    // chunks, cached across renders — the same cache the kernel indexer
+    // chunks, cached across renders — the same cache FigaroCore indexer
     // fills); the processId narrowing is client-side over it.
     // Cached logs type blockNumber as number | bigint (the IDB round-trip is
     // bigint-tagged, but the type stays open); normalise once here.
@@ -178,9 +178,9 @@ export async function buildProcessTimeline(
         });
     }
 
-    // Live kernel: no OrderAccepted event — orders are active on commit.
+    // Live FigaroCore: no OrderAccepted event — orders are active on commit.
 
-    // Live kernel: no OrderCancelled event — orders resolve or stay active.
+    // Live FigaroCore: no OrderCancelled event — orders resolve or stay active.
 
     // ── OrderResolved ───────────────────────────────────────────────
     const resolvedLogs = byProcess(await cachedGetContractEvents(client, chainId, {

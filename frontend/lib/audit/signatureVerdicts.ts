@@ -5,7 +5,7 @@
  *
  * The OrderCommitted event carries every Commitment field but NO signatures —
  * the signature bytes exist on-chain only inside the commit transaction's
- * CALLDATA (`commit(c, buyerSig, sellerSig)` on the kernel, or
+ * CALLDATA (`commit(c, buyerSig, sellerSig)` on FigaroCore, or
  * `swapAndCommit(c, buyerSig, sellerSig, …)` on the witness swap coordinator).
  * So this reader walks log → transactionHash → getTransaction →
  * decodeFunctionData, then checks each signature with the SDK's canonical
@@ -20,7 +20,7 @@
  *
  * Note the calldata-decoding caution in ProcessClauseEvidence (witness VALUES
  * must never be faked from calldata) does not apply here: the signatures are
- * genuinely in calldata by construction — they are what the kernel verified.
+ * genuinely in calldata by construction — they are what FigaroCore verified.
  *
  * ── The batch universe ──────────────────────────────────────────────────────
  *
@@ -112,7 +112,7 @@ const UNAVAILABLE: OrderSignatureVerdicts = {
 
 /**
  * Decode a commit transaction's calldata into the signed struct + both
- * signature blobs. Tries the kernel's `commit` and the witness swap
+ * signature blobs. Tries FigaroCore's `commit` and the witness swap
  * coordinator's `swapAndCommit` (both lead with `c, buyerSig, sellerSig`).
  * Returns null for calldata that is neither.
  */

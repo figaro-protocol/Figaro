@@ -5,7 +5,7 @@
  * A process-log clause is any registered runtime enum-ladder clause
  * (per its spec — `clauseIsProcessLog`; never named in code). Such clauses
  * exist because off-chain sellers need a sovereign event log to make their
- * physical-world state changes tamper-proof evidence. The kernel records
+ * physical-world state changes tamper-proof evidence. FigaroCore records
  * the buyer's actions directly (commit / resolveProcess); the off-chain
  * sellers record theirs via whatever process clause their order carries —
  * including clauses this codebase has never seen.

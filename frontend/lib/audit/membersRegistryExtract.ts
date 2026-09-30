@@ -5,7 +5,7 @@
  * registration time.
  *
  * Note on kernel design: `src/kernel/FigaroCore.sol` does NOT enforce that
- * sellers be registered in the MembersRegistry — the kernel "does not
+ * sellers be registered in the MembersRegistry — the Core "does not
  * gate any operation on seller state" (CLAUDE.md). Registration is an
  * off-chain discovery convention, not a resolution precondition.
  *
@@ -83,7 +83,7 @@ export function extractMembersRegistry(
             ...base,
             registered: false,
             notice:
-                "Seller is NOT registered in MembersRegistry. The kernel does not require registration, " +
+                "Seller is NOT registered in MembersRegistry. The Core does not require registration, " +
                 "but every legitimate seller is expected to register (runtime convention). Audit-significant: " +
                 "investigate the seller's claimed identity through other channels.",
         };

@@ -438,7 +438,7 @@ function ProcessLogsPage({ doc }: { doc: AuditBundle["processLogs"] }) {
             </View>
             <Text style={styles.note}>
                 Sovereign event logs from off-chain sellers. The buyer&apos;s
-                actions are the kernel events (commit / resolveProcess);
+                actions are FigaroCore events (commit / resolveProcess);
                 off-chain sellers record theirs via whatever process clause
                 their order carries, making physical-world state changes
                 tamper-proof. One section per clause, titled from its
@@ -506,7 +506,7 @@ function MembersRegistryPage({ doc }: { doc: AuditBundle["membersRegistry"] }) {
                 <Text style={[styles.sectionBody, styles.badgeBad]}>{doc.notice}</Text>
             )}
             <Text style={styles.note}>
-                The Figaro kernel does not enforce registration —
+                The Core does not enforce registration —
                 MembersRegistry is advisory off-chain metadata. Every
                 legitimate seller is expected to register (runtime convention);
                 an unregistered seller is itself an audit-significant flag.

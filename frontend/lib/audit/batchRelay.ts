@@ -14,7 +14,7 @@
  * and every reader built on `OrderCommitted` logs — `useProcessOrders`,
  * `useWalletOrders` — finds NOTHING for batched trade.
  *
- * A relay (`prover/sequencer`) mirrors the kernel's publication role for that
+ * A relay (`prover/sequencer`) mirrors FigaroCore's publication role for that
  * universe. This module reads it.
  *
  * ── THE POSTURE: the relay is TRANSPORT, not authority ──────────────────────
@@ -31,7 +31,7 @@
  *                     its own choosing.
  *   order-hash        the commitment must re-derive its own `order_hash`.
  *   process-id        and, for a root order (signed `processId == 0`), its own
- *                     `process_id` — the kernel's derivation, recomputed here.
+ *                     `process_id` — FigaroCore's derivation, recomputed here.
  *   buyer-signature   both signatures must recover to the buyer and seller
  *   seller-signature  named INSIDE that struct — over the VERIFIER's EIP-712
  *                     domain, not FigaroCore's.
@@ -39,7 +39,7 @@
  *                     struct (`2 × expectedCumulativeValue + payment`, and
  *                     `payment`) — they are a pure function of what was signed.
  *   resolve-signature the buyer signature that authorized resolution must
- *                     recover to the buyer — the batched form of the kernel's
+ *                     recover to the buyer — the batched form of FigaroCore's
  *                     `msg.sender == rootBuyer`.
  *   state-root-anchor the batch's `new_state_root` must appear in a
  *                     `BatchSettled` this verifier emitted on chain.
@@ -227,7 +227,7 @@ function checkPayouts(
             payouts: null,
         };
     }
-    // The kernel's own arithmetic, via the SDK: sellerPayout = payment +
+    // FigaroCore's own arithmetic, via the SDK: sellerPayout = payment +
     // sellerBond (2 × expectedCumulativeValue); buyerPayout = buyerBond
     // (2 × payment) − payment == payment.
     const bonds = calculateBonds(commitment.expectedCumulativeValue, commitment.payment);
