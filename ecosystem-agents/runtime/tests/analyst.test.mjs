@@ -184,7 +184,7 @@ test("the graph inventory is a CENSUS of what the corpus holds, each with its bo
     assert.equal(inv.composition[0].venueLegsFolded, 0, "no venue events folded ⇒ no venue edges invented");
 });
 
-test("the resolution chain reports the kernel's own arithmetic, per order", () => {
+test("the resolution chain reports FigaroCore's own arithmetic, per order", () => {
     const story = dealStory(fixtureCorpus(), PROCESS);
     assert.equal(story.found, true);
     assert.equal(story.resolution.truthBoundary, "protocol-enforced");
