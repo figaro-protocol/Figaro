@@ -114,10 +114,10 @@ Companion: `certora/token-ops.inventory` — declarative inventory of every ERC2
 
 | Harness | Properties | Path |
 |---|---|---|
-| `EchidnaFuzzer` | 7 | `src/echidna/EchidnaFuzzer.sol` — kernel: solvency, active-count consistency, cumulative accounting, state monotonicity, token conservation, buyer dominance, atomic resolution |
+| `EchidnaFuzzer` | 7 | `src/echidna/EchidnaFuzzer.sol` — `FigaroCore`: solvency, active-count consistency, cumulative accounting, state monotonicity, token conservation, buyer dominance, atomic resolution |
 | `EchidnaFlorinToken` | 8 | `src/echidna/EchidnaFlorinToken.sol` — FlorinToken: MAX_SUPPLY never exceeded, deployer can renounce, no deployer mint after renounce, minter cap enforced, no zero-address minter, no mint to zero address, total supply = sum of balances, transfer preserves supply |
 
-`src/echidna/EchidnaToken.sol` is not a harness — it is the minimal ERC-20 the kernel
+`src/echidna/EchidnaToken.sol` is not a harness — it is the minimal ERC-20 the `FigaroCore`
 harness fuzzes against (`EchidnaFuzzer.sol` imports it); it declares no `echidna_` properties.
 
 ## TLA+ (`formal/`) — 48 invariants across 4 models (FigaroCore 9 + FlorinToken 8 + WitnessSwapAndCommitCoordinator 10 + ResolutionUniverses 21)
@@ -146,12 +146,12 @@ depth 17, ~3–4 min. Mutation-checked: 6 mutations, each caught.
 
 ResolutionUniverses (`ResolutionUniverses.tla` + `.cfg`): the
 CROSS-CONTRACT model — FigaroCore + FigaroBatchVerifier + UsageCounter + the
-off-chain guest kernel under arbitrary interleavings; the only harness that can
+off-chain guest mirror under arbitrary interleavings; the only harness that can
 see where the two paths meet (every other layer is per-contract).
 21 invariants: no double payout across the universes, token conservation +
 exact per-pool deposits, usage-score composition (`scoreOf == direct + batch`,
-the bridge write REPLACES never adds), kernel blindness (`settleBatch` writes
-no kernel `orderStatus`) — 7,455,943 states / 2,632,247 distinct, depth 15,
+the bridge write REPLACES never adds), `FigaroCore` blindness (`settleBatch` writes
+no `FigaroCore` `orderStatus`) — 7,455,943 states / 2,632,247 distinct, depth 15,
 ~3 min. Mutation-checked: 5 mutations + 7 non-vacuity witnesses, each caught.
 Two NAMED assumptions ride as `.cfg` constants: `AssumeDomainSeparation`
 (contract-enforced — EIP-712 `verifyingContract` disjointness carries
@@ -164,7 +164,7 @@ regression.
 
 `FigaroEquilibrium.lean` closes the one step no model checker can express —
 a rational agent CHOOSING. Over the exact payoff table the TLA⁺ invariants
-pin to the shipped kernel (`DeterrentEscrowMagnitudes` / `SettledNetPositions`),
+pin to the shipped `FigaroCore` (`DeterrentEscrowMagnitudes` / `SettledNetPositions`),
 it proves: `buyer_resolves` (post-performance, resolving strictly beats
 withholding, unconditionally), `seller_performs` (performance is the strict
 best response given resolution, at every feasible retention `r ≤ Gᵢ`),
@@ -208,7 +208,7 @@ bytes must equal the host's `PublicValues.abi_encode` byte-for-byte — the exac
 words the on-chain verifier hashes against the proof's digest — and decode back
 field-for-field against host `apply_batch`; in-VM Gate-S
 rejection; `SP1_REAL_PROOF=1` generates + verifies a real local Core proof),
-and `figaro-sequencer` (mempool runs the kernel's own witness gates at the
+and `figaro-sequencer` (mempool runs the mirror's own witness gates at the
 door; assembler fixpoint filtering incl. the resolve-closes-the-evidence-window
 property and the three crafted streams — a bond committed twice, in one batch
 and across two; a resolve that omits an order; a resolve replayed in its own
@@ -219,10 +219,10 @@ allowance cover the bond, a commit the chain cannot be asked about is dropped
 conservatively, no verifier means no reads; the re-queue cap dead-letters an
 op after the third transient failure and a fresh admission starts it over;
 HTTP API incl. the per-address submit rate limit (`429`, another address
-still served) and arrival-order draining across clients; mempool→assemble→kernel→advance pipeline; and the
+still served) and arrival-order draining across clients; mempool→assemble→mirror→advance pipeline; and the
 publication archive — retention survives the drain that clears the mempool,
 the window is bounded and evicts cleanly, the journal survives a restart and
-rotates instead of growing, and every read route republishes what the kernel
+rotates instead of growing, and every read route republishes what `FigaroCore`
 would have emitted, asserted VERIFIABLE: the published struct re-derives its
 own order hash and both signatures recover to the parties named inside it).
 
@@ -265,11 +265,11 @@ only before a move).
 separator, struct hash, root digest/processId, order hash) into
 `test/fixtures/eip712-vectors.json` and self-checks the SDK still reproduces
 them (`HARVEST_EIP712_VECTORS=1` regenerates them). `test/core/kernel/Eip712ParityTest.t.sol`
-reads that same fixture and asserts the Solidity kernel reproduces every hash —
+reads that same fixture and asserts the Solidity `FigaroCore` reproduces every hash —
 `CommitmentTypes.hashStruct` directly, the order-hash derivation verbatim, and
 the domain separator both ways (SDK vector == formula, and a live
 `FigaroCore.DOMAIN_SEPARATOR()` == formula). Runs in BOTH the SDK and Foundry
-CI jobs with no chain and no skipIf: a hard gate on SDK↔kernel signature
+CI jobs with no chain and no skipIf: a hard gate on SDK↔`FigaroCore` signature
 agreement.
 
 **Merkle parity — the three-way agreement-tree lock.**
@@ -281,18 +281,18 @@ proofs (a three-section agreement and a one-section one) into
 the OpenZeppelin library they call; `prover/lib/tests/merkle_parity.rs` does
 the same through the guest's verifier. Three implementations, one fixture.
 
-**Kernel transition vectors — the mirror replays the kernel.**
-`test/core/kernel/KernelTransitionVectorsTest.t.sol` runs six scenarios on the
-frozen kernel (a root left open; root and sub resolved; three links; one
+**`FigaroCore` transition vectors — the mirror replays `FigaroCore`.**
+`test/core/kernel/KernelTransitionVectorsTest.t.sol` runs six scenarios on
+`FigaroCore` (a root left open; root and sub resolved; three links; one
 seller on two orders; a self-deal; two processes in one batch) and writes what
-happened — every commitment with the ids the kernel returned, every party's
-deposit and payout, the kernel's balance delta, every process's accumulator
+happened — every commitment with the ids `FigaroCore` returned, every party's
+deposit and payout, `FigaroCore`'s balance delta, every process's accumulator
 and active count — to `test/fixtures/kernel-transition-vectors.json`
 (`HARVEST_KERNEL_VECTORS=true` regenerates; otherwise the run must reproduce
 the frozen bytes). `prover/lib/tests/transition_vectors.rs` signs the same
 commitments with the same keys, applies them through `apply_batch`, and asserts
-every figure — the mirror's bond and payout arithmetic is locked to the
-kernel's, not to a comment.
+every figure — the mirror's bond and payout arithmetic is locked to
+`FigaroCore`'s, not to a comment.
 
 **Clause-engine vectors — the engine's boundaries, one by one.**
 `sdk/tests/clauses/engineVectors.test.ts` names each boundary of the clause
@@ -309,7 +309,7 @@ hashed by viem from the type strings — and
 `prover/lib/tests/eip712_vectors.rs` asserts the guest's hashes and digests
 against them and against the commitment vectors.
 
-**The differential fuzz — the mirror answers a generated stream as the kernel
+**The differential fuzz — the mirror answers a generated stream as `FigaroCore`
 did, and both Merkle verifiers open generated agreements.**
 `scripts/test-cross-impl-fuzz.sh` runs two streams under one seed. The
 agreement stream: `sdk/tests/merkleParity.test.ts` under `AGREEMENT_FUZZ_SEED`
@@ -329,7 +329,7 @@ both — and writes Layer A's three answers to `test/fixtures/streams/clauses.js
 whether the spec parses, whether the content validates, and the canonical ABI
 bytes; `prover/clause/tests/fuzz_vectors.rs` asks the guest's engine the same
 three questions. Without the variable the SDK file asserts the generator is
-deterministic. The kernel stream has two halves.
+deterministic. The `FigaroCore` stream has two halves.
 `test/core/kernel/KernelDifferentialFuzzTest.t.sol` draws a stream of commits
 and resolutions from the seed, over five wallets and two tokens: valid ones,
 and malformed ones (an expired deadline, a zero payment, a wrong signer, a
@@ -338,10 +338,10 @@ buyer, the other token, a replay, a payment in the overflow window, a high-s
 signature, a recovery id written 0/1, a zeroed signature; a resolution by a
 wallet that is not the buyer, one order short, holding a foreign order, of a
 resolved process, of an unknown process). Each runs on `FigaroCore`; the ids
-the kernel returned, or the error it reverted with, go to
+it returned, or the error it reverted with, go to
 `test/fixtures/streams/kernel.jsonl`, one JSON object per line, followed by every
 wallet's deposits and payouts and every process's final state. The generator
-asserts nothing about which error a malformed operation earns: the kernel's
+asserts nothing about which error a malformed operation earns: `FigaroCore`'s
 answer is the oracle. `prover/lib/tests/fuzz_stream.rs` replays the stream
 through `apply_batch_with_state`, one operation per batch over the state the
 previous batch left, with the stream's own signature bytes, and asserts the
@@ -446,7 +446,7 @@ list, is the census):
   on the same chain (same keys — `live-order-shared.ts`; the seller's profile is edited
   through `/members/edit/identity` to accept the funding token when it does not yet);
   chain facts: the commit went THROUGH the coordinator, funding token spent ≤ the signed
-  cap, both bonds in the kernel, the coordinator empty. The fourth,
+  cap, both bonds in `FigaroCore`, the coordinator empty. The fourth,
   `payout-routing.sepolia.spec.ts` — a resolved seller splits WHAT IT WAS PAID
   to its OWN earmarked accounts (a tax earmark and a savings earmark — sub-accounts
   derived from the seller's key; the amounts a share of the payment, never the returned
@@ -639,7 +639,7 @@ Per workflow, what it runs and when:
   watcher (`scripts/monitor-sepolia.mjs`, SECURITY.md § "Monitoring") reads
   the contracts' events through a public node — a minter registered after
   genesis, a florin minted outside the reward path, a dropped batch accrual,
-  a withdrawal burst, and the kernel's held bonds against invariant A-8 —
+  a withdrawal burst, and `FigaroCore`'s held bonds against invariant A-8 —
   and raises each condition as an issue labelled `monitor`, assigned to the
   maintainer; a run that cannot read the node fails, which is the heartbeat.
   `SEPOLIA_RPC_URL` as a repository secret switches it to a keyed node; the
