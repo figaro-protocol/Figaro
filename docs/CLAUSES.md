@@ -21,7 +21,7 @@ adding one. The list of clauses is the directory `clauses/`; each spec's
 Every term of an agreement is a clause section, and every clause section is a
 merkle leaf under `agreementHash`. A datum that is not a leaf is not a term of
 the agreement. The commitment struct's fields (`currency`, `payment`,
-`expectedCumulativeValue`, `deadline`) are execution data — what the kernel
+`expectedCumulativeValue`, `deadline`) are execution data — what `FigaroCore`
 holds and resolves — and never substitute for a term: the agreement's merkle
 root is the data of the process's terms, and a term living only in the struct
 leaves that data incomplete. Execution and terms are different layers; a copy
@@ -205,7 +205,7 @@ Two structural notes that no single spec can carry:
   inclusion-provable against `agreementHash`; an assembly may also attest it at
   runtime as evidence that one seller performed after another. Indexers and
   interfaces read a process's topology from the signed agreement, never from
-  the kernel, which stores no parent or child.
+  `FigaroCore`, which stores no parent or child.
 - `figaro-assembly-provenance` is the leaf whose committed content is the
   assembly's `compositionHash`. The assembly build folds it into every
   published assembly; checkout fills it from the loaded assembly's own
@@ -307,9 +307,9 @@ input anchored by the registration's `contentHash`.
 **When a seller needs a process clause.** A seller needs its own process
 clause if and only if its state transitions happen off-chain — in physical
 reality — and need a sovereign event log as evidence (`figaro-merchant-process`,
-`figaro-courier-process`). Kernel participants do not: the buyer acts through
-`commit` and `resolveProcess`, and the kernel's events are its evidence. There
-is no buyer-process clause, because it would duplicate kernel events.
+`figaro-courier-process`). The Core's own participants do not: the buyer acts through
+`commit` and `resolveProcess`, and `FigaroCore`'s events are its evidence. There
+is no buyer-process clause, because it would duplicate `FigaroCore`'s events.
 
 If the spec and the registration drift — a spec the registered `contentHash`
 does not match, or a registered `clauseId` with no pinned spec — the clause does
