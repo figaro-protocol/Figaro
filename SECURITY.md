@@ -34,12 +34,20 @@ In scope:
   the usage counter + RPGF minter, and the batch verifier. (Per-clause
   validator contracts do not exist, permanently — clause content validation
   is off-chain, plus the batch path's generic proof engine.)
+- `prover/program/`, `prover/lib/`, `prover/clause/` — the guest: the Rust
+  the batch path's proof is a proof OF. A batch the guest resolves
+  differently from the kernel is the same class of defect as a kernel defect.
+- `prover/sequencer/` — the relay. Its failure class is liveness and a
+  publication that misleads its reader; it cannot forge a resolution.
 - `formal/` (the TLA+ models) and `certora/` (the CVL specs) — if a spec
   asserts an invariant the kernel does not actually hold.
 
 Out of scope:
 
 - `src/mocks/`, `src/echidna/` — test infrastructure, never deployed.
+- `prover/script/` — the proving harness, never deployed.
+- SP1 itself — the zkVM, its crates, its verifier gateway. Report a defect in
+  SP1 to Succinct; report the project's USE of SP1 here.
 - `frontend/` and `sdk/` for issues that do not reach on-chain state — report
   those as ordinary issues.
 
@@ -54,12 +62,15 @@ design disagreement, not a vulnerability; the doc explains the reasoning.
 
 ## Audit status
 
-Audit in progress: the frozen Solidity surface is being placed with an
-independent security firm (`docs/AUDITOR_HANDOVER.md` is the handover);
-findings and remediations are published when they exist. The surface is
-verified internally across Foundry, Halmos, Certora, TLA+, Echidna and Lean 4
-(`docs/VERIFICATION_MAP.md`). Each contract's `@custom:audit-status` NatSpec is
-part of the frozen source and moves only with a post-audit amendment.
+Audit in progress: the commit under audit is the tag `audit-2026-10` — the
+Solidity in `src/` and the Rust in `prover/` together — and it is being placed
+with an independent security firm (`docs/AUDITOR_HANDOVER.md` is the
+handover); findings and remediations are published when they exist. The
+surface is verified internally across Foundry, Halmos, Certora, TLA+, Echidna
+and Lean 4, and the Rust against the Solidity by differential fuzz
+(`docs/VERIFICATION_MAP.md`, `docs/TESTING.md`). Each contract's
+`@custom:audit-status` NatSpec is part of the source under audit and moves
+only with a post-audit amendment.
 
 ## Bug bounty
 
