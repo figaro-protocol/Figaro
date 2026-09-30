@@ -10,7 +10,7 @@
  *      accepted token the buyer chose to pay in, so the displayed price
  *      reflects what they will actually commit.
  *   2. Commit: at signing time, the buyer's frontend re-quotes (under
- *      the buyer's chosen slippage tolerance) and the kernel commitment
+ *      the buyer's chosen slippage tolerance) and FigaroCore commitment
  *      records the chosen-token amount.
  *
  * Pluggable per the runtime-services pattern. The protocol does not pick

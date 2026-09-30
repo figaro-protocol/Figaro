@@ -2,8 +2,8 @@ import { BaseError, ContractFunctionRevertedError } from "viem";
 
 /**
  * Map a FigaroCore error name to a user-facing message. 1:1 with
- * `src/kernel/FigaroCore.sol:64-79` — keep aligned when the kernel error set
- * changes (the kernel is frozen, so changes are rare).
+ * `src/kernel/FigaroCore.sol:64-79` — keep aligned when FigaroCore error set
+ * changes (FigaroCore is deployed as it is, so changes are rare).
  */
 const FIGARO_ERROR_MESSAGES: Readonly<Record<string, string>> = {
     DeadlineExpired: "Commitment deadline has expired",

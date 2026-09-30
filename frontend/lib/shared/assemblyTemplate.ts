@@ -14,9 +14,9 @@
  * the clauses composed on it in the drawer — and the topology is ONE OF
  * THOSE CLAUSES: the mandatory topology clause holds the agreement's parent
  * ids. At checkout the parties fill and sign each agreement, and each signed
- * agreement commits as one kernel ORDER — the agreement's `id` names that
+ * agreement commits as one FigaroCore ORDER — the agreement's `id` names that
  * future order slot (`order-<index>`), which is why the topology field is
- * `parentOrderHashes`: at runtime it holds the parent orders' kernel order
+ * `parentOrderHashes`: at runtime it holds the parent orders' FigaroCore order
  * hashes. The template carries NO party addresses (PARTY-AGNOSTIC — parties
  * bind at adoption/checkout), NO agreement hashes, NO sentinels: the
  * fingerprint forms later, at checkout, when the real parties fill the
