@@ -4,7 +4,7 @@
  * orderPendingSellerSignature.ts — the SELLER's preview (the read side).
  *
  * The mirror of the buyer's orderPreview: it surfaces orders the buyer has
- * signed and relayed that now await the seller's counter-signature. The kernel
+ * signed and relayed that now await the seller's counter-signature. FigaroCore
  * knows nothing of "pending" — it is a purely off-chain coordination surface,
  * read from the coordination channel (the single source of truth) via
  * `subscribeAnyCommitmentPayload`, never reconstructed from local state.

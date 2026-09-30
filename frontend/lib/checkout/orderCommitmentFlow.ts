@@ -189,7 +189,7 @@ export function useOrderCommitmentFlow() {
                     // calculateBonds(cumulativeValue, payment) — the buyer
                     // bond is 2×payment; on a SUB-ORDER ecv ≠ payment, so the
                     // arg order is load-bearing (a swap here mis-quotes the
-                    // kernel's pull and swapAndCommit reverts at simulate).
+                    // FigaroCore's pull and swapAndCommit reverts at simulate).
                     bondAmount: calculateBonds(
                         preview.commitment.expectedCumulativeValue,
                         preview.commitment.payment,
@@ -256,7 +256,7 @@ export function useOrderCommitmentFlow() {
     // Broadcast routing: a payload carrying a witness-signed buyer funding
     // leg — or an accept carrying the seller's — goes through the
     // coordinator's `swapAndCommit` (which swaps, funds each party in-place,
-    // then calls the kernel); everything else goes straight to the kernel's
+    // then calls FigaroCore); everything else goes straight to FigaroCore's
     // `commit`. The routes are signature-bound, so either party (or anyone)
     // may safely broadcast the funded form.
     const broadcasterFor = useCallback((payload: CommitmentPayload, sellerFunding?: SwapFundingLeg) => {
@@ -289,7 +289,7 @@ export function useOrderCommitmentFlow() {
             // Verify the COUNTERPARTY's existing signature before we sign and
             // broadcast (acceptOrder): a relayed payload
             // carrying a forged/absent counterparty sig would revert on-chain
-            // after we spent gas — refuse early with a clean error. The kernel
+            // after we spent gas — refuse early with a clean error. FigaroCore
             // re-verifies; this only moves the failure off-chain.
             assertSigningDomain(CONTRACTS.core, chainId);
             const counterSig = role === "seller" ? incoming.buyerSig : incoming.sellerSig;
@@ -304,7 +304,7 @@ export function useOrderCommitmentFlow() {
             setStep("signing");
             // The seller's optional on-ramp is quoted before the sign so its
             // maxInput shows in the same confirm as the agreement.
-            // 2·expectedCumulativeValue is the kernel's seller pull.
+            // 2·expectedCumulativeValue is FigaroCore's seller pull.
             let sellerQuote: Awaited<ReturnType<typeof quoteFundingLeg>> | null = null;
             if (funding && role === "seller") {
                 if (!publicClient) throw new Error("No chain connection — cannot quote the funding swap.");
@@ -314,7 +314,7 @@ export function useOrderCommitmentFlow() {
                     inputToken: funding.inputToken,
                     currency: incoming.commitment.currency as Hex,
                     // calculateBonds(cumulativeValue, payment) — the seller
-                    // bond is 2×expectedCumulativeValue (the kernel's seller
+                    // bond is 2×expectedCumulativeValue (FigaroCore's seller
                     // pull); on a SUB-ORDER ecv ≠ payment, so arg order matters.
                     bondAmount: calculateBonds(
                         incoming.commitment.expectedCumulativeValue,

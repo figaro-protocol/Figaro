@@ -309,7 +309,7 @@ function checkoutNodes(
             // class leaves / dimweight) filled from the cart — wherever
             // composed, by declared field, never by clause name — then the
             // denomination terms. `currency` is the ONE process currency (the
-            // kernel enforces single-denomination, FigaroCore
+            // FigaroCore enforces single-denomination, FigaroCore
             // CurrencyMismatch), never a per-order input.
             const filled = fillProvenanceSection(
                 fillCommerceSection(

@@ -33,12 +33,12 @@ export interface OrderPreview {
 }
 
 /**
- * Commitment deadline from CHAIN time. `block.timestamp` is the clock the kernel
+ * Commitment deadline from CHAIN time. `block.timestamp` is the clock FigaroCore
  * checks (FigaroCore's DeadlineExpired guard); a wall-clock deadline silently
  * expires whenever the device clock and the chain disagree (a skewed device on
  * mainnet; a time-traveled devnet). NO wall-clock fallback:
  * if the chain can't be read, the order can't be built either —
- * fail loudly here rather than sign a deadline the kernel may judge by a
+ * fail loudly here rather than sign a deadline FigaroCore may judge by a
  * different clock.
  */
 export async function chainDeadline(ttlSeconds = 3600n): Promise<bigint> {

@@ -16,7 +16,7 @@
  *      + one deadline) produces that candidate's EXACT commitment struct at
  *      their own posted price. The raced node's order is the draft — relayed
  *      UNSIGNED. Nothing about a draft binds anyone, and it cannot be
- *      broadcast (the kernel needs both signatures).
+ *      broadcast (FigaroCore needs both signatures).
  *   3. Candidates countersign to answer "available at my posted price" —
  *      binding only if the buyer commits it, bounded by the struct deadline.
  *   4. Cheapest valid countersigner auto-wins at window close (the buyer may
