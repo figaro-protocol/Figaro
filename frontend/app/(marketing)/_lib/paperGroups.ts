@@ -85,7 +85,7 @@ export const PAPER_GROUPS: PaperGroup[] = [
                 industries: [],
             },
             {
-                title: "Markets Without a Venue: Dispatch Races and Requests for Quotes as Market-Design Mechanisms over a Market-Blind Kernel",
+                title: "Markets Without a Venue: Dispatch Races and Requests for Quotes as Market-Design Mechanisms over a Market-Blind Mechanism",
                 href: "/papers/markets-without-a-venue",
                 summary: "How a market forms with no venue holding state: the buyer circulates the unsigned commitment itself, as a dispatch race or a sealed-bid request for quotes, and mutual exclusion, discovery, stake, and the trail all follow from the order of signatures.",
                 keywords: ["market design", "auction theory", "matching theory", "procurement", "posted prices", "offer formation", "sealed-bid", "reserve price", "bonded commitment"],
@@ -154,10 +154,10 @@ export const PAPER_GROUPS: PaperGroup[] = [
         definition: "Two complementary lenses on the protocol's CS surface: what stands above the kernel as a research object — the composition doctrine, clause design as a discipline, the coordinator pattern — and the kernel read adversarially, asking where an invariant would break and what proves that it does not. The papers here ask what engineers, cryptographers and verification people ask; the implementation work itself — clause authoring, contract development, assembly composition, frontend — organizes on Clauses and Assemblies.",
         papers: [
             {
-                title: "A Verified Resolution Kernel: Formal Verification, Threat Model, and the Scope of the Claim",
+                title: "A Verified Resolution Contract: Formal Verification, Threat Model, and the Scope of the Claim",
                 href: "/papers/verified-resolution-kernel",
-                summary: "What it means to verify a kernel of two calls, decentralized and permissionless, with no timeout: exhaustive model checking, property-based fuzzing, symbolic execution, specification checking, and a proof of the equilibrium algebra apart from the code — what each one reaches, and the scope of the claim they support between them.",
-                keywords: ["smart contracts", "formal verification", "model checking", "symbolic execution", "property-based fuzzing", "EIP-712", "kernel", "verification scope"],
+                summary: "What it means to verify a contract of two calls, decentralized and permissionless, with no timeout: exhaustive model checking, property-based fuzzing, symbolic execution, specification checking, and a proof of the equilibrium algebra apart from the code — what each one reaches, and the scope of the claim they support between them.",
+                keywords: ["smart contracts", "formal verification", "model checking", "symbolic execution", "property-based fuzzing", "EIP-712", "verification scope"],
                 industries: ["Security and audit"],
             },
         ],
