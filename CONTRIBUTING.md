@@ -86,13 +86,13 @@ When adding new tooling, pick the folder that matches the file type. Update `REA
 Four prompt definitions that act for a **user's** wallet on the permissionless network, never on this repository — one per capacity:
 
 - **`figaro-operator`** — operate a wallet: sign every transaction on the owner's behalf (accept, resolve, originate, attest) via `@figaro-protocol/sdk/agent`, under the owner's policy (HITL default; refuse-all floor).
-- **`figaro-clause-author`** — author or version a clause → `ClauseRegistry`.
+- **`figaro-clause-author`** — design or version a clause → `ClauseRegistry`.
 - **`figaro-assembly-designer`** — compose or fork an assembly → `AssemblyRegistry`.
 - **`figaro-analyst`** — read and analyze a market's public graphs via `@figaro-protocol/sdk/derive`; it holds no key and signs nothing.
 
 See `ecosystem-agents/README.md`.
 
-Contributing a clause or an assembly to the *network* is a permissionless, on-chain act, not a change to this repository: `figaro-clause-author` and `figaro-assembly-designer` help a user author or fork one and register it under their own wallet.
+Contributing a clause or an assembly to the *network* is a permissionless, on-chain act, not a change to this repository: `figaro-clause-author` and `figaro-assembly-designer` help a user design or fork one and register it under their own wallet.
 
 A new ecosystem agent goes in `ecosystem-agents/<name>.md`: a prompt with frontmatter (`name`, `description`, `tools`, `model`). Agent prompts cite canonical sources (the papers, `docs/`) and do not paraphrase them; drift between an agent's rules and the publications is a bug.
 
