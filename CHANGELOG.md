@@ -64,8 +64,7 @@ Summary of the current state of the protocol and its verification surface:
 
 - `src/core/kernel/FigaroCore.sol` and `src/core/kernel/CommitmentTypes.sol`
   are frozen for external audit, alongside the full protocol/registry/coordinator/
-  RPGF/florin surface — see `docs/AUDITOR_HANDOVER.md` § "Freeze Notice —
-  Solidity Surface Frozen for External Audit" for the exact frozen scope.
+  RPGF/florin surface — see `docs/AUDITOR_HANDOVER.md` § "Scope" for the exact frozen scope.
 - The batch settlement path (`FigaroBatchVerifier` + the Rust `prover/` SP1
   witness prover/sequencer) is live and included in the frozen scope.
 - The 600M RPGF distribution (`UsageCounter` + `RpgfMinter`) pays every clause
@@ -83,7 +82,7 @@ Summary of the current state of the protocol and its verification surface:
   TokenOpsVerification, FlorinToken, BatchVerifierTokenOps, RpgfMinter).
 - **Echidna**: 2 harnesses / 15 properties (FigaroCore + FlorinToken).
 - **TLA+**: 4 models / 48 invariants (FigaroCore 9, FlorinToken 8,
-  WitnessSwapAndCommitCoordinator 10, SettlementUniverses 21).
+  WitnessSwapAndCommitCoordinator 10, ResolutionUniverses 21).
 - **SDK (Vitest)** and **Frontend (Vitest + Playwright)**: component, unit,
   and end-to-end coverage — see `docs/TESTING.md` for the full harness
   inventory.
