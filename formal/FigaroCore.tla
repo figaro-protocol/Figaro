@@ -1,7 +1,7 @@
 ---- MODULE FigaroCore ----
 
 (*
- * Formal model of FigaroCore V5 — the self-enforcing agreement kernel.
+ * Formal model of FigaroCore V5 — the self-enforcing agreement contract.
  *
  * Two actions model the two external contract functions:
  *   CommitRoot / CommitSub  →  FigaroCore.commit()
@@ -369,7 +369,7 @@ ResolutionAlwaysPossible ==
 \* numbers: while a process is unresolved each side stands to lose its
 \* whole bond (buyer 2×payment, seller 2×cumulativeValue), and resolving
 \* moves exactly `payment` from buyer to seller with both bonds refunded
-\* whole. Conservation and solvency pin NEITHER — a kernel that paid the
+\* whole. Conservation and solvency pin NEITHER — a contract that paid the
 \* seller 3× would satisfy every other invariant in this file while
 \* invalidating every step of the proof. These two tie the table the
 \* proof reasons over to the machine that ships.

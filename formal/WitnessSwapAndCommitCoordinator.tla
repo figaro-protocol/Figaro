@@ -8,7 +8,7 @@
  * Permit2 WITNESS signature, swaps it at an immutable router, forwards the whole
  * output to that party's own EOA, then calls `FigaroCore.commit`, which pulls the
  * bonds from the named parties. The swap is the ON-RAMP into the process
- * denomination, never the denomination itself — the kernel still sees exactly one
+ * denomination, never the denomination itself — FigaroCore still sees exactly one
  * currency (`c.currency`).
  *
  * WHAT IS MODELED — the funds state machine, at EVM-step granularity so that the
@@ -27,14 +27,14 @@
  *                        the OutputBelowBond floor                   (:229-230)
  *                        the FULL output forwarded to the party      (:231)
  *                        the unconsumed input refunded to the party  (:234-235)
- *   Commit            →  figaroCore.commit(): the kernel pulls 2*payment from the
+ *   Commit            →  figaroCore.commit(): FigaroCore pulls 2*payment from the
  *                        buyer and 2*expectedCumulativeValue from the seller
  *                        (FigaroCore.sol:208-209), after the root-order guard
  *                        `expectedCumulativeValue == payment`        (:178-180)
  *   Revert            →  EVM revert from ANY mid-call step: the whole call frame
  *                        rolls back to the snapshot. Enabled everywhere in-flight,
  *                        which subsumes every named revert (SwapCallFailed,
- *                        OutputBelowBond, the kernel's own reverts, out-of-gas).
+ *                        OutputBelowBond, FigaroCore's own reverts, out-of-gas).
  *
  * WHAT IS ABSTRACTED:
  *   ECDSA / EIP-712 / Permit2 digests  — the standard abstraction: a signature
@@ -44,13 +44,13 @@
  *       exact bug the witness variant was written to close (:62-82).
  *   Permit2 nonce / deadline replay    — Permit2's own concern, not the funds machine.
  *   ERC-20 mechanics                   — integer balances, exact transfers.
- *   Fee-on-transfer tokens             — the kernel's `_pullExact` guard is its own
- *                                        (FigaroCore.tla covers the kernel side).
+ *   Fee-on-transfer tokens             — FigaroCore's `_pullExact` guard is its own
+ *                                        (FigaroCore.tla covers the FigaroCore side).
  *   Reentrancy                         — `nonReentrant` on both the coordinator and
- *                                        the kernel; the model has one call in flight.
+ *                                        FigaroCore; the model has one call in flight.
  *   Multi-currency processes           — forbidden by doctrine; one bond currency.
  *   Sub-orders / process chains        — root orders only (`expectedCumulativeValue`
- *                                        is a free parameter and the kernel's root
+ *                                        is a free parameter and FigaroCore's root
  *                                        guard rejects the mismatch, which is what
  *                                        exercises atomicity). Process-chain
  *                                        arithmetic belongs to FigaroCore.tla.
@@ -227,7 +227,7 @@ LegSwapSettle(party, maxIn, bondAmount, nxt, consumed, received) ==
 
 
 \* ── Action: Commit ───────────────────────────────────────────
-\* figaroCore.commit(c, buyerSig, sellerSig). The kernel pulls the bonds from the
+\* figaroCore.commit(c, buyerSig, sellerSig). FigaroCore pulls the bonds from the
 \* NAMED parties, not from msg.sender — which is why the coordinator funds the
 \* party in place and never becomes a counterparty.
 \*   _pullExact(currency, c.buyer,  c.payment * 2)                 FigaroCore.sol:208
@@ -317,7 +317,7 @@ Inv_TypeOK ==
 
 
 \* ── Conservation ─────────────────────────────────────────────
-\* Every step is a pure transfer: payer + venue + coordinator + kernel escrow sum
+\* Every step is a pure transfer: payer + venue + coordinator + FigaroCore escrow sum
 \* to the starting supply, per token. Nothing is minted, burned or stranded.
 Inv_Conservation ==
   \A t \in Tokens : SetSum(Holders, bal[t]) = TotalSupply(t)
@@ -357,7 +357,7 @@ Inv_Atomicity ==
 
 
 \* ── Bonding arithmetic ───────────────────────────────────────
-\* Each landed order carries exactly the kernel's pulls: 2x payment from the
+\* Each landed order carries exactly FigaroCore's pulls: 2x payment from the
 \* buyer, 2x expectedCumulativeValue from the seller (FigaroCore.sol:208-209),
 \* which is what the coordinator funds each leg to (:190, :193). The swap is the
 \* on-ramp; the bond ratio is untouched by it.
@@ -367,7 +367,7 @@ Inv_BondFormula ==
     /\ orders[i].sellerBond = 2 * orders[i].cumVal
 
 
-\* ── Kernel escrow is exact ───────────────────────────────────
+\* ── FigaroCore escrow is exact ───────────────────────────────────
 \* FigaroCore holds precisely the doubled bonds of the orders that landed —
 \* no more (the coordinator never over-pushes) and no less (it never under-funds:
 \* the bond is derived from `c`, never supplied by the caller, :137).
@@ -386,7 +386,7 @@ Inv_WitnessRouteBinding == ~routeMismatch
 
 
 \* ── Coordinator is never a counterparty ──────────────────────
-\* The commitment is passed through unchanged: the kernel's buyer and seller stay
+\* The commitment is passed through unchanged: FigaroCore's buyer and seller stay
 \* the EIP-712 signers. The coordinator funds them in place (:57-61).
 Inv_CoordinatorNotCounterparty ==
   \A i \in 1 .. Len(orders) :

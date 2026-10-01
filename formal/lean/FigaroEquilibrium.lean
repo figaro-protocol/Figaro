@@ -1,5 +1,5 @@
 /-
-FigaroEquilibrium — the best-response inequalities of the kernel's
+FigaroEquilibrium — the best-response inequalities of the mechanism's
 equilibrium argument, machine-checked: the two-party comparisons and their
 pointwise instantiation along a chain. Subgame perfection, the second
 equilibrium (a buyer that resolves regardless), and which equilibrium the
@@ -112,7 +112,7 @@ end Order
 
 /-! ## Layer 2 — the N-party chain
 
-A process is a LINEAR chain of orders under one buyer (the kernel sees
+A process is a LINEAR chain of orders under one buyer (FigaroCore sees
 nothing else); the cumulative value at position `i` is the inclusive prefix
 sum of payments. Cooperation — every seller performs, the buyer resolves —
 is a Nash equilibrium: no unilateral deviation profits, at any position.

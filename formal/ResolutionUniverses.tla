@@ -16,8 +16,8 @@
  *       settleBatch()     → verifies an SP1 proof, reconciles NET token
  *                           positions per (token, user), re-emits attestations,
  *                           advances stateRoot, and bridges the RPGF accrual.
- *                           It writes NO kernel state — a batch-resolved order
- *                           never acquires kernel orderStatus, ever.
+ *                           It writes NO FigaroCore state — a batch-resolved order
+ *                           never acquires FigaroCore orderStatus, ever.
  *
  *   UsageCounter          (src/build/rewards/UsageCounter.sol)
  *       recordClauseUsage()  → direct path; requires core.orderStatus == 2
@@ -25,7 +25,7 @@
  *                              overwrite (REPLACE, never add)
  *       scoreOf()            → accrualOf.score + batchAccrualOf.score
  *
- *   the guest kernel       (prover/lib/src/kernel.rs) — a byte-faithful mirror
+ *   the guest mirror       (prover/lib/src/kernel.rs) — a byte-faithful mirror
  *                          of FigaroCore's state machine that lives entirely
  *                          off-chain, under the verifier's state root.
  *
@@ -51,7 +51,7 @@
  *       and the guest builds its EIP-712 domain separator from exactly that
  *       address (prover/lib/src/eip712.rs domain_separator(chain_id,
  *       verifying_contract) — same name "FigaroCore", same version "3", but a
- *       DIFFERENT verifyingContract from the kernel's own EIP712 domain,
+ *       DIFFERENT verifyingContract from FigaroCore's own EIP712 domain,
  *       FigaroCore.sol:107). A root order's processId IS the typed-data
  *       digest (FigaroCore.sol:170, kernel.rs derive_commitment_ids), so the
  *       two universes' processId spaces are disjoint by construction, and a
@@ -102,7 +102,7 @@
  *                             before the matching pull; that is a LIVENESS
  *                             hazard (audit L-6, batch reverts, nothing is
  *                             lost) and is abstracted to the net effect
- *   multi-currency          — single currency (the kernel forbids mixing)
+ *   multi-currency          — single currency (FigaroCore forbids mixing)
  *   deadlines, gas, reentrancy — orthogonal
  *)
 
@@ -176,8 +176,8 @@ VARIABLES
   kRec,         \* [Orders -> OrderRecord]  (calldata, kept for replay)
   coreBal,      \* tokens held by FigaroCore
 
-  \* ── universe 2: the guest kernel under FigaroBatchVerifier's state root ──
-  gStatus,      \* the guest's own order_status map — NOT kernel state
+  \* ── universe 2: the guest mirror under FigaroBatchVerifier's state root ──
+  gStatus,      \* the guest's own order_status map — NOT FigaroCore state
   gProc,
   gRec,
   verifBal,     \* tokens held by FigaroBatchVerifier
@@ -205,7 +205,7 @@ VARIABLES
   gSeen,        \* [Artifacts -> [Periods -> SUBSET Sellers]] — usage_seller_seen
 
   \* ── ghosts (never read by any action; invariant witnesses only) ──
-  kResolvedGhost,  \* orders the KERNEL resolved, recorded at ResolveProcess
+  kResolvedGhost,  \* orders FigaroCore resolved, recorded at ResolveProcess
   dropped          \* a BatchAccrualSkipped was emitted
 
 vars ==
@@ -341,7 +341,7 @@ KCommitSub(pid, s, pay) ==
                      gUsage, gCounted, gSeen, kResolvedGhost, dropped >>
 
 \* FigaroCore.resolveProcess() — buyer dominance, ATOMIC over every active
-\* order of the process. Flips kernel orderStatus 1 → 2. Touches NOTHING in
+\* order of the process. Flips FigaroCore orderStatus 1 → 2. Touches NOTHING in
 \* the batch universe; kResolvedGhost witnesses that.
 KResolve(pid) ==
   LET ro == KOpenOrds(pid)
@@ -363,7 +363,7 @@ KResolve(pid) ==
 
 
 \* ══════════════════════════════════════════════════════════════
-\* UNIVERSE 2 — the guest kernel + FigaroBatchVerifier
+\* UNIVERSE 2 — the guest mirror + FigaroBatchVerifier
 \* ══════════════════════════════════════════════════════════════
 \* Guest ops move NO tokens. They accumulate into the net-position tracker
 \* (prover/lib/src/kernel.rs TokenTracker); settleBatch reconciles the net.
@@ -672,10 +672,10 @@ ExcludedNeverScores ==
     accrual[a][q].c = 0 /\ batchAcc[a][q].c = 0 /\ ScoreOf(a, q) = 0
 
 
-\* ── 4. Kernel blindness is faithful ──────────────────────────
-\* Batch resolution changes NO kernel orderStatus. kResolvedGhost is written
-\* only by KResolve, so equality with the kernel's own RESOLVED set is exactly
-\* the claim "nothing but resolveProcess ever flipped a kernel status".
+\* ── 4. FigaroCore blindness is faithful ──────────────────────────
+\* Batch resolution changes NO FigaroCore orderStatus. kResolvedGhost is written
+\* only by KResolve, so equality with FigaroCore's own RESOLVED set is exactly
+\* the claim "nothing but resolveProcess ever flipped a FigaroCore status".
 KernelBlindToBatch ==
   kResolvedGhost = { o \in Orders: kStatus[o] = "Resolved" }
 
