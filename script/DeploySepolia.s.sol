@@ -98,7 +98,7 @@ contract DeploySepolia is Script {
         );
     }
 
-    // ── Protocol kernel + compositions ────────────────────────────────
+    // ── The Core + compositions ────────────────────────────────
 
     function _deployProtocol(uint256 privateKey) internal {
         FigaroCore core = new FigaroCore();
@@ -110,7 +110,7 @@ contract DeploySepolia is Script {
         console.log("AttestationCoordinator: ", _attestation);
 
         // ── WitnessSwapAndCommitCoordinator (the swap-funded on-ramp) ──────
-        // Composition, not kernel: points at the kernel, canonical Permit2 and
+        // Composition, not Core: points at FigaroCore, canonical Permit2 and
         // the chain's Uniswap SwapRouter02 (env — from Uniswap's deployment docs).
         // The router is probed for BEHAVIOUR (factory() + WETH9() answer with
         // contracts): an address is never trusted for existing alone (the SP1
