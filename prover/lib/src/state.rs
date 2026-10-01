@@ -3,7 +3,7 @@ use alloy_primitives::{Address, B256, U256, keccak256};
 use std::collections::{BTreeMap, BTreeSet};
 
 /// Working mirror state with indexed mappings — the FigaroCore mappings
-/// only. Registry state (clauses, sellers, assemblies) is NOT mirrored:
+/// only. Registry state (clauses, members, assemblies) is NOT mirrored:
 /// registry mutations stay on the direct path, and the clause gates bind
 /// witness specs to the live `ClauseRegistry` via the verifier-checked
 /// spec bindings instead of proven registry state.
