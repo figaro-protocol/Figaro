@@ -1,8 +1,9 @@
 # Security Policy
 
-Figaro is a kernel: `FigaroCore.sol` holds every bond and
-discharges resolution. A flaw in the on-chain surface can mean direct loss of
-locked funds. Disclosure is taken seriously.
+Every trade on Figaro runs on four contracts, the Core. One of them,
+`FigaroCore.sol`, holds every bond and resolves a process when its buyer
+signs. A flaw in the on-chain surface can mean direct loss of locked bonds.
+Disclosure is taken seriously.
 
 ## Reporting a vulnerability
 
@@ -29,18 +30,20 @@ small project — but every report is read.
 
 In scope:
 
-- `src/**/*.sol` — the kernel (`FigaroCore.sol`, `CommitmentTypes.sol`), the
-  attestation / registry / mechanism contracts, the florin token contracts,
-  the usage counter + RPGF minter, and the batch verifier. (Per-clause
+- `src/**/*.sol` — the Core (`FigaroCore.sol`, `CommitmentTypes.sol`,
+  `AttestationCoordinator.sol`, `FigaroBatchVerifier.sol`), the three
+  registries, the swap-and-commit coordinator, the florin token, the usage
+  counter and the RPGF minter. (Per-clause
   validator contracts do not exist, permanently — clause content validation
   is off-chain, plus the batch path's generic proof engine.)
 - `prover/program/`, `prover/lib/`, `prover/clause/` — the guest: the Rust
   the batch path's proof is a proof OF. A batch the guest resolves
-  differently from the kernel is the same class of defect as a kernel defect.
+  differently from `FigaroCore` is the same class of defect as a defect in
+  `FigaroCore`.
 - `prover/sequencer/` — the relay. Its failure class is liveness and a
   publication that misleads its reader; it cannot forge a resolution.
 - `formal/` (the TLA+ models) and `certora/` (the CVL specs) — if a spec
-  asserts an invariant the kernel does not actually hold.
+  asserts an invariant the contracts do not actually hold.
 
 Out of scope:
 
@@ -107,7 +110,7 @@ them daily and reports only what departs from the expected.
 | Watch | Expected | Alert when |
 |---|---|---|
 | `FlorinToken`: `MinterRegistered`, and any `Transfer` from the zero address | none after genesis; mints only from `RpgfMinter.claim` | a minter is registered after the renounce, or a mint arrives from any other address |
-| `FigaroCore`: `OrderCommitted`, each order's `orderStatus`, and the contract's token balance | the balance equals the bonds of every order the kernel reports open (invariant A-8 in `docs/VERIFICATION_MAP.md`) | the balance is below those bonds by any amount; a surplus is noted, not alerted |
+| `FigaroCore`: `OrderCommitted`, each order's `orderStatus`, and the contract's token balance | the balance equals the bonds of every order it reports open (invariant A-8 in `docs/VERIFICATION_MAP.md`) | the balance is below those bonds by any amount; a surplus is noted, not alerted |
 | `FigaroBatchVerifier`: `BatchSettled`, `BatchAccrualSkipped` | one root chains to the next; accrual applies | `BatchAccrualSkipped` (read the reason), or no batch for longer than the sequencer's stated cadence while its queue holds work |
 | `UsageCounter`: `UsageRecorded`, `BatchUsageRecorded`; `RpgfMinter`: `Claimed` | accrual within an open period; claims after it closes | a claim in an open period, or a period's claims exceeding its tranche |
 | Registries: `ClauseRegistered`, `AssemblyRegistered`, `MemberRegistered`, `DepositWithdrawn`, `MemberWithdrawalRequested`, `MemberWithdrawn` | steady registration and the occasional withdrawal | a burst of withdrawals, which is what a scare looks like from the chain |
@@ -125,7 +128,7 @@ redeployment under a new identifier. The steps, in order:
 
 1. **Acknowledge** the report through the channel it arrived on and reproduce
    it against the deployed addresses in `deployments/<chainId>.json`.
-2. **Bound the exposure.** A kernel defect that lets anyone but the buyer move
+2. **Bound the exposure.** A defect in `FigaroCore` that lets anyone but the buyer move
    bonds is Critical and public the moment it is exploited; one that blocks
    resolution locks the affected processes with no recovery, and the advisory
    says so plainly. Every process on an unaffected path keeps resolving: the
