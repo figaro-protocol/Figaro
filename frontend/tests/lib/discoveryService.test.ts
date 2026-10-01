@@ -46,7 +46,7 @@ describe('discoveryService', () => {
         discoveryService = createDiscoveryService({ fetchDocument: fetchDocumentMock });
     });
 
-    it('returns an empty result when the registry has no sellers', async () => {
+    it('returns an empty result when the registry has no members', async () => {
         getActiveMembersMock.mockResolvedValueOnce([]);
 
         const result = await discoveryService.listCatalogues({} as never, 31337, ANCHORED);

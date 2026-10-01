@@ -31,7 +31,7 @@
  * this wallet's scenario is the bilateral single-order flow (orders-accept
  * orders from it); a multi-order or second binding would gate its checkout
  * behind counterparty designation / the method picker. This test has nothing
- * to do with how other tests get sellers on-chain: runtime specs DISCOVER
+ * to do with how other tests get members on-chain: runtime specs DISCOVER
  * sellers from MembersRegistry → IPFS, never from here.
  *
  * Requires Anvil + ./scripts/deploy-local.sh + Kubo + the dev server.
@@ -427,7 +427,7 @@ test.describe("seller registration wizard (devnet)", () => {
         // ── The cross-check filter: discover surfaces ONLY sellers whose
         // profile binds an ANCHORED assembly (the AssemblyRegistry is the
         // authority). Computed from chain — never a name roster: every
-        // registered seller WITHOUT an anchored binding must be absent.
+        // registered member WITHOUT an anchored binding must be absent.
         const [published, allSellers] = await Promise.all([
             publicClient.getContractEvents({
                 address: (process.env.NEXT_PUBLIC_ASSEMBLY_REGISTRY ?? config.assemblyRegistry ?? "") as Hex,

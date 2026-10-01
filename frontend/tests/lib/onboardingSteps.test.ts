@@ -6,7 +6,7 @@ import {
     onboardingStepHref,
 } from "@/lib/member/onboardingState";
 
-// The wizard's order: the assemblies a seller binds decide which clauses
+// The wizard's order: the assemblies a member binds decide which clauses
 // their trades carry, so Assemblies precedes Catalogue; the buyer page sits
 // between the seller's steps and the agents step, so the agents step delegates
 // control of the member's WHOLE profile — seller and buyer alike.

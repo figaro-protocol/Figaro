@@ -15,7 +15,7 @@
  *   /members/edit/agents     — set MCP endpoint, submit
  *   /members/edit/assemblies — toggle a registered assembly on, submit
  *
- * Each test seeds anvil[0] as a registered seller with a fresh
+ * Each test seeds anvil[0] as a registered member with a fresh
  * profile pinned to IPFS, then drives the edit form. Each assertion
  * verifies exactly one new `MemberProfileUpdated` event with a
  * metadataURI distinct from the initial registration URI.

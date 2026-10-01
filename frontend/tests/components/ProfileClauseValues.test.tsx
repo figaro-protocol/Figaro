@@ -4,7 +4,7 @@ import { ProfileClauseValues } from "@/components/members/ProfileClauseValues";
 import { primeClauseSpecs } from "../lib/primeClauseSpecs";
 
 /**
- * The profile-authored clause values are seller master data the seller's
+ * The profile-authored clause values are the member's master data the member's
  * BOUND assemblies read at checkout. The beta panel's caterer met every
  * registered clause's profile fields, marked required, on the Identity step
  * before anything was bound. Two rules, both asserted here: the section is
