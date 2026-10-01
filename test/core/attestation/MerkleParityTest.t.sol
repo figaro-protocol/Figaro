@@ -23,13 +23,12 @@ import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProo
 contract MerkleParityTest is Test {
     string internal constant FIXTURE = "test/fixtures/merkle-vectors.json";
 
-    string internal json;
+    string internal path;
     bool internal generated;
 
     function setUp() public {
-        string memory path = vm.envOr("MERKLE_VECTORS", FIXTURE);
+        path = vm.envOr("MERKLE_VECTORS", FIXTURE);
         generated = keccak256(bytes(path)) != keccak256(bytes(FIXTURE));
-        json = vm.readFile(path);
     }
 
     function _leaf(string memory clause, uint256 version, string memory sectionData) internal pure returns (bytes32) {
@@ -39,6 +38,9 @@ contract MerkleParityTest is Test {
     }
 
     function test_everyFrozenProofOpensAgainstTheRebuiltLeaf() public view {
+        // Held in memory: every lookup below passes the whole file to the
+        // cheatcode, and from storage that is one SLOAD per word per lookup.
+        string memory json = vm.readFile(path);
         uint256 agreements = vm.parseJsonUint(json, ".agreementCount");
         assertGt(agreements, 0, "fixture carries agreements");
         for (uint256 a = 0; a < agreements; a++) {
@@ -66,6 +68,7 @@ contract MerkleParityTest is Test {
     /// the case the fixture's second agreement pins.
     function test_singleSectionRootIsTheLeaf() public view {
         if (generated) return; // the pinned case is the fixture's
+        string memory json = vm.readFile(path);
         bytes32 root = vm.parseJsonBytes32(json, ".agreements[1].agreementHash");
         assertEq(vm.parseJsonUint(json, ".agreements[1].sectionCount"), 1);
         bytes32 leaf = vm.parseJsonBytes32(json, ".agreements[1].sections[0].leaf");
