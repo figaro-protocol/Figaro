@@ -4,7 +4,7 @@
  * registries the e2e suite consumes from: clauses (ClauseRegistry + IPFS, reusing
  * populate-clauses), the seed assemblies (AssemblyRegistry + IPFS — the blank
  * mandatory-only composition sellers bind, plus the multi-order delivery chain
- * the multi-order e2e runs), AND sellers (MembersRegistry + IPFS).
+ * the multi-order e2e runs), AND members (MembersRegistry + IPFS).
  * Run after deploy, before the test suite. The runtime specs then discover everything from chain → IPFS.
  *
  * This is the single source of the test SELLERS — it replaces `seller-roster.ts`
@@ -12,7 +12,7 @@
  * DATA here (names, specialties, catalogues) is legitimate setup input;
  * every ADDRESS is derived from the standard anvil mnemonic — nothing hardcoded.
  *
- * Production sellers onboard themselves through the wizard; this script exists for
+ * Production members onboard themselves through the wizard; this script exists for
  * TESTING ONLY. For production clause population use populate-clauses.mjs.
  *
  * Env (frontend/.env.local): NEXT_PUBLIC_CLAUSE_REGISTRY, NEXT_PUBLIC_MEMBERS_REGISTRY,
@@ -36,12 +36,12 @@ const RPC_URL = process.env.RPC_URL ?? 'http://127.0.0.1:8545';
 const ANVIL_MNEMONIC = 'test test test test test test test test test test test junk';
 const REGISTRATION_DEPOSIT = 1_000_000_000_000_000n; // 0.001 ETH
 
-// The test sellers. addressIndex ∈ [5,19] (disjoint from buyers anvil[0..4]).
+// The test members, each with something to sell. addressIndex ∈ [5,19]; the buyers, anvil[0..4], are not registered.
 // Addresses derive from the anvil mnemonic below — nothing hardcoded.
 //
 // Each seller BINDS the reference assembly its specialty names (`binds` is the
 // file in assemblies/), so the world a visitor meets on /discover keeps the
-// promise the directory makes: a seller surfaces only with an anchored
+// promise the directory makes: a member surfaces only with an anchored
 // binding, and populate anchors the references first. DEVNET ONLY — on a
 // public chain a seller binds through the real flow. A courier designation
 // (`courierIndex`) names anvil[8] as the delivery counterparty on the
@@ -73,8 +73,8 @@ const isAlreadyRegistered = (err) => /AlreadyRegistered/i.test(err instanceof Er
 
 // ── Seed assembly (AssemblyRegistry) ─────────────────────────────────────────
 // The suite's runtime specs need >=1 anchored assembly BEFORE any test runs
-// (the even-surfacing rule: a seller surfaces only with an anchored binding,
-// so an empty AssemblyRegistry means zero surfaced sellers). Seeding is
+// (the even-surfacing rule: a member surfaces only with an anchored binding,
+// so an empty AssemblyRegistry means zero surfaced members). Seeding is
 // PRE-POPULATION, exactly like clauses and sellers above — never a test
 // (the scenario-era build-order coupling is the cautionary tale). The template reproduces the designer's emission byte for
 // byte: identity (compositionHash + slug) and canonical JSON come from the
@@ -133,7 +133,7 @@ function seedTemplateBlank() {
  *  e2e runs end-to-end: a root merchant agreement (merchant process, delivery
  *  modality) plus courier and supplier sub-agreements. Which clauses compose
  *  which agreement is scenario DATA (a designed assembly this seed reproduces
- *  byte-for-byte), exactly like the seller roster above. Counterparties are
+ *  byte-for-byte), exactly like the member roster above. Counterparties are
  *  NOT seeded — the lead binds + designates them through the real UI flow. */
 function seedTemplateChain() {
     return {
@@ -223,7 +223,7 @@ async function main() {
     await anchorAssembly({ ...anchorArgs, template: seedTemplateChain() });
     await populateReferenceAssemblies({ ...anchorArgs, tokenAddress: mockErc20 });
 
-    // ── 2. Sellers (catalogue → profile → register, all pinned + anchored) ──
+    // ── 2. Members (catalogue → profile → register, all pinned + anchored) ──
     const [tokenSymbol, tokenName] = await Promise.all([
         publicClient.readContract({ address: mockErc20, abi: ERC20_ABI, functionName: 'symbol' }),
         publicClient.readContract({ address: mockErc20, abi: ERC20_ABI, functionName: 'name' }),
