@@ -12,7 +12,7 @@ import { profileToListing } from "@/lib/member/memberListing";
 
 /**
  * The users' showcase: every assembly a designer has published, read from the
- * AssemblyRegistry → IPFS as the page opens, and for each the sellers bound to
+ * AssemblyRegistry → IPFS as the page opens, and for each the members bound to
  * it, read from the MembersRegistry → their pinned profiles. Nothing here is a
  * list the site knows; an assembly published tomorrow appears tomorrow. With
  * `?slug=` the page is that one assembly: its designer's words, its own

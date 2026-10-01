@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { MemberDetailView } from "./_components/MemberDetailView";
 
 /**
- * /s/view?seller=<address> — browse a seller's catalogue and place a bonded
+ * /s/view?seller=<address> — browse a member's catalogue and place a bonded
  * order.
  *
  * The seller address is an open-world id (any wallet), so it rides in a query

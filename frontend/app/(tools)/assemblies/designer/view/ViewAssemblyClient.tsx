@@ -104,7 +104,7 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
     const [confirming, setConfirming] = useState(false);
     const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
     // Receipt held in local state — persists until the user clicks
-    // Continue. Mirrors the seller wizard's post-publish pattern.
+    // Continue. Mirrors the member wizard's post-publish pattern.
     // Replaces the prior window.alert(`Published. IPFS: … Tx: …`)
     // which got dismissed instantly and gave no persistent record.
     const [receipt, setReceipt] = useState<{
@@ -417,8 +417,8 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
         );
     }
 
-    // Receipt state: publish succeeded, awaiting seller dismissal.
-    // Mirrors the seller wizard's post-publish receipt: a persistent
+    // Receipt state: publish succeeded, awaiting the designer's dismissal.
+    // Mirrors the member wizard's post-publish receipt: a persistent
     // record of the tx hash + IPFS URI, not a dismissible alert.
     if (receipt) {
         return (

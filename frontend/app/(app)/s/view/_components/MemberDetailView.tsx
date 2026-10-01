@@ -202,7 +202,7 @@ export function MemberDetailView({ sellerAddress }: Props) {
                                     );
                                 })()}
                             </div>
-                            {/* Agent identity — the seller's published did:web / service
+                            {/* Agent identity — the member's published did:web / service
                                 endpoints, with the did:web verified against this wallet. */}
                             <MemberAgentIdentity sellerAddress={sellerAddressTyped} />
                         </div>
