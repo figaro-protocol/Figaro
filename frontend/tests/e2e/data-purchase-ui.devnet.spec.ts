@@ -1,33 +1,47 @@
 /**
  * data-purchase-ui.devnet.spec.ts
  *
- * THE BUYER-SIDE DATA SALE, THROUGH THE UI (value legs). A member who bought
- * aerial surveys monetizes the records it co-produced AS A BUYER: its profile
- * subscribes the survey assembly, offers the flight-record data
- * (disclosurePolicy, posture "buyer"), binds the data-stream-subscription
- * reference for delivery, and prices the class as a catalogue DATA-PRODUCT
- * item whose license terms are CATALOGUE-AUTHORED (figaro-data-license
- * declares checkout.catalogueFills, so the fold — not the buyer's keyboard —
- * carries scope/access/redistribution into the agreement both parties sign).
+ * THE DATA MARKET, BOTH ENDS THROUGH THE UI (value legs). A member that both
+ * flies aerial surveys and buys them monetizes the records those trades
+ * co-produce, from BOTH postures, and it authors that offer the way any member
+ * does — through the wizard, never a seeded document:
  *
- * A data buyer then walks the ordinary UI end to end: /s/view (the
- * records-offered section + the data-product badge) → cart → checkout (NO
- * data-license fields rendered; the folded scope is visible in the pre-sign
- * preview) → sign + relay → the data seller accepts on /orders → commit
- * (bond deltas asserted from chain) → the buyer resolves → net positions
- * asserted from chain. Depends on populate-test-data (clauses + reference
- * assemblies anchored).
+ *   Sell through → binds the survey assembly (it sells surveys) and the
+ *                  data-stream-subscription reference (how its data is
+ *                  delivered), and offers the survey's flight-record data it
+ *                  co-produces AS A SELLER.
+ *   Buy through  → subscribes the survey assembly (it also buys surveys) and
+ *                  offers the flight-record data it co-produces AS A BUYER.
+ *   Catalogue    → prices both offers as DATA-PRODUCT items, in one pass: the
+ *                  step follows both assembly steps, so both offers are there
+ *                  to price. The license terms are CATALOGUE-AUTHORED
+ *                  (figaro-data-license declares checkout.catalogueFills, so
+ *                  the fold — not the buyer's keyboard — carries
+ *                  scope/access/redistribution into the agreement both sign).
+ *
+ * What the wizard published is then read OUT-OF-BAND (chain → IPFS), never
+ * from the screen that claims to have written it.
+ *
+ * A data buyer then walks the ordinary UI end to end, once per posture:
+ * /s/view (the records-offered section + the data-product badge) → cart →
+ * checkout (the buyer picks the data-stream assembly; NO data-license fields
+ * rendered; the folded scope is visible in the pre-sign preview) → sign +
+ * relay → the data-selling member accepts on /orders → commit (bond deltas
+ * asserted from chain) → the buyer resolves → net positions asserted from
+ * chain. Depends on populate-test-data (clauses + reference assemblies
+ * anchored).
  */
+import type { Page } from '@playwright/test';
 import { test, expect, gotoAsWallet, ANVIL_ACCOUNTS } from './devnet-multi-test';
 import { createPublicClient, createWalletClient, http, parseAbi, parseEther, type Hex } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { calculateBonds } from '@figaro-protocol/sdk';
 import {
     discoverAnchoredAssemblies,
+    latestMemberProfileURI,
     referenceAssemblySlug,
-    pinJSONToIPFS,
     readLocalDeploymentConfig,
-    seedRegisteredMember,
+    resolveIpfsURI,
     waitForConnected,
     LOCAL_ANVIL,
     RPC_URL,
@@ -38,32 +52,168 @@ import { CORE_ABI } from '@/lib/kernel/contracts';
 const ERC20_ABI = parseAbi(['function balanceOf(address) view returns (uint256)']);
 // anvil[0] — the fixture's default buyer.
 const DATA_BUYER = '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266' as Hex;
-// Dedicated data-seller wallet — an index no other spec registers.
+// Dedicated wallet of the data-selling member — an index no other spec registers.
 const DATA_SELLER = ANVIL_ACCOUNTS[32] as Hex;
 
-// The catalogue-authored license terms — the record owner's offer, written
-// on the item, folded into the agreement at checkout.
+// The member's own input data: its identity, and the two data products it
+// prices. The license terms are the record owner's offer, written on the item
+// and folded into the agreement at checkout.
+const MEMBER = { name: 'Skyline Data', specialty: 'survey flights; survey records licensed onward', geohash: '9q8yyk8yu' } as const;
+const RECORD_CLAUSE = 'figaro-geolocation';
+const LICENSE_CLAUSE = 'figaro-data-license';
 const LICENSE = {
     licenseScope: 'Aerial-survey flight records, rolling stream',
     purpose: 'Route analytics',
     access: 'stream',
     redistribution: 'prohibited',
 } as const;
-const DATA_ITEM_ID = 'flight-records-stream';
-// The SELLER-posture copy of the same deals — the member also sells the
+// The SELLER-posture copy of the same trades — the member also sells the
 // records it co-produced as the surveys' SELLER, as a one-time snapshot.
 const LICENSE_SELLER = {
     licenseScope: 'Aerial-survey archive, one-time snapshot',
+    purpose: 'Archive study',
     access: 'snapshot',
     redistribution: 'prohibited',
 } as const;
-const DATA_ITEM_SELLER = 'survey-archive-snapshot';
+const PRODUCTS = [
+    { posture: 'buyer', name: 'Flight records — live stream', price: '2', license: LICENSE,
+      description: 'The survey flight records this wallet co-produced as a buyer, licensed onward as a stream.' },
+    { posture: 'seller', name: 'Survey archive — snapshot', price: '3', license: LICENSE_SELLER,
+      description: 'The survey records this wallet co-produced as a seller, licensed as a one-time snapshot.' },
+] as const;
 
-/** Seed (idempotently re-assert) the data seller: subscribed to the survey
- *  assembly it BUYS through, offering the flight-record data it co-produced
- *  as a buyer, bound to the data-stream-subscription reference to deliver,
- *  and pricing the class as a data-product catalogue item. */
-async function ensureDataSeller(token: Hex): Promise<{ recordClauseId: string }> {
+interface PublishedDataMember {
+    bindings: string[];
+    subscriptions: string[];
+    offered: Array<{ compositionHash: string; clauseId: string; posture: string }>;
+    items: Array<{ id: string; name: string; price: string; dataSold?: { compositionHash: string; clauseId: string; posture: string };
+        clauseValues?: Record<string, Record<string, unknown>> }>;
+}
+
+/** The member's CURRENT published profile and catalogue, read out-of-band:
+ *  the latest registry event for the wallet → the pinned profile → the pinned
+ *  catalogue. Null when the wallet has published nothing. */
+async function readPublishedDataMember(): Promise<PublishedDataMember | null> {
+    const latest = await latestMemberProfileURI(DATA_SELLER);
+    if (!latest) return null;
+    const fetchPinned = async (uri: string) => (await fetch(resolveIpfsURI(uri))).json();
+    const profile = await fetchPinned(latest);
+    const catalogue = profile.catalogueURI ? await fetchPinned(profile.catalogueURI) : { items: [] };
+    return {
+        bindings: ((profile.assemblyBindings ?? []) as Array<{ assemblySlug: string }>).map((b) => b.assemblySlug),
+        subscriptions: ((profile.buyerAssemblies ?? []) as Array<{ compositionHash: string }>).map((s) => s.compositionHash),
+        offered: ((profile.disclosurePolicy ?? []) as Array<{ compositionHash: string; clauseId: string; posture: string; offered: boolean }>)
+            .filter((e) => e.offered),
+        items: (catalogue.items ?? []) as PublishedDataMember['items'],
+    };
+}
+
+/** Whether a published profile is the one this spec's wizard walk writes:
+ *  both assemblies bound, the survey subscribed, the flight-record data
+ *  offered in both postures, and one priced data product per posture carrying
+ *  its license terms. */
+function isTheDataMember(p: PublishedDataMember | null, surveyHash: string, surveySlug: string, streamSlug: string): boolean {
+    if (!p) return false;
+    const offers = (posture: string) => p.offered.some((e) =>
+        e.compositionHash === surveyHash && e.clauseId === RECORD_CLAUSE && e.posture === posture);
+    const priced = (posture: string, scope: string) => p.items.some((i) =>
+        i.dataSold?.compositionHash === surveyHash && i.dataSold.clauseId === RECORD_CLAUSE && i.dataSold.posture === posture
+        && i.clauseValues?.[LICENSE_CLAUSE]?.licenseScope === scope);
+    return p.bindings.length === 2 && p.bindings.includes(surveySlug) && p.bindings.includes(streamSlug)
+        && p.subscriptions.includes(surveyHash)
+        && offers('buyer') && offers('seller')
+        && priced('buyer', LICENSE.licenseScope) && priced('seller', LICENSE_SELLER.licenseScope);
+}
+
+/** The member authors its whole offer through the wizard, as its own wallet. */
+async function authorDataMemberThroughWizard(page: Page, surveyHash: string, surveySlug: string, streamSlug: string): Promise<void> {
+    await gotoAsWallet(page, DATA_SELLER, '/members');
+    await page.goto('/members/identity', { waitUntil: 'domcontentloaded' });
+
+    // Identity
+    await expect(page.locator('#profile-name')).toBeVisible({ timeout: 30000 });
+    await page.locator('#profile-name').fill(MEMBER.name);
+    await page.locator('#profile-specialty').fill(MEMBER.specialty);
+    await page.locator('#profile-geohash').fill(MEMBER.geohash);
+    // An update-mode walk hydrates the tokens the wallet already accepts; the
+    // quick-add button is there only while MOCK is not yet in the set.
+    const addMock = page.getByRole('button', { name: /\+ MOCK$/ });
+    if (await addMock.isVisible().catch(() => false)) await addMock.click();
+    await page.locator('input[name="defaultTokenAddress"]').first().check();
+    await page.getByRole('button', { name: /^Next/ }).click();
+    await expect(page).toHaveURL(/\/members\/assemblies/);
+
+    // Sell through: bind EXACTLY the survey (the member sells surveys) and the
+    // data-stream reference (how its data is delivered), then offer the data
+    // the surveys co-produce as their seller.
+    const sellRows = page.locator('[data-testid^="seller-assembly-row-"]');
+    await sellRows.first().waitFor({ state: 'visible', timeout: 30000 });
+    const checkedSell = page.locator('[data-testid^="seller-assembly-row-"] input[type="checkbox"]:checked');
+    while ((await checkedSell.count()) > 0) await checkedSell.first().uncheck();
+    for (const slug of [surveySlug, streamSlug]) {
+        const row = page.getByTestId(`seller-assembly-row-${slug}`);
+        await row.waitFor({ state: 'visible', timeout: 30000 });
+        await row.locator('input[type="checkbox"]').first().check();
+    }
+    const sellerOffer = page.getByTestId(`disclosure-${surveySlug}-${RECORD_CLAUSE}-seller-offer`);
+    await sellerOffer.waitFor({ state: 'visible', timeout: 30000 });
+    if (!(await sellerOffer.isChecked())) await sellerOffer.check();
+    await page.getByRole('button', { name: /^Next/ }).click();
+    await expect(page).toHaveURL(/\/members\/buyer/);
+
+    // Buy through: subscribe EXACTLY the survey (the member also buys them),
+    // then offer the data those purchases co-produce as their buyer.
+    const buyRows = page.locator('[data-testid^="buyer-assembly-row-"]');
+    await buyRows.first().waitFor({ state: 'visible', timeout: 30000 });
+    const checkedBuy = page.locator('[data-testid^="buyer-assembly-row-"] input[type="checkbox"]:checked');
+    while ((await checkedBuy.count()) > 0) await checkedBuy.first().uncheck();
+    await page.getByTestId(`buyer-assembly-row-${surveySlug}`).locator('input[type="checkbox"]').first().check();
+    const buyerOffer = page.getByTestId(`disclosure-${surveySlug}-${RECORD_CLAUSE}-buyer-offer`);
+    await buyerOffer.waitFor({ state: 'visible', timeout: 30000 });
+    if (!(await buyerOffer.isChecked())) await buyerOffer.check();
+    await page.getByRole('button', { name: /^Next/ }).click();
+    await expect(page).toHaveURL(/\/members\/catalogue/);
+
+    // Catalogue: one data product per posture. Both offers are already
+    // declared, so each item's "Data for sale" names its offer here, in the
+    // same pass; the license terms are authored on the item.
+    const names = page.locator('[id^="item-"][id$="-name"]');
+    await names.first().waitFor({ state: 'visible', timeout: 30000 });
+    while ((await names.count()) < PRODUCTS.length) {
+        await page.getByRole('button', { name: /\+ Add item/ }).click();
+    }
+    for (const [i, product] of PRODUCTS.entries()) {
+        const prefix = ((await names.nth(i).getAttribute('id')) ?? '').replace(/-name$/, '');
+        expect(prefix, 'the item row carries its id').toMatch(/^item-/);
+        await page.locator(`[id="${prefix}-name"]`).fill(product.name);
+        await page.locator(`[id="${prefix}-description"]`).fill(product.description);
+        await page.locator(`[id="${prefix}-price"]`).fill(product.price);
+        await page.locator(`[id="${prefix}-category"]`).fill('data');
+        const dataSold = page.getByTestId(`${prefix}-data-sold`);
+        await expect(dataSold, 'the offers declared on the two assembly steps are there to price').toBeVisible({ timeout: 30000 });
+        await dataSold.selectOption(`${surveyHash}|${RECORD_CLAUSE}|${product.posture}`);
+        const license = `${prefix}-clause-${LICENSE_CLAUSE}`;
+        await page.getByTestId(`${license}-licenseScope`).fill(product.license.licenseScope);
+        await page.getByTestId(`${license}-purpose`).fill(product.license.purpose);
+        await page.getByTestId(`${license}-access-${product.license.access}`).check();
+        await page.getByTestId(`${license}-redistribution-${product.license.redistribution}`).check();
+    }
+    await page.getByRole('button', { name: /^Next/ }).click();
+    await expect(page).toHaveURL(/\/members\/agents/);
+    await page.getByRole('button', { name: /^Next/ }).click();
+    await expect(page).toHaveURL(/\/members\/endpoints/);
+    await page.getByRole('button', { name: /^Next/ }).click();
+    await page.waitForURL(/\/members\/review/, { timeout: 30000 });
+    await page.getByTestId('review-confirm-publish').click();
+    await expect(page.getByRole('heading', { name: /Registered\.|Profile updated/i })).toBeVisible({ timeout: 60000 });
+}
+
+/** The data-selling member, published as this spec needs it. A member
+ *  registers once and persists: the wizard is walked only when the wallet's
+ *  published profile is not already this one. Returns what the buyer's flow
+ *  reads — the delivery assembly to pick and each product's item id — taken
+ *  from the published catalogue, never from the wizard's screen. */
+async function ensureDataMember(page: Page): Promise<{ streamSlug: string; itemIds: Record<'buyer' | 'seller', string> }> {
     const anchored = await discoverAnchoredAssemblies();
     const surveySlug = referenceAssemblySlug('aerial-survey.json');
     const streamSlug = referenceAssemblySlug('data-stream-subscription.json');
@@ -71,72 +221,30 @@ async function ensureDataSeller(token: Hex): Promise<{ recordClauseId: string }>
     expect(survey, 'the aerial-survey reference is anchored — run populate-test-data').toBeTruthy();
     expect(anchored.some((a) => a.slug === streamSlug),
         'the data-stream-subscription reference is anchored — run populate-test-data').toBe(true);
-
-    // The data sold: a clause of the SUBSCRIBED assembly — the survey's
-    // flight-record leaf — co-produced by this wallet as the survey's BUYER.
-    const recordClauseId = 'figaro-geolocation';
+    // The data sold: a clause of the survey assembly — its flight-record leaf.
     expect(
-        survey!.agreements.some((o) => Object.keys(o.clauses ?? {}).includes(recordClauseId)),
+        survey!.agreements.some((o) => Object.keys(o.clauses ?? {}).includes(RECORD_CLAUSE)),
         'the survey composes the flight-record clause',
     ).toBe(true);
-    const dataSold = {
-        compositionHash: survey!.compositionHash,
-        clauseId: recordClauseId,
-        posture: 'buyer' as const,
-    };
-    const dataSoldSeller = {
-        compositionHash: survey!.compositionHash,
-        clauseId: recordClauseId,
-        posture: 'seller' as const,
-    };
+    const surveyHash = survey!.compositionHash;
 
-    const { uri: catalogueURI } = await pinJSONToIPFS({
-        subjectAddress: DATA_SELLER,
-        version: '1.0.0',
-        unitSystem: 'metric' as const,
-        items: [{
-            id: DATA_ITEM_ID,
-            name: 'Flight records — live stream',
-            description: 'The survey flight records this wallet co-produced as a buyer, licensed onward as a stream.',
-            price: '2',
-            category: 'data',
-            available: true,
-            dataSold,
-            clauseValues: { 'figaro-data-license': { ...LICENSE } },
-        }, {
-            id: DATA_ITEM_SELLER,
-            name: 'Survey archive — snapshot',
-            description: 'The survey records this wallet co-produced as a seller, licensed as a one-time snapshot.',
-            price: '3',
-            category: 'data',
-            available: true,
-            dataSold: dataSoldSeller,
-            clauseValues: { 'figaro-data-license': { ...LICENSE_SELLER } },
-        }],
-    });
-    await seedRegisteredMember({
-        walletKey: ANVIL_KEYS[32] as Hex,
-        profile: {
-            name: 'Skyline Data',
-            description: 'Data seller — seeded by data-purchase-ui.devnet.spec.ts',
-            catalogueURI,
-            acceptedTokens: [{ address: token, symbol: 'MOCK', chainId: 31337 }],
-            defaultTokenAddress: token,
-            assemblyBindings: [{
-                bindingId: 'data-stream-delivery',
-                subjectAddress: DATA_SELLER,
-                assemblySlug: streamSlug,
-                counterpartyBindings: [],
-            }],
-            buyerAssemblies: [{ compositionHash: survey!.compositionHash }],
-            disclosurePolicy: [{ ...dataSold, offered: true }, { ...dataSoldSeller, offered: true }],
-        },
-    });
-    return { recordClauseId };
+    if (!isTheDataMember(await readPublishedDataMember(), surveyHash, surveySlug, streamSlug)) {
+        await authorDataMemberThroughWizard(page, surveyHash, surveySlug, streamSlug);
+    }
+
+    // ── What the wizard published, read OUT-OF-BAND from chain → IPFS ──
+    await expect.poll(
+        async () => isTheDataMember(await readPublishedDataMember(), surveyHash, surveySlug, streamSlug),
+        { timeout: 30000, message: 'the published profile binds both assemblies, subscribes the survey, offers the data in both postures, and prices one data product per posture with its license terms' },
+    ).toBe(true);
+    const published = (await readPublishedDataMember())!;
+    const idOf = (posture: 'buyer' | 'seller') => published.items.find((i) =>
+        i.dataSold?.compositionHash === surveyHash && i.dataSold.clauseId === RECORD_CLAUSE && i.dataSold.posture === posture)!.id;
+    return { streamSlug, itemIds: { buyer: idOf('buyer'), seller: idOf('seller') } };
 }
 
 test.describe('Buyer-side data sale through the UI (devnet)', () => {
-    test.setTimeout(420_000);
+    test.setTimeout(600_000);
 
     test('both market sides sell: buyer-posture and seller-posture data are discovered, ordered, committed, and resolved', async ({ page }) => {
         // Resolve raises a native window.confirm — auto-accept it.
@@ -148,7 +256,8 @@ test.describe('Buyer-side data sale through the UI (devnet)', () => {
         const balanceOf = (who: Hex) =>
             publicClient.readContract({ address: token, abi: ERC20_ABI, functionName: 'balanceOf', args: [who] }) as Promise<bigint>;
 
-        const { recordClauseId } = await ensureDataSeller(token);
+        const { streamSlug, itemIds } = await ensureDataMember(page);
+        const recordClauseId = RECORD_CLAUSE;
 
         // The data seller's bond funding (dedicated index past the mint range).
         {
@@ -170,7 +279,7 @@ test.describe('Buyer-side data sale through the UI (devnet)', () => {
         ]);
 
         // ── DISCOVERY: the records-offered section and the data-product badge ──
-        await page.goto(`/s/view?seller=${DATA_SELLER}&e2e=devnet`, { waitUntil: 'domcontentloaded' });
+        await gotoAsWallet(page, DATA_BUYER, `/s/view?seller=${DATA_SELLER}&e2e=devnet`);
         await page.getByTestId('member-detail-view').waitFor({ timeout: 30000 });
         await waitForConnected(page);
         await expect(
@@ -182,14 +291,17 @@ test.describe('Buyer-side data sale through the UI (devnet)', () => {
             'the buyer-side flight-record data is listed',
         ).toBeVisible();
         await expect(
-            page.getByTestId(`catalogue-item-data-sold-${DATA_ITEM_ID}`),
+            page.getByTestId(`catalogue-item-data-sold-${itemIds.buyer}`),
             'the priced item carries its data-product badge',
         ).toBeVisible();
 
         // ── CART → CHECKOUT ──
-        await page.getByTestId(`btn-add-${DATA_ITEM_ID}`).click();
+        await page.getByTestId(`btn-add-${itemIds.buyer}`).click();
         await page.getByTestId('btn-review-order').click();
         await page.getByTestId('checkout-view').waitFor({ timeout: 20000 });
+        // The member binds two assemblies, so the buyer picks: the data is
+        // delivered under the data-stream assembly.
+        await page.getByTestId('select-method').selectOption(streamSlug);
 
         // The license terms are CATALOGUE-AUTHORED: checkout renders NO
         // data-license field for the buyer to type into.
@@ -198,7 +310,7 @@ test.describe('Buyer-side data sale through the UI (devnet)', () => {
             'license terms are folded from the item, never typed by the buyer',
         ).toHaveCount(0);
 
-        // The buyer's transaction particulars: a virtual deal, an access
+        // The buyer's transaction particulars: a virtual trade, an access
         // window, encrypted delivery of the access credential.
         await page.locator('[data-testid^="checkout-field-"][data-testid$="-figaro-modalities-modality-virtual"]').first().check();
         await page.locator('[data-testid^="checkout-field-"][data-testid$="-figaro-schedule-windowStart"]').first().fill('2026-09-01T09:00');
@@ -276,7 +388,7 @@ test.describe('Buyer-side data sale through the UI (devnet)', () => {
         // ═══ LEG 2 — the SELLER-posture copy through the SAME UI: both market
         // sides sell. Fresh balance baselines; the cart still carries leg 1's
         // item (checkout does not clear it), so remove it first. ═══
-        await page.goto(`/s/view?seller=${DATA_SELLER}&e2e=devnet`, { waitUntil: 'domcontentloaded' });
+        await gotoAsWallet(page, DATA_BUYER, `/s/view?seller=${DATA_SELLER}&e2e=devnet`);
         await page.getByTestId('member-detail-view').waitFor({ timeout: 30000 });
         await waitForConnected(page);
         await expect(
@@ -284,16 +396,19 @@ test.describe('Buyer-side data sale through the UI (devnet)', () => {
             'the seller-side data offer is listed',
         ).toBeVisible({ timeout: 30000 });
         await expect(
-            page.getByTestId(`catalogue-item-data-sold-${DATA_ITEM_SELLER}`),
+            page.getByTestId(`catalogue-item-data-sold-${itemIds.seller}`),
             'the seller-posture item carries its data marking',
         ).toBeVisible();
         const removeLeg1 = page.getByRole('button', { name: 'Remove one Flight records — live stream' });
         if (await removeLeg1.isVisible().catch(() => false)) {
             await removeLeg1.click();
         }
-        await page.getByTestId(`btn-add-${DATA_ITEM_SELLER}`).click();
+        await page.getByTestId(`btn-add-${itemIds.seller}`).click();
         await page.getByTestId('btn-review-order').click();
         await page.getByTestId('checkout-view').waitFor({ timeout: 20000 });
+        // The member binds two assemblies, so the buyer picks: the data is
+        // delivered under the data-stream assembly.
+        await page.getByTestId('select-method').selectOption(streamSlug);
         await expect(
             page.locator('[data-testid^="checkout-field-"][data-testid*="figaro-data-license"]'),
             'seller-posture license terms are folded from the item too',
