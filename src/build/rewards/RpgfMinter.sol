@@ -33,7 +33,7 @@ interface IAssemblyAuthor {
 ///
 /// @notice Pays clause authors and assembly designers for the trade their work
 ///         actually carried, one claim per accrual period. The reference
-///         schedule (ruled 2026-07-31): nine ANNUAL periods whose budgets
+///         schedule: nine ANNUAL periods whose budgets
 ///         group into three RISING tranches — 15% of the reserve over years
 ///         1–2, 30% over years 3–5, 55% over years 6–9, each tranche split
 ///         equally across its years. Rising, because the largest share should
@@ -197,14 +197,14 @@ contract RpgfMinter {
     ///      a farmer DILUTES, never inflates.
     ///
     ///      THE LIST MUST BE DUPLICATE-FREE, and that is enforced here rather
-    ///      than assumed. Until 2026-07-30 this loop summed each entry as given
-    ///      and then CLAMPED `score` to `total` — so an author of record for any
-    ///      clause or assembly with a non-zero score could repeat it until the
+    ///      than assumed. A loop that summed each entry as given
+    ///      and then CLAMPED `score` to `total` would let an author of record for any
+    ///      clause or assembly with a non-zero score repeat it until the
     ///      sum reached the period total and mint the ENTIRE tranche, leaving
     ///      every other
-    ///      author to revert on `PeriodBudgetExceeded`. The clamp is what made
-    ///      it maximal: it silently rounded a malformed claim UP to the whole
-    ///      pool instead of letting the budget backstop reject it. Both are gone
+    ///      author to revert on `PeriodBudgetExceeded`. A clamp would make
+    ///      it maximal: it silently rounds a malformed claim UP to the whole
+    ///      pool instead of letting the budget backstop reject it. Neither is here
     ///      — duplicates revert, and with a distinct list `score <= total` holds
     ///      structurally (`totalScoreIn` is the sum over ALL clauses and
     ///      assemblies, of which the caller's are a subset), so there is nothing

@@ -85,8 +85,8 @@ contract UsageCounter {
     ///         process's usage counts toward the reward only while its
     ///         seller-of-record holds a LIVE ETH stake here (registered and
     ///         un-withdrawn), which prices the seller IDENTITY — and with it
-    ///         breadth itself, since `d` counts distinct staked sellers (ruled
-    ///         2026-07-31): every unit of the score's dominant term costs one
+    ///         breadth itself, since `d` counts distinct staked sellers:
+    ///         every unit of the score's dominant term costs one
     ///         live stake. The reward itself is UNIFORM — no tag, no
     ///         category, no weight: every clause or assembly's score is its
     ///         real usage alone (`icbrt(c·d²·1e18)`), and the network's own
@@ -148,7 +148,7 @@ contract UsageCounter {
 
     /// @notice Clauses and assemblies that earn nothing, set once at deploy and
     ///         never written again — at the reference genesis, exactly
-    ///         `figaro-assembly-provenance` (re-ruled 2026-08-13; the two
+    ///         `figaro-assembly-provenance` (the two
     ///         order-mandatory clauses EARN).
     /// @dev    The provenance clause is scoring infrastructure — the leaf through
     ///         which an assembly's designer is credited — so scoring it would pay
@@ -163,7 +163,7 @@ contract UsageCounter {
     ///         simply never be declared.
     mapping(bytes32 => bool) public excludedClauseOrAssembly;
 
-    /// @notice The minimum-support floor (ruled 2026-07-31): a clause or
+    /// @notice The minimum-support floor: a clause or
     ///         assembly scores
     ///         ZERO in a period until at least this many DISTINCT LIVE-STAKED
     ///         sellers have carried it there. Counting is unaffected — `c` and
@@ -238,7 +238,7 @@ contract UsageCounter {
     /// @notice clause or assembly → processId → already counted. Idempotence is GLOBAL, not
     ///         per period: a resolved process counts ONCE EVER toward a clause or assembly,
     ///         in whichever period it is first recorded.
-    /// @dev    Why not per period (ruled 2026-07-30). A resolved order stays
+    /// @dev    Why not per period. A resolved order stays
     ///         resolved and its struct is public in the commit event, so anyone
     ///         can re-present it forever; the chain cannot see WHEN a process
     ///         resolved (no timestamp it can read), so a per-period key let the
@@ -256,10 +256,10 @@ contract UsageCounter {
     /// @notice clause or assembly → period → seller → has this seller already contributed
     ///         to `d` in this period. Its only job is the distinct-staked-seller
     ///         count.
-    /// @dev    Breadth counted (buyer, seller) PAIRS until 2026-07-31. Pairs are
+    /// @dev    Breadth does not count (buyer, seller) PAIRS. Pairs are
     ///         the wrong statistic because they cannot be priced: the buyer's
     ///         member stake, if any, is not what breadth prices, so one staked
-    ///         seller plus N free buyer wallets was
+    ///         seller plus N free buyer wallets would be
     ///         N units of `d` — the score's dominant term, manufacturable at gas
     ///         cost — and even staking BOTH sides prices pairs sublinearly (k
     ///         staked buyers × m staked sellers mint k·m pairs from k+m

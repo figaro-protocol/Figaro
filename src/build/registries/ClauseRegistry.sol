@@ -46,8 +46,8 @@ pragma solidity 0.8.26;
 ///         field and never will be — grouping is a READER concern (the drawer's
 ///         headings), derived from the spec, never stored.
 ///
-///         There is NO reward tag either. The 600M reward is UNIFORM (ratified
-///         2026-07-29): every clause or assembly's score is its real usage alone,
+///         There is NO reward tag either. The 600M reward is UNIFORM:
+///         every clause or assembly's score is its real usage alone,
 ///         with no category, tag, or weight — so the registry stores no
 ///         incentive input.
 ///         (A `rpgfTag` field existed until then, as a predecessor `family` did
