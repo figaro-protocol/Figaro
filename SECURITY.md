@@ -20,7 +20,7 @@ Alternate channel (if you prefer not to use GitHub): email
 Either way, include:
 
 - the affected file(s), with line numbers where possible;
-- the impact — what an attacker gains, and whose funds or state is at risk;
+- the impact — what an attacker gains, and whose bonds, stakes, tokens or state are at risk;
 - a proof-of-concept or reproduction steps, if you have them.
 
 You will get an acknowledgement. There is no fixed response SLA — this is a
@@ -33,7 +33,7 @@ In scope:
 - `src/**/*.sol` — the Core (`FigaroCore.sol`, `CommitmentTypes.sol`,
   `AttestationCoordinator.sol`, `FigaroBatchVerifier.sol`), the three
   registries, the swap-and-commit coordinator, the florin token, the usage
-  counter and the RPGF minter. (Per-clause
+  counter and the designer-rewards minter (`RpgfMinter.sol`). (Per-clause
   validator contracts do not exist, permanently — clause content validation
   is off-chain, plus the batch path's generic proof engine.)
 - `prover/program/`, `prover/lib/`, `prover/clause/` — the guest: the Rust
