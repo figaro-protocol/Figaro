@@ -166,7 +166,7 @@ export function AgreementReview({ commitment, agreement }: Props) {
 
             {/* Consent terms — the /faq framing, verbatim register:
                 consent is an AGREEMENT concern (the assembly composes a
-                consent clause and affixes its documents to the deal);
+                consent clause and affixes its documents to the trade);
                 the signature over the agreementHash IS the recorded
                 acceptance — no separate ceremony, no checkbox. */}
             {consented.length > 0 && (
@@ -175,7 +175,7 @@ export function AgreementReview({ commitment, agreement }: Props) {
                     <div className="rounded border border-default bg-subtle px-3 py-2 space-y-2 text-xs text-ink-body">
                         <p>
                             This agreement composes a consent clause and affixes its
-                            documents to the deal. Your signature over the{" "}
+                            documents to the trade. Your signature over the{" "}
                             <code className="font-mono">agreementHash</code> cryptographically
                             records your acceptance of each document listed below — consent as
                             an agreement term, the pattern the European Data Protection Board

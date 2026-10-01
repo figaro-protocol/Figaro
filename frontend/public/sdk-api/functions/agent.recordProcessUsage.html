@@ -22,15 +22,17 @@ on: usage is recorded AT RESOLUTION or the credit is deniable later
 (docs/DESIGN_DECISIONS.md §21 — a seller can unstake, a period can close;
 a deferred record is permanently refusable). A buyer agent that resolves
 without calling this credits no clause author and no assembly designer.</p>
-<p>Per order: every committed section gets a CLAUSE leg
+<p>The legs are PLANNED before anything is sent, with the same two helpers the
+batch path uses (<code>fetchUsageClaimContext</code> + <code>buildUsageClaims</code>): every
+committed section the counter does not exclude gets a CLAUSE leg
 (<code>UsageCounter.recordClauseUsage</code> — only the section FINGERPRINT reaches
 calldata, never plaintext, so private sections stay off-chain), and the
-first section carrying a well-formed <code>compositionHash</code> gets the INDEPENDENT
-once-per-process ASSEMBLY leg (<code>recordAssemblyUsage</code> — content derived
-on-chain from the hash). The two legs are independent on purpose: the
-provenance clause's own clause leg always reverts (excluded), and
-sequencing the assembly credit behind it would kill designer credit.
-Tolerate-the-revert per leg; the report says what landed.</p>
+provenance section's <code>compositionHash</code> gets the INDEPENDENT ASSEMBLY leg
+(<code>recordAssemblyUsage</code> — content derived on-chain from the hash). A key is
+counted once per process, so a key two orders carry is sent once. An
+excluded key is never sent — its record is certain to revert, and the
+caller would pay gas for nothing; the report names what was left out.
+Tolerate-the-revert per leg that IS sent; the report says what landed.</p>
 </div>
 <div class="tsd-parameters">
 <h4 class="tsd-parameters-title">Parameters</h4>
@@ -41,7 +43,7 @@ Tolerate-the-revert per leg; the report says what landed.</p>
 <li><span><span class="tsd-kind-parameter">entries</span>: <span class="tsd-signature-keyword">readonly</span> <a href="../interfaces/agent.UsageRecordingEntry.html" class="tsd-signature-type tsd-kind-interface">UsageRecordingEntry</a><span class="tsd-signature-symbol">[]</span></span></li></ul></div>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/agent.UsageRecordingReport.html" class="tsd-signature-type tsd-kind-interface">UsageRecordingReport</a><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/agent/autonomous.ts#L143">agent/autonomous.ts:143</a></li></ul></aside></div></li></ul></section></div>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/agent/autonomous.ts#L151">agent/autonomous.ts:151</a></li></ul></aside></div></li></ul></section></div>
 <div class="col-sidebar">
 <div class="page-menu">
 <div class="tsd-navigation settings">

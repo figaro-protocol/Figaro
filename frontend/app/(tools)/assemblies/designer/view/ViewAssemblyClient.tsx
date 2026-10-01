@@ -118,7 +118,7 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
     const { withdraw } = useWithdrawAssembly();
     const [withdrawing, setWithdrawing] = useState(false);
     const [withdrawError, setWithdrawError] = useState<string | null>(null);
-    // The advisory commits==resolves gate for THIS assembly — in-flight deals
+    // The advisory commits==resolves gate for THIS assembly — in-flight trades
     // composed from it (derived from chain + IPFS by the SDK). Null (no
     // assembly) for drafts/errors; the hook no-ops. The reclaim affordance
     // reads `.canWithdraw`.
@@ -470,7 +470,7 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
     // affordance (and its caveat strip) renders only for them.
     const isAuthor =
         resolved.kind === "published" && !!address && hexEqual(resolved.registeredBy, address);
-    // Unverifiable in-flight deals: informational only (party-private terms),
+    // Unverifiable in-flight trades: informational only (party-private terms),
     // never disabling. Shown visibly while the reclaim is still available.
     const withdrawCaveat =
         isAuthor && !resolved.stakeWithdrawn ? withdrawUnverifiedCaveat(withdrawGate) : null;
@@ -548,10 +548,10 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                     size="compact"
                     onClick={handleWithdraw}
                     // Author-only reclaim, gated by the advisory commits==resolves
-                    // gate: disabled while any VERIFIED in-flight deal composes
+                    // gate: disabled while any VERIFIED in-flight trade composes
                     // this assembly, while the gate is unknown (loading /
                     // chain-read failure), or once already reclaimed. Unverified
-                    // deals never disable — they render as the caveat strip
+                    // trades never disable — they render as the caveat strip
                     // below the toolbar. The title names why.
                     disabled={withdrawing || resolved.stakeWithdrawn || withdrawGate === null || withdrawGate.inFlightCount > 0}
                     className="border-default text-ink-heading font-semibold"

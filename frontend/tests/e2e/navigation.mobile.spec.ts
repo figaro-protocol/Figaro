@@ -166,8 +166,8 @@ test.describe('Mobile navigation (Pixel 5)', () => {
         await page.goto('/core', { waitUntil: 'load' });
         await waitForReactHydration(page, 'button[aria-label="Toggle mobile menu"]');
         await page.getByRole('button', { name: 'Toggle mobile menu' }).click();
-        const deal = await expandSection(drawer, 'Code');
-        await deal.getByRole('link', { name: 'Invariants' }).click();
+        const codeAgain = await expandSection(drawer, 'Code');
+        await codeAgain.getByRole('link', { name: 'Invariants' }).click();
         await expect(page).toHaveURL(/\/invariants\/?$/);
         await expect(drawer).toBeHidden({ timeout: 5000 });
     });
@@ -180,9 +180,9 @@ test.describe('Mobile navigation (Pixel 5)', () => {
 
         await page.getByRole('button', { name: 'Toggle mobile menu' }).click();
         const drawer = page.getByRole('dialog', { name: 'Mobile navigation' });
-        const deal = drawer.getByRole('button', { name: 'Code', exact: true });
-        await expect(deal).toHaveAttribute('aria-expanded', 'true');
-        await expect(deal).toHaveAttribute('aria-current', 'true');
+        const code = drawer.getByRole('button', { name: 'Code', exact: true });
+        await expect(code).toHaveAttribute('aria-expanded', 'true');
+        await expect(code).toHaveAttribute('aria-current', 'true');
         await expect(drawer.getByRole('link', { name: 'Invariants' })).toHaveAttribute('aria-current', 'page');
         await expect(drawer.getByRole('button', { name: 'Evidence', exact: true })).toHaveAttribute('aria-expanded', 'false');
     });

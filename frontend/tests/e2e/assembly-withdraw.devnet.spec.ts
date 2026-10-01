@@ -1,13 +1,13 @@
 /**
  * assembly-withdraw.devnet.spec.ts — the commits==resolves withdraw gate,
  * end to end: an assembly's registering wallet must not reclaim the registration stake
- * while a deal composed from the assembly is in flight; once every composed
- * deal resolves, the reclaim goes through and the registry refunds exactly
+ * while a trade composed from the assembly is in flight; once every composed
+ * trade resolves, the reclaim goes through and the registry refunds exactly
  * the deposit.
  *
  * ONE spec, registeredBy-driven (not a scenario/runtime pair): the subject is the
  * REGISTERED_BY's registration lifecycle — publish (staked intent) → verified
- * in-flight deal blocks → atomic resolve unblocks → reclaim + exact refund.
+ * in-flight trade blocks → atomic resolve unblocks → reclaim + exact refund.
  * `AssemblyRegistry.withdrawDeposit` is once-only per PERMANENT binding, so
  * nothing survives for a runtime spec to consume (the assembly ends
  * de-surfaced), and the buyer/seller commit+resolve legs are supporting
@@ -28,7 +28,7 @@
  *
  * The gate is OFF-CHAIN and advisory (the chain carries no composition
  * provenance — AssemblyRegistry.withdrawDeposit's own NatSpec): VERIFIED
- * in-flight deals disable the button with the count; agreements this
+ * in-flight trades disable the button with the count; agreements this
  * browser context never witnessed are party-private → surfaced as the
  * caveat strip, never blocking. The buyer's checkout runs in THIS context,
  * so its committed agreement is witnessed (localStorage URI) and the gate
@@ -74,7 +74,7 @@ const SELLER = mnemonicToAccount(ANVIL_MNEMONIC, { addressIndex: 19 }).address a
 test.describe('AssemblyRegistry withdraw — the commits==resolves gate (devnet)', () => {
     test.setTimeout(360_000);
 
-    test('registeredBy reclaims the stake only after every composed deal resolves; registry refunds exactly the deposit', async ({ page }) => {
+    test('registeredBy reclaims the stake only after every composed trade resolves; registry refunds exactly the deposit', async ({ page }) => {
         page.on('dialog', (dialog) => { void dialog.accept().catch(() => {}); });
 
         const config = readLocalDeploymentConfig();
@@ -138,7 +138,7 @@ test.describe('AssemblyRegistry withdraw — the commits==resolves gate (devnet)
         await page.getByTestId('review-confirm-publish').click();
         await expect(page.getByRole('heading', { name: /Registered\.|Profile updated/i })).toBeVisible({ timeout: 60000 });
 
-        // ── COMMIT (the deal that must block the reclaim): buyer orders from
+        // ── COMMIT (the trade that must block the reclaim): buyer orders from
         //    the bound seller, signs, relays; seller accepts on /orders. This
         //    context WITNESSES the agreement at checkout, so the registeredBy's gate
         //    can verify it. ──
@@ -197,7 +197,7 @@ test.describe('AssemblyRegistry withdraw — the commits==resolves gate (devnet)
 
         // ── GATE, BLOCKED: the registeredBy opens their own published-assembly view.
         //    The reclaim affordance renders (registeredBy-only) but is DISABLED, its
-        //    reason naming the ONE verified in-flight deal — the buyer's
+        //    reason naming the ONE verified in-flight trade — the buyer's
         //    unresolved process, verified through this context's witnessed
         //    agreement. ──
         await gotoAsWallet(page, REGISTERED_BY, `/assemblies/designer/view?slug=${slug}&e2e=devnet`);
@@ -207,17 +207,17 @@ test.describe('AssemblyRegistry withdraw — the commits==resolves gate (devnet)
         await withdrawBtn.waitFor({ state: 'visible', timeout: 30000 });
         await expect(
             withdrawBtn,
-            'the reclaim is disabled while the composed deal is in flight',
+            'the reclaim is disabled while the composed trade is in flight',
         ).toBeDisabled();
         await expect(
             withdrawBtn,
             'the disabled reason names the verified in-flight count',
-        ).toHaveAttribute('title', /Cannot reclaim the stake yet: 1 in-flight deal still composes this clause or assembly/, { timeout: 60000 });
+        ).toHaveAttribute('title', /Cannot reclaim the stake yet: 1 in-flight trade still composes this clause or assembly/, { timeout: 60000 });
         // Still disabled after the gate resolved (not just the loading state).
         await expect(withdrawBtn).toBeDisabled();
 
         // ── RESOLVE (buyer dominance, atomic): the buyer resolves the process
-        //    through the UI; the deal leaves the in-flight set. ──
+        //    through the UI; the trade leaves the in-flight set. ──
         const resolvedBefore = (await publicClient.getContractEvents({
             address: core, abi: CORE_ABI, eventName: 'ProcessResolved', args: { buyer: BUYER }, fromBlock: 0n,
         })).length;
@@ -243,7 +243,7 @@ test.describe('AssemblyRegistry withdraw — the commits==resolves gate (devnet)
         // ── GATE, OPEN: back on the registeredBy view, the reclaim is enabled. Any
         //    OTHER unresolved processes on the persisted devnet are foreign
         //    (party-private, never witnessed here) → the caveat strip renders
-        //    iff such deals exist — informational, never blocking. Determined
+        //    iff such trades exist — informational, never blocking. Determined
         //    out of band from the same chain state the gate reads. ──
         await gotoAsWallet(page, REGISTERED_BY, `/assemblies/designer/view?slug=${slug}&e2e=devnet`);
         await page.getByTestId('assembly-view-page').waitFor({ timeout: 30000 });
@@ -252,7 +252,7 @@ test.describe('AssemblyRegistry withdraw — the commits==resolves gate (devnet)
         await reclaimBtn.waitFor({ state: 'visible', timeout: 30000 });
         await expect(
             reclaimBtn,
-            'every composed deal resolved → the reclaim is enabled',
+            'every composed trade resolved → the reclaim is enabled',
         ).toBeEnabled({ timeout: 60000 });
 
         // Foreign in-flight orders (committed, process unresolved) — the
@@ -270,12 +270,12 @@ test.describe('AssemblyRegistry withdraw — the commits==resolves gate (devnet)
         if (foreignInFlight > 0) {
             await expect(
                 caveat,
-                `${foreignInFlight} foreign in-flight deal(s) → the party-private caveat renders (informational, not blocking)`,
+                `${foreignInFlight} foreign in-flight trade(s) → the party-private caveat renders (informational, not blocking)`,
             ).toBeVisible({ timeout: 30000 });
             await expect(caveat).toContainText(/could not be checked/);
             await expect(caveat).toContainText(/party-private/);
         } else {
-            await expect(caveat, 'no unverifiable deals → no caveat').toBeHidden();
+            await expect(caveat, 'no unverifiable trades → no caveat').toBeHidden();
         }
 
         // ── RECLAIM + VALUE LEG: click; DepositWithdrawn lands; the registry

@@ -38,7 +38,7 @@ export { filterRows };
 /** The layers, in reading order. Internal — consumers iterate `GRAPH_LAYERS`
  *  (which carries each layer's label and boundary) rather than the bare
  *  vocabulary. */
-const GRAPH_VIEWS = ["market", "overlays", "value-flow", "wallet", "deal"] as const;
+const GRAPH_VIEWS = ["market", "overlays", "value-flow", "wallet", "trade"] as const;
 export type GraphView = (typeof GRAPH_VIEWS)[number];
 
 export interface DataExplorerQuery {
@@ -78,7 +78,7 @@ export interface GraphLayer {
     view: GraphView;
     label: string;
     /** The doc's own vocabulary — a layer PICKS a boundary, never coins one.
-     *  `null` on the deal view, which renders no rows of its own: it hands
+     *  `null` on the trade view, which renders no rows of its own: it hands
      *  off to `/audit/view`, whose record carries its own boundaries. */
     boundary: TruthBoundary | null;
     /** What the layer's rows are, and what its boundary does and does not
@@ -116,8 +116,8 @@ export const GRAPH_LAYERS: readonly GraphLayer[] = [
             "One wallet's public trading record: the processes it resolves as root buyer and the orders it stands either side of. Every row is a bonded commitment on chain.",
     },
     {
-        view: "deal",
-        label: "Deal story",
+        view: "trade",
+        label: "Trade story",
         boundary: null,
         statement:
             "One process, narrated from its own record. The full narration already exists at /audit/view — timeline, financials, clause evidence, signature verdicts — so this view hands off rather than telling the story twice.",

@@ -1,11 +1,11 @@
 /**
  * withdrawGate — the frontend-owned pure surface of the advisory
  * commits==resolves gate: the user-facing reason a stake can't be reclaimed,
- * and the informational caveat for unverifiable (party-private) deals.
+ * and the informational caveat for unverifiable (party-private) trades.
  *
  * The join + count itself is the SDK's (`@figaro-protocol/sdk/derive`, tested there);
  * this asserts only the messages the affordance shows. Ruled semantics: only
- * VERIFIED in-flight deals block; unverified deals surface a caveat next to an
+ * VERIFIED in-flight trades block; unverified trades surface a caveat next to an
  * ENABLED affordance; a null gate (loading / chain-read failure) still reads
  * as not-safe (genuinely unknown chain state).
  */
@@ -15,7 +15,7 @@ import type { WithdrawGate } from "@figaro-protocol/sdk/derive";
 
 describe("withdrawBlockedReason", () => {
     it("null gate (loading / chain-read failure) is treated as not-safe-to-reclaim", () => {
-        expect(withdrawBlockedReason(null)).toMatch(/Checking for in-flight deals/i);
+        expect(withdrawBlockedReason(null)).toMatch(/Checking for in-flight trades/i);
     });
 
     it("zero orders → no reason (withdraw allowed), no caveat", () => {
@@ -24,10 +24,10 @@ describe("withdrawBlockedReason", () => {
         expect(withdrawUnverifiedCaveat(gate)).toBeNull();
     });
 
-    it("verified in-flight deals block, naming the count", () => {
+    it("verified in-flight trades block, naming the count", () => {
         const gate: WithdrawGate = { canWithdraw: false, inFlightCount: 2, unverifiedCount: 0 };
         const reason = withdrawBlockedReason(gate);
-        expect(reason).toMatch(/2 in-flight deals/);
+        expect(reason).toMatch(/2 in-flight trades/);
         expect(reason).toMatch(/resolved/);
     });
 
@@ -39,8 +39,8 @@ describe("withdrawBlockedReason", () => {
 
     it("mixed → blocked on the verified count, caveat names the unverified count", () => {
         const gate: WithdrawGate = { canWithdraw: false, inFlightCount: 1, unverifiedCount: 3 };
-        expect(withdrawBlockedReason(gate)).toMatch(/1 in-flight deal /);
-        expect(withdrawUnverifiedCaveat(gate)).toMatch(/3 in-flight deals could not be checked/);
+        expect(withdrawBlockedReason(gate)).toMatch(/1 in-flight trade /);
+        expect(withdrawUnverifiedCaveat(gate)).toMatch(/3 in-flight trades could not be checked/);
     });
 });
 
@@ -49,7 +49,7 @@ describe("withdrawUnverifiedCaveat", () => {
         expect(withdrawUnverifiedCaveat(null)).toBeNull();
     });
 
-    it("names that unverified deals never block and that enforcement arrives with the prover", () => {
+    it("names that unverified trades never block and that enforcement arrives with the prover", () => {
         const gate: WithdrawGate = { canWithdraw: true, inFlightCount: 0, unverifiedCount: 2 };
         const caveat = withdrawUnverifiedCaveat(gate);
         expect(caveat).toMatch(/do not block/i);

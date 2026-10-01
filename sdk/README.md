@@ -177,11 +177,12 @@ await executeAction(walletClient, publicClient, addresses, resolve);
 // unstake, a period can close — docs/DESIGN_DECISIONS.md §21). One call, the
 // headless twin of what the frontend does at the same moment. The mandatory
 // clauses EARN — commerce and topology are scored for their author of record
-// like any other — so the only routine revert inside it is the excluded
-// figaro-assembly-provenance leg (attribution plumbing; its designer accrues
-// through recordAssemblyUsage instead). Read the report, not the absence of an
-// exception, and read excludedClauseOrAssembly(key) off the deployment you are
-// calling rather than assuming any list:
+// like any other. The call reads excludedClauseOrAssembly(key) off the
+// deployment you are calling and never sends a record the counter excludes
+// (at the reference genesis, the figaro-assembly-provenance leg alone:
+// attribution plumbing, whose designer accrues through recordAssemblyUsage
+// instead); `report.excluded` names what it left out. Read the report, not
+// the absence of an exception:
 import { instantiateRootAgreement, recordProcessUsage } from "@figaro-protocol/sdk/agent";
 // The agreement is REBUILT, never stored: step 4's template + the same overrides and
 // specs re-instantiate it identically, and its merkle root IS the committed
@@ -386,7 +387,7 @@ definition) and `RPGF_*` constant is a **root** export.
 | `reconstruct` | root | Rebuild the full process topology from parsed core events. |
 | `reconstructDiscovery` | root | Rebuild the live registry view; a member's current profile URI is EVENT-derived, not a getter. |
 | `reconstructOrdersFromTemplate` | root | THE template→orders walk: root signs `processId = 0`, children carry real parent order hashes. |
-| `recordProcessUsage` | `/agent` | File direct-path usage at resolution; per-leg reverts land in `failures`, never thrown. |
+| `recordProcessUsage` | `/agent` | File direct-path usage at resolution: one leg per distinct key the counter does not exclude (`excluded` names the rest); a sent leg that reverts lands in `failures`, never thrown. |
 | `registerRateQuantitySource` | root | Register a resolver for a catalogue's rate-quantity source (a composition tenant, no core edit). |
 | `requestCounterSignatures` | `/agent` | Fan out race drafts, verify each reply by exact struct match, rank cheapest first. |
 | `requestQuotes` | `/agent` | Fan out RFQ requests, verify each reply by reconstruction, rank cheapest first. |
@@ -1288,7 +1289,7 @@ const close = geohashesMatch("dr5ru7", "dr5ru8", 5); // true (5-char prefix matc
 const km = haversineDistance(40.71, -74.00, 34.05, -118.24); // ~3944 km
 
 // Withdraw gate (advisory): a clause-or-assembly author must not reclaim their
-// registration stake while deals composed from that clause or assembly are in flight.
+// registration stake while trades composed from that clause or assembly are in flight.
 // The join is derived at read time from chain + IPFS, never stored:
 const events = await fetchCoreEvents(client, addresses, 0n);
 const inFlight = deriveInFlightOrders(events); // committed, process unresolved
@@ -1296,7 +1297,7 @@ const inFlight = deriveInFlightOrders(events); // committed, process unresolved
 // it as { processId, agreement } — a null agreement (party-private/unreachable)
 // is COUNTED as unverified and surfaced, but never blocks: agreement bodies are
 // party-private, and the on-chain inclusion-proof hardening doesn't lock the
-// stake on unrevealed deals either. Then:
+// stake on unrevealed trades either. Then:
 const clauseGate = deriveClauseWithdrawGate("figaro-emissions", agreements);
 const assemblyGate = deriveAssemblyWithdrawGate(assemblyTemplate, agreements);
 // gate.canWithdraw === (inFlightCount === 0); unverifiedCount is a caveat

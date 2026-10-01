@@ -15,7 +15,7 @@
  * - Wallet-record: one wallet's public trading history — the processes it
  *   resolves as root buyer and the orders it holds either side of.
  *
- * Deal-story is deliberately NOT here: process-record narration is the audit
+ * Trade-story is deliberately NOT here: process-record narration is the audit
  * view's job on-site, and node-side it is `reconstruct()` + overlays
  * composed — no third rendering of the same walk.
  */

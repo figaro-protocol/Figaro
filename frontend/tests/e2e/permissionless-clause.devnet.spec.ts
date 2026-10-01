@@ -238,7 +238,7 @@ test.describe('PERMISSIONLESS CLAUSE — the definition of green (devnet)', () =
         // Switch the active wallet BACK to the buyer. The member onboarding above
         // left a persistent `__FIGARO_SWITCH_ACCOUNT__(SELLER)` init script (gotoAsWallet
         // registers one that re-fires on EVERY navigation) — a plain goto here would
-        // place the order as anvil[14] (a self-deal), so the buyer's approval never runs
+        // place the order as anvil[14] (a self-trade), so the buyer's approval never runs
         // for anvil[0] and `OrderCommitted{buyer: anvil[0]}` never lands. gotoAsWallet(BUYER)
         // registers a later switch-script that wins, mounting wagmi as the buyer.
         await gotoAsWallet(page, BUYER, `/s/view?seller=${SELLER}&e2e=devnet`);

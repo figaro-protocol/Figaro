@@ -25,7 +25,7 @@ export default function DesignerLanding() {
                     Compose an assembly.
                 </h1>
                 <p className="text-body-lead text-ink-body max-w-2xl mb-4">
-                    An assembly is clauses composed into a deal-shape anyone can use and reuse — the orders, roles, and terms of a multi-party process, anchored on the on-chain <code>AssemblyRegistry</code>. Full explanation of how one is composed: <Link href="/assemblies" className="underline">/assemblies</Link>.
+                    An assembly is clauses composed into a process design anyone can use and reuse — the orders, roles, and terms of a multi-party process, anchored on the on-chain <code>AssemblyRegistry</code>. Full explanation of how one is composed: <Link href="/assemblies" className="underline">/assemblies</Link>.
                 </p>
                 <div className="mt-8">
                     <Link

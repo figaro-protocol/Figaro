@@ -12,7 +12,7 @@
  *   an Attestation event's `contentRef` IS the keccak-CID digest of the
  *   published preimage; pure, all IPFS I/O stays with the caller
  * - Geo math: geohash encode/decode, prefix matching, Haversine distance
- * - Withdraw gate: the commits==resolves stake-reclaim gate — in-flight deals
+ * - Withdraw gate: the commits==resolves stake-reclaim gate — in-flight trades
  *   composed from a clause or assembly, derived from chain + IPFS
  * - Truth boundaries: the trust labels of docs/DATA_LAYER.md — every
  *   graph projection names the guarantee behind its rows

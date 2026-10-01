@@ -26,6 +26,13 @@ release lives under **Unreleased**.
 - **SDK 0.2.0 (breaking): `SyncResult.newSellers` is renamed to `newMembers`.**
   The field counts member registrations and profile updates; a member may
   buy, sell, or both.
+- **SDK 0.2.0: `recordProcessUsage` plans its legs before it sends any.** It
+  reads the counter's excluded set off the deployment and never sends a record
+  the counter is certain to refuse; a key two orders carry is sent once.
+  `UsageRecordingReport` gains `excluded`, the keys left out, and `attempted`
+  counts the clause legs actually sent.
+- The analyst agent's tool `deal_story` is `trade_story`, matching its route
+  `/queries/trade-story`.
 
 ### Added
 

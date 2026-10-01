@@ -236,10 +236,11 @@ not the absence of an exception. **The mandatory clauses EARN**: commerce and to
 on every order and are scored for their designer of record like any other. The reference
 deployments exclude exactly ONE key — `figaro-assembly-provenance`, which is attribution
 plumbing (scoring it would double-reward every assembly trade, whose designer accrues through
-the assembly leg below) — so on a perfectly healthy assembly run that one leg appears in
-`failures` with `ClauseOrAssemblyExcluded` and nothing else does. The set is a constructor
-argument, never a fixed list: read `excludedClauseOrAssembly(key)` off the deployment you
-are calling before you tell the owner a leg was refused. The once-per-process assembly credit
+the assembly leg below) — and `recordProcessUsage` never sends it: it reads
+`excludedClauseOrAssembly(key)` off the deployment you are calling and lists what it left out
+in `report.excluded`, so on a healthy assembly run `failures` is empty. The set is a
+constructor argument, never a fixed list: read `report.excluded` before you tell the owner
+which legs were filed. The once-per-process assembly credit
 is an INDEPENDENT leg (`assemblyRecorded`): it is claimed from the first section carrying a
 well-formed `compositionHash` and requires that composition to hold a live registry binding,
 so an agreement with no provenance section credits no designer at all. Report the report,

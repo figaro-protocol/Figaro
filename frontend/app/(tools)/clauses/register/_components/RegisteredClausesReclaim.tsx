@@ -10,7 +10,7 @@
  * withdrawn rows, flagged). The article is read from the warm clause-spec cache
  * (`block.design.article`) — never a stored field. Each row owns its own
  * `useWithdrawGate({ kind: "clause", clauseId })`, so the reclaim disables while
- * VERIFIED in-flight deals compose the clause and surfaces the party-private
+ * VERIFIED in-flight trades compose the clause and surfaces the party-private
  * caveat otherwise — the same pattern as ViewAssemblyClient's reclaim.
  *
  * Mirrors `ClausesList`'s states: no-wallet, loading, empty, list.
@@ -113,7 +113,7 @@ function ReclaimClauseRow({
     // gateway has not served yet is not unclassified — its article is unknown here.
     const spec = getClauseSpec(clause.clauseId, clause.version);
     const article = spec ? spec.block?.design.article ?? "(unclassified)" : "(spec not resolved yet)";
-    // Unverifiable in-flight deals are informational only (party-private terms),
+    // Unverifiable in-flight trades are informational only (party-private terms),
     // never disabling — shown while the reclaim is still available.
     const caveat = !withdrawn ? withdrawUnverifiedCaveat(gate) : null;
 
@@ -158,9 +158,9 @@ function ReclaimClauseRow({
                     type="button"
                     onClick={handleWithdraw}
                     // RegisteredBy-only reclaim, gated by the advisory commits==resolves
-                    // gate: disabled while any VERIFIED in-flight deal composes this
+                    // gate: disabled while any VERIFIED in-flight trade composes this
                     // clause, while the gate is unknown (loading / chain-read
-                    // failure), or once already reclaimed. Unverified deals never
+                    // failure), or once already reclaimed. Unverified trades never
                     // disable — they render as the caveat strip below.
                     disabled={withdrawing || withdrawn || gate === null || gate.inFlightCount > 0}
                     className="text-xs px-3 py-1.5 rounded border border-default bg-paper hover:bg-subtle text-ink-heading font-semibold disabled:opacity-40 disabled:cursor-not-allowed shrink-0"

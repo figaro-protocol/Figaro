@@ -97,7 +97,7 @@ export function translatePublishRevert(err: unknown, attemptedSlug: string): Err
  * Reclaim an assembly's registration stake (`AssemblyRegistry.withdrawDeposit`).
  * The binding is permanent — withdraw only moves the deposit and de-surfaces
  * the assembly for NEW orders; committed processes keep resolving. Gating on
- * in-flight deals is the caller's job via `useWithdrawGate` (advisory,
+ * in-flight trades is the caller's job via `useWithdrawGate` (advisory,
  * off-chain); this hook is the plain registeredBy-only write. Simulates first to
  * surface a typed revert before opening the wallet, sends, then waits for a
  * `success` receipt. Throws on any failure.

@@ -52,7 +52,7 @@ export default function ClauseAuthoring() {
                     <Link href="/clauses" className="underline">clauses page</Link>{" "}
                     carries the plain-language introduction, the live registry inventory, and the full explanation of{" "}
                     <Link href="/clauses#what-the-hash-covers" className="underline">what the hash covers</Link>{" "}
-                    &mdash; which part of a spec reaches which hash, and what a reserved <code>article</code> value silently changes. Read that before you register: registration is permanent. The traps that bite <em>after</em> registration &mdash; when a deal built on your clause is committed, resolved, and read back &mdash; are indexed on <Link href="/pitfalls" className="underline">Sharp edges</Link>.
+                    &mdash; which part of a spec reaches which hash, and what a reserved <code>article</code> value silently changes. Read that before you register: registration is permanent. The traps that bite <em>after</em> registration &mdash; when a trade built on your clause is committed, resolved, and read back &mdash; are indexed on <Link href="/pitfalls" className="underline">Sharp edges</Link>.
                 </p>
                 <div className="mt-8">
                     <RegisterClauseForm />
@@ -111,7 +111,7 @@ export default function ClauseAuthoring() {
                 </h2>
                 <p className="text-sm text-ink-muted mb-6 max-w-2xl">
                     Clauses this wallet registered, reconstructed from{" "}
-                    <code>ClauseRegistered</code> events. Reclaiming a stake moves the deposit and de-surfaces the clause for new compositions — the binding stays anchored and committed deals keep resolving it.
+                    <code>ClauseRegistered</code> events. Reclaiming a stake returns it and de-surfaces the clause for new compositions — the binding stays anchored and committed trades keep resolving it.
                 </p>
                 <RegisteredClausesReclaim />
             </section>

@@ -17,7 +17,7 @@
  * validators require a buyer signature to exist. A draft carries NO signatures:
  * nothing about it binds anyone, and it cannot be broadcast (FigaroCore needs
  * both signatures), so a candidate's countersignature exposes them to exactly
- * the deal they quoted, bounded by `deadline`.
+ * the trade they quoted, bounded by `deadline`.
  *
  * The race window (how long the buyer waits) and k (how many candidates) are
  * caller policy — checkout-time buyer behavior, never a stored field on the

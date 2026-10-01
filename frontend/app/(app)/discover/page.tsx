@@ -36,7 +36,7 @@ export default function DiscoverPage() {
             </p>
             <p className="text-sm text-ink-muted mb-10">
                 New to this? <Link href="/members" className="underline hover:text-ink-primary">See what membership is</Link>, or read{" "}
-                <Link href="/trade" className="underline hover:text-ink-primary">one deal, lived</Link> end to end.
+                <Link href="/trade" className="underline hover:text-ink-primary">one trade, lived</Link> end to end.
             </p>
             <MemberDiscovery />
         </section>

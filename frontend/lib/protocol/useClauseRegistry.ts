@@ -259,7 +259,7 @@ export function useRegisterClause() {
  * Reclaim a clause's registration stake (`ClauseRegistry.withdrawDeposit`).
  * Mirrors `useWithdrawAssembly` exactly: the binding is permanent — withdraw
  * only moves the deposit and de-surfaces the clause for NEW compositions;
- * committed agreements keep resolving the clause. Gating on in-flight deals is
+ * committed agreements keep resolving the clause. Gating on in-flight trades is
  * the caller's job via `useWithdrawGate` (advisory, off-chain); this hook is the
  * plain registeredBy-only write. Simulates first to surface a typed revert before
  * opening the wallet, sends, then waits for a `success` receipt. Throws on any

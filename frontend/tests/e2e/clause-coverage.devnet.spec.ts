@@ -341,7 +341,7 @@ const RUNGS: ClauseRung[] = [
         leaf: (data) => expect(data.nmfcClass).toBe('70'),
     },
     {
-        // Trade-delivery terms per the ICC's Incoterms® 2020 — a per-deal
+        // Trade-delivery terms per the ICC's Incoterms® 2020 — a per-trade
         // commercial term (NOT catalogue-sourced product master data), so the
         // BUYER fills rule + named place at checkout like applicable-law.
         clauseId: 'figaro-incoterms',

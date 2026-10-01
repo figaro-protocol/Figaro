@@ -420,7 +420,7 @@ function orderRow(o) {
 }
 
 /**
- * Deal-story: one process narrated from the data — the resolution chain plus
+ * Trade-story: one process narrated from the data — the resolution chain plus
  * every overlay entry anchored to it, in block order. Composed from the
  * projections, never a third walk of the same events (on-site the same answer
  * is `/audit/view?process=`).
@@ -428,7 +428,7 @@ function orderRow(o) {
  * `framedSubstance` carries the recovered payloads as DATA blocks: a model
  * reading this story reads the substance framed or not at all.
  */
-export function dealStory(corpus, processId) {
+export function tradeStory(corpus, processId) {
     const id = processId.toLowerCase();
     const chain = [...corpus.graphs.resolution.chains.values()]
         .find((c) => c.processId.toLowerCase() === id);

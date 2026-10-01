@@ -25,7 +25,7 @@ import {
     witnessContentCid,
 } from "@figaro-protocol/sdk/derive";
 import {
-    corpusStatus, corroborateEndpoints, dealStory, graphInventory, jsonSafe, loadHeldAgreements,
+    corpusStatus, corroborateEndpoints, tradeStory, graphInventory, jsonSafe, loadHeldAgreements,
     marketShapeAnswer, walletRecordAnswer,
 } from "../analyst.mjs";
 import { analystTools, crosscheckRpcUrls, makeAnalystHandler, modelConfig, runPrompt } from "../figaro-analyst.mjs";
@@ -185,7 +185,7 @@ test("the graph inventory is a CENSUS of what the corpus holds, each with its bo
 });
 
 test("the resolution chain reports FigaroCore's own arithmetic, per order", () => {
-    const story = dealStory(fixtureCorpus(), PROCESS);
+    const story = tradeStory(fixtureCorpus(), PROCESS);
     assert.equal(story.found, true);
     assert.equal(story.resolution.truthBoundary, "protocol-enforced");
     assert.equal(story.resolution.resolved, true);
@@ -202,18 +202,18 @@ test("the resolution chain reports FigaroCore's own arithmetic, per order", () =
 });
 
 test("trade-story carries recovered substance FRAMED, and says so when it has none", () => {
-    const withSubstance = dealStory(fixtureCorpus(), PROCESS);
+    const withSubstance = tradeStory(fixtureCorpus(), PROCESS);
     assert.equal(withSubstance.overlays.length, 1);
     assert.match(withSubstance.overlays[0].framedSubstance, /⟦FIGARO-DATA/);
     assert.equal(withSubstance.overlays[0].contentRef, CONTENT_REF);
 
-    const fingerprintOnly = dealStory(fixtureCorpus({ recovered: false }), PROCESS);
+    const fingerprintOnly = tradeStory(fixtureCorpus({ recovered: false }), PROCESS);
     assert.equal(fingerprintOnly.overlays[0].framedSubstance, null);
     assert.equal(fingerprintOnly.overlays[0].decoded, null, "no bytes ⇒ fingerprint-only, never a fabricated value");
 });
 
 test("an absent process is ABSENCE with its two live possibilities, never 'it did not happen'", () => {
-    const story = dealStory(fixtureCorpus(), `0x${"99".repeat(32)}`);
+    const story = tradeStory(fixtureCorpus(), `0x${"99".repeat(32)}`);
     assert.equal(story.found, false);
     assert.match(story.note, /batch-resolved/);
     assert.match(story.note, /outside the synced range/);

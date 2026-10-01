@@ -15,8 +15,8 @@ export type RpgfValueLoopFigureProps = BaseFigureProps;
 // below that strength. Public derivation: /papers/substrate-broadening-rpgf.
 const STEPS = [
     { title: "Stake ETH to register", detail: "your clauses and assemblies go live" },
-    { title: "Real trade uses them", detail: "resolved deals carry your work" },
-    { title: "Every deal pays gas in ETH", detail: "demand for the currency you staked" },
+    { title: "Real trade uses them", detail: "resolved trades carry your work" },
+    { title: "Every trade pays gas in ETH", detail: "demand for the currency you staked" },
     { title: "Your stake rides that demand", detail: "exposure to the growth you created" },
 ] as const;
 
@@ -49,7 +49,7 @@ export function RpgfValueLoopFigure({
             desc={
                 <>
                     Four steps in a closed loop: stake ETH to register, real trade
-                    uses your clauses and assemblies, every deal pays gas in ETH,
+                    uses your clauses and assemblies, every trade pays gas in ETH,
                     and your stake rides that demand &mdash; exposure to the growth
                     your own work creates.
                 </>

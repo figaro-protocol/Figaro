@@ -86,7 +86,7 @@ export function DisclosurePolicyEditor({ choices, entries, onChange, postures = 
                 <p>
                     Optional. Every bonded process co-produces records — one per
                     clause, per order. The rows below are the data those
-                    assemblies’ deals produce. Checking a row offers that data
+                    assemblies’ trades produce. Checking a row offers that data
                     for sale or disclosure; a whitelist narrows who may buy or see
                     it, and an embargo delays it until N days after resolution.
                 </p>

@@ -284,7 +284,7 @@ the same through the guest's verifier. Three implementations, one fixture.
 **`FigaroCore` transition vectors — the mirror replays `FigaroCore`.**
 `test/core/kernel/KernelTransitionVectorsTest.t.sol` runs six scenarios on
 `FigaroCore` (a root left open; root and sub resolved; three links; one
-seller on two orders; a self-deal; two processes in one batch) and writes what
+seller on two orders; a self-trade; two processes in one batch) and writes what
 happened — every commitment with the ids `FigaroCore` returned, every party's
 deposit and payout, `FigaroCore`'s balance delta, every process's accumulator
 and active count — to `test/fixtures/kernel-transition-vectors.json`

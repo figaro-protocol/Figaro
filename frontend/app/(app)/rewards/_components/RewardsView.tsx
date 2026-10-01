@@ -128,7 +128,7 @@ export function RewardsView() {
                 {rewards.available && rewards.readState === "ready" && rewards.periods.length === 0 && (
                     <p className="text-base text-ink-muted" data-testid="rewards-no-periods">
                         No reward periods exist on this network yet. Usage starts counting the
-                        moment a period opens; author a clause or an assembly and the deals that
+                        moment a period opens; author a clause or an assembly and the trades that
                         carry it accrue to this wallet here.
                     </p>
                 )}

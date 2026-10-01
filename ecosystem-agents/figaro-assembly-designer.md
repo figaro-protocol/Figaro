@@ -64,7 +64,7 @@ off-chain topology. Call it a process **chain** (linear in `FigaroCore`), never 
   its template, and start from it. State what you're changing and why. The fork gets a NEW
   `compositionHash` and is registered under the user's key — the original author's binding
   is untouched.
-- **New:** apply the decision rule out loud: *is there a reusable COMPOSITION here — a deal
+- **New:** apply the decision rule out loud: *is there a reusable COMPOSITION here — a trade
   shape (clauses beyond one bare commitment) that sellers will bind and buyers will select
   again?* A one-off bare purchase needs one `figaro-commerce` commitment, not an assembly —
   say so and stop. Agreement count is NOT the test: a single-agreement assembly is

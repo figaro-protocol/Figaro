@@ -4,7 +4,7 @@
  * where the author pastes a spec, watches the off-chain validation pass,
  * registers (pin + anchor + deposit), sees the clause appear in the live
  * /clauses inventory under its article, composes it into a committed order,
- * is BLOCKED from reclaiming the stake while that deal is in flight
+ * is BLOCKED from reclaiming the stake while that trade is in flight
  * (commits==resolves, verified through this context's witnessed agreement),
  * resolves, reclaims, and the registry refunds exactly the deposit.
  *
@@ -26,7 +26,7 @@
  * context witnessed (the localStorage URI saved at checkout). The author
  * registering the clause AND buying the composed order is legal (the
  * protocol is actor-neutral) and keeps the witnessed URI local to the
- * author's own context, so the gate can verify the in-flight deal exactly
+ * author's own context, so the gate can verify the in-flight trade exactly
  * as a real author-participant's browser would.
  *
  * Wallets (all 20 unlocked anvil accounts are claimed by some spec; these
@@ -81,7 +81,7 @@ const SELLER = mnemonicToAccount(ANVIL_MNEMONIC, { addressIndex: 19 }).address a
 test.describe('CLAUSE AUTHORING — register on /clauses/register, inventory reaction, commits==resolves reclaim (devnet)', () => {
     test.setTimeout(360_000);
 
-    test('author registers a clause through the UI, a composed deal blocks the reclaim, resolution frees it, the registry refunds the deposit', async ({ page }) => {
+    test('author registers a clause through the UI, a composed trade blocks the reclaim, resolution frees it, the registry refunds the deposit', async ({ page }) => {
         page.on('dialog', (dialog) => { void dialog.accept().catch(() => {}); });
 
         const config = readLocalDeploymentConfig();
@@ -316,7 +316,7 @@ test.describe('CLAUSE AUTHORING — register on /clauses/register, inventory rea
 
         // ── GATE, BLOCKED: back on /clauses/register as the author — the
         //    reclaim row for THIS run's idHash shows the button disabled,
-        //    reason naming the ONE verified in-flight deal (the clause gate
+        //    reason naming the ONE verified in-flight trade (the clause gate
         //    counts committed-unresolved ORDERS composing the clause). ──
         await gotoAsWallet(page, AUTHOR, '/clauses/register?e2e=devnet');
         await waitForConnected(page);
@@ -325,12 +325,12 @@ test.describe('CLAUSE AUTHORING — register on /clauses/register, inventory rea
         const reclaimBtn = reclaimRow.getByTestId('clause-withdraw-button');
         await expect(
             reclaimBtn,
-            'the reclaim is disabled while the composed deal is in flight',
+            'the reclaim is disabled while the composed trade is in flight',
         ).toBeDisabled();
         await expect(
             reclaimBtn,
             'the disabled reason names the verified in-flight count',
-        ).toHaveAttribute('title', /Cannot reclaim the stake yet: 1 in-flight deal still composes this clause or assembly/, { timeout: 60000 });
+        ).toHaveAttribute('title', /Cannot reclaim the stake yet: 1 in-flight trade still composes this clause or assembly/, { timeout: 60000 });
         await expect(reclaimBtn).toBeDisabled();
 
         // ── RESOLVE (buyer dominance, atomic): the author-as-buyer resolves the
@@ -357,7 +357,7 @@ test.describe('CLAUSE AUTHORING — register on /clauses/register, inventory rea
         expect(sellerFinal - sellerBefore, 'seller net earned exactly the payment').toBe(payment);
         expect(coreFinal, 'FigaroCore escrow returned to its baseline').toBe(coreBefore);
 
-        // ── GATE, OPEN: every composed deal resolved → the reclaim enables.
+        // ── GATE, OPEN: every composed trade resolved → the reclaim enables.
         //    Foreign in-flight orders (other specs' unresolved processes on the
         //    persisted devnet) are party-private → the caveat renders iff such
         //    orders exist — informational, never blocking. Determined out of
@@ -370,7 +370,7 @@ test.describe('CLAUSE AUTHORING — register on /clauses/register, inventory rea
         const reclaimBtnAfter = rowAfter.getByTestId('clause-withdraw-button');
         await expect(
             reclaimBtnAfter,
-            'every composed deal resolved → the reclaim is enabled',
+            'every composed trade resolved → the reclaim is enabled',
         ).toBeEnabled({ timeout: 60000 });
 
         const [allCommitted, allResolved] = await Promise.all([
@@ -390,7 +390,7 @@ test.describe('CLAUSE AUTHORING — register on /clauses/register, inventory rea
             await expect(caveat).toContainText(/could not be checked/);
             await expect(caveat).toContainText(/party-private/);
         } else {
-            await expect(caveat, 'no unverifiable deals → no caveat').toBeHidden();
+            await expect(caveat, 'no unverifiable trades → no caveat').toBeHidden();
         }
 
         // ── RECLAIM + VALUE LEG: click; DepositWithdrawn lands for this run's

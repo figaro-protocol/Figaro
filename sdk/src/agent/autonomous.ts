@@ -19,8 +19,9 @@ import { CORE_ABI, ATTESTATION_COORDINATOR_ABI, USAGE_COUNTER_ABI } from "../abi
 import { validateContent, encodeContentFromSpec, type ClauseSpec } from "../clauses/index.js";
 import { assertOrderFitsResolveCap } from "../gasCeilings.js";
 import { restoreSignedProcessId } from "../commitments.js";
-import { buildSectionInclusionProof, sectionDataHash, type Agreement } from "../agreement.js";
+import type { Agreement } from "../agreement.js";
 import { computeClauseKey } from "../discovery.js";
+import { buildUsageClaims, fetchUsageClaimContext } from "../rpgf/index.js";
 import { type Hex, type Address, type FigaroAddresses, type Commitment, isBytes32Hex } from "../types.js";
 import type { ProposedAction, ResolveProcessAction } from "./proposer.js";
 
@@ -110,15 +111,20 @@ export interface UsageRecordingEntry {
 }
 
 export interface UsageRecordingReport {
-    /** Section legs attempted (clause legs; the assembly leg is counted by flag). */
+    /** Clause legs sent: one per DISTINCT clause key the process carries that
+     *  the counter does not exclude (the assembly leg is counted by flag). */
     attempted: number;
     /** Clause legs that landed. */
     recorded: number;
     /** Whether the once-per-process assembly (designer) credit landed. */
     assemblyRecorded: boolean;
-    /** Per-leg failures. An EXCLUDED clause reverting (`figaro-commerce`,
-     *  `figaro-topology`, the provenance clause) is routine by design, not a
-     *  fault — the counter refuses the protocol floor, never the open set. */
+    /** Clause keys the counter excludes (`excludedClauseOrAssembly`, read off
+     *  the deployment being called). They are never sent: a record of one is
+     *  certain to revert. At the reference genesis the set is the provenance
+     *  clause alone; `figaro-commerce` and `figaro-topology` earn. */
+    excluded: Hex[];
+    /** Per-leg failures: a closed accrual, a seller whose stake is no longer
+     *  live, a key another caller recorded first. */
     failures: string[];
 }
 
@@ -130,15 +136,17 @@ export interface UsageRecordingReport {
  * a deferred record is permanently refusable). A buyer agent that resolves
  * without calling this credits no clause author and no assembly designer.
  *
- * Per order: every committed section gets a CLAUSE leg
+ * The legs are PLANNED before anything is sent, with the same two helpers the
+ * batch path uses (`fetchUsageClaimContext` + `buildUsageClaims`): every
+ * committed section the counter does not exclude gets a CLAUSE leg
  * (`UsageCounter.recordClauseUsage` — only the section FINGERPRINT reaches
  * calldata, never plaintext, so private sections stay off-chain), and the
- * first section carrying a well-formed `compositionHash` gets the INDEPENDENT
- * once-per-process ASSEMBLY leg (`recordAssemblyUsage` — content derived
- * on-chain from the hash). The two legs are independent on purpose: the
- * provenance clause's own clause leg always reverts (excluded), and
- * sequencing the assembly credit behind it would kill designer credit.
- * Tolerate-the-revert per leg; the report says what landed.
+ * provenance section's `compositionHash` gets the INDEPENDENT ASSEMBLY leg
+ * (`recordAssemblyUsage` — content derived on-chain from the hash). A key is
+ * counted once per process, so a key two orders carry is sent once. An
+ * excluded key is never sent — its record is certain to revert, and the
+ * caller would pay gas for nothing; the report names what was left out.
+ * Tolerate-the-revert per leg that IS sent; the report says what landed.
  */
 export async function recordProcessUsage(
     walletClient: WalletClient,
@@ -154,7 +162,7 @@ export async function recordProcessUsage(
         publicClient.getChainId(),
         publicClient.readContract({ address: usageCounter, abi: USAGE_COUNTER_ABI, functionName: "core" }) as Promise<Address>,
     ]);
-    const report: UsageRecordingReport = { attempted: 0, recorded: 0, assemblyRecorded: false, failures: [] };
+    const report: UsageRecordingReport = { attempted: 0, recorded: 0, assemblyRecorded: false, excluded: [], failures: [] };
     const send = async (functionName: "recordClauseUsage" | "recordAssemblyUsage", args: readonly unknown[]) => {
         const hash = await walletClient.writeContract({
             chain: walletClient.chain ?? null, account, address: usageCounter,
@@ -167,37 +175,52 @@ export async function recordProcessUsage(
         const receipt = await publicClient.waitForTransactionReceipt({ hash });
         if (receipt.status !== "success") throw new Error(`${functionName} reverted on-chain (tx ${hash})`);
     };
+    // Once ever per (key, process): `processCounted` in the counter. Every
+    // entry here belongs to the one process just resolved.
+    const sent = new Set<string>();
+    const excluded = new Set<string>();
     for (const { commitment: given, agreement } of entries) {
         // The counter re-hashes the SIGNED struct to find the order — a root
         // signed processId 0, so a derived-id commitment (the proposer's
         // event-reconstructed shape) must be restored exactly as the resolve
         // path restores it, or every leg reverts UnknownOrder.
         const commitment = restoreSignedProcessId(given, chainId, core);
+        const context = await fetchUsageClaimContext(publicClient, usageCounter, agreement);
+        for (const key of context.excludedClausesOrAssemblies) excluded.add(key.toLowerCase());
+        const clauseOf = new Map(agreement.sections.map((s) => [computeClauseKey(s.clause, s.version).toLowerCase(), s.clause]));
+        // A compositionHash that is present and malformed means the designer
+        // credit silently dies; say so.
         for (const section of agreement.sections) {
-            report.attempted++;
-            const { proof } = buildSectionInclusionProof(agreement, section.clause);
-            try {
-                await send("recordClauseUsage", [
-                    commitment, computeClauseKey(section.clause, section.version), sectionDataHash(section), proof,
-                ]);
-                report.recorded++;
-            } catch (error) {
-                report.failures.push(`${section.clause}: ${error instanceof Error ? error.message : String(error)}`);
-            }
             const composition = (section.data as Record<string, unknown> | undefined)?.compositionHash;
-            if (report.assemblyRecorded || composition === undefined) continue;
-            if (!isBytes32Hex(composition)) {
+            if (composition !== undefined && !isBytes32Hex(composition)) {
                 report.failures.push(`${section.clause}: compositionHash present but malformed: ${JSON.stringify(composition)}`);
+            }
+        }
+        for (const claim of buildUsageClaims(commitment, agreement, context)) {
+            const key = claim.clause_or_assembly.toLowerCase();
+            if (claim.kind === "Assembly") {
+                if (report.assemblyRecorded || sent.has(key) || !isBytes32Hex(claim.clause_or_assembly)) continue;
+                sent.add(key);
+                try {
+                    await send("recordAssemblyUsage", [commitment, claim.clause_or_assembly, claim.inclusion_proof]);
+                    report.assemblyRecorded = true;
+                } catch (error) {
+                    report.failures.push(`assembly ${claim.clause_or_assembly}: ${error instanceof Error ? error.message : String(error)}`);
+                }
                 continue;
             }
+            if (sent.has(key)) continue;
+            sent.add(key);
+            report.attempted++;
             try {
-                await send("recordAssemblyUsage", [commitment, composition, proof]);
-                report.assemblyRecorded = true;
+                await send("recordClauseUsage", [commitment, claim.clause_or_assembly, claim.kind.Clause.section_hash, claim.inclusion_proof]);
+                report.recorded++;
             } catch (error) {
-                report.failures.push(`assembly ${composition}: ${error instanceof Error ? error.message : String(error)}`);
+                report.failures.push(`${clauseOf.get(key) ?? claim.clause_or_assembly}: ${error instanceof Error ? error.message : String(error)}`);
             }
         }
     }
+    report.excluded = [...excluded] as Hex[];
     return report;
 }
 

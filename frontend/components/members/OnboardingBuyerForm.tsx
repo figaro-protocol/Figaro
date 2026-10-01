@@ -21,7 +21,7 @@ import type { OnboardingStepChromeProps } from "@/components/members/OnboardingS
  * The Buy through step of the member wizard — the twin of Sell through. The member SUBSCRIBES the
  * assemblies they buy through — their own list, independent of the
  * seller bindings, because a wallet does not buy through the assemblies
- * it sells through — and toggles which of the data those deals
+ * it sells through — and toggles which of the data those trades
  * co-produce is offered for sale. Subscribing is the buyer's
  * verb; BINDING stays the seller's.
  *

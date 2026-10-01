@@ -120,7 +120,7 @@ export interface AssemblyBindingRecord {
 }
 
 /**
- * One buyer-side assembly SUBSCRIPTION — the deal-shape this member buys
+ * One buyer-side assembly SUBSCRIPTION — the process design this member buys
  * through and monetizes records from. Subscribing is the buyer's verb;
  * BINDING (`AssemblyBindingRecord`) stays the seller's, and the two lists
  * are independent: a wallet does not buy through the assemblies it sells
@@ -151,7 +151,7 @@ export interface DisclosureCalendar {
  * One row of the member's data-disclosure policy — one kind of DATA.
  *
  * WHAT DATA a row names is derived, never a stored taxonomy: the pair
- * (assembly `compositionHash`, `clauseId`) — the data of the deals a
+ * (assembly `compositionHash`, `clauseId`) — the data of the trades a
  * member trades in comes from its own assembly lists: the BINDINGS for
  * the seller side, the buyer's SUBSCRIPTIONS (`buyerAssemblies`) for
  * the buyer side. Any UI enumerates candidates from those lists, never

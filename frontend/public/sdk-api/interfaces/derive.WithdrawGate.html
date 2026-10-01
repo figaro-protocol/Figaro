@@ -31,25 +31,25 @@
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="canwithdraw"><span>can<wbr/>Withdraw</span><a href="#canwithdraw" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">canWithdraw</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">boolean</span></div>
-<div class="tsd-comment tsd-typography"><p>True iff no in-flight deal VERIFIABLY composes the clause or assembly — the
+<div class="tsd-comment tsd-typography"><p>True iff no in-flight trade VERIFIABLY composes the clause or assembly — the
 advisory &quot;safe to reclaim the stake now&quot; signal
-(<code>inFlightCount === 0</code>; unverified deals never block).</p>
+(<code>inFlightCount === 0</code>; unverified trades never block).</p>
 </div><aside class="tsd-sources">
 <ul>
 <li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/derive/withdraw.ts#L106">derive/withdraw.ts:106</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="inflightcount"><span>in<wbr/>Flight<wbr/>Count</span><a href="#inflightcount" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">inFlightCount</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span></div>
-<div class="tsd-comment tsd-typography"><p>In-flight deals that verifiably compose the clause or assembly.</p>
+<div class="tsd-comment tsd-typography"><p>In-flight trades that verifiably compose the clause or assembly.</p>
 </div><aside class="tsd-sources">
 <ul>
 <li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/derive/withdraw.ts#L108">derive/withdraw.ts:108</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="unverifiedcount"><span>unverified<wbr/>Count</span><a href="#unverifiedcount" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">unverifiedCount</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span></div>
-<div class="tsd-comment tsd-typography"><p>In-flight deals whose agreement could not be verified — surfaced as an
+<div class="tsd-comment tsd-typography"><p>In-flight trades whose agreement could not be verified — surfaced as an
 informational caveat, never blocking: terms are party-private, and the
-on-chain inclusion-proof model doesn't lock on unrevealed deals either.</p>
+on-chain inclusion-proof model doesn't lock on unrevealed trades either.</p>
 </div><aside class="tsd-sources">
 <ul>
 <li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/derive/withdraw.ts#L112">derive/withdraw.ts:112</a></li></ul></aside></section></section></details></div>

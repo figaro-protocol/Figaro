@@ -151,7 +151,7 @@ export function DataExplorer() {
                     {state.view === "overlays" ? <OverlaysView corpus={corpus} state={state} onQuery={setState} /> : null}
                     {state.view === "value-flow" ? <ValueFlowView corpus={corpus} /> : null}
                     {state.view === "wallet" ? <WalletView corpus={corpus} state={state} onQuery={setState} /> : null}
-                    {state.view === "deal" ? <DealView /> : null}
+                    {state.view === "trade" ? <TradeView /> : null}
                 </>
             )}
 
@@ -575,9 +575,9 @@ function WalletView({ corpus, state, onQuery }: { corpus: GraphCorpus; state: Da
     );
 }
 
-// ── Deal story ──────────────────────────────────────────────────────────────
+// ── Trade story ──────────────────────────────────────────────────────────────
 
-function DealView() {
+function TradeView() {
     return (
         <Card className="p-6 space-y-4">
             <p className="text-sm text-ink-body leading-relaxed max-w-3xl">

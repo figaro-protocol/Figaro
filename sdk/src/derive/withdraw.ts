@@ -3,7 +3,7 @@
  *
  * The off-chain, advisory half of the K4 staked-intent model: a clause-or-assembly
  * author (each registry's `registeredBy`) must not reclaim their
- * registration stake while deals COMPOSED FROM that clause or assembly are still in
+ * registration stake while trades COMPOSED FROM that clause or assembly are still in
  * flight. This is the read-side derivation RPGF attribution pays on — the same
  * count. It is ADVISORY today (surfaced as a disabled affordance); an on-chain
  * inclusion-proof withdraw lock would harden it if one is ever built — a
@@ -25,23 +25,23 @@
  *      the in-flight process's committed orders (whose section-clause sets are
  *      preserved verbatim from the template — checkout fills VALUES, never adds
  *      or drops clauses). Collisions between two assemblies with identical
- *      per-node clause sets OVER-block (both authors see the deal), which is the
+ *      per-node clause sets OVER-block (both authors see the trade), which is the
  *      safe direction for a withdraw gate.
  *
  * `canWithdraw(clauseOrAssembly) == (inFlightCount === 0)`.
  *
- * VERIFIED in-flight deals block; UNVERIFIED deals are counted and SURFACED
+ * VERIFIED in-flight trades block; UNVERIFIED trades are counted and SURFACED
  * but do not block. An in-flight order whose agreement could not be
  * fetched/verified is passed here as `agreement: null` and lands in
  * `unverifiedCount` — an informational caveat, never a veto. Two reasons,
  * both structural: (i) agreement bodies are PARTY-PRIVATE — a reader holds a
  * URI only for orders their own wallet witnessed — so a clause-or-assembly author can
- * never verify a stranger's deal; blocking on unverifiable foreign agreements
- * would dead-lock every author's withdraw whenever ANY deal is in flight
+ * never verify a stranger's trade; blocking on unverifiable foreign agreements
+ * would dead-lock every author's withdraw whenever ANY trade is in flight
  * anywhere on the network. (ii) The on-chain hardening this advisory gate
- * anticipates is an opt-in INCLUSION-PROOF model: a deal locks the stake only
+ * anticipates is an opt-in INCLUSION-PROOF model: a trade locks the stake only
  * by PROVING the clause or assembly's leaf is in its committed agreement, so unrevealed
- * deals don't lock it there either — the advisory mirrors those semantics.
+ * trades don't lock it there either — the advisory mirrors those semantics.
  * Absence stays absence: a clause or assembly with NO in-flight orders resolves to
  * `canWithdraw: true` (reads-at-edge — resolved-empty is absence, not error).
  */
@@ -100,15 +100,15 @@ export interface InFlightAgreement {
 }
 
 export interface WithdrawGate {
-    /** True iff no in-flight deal VERIFIABLY composes the clause or assembly — the
+    /** True iff no in-flight trade VERIFIABLY composes the clause or assembly — the
      *  advisory "safe to reclaim the stake now" signal
-     *  (`inFlightCount === 0`; unverified deals never block). */
+     *  (`inFlightCount === 0`; unverified trades never block). */
     canWithdraw: boolean;
-    /** In-flight deals that verifiably compose the clause or assembly. */
+    /** In-flight trades that verifiably compose the clause or assembly. */
     inFlightCount: number;
-    /** In-flight deals whose agreement could not be verified — surfaced as an
+    /** In-flight trades whose agreement could not be verified — surfaced as an
      *  informational caveat, never blocking: terms are party-private, and the
-     *  on-chain inclusion-proof model doesn't lock on unrevealed deals either. */
+     *  on-chain inclusion-proof model doesn't lock on unrevealed trades either. */
     unverifiedCount: number;
 }
 
@@ -117,12 +117,12 @@ function gate(inFlightCount: number, unverifiedCount: number): WithdrawGate {
 }
 
 /**
- * Withdraw gate for a CLAUSE. A deal composes the clause iff its
+ * Withdraw gate for a CLAUSE. A trade composes the clause iff its
  * agreement names it (`sections[].clause`). Counted per order — each committed
  * order is a distinct live commitment bound to the clause. Version-agnostic by
  * design: withdrawing a registration de-surfaces the clause for NEW
- * compositions regardless of which live version an in-flight deal pinned, and a
- * stake is reclaimable only once every deal naming that clause id has resolved.
+ * compositions regardless of which live version an in-flight trade pinned, and a
+ * stake is reclaimable only once every trade naming that clause id has resolved.
  */
 export function deriveClauseWithdrawGate(
     clauseId: string,
@@ -175,7 +175,7 @@ function fingerprintsEqual(a: readonly string[], b: readonly string[]): boolean 
 }
 
 /**
- * Withdraw gate for an ASSEMBLY. A deal is composed from the assembly
+ * Withdraw gate for an ASSEMBLY. A trade is composed from the assembly
  * iff it is a PROCESS whose committed orders reproduce the template's per-node
  * clause composition (see `assemblyFingerprint`). Counted per process. A
  * process with any unverifiable agreement can't be fully fingerprinted, so it

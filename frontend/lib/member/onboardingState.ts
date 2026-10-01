@@ -68,7 +68,7 @@ interface OnboardingState {
     /** Per-assembly bindings declared on the assemblies step. */
     assemblies?: AssemblyBindingRecord[];
     /** The buyer's assembly subscriptions, declared on the buyer step —
-     *  which deal-shapes this wallet buys through and monetizes records
+     *  which process designs this wallet buys through and monetizes records
      *  from. Independent of `assemblies` (the bindings the member sells through). */
     buyerAssemblies?: BuyerAssemblySubscription[];
     /** Data-disclosure policy. One list; each entry carries the posture

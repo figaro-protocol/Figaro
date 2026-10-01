@@ -66,7 +66,7 @@ describe("the layers carry their truth boundaries", () => {
     it("every layer picks a boundary from the doc's vocabulary (or none, for the hand-off)", () => {
         for (const layer of GRAPH_LAYERS) {
             if (layer.boundary === null) {
-                expect(layer.view).toBe("deal");
+                expect(layer.view).toBe("trade");
                 continue;
             }
             expect(BOUNDARY_GLOSS[layer.boundary]).toBeTruthy();

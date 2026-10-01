@@ -4,7 +4,7 @@
  * withdrawGate — the ADVISORY, off-chain half of the K4 commits==resolves gate.
  *
  * A clause registeredBy or assembly author must not reclaim their registration
- * stake while deals COMPOSED FROM that clause or assembly are still in
+ * stake while trades COMPOSED FROM that clause or assembly are still in
  * flight. The whole join lives in `@figaro-protocol/sdk/derive` (`deriveInFlightOrders`
  * + `deriveClauseWithdrawGate` / `deriveAssemblyWithdrawGate`) — this hook does
  * ONLY the I/O the SDK deliberately does not: read FigaroCore event log from
@@ -16,11 +16,11 @@
  * clauses it composes. An order this wallet never witnessed resolves to a null
  * agreement (no witnessed URI — bodies are PARTY-PRIVATE) — the SDK gate
  * counts that as unverified and SURFACES it as a caveat, never a block:
- * blocking on unverifiable foreign deals would dead-lock every author's
- * withdraw — and nothing on-chain locks the stake on unrevealed deals anyway
+ * blocking on unverifiable foreign trades would dead-lock every author's
+ * withdraw — and nothing on-chain locks the stake on unrevealed trades anyway
  * (FigaroCore holds no composition provenance, so this gate has no on-chain
  * enforcement). Only VERIFIED in-flight
- * deals block (`canWithdraw === (inFlightCount === 0)`). A chain-READ failure
+ * trades block (`canWithdraw === (inFlightCount === 0)`). A chain-READ failure
  * is different — the chain state is genuinely unknown — so it yields a null
  * gate and the affordance stays disabled.
  */
@@ -75,7 +75,7 @@ async function resolveInFlightAgreements(coreAddress: `0x${string}`): Promise<In
  * The withdraw gate for one clause or assembly. `null` (or an unconfigured
  * core address) yields `{ gate: null }`. `gate` is `null` while loading or on a
  * chain-read failure (genuinely unknown chain state — affordance stays
- * disabled); once loaded, only VERIFIED in-flight deals block
+ * disabled); once loaded, only VERIFIED in-flight trades block
  * (`gate.canWithdraw === (gate.inFlightCount === 0)`), and
  * `gate.unverifiedCount > 0` is surfaced as a caveat via
  * `withdrawUnverifiedCaveat`, never blocking.
@@ -135,22 +135,22 @@ export function useWithdrawGate(clauseOrAssembly: WithdrawClauseOrAssembly | nul
 }
 
 /** Human-readable reason a stake can't be reclaimed yet, or null when it can.
- *  Only VERIFIED in-flight deals block (`inFlightCount > 0`); unverified deals
+ *  Only VERIFIED in-flight trades block (`inFlightCount > 0`); unverified trades
  *  are a caveat (`withdrawUnverifiedCaveat`), not a reason. `gate === null`
  *  means the gate could not be computed (loading / chain-read failure) — the
  *  chain state is genuinely unknown, so also "not safe to reclaim". */
 export function withdrawBlockedReason(gate: WithdrawGate | null): string | null {
-    if (gate === null) return "Checking for in-flight deals composed from this clause or assembly…";
+    if (gate === null) return "Checking for in-flight trades composed from this clause or assembly…";
     if (gate.canWithdraw) return null;
-    return `Cannot reclaim the stake yet: ${gate.inFlightCount} in-flight deal${gate.inFlightCount === 1 ? "" : "s"} still compose${gate.inFlightCount === 1 ? "s" : ""} this clause or assembly. The stake frees once every composed deal has resolved.`;
+    return `Cannot reclaim the stake yet: ${gate.inFlightCount} in-flight trade${gate.inFlightCount === 1 ? "" : "s"} still compose${gate.inFlightCount === 1 ? "s" : ""} this clause or assembly. The stake frees once every composed trade has resolved.`;
 }
 
-/** Informational caveat when unverifiable in-flight deals exist, or null.
+/** Informational caveat when unverifiable in-flight trades exist, or null.
  *  Never blocks: agreement bodies are party-private, so a reader cannot check
- *  a stranger's deal — and on-chain enforcement (the inclusion-proof model,
- *  arriving with the prover) doesn't lock the stake on unrevealed deals
+ *  a stranger's trade — and on-chain enforcement (the inclusion-proof model,
+ *  arriving with the prover) doesn't lock the stake on unrevealed trades
  *  either. Rendered alongside an ENABLED reclaim affordance. */
 export function withdrawUnverifiedCaveat(gate: WithdrawGate | null): string | null {
     if (gate === null || gate.unverifiedCount === 0) return null;
-    return `${gate.unverifiedCount} in-flight deal${gate.unverifiedCount === 1 ? "" : "s"} could not be checked — agreement terms are party-private, so deals this wallet is not a party to are unverifiable here. They do not block the reclaim; on-chain enforcement arrives with the prover (deals lock the stake only by proving composition).`;
+    return `${gate.unverifiedCount} in-flight trade${gate.unverifiedCount === 1 ? "" : "s"} could not be checked — agreement terms are party-private, so trades this wallet is not a party to are unverifiable here. They do not block the reclaim; on-chain enforcement arrives with the prover (trades lock the stake only by proving composition).`;
 }

@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/Button";
 import { isBytes32Hex } from "@/lib/shared/evm";
 
 /** The spectator's front door to the full process audit: paste a process ID,
- *  open `/audit/view?process=<id>` — no wallet, no account, anyone's deal. */
+ *  open `/audit/view?process=<id>` — no wallet, no account, anyone's trade. */
 export function ProcessAuditOpen() {
     const router = useRouter();
     const [processId, setProcessId] = useState("");

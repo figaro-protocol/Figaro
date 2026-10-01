@@ -36,8 +36,8 @@ export default function AuditPage() {
                     Paste content or a hash from an audit bundle to verify against
                     chain. For process-bound audit &mdash; the timeline, financials,
                     clause evidence, and the audit-bundle PDF &mdash; paste a process ID
-                    below and open its full record. No wallet, no account: anyone
-                    holding a process ID can read any deal&apos;s record.
+                    below and open everything it left. No wallet, no account: anyone
+                    holding a process ID can read any trade&apos;s data.
                 </p>
                 <p className="text-sm text-ink-muted max-w-2xl">
                     That record opens at <code>/audit/view?process=&lt;processId&gt;</code> &mdash; the
