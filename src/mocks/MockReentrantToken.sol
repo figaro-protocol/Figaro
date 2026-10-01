@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 /// @notice TEST-ONLY. A malicious token that attempts to re-enter a chosen
 ///         contract during `transfer`/`transferFrom`, the classic hook a
 ///         fee-on-transfer or ERC-777-style token gives an attacker. It exists
-///         to prove the kernel's (and the batch verifier's) `nonReentrant`
+///         to prove FigaroCore's (and the batch verifier's) `nonReentrant`
 ///         guard actually holds under an adversarial denomination token — the
 ///         guard is load-bearing and was otherwise untested against a live
 ///         re-entry attempt.

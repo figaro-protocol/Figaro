@@ -29,9 +29,9 @@ contract EchidnaApproveToken is EchidnaToken {
 // ── Echidna Fuzzer ───────────────────────────────────────────────────
 
 /// @title EchidnaFuzzer — Property-based fuzzing for FigaroCore
-/// @notice Fuzz-tests the protocol kernel via HEVM-signed commitments.
+/// @notice Fuzz-tests FigaroCore via HEVM-signed commitments.
 ///
-///         Kernel invariants exercised (7):
+///         FigaroCore invariants exercised (7):
 ///         - SOLV:  core token balance >= sum of outstanding bonds
 ///         - COUNT: activeOrderCount matches actual committed order count
 ///         - CUM:   process accumulator == sum of all order payments

@@ -7,8 +7,8 @@ pragma solidity 0.8.26;
 ///         authored code). This mock rehearses that custody's SEMANTICS with
 ///         Safe's own approveHash flow: any owner proposes an arbitrary call,
 ///         owners approve its hash, and once the threshold is met anyone
-///         executes it. No owner acts alone; the treasury never signs kernel
-///         commitments (ECDSA-only kernel — the funded operator-EOA does).
+///         executes it. No owner acts alone; the treasury never signs FigaroCore
+///         commitments (ECDSA-only FigaroCore — the funded operator-EOA does).
 ///         Deployed on devnet with anvil placeholder owners so the
 ///         per-procurement funding flow is a rehearsable act, not prose.
 /// @dev DISCLAIMER: This contract is provided as-is, without warranty of any
