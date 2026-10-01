@@ -70,7 +70,7 @@ and how processes interconnect.
 
 Making these graphs public enables:
 
-1. **Autonomous coordination** — AI agents and human sellers discover
+1. **Autonomous coordination** — AI agents and human members discover
    work through graph queries, not platform-mediated matching.
 2. **Heat maps and demand prediction** — Geohash clusters reveal demand
    patterns without exposing individual transaction details.

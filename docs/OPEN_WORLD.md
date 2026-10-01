@@ -139,7 +139,7 @@ every composition.
   (Kleros/Klima/Toucan are builders composing through the boundary), never its
   shipped-depth.
 
-- **Each registry family gets its own anchor** (clauses → ClauseRegistry; sellers →
+- **Each registry family gets its own anchor** (clauses → ClauseRegistry; members →
   MembersRegistry; assemblies → AssemblyRegistry) — parallel, never nested. Arrows point
   one way: assemblies use clauses; clauses don't know assemblies exist. (This is the
   open-world restatement of the Separation of Concerns — Registry Families discipline.)

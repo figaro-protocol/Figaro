@@ -37,7 +37,7 @@ writes via `WalletGate`.**
 |---|---|
 | `/assemblies/designer` + `/new`, `/edit?slug=`, `/view?slug=` | In `(tools)/`; drafts in localStorage. |
 | `/clauses/register` | In `(tools)/`; paste a spec, validate it off-chain, register on `ClauseRegistry`, reclaim a registered clause's stake. Reads walletlessly; register and reclaim are `WalletGate`-gated. |
-| `/discover` | Seller catalogue. |
+| `/discover` | Member directory. |
 | `/audit`, `/audit/view?process=` | Forensics, and a SPECTATOR surface: no account hook anywhere in the tree, so a walletless visitor reads all of it. |
 | `/data/explore` | The graph-query surface `DATA_LAYER.md` describes; in `(app)/` but spectator-capable like `/audit`. One layer at a time, each carrying its own truth boundary. Views and the wallet subject ride query params (`lib/data/explorer.ts`); graphs are projected in the browser (`lib/data/graphCorpus.ts`) over the existing event caches; the prompt box renders ONLY when an analyst endpoint resolves. |
 | `/evidence-display` | See "Deliberate orphan" below. |
