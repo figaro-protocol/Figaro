@@ -1,10 +1,10 @@
 /**
  * lib/member/onboardingState.ts
  *
- * Wallet-scoped localStorage state for the multi-screen seller
+ * Wallet-scoped localStorage state for the multi-screen member
  * onboarding flow at `/members/*`. The state survives page reloads and
  * wallet reconnection, and unblocks per-step authoring: every step writes
- * as the seller types, and re-reads its own draft when the step mounts.
+ * as the member types, and re-reads its own draft when the step mounts.
  *
  * Storage key shape: `figaro:onboarding:0x<wallet-address>`.
  *
@@ -46,16 +46,16 @@ export interface OnboardingProfileDraft {
     assets?: MemberAssetReferences;
     acceptedTokens?: AcceptedTokenMetadata[];
     defaultTokenAddress?: `0x${string}`;
-    /** PROFILE-authored clause values (seller master data: dimweight's
+    /** PROFILE-authored clause values (the member's master data: dimweight's
      *  divisor, a declared credential id), clauseId → field → value —
      *  checkout folds them onto composed profile-sourced leaves. Absent when
-     *  the seller authors none. */
+     *  the member authors none. */
     profileClauseValues?: Record<string, Record<string, unknown>>;
 }
 
 interface OnboardingCatalogueDraft {
     items?: CatalogueItemMetadata[];
-    /** Seller's preferred unit system for editor + display. Storage of
+    /** The member's preferred unit system for editor + display. Storage of
      *  per-item mass / volume is always metric; this is a UI preference. */
     unitSystem?: UnitSystem;
 }
@@ -65,11 +65,11 @@ interface OnboardingState {
     walletAddress?: `0x${string}`;
     profile?: OnboardingProfileDraft;
     catalogue?: OnboardingCatalogueDraft;
-    /** Per-assembly bindings declared on the seller assemblies step. */
+    /** Per-assembly bindings declared on the assemblies step. */
     assemblies?: AssemblyBindingRecord[];
     /** The buyer's assembly subscriptions, declared on the buyer step —
      *  which deal-shapes this wallet buys through and monetizes records
-     *  from. Independent of `assemblies` (the seller's bindings). */
+     *  from. Independent of `assemblies` (the bindings the member sells through). */
     buyerAssemblies?: BuyerAssemblySubscription[];
     /** Data-disclosure policy. One list; each entry carries the posture
      *  the member traded on. Seller-posture entries are edited on the
@@ -236,10 +236,10 @@ export interface OnboardingStep {
     /** Sub-route under `/members/`. Always non-empty — the wizard opens on Identity. */
     path: string;
     /**
-     * When true, the seller may ship without filling this step. The
+     * When true, the member may ship without filling this step. The
      * step indicator treats optional-and-past as completed (opting out
-     * IS the seller's resolution) so the indicator doesn't paint a
-     * gap where the seller deliberately skipped.
+     * IS the member's resolution) so the indicator doesn't paint a
+     * gap where the member deliberately skipped.
      */
     optional: boolean;
 }
@@ -248,11 +248,11 @@ export interface OnboardingStep {
 // pitch, so the wizard opens directly on Identity.
 //
 // Assemblies precede Catalogue because the authority runs that way: the
-// assemblies a seller binds decide which clauses their trades carry, and the
+// assemblies a member binds decide which clauses its trades carry, and the
 // clauses decide which item fields exist to author (a freight class, a hazmat
 // number, a cold-chain range). Ask for the items first and the catalogue has
 // nothing to derive from, so it opens every registered logistics field to a
-// seller of one mug. The same direction governs the data-product option on the
+// member selling one mug. The same direction governs the data-product option on the
 // catalogue step, which reads the disclosure entries the assemblies step
 // derives.
 export const ONBOARDING_STEPS: readonly OnboardingStep[] = [
@@ -285,7 +285,7 @@ export function onboardingNextHref(id: OnboardingStep["id"]): string {
     return onboardingStepHref(next.id);
 }
 
-/** How a step is named to the seller — "Step 3 (Catalogue)". Numbered from
+/** How a step is named to the member — "Step 3 (Catalogue)". Numbered from
  *  the order above, so a reorder renumbers the prose with it. */
 export function onboardingStepLabel(id: OnboardingStep["id"]): string {
     const step = ONBOARDING_STEPS.find((s) => s.id === id);
