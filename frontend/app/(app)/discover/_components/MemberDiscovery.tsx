@@ -188,7 +188,7 @@ export function MemberDiscovery() {
                     </div>
                 ) : (
                     <p className="text-sm text-ink-muted italic text-center py-8">
-                        No sellers match the current filters.
+                        No members match the current filters.
                     </p>
                 )
             )}

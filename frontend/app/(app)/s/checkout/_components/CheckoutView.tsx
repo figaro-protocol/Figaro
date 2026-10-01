@@ -311,8 +311,8 @@ export function CheckoutView({ sellerAddress }: Props) {
     if (!memberCatalogue) {
         return (
             <div className="container mx-auto px-6 py-16 max-w-3xl space-y-4">
-                <p className="text-xs font-semibold text-ink-muted mb-3">Seller not found</p>
-                <h1 className="text-3xl font-bold text-ink-primary">No seller registered for {truncateHex(sellerAddressLower, { head: 10, tail: 0 })}</h1>
+                <p className="text-xs font-semibold text-ink-muted mb-3">Member not found</p>
+                <h1 className="text-3xl font-bold text-ink-primary">No member page for {truncateHex(sellerAddressLower, { head: 10, tail: 0 })}</h1>
                 <Link href="/discover" className="inline-block underline text-sm text-ink-primary hover:text-ink-body">
                     ← Back to discover
                 </Link>

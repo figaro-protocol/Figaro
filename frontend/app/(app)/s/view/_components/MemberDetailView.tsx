@@ -88,11 +88,11 @@ export function MemberDetailView({ sellerAddress }: Props) {
     if (!memberCatalogue) {
         return (
             <div className="container mx-auto px-6 py-16 max-w-3xl space-y-4">
-                <p className="text-xs font-semibold text-ink-muted mb-3">Seller not found</p>
-                <h1 className="text-3xl font-bold text-ink-primary">No seller registered for {truncateHex(sellerAddressLower, { head: 10, tail: 0 })}</h1>
+                <p className="text-xs font-semibold text-ink-muted mb-3">Member not found</p>
+                <h1 className="text-3xl font-bold text-ink-primary">No member page for {truncateHex(sellerAddressLower, { head: 10, tail: 0 })}</h1>
                 <p className="text-sm text-ink-body">
-                    This wallet hasn&apos;t registered itself in <code className="text-xs">MembersRegistry</code> on the network
-                    you&apos;re connected to, or hasn&apos;t pinned a catalogue. If this is your wallet, you can complete the registration through the onboarding flow.
+                    This wallet holds no live registration in <code className="text-xs">MembersRegistry</code> on the network
+                    you&apos;re connected to, or its profile binds no published assembly, or it has pinned no catalogue. If this is your wallet, you can complete the registration through the onboarding flow.
                 </p>
                 <div className="flex items-center gap-3 pt-2">
                     <Link href="/members" className="inline-block text-sm px-3 py-1.5 rounded border border-ink-primary bg-ink-primary text-paper hover:bg-ink-body">
