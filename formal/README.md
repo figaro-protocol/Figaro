@@ -6,12 +6,12 @@ invariant → protocol-property mapping by `docs/VERIFICATION_MAP.md` §7):
 
 | Model | Scope | Invariants |
 |---|---|---|
-| `FigaroCore.tla` + `MC.tla`/`MC.cfg` | Kernel economic mechanism (detailed below) | 9 |
+| `FigaroCore.tla` + `MC.tla`/`MC.cfg` | `FigaroCore`'s economic mechanism (detailed below) | 9 |
 | `FlorinToken.tla` + `.cfg` | Token supply cap + minter registry | 8 |
-| `WitnessSwapAndCommitCoordinator.tla` + `.cfg` | Swap-funded on-ramp: zero retention, swap↔commit atomicity, allowance hygiene, witness route binding, exact kernel deposits | 10 |
-| `ResolutionUniverses.tla` + `.cfg` | CROSS-CONTRACT: FigaroCore + FigaroBatchVerifier + UsageCounter + guest kernel under arbitrary interleavings — no cross-universe double payout, per-pool deposits, score composition, kernel blindness. Carries two named assumption constants (`AssumeDomainSeparation`, `AssumeAccrualGatesAligned`); flipping either to FALSE is the experiment and is EXPECTED to fail | 21 |
+| `WitnessSwapAndCommitCoordinator.tla` + `.cfg` | Swap-funded on-ramp: zero retention, swap↔commit atomicity, allowance hygiene, witness route binding, exact `FigaroCore` deposits | 10 |
+| `ResolutionUniverses.tla` + `.cfg` | CROSS-CONTRACT: FigaroCore + FigaroBatchVerifier + UsageCounter + the guest's mirror under arbitrary interleavings — no cross-universe double payout, per-pool deposits, score composition, `FigaroCore`'s blindness to the batch path (`KernelBlindToBatch`). Carries two named assumption constants (`AssumeDomainSeparation`, `AssumeAccrualGatesAligned`); flipping either to FALSE is the experiment and is EXPECTED to fail | 21 |
 
-The remainder of this file documents the FigaroCore kernel model in depth.
+The remainder of this file documents the `FigaroCore` model in depth.
 Exhaustively verifies the economic mechanism (bond math, token conservation,
 resolution correctness) across all reachable states.
 
