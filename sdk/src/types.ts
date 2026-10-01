@@ -125,8 +125,8 @@ export interface AttestationEvent {
 // ── Discovery: registry events (the three registry families) ─────────────────
 //
 // Parallel to the core process events above. A cold-start agent folds these to
-// learn what clauses, sellers, and assemblies EXIST — the registries are the
-// network's catalogue. Every event carries `logIndex` because seller liveness
+// learn what clauses, members, and assemblies EXIST — the registries are the
+// network's catalogue. Every event carries `logIndex` because member liveness
 // is order-dependent within a block (see DiscoveryGraph), unlike the core
 // process events whose block-ordering suffices.
 

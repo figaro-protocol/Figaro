@@ -234,7 +234,7 @@ export interface MemberProfileMetadata {
      */
     defaultTokenAddress?: `0x${string}`;
     /**
-     * PROFILE-authored clause values — SELLER master data for any registered
+     * PROFILE-authored clause values — the member's master data for any registered
      * clause declaring `block.checkout.profileFills` (the member-level sibling of the
      * catalogue's per-item `clauseValues`): keyed clauseId → field → value,
      * restricted by each spec's declared profile-authored subset. Examples:
@@ -510,7 +510,7 @@ export function parseMemberProfileDocument(
 /**
  * Lenient parse — returns null instead of throwing. Use in discovery
  * paths where a malformed profile should be silently dropped from the
- * surface (e.g. building a seller-catalogue list).
+ * surface (e.g. building a member-catalogue list).
  */
 export function tryParseMemberProfileDocument(
     value: unknown,

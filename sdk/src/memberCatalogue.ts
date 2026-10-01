@@ -1,7 +1,7 @@
 /**
- * memberCatalogue.ts — the seller CATALOGUE document (off-chain).
+ * memberCatalogue.ts — the member CATALOGUE document (off-chain).
  *
- * The catalogue is the volatile sales-context payload a seller pins to
+ * The catalogue is the volatile sales-context payload a member pins to
  * IPFS and points to from `MemberProfileMetadata.catalogueURI`: the list
  * of items for sale plus a version and the subject wallet. Identity,
  * branding, location, accepted tokens, agent endpoints, and assembly
@@ -26,7 +26,7 @@ import {
 import { isBytes32Hex } from "./types.js";
 
 /**
- * Seller's preferred unit system for the catalogue editor + display.
+ * The member's preferred unit system for the catalogue editor + display.
  * Storage of `massGrams` / `volumeMl` is ALWAYS metric — `unitSystem`
  * only governs how the editor accepts input and how the display
  * formats the stored metric values back to the seller's locale.
@@ -145,7 +145,7 @@ export interface MemberCatalogueMetadata {
     items: CatalogueItemMetadata[];
     version: string;
     /**
-     * Seller's preferred unit system for editor + display. Storage of
+     * The member's preferred unit system for editor + display. Storage of
      * mass/volume on `CatalogueItemMetadata` is always metric; this
      * field is a UI preference only. Defaults to "metric" when unset.
      */
@@ -242,7 +242,7 @@ function parseItems(value: unknown, path: string): CatalogueItemMetadata[] {
 
 export function parseMemberCatalogueDocument(
     value: unknown,
-    sourceLabel = "seller catalogue metadata",
+    sourceLabel = "member catalogue metadata",
 ): MemberCatalogueMetadata {
     const record = asRecord(value, sourceLabel);
 

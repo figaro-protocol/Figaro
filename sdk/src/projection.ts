@@ -63,11 +63,11 @@ export interface ProjectionHints {
      *  clause. */
     designFills?: readonly string[];
     /** The spec's `block.checkout.catalogueFills` — the content fields (by
-     *  name) authored per-item on the seller's CATALOGUE and folded onto the
+     *  name) authored per-item on the member's CATALOGUE and folded onto the
      *  matching leaf at checkout. */
     catalogueFills?: readonly string[];
     /** The spec's `block.checkout.profileFills` — the content fields (by
-     *  name) authored once on the seller's PROFILE (seller master data: a
+     *  name) authored once on the member's PROFILE (the member's master data: a
      *  divisor, a declared credential id), folded onto the matching leaf at
      *  checkout. The profile sibling of `catalogueFills` (item master data). */
     profileFills?: readonly string[];
@@ -233,15 +233,15 @@ export function specIsAssemblyScoped(spec: ProjectionSpecView): boolean {
 
 /** The CATALOGUE-authored field names of a clause
  *  (`block.checkout.catalogueFills`) — content authored per-item on the
- *  seller's catalogue and folded onto the matching leaf at checkout. Empty
+ *  member's catalogue and folded onto the matching leaf at checkout. Empty
  *  for clauses with no catalogue-authored fields. */
 export function specCatalogueFills(spec: ProjectionSpecView): readonly string[] {
     return spec.hints?.catalogueFills ?? [];
 }
 
 /** The PROFILE-authored field names of a clause
- *  (`block.checkout.profileFills`) — seller master data, authored once on the
- *  seller's profile (the sibling of the catalogue's per-item data) and folded
+ *  (`block.checkout.profileFills`) — the member's master data, authored once on the
+ *  member's profile (the sibling of the catalogue's per-item data) and folded
  *  onto the matching leaf at checkout. Editors render exactly these fields;
  *  the fold folds only these values. Empty for clauses with no
  *  profile-authored fields. */
