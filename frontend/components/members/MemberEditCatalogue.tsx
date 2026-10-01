@@ -2,7 +2,7 @@
 
 /**
  * MemberEditCatalogue — re-uses the wizard's catalogue form to
- * edit a registered seller's pinned catalogue. Routes from the
+ * edit a registered member's pinned catalogue. Routes from the
  * `/members` manage-list "Catalogue" row.
  *
  * Two-pin save sequence:
@@ -16,7 +16,7 @@
  * Remove control). Whole-catalogue clearing isn't currently a
  * separate affordance — saving with zero items is blocked by the
  * form's existing validation ("Add at least one item with a name
- * and a price.") since a registered seller with an empty
+ * and a price.") since a registered member with an empty
  * catalogue is a degenerate state.
  *
  * On top of the shared editor scaffold, this surface fetches a
@@ -190,7 +190,7 @@ export function MemberEditCatalogue() {
  * confirm/cancel pair on click. Action clears `catalogueURI` from
  * the profile (one-pin sequence — the existing catalogue document
  * stays pinned on IPFS but is no longer referenced from the
- * seller's on-chain metadata).
+ * member's on-chain metadata).
  */
 function DeleteCatalogueFooter({
     disabled,

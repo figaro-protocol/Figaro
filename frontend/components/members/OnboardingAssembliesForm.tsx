@@ -27,19 +27,19 @@ import { ProfileClauseValues } from "@/components/members/ProfileClauseValues";
 import type { OnboardingStepChromeProps } from "@/components/members/OnboardingStepChrome";
 
 /**
- * The assemblies step of the onboarding wizard. Seller picks which published
+ * The assemblies step of the onboarding wizard. The member picks which published
  * assemblies they participate in. Each selected assembly becomes an
  * `AssemblyBindingRecord` on `state.assemblies`.
  *
  * Per-binding counterparty editing: assemblies whose assemblyTemplate contains
  * a non-root order with a per-role process clause (e.g. a courier
- * sub-order carrying a counterparty-process clause) require the seller
+ * sub-order carrying a counterparty-process clause) require the member
  * to designate at least one wallet for that role. The picker surfaces an
  * inline editor when those rows are checked. Without these addresses
  * the cart has nowhere to read the counterparty's seller field from at
  * checkout time.
  *
- * MANDATORY: at least one assembly binding is required — a seller
+ * MANDATORY: at least one assembly binding is required — a member
  * profile with no binding cannot be ordered from (it surfaces to no
  * assembly-scoped discovery). Both the Next button and the publish
  * step block until one is bound.
@@ -286,7 +286,7 @@ export function OnboardingAssembliesForm({
             </div>
 
             {/* Profile-sourced clause values (a dim-weight divisor, a declared
-                credential id) — seller master data the bound assemblies read at
+                credential id) — the member's master data the bound assemblies read at
                 checkout. Scoped to the clauses the assemblies selected above
                 compose, exactly as the catalogue step scopes its item
                 properties; authored here, where a binding exists, never on

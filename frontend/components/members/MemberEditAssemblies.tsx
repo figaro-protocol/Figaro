@@ -2,7 +2,7 @@
 
 /**
  * MemberEditAssemblies — re-uses the wizard's assemblies form to
- * edit the registered seller's `assemblyBindings`. Routes from
+ * edit the registered member's `assemblyBindings`. Routes from
  * the `/members` manage-list "Assemblies" row.
  *
  * One-pin save sequence: re-pin the profile JSON with the updated
@@ -11,7 +11,7 @@
  * Removing an assembly (un-checking it in the multi-select) is
  * handled by the form's existing toggle. Whole-assemblies clearing
  * isn't a separate destructive affordance — it's implicit when the
- * user un-checks every assembly. A seller with zero bindings is
+ * user un-checks every assembly. A member with zero bindings is
  * still on-chain registered; the assemblies just don't surface to
  * assembly-scoped discovery.
  */
@@ -45,7 +45,7 @@ export function MemberEditAssemblies() {
     ): Promise<void> {
         // Saving with an empty array is allowed — un-checking every
         // assembly clears the bindings array on the profile (the
-        // seller stays registered, just with no assembly-scoped
+        // member stays registered, just with no assembly-scoped
         // discovery). The hook's merge keeps the field present-but-
         // empty rather than stripping it. The disclosure policy rides
         // along (its data derives from the bindings) — but an

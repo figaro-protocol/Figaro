@@ -1,8 +1,8 @@
 "use client";
 
 /**
- * One assembly row in a wizard multi-select (the seller BINDS on the
- * assemblies step, the buyer SUBSCRIBES on the buyer step — same row,
+ * One assembly row in a wizard multi-select (a member BINDS on the
+ * assemblies step, and SUBSCRIBES on the buyer step — same row,
  * different verb): checkbox + name + the designer's summary + slug + shape
  * line + network targets + an Inspect link into the designer's read-only view.
  *
@@ -10,7 +10,7 @@
  * template; the slug is secondary, and is all a reader gets when the template
  * carries no editorial prose (or has not resolved yet) — never invented words.
  *
- * `children` renders inside the Card below the row (e.g. the seller step's
+ * `children` renders inside the Card below the row (e.g. the assemblies step's
  * counterparty editors for a checked row).
  *
  * `testIdPrefix` namespaces the row/shape/inspect testids — these are

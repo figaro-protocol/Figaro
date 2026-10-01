@@ -2,7 +2,7 @@
 
 /**
  * MemberEditProfile — re-uses the wizard's profile form to edit a
- * registered seller's on-chain profile metadata. Routes from the
+ * registered member's on-chain profile metadata. Routes from the
  * `/members` manage-list "Identity" row.
  *
  * Scaffold (fetch → seed → save → redirect) lives in

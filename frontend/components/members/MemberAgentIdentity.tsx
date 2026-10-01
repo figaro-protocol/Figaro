@@ -1,20 +1,20 @@
 "use client";
 
 /**
- * MemberAgentIdentity — the READ surface for a seller's declared agent service
+ * MemberAgentIdentity — the READ surface for a member's declared agent service
  * endpoints, and the consumer of the did:web consistency-check hook.
  *
- * A seller can publish a `did:web` identifier plus MCP / A2A / REST / ENS
+ * A member can publish a `did:web` identifier plus MCP / A2A / REST / ENS
  * endpoints (the agents onboarding step). This surfaces them to a browsing party
  * and, for the did:web, RESOLVES the DID Document and checks whether it names
- * the seller's on-chain address on the current chain — the "discovery vs trust"
+ * the member's on-chain address on the current chain — the "discovery vs trust"
  * split the actor-neutral-coordination architecture calls for: endpoints help a
- * counterparty FIND this seller; the consistency check is a discovery signal,
+ * counterparty FIND this member; the consistency check is a discovery signal,
  * NOT proof of control. Anyone can host a did:web document naming any wallet, so
  * the binding is attacker-forgeable and informs — never by itself justifies —
  * trust before bonding.
  *
- * Renders nothing when the seller published no services (resolved-empty =
+ * Renders nothing when the member published no services (resolved-empty =
  * absence). did:web resolution is a live network fetch of the DID host, so the
  * badge reflects reachability: consistent / inconsistent / could-not-resolve.
  */
@@ -34,7 +34,7 @@ export function MemberAgentIdentity({ sellerAddress }: { sellerAddress: `0x${str
     if (services?.rest) endpoints.push(["REST", services.rest]);
     if (services?.ens) endpoints.push(["ENS", services.ens]);
 
-    // Resolved-empty = absence: a seller with no published agent services shows nothing.
+    // Resolved-empty = absence: a member with no published agent services shows nothing.
     if (!did && endpoints.length === 0) return null;
 
     return (

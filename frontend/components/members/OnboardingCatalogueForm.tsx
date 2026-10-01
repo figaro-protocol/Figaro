@@ -243,11 +243,11 @@ export function OnboardingCatalogueForm({
     const [importErrors, setImportErrors] = useState<string[]>([]);
     const [importedCount, setImportedCount] = useState<number | null>(null);
 
-    // The item properties this seller is actually asked for: the
+    // The item properties this member is actually asked for: the
     // catalogue-authored fields of the clauses their BOUND assemblies compose
     // (freight class, hazmat, cold-chain, a data licence — whatever those
     // assemblies carry). Derived live from the registry through the bindings,
-    // never a bundled list and never the whole registry: a seller of one mug
+    // never a bundled list and never the whole registry: a member selling one mug
     // binds an assembly that composes none of them and is asked for none. A
     // newly registered product-property clause surfaces with zero change here.
     const { version: clauseSpecsVersion } = useClauseSpecs();
@@ -720,7 +720,7 @@ function ItemRow({ item, index, priceSymbol, unitSystem, catalogueClauses, dataS
             </div>
 
             {/* Catalogue-authored clause values — one spec-driven group per
-                clause the seller's bound assemblies compose, rendered from the
+                clause the member's bound assemblies compose, rendered from the
                 registry, never hardcoded. Only each clause's OWN catalogue
                 fills appear; its checkout- and profile-authored fields belong
                 to other surfaces. Optional throughout: an item that has no

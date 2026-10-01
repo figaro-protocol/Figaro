@@ -2,7 +2,7 @@
 
 /**
  * MemberEditAgents — re-uses the wizard's agents form to edit
- * the registered seller's ERC-8004 service endpoints. Routes
+ * the registered member's ERC-8004 service endpoints. Routes
  * from the `/members` manage-list "Agents" row.
  *
  * One-pin save sequence: re-pin profile JSON with updated

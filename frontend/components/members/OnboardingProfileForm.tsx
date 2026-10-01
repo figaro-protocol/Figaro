@@ -54,7 +54,7 @@ interface FormState {
     logoURI: string;
     acceptedTokens: Array<{ address: string; symbol: string }>;
     defaultTokenAddress: string;
-    /** PROFILE-authored clause values (seller master data: dimweight's
+    /** PROFILE-authored clause values (the member's master data: dimweight's
      *  divisor, a declared credential id) — the generic profile-sourced
      *  section's map, clauseId → field → value. */
     profileClauseValues: ProfileClauseValuesMap;
@@ -233,7 +233,7 @@ export function OnboardingProfileForm({
     // Auto-select the first valid token as the default pricing token
     // when (a) nothing is selected yet, or (b) the previously-selected
     // default got removed and is no longer in the valid set. Without
-    // this, the seller has to remember to click the radio that just
+    // this, the member has to remember to click the radio that just
     // appeared — easy to miss when there's only one option visible.
     useEffect(() => {
         if (validTokens.length === 0) return;
@@ -420,7 +420,7 @@ export function OnboardingProfileForm({
                 <h3 id="profile-heading-identity" className="text-heading-h3 text-ink-heading">Identity</h3>
                 <p className="text-sm text-ink-body">
                     Name, description, and specialty — the fields that resolve
-                    when a buyer or another seller looks up your address on
+                    when another member, or anyone else, looks up your address on
                     the protocol. Everything in this section pins to IPFS in
                     at publish, as part of your identity envelope.
                 </p>
@@ -477,7 +477,7 @@ export function OnboardingProfileForm({
                     it never carries a door-level location; precise pickup
                     points are shared per-order, encrypted to that order&apos;s
                     counterparty alone. The human-readable address is shown
-                    verbatim on your public seller page,{" "}
+                    verbatim on your public member page,{" "}
                     <code>{sellerPageHref("<address>")}</code>.
                 </p>
                 <FormField label="Address" inputId="profile-address">
@@ -563,7 +563,7 @@ export function OnboardingProfileForm({
                 <h3 id="profile-heading-branding" className="text-heading-h3 text-ink-heading">Branding</h3>
                 <p className="text-sm text-ink-body">
                     Optional. The logo is shown on the discover card and on
-                    your public seller page,{" "}
+                    your public member page,{" "}
                     <code>{sellerPageHref("<address>")}</code>. It pins
                     alongside the rest of your identity envelope, so changing
                     the logo re-pins the profile.
@@ -575,7 +575,7 @@ export function OnboardingProfileForm({
                         label="Upload logo"
                     />
                     <p className="text-xs text-ink-faint mt-1">
-                        Optional. Pinned to IPFS. Shown on the discover card and the seller detail page.
+                        Optional. Pinned to IPFS. Shown on the discover card and the member page.
                     </p>
                 </FormField>
             </section>
@@ -743,7 +743,7 @@ interface AcceptedTokenRowProps {
  * categories, in priority order:
  *   1. Format / integrity (caught locally): empty, malformed, zero
  *      address, mixed-case with bad EIP-55 checksum, or duplicate
- *      within this seller's own list.
+ *      within this member's own list.
  *   2. On-chain check (caught by `useTokenSymbol`): contract doesn't
  *      exist or doesn't expose `symbol()` → not an ERC-20.
  *   3. Success: symbol shown.

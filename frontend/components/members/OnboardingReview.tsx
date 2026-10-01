@@ -24,11 +24,11 @@ import { usePublishMemberProfile } from "@/lib/member/usePublishMemberProfile";
 /**
  * Final step — review and publish.
  *
- * Renders the wallet's pre-publish profile in seller-page-style
+ * Renders the wallet's pre-publish profile in member-page-style
  * chrome: name, branding, specialty, description, location, catalogue
  * items, accepted tokens, assemblies. Each section carries an "Edit"
  * link back to its wizard step. Autosave on each wizard step means
- * the seller can edit, return via the step indicator, and the review
+ * the member can edit, return via the step indicator, and the review
  * re-reads from localStorage.
  *
  * Publish is one user action; three serial operations under the hood:
@@ -48,7 +48,7 @@ interface DraftSummary {
 function buildDraft(state: ReturnType<typeof useOnboardingState>["state"], wallet: `0x${string}`): DraftSummary | { error: string } {
     if (!state.profile?.name) return { error: `${onboardingStepLabel("profile")} is incomplete: name is required.` };
     if (!state.profile.defaultTokenAddress) return { error: `${onboardingStepLabel("profile")} is incomplete: pick the accepted token your catalogue is priced in.` };
-    // Reported in wizard order, so the seller is sent to the earliest step
+    // Reported in wizard order, so the member is sent to the earliest step
     // that still needs them. A profile without assembly bindings cannot be
     // ordered from — the register is refused, not just the step navigation
     // (deep links and stale drafts land here too).
@@ -137,11 +137,11 @@ export function OnboardingReview() {
 
     const [pinning, setPinning] = useState(false);
     const [pinError, setPinError] = useState<string | null>(null);
-    // Receipt held in local state — persists until the seller
+    // Receipt held in local state — persists until the member
     // dismisses ("Continue"). Clearing the wizard draft + redirecting
     // to the dashboard happens at Continue, NOT on publishSuccess —
     // otherwise the dashboard's mount races the receipt-card render
-    // and the seller never sees the tx hash.
+    // and the member never sees the tx hash.
     const [receipt, setReceipt] = useState<{
         hash: `0x${string}`;
         profileURI: string;
@@ -216,7 +216,7 @@ export function OnboardingReview() {
         );
     }
 
-    // Receipt state: publish succeeded, awaiting seller dismissal.
+    // Receipt state: publish succeeded, awaiting the member's dismissal.
     // Holds the tx hash + IPFS URIs visibly until "Continue" routes
     // to the dashboard. The wizard draft is NOT cleared here — clear()
     // runs at Continue so a subsequent re-edit still has the draft to
@@ -268,7 +268,7 @@ export function OnboardingReview() {
 
     return (
         <div className="space-y-8">
-            {/* Hero: the seller page's header analog */}
+            {/* Hero: the member page's header analog */}
             <Card className="p-6 space-y-4">
                 <div className="flex items-start justify-between gap-4">
                     <h2 className="text-heading-h2 text-ink-heading">Preview · pending publish</h2>
@@ -375,7 +375,7 @@ export function OnboardingReview() {
                         ))}
                     </ul>
                 ) : (
-                    <p className="text-sm text-ink-faint">Unbound — seller stays registered but won&apos;t surface to assembly-scoped discovery.</p>
+                    <p className="text-sm text-ink-faint">Unbound — the member stays registered but won&apos;t surface to assembly-scoped discovery.</p>
                 )}
             </Card>
 

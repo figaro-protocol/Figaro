@@ -2,17 +2,17 @@
 
 /**
  * ProfileClauseValues — the member-profile authoring section for
- * PROFILE-authored clause values (seller master data: dimweight's divisor, a
- * declared credential id). The seller-level sibling of the catalogue item's
+ * PROFILE-authored clause values (the member's master data: dimweight's divisor, a
+ * declared credential id). The profile-level sibling of the catalogue item's
  * clause-values editor (`OnboardingCatalogueForm`): one spec-driven group per
  * clause declaring `block.checkout.profileFills`, derived live from the
  * registry, never hardcoded — restricted to each spec's DECLARED
  * profile-authored field subset (`clauseProfileFills`; the rest belong to
- * designer fills or checkout derivation). Optional throughout: a seller
+ * designer fills or checkout derivation). Optional throughout: a member
  * authors what applies and leaves the rest blank, so a field's checkout
  * `required` never marks it here. Scoped by `clauseIds` to the clauses the
- * seller's bound assemblies compose — the same derivation the catalogue
- * step makes — so a seller is asked only what its own assemblies read.
+ * member's bound assemblies compose — the same derivation the catalogue
+ * step makes — so a member is asked only what its own assemblies read.
  *
  * Testids: `profile-clause-<clauseId>-<field>[-<option>]`.
  */
@@ -34,7 +34,7 @@ export function ProfileClauseValues({
 }: {
     values: ProfileClauseValuesMap;
     onChange: (next: ProfileClauseValuesMap) => void;
-    /** The clauses the seller's bound assemblies compose; only their
+    /** The clauses the member's bound assemblies compose; only their
      *  profile-authored fields render. Absent = every registered clause. */
     clauseIds?: readonly string[];
 }) {

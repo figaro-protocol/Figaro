@@ -237,7 +237,7 @@ function RegisteredCard({
  *
  * "Muted that doesn't attract attention" per user direction: no
  * card chrome, low-contrast text, simple divided rows. The page's
- * focus is the seller's identity at the top; the manage list is
+ * focus is the member's identity at the top; the manage list is
  * a sidebar in disguise.
  */
 function ManageList({
@@ -375,7 +375,7 @@ function WithdrawRow({
     const [receiptHash, setReceiptHash] = useState<`0x${string}` | null>(null);
     const isProcessing = isPending || isConfirming;
 
-    // Hold the receipt visible after success — let the seller dismiss
+    // Hold the receipt visible after success — let the member dismiss
     // it explicitly. Only then does the parent refetch (which causes the
     // dashboard → doorway transition, removing this row from the DOM).
     useEffect(() => {
@@ -408,7 +408,7 @@ function WithdrawRow({
         }
     }
 
-    // ── Receipt state: success, awaiting seller dismissal ──
+    // ── Receipt state: success, awaiting the member's dismissal ──
     if (receiptHash) {
         return (
             <TransactionReceipt
