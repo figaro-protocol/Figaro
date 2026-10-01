@@ -190,8 +190,8 @@ main). The crates: `figaro-clause`
 directory; the encode vectors in `prover/clause/tests/encode_conformance.rs`,
 generated from the live TS encoder, lock byte parity — signed int256,
 stage-scoped witnesses, tuple[] arrays, open formats), `figaro-kernel` (frozen Foundry parity vectors for commit/resolve;
-the kernel-transition replay — `prover/lib/tests/transition_vectors.rs` replays
-`test/fixtures/kernel-transition-vectors.json`, harvested from the live kernel
+the transition replay — `prover/lib/tests/transition_vectors.rs` replays
+`test/fixtures/kernel-transition-vectors.json`, harvested from the live `FigaroCore`
 by `KernelTransitionVectorsTest`, and asserts every id, bond, payout,
 accumulator and active count; the three packer vectors (`packers.rs`) and the
 Merkle leg of the agreement-tree lock (`merkle_parity.rs`), both asserted on
