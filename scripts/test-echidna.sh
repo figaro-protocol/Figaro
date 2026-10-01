@@ -2,7 +2,7 @@
 # test-echidna.sh — Reproducible Echidna property-based fuzzing.
 #
 # Runs two harnesses:
-#   1. Figaro kernel (src/echidna/EchidnaFuzzer.sol) — 7 invariants
+#   1. FigaroCore (src/echidna/EchidnaFuzzer.sol) — 7 invariants
 #        echidna_solvency                  echidna_token_conservation
 #        echidna_active_count_consistent   echidna_buyer_dominance
 #        echidna_cumulative_accounting     echidna_atomic_resolution
@@ -26,7 +26,7 @@
 # Usage:
 #   ./scripts/test-echidna.sh
 #
-# Extra CLI args are forwarded to the kernel pass only (Pass 2 pins its own
+# Extra CLI args are forwarded to the FigaroCore pass only (Pass 2 pins its own
 # knobs, and echidna rejects duplicate flags).
 #
 # Exit codes:
@@ -49,13 +49,13 @@ echo ""
 # Echidna invokes `crytic-compile` under the hood, which reads foundry.toml
 # when --crytic-args specifies the Foundry backend. The `cryticArgs` field in
 # echidna.yaml points at the forge `out/` directory.
-echo "── Pass 1/2: Figaro kernel (EchidnaFuzzer) ──"
+echo "── Pass 1/2: FigaroCore (EchidnaFuzzer) ──"
 echidna . \
     --contract EchidnaFuzzer \
     --config echidna.yaml \
     "$@"
 
-# The FlorinToken harness lives in src/echidna/ alongside the kernel harness.
+# The FlorinToken harness lives in src/echidna/ alongside the FigaroCore harness.
 # Invoked by explicit file path (not `echidna . --contract X`) so the pass
 # keeps its own --workers / --timeout knobs independent of echidna.yaml.
 echo ""

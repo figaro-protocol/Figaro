@@ -10,7 +10,7 @@
 # per-spec outcome. Verification reports are returned as URLs.
 #
 # Specs currently committed (37 rules total — VERIFICATION_MAP.md is the owner):
-#   certora/FigaroCore.spec             — kernel state-machine invariants (8 rules)
+#   certora/FigaroCore.spec             — FigaroCore state-machine invariants (8 rules)
 #   certora/AttestationCoordinator.spec — role-gate + parametric Core-immutability (4 rules)
 #   certora/TokenOpsVerification.spec   — FigaroCore token-flow invariants (7 rules)
 #   certora/FlorinToken.spec            — supply cap + minter registry (6 rules)

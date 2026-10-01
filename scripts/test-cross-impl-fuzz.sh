@@ -1,17 +1,17 @@
 #!/bin/bash
 # test-cross-impl-fuzz.sh — the differential fuzz across the implementations:
-# the kernel against its Rust mirror; the agreement tree across the SDK, the
+# FigaroCore against its Rust mirror; the agreement tree across the SDK, the
 # Solidity library the contracts call, and the guest's verifier; the clause
 # engine across the SDK and the guest.
 #
-# THE KERNEL STREAM — two halves under one seed:
+# THE FigaroCore STREAM — two halves under one seed:
 #
 #   1. Foundry (test/core/kernel/KernelDifferentialFuzzTest.t.sol) draws a
 #      stream of commits and resolutions from the seed — valid ones and
 #      deliberately malformed ones — runs each on FigaroCore, and writes what
-#      the kernel did to test/fixtures/streams/kernel.jsonl.
+#      FigaroCore did to test/fixtures/streams/kernel.jsonl.
 #   2. Rust (prover/lib/tests/fuzz_stream.rs) replays the stream through the
-#      mirror, one operation per batch, and must accept what the kernel
+#      mirror, one operation per batch, and must accept what FigaroCore
 #      accepted, reject what it rejected with the same error, and arrive at
 #      the same ids, deposits, payouts and process states.
 #

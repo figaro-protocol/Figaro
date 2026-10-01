@@ -1,9 +1,9 @@
 #!/bin/bash
-# test-tla.sh — Reproducible TLA+ model checking for Figaro kernel invariants.
+# test-tla.sh — Reproducible TLA+ model checking for FigaroCore invariants.
 #
 # Runs TLC (TLA+ model checker) against four models:
 #
-#   1. FigaroCore kernel — via formal/MC.tla + formal/MC.cfg
+#   1. FigaroCore — via formal/MC.tla + formal/MC.cfg
 #      (2 buyers, 2-3 sellers, InitialBalance 30, Payments 1-3, MaxProcesses 2,
 #       MaxSubOrders 2). Verifies all 9 safety invariants exhaustively:
 #        TypeOK                     CumulativeIntegrity
@@ -35,14 +35,14 @@
 #      + formal/ResolutionUniverses.cfg (1 buyer, 2 sellers, 2 processes,
 #       1 sub-order, payments 1-2, 2 clauses one EXCLUDED, 2 periods).
 #      The CROSS-CONTRACT model: FigaroCore + FigaroBatchVerifier +
-#      UsageCounter + the off-chain guest kernel, under arbitrary
+#      UsageCounter + the off-chain guest mirror, under arbitrary
 #      interleavings — the only harness that can see the two-resolution-
 #      universes crease (Foundry/Halmos/Certora are all per-contract).
 #      Verifies 21 safety invariants exhaustively: no double payout across
 #      the universes; token conservation + exact per-pool escrow; usage-
 #      score composition (scoreOf == direct + batch, the bridge write
-#      REPLACES never adds); kernel blindness (settleBatch writes no
-#      kernel orderStatus). Two NAMED assumptions are constants in the
+#      REPLACES never adds); FigaroCore blindness (settleBatch writes no
+#      FigaroCore orderStatus). Two NAMED assumptions are constants in the
 #      .cfg — AssumeDomainSeparation (contract-enforced: EIP-712
 #      verifyingContract disjointness) and AssumeAccrualGatesAligned
 #      (NOT contract-enforced: a dropped batch's accrual is forgone at
@@ -100,7 +100,7 @@ echo ""
 # without fragile absolute paths.
 cd formal
 
-echo "▶ Pass 1/4 — FigaroCore kernel (9 invariants)"
+echo "▶ Pass 1/4 — FigaroCore (9 invariants)"
 echo ""
 java -cp "../$TLA2TOOLS" tlc2.TLC \
     -config MC.cfg \

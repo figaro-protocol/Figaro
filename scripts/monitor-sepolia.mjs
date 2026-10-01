@@ -17,13 +17,13 @@
 // Two kinds of check. Window checks read only the last WINDOW_BLOCKS blocks:
 // a minter registered after genesis, a florin minted outside the reward path,
 // a batch whose accrual did not apply, a burst of withdrawals. The solvency
-// check reads the kernel's whole history from the deployment block: for every
-// token a process was ever denominated in, the kernel must hold exactly the
+// check reads FigaroCore's whole history from the deployment block: for every
+// token a process was ever denominated in, FigaroCore must hold exactly the
 // bonds of the orders still open — 2·payment + 2·cumulativeValue per order
 // (VERIFICATION_MAP.md A-8). Less than that is the incident; more is a surplus
 // someone sent, reported but not an alert.
 //
-// The events DISCOVER; the kernel's own state DECIDES. A public node is a
+// The events DISCOVER; FigaroCore's own state DECIDES. A public node is a
 // load-balanced fleet whose backends can omit logs (never invent them), so
 // every log chunk is asked ASKS times and the fullest answer kept, and an
 // order counts as open only when `orderStatus` says so — a state read, which
@@ -142,7 +142,7 @@ if (withdrawals.length >= BURST) {
 }
 notes.push(`${withdrawals.length} withdrawal(s) in window`);
 
-// ── Solvency: the kernel holds exactly the open bonds ─────────────────
+// ── Solvency: FigaroCore holds exactly the open bonds ─────────────────
 
 const coreAbi = abiOf("FigaroCore");
 const committed = await eventsChunked({ address: record.figaroCore, abi: coreAbi, eventName: "OrderCommitted", fromBlock: deployBlock, toBlock: head });
@@ -155,7 +155,7 @@ let open = 0;
 let resolved = 0;
 committed.forEach((o, i) => {
     if (statuses[i] === 2) { resolved++; return; }
-    if (statuses[i] !== 1) throw new Error(`order ${o.args.orderHash} committed in tx ${o.transactionHash} has kernel status ${statuses[i]}; the node is not on this deployment's chain`);
+    if (statuses[i] !== 1) throw new Error(`order ${o.args.orderHash} committed in tx ${o.transactionHash} has FigaroCore status ${statuses[i]}; the node is not on this deployment's chain`);
     open++;
     const bonds = 2n * o.args.payment + 2n * o.args.cumulativeValue;
     held.set(o.args.currency, (held.get(o.args.currency) ?? 0n) + bonds);
@@ -171,10 +171,10 @@ for (const currency of currencies) {
     const line = `${symbol}: holds ${formatUnits(balance, decimals)}, open bonds ${formatUnits(expected, decimals)}`;
     if (balance < expected) {
         alert("critical", `insolvent-${currency}`,
-            `Monitor: the kernel holds less than its open bonds in ${symbol}`,
-            `${line}. Invariant A-8 is broken: some resolution will fail or some bond has left the kernel other than at resolution. Treat as the worst case in SECURITY.md § "Incident response".`);
+            `Monitor: FigaroCore holds less than its open bonds in ${symbol}`,
+            `${line}. Invariant A-8 is broken: some resolution will fail or some bond has left FigaroCore other than at resolution. Treat as the worst case in SECURITY.md § "Incident response".`);
     } else if (balance > expected) {
-        notes.push(`${line} (surplus ${formatUnits(balance - expected, decimals)} — sent to the kernel outside a commit; not an incident)`);
+        notes.push(`${line} (surplus ${formatUnits(balance - expected, decimals)} — sent to FigaroCore outside a commit; not an incident)`);
     } else {
         notes.push(`${line} (exact)`);
     }

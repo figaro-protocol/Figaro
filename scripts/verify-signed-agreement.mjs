@@ -16,7 +16,7 @@
 //      really signed the commitment struct hash (`verifyCommitmentSignature`).
 //
 // Everything cryptographic comes from @figaro-protocol/sdk (the same primitives the
-// kernel mirrors); this script only reads files, calls them, and prints.
+// FigaroCore mirrors); this script only reads files, calls them, and prints.
 //
 // Usage:
 //   node scripts/verify-signed-agreement.mjs \
@@ -143,13 +143,13 @@ if (lower(recomputedHash) === lower(commitment.agreementHash)) {
     console.log("         The page showed you one document and asked your wallet to bind another. Do not sign.");
 }
 
-// The canonical domain for this chain + kernel address — if the wallet showed
-// a different one, the signature checks below would fail against the kernel too.
+// The canonical domain for this chain + FigaroCore address — if the wallet showed
+// a different one, the signature checks below would fail against FigaroCore too.
 const canonicalDomain = buildDomain(chainId, core);
 if (domain.name !== canonicalDomain.name || String(domain.version) !== canonicalDomain.version) {
     console.log(
-        `note: displayed domain ${JSON.stringify({ name: domain.name, version: domain.version })} differs from the kernel's ` +
-        `${JSON.stringify({ name: canonicalDomain.name, version: canonicalDomain.version })} — the kernel would reject these signatures.`,
+        `note: displayed domain ${JSON.stringify({ name: domain.name, version: domain.version })} differs from FigaroCore's ` +
+        `${JSON.stringify({ name: canonicalDomain.name, version: canonicalDomain.version })} — FigaroCore would reject these signatures.`,
     );
 }
 
