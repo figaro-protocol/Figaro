@@ -2,7 +2,7 @@
 //!
 //! Runs the guest in SP1's mock executor against canonical fixtures from
 //! `figaro_prove_test::build_canonical_batch_input` and asserts the
-//! committed PublicValues. Catches guest-program drift (kernel rejecting
+//! committed PublicValues. Catches guest-program drift (the mirror rejecting
 //! a previously-valid batch, public-values layout changes, etc.) without
 //! the cost of a real SP1 proof — Stage 2 of the manual exerciser is the
 //! cryptographic check; this is the correctness check.
@@ -37,7 +37,7 @@ async fn guest_program_executes_canonical_batch() {
 
     assert_eq!(pv.chain_id, CHAIN_ID);
     assert_eq!(pv.verifying_contract, CORE);
-    // The genesis root is whatever the empty kernel state hashes to —
+    // The genesis root is whatever the empty mirror state hashes to —
     // recomputed on the host, never a stored constant. The deploy wiring
     // pins the same value when the verifier lands on-chain.
     assert_eq!(
@@ -54,7 +54,7 @@ async fn guest_program_executes_canonical_batch() {
 async fn guest_output_matches_host_apply_batch_exactly() {
     // The strongest drift gate: the guest's committed PublicValues must
     // equal the host-side apply_batch on the identical input, field for
-    // field — one kernel, two execution environments.
+    // field — one mirror, two execution environments.
     let input = build_canonical_batch_input();
     let (host_pv, _positions, host_events) = apply_batch(&input).expect("host apply_batch");
 
@@ -87,7 +87,7 @@ async fn guest_output_matches_host_apply_batch_exactly() {
 #[tokio::test]
 async fn guest_program_rejects_corrupt_buyer_signature_on_commit() {
     // The guest's `apply_batch(&input).expect("invalid batch")` panics
-    // when the kernel rejects an op (here: ECDSA recovery on a zeroed
+    // when the mirror rejects an op (here: ECDSA recovery on a zeroed
     // `r`). SP1's mock executor catches the guest panic — `execute()`
     // returns Ok with the report from before the panic, but
     // `public_values` contains nothing (the panic preceded the

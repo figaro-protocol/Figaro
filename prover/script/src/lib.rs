@@ -98,7 +98,7 @@ fn parse_spec(spec_json: &str) -> figaro_clause::ClauseSpec {
 /// (ReAssert: the committed sectionData re-anchored) → resolve.
 ///
 /// Attestations precede the resolve because the evidence window closes at
-/// resolution (the kernel's OrderResolved gate). The single-section
+/// resolution (the mirror's OrderResolved gate). The single-section
 /// agreement makes `agreement_hash` the lone section leaf, so both
 /// inclusion proofs are empty.
 pub fn build_canonical_batch_input() -> BatchInput {

@@ -27,7 +27,7 @@ async fn main() {
     let elf = sp1_sdk::include_elf!("figaro-prover");
 
     // Stage 1 — Mock execution: cheap sanity check that the ELF runs
-    // and the public values match the kernel's expected output.
+    // and the public values match the mirror's expected output.
     let mock_client = ProverClient::builder().mock().build().await;
     let mut stdin = SP1Stdin::new();
     stdin.write(&input);
