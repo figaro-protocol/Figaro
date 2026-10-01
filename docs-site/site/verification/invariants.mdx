@@ -5,7 +5,7 @@ description: The nine facts FigaroCore cannot violate, each beside the Solidity 
 
 Figaro rests on facts a contract cannot violate — not policies someone chose, not promises anyone keeps. Everything else the protocol does either follows from them or is built on top of them by somebody else. This page states the `FigaroCore` invariants beside the Solidity that enforces each, and the four readings of `FigaroCore`'s boundary that fall out of them.
 
-Read the [whole model](/) first. Everything below binds the **kernel only** — `FigaroCore` (`src/core/kernel/FigaroCore.sol`) — never the tiers above it; kernel neutrality does not propagate upward. The property-by-property map to the tests and formal benches that check each fact is the [Verification map](/verification/verification-map/); the testing and audit posture is [Security](/verification/security/).
+Read the [whole model](/) first. Everything below binds **`FigaroCore` only** (`src/core/kernel/FigaroCore.sol`), never the tiers above it; its neutrality does not propagate upward. The property-by-property map to the tests and formal benches that check each fact is the [Verification map](/verification/verification-map/); the testing and audit posture is [Security](/verification/security/).
 
 ## The nine FigaroCore invariants
 
@@ -23,7 +23,7 @@ Each is a checked fact of `FigaroCore`. The stable IDs (`K-1`…`K-9`) match the
 | K-8 | **Dual-signed commitment** — both parties sign the same struct as EIP-712 typed data, verified on chain. | `ECDSA.recover(digest, buyerSig) != c.buyer` and `ECDSA.recover(digest, sellerSig) != c.seller` in `commit` (`:161`, `:164`). |
 | K-9 | **Content-addressed order IDs** — an order hash is derived from its content, never an auto-incrementing counter. | `orderHash = keccak256(abi.encodePacked(processId, structHash))` then `if (orderStatus[orderHash] != 0) revert DuplicateCommitment()` (`:202-204`). |
 
-The mechanism these state — why twice the value, and what walking away costs — is derived, with the worked numbers, on [Theory](/start-here/theory/) and in [A Verified Resolution Kernel](https://figaroprotocol.com/papers/verified-resolution-kernel). What the contracts stating them are tested against — seven independent benches — is on [Security](/verification/security/).
+The mechanism these state — why twice the value, and what walking away costs — is derived, with the worked numbers, on [Theory](/start-here/theory/) and in [A Verified Resolution Contract](https://figaroprotocol.com/papers/verified-resolution-kernel). What the contracts stating them are tested against — seven independent benches — is on [Security](/verification/security/).
 
 ## The Core's boundary, read four ways
 
