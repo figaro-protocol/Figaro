@@ -53,7 +53,7 @@ writes via `WalletGate`.**
 | `/members/manage` | The registered dashboard + stake claim. |
 | `/members/{identity,agents,assemblies,buyer,catalogue,endpoints,review}` | The member wizard: Identity, Sell through (`assemblies`: bind, and offer the data those trades produce), Buy through (`buyer`: subscribe, and offer the data those trades produce), Catalogue, Agents, Endpoints, Review. The two assembly steps are one loop walked twice and both precede Catalogue, which prices what they declare. |
 | `/members/edit/{identity,agents,assemblies,buyer,catalogue,endpoints}` | Endpoints are the member's own infrastructure — device configuration via `lib/shared/userEndpoints.ts`, never pinned or published. |
-| `/orders`, `/orders/view?process=` | The wallet's actor-neutral order list, buyer and seller both; "Your turn" is where counter-sign/accept fires, and `resolveProcess` fires on the detail view. |
+| `/orders`, `/orders/view?process=` | The wallet's actor-neutral order list, buyer and seller both; "Your turn" is where counter-sign/accept fires, and `resolveProcess` fires on the detail view: its confirm names how many usage writes the wallet signs next (`lib/semantic/planUsageRecords.ts` plans them, one per distinct key and never an excluded one; each is simulated before it is sent), and a resolved order links the party's data (`/data/yours`). |
 
 The build-baked `NEXT_PUBLIC_*` values are defaults only, so a hosted deploy never
 seizes users onto the operator's provider key or pinning node. Endpoint configuration
