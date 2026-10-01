@@ -10,7 +10,7 @@ library CommitmentTypes {
     /// @dev Root orders:
     ///      - processId = bytes32(0)
     ///      - expectedCumulativeValue = payment
-    ///      The kernel derives processId as the EIP-712 digest.
+    ///      FigaroCore derives processId as the EIP-712 digest.
     ///
     /// @dev Sub-orders:
     ///      - processId = target process

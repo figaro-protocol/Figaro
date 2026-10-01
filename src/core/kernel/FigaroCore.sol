@@ -11,7 +11,7 @@ import "./CommitmentTypes.sol";
 /// @title FigaroCore — Self-enforcing agreements between strangers
 /// @custom:security-contact figarosecurity@gmail.com
 /// @custom:audit-status UNAUDITED — This contract has not been reviewed by an independent security auditor.
-/// @notice The protocol kernel. Two external functions: commit() and
+/// @notice The Core's bonding and resolution contract. Two external functions: commit() and
 ///         resolveProcess(). No owner, no fee, no escape hatches.
 /// @dev DISCLAIMER: This contract is provided as-is, without warranty of any kind, express or implied. No liability is accepted for loss, damages, or bugs. Use at your own risk.
 ///
@@ -246,7 +246,7 @@ contract FigaroCore is EIP712, ReentrancyGuard {
     ///         The maximum number of orders per process therefore varies
     ///         with the network's block gas limit: clients derive it from
     ///         the live limit, never from a fixed number. The ceiling is
-    ///         a property of the kernel resolveProcess path; it cannot be
+    ///         a property of the resolveProcess path; it cannot be
     ///         enforced on-chain at assembly registration because assembly
     ///         documents live off-chain (AssemblyRegistry only stores their
     ///         hash + URI). Publish-side clients refuse to anchor an
