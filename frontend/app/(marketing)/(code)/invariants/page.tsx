@@ -58,7 +58,7 @@ export default function Invariants() {
                     <p>
                         They are facts, not rules. Nothing in the smart contract can suspend one, because there is nothing in the smart contract that could. The mechanism they state &mdash; why twice the value, and what walking away costs &mdash; is derived, with the worked numbers, on{" "}
                         <Link href="/kernel" className="text-ink-heading font-medium hover:underline">
-                            Kernel
+                            Mechanism
                         </Link>
                         , and at length in the{" "}
                         <Link href="/working-groups" className="text-ink-heading font-medium hover:underline">
