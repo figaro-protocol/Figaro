@@ -607,13 +607,13 @@ test.describe('PER-CLAUSE COVERAGE — every protocol clause flows the generic p
             // nothing is bound yet).
             if (rung.profile) await rung.profile(page);
             await page.getByRole('button', { name: /^Next/ }).click();
+            await expect(page).toHaveURL(/\/members\/buyer/);
+            await page.getByRole('button', { name: /^Next/ }).click();
             await expect(page).toHaveURL(/\/members\/catalogue/);
 
             await page.locator('[id^="item-"][id$="-name"]').first().fill('Coverage item');
             await page.locator('[id^="item-"][id$="-price"]').first().fill('1');
             if (rung.catalogue) await rung.catalogue(page);
-            await page.getByRole('button', { name: /^Next/ }).click();
-            await expect(page).toHaveURL(/\/members\/buyer/);
             await page.getByRole('button', { name: /^Next/ }).click();
             await expect(page).toHaveURL(/\/members\/agents/);
             await page.getByRole('button', { name: /^Next/ }).click();

@@ -176,11 +176,11 @@ test.describe('LIVE ORDER — a public deployment traded through the real UI', (
             await offer.waitFor({ state: 'visible', timeout: 60_000 });
             if (!(await offer.isChecked())) await offer.check();
             await page.getByRole('button', { name: /^Next/ }).click();
+            await expect(page).toHaveURL(/\/members\/buyer/);
+            await page.getByRole('button', { name: /^Next/ }).click();
             await expect(page).toHaveURL(/\/members\/catalogue/);
             await page.locator('[id^="item-"][id$="-name"]').first().fill('Smoke espresso');
             await page.locator('[id^="item-"][id$="-price"]').first().fill(ITEM_PRICE);
-            await page.getByRole('button', { name: /^Next/ }).click();
-            await expect(page).toHaveURL(/\/members\/buyer/);
             await page.getByRole('button', { name: /^Next/ }).click();
             await expect(page).toHaveURL(/\/members\/agents/);
             await page.getByRole('button', { name: /^Next/ }).click();

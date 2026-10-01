@@ -247,21 +247,25 @@ export interface OnboardingStep {
 // No welcome step: /join owns the membership
 // pitch, so the wizard opens directly on Identity.
 //
-// Assemblies precede Catalogue because the authority runs that way: the
-// assemblies a member binds decide which clauses its trades carry, and the
-// clauses decide which item fields exist to author (a freight class, a hazmat
-// number, a cold-chain range). Ask for the items first and the catalogue has
-// nothing to derive from, so it opens every registered logistics field to a
-// member selling one mug. The same direction governs the data-product option on the
-// catalogue step, which reads the disclosure entries the assemblies step
-// derives.
+// The two assembly steps are one loop walked twice — the assemblies a member
+// sells through (it BINDS them) and the assemblies it buys through (it
+// SUBSCRIBES them) — and each ends by choosing which of the data those trades
+// co-produce is offered. They sit side by side, and both precede Catalogue,
+// because the authority runs that way: the assemblies a member binds decide
+// which clauses its trades carry, and the clauses decide which item fields
+// exist to author (a freight class, a hazmat number, a cold-chain range); and
+// the catalogue's data-product option reads the disclosure entries BOTH steps
+// derive. Ask for the items first and the catalogue has nothing to derive
+// from, so it opens every registered logistics field to a member selling one
+// mug and cannot price a data offer that has not been declared yet.
 export const ONBOARDING_STEPS: readonly OnboardingStep[] = [
     { id: "profile", number: 1, label: "Identity", path: "identity", optional: false },
-    { id: "assemblies", number: 2, label: "Assemblies", path: "assemblies", optional: false },
-    { id: "catalogue", number: 3, label: "Catalogue", path: "catalogue", optional: false },
-    // The buyer page sits BEFORE agents so the agents step delegates
+    { id: "assemblies", number: 2, label: "Sell through", path: "assemblies", optional: false },
+    // Optional: a member who buys through no assembly leaves it empty.
+    { id: "buyer", number: 3, label: "Buy through", path: "buyer", optional: true },
+    { id: "catalogue", number: 4, label: "Catalogue", path: "catalogue", optional: false },
+    // Both postures are declared before agents, so the agents step delegates
     // control of the member's whole profile — seller and buyer alike.
-    { id: "buyer", number: 4, label: "Buyer", path: "buyer", optional: true },
     { id: "agents", number: 5, label: "Agents", path: "agents", optional: true },
     // The member's OWN infrastructure — device configuration, never part of
     // the pinned profile, which is why Review does not list it.

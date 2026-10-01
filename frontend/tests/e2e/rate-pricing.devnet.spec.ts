@@ -120,6 +120,8 @@ async function onboardSeller(page: Page, opts: {
             .fill(opts.designate.counterparty);
     }
     await page.getByRole('button', { name: /^Next/ }).click();
+    await expect(page).toHaveURL(/\/members\/buyer/);
+    await page.getByRole('button', { name: /^Next/ }).click();
     await expect(page).toHaveURL(/\/members\/catalogue/);
 
     await page.locator('[id^="item-"][id$="-name"]').first().fill(opts.product.name);
@@ -134,8 +136,6 @@ async function onboardSeller(page: Page, opts: {
         await page.locator('[data-testid^="item-"][data-testid$="-rate-source"]').first()
             .selectOption(opts.product.rate.source);
     }
-    await page.getByRole('button', { name: /^Next/ }).click();
-    await expect(page).toHaveURL(/\/members\/buyer/);
     await page.getByRole('button', { name: /^Next/ }).click();
     await expect(page).toHaveURL(/\/members\/agents/);
     await page.getByRole('button', { name: /^Next/ }).click();

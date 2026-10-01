@@ -18,7 +18,7 @@ import { DisclosurePolicyEditor } from "@/components/members/DisclosurePolicyEdi
 import type { OnboardingStepChromeProps } from "@/components/members/OnboardingStepChrome";
 
 /**
- * The buyer step of the member wizard. The member SUBSCRIBES the
+ * The Buy through step of the member wizard — the twin of Sell through. The member SUBSCRIBES the
  * assemblies they buy through — their own list, independent of the
  * seller bindings, because a wallet does not buy through the assemblies
  * it sells through — and toggles which of the data those deals
@@ -188,7 +188,11 @@ export function OnboardingBuyerForm({
                     </p>
                     <p>
                         To make those items orderable, bind a data-sale assembly on
-                        the assemblies step — one whose composition carries the
+                        the{" "}
+                        <Link href="/members/assemblies" className="text-ink-heading font-medium hover:underline">
+                            Sell through
+                        </Link>
+                        {" "}step — one whose composition carries the
                         data-license and content-handoff terms, like the anchored
                         data-stream subscription reference.
                     </p>

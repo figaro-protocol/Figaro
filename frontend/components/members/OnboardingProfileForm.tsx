@@ -458,7 +458,7 @@ export function OnboardingProfileForm({
                     </p>
                 </FormField>
                 {/* Profile-sourced clause values (dimweight's divisor, a declared
-                    credential id) are authored on the Assemblies step, scoped to the
+                    credential id) are authored on the Sell through step, scoped to the
                     clauses the bound assemblies compose; this form only carries the
                     draft's values through. */}
             </section>

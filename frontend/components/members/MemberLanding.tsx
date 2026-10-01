@@ -255,9 +255,9 @@ function ManageList({
 }) {
     const items: Array<{ label: string; description: string; href: string | null }> = [
         { label: "Identity", description: "Name, description, tokens, location.", href: "/members/edit/identity" },
+        { label: "Sell through", description: "Assemblies you sell through; the data you sell from those trades.", href: "/members/edit/assemblies" },
+        { label: "Buy through", description: "Assemblies you buy through; the data you sell from those trades.", href: "/members/edit/buyer" },
         { label: "Catalogue", description: "Items.", href: "/members/edit/catalogue" },
-        { label: "Assemblies", description: "Bindings.", href: "/members/edit/assemblies" },
-        { label: "Buyer", description: "Assemblies you buy through; the data you sell.", href: "/members/edit/buyer" },
         { label: "Agents", description: "Service endpoints.", href: "/members/edit/agents" },
         { label: "Endpoints", description: "Your own IPFS node, RPC, verifier relay — this browser only.", href: "/members/edit/endpoints" },
     ];

@@ -3,7 +3,7 @@ import { withOg } from "@/lib/shared/pageMetadata";
 import { MemberEditBuyer } from "@/components/members/MemberEditBuyer";
 
 export const metadata: Metadata = withOg({
-    title: "Edit buyer side — Figaro Protocol",
+    title: "Edit what you buy through — Figaro Protocol",
     description: "Subscribe the assemblies the wallet buys through and choose which of its data it offers for sale. Re-pins the profile JSON, then dispatches MembersRegistry.updateProfile.",
 });
 
@@ -12,7 +12,7 @@ export default function EditBuyerPage() {
         <section className="container mx-auto px-6 pt-24 pb-24 max-w-2xl space-y-10">
             <div>
                 <h1 className="text-heading-h1 text-ink-heading mb-4">
-                    Edit your buyer side.
+                    Edit what you buy through.
                 </h1>
                 <p className="text-body-lead text-ink-body">
                     Toggle which assemblies your wallet buys through and which of

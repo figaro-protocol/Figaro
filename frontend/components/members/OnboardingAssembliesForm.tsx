@@ -222,7 +222,7 @@ export function OnboardingAssembliesForm({
         <form onSubmit={handleNext} className="space-y-8">
             <Card className="p-6 space-y-3 text-sm text-ink-body">
                 <p>
-                    Pick the assemblies you participate in. Each binding publishes
+                    Pick the assemblies you sell through. Each binding publishes
                     onto your profile as part of the document pinned at publish.
                     At least one binding is required — a profile with no assembly
                     binding cannot be ordered from. You can add more later through

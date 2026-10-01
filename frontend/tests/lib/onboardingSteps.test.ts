@@ -6,17 +6,18 @@ import {
     onboardingStepHref,
 } from "@/lib/member/onboardingState";
 
-// The wizard's order: the assemblies a member binds decide which clauses
-// their trades carry, so Assemblies precedes Catalogue; the buyer page sits
-// between the seller's steps and the agents step, so the agents step delegates
-// control of the member's WHOLE profile — seller and buyer alike.
+// The wizard's order: the two assembly steps are one loop walked twice — what
+// the member sells through, then what it buys through — and both precede
+// Catalogue, because the bindings decide the catalogue's clause fields and the
+// catalogue prices the data offers both steps declare. Both sit before the
+// agents step, so that step delegates control of the member's WHOLE profile.
 describe("ONBOARDING_STEPS — member wizard order", () => {
-    it("runs identity → assemblies → catalogue → buyer → agents → endpoints → review (no welcome — /join owns the pitch; the bindings decide the catalogue's clause fields)", () => {
+    it("runs identity → sell through → buy through → catalogue → agents → endpoints → review (no welcome — /join owns the pitch; both assembly steps precede the catalogue they feed)", () => {
         expect(ONBOARDING_STEPS.map((s) => s.id)).toEqual([
             "profile",
             "assemblies",
-            "catalogue",
             "buyer",
+            "catalogue",
             "agents",
             "endpoints",
             "review",
@@ -28,10 +29,15 @@ describe("ONBOARDING_STEPS — member wizard order", () => {
         expect(ONBOARDING_STEPS.map((s) => s.number)).toEqual([1, 2, 3, 4, 5, 6, 7]);
     });
 
-    it("keeps the buyer step optional — a member who only sells skips it", () => {
+    it("keeps the Buy through step optional — a member who buys through no assembly skips it", () => {
         const buyer = ONBOARDING_STEPS.find((s) => s.id === "buyer");
         expect(buyer?.optional).toBe(true);
         expect(buyer?.path).toBe("buyer");
+    });
+
+    it("names the two assembly steps as a pair", () => {
+        expect(ONBOARDING_STEPS.find((s) => s.id === "assemblies")?.label).toBe("Sell through");
+        expect(ONBOARDING_STEPS.find((s) => s.id === "buyer")?.label).toBe("Buy through");
     });
 });
 
@@ -50,8 +56,8 @@ describe("wizard navigation derives from the step order", () => {
         for (const step of ONBOARDING_STEPS) walk.push(onboardingNextHref(step.id));
         expect(walk).toEqual([
             "/members/assemblies",
-            "/members/catalogue",
             "/members/buyer",
+            "/members/catalogue",
             "/members/agents",
             "/members/endpoints",
             "/members/review",
@@ -62,8 +68,8 @@ describe("wizard navigation derives from the step order", () => {
 
     it("walks back in ONBOARDING_STEPS order and stops at the first step", () => {
         expect(onboardingPrevHref("assemblies")).toBe("/members/identity");
-        expect(onboardingPrevHref("catalogue")).toBe("/members/assemblies");
-        expect(onboardingPrevHref("buyer")).toBe("/members/catalogue");
+        expect(onboardingPrevHref("buyer")).toBe("/members/assemblies");
+        expect(onboardingPrevHref("catalogue")).toBe("/members/buyer");
         expect(onboardingPrevHref("profile")).toBe("/members/identity");
     });
 

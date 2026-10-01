@@ -4,7 +4,7 @@ import { OnboardingShell } from "@/components/members/OnboardingShell";
 import { OnboardingAssembliesForm } from "@/components/members/OnboardingAssembliesForm";
 
 export const metadata: Metadata = withOg({
-    title: "Assemblies — Member onboarding",
+    title: "Sell through — Member onboarding",
     description: "Pick the assemblies registered on this network that you bind to. Per-assembly customization is added after first registration.",
 });
 
@@ -12,7 +12,7 @@ export default function OnboardingAssembliesPage() {
     return (
         <OnboardingShell
             stepId="assemblies"
-            title="Assemblies you participate in"
+            title="Assemblies you sell through"
             description={
                 <p>
                     Pick the assemblies registered on this network that you bind to. Per-assembly customization (trusted counterparties, mechanism configuration) is added after first registration.

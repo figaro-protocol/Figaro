@@ -285,7 +285,7 @@ export function OnboardingCatalogueForm({
     // Data-for-sale options: the member's declared data offers
     // (offered entries, both postures) — an item referencing one is the
     // PRICED form of that offer. Empty until the member declares some
-    // on the assemblies (seller side) or buyer step.
+    // on the Sell through or Buy through step, both of which precede this one.
     const dataSoldOptions = useMemo(
         () => (state.disclosurePolicy ?? []).filter((e) => e.offered),
         [state.disclosurePolicy],

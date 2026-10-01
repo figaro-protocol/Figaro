@@ -195,10 +195,31 @@ async function onboardViaWizard(
     ).toBeChecked({ timeout: 30_000 });
 
     await page.getByRole("button", { name: /^Next/ }).click();
+    await expect(page).toHaveURL(/\/members\/buyer/);
+
+    // Buy through: subscribe an assembly the wallet buys through, then
+    // offer some of its data for sale. Subscribing is the buying posture's
+    // verb (a profile declaration), distinct from the BINDING on the step before.
+    const buyerRow = page.getByTestId(`buyer-assembly-row-${assemblySlug}`);
+    await buyerRow.waitFor({ state: 'visible', timeout: 30_000 });
+    const buyerCheckbox = buyerRow.locator('input[type="checkbox"]').first();
+    if (!(await buyerCheckbox.isChecked())) {
+        await buyerCheckbox.check();
+    }
+    // The disclosure editor renders one buyer-posture row per clause once the
+    // subscribed assembly's template loads; offer the first row.
+    const offerBox = page
+        .locator(`[data-testid^="disclosure-${assemblySlug}-"][data-testid$="-buyer-offer"]`)
+        .first();
+    await offerBox.waitFor({ state: 'visible', timeout: 30_000 });
+    if (!(await offerBox.isChecked())) {
+        await offerBox.check();
+    }
+    await page.getByRole("button", { name: /^Next/ }).click();
     await expect(page).toHaveURL(/\/members\/catalogue/);
 
     // Catalogue: one product. The clause sections on an item derive from the
-    // assemblies bound on the step BEFORE, so a seller who binds none sees none.
+    // assemblies bound on the Sell through step, so a member who binds none sees none.
     await page.locator('[id^="item-"][id$="-name"]').first().fill(SELLER.product.name);
     await page.locator('[id^="item-"][id$="-price"]').first().fill(SELLER.product.price);
 
@@ -243,28 +264,6 @@ async function onboardViaWizard(
         await expect(page.locator(`[data-testid$="-clause-${unboundClause}"]`)).toHaveCount(0);
     }
 
-    await page.getByRole("button", { name: /^Next/ }).click();
-    await expect(page).toHaveURL(/\/members\/buyer/);
-
-
-    // Buyer: subscribe an assembly the wallet buys through, then
-    // offer some of its data for sale. Subscribing is the buyer's
-    // verb (a profile declaration), distinct from the seller BINDING above.
-    const buyerRow = page.getByTestId(`buyer-assembly-row-${assemblySlug}`);
-    await buyerRow.waitFor({ state: 'visible', timeout: 30_000 });
-    const buyerCheckbox = buyerRow.locator('input[type="checkbox"]').first();
-    if (!(await buyerCheckbox.isChecked())) {
-        await buyerCheckbox.check();
-    }
-    // The disclosure editor renders one buyer-posture row per clause once the
-    // subscribed assembly's template loads; offer the first row.
-    const offerBox = page
-        .locator(`[data-testid^="disclosure-${assemblySlug}-"][data-testid$="-buyer-offer"]`)
-        .first();
-    await offerBox.waitFor({ state: 'visible', timeout: 30_000 });
-    if (!(await offerBox.isChecked())) {
-        await offerBox.check();
-    }
     await page.getByRole("button", { name: /^Next/ }).click();
     await expect(page).toHaveURL(/\/members\/agents/);
 

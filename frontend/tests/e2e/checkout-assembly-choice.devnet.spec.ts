@@ -93,15 +93,15 @@ async function onboardViaWizard(page: Page, assemblySlugs: string[]) {
         await row.locator('input[type="checkbox"]').first().check();
     }
     await page.getByRole('button', { name: /^Next/ }).click();
-    await expect(page).toHaveURL(/\/members\/catalogue/);
-
-    // Step 3 — Catalogue: one product (after the bindings, which decide its clause fields)
-    await page.locator('[id^="item-"][id$="-name"]').first().fill(SELLER.product.name);
-    await page.locator('[id^="item-"][id$="-price"]').first().fill(SELLER.product.price);
-    await page.getByRole('button', { name: /^Next/ }).click();
     await expect(page).toHaveURL(/\/members\/buyer/);
 
-    // Step 4 — Buyer: skip
+    // Step 3 — Buy through: skip
+    await page.getByRole('button', { name: /^Next/ }).click();
+    await expect(page).toHaveURL(/\/members\/catalogue/);
+
+    // Step 4 — Catalogue: one product (after both assembly steps: the bindings decide its clause fields)
+    await page.locator('[id^="item-"][id$="-name"]').first().fill(SELLER.product.name);
+    await page.locator('[id^="item-"][id$="-price"]').first().fill(SELLER.product.price);
     await page.getByRole('button', { name: /^Next/ }).click();
     await expect(page).toHaveURL(/\/members\/agents/);
 
