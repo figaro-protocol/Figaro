@@ -5,7 +5,7 @@
  * the Uniswap SwapRouter02 / QuoterV2 pair the venue seam
  * (`frontend/lib/composition/swapVenue.ts`) encodes against. These are curated
  * constants for EXTERNAL contracts (not Figaro's), same rationale as
- * `ERC20_ABI` — so no kernel/registry-style behavioral test applies. This file
+ * `ERC20_ABI` — so no FigaroCore/registry-style behavioral test applies. This file
  * pins the function surfaces with their expected arity, so a future edit can't
  * silently narrow or rename them out from under integrators — and freezes one
  * golden `exactOutputSingle` calldata vector that the frontend venue seam's

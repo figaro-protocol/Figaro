@@ -45,7 +45,7 @@ describe("generateSalt", () => {
 
 describe("computeDeadline", () => {
     // CHAIN time in, deadline out — there is deliberately no machine-clock
-    // path (maintainer rule: the kernel judges block.timestamp).
+    // path (maintainer rule: FigaroCore judges block.timestamp).
     it("adds the default 1-hour TTL to the chain's clock", () => {
         expect(computeDeadline(1_750_000_000n)).toBe(1_750_000_000n + 3600n);
     });
@@ -148,7 +148,7 @@ describe("order-hash derivation (mirrors CommitmentTypes.sol)", () => {
         deadline: 1700000000n,
     };
 
-    it("COMMITMENT_TYPEHASH equals the kernel's literal type string", () => {
+    it("COMMITMENT_TYPEHASH equals FigaroCore's literal type string", () => {
         const literal =
             "Commitment(bytes32 processId,address buyer,address seller,address currency," +
             "uint256 payment,uint256 expectedCumulativeValue,bytes32 agreementHash," +
@@ -156,7 +156,7 @@ describe("order-hash derivation (mirrors CommitmentTypes.sol)", () => {
         expect(COMMITMENT_TYPEHASH).toBe(keccak256(toBytes(literal)));
     });
 
-    it("hashCommitmentStruct matches an explicit abi.encode (kernel hashStruct)", () => {
+    it("hashCommitmentStruct matches an explicit abi.encode (FigaroCore hashStruct)", () => {
         const explicit = keccak256(
             encodeAbiParameters(
                 [
@@ -175,7 +175,7 @@ describe("order-hash derivation (mirrors CommitmentTypes.sol)", () => {
         expect(hashCommitmentStruct(root)).toBe(explicit);
     });
 
-    it("computeOrderHash for a root order matches the kernel formula", () => {
+    it("computeOrderHash for a root order matches FigaroCore's formula", () => {
         const processId = hashTypedData({
             domain: buildDomain(1, CORE_ADDR),
             types: COMMITMENT_TYPES,

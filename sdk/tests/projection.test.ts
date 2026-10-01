@@ -130,7 +130,7 @@ describe("assertAgreementSignable — the shared sign gate", () => {
 });
 
 describe("the sign gate's denomination chain — pin == leaf == struct", () => {
-    // Every term is a merkle leaf; the kernel struct is the EXECUTION mirror
+    // Every term is a merkle leaf; the FigaroCore struct is the EXECUTION mirror
     // of the currency term, so the gate asserts the copy across the two layers
     // (docs/CLAUSES.md § "Every clause is a merkle leaf").
     const build = (clauses: Record<string, Record<string, unknown>>) =>

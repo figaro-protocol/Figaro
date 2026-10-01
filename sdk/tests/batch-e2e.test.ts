@@ -2,7 +2,7 @@
  * E2E integration test: SDK → Sequencer → FigaroBatchVerifier → on-chain.
  *
  * The cross-language lock for the proof apparatus: TypeScript signs the
- * ops and builds the witness payload, the Rust sequencer runs the kernel
+ * ops and builds the witness payload, the Rust sequencer runs the mirror
  * + guest and submits, and the Solidity verifier checks the hashes and
  * the ClauseRegistry spec-binding anchor. If any layer's bytes drift,
  * this test fails.
@@ -131,7 +131,7 @@ function loadSpecJson(clauseId: string): string {
 const SECTION_DATA = `{"modality":"delivery"}`;
 
 // ── Genesis state root computation ──────────────────────────────────────────
-// The Rust kernel computes:
+// The Rust mirror computes:
 //   root = keccak256(keccak256("") × 3)
 // — one empty-hash per state sub-map (processes, order_status,
 // order_process_id); an empty BTreeMap hashes to keccak256("").
@@ -200,7 +200,7 @@ function startSequencer(
             CLAUSE_REGISTRY_ADDRESS: registries.clauses,
             ASSEMBLY_REGISTRY_ADDRESS: registries.assemblies,
             MEMBERS_REGISTRY_ADDRESS: registries.members,
-            // The kernel uses this as the EIP-712 verifyingContract.
+            // FigaroCore uses this as the EIP-712 verifyingContract.
             // For the batch path, it must be the batch verifier address.
             FIGARO_CORE_ADDRESS: batchVerifierAddress,
             SEQUENCER_PRIVATE_KEY: DEPLOYER_KEY,

@@ -2,21 +2,21 @@
  * EIP-712 parity vectors — the UNCONDITIONAL cross-language lock.
  *
  * The SDK computes EIP-712 hashes off-chain (the `typedData` a wallet signs to
- * build a commitment); the kernel recomputes them on-chain. If the two ever
+ * build a commitment); FigaroCore recomputes them on-chain. If the two ever
  * disagree by a single byte, every signature fails. Until now that agreement
  * was only checked by the skipIf-gated live round-trip (`integration.test.ts`)
  * — nothing ran in CI without a chain.
  *
  * This file freezes a set of SDK-computed vectors into
  * `test/fixtures/eip712-vectors.json`; `test/core/kernel/Eip712ParityTest.t.sol` reads that
- * same file and asserts the Solidity kernel reproduces every hash. Foundry CI
+ * same file and asserts FigaroCore reproduces every hash. Foundry CI
  * runs it unconditionally — no chain, no skipIf.
  *
  * This test has two jobs:
  *   1. Regenerate the fixture on `HARVEST_EIP712_VECTORS=1` (like the golden
  *      vectors' HARVEST flow).
  *   2. Otherwise, assert the SDK STILL reproduces the frozen fixture bytes — so
- *      the SDK side of the lock cannot silently drift either. The kernel is
+ *      the SDK side of the lock cannot silently drift either. FigaroCore is
  *      frozen, so these bytes are constants; a diff here means the SDK's
  *      EIP-712 encoding changed and the fixture must be re-harvested (and the
  *      Foundry side re-checked) deliberately.
@@ -40,7 +40,7 @@ const CHAIN_ID = 31337;
 // verifyingContract is part of the EIP-712 domain, so it must be pinned.
 const VERIFYING_CONTRACT = "0x2e234DAe75C793f67A35089C9d99245E1C58470b" as const;
 
-// The EIP-712 domain separator, computed the way the kernel's constructor does
+// The EIP-712 domain separator, computed the way FigaroCore's constructor does
 // (EIP712("FigaroCore", "3")). The SDK builds `typedData` from the same domain;
 // pinning it here lets the Foundry side assert byte-equality with its own
 // DOMAIN_SEPARATOR().
@@ -111,7 +111,7 @@ function vectorFor(label: string, c: Commitment) {
 
 // ── The batch path's three authorizations ──────────────────────────────────
 //
-// Not kernel types: on the batch path a signature stands where the direct
+// Not FigaroCore types: on the batch path a signature stands where the direct
 // path reads `msg.sender`, and the guest checks it
 // (`prover/lib/src/eip712.rs`). The domain is the VERIFIER's. The hashes
 // below are viem's, from the type strings alone;

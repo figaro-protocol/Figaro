@@ -28,7 +28,7 @@ function stubClient(activeOrderCount: bigint, gasLimit: bigint): ResolveCapReade
 
 describe("maxOrdersResolvableForGasLimit", () => {
     it("derives the documented ~1,240-order ceiling from a 30M block", () => {
-        // (30M × 95% − 38k) ÷ 23k = 1,237 — the kernel docstring's "~1,240".
+        // (30M × 95% − 38k) ÷ 23k = 1,237 — the FigaroCore docstring's "~1,240".
         expect(maxOrdersResolvableForGasLimit(MAINNET_GAS_LIMIT)).toBe(1237);
     });
 
@@ -57,7 +57,7 @@ describe("maxOrdersResolvablePerProcess", () => {
 });
 
 describe("readProcessResolveCapacity", () => {
-    it("combines the kernel activeOrderCount with the chain ceiling", async () => {
+    it("combines FigaroCore's activeOrderCount with the chain ceiling", async () => {
         const client = stubClient(1200n, MAINNET_GAS_LIMIT);
         const capacity = await readProcessResolveCapacity(client, CORE, PROCESS_ID);
         expect(capacity).toEqual({ activeOrderCount: 1200, cap: 1237, remaining: 37 });

@@ -45,7 +45,7 @@ const pub = createPublicClient({ transport: http(RPC), cacheTime: 0 });
 const buyerW = createWalletClient({ account: BUYER, transport: http(RPC) });
 const sellerW = createWalletClient({ account: SELLER, transport: http(RPC) });
 const chainId = await pub.getChainId();
-// CHAIN time, never the machine clock — the kernel's DeadlineExpired guard
+// CHAIN time, never the machine clock — FigaroCore's DeadlineExpired guard
 // compares against block.timestamp.
 const deadline = computeDeadline(await readChainTimestamp(pub));
 const tryHydrate = async (uri) => { try { return await (await fetch(GATEWAY + uri.replace("ipfs://", ""))).json(); } catch { return null; } };

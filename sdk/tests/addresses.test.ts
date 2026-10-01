@@ -87,7 +87,7 @@ describe("addressesFromDeploymentRecord", () => {
             .toEqual({ core: RECORD.figaroCore, daoTreasury: RECORD.daoTreasury });
     });
 
-    it("throws on a record with no kernel address — never a silent half-map", () => {
+    it("throws on a record with no FigaroCore address — never a silent half-map", () => {
         expect(() => addressesFromDeploymentRecord({} as never))
             .toThrow(/figaroCore/);
     });

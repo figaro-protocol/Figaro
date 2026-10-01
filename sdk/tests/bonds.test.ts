@@ -61,7 +61,7 @@ describe("calculateRootApproval", () => {
 });
 
 describe("calculateSubOrderApproval", () => {
-    it("returns full per-order bonds — the kernel offsets nothing", () => {
+    it("returns full per-order bonds — FigaroCore offsets nothing", () => {
         // FigaroCore pulls 2×payment from the buyer and 2×cumulativeValue
         // from the seller on EVERY commit (root bonds stay held in parallel).
         const result = calculateSubOrderApproval(5n, 27n);

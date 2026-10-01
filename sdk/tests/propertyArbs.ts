@@ -68,7 +68,7 @@ export function agreementArb(minSections: number): fc.Arbitrary<Agreement> {
     });
 }
 
-/** A fully populated Commitment struct (the shape the kernel's EIP-712
+/** A fully populated Commitment struct (the shape FigaroCore's EIP-712
  *  signature covers — every field a valid width). */
 export const commitmentArb: fc.Arbitrary<Commitment> = fc.record({
     processId: bytes32Arb,

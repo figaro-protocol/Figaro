@@ -81,7 +81,7 @@ describe("example clause specs — parse + validate sample content", () => {
     it("figaro-commerce requires the currency — the denomination is a TERM, a merkle leaf like every other term", () => {
         const parsed = parseClauseSpec(commerceSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
-        // The kernel commitment's currency field MIRRORS this leaf; a term
+        // The commitment's currency field MIRRORS this leaf; a term
         // living only in the struct would leave the evidence record
         // incomplete (docs/CLAUSES.md § "Every clause is a merkle leaf").
         expect(validateContent({

@@ -140,7 +140,7 @@ describe("proposeInitiations", () => {
         expect(inits[0].buyer).toBe(BUYER);
         expect(inits[0].compositionHash).toBe(COMP);
         expect(inits[0].contentURI).toBe("ipfs://asm");
-        // No process exists yet — the kernel derives the id at root commit.
+        // No process exists yet — FigaroCore derives the id at root commit.
         expect(inits[0].processId).toBe(`0x${"0".repeat(64)}`);
     });
 

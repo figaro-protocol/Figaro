@@ -81,13 +81,13 @@ describe("projectResolutionGraph", () => {
         const chain = graph.chains.get(PID)!;
         expect(chain.currency).toBe(TOKEN);
         expect(chain.resolved).toBe(true);
-        // Linear, in accumulator order — the kernel's own chain.
+        // Linear, in accumulator order — FigaroCore's own chain.
         expect(chain.orders.map((o) => o.cumulativeValue)).toEqual([100n, 250n]);
 
         const [root, sub] = chain.orders;
         expect(root.locked).toEqual({ sellerBond: 200n, buyerBond: 200n, totalLocked: 400n });
         expect(sub.locked).toEqual({ sellerBond: 500n, buyerBond: 300n, totalLocked: 800n });
-        // Kernel-determined payouts agree with the observed events.
+        // The payouts FigaroCore determines agree with the observed events.
         expect(root.atResolution.sellerPayout).toBe(300n);
         expect(root.atResolution.buyerPayout).toBe(100n);
         expect(root.sellerPayout).toBe(300n);
@@ -214,7 +214,7 @@ describe("marketShape", () => {
         const volume = group.volumeByDenomination.get(TOKEN.toLowerCase())!;
         expect(volume.committed).toBe(250n);
         expect(volume.settled).toBe(250n);
-        // Kernel view without parent edges: linear, 0-rooted (root order = depth 0).
+        // FigaroCore view without parent edges: linear, 0-rooted (root order = depth 0).
         expect(group.shapes).toEqual([{ orderCount: 2, depth: 1, maxWidth: 1, processCount: 1 }]);
     });
 

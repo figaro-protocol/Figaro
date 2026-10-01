@@ -3,7 +3,7 @@
  * chain-touching Vitest file (skipIf-gated). It proves SDK ARTIFACTS survive
  * a real chain: a built+signed commitment is accepted by `commit`, events
  * fetch and reconstruct, and the reconstructed commitment resolves. It
- * asserts NO kernel math — bond/resolution amounts are Foundry/Certora-owned
+ * asserts NO FigaroCore math — bond/resolution amounts are Foundry/Certora-owned
  * (K-1/2/3/6; SDK-mirror parity lives in the Foundry parity vectors), and
  * `calculateResolution` is unit-tested in bonds.test.ts.
  *
@@ -202,7 +202,7 @@ describe.skipIf(SKIP)("SDK Integration (Anvil)", () => {
         const domain = buildDomain(31337, coreAddress);
         const agreementHash = "0x0000000000000000000000000000000000000000000000000000000000000001" as Hex;
 
-        // Deadline derives from CHAIN time — block.timestamp is the kernel's
+        // Deadline derives from CHAIN time — block.timestamp is FigaroCore's
         // clock, and a persisted devnet (or a skewed device clock) can sit
         // far from wall time; the wall-clock default reverts DeadlineExpired.
         const chainNow = (await publicClient.getBlock({ blockTag: "latest" })).timestamp;

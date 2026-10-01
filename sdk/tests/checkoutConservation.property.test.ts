@@ -5,7 +5,7 @@
  *   - `reconstructOrdersFromTemplate` (the ONE template → orders walk): for
  *     any acyclic template and any per-node payments, each order's
  *     `cumulativeValue` is the exact prefix sum in commit order, the final
- *     order's equals the sum of ALL node payments (what the kernel's
+ *     order's equals the sum of ALL node payments (what FigaroCore's
  *     `expectedCumulativeValue` check enforces), and every sub-order's
  *     topology section carries its parents' REAL order hashes.
  *   - `resolveSubOrderPricing` (live contributor pricing): the replay
