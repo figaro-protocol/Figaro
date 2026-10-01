@@ -98,7 +98,7 @@ close its own frame. Two rules follow:
    `resolve-process` is self-contained; `commit`/`attest`/`initiate` take signed inputs
    (the counterparty's signature). Origination has its own recipe — the next section,
    executable as written.
-   To surface the wallet as a discoverable seller, `MembersRegistry.register(metadataURI)`
+   To surface the wallet as a discoverable member, `MembersRegistry.register(metadataURI)`
    (a self-signed action, only the wallet's own key). **It is `payable`, and `msg.value`
    must EQUAL `registrationDeposit()` exactly** — read that view off the contract before
    sending; it is a deploy-time immutable, so it differs per deployment and a hardcoded
