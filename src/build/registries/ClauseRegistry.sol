@@ -23,7 +23,7 @@ pragma solidity 0.8.26;
 ///         flight. The usage count lives in the indexer — the same count
 ///         the RPGF program pays on — so the gate is enforced at the
 ///         protocol surface (SDK/frontend refuse while commits > resolves).
-///         The contract itself cannot hold the count: the kernel is frozen
+///         The contract itself cannot hold the count: FigaroCore is frozen
 ///         and carries no composition provenance, so there is no on-chain
 ///         hardening of this gate.
 ///

@@ -13,14 +13,14 @@ pragma solidity 0.8.26;
 ///         availability is signal-by-availability (off-chain), not registry state.
 /// @dev DISCLAIMER: This contract is provided as-is, without warranty of any kind, express or implied. No liability is accepted for loss, damages, or bugs. Use at your own risk.
 ///
-///         MEMBER, not seller. The kernel is actor-neutral — any wallet can hold
+///         MEMBER, not seller. FigaroCore is actor-neutral — any wallet can hold
 ///         any role — but a registry that only admitted sellers gave a pure buyer
 ///         nowhere to publish a price, a whitelist, or a calendar. "Member" is
 ///         registry-tier vocabulary for "a wallet that publishes a declaration",
 ///         NOT a sixth protocol noun and NOT a role: role stays DERIVED from the
 ///         orders a wallet holds and the clauses they carry. Registering is how a
 ///         wallet PUBLISHES, never how it QUALIFIES — transacting through the
-///         kernel requires no registration at all.
+///         FigaroCore requires no registration at all.
 ///
 ///         This contract validates and emits — it does not aggregate. Profile
 ///         data and member availability are derived off-chain from event logs

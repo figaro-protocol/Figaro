@@ -4,7 +4,7 @@ pragma solidity 0.8.26;
 import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import "src/core/kernel/CommitmentTypes.sol";
 
-/// @notice The minimal kernel surface this contract reads. Local-minimal binding
+/// @notice The minimal FigaroCore surface this contract reads. Local-minimal binding
 ///         per the coordinator exemplar — never a vendored dependency.
 interface IFigaroCore {
     function orderStatus(bytes32 orderHash) external view returns (uint8);
@@ -45,7 +45,7 @@ interface IAssemblyStake {
 /// @notice Counts how much real trade a clause or an assembly carried, on chain,
 ///         at the moment it happened. This exists because **the chain cannot
 ///         look backwards**: `FigaroCore` never calls the registries and the
-///         kernel is frozen, so no contract can learn a clause's usage after the
+///         FigaroCore is frozen, so no contract can learn a clause's usage after the
 ///         fact, and contracts cannot read events. Reconstructing usage later is
 ///         what forced the whole posting/bond/challenge/referee apparatus that
 ///         this replaces — a machine for making the chain *believe a claim about
@@ -225,8 +225,8 @@ contract UsageCounter {
     ///         Pooling `d` would need per-key seller sets from the batch,
     ///         which this call does not carry. The PROCESSES are disjoint by
     ///         construction (a
-    ///         batch-resolved process never acquires kernel status, and a
-    ///         kernel-resolved one is never in a batch), so no PROCESS is ever
+    ///         batch-resolved process never acquires FigaroCore status, and a
+    ///         FigaroCore-resolved one is never in a batch), so no PROCESS is ever
     ///         counted on both sides.
     mapping(bytes32 => mapping(uint8 => Accrual)) public batchAccrualOf;
 
@@ -748,7 +748,7 @@ contract UsageCounter {
     }
 
     /// @dev Recompute the order hash from the signed struct and require the
-    ///      kernel to report it RESOLVED (status 2). Mirrors
+    ///      FigaroCore to report it RESOLVED (status 2). Mirrors
     ///      `AttestationCoordinator._requireKnownCommitment`, inverted: that gate
     ///      wants an OPEN process (evidence during), this one wants a RESOLVED
     ///      process (value added).

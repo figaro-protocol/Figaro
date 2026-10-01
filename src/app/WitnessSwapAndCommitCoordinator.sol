@@ -8,7 +8,7 @@ import {CommitmentTypes} from "src/core/kernel/CommitmentTypes.sol";
 
 /// @notice Minimal FigaroCore surface the coordinator calls. Local-minimal
 ///         binding, per the coordinator exemplar (`docs/CONTRACTS.md`
-///         § "Coordinators"); the kernel is untouched.
+///         § "Coordinators"); FigaroCore is untouched.
 interface IFigaroCore {
     function commit(CommitmentTypes.Commitment calldata c, bytes calldata buyerSig, bytes calldata sellerSig)
         external
@@ -54,7 +54,7 @@ interface IPermit2WitnessTransfer {
 ///         FigaroCore bond in a token other than the process bond currency, by
 ///         pulling the party's input token via Permit2, swapping it to the bond
 ///         currency through an immutable router, forwarding the proceeds to the
-///         party's EOA, then calling `FigaroCore.commit`. Because the kernel
+///         party's EOA, then calling `FigaroCore.commit`. Because FigaroCore
 ///         pulls each bond from the named party (`c.buyer`/`c.seller`) and never
 ///         checks `msg.sender`, the coordinator funds the party in-place rather
 ///         than substituting itself — the EIP-712 commitment stays bilaterally
@@ -79,9 +79,9 @@ interface IPermit2WitnessTransfer {
 ///      recomputed witness no longer matches the signed digest — Permit2's own
 ///      signature check reverts before a single token moves. The bond currency
 ///      and bond amount are NOT re-bound in the witness: they derive from `c`,
-///      which is already bilaterally EIP-712-signed and enforced by the kernel.
+///      which is already bilaterally EIP-712-signed and enforced by FigaroCore.
 ///
-///      The frozen kernel is untouched. The coordinator carries only the commit
+///      The frozen FigaroCore is untouched. The coordinator carries only the commit
 ///      call, so it holds no resolution-time discretion. No owner/admin/pause —
 ///      the no-escape-hatch discipline applies to the whole protocol surface.
 ///      The Uniswap pool is an off-protocol auxiliary. Permissionless
@@ -136,7 +136,7 @@ contract WitnessSwapAndCommitCoordinator is ReentrancyGuard {
     ///      venue's swap selector. Either way the venue must PULL the input by
     ///      ERC-20 allowance — `_fund` forceApproves `router` for `maxInput`
     ///      before the call. The bond amount is never supplied here — it is derived
-    ///      from the commitment — so a caller cannot under-fund the kernel pull.
+    ///      from the commitment — so a caller cannot under-fund FigaroCore's pull.
     ///      `permitSignature` must be the party's Permit2 WITNESS signature over
     ///      `swapWitness(inputToken, maxInput, swapData)`; a signature over any
     ///      other route is rejected by Permit2.
@@ -186,7 +186,7 @@ contract WitnessSwapAndCommitCoordinator is ReentrancyGuard {
     ) external nonReentrant returns (bytes32 processId, bytes32 orderHash) {
         if (!buyerFunding.enabled && !sellerFunding.enabled) revert NothingToFund();
 
-        // Bond amounts mirror the kernel pulls exactly: 2·payment from the buyer,
+        // Bond amounts mirror FigaroCore's pulls exactly: 2·payment from the buyer,
         // 2·expectedCumulativeValue from the seller (FigaroCore.commit).
         if (buyerFunding.enabled) {
             _fund(c.buyer, c.currency, c.payment * 2, buyerFunding);
@@ -226,7 +226,7 @@ contract WitnessSwapAndCommitCoordinator is ReentrancyGuard {
         IERC20(f.inputToken).forceApprove(router, 0);
 
         // 3. Require the swap produced at least the bond; forward the full output
-        //    to the party so the kernel pulls the bond and any slippage residual
+        //    to the party so FigaroCore pulls the bond and any slippage residual
         //    stays with the party.
         uint256 received = IERC20(bondCurrency).balanceOf(address(this)) - bondBefore;
         if (received < bondAmount) revert OutputBelowBond(received, bondAmount);

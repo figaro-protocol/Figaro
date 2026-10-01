@@ -19,7 +19,7 @@ interface IFigaroCore {
 ///         and any future attestation domain.
 /// @dev DISCLAIMER: This contract is provided as-is, without warranty of any kind, express or implied. No liability is accepted for loss, damages, or bugs. Use at your own risk.
 ///
-///         The current kernel stores no per-order data — only a 1-byte
+///         The current FigaroCore stores no per-order data — only a 1-byte
 ///         nullifier (`orderStatus`) and a process accumulator. Role
 ///         verification works by having callers supply the commitment
 ///         struct; the coordinator recomputes the orderHash to verify
@@ -27,7 +27,7 @@ interface IFigaroCore {
 ///
 /// @dev Three attestation modes — each caller supplies one or two `Commitment`
 ///      structs so the coordinator can (a) verify role authority, (b) read the
-///      signed `agreementHash` without new kernel state, and (c) verify the
+///      signed `agreementHash` without new FigaroCore state, and (c) verify the
 ///      attestation matches a clause in the signed contract.
 ///      - attestAsSeller:    caller supplies role + target commitments
 ///                           (role proves seller identity + process; target

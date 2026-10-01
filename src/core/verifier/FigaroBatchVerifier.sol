@@ -44,7 +44,7 @@ interface IUsageCounter {
 ///         direct path.
 /// @dev DISCLAIMER: This contract is provided as-is, without warranty of any kind, express or implied. No liability is accepted for loss, damages, or bugs. Use at your own risk.
 ///
-///         Kernel philosophy: no owner, no fee, no upgrade path. If the program
+///         The Core's philosophy: no owner, no fee, no upgrade path. If the program
 ///         changes, deploy a new verifier.
 ///
 ///         The spec-binding check is what makes the in-proof clause validation
@@ -56,7 +56,7 @@ interface IUsageCounter {
 ///         a never-seen clause resolves through the proven path with zero code
 ///         changes, and a permissive-spec substitution cannot resolve.
 ///
-///         RPGF: a batch-resolved process never acquires kernel status,
+///         RPGF: a batch-resolved process never acquires FigaroCore status,
 ///         so `UsageCounter`'s direct path — which requires
 ///         `FigaroCore.orderStatus == RESOLVED` — can never see batched
 ///         trade. Without a bridge the 600M would measure a shrinking
@@ -218,7 +218,7 @@ contract FigaroBatchVerifier is ReentrancyGuard {
     // ── Constructor ───────────────────────────────────────────────
 
     /// @param _verifier       Address of the SP1 verifier gateway (or mock).
-    /// @param _programVKey    The verification key of the Figaro kernel program.
+    /// @param _programVKey    The verification key of the Figaro guest program.
     /// @param _clauseRegistry The live ClauseRegistry — the witness-spec anchor.
     /// @param _usageCounter   The RPGF counter this verifier writes batch accrual to.
     /// @param _initialRoot    The initial state root (genesis or migrated from prior verifier).
@@ -386,7 +386,7 @@ contract FigaroBatchVerifier is ReentrancyGuard {
         pv.blockTimestamp = uint64(uint256(bytes32(publicValues[256:288])));
     }
 
-    // ── Hash functions (byte-exact parity with Rust kernel) ───────
+    // ── Hash functions (byte-exact parity with the Rust mirror) ───────
 
     /// @dev Pack: token(20) + user(20) + deposit(32) + payout(32) = 104 bytes per position.
     function _hashPositions(NetPosition[] calldata positions) internal pure returns (bytes32) {
