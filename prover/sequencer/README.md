@@ -10,7 +10,7 @@ resolves it against `FigaroBatchVerifier` — and **publishes what it resolved**
 resolve a batch, so this sequencer is one relay among any number — run your
 own. Its honest powers are censor-or-delay, never forge: the SP1 proof binds
 resolution to the EIP-712 structs both parties signed, and every admission
-pre-check here (signature recovery, the kernel's witness gates) is the same
+pre-check here (signature recovery, `FigaroCore`'s witness gates) is the same
 code the proof enforces — the mempool can only reject earlier, never accept
 more. The endpoint holds one key — the account that signs `settleBatch` and pays its gas (`SEQUENCER_PRIVATE_KEY`) — and grants no privilege; participants can
 always fall back to direct `FigaroCore` submission.
@@ -26,14 +26,14 @@ trade but publishes none of it — `FigaroBatchVerifier`'s public values carry
 no order hashes, its storage is `stateRoot` + `batchCount`, and `BatchSettled`
 names no order — so a batched order's buyer, seller, payment and
 `agreementHash` exist only under the proven state root. The read routes below
-close that gap: they mirror the kernel's publication role for the batch
+close that gap: they mirror `FigaroCore`'s publication role for the batch
 universe.
 
 **Everything published is verifiable by the reader, so a relay can omit or
 delay, never forge:**
 
 - the commitment struct hashes to the published `order_hash` and `process_id`
-  (`keccak256(processId, structHash)`, the kernel's own derivation);
+  (`keccak256(processId, structHash)`, `FigaroCore`'s own derivation);
 - both signatures recover to the `buyer` and `seller` named *inside* that
   struct. **Batch-path signatures are over the VERIFIER's EIP-712 domain, not
   `FigaroCore`'s** — `FigaroBatchVerifier` requires
@@ -58,7 +58,7 @@ re-submit it.
 **Attestations are already on chain.** `FigaroBatchVerifier` re-emits every
 batched attestation as an `Attestation` event, so that family needs no relay
 mirror — read it from the chain. The archive covers exactly the families the
-kernel publishes that the batch path does not.
+`FigaroCore` publishes that the batch path does not.
 
 ## Getting the binary
 
@@ -171,7 +171,7 @@ floors): Groth16 wrap ~14 GB RAM, PLONK wrap ~60 GB; both wrap through the
 | --- | --- | --- |
 | `RPC_URL` | `http://127.0.0.1:8545` | Chain RPC endpoint |
 | `CHAIN_ID` | `31337` | EIP-712 domain chain id |
-| `FIGARO_CORE_ADDRESS` | zero | EIP-712 verifying contract (the kernel) |
+| `FIGARO_CORE_ADDRESS` | zero | EIP-712 verifying contract (`FigaroCore`) |
 | `BATCH_VERIFIER_ADDRESS` | zero | `FigaroBatchVerifier`; zero = prove-only dry run |
 | `USAGE_COUNTER_ADDRESS` | zero | RPGF `UsageCounter`; zero = credit no usage |
 | `CLAUSE_REGISTRY_ADDRESS` | zero | `ClauseRegistry`, read by the usage-claim pre-filter |
@@ -234,7 +234,7 @@ All errors are structured JSON: `{ "error": "<reason>" }`.
   Read `archive` BEFORE replaying: a cursor older than `first_batch` means this
   relay has already dropped the gap.
 
-### Publication — the kernel's events, for the batch universe
+### Publication — `FigaroCore`'s events, for the batch universe
 
 Same wire dialect as `/submit`: `Commitment` and `Signature` are the exact
 serde shapes `SequencerOp` sends (`snake_case` fields; `B256`/`Address` as
@@ -269,7 +269,7 @@ serde shapes `SequencerOp` sends (`snake_case` fields; `B256`/`Address` as
   as above.
 - `GET /batches?from=<n>&limit=<n>` — bounded replay of everything this relay
   has resolved, for an indexer walking the batch universe the way it walks
-  kernel logs:
+  `FigaroCore` logs:
   `{ "batches": [ { "batch", "chain_id", "verifying_contract",
   "prev_state_root", "new_state_root", "resolution_tx", "block_timestamp",
   "commits": [...], "resolutions": [...] } ], "next_cursor": n | null,
