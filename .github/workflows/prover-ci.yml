@@ -9,7 +9,7 @@ name: Prover CI
 # (prover/lib). They have no build.rs and no sp1-* deps (figaro-kernel depends
 # on figaro-clause, alloy-primitives, k256 — see prover/lib/Cargo.toml and
 # prover/clause/Cargo.toml), so `cargo test` on just those two exercises the
-# Layer-B clause-validation mirror and the kernel mirror without the
+# Layer-B clause-validation mirror and the mirror of FigaroCore without the
 # guest-program toolchain tax.
 #
 # `test` also runs the static analysis: clippy with its correctness and
@@ -132,7 +132,7 @@ jobs:
                   prover/program/src prover/lib/src prover/clause/src prover/sequencer/src
 
     cross-impl-fuzz:
-        name: differential fuzz (kernel, agreement tree, clause engine)
+        name: differential fuzz (FigaroCore, agreement tree, clause engine)
         runs-on: ubuntu-latest
         steps:
             - name: Checkout code

@@ -148,7 +148,7 @@ jobs:
     #
     # fail-on is `none` with an explicit gate, not a level: every --fail-<level>
     # flag fails on that level OR GREATER, and the tree carries two designed
-    # High results (arbitrary-send-erc20 in `_pullExact`, kernel and verifier —
+    # High results (arbitrary-send-erc20 in `_pullExact`, FigaroCore and verifier —
     # docs/AUDITOR_HANDOVER.md § "Static analysis"), so no level passes today.
     # The gate holds the effective level at Medium: the High and Medium results
     # must be exactly the six the handover triages, by detector — a new one at
