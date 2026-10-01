@@ -168,7 +168,7 @@ describe('memberBranding', () => {
             expect(result!.name).toBe('Bare Seller');
         });
 
-        it('resolves branding directly from seller catalogue metadata', () => {
+        it('resolves branding directly from member catalogue metadata', () => {
             const result = resolveMemberBrandingFromMemberProfile(MEMBER_PROFILE_METADATA_EXAMPLE);
 
             expect(result).not.toBeNull();
