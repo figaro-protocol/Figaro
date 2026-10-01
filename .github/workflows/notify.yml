@@ -6,7 +6,9 @@ name: Notify the maintainer
 # that gap: when an issue receives one of the routine labels, the Actions bot
 # posts one comment mentioning the maintainer, and a mention from the bot is
 # e-mailed whoever opened the issue. One comment per issue, ever — the marker
-# below is the guard.
+# below is the guard. An issue opened with its label raises both events at
+# once, so the runs for one issue queue behind each other: the second reads
+# the first one's comment and stops.
 
 on:
     issues:
@@ -14,6 +16,10 @@ on:
 
 permissions:
     issues: write
+
+concurrency:
+    group: notify-issue-${{ github.event.issue.number }}
+    cancel-in-progress: false
 
 jobs:
     mention:
