@@ -44,14 +44,16 @@ export interface AuditBundle {
      *  where a cargo leaf, a freight-class leaf, or a never-seen clause all
      *  surface — no genre document required. */
     clauseData: ClauseDataDocument;
-    membersRegistry: MembersRegistryDocument;
+    /** One record per party of the order: the seller's registration and the
+     *  buyer's. Both are members when they register. */
+    membersRegistry: { seller: MembersRegistryDocument; buyer: MembersRegistryDocument };
     hashAppendix: HashAppendixDocument;
 }
 
 export interface AuditBundleInputs {
-    /** MemberRegistered events filtered to events where the indexed
-     *  `seller` matches `order.seller`. Empty array if the seller is
-     *  unregistered — the extractor surfaces that as an audit notice. */
+    /** MemberRegistered events. The extractor keeps the rows of the order's
+     *  seller and of its buyer; a party with no row is surfaced as an audit
+     *  notice. */
     memberRegistrationEvents?: readonly MemberRegisteredEvent[];
 }
 
@@ -66,10 +68,10 @@ export function buildAuditBundle(
         contract,
         processLogs: extractProcessLogs(order, attestations),
         clauseData: extractClauseData(order, agreement),
-        membersRegistry: extractMembersRegistry(
-            order,
-            inputs.memberRegistrationEvents ?? [],
-        ),
+        membersRegistry: {
+            seller: extractMembersRegistry(order, inputs.memberRegistrationEvents ?? [], "seller"),
+            buyer: extractMembersRegistry(order, inputs.memberRegistrationEvents ?? [], "buyer"),
+        },
         hashAppendix: buildHashAppendix(order, agreement, attestations),
     };
 }

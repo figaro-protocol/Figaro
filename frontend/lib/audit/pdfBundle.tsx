@@ -24,7 +24,7 @@
  *   pages. The documents (invoice, BoL, financial statements) and hash
  *   appendix aggregate across the whole process.
  */
-import type { ReactNode } from "react";
+import { Fragment, type ReactNode } from "react";
 import {
     Document,
     Page,
@@ -480,7 +480,7 @@ function ProcessLogsPage({ doc }: { doc: AuditBundle["processLogs"] }) {
 
 // ── Members registry page ─────────────────────────────────────────────────
 
-function MembersRegistryPage({ doc }: { doc: AuditBundle["membersRegistry"] }) {
+function MembersRegistryPage({ doc }: { doc: AuditBundle["membersRegistry"]["seller"] }) {
     return (
         <AuditPage
             label="Members registry"
@@ -489,11 +489,11 @@ function MembersRegistryPage({ doc }: { doc: AuditBundle["membersRegistry"] }) {
         >
             <View style={styles.section}>
                 <MetaRow k="orderHash" v={doc.orderHash} mono />
-                <MetaRow k="seller" v={doc.seller} mono />
+                <MetaRow k={doc.party} v={doc.member} mono />
                 <MetaRow
                     k="registered?"
                     v={doc.registered ? "Yes" : "NOT REGISTERED"}
-                    extraStyle={doc.registered ? styles.badgeOk : styles.badgeBad}
+                    extraStyle={doc.auditSignificant ? styles.badgeBad : doc.registered ? styles.badgeOk : undefined}
                 />
                 {doc.registered && doc.metadataURI && (
                     <MetaRow k="metadataURI" v={doc.metadataURI} mono />
@@ -503,13 +503,15 @@ function MembersRegistryPage({ doc }: { doc: AuditBundle["membersRegistry"] }) {
                 )}
             </View>
             {doc.notice && (
-                <Text style={[styles.sectionBody, styles.badgeBad]}>{doc.notice}</Text>
+                <Text style={doc.auditSignificant ? [styles.sectionBody, styles.badgeBad] : styles.sectionBody}>{doc.notice}</Text>
             )}
             <Text style={styles.note}>
                 The Core does not enforce registration —
-                MembersRegistry is advisory off-chain metadata. Every
-                legitimate seller is expected to register (runtime convention);
-                an unregistered seller is itself an audit-significant flag.
+                MembersRegistry is advisory off-chain metadata. A wallet that
+                sells is expected to be a member (runtime convention), so an
+                unregistered seller is itself an audit-significant flag. A wallet
+                may buy without registering; a buyer that registers is a member
+                like any other, and can offer the data its orders produce.
             </Text>
         </AuditPage>
     );
@@ -740,7 +742,10 @@ export function AuditBundlePdf({ data }: { data: AuditBundlePdfData }) {
                 <ProcessLogsPage key={`processlogs-${bundle.processLogs.orderHash}`} doc={bundle.processLogs} />
             ))}
             {data.perOrderBundles.map((bundle) => (
-                <MembersRegistryPage key={`opreg-${bundle.membersRegistry.orderHash}`} doc={bundle.membersRegistry} />
+                <Fragment key={`opreg-${bundle.membersRegistry.seller.orderHash}`}>
+                    <MembersRegistryPage doc={bundle.membersRegistry.seller} />
+                    <MembersRegistryPage doc={bundle.membersRegistry.buyer} />
+                </Fragment>
             ))}
             {/* Every recognizable document — invoice per seller, BoL per carriage
                 leg, financial statements per seller + consolidated — one generic

@@ -68,7 +68,7 @@ export async function buildAuditBundlePdfBlob(
             // SDK-decoded rows; project to the audit extractor's shape.
             // `getActiveMembers` already folds MemberRegistered +
             // MemberProfileUpdated + MemberWithdrawalRequested (the same
-            // fold `getMemberState` uses for a single address) — a seller
+            // fold `getMemberState` uses for a single address) — a member
             // absent from it has withdrawn since its most recent
             // registration. Consuming that fold here (rather than
             // re-deriving withdrawal from raw events) is what makes the
@@ -78,13 +78,13 @@ export async function buildAuditBundlePdfBlob(
                 getAllMemberRegistered(publicClient, chainId),
                 getActiveMembers(publicClient, chainId),
             ]);
-            const activeSellers = new Set(active.map((m) => m.address));
+            const activeMembers = new Set(active.map((m) => m.address));
             memberRegisteredAll = rows.map((row) => ({
-                seller: row.member,
+                member: row.member,
                 metadataURI: row.metadataURI,
                 blockNumber: row.blockNumber,
                 transactionHash: row.transactionHash ?? undefined,
-                withdrawn: !activeSellers.has(row.member.toLowerCase()),
+                withdrawn: !activeMembers.has(row.member.toLowerCase()),
             }));
         } catch {
             // Non-fatal — the extractor reports registered=false and the
