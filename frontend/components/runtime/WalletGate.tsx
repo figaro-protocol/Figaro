@@ -6,7 +6,7 @@
  *
  * This is the one place the "if (!address) { hint + <ConnectWallet /> }
  * else { ... }" pattern lives — do not reimplement it inline in an
- * assembly-runtime view or a seller-onboarding form.
+ * assembly-runtime view or a member-wizard form.
  *
  * Usage:
  *
@@ -15,7 +15,7 @@
  *     <p>No active processes found for this wallet.</p>
  *   </WalletGate>
  *
- *   // Standalone full-panel gate (e.g. seller onboarding entry point):
+ *   // Standalone full-panel gate (e.g. the member wizard's entry point):
  *   <WalletGate
  *     variant="standalone"
  *     title="Connect your wallet to continue"

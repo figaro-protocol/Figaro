@@ -1,5 +1,5 @@
 /**
- * components/modules/MemberBrandingModule.tsx — MemberLogo, the seller's
+ * components/modules/MemberBrandingModule.tsx — MemberLogo, the member's
  * logo rendered from IPFS/HTTP with initials/emoji/neutral fallbacks.
  */
 "use client";
@@ -10,7 +10,7 @@ import { useMemberBranding } from "@/lib/member/useMemberBranding";
 import { resolveImageUri } from "@/lib/shared/ipfsService";
 
 /**
- * MemberLogo — renders the seller's logo from IPFS/HTTP, with two
+ * MemberLogo — renders the member's logo from IPFS/HTTP, with two
  * possible fallbacks: an initials block (when `fallbackName` is supplied)
  * coloured by the seller's accent, or a plain emoji (backward-compatible
  * default for consumers that don't pass a name).

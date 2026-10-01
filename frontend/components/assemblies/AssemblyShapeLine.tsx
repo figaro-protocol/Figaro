@@ -8,7 +8,7 @@ import {
 /**
  * AssemblyShapeLine — the one-line summary of an assembly's shape, shared by
  * every surface that lists `AssemblyChoice`s: the `/assemblies` inventory, the
- * designer's published list, and the seller-onboarding assembly picker. It
+ * designer's published list, and the member wizard's assembly picker. It
  * renders the lazy IPFS-hydration states so those surfaces cannot drift on how
  * an assembly is described.
  *

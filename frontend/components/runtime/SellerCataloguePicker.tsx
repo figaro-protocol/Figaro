@@ -16,8 +16,8 @@
  * Either way: the address resolves the seller's catalogue, and the buyer
  * selects an item from its published price list.
  *
- * Catalogues come from `useRegisteredCatalogues` — the discovered seller
- * set. Any seller that publishes a catalogue is a registered seller, so an
+ * Catalogues come from `useRegisteredCatalogues` — the discovered member
+ * set. Any wallet that publishes a catalogue is a registered member, so an
  * address outside that set has no catalogue to show.
  *
  * Reports the completed selection up via `onSelect`; reports `null` while

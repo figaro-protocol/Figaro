@@ -8,7 +8,7 @@
  * block or a neutral placeholder.
  *
  * Images resolve IPFS-only (`resolveImageUri`): a raw http(s) locator from
- * permissionless seller/catalogue data is a tracking-pixel / IP-deanonymization
+ * permissionless member/catalogue data is a tracking-pixel / IP-deanonymization
  * vector, so it renders the fallback rather than hotlinking (finding 3).
  */
 "use client";

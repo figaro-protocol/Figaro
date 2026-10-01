@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * MemberTrackRecord — renders a seller's public-graph track record:
+ * MemberTrackRecord — renders a member's public-graph track record:
  * the resolution + coordination history reconstructed from on-chain events
  * (DATA_LAYER.md §"Reputation derivation"). Pure render — the
  * caller supplies the record via useMemberTrackRecord.
