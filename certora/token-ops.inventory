@@ -23,7 +23,7 @@ src/core/kernel/FigaroCore.sol:295 | resolveProcess (buyer payout)  | resolveSin
 # UI-wired (the checkout's swap-funding panel builds the witness-signed buyer leg —
 # docs/CONTRACTS.md owns the wiring). SECURITY NOTE: no CVL rule proves these yet, so both
 # ship [PENDING]. Both forward swapped bond currency / unconsumed input to the party
-# (`c.buyer`/`c.seller`); neither touches kernel escrow (the kernel pulls the bond
+# (`c.buyer`/`c.seller`); neither touches FigaroCore escrow (FigaroCore pulls the bond
 # itself). Spec target: a CoordinatorTokenConservation rule proving the coordinator
 # retains no bond currency or input token after `swapAndCommit` (asserted by the
 # `SlippageResidualStaysWithParty` / `InputResidualRefunded` Foundry tests today).

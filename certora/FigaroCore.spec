@@ -201,7 +201,7 @@ rule currencyImmutable(bytes32 processId, method f) {
 // ═══════════════════════════════════════════════════════════════════
 // RULE 10: A Committed Order Is Bound To Its Process (A-10)
 //
-// orderProcessId is the kernel's own record of which process an order
+// orderProcessId is FigaroCore's own record of which process an order
 // belongs to. It is written once at commit and never moves: an order
 // that has a status has a process, and a bound process never changes.
 // (The mutation campaign of 2026-09 found no test reading this mapping;

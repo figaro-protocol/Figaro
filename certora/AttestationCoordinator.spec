@@ -3,7 +3,7 @@
 // (merkle-gated agreement-receipt binding).
 //
 // The coordinator owns no storage. All role checks are reads from the linked
-// FigaroCore instance (no new kernel state). Every runtime attestation carries
+// FigaroCore instance (no new FigaroCore state). Every runtime attestation carries
 // a merkle inclusion proof against the signed `agreementHash` — the call reverts
 // unless the caller's sectionHash and proof open to a committed clause. There is
 // no on-chain clause-content validator; well-formedness is an off-chain concern.
