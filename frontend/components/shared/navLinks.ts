@@ -154,7 +154,7 @@ export const MARKETING_MAP: { section: string; links: NavLink[] }[] = [
             { href: "/core", label: "Code" },
             { href: "/working-groups", label: "Working Groups" },
             { href: "/research", label: "Research" },
-            { href: "/kernel", label: "Kernel" },
+            { href: "/kernel", label: "Mechanism" },
             { href: "/invariants", label: "Invariants" },
             { href: "/spec", label: "Specifications" },
             { href: "/security", label: "Security" },

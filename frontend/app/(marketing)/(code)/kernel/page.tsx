@@ -14,7 +14,7 @@ const EX = EQ.example;
 const CH = EQ.example.chain; // the same trade shared by three sellers — legs and their arithmetic, one owner
 
 export const metadata: Metadata = withOg({
-    title: "Kernel — Figaro Protocol",
+    title: "Mechanism — Figaro Protocol",
     description:
         "How a Figaro trade works: both sides lock a bond larger than the payment, so cooperation is the equilibrium; the buyer resolves it; every step is written down permanently.",
 });
