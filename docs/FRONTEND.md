@@ -51,7 +51,7 @@ writes via `WalletGate`.**
 | `/sign` | |
 | `/s/checkout?seller=` | Order review + commit. |
 | `/members/manage` | The registered dashboard + stake claim. |
-| `/members/{identity,agents,assemblies,buyer,catalogue,endpoints,review}` | The registration wizard. The buyer step subscribes the assemblies the wallet buys through and declares the data offered for sale. |
+| `/members/{identity,agents,assemblies,buyer,catalogue,endpoints,review}` | The member wizard: Identity, Sell through (`assemblies`: bind, and offer the data those trades produce), Buy through (`buyer`: subscribe, and offer the data those trades produce), Catalogue, Agents, Endpoints, Review. The two assembly steps are one loop walked twice and both precede Catalogue, which prices what they declare. |
 | `/members/edit/{identity,agents,assemblies,buyer,catalogue,endpoints}` | Endpoints are the member's own infrastructure — device configuration via `lib/shared/userEndpoints.ts`, never pinned or published. |
 | `/orders`, `/orders/view?process=` | The wallet's actor-neutral order list, buyer and seller both; "Your turn" is where counter-sign/accept fires, and `resolveProcess` fires on the detail view. |
 
