@@ -170,7 +170,7 @@ contract Deploy is Script {
         // Succinct's SP1 verifier gateway + the program vkey from
         // `SP1_VKEY_ONLY=1 cargo run -p figaro-prove-test --release`
         // (DeployMainnet.s.sol). The genesis root is DERIVED — one
-        // keccak256("") per kernel state map (processes, orderStatus,
+        // keccak256("") per mirror state map (processes, orderStatus,
         // orderProcessId), matching the Rust KernelState::compute_root
         // on the empty state. ClauseRegistry is the witness-spec anchor:
         // settleBatch checks each proof's (clause key → spec hash)
@@ -284,7 +284,7 @@ contract Deploy is Script {
 
         _deployUsageCounter(core, members, clauseRegistry, assemblyRegistry, predictedVerifier);
 
-        // Genesis root is DERIVED — one keccak256("") per kernel state map
+        // Genesis root is DERIVED — one keccak256("") per mirror state map
         // (processes, orderStatus, orderProcessId) plus the usage leg, which
         // is itself keccak over three zero-length sections, matching the Rust
         // KernelState::compute_root on the empty state.
@@ -310,7 +310,7 @@ contract Deploy is Script {
     ///      config, never code; devnet: MockTreasuryMultisig with anvil[0..2]
     ///      as 2-of-3 placeholder owners, per the anvil-placeholder ruling).
     ///      The DAO buys through a per-procurement funded operator-EOA — the
-    ///      treasury itself never signs kernel commitments (the kernel is
+    ///      treasury itself never signs commitments (FigaroCore is
     ///      ECDSA-only).
     function _deployTreasuryGenesis(FlorinToken florin, address deployer) internal {
         address[] memory treasuryOwners = new address[](3);

@@ -104,7 +104,7 @@ contract DeployMainnet is Script {
         );
     }
 
-    // ── Protocol kernel + compositions ────────────────────────────────
+    // ── The Core + compositions ────────────────────────────────
 
     function _deployProtocol(uint256 privateKey) internal {
         FigaroCore core = new FigaroCore();
@@ -116,7 +116,7 @@ contract DeployMainnet is Script {
         console.log("AttestationCoordinator: ", _attestation);
 
         // ── WitnessSwapAndCommitCoordinator (the swap-funded on-ramp) ──────
-        // Composition, not kernel: points at the kernel, canonical Permit2 and
+        // Composition, not Core: points at FigaroCore, canonical Permit2 and
         // the chain's Uniswap SwapRouter02 (env — from Uniswap's deployment docs).
         // The router is probed for BEHAVIOUR (factory() + WETH9() answer with
         // contracts): an address is never trusted for existing alone (the SP1
@@ -204,7 +204,7 @@ contract DeployMainnet is Script {
         // deployments; a chain with none can host the verifier directly).
         // SP1_PROGRAM_VKEY: the guest program's verification key —
         // `SP1_VKEY_ONLY=1 cargo run -p figaro-prove-test --release`.
-        // The genesis root is DERIVED (one keccak256("") per kernel state
+        // The genesis root is DERIVED (one keccak256("") per mirror state
         // map), matching the Rust KernelState::compute_root on the empty
         // state. ClauseRegistry anchors the witness specs: settleBatch
         // checks each proof's (clause key → spec hash) binding against
@@ -220,7 +220,7 @@ contract DeployMainnet is Script {
         address predictedVerifier = vm.computeCreateAddress(deployer, vm.getNonce(deployer) + 1);
         _deployUsageCounter(predictedVerifier);
 
-        // The genesis root is DERIVED: one keccak256("") per kernel state map
+        // The genesis root is DERIVED: one keccak256("") per mirror state map
         // plus the usage leg (itself keccak over three zero-length sections),
         // matching the Rust KernelState::compute_root on the empty state.
         bytes32 emptyMapHash = keccak256("");

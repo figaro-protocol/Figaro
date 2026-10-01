@@ -10,7 +10,7 @@ import {WitnessSwapAndCommitCoordinator} from "../src/app/WitnessSwapAndCommitCo
 ///
 /// @notice Deploys `WitnessSwapAndCommitCoordinator` against an already-deployed
 ///         `FigaroCore` and the chain's canonical Permit2 + Uniswap SwapRouter02.
-///         The coordinator is a fifth-noun composition: it points at the kernel
+///         The coordinator is a fifth-noun composition: it points at FigaroCore
 ///         (immutably) and nothing points back at it, so it deploys ALONE onto a
 ///         stack that is already live — no redeploy of anything else.
 ///
@@ -23,7 +23,7 @@ import {WitnessSwapAndCommitCoordinator} from "../src/app/WitnessSwapAndCommitCo
 ///      contracts) — an address is never trusted for existing alone (the SP1
 ///      gateway lesson, RELEASE_READINESS 7.3(c)).
 ///
-///   Env: FIGARO_CORE (the live kernel — from deployments/<chainId>.json),
+///   Env: FIGARO_CORE (the live FigaroCore — from deployments/<chainId>.json),
 ///        PERMIT2 (0x000000000022D473030F116dDEE9F6B43aC78BA3 on Ethereum + Sepolia),
 ///        SWAP_ROUTER (Uniswap SwapRouter02 on the target chain), PRIVATE_KEY.
 contract DeploySwapCoordinator is Script {
