@@ -10,7 +10,7 @@ look and how to ask.
   (the doc map + ownership map + reading path).
 - **`CONTRIBUTING.md`** — local setup, the test commands, repository conventions.
 - **`docs/DESIGN_DECISIONS.md`** — read this before reporting anything that
-  looks like a kernel bug; the deliberate patterns are catalogued there.
+  looks like a bug in the Core; the deliberate patterns are catalogued there.
 
 ## Asking
 
