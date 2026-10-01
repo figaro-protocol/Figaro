@@ -23,6 +23,9 @@ release lives under **Unreleased**.
   model is now `formal/ResolutionUniverses.tla`; the analyst's route is
   `/queries/trade-story`; the paper moved to `/papers/verified-resolution-kernel`
   with a redirect stub at the old address.
+- **SDK 0.2.0 (breaking): `SyncResult.newSellers` is renamed to `newMembers`.**
+  The field counts member registrations and profile updates; a member may
+  buy, sell, or both.
 
 ### Added
 

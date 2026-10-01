@@ -34,7 +34,7 @@ export interface SyncResult {
     /** Number of new ClauseRegistered events ingested. */
     newClauses: number;
     /** Number of new MemberRegistered/MemberProfileUpdated events ingested. */
-    newSellers: number;
+    newMembers: number;
     /** Number of new AssemblyRegistered events ingested. */
     newAssemblies: number;
     /** Block number synced up to. */
@@ -86,7 +86,7 @@ export class FigaroContext {
                 newCommits: 0,
                 newResolutions: 0,
                 newClauses: 0,
-                newSellers: 0,
+                newMembers: 0,
                 newAssemblies: 0,
                 syncedToBlock: this.lastSyncedBlock,
             };
@@ -105,7 +105,7 @@ export class FigaroContext {
             newCommits: events.orderCommitted.length,
             newResolutions: events.orderResolved.length,
             newClauses: discoveryEvents.clauseRegistered.length,
-            newSellers: discoveryEvents.memberRegistered.length,
+            newMembers: discoveryEvents.memberRegistered.length,
             newAssemblies: discoveryEvents.assemblyRegistered.length,
             syncedToBlock: currentBlock,
         };
