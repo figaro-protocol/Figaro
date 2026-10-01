@@ -234,7 +234,7 @@ export function OnboardingReview() {
                         prose={
                             isRegistered
                                 ? "Your profile has been re-pinned to IPFS and the new metadataURI is on-chain."
-                                : `Your wallet is now registered on this network. You get the deposit back when you leave the registry, ${cooldown}.`
+                                : `Your wallet is now registered on this network. You get the stake back when you leave the registry, ${cooldown}.`
                         }
                         proseClassName="text-sm text-ink-body"
                         rows={[
@@ -461,7 +461,7 @@ export function OnboardingReview() {
                         <>
                             Your wallet is already registered. Publishing here re-pins
                             the catalogue + profile JSON to IPFS and calls{" "}
-                            <code>updateProfile</code> with the new URI. The deposit
+                            <code>updateProfile</code> with the new URI. The stake
                             is unaffected.
                         </>
                     ) : (
@@ -469,14 +469,14 @@ export function OnboardingReview() {
                             Publishing pins your catalogue to IPFS, then pins your
                             profile (with the catalogue URI embedded), then calls{" "}
                             <code>register(profileURI)</code> on the MembersRegistry,
-                            posting the reclaimable ETH deposit. One user action; three
+                            placing the reclaimable ETH stake. One user action; three
                             serial operations.
                         </>
                     )}
                 </p>
                 {!isRegistered && deposit !== undefined && (
                     <p className="text-sm text-ink-body">
-                        Deposit:{" "}
+                        Stake:{" "}
                         <span className="font-semibold text-ink-heading">
                             {formatToken(deposit)} ETH
                         </span>

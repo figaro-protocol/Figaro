@@ -16,7 +16,7 @@ export default function OnboardingBuyerPage() {
             description={
                 <p>
                     Subscribe the assemblies you buy through and choose which of
-                    the records those deals co-produce you offer for sale — your
+                    the records those trades co-produce you offer for sale — your
                     side of every purchase is yours to sell, on your terms.
                 </p>
             }

@@ -132,7 +132,7 @@ function ManageHeader() {
             <h1 className="text-heading-h1 text-ink-heading">Manage membership</h1>
             <p className="text-base text-ink-body leading-relaxed">
                 The registered member&apos;s dashboard &mdash; view and edit the profile, leave
-                the registry, claim a released deposit; a wallet that is not registered is sent
+                the registry, reclaim a released stake; a wallet that is not registered is sent
                 on to the enrolment steps.
             </p>
         </header>
@@ -344,7 +344,7 @@ function PendingDepositNotice({ address }: { address: `0x${string}` | undefined 
                     : `Released ${new Date(unlockAt).toLocaleString()}. You are already de-listed; only the ETH is still waiting.`}
             </p>
             <Button variant="outline" size="sm" onClick={handleClaim} disabled={!withdrawable || busy}>
-                {busy ? "Claiming…" : "Claim deposit"}
+                {busy ? "Reclaiming…" : "Reclaim stake"}
             </Button>
             {(claimError || error) && (
                 <p className="text-xs text-error-fg" role="alert">
@@ -419,7 +419,7 @@ function WithdrawRow({
                         <span className="font-semibold text-ink-heading">You have left the registry.</span>
                         {" "}You are de-listed from discovery straight away. Your
                         {" "}{deposit !== undefined ? formatEther(deposit) : "…"} ETH
-                        {" "}deposit is claimable
+                        {" "}stake is reclaimable
                         {cooldown !== undefined && cooldown > 0n
                             ? " once the cooldown has passed — come back to this page for it."
                             : " now — come back to this page for it."}
@@ -444,12 +444,12 @@ function WithdrawRow({
     }
 
     if (!confirming) {
-        const depositLabel = deposit !== undefined ? `${formatEther(deposit)} ETH` : "deposit";
+        const depositLabel = deposit !== undefined ? `${formatEther(deposit)} ETH` : "ETH";
         return (
             <li className="flex items-baseline justify-between gap-4 py-3 border-b border-default text-ink-faint">
                 <div>
                     <span className="text-ink-body">Leave the registry</span>
-                    <span className="ml-2 text-xs">De-lists you from discovery straight away; the {depositLabel} deposit follows after a cooldown.</span>
+                    <span className="ml-2 text-xs">De-lists you from discovery straight away; the {depositLabel} stake follows after a cooldown.</span>
                 </div>
                 <button
                     type="button"
@@ -465,7 +465,7 @@ function WithdrawRow({
     return (
         <li className="py-3 border-b border-default space-y-2 text-sm text-ink-body">
             <p className="text-xs">
-                Two steps, deliberately. This one clears your registration and de-lists you from discovery immediately — the stake is what keeps you surfaced — and you can register again at once. The {deposit !== undefined ? formatEther(deposit) : "…"} ETH deposit is released separately{cooldown !== undefined && cooldown > 0n ? ", after a cooldown" : ""}; a deposit that could be recycled the moment you left would not price anything. Your profile and catalogue pins are unpinned as part of this step.
+                Two steps, deliberately. This one clears your registration and de-lists you from discovery immediately — the stake is what keeps you surfaced — and you can register again at once. The {deposit !== undefined ? formatEther(deposit) : "…"} ETH stake is released separately{cooldown !== undefined && cooldown > 0n ? ", after a cooldown" : ""}; a stake that could be recycled the moment you left would not price anything. Your profile and catalogue pins are unpinned as part of this step.
             </p>
             <div className="flex items-center gap-3">
                 <Button variant="outline" size="sm" onClick={handleWithdraw} disabled={isProcessing}>

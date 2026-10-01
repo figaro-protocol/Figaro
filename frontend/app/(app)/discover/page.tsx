@@ -32,7 +32,7 @@ export default function DiscoverPage() {
                 they appear &mdash; it reads the chain live, never a curated
                 list. You filter by what is close to you, pick one, and place a bonded
                 order &mdash; a single commit, signed by both of you, locks
-                both stakes at once.
+                both bonds at once.
             </p>
             <p className="text-sm text-ink-muted mb-10">
                 New to this? <Link href="/members" className="underline hover:text-ink-primary">See what membership is</Link>, or read{" "}

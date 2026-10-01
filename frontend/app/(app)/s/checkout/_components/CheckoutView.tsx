@@ -827,7 +827,7 @@ export function CheckoutView({ sellerAddress }: Props) {
                                 transaction.
                             </p>
                             <p className="text-[11px] text-ink-muted pt-1.5 leading-relaxed" data-testid="checkout-bond-rationale">
-                                Both you and the seller lock a bond against this deal, so cooperation is the
+                                Both you and the seller lock a bond against this trade, so cooperation is the
                                 seller&apos;s only profitable move — no arbitrator, no timeout. You
                                 alone resolve it; your bond returns when you do, and you pay only the price above.
                             </p>

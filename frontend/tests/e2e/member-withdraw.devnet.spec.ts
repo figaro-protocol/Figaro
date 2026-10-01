@@ -16,7 +16,7 @@
  *
  * `members-onboarding.devnet.spec.ts` covers the register path; this covers
  * leave → claim: /members/manage dashboard → Begin → Confirm and leave → receipt →
- * Continue → pending-deposit notice → Claim deposit → ETH actually moves.
+ * Continue → pending-stake notice → Reclaim stake → ETH actually moves.
  *
  * Requires: Anvil + ./deploy-local.sh
  *   NEXT_PUBLIC_MEMBERS_REGISTRY must be set in .env.local.
@@ -136,7 +136,7 @@ test.describe('MembersRegistry leave + claim (devnet)', () => {
         // would be stranded behind a screen this wallet can no longer see.
         await page.getByRole('button', { name: /^Continue$/ }).click();
 
-        const claimBtn = page.getByRole('button', { name: /^Claim deposit$/ });
+        const claimBtn = page.getByRole('button', { name: /^Reclaim stake$/ });
         await claimBtn.waitFor({ timeout: 30000 });
         await expect(claimBtn).toBeEnabled(); // devnet cooldown is 0
         await claimBtn.click();

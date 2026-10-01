@@ -4,7 +4,7 @@ import { MemberLanding } from "@/components/members/MemberLanding";
 
 export const metadata: Metadata = withOg({
     title: "Manage membership — Figaro Protocol",
-    description: "The registered member's dashboard: view and edit the profile, leave the registry, claim a released deposit. Unregistered wallets are sent straight to the wizard.",
+    description: "The registered member's dashboard: view and edit the profile, leave the registry, reclaim a released stake. Unregistered wallets are sent straight to the wizard.",
 });
 
 // The registered member's home (the membership

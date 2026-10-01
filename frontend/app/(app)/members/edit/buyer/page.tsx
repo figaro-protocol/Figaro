@@ -16,7 +16,7 @@ export default function EditBuyerPage() {
                 </h1>
                 <p className="text-body-lead text-ink-body">
                     Toggle which assemblies your wallet buys through and which of
-                    the records those deals co-produce you offer for sale. Saving
+                    the records those trades co-produce you offer for sale. Saving
                     re-pins the profile JSON and dispatches <code>updateProfile</code>.
                     Prices live in your catalogue.
                 </p>
