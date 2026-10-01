@@ -70,7 +70,7 @@ contract WitnessSwapAndCommitCoordinatorForkTest is Test {
         buyerInput = new MockERC20("BuyerIn", "DAI");
         bond.mint(address(router), 1_000_000 ether);
 
-        // Standing approvals: bond currency to the kernel; input token to REAL Permit2.
+        // Standing approvals: bond currency to FigaroCore; input token to REAL Permit2.
         vm.prank(buyer);
         bond.approve(address(core), type(uint256).max);
         vm.prank(seller);
@@ -166,7 +166,7 @@ contract WitnessSwapAndCommitCoordinatorForkTest is Test {
 
     /// @notice Round-trip: a witness signature built by our convention is
     ///         accepted by canonical Permit2, the input token moves, the swap
-    ///         funds the buyer, the kernel pulls both bonds, the commit lands.
+    ///         funds the buyer, FigaroCore pulls both bonds, the commit lands.
     function test_Fork_RoundTrip_RealPermit2AcceptsWitness() public onlyForked {
         CommitmentTypes.Commitment memory c = _rootCommitment();
         bytes memory route = _swapData(2 * P);
@@ -280,7 +280,7 @@ contract WitnessSwapAndCommitCoordinatorSepoliaVenueForkTest is Test {
         deal(address(WETH), buyer, 1 ether);
         deal(address(WETH), seller, 1 ether);
 
-        // Buyer: bond currency to the kernel, input token to REAL Permit2.
+        // Buyer: bond currency to FigaroCore, input token to REAL Permit2.
         vm.startPrank(buyer);
         USDC.approve(address(core), type(uint256).max);
         WETH.approve(PERMIT2, type(uint256).max);
@@ -288,7 +288,7 @@ contract WitnessSwapAndCommitCoordinatorSepoliaVenueForkTest is Test {
 
         // Seller self-funds its bond: acquire real USDC through the real venue
         // directly (the same allowance-pull the coordinator relies on), then
-        // approve the kernel.
+        // approve FigaroCore.
         vm.startPrank(seller);
         WETH.approve(SWAP_ROUTER_02, type(uint256).max);
         ISwapRouter02(SWAP_ROUTER_02)
@@ -403,7 +403,7 @@ contract WitnessSwapAndCommitCoordinatorSepoliaVenueForkTest is Test {
     /// @notice Round-trip against the REAL venue: Permit2 pulls the buyer's
     ///         WETH, the deployed SwapRouter02 pulls it onward by the
     ///         coordinator's allowance and delivers exactly the bond in USDC,
-    ///         the kernel pulls both bonds, the commit lands, and every
+    ///         FigaroCore pulls both bonds, the commit lands, and every
     ///         residual comes back to the buyer.
     function test_Fork_RealSepoliaSwapRouter02FundsTheBond() public onlyForked {
         CommitmentTypes.Commitment memory c = _rootCommitment();
@@ -412,7 +412,7 @@ contract WitnessSwapAndCommitCoordinatorSepoliaVenueForkTest is Test {
         coord.swapAndCommit(c, _sign(c, BUYER_KEY), _sign(c, SELLER_KEY), _buyerLeg(_swapData()), _disabled());
 
         assertEq(USDC.balanceOf(address(core)), 4 * P, "escrow holds both bonds");
-        assertEq(USDC.balanceOf(buyer), 0, "swap delivered exactly the bond; the kernel pulled it all");
+        assertEq(USDC.balanceOf(buyer), 0, "swap delivered exactly the bond; FigaroCore pulled it all");
         assertEq(USDC.balanceOf(address(coord)), 0, "coordinator retains no bond currency");
         assertEq(WETH.balanceOf(address(coord)), 0, "coordinator retains no input token");
         assertGt(WETH.balanceOf(buyer), 1 ether - MAX_INPUT, "the unswapped input residual was refunded to the buyer");

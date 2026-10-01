@@ -386,7 +386,7 @@ contract FigaroCore_EventEmission is Test {
             else if (sig == PROCESS_RESOLVED_SIG) procResolvedCount++;
         }
 
-        // No OrderParents — topology is not a kernel concern
+        // No OrderParents — topology is not a FigaroCore concern
         assertEq(commitCount, 2, "2 OrderCommitted (root + sub)");
         assertEq(sellerCount, 2, "2 OrderSeller (root + sub)");
         assertEq(currencyCount, 2, "2 OrderCurrency (root + sub)");

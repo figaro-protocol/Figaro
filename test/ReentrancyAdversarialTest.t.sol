@@ -14,8 +14,8 @@ import {MembersRegistry} from "src/app/MembersRegistry.sol";
 import {MockClauseOrAssemblyStake} from "test/helpers/MockClauseOrAssemblyStake.sol";
 
 /// @title ReentrancyAdversarialTest — a malicious denomination token tries to
-///        re-enter the kernel and the batch verifier during a token movement.
-/// @notice The kernel's and verifier's `nonReentrant` guards are load-bearing
+///        re-enter FigaroCore and the batch verifier during a token movement.
+/// @notice FigaroCore's and the verifier's `nonReentrant` guards are load-bearing
 ///         but were adversarially untested: no test ever handed the protocol a
 ///         token that calls back mid-transfer. This does exactly that, and
 ///         asserts the guard fires (the nested call reverts) while the outer
@@ -46,7 +46,7 @@ contract ReentrancyAdversarialTest is Test {
         token.approve(address(core), type(uint256).max);
     }
 
-    // ── Signing helpers (kernel EIP-712) ─────────────────────────────
+    // ── Signing helpers (FigaroCore EIP-712) ─────────────────────────────
 
     function _typedDataHash(bytes32 structHash, address verifyingContract) internal view returns (bytes32) {
         bytes32 domainSeparator = keccak256(

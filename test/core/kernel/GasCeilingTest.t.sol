@@ -16,7 +16,7 @@ import "src/mocks/MockPermitToken.sol";
 ///         and resolves in one execution (pre-warming storage) and calldata is
 ///         not charged inside the measured call. So it instead (a) guards the
 ///         warm EXECUTION marginal of the resolve loop via `vm.lastCallGas()`
-///         against kernel regressions, and (b) verifies atomic all-or-nothing
+///         against FigaroCore regressions, and (b) verifies atomic all-or-nothing
 ///         resolution. The all-in receipt figures live in chainGasCeilings.ts;
 ///         `scripts/lint-chain-gas.sh` asserts the two constants below are
 ///         byte-equal to the frontend's.
@@ -135,7 +135,7 @@ contract GasCeilingTest is Test {
 
     // ── Resolve-loop regression guard (warm execution marginal) ──────
 
-    /// @notice Catches kernel changes to the per-order resolve loop. The warm
+    /// @notice Catches FigaroCore changes to the per-order resolve loop. The warm
     ///         in-test execution marginal is ~11,960/order (lower than the cold
     ///         all-in RESOLVE_GAS_PER_ORDER because storage is pre-warmed by the
     ///         commits and calldata is charged at the tx level, not in the call).
@@ -148,7 +148,7 @@ contract GasCeilingTest is Test {
         uint256 marginal = (g100 - g50) / 50;
         emit log_named_uint("resolve_warm_exec_marginal", marginal);
 
-        assertGe(marginal, 9_000, "resolve per-order exec dropped unexpectedly (kernel change?)");
+        assertGe(marginal, 9_000, "resolve per-order exec dropped unexpectedly (FigaroCore change?)");
         assertLt(marginal, RESOLVE_GAS_PER_ORDER, "warm exec marginal must stay below the cold all-in anchor");
         assertLe(marginal, 14_000, "resolve per-order exec rose unexpectedly (re-measure receipts)");
     }

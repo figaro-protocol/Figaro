@@ -17,8 +17,8 @@ import {MockERC20Blocklist} from "src/mocks/MockERC20Blocklist.sol";
 
 /// @dev Unit tests for the realigned batch verifier: 8-word public values,
 ///      the spec-binding anchor check against the live ClauseRegistry,
-///      net-position reconciliation, and the RPGF usage bridge. Hash packing here mirrors the Rust
-///      kernel's compute_*_hash functions; the byte-exact cross-language
+///      net-position reconciliation, and the RPGF usage bridge. Hash packing here mirrors the
+///      `figaro-kernel` crate's compute_*_hash functions; the byte-exact cross-language
 ///      lock is the sequencer batch e2e (a real apply_batch output resolved
 ///      through this contract).
 contract FigaroBatchVerifierTest is Test {

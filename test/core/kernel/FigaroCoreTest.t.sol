@@ -8,7 +8,7 @@ import "src/core/kernel/FigaroCore.sol";
 import "src/core/kernel/CommitmentTypes.sol";
 import "src/mocks/MockPermitToken.sol";
 
-/// @title FigaroCoreTest — Core invariant tests for the enforcement-only kernel
+/// @title FigaroCoreTest — Core invariant tests for the enforcement-only FigaroCore
 contract FigaroCoreTest is Test {
     using CommitmentTypes for CommitmentTypes.Commitment;
 
@@ -514,12 +514,12 @@ contract FigaroCoreTest is Test {
         assertEq(activeA, 0, "A resolves with its own order");
     }
 
-    /// A commitment signed for this kernel on another chain is refused here.
+    /// A commitment signed for this FigaroCore on another chain is refused here.
     /// The EIP-712 domain binds block.chainid, so the same signature bytes
     /// recover to a stranger once the chain changes — the signature is first
     /// shown valid where it was made, then replayed and refused.
     ///
-    /// The domain is read from the kernel by external call, never from
+    /// The domain is read from FigaroCore by external call, never from
     /// block.chainid in this frame: under --via-ir the optimizer folds every
     /// CHAINID read in a frame into one (the opcode is invariant within a
     /// real transaction), which would move a read past the cheatcode.
@@ -642,7 +642,7 @@ contract FigaroCoreTest is Test {
     /// cycling over three wallets, and asserts, per seller, that resolution
     /// pays exactly the sum over its orders of 2 × cumulative value at that
     /// link plus the payment — the bond back and the price — and, for the
-    /// buyer, exactly the sum of payments; the kernel holds nothing after.
+    /// buyer, exactly the sum of payments; FigaroCore holds nothing after.
     function testFuzz_resolve_paysEveryOrderItsBondPlusPayment(uint8 nRaw, uint256 seed) public {
         uint256 n = 1 + (nRaw % 12);
         address[3] memory sellers = [seller1, seller2, seller3];
@@ -679,7 +679,7 @@ contract FigaroCoreTest is Test {
         assertEq(token.balanceOf(seller2) - sellerAfterCommit[1], expectedSellerPayout[1], "seller2 paid exactly");
         assertEq(token.balanceOf(seller3) - sellerAfterCommit[2], expectedSellerPayout[2], "seller3 paid exactly");
         assertEq(token.balanceOf(buyer) - buyerAfterCommit, expectedBuyerPayout, "buyer refunded exactly");
-        assertEq(token.balanceOf(address(core)), 0, "the kernel holds nothing after");
+        assertEq(token.balanceOf(address(core)), 0, "FigaroCore holds nothing after");
         (,,, uint256 active) = core.processes(processId);
         assertEq(active, 0, "process closed");
     }

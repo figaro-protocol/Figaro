@@ -223,7 +223,7 @@ contract HalmosMembersRegistry is Test {
     /// so the linkage is part of the mechanism, not plumbing.
     ///
     /// Stated on the BATCH path because it is directly reachable: the direct
-    /// path needs a signed, kernel-resolved order, which symbolic ECDSA cannot
+    /// path needs a signed order resolved through FigaroCore, which symbolic ECDSA cannot
     /// reach (it is covered concretely by
     /// `UsageCounterTest.test_sellerLeavingTheRegistryStopsCounting`).
     function check_theCounterAdmitsUsageExactlyWhileTheStakeIsLive(uint96 deposit, bool leaves) public {

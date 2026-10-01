@@ -834,7 +834,7 @@ contract UsageCounterTest is Test {
 
     // ── The batch bridge: proof-gated accrual ───────────────────────
     //
-    // A batch-resolved process never acquires kernel status, so none of this
+    // A batch-resolved process never acquires FigaroCore status, so none of this
     // can travel the direct path. What the counter still owns, and enforces
     // here, is the reward's own gates: who may write, which period is open,
     // which sellers are staked, which clauses and assemblies are excluded.

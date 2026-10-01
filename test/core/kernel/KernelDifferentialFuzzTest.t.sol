@@ -7,7 +7,7 @@ import "src/core/kernel/CommitmentTypes.sol";
 import "src/mocks/MockPermitToken.sol";
 import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
-/// @title KernelDifferentialFuzzTest — the seeded operation stream the kernel
+/// @title KernelDifferentialFuzzTest — the seeded operation stream FigaroCore
 ///        and its Rust mirror must agree on
 /// @notice `KernelTransitionVectorsTest` locks six hand-written scenarios.
 ///         This test GENERATES a stream: `KERNEL_FUZZ_STEPS` operations drawn
@@ -15,19 +15,19 @@ import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 ///         deliberately malformed (an expired deadline, a wrong signer, a
 ///         cumulative value off by one, a replay, a foreign order in a
 ///         resolution list, a payment in the overflow window, ...). Every
-///         operation runs on the live kernel; what the kernel did — the ids it
+///         operation runs on the live FigaroCore; what FigaroCore did — the ids it
 ///         returned, or the error it reverted with — is written to
 ///         `test/fixtures/streams/kernel.jsonl`, one JSON object per line: a
 ///         header, the steps, then every wallet's deposits and payouts and
 ///         every process's final state.
 ///         `prover/lib/tests/fuzz_stream.rs` replays the same stream through
 ///         the mirror, one operation per batch, and must accept what the
-///         kernel accepted, reject what it rejected with the same error, and
+///         FigaroCore accepted, reject what it rejected with the same error, and
 ///         arrive at the same figures. `scripts/test-cross-impl-fuzz.sh` runs
 ///         the two halves under one seed.
 ///
 ///         The generator asserts nothing about WHICH error a malformed
-///         operation earns: the kernel's answer is the oracle, recorded as it
+///         operation earns: FigaroCore's answer is the oracle, recorded as it
 ///         comes.
 contract KernelDifferentialFuzzTest is Test {
     using CommitmentTypes for CommitmentTypes.Commitment;
@@ -480,7 +480,7 @@ contract KernelDifferentialFuzzTest is Test {
         return abi.encodePacked(r, s, v - 27);
     }
 
-    /// The domain is read from the kernel by external call, never rebuilt
+    /// The domain is read from FigaroCore by external call, never rebuilt
     /// from block.chainid here (see FigaroCoreTest's chain-id test).
     function _sign(CommitmentTypes.Commitment memory c, uint256 privateKey) internal view returns (bytes memory) {
         bytes32 digest = keccak256(abi.encodePacked("\x19\x01", core.DOMAIN_SEPARATOR(), c.hashStruct()));

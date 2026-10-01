@@ -9,7 +9,7 @@ import "src/mocks/MockPermitToken.sol";
 import "src/mocks/MockERC20FeeOnTransfer.sol";
 
 /// @title FigaroCore_RevertBranch — Negative-path coverage for the
-///        enforcement-only kernel. No SelfDeal tests (removed from kernel).
+///        enforcement-only FigaroCore. No SelfDeal tests (removed from FigaroCore).
 contract FigaroCore_RevertBranch is Test {
     using CommitmentTypes for CommitmentTypes.Commitment;
 

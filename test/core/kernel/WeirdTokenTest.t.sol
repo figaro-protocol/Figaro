@@ -9,15 +9,15 @@ import {MockERC20Blocklist} from "src/mocks/MockERC20Blocklist.sol";
 import {MockERC20Rebasing} from "src/mocks/MockERC20Rebasing.sol";
 import {MockERC20SixDecimals} from "src/mocks/MockERC20SixDecimals.sol";
 
-/// @title WeirdTokenTest — the kernel against the ERC-20 shapes beyond the
+/// @title WeirdTokenTest — FigaroCore against the ERC-20 shapes beyond the
 ///        fee-on-transfer rejection
 /// @notice The currency is the parties' choice and its terms ride into the
 ///         process (`DESIGN_DECISIONS.md` #10). Four shapes: no return value
 ///         (settles, through SafeERC20), six decimals (settles exactly, the
-///         kernel never reads `decimals()`), an issuer blocklist (a blocked
+///         FigaroCore never reads `decimals()`), an issuer blocklist (a blocked
 ///         party's leg holds the whole atomic resolution until the issuer
 ///         relents), and a rebase (upward: the surplus is stranded in the
-///         kernel; downward: resolution waits until the balance recovers).
+///         FigaroCore; downward: resolution waits until the balance recovers).
 contract WeirdTokenTest is Test {
     using CommitmentTypes for CommitmentTypes.Commitment;
 
@@ -53,7 +53,7 @@ contract WeirdTokenTest is Test {
         assertEq(nrt.balanceOf(address(core)), 400 ether, "both bonds pulled");
 
         _resolve(processId, c);
-        assertEq(nrt.balanceOf(address(core)), 0, "kernel empty");
+        assertEq(nrt.balanceOf(address(core)), 0, "FigaroCore empty");
         assertEq(nrt.balanceOf(seller1), 1_100 ether, "seller: bond back plus the price");
         assertEq(nrt.balanceOf(buyer), 900 ether, "buyer: bond back minus the price");
     }
@@ -76,7 +76,7 @@ contract WeirdTokenTest is Test {
         _resolve(processId, c);
         assertEq(usd.balanceOf(seller1), 1_100e6, "seller paid in the token's unit");
         assertEq(usd.balanceOf(buyer), 900e6, "buyer refunded in the token's unit");
-        assertEq(usd.balanceOf(address(core)), 0, "kernel empty");
+        assertEq(usd.balanceOf(address(core)), 0, "FigaroCore empty");
     }
 
     // ── Issuer blocklist ─────────────────────────────────────────
@@ -129,9 +129,9 @@ contract WeirdTokenTest is Test {
 
     // ── Rebase ───────────────────────────────────────────────────
 
-    /// An upward rebase between commit and resolve leaves the kernel holding
+    /// An upward rebase between commit and resolve leaves FigaroCore holding
     /// more than it owes; resolution pays the committed figures and the
-    /// surplus stays in the kernel, which has no function that moves it.
+    /// surplus stays in FigaroCore, which has no function that moves it.
     function test_rebasingToken_upwardRebaseStrandsTheSurplus() public {
         MockERC20Rebasing rbs = _rebasingToken();
         (bytes32 processId, CommitmentTypes.Commitment memory c) =
@@ -139,13 +139,13 @@ contract WeirdTokenTest is Test {
         assertEq(rbs.balanceOf(address(core)), 400 ether, "exact at multiplier 1");
 
         rbs.rebase(2e18);
-        assertEq(rbs.balanceOf(address(core)), 800 ether, "the kernel's balance doubled");
+        assertEq(rbs.balanceOf(address(core)), 800 ether, "FigaroCore's balance doubled");
 
         _resolve(processId, c);
         assertEq(rbs.balanceOf(address(core)), 400 ether, "the surplus is stranded");
     }
 
-    /// A downward rebase leaves the kernel short; resolution reverts on the
+    /// A downward rebase leaves FigaroCore short; resolution reverts on the
     /// transfer out and the process waits until the balance recovers.
     function test_rebasingToken_downwardRebaseHoldsTheProcess() public {
         MockERC20Rebasing rbs = _rebasingToken();
@@ -153,7 +153,7 @@ contract WeirdTokenTest is Test {
             _commitRoot(address(rbs), seller1, SELLER1_KEY, 100 ether, 1);
 
         rbs.rebase(0.5e18);
-        assertEq(rbs.balanceOf(address(core)), 200 ether, "the kernel is short");
+        assertEq(rbs.balanceOf(address(core)), 200 ether, "FigaroCore is short");
         CommitmentTypes.Commitment[] memory list = new CommitmentTypes.Commitment[](1);
         list[0] = c;
         vm.prank(buyer);

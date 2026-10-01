@@ -7,14 +7,14 @@ import "src/core/kernel/CommitmentTypes.sol";
 import "src/mocks/MockPermitToken.sol";
 
 /// @title KernelTransitionVectorsTest — the state-transition lock between the
-///        kernel and its Rust mirror
+///        FigaroCore and its Rust mirror
 /// @notice The batch path resolves through `prover/lib/src/kernel.rs`, a mirror
 ///         of `FigaroCore` that must compute the same transition: the same
 ///         process ids and order hashes, the same bonds pulled at commit, the
 ///         same payouts at resolution, the same accumulator and active count.
 ///         Until now the mirror's payout expectations were hand-written
 ///         constants. This test RUNS the scenarios below through the frozen
-///         kernel and writes what happened — every commitment, every party's
+///         FigaroCore and writes what happened — every commitment, every party's
 ///         deposit and payout, every process's final state — to
 ///         `test/fixtures/kernel-transition-vectors.json`;
 ///         `prover/lib/tests/transition_vectors.rs` replays the same
@@ -22,11 +22,11 @@ import "src/mocks/MockPermitToken.sol";
 ///
 ///         Two jobs, like the EIP-712 and Merkle locks:
 ///           1. `HARVEST_KERNEL_VECTORS=true` regenerates the fixture.
-///           2. Otherwise the run must reproduce the frozen bytes — the kernel
-///              is frozen, so a diff here is a harness change, never a kernel one.
+///           2. Otherwise the run must reproduce the frozen bytes — FigaroCore
+///              is frozen, so a diff here is a harness change, never a FigaroCore one.
 ///
-///         The token and kernel deploy at the addresses the Rust mirror's
-///         parity vectors pin (the domain separator binds the kernel address),
+///         The token and FigaroCore deploy at the addresses the Rust mirror's
+///         parity vectors pin (the domain separator binds the FigaroCore address),
 ///         and the keys are the parity keys, so the fixture's ids are
 ///         comparable across the two languages without translation.
 contract KernelTransitionVectorsTest is Test {
@@ -67,7 +67,7 @@ contract KernelTransitionVectorsTest is Test {
         token = new MockPermitToken();
         core = new FigaroCore();
         assertEq(address(token), PINNED_TOKEN, "the token deploys at the parity address");
-        assertEq(address(core), PINNED_CORE, "the kernel deploys at the parity address");
+        assertEq(address(core), PINNED_CORE, "FigaroCore deploys at the parity address");
 
         address[4] memory parties = [buyer, seller1, seller2, seller3];
         for (uint256 i = 0; i < parties.length; i++) {
@@ -88,7 +88,7 @@ contract KernelTransitionVectorsTest is Test {
 
         Order[] memory o;
 
-        // 0: one root order, left open — the bonds sit in the kernel.
+        // 0: one root order, left open — the bonds sit in FigaroCore.
         o = new Order[](1);
         o[0] = Order(seller1, SELLER1_KEY, 100 ether, 0);
         vm.serializeString(top, "s0", _run(0, "root-open", o, false));
@@ -131,7 +131,7 @@ contract KernelTransitionVectorsTest is Test {
         assertEq(
             keccak256(bytes(json)),
             keccak256(bytes(vm.readFile(FIXTURE))),
-            "the kernel reproduces the frozen fixture; re-harvest deliberately with HARVEST_KERNEL_VECTORS=true"
+            "FigaroCore reproduces the frozen fixture; re-harvest deliberately with HARVEST_KERNEL_VECTORS=true"
         );
     }
 
@@ -154,9 +154,9 @@ contract KernelTransitionVectorsTest is Test {
         uint256 coreBefore;
     }
 
-    /// Runs one scenario on the live kernel and returns its JSON: the
-    /// commitments as committed (with the ids the kernel returned), each
-    /// party's deposit at commit and payout at resolution, the kernel's
+    /// Runs one scenario on the live FigaroCore and returns its JSON: the
+    /// commitments as committed (with the ids FigaroCore returned), each
+    /// party's deposit at commit and payout at resolution, FigaroCore's
     /// balance delta, and each process's final accumulator and active count.
     function _run(uint256 idx, string memory name, Order[] memory orders, bool resolve)
         internal
@@ -315,7 +315,7 @@ contract KernelTransitionVectorsTest is Test {
         }
     }
 
-    /// The domain is read from the kernel by external call, never rebuilt
+    /// The domain is read from FigaroCore by external call, never rebuilt
     /// from block.chainid here (see FigaroCoreTest's chain-id test).
     function _sign(CommitmentTypes.Commitment memory c, uint256 privateKey) internal view returns (bytes memory) {
         bytes32 digest = keccak256(abi.encodePacked("\x19\x01", core.DOMAIN_SEPARATOR(), c.hashStruct()));

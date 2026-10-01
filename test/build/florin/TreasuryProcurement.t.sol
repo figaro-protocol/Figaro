@@ -12,8 +12,8 @@ import {MockTreasuryMultisig} from "src/mocks/MockTreasuryMultisig.sol";
 ///         multisig holds the 300M genesis allocation; a procurement funds a
 ///         dedicated operator-EOA with EXACTLY the deal's needs (blast radius
 ///         = the current procurement, never the treasury); the EOA buys
-///         through the kernel as an ordinary bonded buyer (the treasury
-///         itself can never sign — the kernel is ECDSA-only); resolution
+///         through FigaroCore as an ordinary bonded buyer (the treasury
+///         itself can never sign — FigaroCore is ECDSA-only); resolution
 ///         returns the bond and the residual sweeps back, so the treasury's
 ///         net spend is exactly the payment. Custody negatives: no owner
 ///         moves funds alone, no approval replays.
@@ -66,7 +66,7 @@ contract TreasuryProcurementTest is Test {
         florin.approve(address(core), type(uint256).max);
     }
 
-    // ── EIP-712 helpers (the kernel-test idiom) ─────────────────────
+    // ── EIP-712 helpers (the FigaroCore-test idiom) ─────────────────────
 
     function _signCommitment(CommitmentTypes.Commitment memory c, uint256 privateKey)
         internal
@@ -116,13 +116,13 @@ contract TreasuryProcurementTest is Test {
     // ── The rehearsal ───────────────────────────────────────────────
 
     function test_ProcurementEndToEnd_TreasuryNetSpendIsExactlyThePayment() public {
-        // 1. Fund the operator-EOA with EXACTLY the deal's pull (the kernel
+        // 1. Fund the operator-EOA with EXACTLY the deal's pull (FigaroCore
         //    pulls 2× payment from the buyer at commit).
         _fundOperator(2 * PAYMENT);
         assertEq(florin.balanceOf(operator), 2 * PAYMENT, "blast radius: the EOA holds only this procurement");
         assertEq(florin.balanceOf(address(treasury)), DAO_ALLOC - 2 * PAYMENT);
 
-        // 2. The EOA buys through the kernel as an ordinary bonded buyer.
+        // 2. The EOA buys through FigaroCore as an ordinary bonded buyer.
         vm.prank(operator);
         florin.approve(address(core), 2 * PAYMENT);
         CommitmentTypes.Commitment memory c = _procurementCommitment();
@@ -174,7 +174,7 @@ contract TreasuryProcurementTest is Test {
     }
 
     function test_TreasuryCannotBeAKernelParty() public {
-        // The kernel recovers ECDSA signatures; a contract address can never
+        // FigaroCore recovers ECDSA signatures; a contract address can never
         // produce one for itself — the structural reason the operator-EOA
         // exists. A commitment naming the treasury as buyer cannot carry a
         // valid buyer signature from the treasury.

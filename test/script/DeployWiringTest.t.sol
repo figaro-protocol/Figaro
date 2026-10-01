@@ -128,7 +128,7 @@ contract SwapRouterShape {
 ///         would broadcast, and every immutable and genesis parameter is then
 ///         read back from the deployed contracts and compared with what the
 ///         script was given: the mutual counter↔verifier binding, the
-///         coordinator's kernel, Permit2 and router, the verifier's gateway,
+///         coordinator's FigaroCore, Permit2 and router, the verifier's gateway,
 ///         vkey, registry and derived genesis root, the counter's gates and
 ///         schedule, the registries' deposits and cooldown, and the florin's
 ///         genesis mints, minter cap and renounced deployer.
@@ -137,8 +137,8 @@ contract DeployWiringTest is Test {
     uint256 internal constant DEPLOYER_KEY = 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80;
     bytes32 internal constant PROV_KEY = keccak256(abi.encode("figaro-assembly-provenance", uint64(1)));
 
-    /// The genesis root both scripts derive: one keccak256("") per kernel
-    /// state map plus the usage leg over three zero-length sections.
+    /// The genesis root both scripts derive: one keccak256("") per state map
+    /// of the mirror plus the usage leg over three zero-length sections.
     function _genesisRoot() internal pure returns (bytes32) {
         bytes32 emptyMap = keccak256("");
         bytes32 emptyUsage = keccak256(abi.encodePacked(uint64(0), uint64(0), uint64(0)));
@@ -169,9 +169,9 @@ contract DeployWiringTest is Test {
 
     function _assertDevnetProtocol(DevnetDeployHarness d) internal view {
         address core = address(d.core());
-        assertEq(address(d.attestation().core()), core, "attestation -> kernel");
+        assertEq(address(d.attestation().core()), core, "attestation -> FigaroCore");
         WitnessSwapAndCommitCoordinator swap = d.swapCoordinator();
-        assertEq(address(swap.figaroCore()), core, "swap coordinator -> kernel");
+        assertEq(address(swap.figaroCore()), core, "swap coordinator -> FigaroCore");
         assertEq(address(swap.permit2()), d.permit2(), "swap coordinator -> permit2");
         assertEq(swap.router(), d.router(), "swap coordinator -> router");
     }
@@ -187,7 +187,7 @@ contract DeployWiringTest is Test {
         assertEq(bv.stateRoot(), _genesisRoot(), "derived genesis root");
         assertEq(bv.batchCount(), 0);
 
-        assertEq(address(uc.core()), address(d.core()), "counter -> kernel");
+        assertEq(address(uc.core()), address(d.core()), "counter -> FigaroCore");
         assertEq(address(uc.members()), address(d.members()), "counter -> members");
         assertEq(address(uc.clauses()), address(d.clauses()), "counter -> clauses");
         assertEq(address(uc.assemblies()), address(d.assemblies()), "counter -> assemblies");
@@ -244,9 +244,9 @@ contract DeployWiringTest is Test {
 
     function _assertMainnetProtocol(MainnetDeployHarness d, MainnetInputs memory in_) internal view {
         address core = d.core();
-        assertEq(address(AttestationCoordinator(d.attestation()).core()), core, "attestation -> kernel");
+        assertEq(address(AttestationCoordinator(d.attestation()).core()), core, "attestation -> FigaroCore");
         WitnessSwapAndCommitCoordinator swap = WitnessSwapAndCommitCoordinator(d.swapCoordinator());
-        assertEq(address(swap.figaroCore()), core, "swap coordinator -> kernel");
+        assertEq(address(swap.figaroCore()), core, "swap coordinator -> FigaroCore");
         assertEq(address(swap.permit2()), in_.permit2, "swap coordinator -> PERMIT2");
         assertEq(swap.router(), in_.router, "swap coordinator -> SWAP_ROUTER");
     }
@@ -261,7 +261,7 @@ contract DeployWiringTest is Test {
         assertEq(bv.programVKey(), in_.vkey, "verifier -> SP1_PROGRAM_VKEY");
         assertEq(bv.stateRoot(), _genesisRoot(), "derived genesis root");
 
-        assertEq(address(uc.core()), d.core(), "counter -> kernel");
+        assertEq(address(uc.core()), d.core(), "counter -> FigaroCore");
         assertEq(address(uc.members()), d.members(), "counter -> members");
         assertEq(address(uc.clauses()), d.clauses(), "counter -> clauses");
         assertEq(address(uc.assemblies()), d.assemblies(), "counter -> assemblies");
