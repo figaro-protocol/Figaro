@@ -17,7 +17,7 @@ export const metadata: Metadata = withOg({
 // and a buyer, drawn as wallets and a person, never as a kind of trade — no
 // trade is the model, and the same six pictures carry every published
 // assembly. What each padlock adds up to is `StackedBondChainFigure`'s, on the
-// kernel page; what stands behind a trade, layer by layer, is the FAQ's.
+// mechanism page; what stands behind a trade, layer by layer, is the FAQ's.
 export default function TradePage() {
     return (
         <>
