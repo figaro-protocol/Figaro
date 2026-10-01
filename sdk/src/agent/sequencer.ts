@@ -1,15 +1,15 @@
 /**
  * @figaro-protocol/sdk/agent — Sequencer Client
  *
- * Submits signed kernel operations to the off-chain batch sequencer
+ * Submits signed FigaroCore operations to the off-chain batch sequencer
  * for proof-based resolution via FigaroBatchVerifier.
  *
  * The sequencer is a coordination convenience, not a trust assumption.
  * All operations require valid EIP-712 signatures — the sequencer
- * cannot fabricate, censor selectively, or violate kernel invariants.
+ * cannot fabricate, censor selectively, or violate FigaroCore invariants.
  * Participants can always fall back to direct FigaroCore submission.
  *
- * The batched surface is the kernel + attestation ops only. Registry
+ * The batched surface is FigaroCore + attestation ops only. Registry
  * mutations (clause/seller/assembly registration) are once-per-registration
  * ETH-staked intents that stay on the direct path.
  *
@@ -152,7 +152,7 @@ export interface SequencerStatus {
     archive?: SequencerRetentionWindow;
 }
 
-// ── Publication reads — the kernel's events, for the batch universe ─────────
+// ── Publication reads — FigaroCore's events, for the batch universe ─────────
 //
 // `FigaroCore` both RESOLVES an order and PUBLISHES it (OrderCommitted /
 // OrderSeller / OrderCurrency carry the struct; the signatures sit in the
@@ -218,7 +218,7 @@ export interface SequencerProcessResolutionView {
     buyer: Address;
     order_count: number;
     /** The signature that authorized resolution — the batched form of the
-     *  kernel's `msg.sender == rootBuyer`. */
+     *  FigaroCore's `msg.sender == rootBuyer`. */
     buyer_signature: SequencerSignature;
     batch: SequencerBatchRef;
 }
@@ -379,7 +379,7 @@ export class SequencerClient {
     }
 
     /**
-     * Submit a signed kernel operation to the sequencer.
+     * Submit a signed FigaroCore operation to the sequencer.
      * Returns the operation ID assigned by the sequencer's mempool.
      */
     async submit(op: SequencerOp): Promise<SubmitResult> {
@@ -487,8 +487,8 @@ export class SequencerClient {
     /**
      * Submit an RPGF usage claim for an order the BATCH path has resolved.
      *
-     * Its own endpoint, not `/submit`, because a claim is not a kernel
-     * operation: it changes no kernel state and the guest applies it against
+     * Its own endpoint, not `/submit`, because a claim is not a FigaroCore
+     * operation: it changes no FigaroCore state and the guest applies it against
      * the batch's POST-state, so a claim for an order the same batch resolves
      * is still credited by that batch.
      *
@@ -584,7 +584,7 @@ export class SequencerClient {
 
     /**
      * A bounded page of resolved batches, for replaying the batch universe the
-     * way an indexer replays kernel logs. `limit` is clamped to 50 by the relay
+     * way an indexer replays FigaroCore logs. `limit` is clamped to 50 by the relay
      * whatever is asked; follow `next_cursor` until it is null, and check
      * `retained` against your cursor first — a cursor older than `first_batch`
      * means this relay already dropped the gap.

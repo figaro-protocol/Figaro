@@ -23,7 +23,7 @@ the original structs. <code>expectedCumulativeValue</code> is the order's commit
 <code>cumulativeValue</code>.</p>
 <p>NOTE: a ROOT order's <code>processId</code> here is the DERIVED id (what the event
 carries), not the <code>0</code> the party signed. Pass the result through
-<code>restoreSignedProcessId</code> before hashing/submitting, or the kernel's recomputed
+<code>restoreSignedProcessId</code> before hashing/submitting, or FigaroCore's recomputed
 orderHash will miss. This function stays chain-free so it can be pure.</p>
 </div>
 <div class="tsd-parameters">

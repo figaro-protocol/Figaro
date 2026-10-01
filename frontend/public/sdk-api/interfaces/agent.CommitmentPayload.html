@@ -17,7 +17,7 @@ hashes so the recipient hydrates everything from one message. Signatures fill
 in as each party signs. <code>buyerFunding</code> is the buyer's OPTIONAL swap-funded
 bond leg (witness-signed at checkout): when present, whoever broadcasts
 routes through <code>WitnessSwapAndCommitCoordinator.swapAndCommit</code> instead of
-the kernel's <code>commit</code> — relayer-agnostic by construction, because the swap
+FigaroCore's <code>commit</code> — relayer-agnostic by construction, because the swap
 route is bound into the buyer's Permit2 witness signature.</p>
 <p>PRIVACY POSTURE: the envelope carries the FULL plaintext <code>agreement</code> — the
 counterparty must read the terms to sign them, so this is by design — but

@@ -426,7 +426,7 @@ function currencyPinSection(
  * the merkle root recomputed from the sections. Catches a malformed agreement
  * before a chain round-trip.
  *
- * `struct` is the kernel commitment's mirrored pair — the struct side of the
+ * `struct` is the commitment's mirrored pair — the struct side of the
  * leaf==struct assertion (a full `Commitment` satisfies it). Evidence and
  * execution are different layers, so the copy across them is the binding, and
  * asserting it is this gate's job (docs/CLAUSES.md § "Every clause is a
@@ -434,9 +434,9 @@ function currencyPinSection(
  * bare currency string fails at compile, not silently.
  */
 export interface CommitmentMirror {
-    /** The kernel commitment's `currency` field. */
+    /** The commitment's `currency` field. */
     currency: `0x${string}`;
-    /** The kernel commitment's `payment` field. */
+    /** The commitment's `payment` field. */
     payment: bigint;
 }
 
@@ -720,7 +720,7 @@ export function buildAssemblyTemplate(args: {
     }
     const mandatorySpecs = Array.from(mandatory.values());
     // Re-label each design-time (synthetic) order id to a clean local label
-    // naming the future kernel-order slot. The template carries no chain ids
+    // naming the future order slot. The template carries no chain ids
     // and no party addresses — only the clauses (the mandatory ones among
     // them), keyed by these local labels.
     const idToLocal = new Map(orders.map((o, i) => [o.orderHash, `order-${i}`]));

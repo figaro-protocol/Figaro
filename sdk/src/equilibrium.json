@@ -1,7 +1,7 @@
 {
     "mechanism": "figaro-kernel-equilibrium",
     "version": 1,
-    "description": "The kernel's equilibrium, stated in ONE place: the bonds commit pulls, the payoffs the two parties compare, the outcome table, the deterrent gap, and the hypotheses every comparison carries. The asymmetric-bonding paper (/papers/asymmetric-bonding) OWNS the theorem and its proof; docs/THEORY.md binds these figures to the kernel's transfers; formal/lean/FigaroEquilibrium.lean proves the inequalities over the same table; every page that shows a number or a formula from this table renders it from here. scripts/lint-equilibrium-owner.sh fails the commit when any of those surfaces disagrees with this file.",
+    "description": "The mechanism's equilibrium, stated in ONE place: the bonds commit pulls, the payoffs the two parties compare, the outcome table, the deterrent gap, and the hypotheses every comparison carries. The asymmetric-bonding paper (/papers/asymmetric-bonding) OWNS the theorem and its proof; docs/THEORY.md binds these figures to FigaroCore's transfers; formal/lean/FigaroEquilibrium.lean proves the inequalities over the same table; every page that shows a number or a formula from this table renders it from here. scripts/lint-equilibrium-owner.sh fails the commit when any of those surfaces disagrees with this file.",
     "symbols": {
         "P": "the payment of one order",
         "G": "the cumulative value through the order: every payment the process has accumulated so far, this order's own included (G_i = sum of P_j for j <= i)",

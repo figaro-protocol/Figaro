@@ -15,7 +15,7 @@
  * The SDK names no clause: instantiation reads the template's clause bag
  * verbatim and merges the buyer's per-clause overrides keyed by the clauseIds
  * the buyer composed. Which clause carries payment is the buyer's decision, not
- * the kernel's.
+ * FigaroCore's.
  */
 
 import type { WalletClient, PublicClient } from "viem";
@@ -432,14 +432,14 @@ export function makeSellerOfferHandler(
 
 // ── Multi-order origination (the value-added chain) ───────────────────────────
 //
-// A DAG of orders under one root. The kernel sees a LINEAR sequence of commits
+// A DAG of orders under one root. FigaroCore sees a LINEAR sequence of commits
 // updating a monotonic cumulative-value accumulator; DAG topology is off-chain
 // (each order's parents recorded in its topology section). Beyond the root case:
 //   - parents: a sub-order's topology field carries its parents' REAL EIP-712
 //     order hashes, not the template-local ids — so orders are built in
 //     dependency order and each order's hash is fed to its children.
 //   - cumulative value: each order commits against the running total (root's
-//     payment, then + each sub's), which the kernel matches exactly — so commits
+//     payment, then + each sub's), which FigaroCore matches exactly — so commits
 //     are SUBMITTED in that same order (root first).
 //   - N counterparties: each order's own seller counter-signs its own order.
 // The walk's single home is `../reconstructOrders.js` (`planTemplateOrders` +
@@ -539,7 +539,7 @@ export interface OriginateChainParams extends BuildChainParams {
  * BUYER LOOP (multi-order) — originate a value-added chain end-to-end: build
  * every order (buyer-signed), send each as an offer to its seller, and — once ALL
  * counter-sign — approve the buyer's total bond and submit the commits root-first
- * in cumulative order (each awaited so the kernel sees a consistent running
+ * in cumulative order (each awaited so FigaroCore sees a consistent running
  * total). Any seller declining aborts before any commit, so nothing lands
  * half-built. Returns the ordered tx hashes, or `null` if aborted.
  */

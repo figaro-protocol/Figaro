@@ -19,7 +19,7 @@ They are NOT the <code>FigaroAddresses</code> field names — <code>figaroCore</
 yields undefined contract addresses. Map it through
 <code>addressesFromDeploymentRecord</code> instead. This type is the full published
 record (mirrors <code>.deployments/*.json</code> and the <code>/spec</code> route-key table:
-the kernel, registries, and coordinators/routers/RPGF surface); core reads
+FigaroCore, registries, and coordinators/routers/RPGF surface); core reads
 require only the six — <code>figaroCore</code>, <code>tokenAddress</code>, <code>attestationCoordinator</code>,
 <code>clauseRegistry</code>, <code>membersRegistry</code>, <code>assemblyRegistry</code>. The rest are optional
 and pass through only when present.</p>

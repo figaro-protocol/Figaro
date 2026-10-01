@@ -3,7 +3,7 @@
  *
  * Standalone TypeScript SDK for reading, analyzing, and proposing
  * Figaro transactions. Works with any ECDSA signing key — human wallets
- * or autonomous agent keys. The kernel verifies parties by ECDSA recovery
+ * or autonomous agent keys. FigaroCore verifies parties by ECDSA recovery
  * alone, so buyer and seller are always externally-owned accounts;
  * contract wallets (Safe, ERC-1271) cannot hold the role directly.
  *
@@ -36,7 +36,7 @@ export {
     // External canonical contracts (not Figaro's) the swap-funded bond path
     // composes with — curated so integrators don't hand-roll or re-fetch them.
     PERMIT2_ABI, SWAP_ROUTER_02_ABI, QUOTER_V2_ABI, UNISWAP_V3_FEE_TIERS,
-    // Kernel Commitment struct tuple — a core primitive, used by composition-layer
+    // Commitment struct tuple — a core primitive, used by composition-layer
     // contract ABIs that take a Commitment as a calldata arg.
     COMMITMENT_TUPLE,
 } from "./abis.js";
@@ -178,7 +178,7 @@ export {
 
 // Chain gas ceilings — per-process resolve cap + per-block commit landing rate.
 // A process grown past the resolve cap can never resolve; every commit path
-// checks this client-side because the kernel cannot (the composed agreements are off-chain).
+// checks this client-side because FigaroCore cannot (the composed agreements are off-chain).
 export {
     maxOrdersResolvableForGasLimit,
     maxCommitsLandableForGasLimit,
@@ -327,10 +327,10 @@ export type {
     MemberCatalogueMetadata,
 } from "./memberCatalogue.js";
 
-// THE KERNEL'S EQUILIBRIUM, stated once — sdk/src/equilibrium.json: the bonds,
+// THE MECHANISM'S EQUILIBRIUM, stated once — sdk/src/equilibrium.json: the bonds,
 // the payoffs, the outcome table, the deterrent gap, and the hypotheses every
 // comparison carries. The paper owns the theorem; THEORY.md binds these
-// figures to the kernel's transfers; the Lean file proves the inequalities
+// figures to the Core's transfers; the Lean file proves the inequalities
 // over the same table; pages render numbers from here, never retype them.
 import equilibrium from "./equilibrium.json" with { type: "json" };
 export const KERNEL_EQUILIBRIUM = equilibrium;

@@ -13,7 +13,7 @@ import { canonicalContentHash } from "./agreement.js";
 // ── The template document (the pinned assembly, hydrated off-chain) ──────────
 
 export interface TemplateAgreement {
-    /** Local label for the kernel-order slot this agreement binds to at
+    /** Local label for the order slot this agreement binds to at
      *  checkout — `order-<index>`, stable within the template; the reference
      *  target the topology clause points at. NOT a chain id, and NOT a
      *  party — the template is party-agnostic. */
@@ -70,14 +70,14 @@ export interface AssemblyTemplate {
      *  absent = 1, mirroring `TemplateAgreement.clauseVersions`). */
     assemblyClauseVersions?: Record<string, number>;
     /** The composition: the agreements the designer composed, one per future
-     *  kernel order. */
+     *  FigaroCore order. */
     agreements: TemplateAgreement[];
 }
 
 /** Read a template agreement's parent ids — the data of its topology clause.
  *  The topology is a clause like any other; this is the one accessor for it.
  *  The entry is found by its DATA KEY (`parentOrderHashes` — named for what
- *  the committed clause holds at runtime: the parent orders' kernel order
+ *  the committed clause holds at runtime: the parent orders' FigaroCore order
  *  hashes; at design time the values are sibling `order-<i>` labels), so
  *  reading needs no spec cache and tolerates any registry-defined topology
  *  clause. */

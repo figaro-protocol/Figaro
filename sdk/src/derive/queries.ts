@@ -11,7 +11,7 @@
  *   guesses, and an unattributed process is counted as such, never binned
  *   under a fabricated key. Chain shapes come from caller-supplied parent
  *   edges (decoded topology sections) via `depthsOverParents`; without them
- *   the kernel's own linear view stands.
+ *   FigaroCore's own linear view stands.
  * - Wallet-record: one wallet's public trading history — the processes it
  *   resolves as root buyer and the orders it holds either side of.
  *
@@ -29,7 +29,7 @@ import type { ProcessGraph } from "./graphs.js";
 
 /** A distinct chain shape and how many processes take it. Depth/width are
  *  computed over caller-supplied parent edges, 0-rooted (a root order is
- *  depth 0 — the shipped UI convention); the kernel's own view (no parent
+ *  depth 0 — the shipped UI convention); FigaroCore's own view (no parent
  *  edges supplied) is linear: depth == orderCount - 1, maxWidth == 1. */
 export interface ChainShape {
     orderCount: number;
@@ -64,7 +64,7 @@ export interface MarketShapeGroup {
 
 /** The market-shape answer. Protocol-derived: the underlying events are
  *  protocol-enforced, but the per-assembly grouping rides provenance links
- *  whose semantic meaning is declared, not kernel-checked. */
+ *  whose semantic meaning is declared, not checked by FigaroCore. */
 export interface MarketShape {
     boundary: "protocol-derived";
     groups: Map<string, MarketShapeGroup>;
@@ -97,7 +97,7 @@ function chainShapeOf(
  * @param assemblyKeyOf    caller-supplied attribution: processId → assembly
  *                         key, `undefined` when the process is unattributed
  * @param parentOrderHashesOf  caller-supplied parent edges from decoded
- *                         topology sections; omitted = the kernel's linear view
+ *                         topology sections; omitted = FigaroCore's linear view
  */
 export function marketShape(
     graph: ProcessGraph,
@@ -181,7 +181,7 @@ export function marketShape(
 export interface WalletRecord {
     boundary: "protocol-enforced";
     wallet: Address;
-    /** Processes this wallet resolves (kernel star shape: the one resolver). */
+    /** Processes this wallet resolves (FigaroCore star shape: the one resolver). */
     processesAsRootBuyer: Process[];
     /** Orders this wallet is the per-order buyer of (root and sub-orders). */
     ordersAsBuyer: Order[];

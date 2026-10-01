@@ -4,7 +4,7 @@
  * A party who does not hold the process bond currency funds their bond from a
  * token they do hold: the coordinator pulls the input token via a Permit2
  * WITNESS signature, swaps it through an immutable venue, forwards the
- * proceeds to the party's EOA, then calls `FigaroCore.commit` — the kernel
+ * proceeds to the party's EOA, then calls `FigaroCore.commit` — FigaroCore
  * pulls the bond from the party as always, so the bilateral commitment is
  * untouched and the coordinator is never a counterparty.
  *
@@ -21,7 +21,7 @@ import type { Hex } from "./types.js";
 
 /** One funding leg of `swapAndCommit` — mirrors the coordinator's
  *  `SwapFunding` struct. `enabled = false` skips the leg (the party
- *  self-funds the bond currency, exactly as in the plain kernel flow). */
+ *  self-funds the bond currency, exactly as in the plain FigaroCore flow). */
 export interface SwapFundingLeg {
     enabled: boolean;
     inputToken: Hex;

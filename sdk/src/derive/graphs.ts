@@ -10,8 +10,8 @@
  *
  * - Process graph: who committed to what, under what terms, and whether the
  *   commitment resolved — `reconstruct()`'s topology, carried whole.
- * - Resolution graph: the per-order record of kernel resolution — bonds
- *   locked at commit, payouts at resolve. LINEAR per process (the kernel's
+ * - Resolution graph: the per-order record of FigaroCore resolution — bonds
+ *   locked at commit, payouts at resolve. LINEAR per process (FigaroCore's
  *   own view: a chain of commits against a monotonic cumulative-value
  *   accumulator); it carries no DAG topology — how orders relate is the
  *   process graph's business, and the two layers stay independent.
@@ -48,7 +48,7 @@ export function projectProcessGraph(events: CoreEvents): ProcessGraph {
 
 // ── Resolution graph ────────────────────────────────────────────────────────
 
-/** One order's resolution record: what the kernel locked at commit and what
+/** One order's resolution record: what FigaroCore locked at commit and what
  *  it pays at resolve. */
 export interface ResolutionEntry {
     orderHash: Hex;
@@ -60,7 +60,7 @@ export interface ResolutionEntry {
     cumulativeValue: bigint;
     /** Bonds locked at commit (2× invariants), via `calculateBonds`. */
     locked: BondBreakdown;
-    /** The kernel-determined payouts at resolution, via `calculateResolution` —
+    /** The payouts FigaroCore determines at resolution, via `calculateResolution` —
      *  what resolves, derived from the invariants (identical for active and
      *  resolved orders; the observed payouts below are the chain facts). */
     atResolution: ResolutionBreakdown;
@@ -77,11 +77,11 @@ export interface ResolutionEntry {
 export interface ResolutionChain {
     processId: Hex;
     /** The process's one denomination (`currency` is a signed field of every
-     *  commitment; a process is monotoken by kernel construction). */
+     *  commitment; a process is monotoken by FigaroCore construction). */
     currency: Address;
     cumulativeValue: bigint;
     resolved: boolean;
-    /** Orders in cumulative-value order — the kernel's own linear chain. */
+    /** Orders in cumulative-value order — FigaroCore's own linear chain. */
     orders: ResolutionEntry[];
 }
 

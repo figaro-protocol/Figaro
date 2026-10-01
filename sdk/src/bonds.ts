@@ -50,11 +50,11 @@ export function calculateResolution(
  * How much ERC-20 token approval each party needs before committing a
  * ROOT order.
  *
- * The kernel pulls the FULL bonds on every commit (FigaroCore `_pullExact`):
+ * FigaroCore pulls the FULL bonds on every commit (FigaroCore `_pullExact`):
  *   Buyer:  2 × payment
  *   Seller: 2 × cumulativeValue  (== 2 × payment on a root order)
  *
- * There is no incremental approval anywhere in the kernel — sub-orders
+ * There is no incremental approval anywhere in FigaroCore — sub-orders
  * pull full per-order bonds too; use `calculateSubOrderApproval`.
  */
 export function calculateRootApproval(payment: bigint): {
@@ -72,7 +72,7 @@ export function calculateRootApproval(payment: bigint): {
  * SUB-order.
  *
  * Every commit — root or sub — pulls full per-order bonds; nothing is
- * offset against bonds the kernel already holds from earlier orders in
+ * offset against bonds FigaroCore already holds from earlier orders in
  * the process:
  *   Buyer:  2 × payment            (pulled again, per order)
  *   Seller: 2 × newCumulativeValue (the whole cumulative bond for this
@@ -99,7 +99,7 @@ export function calculateSubOrderApproval(
 /**
  * Guard against the classic sub-order approval bug: approving only the
  * INCREMENT since the previous order's cumulative value instead of the
- * full per-order bond the kernel pulls. `_pullExact` pulls 2× the order's
+ * full per-order bond FigaroCore pulls. `_pullExact` pulls 2× the order's
  * OWN `cumulativeValue`/`payment` on every commit — root or sub — never an
  * offset against bonds a prior order already left held (see
  * `calculateSubOrderApproval`).
@@ -117,14 +117,14 @@ export function assertApprovalCoversBond(
     if (approval.buyerApproval < calc.buyerApproval) {
         throw new Error(
             `Buyer approval ${approval.buyerApproval} is below the required ${calc.buyerApproval} ` +
-            `(2× payment for THIS order). The kernel pulls the full per-order bond on every commit — ` +
+            `(2× payment for THIS order). FigaroCore pulls the full per-order bond on every commit — ` +
             `never approve only the increment since a prior order.`,
         );
     }
     if (approval.sellerApproval < calc.sellerApproval) {
         throw new Error(
             `Seller approval ${approval.sellerApproval} is below the required ${calc.sellerApproval} ` +
-            `(2× cumulativeValue for THIS order). The kernel pulls the full per-order bond on every ` +
+            `(2× cumulativeValue for THIS order). FigaroCore pulls the full per-order bond on every ` +
             `commit — never approve only the increment over a prior order's cumulativeValue.`,
         );
     }

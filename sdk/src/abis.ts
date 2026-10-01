@@ -13,9 +13,9 @@ import { parseAbi, parseAbiItem } from "viem";
 //    uint256 payment, uint256 expectedCumulativeValue, bytes32 agreementHash,
 //    uint256 salt, uint256 deadline)
 
-/** The kernel `Commitment` struct as an ABI tuple string. A core primitive —
+/** The Core's `Commitment` struct as an ABI tuple string. A core primitive —
  *  exported so contracts the frontend composes with (which take a Commitment as
- *  a calldata arg) can build their ABIs without re-stating the kernel struct. */
+ *  a calldata arg) can build their ABIs without re-stating the FigaroCore struct. */
 export const COMMITMENT_TUPLE =
     "(bytes32 processId, address buyer, address seller, address currency, uint256 payment, uint256 expectedCumulativeValue, bytes32 agreementHash, uint256 salt, uint256 deadline)";
 
@@ -61,9 +61,9 @@ export const CORE_ABI = parseAbi([
     "error ProcessAlreadyResolved()",
 
     // ── Denomination-token errors (ERC-6093, OpenZeppelin ERC-20) ──────
-    // Not kernel errors: the kernel pulls bonds with safeTransferFrom, so a
+    // Not FigaroCore errors: FigaroCore pulls bonds with safeTransferFrom, so a
     // shortfall reverts inside the token contract and its selector bubbles
-    // up through the kernel call. Carried here so viem decodes e.g.
+    // up through the FigaroCore call. Carried here so viem decodes e.g.
     // ERC20InsufficientAllowance by name instead of a raw 4-byte selector.
     "error ERC20InsufficientBalance(address sender, uint256 balance, uint256 needed)",
     "error ERC20InvalidSender(address sender)",
@@ -98,7 +98,7 @@ export const EV_PROCESS_RESOLVED = parseAbiItem(
 // ── AttestationCoordinator ABI ──────────────────────────────────────────────
 //
 // THE one home for this ABI (maintainer ruling): the coordinator's
-// kernel reads are DESIGN, not a defect. `core.orderStatus` anchors every
+// FigaroCore reads are DESIGN, not a defect. `core.orderStatus` anchors every
 // attestation to a live committed order (without it, a merkle proof shows a
 // clause is in *some* agreement, not THE order's agreement) and
 // `core.DOMAIN_SEPARATOR` derives root processIds with no silent-drift risk.
@@ -110,7 +110,7 @@ export const EV_PROCESS_RESOLVED = parseAbiItem(
 export const ATTESTATION_COORDINATOR_ABI = parseAbi([
     "function core() view returns (address)",
     // All three paths take the full Commitment(s) so the coordinator can
-    // recover `agreementHash` without new kernel state, and carry the section
+    // recover `agreementHash` without new FigaroCore state, and carry the section
     // FINGERPRINT `sectionHash` (`keccak256(sectionData)`) + merkle `proof` so
     // the clause is provably part of the signed agreement. The content
     // FINGERPRINT `contentRef` (`keccak256(content)`) is supplied too — never the
@@ -136,7 +136,7 @@ export const EV_ATTESTATION = parseAbiItem(
 //
 // Off-protocol executor: fund a FigaroCore bond from a swapped input token,
 // with the swap route bound into the party's Permit2 witness signature. The
-// coordinator funds the party in-place (the kernel pulls the bond from
+// coordinator funds the party in-place (FigaroCore pulls the bond from
 // `c.buyer`/`c.seller`, never `msg.sender`), so the commitment stays
 // bilaterally signed and the coordinator is never a counterparty.
 
@@ -339,7 +339,7 @@ export const FLORIN_TOKEN_ABI = parseAbi([
 // fully determined by `compositionHash`, so the contract derives it. Accrual
 // buckets into fixed periods; a period's counts are final once `periodClosed`.
 //
-// BATCH-RESOLVED trade never touches the kernel, so it can never travel that
+// BATCH-RESOLVED trade never touches FigaroCore, so it can never travel that
 // path. It arrives instead through `applyBatchAccrual`, which only
 // FigaroBatchVerifier may call and only with numbers an SP1 proof committed.
 // Its accrual is kept in a SEPARATE slot (`batchAccrualOf`) and merged by

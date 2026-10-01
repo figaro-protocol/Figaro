@@ -125,7 +125,7 @@ export interface BatchUsageRecord {
 /** A clause or assembly's accrual across BOTH resolution paths.
  *
  *  The two are kept apart on purpose. A batch-resolved process never acquires
- *  kernel status and a kernel-resolved one is never in a batch, so no PROCESS
+ *  FigaroCore status and a FigaroCore-resolved one is never in a batch, so no PROCESS
  *  is ever counted twice — but the same SELLER may trade on both sides, and
  *  neither the chain nor this mirror holds the seller SETS needed to union
  *  them. Adding `d` to `d` would therefore pay for breadth nobody had.

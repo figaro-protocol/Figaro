@@ -64,7 +64,7 @@ export interface Order {
 
 /**
  * A process aggregated from its orders. `rootBuyer` is the process-level
- * resolver — the one party who can call `resolveProcess` (kernel star shape).
+ * resolver — the one party who can call `resolveProcess` (FigaroCore star shape).
  * This field is deliberately NOT named `buyer`: `Commitment.buyer` / `Order.buyer`
  * is the per-order party, and on a root order the two coincide. Filtering
  * processes on `p.buyer` silently matches nothing — use `p.rootBuyer`.
@@ -287,7 +287,7 @@ export interface FigaroAddresses {
  *  yields undefined contract addresses. Map it through
  *  `addressesFromDeploymentRecord` instead. This type is the full published
  *  record (mirrors `.deployments/*.json` and the `/spec` route-key table:
- *  the kernel, registries, and coordinators/routers/RPGF surface); core reads
+ *  FigaroCore, registries, and coordinators/routers/RPGF surface); core reads
  *  require only the six — `figaroCore`, `tokenAddress`, `attestationCoordinator`,
  *  `clauseRegistry`, `membersRegistry`, `assemblyRegistry`. The rest are optional
  *  and pass through only when present. */
@@ -310,7 +310,7 @@ export interface FigaroDeploymentRecord {
 
 /** Map a published deployment record to the SDK's `FigaroAddresses` — the
  *  ONE place the two vocabularies meet. Throws when `figaroCore` is absent:
- *  nothing works without the kernel address, and a silent undefined here
+ *  nothing works without the FigaroCore address, and a silent undefined here
  *  surfaces later as an opaque transport error. */
 export function addressesFromDeploymentRecord(record: FigaroDeploymentRecord): FigaroAddresses {
     if (!record.figaroCore) {

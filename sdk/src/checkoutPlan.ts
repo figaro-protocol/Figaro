@@ -120,7 +120,7 @@ export function derivePricedFields(
  * pin when composed, else the buyer's pick from the seller's accepted tokens,
  * else the seller's default) — is written exactly as `payment` is: it is a
  * TERM of the agreement, a merkle leaf under `agreementHash`, which the
- * kernel commitment's currency field then mirrors. Written only where the
+ * commitment's currency field then mirrors. Written only where the
  * commerce clause declares `currency` as content, so a third-party commerce
  * clause that declares no such field keeps its closed shape.
  */

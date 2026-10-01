@@ -52,7 +52,7 @@ export interface ResolveProcessAction extends BaseAction {
     caller: Address;
     /**
      * Commitment structs for all active orders.
-     * Must be supplied for resolveProcess (kernel re-derives hashes).
+     * Must be supplied for resolveProcess (FigaroCore re-derives hashes).
      */
     commitments: Commitment[];
     /** Per-order resolution breakdown. */
@@ -217,7 +217,7 @@ export function proposeInitiations(
         description:
             `Initiate a new process from assembly ${a.compositionHash}. ` +
             `You would be the root buyer; sellers co-sign from the assembly's roles.`,
-        // No process exists yet — the kernel derives the id at root commit.
+        // No process exists yet — FigaroCore derives the id at root commit.
         processId: ZERO_PROCESS_ID,
         buyer: myAddress,
         compositionHash: a.compositionHash,

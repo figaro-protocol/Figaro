@@ -20,11 +20,11 @@ export type TruthBoundary =
  *  for every consumer that explains a projection's guarantee. */
 export const TRUTH_BOUNDARY_GLOSS: Record<TruthBoundary, string> = {
     "protocol-enforced":
-        "every row is economically backed by the kernel — bonds locked at commit, payouts at resolve — tamper-proof by design (the Process and Resolution graphs).",
+        "every row is economically backed by FigaroCore — bonds locked at commit, payouts at resolve — tamper-proof by design (the Process and Resolution graphs).",
     "institution-declared":
         "the runtime encodes it, the protocol never validates it; bonding pressure incentivizes accuracy (declared agreement-body data — e.g. a geohash field's substance).",
     "protocol-derived":
         "the anchoring is on-chain (merkle-bound sections, timestamped attestations) while the content behind the fingerprint lives off-chain — referential integrity, not substantive accuracy (attestation overlays, provenance links).",
     "composition-derived":
-        "read from a composed venue's own events — a swap pool, a multisender, a forum — true per that contract's rules, outside the kernel's guarantees (the fifth-noun trail).",
+        "read from a composed venue's own events — a swap pool, a multisender, a forum — true per that contract's rules, outside FigaroCore's guarantees (the fifth-noun trail).",
 };

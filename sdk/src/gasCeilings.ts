@@ -11,7 +11,7 @@
  *     The cap on orders per process such that `resolveProcess` resolves
  *     atomically under a single block's gas budget. A process grown past
  *     this cap can NEVER resolve — every bond in it is locked forever —
- *     so every client-side commit path must check it (the kernel cannot:
+ *     so every client-side commit path must check it (FigaroCore cannot:
  *     the composed agreements live off-chain). Driven by the chain's actual
  *     `block.gasLimit` rather than a hardcoded literal so the same code
  *     works on Ethereum mainnet (30M), Base, Optimism, Arbitrum, etc.
@@ -152,7 +152,7 @@ export async function maxCommitsLandableInOneBlock(
 
 /** A live process's position against the chain's resolve ceiling. */
 export interface ProcessResolveCapacity {
-    /** Orders currently active in the process (kernel `activeOrderCount`). */
+    /** Orders currently active in the process (FigaroCore `activeOrderCount`). */
     activeOrderCount: number;
     /** The chain's per-process resolve ceiling right now. */
     cap: number;
@@ -192,12 +192,12 @@ export async function readProcessResolveCapacity(
  * Refuse a sub-order commit that would push a live process past the
  * chain's resolve ceiling — past it, `resolveProcess` can no longer fit
  * in one block and every bond in the process is locked forever. The
- * kernel cannot enforce this (the ceiling is a block-gas property, and
+ * FigaroCore cannot enforce this (the ceiling is a block-gas property, and
  * the composed agreements live off-chain), so every client-side commit path calls this.
  *
  * Root commitments (`processId` = zero) pass trivially — they create a
  * fresh process with one order. Whether the process EXISTS is the
- * kernel's check, not this one's (`UnknownProcess` reverts on-chain).
+ * FigaroCore's check, not this one's (`UnknownProcess` reverts on-chain).
  */
 export async function assertOrderFitsResolveCap(
     client: ResolveCapReader,

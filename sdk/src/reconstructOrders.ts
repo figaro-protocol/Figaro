@@ -1,7 +1,7 @@
 /**
  * reconstructOrders.ts — ONE walk from an assembly template to its orders.
  *
- * Every consumer that turns a template into kernel orders — an agent
+ * Every consumer that turns a template into FigaroCore orders — an agent
  * originating a chain (`@figaro-protocol/sdk/agent` `buildChainOffers`), a checkout
  * realizing a bound assembly, a designer displaying a draft — performs the
  * same walk: order the template agreements so parents precede children,
@@ -18,7 +18,7 @@
  *     cumulative value. The SDK never fabricates signatures — the caller
  *     signs each node's `typedData` (and may do so per-node via `onOrder`).
  *
- * A DAG of orders under one root: the kernel sees a LINEAR sequence of
+ * A DAG of orders under one root: FigaroCore sees a LINEAR sequence of
  * commits updating a monotonic cumulative-value accumulator; DAG topology is
  * off-chain (each order's parents recorded in its topology section, matched
  * by FIELD NAME, never clause id).
@@ -200,7 +200,7 @@ export interface ReconstructedOrder {
     /** This order's REAL EIP-712 order hash — fed to its children's topology. */
     orderHash: Hex;
     /** The process id every order names: ZERO on the root's signed struct
-     *  (the kernel derives it), the root's derived id on every sub-order. */
+     *  (FigaroCore derives it), the root's derived id on every sub-order. */
     processId: Hex;
 }
 
@@ -208,7 +208,7 @@ export interface ReconstructedOrder {
  * Realize the whole chain, in commit order: the root signs `processId = 0`;
  * sub-orders name the root's derived processId, carry their parents' REAL
  * order hashes, and commit against the running cumulative value. Commits must
- * be SUBMITTED in the returned order (root first) so the kernel sees a
+ * be SUBMITTED in the returned order (root first) so FigaroCore sees a
  * consistent running total.
  */
 export async function reconstructOrdersFromTemplate(

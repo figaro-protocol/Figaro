@@ -22,7 +22,7 @@ as TERMS equal the ones they are about to sign as EXECUTION data
 composed, pin == leaf); and the <code>agreementHash</code> about to be signed equals
 the merkle root recomputed from the sections. Catches a malformed agreement
 before a chain round-trip.</p>
-<p><code>struct</code> is the kernel commitment's mirrored pair — the struct side of the
+<p><code>struct</code> is the commitment's mirrored pair — the struct side of the
 leaf==struct assertion (a full <code>Commitment</code> satisfies it). Evidence and
 execution are different layers, so the copy across them is the binding, and
 asserting it is this gate's job (docs/CLAUSES.md § &quot;Every clause is a
@@ -48,14 +48,14 @@ bare currency string fails at compile, not silently.</p>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="currency"><span>currency</span><a href="#currency" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">currency</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">`</span><span class="tsd-signature-type">0x</span><span class="tsd-signature-symbol">${</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">`</span></div>
-<div class="tsd-comment tsd-typography"><p>The kernel commitment's <code>currency</code> field.</p>
+<div class="tsd-comment tsd-typography"><p>The commitment's <code>currency</code> field.</p>
 </div><aside class="tsd-sources">
 <ul>
 <li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/projection.ts#L438">projection.ts:438</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="payment"><span>payment</span><a href="#payment" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">payment</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">bigint</span></div>
-<div class="tsd-comment tsd-typography"><p>The kernel commitment's <code>payment</code> field.</p>
+<div class="tsd-comment tsd-typography"><p>The commitment's <code>payment</code> field.</p>
 </div><aside class="tsd-sources">
 <ul>
 <li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/projection.ts#L440">projection.ts:440</a></li></ul></aside></section></section></details></div>

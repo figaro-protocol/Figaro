@@ -54,7 +54,7 @@
 <div class="tsd-signature"><span class="tsd-kind-property">deadline</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">bigint</span></div>
 <div class="tsd-comment tsd-typography"><p>Deadline in CHAIN time — <code>computeDeadline(await readChainTimestamp(client))</code>.
 REQUIRED: there is deliberately no machine-clock default (maintainer
-rule — the kernel checks <code>block.timestamp</code>, not your clock).</p>
+rule — FigaroCore checks <code>block.timestamp</code>, not your clock).</p>
 </div><aside class="tsd-sources">
 <ul>
 <li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/commitments.ts#L332">commitments.ts:332</a></li></ul></aside></section>
@@ -75,7 +75,7 @@ For sub-orders: must match the current on-chain cumulativeValue.</p>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="processid"><span>process<wbr/>Id</span><a href="#processid" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">processId</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">`</span><span class="tsd-signature-type">0x</span><span class="tsd-signature-symbol">${</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">`</span></div>
-<div class="tsd-comment tsd-typography"><p>Process ID. Use 0x0 for root orders (kernel derives processId from hash).</p>
+<div class="tsd-comment tsd-typography"><p>Process ID. Use 0x0 for root orders (FigaroCore derives processId from hash).</p>
 </div><aside class="tsd-sources">
 <ul>
 <li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/commitments.ts#L315">commitments.ts:315</a></li></ul></aside></section>

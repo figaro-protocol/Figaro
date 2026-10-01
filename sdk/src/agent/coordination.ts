@@ -30,7 +30,7 @@ import { SWAP_FUNDING_BIGINT_FIELDS, type SwapFundingLeg } from "../swapFunding.
  *  in as each party signs. `buyerFunding` is the buyer's OPTIONAL swap-funded
  *  bond leg (witness-signed at checkout): when present, whoever broadcasts
  *  routes through `WitnessSwapAndCommitCoordinator.swapAndCommit` instead of
- *  the kernel's `commit` — relayer-agnostic by construction, because the swap
+ *  FigaroCore's `commit` — relayer-agnostic by construction, because the swap
  *  route is bound into the buyer's Permit2 witness signature.
  *
  *  PRIVACY POSTURE: the envelope carries the FULL plaintext `agreement` — the

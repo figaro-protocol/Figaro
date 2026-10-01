@@ -9,13 +9,13 @@
  * buyer signs EXACTLY ONE winner. The buyer's single signature is
  * simultaneously the selection event and the seller-address answer; losing
  * countersignatures expire inert at the struct `deadline`, and an unfunded
- * winner reverts at `commit` (the kernel pulls the seller bond), so the
+ * winner reverts at `commit` (FigaroCore pulls the seller bond), so the
  * remaining countersignatures form a free fallback ladder.
  *
  * This is the SELLER-SIGNS-FIRST leg — deliberately the inverse of the
  * origination handshake (`buildBuyerOffer` → `counterSignOffer`), whose
  * validators require a buyer signature to exist. A draft carries NO signatures:
- * nothing about it binds anyone, and it cannot be broadcast (the kernel needs
+ * nothing about it binds anyone, and it cannot be broadcast (FigaroCore needs
  * both signatures), so a candidate's countersignature exposes them to exactly
  * the deal they quoted, bounded by `deadline`.
  *

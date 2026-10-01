@@ -67,7 +67,7 @@ export function buildDomain(chainId: number, coreAddress: Address): EIP712Domain
  *  zero-hash padding, the unsigned root processId). */
 export const ZERO_BYTES32 = `0x${"0".repeat(64)}` as Hex;
 
-/** The kernel's zero processId — what a ROOT commitment signs before the kernel
+/** FigaroCore's zero processId — what a ROOT commitment signs before FigaroCore
  *  derives the real id. The semantically-named alias of `ZERO_BYTES32`;
  *  exported so reconstruction callers can restore it. */
 export const ZERO_PROCESS_ID: Hex = ZERO_BYTES32;
@@ -95,7 +95,7 @@ export function hashCommitmentStruct(c: Commitment): Hex {
 
 /**
  * Does `signature` over `commitment` recover to `signer`? The canonical
- * EIP-712 Commitment signature check — the kernel re-verifies on-chain, so a
+ * EIP-712 Commitment signature check — FigaroCore re-verifies on-chain, so a
  * caller uses this to REFUSE early (a relayed payload carrying a forged or
  * unsigned counterparty signature) rather than pay gas on a guaranteed revert,
  * or to gate a side effect (an IPFS pin) on a real counterparty having signed.
@@ -127,14 +127,14 @@ export async function verifyCommitmentSignature(
 
 // ── Batch-path resolve authorization ────────────────────────────────────────
 //
-// Not a kernel type. On the direct path the kernel enforces buyer dominance
+// Not a FigaroCore type. On the direct path FigaroCore enforces buyer dominance
 // with `msg.sender == rootBuyer`; there is no signature to check. The BATCH
 // path has no sender, so the buyer signs this instead, and the proof checks it
 // (`prover/lib/src/eip712.rs::resolve_struct_hash`). Its domain is the
 // VERIFIER's — pass the verifier address as `core`.
 
 /** EIP-712 types for the batch path's `ResolveProcess` authorization —
- *  the signed form of the kernel's `msg.sender == rootBuyer`. */
+ *  the signed form of FigaroCore's `msg.sender == rootBuyer`. */
 export const RESOLVE_PROCESS_TYPES = {
     ResolveProcess: [{ name: "processId", type: "bytes32" }],
 } as const;
@@ -169,7 +169,7 @@ export async function verifyResolveProcessSignature(
 }
 
 /** The order's process id: a root order (processId == 0) uses the full EIP-712
- *  digest the kernel derives; a sub-order keeps its target processId. */
+ *  digest FigaroCore derives; a sub-order keeps its target processId. */
 export function computeCommitmentProcessId(
     c: Commitment,
     chainId: number,
@@ -186,7 +186,7 @@ export function computeCommitmentProcessId(
 }
 
 /** The on-chain order hash: keccak256(abi.encodePacked(processId, hashStruct(c))).
- *  Mirrors the kernel's order-id derivation — the single canonical implementation. */
+ *  Mirrors FigaroCore's order-id derivation — the single canonical implementation. */
 export function computeOrderHash(c: Commitment, chainId: number, coreAddress: Address): Hex {
     return keccak256(
         encodePacked(
@@ -205,7 +205,7 @@ export function computeOrderHash(c: Commitment, chainId: number, coreAddress: Ad
  *
  * NOTE: a ROOT order's `processId` here is the DERIVED id (what the event
  * carries), not the `0` the party signed. Pass the result through
- * `restoreSignedProcessId` before hashing/submitting, or the kernel's recomputed
+ * `restoreSignedProcessId` before hashing/submitting, or FigaroCore's recomputed
  * orderHash will miss. This function stays chain-free so it can be pure.
  */
 export function orderToCommitment(order: Order): Commitment {
@@ -224,7 +224,7 @@ export function orderToCommitment(order: Order): Commitment {
 
 /**
  * Recover the SIGNED commitment from an event-derived one. A ROOT order was
- * signed with `processId = 0`; the kernel derives the real id as the root's
+ * signed with `processId = 0`; FigaroCore derives the real id as the root's
  * EIP-712 digest and emits THAT. Every path that recomputes an order's hash
  * (`resolveProcess`, the attestation coordinator) needs the signed struct, so
  * the root must carry `processId = 0`. If treating the commitment as a root
@@ -264,7 +264,7 @@ const DEFAULT_TTL_SECONDS = 3600;
 /**
  * The CHAIN's clock — `block.timestamp` of the latest block. Protocol time
  * variables MUST come from here, never from the machine clock (maintainer
- * rule): the kernel's DeadlineExpired guard compares against
+ * rule): FigaroCore's DeadlineExpired guard compares against
  * `block.timestamp`, so a wall-clock deadline silently expires — or silently
  * over-lives — whenever the device clock and the chain disagree (a skewed
  * device on mainnet; a time-traveled devnet).
@@ -311,7 +311,7 @@ export async function fetchCumulativeValue(
 // ── Typed data builder ──────────────────────────────────────────────────────
 
 export interface CommitmentParams {
-    /** Process ID. Use 0x0 for root orders (kernel derives processId from hash). */
+    /** Process ID. Use 0x0 for root orders (FigaroCore derives processId from hash). */
     processId: Hex;
     buyer: Address;
     seller: Address;
@@ -328,7 +328,7 @@ export interface CommitmentParams {
     salt?: bigint;
     /** Deadline in CHAIN time — `computeDeadline(await readChainTimestamp(client))`.
      *  REQUIRED: there is deliberately no machine-clock default (maintainer
-     *  rule — the kernel checks `block.timestamp`, not your clock). */
+     *  rule — FigaroCore checks `block.timestamp`, not your clock). */
     deadline: bigint;
 }
 

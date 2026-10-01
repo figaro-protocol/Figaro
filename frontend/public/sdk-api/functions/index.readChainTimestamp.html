@@ -18,7 +18,7 @@
 <div class="tsd-description">
 <div class="tsd-comment tsd-typography"><p>The CHAIN's clock — <code>block.timestamp</code> of the latest block. Protocol time
 variables MUST come from here, never from the machine clock (maintainer
-rule): the kernel's DeadlineExpired guard compares against
+rule): FigaroCore's DeadlineExpired guard compares against
 <code>block.timestamp</code>, so a wall-clock deadline silently expires — or silently
 over-lives — whenever the device clock and the chain disagree (a skewed
 device on mainnet; a time-traveled devnet).</p>

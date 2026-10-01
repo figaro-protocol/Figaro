@@ -18,7 +18,7 @@
 <div class="tsd-description">
 <div class="tsd-comment tsd-typography"><p>Guard against the classic sub-order approval bug: approving only the
 INCREMENT since the previous order's cumulative value instead of the
-full per-order bond the kernel pulls. <code>_pullExact</code> pulls 2× the order's
+full per-order bond FigaroCore pulls. <code>_pullExact</code> pulls 2× the order's
 OWN <code>cumulativeValue</code>/<code>payment</code> on every commit — root or sub — never an
 offset against bonds a prior order already left held (see
 <code>calculateSubOrderApproval</code>).</p>

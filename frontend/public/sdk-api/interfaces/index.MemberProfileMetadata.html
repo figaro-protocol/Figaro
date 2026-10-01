@@ -179,7 +179,7 @@ Absent when the member authors none.</p>
 <h3 class="tsd-anchor-link" id="subjectaddress"><code class="tsd-tag">Optional</code><span>subject<wbr/>Address</span><a href="#subjectaddress" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">subjectAddress</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-symbol">`</span><span class="tsd-signature-type">0x</span><span class="tsd-signature-symbol">${</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">`</span></div>
 <div class="tsd-comment tsd-typography"><p>Wallet address that owns this profile. Optional in the on-chain-pinned
-shape (the kernel binds wallet → metadataURI; the profile does not
+shape (<code>MembersRegistry</code> binds wallet → metadataURI; the profile does not
 need to repeat the wallet). Present when the profile is materialised
 by an indexer or fixture loader, where multiple profiles live in a
 single array and the address is the join key.</p>

@@ -37,11 +37,11 @@ export interface TxResult {
  * Submit a commitment to FigaroCore.commit.
  * Both signatures must be provided (obtained via signTypedData). EITHER
  * party — or any relayer holding the signed payload — may broadcast: the
- * kernel verifies the two signatures, never the sender.
+ * FigaroCore verifies the two signatures, never the sender.
  *
  * Refuses a sub-order commit that would push the live process past the
  * chain's resolve ceiling (`assertOrderFitsResolveCap`) — past it, every
- * bond in the process is locked forever. The kernel cannot enforce the
+ * bond in the process is locked forever. FigaroCore cannot enforce the
  * ceiling, so the write path does; an agent must never bond into an
  * unresolvable process.
  */
@@ -67,7 +67,7 @@ export async function commit(
 
 /**
  * Resolve a process (buyer-only). Resolves all active orders atomically.
- * Takes the original Commitment structs so the kernel can verify hashes.
+ * Takes the original Commitment structs so FigaroCore can verify hashes.
  */
 export async function resolveProcess(
     walletClient: WalletClient,
@@ -75,7 +75,7 @@ export async function resolveProcess(
     processId: Hex,
     commitments: Commitment[],
 ): Promise<TxResult> {
-    // Kernel invariant: every commitment.buyer === rootBuyer (FigaroCore.sol:188),
+    // FigaroCore invariant: every commitment.buyer === rootBuyer (FigaroCore.sol:188),
     // and only rootBuyer can resolve (FigaroCore.sol:260). Fail fast with a
     // clearer error than the contract's NotProcessBuyer revert.
     if (commitments.length > 0) {
@@ -102,7 +102,7 @@ export async function resolveProcess(
 // ── Usage recording at resolution ───────────────────────────────────────────
 
 /** One resolved order's inputs for usage recording: the ORIGINAL commitment
- *  struct (the counter re-verifies it against the kernel) and its hydrated
+ *  struct (the counter re-verifies it against FigaroCore) and its hydrated
  *  agreement (the leaves whose usage is being claimed). */
 export interface UsageRecordingEntry {
     commitment: Commitment;
@@ -148,8 +148,8 @@ export async function recordProcessUsage(
 ): Promise<UsageRecordingReport> {
     const account = walletClient.account;
     if (!account) throw new Error("recordProcessUsage: wallet has no account");
-    // The counter names its own kernel; the signed-processId restoration needs
-    // the kernel's EIP-712 domain, so both derive from the composition itself.
+    // The counter names its own FigaroCore; the signed-processId restoration needs
+    // FigaroCore's EIP-712 domain, so both derive from the composition itself.
     const [chainId, core] = await Promise.all([
         publicClient.getChainId(),
         publicClient.readContract({ address: usageCounter, abi: USAGE_COUNTER_ABI, functionName: "core" }) as Promise<Address>,

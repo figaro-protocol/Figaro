@@ -19,10 +19,10 @@
 <div class="tsd-comment tsd-typography"><p>Submit a commitment to FigaroCore.commit.
 Both signatures must be provided (obtained via signTypedData). EITHER
 party — or any relayer holding the signed payload — may broadcast: the
-kernel verifies the two signatures, never the sender.</p>
+FigaroCore verifies the two signatures, never the sender.</p>
 <p>Refuses a sub-order commit that would push the live process past the
 chain's resolve ceiling (<code>assertOrderFitsResolveCap</code>) — past it, every
-bond in the process is locked forever. The kernel cannot enforce the
+bond in the process is locked forever. FigaroCore cannot enforce the
 ceiling, so the write path does; an agent must never bond into an
 unresolvable process.</p>
 </div>

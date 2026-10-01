@@ -18,10 +18,10 @@
 <div class="tsd-description">
 <div class="tsd-comment tsd-typography"><p>How much ERC-20 token approval each party needs before committing a
 ROOT order.</p>
-<p>The kernel pulls the FULL bonds on every commit (FigaroCore <code>_pullExact</code>):
+<p>FigaroCore pulls the FULL bonds on every commit (FigaroCore <code>_pullExact</code>):
 Buyer:  2 × payment
 Seller: 2 × cumulativeValue  (== 2 × payment on a root order)</p>
-<p>There is no incremental approval anywhere in the kernel — sub-orders
+<p>There is no incremental approval anywhere in FigaroCore — sub-orders
 pull full per-order bonds too; use <code>calculateSubOrderApproval</code>.</p>
 </div>
 <div class="tsd-parameters">

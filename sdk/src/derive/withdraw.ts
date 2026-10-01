@@ -8,7 +8,7 @@
  * count. It is ADVISORY today (surfaced as a disabled affordance); an on-chain
  * inclusion-proof withdraw lock would harden it if one is ever built — a
  * deliberate open item, not machinery that exists. Nothing here touches the
- * kernel.
+ * FigaroCore.
  *
  * The join, derived at read time from chain + IPFS, NEVER stored:
  *   1. an order is IN-FLIGHT when committed (`OrderCommitted`) but its process
@@ -67,7 +67,7 @@ export interface InFlightOrderRef {
 /**
  * Every in-flight order (committed, its process not yet resolved) from a batch
  * of reconstructed core events. Reuses `Topology`, the one reconstruction path —
- * a process leaves the active set on `ProcessResolved`, and the kernel's atomic
+ * a process leaves the active set on `ProcessResolved`, and FigaroCore's atomic
  * resolution resolves all of a process's orders together, so an active process's
  * orders are exactly the live commitments.
  */

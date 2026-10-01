@@ -16,7 +16,7 @@
  * touch), edges are per-denomination resolutions and per-venue swap legs.
  * Each edge names its own truth boundary: a resolution edge is
  * protocol-enforced, a venue edge is composition-derived — true per the
- * composed contract's rules, outside the kernel's guarantees. The same
+ * composed contract's rules, outside FigaroCore's guarantees. The same
  * `VenueEvent` parameterization serves the multisender (fiscal-routing) and
  * forum-venue (rulings) overlays with their own payload types.
  *
@@ -67,7 +67,7 @@ export interface ValueFlowNode {
 }
 
 /** A value-flow edge, discriminated by its truth boundary: resolution edges
- *  aggregate the kernel's own per-denomination flow; venue edges aggregate a
+ *  aggregate FigaroCore's own per-denomination flow; venue edges aggregate a
  *  composed swap venue's legs between two denominations. */
 export type ValueFlowEdge =
     | {

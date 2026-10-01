@@ -49,7 +49,7 @@ export class FigaroContext {
     /** The processes this agent is in — reconstructed from FigaroCore events. */
     readonly topology: Topology;
     /** What EXISTS on the network — the live clause/seller/assembly catalogue.
-     *  A parallel family (registries have no on-chain edges to the kernel), so
+     *  A parallel family (registries have no on-chain edges to FigaroCore), so
      *  a distinct reducer, never folded into `topology`. */
     readonly discovery: DiscoveryGraph;
     readonly client: PublicClient;
