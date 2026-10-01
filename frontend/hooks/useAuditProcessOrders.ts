@@ -74,7 +74,7 @@ export function useAuditProcessOrders(processId: string | null): AuditProcessOrd
             .filter((o): o is Order => o !== null);
         if (verified.length === 0) return direct;
         // A given order resolves on exactly ONE path, but de-duplicate anyway so
-        // a relay cannot inject a second row for an order the kernel published.
+        // a relay cannot inject a second row for an order FigaroCore published.
         const seen = new Set(direct.map((o) => o.orderHash.toLowerCase()));
         return [...direct, ...verified.filter((o) => !seen.has(o.orderHash.toLowerCase()))];
     }, [direct, batch]);

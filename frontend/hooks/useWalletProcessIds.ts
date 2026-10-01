@@ -4,7 +4,7 @@
  * useWalletProcessIds — returns a list of processes the connected wallet
  * has participated in (as buyer or seller).
  *
- * Live kernel: orders are Active at commit time (no Pending state).
+ * Live FigaroCore: orders are Active at commit time (no Pending state).
  * Only two events: OrderCommitted and OrderResolved. The fold is the SDK's
  * (`projectProcessGraph` + `walletRecord` — the same one `/data/explore`
  * answers wallet history with); this hook keeps only its own view mapping,

@@ -3,8 +3,8 @@
  *
  * The `OrderCommitted` event (and the order store derived from it) carries the
  * DERIVED processId. But a ROOT order was SIGNED with `processId = 0` — the
- * kernel derives the process id as the root commitment's EIP-712 digest and
- * emits THAT. Every kernel path that recomputes an order's hash from
+ * FigaroCore derives the process id as the root commitment's EIP-712 digest and
+ * emits THAT. Every FigaroCore path that recomputes an order's hash from
  * `hashStruct(commitment)` — the attestation coordinator, `resolveProcess` —
  * needs the SIGNED struct, so the root must carry `processId = 0` or the
  * recomputed `orderHash` misses (UnknownOrder / OrderNotCommitted). A sub-order's

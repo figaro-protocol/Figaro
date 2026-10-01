@@ -14,7 +14,7 @@
  * parsers, and projects the folded process into the UI `Order` shape.
  * Agreement bodies are NOT hydrated here; useProcessAgreements owns that.
  *
- * The kernel uses a unified `commit()` (no separate offer/accept), and
+ * FigaroCore uses a unified `commit()` (no separate offer/accept), and
  * OrderCommitted events carry salt + deadline rather than bond + timestamp;
  * bonds are derived from payment and cumulativeValue at read time.
  */
