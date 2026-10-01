@@ -1,7 +1,7 @@
 //! The guest's leg of the EIP-712 lock.
 //!
 //! `sdk/tests/eip712Parity.test.ts` freezes SDK-computed hashes into
-//! `test/fixtures/eip712-vectors.json`; `Eip712ParityTest` asserts the kernel
+//! `test/fixtures/eip712-vectors.json`; `Eip712ParityTest` asserts FigaroCore
 //! reproduces the commitment vectors. This file asserts the guest reproduces
 //! them too, and the three authorizations that exist on the batch path only
 //! — `ResolveProcess`, `AttestSeller`, `AttestBuyer` — where a signature

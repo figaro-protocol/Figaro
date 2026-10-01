@@ -1,8 +1,8 @@
-/// Parity tests: verify the Rust kernel produces identical outputs
-/// to the Solidity kernel for the same inputs.
+/// Parity tests: verify the Rust mirror produces identical outputs
+/// to FigaroCore for the same inputs.
 ///
 /// The expected values are extracted from Foundry's EIP-712 parity test
-/// (test/kernel/Eip712ParityTest.t.sol) run with --via-ir -vvvv. The kernel
+/// (test/kernel/Eip712ParityTest.t.sol) run with --via-ir -vvvv. FigaroCore
 /// is frozen, so these vectors never move.
 use alloy_primitives::{address, b256, Address, B256, U256, keccak256};
 use k256::ecdsa::SigningKey;
@@ -115,7 +115,7 @@ fn verify_address(key: &SigningKey, expected: &Address) {
     assert_eq!(&addr, expected, "derived address mismatch");
 }
 
-// ── Kernel parity (frozen vectors) ────────────────────────────────
+// ── FigaroCore parity (frozen vectors) ────────────────────────────────
 
 #[test]
 fn test_address_derivation() {
@@ -210,7 +210,7 @@ fn test_clause_id_hash_matches_registry() {
     assert_eq!(clause_id_hash("figaro-modalities", 1), expected);
 }
 
-// ── Full-batch kernel flows ───────────────────────────────────────
+// ── Full-batch mirror flows ───────────────────────────────────────
 
 #[test]
 fn test_full_batch_commit_and_state() {

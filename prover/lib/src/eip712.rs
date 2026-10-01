@@ -59,7 +59,7 @@ pub fn commitment_struct_hash(c: &Commitment) -> B256 {
 
 // ── Resolve authorization ─────────────────────────────────────────
 //
-// Not in the Solidity kernel. This is the batched equivalent of
+// Not in FigaroCore. This is the batched equivalent of
 // msg.sender == rootBuyer. The buyer signs an EIP-712 typed message
 // authorizing process resolution. Natural replay protection: once
 // resolveProcess sets activeOrderCount = 0, the process cannot be
@@ -126,7 +126,7 @@ pub fn attest_buyer_struct_hash(
 
 // Registry mutations (RegisterClause / SetMechanismClause / RegisterSeller /
 // UpdateProfile) are once-per-clause-or-assembly ETH-staked intents that stay
-// on the direct path — the batch covers the kernel + attestation surface
+// on the direct path — the batch covers FigaroCore + attestation surface
 // only, so this module defines no EIP-712 types for them.
 
 // ── Typed data hash ───────────────────────────────────────────────
@@ -160,7 +160,7 @@ pub fn recover_signer(digest: &B256, sig: &Signature) -> Result<Address, KernelE
 
     // v is 27 or 28 and nothing else: `ECDSA.recover` hands v to `ecrecover`
     // as written, and `ecrecover` answers the zero address for a recovery id
-    // written 0/1, which the kernel rejects. The mirror rejects it too.
+    // written 0/1, which FigaroCore rejects. The mirror rejects it too.
     if sig.v != 27 && sig.v != 28 {
         return Err(KernelError::InvalidSignature);
     }

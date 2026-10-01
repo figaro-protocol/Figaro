@@ -288,7 +288,7 @@ fn apply_resolve(
 /// own 2× bond back, plus what the buyer pays). Buyer payout = `payment`
 /// (the remainder of the buyer's 2× bond).
 ///
-/// Public so a relay can PUBLISH the same per-order facts the kernel emits
+/// Public so a relay can PUBLISH the same per-order facts FigaroCore emits
 /// without re-deriving the arithmetic: `apply_resolve` is the only other
 /// caller, so the published figure and the resolved figure cannot drift.
 pub fn resolution_payouts(c: &Commitment) -> Result<(U256, U256), KernelError> {
@@ -304,7 +304,7 @@ pub fn resolution_payouts(c: &Commitment) -> Result<(U256, U256), KernelError> {
 // ── Attestation helpers ───────────────────────────────────────────
 
 /// Derive a commitment's (orderHash, processId) pair from its struct
-/// alone — the same derivation the coordinator and kernel apply. Public
+/// alone — the same derivation the coordinator and FigaroCore apply. Public
 /// so the sequencer's stateless mempool pre-checks share it (one
 /// derivation, no drift).
 pub fn derive_commitment_ids(domain: &B256, c: &Commitment) -> (B256, B256) {
@@ -767,7 +767,7 @@ fn apply_usage_claims(
 
 // ── Batch execution ───────────────────────────────────────────────
 
-/// Execute a full batch of kernel operations and return the
+/// Execute a full batch of FigaroCore operations and return the
 /// public values for on-chain verification plus net token positions
 /// and side-effect events.
 pub fn apply_batch(
@@ -777,7 +777,7 @@ pub fn apply_batch(
     Ok((pv, positions, events))
 }
 
-/// Like `apply_batch`, but also returns the post-batch kernel state.
+/// Like `apply_batch`, but also returns the post-batch mirror state.
 /// Used by the sequencer to advance its local state mirror.
 pub fn apply_batch_with_state(
     input: &BatchInput,

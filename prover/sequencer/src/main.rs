@@ -463,7 +463,7 @@ async fn batch_loop(
             Ok(r) => r,
             Err(e) => {
                 // The batch passed the op-by-op filter but still failed
-                // to prove as a whole — a filter/kernel divergence, not a
+                // to prove as a whole — a filter/mirror divergence, not a
                 // normal poison op. Re-queuing would loop forever, so
                 // dead-letter the batch instead.
                 error!(%e, ops = op_count, "Batch failed to prove after filtering — dead-lettered");

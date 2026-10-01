@@ -3,7 +3,7 @@
 //! from `clauses/` at the repo root — the ClauseRegistry seed source) +
 //! a content payload, and asserts the bytes match the byte-for-byte
 //! canonical output of Layer A (`sdk/src/clauses/encode.ts`, viem's
-//! `encodeAbiParameters`). The kernel's cross-form-binding gate depends
+//! `encodeAbiParameters`). The mirror's cross-form-binding gate depends
 //! on this equivalence.
 //!
 //! The canonical encoding rule:

@@ -243,7 +243,7 @@ fn rejects_a_clause_or_assembly_that_is_not_in_the_agreement() {
 
 /// THE REPLAY TEST, and the reason the counted set is in the proven state.
 /// The order stays RESOLVED in the next batch's snapshot, so nothing about
-/// the kernel state stops the claim being re-presented. What stops it is that
+/// the mirror state stops the claim being re-presented. What stops it is that
 /// "already counted" is itself part of the state the root commits to.
 #[test]
 fn a_claim_cannot_be_replayed_in_a_later_batch() {

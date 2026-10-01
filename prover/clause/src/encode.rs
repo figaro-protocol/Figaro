@@ -3,8 +3,8 @@
 //! content object, derives the canonical ABI bytes deterministically.
 //! Output is byte-for-byte identical to viem's `encodeAbiParameters`.
 //!
-//! This is the cross-form binding the kernel uses inside the SP1 proof:
-//! given a JSON content object, the kernel derives `content_bytes`
+//! This is the cross-form binding the mirror uses inside the SP1 proof:
+//! given a JSON content object, the mirror derives `content_bytes`
 //! deterministically and asserts `keccak256(content_bytes) == content_ref`.
 //! That makes "some bytes hash to content_ref" and "some JSON validates"
 //! impossible to forge apart — the bytes are derived from the JSON, so

@@ -91,8 +91,8 @@ pub fn commit_funded(balance: U256, allowance: U256, need: U256) -> bool {
 }
 
 /// The two bonds a commit pulls: the buyer's 2 × payment, the seller's
-/// 2 × cumulative value at its link — the kernel's arithmetic, saturating
-/// only where the kernel would overflow (and refuse) anyway.
+/// 2 × cumulative value at its link — FigaroCore's arithmetic, saturating
+/// only where FigaroCore would overflow (and refuse) anyway.
 pub fn bonds_of(c: &Commitment) -> (U256, U256) {
     let two = U256::from(2u64);
     (
@@ -135,7 +135,7 @@ pub async fn check_commit_funding(
     Ok(Ok(()))
 }
 
-/// Batch-formation funding filter over the ops that passed the kernel's
+/// Batch-formation funding filter over the ops that passed the mirror's
 /// trial-apply. Commits whose bonds do not fund at the latest block are
 /// dropped with the reason (re-submittable once funded); a read failure
 /// drops the commit conservatively, never proves against unverified
@@ -438,7 +438,7 @@ pub async fn submit_batch(
                 .map_err(|e| transient(format!("invalid rpc url: {e}")))?,
         );
 
-    // Convert kernel types to contract call types
+    // Convert mirror types to contract call types
     let positions: Vec<IFigaroBatchVerifier::NetPositionCall> = result
         .positions
         .iter()
@@ -629,7 +629,7 @@ mod tests {
         assert!(!commit_funded(U256::ZERO, U256::ZERO, need));
     }
 
-    /// The bonds are the kernel's: 2 × payment for the buyer, 2 × cumulative
+    /// The bonds are FigaroCore's: 2 × payment for the buyer, 2 × cumulative
     /// value for the seller.
     #[test]
     fn bonds_are_the_kernels_arithmetic() {

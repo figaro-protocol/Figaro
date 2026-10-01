@@ -1,6 +1,6 @@
 //! Sequencer unit + integration tests: mempool pre-checks (signatures +
-//! the kernel's witness gates), state mirror, assembler filtering, HTTP
-//! API, and the mempool→assemble→kernel→advance pipeline.
+//! the mirror's witness gates), state mirror, assembler filtering, HTTP
+//! API, and the mempool→assemble→mirror→advance pipeline.
 //!
 //! Fixtures come from `figaro-prove-test`'s canonical batch — the same
 //! witness-based ops the guest program executes — so mempool acceptance
@@ -126,7 +126,7 @@ async fn mempool_requeue_preserves_order() {
     assert_eq!(mp.len().await, 1);
 }
 
-// ── Mempool: the kernel's witness gates run at the door ───────────
+// ── Mempool: the mirror's witness gates run at the door ───────────
 
 #[tokio::test]
 async fn mempool_accepts_attest_with_valid_witness() {
@@ -395,7 +395,7 @@ fn filter_resolve_closes_the_evidence_window_for_late_attests() {
 
 // ── Assembler: the three crafted streams an auditor would try ─────
 //
-// A relay is transport; the kernel mirror inside the filter is the
+// A relay is transport; the mirror of FigaroCore inside the filter is the
 // authority. Each stream below aims at a bond or a payout and is
 // dead-lettered by the mirror's own gate, with the reason named, so the
 // batch it would have poisoned still forms from the honest ops.
@@ -816,7 +816,7 @@ async fn api_submit_invalid_sig_returns_400() {
     assert_eq!(response.status(), StatusCode::BAD_REQUEST);
 }
 
-// ── End-to-end: mempool → assemble → kernel → advance ─────────────
+// ── End-to-end: mempool → assemble → mirror → advance ─────────────
 
 #[tokio::test]
 async fn e2e_mempool_to_kernel() {
@@ -897,7 +897,7 @@ async fn mempool_queues_usage_claims_separately_from_ops() {
         .expect("a well-formed claim is accepted");
     assert_eq!(pending, 1);
 
-    // Its own queue: a claim is not a kernel operation and must not be
+    // Its own queue: a claim is not a FigaroCore operation and must not be
     // counted as one.
     assert_eq!(mp.len().await, 0, "claims do not enter the op queue");
     assert_eq!(mp.usage_len().await, 1);
@@ -921,7 +921,7 @@ async fn mempool_rejects_a_claim_with_no_clause_or_assembly() {
 
 /// A batch carrying ONLY usage claims is a real state transition — the usage
 /// state rides the state root, so crediting an already-resolved process moves
-/// the root without any kernel operation. The sequencer must be able to form
+/// the root without any FigaroCore operation. The sequencer must be able to form
 /// such a batch, or a claim submitted after the last trade of a period would
 /// sit in the mempool forever waiting for an op that never comes.
 #[tokio::test]
@@ -1166,7 +1166,7 @@ async fn api_health_returns_liveness_and_counts() {
 
 /// A commitment POSTed to the public endpoint flows into a formed batch:
 /// HTTP admission → mempool → stateful filter → assembled batch → the
-/// kernel applies it and the committed order exists in the post-state.
+/// the mirror applies it and the committed order exists in the post-state.
 #[tokio::test]
 async fn e2e_http_submission_flows_into_formed_batch() {
     let state = test_app_state();
@@ -1213,9 +1213,9 @@ async fn e2e_http_submission_flows_into_formed_batch() {
 
 // ── Publication archive: retention ────────────────────────────────
 //
-// The kernel PUBLISHES what it resolves; the batch verifier does not (its
+// FigaroCore PUBLISHES what it resolves; the batch verifier does not (its
 // public values carry no order hashes, its storage is a root and a count).
-// These tests hold the relay to the kernel's publication role: what a
+// These tests hold the relay to FigaroCore's publication role: what a
 // batch resolved must still be readable after the mempool that carried it
 // has been cleared, must be bounded, and must survive a restart.
 
@@ -1422,7 +1422,7 @@ async fn archive_journal_rotates_and_stays_bounded_on_disk() {
     std::fs::remove_file(path.with_extension("jsonl.tmp")).ok();
 }
 
-// ── Publication reads: the kernel's events over HTTP ──────────────
+// ── Publication reads: FigaroCore's events over HTTP ──────────────
 
 fn published_app_state(archive: Archive) -> AppState {
     AppState {
@@ -1486,7 +1486,7 @@ async fn api_order_route_publishes_the_signed_struct_and_both_signatures() {
         json["commit"]["commitment"],
         serde_json::to_value(commitment).unwrap()
     );
-    // And the signatures, which the kernel leaves in commit calldata.
+    // And the signatures, which FigaroCore leaves in commit calldata.
     assert_eq!(
         json["commit"]["buyer_signature"],
         serde_json::to_value(buyer_sig).unwrap()
@@ -1538,7 +1538,7 @@ async fn published_order_is_verifiable_by_the_reader() {
     // word. The published struct must hash to the published order hash
     // under the VERIFIER's EIP-712 domain, both signatures must recover to
     // the parties named INSIDE that struct, and the payout figures must be
-    // the kernel's own function of it.
+    // FigaroCore's own function of it.
     let (order_hash, _) = canonical_ids();
     let (_, json) = get_json(
         app_with_canonical_batch().await,

@@ -1,4 +1,4 @@
-/// Publication archive — the batch universe's mirror of what the kernel
+/// Publication archive — the batch universe's mirror of what FigaroCore
 /// PUBLISHES.
 ///
 /// `FigaroCore` does two things for an order: it resolves it, and it
@@ -43,12 +43,12 @@ pub const DEFAULT_PAGE_LIMIT: usize = 10;
 /// each record is bounded by `MAX_BATCH_OPS`.
 pub const MAX_PAGE_LIMIT: usize = 50;
 
-// ── Records — one per kernel event family ─────────────────────────
+// ── Records — one per FigaroCore event family ─────────────────────────
 
 /// The batch-path form of `OrderCommitted` + `OrderSeller` +
-/// `OrderCurrency`, PLUS the two signatures the kernel leaves in calldata.
+/// `OrderCurrency`, PLUS the two signatures FigaroCore leaves in calldata.
 /// `commitment` is the struct exactly as signed (so `process_id` is zero
-/// for a root order); `process_id` is the derived one the kernel keys by.
+/// for a root order); `process_id` is the derived one FigaroCore keys by.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct OrderRecord {
     pub order_hash: B256,
@@ -378,7 +378,7 @@ impl Archive {
         }
     }
 
-    /// One order, by the order hash the kernel keys by.
+    /// One order, by the order hash FigaroCore keys by.
     pub async fn order(&self, order_hash: B256) -> Option<OrderView> {
         let inner = self.inner.lock().await;
         inner.order_view(order_hash)
@@ -444,7 +444,7 @@ impl Archive {
     }
 
     /// A bounded page of resolved batches, for an indexer replaying the
-    /// batch universe the way it replays kernel logs.
+    /// batch universe the way it replays FigaroCore logs.
     pub async fn range(&self, from: Option<u64>, limit: Option<usize>) -> BatchPage {
         let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT).clamp(1, MAX_PAGE_LIMIT);
         let inner = self.inner.lock().await;
@@ -618,13 +618,13 @@ async fn append_line(path: &PathBuf, line: &str) -> std::io::Result<()> {
 // ── Building a record from the ops a batch resolved ────────────────
 
 /// Project the ops a batch resolved into the two publication families the
-/// kernel emits: per-order commitments (with their signatures) and
+/// FigaroCore emits: per-order commitments (with their signatures) and
 /// per-process resolutions (with their per-order payout legs).
 ///
 /// Attestations are deliberately absent: `FigaroBatchVerifier` RE-EMITS
 /// every batched attestation as an on-chain `Attestation` event, so that
 /// family is already published by the chain and needs no relay mirror.
-/// This function covers exactly the families the kernel publishes that the
+/// This function covers exactly the families FigaroCore publishes that the
 /// batch path does not.
 ///
 /// No new crypto: order hashes come from `figaro_kernel`'s own
@@ -677,7 +677,7 @@ pub fn publication_from_ops(
                     .collect::<Vec<_>>();
                 resolutions.push(ProcessResolution {
                     process_id: *process_id,
-                    // The kernel verified every order's buyer against the
+                    // The mirror verified every order's buyer against the
                     // process root buyer at commit, so any leg carries it.
                     buyer: commitments.first().map(|c| c.buyer).unwrap_or_default(),
                     order_count: orders.len() as u64,

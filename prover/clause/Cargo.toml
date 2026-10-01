@@ -19,6 +19,6 @@ regex = "1"
 # Per-clause content encoders (encode.rs) produce ABI-encoded bytes from
 # the validated JSON content. Output is byte-for-byte identical to viem's
 # encodeAbiParameters in `sdk/src/clauses/encode.ts` — this is the
-# cross-form binding the kernel uses to bind content_ref to content_json.
+# cross-form binding the mirror uses to bind content_ref to content_json.
 alloy-primitives = "1"
 alloy-dyn-abi = "1"

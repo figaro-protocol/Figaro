@@ -1,15 +1,15 @@
-//! The state-transition lock: the kernel mirror replays what the frozen
-//! kernel did.
+//! The state-transition lock: the mirror of FigaroCore replays what the frozen
+//! FigaroCore did.
 //!
 //! `test/core/kernel/KernelTransitionVectorsTest.t.sol` runs six scenarios
 //! through `FigaroCore` on Foundry and writes every commitment as committed,
-//! every party's deposit and payout, the kernel's balance delta and every
+//! every party's deposit and payout, FigaroCore's balance delta and every
 //! process's final accumulator and active count to
 //! `test/fixtures/kernel-transition-vectors.json`. This file signs the same
 //! commitments with the same keys, applies them through `apply_batch` — one
 //! batch per scenario: the commits, then a resolve per process when the
 //! scenario resolves — and asserts every figure. The mirror's payout and
-//! bond arithmetic is thereby locked to the kernel's, not to a comment.
+//! bond arithmetic is thereby locked to FigaroCore's, not to a comment.
 use std::collections::BTreeMap;
 use std::str::FromStr;
 
@@ -203,7 +203,7 @@ fn the_mirror_replays_every_frozen_kernel_transition() {
             payouts += pos.payout;
         }
 
-        // ── The kernel's balance moved by exactly the net of those ──
+        // ── FigaroCore's balance moved by exactly the net of those ──
         let delta = s(&sc["kernelDelta"]);
         let expected_delta = match delta.strip_prefix('-') {
             Some(neg) => (U256::from_str_radix(neg, 10).unwrap(), true),

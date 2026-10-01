@@ -1,5 +1,5 @@
 [workspace]
-# The clause engine landed first in the rebuild; the kernel mirror,
+# The clause engine landed first in the rebuild; the mirror of FigaroCore,
 # guest program, prove-script, and sequencer crates rejoin as each is
 # realigned to the current contract ABIs.
 members = ["clause", "lib", "program", "script", "sequencer"]
@@ -12,13 +12,13 @@ resolver = "3"
 [workspace.package]
 rust-version = "1.93.0"
 
-# SP1 accelerates secp256k1 via a precompile. The kernel ELF verifies ~7
+# SP1 accelerates secp256k1 via a precompile. The guest ELF verifies ~7
 # EIP-712 ECDSA signatures per batch; unpatched, that dominates the cycle
 # count (measured ~19.8M cycles). The k256 patch routes ECDSA verification
 # through the SP1 secp256k1 precompile. Tag pinned to k256 0.13.4 + SP1
 # 6.0.x — the toolchain this workspace builds against.
 #
-# keccak is left unpatched: the kernel hashes via alloy-primitives, not the
+# keccak is left unpatched: the mirror hashes via alloy-primitives, not the
 # sha3 crate, and keccak is a small fraction of the cycle budget next to ECDSA.
 [patch.crates-io]
 k256 = { git = "https://github.com/sp1-patches/elliptic-curves", tag = "patch-k256-13.4-sp1-6.0.0" }

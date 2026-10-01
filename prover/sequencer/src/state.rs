@@ -1,6 +1,6 @@
-/// Local state mirror — tracks the kernel state by replaying batches.
+/// Local state mirror — tracks the guest state by replaying batches.
 ///
-/// The sequencer maintains a local copy of the kernel state so it can:
+/// The sequencer maintains a local copy of the guest state so it can:
 /// 1. Supply `prev_state` to the prover
 /// 2. Perform state-dependent pre-checks
 /// 3. Detect divergence from on-chain state root
@@ -11,7 +11,7 @@ use alloy_primitives::B256;
 use figaro_kernel::state::KernelState;
 use figaro_kernel::types::KernelStateSnapshot;
 
-/// Thread-safe wrapper around the local kernel state.
+/// Thread-safe wrapper around the local guest state.
 #[derive(Clone)]
 pub struct StateMirror {
     inner: Arc<RwLock<StateMirrorInner>>,

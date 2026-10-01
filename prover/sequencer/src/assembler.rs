@@ -73,7 +73,7 @@ pub fn assemble_batch(
 ///
 /// `valid` comes back in a working execution order (each op applied
 /// cleanly in sequence); `poison` carries each rejected op with the
-/// kernel error that rejected it.
+/// mirror error that rejected it.
 pub fn filter_applicable_ops(
     chain_id: u64,
     verifying_contract: Address,
@@ -114,7 +114,7 @@ pub fn filter_applicable_ops(
     }
 
     // Whatever is left failed against every reachable ordering. Re-run
-    // each once more against the final state to capture the kernel error
+    // each once more against the final state to capture the mirror error
     // for the dead-letter log.
     let poison = remaining
         .into_iter()
@@ -226,7 +226,7 @@ pub fn filter_applicable_claims(
 }
 
 /// Trial-apply a single op against `state`, returning the post-state on
-/// success or the kernel error string on failure.
+/// success or the mirror error string on failure.
 fn trial_apply(
     chain_id: u64,
     verifying_contract: Address,

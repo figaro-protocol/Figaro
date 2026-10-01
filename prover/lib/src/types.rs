@@ -102,13 +102,13 @@ pub struct AttestationContentProof {
 
 // ── Batch operations ──────────────────────────────────────────────
 
-/// A single kernel operation within a proof batch.
+/// A single FigaroCore operation within a proof batch.
 ///
 /// Registry mutations (clause/seller/assembly registration) are NOT
 /// batched: they are once-per-clause-or-assembly ETH-staked intents (K4)
 /// that don't fit ERC-20 position netting, carry no throughput concern, and
 /// batching them would fork a second first-write-wins namespace. They
-/// stay on the direct path; the batch covers the high-frequency kernel
+/// stay on the direct path; the batch covers the high-frequency FigaroCore
 /// + attestation surface.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum KernelOp {
@@ -215,7 +215,7 @@ pub struct UsageAccrual {
 
 // ── State snapshot (deterministic, sorted) ────────────────────────
 
-/// Serializable state snapshot — the kernel mappings, plus the usage
+/// Serializable state snapshot — the FigaroCore mappings, plus the usage
 /// accrual state the RPGF bridge proves against. Entries must be sorted
 /// by key for deterministic root computation.
 ///
@@ -228,8 +228,8 @@ pub struct UsageAccrual {
 /// path, at zero on-chain storage.
 ///
 /// Guest-owned idempotence is SAFE because the two resolution universes
-/// are DISJOINT: a batch-resolved process never acquires kernel status,
-/// and a kernel-resolved one is never in a batch, so no process can be
+/// are DISJOINT: a batch-resolved process never acquires FigaroCore status,
+/// and a FigaroCore-resolved one is never in a batch, so no process can be
 /// counted on both paths. Pairs MAY overlap across the two, which is
 /// exactly why the counter sums the two SCORES and never their
 /// components.

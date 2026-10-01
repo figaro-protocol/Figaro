@@ -1,4 +1,4 @@
-/// SP1 prover integration — executes the Figaro kernel program in the
+/// SP1 prover integration — executes the Figaro guest program in the
 /// zkVM and returns proof + public values.
 use figaro_kernel::kernel::apply_batch_with_state;
 use figaro_kernel::state::KernelState;
@@ -18,7 +18,7 @@ pub struct ProveResult {
     pub proof_bytes: Vec<u8>,
     /// Raw public values bytes (ABI-encoded for on-chain submission).
     pub public_values_bytes: Vec<u8>,
-    /// Post-batch kernel state for advancing the state mirror.
+    /// Post-batch mirror state for advancing the state mirror.
     pub post_state: KernelState,
     /// The provenance clause key the batch proved assembly claims
     /// against. Echoed from the input because it is calldata the
@@ -41,7 +41,7 @@ pub struct ProveResult {
 /// `FigaroBatchVerifier` was deployed against (Succinct runs one gateway per
 /// form; a proof of the other form is `RouteNotFound` on-chain).
 pub async fn prove_batch(batch: &BatchInput) -> Result<ProveResult, String> {
-    // First: execute the kernel locally to get positions and events.
+    // First: execute the mirror locally to get positions and events.
     // The SP1 guest program only commits PublicValues; positions and events
     // are side-effects computed locally and hash-verified on-chain.
     let (pv, positions, events, post_state) =
@@ -179,8 +179,8 @@ async fn prove_wrapped(elf: Elf, stdin: SP1Stdin, pv: &PublicValues, mode: Proof
     Ok(proof.bytes())
 }
 
-/// The proof's committed bytes and the local kernel execution must encode the
-/// same public values; a mismatch means the guest program and the host kernel
+/// The proof's committed bytes and the local mirror execution must encode the
+/// same public values; a mismatch means the guest program and the host mirror
 /// have diverged. Byte equality, not field equality: these are the exact bytes
 /// the on-chain verifier hashes against the proof's committed digest.
 fn check_committed_values(committed: &[u8], local: &PublicValues) -> Result<(), String> {
