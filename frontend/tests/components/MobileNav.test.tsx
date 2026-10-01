@@ -29,7 +29,7 @@ describe("MobileNav", () => {
     it("applies active class to current route", () => {
         // A flat list (no section headers) stays flat — the accordion only
         // groups what the list itself marks as a section.
-        render(<MobileNav links={[{ label: "Home", href: "/" }, { label: "Kernel", href: "/kernel" }]} />);
+        render(<MobileNav links={[{ label: "Home", href: "/" }, { label: "Mechanism", href: "/kernel" }]} />);
         openDrawer();
         expect(screen.getByRole("link", { name: "Home" })).toHaveAttribute("aria-current", "page");
     });
