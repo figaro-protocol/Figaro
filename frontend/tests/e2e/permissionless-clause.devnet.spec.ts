@@ -20,7 +20,7 @@
  *              leaves to match the on-chain agreementHash — the whole tree, tied to chain
  *
  * This test drives the REAL UI end to end, exactly as orders-accept /
- * sellers-onboarding do, importing no closed-world scenario apparatus (no
+ * members-onboarding do, importing no closed-world scenario apparatus (no
  * pre-computed slugs, no UI-bypassing place/accept shortcuts); the only
  * non-UI step is the documented permissionless
  * clause registration (ClauseRegistry.registerClause — a single contentHash +
@@ -30,7 +30,7 @@
  * code IS the open-world property, now structural: there is no validator to register.
  *
  * Self-contained: registers its OWN novel clause, authors + publishes its OWN
- * assembly, onboards its OWN seller (anvil[14], shared only with rate-pricing —
+ * assembly, onboards its OWN member (anvil[14], shared only with rate-pricing —
  * both onboard it idempotently and neither depends on the other's state). It does
  * NOT snapshot/revert — devnet is a mainnet rehearsal, so it leaves its state
  * on-chain and a per-run nonce (minted below) keeps every clause and assembly unique.
@@ -189,7 +189,7 @@ test.describe('PERMISSIONLESS CLAUSE — the definition of green (devnet)', () =
         await page.goto('/registries?family=assemblies&e2e=devnet', { waitUntil: 'domcontentloaded' });
         await expect(page.locator(`#assembly-${slug}`)).toBeVisible({ timeout: 30000 });
 
-        // ── BIND: onboard anvil[14] as a seller through the REAL wizard, binding
+        // ── BIND: onboard anvil[14] as a member through the REAL wizard, binding
         //    the novel assembly. (No code knows this clause; the seller binds the
         //    assembly the same way it would any other.) ──
         await gotoAsWallet(page, SELLER, '/members');
@@ -235,7 +235,7 @@ test.describe('PERMISSIONLESS CLAUSE — the definition of green (devnet)', () =
         const [buyerBefore, sellerBefore, coreBefore] = await Promise.all([
             balanceOf(BUYER), balanceOf(SELLER), balanceOf(core),
         ]);
-        // Switch the active wallet BACK to the buyer. The seller-onboarding above
+        // Switch the active wallet BACK to the buyer. The member onboarding above
         // left a persistent `__FIGARO_SWITCH_ACCOUNT__(SELLER)` init script (gotoAsWallet
         // registers one that re-fires on EVERY navigation) — a plain goto here would
         // place the order as anvil[14] (a self-deal), so the buyer's approval never runs

@@ -19,7 +19,7 @@
  *              populate-test-data performs before anchoring (the sentinel
  *              exists because `assemblies/*.json` is checked in once but a
  *              fresh devnet deploys a new token address every time)
- *   bind     → a fresh seller registers (accepting BOTH devnet tokens, so
+ *   bind     → a fresh member registers (accepting BOTH devnet tokens, so
  *              the picker would normally render) and binds the reference
  *   commit   → the buyer checks out; no picker; the commitment currency is
  *              the pin, read back from the OrderCommitted event

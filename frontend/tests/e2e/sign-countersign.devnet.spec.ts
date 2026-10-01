@@ -17,7 +17,7 @@
  * relayed commitment into the seller's /sign listener.
  *
  * Depends on populate-test-data (clauses + seed assembly + sellers) and the
- * `devnet-authoring` gate (sellers-onboarding). Iterate with `--no-deps`
+ * `devnet-authoring` gate (members-onboarding). Iterate with `--no-deps`
  * once the gate has seeded the chain.
  */
 import { test, expect, gotoAsWallet } from './devnet-multi-test';

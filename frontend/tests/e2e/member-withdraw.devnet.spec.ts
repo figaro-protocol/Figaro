@@ -47,7 +47,7 @@ const LOCAL_ANVIL = defineChain({
 // with the on-chain registration we seed below.
 // anvil[3] — a wallet DEDICATED to this spec: it ends each run de-surfaced,
 // which would sabotage any spec that keeps its wallet persistently
-// registered (anvil[0] is seller-edit-ui's, anvil[1] place-order's).
+// registered (anvil[0] is member-edit-ui's, anvil[1] place-order's).
 const SELLER_KEY = ANVIL_KEYS[3];
 const SELLER_ADDR = ANVIL_ACCOUNTS[3];
 

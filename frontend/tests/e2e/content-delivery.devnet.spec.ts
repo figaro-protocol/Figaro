@@ -14,7 +14,7 @@
  *              the REAL canvas and published — or ADOPTED when the identical
  *              composition is already anchored (first-write-wins; the
  *              refusal names the slug); identity is the composition
- *   bind     → a fresh seller registers through the REAL wizard and binds
+ *   bind     → a fresh member registers through the REAL wizard and binds
  *              the assembly (funded by a plain ETH transfer — the one
  *              mainnet-real way a new wallet arrives)
  *   commit   → the buyer PICKS encrypted-transfer at checkout (the mode is
@@ -164,7 +164,7 @@ test.describe('CONTENT DELIVERY — the digital hand-off ceremony, encrypted to 
             expect(slug, 'publish receipt shows the content slug').toMatch(/^asm-/);
         }
 
-        // ── BIND: the seller onboards through the REAL wizard and binds
+        // ── BIND: the member onboards through the REAL wizard and binds
         //    exactly this assembly. ──
         await gotoAsWallet(page, SELLER, '/members');
         await page.goto('/members/identity', { waitUntil: 'domcontentloaded' });

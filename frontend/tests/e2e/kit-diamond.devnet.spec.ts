@@ -50,7 +50,7 @@
  * Cast (scenario labels only — FigaroCore sees ordinary wallets):
  *   buyer      anvil[4]   (also buyer-assigned's buyer — specs run serially,
  *                          every assert is a delta)
- *   lead       anvil[17]  Kit Works (this spec's wizard seller)
+ *   lead       anvil[17]  Kit Works (this spec's wizard member)
  *   suppliers  DESIGNATED seeded sellers: Cardinal Couriers (anvil[8]),
  *              Fernhill Nursery (anvil[11]), Sterling Goods (anvil[12]) —
  *              their catalogues price the sub-orders live.

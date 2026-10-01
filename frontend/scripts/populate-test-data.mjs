@@ -214,7 +214,7 @@ async function main() {
     }
     // The inline TEST-SCAFFOLDING seeds anchor FIRST so the blank stays the
     // EARLIEST anchored single-order assembly — specs that discover "the
-    // single-order seed" by `agreements.length === 1` (sellers-onboarding,
+    // single-order seed" by `agreements.length === 1` (members-onboarding,
     // sign-countersign, checkout-assembly-choice, …) must resolve the blank,
     // not a single-order REFERENCE (pos/freelancer). The references anchor
     // after and are discovered by their OWN specific shapes, so order doesn't

@@ -12,7 +12,7 @@
  * Self-contained (permissionless-clause discipline, mirroring rate-pricing):
  * the spec authors its own 2-order assembly (a fixed lead + a booked hourly
  * sub-order carrying figaro-schedule), onboards its own lead + hourly provider
- * THROUGH the wizard (the rate lives in the seller's CATALOGUE — pricing-policy
+ * THROUGH the wizard (the rate lives in the member's CATALOGUE — pricing-policy
  * / rate-unit / rate-source), binds + designates through seller-edit, and
  * checks out as the buyer. Discovered from chain + IPFS by SHAPE; idempotent.
  *

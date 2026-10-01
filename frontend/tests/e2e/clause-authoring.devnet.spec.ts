@@ -227,7 +227,7 @@ test.describe('CLAUSE AUTHORING — register on /clauses/register, inventory rea
         const slug = (await page.getByTestId('receipt-slug').textContent())?.trim();
         expect(slug, 'publish receipt shows the content slug').toMatch(/^asm-/);
 
-        // ── BIND: onboard the dedicated seller, unbind-all then bind THIS
+        // ── BIND: onboard the dedicated member, unbind-all then bind THIS
         //    run's assembly (self-contained on the persisted devnet). ──
         await gotoAsWallet(page, SELLER, '/members');
         await page.goto('/members/identity', { waitUntil: 'domcontentloaded' });

@@ -22,7 +22,7 @@
  * the async-reconnect window that used to wipe the draft — that window is
  * covered by tests/lib/onboardingStatePersistence.test.tsx.)
  *
- * Scope: ONE seller, the wizard, the on-chain registration. Nothing else. It uses
+ * Scope: ONE member, the wizard, the on-chain registration. Nothing else. It uses
  * a dedicated wallet (anvil[13]) that no other test registers, so the wizard
  * genuinely runs. Assembly binding is MANDATORY (a
  * profile without bindings cannot be ordered from), so the spec asserts the
@@ -55,7 +55,7 @@ const LOCAL_ANVIL = defineChain({
     rpcUrls: { default: { http: [RPC_URL] } },
 });
 
-// The wizard-test seller — this test's own input data. anvil[13]: an unlocked
+// The wizard-test member — this test's own input data. anvil[13]: an unlocked
 // signer outside the buyer range (0..4) and outside every other test's seller
 // set, so the wizard always runs (the wallet is never pre-registered elsewhere).
 const SELLER = {
@@ -312,7 +312,7 @@ async function onboardViaWizard(
 // Wizard + IPFS pin + register tx + multi-page reads.
 test.setTimeout(240_000);
 
-test.describe("seller registration wizard (devnet)", () => {
+test.describe("member registration wizard (devnet)", () => {
     test("a wallet registers through the wizard — anchored on MembersRegistry, pinned, surfacing", async ({ page }) => {
         const config = readLocalDeploymentConfig();
         const membersRegistry = (process.env.NEXT_PUBLIC_MEMBERS_REGISTRY ?? config.membersRegistry) as Hex;
@@ -327,7 +327,7 @@ test.describe("seller registration wizard (devnet)", () => {
         expect(singleOrderAssembly, 'a single-order assembly is anchored (run populate-test-data)').toBeTruthy();
         const singleOrderSlug = singleOrderAssembly?.slug;
 
-        // Mainnet semantics: a seller registers ONCE and persists. Walk the
+        // Mainnet semantics: a member registers ONCE and persists. Walk the
         // wizard when this wallet isn't registered yet — or when its CURRENT
         // profile doesn't match the scenario premise (exactly the single-order
         // binding): the wizard runs in update mode and repairs the bindings.

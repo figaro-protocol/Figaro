@@ -12,7 +12,7 @@
  *   - the pick drives checkout → sign → relay → seller counter-sign → commit,
  *   - value legs: exact bond deltas from the chain (standing rule).
  *
- * Dedicated wallet anvil[14]: the wizard seller (anvil[13]) must stay
+ * Dedicated wallet anvil[14]: the wizard member (anvil[13]) must stay
  * SINGLE-binding by scenario premise — a second binding on it would gate
  * every other spec's checkout behind this dropdown. The two bound assemblies
  * are ADOPTED from the live registry by SHAPE (the seeded single-order blank
@@ -38,7 +38,7 @@ const LOCAL_ANVIL = defineChain({
     rpcUrls: { default: { http: [RPC_URL] } },
 });
 
-// anvil[14] — this spec's own seller; no other spec registers or orders from it.
+// anvil[14] — this spec's own member, the seller of its orders; no other spec registers or orders from it.
 const SELLER = {
     address: '0xdF3e18d64BC6A983f673Ab319CCaE4f1a57C7097' as Hex,
     name: 'Choice Test Trattoria',
@@ -51,7 +51,7 @@ const BUYER = '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266' as Hex;
 
 const ERC20_ABI = parseAbi(['function balanceOf(address) view returns (uint256)']);
 
-/** Walk the registration wizard as the seller's wallet, binding EXACTLY the
+/** Walk the registration wizard as the member's wallet, binding EXACTLY the
  *  given assemblies (clears any prior bindings first — update-mode repair). */
 async function onboardViaWizard(page: Page, assemblySlugs: string[]) {
     await gotoAsWallet(page, SELLER.address, '/members/manage');

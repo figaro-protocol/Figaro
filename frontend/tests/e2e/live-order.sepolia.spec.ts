@@ -3,7 +3,7 @@
  * driven through the real UI.
  *
  * One trade, end to end, exactly as a stranger would do it on the live site:
- *   1. the seller registers through the onboarding WIZARD (identity, one
+ *   1. a member registers through the onboarding WIZARD (identity, one
  *      catalogue item priced in the denomination, binds the `pos`
  *      reference assembly, publishes — the app pins profile + catalogue,
  *      MembersRegistry.register lands with the stake);
@@ -46,7 +46,7 @@ import { ANVIL_KEYS } from '../anvilAccounts';
 test.describe('LIVE ORDER — a public deployment traded through the real UI', () => {
     test.setTimeout(E2E_CHAIN === 'sepolia' ? 1_500_000 : 420_000);
 
-    test('seller registers via the wizard → buyer orders → seller accepts → buyer resolves → audit', async ({}, testInfo) => {
+    test('member registers via the wizard → buyer orders → seller accepts → buyer resolves → audit', async ({}, testInfo) => {
         const config = readLocalDeploymentConfig();
         const core = config.figaroCore as Hex;
         const token = config.tokenAddress as Hex;
@@ -118,7 +118,7 @@ test.describe('LIVE ORDER — a public deployment traded through the real UI', (
                 await waitForConnected(page);
             };
 
-            // ═══ 1. SELLER — the wizard ═══════════════════════════════════════
+            // ═══ 1. MEMBER — the wizard ═══════════════════════════════════════
             const posSlug = referenceAssemblySlug('pos.json');
             const sellerName = `Smoke counter ${seller.address.slice(2, 8)}`;
             const gateway = (process.env.NEXT_PUBLIC_IPFS_GATEWAY_URL ?? 'http://127.0.0.1:8080').replace(/\/$/, '');
@@ -146,7 +146,7 @@ test.describe('LIVE ORDER — a public deployment traded through the real UI', (
                 alreadyBound = !!doc && doc.name === sellerName && (doc.assemblyBindings ?? []).some((b) => b.assemblySlug === posSlug);
             }
             if (alreadyBound) {
-                testInfo.annotations.push({ type: 'wizard', description: 'skipped — seller already registered and bound to pos (idempotent rerun)' });
+                testInfo.annotations.push({ type: 'wizard', description: 'skipped — member already registered and bound to pos (idempotent rerun)' });
             } else {
             await switchTo(seller.address, '/members/identity?e2e=devnet');
             await expect(page.locator('#profile-name')).toBeVisible({ timeout: 60_000 });

@@ -22,7 +22,7 @@
  * that leaves its state AND registers content-addressed clauses or assemblies mints a
  * per-run nonce) — publishProbeAssembly is the sanctioned shared helper.
  * The slug still comes from the network's answer (the publish receipt);
- * the seller binds it through the real wizard reading the registry; the
+ * a member binds it through the real wizard reading the registry; the
  * buyer discovers it from the seller page (profile bindings → registry →
  * IPFS). Nothing about the network is hardcoded.
  *
@@ -103,7 +103,7 @@ test.describe('AssemblyRegistry withdraw — the commits==resolves gate (devnet)
         expect(binding, 'the publish anchored a binding whose derived slug matches the receipt').toBeTruthy();
         const compositionHash = binding!.args.compositionHash as Hex;
 
-        // ── BIND: onboard the dedicated seller through the real wizard — one
+        // ── BIND: onboard the dedicated member through the real wizard — one
         //    catalogue item, EXACTLY this run's assembly bound (a prior run's
         //    binding is unchecked; its assembly is withdrawn → de-surfaced). ──
         await gotoAsWallet(page, SELLER, '/members');
