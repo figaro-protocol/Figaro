@@ -10,7 +10,7 @@ resolves it against `FigaroBatchVerifier` — and **publishes what it resolved**
 resolve a batch, so this sequencer is one relay among any number — run your
 own. Its honest powers are censor-or-delay, never forge: the SP1 proof binds
 resolution to the EIP-712 structs both parties signed, and every admission
-pre-check here (signature recovery, `FigaroCore`'s witness gates) is the same
+pre-check here (signature recovery, the mirror's witness gates) is the same
 code the proof enforces — the mempool can only reject earlier, never accept
 more. The endpoint holds one key — the account that signs `settleBatch` and pays its gas (`SEQUENCER_PRIVATE_KEY`) — and grants no privilege; participants can
 always fall back to direct `FigaroCore` submission.
