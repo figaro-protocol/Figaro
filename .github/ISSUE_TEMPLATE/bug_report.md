@@ -9,7 +9,7 @@ labels: bug
   SECURITY VULNERABILITY? Do NOT use this template, and do NOT file a public
   issue — see SECURITY.md.
 
-  Looks like a kernel bug? Check docs/DESIGN_DECISIONS.md first: its
+  Looks like a bug in the Core? Check docs/DESIGN_DECISIONS.md first: its
   patterns that look like vulnerabilities but are correct by design.
 -->
 
