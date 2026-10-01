@@ -90,7 +90,7 @@ returns nothing. Fill it either way:
   Documents" below) and register an assembly
   (`AssemblyRegistry.registerAssembly`), each under its stake;
 - **the shortcut**, to reach a commit today — the repo's test seeder, which
-  registers a few seed assemblies and sellers through those same contracts:
+  registers a few seed assemblies and members through those same contracts:
 
 ```bash
 cd frontend && node scripts/populate-test-data.mjs   # idempotent
@@ -870,7 +870,7 @@ import { FigaroContext, proposeActions, proposeInitiations, ActionQueue } from "
 import { commit, executeAction } from "@figaro-protocol/sdk/agent";
 
 // Sync on-chain state into a live context — the agent's own processes AND the
-// live-staked network catalogue (clauses, sellers, assemblies).
+// live-staked network catalogue (clauses, members, assemblies).
 const ctx = new FigaroContext(client, addresses);
 await ctx.sync();
 
