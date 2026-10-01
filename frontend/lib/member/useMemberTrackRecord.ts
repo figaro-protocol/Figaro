@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * useMemberTrackRecord — a seller's public-graph track record, fetched
+ * useMemberTrackRecord — a member's public-graph track record, fetched
  * from the indexer. Recomputed from on-chain events on every load; nothing
  * is stored as a score. See DATA_LAYER.md §"Reputation derivation".
  */

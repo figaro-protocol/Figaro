@@ -3,9 +3,9 @@
  *
  * Storage on `CatalogueItemMetadata.massGrams` / `volumeMl` is always
  * metric. These helpers do two jobs:
- *   - parse editor input in the seller's chosen unit system into
+ *   - parse editor input in the member's chosen unit system into
  *     metric for storage (`parseInputToGrams`, `parseInputToMl`);
- *   - format stored metric values back to the seller's unit system
+ *   - format stored metric values back to the member's unit system
  *     for display (`formatMass`, `formatVolume`).
  *
  * No conversion happens at storage. No conversion happens on-chain
@@ -24,10 +24,10 @@ const ML_PER_FLOZ = 29.5735295625;
 /** 1 inch = 25.4 millimetres (international inch). */
 const MM_PER_INCH = 25.4;
 
-// ── Editor input parsing (seller-typed string → metric number) ─────────────
+// ── Editor input parsing (member-typed string → metric number) ─────────────
 
 /**
- * Parse a number the seller typed in the editor into grams. When the
+ * Parse a number the member typed in the editor into grams. When the
  * catalogue's `unitSystem` is "imperial", the input is interpreted as
  * ounces. Returns `undefined` when the input is empty or not a finite
  * number; the caller treats undefined as "no mass on this item".
@@ -39,7 +39,7 @@ export function parseInputToGrams(input: string, system: UnitSystem): number | u
 }
 
 /**
- * Parse a number the seller typed in the editor into millilitres. When
+ * Parse a number the member typed in the editor into millilitres. When
  * the catalogue's `unitSystem` is "imperial", the input is interpreted
  * as US fluid ounces. Returns `undefined` per `parseInputToGrams`.
  */
@@ -50,7 +50,7 @@ export function parseInputToMl(input: string, system: UnitSystem): number | unde
 }
 
 /**
- * Parse a number the seller typed in the editor into millimetres — one
+ * Parse a number the member typed in the editor into millimetres — one
  * parcel dimension (length/width/height). When the catalogue's
  * `unitSystem` is "imperial", the input is interpreted as inches.
  * Returns `undefined` per `parseInputToGrams`.
@@ -61,10 +61,10 @@ export function parseInputToMm(input: string, system: UnitSystem): number | unde
     return system === "imperial" ? value * MM_PER_INCH : value;
 }
 
-// ── Stored value → editor input (metric → seller's unit) ──────────────────
+// ── Stored value → editor input (metric → member's unit) ──────────────────
 
 /**
- * Convert a stored gram value into a number the seller's editor can
+ * Convert a stored gram value into a number the member's editor can
  * display. Returns "" for missing values so the input renders empty.
  * For imperial, returns ounces formatted to two decimals.
  */
@@ -77,7 +77,7 @@ export function gramsToInput(grams: number | undefined, system: UnitSystem): str
 }
 
 /**
- * Convert a stored ml value into a number the seller's editor can
+ * Convert a stored ml value into a number the member's editor can
  * display. Returns "" for missing values. For imperial, returns US
  * fluid ounces formatted to two decimals.
  */
@@ -90,7 +90,7 @@ export function mlToInput(ml: number | undefined, system: UnitSystem): string {
 }
 
 /**
- * Convert a stored millimetre dimension into a number the seller's
+ * Convert a stored millimetre dimension into a number the member's
  * editor can display. Returns "" for missing values. For imperial,
  * returns inches formatted to two decimals.
  */

@@ -1,13 +1,13 @@
 /**
  * lib/member/parseCatalogueCsv.ts
  *
- * Minimal RFC-4180-ish CSV parser scoped to the seller catalogue
+ * Minimal RFC-4180-ish CSV parser scoped to the member catalogue
  * import surface in OnboardingCatalogueForm. Handles quoted fields,
  * embedded commas/quotes/newlines, and column-header rebinding.
  *
  * NOT a general-purpose CSV library — accepts UTF-8 text, returns
  * `CatalogueItemMetadata[]` (the wizard's row shape). For anything
- * fancier (BOM handling, custom delimiters, streaming) the seller
+ * fancier (BOM handling, custom delimiters, streaming) the member
  * should pre-process their export.
  *
  * Accepted column headers (case-insensitive, any order; required
@@ -16,7 +16,7 @@
  *   name           — required, non-empty after trim
  *   price          — required, non-empty after trim
  *   description    — optional
- *   category       — optional (absent when the seller authors none)
+ *   category       — optional (absent when the member authors none)
  *   image          — optional, IPFS or HTTP URI
  *   available      — optional, "true"/"false"/"1"/"0" (default true)
  *   massGrams      — optional, parsed as number

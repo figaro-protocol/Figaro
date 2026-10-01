@@ -8,7 +8,7 @@
  * marketing tier can render it: `MemberRegistered` + `MemberProfileUpdated`
  * + `MemberWithdrawalRequested` through the protocol-tier indexer
  * (`membersRegistryIndexer.ts`), then each profile document from IPFS. Unlike
- * `useMemberListings` (the BUYER's discover list — sellers with an anchored
+ * `useMemberListings` (the BUYER's discover list — members with an anchored
  * assembly binding), this lists the registry itself: a member with no
  * catalogue and no bindings is a member, and it surfaces here.
  *

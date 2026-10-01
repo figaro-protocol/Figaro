@@ -74,7 +74,7 @@ export function createUriFetcher<T>(config: UriFetcherConfig<T>): UriFetcher<T> 
             try {
                 const url = resolveContentUri(uri);
                 if (!url) return null;
-                // Size-capped fetch (F4): an oversized seller-pinned document
+                // Size-capped fetch (F4): an oversized member-pinned document
                 // aborts mid-stream (throws → the catch below → null). An
                 // injected `config.fetch` transport is capped the same way.
                 const res = await fetchCappedContent(url, { fetch: config.fetch });

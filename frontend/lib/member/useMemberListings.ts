@@ -2,15 +2,15 @@
  * lib/mechanisms/useMemberListings.ts
  *
  * Discover-side counterpart to `useRegisteredCatalogues`. Reads
- * registered sellers from the on-chain `MembersRegistry` (via
- * event logs), fetches each seller's profile JSON from IPFS,
+ * registered members from the on-chain `MembersRegistry` (via
+ * event logs), fetches each member's profile JSON from IPFS,
  * CROSS-CHECKS each profile's claimed assembly bindings against the
- * AssemblyRegistry (the registry is the authority — only sellers with
+ * AssemblyRegistry (the registry is the authority — only members with
  * ≥1 anchored binding surface, and only their anchored bindings render),
  * and projects them into the generic `Listing` shape consumed by
  * `MemberDiscovery`. Returns an empty list when the registry isn't
- * configured or no sellers are registered — the consumer renders
- * the "no sellers yet" CTA.
+ * configured or no members are registered — the consumer renders
+ * the "no members yet" CTA.
  */
 "use client";
 
@@ -51,8 +51,8 @@ async function fetchProfileAsListing(
     const listing = profileToListing(profile, address);
     // Cross-check the profile's CLAIMED bindings against the
     // AssemblyRegistry — the registry is the authority, the profile is an
-    // assertion. Only anchored bindings survive; a seller with none does
-    // not surface on discover at all (no seller
+    // assertion. Only anchored bindings survive; a member with none does
+    // not surface on discover at all (no member
     // without a properly anchored assembly).
     const anchored = listing.bindings.filter((b) => publishedSlugs.has(b.assemblySlug));
     if (anchored.length === 0) return null;
@@ -78,7 +78,7 @@ export function useMemberListings(): UseSellerListingsResult {
     const chainId = useChainId();
     // The AssemblyRegistry read the profile bindings are cross-checked
     // against. `null` = the registry is still being read — that is LOADING,
-    // not absence: the unchecked seller list is never rendered (NO FALLBACKS).
+    // not absence: the unchecked member list is never rendered (NO FALLBACKS).
     const { data: publishedAssemblies } = usePublishedAssemblies(undefined);
 
     useEffect(() => {

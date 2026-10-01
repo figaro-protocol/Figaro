@@ -1,13 +1,13 @@
 /**
  * lib/shared/cataloguePublisher.ts
  *
- * Write path for seller catalogues.
+ * Write path for member catalogues.
  * Serializes a MemberCatalogueMetadata document → pins to IPFS → returns
- * the IPFS URI. The URI is then referenced from the seller's profile
+ * the IPFS URI. The URI is then referenced from the member's profile
  * document (as `catalogueURI`) which itself is pinned and registered
  * on-chain via `MembersRegistry.register(profileURI)` for first-time
- * sellers or `MembersRegistry.updateProfile(profileURI)` for already-
- * registered sellers (the latter does not consume the deposit or
+ * members or `MembersRegistry.updateProfile(profileURI)` for already-
+ * registered members (the latter does not consume the deposit or
  * restart the lock period). This module handles the off-chain pin only;
  * the caller orchestrates the on-chain call.
  */
@@ -26,7 +26,7 @@ export interface PublishResult {
 }
 
 /**
- * Validate, pin to IPFS, and return the URI for a seller catalogue.
+ * Validate, pin to IPFS, and return the URI for a member catalogue.
  *
  * Performs a round-trip validation: the document is parsed through the
  * strict parser before pinning to ensure only valid documents get published.

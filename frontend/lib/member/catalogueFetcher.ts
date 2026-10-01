@@ -1,7 +1,7 @@
 /**
  * lib/shared/catalogueFetcher.ts
  *
- * Fetches the full MemberCatalogueMetadata document from a seller's
+ * Fetches the full MemberCatalogueMetadata document from a member's
  * metadataURI (on-chain pointer → IPFS/HTTP → parsed catalogue).
  *
  * This is the read path. The write path (pin + updateProfile) lives in

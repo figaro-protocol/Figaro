@@ -4,13 +4,13 @@ import type { MemberProfileMetadata } from "@/lib/member/memberProfileMetadata";
 import { hexEqual } from "@/lib/shared/evm";
 
 /**
- * Generic seller-listing surface for `/discover`.
+ * Generic member-listing surface for `/discover`.
  *
  * Independent of the local-commerce-shaped `MemberCatalogue` type:
  * a `Listing` is the projection of (subject + bindings + optional metadata)
  * into a shape the `MemberCard` can render across any assembly. An
- * seller with zero bindings still produces a `Listing`; clicking any
- * listing routes to its `/s/view?seller=<address>` detail page. A seller with
+ * member with zero bindings still produces a `Listing`; clicking any
+ * listing routes to its `/s/view?seller=<address>` detail page. A member with
  * multiple bindings carries them all
  * so the card can display assembly badges and the click-through can pick
  * the primary.
@@ -21,7 +21,7 @@ interface ListingBinding {
 }
 
 export interface Listing {
-    /** Seller wallet address. */
+    /** Member wallet address. */
     address: string;
     /** Display name. */
     name: string;
@@ -29,15 +29,15 @@ export interface Listing {
     description: string;
     /** Per-listing specialty (cuisine for local-commerce-food, equipment-class for rental, etc.). */
     specialty?: string;
-    /** Seller logo URI (ipfs:// or https://). */
+    /** Member logo URI (ipfs:// or https://). */
     logoURI?: string;
-    /** Seller's home geohash. */
+    /** Member's home geohash. */
     geohash?: string;
     /** Human-readable location text (e.g. "Lower Manhattan, NY"). */
     addressText?: string;
-    /** Tokens the seller accepts for resolution. */
+    /** Tokens the member accepts for resolution. */
     acceptedTokens: AcceptedTokenMetadata[];
-    /** All assembly bindings this seller has. May be empty (browse-only —
+    /** All assembly bindings this member has. May be empty (browse-only —
      *  checkout enables only for a bound profile), one, or many. */
     bindings: ListingBinding[];
 }
@@ -49,11 +49,11 @@ function safeURI(uri: string | undefined): string | undefined {
 }
 
 /**
- * Project an on-chain-registered seller's profile into a `Listing`.
+ * Project an on-chain-registered member's profile into a `Listing`.
  *
  * `assemblyBindings` from the profile JSON drives the `bindings` field —
  * the wizard writes these from `OnboardingState.assemblies`, so a
- * freshly-registered seller appears in the assembly-filter chips. Role
+ * freshly-registered member appears in the assembly-filter chips. Role
  * attribution within an assembly is event-derived, not declared on the
  * profile (see `feedback_state_from_events`).
  */
@@ -81,7 +81,7 @@ export function profileToListing(
 
 import { truncateHex } from "@/lib/shared/formatHex";
 
-/** Find a seller listing by wallet address. Case-insensitive. Accepts any
+/** Find a member listing by wallet address. Case-insensitive. Accepts any
  *  {address}-keyed collection (Listing[], MemberCatalogue[], …). */
 export function findListingByAddress<T extends { address: string }>(
     listings: ReadonlyArray<T>,
@@ -92,7 +92,7 @@ export function findListingByAddress<T extends { address: string }>(
 }
 
 /** Resolve an address to a human-readable display name from any loaded
- *  {address, name} collection (registry listings, seller catalogues),
+ *  {address, name} collection (registry listings, member catalogues),
  *  falling back to the truncated address when the wallet isn't in it (or
  *  it hasn't loaded yet). The ONE counterparty-name resolver — orders
  *  list, order timeline, checkout breakdown. */
@@ -107,8 +107,8 @@ export function displayNameForAddress(
 
 /**
  * Geohash prefix-overlap check for filtering listings against a viewer's
- * device geohash: the seller's declared geohash and the viewer's overlap
- * when either is a prefix of the other. A seller with no geo declaration
+ * device geohash: the member's declared geohash and the viewer's overlap
+ * when either is a prefix of the other. A member with no geo declaration
  * always matches (e.g. remote/virtual).
  */
 export function listingMatchesGeohash(listing: Listing, viewerGeohash: string): boolean {
@@ -122,7 +122,7 @@ export function listingMatchesGeohash(listing: Listing, viewerGeohash: string): 
 }
 
 /**
- * The one place the seller-page URL is written. Every surface that names or
+ * The one place the member-page URL is written. Every surface that names or
  * links a wallet's public page — the discover card, the wizard's review step,
  * the member dashboard — reads it from here, so the route can never be quoted
  * from memory in prose and drift from the route that exists.
@@ -135,9 +135,9 @@ export function sellerPageHref(address: string): string {
 }
 
 /**
- * The destination URL for a listing card click: the per-seller detail
- * page. The /s page reads the seller's catalogue and bindings; assembly
- * disambiguation happens inside that page. A seller with no bindings still
+ * The destination URL for a listing card click: the per-member detail
+ * page. The /s page reads the member's catalogue and bindings; assembly
+ * disambiguation happens inside that page. A member with no bindings still
  * has a page — it surfaces the catalogue without a modality path.
  */
 export function listingClickThroughHref(listing: Listing): string {

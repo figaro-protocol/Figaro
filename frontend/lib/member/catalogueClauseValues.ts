@@ -1,6 +1,6 @@
 /**
  * Catalogue clause-value validation — the off-chain validation gate for the product master
- * data a seller authors per item (freight class, hazmat, cold-chain, …).
+ * data a member authors per item (freight class, hazmat, cold-chain, …).
  *
  * Open-world and clause-agnostic: no clause is named. Each entry in an item's
  * `clauseValues` map is validated against that clause's REGISTERED spec via the
@@ -39,14 +39,14 @@ export function validateCatalogueClauseValues(item: CatalogueItemMetadata): stri
 }
 
 /**
- * The catalogue-authored clause sections a seller's items actually offer:
+ * The catalogue-authored clause sections a member's items actually offer:
  * every registered clause with `block.checkout.catalogueFills` that one of the
- * assemblies this seller has BOUND composes. Two derivations, one direction —
+ * assemblies this member has BOUND composes. Two derivations, one direction —
  * the bindings decide the clauses, the clauses decide the fields; the
- * catalogue never opens a field no trade of this seller's can carry.
+ * catalogue never opens a field no trade of this member's can carry.
  *
- * Empty until an assembly is bound, and empty for a seller whose bound
- * assemblies compose no product-property clause (the seller of one mug sees no
+ * Empty until an assembly is bound, and empty for a member whose bound
+ * assemblies compose no product-property clause (the member of one mug sees no
  * hazmat class). A bound assembly whose template has not resolved yet
  * contributes nothing rather than everything — absence, read at the edge.
  *
@@ -71,7 +71,7 @@ export function catalogueClausesForBindings(
  * The fields of one clause the CATALOGUE authors — the clause's own
  * `block.checkout.catalogueFills`, resolved against its registered spec and
  * returned in spec order. Fields the clause assigns to another source (the
- * designer's fills, the buyer's checkout particulars, the seller's profile)
+ * designer's fills, the buyer's checkout particulars, the member's profile)
  * are not the catalogue's to ask for. Empty while the spec is uncached.
  */
 export function catalogueFieldsOfClause(

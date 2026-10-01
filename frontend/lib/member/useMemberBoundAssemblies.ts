@@ -1,8 +1,8 @@
 /**
- * useMemberBoundAssemblies — resolves a seller's on-chain bound assemblies
+ * useMemberBoundAssemblies — resolves a member's on-chain bound assemblies
  * into the buyer-facing choice set at checkout.
  *
- * Seller-domain composition: reads the seller's profile (MembersRegistry →
+ * Member-domain composition: reads the member's profile (MembersRegistry →
  * IPFS), intersects the profile's `assemblyBindings[].assemblySlug` with the
  * published assembly events, and fetches each matched assemblyTemplate. The
  * on-chain reads come from `@/lib/protocol/useAssemblyRegistry` (a legal
@@ -23,13 +23,13 @@ import {
     fetchAssemblyTemplate,
 } from "@/lib/protocol/useAssemblyRegistry";
 
-/** A seller's on-chain bound assembly, assemblyTemplate resolved. */
+/** A member's on-chain bound assembly, assemblyTemplate resolved. */
 export interface BoundAssembly {
     slug: string;
     /** Display name from the assembly template; falls back to the slug. */
     name: string;
     assemblyTemplate: AssemblyTemplate;
-    /** The seller's designated counterparty wallets for this assembly,
+    /** The member's designated counterparty wallets for this assembly,
      *  keyed by sub-order process clause (the runtime ladder clause the
      *  sub-order carries). Sourced from the member profile's
      *  AssemblyBindingRecord — checkout reads it to fill a delegated
@@ -38,19 +38,19 @@ export interface BoundAssembly {
 }
 
 export interface MemberBoundAssemblies {
-    /** The seller's on-chain bound assemblies, assemblyTemplates resolved —
+    /** The member's on-chain bound assemblies, assemblyTemplates resolved —
      *  the buyer-facing choice set at checkout. Each bound assembly is
-     *  one option the seller offers; the buyer picks one. */
+     *  one option the member offers; the buyer picks one. */
     assemblies: BoundAssembly[];
     /** True while either the member-profile or the assemblyTemplate fetches are in flight. */
     isLoading: boolean;
-    /** True when at least one of the seller's bindings matched a published assembly. */
+    /** True when at least one of the member's bindings matched a published assembly. */
     hasOnChainBinding: boolean;
 }
 
 /**
- * Resolves a seller's on-chain bound assemblies into the buyer-facing
- * choice set. Reads the seller's profile (MembersRegistry →
+ * Resolves a member's on-chain bound assemblies into the buyer-facing
+ * choice set. Reads the member's profile (MembersRegistry →
  * IPFS), intersects the profile's `assemblyBindings[].assemblySlug` with
  * the published assembly events, and fetches each matched assemblyTemplate.
  *
@@ -95,7 +95,7 @@ export function useMemberBoundAssemblies(
 
         (async () => {
             try {
-                // Size-capped fetch (F4): the seller-pinned profile document is
+                // Size-capped fetch (F4): the member-pinned profile document is
                 // external-party-controlled — oversize throws → the catch below.
                 const response = await fetchCappedContent(url);
                 if (!response.ok) throw new Error("member profile fetch failed");

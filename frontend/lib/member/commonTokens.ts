@@ -2,7 +2,7 @@
  * lib/member/commonTokens.ts
  *
  * Per-chain registry of well-known ERC-20 tokens to surface as quick-add
- * suggestions in seller-side forms (e.g. the onboarding wizard's
+ * suggestions in the member's forms (e.g. the onboarding wizard's
  * accepted-tokens field). Replaces the bare-address input with a
  * "+ USDC" / "+ USDT" / "+ Mock" picker.
  *
@@ -18,7 +18,7 @@ import { DEVNET_CHAIN_ID } from "@/lib/shared/chains";
 import { CONTRACTS } from "@/lib/kernel/contracts";
 import type { AcceptedTokenMetadata } from "@/lib/member/acceptedTokenMetadata";
 
-/** A quick-add token suggestion — the identity subset of the seller's
+/** A quick-add token suggestion — the identity subset of the member's
  *  accepted-token descriptor (one type for the concept, not two). */
 export type CommonToken = Pick<AcceptedTokenMetadata, "address" | "symbol" | "name">;
 

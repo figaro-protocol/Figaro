@@ -1,15 +1,15 @@
 /**
  * lib/mechanisms/useRegisteredCatalogues.ts
  *
- * Hook that discovers all registered sellers from MembersRegistry
+ * Hook that discovers all registered members from MembersRegistry
  * events (via the indexer), fetches their catalogues from IPFS, and
  * projects them to the buyer-side `MemberCatalogue` UI type for the
  * discovery module. Plural-of-wallets — each wallet has at most one
  * catalogue.
  *
  * Returns an empty list when the registry isn't configured or no
- * sellers have registered. Empty-state copy is the caller's
- * responsibility (e.g. `/discover` renders a "no sellers yet" CTA).
+ * members have registered. Empty-state copy is the caller's
+ * responsibility (e.g. `/discover` renders a "no members yet" CTA).
  */
 "use client";
 
@@ -52,7 +52,7 @@ export function useRegisteredCatalogues(
     // The AssemblyRegistry read the surfacing rule cross-checks against —
     // the SAME gate useMemberListings applies (rule applied evenly).
     // `null` = still reading — that is LOADING, not absence: the
-    // unchecked seller list is never rendered (NO FALLBACKS).
+    // unchecked member list is never rendered (NO FALLBACKS).
     const { data: publishedAssemblies } = usePublishedAssemblies(undefined);
 
     useEffect(() => {
@@ -86,7 +86,7 @@ export function useRegisteredCatalogues(
         };
     }, [client, chainId, service, publishedAssemblies, generation]);
 
-    // A long-open tab's catalogue goes stale as sellers register/de-surface.
+    // A long-open tab's catalogue goes stale as members register/de-surface.
     // Refresh on focus (returning to the tab) and on tab re-visibility.
     useEffect(() => {
         if (typeof window === "undefined") return;

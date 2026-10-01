@@ -29,7 +29,7 @@ function profileToCatalogue(
         address,
         description: profile.description ?? '',
         specialty: profile.specialty ?? '',
-        // Absence is absence — a logo only when the seller declared a resolvable
+        // Absence is absence — a logo only when the member declared a resolvable
         // one (scheme-checked by resolveContentUri, the single owner of the
         // allowlist); the UI renders a neutral placeholder otherwise.
         image: profile.branding?.logoURI && resolveContentUri(profile.branding.logoURI)
@@ -70,7 +70,7 @@ async function fetchSellerAsCatalogue(
     // The frontend's surfacing rule, applied EVENLY across every projection
     // (it extends the discover rule): the
     // contracts are permissionless — anyone can anchor any profile shape —
-    // but this frontend surfaces only sellers whose profile binds ≥1 assembly
+    // but this frontend surfaces only members whose profile binds ≥1 assembly
     // anchored in the AssemblyRegistry (the registry is the authority, the
     // profile an assertion). No anchored binding ⇒ absence, on /discover,
     // /s, and checkout alike.
@@ -117,7 +117,7 @@ async function fetchSellerAsCatalogue(
 export interface DiscoveryService {
     isRegistryConfigured(): boolean;
     /** `publishedSlugs` = the AssemblyRegistry's anchored slugs; the surfacing
-     *  rule drops sellers without ≥1 anchored binding (applied evenly across
+     *  rule drops members without ≥1 anchored binding (applied evenly across
      *  every projection). */
     listCatalogues(client: PublicClient, chainId: number, publishedSlugs: ReadonlySet<string>): Promise<DiscoveryResult>;
 }
@@ -131,9 +131,9 @@ const EMPTY_RESULT: DiscoveryResult = { catalogues: [] };
 export function createDiscoveryService(
     options: DiscoveryServiceOptions = {},
 ): DiscoveryService {
-    // Size-capped fetch (F4): seller-pinned profile/catalogue documents are
+    // Size-capped fetch (F4): member-pinned profile/catalogue documents are
     // external-party-controlled — an oversized body aborts mid-stream (throws →
-    // the per-seller catch → that seller drops). An injected `fetchDocument`
+    // the per-member catch → that member drops). An injected `fetchDocument`
     // transport is capped the same way.
     const fetchFn = (url: string) => fetchCappedContent(url, { fetch: options.fetchDocument });
 
@@ -150,10 +150,10 @@ export function createDiscoveryService(
                 const sellers = await getActiveMembers(client, chainId);
                 if (sellers.length === 0) return EMPTY_RESULT;
 
-                // The catalogue's items signal what business the seller is
+                // The catalogue's items signal what business the member is
                 // in; there is no nominal categorization field to filter on.
-                // fetchSellerAsCatalogue is the gate that drops sellers
-                // whose document doesn't parse as a seller catalogue or
+                // fetchSellerAsCatalogue is the gate that drops members
+                // whose document doesn't parse as a member catalogue or
                 // binds no anchored assembly (the surfacing rule).
                 const results = await Promise.all(
                     sellers.map(async (seller) => {
