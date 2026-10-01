@@ -285,7 +285,7 @@ export function useWithdrawDeposit() {
     async function withdraw() {
         return run({
             functionName: "withdraw",
-            failureMessage: "The deposit was not withdrawn.",
+            failureMessage: "The stake was not reclaimed.",
         });
     }
 

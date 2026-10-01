@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { cooldownPhrase } from "@/components/members/OnboardingReview";
+import { cooldownPhrase } from "@/lib/member/cooldownPhrase";
 
 /**
- * The wizard's review quotes the deposit and the delay it is locked for from
+ * The wizard's review and the leave row quote the stake and the delay it is locked for from
  * the chain. Beta r4's freelancer and potter read "with no cooldown" against
  * the FAQ's "a delay fixed at deployment" and saw a contradiction; the phrase
  * now says whose delay it is, in every branch.

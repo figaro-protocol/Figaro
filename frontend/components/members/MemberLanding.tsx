@@ -34,6 +34,7 @@ import { fetchMemberProfile } from "@/lib/member/profileFetcher";
 import { sellerPageHref } from "@/lib/member/memberListing";
 import { unpinSupersededProfileArtifacts } from "@/lib/member/profileErasure";
 import { extractErrorMessage } from "@/lib/shared/errors";
+import { cooldownPhrase } from "@/lib/member/cooldownPhrase";
 import type { MemberProfileMetadata } from "@/lib/member/memberProfileMetadata";
 import { formatEther } from "viem";
 
@@ -302,7 +303,7 @@ function ManageList({
 }
 
 /**
- * The deposit a wallet is owed after leaving, and the claim once its cooldown
+ * The stake a wallet is owed after leaving, and the claim once its cooldown
  * has elapsed. Rendered in BOTH the registered and the left state — leaving
  * de-surfaces immediately, so this is the only surface a departed wallet has.
  */
@@ -311,6 +312,41 @@ function PendingDepositNotice({ address }: { address: `0x${string}` | undefined 
     const { withdraw, isPending, isConfirming, error } = useWithdrawDeposit();
     const [claimError, setClaimError] = useState<string | null>(null);
     const [claimed, setClaimed] = useState(false);
+    // The leave step's receipt shape: hold the hash the claim returned and the
+    // amount it reclaimed, and refetch (which redirects an unregistered wallet to the
+    // wizard) only when the member presses Continue.
+    const [receipt, setReceipt] = useState<{ hash: `0x${string}`; amount: bigint } | null>(null);
+
+    if (receipt) {
+        return (
+            <Card className="p-4 mb-4 text-sm">
+                <TransactionReceipt
+                    className="space-y-2 text-ink-body"
+                    testId="stake-reclaim-receipt"
+                    prose={
+                        <span className="font-semibold text-ink-heading">
+                            Your {formatEther(receipt.amount)} ETH stake is back in your wallet.
+                        </span>
+                    }
+                    rows={[{ label: "Tx:", value: receipt.hash }]}
+                    rowsLayout="inline"
+                    actions={
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                                setReceipt(null);
+                                setClaimed(true);
+                                refetch();
+                            }}
+                        >
+                            Continue
+                        </Button>
+                    }
+                />
+            </Card>
+        );
+    }
 
     if (claimed || !pending || pending === 0n) return null;
 
@@ -324,10 +360,12 @@ function PendingDepositNotice({ address }: { address: `0x${string}` | undefined 
 
     async function handleClaim() {
         setClaimError(null);
+        // The amount is read before the claim: after it, the chain's pending
+        // stake reads zero.
+        const amount = pending ?? 0n;
         try {
-            await withdraw();
-            setClaimed(true);
-            refetch();
+            const hash = await withdraw();
+            setReceipt({ hash, amount });
         } catch (e: unknown) {
             setClaimError(extractErrorMessage(e, String(e)));
         }
@@ -449,7 +487,7 @@ function WithdrawRow({
             <li className="flex items-baseline justify-between gap-4 py-3 border-b border-default text-ink-faint">
                 <div>
                     <span className="text-ink-body">Leave the registry</span>
-                    <span className="ml-2 text-xs">De-lists you from discovery straight away; the {depositLabel} stake follows after a cooldown.</span>
+                    <span className="ml-2 text-xs">De-lists you from discovery straight away; the {depositLabel} stake follows {cooldownPhrase(cooldown)}.</span>
                 </div>
                 <button
                     type="button"

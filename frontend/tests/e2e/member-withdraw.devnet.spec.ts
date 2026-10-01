@@ -1,22 +1,23 @@
 /**
  * member-withdraw.devnet.spec.ts
  *
- * MembersRegistry's reclaim path on the staked-intent deposit, which is TWO
+ * MembersRegistry's reclaim path on the registration stake, which is TWO
  * steps and this spec drives both through the UI:
  *
  *   requestWithdrawal()  de-surfaces IMMEDIATELY — the guard clears, discovery
  *                        drops the member, re-registration is allowed at once
  *   withdraw()           releases the ETH, once `withdrawalCooldown` has passed
  *
- * The split is the anti-rage-quit mechanism: a deposit reclaimable the instant
- * you left would price nothing, because one deposit would serve identity after
+ * The split is the anti-rage-quit mechanism: a stake reclaimable the instant
+ * you left would price nothing, because one stake would serve identity after
  * identity. Devnet deploys cooldown 0 (`new MembersRegistry(0.001 ether, 0)`)
  * so both steps run in one test without warping a chain the frontend shares;
  * the cooldown's own behaviour is covered in Foundry against a non-zero value.
  *
  * `members-onboarding.devnet.spec.ts` covers the register path; this covers
  * leave → claim: /members/manage dashboard → Begin → Confirm and leave → receipt →
- * Continue → pending-stake notice → Reclaim stake → ETH actually moves.
+ * Continue → pending-stake notice → Reclaim stake → ETH actually moves →
+ * reclaim receipt (its hash read back from chain) → Continue → the wizard.
  *
  * Requires: Anvil + ./deploy-local.sh
  *   NEXT_PUBLIC_MEMBERS_REGISTRY must be set in .env.local.
@@ -76,7 +77,7 @@ async function isSurfaced(): Promise<boolean> {
 
 test.describe('MembersRegistry leave + claim (devnet)', () => {
 
-    test('leaving de-surfaces at once; the deposit is claimed separately', async ({ page }) => {
+    test('leaving de-surfaces at once; the stake is reclaimed separately', async ({ page }) => {
         // Canonical idempotent seeder: this wallet ends each run de-surfaced,
         // so the helper's event-diff check routes re-runs through `register`;
         // a crashed run that left it registered routes through `updateProfile`.
@@ -117,7 +118,7 @@ test.describe('MembersRegistry leave + claim (devnet)', () => {
         expect(await isSurfaced(), 'de-surfaced at request, not at claim').toBe(false);
         expect(
             await client.getBalance({ address: registry }),
-            'the deposit has NOT moved yet — leaving is not being paid',
+            'the stake has NOT moved yet — leaving does not return it',
         ).toBe(registryBefore);
         // DELTA, not absolute: a prior run that left a request unclaimed leaves a
         // balance behind (requests accumulate by design), so an absolute assert
@@ -127,12 +128,12 @@ test.describe('MembersRegistry leave + claim (devnet)', () => {
                 address: registry, abi: MEMBERS_REGISTRY_ABI,
                 functionName: 'pendingDeposit', args: [SELLER_ADDR as Hex],
             })) as bigint - pendingBefore,
-            'exactly this registration\'s deposit became pending',
+            'exactly this registration\'s stake became pending',
         ).toBe(deposit);
 
         // ── Step 2: claim ────────────────────────────────────────────────
         // Dismissing the receipt drops the wallet to the unregistered view —
-        // where the pending-deposit notice must still be reachable, or the ETH
+        // where the pending-stake notice must still be reachable, or the ETH
         // would be stranded behind a screen this wallet can no longer see.
         await page.getByRole('button', { name: /^Continue$/ }).click();
 
@@ -141,8 +142,26 @@ test.describe('MembersRegistry leave + claim (devnet)', () => {
         await expect(claimBtn).toBeEnabled(); // devnet cooldown is 0
         await claimBtn.click();
 
+        // The claim shows what happened: the receipt holds the reclaimed
+        // amount and the transaction, and stays until the member continues.
+        const reclaimReceipt = page.getByTestId('stake-reclaim-receipt');
+        await expect(reclaimReceipt).toBeVisible({ timeout: 30000 });
+        await expect(reclaimReceipt.getByText(/stake is back in your wallet/)).toBeVisible();
+        const txLine = reclaimReceipt.getByText(/^Tx:\s+0x[0-9a-fA-F]{64}/);
+        await expect(txLine).toBeVisible();
+        const claimHash = (await txLine.innerText()).match(/0x[0-9a-fA-F]{64}/)![0] as Hex;
+        // The hash the screen shows is a mined, successful withdraw — read
+        // out of band, never from the screen that claims it.
+        const claimReceipt = await client.getTransactionReceipt({ hash: claimHash });
+        expect(claimReceipt.status, 'the reclaim transaction the receipt names succeeded').toBe('success');
+        expect(claimReceipt.to?.toLowerCase(), 'the reclaim transaction went to the MembersRegistry').toBe(registry.toLowerCase());
+
         await expect
             .poll(async () => (await client.getBalance({ address: registry })).toString(), { timeout: 30000 })
             .toBe((registryBefore - deposit).toString());
+
+        // Continue refetches; with nothing owed, the wallet goes to the wizard.
+        await reclaimReceipt.getByRole('button', { name: /^Continue$/ }).click();
+        await expect(page).toHaveURL(/\/members\/identity/, { timeout: 30000 });
     });
 });

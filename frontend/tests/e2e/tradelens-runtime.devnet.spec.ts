@@ -292,6 +292,14 @@ test.describe('TRADELENS RUNTIME — six sellers bond, the container story attes
         await waitForConnected(page);
         const resolveBtn = page.getByTestId('capability-execute-resolve-process');
         await expect(resolveBtn, 'the buyer can resolve the active process').toBeEnabled({ timeout: 30000 });
+        // The resolve capability's closing line says when its usage writes are
+        // done (`[usage-recording] recorded X/Y planned …`); the out-of-band
+        // transaction count below is read only after it.
+        let usageSummary: string | undefined;
+        page.on('console', (msg) => {
+            const line = msg.text().match(/\[usage-recording\] recorded \d+\/\d+ planned.*/);
+            if (line) usageSummary = line[0];
+        });
         await resolveBtn.click();
         await expect.poll(async () => (await publicClient.getContractEvents({
             address: core, abi: CORE_ABI, eventName: 'ProcessResolved', args: { buyer: BUYER }, fromBlock: 0n,
@@ -300,8 +308,8 @@ test.describe('TRADELENS RUNTIME — six sellers bond, the container story attes
         // ── RPGF USAGE RECORDING (count usage when it happens):
         //    the resolve capability records every committed
         //    clause's or assembly's use on the UsageCounter — one UsageRecorded per
-        //    DISTINCT clause or assembly in the process (duplicates AlreadyCounted by
-        //    design), INCLUDING the assembly's compositionHash via the
+        //    DISTINCT clause or assembly in the process (a key two orders carry
+        //    is planned once), INCLUDING the assembly's compositionHash via the
         //    mechanically-folded provenance section. Verified out-of-band
         //    from the chain, never from the UI. ──
         const usageCounter = config.usageCounter as Hex;
@@ -324,6 +332,46 @@ test.describe('TRADELENS RUNTIME — six sellers bond, the container story attes
             clausesAndAssemblies,
             "the assembly's compositionHash is a recorded assembly (designer credit)",
         ).toContain(adopted!.compositionHash!.toLowerCase());
+
+        // ── NO USAGE WRITE SENT THAT WAS SURE TO REVERT: the writes are
+        //    planned (one per distinct key, never an excluded key) and each is
+        //    simulated before it is sent. Read out of band: every transaction
+        //    the buyer sent to the UsageCounter from the resolve block on. ──
+        await expect.poll(() => usageSummary, {
+            timeout: 180000, message: 'the resolve capability finishes its usage writes',
+        }).toBeTruthy();
+        console.log(`[tradelens-rt] ${usageSummary}`);
+        const resolveEvents = await publicClient.getContractEvents({
+            address: core, abi: CORE_ABI, eventName: 'ProcessResolved', args: { processId }, fromBlock: 0n,
+        });
+        expect(resolveEvents, 'exactly one ProcessResolved for the process').toHaveLength(1);
+        const resolveBlock = resolveEvents[0].blockNumber!;
+        const latestBlock = await publicClient.getBlockNumber();
+        const buyerUsageTxs: Hex[] = [];
+        for (let n = resolveBlock; n <= latestBlock; n++) {
+            const block = await publicClient.getBlock({ blockNumber: n, includeTransactions: true });
+            for (const tx of block.transactions) {
+                if (tx.from.toLowerCase() === BUYER.toLowerCase() && tx.to?.toLowerCase() === usageCounter.toLowerCase()) {
+                    buyerUsageTxs.push(tx.hash);
+                }
+            }
+        }
+        for (const hash of buyerUsageTxs) {
+            const receipt = await publicClient.getTransactionReceipt({ hash });
+            expect(receipt.status, `the buyer's usage write ${hash} succeeded`).toBe('success');
+        }
+        const recordedEvents = await usageEvents();
+        for (const event of recordedEvents) {
+            const key = event.args.clauseOrAssembly as Hex;
+            const excluded = await publicClient.readContract({
+                address: usageCounter, abi: USAGE_COUNTER_ABI, functionName: 'excludedClauseOrAssembly', args: [key],
+            }) as boolean;
+            expect(excluded, `the recorded key ${key} is not one the counter excludes`).toBe(false);
+        }
+        expect(
+            buyerUsageTxs.length,
+            "the buyer's usage transactions equal the process's UsageRecorded events — none sent to revert",
+        ).toBe(recordedEvents.length);
 
         // ── RESOLUTION: the chain total left the buyer; each value-adder
         //    earned exactly its price; the escrow returned to baseline. ──

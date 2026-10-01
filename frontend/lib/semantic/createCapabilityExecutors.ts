@@ -14,14 +14,14 @@
  * copy; this factory only decides WHEN to ask.
  */
 import { type Hex } from "viem";
-import { buildSectionInclusionProof, computeClauseKey, sectionDataHash, type Agreement, type Commitment } from "@figaro-protocol/sdk";
+import { computeClauseKey, type Agreement, type Commitment, type UsageClaimContext } from "@figaro-protocol/sdk";
 import { encodeContentFromSpec, validateContent } from "@figaro-protocol/sdk/clauses";
 import { OrderState, type Order } from "@/lib/kernel/store";
 import { restoreSignedProcessId } from "@/lib/kernel/signedCommitment";
 import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
 import { DEVNET_CHAIN_ID } from "@/lib/shared/chains";
-import { isBytes32Hex } from "@/lib/shared/evm";
 import { verifyTxSuccess } from "@/lib/shared/verifyTxSuccess";
+import { planUsageRecords, type PlannedUsageWrite, type UsagePlanEntry } from "@/lib/semantic/planUsageRecords";
 import type { SubmitClauseAttestationCapabilityAction } from "@/lib/semantic/models";
 
 /** The attestation submitter's argument shape (both parties share it). */
@@ -42,17 +42,22 @@ export interface CapabilityExecutorDeps {
     processAgreements: Map<string, Agreement>;
     /** FigaroCore resolve — buyer dominance's single signature. */
     resolveProcess: (processId: string, commitments: ReturnType<typeof restoreSignedProcessId>[]) => Promise<Hex | undefined | void>;
-    /** RPGF usage recording (permissionless; UsageCounter re-verifies every
-     *  fact, so a revert is bookkeeping, not failure). Fired after resolve —
-     *  count usage when it happens. */
+    /** Usage recording (permissionless; UsageCounter re-verifies every fact).
+     *  Planned before the resolve from the counter's own facts, sent after it
+     *  — count usage when it happens. Each write is simulated first and sent
+     *  only if the simulation passes. */
+    fetchUsageClaimContext: (agreement: Agreement) => Promise<UsageClaimContext>;
+    simulateClauseUsage: (order: Commitment, clauseOrAssembly: Hex, sectionHash: Hex, proof: readonly Hex[]) => Promise<void>;
+    simulateAssemblyUsage: (order: Commitment, compositionHash: Hex, proof: readonly Hex[]) => Promise<void>;
     recordClauseUsage: (order: Commitment, clauseOrAssembly: Hex, sectionHash: Hex, proof: readonly Hex[]) => Promise<Hex | undefined>;
     recordAssemblyUsage: (order: Commitment, compositionHash: Hex, proof: readonly Hex[]) => Promise<Hex | undefined>;
     submitAttestation: (role: "buyer" | "seller", args: AttestationSubmitArgs) => Promise<Hex | undefined>;
     registerMember: (metadataURI: string) => Promise<Hex | undefined | void>;
     updateMemberProfile: (metadataURI: string) => Promise<Hex | undefined | void>;
     withdrawMemberDeposit: () => Promise<Hex | undefined | void>;
-    /** UI-edge dialogs — the copy lives with the caller. */
-    confirmResolve: () => boolean;
+    /** UI-edge dialogs — the copy lives with the caller. `confirmResolve`
+     *  receives how many usage writes the wallet signs after the resolve. */
+    confirmResolve: (plannedUsageWrites: number) => boolean;
     confirmWithdraw: () => boolean;
 }
 
@@ -90,87 +95,79 @@ export function createCapabilityExecutors(deps: CapabilityExecutorDeps) {
             deadline: order.deadline,
         }, chainId));
 
+        // ── USAGE RECORDING, PLANNED BEFORE THE BUYER IS ASKED: the buyer's
+        // app holds every agreement and proof at the moment of resolve, so it
+        // plans the usage writes first (`planUsageRecords` — one per distinct
+        // key across the process, never an excluded key, the assembly write
+        // independent) and the confirm says how many the wallet signs after.
+        // Under the e2e mock there is no chain: nothing is planned or sent.
+        const plan = deps.isE2EMock ? [] : await planProcessUsage(activeOrders, commitments);
+        if (!deps.confirmResolve(plan.length)) return undefined;
+
         const resolveTx = await deps.resolveProcess(targetProcessId, commitments);
 
-        // ── RPGF USAGE RECORDING: count usage when it
-        // happens — the buyer's app, holding every agreement and proof at
-        // the moment of resolve, records each committed clause's or
-        // assembly's use.
-        // Spec-routed and name-free: every section records; a section whose
-        // spec declares a `compositionHash` field additionally records
-        // ASSEMBLY usage (once per process). Best-effort by design: the
-        // process has already resolved, recording is permissionless
-        // bookkeeping anyone can redo, so a failed call logs and moves on.
+        // ── SENT AFTER THE RESOLVE CONFIRMS: count usage when it happens.
+        // Each planned write is simulated first and sent only if the
+        // simulation passes — a simulation that reverts (the live-stake gate,
+        // a key another caller counted meanwhile) is logged and skipped,
+        // never sent. Best-effort by design: the process has already
+        // resolved, and recording is permissionless work anyone can redo.
         if (!deps.isE2EMock) {
             await waitForTransactionConfirmation(resolveTx as Hex | undefined);
-            let assemblyRecorded = false;
             let recorded = 0;
-            let attempted = 0;
-            for (let i = 0; i < activeOrders.length; i++) {
-                const agreementHash = activeOrders[i].agreementHash;
-                const agreement = agreementHash ? deps.processAgreements.get(agreementHash) : undefined;
-                if (!agreement) {
-                    // Loud by doctrine (silent success is the enemy): a missing
-                    // agreement means this order's clauses and assemblies go unrecorded.
-                    console.error(`[usage-recording] no hydrated agreement for order ${activeOrders[i].orderHash} (hash ${agreementHash}) — skipping its clauses and assemblies`);
+            let skipped = 0;
+            let assemblyRecorded = false;
+            for (const write of plan) {
+                const label = write.kind === "clause" ? write.clause : `assembly ${write.key}`;
+                try {
+                    if (write.kind === "clause") await deps.simulateClauseUsage(write.order, write.key, write.sectionHash, write.proof);
+                    else await deps.simulateAssemblyUsage(write.order, write.key, write.proof);
+                } catch (error) {
+                    skipped++;
+                    console.error(`[usage-recording] ${label} on order ${write.orderHash}: simulation reverted, not sent: ${error instanceof Error ? error.message : String(error)}`);
                     continue;
                 }
-                for (const section of agreement.sections) {
-                    attempted++;
-                    const { proof } = buildSectionInclusionProof(agreement, section.clause);
-
-                    // CLAUSE leg. A clause in UsageCounter's deploy-time excluded set (at
-                    // the reference genesis, `figaro-assembly-provenance` alone) reverts
-                    // ClauseOrAssemblyExcluded by design; the order-mandatory clauses earn.
-                    try {
-                        // Only the section FINGERPRINT reaches calldata — never
-                        // the plaintext, so a private section stays off-chain.
-                        const fingerprint = sectionDataHash(section);
-                        const tx = await deps.recordClauseUsage(
-                            commitments[i] as Commitment,
-                            computeClauseKey(section.clause, section.version) as Hex,
-                            fingerprint as Hex,
-                            proof as readonly Hex[],
-                        );
-                        await waitForTransactionConfirmation(tx);
-                        recorded++;
-                    } catch (error) {
-                        console.error(`[usage-recording] ${section.clause} on order ${activeOrders[i].orderHash}: ${error instanceof Error ? error.message : String(error)}`);
-                    }
-
-                    // ASSEMBLY leg — INDEPENDENT of the clause leg above, and
-                    // that independence is the whole point. The section that
-                    // carries a compositionHash is `figaro-assembly-provenance`,
-                    // which is EXCLUDED from scoring, so its clause record always
-                    // reverts. Sequencing the assembly credit after it (inside the
-                    // same try) made the designer-credit leg unreachable for every
-                    // assembly-composed process — dead end-to-end, silently.
-                    const composition = (section.data as Record<string, unknown> | undefined)?.compositionHash;
-                    if (assemblyRecorded || composition === undefined) continue;
-                    if (typeof composition !== "string" || !isBytes32Hex(composition)) {
-                        // Loud: a committed compositionHash that fails the
-                        // shape check means the assembly leg silently dies.
-                        console.error(`[usage-recording] ${section.clause}: compositionHash present but malformed: ${JSON.stringify(composition)}`);
-                        continue;
-                    }
-                    try {
-                        // recordAssemblyUsage takes no section — the provenance
-                        // content is derived on-chain from the compositionHash.
-                        const atx = await deps.recordAssemblyUsage(
-                            commitments[i] as Commitment,
-                            composition as Hex,
-                            proof as readonly Hex[],
-                        );
-                        await waitForTransactionConfirmation(atx);
-                        assemblyRecorded = true;
-                    } catch (error) {
-                        console.error(`[usage-recording] assembly ${composition} on order ${activeOrders[i].orderHash}: ${error instanceof Error ? error.message : String(error)}`);
-                    }
+                try {
+                    const tx = write.kind === "clause"
+                        ? await deps.recordClauseUsage(write.order, write.key, write.sectionHash, write.proof)
+                        : await deps.recordAssemblyUsage(write.order, write.key, write.proof);
+                    await waitForTransactionConfirmation(tx);
+                    recorded++;
+                    if (write.kind === "assembly") assemblyRecorded = true;
+                } catch (error) {
+                    console.error(`[usage-recording] ${label} on order ${write.orderHash}: ${error instanceof Error ? error.message : String(error)}`);
                 }
             }
-            console.error(`[usage-recording] recorded ${recorded}/${attempted} sections${assemblyRecorded ? " + assembly" : ""} for process ${targetProcessId}`);
+            console.error(`[usage-recording] recorded ${recorded}/${plan.length} planned (${skipped} skipped after a reverted simulation)${assemblyRecorded ? " + assembly" : ""} for process ${targetProcessId}`);
         }
         return resolveTx;
+    };
+
+    /** Read the counter's facts per hydrated agreement, then plan. A missing
+     *  agreement or an unreadable counter stays loud (silent success is the
+     *  enemy): that order's clauses and assembly go uncounted. */
+    const planProcessUsage = async (
+        activeOrders: readonly Order[],
+        commitments: readonly Commitment[],
+    ): Promise<PlannedUsageWrite[]> => {
+        const entries: UsagePlanEntry[] = [];
+        for (let i = 0; i < activeOrders.length; i++) {
+            const { orderHash, agreementHash } = activeOrders[i];
+            const agreement = agreementHash ? deps.processAgreements.get(agreementHash) : undefined;
+            if (!agreement) {
+                console.error(`[usage-recording] no hydrated agreement for order ${orderHash} (hash ${agreementHash}) — skipping its clauses and assemblies`);
+                continue;
+            }
+            try {
+                const context = await deps.fetchUsageClaimContext(agreement);
+                entries.push({ orderHash, commitment: commitments[i], agreement, context });
+            } catch (error) {
+                console.error(`[usage-recording] the UsageCounter's facts for order ${orderHash} did not read — skipping its clauses and assemblies: ${error instanceof Error ? error.message : String(error)}`);
+            }
+        }
+        const { writes, problems } = planUsageRecords(entries);
+        for (const problem of problems) console.error(`[usage-recording] ${problem}`);
+        return writes;
     };
 
     // ONE generic attestation path — the clause spec drives the on-chain
@@ -228,10 +225,8 @@ export function createCapabilityExecutors(deps: CapabilityExecutorDeps) {
     /** The callback bag `executeTransactionCapabilityAction` dispatches on. */
     const executorCallbacks = {
         waitForTransactionConfirmation,
-        resolveProcess: async (processId: string) => {
-            if (!deps.confirmResolve()) return;
-            return resolveActiveProcess(processId);
-        },
+        // The confirm is asked inside, once the usage writes are planned.
+        resolveProcess: (processId: string) => resolveActiveProcess(processId),
         registerMember: deps.registerMember,
         updateMemberProfile: deps.updateMemberProfile,
         withdrawMemberDeposit: () => {

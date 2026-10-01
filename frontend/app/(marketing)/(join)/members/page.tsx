@@ -82,7 +82,7 @@ export default function Join() {
                     </table>
                 </div>
                 <p className="text-base text-ink-body leading-relaxed mb-8">
-                    Registration is permissionless and posts a reclaimable ETH stake, on the terms every registry here shares (<Link href="/terms/faq#builders-registries" className="text-ink-heading hover:underline">what the stake does, and what withdrawing it leaves behind</Link>). What is specific to a participant registration: it is keyed to your wallet, so leaving de-lists you at once and clears the profile, and the ETH releases only after a cooldown &mdash; coming back later costs a second stake. The review step shows the live amount before you sign.
+                    Registration is permissionless and posts a reclaimable ETH stake, on the terms every registry here shares (<Link href="/terms/faq#builders-registries" className="text-ink-heading hover:underline">what the stake does, and what withdrawing it leaves behind</Link>). What is specific to a participant registration: it is keyed to your wallet, so leaving de-lists you at once and clears the profile, and the ETH releases after a cooldown each registry fixes when it is deployed &mdash; coming back later costs a second stake. The review step shows this network&rsquo;s cooldown and the live amount before you sign.
                 </p>
                 <div className="mb-8">
                     <RegistryCountLink family="members" />

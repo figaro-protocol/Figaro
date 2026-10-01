@@ -14,7 +14,8 @@ import { useUsageRecorder } from "@/lib/protocol/useUsageRecorder";
 import { isE2EMockSession } from "@/lib/shared/e2e";
 import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
 import { useAttestationCoordinatorActions } from "@/lib/composition/useAttestationCoordinatorActions";
-import { useRegisterMember, useUpdateProfile, useWithdrawDeposit, useRegistrationDeposit } from "@/lib/member/useMembersRegistry";
+import { useRegisterMember, useUpdateProfile, useWithdrawDeposit, useRegistrationDeposit, useWithdrawalCooldown } from "@/lib/member/useMembersRegistry";
+import { cooldownPhrase } from "@/lib/member/cooldownPhrase";
 import { deriveProcessModelFromRuntime } from "@/lib/semantic/deriveProcessModelFromRuntime";
 import { createCapabilityExecutors } from "@/lib/semantic/createCapabilityExecutors";
 import { getAttestationsByProcess, type RuntimeAttestation } from "@/lib/composition/indexer";
@@ -63,12 +64,13 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
     // specs warm; reading it here re-renders + re-derives processModel below.
     const { version: clauseSpecsVersion } = useClauseSpecs();
     const { resolveProcess, hash, isPending } = useFigaroActions();
-    const { recordClauseUsage, recordAssemblyUsage } = useUsageRecorder();
+    const usageRecorder = useUsageRecorder();
     const attestationActions = useAttestationCoordinatorActions();
     const registerMember = useRegisterMember();
     const updateMemberProfile = useUpdateProfile();
     const withdrawMemberDeposit = useWithdrawDeposit();
     const registrationDeposit = useRegistrationDeposit();
+    const { data: withdrawalCooldown } = useWithdrawalCooldown();
     const {
         needsApproval,
         approve,
@@ -181,14 +183,23 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
         processOrders,
         processAgreements,
         resolveProcess,
-        recordClauseUsage,
-        recordAssemblyUsage,
+        fetchUsageClaimContext: usageRecorder.fetchClaimContext,
+        simulateClauseUsage: usageRecorder.simulateClauseUsage,
+        simulateAssemblyUsage: usageRecorder.simulateAssemblyUsage,
+        recordClauseUsage: usageRecorder.recordClauseUsage,
+        recordAssemblyUsage: usageRecorder.recordAssemblyUsage,
         submitAttestation: attestationActions.submitAttestation,
         registerMember: (metadataURI) => registerMember.register(metadataURI, (registrationDeposit.data as bigint | undefined) ?? 0n),
         updateMemberProfile: (metadataURI) => updateMemberProfile.updateProfile(metadataURI),
         withdrawMemberDeposit: () => withdrawMemberDeposit.withdraw(),
-        confirmResolve: () => window.confirm("This resolves the whole process: every seller is paid and every bond is refunded at once, and it cannot be undone. Continue?"),
-        confirmWithdraw: () => window.confirm("Leave the registry for this address? You are de-listed from discovery straight away and can register again at once — but the deposit is released only after the cooldown, so coming back costs a fresh one."),
+        confirmResolve: (plannedUsageWrites) => window.confirm(
+            "This resolves the whole process: every seller is paid and every bond is refunded at once, and it cannot be undone."
+            + (plannedUsageWrites > 0
+                ? ` Your wallet then signs up to ${plannedUsageWrites} more ${plannedUsageWrites === 1 ? "transaction" : "transactions"} that record which clauses and which assembly this trade used, so their designers are rewarded.`
+                : "")
+            + " Continue?",
+        ),
+        confirmWithdraw: () => window.confirm(`Leave the registry for this address? You are de-listed from discovery straight away and can register again at once — but the stake is released ${cooldownPhrase(withdrawalCooldown as bigint | undefined)}, so coming back costs a fresh one.`),
     });
 
     const executeCapabilityAction = async (
