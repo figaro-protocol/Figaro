@@ -10,14 +10,16 @@ seller twice the cumulative value through its order. A bond is its owner's own
 deterrent — whatever a party could gain by walking away, it leaves more behind.
 Only the buyer resolves the process, and resolution pays every seller and
 refunds every bond at once. Keeping one's word is each party's best move, and
-the process holds as one. The kernel has two operations, commit and resolve,
+the process holds as one. That contract has two operations, commit and resolve,
 and nothing else.
 
 Everything people touch is built above it: terms are clauses, written once and
-registered for anyone to compose; offer and acceptance are assemblies —
-agreements composed into a reusable design of a process — and checkout;
+registered for anyone to compose, and an assembly composes agreements into a
+reusable design of a process; offer is the buyer's signature over the
+commitment, and acceptance is the seller's counter-signature;
 capacity is any wallet, a person's or an agent's, registered under a stake;
-legality composes in, or an outside forum rules afterward on the same data;
+legality composes in, or an outside forum rules on the same data while the
+process stands open;
 the data a process leaves is public in aggregate and the parties' own in
 detail; designers are rewarded from the commons in proportion to real use of what
 they published. `docs/VISION.md` says why; `docs/THEORY.md` derives it;
@@ -25,13 +27,18 @@ they published. `docs/VISION.md` says why; `docs/THEORY.md` derives it;
 
 ## What this repository contains
 
-- **Kernel** — `src/core/kernel/`: `FigaroCore.sol` (two entry points, three
-  mappings, decentralized and permissionless) and `CommitmentTypes.sol` (the commitment and its
-  EIP-712 hashing). Frozen.
-- **Protocol contracts** — `src/core/` (attestation, the batch verifier), `src/build/` and `src/app/`: the three registries (clauses,
-  members, assemblies — permissionless, first-write-wins, under a stake), the
-  attestation and swap-and-commit coordinators, the usage counter, and the
-  proof-based batch verifier. Inventory: `docs/CONTRACTS.md`.
+- **Core** — `src/core/`: the four contracts every trade runs on.
+  `FigaroCore.sol` (two entry points, three mappings, decentralized and
+  permissionless) holds every bond and resolves a process when its buyer
+  signs; `CommitmentTypes.sol` defines the commitment and its EIP-712 hashing;
+  `AttestationCoordinator.sol` binds what a party attests to the agreement it
+  signed; `FigaroBatchVerifier.sol` accepts a validity proof of many processes
+  and resolves them in one transaction. Frozen for the audit, with everything
+  else in the audit's scope (`docs/AUDITOR_HANDOVER.md` § "Scope").
+- **Protocol contracts** — `src/build/` and `src/app/`: the three registries
+  (clauses, members, assemblies — permissionless, first-write-wins, under a
+  stake), the swap-and-commit coordinator, and the usage counter. Inventory:
+  `docs/CONTRACTS.md`.
 - **The florin and designer rewards** — `src/build/florin/`, `src/build/rewards/`: a
   one-billion-cap ERC-20 and the minter that rewards designers of record in
   proportion to the use their clauses and assemblies carried.
@@ -44,7 +51,7 @@ they published. `docs/VISION.md` says why; `docs/THEORY.md` derives it;
   reconstructing state, building and signing commitments, validating and
   encoding clause content, the agent runtime. `sdk/README.md` opens with
   **Your first commit**, a walkthrough from a cold machine to a bonded order.
-- **Prover** — `prover/`: the Rust kernel mirror, the generic clause engine,
+- **Prover** — `prover/`: the Rust mirror of `FigaroCore`, the generic clause engine,
   the SP1 guest, and the sequencer behind the batch path. `docs/SCALING_STRATEGY.md`.
 - **Site** — `frontend/`, statically exported: the public pages, the paper
   corpus, the builder references, the wallet-connected surfaces, and the
@@ -63,13 +70,13 @@ Start with `docs/README.md` for the document map.
 
 ```
 src/                        Solidity contracts (0.8.26, Foundry)
-  kernel/                   FigaroCore.sol + CommitmentTypes.sol — frozen
-  protocol/registries/      ClauseRegistry, MembersRegistry, AssemblyRegistry
-  protocol/coordinators/    AttestationCoordinator, WitnessSwapAndCommitCoordinator, IRoleResolver
-  protocol/usage/           UsageCounter
-  protocol/verifier/        FigaroBatchVerifier, ISP1Verifier
-  florin/                   FlorinToken, IFlorinMinter
-  rpgf/                     RpgfMinter
+  core/kernel/              FigaroCore, CommitmentTypes
+  core/attestation/         AttestationCoordinator, IRoleResolver
+  core/verifier/            FigaroBatchVerifier, ISP1Verifier
+  build/registries/         ClauseRegistry, AssemblyRegistry
+  build/rewards/            UsageCounter, RpgfMinter
+  build/florin/             FlorinToken, IFlorinMinter
+  app/                      MembersRegistry, WitnessSwapAndCommitCoordinator
   mocks/  echidna/          test contracts, never deployed to a public network
 
 clauses/                    canonical clause specs
@@ -113,14 +120,14 @@ cd frontend && npm run test:e2e:devnet      # site, end to end against Anvil
 
 ## Verification
 
-The kernel's safety properties — conservation, solvency, non-negativity,
+`FigaroCore`'s safety properties — conservation, solvency, non-negativity,
 accumulator integrity, atomic resolution — are machine-checked across Foundry,
 Halmos, Certora, Echidna, and TLA+. The equilibrium itself is an analytic
 derivation (`docs/THEORY.md` § "Nash Equilibrium Analysis") that is also
 machine-checked in Lean 4 (`formal/lean/FigaroEquilibrium.lean` —
 dependency-free, `sorry`-free, constructive) over the same payoff table the
-TLA+ invariants pin to the kernel: the model checkers establish that the
-payoffs the proof reasons over are exactly the payoffs the kernel produces, and
+TLA+ invariants pin to `FigaroCore`: the model checkers establish that the
+payoffs the proof reasons over are exactly the payoffs the contract produces, and
 Lean checks the choosing. `docs/VERIFICATION_MAP.md` maps it; the external
 audit's handover is `docs/AUDITOR_HANDOVER.md`.
 
