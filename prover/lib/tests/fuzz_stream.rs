@@ -1,24 +1,24 @@
-//! The differential fuzz lock: the kernel mirror replays a seeded stream of
-//! operations the kernel itself ran, and must answer as the kernel did.
+//! The differential fuzz lock: the mirror of FigaroCore replays a seeded stream of
+//! operations FigaroCore itself ran, and must answer as FigaroCore did.
 //!
 //! `test/core/kernel/KernelDifferentialFuzzTest.t.sol` draws a stream of
 //! commits and resolutions from a seed — valid ones and deliberately
-//! malformed ones — runs each on `FigaroCore`, and writes what the kernel
+//! malformed ones — runs each on `FigaroCore`, and writes what FigaroCore
 //! did to `test/fixtures/streams/kernel.jsonl`, one JSON object per line. This
 //! file replays the stream through `apply_batch_with_state`, one operation
 //! per batch over the state the previous batch left, and asserts:
 //!
-//!   - every operation the kernel accepted, the mirror accepts, with the
+//!   - every operation FigaroCore accepted, the mirror accepts, with the
 //!     same process id and order hash;
-//!   - every operation the kernel rejected, the mirror rejects, with the
+//!   - every operation FigaroCore rejected, the mirror rejects, with the
 //!     same error;
-//!   - every wallet's deposits and payouts, per token, are the kernel's;
-//!   - every process ends on the kernel's accumulator and active count.
+//!   - every wallet's deposits and payouts, per token, are FigaroCore's;
+//!   - every process ends on FigaroCore's accumulator and active count.
 //!
 //! The commit signatures are the stream's own bytes, so a signature form the
-//! kernel refuses (high-s, a 0/1 recovery id, zero bytes) reaches the mirror
-//! as the kernel saw it. A resolution has no signature on the direct path
-//! (the kernel reads `msg.sender`); the mirror's equivalent is the caller's
+//! FigaroCore refuses (high-s, a 0/1 recovery id, zero bytes) reaches the mirror
+//! as FigaroCore saw it. A resolution has no signature on the direct path
+//! (FigaroCore reads `msg.sender`); the mirror's equivalent is the caller's
 //! signature over the resolve struct, made here with the caller's key.
 //!
 //! The test is `#[ignore]`d because it needs the stream the Foundry half
@@ -125,9 +125,9 @@ fn commitment(o: &serde_json::Value) -> Commitment {
     }
 }
 
-/// The mirror's error under the kernel's name. The kernel reports arithmetic
+/// The mirror's error under FigaroCore's name. FigaroCore reports arithmetic
 /// overflow as a Solidity panic and a malformed signature through
-/// OpenZeppelin's ECDSA errors; every other name is the kernel's own.
+/// OpenZeppelin's ECDSA errors; every other name is FigaroCore's own.
 fn kernel_name(e: &KernelError) -> &'static str {
     match e {
         KernelError::DeadlineExpired => "DeadlineExpired",
@@ -151,7 +151,7 @@ fn kernel_name(e: &KernelError) -> &'static str {
     }
 }
 
-/// The kernel's three ECDSA errors are one class to the mirror, which has
+/// FigaroCore's three ECDSA errors are one class to the mirror, which has
 /// one `InvalidSignature`.
 fn same_error(kernel: &str, mirror: &str) -> bool {
     if kernel.starts_with("ECDSAInvalidSignature") {

@@ -251,7 +251,7 @@ pub fn router(state: AppState, config: ApiConfig) -> Router {
         .merge(submissions)
         .route("/health", get(health))
         .route("/status", get(status))
-        // Publication — the batch universe's mirror of the kernel's events.
+        // Publication — the batch universe's mirror of FigaroCore's events.
         .route("/orders/:order_hash", get(get_order))
         .route("/processes/:process_id", get(get_process))
         .route("/batches", get(get_batches))
@@ -340,8 +340,8 @@ async fn submit_op(
 }
 
 /// Submit an RPGF usage claim for an order the batch path has resolved.
-/// Separate from `/submit` because a claim is not a kernel operation — it
-/// changes no kernel state and is applied against the batch's post-state.
+/// Separate from `/submit` because a claim is not a FigaroCore operation — it
+/// changes no FigaroCore state and is applied against the batch's post-state.
 async fn submit_usage(
     State(state): State<AppState>,
     payload: Result<Json<SubmitUsageRequest>, JsonRejection>,
@@ -401,7 +401,7 @@ async fn status(State(state): State<AppState>) -> impl IntoResponse {
 // per-process resolution facts, and the signatures that admitted it. The
 // verifier publishes none of that (its public values carry no order
 // hashes; its storage is a state root and a count), so these routes mirror
-// the kernel's publication role for the batch universe.
+// FigaroCore's publication role for the batch universe.
 //
 // They are a CONVENIENCE, never an authority. Every field is verifiable
 // against the chain by the reader (structs hash to the order hash under
@@ -455,7 +455,7 @@ async fn get_process(State(state): State<AppState>, Path(raw): Path<String>) -> 
 }
 
 /// Bounded, cursor-paged replay of everything this relay has resolved — the
-/// batch universe's equivalent of walking the kernel's logs from a block.
+/// batch universe's equivalent of walking FigaroCore's logs from a block.
 async fn get_batches(
     State(state): State<AppState>,
     query: Result<Query<RangeQuery>, QueryRejection>,

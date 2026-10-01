@@ -4,7 +4,7 @@
 /// Pre-checks are advisory only. The proof enforces all invariants.
 /// Pre-checks exist to reject clearly invalid operations early and
 /// avoid wasting prover compute. The attestation content gate is the
-/// kernel's own `validate_attestation_content` — the exact function the
+/// mirror's own `validate_attestation_content` — the exact function the
 /// guest runs — so mempool acceptance and in-proof acceptance cannot
 /// drift.
 use std::collections::{HashMap, HashSet, VecDeque};
@@ -75,11 +75,11 @@ struct MempoolInner {
     /// Dedup index over the pending op queue: semantic key → assigned id.
     /// Cleared on drain — idempotency covers the pending window; once a
     /// batch resolves, a re-submission is dropped by the stateful assembler
-    /// filter instead (the kernel state already carries the effect).
+    /// filter instead (the mirror state already carries the effect).
     index: HashMap<B256, u64>,
     /// Usage claims awaiting the next batch. Kept in their OWN queue, not
-    /// interleaved with ops: a claim is not a kernel operation, it changes
-    /// no kernel state, and the guest applies every claim after every op
+    /// interleaved with ops: a claim is not a FigaroCore operation, it changes
+    /// no FigaroCore state, and the guest applies every claim after every op
     /// (against the post-state) so the two orderings are independent.
     pending_usage: VecDeque<UsageClaim>,
     /// Dedup index over pending usage claims (hash of the claim's
@@ -332,7 +332,7 @@ impl Mempool {
     }
 
     /// Pre-check: verify EIP-712 signature validity and (for
-    /// attestations) run the kernel's witness gates before accepting into
+    /// attestations) run the mirror's witness gates before accepting into
     /// the mempool. State-dependent checks (order active, process match,
     /// root-buyer identity) cannot run here — the proof enforces them.
     fn pre_check(&self, op: &KernelOp) -> Result<(), String> {
@@ -396,7 +396,7 @@ impl Mempool {
                 if recovered != role.seller {
                     return Err("attest-seller sig does not match role.seller".into());
                 }
-                // The kernel's witness gates (spec identity, content,
+                // The mirror's witness gates (spec identity, content,
                 // agreement inclusion) — the same code the guest runs.
                 validate_attestation_content(
                     proof,
