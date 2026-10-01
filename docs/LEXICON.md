@@ -20,7 +20,7 @@ Nouns and their definitions. One name per thing.
 
 **buyer** — The one party in a process who pays, and the only party who can resolve it.
 
-**catalogue** — The document a seller publishes listing what it offers and under which assemblies.
+**catalogue** — The document a member publishes listing what it offers, goods, work or its own data, and under which assemblies.
 
 **channel** — The encrypted line along which a buyer and a seller exchange the documents of one order before and during the process.
 
