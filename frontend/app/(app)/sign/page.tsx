@@ -26,7 +26,7 @@ import { extractErrorMessage } from "@/lib/shared/errors";
 import { validateCommitmentAgreement } from "@figaro-protocol/sdk";
 import { specSource } from "@/lib/shared/clauseSpecSource";
 import { TokenApprovalFlow } from "@/components/runtime/TokenApprovalFlow";
-import { SwapFundingPanel } from "@/app/(app)/s/checkout/_components/SwapFundingPanel";
+import { SwapFundingPanel, fundingAuthorization, fundingBlocksTheAct } from "@/app/(app)/s/checkout/_components/SwapFundingPanel";
 import { resolveSwapFundingContracts } from "@/lib/composition/swapFunding";
 import useTokenApproval from "@/hooks/useTokenApproval";
 import { ERC20_ABI } from "@/lib/kernel/contracts";
@@ -289,6 +289,16 @@ function SignPageContent() {
         owner: isSeller ? address : undefined,
         spender: (swapContracts?.permit2 ?? ZERO_ADDRESS) as `0x${string}`,
     });
+    // Where the chosen funding token stands with Permit2 — the one derived
+    // state the funding panel shows and the counter-sign button obeys. A
+    // counter-sign with a funding leg broadcasts swapAndCommit, which pulls
+    // the token through Permit2 and reverts on an allowance that is short.
+    const sellerFunding = fundingAuthorization({
+        fundingToken: sellerFundingToken,
+        allowanceKnown: permit2SellerFunding.allowanceKnown && !permit2SellerFunding.isAllowanceRefetching,
+        needsApproval: permit2SellerFunding.needsApproval(myBondAmount),
+        isAuthorizing: permit2SellerFunding.isApprovePending || permit2SellerFunding.isApproveConfirming,
+    });
     // A seller short of the denomination has no other way through accept —
     // insufficiency auto-opens the collapsed on-ramp.
     const sellerShortOfDenomination = isSeller
@@ -488,9 +498,8 @@ function SignPageContent() {
                                     decimals={tokenDecimals}
                                     fundingToken={sellerFundingToken}
                                     onSelect={setSellerFundingToken}
-                                    needsAuthorization={permit2SellerFunding.allowanceKnown && permit2SellerFunding.needsApproval(myBondAmount)}
+                                    authorization={sellerFunding}
                                     onAuthorize={() => permit2SellerFunding.approve(maxUint256)}
-                                    isAuthorizing={permit2SellerFunding.isApprovePending || permit2SellerFunding.isApproveConfirming}
                                 />
                             )}
                         </div>
@@ -538,11 +547,15 @@ function SignPageContent() {
                     ) : (
                         <Button
                             onClick={handleCounterSign}
-                            disabled={step === "signing" || step === "committing" || !address}
+                            disabled={step === "signing" || step === "committing" || !address || fundingBlocksTheAct(sellerFunding)}
                             data-testid="btn-counter-sign"
                             className="w-full"
                         >
-                            {step === "signing" ? "Signing…" : step === "committing" ? "Submitting…" : "Counter-Sign & Submit"}
+                            {step === "signing" ? "Signing…"
+                                : step === "committing" ? "Submitting…"
+                                : sellerFunding === "needed" ? "Authorize the funding token first"
+                                : fundingBlocksTheAct(sellerFunding) ? "Checking the funding authorization…"
+                                : "Counter-Sign & Submit"}
                         </Button>
                     ))}
 

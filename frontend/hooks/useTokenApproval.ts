@@ -5,7 +5,7 @@ import { useReadContract, useWriteContract, useWaitForTransactionReceipt } from 
 import { ERC20_ABI } from "@/lib/kernel/contracts";
 
 function useTokenApproval({ tokenAddress, owner, spender }: { tokenAddress?: `0x${string}` | undefined; owner?: `0x${string}` | undefined; spender: `0x${string}` }) {
-    const { data: allowance, isFetched: allowanceKnown, refetch: refetchAllowance } = useReadContract({
+    const { data: allowance, isFetched: allowanceKnown, isRefetching: isAllowanceRefetching, refetch: refetchAllowance } = useReadContract({
         address: tokenAddress,
         abi: ERC20_ABI,
         functionName: "allowance",
@@ -55,6 +55,9 @@ function useTokenApproval({ tokenAddress, owner, spender }: { tokenAddress?: `0x
         /** True once the allowance read has completed (a value, or a confirmed
          *  zero) — the display gate for any authorize affordance. */
         allowanceKnown,
+        /** True while a known allowance is being read again — after an
+         *  approval's receipt, the value in hand is the one from before it. */
+        isAllowanceRefetching,
         needsApproval,
         approve,
         isApprovePending,

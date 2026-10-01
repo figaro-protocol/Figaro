@@ -44,7 +44,7 @@ import { CommitmentSharePanel } from "@/components/runtime/CommitmentSharePanel"
 import { SellerCataloguePicker, type SellerSelection } from "@/components/runtime/SellerCataloguePicker";
 import { useCompositionActions } from "@/lib/composition/useCompositionActions";
 import { inputForOutput, readVenueRate, resolveSwapFundingContracts, type VenueRate } from "@/lib/composition/swapFunding";
-import { SwapFundingPanel } from "./SwapFundingPanel";
+import { SwapFundingPanel, fundingAuthorization, fundingBlocksTheAct } from "./SwapFundingPanel";
 import useTokenApproval from "@/hooks/useTokenApproval";
 import { useApproveThenAct } from "@/hooks/useApproveThenAct";
 import { maxUint256 } from "viem";
@@ -429,6 +429,14 @@ export function CheckoutView({ sellerAddress }: Props) {
     const planTotal = kitBreakdown ? kitBreakdown.total : cartTotal;
     const lockedTotal = planTotal > 0n ? calculateBonds(planTotal, planTotal).buyerBond : 0n;
     const hasInsufficientBalance = !!buyer && tokenBalance !== undefined && balance < lockedTotal;
+    // Where the chosen funding token stands with Permit2 — the one derived
+    // state the funding panel shows and the place-order button obeys.
+    const buyerFunding = fundingAuthorization({
+        fundingToken,
+        allowanceKnown: permit2Funding.allowanceKnown && !permit2Funding.isAllowanceRefetching,
+        needsApproval: permit2Funding.needsApproval(lockedTotal),
+        isAuthorizing: permit2Funding.isApprovePending || permit2Funding.isApproveConfirming,
+    });
 
     // Every order in the assembly — root + sub-orders — surfaced for review:
     // the buyer signs and bonds ALL of them. Each clause renders its COMPOSED
@@ -628,7 +636,7 @@ export function CheckoutView({ sellerAddress }: Props) {
             );
             return;
         }
-        if (fundingToken && permit2Funding.needsApproval(lockedTotal)) {
+        if (fundingBlocksTheAct(buyerFunding)) {
             setCheckoutError("Authorize the funding token first — the one-time Permit2 approval below.");
             return;
         }
@@ -995,9 +1003,8 @@ export function CheckoutView({ sellerAddress }: Props) {
                                 decimals={tokenDecimals}
                                 fundingToken={fundingToken}
                                 onSelect={setFundingToken}
-                                needsAuthorization={permit2Funding.allowanceKnown && permit2Funding.needsApproval(lockedTotal)}
+                                authorization={buyerFunding}
                                 onAuthorize={() => permit2Funding.approve(maxUint256)}
-                                isAuthorizing={permit2Funding.isApprovePending || permit2Funding.isApproveConfirming}
                             />
                         )}
 
@@ -1046,6 +1053,7 @@ export function CheckoutView({ sellerAddress }: Props) {
                                 || cartItems.length === 0
                                 || !orderReady
                                 || !termsReady
+                                || fundingBlocksTheAct(buyerFunding)
                             }
                             data-testid="btn-place-order"
                             className="w-full"
@@ -1056,6 +1064,10 @@ export function CheckoutView({ sellerAddress }: Props) {
                                     ? "Approving payment…"
                                     : placingOrder
                                         ? "Placing order…"
+                                        : buyerFunding === "needed"
+                                            ? "Authorize the funding token first"
+                                        : fundingBlocksTheAct(buyerFunding)
+                                            ? "Checking the funding authorization…"
                                         : !currency
                                             ? "Seller hasn't set a denomination"
                                             : !orderReady

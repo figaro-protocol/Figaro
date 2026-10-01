@@ -59,6 +59,48 @@ function FundingTokenOption({
     );
 }
 
+/**
+ * Where a chosen funding token stands with Permit2 — derived once, read by the
+ * panel and by the action beside it (place order, counter-sign):
+ *
+ *   none        no funding token is chosen
+ *   reading     the allowance has not been read yet, or is being read again
+ *               (after an approval's receipt the value in hand is stale)
+ *   needed      the allowance is known and short of the bond
+ *   authorizing the approval is pending or confirming
+ *   ready       the allowance is known and covers the bond
+ *
+ * A commit with a funding leg pulls the token through Permit2, so anything but
+ * `none` or `ready` would broadcast a commit that reverts.
+ */
+export type FundingAuthorization = "none" | "reading" | "needed" | "authorizing" | "ready";
+
+export function fundingAuthorization({
+    fundingToken,
+    allowanceKnown,
+    needsApproval,
+    isAuthorizing,
+}: {
+    fundingToken: `0x${string}` | null;
+    /** The allowance in hand is current: read, and not being read again. */
+    allowanceKnown: boolean;
+    /** The allowance last read is short of the bond. */
+    needsApproval: boolean;
+    /** The approval transaction is pending or confirming. */
+    isAuthorizing: boolean;
+}): FundingAuthorization {
+    if (!fundingToken) return "none";
+    if (isAuthorizing) return "authorizing";
+    if (!allowanceKnown) return "reading";
+    return needsApproval ? "needed" : "ready";
+}
+
+/** Whether the action beside the panel must wait: a chosen funding token that
+ *  is not yet authorized. */
+export function fundingBlocksTheAct(authorization: FundingAuthorization): boolean {
+    return authorization !== "none" && authorization !== "ready";
+}
+
 export function SwapFundingPanel({
     candidates,
     party,
@@ -66,9 +108,8 @@ export function SwapFundingPanel({
     decimals,
     fundingToken,
     onSelect,
-    needsAuthorization,
+    authorization,
     onAuthorize,
-    isAuthorizing,
 }: {
     candidates: AcceptedTokenMetadata[];
     /** The wallet funding its bond — buyer at checkout, seller at accept. */
@@ -77,14 +118,15 @@ export function SwapFundingPanel({
     decimals: number;
     fundingToken: `0x${string}` | null;
     onSelect: (token: `0x${string}` | null) => void;
-    needsAuthorization: boolean;
+    /** Where the chosen token stands with Permit2 (`fundingAuthorization`). */
+    authorization: FundingAuthorization;
     onAuthorize: () => void;
-    isAuthorizing: boolean;
 }) {
     return (
         <div
             className="rounded border border-default bg-subtle p-3 space-y-2"
             data-testid="swap-funding-panel"
+            data-authorization={authorization}
         >
             <p className="text-xs font-semibold text-ink-muted">
                 Not enough {currencySymbol || "the denomination"} — fund your bond from another accepted token
@@ -106,16 +148,23 @@ export function SwapFundingPanel({
                     />
                 ))}
             </div>
-            {fundingToken && needsAuthorization && (
+            {(authorization === "needed" || authorization === "authorizing") && (
                 <Button
                     onClick={onAuthorize}
-                    disabled={isAuthorizing}
+                    disabled={authorization === "authorizing"}
                     variant="secondary"
                     className="w-full"
                     data-testid="funding-authorize"
                 >
-                    {isAuthorizing ? "Authorizing…" : "Authorize funding token"}
+                    {authorization === "authorizing" ? "Authorizing…" : "Authorize funding token"}
                 </Button>
+            )}
+            {(authorization === "reading" || authorization === "ready") && (
+                <p className="text-[11px] text-ink-muted" data-testid="funding-authorization-status">
+                    {authorization === "reading"
+                        ? "Checking your authorization for this token…"
+                        : "This token is authorized."}
+                </p>
             )}
         </div>
     );
