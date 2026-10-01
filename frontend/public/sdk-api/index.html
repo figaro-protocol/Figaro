@@ -981,8 +981,8 @@ have a reason not to; this sketch is only enough to orient a raw caller.</p>
 <p><strong>Token approvals before commit — the whole per-order bond, every time.</strong> The
 <code>FigaroCore</code> pulls the FULL per-order bonds on EVERY <code>commit</code>, root or sub-order, and
 nets nothing against bonds it already holds from earlier orders in the process.</p>
-<p>Two different things state that, and it is worth keeping them apart. The
-KERNEL only <em>pulls exactly</em>: <code>src/core/kernel/FigaroCore.sol:208-209</code> is two
+<p>Two different things state that, and it is worth keeping them apart.
+<code>FigaroCore</code> only <em>pulls exactly</em>: <code>src/core/kernel/FigaroCore.sol:208-209</code> is two
 <code>_pullExact</code> transfer calls, <code>c.payment * 2</code> from <code>c.buyer</code> and
 <code>c.expectedCumulativeValue * 2</code> from <code>c.seller</code>, with no approval commentary
 and no netting logic anywhere in the file — if the allowance falls short the

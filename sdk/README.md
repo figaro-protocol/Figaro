@@ -594,8 +594,8 @@ have a reason not to; this sketch is only enough to orient a raw caller.
 `FigaroCore` pulls the FULL per-order bonds on EVERY `commit`, root or sub-order, and
 nets nothing against bonds it already holds from earlier orders in the process.
 
-Two different things state that, and it is worth keeping them apart. The
-KERNEL only *pulls exactly*: `src/core/kernel/FigaroCore.sol:208-209` is two
+Two different things state that, and it is worth keeping them apart.
+`FigaroCore` only *pulls exactly*: `src/core/kernel/FigaroCore.sol:208-209` is two
 `_pullExact` transfer calls, `c.payment * 2` from `c.buyer` and
 `c.expectedCumulativeValue * 2` from `c.seller`, with no approval commentary
 and no netting logic anywhere in the file — if the allowance falls short the

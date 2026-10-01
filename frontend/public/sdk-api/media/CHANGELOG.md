@@ -62,10 +62,9 @@ Summary of the current state of the protocol and its verification surface:
 
 ### Protocol
 
-- The Solidity kernel (`src/core/kernel/FigaroCore.sol`, `src/core/kernel/CommitmentTypes.sol`)
-  is frozen for external audit, alongside the full protocol/registry/coordinator/
-  RPGF/florin surface — see `docs/AUDITOR_HANDOVER.md` § "Freeze Notice —
-  Solidity Surface Frozen for External Audit" for the exact frozen scope.
+- `src/core/kernel/FigaroCore.sol` and `src/core/kernel/CommitmentTypes.sol`
+  are frozen for external audit, alongside the full protocol/registry/coordinator/
+  RPGF/florin surface — see `docs/AUDITOR_HANDOVER.md` § "Scope" for the exact frozen scope.
 - The batch settlement path (`FigaroBatchVerifier` + the Rust `prover/` SP1
   witness prover/sequencer) is live and included in the frozen scope.
 - The 600M RPGF distribution (`UsageCounter` + `RpgfMinter`) pays every clause
@@ -74,16 +73,16 @@ Summary of the current state of the protocol and its verification surface:
 
 ### Verification
 
-- **Foundry**: full contract test suite across the kernel, registries,
+- **Foundry**: full contract test suite across the Core, registries,
   coordinators, usage/RPGF, florin, and mocks (see `docs/TESTING.md` for the
   file-by-file inventory).
 - **Halmos**: 32 symbolic properties across 4 harness files (7 FigaroCore + 7
   MembersRegistry + 6 UsageCounter + 12 ClauseRegistry/AssemblyRegistry).
 - **Certora**: 6 specs / 37 rules (FigaroCore, AttestationCoordinator,
   TokenOpsVerification, FlorinToken, BatchVerifierTokenOps, RpgfMinter).
-- **Echidna**: 2 harnesses / 15 properties (kernel + FlorinToken).
+- **Echidna**: 2 harnesses / 15 properties (FigaroCore + FlorinToken).
 - **TLA+**: 4 models / 48 invariants (FigaroCore 9, FlorinToken 8,
-  WitnessSwapAndCommitCoordinator 10, SettlementUniverses 21).
+  WitnessSwapAndCommitCoordinator 10, ResolutionUniverses 21).
 - **SDK (Vitest)** and **Frontend (Vitest + Playwright)**: component, unit,
   and end-to-end coverage — see `docs/TESTING.md` for the full harness
   inventory.
@@ -112,14 +111,14 @@ Summary of the current state of the protocol and its verification surface:
 ### Added
 
 - `equilibrium` — the one module holding the asymmetric-bonding figures the
-  paper states and the theory doc binds to the kernel; listed in the README's
+  paper states and the theory doc binds to the Core's transfers; listed in the README's
   export table.
 - `/signer`: a local-run signer policy derived from that run's deployment
   record, with its ceilings read from the environment.
 
 ### Changed
 
-- The kernel's act is resolution: the prose, comments, and error text say
+- The Core's act is resolution: the prose, comments, and error text say
   resolution where they said settlement; identifiers and cited systems' words
   are unchanged.
 - Bond and stake mean what the lexicon says (a bond is locked at commit; a stake
