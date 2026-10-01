@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
 import { withOg } from "@/lib/shared/pageMetadata";
 import { MarketingHero } from "@/components/marketing/MarketingHero";
+import type { ReactNode } from "react";
+import Link from "@/components/shared/Link";
 import { CtaLink } from "@/components/marketing/CtaLink";
 
 export const metadata: Metadata = withOg({
     title: "Code — Figaro Protocol",
     description:
-        "Four smart contracts, decentralized and permissionless. Cryptoeconomics enforces the agreement between strangers: cooperation is each party's best move. The contracts are proven and checked on every commit.",
+        "Four smart contracts, decentralized and permissionless. The agreement between strangers is secured cryptoeconomically: cooperation is each party's best move. The contracts are proven and checked on every commit.",
 });
 
 // THE CORE LANDING — three subjects and nothing else: the four contracts,
@@ -17,7 +19,7 @@ export const metadata: Metadata = withOg({
 // live on the pages the cards open. A comprehension gap found by any tester is
 // closed on the page a card points to, never by adding prose here. The
 // outside-audit caveat is a footnote at the foot of the page, never a headline.
-const SUBJECTS: { line: string; body: string; cta: string; href: string }[] = [
+const SUBJECTS: { line: string; body: ReactNode; cta: string; href: string }[] = [
     {
         line: "Four smart contracts, decentralized and permissionless.",
         body: "FigaroCore holds every bond and resolves a process. CommitmentTypes defines the commitment each party signs. AttestationCoordinator binds what a party attests to the agreement it signed. FigaroBatchVerifier accepts a validity proof of many processes in one transaction.",
@@ -25,8 +27,16 @@ const SUBJECTS: { line: string; body: string; cta: string; href: string }[] = [
         href: "/spec",
     },
     {
-        line: "Cryptoeconomics enforces the agreement between strangers: cooperation is each party's best move.",
-        body: "Cryptoeconomics is the discipline that designs and characterizes the protocols governing the production, distribution and consumption of goods and services in a decentralized digital economy; Figaro is one such protocol. Each party bonds before the trade, and the bonds are sized so that keeping the agreement is worth more to each party than breaking it. Only the buyer resolves, and resolution pays every seller and refunds every bond at once. Cooperation is the equilibrium of that game, and the equilibrium is proved.",
+        line: "The agreement between strangers is secured cryptoeconomically: cooperation is each party's best move.",
+        body: (
+            <>
+                Cryptoeconomics is{" "}
+                <Link href="/working-groups" className="text-ink-heading font-medium hover:underline">
+                    the discipline that designs and characterizes the protocols governing the production, distribution and consumption of goods and services in a decentralized digital economy
+                </Link>
+                ; Figaro is one such protocol. Each party bonds before the trade, and the bonds are sized so that keeping the agreement is worth more to each party than breaking it. Only the buyer resolves, and resolution pays every seller and refunds every bond at once. Cooperation is the equilibrium of that game, and the equilibrium is proved.
+            </>
+        ),
         cta: "The six invariants",
         href: "/invariants",
     },

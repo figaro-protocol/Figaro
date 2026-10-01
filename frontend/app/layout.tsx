@@ -37,21 +37,21 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
     metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") || "https://figaro.example"),
     title: "Figaro Protocol — The Figaro Ecosystem",
-    description: "Every deal runs as a value-added process that enforces itself: both sides stake tokens worth more than cheating could gain, the record it leaves is public in aggregate and private in detail, and the profit stays with the hands that made it.",
+    description: "Every trade runs as a value-added process that enforces itself: each party locks a bond worth more than cheating could gain, the data it leaves is public in aggregate and the parties' own in detail, and the profit stays with the hands that made it.",
     robots: {
         index: false,
         follow: false,
     },
     openGraph: {
         title: "The Figaro Ecosystem",
-        description: "Every deal runs as a value-added process that enforces itself: both sides stake tokens worth more than cheating could gain, the record it leaves is public in aggregate and private in detail, and the profit stays with the hands that made it.",
+        description: "Every trade runs as a value-added process that enforces itself: each party locks a bond worth more than cheating could gain, the data it leaves is public in aggregate and the parties' own in detail, and the profit stays with the hands that made it.",
         siteName: "Figaro Protocol",
         type: "website",
     },
     twitter: {
         card: "summary_large_image",
         title: "The Figaro Ecosystem",
-        description: "Every deal runs as a value-added process that enforces itself: both sides stake tokens worth more than cheating could gain, the record it leaves is public in aggregate and private in detail, and the profit stays with the hands that made it.",
+        description: "Every trade runs as a value-added process that enforces itself: each party locks a bond worth more than cheating could gain, the data it leaves is public in aggregate and the parties' own in detail, and the profit stays with the hands that made it.",
     },
 };
 

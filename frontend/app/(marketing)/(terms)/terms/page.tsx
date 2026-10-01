@@ -50,9 +50,9 @@ const SURFACES: { title: string; body: string; cta: string; href: string }[] = [
         href: "/sdk-api",
     },
     {
-        title: "Rewards.",
+        title: "Designer rewards.",
         body: "The florin is the protocol's own ERC-20 token: a Schelling point that carries no rights of any kind. Every resolved process is counted once against each clause and assembly it carried to reward designers pro rata over nine annual periods. One rule scores every clause and assembly: the resolved processes that carried it, and the distinct sellers behind them.",
-        cta: "Rewards",
+        cta: "Designer Rewards",
         href: "/rpgf",
     },
 ];

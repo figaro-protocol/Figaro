@@ -56,7 +56,7 @@ export default function Dao() {
 
             <MarketingSection title="What it lives on afterwards, it earns.">
                 <p className="text-base text-ink-body leading-relaxed mb-5">
-                    Two clauses ride on every order: commerce terms, which fix who pays whom and in what unit, and topology, which fixes who follows whom in the chain. The treasury is the registered designer of both, so their use accrues to it on exactly the counter everyone else is paid by &mdash; the commons drawing its living from the one thing every trade unavoidably uses.
+                    Two clauses ride on every order: commerce terms, which fix who pays whom and in what unit, and topology, which fixes who follows whom in the chain. The treasury is the registered designer of both, so their use accrues to it on exactly the counter everyone else is rewarded by &mdash; the commons drawing its living from the one thing every trade unavoidably uses.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed mb-5">
                     Nothing about that is privileged. The protocol takes nothing from a trade, no weight tilts the counter, and &ldquo;mandatory&rdquo; describes a convention about what a runtime composes, not anything the chain enforces. The treasury&apos;s share is diluted by every other designer&apos;s work exactly as anyone&apos;s is &mdash; which makes the income countercyclical without a parameter to set. Where others are designing well, the treasury&apos;s share shrinks and the commons needs it least; where little else has emerged, its share is large and the commons needs it most. Nobody sizes that, and there is nobody to lobby about it.
@@ -77,7 +77,7 @@ export default function Dao() {
                     That is the honest shape of a bootstrap. The reserve that rewards designers ends after nine years by the same logic, and neither ending is a failure: both exist to carry the commons through the years when it cannot yet carry itself. Anything that continues past them continues on its own legs &mdash; including a successor program, which anyone may stand up and fund however they choose. The protocol is open, and nothing here holds a franchise on paying for the work built above it.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
-                    Where the three hundred million sits among the rest of the supply is on <Link href="/tokenomics" className="text-ink-heading font-medium hover:underline">Tokenomics</Link>; the counter it earns on, and the two conditions any wallet must hold to be paid by it, are on <Link href="/rpgf" className="text-ink-heading font-medium hover:underline">Designer Rewards</Link>.
+                    Where the three hundred million sits among the rest of the supply is on <Link href="/tokenomics" className="text-ink-heading font-medium hover:underline">Tokenomics</Link>; the counter it earns on, and the two conditions any wallet must hold to be rewarded by it, are on <Link href="/rpgf" className="text-ink-heading font-medium hover:underline">Designer Rewards</Link>.
                 </p>
             </MarketingSection>
         </>

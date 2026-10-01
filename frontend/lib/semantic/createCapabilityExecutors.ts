@@ -119,9 +119,9 @@ export function createCapabilityExecutors(deps: CapabilityExecutorDeps) {
                     attempted++;
                     const { proof } = buildSectionInclusionProof(agreement, section.clause);
 
-                    // CLAUSE leg. Excluded clauses/assemblies (the two order-mandatory
-                    // clauses + assembly-provenance) revert ClauseOrAssemblyExcluded by
-                    // design, so this leg failing is routine, not a fault.
+                    // CLAUSE leg. A clause in UsageCounter's deploy-time excluded set (at
+                    // the reference genesis, `figaro-assembly-provenance` alone) reverts
+                    // ClauseOrAssemblyExcluded by design; the order-mandatory clauses earn.
                     try {
                         // Only the section FINGERPRINT reaches calldata — never
                         // the plaintext, so a private section stays off-chain.

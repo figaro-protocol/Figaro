@@ -21,7 +21,7 @@ import { RegistryCountLink } from "@/components/registries/RegistryCountLink";
 export const metadata: Metadata = withOg({
     title: "Clauses — Figaro Protocol",
     description:
-        "A clause is what it is in a paper contract — one reusable term of an agreement — made verifiable: its spec public and hash-anchored on-chain. The requirements for writing one, the live registry count, and the RPGF reward for clauses that get used.",
+        "A clause is what it is in a paper contract — one reusable term of an agreement — made verifiable: its spec public and hash-anchored on-chain. The requirements for writing one, the live registry count, and the designer rewards for clauses that get used.",
 });
 
 export default function Clauses() {
@@ -171,7 +171,7 @@ buildOrderAgreement(buyer, seller, { "figaro-probe": {} }, specs);
 
             <MarketingSection title="Add your own." bottomPad="wide">
                 <p className="text-sm text-ink-body leading-relaxed">
-                    Anyone who meets those requirements can register a clause. No permission, no gatekeeper. A registered clause that gets used earns from the protocol&apos;s retroactive public-goods funding &mdash; the reward follows real usage alone; see <Link href="/rpgf" className="underline">RPGF</Link>.
+                    Anyone who meets those requirements can register a clause. No permission, no gatekeeper. A registered clause that gets used earns its designer a share of the designer rewards, which follow real use alone; see <Link href="/rpgf" className="underline">Designer Rewards</Link>.
                 </p>
                 <CtaLink href="/clauses/register" className="mt-5" data-testid="cta-register-clause">
                     Register a clause

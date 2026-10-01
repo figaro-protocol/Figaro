@@ -65,7 +65,7 @@ export const NAV_LINKS_APP_PRIMARY: NavLink[] = [
     // closed period) — a protocol surface (the composed UsageCounter +
     // RpgfMinter), not a product feature; claiming is permissionless network
     // participation.
-    { href: "/rewards", label: "Rewards" },
+    { href: "/rewards", label: "Claim rewards" },
 ];
 
 // The drawer's App section IS the primary row restated for mobile, so it SPREADS

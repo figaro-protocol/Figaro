@@ -98,7 +98,7 @@ export function OrderTimelineView({ processId }: Props) {
     const pillTone: Tone = isResolved ? "green" : "blue";
     const headline = isResolved ? "Order completed" : "Order active";
     const subhead = isResolved
-        ? "Bonds released. Receipt available on the audit page."
+        ? "Bonds refunded. Receipt available on the audit page."
         : role === "buyer"
             ? `${sellerDisplayName} has your order. Track progress below and resolve when you have received it.`
             : role === "seller"
@@ -246,7 +246,7 @@ export function OrderTimelineView({ processId }: Props) {
                             <span className="mt-1 inline-block h-3 w-3 rounded-full border bg-success border-success" />
                             <div className="flex-1">
                                 <p className="text-sm font-semibold text-ink-primary">order completed</p>
-                                <p className="text-xs text-ink-muted">Bonds released.</p>
+                                <p className="text-xs text-ink-muted">Bonds refunded.</p>
                             </div>
                         </li>
                     )}
@@ -262,6 +262,15 @@ export function OrderTimelineView({ processId }: Props) {
                 >
                     View audit record
                 </Link>
+                {isResolved && (
+                    <Link
+                        href="/data/yours"
+                        className="rounded border border-default px-4 py-2 text-ink-body hover:bg-subtle"
+                        data-testid="link-your-data"
+                    >
+                        Your data
+                    </Link>
+                )}
             </section>
         </div>
     );
