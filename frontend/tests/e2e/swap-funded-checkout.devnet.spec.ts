@@ -29,7 +29,7 @@ import { test, expect, gotoAsWallet } from './devnet-multi-test';
 import { createWalletClient, http, parseAbi, type Hex } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { calculateBonds } from '@figaro-protocol/sdk';
-import { localPublicClient, readLocalDeploymentConfig, LOCAL_ANVIL, RPC_URL } from './devnet-helpers';
+import { authorizeFundingToken, localPublicClient, readLocalDeploymentConfig, LOCAL_ANVIL, RPC_URL } from './devnet-helpers';
 import { ANVIL_ACCOUNTS, ANVIL_KEYS } from '../anvilAccounts';
 import { CORE_ABI } from '@/lib/kernel/contracts';
 import type { Page } from '@playwright/test';
@@ -228,14 +228,9 @@ test.describe('THE PAYMENT TOKEN — the buyer picks the denomination; swap is t
         await page.getByTestId(`funding-token-option-${defaultToken.toLowerCase()}`).click();
         // Permit2 authorization is CONDITIONAL on the persisted chain — a prior
         // run's maxUint256 approval survives (devnet is a mainnet rehearsal, no
-        // snapshots), so the button renders only when the allowance is short.
-        // Same pattern as the seller on-ramp test below; demanding the button
-        // unconditionally fails every re-run after the first.
-        const authorize = page.getByTestId('funding-authorize');
-        if (await authorize.isVisible().catch(() => false)) {
-            await authorize.click();
-            await authorize.waitFor({ state: 'hidden', timeout: 30000 });
-        }
+        // snapshots). The panel's own state says whether it is needed; place
+        // order stays disabled until the token is authorized.
+        await authorizeFundingToken(page);
 
         // Buyer's swap-funded bond: the confirm surfaces the swap leg (item 1).
         await placeAndShare(page, { expectSwap: true });
@@ -301,12 +296,8 @@ test.describe('THE PAYMENT TOKEN — the buyer picks the denomination; swap is t
         await page.getByTestId('seller-funding-toggle').click();
         await page.getByTestId('swap-funding-panel').waitFor({ state: 'visible', timeout: 30000 });
         await page.getByTestId(`funding-token-option-${defaultToken.toLowerCase()}`).click();
-        const authorize = page.getByTestId('funding-authorize');
-        if (await authorize.isVisible().catch(() => false)) {
-            await authorize.click();
-            await authorize.waitFor({ state: 'hidden', timeout: 30000 });
-        }
-        await counterSign.waitFor({ state: 'visible', timeout: 60000 });
+        await authorizeFundingToken(page);
+        await expect(counterSign, 'the counter-sign waits for the funding authorization').toBeEnabled({ timeout: 60000 });
         await counterSign.click();
         await page.getByTestId('agreement-preview-modal').waitFor({ state: 'visible', timeout: 30000 });
         // Seller's on-ramp: the confirm surfaces the swap leg's maxInput (item 1).

@@ -755,6 +755,26 @@ export async function waitForConnected(page: Page): Promise<void> {
     );
 }
 
+/**
+ * Authorize the chosen funding token when it needs it, and return only once the
+ * funding panel reads `ready`. The panel's `data-authorization` is the app's own
+ * derived state (reading → needed → authorizing → ready), and the action beside
+ * the panel stays disabled until it is `ready`. A look for the authorize button
+ * the instant the token is picked finds nothing — the allowance has not been
+ * read yet — and skips an authorization the chain needs: on a fresh chain that
+ * was a commit reverting `ERC20InsufficientAllowance`.
+ */
+export async function authorizeFundingToken(page: Page): Promise<void> {
+    const panel = page.getByTestId('swap-funding-panel');
+    await expect(panel, "the chosen funding token's allowance has been read")
+        .toHaveAttribute('data-authorization', /^(needed|ready)$/, { timeout: 30000 });
+    if ((await panel.getAttribute('data-authorization')) === 'needed') {
+        await page.getByTestId('funding-authorize').click();
+    }
+    await expect(panel, 'the funding token is authorized before the act')
+        .toHaveAttribute('data-authorization', 'ready', { timeout: 60000 });
+}
+
 /** The delivery assembly's SHAPE — how every consumer recognizes it on-chain
  *  without a hardcoded slug: exactly two orders, the sub-order carrying the
  *  courier process clause, the hand-off clause (the QR-interaction declarer),

@@ -6,7 +6,7 @@
  * seller pin it to their profile, and run it as a buyer and x sellers —
  * THROUGH THE UI at every leg — with the process P&L externalized:
  *
- *   bind     → the LEAD seller registers through the real wizard, binding BOTH
+ *   bind     → the LEAD registers as a member through the real wizard, binding BOTH
  *              seeded assemblies and DESIGNATING its chain counterparties
  *              (courier + supplier wallets) on the chain assembly's binding;
  *              the courier + supplier each pin the chain assembly to their OWN
@@ -44,7 +44,7 @@
  * assemblies by their template shape, the lead's profile by its registry
  * events) — never a bundled roster. The lead's own identity + counterparty
  * designations are this test's INPUT DATA (an authoring act), exactly as
- * sellers-onboarding's wizard seller is. anvil[15] is used by no other spec;
+ * members-onboarding's wizard member is. anvil[15] is used by no other spec;
  * the courier/supplier counterparties are the seeded Cardinal Couriers
  * (anvil[8]) and Fernhill Nursery (anvil[11]) — pre-populated sellers whose
  * catalogues price the sub-orders live.
@@ -59,6 +59,7 @@ import { test, expect, gotoAsWallet } from './devnet-multi-test';
 import { createPublicClient, createWalletClient, defineChain, http, parseAbi, parseEther, type Hex } from 'viem';
 import { mnemonicToAccount } from 'viem/accounts';
 import {
+    authorizeFundingToken,
     confirmAgreementPreviews,
     discoverAnchoredAssemblies,
     latestMemberProfileURI,
@@ -87,8 +88,8 @@ const ERC20_ABI = parseAbi([
 
 const BUYER = ANVIL_ACCOUNTS[0] as Hex; // anvil[0] — the fixture's default buyer
 
-// ── This test's own INPUT DATA (an authoring act, like sellers-onboarding's
-//    wizard seller): the lead's identity, and the wallets the lead designates
+// ── This test's own INPUT DATA (an authoring act, like members-onboarding's
+//    wizard member): the lead's identity, and the wallets the lead designates
 //    to fill the chain's sub-orders. anvil[15]: outside the buyer range and
 //    every other spec's seller set. The counterparties are seeded sellers —
 //    their catalogues price the sub-orders live at checkout.
@@ -399,19 +400,11 @@ test.describe('VALUE-ADDED CHAIN — one buyer binds three sellers; one resolve 
             await fundingPanel.waitFor({ state: 'visible', timeout: 30000 });
             await page.getByTestId(`funding-token-option-${permitToken.toLowerCase()}`).click();
             // Permit2 authorization is conditional on the persisted chain
-            // (prior runs' approvals survive) AND its button can re-render as
-            // the quote resolves — `needsApproval` reads true until the
-            // allowance resolves, so the button can flash and vanish. The click
-            // may race that detach; it is BOUNDED (an unbounded click would wait
-            // for a locator that never returns and burn the whole test budget)
-            // and the asserted POSTCONDITION is the button going hidden, not
-            // the click landing.
-            const authorize = page.getByTestId('funding-authorize');
-            if (await authorize.isVisible().catch(() => false)) {
-                await authorize.click({ timeout: 5000 }).catch(() => {});
-                await authorize.waitFor({ state: 'hidden', timeout: 30000 });
-            }
-            await counterSign.waitFor({ state: 'visible', timeout: 60000 });
+            // (prior runs' approvals survive): the panel's own state says
+            // whether it is needed, and the counter-sign stays disabled until
+            // the token is authorized.
+            await authorizeFundingToken(page);
+            await expect(counterSign, 'the counter-sign waits for the funding authorization').toBeEnabled({ timeout: 60000 });
             // CHAIN FACTS before the act, never the screen's word for them: the
             // two allowances swapAndCommit pulls against — FigaroCore's pull of
             // the courier's bond in the denomination, and Permit2's pull of the
