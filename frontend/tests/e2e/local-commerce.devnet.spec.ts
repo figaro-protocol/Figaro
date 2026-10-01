@@ -60,7 +60,7 @@
  *              buyer net −2, escrow back to baseline.
  *   audit    → the full evidentiary record, permissionless-clause grade:
  *              a financial statement per seller + the consolidation; the cash-flow log
- *              carrying EVERY kernel transfer (2 rows per commit, 2 per order
+ *              carrying EVERY FigaroCore transfer (2 rows per commit, 2 per order
  *              at resolve — 8 exactly); the clause evidence with every
  *              committed leaf, all EIGHT ladder stages and the TWO decoded hand-off witnesses; BOTH agreements
  *              pinned to IPFS with the hash verifier recomputing each merkle
@@ -68,7 +68,7 @@
  *              downloaded (real %PDF bytes) and the dispute panel's evidence
  *              bundle pinned to IPFS, verified out-of-band.
  *
- * Cast (scenario labels only — the kernel sees ordinary wallets):
+ * Cast (scenario labels only — FigaroCore sees ordinary wallets):
  *   author   anvil[0]  (any wallet designs; neither party here)
  *   buyer    anvil[2]  (used as a buyer by no other spec)
  *   merchant anvil[7]  Meridian Books  (seeded; catalogue: Paperback @1)
@@ -780,12 +780,12 @@ test.describe('LOCAL COMMERCE — item delivery: canvas → bind → order → a
             "the captured evidence artifact's URI surfaces in the audit",
         ).toBeVisible({ timeout: 30000 });
 
-        // ── EVERY VALUE EVENT: one cash-flow row per kernel ERC-20 transfer —
+        // ── EVERY VALUE EVENT: one cash-flow row per FigaroCore ERC-20 transfer —
         //    each commit pulls both deposits, the resolve refunds the buyer and
         //    pays out the seller, per order: exactly 8 rows, 2 of each kind. The
         //    cash flow is the consolidated statement's line table. ──
         const cashflowRows = page.locator('[data-testid="document-lines-financial-statements-process"] tbody tr');
-        await expect(cashflowRows, 'one cash-flow row per kernel transfer').toHaveCount(8, { timeout: 30000 });
+        await expect(cashflowRows, 'one cash-flow row per FigaroCore transfer').toHaveCount(8, { timeout: 30000 });
         for (const [kind, count] of [
             ['commit-buyer-deposit', 2],
             ['commit-seller-deposit', 2],
@@ -798,7 +798,7 @@ test.describe('LOCAL COMMERCE — item delivery: canvas → bind → order → a
         // ── THE SIGNED CONTRACTS: each order's agreement is pinned to IPFS
         //    (the network SSoT, not a local cache) and the audit's hash
         //    verifier recomputes each merkle root over EVERY leaf to match the
-        //    agreementHash the kernel stored — for BOTH orders. ──
+        //    agreementHash FigaroCore stored — for BOTH orders. ──
         const ipfsApi = process.env.NEXT_PUBLIC_IPFS_API_URL ?? 'http://127.0.0.1:5001';
         let deliverySections: AgreementSection[] = [];
         for (const [event, label, expectedLeaves] of [
@@ -836,7 +836,7 @@ test.describe('LOCAL COMMERCE — item delivery: canvas → bind → order → a
         //    commerce section: the verifier recomputes its leaf hash from the
         //    pasted section alone and it matches the leaf the reference
         //    implementation derives — the same leaf under the agreement root
-        //    already verified against the kernel above. No redaction artifact;
+        //    already verified against FigaroCore above. No redaction artifact;
         //    the merkle structure IS the disclosure control. ──
         const disclosed = deliverySections.find((s) => s.clause === 'figaro-commerce');
         expect(disclosed, 'the delivery agreement carries a commerce section to disclose').toBeTruthy();
@@ -901,14 +901,14 @@ test.describe('LOCAL COMMERCE — item delivery: canvas → bind → order → a
         ).toHaveCount(2, { timeout: 30000 });
         await expect(
             spectatorPage.locator('[data-testid="document-lines-financial-statements-process"] tbody tr'),
-            'every kernel transfer renders for a walletless reader',
+            'every FigaroCore transfer renders for a walletless reader',
         ).toHaveCount(8, { timeout: 30000 });
         await spectator.close();
 
         // ── PAYOUT ROUTING: the resolved merchant splits its receipts onward —
         //    two earmarked legs through the composed public multisender
         //    (devnet: MockDisperse, mirroring canonical Disperse), one atomic
-        //    batch. Wallet-side, post-resolution: the kernel already paid;
+        //    batch. Wallet-side, post-resolution: FigaroCore already paid;
         //    this is the merchant spending its own balance. VALUE LEGS from
         //    chain: both recipients' deltas and the merchant's own, asserted
         //    out-of-band via balanceOf, never from the screen. ──

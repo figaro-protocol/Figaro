@@ -147,13 +147,13 @@ test.describe('Orders consolidation — buyer orders → seller accepts on /orde
             });
             await publicClient.waitForTransactionReceipt({ hash: h });
         }
-        // `seller` is NOT indexed in OrderCommitted (the kernel hit the EVM 3-index
+        // `seller` is NOT indexed in OrderCommitted (FigaroCore hit the EVM 3-index
         // limit with orderHash/processId/buyer) — filter on the indexed `buyer`.
         const committedBefore = await publicClient.getContractEvents({
             address: core, abi: CORE_ABI, eventName: 'OrderCommitted',
             args: { buyer: BUYER }, fromBlock: 0n,
         });
-        // Bond escrow baseline — the kernel pulls bonds in the payment token.
+        // Bond escrow baseline — FigaroCore pulls bonds in the payment token.
         const [buyerBefore, sellerBefore, coreBefore] = await Promise.all([
             balanceOf(BUYER), balanceOf(SELLER), balanceOf(core),
         ]);

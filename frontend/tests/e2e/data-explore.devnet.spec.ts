@@ -63,7 +63,7 @@
  *   - THE BATCH-UNIVERSE LEG: one `settleBatch` on the devnet's
  *     `FigaroBatchVerifier` (its `MockSP1Verifier` accepts any proof — the
  *     documented devnet posture) re-emits a real `Attestation` from the
- *     verifier's own address for a process the kernel never saw. The two
+ *     verifier's own address for a process FigaroCore never saw. The two
  *     emitters share one topic hash, so the EMITTING ADDRESS is the only
  *     thing that says which universe a row came from — the explorer's fold
  *     must discriminate by address, and the geo family's row must read
@@ -790,7 +790,7 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
                 expect(row).toBeTruthy();
                 const { buyerBond, sellerBond } = calculateBonds(e.args.cumulativeValue as bigint, e.args.payment as bigint);
                 expect(row!.payment).toBe((e.args.payment as bigint).toString());
-                expect(row!.lockedBuyerBond, 'the story reports the kernel\'s own 2× bond arithmetic').toBe(buyerBond.toString());
+                expect(row!.lockedBuyerBond, 'the story reports FigaroCore\'s own 2× bond arithmetic').toBe(buyerBond.toString());
                 expect(row!.lockedSellerBond).toBe(sellerBond.toString());
             }
             expect(story.resolution.resolved).toBe(resolvedProcessIds.has(pid));
@@ -949,7 +949,7 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
         expect(specHash, 'the registry anchors a content hash for the geo clause').not.toBe(zeroHash);
 
         // A BATCH-ONLY process identity, fresh each run: batch-resolved trade
-        // acquires no kernel status and emits no kernel event — the two
+        // acquires no FigaroCore status and emits no FigaroCore event — the two
         // the two resolution paths stay disjoint by construction.
         const salt = toHex(generateSalt(), { size: 32 });
         const processId = keccak256(encodePacked(['string', 'bytes32'], ['data-explore.devnet.spec.ts:batch-process', salt]));
@@ -1030,7 +1030,7 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
         'the verifier re-emitted the attestation from its own address').toBe(true);
         // Address discrimination is the ONLY universe marker: the same topic
         // hash at the coordinator holds nothing for this process, and the
-        // kernel never saw it at all.
+        // FigaroCore never saw it at all.
         expect(await publicClient.getContractEvents({
             address: coordinator, abi: ATTESTATION_COORDINATOR_ABI, eventName: 'Attestation',
             args: { processId }, fromBlock: 0n,
@@ -1039,7 +1039,7 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
             address: core, abi: CORE_ABI, eventName: 'OrderCommitted', fromBlock: 0n,
         });
         expect(kernelOrders.some((e) => (e.args.processId as string).toLowerCase() === processId.toLowerCase()),
-            'a batch-resolved process acquires no kernel record — the universes are disjoint').toBe(false);
+            'a batch-resolved process acquires no FigaroCore record — the universes are disjoint').toBe(false);
 
         // ── The geo family's fold across BOTH universes, by address — the
         //    page's own discrimination, mirrored out-of-band. ──

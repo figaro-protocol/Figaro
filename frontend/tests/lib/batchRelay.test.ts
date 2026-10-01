@@ -98,7 +98,7 @@ const batchRef: SequencerBatchRef = {
     block_timestamp: 1000,
 };
 
-/** Payouts as the kernel computes them: 2 × ECV + payment, and payment. */
+/** Payouts as FigaroCore computes them: 2 × ECV + payment, and payment. */
 const SELLER_PAYOUT = 2n * commitment.expectedCumulativeValue + commitment.payment;
 const BUYER_PAYOUT = commitment.payment;
 /** The wire serializes U256 as a HEX QUANTITY — not decimal. */
@@ -198,7 +198,7 @@ describe("verifyBatchOrder — an honest relay record", () => {
 
     it("derives the ROOT process id itself rather than trusting the relay", async () => {
         // The struct is signed with processId = 0; the published process id is
-        // the kernel's derived one. The check must reproduce that derivation.
+        // FigaroCore's derived one. The check must reproduce that derivation.
         expect(commitment.processId).toBe(ZERO_BYTES32);
         const result = await verifyBatchOrder(honestView(), ctx());
         expect(checkFor(result.checks, "process-id")?.ok).toBe(true);

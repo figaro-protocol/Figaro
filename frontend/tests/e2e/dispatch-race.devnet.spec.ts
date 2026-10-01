@@ -27,7 +27,7 @@
  *              LOSING courier nets exactly ZERO — a losing countersignature
  *              costs nothing and never touches the chain.
  *
- * Cast (scenario labels only — the kernel sees ordinary wallets):
+ * Cast (scenario labels only — FigaroCore sees ordinary wallets):
  *   buyer      anvil[14]  (deltas only — shared wallets never assume absolutes)
  *   merchant   anvil[6]   Ridgeway Hardware (seeded; undesignated binding)
  *   courier A  anvil[10]  re-seeded, delivery at 2 MOCK — the CHEAP courier

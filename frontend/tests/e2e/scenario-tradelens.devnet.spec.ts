@@ -7,7 +7,7 @@
  * /papers/after-tradelens is NARRATIVE, never spec; shared vocabulary in
  * tradelensScenario.ts — the runtime leg consumes the same assembly).
  *
- * Six orders, importer-of-record as root buyer on every one (kernel star):
+ * Six orders, importer-of-record as root buyer on every one (FigaroCore star):
  *   order-0 root  shipper-of-record   cargo, incoterms, chain-of-custody,
  *                                     acceptance-criteria, applicable-law,
  *                                     arbitration-kleros, geolocation, modalities

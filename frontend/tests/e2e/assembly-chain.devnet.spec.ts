@@ -22,7 +22,7 @@
  *              the same confirm gate, sub-orders auto-relayed to their bound
  *              sellers, the root relayed from the share panel
  *   accept   → each of the three sellers accepts its OWN order, in walk order
- *              (root creates the process, subs extend it — the kernel's
+ *              (root creates the process, subs extend it — FigaroCore's
  *              exact-match cumulative accumulator enforces the sequence); the
  *              lead + supplier accept plain on /orders, the COURIER accepts
  *              with a SWAP-FUNDED bond on /sign — the sub-order funding
@@ -323,7 +323,7 @@ test.describe('VALUE-ADDED CHAIN — one buyer binds three sellers; one resolve 
         await expect(page.getByTestId('commitment-xmtp-status')).toBeVisible({ timeout: 30000 });
 
         // ── ACCEPTS in walk order: root creates the process; each sub extends it
-        //    (the kernel's exact-match cumulative accumulator enforces the
+        //    (FigaroCore's exact-match cumulative accumulator enforces the
         //    sequence). Each seller accepts its OWN order on /orders; after each
         //    commit the exact bond deltas are asserted for EVERY party. ──
         const queryCommitted = () => publicClient.getContractEvents({
@@ -413,7 +413,7 @@ test.describe('VALUE-ADDED CHAIN — one buyer binds three sellers; one resolve 
             }
             await counterSign.waitFor({ state: 'visible', timeout: 60000 });
             // CHAIN FACTS before the act, never the screen's word for them: the
-            // two allowances swapAndCommit pulls against — the kernel's pull of
+            // two allowances swapAndCommit pulls against — FigaroCore's pull of
             // the courier's bond in the denomination, and Permit2's pull of the
             // funding token. A first attempt on a fresh chain once counter-signed
             // while one of them still read zero and reverted
@@ -424,11 +424,11 @@ test.describe('VALUE-ADDED CHAIN — one buyer binds three sellers; one resolve 
             await expect.poll(async () => {
                 const toCore = await allowanceOf(COURIER, core, token);
                 const toPermit2 = await allowanceOf(COURIER, permit2, permitToken);
-                return `kernel=${toCore} permit2=${toPermit2}`;
+                return `core=${toCore} permit2=${toPermit2}`;
             }, {
                 timeout: 30000,
-                message: "the courier's bond allowance to the kernel and its funding allowance to Permit2 are on chain before it counter-signs",
-            }).not.toMatch(/(kernel=0 |permit2=0$)/);
+                message: "the courier's bond allowance to FigaroCore and its funding allowance to Permit2 are on chain before it counter-signs",
+            }).not.toMatch(/(core=0 |permit2=0$)/);
             await counterSign.click();
             await page.getByTestId('agreement-preview-modal').waitFor({ state: 'visible', timeout: 30000 });
             await page.getByTestId('preview-confirm').click();

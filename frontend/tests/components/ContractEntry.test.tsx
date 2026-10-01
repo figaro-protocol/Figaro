@@ -13,9 +13,9 @@ afterEach(cleanup);
 describe("splitFirstSentence", () => {
     it("splits a well-formed multi-sentence description on the first '. ' boundary", () => {
         const { lead, rest } = splitFirstSentence(
-            "Protocol kernel. commit and resolveProcess. EIP-712 dual-signed commitments."
+            "Holds every bond. commit and resolveProcess. EIP-712 dual-signed commitments."
         );
-        expect(lead).toBe("Protocol kernel.");
+        expect(lead).toBe("Holds every bond.");
         expect(rest).toBe("commit and resolveProcess. EIP-712 dual-signed commitments.");
     });
 
@@ -48,12 +48,12 @@ describe("ContractEntry", () => {
             <ContractEntry
                 title="FigaroCore.sol"
                 meta="2 fns · 3 mappings · decentralized, permissionless"
-                desc="Protocol kernel. commit and resolveProcess handle bonding and resolution."
+                desc="Holds every bond. commit and resolveProcess handle bonding and resolution."
             />
         );
         expect(screen.getByText("FigaroCore.sol")).toBeInTheDocument();
         expect(screen.getByText("2 fns · 3 mappings · decentralized, permissionless")).toBeInTheDocument();
-        expect(screen.getByText("Protocol kernel.")).toBeInTheDocument();
+        expect(screen.getByText("Holds every bond.")).toBeInTheDocument();
 
         // The remainder is present in the DOM (static-export-safe — no
         // JS-required content hiding) even though <details> is collapsed by
@@ -82,7 +82,7 @@ describe("ContractEntry", () => {
             <ContractEntry
                 title="FigaroCore.sol"
                 href="https://github.com/figaro-protocol/Figaro/blob/main/src/FigaroCore.sol"
-                desc="Protocol kernel. Handles bonding and resolution."
+                desc="Holds every bond. Handles bonding and resolution."
             />
         );
         const link = screen.getByRole("link");

@@ -21,7 +21,7 @@
  *   2. seller: /orders → accept → the coordinator swaps + commits atomically.
  * Chain facts asserted out-of-band: OrderCommitted for the buyer; the commit
  * went THROUGH the coordinator; the buyer's funding token fell by ≤ the cap
- * they signed and > 0; the kernel holds the bonds in the denomination; the
+ * they signed and > 0; FigaroCore holds the bonds in the denomination; the
  * coordinator holds nothing afterwards.
  */
 import path from 'path';
@@ -228,7 +228,7 @@ test.describe('SWAP-FUNDED ORDER — the on-ramp through the real venue, traded 
             const receipt = await publicClient.getTransactionReceipt({ hash: event.transactionHash });
             const tx = await publicClient.getTransaction({ hash: event.transactionHash });
             expect(receipt.status).toBe('success');
-            expect(tx.to?.toLowerCase(), 'the commit went THROUGH the coordinator (swapAndCommit), not straight to the kernel').toBe(coordinator.toLowerCase());
+            expect(tx.to?.toLowerCase(), 'the commit went THROUGH the coordinator (swapAndCommit), not straight to FigaroCore').toBe(coordinator.toLowerCase());
             expect(event.args.payment).toBe(price);
             const [buyerFundingAfter, coreCurrencyAfter, coordCurrency, coordFunding] = await Promise.all([
                 balanceOf(fundingToken, buyer.address), balanceOf(currency, core), balanceOf(currency, coordinator), balanceOf(fundingToken, coordinator),
@@ -236,7 +236,7 @@ test.describe('SWAP-FUNDED ORDER — the on-ramp through the real venue, traded 
             const spent = buyerFundingBefore - buyerFundingAfter;
             expect(spent > 0n, `the buyer paid for the bond in ${fundingSymbol}`).toBe(true);
             expect(spent <= buyerFundingBefore, 'never more than they held').toBe(true);
-            expect(coreCurrencyAfter - coreCurrencyBefore, 'the kernel holds both bonds in the denomination').toBe(buyerBond + sellerBond);
+            expect(coreCurrencyAfter - coreCurrencyBefore, 'FigaroCore holds both bonds in the denomination').toBe(buyerBond + sellerBond);
             expect(coordCurrency, 'the coordinator retains no denomination').toBe(0n);
             expect(coordFunding, 'the coordinator retains no funding token').toBe(0n);
             testInfo.annotations.push({ type: 'chain', description: `commit ${event.transactionHash} via coordinator; buyer spent ${formatUnits(spent, 18)} ${fundingSymbol} for a ${formatUnits(buyerBond, decimals)} ${symbol} bond` });

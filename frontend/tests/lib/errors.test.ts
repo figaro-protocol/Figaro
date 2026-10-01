@@ -4,7 +4,7 @@ import { BaseError, ContractFunctionRevertedError } from "viem";
 import { extractErrorMessage } from "@/lib/shared/errors";
 
 describe("extractErrorMessage", () => {
-    describe("kernel revert decoding", () => {
+    describe("FigaroCore revert decoding", () => {
         it("maps a known FigaroCore errorName to its friendly message", () => {
             const revert = new ContractFunctionRevertedError({
                 abi: [],

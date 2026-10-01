@@ -33,7 +33,7 @@
  *              consolidation (the ladder/witness runtime is local-commerce's
  *              assertion on this same assembly — not duplicated here).
  *
- * Cast (scenario labels only — the kernel sees ordinary wallets):
+ * Cast (scenario labels only — FigaroCore sees ordinary wallets):
  *   buyer    anvil[4]  (used as a buyer by no other spec)
  *   merchant anvil[6]  Ridgeway Hardware (seeded)
  *   courier  DISCOVERED from chain (first bound seller that isn't the merchant)

@@ -176,7 +176,7 @@ describe("DataExplorer — a listed process can be carried into the audit view",
     const MARKET = `0x${"cd".repeat(32)}`;
     const BUYER = "0x5555555555555555555555555555555555555555";
 
-    /** One process as the kernel's own reconstruction hands it over. */
+    /** One process as FigaroCore's own reconstruction hands it over. */
     const process = (processId: string, over: Record<string, unknown> = {}) => ({
         processId,
         rootBuyer: BUYER,

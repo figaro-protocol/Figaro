@@ -118,7 +118,7 @@ beforeEach(async () => {
 });
 
 describe("decodeCommitCalldata", () => {
-    it("decodes the kernel commit path", () => {
+    it("decodes FigaroCore's commit path", () => {
         const decoded = decodeCommitCalldata(commitInput);
         expect(decoded).not.toBeNull();
         expect(decoded!.commitment.buyer).toBe(commitment.buyer);

@@ -182,7 +182,7 @@ const PAPER_RESOLUTION_PATHS = {
     lineFont: "sans" as const,
     directPath: {
         heading: "Direct path",
-        subheading: "the kernel's own two calls",
+        subheading: "the contract's own two calls",
         inputs: ["a dual-signed commitment", "the buyer's resolution over the process"],
         events: ["order committed", "order resolved", "process resolved"],
         state: ["per-order status, advancing monotonically"],
@@ -200,18 +200,18 @@ const PAPER_RESOLUTION_PATHS = {
         state: ["its own state root, verifier-local"],
     },
     sectionLabels: { inputs: "Inputs", events: "Records emitted", state: "State" },
-    neverWrittenNote: "a kernel order status — never acquired",
+    neverWrittenNote: "a contract order status — never acquired",
     bridgeLabel: "The usage counter",
     bridgeSublabel: "clause and assembly usage",
     crossingLabel: "a usage accrual",
     crossingSublabel: "the one quantity common to both",
     figureTitle: "The two resolution paths, and the one surface common to both",
     figureDesc:
-        "Two panels. The direct path is the kernel's own two calls. The batch path " +
-        "is proof-verified off-chain execution, and a kernel order status is never " +
+        "Two panels. The direct path is the contract's own two calls. The batch path " +
+        "is proof-verified off-chain execution, and a contract order status is never " +
         "acquired on it. One arrow crosses between them, carrying a usage accrual " +
         "into the counter of clause and assembly usage.",
-    caption: "An order resolved through the batch verifier never acquires a kernel order status at all.",
+    caption: "An order resolved through the batch verifier never acquires a contract order status at all.",
 };
 
 /** The paper corpus names no contract, function, event, or proving system. */
@@ -284,7 +284,7 @@ describe("ResolutionPathsFigure", () => {
         expect(text).toContain("a usage accrual");
         expect(text).toContain("the one quantity common to both");
         expect(text).toContain("The usage counter");
-        expect(text).toContain("a kernel order status — never acquired");
+        expect(text).toContain("a contract order status — never acquired");
     });
 
     it("carries no banned identifier at the real §5.5 call site (guards fixture drift)", async () => {
@@ -517,7 +517,7 @@ describe("OriginationSequenceFigure", () => {
             expect(text).toContain(column);
         }
         expect(text).toContain("transport");
-        // The chain column is not the kernel: the read is the registries, the
+        // The chain column is not FigaroCore: the read is the registries, the
         // approvals the denomination, the attestation the coordinator.
         const labels = Array.from(container.querySelectorAll("text")).map((n) => n.textContent);
         expect(labels).toContain("on chain");

@@ -13,7 +13,7 @@
  * at the devnet venue's 1:1 rate (prices convert identically):
  *
  *  1. THE PICK — buyer holds the accepted token (MPMT), picks it at checkout;
- *     the commit goes DIRECT to the kernel; every leg moves in MPMT; resolve
+ *     the commit goes DIRECT to FigaroCore; every leg moves in MPMT; resolve
  *     nets the seller +payment in MPMT.
  *  2. BUYER ON-RAMP — buyer picks MPMT but holds NONE (drained); the funding
  *     panel on-ramps from the default (MOCK) through the coordinator; the
@@ -175,7 +175,7 @@ test.describe('THE PAYMENT TOKEN — the buyer picks the denomination; swap is t
         await page.getByTestId('preview-confirm').click();
 
         const { event, receipt, payment, buyerBond, sellerBond } = await committedEvent(committedBefore);
-        expect(receipt.to?.toLowerCase(), 'no funding leg → the commit goes DIRECT to the kernel')
+        expect(receipt.to?.toLowerCase(), 'no funding leg → the commit goes DIRECT to FigaroCore')
             .toBe(core.toLowerCase());
 
         // Value legs at commit — every one in the PICKED token.
@@ -259,7 +259,7 @@ test.describe('THE PAYMENT TOKEN — the buyer picks the denomination; swap is t
             balanceOf(pickedToken, core), balanceOf(pickedToken, coordinator), balanceOf(defaultToken, coordinator),
         ]);
         expect(buyerDefaultBefore - buyerDefaultAfter, 'buyer funded the bond FROM the default token (1:1 quote)').toBe(buyerBond);
-        expect(buyerPickedAfter, 'swap proceeds exactly consumed by the kernel pull — funding ≠ denomination').toBe(0n);
+        expect(buyerPickedAfter, 'swap proceeds exactly consumed by the FigaroCore pull — funding ≠ denomination').toBe(0n);
         expect(corePickedAfter - corePickedBefore, 'escrow holds both bonds in the PICKED token').toBe(buyerBond + sellerBond);
         expect(coordPicked, 'the coordinator retains no picked token').toBe(0n);
         expect(coordDefault, 'the coordinator retains no default token').toBe(0n);

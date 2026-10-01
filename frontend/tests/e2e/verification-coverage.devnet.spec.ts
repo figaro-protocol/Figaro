@@ -1,8 +1,8 @@
 /**
  * verification-coverage.devnet.spec.ts — the block-8 coverage gaps, one walk:
  *
- *   revert   → the KERNEL ERROR PATH through the UI: after an order commits,
- *              the same offer counter-signed again must surface the kernel's
+ *   revert   → the FigaroCore ERROR PATH through the UI: after an order commits,
+ *              the same offer counter-signed again must surface FigaroCore's
  *              typed revert (DuplicateCommitment → "This commitment has
  *              already been submitted") on /sign — an error the user reads,
  *              never a silent failure or a raw hex revert
@@ -58,7 +58,7 @@ async function waitForConnected(page: Page) {
     );
 }
 
-test.describe('VERIFICATION COVERAGE — kernel-revert path, evidence reader, verifier modes B/C (devnet)', () => {
+test.describe('VERIFICATION COVERAGE — FigaroCore-revert path, evidence reader, verifier modes B/C (devnet)', () => {
     test.setTimeout(300_000);
 
     test('one trade feeds all three rungs: typed revert on re-submit, the public evidence timeline, and both verifier modes', async ({ page }) => {
@@ -123,9 +123,9 @@ test.describe('VERIFICATION COVERAGE — kernel-revert path, evidence reader, ve
         expect(sellerBefore - sellerAfter, 'seller bonded 2× cumulative value').toBe(sellerBond);
         expect(coreAfter - coreBefore, 'escrow holds both bonds').toBe(buyerBond + sellerBond);
 
-        // ── RUNG 1 — the KERNEL ERROR PATH: the mock channel still carries
+        // ── RUNG 1 — the FigaroCore ERROR PATH: the mock channel still carries
         //    the buyer-signed offer; the seller re-opens /sign, the payload
-        //    replays, and counter-signing it AGAIN must surface a TYPED kernel
+        //    replays, and counter-signing it AGAIN must surface a TYPED FigaroCore
         //    revert as readable copy — never a raw hex revert. This seed order
         //    is a ROOT (it creates the process), so re-committing throws
         //    ProcessAlreadyExists → "Process ID already exists" (a sub-order
@@ -149,7 +149,7 @@ test.describe('VERIFICATION COVERAGE — kernel-revert path, evidence reader, ve
         }
         await expect(
             page.getByTestId('sign-error'),
-            "the kernel's typed revert surfaces as decoded, readable copy — not a raw hex revert",
+            "FigaroCore's typed revert surfaces as decoded, readable copy — not a raw hex revert",
         ).toContainText(/already exists|already been submitted/i, { timeout: 60000 });
 
         // ── RUNG 2 — the PUBLIC EVIDENCE READER: the forum-iframe contract.

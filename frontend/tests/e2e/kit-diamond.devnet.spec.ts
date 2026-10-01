@@ -33,21 +33,21 @@
  *   checkout → the buyer orders the kit from the lead: ONE place signs all
  *              FOUR orders through the same confirm gate; every sub priced
  *              live from its counterparty's own catalogue.
- *   accept   → walk order (root, B, C, D — the kernel's exact-match cumulative
+ *   accept   → walk order (root, B, C, D — FigaroCore's exact-match cumulative
  *              accumulator enforces the sequence): after every commit the
  *              exact bond-driven BALANCE deltas are asserted for every party,
  *              computed from the chain's own event values (the accumulator
  *              invariant itself is Foundry/Halmos/Certora-owned — not
  *              restated here; the DAG lives in the topology clause, never in
- *              the kernel).
+ *              FigaroCore).
  *   diamond  → the leaf's PINNED agreement commits BOTH parents' real order
  *              hashes in its topology section — the join, merkle-bound.
  *   resolve  → ONE signature resolves all four orders atomically.
  *   audit    → financials render one statement per seller (all four) + the
- *              consolidation; the cash-flow log carries every kernel transfer
+ *              consolidation; the cash-flow log carries every FigaroCore transfer
  *              (2 rows per commit + 2 per order at resolve = 16 exactly).
  *
- * Cast (scenario labels only — the kernel sees ordinary wallets):
+ * Cast (scenario labels only — FigaroCore sees ordinary wallets):
  *   buyer      anvil[4]   (also buyer-assigned's buyer — specs run serially,
  *                          every assert is a delta)
  *   lead       anvil[17]  Kit Works (this spec's wizard seller)
@@ -210,7 +210,7 @@ test.describe('KIT DIAMOND — a DAG join: one buyer, four orders, two parents o
             // Editorial identity + publish.
             await page.getByTestId('designer-name-input').fill('Kit assembly (diamond)');
             await page.getByTestId('designer-summary-input').fill('A kit from two component suppliers; the final leg depends on both branches.');
-            await page.getByTestId('designer-description-input').fill('Multi-parent topology: the leaf order carries two parents — the DAG join the kernel never sees, committed in the topology clause.');
+            await page.getByTestId('designer-description-input').fill('Multi-parent topology: the leaf order carries two parents — the DAG join FigaroCore never sees, committed in the topology clause.');
             await expect(page.getByTestId('designer-review')).toBeEnabled({ timeout: 5000 });
             await page.getByTestId('designer-review').click();
             await page.waitForURL(/\/assemblies\/designer\/view\/?\?slug=asm-/, { timeout: 15000 });
@@ -396,7 +396,7 @@ test.describe('KIT DIAMOND — a DAG join: one buyer, four orders, two parents o
         const cBonds = calculateBonds(cEvent.args.cumulativeValue!, cEvent.args.payment!);
 
         // The LEAF: its seller bonds 2× the ENTIRE upstream value — the
-        // cumulative accumulator is linear; the diamond never reaches the kernel.
+        // cumulative accumulator is linear; the diamond never reaches FigaroCore.
         const dEvent = await acceptAs(SUPPLIER_D, 'supplier D (the leaf)');
         expect(dEvent.args.processId, 'D extends the SAME process').toBe(processId);
         const total = rootEvent.args.payment! + bEvent.args.payment! + cEvent.args.payment! + dEvent.args.payment!;
@@ -470,7 +470,7 @@ test.describe('KIT DIAMOND — a DAG join: one buyer, four orders, two parents o
             'one financial-statements document per seller (lead + three suppliers)',
         ).toHaveCount(4, { timeout: 30000 });
         const cashflowRows = page.locator('[data-testid="document-lines-financial-statements-process"] tbody tr');
-        await expect(cashflowRows, 'one cash-flow row per kernel transfer (4 orders × 4)').toHaveCount(16, { timeout: 30000 });
+        await expect(cashflowRows, 'one cash-flow row per FigaroCore transfer (4 orders × 4)').toHaveCount(16, { timeout: 30000 });
         const evidence = page.getByTestId('audit-clause-evidence');
         await evidence.waitFor({ state: 'visible', timeout: 30000 });
         for (const text of ['Commerce terms', 'Order topology', 'Emissions disclosure', 'Proximity-verification policy']) {

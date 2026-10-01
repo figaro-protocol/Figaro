@@ -479,7 +479,7 @@ test.describe('PERMISSIONLESS CLAUSE — the definition of green (devnet)', () =
         // EVERY leaf. Fetch the agreement from IPFS (the network SSoT the audit resolves
         // via its URI pointer — NOT the local cache), assert it is pinned, then drive
         // the audit's hash verifier (Mode A): it recomputes the merkle root over all
-        // leaves and confirms it equals the on-chain agreementHash the kernel stored.
+        // leaves and confirms it equals the on-chain agreementHash FigaroCore stored.
         const agreementHash = event.args.agreementHash as `0x${string}`;
         const agreementUri = await page.evaluate(
             (key) => window.localStorage.getItem(key),
