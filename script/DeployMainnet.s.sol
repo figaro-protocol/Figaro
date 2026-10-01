@@ -146,7 +146,7 @@ contract DeployMainnet is Script {
         // 0.05 ETH per registration, NO cooldown (withdrawal is one-shot per key
         // with a permanent binding — nothing can be recycled). What sizes it:
         // author-side RPGF eligibility requires the deposit LIVE AT CLAIM
-        // (RpgfMinter._isAuthor), so unlike the seller stake this capital is
+        // (RpgfMinter._isAuthor), so unlike the member stake this capital is
         // held for the WHOLE accrual period, undiscounted — and it is the
         // price of the registration-REPLICATION lever: an adversary multiplying
         // score across m self-authored clauses committed into the same
