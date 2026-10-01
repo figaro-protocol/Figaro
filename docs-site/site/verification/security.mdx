@@ -15,7 +15,7 @@ The contracts being verified says nothing about the page in front of you — a f
 
 ## The verification stack
 
-What is in place today is a verification stack — seven independent benches: six on the protocol's contracts and one on the equilibrium algebra those contracts enforce — each from a different angle. Seven, and not one, because each catches a class of defect the others structurally cannot. What each method covers, what it structurally cannot reach, and the bounds every model-checked configuration runs under are set out method by method in [A Verified Resolution Kernel](https://figaroprotocol.com/papers/verified-resolution-kernel):
+What is in place today is a verification stack — seven independent benches: six on the protocol's contracts and one on the equilibrium algebra those contracts enforce — each from a different angle. Seven, and not one, because each catches a class of defect the others structurally cannot. What each method covers, what it structurally cannot reach, and the bounds every model-checked configuration runs under are set out method by method in [A Verified Resolution Contract](https://figaroprotocol.com/papers/verified-resolution-kernel):
 
 - **Foundry**: the unit + integration suite — 341 test functions. Class: *behavioral and regression* — what a contract does on concrete inputs, and what it stops doing after an edit. It proves nothing about the inputs nobody wrote a test for.
 - **Halmos**: 32 symbolic-execution properties, proved exhaustively. Class: *the untried input* — a property is proved over every input in range at once rather than sampled, so an arithmetic or boundary case no test author imagined cannot hide.
