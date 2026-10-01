@@ -291,7 +291,7 @@ export function clauseDesignFills(clauseId: string, version?: number): readonly 
     return getClauseSpec(clauseId, version)?.block?.design.fills ?? [];
 }
 
-/** The content fields (by name) authored per-item on the seller's CATALOGUE
+/** The content fields (by name) authored per-item on the member's CATALOGUE
  *  (item master data: freight class, hazmat, cold-chain), read from the
  *  clause's own `block.checkout.catalogueFills`. Generic surfaces render a
  *  spec-driven authoring section per such clause on the catalogue item and
@@ -311,7 +311,7 @@ export function listCatalogueSourcedClauses(): readonly { clauseId: string; vers
     return listKnownClauses().filter((c) => clauseCatalogueFills(c.clauseId, c.version).length > 0);
 }
 
-/** The content fields (by name) authored ONCE on the seller's PROFILE (seller
+/** The content fields (by name) authored ONCE on the member's PROFILE (the member's
  *  master data: a dim-weight divisor, a declared credential id), read from the
  *  clause's own `block.checkout.profileFills` — the seller-level sibling of
  *  `clauseCatalogueFills` (item master data): catalogue = what is sold,

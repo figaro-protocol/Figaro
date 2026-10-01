@@ -11,7 +11,7 @@ export interface TransactionCapabilityExecutors {
     waitForTransactionConfirmation?: (txHash?: Hex) => Promise<void>;
     resolveProcess?: (processId: string) => TransactionExecutionResult;
     registerMember?: (metadataURI: string, value?: bigint) => TransactionExecutionResult;
-    /** Replaces the registered seller's metadataURI in place; deposit and
+    /** Replaces the registered member's metadataURI in place; deposit and
      *  lock period untouched. Maps to MembersRegistry.updateProfile. */
     updateMemberProfile?: (metadataURI: string) => TransactionExecutionResult;
     /** Withdraws the deposit and clears the dedup guard, freeing the address

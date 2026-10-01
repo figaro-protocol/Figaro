@@ -99,7 +99,7 @@ interface ClauseBlockCheckout {
      *  for ANY clause declaring a non-empty list — including one this
      *  codebase has never seen. */
     catalogueFills: readonly string[];
-    /** The content fields (by name) authored ONCE on the seller's PROFILE
+    /** The content fields (by name) authored ONCE on the member's PROFILE
      *  (seller master data: a dim-weight divisor, a declared credential id)
      *  and folded onto the matching leaf at checkout. The seller-level
      *  sibling of `catalogueFills` — two distinct layers: catalogue = what is

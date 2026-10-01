@@ -150,7 +150,7 @@ function isCidPath(path: string): boolean {
 /**
  * Resolve a content URI for use as an IMAGE `src`, IPFS-only. Identical to
  * `resolveContentUri` EXCEPT a raw `http(s)://` locator returns `null` instead
- * of passing through. Permissionless seller/catalogue/branding data is
+ * of passing through. Permissionless member/catalogue/branding data is
  * attacker-authorable, and a hotlinked `<img src="https://attacker/px.png">`
  * beacons every viewer's IP, User-Agent, and load timing to a host the attacker
  * picked — a tracking-pixel / deanonymization vector (frontend security audit,
@@ -184,7 +184,7 @@ export function extractIpfsCid(uri: string): string | null {
  * a multi-GB object at a CID and hand it to any reader; buffering it whole would
  * OOM the browser tab (or an agent process) BEFORE the content-hash check that
  * would reject it ever runs. Protocol documents — clause specs, agreements,
- * seller catalogues/profiles — are KB-scale; the 5 MB media-upload ceiling
+ * member catalogues/profiles — are KB-scale; the 5 MB media-upload ceiling
  * (`MAX_FILE_SIZE`) is the largest artifact legitimately pinned, so 8 MB clears
  * every real document with margin while turning a hostile blob into a clean
  * rejection. Pairs with the clause-load depth cap (`MAX_FIELD_DEPTH`).

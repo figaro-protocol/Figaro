@@ -1,5 +1,5 @@
 // Figaro contract configuration — the five core Figaro contracts only
-// (the Core + Clause/Seller/Assembly registries + florin token) plus the agnostic ERC-20.
+// (the Core + Clause/Members/Assembly registries + florin token) plus the agnostic ERC-20.
 // Addresses are sourced from environment variables written by deploy-local.sh.
 // ABIs are re-exported from the canonical SDK (@figaro-protocol/sdk).
 // Any contract the frontend merely COMPOSES with lives in lib/composition/, not here.

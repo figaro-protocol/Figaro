@@ -334,7 +334,7 @@ export function useDispatchRace() {
                 .sort((a, b) => (a.pricing.payment < b.pricing.payment ? -1 : a.pricing.payment > b.pricing.payment ? 1 : 0))
                 .slice(0, args.maxCandidates && args.maxCandidates > 0 ? args.maxCandidates : undefined);
             if (priced.length === 0) {
-                throw new Error("No registered seller's catalogue can price this order — nothing to race.");
+                throw new Error("No registered member's catalogue can price this order — nothing to race.");
             }
             // Route each candidate — through the DID-verifying resolver where a
             // DID is declared — in parallel: a slow or hostile document host

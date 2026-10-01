@@ -5,7 +5,7 @@
  * equivalent destination-token amount at the current rate.
  *
  * Used at two points in the buyer flow:
- *   1. Display: the catalogue is denominated in the seller's profile
+ *   1. Display: the catalogue is denominated in the member's profile
  *      `defaultTokenAddress`. The buyer's frontend converts to whatever
  *      accepted token the buyer chose to pay in, so the displayed price
  *      reflects what they will actually commit.

@@ -114,7 +114,7 @@ export function textToBytes32(text: string): string {
 }
 
 /**
- * Normalize a route-param address into the two forms a seller/checkout surface
+ * Normalize a route-param address into the two forms a member-page or checkout surface
  * needs together: `lower` (lowercased, for comparisons + keys) and `typed`
  * (the `0x`-typed form, or `undefined` when the param isn't 0x-prefixed).
  */
