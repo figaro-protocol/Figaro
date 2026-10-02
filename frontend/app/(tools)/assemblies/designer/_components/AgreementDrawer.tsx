@@ -357,7 +357,7 @@ function ClauseRegistryPanel({
     // bumps as specs resolve so the grouping recomputes against the warm cache.
     // Surfacing derives from the live stake (K4): the drawer OFFERS clauses
     // for new compositions, so withdrawn-stake clauses drop here — while
-    // committed agreements elsewhere keep resolving them (spec-loading is
+    // orders already committed elsewhere still resolve under them (spec-loading is
     // unfiltered by design).
     const { data: allRegisteredClauses } = useAllRegisteredClauses();
     const registeredClauses = useMemo(

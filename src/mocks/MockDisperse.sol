@@ -11,7 +11,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 ///         pulls the total once then pays each leg; `disperseTokenSimple`
 ///         pulls each leg directly. Every batch is atomic — any failed leg
 ///         reverts the whole call. Mainnet composes the canonical deployment
-///         (fifth noun — composition, not a Figaro-owned duplicate); this
+///         (sixth noun — composition, not a Figaro-owned duplicate); this
 ///         mock exists only so devnet can rehearse that composition.
 contract MockDisperse {
     function disperseEther(address[] calldata recipients, uint256[] calldata values) external payable {
