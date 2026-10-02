@@ -62,9 +62,6 @@ export default function Agents() {
             </MarketingSection>
 
             <MarketingSection title="ERC-8004 interop, by metadata convention.">
-                <p className="font-mono text-xs text-ink-muted uppercase tracking-wide mb-2">
-                    For integrators
-                </p>
                 <p className="text-base text-ink-body leading-relaxed mb-5 pb-5 border-b border-default">
                     Everything above this line is the argument; everything below it is the operating surface &mdash; registry fields, identifiers, and the SDK calls a wallet is driven through, rather than what the protocol is.
                 </p>
