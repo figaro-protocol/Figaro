@@ -45,9 +45,16 @@ AttestationCoordinator ──▶ FigaroCore ◀── WitnessSwapAndCommitCoordi
 - Assembly→clause and seller→assembly relationships are off-chain (assembly
   content, profile bindings) — deliberately absent from this graph.
 
-## `src/core/kernel/` — `FigaroCore` and `CommitmentTypes`
+## `src/core/` — the Core
 
-The two frozen contracts. Never edited.
+The four contracts every trade runs on (`LEXICON.md` **Core**): `FigaroCore`,
+`CommitmentTypes`, `AttestationCoordinator` and `FigaroBatchVerifier`. Two
+interface files sit beside them, `IRoleResolver.sol` and `ISP1Verifier.sol`.
+An interface file is a function signature and holds no code: it names what a
+Core contract calls on an address outside the Core. All six files are in the
+audit's scope (`AUDITOR_HANDOVER.md` § "Scope").
+
+### `src/core/kernel/` — `FigaroCore` and `CommitmentTypes`
 
 **`src/core/kernel/FigaroCore.sol`** — Holds every deposit and resolves a process
 when its buyer signs.
@@ -77,111 +84,9 @@ be committed (`DeadlineExpired`) — a signature cannot be revoked, so it ages
 out; nothing expires after commit. `DESIGN_DECISIONS.md` §13 owns the
 reasoning.
 
-## Registries (`src/build/registries/` — clauses and assemblies; `src/app/` — members)
+### `src/core/attestation/` — `AttestationCoordinator` and `IRoleResolver`
 
-Three parallel anchors, each with its own identity scheme, event stream, and
-withdrawal behaviour; none references another. Registering publishes; it
-never qualifies — the Core gates nothing on registry state.
-
-**`src/build/registries/ClauseRegistry.sol`** — Permissionless clause
-anchoring under a stake.
-- Key: `idHash = keccak256(abi.encode(clauseId, version))`. `contentHash` is
-  keccak256 of the canonical spec JSON; `contentURI` is where readers fetch it.
-  `contentHashOf[idHash]` is never cleared — it is the anchor
-  `FigaroBatchVerifier` checks every witness-spec binding against.
-- `registerClause` — first-write-wins, immutable, `payable`, requires exactly
-  `registrationDeposit` (`WrongDeposit`); emits `ClauseRegistered`.
-- `withdrawDeposit(idHash)` — the registering wallet only, once, no time lock;
-  refunds the stake and emits `DepositWithdrawn`. The binding stays; readers
-  remove the clause from view for new compositions, and committed agreements
-  keep resolving it.
-- `setMechanismClause(idHash)` — permissionless self-declaration by any
-  contract; writes no storage, emits `MechanismClauseSet(msg.sender, idHash)`,
-  reverts `NotRegistered` on an unanchored key. It confers nothing.
-- Registration anchors a locator and a content hash only; the contract
-  validates no content. `CLAUSES.md` owns the validation model.
-
-**`src/app/MembersRegistry.sol`** — Permissionless member
-registration under a stake. A member is a wallet that publishes a
-declaration — buyer, seller, or both; the declaration is one document, split
-between the identity envelope here and the item list behind `catalogueURI`.
-- `register(metadataURI)` — sets the dedup guard, takes the stake, emits
-  `MemberRegistered`.
-- `updateProfile(metadataURI)` — caller-only replacement, no stake movement,
-  emits `MemberProfileUpdated`.
-- `requestWithdrawal()` — clears the dedup guard at once (the member leaves
-  view and may re-register), schedules the stake for release, emits
-  `MemberWithdrawalRequested` — the signal discovery and erasure readers fold.
-- `withdraw()` — refunds the stake once `withdrawalCooldown` has elapsed,
-  emits `MemberWithdrawn`.
-- State: `_registered`, `pendingDeposit`, `releaseAt`. No active flag, no role
-  field, no deactivate. `UsageCounter` reads one field, `registered`, as the
-  seller-side gate for designer rewards.
-- The cooldown is what prices an identity: without it one stake serves N
-  identities in sequence; with it, sustaining N identities across a period `P`
-  costs `stake · N · T / P`. Leaving view and refunding are different moments
-  by design.
-
-**`src/build/registries/AssemblyRegistry.sol`** — Permissionless assembly
-anchoring under a stake.
-- Identity is the composition: `compositionHash = keccak256` of the assembly's
-  canonical composition (the composed agreements — clauses, values, topology;
-  editorial prose excluded). Identical compositions collapse to one binding;
-  no caller-chosen name exists on-chain. The human-readable slug is derived
-  off-chain (`deriveAssemblySlug`).
-- `registerAssembly(compositionHash, contentURI)` — first-write-wins, requires
-  exactly `registrationDeposit`, emits `AssemblyRegistered`.
-- `withdrawDeposit(compositionHash)` — the registering wallet only, once, no
-  time lock; refunds the stake and emits `DepositWithdrawn`. The binding is
-  permanent: buyers and sellers that reference the assembly rely on its content
-  staying stable.
-- State: `bindings: compositionHash → AssemblyBinding{registeredBy,
-  registeredAt, depositWithdrawn, contentURI}`. No admin, no transfer, no
-  removal. The contract validates no content.
-
-The two hash-keyed registries carry no cooldown — their withdrawal is one-shot
-per key and the binding permanent, so there is nothing to recycle.
-
-## Coordinators (`src/core/attestation/` — attestation; `src/app/` — the swap)
-
-Contracts that compose `FigaroCore` without becoming a party to it. A new
-capability beside `FigaroCore` is a NEW parallel contract composing its
-state — never an edit to it, never a tenant inside an existing registry. The
-copyable shape:
-
-1. **Bind through a minimal, immutable surface.** Declare only the `FigaroCore`
-   functions you call and bind at construction: each coordinator declares its
-   own local `interface IFigaroCore` naming exactly the surface it uses
-   (`commit` in `WitnessSwapAndCommitCoordinator.sol`; `orderStatus` +
-   `DOMAIN_SEPARATOR` in `AttestationCoordinator.sol`) and holds it
-   `immutable`. The local-minimal interface is the pattern for external
-   composers too: a third party composing the deployed `FigaroCore` cannot import
-   this repo's files, only its ABI. (`CommitmentTypes` is the shared
-   struct/hashing library both import.)
-2. **Read `FigaroCore`'s state as the single source of truth; never re-implement
-   its logic.** A coordinator may read (`orderStatus`, `DOMAIN_SEPARATOR`),
-   call (`commit`), and — when it cannot import a constant from
-   `FigaroCore` — mirror one with a comment pinning the source (the 2× bond
-   multiplier in `WitnessSwapAndCommitCoordinator`). `FigaroCore` does the
-   enforcing: the bond pull, the status transition, the atomic resolution. A
-   contract that enforces bonding or resolution itself is re-implementing
-   `FigaroCore`, not composing it.
-3. **Hold no resolution-time discretion.** A coordinator carries setup or
-   evidence legs (a swap before `commit`; a merkle-checked attestation), never a
-   lever over a live process's resolution.
-4. **The arrow points one way.** `FigaroCore` never knows the coordinator exists
-   (its one mention of `AttestationCoordinator`, in the `DOMAIN_SEPARATOR` doc
-   comment, is illustrative, not a dependency). Tenant names — Kleros, Uniswap,
-   a lender — live at the edge: in the composing contract, in a clause's
-   `block.design.composes`, in the UI dispatch. Never in `FigaroCore`, never in
-   the SDK's protocol modules.
-
-The test before building anything beside `FigaroCore`: *can this be a parallel
-contract that reads `FigaroCore`'s state and lets it enforce?* If the answer
-seems to be no, the proposal is adding a mechanism to `FigaroCore` — stop.
-
-The five conditions a composed contract satisfies, what each preserves, and their
-provenance: `OPEN_WORLD.md` § "The five conditions a composed contract satisfies".
+`AttestationCoordinator` has the coordinator shape (§ Coordinators).
 
 **`src/core/attestation/AttestationCoordinator.sol`** — Zero-storage
 attestation, merkle-only, bound to the signed `agreementHash`. Three modes:
@@ -213,33 +118,7 @@ and a never-seen clause is attestable with zero per-clause on-chain code.
 **`src/core/attestation/IRoleResolver.sol`** — `isAuthorized(orderHash,
 caller)`, the interface a seller address implements to delegate attestation.
 
-**`src/app/WitnessSwapAndCommitCoordinator.sol`** — Lets a
-buyer and/or seller fund a bond from a token other than the process's
-denomination, in the same transaction as `commit`. One external function,
-`swapAndCommit(c, buyerSig, sellerSig, buyerFunding, sellerFunding)`: for each
-enabled leg it pulls the party's input token through a Permit2 witness
-signature (`permitWitnessTransferFrom`), forwards the swap calldata to the
-immutable `router` (Uniswap SwapRouter02 — a venue that pulls by ERC-20
-allowance; never the Universal Router), forwards the swapped denomination to
-the party's own address, then calls `FigaroCore.commit`.
-- `FigaroCore` pulls each bond from the named party and never checks
-  `msg.sender`, so the coordinator supplies the party in place and never becomes
-  a counterparty; the commitment stays bilaterally signed.
-- Bond amounts derive from `c` (`2·payment`, `2·expectedCumulativeValue`),
-  never from calldata; a leg reverts `OutputBelowBond` if the swap yields less.
-- The witness binds `{router, inputToken, maxInput, keccak256(swapData)}` into
-  a `SwapWitness` the party signs (`swapWitness(inputToken, maxInput,
-  swapData)` recomputes it for off-chain signers); substituting any of them
-  fails Permit2's own signature check before a token moves, so no relayer can
-  reroute the swap and capture the residual.
-- Immutable `figaroCore` / `permit2` / `router`; `ReentrancyGuard`; no admin,
-  no admin, no pause. Alternative coordinators with other routers are valid
-  compositions.
-- Per-party prerequisites: a one-time `approve(FigaroCore, …)` for the
-  denomination, a one-time `approve(Permit2, …)` for the input token, and a
-  per-commit Permit2 witness signature.
-
-## Verifier (`src/core/verifier/`)
+### `src/core/verifier/` — `FigaroBatchVerifier` and `ISP1Verifier`
 
 The proof-based path that resolves batches of processes beside the direct
 `FigaroCore` path. `SCALING_STRATEGY.md` owns the design; this is the surface.
@@ -280,7 +159,54 @@ resolving after the reward's last period closes.
 **`src/core/verifier/ISP1Verifier.sol`** — the Succinct SP1
 verifier-gateway ABI, `verifyProof(programVKey, publicValues, proof)`.
 
-## Usage accounting (`src/build/rewards/`)
+## `src/build/` — the registries, usage accounting, the florin, designer rewards
+
+### Registries (`src/build/registries/`)
+
+Three parallel anchors, each with its own identity scheme, event stream, and
+withdrawal behaviour; none references another. Registering publishes; it
+never qualifies — the Core gates nothing on registry state. Two are here; the
+third, `MembersRegistry`, is in `src/app/`.
+
+**`src/build/registries/ClauseRegistry.sol`** — Permissionless clause
+anchoring under a stake.
+- Key: `idHash = keccak256(abi.encode(clauseId, version))`. `contentHash` is
+  keccak256 of the canonical spec JSON; `contentURI` is where readers fetch it.
+  `contentHashOf[idHash]` is never cleared — it is the anchor
+  `FigaroBatchVerifier` checks every witness-spec binding against.
+- `registerClause` — first-write-wins, immutable, `payable`, requires exactly
+  `registrationDeposit` (`WrongDeposit`); emits `ClauseRegistered`.
+- `withdrawDeposit(idHash)` — the registering wallet only, once, no time lock;
+  refunds the stake and emits `DepositWithdrawn`. The binding stays; readers
+  remove the clause from view for new compositions, and committed agreements
+  keep resolving it.
+- `setMechanismClause(idHash)` — permissionless self-declaration by any
+  contract; writes no storage, emits `MechanismClauseSet(msg.sender, idHash)`,
+  reverts `NotRegistered` on an unanchored key. It confers nothing.
+- Registration anchors a locator and a content hash only; the contract
+  validates no content. `CLAUSES.md` owns the validation model.
+
+**`src/build/registries/AssemblyRegistry.sol`** — Permissionless assembly
+anchoring under a stake.
+- Identity is the composition: `compositionHash = keccak256` of the assembly's
+  canonical composition (the composed agreements — clauses, values, topology;
+  editorial prose excluded). Identical compositions collapse to one binding;
+  no caller-chosen name exists on-chain. The human-readable slug is derived
+  off-chain (`deriveAssemblySlug`).
+- `registerAssembly(compositionHash, contentURI)` — first-write-wins, requires
+  exactly `registrationDeposit`, emits `AssemblyRegistered`.
+- `withdrawDeposit(compositionHash)` — the registering wallet only, once, no
+  time lock; refunds the stake and emits `DepositWithdrawn`. The binding is
+  permanent: buyers and sellers that reference the assembly rely on its content
+  staying stable.
+- State: `bindings: compositionHash → AssemblyBinding{registeredBy,
+  registeredAt, depositWithdrawn, contentURI}`. No admin, no transfer, no
+  removal. The contract validates no content.
+
+The two hash-keyed registries carry no cooldown — their withdrawal is one-shot
+per key and the binding permanent, so there is nothing to recycle.
+
+### Usage accounting (`src/build/rewards/`)
 
 **`src/build/rewards/UsageCounter.sol`** — Counts how much real trade a
 clause or assembly carried, on chain, at the moment it happens. The chain
@@ -360,7 +286,7 @@ formula and its rationale are stated normatively in `sdk/src/rpgf/formula.json`.
   `test/build/rewards/UsageCounterTest.t.sol` (`RECORD_USAGE_GAS`); every
   analysis quotes that one home.
 
-## The florin (`src/build/florin/`)
+### The florin (`src/build/florin/`)
 
 **`src/build/florin/FlorinToken.sol`** — ERC-20 with EIP-2612 permit. `MAX_SUPPLY` of
 one billion, enforced on every mint. A minter registry with
@@ -377,7 +303,7 @@ registers itself as a one-shot minter with a 400M cap, mints 70M / 30M / 300M
 to the founder, supporters, and DAO wallets, then renounces. `FLORIN_TOKEN.md`
 owns the allocation and its reasoning. Nothing is minted on resolution.
 
-## Designer rewards (`src/build/rewards/`)
+### Designer rewards (`src/build/rewards/`)
 
 The 600M reserve, rewarded to designers of record in proportion to the trade
 their clauses and assemblies carried: one claim per period, nine annual
@@ -411,6 +337,100 @@ a wallet passes every clause and assembly it designed in that one call.
 recomputing what the chain holds, never posting an answer. The 300M DAO
 treasury pays for public goods by human decision; there is no match round and
 no crowd mechanism.
+
+## `src/app/` — the members registry and the swap coordinator
+
+`MembersRegistry` is the third of the three parallel registries (§ Registries).
+`WitnessSwapAndCommitCoordinator` has the coordinator shape (§ Coordinators).
+
+**`src/app/MembersRegistry.sol`** — Permissionless member
+registration under a stake. A member is a wallet that publishes a
+declaration — buyer, seller, or both; the declaration is one document, split
+between the identity envelope here and the item list behind `catalogueURI`.
+- `register(metadataURI)` — sets the dedup guard, takes the stake, emits
+  `MemberRegistered`.
+- `updateProfile(metadataURI)` — caller-only replacement, no stake movement,
+  emits `MemberProfileUpdated`.
+- `requestWithdrawal()` — clears the dedup guard at once (the member leaves
+  view and may re-register), schedules the stake for release, emits
+  `MemberWithdrawalRequested` — the signal discovery and erasure readers fold.
+- `withdraw()` — refunds the stake once `withdrawalCooldown` has elapsed,
+  emits `MemberWithdrawn`.
+- State: `_registered`, `pendingDeposit`, `releaseAt`. No active flag, no role
+  field, no deactivate. `UsageCounter` reads one field, `registered`, as the
+  seller-side gate for designer rewards.
+- The cooldown is what prices an identity: without it one stake serves N
+  identities in sequence; with it, sustaining N identities across a period `P`
+  costs `stake · N · T / P`. Leaving view and refunding are different moments
+  by design.
+
+**`src/app/WitnessSwapAndCommitCoordinator.sol`** — Lets a
+buyer and/or seller fund a bond from a token other than the process's
+denomination, in the same transaction as `commit`. One external function,
+`swapAndCommit(c, buyerSig, sellerSig, buyerFunding, sellerFunding)`: for each
+enabled leg it pulls the party's input token through a Permit2 witness
+signature (`permitWitnessTransferFrom`), forwards the swap calldata to the
+immutable `router` (Uniswap SwapRouter02 — a venue that pulls by ERC-20
+allowance; never the Universal Router), forwards the swapped denomination to
+the party's own address, then calls `FigaroCore.commit`.
+- `FigaroCore` pulls each bond from the named party and never checks
+  `msg.sender`, so the coordinator supplies the party in place and never becomes
+  a counterparty; the commitment stays bilaterally signed.
+- Bond amounts derive from `c` (`2·payment`, `2·expectedCumulativeValue`),
+  never from calldata; a leg reverts `OutputBelowBond` if the swap yields less.
+- The witness binds `{router, inputToken, maxInput, keccak256(swapData)}` into
+  a `SwapWitness` the party signs (`swapWitness(inputToken, maxInput,
+  swapData)` recomputes it for off-chain signers); substituting any of them
+  fails Permit2's own signature check before a token moves, so no relayer can
+  reroute the swap and capture the residual.
+- Immutable `figaroCore` / `permit2` / `router`; `ReentrancyGuard`; no admin,
+  no pause. Alternative coordinators with other routers are valid
+  compositions.
+- Per-party prerequisites: a one-time `approve(FigaroCore, …)` for the
+  denomination, a one-time `approve(Permit2, …)` for the input token, and a
+  per-commit Permit2 witness signature.
+
+## Coordinators — the shape of a contract beside `FigaroCore`
+
+Contracts that compose `FigaroCore` without becoming a party to it. Two here
+have the shape: `AttestationCoordinator`, one of the Core's four, and
+`WitnessSwapAndCommitCoordinator` in `src/app/`. A new capability beside
+`FigaroCore` is a NEW parallel contract composing its state — never an edit to
+it, never a tenant inside an existing registry. The copyable shape:
+
+1. **Bind through a minimal, immutable surface.** Declare only the `FigaroCore`
+   functions you call and bind at construction: each coordinator declares its
+   own local `interface IFigaroCore` naming exactly the surface it uses
+   (`commit` in `WitnessSwapAndCommitCoordinator.sol`; `orderStatus` +
+   `DOMAIN_SEPARATOR` in `AttestationCoordinator.sol`) and holds it
+   `immutable`. The local-minimal interface is the pattern for external
+   composers too: a third party composing the deployed `FigaroCore` cannot import
+   this repo's files, only its ABI. (`CommitmentTypes` is the shared
+   struct/hashing library both import.)
+2. **Read `FigaroCore`'s state as the single source of truth; never re-implement
+   its logic.** A coordinator may read (`orderStatus`, `DOMAIN_SEPARATOR`),
+   call (`commit`), and — when it cannot import a constant from
+   `FigaroCore` — mirror one with a comment pinning the source (the 2× bond
+   multiplier in `WitnessSwapAndCommitCoordinator`). `FigaroCore` does the
+   enforcing: the bond pull, the status transition, the atomic resolution. A
+   contract that enforces bonding or resolution itself is re-implementing
+   `FigaroCore`, not composing it.
+3. **Hold no resolution-time discretion.** A coordinator carries setup or
+   evidence legs (a swap before `commit`; a merkle-checked attestation), never a
+   lever over a live process's resolution.
+4. **The arrow points one way.** `FigaroCore` never knows the coordinator exists
+   (its one mention of `AttestationCoordinator`, in the `DOMAIN_SEPARATOR` doc
+   comment, is illustrative, not a dependency). Tenant names — Kleros, Uniswap,
+   a lender — live at the edge: in the composing contract, in a clause's
+   `block.design.composes`, in the UI dispatch. Never in `FigaroCore`, never in
+   the SDK's protocol modules.
+
+The test before building anything beside `FigaroCore`: *can this be a parallel
+contract that reads `FigaroCore`'s state and lets it enforce?* If the answer
+seems to be no, the proposal is adding a mechanism to `FigaroCore` — stop.
+
+The five conditions a composed contract satisfies, what each preserves, and their
+provenance: `OPEN_WORLD.md` § "The five conditions a composed contract satisfies".
 
 ## Test and mock contracts (`src/mocks/`, `src/echidna/`)
 
