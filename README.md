@@ -33,8 +33,11 @@ they published. `docs/VISION.md` says why; `docs/THEORY.md` derives it;
   signs; `CommitmentTypes.sol` defines the commitment and its EIP-712 hashing;
   `AttestationCoordinator.sol` binds what a party attests to the agreement it
   signed; `FigaroBatchVerifier.sol` accepts a validity proof of many processes
-  and resolves them in one transaction. Frozen for the audit, with everything
-  else in the audit's scope (`docs/AUDITOR_HANDOVER.md` § "Scope").
+  and resolves them in one transaction. Two interface files sit beside them:
+  `IRoleResolver.sol`, which a seller's address implements to delegate
+  attestation, and `ISP1Verifier.sol`, the SP1 verifier gateway's ABI. Frozen
+  for the audit, with everything else in the audit's scope
+  (`docs/AUDITOR_HANDOVER.md` § "Scope").
 - **Protocol contracts** — `src/build/` and `src/app/`: the three registries
   (clauses, members, assemblies — permissionless, first-write-wins, under a
   stake), the swap-and-commit coordinator, and the usage counter. Inventory:
