@@ -69,7 +69,7 @@ export interface AssemblyCheckoutDeps {
      *  node passes the winner's countersignature so the relayed payload
      *  carries BOTH signatures — commit-ready on arrival. */
     signAndShare: (preview: OrderPreview, opts?: { sellerSig?: `0x${string}` }) => Promise<CommitmentPayload>;
-    /** Invokes a sub-order's on-network composition (the fifth noun) — the
+    /** Invokes a sub-order's on-network composition (the sixth noun) — the
      *  surface routes the standard `interface` to its handler and owns the tx +
      *  receipt wait (useCompositionActions). The composition runs alongside the
      *  order's normal commit. */
@@ -126,7 +126,7 @@ export interface AssemblyCheckoutParams {
         price: string;
         item: { id: string; name: string };
     }>;
-    /** On-network compositions (the fifth noun) keyed by template node id:
+    /** On-network compositions (the sixth noun) keyed by template node id:
      *  the composing clause's `interface` (from `block.design.composes`) plus the
      *  buyer's `block.runtime.fields` values collected at checkout. The composition
      *  runs alongside the order's normal commit. Interface-agnostic — the
@@ -249,7 +249,7 @@ export async function executeAssemblyCheckout(
                 rootPreview = preview;
                 return;
             }
-            // On-network composition (fifth noun): a sub-order whose clause
+            // On-network composition (sixth noun): a sub-order whose clause
             // declares `block.design.composes` invokes the composed contract ALONGSIDE
             // its normal commit — the interface is routed to its handler by the
             // surface (`deps.compose`); the walk names no clause.

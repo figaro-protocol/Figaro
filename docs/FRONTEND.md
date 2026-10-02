@@ -136,7 +136,7 @@ Tiered, bottom to top; each tier imports only what sits below it (enforced by th
     gate's terms rendering is `components/runtime/AgreementReview.tsx` — the ONE
     shared agreement-terms surface, composed by `AgreementPreviewModal` and
     rendered inline on `/sign`.
-- **`composition/`** — third-party on-network contract composition (the fifth noun).
+- **`composition/`** — third-party on-network contract composition (the sixth noun).
   Generic dispatch is `compositionTarget.ts` + `useCompositionActions.ts`, with
   per-contract hooks and readers beneath it.
   - *Swap-funded bond legs:* `swapFunding.ts` — devnet venue rate/quote/route plus

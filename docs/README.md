@@ -14,7 +14,7 @@ content. (This is the instruction-system form of "derive, don't store.")
 
 | Concept | Owner |
 |---|---|
-| The system: 2 Core mechanisms + 5 nouns | maintainer-private build tooling — `THEORY.md` carries the public restatement |
+| The system: 2 Core mechanisms + 6 nouns | maintainer-private build tooling — `THEORY.md` carries the public restatement |
 | The `clause.block` seam (fields = protocol, block = presentation) | `CLAUSES.md` § "Clause-spec format" |
 | The coordinator pattern (composing the Core) | `CONTRACTS.md` § Coordinators |
 | The data layer — the public/sealed seam, and the rule that decides it | `DATA_LAYER.md` |
@@ -68,7 +68,7 @@ touch.
 on the protocol. Its lesson from the genesis clean-room experiment
 (`work/2026-09-10-genesis-cleanroom/`): a cold reader with ordinary priors slides
 into a different, coherent, defensible design unless the whole model is held at
-once — so docs-site STATES the whole (the two mechanisms, the five nouns, the
+once — so docs-site STATES the whole (the two mechanisms, the six nouns, the
 forest) before any per-object detail, and never assumes the reader induces it.
 
 **Where the technical detail behind the doors goes:** the four hashes and the

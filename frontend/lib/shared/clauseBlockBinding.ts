@@ -71,7 +71,7 @@ interface ClauseBlockDesign {
      *  compositionHash). Empty when the designer only selects the clause. */
     fills: readonly string[];
     /** Composition binding — the on-network contract or external forum this
-     *  clause composes with (the fifth noun). `interface` names a STANDARD
+     *  clause composes with (the sixth noun). `interface` names a STANDARD
      *  composition interface (chain-agnostic, read from spec — never a
      *  bundled clause-id switch in code); the concrete instance ADDRESS is
      *  chain-specific and comes at runtime (clause data / chain

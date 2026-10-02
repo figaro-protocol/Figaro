@@ -68,7 +68,7 @@ interface Props {
     sellerAddress: string;
 }
 
-/** One order's on-network composition (fifth noun): the composing clause, its
+/** One order's on-network composition (sixth noun): the composing clause, its
  *  standard interface, and the runtime `block.runtime.fields` the buyer fills. */
 interface OrderComposition {
     nodeId: string;
@@ -335,7 +335,7 @@ export function CheckoutView({ sellerAddress }: Props) {
             return [];
         }
     })();
-    // Any order that composes an on-network contract (the fifth noun) —
+    // Any order that composes an on-network contract (the sixth noun) —
     // discovered by reading `block.design.composes` + `block.runtime.fields`
     // off the clause spec, naming no clause and no interface. Applies to ANY
     // order (root, sub, 136th), not just sub-orders. The buyer fills each
@@ -1008,7 +1008,7 @@ export function CheckoutView({ sellerAddress }: Props) {
                             />
                         )}
 
-                        {/* On-network composition inputs (the fifth noun): any
+                        {/* On-network composition inputs (the sixth noun): any
                             order whose clause declares block.design.composes +
                             block.runtime.fields gets those runtime fields
                             rendered here generically — one form, naming no

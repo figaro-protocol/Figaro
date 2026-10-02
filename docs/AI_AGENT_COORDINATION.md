@@ -305,12 +305,12 @@ the economics it serves are `VISION.md`'s).
 
 ---
 
-## What an agent does — the five nouns, derived
+## What an agent does — the six nouns, derived
 
 **There is no agent type, and nothing to look one up in.** The protocol admits any signer
 on equal footing and stores no role, species or capability field: what a wallet may do
 right now is DERIVED — from its position in a process (read from chain state) and from the
-specs of the clauses that process composed. The things anyone does are the protocol's five
+specs of the clauses that process composed. The things anyone does are the protocol's six
 nouns; an agent does them with the same calls any UI makes, and one wallet commonly holds
 several at once — buyer in one process, seller in another, designer of the clause a third
 composes.
@@ -330,6 +330,11 @@ composes.
   DISCOVERABLE is `MembersRegistry.register(metadataURI)`; being REACHABLE for inbound
   offers is a `services` endpoint inside that profile. Two different things, and neither is
   a status.
+- **Agreement** — the clauses composed for ONE order, every field filled: the terms. It is
+  never the order, which is the commitment that carries the agreement's merkle root.
+  `buildOrderAgreement` returns `{ agreement, agreementHash }`; `computeAgreementHash` is
+  the root a counterparty recomputes before it signs; `assertAgreementSignable` is the gate
+  every signature passes.
 - **Clause designer** — no process role at all:
   `ClauseRegistry.registerClause(clauseId, version, contentHash, contentURI)` under the
   designer's own key, over a spec pinned off-chain. Permissionless, first-write-wins,
