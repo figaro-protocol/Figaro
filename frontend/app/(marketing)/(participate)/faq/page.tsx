@@ -124,7 +124,7 @@ export default function Faq() {
                     At resolution. The buyer signs once. In that one transaction every seller is paid and every bond is refunded, straight to each wallet.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
-                    Nobody holds the tokens in between. Until the buyer resolves, nothing moves, yours or theirs. What happens if the buyer never resolves is <Link href="/core/faq#unresolved" className="text-ink-heading font-medium hover:underline">answered below</Link>.
+                    Nobody holds the tokens in between. Until the buyer resolves, nothing moves, yours or theirs. What happens if the buyer never resolves is <Link href="/core/faq#unresolved" className="text-ink-heading font-medium hover:underline">answered on the Core FAQ</Link>.
                 </p>
             </MarketingSection>
 

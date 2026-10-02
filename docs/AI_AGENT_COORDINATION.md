@@ -269,7 +269,7 @@ What is emitted, and what each thing is evidence of:
 - **New terms and new shapes of trade exist.** `ClauseRegistry.ClauseRegistered` and
   `AssemblyRegistry.AssemblyRegistered` carry the designer and a `contentURI`; the content
   resolves chain → IPFS. Either registry's `DepositWithdrawn` de-surfaces the entry for new
-  compositions while every agreement already bound to it keeps resolving.
+  compositions while every order already committed against it still resolves.
 - **Someone bonded.** `FigaroCore.OrderCommitted`, with `OrderSeller` and `OrderCurrency`
   beside it: a value at one link of a chain, in a named token, backed 2×. The TERMS behind
   it are merkle leaves under `agreementHash` — the chain holds the root; the document is

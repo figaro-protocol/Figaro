@@ -37,7 +37,7 @@ What keeps the meter honest against a wallet that manufactures usage is not a ca
 - **Seller side.** Usage counts only for a seller of record whose `MembersRegistry` stake is live. `UsageCounter` gates every count on `MembersRegistry.registered(seller)`, on both resolution paths (`src/build/rewards/UsageCounter.sol:577`, `:655`).
 - **Designer side.** A claim rewards only entries whose registry stake is live and registered by the claimant. `RpgfMinter._isAuthor` verifies each entry against its own registry — `ClauseRegistry.depositOf` or `AssemblyRegistry.bindings` — requiring `registeredBy == caller` and the stake un-withdrawn (`src/build/rewards/RpgfMinter.sol:247-252`).
 
-This is a **value loop, not a cost.** The stake is reclaimable, and holding it is exposure to the growth of the network your own work produces. A designer who withdraws de-surfaces the entry for new compositions and stops earning on it, while every agreement already committed against it keeps resolving forever.
+This is a **value loop, not a cost.** The stake is reclaimable, and holding it is exposure to the growth of the network your own work produces. A designer who withdraws de-surfaces the entry for new compositions and stops earning on it, while every order already committed against it still resolves.
 
 ## Counting happens when the trade resolves
 

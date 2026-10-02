@@ -37,7 +37,7 @@ change it, and register the fork under your own key; the fork is yours (RPGF rew
   discoverability — but **five hints in it are hash-load-bearing and three of them decide
   what YOUR template contains**: `design.article: "mandatory"` (folds into every agreement
   whether you chose it or not), `design.scope: "assembly"` (composed once for the whole
-  design, folded into every agreement — composing it on an order is a build error, not a
+  design, folded into every agreement — composing it on an agreement is a build error, not a
   no-op), and `design.fills` (the only fields whose designer-authored values survive into
   the template; every other clause's entry is `{}`). Read a composed clause's hints with
   `parseProjectionHints(spec)` before composing it. Core invariant; many UIs compete.
@@ -110,7 +110,7 @@ mandatory clauses at the level each one's scope names, strips every value that i
 declared designer fill — **field-granular**, so one stray transaction particular sitting
 beside a legitimate fill on the same clause strips too, instead of riding its neighbor's
 declaration — and REFUSES a scope error outright (an assembly-scoped clause composed on an
-order, or an agreement-scoped clause composed at assembly level, throws; neither is a
+agreement, or an agreement-scoped clause composed at assembly level, throws; neither is a
 silent no-op). It also throws when the spec cache is cold, rather than emitting a template
 missing its mandatory clauses. Then `serializeAssemblyTemplate(template)` returns the JSON
 to pin and the `compositionHash` to register.

@@ -21,7 +21,7 @@ export default function Composes() {
                 title="What composes with Figaro."
                 lead={
                     <>
-                        Composition happens two ways: <strong>internally</strong>, where <Link href="/clauses" className="underline">clauses</Link> compose into agreements and agreements into <Link href="/assemblies" className="underline">assemblies</Link> &mdash; reusable designs of a trade, built over the core without touching it; and <strong>externally</strong>, where a process plugs into other on-chain contracts.
+                        Composition happens two ways: <strong>internally</strong>, where <Link href="/clauses" className="underline">clauses</Link> compose into agreements and agreements into <Link href="/assemblies" className="underline">assemblies</Link> &mdash; reusable designs of a trade, built over the core without touching it; and <strong>externally</strong>: on-chain, where a process plugs into the chain&apos;s other contracts, and off-chain, where the data a process leaves meets a legal or regulatory norm &mdash; an EU electronic invoice, ESG reporting, GDPR, taxation.
                     </>
                 }
             />

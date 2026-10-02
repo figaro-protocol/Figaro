@@ -106,12 +106,11 @@ export default function Attestations() {
                     trade belongs to its buyer alone.
                 </p>
                 <p className="text-sm text-ink-body leading-relaxed mb-4">
-                    Who may file is the order&apos;s own parties &mdash; and a seller of
-                    record need not be a person&apos;s wallet. A contract seller may name,
-                    through its own role resolution, the agent authorized to attest on its
+                    Who may file is the order&apos;s own parties. A seller is always a
+                    wallet that signs for itself; one whose wallet installs an EIP-7702
+                    delegation can name through it the agent authorized to attest on its
                     behalf, and the coordinator checks that authority on-chain before
-                    accepting the record. An ordinary wallet seller has no such
-                    delegation unless it deploys one.
+                    accepting the record.
                 </p>
                 <p className="text-sm text-ink-body leading-relaxed">
                     That boundary is why dispute recourse sits at the edge of the

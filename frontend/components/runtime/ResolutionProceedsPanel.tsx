@@ -77,7 +77,7 @@ export function ResolutionProceedsPanel({
                 </div>
             </dl>
             <p className="text-xs text-ink-muted">
-                The agreement completed as guaranteed — your bond is back in your wallet.
+                The process resolved as guaranteed — your bond is back in your wallet.
             </p>
             <p className="text-xs text-ink-muted font-mono truncate" title={sourceOrderId}>
                 Order: {truncateHex(sourceOrderId, { head: 14, tail: 8 })}

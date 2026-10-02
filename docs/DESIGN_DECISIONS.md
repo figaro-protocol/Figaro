@@ -167,7 +167,7 @@ commitment submitted a second time), the replay is rejected — by
 sub-orders (the accumulator has strictly moved), with `DuplicateCommitment`
 as the content-addressed backstop behind both (the revert-branch suite pins
 the preempting error on each path). The salt does not need to be
-unpredictable — it only needs to distinguish two separate agreements
+unpredictable — it only needs to distinguish two separate orders
 between the same parties with the same terms.
 
 ---

@@ -104,7 +104,7 @@ own currency, at the moment it counts:
 This is a **value loop, not a cost.** The stake is reclaimable, and holding it
 is exposure to the growth of the network one's own work produces. A designer
 who withdraws de-surfaces the entry for new compositions and stops earning on
-it, while every agreement already committed against it keeps resolving forever.
+it, while every order already committed against it still resolves.
 
 What the stake does and does not do against Sybil attacks is stated at its
 honest strength in `docs/DATA_LAYER.md`; it is not restated here.

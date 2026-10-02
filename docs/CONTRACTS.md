@@ -178,8 +178,8 @@ anchoring under a stake.
   `registrationDeposit` (`WrongDeposit`); emits `ClauseRegistered`.
 - `withdrawDeposit(idHash)` — the registering wallet only, once, no time lock;
   refunds the stake and emits `DepositWithdrawn`. The binding stays; readers
-  remove the clause from view for new compositions, and committed agreements
-  keep resolving it.
+  remove the clause from view for new compositions, and orders already
+  committed against it still resolve.
 - `setMechanismClause(idHash)` — permissionless self-declaration by any
   contract; writes no storage, emits `MechanismClauseSet(msg.sender, idHash)`,
   reverts `NotRegistered` on an unanchored key. It confers nothing.

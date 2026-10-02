@@ -297,7 +297,7 @@ README. Read the section; never reconstruct one from the ABI.
 If the owner registered a clause or an assembly, its stake comes back with one call
 (`ClauseRegistry.withdrawDeposit(idHash)` / `AssemblyRegistry.withdrawDeposit(compositionHash)`)
 — which **de-surfaces the entry for new compositions while the binding stays permanent**,
-because agreements already committed against it keep resolving forever. The rule the stake
+because orders already committed against it still resolve. The rule the stake
 encodes: do not reclaim it while processes composed from that clause or assembly are still
 in flight. Derive that before withdrawing:
 

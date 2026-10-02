@@ -49,7 +49,7 @@ export type RegistryLifecycleFigureProps = BaseFigureProps;
  *    of any kind — one call, no waiting.
  *  - The binding is NOT cleared by that call: `registered[idHash]` and
  *    `contentHashOf[idHash]` are never cleared ("the binding is permanent even
- *    after the deposit is withdrawn"), so committed agreements keep resolving
+ *    after the deposit is withdrawn"), so orders already committed still resolve
  *    while readers de-surface the entry for NEW compositions.
  *
  * Prose counterpart: /faq § "Can someone hijack your registration or clause?"
@@ -126,8 +126,8 @@ const CLAUSE: Machine = {
     closing: [
         "The binding is never cleared: the key stays",
         "registered and its content hash stays anchored,",
-        "so agreements already committed against it keep",
-        "resolving.",
+        "so orders already committed against it still",
+        "resolve.",
         "",
         "One call — but the protocol surface refuses",
         "while commits outnumber resolves. That count",
@@ -187,8 +187,8 @@ export function RegistryLifecycleFigure({
                     author can withdraw that deposit in a single call with no
                     cooldown — though the protocol surface refuses while commits
                     outnumber resolves. That withdrawal de-surfaces the entry for
-                    new compositions but never clears the binding, so agreements
-                    already committed against it keep resolving.
+                    new compositions but never clears the binding, so orders
+                    already committed against it still resolve.
                 </>
             }
             caption={

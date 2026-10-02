@@ -192,7 +192,7 @@ import { instantiateRootAgreement, recordProcessUsage } from "@figaro-protocol/s
 // returns the `{ agreement, agreementHash }` pair.
 const agreement = instantiateRootAgreement(template, { buyer, seller: resolve.commitments[0].seller, overrides, specs });
 const report = await recordProcessUsage(walletClient, publicClient, addresses.usageCounter!, [  // optional on the record type; present on every shipped record
-  { commitment: resolve.commitments[0], agreement }, // the agreement each order signed
+  { commitment: resolve.commitments[0], agreement }, // the agreement each order carries
 ]);
 ```
 
@@ -2080,8 +2080,8 @@ must equal it EXACTLY (there is no sweep). The amount is a deploy-time immutable
 read it from the contract's `registrationDeposit()` view rather than hardcoding a
 figure. Clause and assembly deposits come back in one call —
 `withdrawDeposit(idHash | compositionHash)`, which de-surfaces the clause or assembly while
-leaving the binding permanent, because agreements committed against them keep
-resolving forever.
+leaving the binding permanent, because orders already committed against them still
+resolve.
 
 **A member's deposit comes back in TWO calls**, and the split is load-bearing:
 
