@@ -8,7 +8,7 @@ import { CtaLink } from "@/components/marketing/CtaLink";
 export const metadata: Metadata = withOg({
     title: "Code — Figaro Protocol",
     description:
-        "Four smart contracts, decentralized and permissionless. The agreement between strangers is secured cryptoeconomically: cooperation is each party's best move. The contracts are proven and checked on every commit.",
+        "Four smart contracts, decentralized and permissionless. The agreement between strangers is secured cryptoeconomically: cooperation is each party's best move. The contracts are proven and checked.",
 });
 
 // THE CORE LANDING — three subjects and nothing else: the four contracts,
@@ -41,8 +41,8 @@ const SUBJECTS: { line: string; body: ReactNode; cta: string; href: string }[] =
         href: "/invariants",
     },
     {
-        line: "The contracts are proven and checked on every commit.",
-        body: "The equilibrium is machine-checked in Lean 4. The contracts are checked on every commit by Foundry, Halmos, Certora, TLA+, Echidna, and static analysis. The contracts are frozen for the audit.",
+        line: "The contracts are proven and checked.",
+        body: "The equilibrium is machine-checked in Lean 4. The contracts are checked by Foundry, Halmos, Certora, TLA+, Echidna, and static analysis. The contracts are frozen for the audit.",
         cta: "Security",
         href: "/security",
     },

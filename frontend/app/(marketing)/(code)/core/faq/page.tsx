@@ -308,7 +308,7 @@ export default function Faq() {
 
             <MarketingSection title="What has been verified, and what has not?" sectionId="verified">
                 <p className="text-base text-ink-body leading-relaxed mb-5">
-                    Unit and fuzz tests, symbolic execution, formal specification checking, and a machine-checked proof of the equilibrium, on every commit. Each bench and what it reaches is on <Link href="/security" className="text-ink-heading font-medium hover:underline">Security</Link>.
+                    Unit and fuzz tests, symbolic execution, formal specification checking, and a machine-checked proof of the equilibrium. Each bench and what it reaches is on <Link href="/security" className="text-ink-heading font-medium hover:underline">Security</Link>.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
                     The external audit is in progress; the results will be published there when they exist.
