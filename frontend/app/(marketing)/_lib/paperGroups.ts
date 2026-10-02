@@ -130,6 +130,13 @@ export const PAPER_GROUPS: PaperGroup[] = [
         definition: "How bonded commitments compose into multi-party processes with auditable handoffs, lifecycle attestation, and proximity proof. The papers here ask what process and supply-chain engineers ask, worked through on two sectors that already coordinate at scale — air service, and container shipping after TradeLens.",
         papers: [
             {
+                title: "Figaro as a Cryptoeconomic System",
+                href: "/papers/figaro-as-a-cryptoeconomic-system",
+                summary: "Figaro read through the field's own definitions of cryptoeconomics: what it governs, what it guarantees and at what cost to a defector, its incentive mechanisms and their several ends, the system and what emerges from it, and its place among institutions.",
+                keywords: ["cryptoeconomics", "cryptoeconomic systems", "complex systems", "incentive mechanisms", "purpose-driven tokens", "institutional economics"],
+                industries: [],
+            },
+            {
                 title: "Air Service as Coordinated Resource Markets",
                 href: "/papers/air-service-coordination",
                 summary: "Air service read as coordination across resource markets: crew, aircraft time, fuel, gates, catering, handling, each provider a wallet, the passenger the buyer of every order, one resolution paying the whole flight.",
