@@ -1,12 +1,9 @@
 {
-    "description": "THE SECTION MAP — the one owner of which section of the site owns which route. One host; six sections, the six doors — join, trade, communities, terms, evidence, code — each with its own door page, its own chrome, and its own FAQ; the home page (/) belongs to no section. `routes` is a longest-prefix table: [prefix, [sections]]; the FIRST section listed owns the route (its chrome, its FAQ), the rest also show the route in their nav (a shared surface). `/` is matched exactly. Read by lib/shared/sections.ts (chrome and nav) and scripts/lint-section-map.sh (every page route must map). `landings` names each section's door page.",
+    "description": "THE SECTION MAP — the one owner of which section of the site owns which route. One host; three sections, the three doors — participate, build, research — each with its own door page, its own chrome, and its own FAQ; the home page (/) belongs to no section. `routes` is a longest-prefix table: [prefix, [sections]]; the FIRST section listed owns the route (its chrome, its FAQ), the rest also show the route in their nav (a shared surface). `/` is matched exactly. Read by lib/shared/sections.ts (chrome and nav) and scripts/lint-section-map.sh (every page route must map). `landings` names each section's door page.",
     "sections": [
-        "join",
-        "trade",
-        "communities",
-        "terms",
-        "evidence",
-        "code"
+        "participate",
+        "build",
+        "research"
     ],
     "routes": [
         [
@@ -16,220 +13,227 @@
         [
             "/about",
             [
-                "join",
-                "trade",
-                "communities",
-                "terms",
-                "evidence",
-                "code"
+                "participate",
+                "build",
+                "research"
+            ]
+        ],
+        [
+            "/participate",
+            [
+                "participate"
             ]
         ],
         [
             "/members",
             [
-                "join"
-            ]
-        ],
-        [
-            "/faq",
-            [
-                "join"
+                "participate"
             ]
         ],
         [
             "/agents",
             [
-                "join"
-            ]
-        ],
-        [
-            "/discover",
-            [
-                "join"
-            ]
-        ],
-        [
-            "/orders",
-            [
-                "join"
-            ]
-        ],
-        [
-            "/s",
-            [
-                "join"
-            ]
-        ],
-        [
-            "/sign",
-            [
-                "join"
-            ]
-        ],
-        [
-            "/rewards",
-            [
-                "join"
+                "participate",
+                "build"
             ]
         ],
         [
             "/trade",
             [
-                "trade"
+                "participate"
             ]
         ],
         [
             "/communities",
             [
-                "communities"
+                "participate"
             ]
         ],
         [
-            "/dao",
+            "/faq",
             [
-                "communities"
+                "participate"
             ]
         ],
         [
-            "/tokenomics",
+            "/data/yours",
             [
-                "communities"
+                "participate"
+            ]
+        ],
+        [
+            "/discover",
+            [
+                "participate"
+            ]
+        ],
+        [
+            "/orders",
+            [
+                "participate"
+            ]
+        ],
+        [
+            "/s",
+            [
+                "participate"
+            ]
+        ],
+        [
+            "/sign",
+            [
+                "participate"
             ]
         ],
         [
             "/terms",
             [
-                "terms"
+                "build"
             ]
         ],
         [
             "/clauses",
             [
-                "terms"
+                "build"
             ]
         ],
         [
             "/assemblies",
             [
-                "terms"
+                "build"
             ]
         ],
         [
             "/registries",
             [
-                "terms"
+                "build"
             ]
         ],
         [
             "/composition",
             [
-                "terms"
+                "build"
             ]
         ],
         [
             "/pitfalls",
             [
-                "terms"
+                "build"
             ]
         ],
         [
             "/rpgf",
             [
-                "terms"
+                "build"
             ]
         ],
         [
-            "/sdk-api",
+            "/rewards",
             [
-                "terms"
-            ]
-        ],
-        [
-            "/data",
-            [
-                "evidence"
-            ]
-        ],
-        [
-            "/data/explore",
-            [
-                "evidence",
-                "code"
-            ]
-        ],
-        [
-            "/attestations",
-            [
-                "evidence"
-            ]
-        ],
-        [
-            "/audit",
-            [
-                "evidence"
-            ]
-        ],
-        [
-            "/evidence-display",
-            [
-                "evidence"
+                "build"
             ]
         ],
         [
             "/core",
             [
-                "code"
-            ]
-        ],
-        [
-            "/kernel",
-            [
-                "code"
-            ]
-        ],
-        [
-            "/invariants",
-            [
-                "code"
+                "build"
             ]
         ],
         [
             "/spec",
             [
-                "code"
+                "build"
             ]
         ],
         [
-            "/security",
+            "/tokenomics",
             [
-                "code"
+                "build"
+            ]
+        ],
+        [
+            "/dao",
+            [
+                "build"
+            ]
+        ],
+        [
+            "/sdk-api",
+            [
+                "build"
             ]
         ],
         [
             "/research",
             [
-                "code"
+                "research"
             ]
         ],
         [
             "/working-groups",
             [
-                "code"
+                "research"
             ]
         ],
         [
             "/papers",
             [
-                "code"
+                "research"
+            ]
+        ],
+        [
+            "/kernel",
+            [
+                "research"
+            ]
+        ],
+        [
+            "/invariants",
+            [
+                "research"
+            ]
+        ],
+        [
+            "/security",
+            [
+                "research",
+                "build"
+            ]
+        ],
+        [
+            "/data",
+            [
+                "research"
+            ]
+        ],
+        [
+            "/data/explore",
+            [
+                "research"
+            ]
+        ],
+        [
+            "/attestations",
+            [
+                "research"
+            ]
+        ],
+        [
+            "/audit",
+            [
+                "research"
+            ]
+        ],
+        [
+            "/evidence-display",
+            [
+                "research"
             ]
         ]
     ],
     "landings": {
-        "join": "/members",
-        "trade": "/trade",
-        "communities": "/communities",
-        "terms": "/terms",
-        "evidence": "/data",
-        "code": "/core"
+        "participate": "/participate",
+        "build": "/terms",
+        "research": "/research"
     }
 }

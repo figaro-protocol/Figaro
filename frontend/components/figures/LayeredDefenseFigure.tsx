@@ -66,7 +66,7 @@ const FAQ_CAPTION = (
  * the on-chain data from outside the trade and cannot reach in.
  *
  * Source of truth: the ranked list at /faq#layers ("What stands
- * behind a trade?", frontend/app/(marketing)/(code)/core/faq/page.tsx) — chain,
+ * behind a trade?", frontend/app/(marketing)/(build)/core/faq/page.tsx) — chain,
  * smart contract+data, other sellers, arbitration, ordinary courts — cross-
  * checked against the canonical stack in
  * the `reference_layered_security_stack` memory

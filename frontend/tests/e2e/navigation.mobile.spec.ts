@@ -79,11 +79,10 @@ test.describe('Mobile navigation (Pixel 5)', () => {
         const drawer = page.getByRole('dialog', { name: 'Mobile navigation' });
         await expect(drawer).toBeVisible();
 
- // The (app) drawer lists the five publication doorways by their
-        // section labels — /terms is the 'Terms' doorway there (the
-        // 'Specifications' page label exists only in the marketing drawer's map).
+        // The (app) drawer lists the three publication doorways by their
+        // section labels — /terms is the 'Build' doorway there.
         const publication = await expandSection(drawer, 'Publication');
-        await publication.getByRole('link', { name: 'Terms', exact: true }).click();
+        await publication.getByRole('link', { name: 'Build', exact: true }).click();
 
         await expect(page).toHaveURL(/\/terms\/?$/);
         // useEffect on pathname change closes the drawer
@@ -95,7 +94,7 @@ test.describe('Mobile navigation (Pixel 5)', () => {
     // nothing to scroll, which is the point of the accordion.
     test('the closed drawer fits the viewport without scrolling', async ({ page }) => {
         // A door page: its own door opens on arrival.
-        await page.goto('/members', { waitUntil: 'load' });
+        await page.goto('/participate', { waitUntil: 'load' });
         await waitForReactHydration(page, 'button[aria-label="Toggle mobile menu"]');
         await page.getByRole('button', { name: 'Toggle mobile menu' }).click();
 
@@ -125,19 +124,19 @@ test.describe('Mobile navigation (Pixel 5)', () => {
     // The drawer now carries the whole marketing map — a stranger's first visit
     // is usually a phone, so this is the entry path that has to work.
     test('the marketing drawer opens the whole map, not just the doorways', async ({ page }) => {
-        // From the home page the drawer is the six doors, all shut; a door opens
+        // From the home page the drawer is the three doors, all shut; a door opens
         // to its pages, the door page first.
         await page.goto('/', { waitUntil: 'load' });
         await waitForReactHydration(page, 'button[aria-label="Toggle mobile menu"]');
         await page.getByRole('button', { name: 'Toggle mobile menu' }).click();
         const drawer = page.getByRole('dialog', { name: 'Mobile navigation' });
         await expect(drawer).toBeVisible();
-        // Six doors plus the App group the drawer derives from the primary row.
-        await expect(drawer.locator('button[aria-expanded]')).toHaveCount(7);
+        // Three doors plus the App group the drawer derives from the primary row.
+        await expect(drawer.locator('button[aria-expanded]')).toHaveCount(4);
         await expect(drawer.locator('button[aria-expanded="true"]')).toHaveCount(0);
-        const code = await expandSection(drawer, 'Code');
-        await code.getByRole('link', { name: 'Code', exact: true }).click();
-        await expect(page).toHaveURL(/\/core\/?$/);
+        const research = await expandSection(drawer, 'Research');
+        await research.getByRole('link', { name: 'Research', exact: true }).click();
+        await expect(page).toHaveURL(/\/research\/?$/);
         await expect(drawer).toBeHidden({ timeout: 5000 });
 
         // A page from BEHIND each doorway. Labels track navLinks.ts (the one nav source): the
@@ -145,10 +144,11 @@ test.describe('Mobile navigation (Pixel 5)', () => {
         // are reached through Working Groups — the corpus is unbounded, so the
         // working-groups page IS the index (no /papers index exists).
         for (const [landing, section, label, href] of [
-            ['/core', 'Code', 'Invariants', '/invariants'],
-            ['/core', 'Evidence', 'Data explorer', '/data/explore'],
-            ['/terms', 'Terms', 'Clauses', '/clauses'],
-            ['/members', 'Join', 'How agents work', '/agents/how'],
+            ['/research', 'Research', 'Invariants', '/invariants'],
+            ['/research', 'Research', 'Data explorer', '/data/explore'],
+            ['/terms', 'Build', 'Clauses', '/clauses'],
+            ['/participate', 'Participate', 'Agents', '/agents'],
+            ['/terms', 'Build', 'Builder docs', '/docs/'],
         ] as const) {
             await page.goto(landing, { waitUntil: 'load' });
             await waitForReactHydration(page, 'button[aria-label="Toggle mobile menu"]');
@@ -163,11 +163,11 @@ test.describe('Mobile navigation (Pixel 5)', () => {
         }
 
         // And it navigates, closing behind itself.
-        await page.goto('/core', { waitUntil: 'load' });
+        await page.goto('/research', { waitUntil: 'load' });
         await waitForReactHydration(page, 'button[aria-label="Toggle mobile menu"]');
         await page.getByRole('button', { name: 'Toggle mobile menu' }).click();
-        const codeAgain = await expandSection(drawer, 'Code');
-        await codeAgain.getByRole('link', { name: 'Invariants' }).click();
+        const researchAgain = await expandSection(drawer, 'Research');
+        await researchAgain.getByRole('link', { name: 'Invariants' }).click();
         await expect(page).toHaveURL(/\/invariants\/?$/);
         await expect(drawer).toBeHidden({ timeout: 5000 });
     });
@@ -180,11 +180,11 @@ test.describe('Mobile navigation (Pixel 5)', () => {
 
         await page.getByRole('button', { name: 'Toggle mobile menu' }).click();
         const drawer = page.getByRole('dialog', { name: 'Mobile navigation' });
-        const code = drawer.getByRole('button', { name: 'Code', exact: true });
-        await expect(code).toHaveAttribute('aria-expanded', 'true');
-        await expect(code).toHaveAttribute('aria-current', 'true');
+        const research = drawer.getByRole('button', { name: 'Research', exact: true });
+        await expect(research).toHaveAttribute('aria-expanded', 'true');
+        await expect(research).toHaveAttribute('aria-current', 'true');
         await expect(drawer.getByRole('link', { name: 'Invariants' })).toHaveAttribute('aria-current', 'page');
-        await expect(drawer.getByRole('button', { name: 'Evidence', exact: true })).toHaveAttribute('aria-expanded', 'false');
+        await expect(drawer.getByRole('button', { name: 'Build', exact: true })).toHaveAttribute('aria-expanded', 'false');
     });
 
     test('backdrop click closes the drawer', async ({ page }) => {

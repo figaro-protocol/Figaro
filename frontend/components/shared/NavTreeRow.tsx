@@ -4,11 +4,11 @@ import { useEffect, useRef, useState } from "react";
 import Link from "@/components/shared/Link";
 import { usePathname } from "next/navigation";
 import { MARKETING_MAP } from "@/components/shared/navLinks";
-import { navCurrent } from "@/components/shared/navActive";
+import { doorOfRoute, navCurrent } from "@/components/shared/navActive";
 import { Disclosure } from "@/components/ui/Disclosure";
 
 /**
- * Desktop nav — one row, the six doors of `MARKETING_MAP`, on every page
+ * Desktop nav — one row, the three doors of `MARKETING_MAP`, on every page
  * including the home page. Each door's name is a link to its door page, and
  * the chevron beside it is a disclosure button (`components/ui/Disclosure`,
  * the same primitive the drawer uses) whose panel lists the door's pages, the
@@ -21,7 +21,9 @@ import { Disclosure } from "@/components/ui/Disclosure";
  * `border-ink-heading` — the amber already carried by the row's own text, so
  * no new hue family enters for a state. The panel is closed by default, so
  * the section button is the only positional signal a reader gets on desktop:
- * it carries `aria-current="true"` whenever the route lives inside its group.
+ * it carries `aria-current="true"` whenever the section map
+ * (`lib/shared/sections.json`) gives the route to its door (`doorOfRoute`).
+ * An `external` entry (the docs-site, a separate build) is a plain anchor.
  */
 export function NavTreeRow() {
     const [open, setOpen] = useState<string | null>(null);
@@ -47,6 +49,7 @@ export function NavTreeRow() {
     }, [open]);
 
     const groups = MARKETING_MAP;
+    const holder = doorOfRoute(pathname);
 
     return (
         <nav
@@ -58,9 +61,9 @@ export function NavTreeRow() {
                 const isOpen = open === group.section;
                 const slug = group.section.toLowerCase().replace(/[^a-z]+/g, "-");
                 const panelId = `nav-tree-${slug}`;
-                // The section holds the reader if ANY page under it matches —
-                // exactly (/members) or as an ancestor (/members/manage).
-                const holdsReader = group.links.some((item) => navCurrent(pathname, item.href) !== undefined);
+                // The door holds the reader when the section map gives it the
+                // route — a page behind a listed entry included.
+                const holdsReader = group.section === holder;
                 const door = group.links[0];
                 return (
                     <div key={group.section} className="relative flex items-center">
@@ -90,16 +93,24 @@ export function NavTreeRow() {
                                 // 16px inset of pl-4 — the current row does
                                 // not shift its label.
                                 const current = navCurrent(pathname, item.href);
+                                const className = `block pr-4 py-1.5 text-sm hover:bg-subtle-hover hover:text-ink-heading focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus ${current
+                                    ? "pl-3.5 border-l-2 border-ink-heading font-medium text-ink-primary"
+                                    : "pl-4 text-ink-body"
+                                    }`;
+                                if (item.external) {
+                                    return (
+                                        <a key={item.href} href={item.href} onClick={() => setOpen(null)} className={className}>
+                                            {item.label}
+                                        </a>
+                                    );
+                                }
                                 return (
                                     <Link
                                         key={item.href}
                                         href={item.href}
                                         onClick={() => setOpen(null)}
                                         aria-current={current}
-                                        className={`block pr-4 py-1.5 text-sm hover:bg-subtle-hover hover:text-ink-heading focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus ${current
-                                            ? "pl-3.5 border-l-2 border-ink-heading font-medium text-ink-primary"
-                                            : "pl-4 text-ink-body"
-                                            }`}
+                                        className={className}
                                     >
                                         {item.label}
                                     </Link>

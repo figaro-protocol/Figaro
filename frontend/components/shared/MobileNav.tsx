@@ -7,7 +7,7 @@ import X from "@/components/icons/X";
 import Link from "@/components/shared/Link";
 import { usePathname } from "next/navigation";
 import { NAV_LINKS, NavLink } from "@/components/shared/navLinks";
-import { navCurrent } from "@/components/shared/navActive";
+import { doorOfRoute, navCurrent } from "@/components/shared/navActive";
 import { Disclosure } from "@/components/ui/Disclosure";
 
 interface MobileNavProps {
@@ -52,8 +52,16 @@ function groupLinks(links: NavLink[]): { ungrouped: NavLink[]; groups: NavGroup[
     return { ungrouped, groups };
 }
 
-/** The section holding the reader, or `null` when the route is outside them all. */
+/**
+ * The ONE section holding the reader, or `null` when the route is outside them
+ * all. A door of `MARKETING_MAP` holds it when the section map gives it the
+ * route (`doorOfRoute` — the same rule as the desktop row); a group that is not
+ * a door (the app drawer's Publication and App) holds it when one of its links
+ * matches the route.
+ */
 function sectionHoldingReader(groups: NavGroup[], pathname: string): string | null {
+    const door = doorOfRoute(pathname);
+    if (door !== null && groups.some((group) => group.section === door)) return door;
     const holder = groups.find((group) =>
         group.links.some((link) => navCurrent(pathname, link.href) !== undefined),
     );
@@ -84,8 +92,9 @@ export function MobileNav({ links, logo, topCta }: MobileNavProps) {
     const panelRef = useRef<HTMLDivElement>(null);
 
     const { ungrouped, groups: allGroups } = groupLinks(links);
-    // As on desktop: the six doors, every one on every page.
+    // As on desktop: the three doors, every one on every page.
     const groups = allGroups;
+    const holder = sectionHoldingReader(groups, pathname);
 
     // Close menu when route changes (avoids unmounting Link before navigation completes)
     useEffect(() => {
@@ -137,7 +146,7 @@ export function MobileNav({ links, logo, topCta }: MobileNavProps) {
     const open = () => {
         // Derived on every open, not stored: the reader's own section is the
         // one panel worth their tap, and the pathname is where that lives.
-        setOpenSection(sectionHoldingReader(groups, pathname));
+        setOpenSection(holder);
         setIsOpen(true);
     };
 
@@ -149,25 +158,35 @@ export function MobileNav({ links, logo, topCta }: MobileNavProps) {
     /** One row: a page link. Shared by the ungrouped rows and every section panel. */
     const renderLink = (link: NavLink) => {
         const current = navCurrent(pathname, link.href);
+        // rounded-r-tile, not rounded-tile: a rounded LEFT edge bends
+        // the 2px current rule into a brace. The rule stays straight.
+        const className = `flex min-h-11 flex-col justify-center rounded-r-tile pr-md py-xs transition-colors hover:bg-subtle-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus ${current
+            ? "pl-3.5 border-l-2 border-ink-heading text-ink-primary"
+            : "pl-4 text-ink-body hover:text-ink-primary"
+            }`;
+        const body = (
+            <>
+                {/* Weight lives on the label, not the anchor — the anchor's
+                    font-* is overridden by this span. */}
+                <span className={current ? "font-semibold" : "font-normal"}>{link.label}</span>
+                {link.description && (
+                    <span className="mt-0.5 text-xs text-ink-muted">{link.description}</span>
+                )}
+            </>
+        );
         return (
             <li key={link.href} className="mb-0">
-                <Link
-                    href={link.href}
-                    aria-current={current}
-                    // rounded-r-tile, not rounded-tile: a rounded LEFT edge bends
-                    // the 2px current rule into a brace. The rule stays straight.
-                    className={`flex min-h-11 flex-col justify-center rounded-r-tile pr-md py-xs transition-colors hover:bg-subtle-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus ${current
-                        ? "pl-3.5 border-l-2 border-ink-heading text-ink-primary"
-                        : "pl-4 text-ink-body hover:text-ink-primary"
-                        }`}
-                >
-                    {/* Weight lives on the label, not the anchor — the anchor's
-                        font-* is overridden by this span. */}
-                    <span className={current ? "font-semibold" : "font-normal"}>{link.label}</span>
-                    {link.description && (
-                        <span className="mt-0.5 text-xs text-ink-muted">{link.description}</span>
-                    )}
-                </Link>
+                {/* An external entry (the docs-site, a separate build) is a
+                    plain anchor: the browser loads it as a page. */}
+                {link.external ? (
+                    <a href={link.href} className={className}>
+                        {body}
+                    </a>
+                ) : (
+                    <Link href={link.href} aria-current={current} className={className}>
+                        {body}
+                    </Link>
+                )}
             </li>
         );
     };
@@ -251,7 +270,7 @@ export function MobileNav({ links, logo, topCta }: MobileNavProps) {
                             <ul className="list-none pl-0 space-y-0.5" role="list">
                                 {groups.map((group) => {
                                     const expanded = openSection === group.section;
-                                    const holdsReader = sectionHoldingReader([group], pathname) !== null;
+                                    const holdsReader = group.section === holder;
                                     return (
                                         <li key={`section-${group.section}`} className="mb-0">
                                             <Disclosure

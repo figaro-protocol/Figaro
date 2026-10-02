@@ -52,7 +52,7 @@ decides where any page or section goes:
 
 | If the content is… | It lives on… |
 |---|---|
-| Who it is for, what they do, why it works — one screen, pictures | the **marketing site** (the six doors + home + the tellings) |
+| Who it is for, what they do, why it works — one screen, pictures | the **marketing site** (the three doors + home + the tellings) |
 | A surface that reads or writes live chain state (needs a wallet or the live registry) | an **app page** (`app/(app)/`) |
 | A *how* with an identifier — a hash, a field, a contract, an error, a command, a spec | **docs-site** (published at `/docs`) |
 | A standalone scholarly argument | a **paper**, under Working Groups |

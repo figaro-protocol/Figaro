@@ -5,6 +5,9 @@
 //
 // trailingSlash: true (next.config.mjs) — usePathname() reports "/orders/"
 // for the "/orders" nav entry, so every comparison strips the trailing slash.
+import { MARKETING_MAP } from "@/components/shared/navLinks";
+import { currentSection, sectionLanding } from "@/lib/shared/sections";
+
 const stripSlash = (p: string) => (p.length > 1 && p.endsWith("/") ? p.slice(0, -1) : p);
 
 /**
@@ -23,4 +26,19 @@ export function navCurrent(pathname: string, href: string): "page" | "true" | un
     const h = stripSlash(href);
     if (p === h) return "page";
     return p.startsWith(`${h}/`) ? "true" : undefined;
+}
+
+/**
+ * The door holding the reader — the `MARKETING_MAP` section whose door page is
+ * the landing of the section owning the route (`lib/shared/sections.json`, the
+ * one owner). Read from the section map, never from the menu: a page behind a
+ * listed entry (`/tokenomics`) still lights its door, and a shared surface
+ * listed by two doors (`/agents`) lights only the door that owns it. `null` on
+ * the home page and on a route no section owns.
+ */
+export function doorOfRoute(pathname: string): string | null {
+    const section = currentSection(pathname);
+    if (section === null) return null;
+    const landing = sectionLanding(section);
+    return MARKETING_MAP.find((group) => group.links[0]?.href === landing)?.section ?? null;
 }

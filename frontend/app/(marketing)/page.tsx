@@ -9,46 +9,64 @@ import { WholeStripFrame } from "@/components/figures/WholeStripFigure";
 export const metadata: Metadata = withOg({
     title: "Figaro Protocol",
     description:
-        "My word is my bond. Figaro's cryptoeconomics provides your commercial trades with the certainty existing institutions cannot: keeping your word is every party's best move. You know what it pays before you start, everyone is paid at once when the buyer confirms, and you choose where you belong.",
+        "On Figaro, a decentralized, permissionless protocol, anyone can buy and sell goods, work or data with anyone, anywhere, and every party puts a bond behind its word.",
 });
 
 // THE HOME PAGE, in simplex.chat's shape and nothing more: the headline is the
-// one phrase a reader arrives already believing; the two lines under it make
-// the phrase a fact; ONE button, the
-// real way in (a wallet and a stake: Join); then the ONE PICTURE — the whole of
-// Figaro as six frames in the trade strip's own language (`WholeStripFigure`),
-// each frame with the claim it carries as its heading and one fact under it;
-// the marks; one plain line about the code at the foot. Wayfinding is the
-// header's job, so the page has no doors and states each thing once. Nothing
-// above the foot explains how anything works: certainty is stated as the
-// parties' BEHAVIOUR, never as the bond arithmetic, and every line is in the
-// positive. The six frames are the five parts and the loop: wallets, terms, a
-// process signed and bonded, paid at once, the evidence, the count that
-// rewards. The three claims sit on the frames they belong to.
+// one phrase a reader arrives already believing; the lead under it says what a
+// visitor can do; then the THREE DOORS the header carries — Participate, Build,
+// Research — each one sentence and one button to its landing; then the ONE
+// PICTURE — the whole of Figaro as six frames in the trade strip's own language
+// (`WholeStripFigure`), each frame with the claim it carries as its heading and
+// one fact under it; the two "Composes with" strips; one plain line about the
+// code at the foot. The page states each thing once. Nothing above the foot
+// explains how anything works: certainty is stated as the parties' BEHAVIOUR,
+// never as the bond arithmetic, and every line is in the positive. The six
+// frames are the five parts and the loop: wallets, terms, a process signed and
+// bonded, every seller's payment at once, the evidence, and the count of use
+// that the designers' reward follows. The claims sit on the frames they belong to.
+const DOORS: { label: string; line: string; href: string }[] = [
+    {
+        label: "Participate",
+        line: "Buy from a member, or publish what you sell so buyers can find you.",
+        href: "/participate",
+    },
+    {
+        label: "Build",
+        line: "Write and publish the terms trades are made on, and be rewarded in proportion to their use.",
+        href: "/terms",
+    },
+    {
+        label: "Research",
+        line: "Check the papers, the proofs and what the data a trade leaves is for.",
+        href: "/research",
+    },
+];
+
 const FRAMES: { line: string; fact: string }[] = [
     {
         line: "You choose where you belong.",
-        fact: "The tokens you hold and the processes you take part in are the communities you belong to. Identity is derived from where tokens and processes meet.",
+        fact: "A community can have its own token. The tokens your wallet holds and the terms it trades on show which communities you are part of, and you choose both.",
     },
     {
         line: "Terms are written once and published.",
-        fact: "Whoever writes a term publishes it on a public shelf, and any wallet trades on it.",
+        fact: "A term of trade, such as how goods are carried, which law applies or how data may be used, is written once and registered on-chain. Each trade's agreement is composed from such terms, and both sides sign the same agreement.",
     },
     {
         line: "You know what it pays before you start.",
-        fact: "Every side signs what they expect and are paid before any work begins.",
+        fact: "Before any work begins, the buyer and each seller sign the terms of their order, the payment included.",
     },
     {
         line: "Everyone is paid at once when the buyer confirms.",
-        fact: "The moment the buyer confirms, everyone who added value to the process is paid in full and every bond is refunded. A buyer who never confirms leaves their own bond locked.",
+        fact: "When the buyer confirms, every seller in the trade is paid in full and every bond is refunded, in one transaction. A buyer who never confirms leaves their own bond locked.",
     },
     {
         line: "The evidence is yours.",
-        fact: "The signed evidence stays with each party: what a court reads if there is a dispute, what your books and taxes need, and what a market for data buys.",
+        fact: "Every trade leaves signed evidence of what was agreed, what each side attested and what was paid, for a regulator, a court, and your books and taxes. Which wallets traded, and for how much, is public on-chain; the detail is yours, to keep sealed or to sell.",
     },
     {
         line: "Use is counted, and rewarded.",
-        fact: "Every resolved process is counted, and the count rewards the designer whose terms it ran on. More terms follow, and more trades.",
+        fact: "Once a trade is confirmed, it counts toward every term and design it used. Whoever designed them is rewarded in proportion to that use, by a published formula.",
     },
 ];
 
@@ -81,15 +99,17 @@ export default function Home() {
         <>
             <MarketingHero
                 title="My word is my bond"
-                lead={
-                    <>
-                        Figaro&apos;s cryptoeconomics provides your commercial trades with the certainty existing institutions cannot.
-                        Keeping your word is every party&apos;s best move.
-                    </>
-                }
+                lead="You can buy and sell goods, work or data with anyone, anywhere, and every party puts a bond behind its word."
             >
-                <div className="mt-6 flex flex-wrap gap-4">
-                    <CtaLink href="/members">Join</CtaLink>
+                <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-8" data-testid="home-doors">
+                    {DOORS.map((d) => (
+                        <div key={d.href} className="flex flex-col">
+                            <p className="text-base text-ink-body leading-relaxed grow mb-4">{d.line}</p>
+                            <div>
+                                <CtaLink href={d.href}>{d.label}</CtaLink>
+                            </div>
+                        </div>
+                    ))}
                 </div>
             </MarketingHero>
 
@@ -135,7 +155,7 @@ export default function Home() {
 
                 <div className="mt-12 border-t border-default pt-8">
                     <p className="text-sm text-ink-muted leading-relaxed max-w-2xl">
-                        The code is open and checked seven independent ways on every change. What each check covers:{" "}
+                        The smart contracts are decentralized and permissionless, the code is open, and seven independent benches check it and the equilibrium it enforces. What each covers:{" "}
                         <Link href="/security" className="text-ink-heading font-medium hover:underline">
                             Security
                         </Link>

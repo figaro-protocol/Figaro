@@ -11,7 +11,7 @@ export const metadata: Metadata = withOg({
         "A resolved trade leaves two traces. On the chain, a fingerprint: who moved what, to whom, in which token, and whether it resolved. With the parties, the detail: the agreement, the evidence, the books. The protocol holds only the first. The second is yours, pinned where you choose, disclosed when you choose, and sold on your terms if you choose.",
 });
 
-// THE DATA DOOR — one of the six landing pages. Its words are the pillar
+// THE EVIDENCE PAGE — Evidence in the Research door's menu. Its words are the pillar
 // page the beta panel read; a comprehension gap found by any tester is closed on
 // the owner page a card points to, never by adding prose here.
 export default function DataDoor() {

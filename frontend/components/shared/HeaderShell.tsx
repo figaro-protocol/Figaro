@@ -25,7 +25,7 @@ interface HeaderShellProps {
 /**
  * Shared chrome for both `MarketingHeader` and `Header`: sticky-with-blur
  * container, container padding, mobile-nav trigger + logo on the left, the
- * six doors as dropdowns in the center (`NavTreeRow`, one row, on every
+ * three doors as dropdowns in the center (`NavTreeRow`, one row, on every
  * page), caller-supplied right cluster; then any caller-supplied row.
  */
 export function HeaderShell({ right, mobileTopCta, mobileLinks, bottomRow }: HeaderShellProps) {

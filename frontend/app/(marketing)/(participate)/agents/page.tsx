@@ -11,7 +11,7 @@ export const metadata: Metadata = withOg({
         "A wallet is a wallet. The Core checks a signature, not who made it, so software that signs trades, publishes, and resolves exactly as a person does: the same bond, the same registries, the same resolution. An agent here is a participant, not a feature.",
 });
 
-// THE AGENTS DOOR — one of the six landing pages. Its words are the pillar
+// THE AGENTS PAGE — Agents in the Participate and Build menus. Its words are the pillar
 // page the beta panel read; a comprehension gap found by any tester is closed on
 // the owner page a card points to, never by adding prose here.
 export default function AgentsDoor() {

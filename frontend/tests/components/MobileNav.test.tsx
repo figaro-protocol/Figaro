@@ -34,16 +34,17 @@ describe("MobileNav", () => {
         expect(screen.getByRole("link", { name: "Home" })).toHaveAttribute("aria-current", "page");
     });
 
-    // The six doors, every one on every page, as an accordion: the door holding
+    // The three doors, every one on every page, as an accordion: the door holding
     // the route open and marked current, every other collapsed.
-    it("lists the six doors as an accordion and marks the reader's own", () => {
+    it("lists the three doors as an accordion and marks the reader's own", () => {
         pathnameMock = "/clauses/";
         render(<MobileNav links={NAV_LINKS_MARKETING_DRAWER} />);
         openDrawer();
 
+        expect(MARKETING_MAP.map((g) => g.section)).toEqual(["Participate", "Build", "Research"]);
         for (const group of MARKETING_MAP) {
             const trigger = sectionButton(group.section);
-            if (group.section === "Terms") {
+            if (group.section === "Build") {
                 expect(trigger).toHaveAttribute("aria-expanded", "true");
                 expect(trigger).toHaveAttribute("aria-current", "true");
             } else {
@@ -53,12 +54,12 @@ describe("MobileNav", () => {
         }
     });
 
-    // The home page is in no door: the drawer there is the six doors, all shut.
-    it("on the home page the drawer holds the six doors, all collapsed", () => {
+    // The home page is in no door: the drawer there is the three doors, all shut.
+    it("on the home page the drawer holds the three doors, all collapsed", () => {
         render(<MobileNav links={NAV_LINKS_MARKETING_DRAWER} />);
         openDrawer();
 
-        // The marketing drawer's groups: the six doors plus the App group the
+        // The marketing drawer's groups: the three doors plus the App group the
         // drawer derives from the primary row.
         const groupCount = NAV_LINKS_MARKETING_DRAWER.filter((l) => l.isSectionHeader).length;
         const drawer = within(screen.getByRole("dialog", { name: "Mobile navigation" }));
@@ -72,13 +73,19 @@ describe("MobileNav", () => {
         render(<MobileNav links={NAV_LINKS_MARKETING_DRAWER} />);
         openDrawer();
 
+        const open = MARKETING_MAP.find((g) => g.section === "Build")!;
         for (const group of MARKETING_MAP) {
-            if (group.section === "Terms") {
-                expect(sectionButton("Terms")).toHaveAttribute("aria-expanded", "true");
+            if (group.section === "Build") {
+                expect(sectionButton("Build")).toHaveAttribute("aria-expanded", "true");
                 continue;
             }
-            expect(sectionButton(group.section)).toHaveAttribute("aria-expanded", "false");
+            const trigger = sectionButton(group.section);
+            expect(trigger).toHaveAttribute("aria-expanded", "false");
+            expect(document.getElementById(trigger.getAttribute("aria-controls"))).toBeNull();
+            // A shared surface the open door also lists (Agents) is on screen
+            // from that door's panel; every other link of a closed door is absent.
             for (const link of group.links) {
+                if (open.links.some((l) => l.href === link.href)) continue;
                 expect(screen.queryByRole("link", { name: link.label })).toBeNull();
             }
         }
@@ -91,8 +98,8 @@ describe("MobileNav", () => {
         render(<MobileNav links={NAV_LINKS_MARKETING_DRAWER} />);
         openDrawer();
 
-        // Your evidence does not hold this route, so it opens closed.
-        const trigger = sectionButton("Evidence");
+        // Participate does not hold this route, so it opens closed.
+        const trigger = sectionButton("Participate");
         const panelId = trigger.getAttribute("aria-controls");
         expect(panelId).toBeTruthy();
         expect(document.getElementById(panelId)).toBeNull();
@@ -102,7 +109,7 @@ describe("MobileNav", () => {
         const panel = document.getElementById(panelId);
         expect(panel).not.toBeNull();
         expect(panel).toHaveAttribute("aria-labelledby", trigger.id);
-        expect(within(panel).getByRole("link", { name: "Audit" })).toBeInTheDocument();
+        expect(within(panel).getByRole("link", { name: "Your orders" })).toBeInTheDocument();
 
         // Collapsing puts the panel away again; focus never leaves the trigger.
         fireEvent.click(trigger);
@@ -117,11 +124,11 @@ describe("MobileNav", () => {
         render(<MobileNav links={NAV_LINKS_MARKETING_DRAWER} />);
         openDrawer();
 
-        expect(sectionButton("Code")).toHaveAttribute("aria-expanded", "true");
-        fireEvent.click(sectionButton("Evidence"));
+        expect(sectionButton("Research")).toHaveAttribute("aria-expanded", "true");
+        fireEvent.click(sectionButton("Build"));
 
-        expect(sectionButton("Code")).toHaveAttribute("aria-expanded", "false");
-        expect(sectionButton("Evidence")).toHaveAttribute("aria-expanded", "true");
+        expect(sectionButton("Research")).toHaveAttribute("aria-expanded", "false");
+        expect(sectionButton("Build")).toHaveAttribute("aria-expanded", "true");
     });
 
     // The reader lands where they already are: the group holding the route
@@ -131,12 +138,50 @@ describe("MobileNav", () => {
         render(<MobileNav links={NAV_LINKS_MARKETING_DRAWER} />);
         openDrawer();
 
-        const code = sectionButton("Code");
-        expect(code).toHaveAttribute("aria-expanded", "true");
-        expect(code).toHaveAttribute("aria-current", "true");
+        const research = sectionButton("Research");
+        expect(research).toHaveAttribute("aria-expanded", "true");
+        expect(research).toHaveAttribute("aria-current", "true");
         expect(screen.getByRole("link", { name: "Invariants" })).toHaveAttribute("aria-current", "page");
         // Every other group stays shut.
-        expect(sectionButton("Evidence")).toHaveAttribute("aria-expanded", "false");
+        expect(sectionButton("Build")).toHaveAttribute("aria-expanded", "false");
+    });
+
+    // A page no menu lists sits behind a listed entry; the section map still
+    // gives it its door, which opens and is marked.
+    it("opens the door owning a page that sits behind a listed entry", () => {
+        pathnameMock = "/tokenomics/";
+        render(<MobileNav links={NAV_LINKS_MARKETING_DRAWER} />);
+        openDrawer();
+
+        expect(sectionButton("Build")).toHaveAttribute("aria-expanded", "true");
+        expect(sectionButton("Build")).toHaveAttribute("aria-current", "true");
+        expect(sectionButton("Participate")).not.toHaveAttribute("aria-current");
+        expect(sectionButton("Research")).not.toHaveAttribute("aria-current");
+    });
+
+    // A shared surface is listed by two doors; only the door owning it in the
+    // section map holds the reader.
+    it("marks only the owning door on a shared surface", () => {
+        pathnameMock = "/agents/";
+        render(<MobileNav links={NAV_LINKS_MARKETING_DRAWER} />);
+        openDrawer();
+
+        expect(sectionButton("Participate")).toHaveAttribute("aria-expanded", "true");
+        expect(sectionButton("Participate")).toHaveAttribute("aria-current", "true");
+        expect(sectionButton("Build")).toHaveAttribute("aria-expanded", "false");
+        expect(sectionButton("Build")).not.toHaveAttribute("aria-current");
+    });
+
+    // The builder documentation is the docs-site, a separate build: a plain
+    // anchor, so the browser loads it as a page.
+    it("renders the external entry as a plain link to /docs/", () => {
+        pathnameMock = "/terms/";
+        render(<MobileNav links={NAV_LINKS_MARKETING_DRAWER} />);
+        openDrawer();
+
+        const docs = screen.getByRole("link", { name: "Builder docs" });
+        expect(docs).toHaveAttribute("href", "/docs/");
+        expect(docs).not.toHaveAttribute("aria-current");
     });
 
     // Wayfinding is comprehension: on mobile the drawer is the only way in, so

@@ -4,7 +4,7 @@ import { render, screen, within } from "@testing-library/react";
 import { Header } from "@/components/shared/Header";
 import { MARKETING_MAP } from "@/components/shared/navLinks";
 
-// The header marks the door holding the route: /orders is under Join.
+// The header marks the door holding the route: /orders is under Participate.
 vi.mock("next/navigation", () => ({
     usePathname: () => "/orders/",
 }));
@@ -36,9 +36,19 @@ describe("Header", () => {
             expect(link).toHaveAttribute("href", group.links[0].href);
             const button = within(nav).getByRole("button", { name: `${group.section} menu` });
             expect(button).toHaveAttribute("aria-expanded", "false");
-            if (group.section === "Join") expect(link).toHaveAttribute("aria-current", "true");
+            if (group.section === "Participate") expect(link).toHaveAttribute("aria-current", "true");
             else expect(link).not.toHaveAttribute("aria-current");
         }
+    });
+
+    it("renders the three doors, Participate, Build and Research, in that order", () => {
+        useWalletConnectedMock.mockReturnValue(false);
+        render(<Header />);
+        const nav = screen.getByTestId("desktop-nav");
+        const doors = within(nav).getAllByRole("button").map((b) => b.textContent);
+        expect(doors).toEqual(["Participate menu", "Build menu", "Research menu"]);
+        expect(MARKETING_MAP.map((g) => g.links[0].href)).toEqual(["/participate", "/terms", "/research"]);
+        for (const group of MARKETING_MAP) expect(group.links.length).toBeLessThanOrEqual(7);
     });
 
     it("shows the your-turn badge only when wallet is connected", () => {

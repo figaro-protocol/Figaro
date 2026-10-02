@@ -4,7 +4,7 @@ import sectionMap from "./sections.json";
 // (door) owns which route; this module answers, for the chrome: which section
 // the reader is in, and which FAQ is the section's own. One host — every link stays an in-tree path.
 
-export type SectionId = "join" | "trade" | "communities" | "terms" | "evidence" | "code";
+export type SectionId = "participate" | "build" | "research";
 
 
 type RouteEntry = readonly [prefix: string, sections: readonly SectionId[]];
@@ -38,9 +38,14 @@ export function currentSection(pathname: string): SectionId | null {
     return sectionsOfRoute(pathname)[0] ?? null;
 }
 
-/** Each section's own FAQ: the builders' for terms, the core's for the code, the users' for every other door and the home page. */
+/** The section's door page — its landing in the section map. */
+export function sectionLanding(section: SectionId): string {
+    return (sectionMap.landings as Record<SectionId, string>)[section];
+}
+
+/** Each section's own FAQ: the builders' for build, the core's for research, the users' for participate and the home page. */
 export function sectionFaqRoute(section: SectionId | null): string {
-    if (section === "terms") return "/terms/faq";
-    if (section === "code") return "/core/faq";
+    if (section === "build") return "/terms/faq";
+    if (section === "research") return "/core/faq";
     return "/faq";
 }

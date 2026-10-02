@@ -39,6 +39,9 @@
  *  4. SAME-ORIGIN ASSETS (linked files, and the /sdk-api typedoc bundle —
  *     generated vendor HTML, not app routes) — status-checked once each,
  *     not crawled into.
+ *  5. THE DOCS-SITE (`/docs/…`) — a separate build served under `/docs` on
+ *     the same host, absent from this export: skipped, neither crawled nor
+ *     status-checked; the docs-site's own build owns its routes.
  *
  * Runs against the same prod-mode webServer (static export on :3100) as
  * every other project: `npx playwright test --project=stranger`.
@@ -152,6 +155,11 @@ function classify(href: string, origin: string): Classified {
     if (url.protocol !== 'http:' && url.protocol !== 'https:') return { kind: 'external', url };
     if (url.origin !== origin) return { kind: 'external', url };
     const route = normalizeRoute(url.pathname);
+    // The docs-site is a separate build, served under /docs on the same host
+    // and never part of this export: a link into it (the Build menu's builder
+    // documentation, the concept pages' "builder documentation") is neither
+    // crawled nor status-checked here — the docs-site's own build owns its routes.
+    if (route === '/docs' || route.startsWith('/docs/')) return { kind: 'skip' };
     // Linked FILES and the typedoc bundle are status-checked, never crawled:
     // /sdk-api is generated vendor HTML (its internal link graph is typedoc's,
     // not the app's), and anything with an extension is a download, not a route.

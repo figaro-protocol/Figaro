@@ -29,8 +29,12 @@ const CTA_CLASSES =
     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-focus";
 
 export interface CtaLinkProps {
-    /** Destination. Internal routes only — these are in-site calls to action. */
+    /** Destination. In-site paths only — these are in-site calls to action. */
     href: string;
+    /** A path this export does not serve (the docs-site, a separate build
+     *  under `/docs` on the same host): rendered as a plain `<a>`, so the
+     *  browser loads it as a page rather than the client-side Link. */
+    external?: boolean;
     /** The label. The trailing arrow is supplied by the component. */
     children: React.ReactNode;
     /** Layout-only additions (margins). Not a hook for restyling the idiom. */
@@ -38,7 +42,14 @@ export interface CtaLinkProps {
     "data-testid"?: string;
 }
 
-export function CtaLink({ href, children, className, "data-testid": testId }: CtaLinkProps) {
+export function CtaLink({ href, external, children, className, "data-testid": testId }: CtaLinkProps) {
+    if (external) {
+        return (
+            <a href={href} className={className ? `${CTA_CLASSES} ${className}` : CTA_CLASSES} data-testid={testId}>
+                {children} <span aria-hidden="true">&rarr;</span>
+            </a>
+        );
+    }
     return (
         <Link
             href={href}
