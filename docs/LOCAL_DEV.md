@@ -205,9 +205,11 @@ NEXT_PUBLIC_IPFS_GATEWAY_URL=http://127.0.0.1:8080
 NEXT_PUBLIC_IPFS_FALLBACK_GATEWAY_URL=
 
 # XMTP coordination network — DEPLOYMENT CONFIG: `dev` (XMTP's public dev network;
-# the DEVNET build only; empty = dev) or `production` (TESTNET and MAINNET — the
-# testnet rehearses mainnet's network). Anything else is refused at first use. The
-# dev-only installation housekeeping runs only on `dev`.
+# the DEVNET build only; empty = dev under `next dev`) or `production` (TESTNET and
+# MAINNET — the testnet rehearses mainnet's network). A production `next build`
+# refuses to run unless it is named (frontend/next.config.mjs; the e2e harness's
+# FIGARO_ALLOW_TEST_HELPERS=1 builds excepted). Anything else is refused at first
+# use. The dev-only installation housekeeping runs only on `dev`.
 NEXT_PUBLIC_XMTP_ENV=
 
 # Managed pinning service — DEPLOY BUILDS ONLY (testnet tier, RELEASE_READINESS

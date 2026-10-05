@@ -45,6 +45,23 @@ function assertNoTestFlagsInProductionBuild() {
     }
 }
 
+// The XMTP network a build coordinates over is DEPLOYMENT CONFIG, compiled in:
+// `dev` (XMTP's public dev network, whose inboxes every developer on earth
+// shares) or `production` (testnet and mainnet). Unset, the running code reads
+// `dev` — right for `next dev`, silently wrong for a deploy. So a production
+// build must name it. The e2e harness builds (FIGARO_ALLOW_TEST_HELPERS=1)
+// coordinate over the mock bus or name it themselves, and are not deploys.
+function assertXmtpNetworkNamedInProductionBuild() {
+    if (process.env.FIGARO_ALLOW_TEST_HELPERS === '1') return;
+    const env = (process.env.NEXT_PUBLIC_XMTP_ENV ?? '').trim();
+    if (env !== 'dev' && env !== 'production') {
+        throw new Error(
+            `Refusing to build: NEXT_PUBLIC_XMTP_ENV is ${env ? `"${env}"` : 'unset'}. A production build names the XMTP ` +
+            `network it coordinates over — "production" for testnet and mainnet, "dev" for a build that is not a deploy.`,
+        );
+    }
+}
+
 // STATIC EXPORT. The frontend is a protocol surface with ZERO server routes —
 // every page reads chain + IPFS client-side (reads-at-edge). `output: 'export'`
 // prerenders each route to static HTML at build time (real content for
@@ -138,6 +155,7 @@ export default function config(phase) {
     const invokedAsLint = process.argv.includes('lint');
     if (phase === PHASE_PRODUCTION_BUILD && !invokedAsLint) {
         assertNoTestFlagsInProductionBuild();
+        assertXmtpNetworkNamedInProductionBuild();
     }
     return nextConfig;
 }
