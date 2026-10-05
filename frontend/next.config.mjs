@@ -62,6 +62,22 @@ function assertXmtpNetworkNamedInProductionBuild() {
     }
 }
 
+// The site's pin-service token (NEXT_PUBLIC_IPFS_PIN_SERVICE_JWT) lets a visitor
+// with no IPFS node of their own publish through the site's pinning account.
+// That is the TESTNET tier only (maintainer ruling; RELEASE_READINESS Task 6):
+// on mainnet every party pins what it publishes. The token compiles into the
+// bundle, so it is refused in a build for any chain but Sepolia — whatever
+// value a mainnet build is given, it cannot carry the token.
+function assertPinServiceOnTestnetOnly() {
+    const jwt = (process.env.NEXT_PUBLIC_IPFS_PIN_SERVICE_JWT ?? '').trim();
+    if (jwt && process.env.NEXT_PUBLIC_CHAIN !== 'sepolia') {
+        throw new Error(
+            `Refusing to build: NEXT_PUBLIC_IPFS_PIN_SERVICE_JWT is set for chain "${process.env.NEXT_PUBLIC_CHAIN ?? '(devnet)'}". ` +
+            `The site's pinning account serves the Sepolia testnet only; on mainnet each party pins what it publishes.`,
+        );
+    }
+}
+
 // STATIC EXPORT. The frontend is a protocol surface with ZERO server routes —
 // every page reads chain + IPFS client-side (reads-at-edge). `output: 'export'`
 // prerenders each route to static HTML at build time (real content for
@@ -156,6 +172,7 @@ export default function config(phase) {
     if (phase === PHASE_PRODUCTION_BUILD && !invokedAsLint) {
         assertNoTestFlagsInProductionBuild();
         assertXmtpNetworkNamedInProductionBuild();
+        assertPinServiceOnTestnetOnly();
     }
     return nextConfig;
 }

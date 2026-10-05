@@ -45,8 +45,11 @@ where the release facts are kept.
 - **Sovereign per-party pinning (Option 3).** Shift durability to the parties: each
   publishing wallet's client pins what it publishes, so no single operator holds
   availability — no central pinning dependency in the mainnet trust
-  model. (The testnet tier rides the managed pinning service through the
-  `ipfsService` deploy-build adapter — env vars in `docs/LOCAL_DEV.md`.)
+  model. (The testnet tier rides the site's managed pinning account through the
+  `ipfsService` deploy-build adapter — env vars in `docs/LOCAL_DEV.md` — so a
+  visitor with no IPFS node of their own can publish on the testnet. That is
+  testnet only, by ruling: `frontend/next.config.mjs` refuses the token in a
+  build for any chain but Sepolia.)
 - **Retrieval-availability floor: 6 years, user-extensible.** An agreement must stay
   fetchable by its CID for the longest plausible dispute/audit window, anchored to
   the tax-audit horizon (~5 audit years + 1 declaration year). The window varies by
