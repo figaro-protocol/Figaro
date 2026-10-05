@@ -16,13 +16,12 @@
 
 import { parseClauseSpec, type ClauseSpec, type FieldSpec, type EnumFieldSpec, type SpecParseError } from "@figaro-protocol/sdk/clauses";
 import type { ProjectionHints, ProjectionSpecView, SpecSource } from "@figaro-protocol/sdk";
-import { canonicalContentHash } from "@/lib/shared/canonicalJson";
 import { parseBlockBinding, type ClauseBlockBinding } from "@/lib/shared/clauseBlockBinding";
-import { computeClauseKey } from "@figaro-protocol/sdk";
+import { canonicalContentHash } from "@/lib/shared/canonicalJson";
+import { anchorClauseSpec, computeClauseKey, deriveAnchored, type Anchored } from "@figaro-protocol/sdk";
 import { DEFAULT_IPFS_SERVICE, fetchCappedContent } from "@/lib/shared/ipfsService";
 import { safeJsonFromResponse } from "@/lib/shared/safeJson";
 import { truncateHex } from "@/lib/shared/formatHex";
-import { hexEqual } from "@/lib/shared/evm";
 
 /** A clause spec plus its frontend-parsed `block` slice. The SDK `ClauseSpec` is
  *  content-only (`fields`/`stages`); the `block` binding is pure presentation the
@@ -34,7 +33,10 @@ export type ClauseSpecWithBlock = ClauseSpec & { block?: ClauseBlockBinding };
  *  stay bare; `version` is a static field in the id. Never serialized or rendered. */
 const specKey = (clauseId: string, version: number): string => `${clauseId}#${version}`;
 
-const SPEC_CACHE = new Map<string, ClauseSpecWithBlock>();
+/** Only a spec read out of a document that hashed to its registry anchor
+ *  enters: the cache holds `Anchored` specs, so a load path that skips the
+ *  check does not compile. */
+const SPEC_CACHE = new Map<string, Anchored<ClauseSpecWithBlock>>();
 const SPEC_LOAD_ERRORS = new Map<string, string>();
 
 /** clauseId → the parent FIELD name it nests under in the drawer, read from the
@@ -84,7 +86,7 @@ export function setClauseSpecFetcher(fetcher: ClauseSpecFetcher): void {
 /** Register a loaded spec into the cache + the derived maps. Keyed by the full
  *  identity (clauseId, version): two live versions of one clause coexist as
  *  co-equal cache entries — a clause is a clause. */
-function cacheSpec(spec: ClauseSpecWithBlock): void {
+function cacheSpec(spec: Anchored<ClauseSpecWithBlock>): void {
     SPEC_CACHE.set(specKey(spec.clauseId, spec.version), spec);
     HASH_TO_ID.set(computeClauseKey(spec.clauseId, spec.version).toLowerCase(), { clauseId: spec.clauseId, version: spec.version });
     const nestsUnder = spec.block?.design.nestsUnder;
@@ -98,27 +100,35 @@ function cacheSpec(spec: ClauseSpecWithBlock): void {
  * fallback). PERMANENT failures — the document is wrong, not merely not served
  * yet: integrity mismatch, unparseable spec or block, id/version mismatch —
  * are recorded under `getClauseSpecLoadError`, so a re-reading consumer can
- * leave them alone; a network miss records nothing and is re-read. When `expectedContentHash` is provided (the `ClauseRegistered`
- * event's digest), the fetched document is verified by recomputing the
- * canonical content hash — a drifted or tampered pin never enters the cache.
+ * leave them alone; a network miss records nothing and is re-read. The
+ * fetched document is verified against `expectedContentHash` (the
+ * `ClauseRegistered` event's digest) before it is parsed — a drifted or
+ * tampered pin never enters the cache.
  */
 export async function loadClauseSpec(
     clauseId: string,
     version: number,
     uri: string,
-    expectedContentHash?: `0x${string}`,
-): Promise<ClauseSpecWithBlock> {
+    expectedContentHash: `0x${string}`,
+): Promise<Anchored<ClauseSpecWithBlock>> {
     const cached = SPEC_CACHE.get(specKey(clauseId, version));
     if (cached !== undefined) return cached;
-    const raw = await activeFetcher(uri);
-    if (expectedContentHash) {
-        const recomputed = canonicalContentHash(raw);
-        if (!hexEqual(recomputed, expectedContentHash)) {
-            const detail = `spec at ${uri} hashes to ${recomputed}, chain anchors ${expectedContentHash}`;
-            SPEC_LOAD_ERRORS.set(clauseId, `integrity failure: ${detail}`);
-            throw new Error(`Clause spec integrity failure: ${detail}`);
-        }
+    const fetched = await activeFetcher(uri);
+    const anchored = anchorClauseSpec(fetched, expectedContentHash);
+    if (anchored === null) {
+        const detail = `spec at ${uri} hashes to ${canonicalContentHash(fetched)}, chain anchors ${expectedContentHash}`;
+        SPEC_LOAD_ERRORS.set(clauseId, `integrity failure: ${detail}`);
+        throw new Error(`Clause spec integrity failure: ${detail}`);
     }
+    const spec = deriveAnchored(anchored, (raw) => specFromAnchoredDocument(raw, clauseId, version, uri));
+    cacheSpec(spec);
+    return spec;
+}
+
+/** The spec and its `block` slice, read out of a document already verified
+ *  against its anchor. Throws, recording a permanent load error, when the
+ *  document is not the clause the registry entry names. */
+function specFromAnchoredDocument(raw: unknown, clauseId: string, version: number, uri: string): ClauseSpecWithBlock {
     const parsed = parseClauseSpec(raw);
     if (!parsed.ok) {
         const detail = parsed.errors.map((e) => `${e.path}: ${e.message}`).join("; ");
@@ -150,9 +160,7 @@ export async function loadClauseSpec(
         }
         block = parsedBlock;
     }
-    const spec: ClauseSpecWithBlock = block !== undefined ? { ...parsed.spec, block } : parsed.spec;
-    cacheSpec(spec);
-    return spec;
+    return block !== undefined ? { ...parsed.spec, block } : parsed.spec;
 }
 
 /** Test-only — clear all caches. */

@@ -8,6 +8,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { beforeAll, describe, expect, it } from "vitest";
 import { primeClauseSpecs } from "./primeClauseSpecs";
+import { canonicalContentHash } from "@figaro-protocol/sdk";
 import { loadClauseSpec, setClauseSpecFetcher } from "@/lib/shared/clauseSpecSource";
 import {
     assemblyTemplateToDraft,
@@ -76,7 +77,8 @@ describe("assemblyTemplateToDraft clause-version carry", () => {
             if (uri.endsWith("#v2")) raw.version = 2;
             return raw;
         });
-        await loadClauseSpec("figaro-commerce", 2, `${commercePath}#v2`);
+        const commerceV2 = { ...(JSON.parse(readFileSync(commercePath, "utf8")) as object), version: 2 };
+        await loadClauseSpec("figaro-commerce", 2, `${commercePath}#v2`, canonicalContentHash(commerceV2));
     });
 
     it("carries the template's sparse non-1 version picks into the draft", () => {

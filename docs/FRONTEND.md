@@ -213,11 +213,18 @@ The Designer is a DAG editor — assembly designers start blank or fork an exist
 ## Clause validation in the frontend
 
 - `clauseSpecSource.ts` — the module spec cache. No bundled copy and no
-  preload: `useClauseSpecs` warms it chain→IPFS via `loadClauseSpec(id, uri)`
-  from `ClauseRegistered` events (the seed clauses in `clauses/` on the devnet —
+  preload: `useClauseSpecs` warms it chain→IPFS via
+  `loadClauseSpec(id, version, uri, contentHash)` from `ClauseRegistered` events
+  (the seed clauses in `clauses/` on the devnet —
   all runtime-attestable except the agreement-only `figaro-topology` —
   plus any third-party registrations);
-  spec-consuming surfaces gate on its `loaded`.
+  spec-consuming surfaces gate on its `loaded`. The cache holds
+  `Anchored` specs only: a spec enters after the SDK's `anchorClauseSpec`
+  matched it to the registry's `contentHash`. The other registry reads type
+  the same way — `fetchAssemblyTemplate`, `fetchAgreement` and
+  `fetchWitnessContent` return `Anchored` documents, and the records built
+  from them (`AssemblyChoice`, `BoundAssembly`, a published assembly's view)
+  require that type, so a read that skips the check does not compile.
 
 ## Components (`components/`)
 

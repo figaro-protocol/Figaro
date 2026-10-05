@@ -21,7 +21,7 @@
  * runtime's I/O half: the gateway read that verifies the bytes hash back.
  */
 
-import { keccak256 } from "viem";
+import { anchorAttestationContent } from "@figaro-protocol/sdk";
 import { witnessContentCid } from "@figaro-protocol/sdk/derive";
 import { fetchIpfsBytes } from "./ipfsRead.mjs";
 
@@ -47,7 +47,7 @@ export async function fetchWitnessContent(contentRef, options = {}) {
     const cid = witnessContentCid(contentRef);
     const bytes = await fetchIpfsBytes(cid, options);
     if (bytes === null || bytes.byteLength === 0) return null;
-    const content = bytesToHex(bytes);
-    if (keccak256(content).toLowerCase() !== contentRef.toLowerCase()) return null;
+    const content = anchorAttestationContent(bytesToHex(bytes), contentRef);
+    if (content === null) return null;
     return { contentRef: contentRef.toLowerCase(), cid, content };
 }

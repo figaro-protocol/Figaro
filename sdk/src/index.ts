@@ -205,6 +205,14 @@ export type { Agreement, AgreementSection } from "./agreement.js";
 
 // Prototype-pollution defense for parsed envelopes
 export { strippingReviver } from "./safeJson.js";
+export {
+    type Anchored,
+    anchorClauseSpec,
+    anchorTemplate,
+    anchorAgreement,
+    anchorAttestationContent,
+    deriveAnchored,
+} from "./anchored.js";
 
 // Agreement + template projection (the deterministic, hash-load-bearing rules)
 export {

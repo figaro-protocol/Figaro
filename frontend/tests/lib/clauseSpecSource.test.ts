@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
+import { anchorClauseSpec, canonicalContentHash, type Anchored } from "@figaro-protocol/sdk";
 import {
     getClauseSpec,
     getClauseSpecLoadError,
@@ -15,6 +16,13 @@ import {
     _resetClauseSpecCache_TESTING_ONLY,
 } from "@/lib/shared/clauseSpecSource";
 import { primeClauseSpecs } from "./primeClauseSpecs";
+
+/** Serve `document` from every URI and load it under its own content hash —
+ *  what the registry anchors for a correctly published spec. */
+function serve(document: unknown): `0x${string}` {
+    setClauseSpecFetcher(async () => document);
+    return canonicalContentHash(document);
+}
 
 afterEach(() => {
     _resetClauseSpecCache_TESTING_ONLY();
@@ -64,7 +72,7 @@ describe("clauseSpecSource — catalogue-authored fills (derive, not hardcode)",
 
 describe("clauseSpecSource — async loadClauseSpec via fetcher", () => {
     it("fetches, parses, and caches a remote spec", async () => {
-        setClauseSpecFetcher(async () => ({
+        const hash = serve({
             clauseId: "test-remote-v1",
             version: 1,
             title: "Test Remote",
@@ -72,15 +80,15 @@ describe("clauseSpecSource — async loadClauseSpec via fetcher", () => {
             fields: [
                 { name: "x", type: "string", required: true },
             ],
-        }));
-        const spec = await loadClauseSpec("test-remote-v1", 1, "ipfs://fake");
+        });
+        const spec = await loadClauseSpec("test-remote-v1", 1, "ipfs://fake", hash);
         expect(spec.clauseId).toBe("test-remote-v1");
         // Subsequent sync lookup should resolve to the cached entry
         expect(getClauseSpec("test-remote-v1")?.clauseId).toBe("test-remote-v1");
     });
 
     it("the SpecSource adapter carries EVERY hash-load-bearing hint — designFills included (a dropped hint silently strips designer values at publish)", async () => {
-        setClauseSpecFetcher(async () => ({
+        const hash = serve({
             clauseId: "test-designer-fills",
             version: 1,
             title: "Test Designer Fills",
@@ -91,8 +99,8 @@ describe("clauseSpecSource — async loadClauseSpec via fetcher", () => {
                 checkout: { catalogueFills: ["x"], profileFills: [] },
                 runtime: { interaction: null, fields: [] },
             },
-        }));
-        await loadClauseSpec("test-designer-fills", 1, "ipfs://fake-fills");
+        });
+        await loadClauseSpec("test-designer-fills", 1, "ipfs://fake-fills", hash);
         const view = specSource().get("test-designer-fills");
         expect(view?.hints?.article).toBe("resolution");
         expect(view?.hints?.designFills).toEqual(["x"]);
@@ -100,19 +108,28 @@ describe("clauseSpecSource — async loadClauseSpec via fetcher", () => {
     });
 
     it("rejects when the spec's clauseId does not match the requested ID", async () => {
-        setClauseSpecFetcher(async () => ({
+        const hash = serve({
             clauseId: "wrong-id-v1",
             version: 1,
             title: "Wrong",
             description: "Mismatched.",
             fields: [],
-        }));
-        await expect(loadClauseSpec("expected-id-v1", 1, "ipfs://fake")).rejects.toThrow(/declares clauseId/);
+        });
+        await expect(loadClauseSpec("expected-id-v1", 1, "ipfs://fake", hash)).rejects.toThrow(/declares clauseId/);
     });
 
     it("rejects when the spec fails to parse", async () => {
-        setClauseSpecFetcher(async () => ({ not: "a spec" }));
-        await expect(loadClauseSpec("malformed-v1", 1, "ipfs://fake")).rejects.toThrow(/failed to parse/);
+        const hash = serve({ not: "a spec" });
+        await expect(loadClauseSpec("malformed-v1", 1, "ipfs://fake", hash)).rejects.toThrow(/failed to parse/);
+    });
+
+    it("rejects a document that does not hash to its anchor, and never caches it", async () => {
+        const spec = { clauseId: "test-anchor", version: 1, title: "Anchored", description: "d", fields: [{ name: "x", type: "string", required: true }] };
+        const anchor = canonicalContentHash(spec);
+        serve({ ...spec, title: "Served by a gateway that changed it" });
+        await expect(loadClauseSpec("test-anchor", 1, "ipfs://fake", anchor)).rejects.toThrow(/integrity failure/);
+        expect(getClauseSpec("test-anchor")).toBeUndefined();
+        expect(getClauseSpecLoadError("test-anchor")).toMatch(/integrity failure/);
     });
 });
 
@@ -163,9 +180,11 @@ describe("clauseIsProcessLog — classified by the attestations article, never b
 
 describe("version coexistence — a clause is a clause", () => {
     it("two live versions of one name coexist as co-equal cache entries", async () => {
-        setClauseSpecFetcher(async (uri) => (uri.includes("v2") ? { clauseId: "multi-v", version: 2, title: "Multi v2", description: "d", fields: [{ name: "x", type: "string", required: true }] } : { clauseId: "multi-v", version: 1, title: "Multi v1", description: "d", fields: [{ name: "x", type: "string", required: true }] }));
-        await loadClauseSpec("multi-v", 1, "ipfs://fake-v1");
-        await loadClauseSpec("multi-v", 2, "ipfs://fake-v2");
+        const v1 = { clauseId: "multi-v", version: 1, title: "Multi v1", description: "d", fields: [{ name: "x", type: "string", required: true }] };
+        const v2 = { ...v1, version: 2, title: "Multi v2" };
+        setClauseSpecFetcher(async (uri) => (uri.includes("v2") ? v2 : v1));
+        await loadClauseSpec("multi-v", 1, "ipfs://fake-v1", canonicalContentHash(v1));
+        await loadClauseSpec("multi-v", 2, "ipfs://fake-v2", canonicalContentHash(v2));
         expect(getClauseSpec("multi-v", 1)?.title).toBe("Multi v1");
         expect(getClauseSpec("multi-v", 2)?.title).toBe("Multi v2");
         // Name-only resolves to the highest loaded — a display convenience.
@@ -176,7 +195,18 @@ describe("version coexistence — a clause is a clause", () => {
     });
 
     it("rejects a spec whose declared version differs from the registered one", async () => {
-        setClauseSpecFetcher(async () => ({ clauseId: "multi-v", version: 1, title: "Multi v1", description: "d", fields: [{ name: "x", type: "string", required: true }] }));
-        await expect(loadClauseSpec("multi-v", 3, "ipfs://fake")).rejects.toThrow(/declares version 1, expected 3/);
+        const hash = serve({ clauseId: "multi-v", version: 1, title: "Multi v1", description: "d", fields: [{ name: "x", type: "string", required: true }] });
+        await expect(loadClauseSpec("multi-v", 3, "ipfs://fake", hash)).rejects.toThrow(/declares version 1, expected 3/);
+    });
+});
+
+describe("Anchored — a document is anchored only when an anchor function returned it", () => {
+    it("a fetched document does not type as anchored; the anchor function's result does", () => {
+        const fetched = { clauseId: "test-type", version: 1 };
+        // @ts-expect-error a fetched document is not anchored until an anchor function verifies it
+        const unverified: Anchored<typeof fetched> = fetched;
+        const verified: Anchored<unknown> | null = anchorClauseSpec(fetched, canonicalContentHash(fetched));
+        expect(unverified).toBe(fetched);
+        expect(verified).toBe(fetched);
     });
 });

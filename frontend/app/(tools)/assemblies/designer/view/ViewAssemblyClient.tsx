@@ -65,6 +65,7 @@ import {
     unfilledAssemblyTerms,
 } from "@/lib/designer/draftToAssemblyTemplate";
 import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
+import type { Anchored } from "@figaro-protocol/sdk";
 import { deriveAssemblySlug, type AssemblyTemplate } from "@/lib/shared/assemblyTemplate";
 import { forkPublishedAssembly } from "@/lib/designer/forkAssembly";
 import { hexEqual } from "@/lib/shared/evm";
@@ -78,7 +79,7 @@ type ResolvedSource =
         kind: "published";
         name: string;
         orders: Order[];
-        assemblyTemplate: AssemblyTemplate;
+        assemblyTemplate: Anchored<AssemblyTemplate>;
         /** The on-chain binding — needed to gate the registeredBy-only reclaim. */
         registeredBy: `0x${string}`;
         compositionHash: `0x${string}`;

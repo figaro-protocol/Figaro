@@ -23,6 +23,7 @@
  * payload.
  */
 import { bytesToHex, hexToBytes, keccak256, type Hex } from "viem";
+import { anchorAttestationContent, type Anchored } from "@figaro-protocol/sdk";
 import { contentFieldsFor } from "@figaro-protocol/sdk/clauses";
 import { witnessContentCid, witnessContentCidBase32 } from "@figaro-protocol/sdk/derive";
 import {
@@ -33,7 +34,7 @@ import {
     type IpfsService,
 } from "@/lib/shared/ipfsService";
 import { clauseIdForHash, getClauseSpec } from "@/lib/shared/clauseSpecSource";
-import { hexEqual, isBytes32Hex, isEmptyHex } from "@/lib/shared/evm";
+import { isBytes32Hex, isEmptyHex } from "@/lib/shared/evm";
 
 export interface PublishWitnessContentParams {
     /** The clause attested — the event's clauseId HASH or the readable id. */
@@ -90,16 +91,14 @@ export async function publishWitnessContent(params: PublishWitnessContentParams)
 export async function fetchWitnessContent(
     contentRef: Hex | string,
     options: CappedFetchOptions = {},
-): Promise<Hex | null> {
+): Promise<Anchored<Hex> | null> {
     if (!isBytes32Hex(contentRef)) return null;
     const url = resolveContentUri(`ipfs://${witnessContentCid(contentRef as Hex)}`);
     if (!url) return null;
     try {
         const res = await fetchCappedBinary(url, options);
         if (!res.ok || !res.bytes) return null;
-        const content = bytesToHex(res.bytes);
-        if (!hexEqual(keccak256(content), contentRef)) return null;
-        return content;
+        return anchorAttestationContent(bytesToHex(res.bytes), contentRef);
     } catch {
         return null;
     }

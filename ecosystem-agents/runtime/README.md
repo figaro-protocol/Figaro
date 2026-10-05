@@ -81,7 +81,8 @@ purchase is a TRADE and goes through `figaro-operator` instead.
 
 `witnessContent.mjs` (the verified read behind an attestation's fingerprint),
 `anchoredContent.mjs` (the verified reads of a clause spec and an assembly
-template — the analyst decodes and prices with nothing else) and `ipfsRead.mjs` (the one gateway reader every component here shares) sit
+template — the analyst decodes and prices with nothing else; both verify
+through the SDK's `anchor*` functions, the ones the frontend uses) and `ipfsRead.mjs` (the one gateway reader every component here shares) sit
 under both. The fingerprint→address derivation itself is `witnessContentCid`
 (`@figaro-protocol/sdk/derive` — pure, no I/O); this runtime and
 `frontend/lib/composition/witnessContent.ts` both consume that one export,

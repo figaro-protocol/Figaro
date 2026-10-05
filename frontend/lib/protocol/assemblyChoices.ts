@@ -14,6 +14,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { activeChain } from "@/lib/shared/wagmi";
 import { clauseIsProcessLog } from "@/lib/shared/clauseSpecSource";
+import type { Anchored } from "@figaro-protocol/sdk";
 import { templateParentOrderHashes, type AssemblyTemplate } from "@/lib/shared/assemblyTemplate";
 import { DEVNET_CHAIN_ID } from "@/lib/shared/chains";
 import { contentRetryDelayMs } from "@/lib/shared/ipfsService";
@@ -121,8 +122,9 @@ export interface AssemblyChoice {
     /** Available when state === "loaded". Sorted, deduped clauseIds. */
     clauses: readonly string[] | null;
     /** The full assembly template when state === "loaded". Avoids re-fetching
-     *  from consumers that need it (e.g. fork). */
-    assemblyTemplate: AssemblyTemplate | null;
+     *  from consumers that need it (e.g. fork). Read from the registry and
+     *  verified against `compositionHash`. */
+    assemblyTemplate: Anchored<AssemblyTemplate> | null;
     /** True when the registering wallet has withdrawn the stake — present only
      *  on reads that opted in to withdrawn rows (or wallet-scoped reads). */
     stakeWithdrawn: boolean;
@@ -148,7 +150,7 @@ export function useAssemblyChoices(
     // — and undefined on the marketing tier where no provider is mounted.
     const chainId = activeChain.id;
     const [assemblyTemplateState, setAssemblyTemplateState] = useState<
-        Map<string, { state: AssemblyTemplateFetchState; assemblyTemplate: AssemblyTemplate | null }>
+        Map<string, { state: AssemblyTemplateFetchState; assemblyTemplate: Anchored<AssemblyTemplate> | null }>
     >(new Map());
     /** Hashes whose fetch has already been kicked off. A ref (not state)
      *  because we want to guard against double-fetch without retriggering

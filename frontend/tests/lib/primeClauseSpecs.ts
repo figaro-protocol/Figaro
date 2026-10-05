@@ -7,6 +7,7 @@
  */
 import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
+import { canonicalContentHash } from "@figaro-protocol/sdk";
 import { loadClauseSpec, setClauseSpecFetcher } from "@/lib/shared/clauseSpecSource";
 
 // Vitest runs with cwd = frontend/ (the vitest config root).
@@ -22,7 +23,7 @@ export async function primeClauseSpecs(clauseIds?: readonly string[]): Promise<v
     setClauseSpecFetcher(async (uri) => JSON.parse(readFileSync(uri, "utf8")));
     for (const id of ids) {
         const file = path.join(EXAMPLES_DIR, `${id}.json`);
-        const version = Number((JSON.parse(readFileSync(file, "utf8")) as { version?: number }).version ?? 1);
-        await loadClauseSpec(id, version, file);
+        const document = JSON.parse(readFileSync(file, "utf8")) as { version?: number };
+        await loadClauseSpec(id, Number(document.version ?? 1), file, canonicalContentHash(document));
     }
 }

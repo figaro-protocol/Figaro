@@ -6,7 +6,8 @@
  * on chain: `ClauseRegistry` stores the spec's content hash, `AssemblyRegistry`
  * keys the template by its composition hash. A gateway can serve any bytes,
  * so the bytes are recomputed against the anchor before anything reads them,
- * with the SDK's own functions — the same check the frontend makes. A
+ * by the SDK's `anchorClauseSpec` and `anchorTemplate` — the functions the
+ * frontend verifies with. A
  * document that does not hash to its anchor reads as absence, never as the
  * registry's content: the verification is what makes an untrusted gateway an
  * acceptable transport (`witnessContent.mjs` holds attestation content to the
@@ -17,10 +18,8 @@
  * permissionless, so it says nothing about whether the bytes are hostile.
  */
 
-import { canonicalContentHash, strippingReviver, templateCompositionHash } from "@figaro-protocol/sdk";
+import { anchorClauseSpec, anchorTemplate, canonicalContentHash, strippingReviver, templateCompositionHash } from "@figaro-protocol/sdk";
 import { cidOf, fetchIpfsText } from "./ipfsRead.mjs";
-
-const same = (a, b) => String(a).toLowerCase() === String(b).toLowerCase();
 
 /** Parse untrusted JSON text; `null` when it is not JSON. */
 function parseUntrusted(text) {
@@ -45,9 +44,8 @@ export async function fetchAnchoredClauseSpec(clause, options = {}) {
     if (text === null) return { absent: "not served" };
     const raw = parseUntrusted(text);
     if (raw === null) return { absent: "not JSON" };
-    const recomputed = canonicalContentHash(raw);
-    if (!same(recomputed, clause.contentHash)) {
-        return { absent: `hashes to ${recomputed}, the registry anchors ${clause.contentHash}` };
+    if (anchorClauseSpec(raw, clause.contentHash) === null) {
+        return { absent: `hashes to ${canonicalContentHash(raw)}, the registry anchors ${clause.contentHash}` };
     }
     return { raw, text };
 }
@@ -67,9 +65,8 @@ export async function fetchAnchoredTemplate(assembly, options = {}) {
     if (template === null || typeof template !== "object" || !Array.isArray(template.agreements)) {
         return { absent: "not an assembly template" };
     }
-    const recomputed = templateCompositionHash(template);
-    if (!same(recomputed, assembly.compositionHash)) {
-        return { absent: `hashes to ${recomputed}, the registry anchors ${assembly.compositionHash}` };
+    if (anchorTemplate(template, assembly.compositionHash) === null) {
+        return { absent: `hashes to ${templateCompositionHash(template)}, the registry anchors ${assembly.compositionHash}` };
     }
     return { template, text };
 }

@@ -14,10 +14,6 @@
             {
                 "selector": "CallExpression[callee.type='MemberExpression'][callee.property.name='signTypedData']",
                 "message": "A typed-data signature is a commitment: it is requested only in lib/checkout/orderCommitmentFlow.ts, behind the sign gate (assertAgreementSignable) and the confirm modal."
-            },
-            {
-                "selector": "CallExpression[callee.name='loadClauseSpec'][arguments.length<4]",
-                "message": "Load a clause spec with the registry's contentHash (the fourth argument): the spec is verified against it, and a gateway can serve any bytes."
             }
         ],
         "no-restricted-imports": [
@@ -68,10 +64,6 @@
                     {
                         "selector": "CallExpression[callee.type='MemberExpression'][callee.property.name='signTypedData']",
                         "message": "A typed-data signature is a commitment: it is requested only in lib/checkout/orderCommitmentFlow.ts, behind the sign gate (assertAgreementSignable) and the confirm modal."
-                    },
-                    {
-                        "selector": "CallExpression[callee.name='loadClauseSpec'][arguments.length<4]",
-                        "message": "Load a clause spec with the registry's contentHash (the fourth argument): the spec is verified against it, and a gateway can serve any bytes."
                     }
                 ]
             }
@@ -90,10 +82,6 @@
                     {
                         "selector": "CallExpression[callee.type='MemberExpression'][callee.property.name='signTypedData']",
                         "message": "A typed-data signature is a commitment: it is requested only in lib/checkout/orderCommitmentFlow.ts, behind the sign gate (assertAgreementSignable) and the confirm modal."
-                    },
-                    {
-                        "selector": "CallExpression[callee.name='loadClauseSpec'][arguments.length<4]",
-                        "message": "Load a clause spec with the registry's contentHash (the fourth argument): the spec is verified against it, and a gateway can serve any bytes."
                     }
                 ]
             }
@@ -112,10 +100,6 @@
                     {
                         "selector": "JSXAttribute[name.name='dangerouslySetInnerHTML']",
                         "message": "Raw HTML is the one XSS sink React leaves open, and this app renders permissionless registry and IPFS content. Only components/papers/Math.tsx (KaTeX output of the site's own formulas) may use it."
-                    },
-                    {
-                        "selector": "CallExpression[callee.name='loadClauseSpec'][arguments.length<4]",
-                        "message": "Load a clause spec with the registry's contentHash (the fourth argument): the spec is verified against it, and a gateway can serve any bytes."
                     }
                 ],
                 "no-restricted-imports": "off"

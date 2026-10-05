@@ -12,6 +12,7 @@
 import { useEffect, useState } from "react";
 import { fetchCappedContent, resolveContentUri } from "@/lib/shared/ipfsService";
 import { safeJsonParse } from "@/lib/shared/safeJson";
+import type { Anchored } from "@figaro-protocol/sdk";
 import type { AssemblyTemplate } from "@/lib/shared/assemblyTemplate";
 import { useMemberProfile } from "@/lib/member/useMembersRegistry";
 import {
@@ -28,7 +29,8 @@ export interface BoundAssembly {
     slug: string;
     /** Display name from the assembly template; falls back to the slug. */
     name: string;
-    assemblyTemplate: AssemblyTemplate;
+    /** Read from the registry and verified against its composition hash. */
+    assemblyTemplate: Anchored<AssemblyTemplate>;
     /** The member's designated counterparty wallets for this assembly,
      *  keyed by sub-order process clause (the runtime ladder clause the
      *  sub-order carries). Sourced from the member profile's

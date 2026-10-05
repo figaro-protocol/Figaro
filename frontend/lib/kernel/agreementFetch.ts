@@ -15,14 +15,13 @@
  * correct: you can't fetch a body you were never pointed at.
  */
 import type { Hex } from "viem";
-import { computeAgreementHash, parseClauseRegistryLogs, publicForm, type Agreement } from "@figaro-protocol/sdk";
+import { anchorAgreement, computeAgreementHash, parseClauseRegistryLogs, publicForm, type Agreement, type Anchored } from "@figaro-protocol/sdk";
 import { DEFAULT_IPFS_SERVICE, extractIpfsCid, fetchCappedContent, type IpfsService } from "@/lib/shared/ipfsService";
 import { safeJsonFromResponse } from "@/lib/shared/safeJson";
 import { getClauseSpec, loadClauseSpec, specSource } from "@/lib/shared/clauseSpecSource";
 import { CONTRACTS, CLAUSE_REGISTRY_ABI } from "@/lib/kernel/contracts";
 import { activeChain, publicClient } from "@/lib/shared/wagmi";
 import { cachedGetContractEvents } from "@/lib/kernel/eventCache";
-import { hexEqual } from "@/lib/shared/evm";
 
 const URI_PREFIX = "figaro:agreement-uri:";
 const uriKey = (h: Hex | string) => URI_PREFIX + h;
@@ -61,7 +60,7 @@ function forgetAgreementUri(agreementHash: Hex | string): void {
     } catch { /* non-fatal */ }
 }
 
-const inflight = new Map<string, Promise<Agreement | null>>();
+const inflight = new Map<string, Promise<Anchored<Agreement> | null>>();
 
 /**
  * Fetch a committed agreement from IPFS and verify it against `agreementHash`.
@@ -73,7 +72,7 @@ export async function fetchAgreement(
     agreementHash: Hex | string | undefined | null,
     uri?: string | null,
     options: AgreementFetchOptions = {},
-): Promise<Agreement | null> {
+): Promise<Anchored<Agreement> | null> {
     if (!agreementHash) return null;
     const resolvedUri = uri ?? loadAgreementUri(agreementHash);
     const fetchUrl = resolvedUri ? transport(options).resolveFetchUrl(resolvedUri) : null;
@@ -88,9 +87,8 @@ export async function fetchAgreement(
             // Size-capped: an attacker-pinned multi-GB body aborts mid-stream
             // (throws → the catch below → null) before the hash check buffers it.
             const res = await fetchCappedContent(fetchUrl);
-            const agreement = await safeJsonFromResponse<Agreement>(res);
-            if (!agreement) return null;
-            if (!hexEqual(computeAgreementHash(agreement), agreementHash)) return null;
+            const agreement = anchorAgreement(await safeJsonFromResponse<unknown>(res), agreementHash);
+            if (agreement === null) return null;
             // Remember the URI we just proved good (witnessed-pointer only).
             if (resolvedUri) saveAgreementUri(agreementHash, resolvedUri);
             return agreement;

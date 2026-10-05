@@ -12,8 +12,8 @@
  */
 
 import { useMemo } from "react";
-import { hexEqual, isValidAddress } from "@/lib/shared/evm";
-import { parseAssemblyRegistryLogs } from "@figaro-protocol/sdk";
+import { isValidAddress } from "@/lib/shared/evm";
+import { anchorTemplate, parseAssemblyRegistryLogs, type Anchored } from "@figaro-protocol/sdk";
 import { ASSEMBLY_REGISTRY_ABI, CONTRACTS } from "@/lib/kernel/contracts";
 import { DEFAULT_IPFS_SERVICE, fetchCappedContent } from "@/lib/shared/ipfsService";
 import { safeJsonParse } from "@/lib/shared/safeJson";
@@ -25,7 +25,6 @@ import {
 import { createRegistryEventScan } from "@/lib/protocol/registryEventScan";
 import {
     deriveAssemblySlug,
-    templateCompositionHash,
     type AssemblyTemplate,
 } from "@/lib/shared/assemblyTemplate";
 
@@ -200,7 +199,7 @@ export function useAllPublishedAssemblies() {
 export async function fetchAssemblyTemplate(
     contentURI: string,
     expectedCompositionHash: `0x${string}`,
-): Promise<AssemblyTemplate | null> {
+): Promise<Anchored<AssemblyTemplate> | null> {
     const url = DEFAULT_IPFS_SERVICE.resolveFetchUrl(contentURI);
     if (!url) return null;
     try {
@@ -213,12 +212,11 @@ export async function fetchAssemblyTemplate(
         // AssemblyRegistry is permissionless), so a hostile template can be
         // anchored under its own hash and pass verification.
         // Matches the clause-spec path; strips __proto__/constructor/prototype.
-        const template = safeJsonParse<AssemblyTemplate>(await response.text());
-        if (!template) return null;
-        const recomputed = templateCompositionHash(template);
-        if (!hexEqual(recomputed, expectedCompositionHash)) {
+        const fetched = safeJsonParse<unknown>(await response.text());
+        const template = anchorTemplate(fetched, expectedCompositionHash);
+        if (template === null) {
             console.warn(
-                `[fetchAssemblyTemplate] integrity failure at ${contentURI}: document composition hashes to ${recomputed}, chain anchors ${expectedCompositionHash} — dropping`,
+                `[fetchAssemblyTemplate] integrity failure at ${contentURI}: the document is not the template whose composition the chain anchors (${expectedCompositionHash}) — dropping`,
             );
             return null;
         }

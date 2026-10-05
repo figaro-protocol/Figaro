@@ -7,6 +7,7 @@ import {
     setClauseSpecFetcher,
 } from "@/lib/shared/clauseSpecSource";
 import { contentRetryDelayMs } from "@/lib/shared/ipfsService";
+import { canonicalContentHash } from "@figaro-protocol/sdk";
 
 const useAllRegisteredClausesMock = vi.fn();
 vi.mock("@/lib/protocol/useClauseRegistry", () => ({
@@ -15,17 +16,6 @@ vi.mock("@/lib/protocol/useClauseRegistry", () => ({
 
 import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
 
-const event = (clauseId: string) => ({
-    idHash: "0x01" as `0x${string}`,
-    clauseId,
-    version: 1,
-    contentHash: undefined,
-    contentURI: `ipfs://${clauseId}`,
-    registeredBy: "0xA" as `0x${string}`,
-    blockNumber: 1n,
-    stakeWithdrawn: false,
-});
-
 const validSpec = (clauseId: string) => ({
     clauseId,
     version: 1,
@@ -33,6 +23,19 @@ const validSpec = (clauseId: string) => ({
     description: "d",
     fields: [{ name: "x", type: "string", required: true }],
     block: { design: { article: "logistics" } },
+});
+
+/** The registry event for `clauseId`, anchoring the document its registrant
+ *  published (by default the clause's own valid spec). */
+const event = (clauseId: string, published: unknown = validSpec(clauseId)) => ({
+    idHash: "0x01" as `0x${string}`,
+    clauseId,
+    version: 1,
+    contentHash: canonicalContentHash(published),
+    contentURI: `ipfs://${clauseId}`,
+    registeredBy: "0xA" as `0x${string}`,
+    blockNumber: 1n,
+    stakeWithdrawn: false,
 });
 
 /** Flush the microtasks a completed `Promise.allSettled` needs before its `.then`. */
@@ -98,7 +101,7 @@ describe("useClauseSpecs — a spec the gateway has not served yet is re-read, n
     });
 
     it("leaves a PERMANENT failure alone — a spec that fails verification is never re-read", async () => {
-        useAllRegisteredClausesMock.mockReturnValue({ data: [event("figaro-bad")], failed: false });
+        useAllRegisteredClausesMock.mockReturnValue({ data: [event("figaro-bad", validSpec("figaro-other"))], failed: false });
         let reads = 0;
         // The document declares another clauseId: wrong content, not a slow gateway.
         setClauseSpecFetcher(async () => { reads += 1; return validSpec("figaro-other"); });

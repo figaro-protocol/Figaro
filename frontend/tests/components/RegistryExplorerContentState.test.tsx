@@ -1,6 +1,7 @@
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
+import { canonicalContentHash } from "@figaro-protocol/sdk";
 import { _resetClauseSpecCache_TESTING_ONLY, loadClauseSpec, setClauseSpecFetcher } from "@/lib/shared/clauseSpecSource";
 
 const replaceMock = vi.fn();
@@ -33,13 +34,15 @@ describe("RegistryExplorer — the state of the content behind a pointer is show
     it("a clause whose spec has not resolved is grouped as unserved — NOT as (unclassified); a resolved spec with no article IS (unclassified)", async () => {
         searchParams = "family=clauses";
         // figaro-noarticle: resolved, declares no article. figaro-fresh: never served. figaro-bad: served but wrong (verification failure).
+        const noArticle = { clauseId: "figaro-noarticle", version: 1, title: "No article", description: "d", fields: [{ name: "x", type: "string", required: true }] };
+        const bad = { clauseId: "figaro-other", version: 1, title: "Other", description: "d", fields: [{ name: "x", type: "string", required: true }] };
         setClauseSpecFetcher(async (uri) => {
-            if (uri === "ipfs://figaro-noarticle") return { clauseId: "figaro-noarticle", version: 1, title: "No article", description: "d", fields: [{ name: "x", type: "string", required: true }] };
-            if (uri === "ipfs://figaro-bad") return { clauseId: "figaro-other", version: 1, title: "Other", description: "d", fields: [{ name: "x", type: "string", required: true }] };
+            if (uri === "ipfs://figaro-noarticle") return noArticle;
+            if (uri === "ipfs://figaro-bad") return bad;
             throw new Error("504");
         });
-        await loadClauseSpec("figaro-noarticle", 1, "ipfs://figaro-noarticle");
-        await loadClauseSpec("figaro-bad", 1, "ipfs://figaro-bad").catch(() => undefined);
+        await loadClauseSpec("figaro-noarticle", 1, "ipfs://figaro-noarticle", canonicalContentHash(noArticle));
+        await loadClauseSpec("figaro-bad", 1, "ipfs://figaro-bad", canonicalContentHash(bad)).catch(() => undefined);
         clauseEventsMock.mockReturnValue({ data: [ev("figaro-noarticle"), ev("figaro-fresh"), ev("figaro-bad")], failed: false });
 
         render(<RegistryExplorer />);
@@ -61,8 +64,9 @@ describe("RegistryExplorer — the state of the content behind a pointer is show
 
     it("\"assemblies composing it\" carries the clause facet INTO the assemblies family — the family change resets only what the click did not set", async () => {
         searchParams = "family=clauses&article=logistics";
-        setClauseSpecFetcher(async () => ({ clauseId: "figaro-cargo", version: 1, title: "Cargo", description: "d", fields: [{ name: "x", type: "string", required: true }], block: { design: { article: "logistics" } } }));
-        await loadClauseSpec("figaro-cargo", 1, "ipfs://figaro-cargo");
+        const cargo = { clauseId: "figaro-cargo", version: 1, title: "Cargo", description: "d", fields: [{ name: "x", type: "string", required: true }], block: { design: { article: "logistics" } } };
+        setClauseSpecFetcher(async () => cargo);
+        await loadClauseSpec("figaro-cargo", 1, "ipfs://figaro-cargo", canonicalContentHash(cargo));
         clauseEventsMock.mockReturnValue({ data: [ev("figaro-cargo")], failed: false });
         replaceMock.mockClear();
 

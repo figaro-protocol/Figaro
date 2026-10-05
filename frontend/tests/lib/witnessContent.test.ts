@@ -18,6 +18,7 @@ import {
     publishWitnessContent,
     unpinWitnessContent,
 } from "@/lib/composition/witnessContent";
+import { canonicalContentHash } from "@figaro-protocol/sdk";
 import { getClauseSpec, loadClauseSpec, setClauseSpecFetcher } from "@/lib/shared/clauseSpecSource";
 import { primeClauseSpecs } from "./primeClauseSpecs";
 
@@ -44,7 +45,7 @@ const PRIVATE_SPEC = {
 beforeAll(async () => {
     await primeClauseSpecs(["figaro-proximity-policy"]);
     setClauseSpecFetcher(async () => PRIVATE_SPEC);
-    await loadClauseSpec("test-private-witness", 1, "mem://test-private-witness");
+    await loadClauseSpec("test-private-witness", 1, "mem://test-private-witness", canonicalContentHash(PRIVATE_SPEC));
 });
 
 function proximityContent(): Hex {

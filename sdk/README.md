@@ -296,6 +296,10 @@ definition) and `RPGF_*` constant is a **root** export.
 | `a2aMessageFromOffer` | `/agent` | Wrap a commitment payload as an A2A message for the wire. |
 | `ActionQueue` | `/agent` | Typed queue holding proposed actions for human approval before execution. |
 | `addressesFromDeploymentRecord` | root | Map a published deployment record's keys onto `FigaroAddresses` — never spread the record. |
+| `anchorAgreement` | root | An agreement as `Anchored<Agreement>` when its merkle root is the commitment's `agreementHash`; null otherwise. |
+| `anchorAttestationContent` | root | Attestation bytes as `Anchored<Hex>` when they hash to the event's `contentRef`; null otherwise. |
+| `anchorClauseSpec` | root | A fetched clause spec as `Anchored<unknown>` when it hashes to `ClauseRegistry`'s `contentHash`; null otherwise. |
+| `anchorTemplate` | root | A fetched template as `Anchored<AssemblyTemplate>` when its composition hashes to `AssemblyRegistry`'s `compositionHash`; null otherwise. |
 | `assertAgreementSignable` | root | The ONE pre-signature thrower: every section conforms to its spec, and the terms equal the struct. |
 | `assertApprovalCoversBond` | root | Throws when an approval is short of the full per-order bond `FigaroCore` will pull. |
 | `attestAsSeller` | `/agent` | Submit a seller attestation for one clause section of a committed order. |
@@ -324,6 +328,7 @@ definition) and `RPGF_*` constant is a **root** export.
 | `counterSignDraft` | `/agent` | Candidate side: validate an inbound race draft and countersign, or decline. |
 | `decodeContentFromSpec` | `/clauses` | Canonical ABI bytes back to JSON content — the exact inverse of `encodeContentFromSpec`. |
 | `depthsOverParents` | root | Depth per node over in-set parent edges — root = 0, child = max(parent depths) + 1. |
+| `deriveAnchored` | root | What is read out of an `Anchored` document, typed `Anchored` too; a rejecting parse throws through. |
 | `deriveAssemblyWithdrawGate` | `/derive` | Whether an assembly's stake is withdrawable, and what still blocks it. |
 | `deriveClauseWithdrawGate` | `/derive` | Whether a clause's stake is withdrawable, and what still blocks it. |
 | `deriveInFlightOrders` | `/derive` | Every committed order whose process has not resolved. |
@@ -1084,6 +1089,16 @@ const { winner: quoted } = await requestQuotes(channel, drafts, { chainId, core 
 // channel payloads): `JSON.parse(body, strippingReviver)`.
 import { strippingReviver } from "@figaro-protocol/sdk";
 import { deserializeCommitmentPayload } from "@figaro-protocol/sdk/agent";
+
+// A document fetched from IPFS is read only after its digest is recomputed
+// against the one the chain anchors. The anchor functions are the only makers
+// of `Anchored<T>`: they return the document when the digests agree and null
+// when they do not, so code that takes `Anchored<T>` cannot be handed bytes a
+// gateway served unchecked. `Anchored<T>` is a `T` wherever a `T` is taken.
+import { anchorClauseSpec, anchorTemplate, type Anchored, type AssemblyTemplate } from "@figaro-protocol/sdk";
+const spec = anchorClauseSpec(JSON.parse(specText, strippingReviver), clause.contentHash);
+const template: Anchored<AssemblyTemplate> | null =
+    anchorTemplate(JSON.parse(templateText, strippingReviver), assembly.compositionHash);
 
 // Submitting to the BATCH path — SequencerClient. `FigaroBatchVerifier.
 // settleBatch` is PERMISSIONLESS (no caller gate, no admin, no fee), but it
