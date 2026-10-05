@@ -36,7 +36,13 @@ The first four resolve through the live registries (`fetchDiscoveryEvents` →
 `DiscoveryGraph`); `witness` needs no registry at all — an `Attestation`
 event's `contentRef` IS the content address (a raw block multihashed with
 keccak-256), so the fingerprint is the lookup, and the bytes are verified to
-hash back to it before anything is printed. Every mode prints ONE framed
+hash back to it before anything is printed. `clause` and `assembly` verify the
+same way, against the registry's anchor: a spec must hash
+(`canonicalContentHash`) to `ClauseRegistry`'s content hash and a template
+(`templateCompositionHash`) to its composition hash, so a gateway that serves
+other bytes is read as absence, never as the registry's content. `profile` and
+`ipfs` have no on-chain anchor to check against and print what the gateway
+served, framed as untrusted. Every mode prints ONE framed
 block on stdout; errors are terse on stderr and never echo fetched bytes.
 Content that does not resolve is reported as ABSENCE, not failure — content
 addressing has no negative proof, and a gateway that cannot find a block
@@ -73,8 +79,9 @@ No signer socket: the analyst holds no key and signs nothing, so the policy's
 signing half is inert for it and the `egress` list is the half that binds. A
 purchase is a TRADE and goes through `figaro-operator` instead.
 
-`witnessContent.mjs` (the verified read behind an attestation's fingerprint)
-and `ipfsRead.mjs` (the one gateway reader every component here shares) sit
+`witnessContent.mjs` (the verified read behind an attestation's fingerprint),
+`anchoredContent.mjs` (the verified reads of a clause spec and an assembly
+template — the analyst decodes and prices with nothing else) and `ipfsRead.mjs` (the one gateway reader every component here shares) sit
 under both. The fingerprint→address derivation itself is `witnessContentCid`
 (`@figaro-protocol/sdk/derive` — pure, no I/O); this runtime and
 `frontend/lib/composition/witnessContent.ts` both consume that one export,

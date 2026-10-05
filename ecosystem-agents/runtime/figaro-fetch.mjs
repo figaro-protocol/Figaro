@@ -26,6 +26,7 @@ import {
 import { frame } from "./dataChannel.mjs";
 import { cidOf, fetchIpfsText } from "./ipfsRead.mjs";
 import { fetchWitnessContent } from "./witnessContent.mjs";
+import { fetchAnchoredClauseSpec, fetchAnchoredTemplate } from "./anchoredContent.mjs";
 
 function fail(message) {
     console.error(`figaro-fetch: ${message}`);
@@ -96,9 +97,12 @@ async function main() {
         const graph = await discovery();
         const clause = graph.getClause(computeClauseKey(clauseId, version));
         if (!clause) fail(`clause ${clauseId} v${version} is not live on the registry`);
-        const content = await fetchIpfs(cidOf(clause.contentURI));
+        // Verified against the registry's content hash before it is printed:
+        // a gateway can serve any bytes.
+        const hit = await fetchAnchoredClauseSpec(clause);
+        if (hit.absent) fail(`clause ${clauseId} v${version}: no anchored spec at ${clause.contentURI} — ${hit.absent} (absence, not the registry's content)`);
         console.log(frame({
-            source: "clause-registry", refKind: "cid", ref: cidOf(clause.contentURI), content,
+            source: "clause-registry", refKind: "cid", ref: cidOf(clause.contentURI), content: hit.text,
         }));
         return;
     }
@@ -108,9 +112,11 @@ async function main() {
         const graph = await discovery();
         const assembly = graph.getAssembly(compositionHash);
         if (!assembly) fail(`assembly ${compositionHash} is not live on the registry`);
-        const content = await fetchIpfs(cidOf(assembly.contentURI));
+        // Verified against its composition hash before it is printed.
+        const hit = await fetchAnchoredTemplate(assembly);
+        if (hit.absent) fail(`assembly ${compositionHash}: no anchored template at ${assembly.contentURI} — ${hit.absent} (absence, not the registry's content)`);
         console.log(frame({
-            source: "assembly-registry", refKind: "cid", ref: cidOf(assembly.contentURI), content,
+            source: "assembly-registry", refKind: "cid", ref: cidOf(assembly.contentURI), content: hit.text,
         }));
         return;
     }

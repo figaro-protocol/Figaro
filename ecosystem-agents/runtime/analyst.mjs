@@ -45,8 +45,9 @@ import {
     walletRecord,
 } from "@figaro-protocol/sdk/derive";
 import { frame } from "./dataChannel.mjs";
-import { cidOf, fetchIpfsText, ipfsGateways } from "./ipfsRead.mjs";
+import { ipfsGateways } from "./ipfsRead.mjs";
 import { fetchWitnessContent } from "./witnessContent.mjs";
+import { fetchAnchoredClauseSpec, fetchAnchoredTemplate } from "./anchoredContent.mjs";
 
 // ── Serialization ───────────────────────────────────────────────────────────
 
@@ -81,9 +82,11 @@ async function loadSpecSource(discovery, { gateways } = {}) {
     for (const clause of discovery.getClauses()) {
         let raw;
         try {
-            const text = await fetchIpfsText(cidOf(clause.contentURI), { gateways });
-            if (text === null) { skipped.push({ contentURI: clause.contentURI, reason: "absent" }); continue; }
-            raw = JSON.parse(text);
+            // Verified against the registry's content hash: a spec a gateway
+            // substituted is skipped, never decoded with.
+            const hit = await fetchAnchoredClauseSpec(clause, { gateways });
+            if (hit.absent) { skipped.push({ contentURI: clause.contentURI, reason: hit.absent }); continue; }
+            raw = hit.raw;
         } catch (e) {
             skipped.push({ contentURI: clause.contentURI, reason: e instanceof Error ? e.name : "unreadable" });
             continue;
@@ -268,10 +271,11 @@ export async function syncCorpus({
     const pins = [];
     for (const assembly of discovery.getAssemblies()) {
         try {
-            const text = await fetchIpfsText(cidOf(assembly.contentURI), { gateways });
-            if (!text) continue;
-            const template = JSON.parse(text);
-            for (const agreement of template.agreements ?? []) {
+            // Verified against its composition hash: a template a gateway
+            // substituted contributes no pin.
+            const hit = await fetchAnchoredTemplate(assembly, { gateways });
+            if (hit.absent) continue;
+            for (const agreement of hit.template.agreements ?? []) {
                 const pin = readUtilityTokenPin(agreement.clauses ?? {}, specs);
                 if (pin && !pins.includes(pin)) pins.push(pin);
             }
