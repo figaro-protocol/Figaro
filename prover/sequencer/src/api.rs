@@ -251,6 +251,8 @@ pub fn router(state: AppState, config: ApiConfig) -> Router {
         .merge(submissions)
         .route("/health", get(health))
         .route("/status", get(status))
+        // The state behind the verifier's root, as this relay holds it.
+        .route("/state", get(get_state))
         // Publication — the batch universe's mirror of FigaroCore's events.
         .route("/orders/:order_hash", get(get_order))
         .route("/processes/:process_id", get(get_process))
@@ -392,6 +394,21 @@ async fn status(State(state): State<AppState>) -> impl IntoResponse {
         last_settle_error,
         archive,
     })
+}
+
+/// `GET /state` — the state behind this relay's root: the kept-state file's
+/// own format (`KernelStateSnapshot`), so `curl -o <STATE_PATH> …/state`
+/// gives another relay the state to start on. Nothing in it is private: it
+/// is derived from the signed operations the publication routes serve. It is
+/// checked, never trusted — a relay started on it recomputes the root and
+/// refuses to start when it is not the verifier's.
+async fn get_state(State(state): State<AppState>) -> impl IntoResponse {
+    let snapshot = state.state_mirror.snapshot().await;
+    let root = state.state_mirror.state_root().await;
+    (
+        [("x-figaro-state-root", format!("{root:?}"))],
+        Json(snapshot),
+    )
 }
 
 // ── Publication reads ────────────────────────────────────────────

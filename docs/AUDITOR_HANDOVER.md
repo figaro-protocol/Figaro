@@ -168,16 +168,15 @@ whole scope, Solidity and Rust together.
 git rev-parse 'audit-2026-10^{commit}'
 ```
 
-No change is made to a path in scope during the audit window, the three below
+No change is made to a path in scope during the audit window, the changes below
 excepted. The tag is never moved: a change to the scope is a new tag.
 
 ### Changes after the tag
 
-Three changes were made to the relay (`prover/sequencer/`) after the tag, on
+Seven changes were made to the relay (`prover/sequencer/`) after the tag, on
 the maintainer's override, each closing a defect the project's own review
 found. None touches a contract, a guest crate, a `Cargo.toml` or the lock, so the
-guest's bytes and the verification key are the tag's. The relay's source is
-3,555 lines at the tag and 4,029 with them. This prints all three:
+guest's bytes and the verification key are the tag's. This prints them all:
 
 ```bash
 git diff audit-2026-10 -- prover/sequencer/
@@ -187,11 +186,16 @@ git diff audit-2026-10 -- prover/sequencer/
 |---|---|---|---|
 | A submission's dedup identity covers every input the proof or the verifier judges and admission cannot | A resolve was deduplicated by process id alone, and admission accepts a resolve signed by any key (the root buyer is state). A stranger's resolve for an open process therefore made the buyer's own a duplicate; batch formation refused the stranger's, and the buyer's was never queued. Repeated every tick, it kept the resolve out of every batch at no cost. The same held for the buyer's signature replayed over an incomplete order list, for a seller attestation replayed under another role order, and for an attestation copied with other witness spec bytes. | `prover/sequencer/src/mempool.rs` (`op_key`) | `mempool_resolve_signed_by_a_stranger_does_not_take_the_buyers_slot`, `mempool_resolve_with_another_order_list_does_not_take_the_slot`, `mempool_seller_attest_under_another_role_does_not_take_the_slot`, `mempool_attest_with_other_spec_bytes_does_not_take_the_slot`, `mempool_duplicate_resolve_is_idempotent` |
 | The relay keeps the state behind the verifier's root on disk and builds on no other | The state lived in memory, every start began from genesis, and a root that differed from the verifier's was a warning. After one landed batch a restarted relay proved batches that could only revert, and the state every open batch-path process needs for its resolve ended with the process. The state a batch produces is written before the batch is sent and held for as long as the batch can land (a refused batch's proof is public, and anyone can send it again while the verifier's root is its previous root); the relay reads `stateRoot()` at startup and before every batch, adopts a held state whose root it is, refuses to start when it reads the root and holds no state for it, and builds nothing while it holds none. A batch that landed without the relay reading its receipt is published under the transaction its `BatchSettled` log names. | `prover/sequencer/src/state.rs` (`StateStore`, `held_state_for`), `prover/sequencer/src/main.rs` (`step_to`, `adopt`, the batch loop), `prover/sequencer/src/submitter.rs` (`find_settle_tx`) | the `state_store_*` and `held_state_for_*` tests in `prover/sequencer/tests/sequencer.rs`; `sdk/tests/batch-e2e.test.ts` restarts the relay between its two batches and starts a relay holding no state, which must exit 2 |
+| The relay publishes its state (`GET /state`) | With the state on one relay's disk only, losing that disk left every open batch-path process with no one who could build its resolve. A party or a second relay now fetches the state into its own `STATE_PATH` and starts on it; the root is recomputed and checked against the verifier's, so a copy is checked, never trusted. | `prover/sequencer/src/api.rs` (`get_state`) | `api_state_route_serves_the_state_another_relay_starts_on`; `sdk/tests/batch-e2e.test.ts` starts a second relay on the first relay's `/state` and reads the verifier's root from it |
+| `MAX_BATCH_OPS` is applied | It was read and logged, never applied: a batch took the whole queue (up to 10,000 operations), past what one block holds and one proof finishes. A batch now takes at most `MAX_BATCH_OPS` operations, oldest first. | `prover/sequencer/src/mempool.rs` (`drain_up_to`), the batch loop | `mempool_drains_at_most_the_batch_cap_and_keeps_the_rest_queued` |
+| The batch's clock is the chain's | The batch timestamp was the host's clock. A host clock ahead of the chain made the verifier refuse every batch (`BatchTimestampOutOfRange`). It is now the latest block's timestamp, read before anything is drained. The verifier itself still accepts a timestamp up to `MAX_BATCH_STALENESS` (one hour) behind its block from any prover, so a commitment up to an hour past its deadline can be bonded on the batch path that the kernel would refuse; both parties signed it, and the verifier is as tagged. | `prover/sequencer/src/submitter.rs` (`read_chain_timestamp`), the batch loop | `sdk/tests/batch-e2e.test.ts` (the relay proves against the chain's clock on Anvil) |
+| Funding is allocated per wallet | Each commit was checked against its wallet's balance alone, so several commits from one wallet each passed and `settleBatch` reverted when it pulled their sum, dead-lettering every operation in the batch after minutes of proving. A wallet's balance and allowance are now read once and allocated across the batch's commits in order. | `prover/sequencer/src/submitter.rs` (`allocate_funding`, `filter_funded_commits`) | `funding_is_allocated_across_a_wallets_commits_in_order` |
+| An attestation's witness spec is checked against the registry before proving | The relay checked that the spec parsed; the verifier checks that its hash is `ClauseRegistry.contentHashOf` for the clause and reverts the whole batch otherwise. Anyone could copy a landed attestation with one byte of the spec changed and sink every batch at no cost. The relay now reads the anchor from the verifier's own registry and drops such an attestation alone. | `prover/sequencer/src/submitter.rs` (`attestation_spec`, `filter_anchored_attestations`) | `the_spec_an_attestation_carries_is_what_the_registry_check_reads`; the batch end-to-end test's attestation passes the check against the live registry |
 | The binary's own log lines are on by default | The relay's default log filter named the library's target (`figaro_sequencer`) and not the binary's (`sequencer`), so startup, every refusal to start (the signing key, the guest fingerprint) and every batch-loop line (a batch landed, an operation dropped or dead-lettered) were filtered out unless `RUST_LOG` named both: a relay that refused to start exited 2 and said nothing. | `prover/sequencer/src/main.rs` (the default filter) | `sdk/tests/batch-e2e.test.ts` reads the refusal line of the relay that holds no state |
 
-All three are liveness or operability defects of the relay: none let a batch
+All seven are liveness or operability defects of the relay: none let a batch
 move value the parties did not sign, and the proof and the verifier are as
-tagged. What the second change leaves standing is Known limitation 7.
+tagged. Known limitation 7 states what the state changes leave standing.
 
 ### The kernel
 
@@ -509,7 +513,7 @@ Stated so the review does not spend hours finding them.
    proof of equivalence.
 2. **The relay is not mutation-tested.** Mutation testing covers the guest
    (`figaro-kernel`, `figaro-clause`), where a defect costs a wrong resolution.
-   The relay has its 75 integration tests, 12 unit tests and the batch
+   The relay has its 79 integration tests, 12 unit tests and the batch
    end-to-end test.
 3. **The relay does not yet re-batch around a revoker.** A party who revokes
    its allowance after the relay's funding check and before `settleBatch`
@@ -527,15 +531,16 @@ Stated so the review does not spend hours finding them.
    risk 2's ceiling is to be re-measured on it.
 6. **The incident procedure is written and not rehearsed.** `SECURITY.md`
    § "Incident response"; its redeploy leg is owed one run on Sepolia.
-7. **The state behind the verifier's root is held by the relay that built the
-   last batch.** The verifier stores a root. The state it commits to is on
-   that relay's disk (`STATE_PATH`); no route publishes it, and nothing in
-   this repository rebuilds it from the chain or from the publication
-   archive. A process opened on the batch path resolves only through a batch
-   built on that state, so a relay lost with its disk, or another submitter
-   that lands a batch and keeps its state, leaves those processes with no one
-   who can build their resolve, and their bonds in the verifier. A relay
-   that does not hold the state refuses to start and builds nothing.
+7. **The state behind the verifier's root lives off chain.** The verifier
+   stores a root. The state it commits to is held by the relay that built the
+   last batch (`STATE_PATH`) and published by it (`GET /state`), so a party
+   or a second relay can keep a copy and start on it; nothing in this
+   repository rebuilds it from the chain or from the publication archive. A
+   process opened on the batch path resolves only through a batch built on
+   that state, so if every copy is lost — or another submitter lands a batch
+   and publishes nothing — those processes have no one who can build their
+   resolve, and their bonds stay in the verifier. A relay that does not hold
+   the state refuses to start and builds nothing.
 
 ## Accepted runtime posture
 

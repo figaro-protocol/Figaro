@@ -10,7 +10,7 @@
 /// buy the proof from the Succinct Prover Network (the relay operator pays;
 /// liveness only — the proof still verifies against the vkey).
 use std::sync::Arc;
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::time::Duration;
 
 use alloy_primitives::{Address, B256};
 use tokio::sync::RwLock;
@@ -385,6 +385,18 @@ async fn batch_loop(
             }
         }
 
+        // The batch's clock is the chain's: the guest checks every
+        // commitment deadline against it, and the verifier refuses one ahead
+        // of its own block. Read before anything is drained: a clock that
+        // cannot be read leaves the tick's submissions queued.
+        let timestamp = match submitter::read_chain_timestamp(&submitter_config.rpc_url).await {
+            Ok(t) => t,
+            Err(e) => {
+                warn!(%e, "Could not read the chain's clock — no batch this tick");
+                continue;
+            }
+        };
+
         // Drain pending operations AND the RPGF usage claims together.
         //
         // Claims are applied against the batch's POST-state, so a claim for an
@@ -394,7 +406,9 @@ async fn batch_loop(
         // Draining before the empty-check (and admitting a claims-only batch
         // below) is what stops a claim submitted after the last trade from
         // sitting in the mempool forever.
-        let pending = mempool.drain().await;
+        // At most MAX_BATCH_OPS operations: a batch has to fit in one block
+        // and be proved in one sitting. The rest wait for the next tick.
+        let pending = mempool.drain_up_to(config.max_ops).await;
         let usage_claims = mempool.drain_usage().await;
 
         // Pre-filter usage claims against live chain state so a poison claim
@@ -416,10 +430,6 @@ async fn batch_loop(
         // Get current state snapshot
         let prev_state = state_mirror.snapshot().await;
 
-        let timestamp = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_secs();
 
         // Stateful filter: trial-apply each op against the state mirror
         // and drop any that would abort the proof. apply_batch is
@@ -441,6 +451,13 @@ async fn batch_loop(
         let (valid, unfunded) = submitter::filter_funded_commits(funding.as_ref(), valid).await;
         for (p, reason) in &unfunded {
             warn!(id = p.id, %reason, "Dropped commit at batch formation");
+            failures.record(1, reason.clone()).await;
+        }
+        // An attestation whose witness spec is not the registry's anchored
+        // one reverts the whole batch on chain: dropped here, alone.
+        let (valid, unanchored) = submitter::filter_anchored_attestations(funding.as_ref(), valid).await;
+        for (p, reason) in &unanchored {
+            warn!(id = p.id, %reason, "Dropped attestation at batch formation");
             failures.record(1, reason.clone()).await;
         }
         if valid.is_empty() && usage_claims.is_empty() {

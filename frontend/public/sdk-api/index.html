@@ -1172,7 +1172,7 @@ precisely so nobody reaches for the host clock. Read it from the chain
 wall-clock drift between a signer's machine and the chain expires offers
 that both parties signed in good faith.</li>
 </ul>
-<h4 id="the-sequencer-wire-seven-endpoints" class="tsd-anchor-link">The sequencer wire: seven endpoints<a href="#the-sequencer-wire-seven-endpoints" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h4>
+<h4 id="the-sequencer-wire-eight-endpoints" class="tsd-anchor-link">The sequencer wire: eight endpoints<a href="#the-sequencer-wire-eight-endpoints" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h4>
 <p>What <code>SequencerClient</code> speaks, so you can read a relay's answer (or a curl of
 it) without guessing. Seven routes, in two halves — submission and publication.
 Amounts on this wire are <strong>hex quantities</strong> (<code>&quot;0x7d0&quot;</code>, never <code>&quot;2000&quot;</code>) and
@@ -1211,6 +1211,12 @@ should build them.</p>
 <td>—</td>
 <td>the <code>/health</code> fields plus <code>state_root</code>, <code>dead_lettered_ops</code>, <code>last_settle_error</code>, <code>archive: { first_batch, last_batch, retained_batches, max_batches }</code></td>
 <td><code>status()</code></td>
+</tr>
+<tr>
+<td><code>GET /state</code></td>
+<td>—</td>
+<td>the state behind the relay's root, in the relay's state-file format (<code>KernelStateSnapshot</code>); the root is in the <code>x-figaro-state-root</code> header</td>
+<td>none — save it as another relay's <code>STATE_PATH</code> to start it on this state; the relay checks the root against the verifier's</td>
 </tr>
 <tr>
 <td><code>GET /orders/{orderHash}</code></td>
@@ -2002,7 +2008,7 @@ socket via <code>HttpChannel</code>, not the in-process channel), and
 <li>
 <ul>
 <li><a href="#the-offer-envelope"><span>The offer envelope</span></a></li>
-<li><a href="#the-sequencer-wire-seven-endpoints"><span>The sequencer wire: seven endpoints</span></a></li></ul></li>
+<li><a href="#the-sequencer-wire-eight-endpoints"><span>The sequencer wire: eight endpoints</span></a></li></ul></li>
 <li><a href="#-clause-agnostic-derivations"><span> — <wbr/>Clause-<wbr/>Agnostic <wbr/>Derivations</span></a></li>
 <li>
 <ul>

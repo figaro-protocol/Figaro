@@ -2067,3 +2067,139 @@ async fn mempool_attest_with_other_spec_bytes_does_not_take_the_slot() {
         assert_ne!(real.id, squat.id);
     }
 }
+
+// ── A batch is bounded ────────────────────────────────────────────────
+
+#[tokio::test]
+async fn mempool_drains_at_most_the_batch_cap_and_keeps_the_rest_queued() {
+    let mp = mempool();
+    let ops = canonical_ops();
+    let mut ids = Vec::new();
+    for op in &ops {
+        ids.push(mp.submit(op.clone()).await.unwrap().id);
+    }
+    let first = mp.drain_up_to(3).await;
+    assert_eq!(first.iter().map(|p| p.id).collect::<Vec<_>>(), ids[..3]);
+    assert_eq!(mp.len().await, 1, "the fourth op waits for the next batch");
+    // The one still queued is still deduplicated; the drained ones are not.
+    assert!(mp.submit(ops[3].clone()).await.unwrap().duplicate);
+    assert!(!mp.submit(ops[0].clone()).await.unwrap().duplicate);
+    assert_eq!(mp.drain_up_to(10).await.len(), 2);
+}
+
+// ── Funding is one balance per wallet, however many commits draw on it ──
+
+fn commit_from(base: &Commitment, salt: u64, payment: u64) -> PendingOp {
+    let c = Commitment {
+        salt: alloy_primitives::U256::from(salt),
+        payment: alloy_primitives::U256::from(payment),
+        expected_cumulative_value: alloy_primitives::U256::from(payment),
+        ..base.clone()
+    };
+    PendingOp {
+        id: salt,
+        key: B256::with_last_byte(salt as u8),
+        op: KernelOp::Commit {
+            commitment: c,
+            buyer_sig: Signature { r: B256::ZERO, s: B256::ZERO, v: 27 },
+            seller_sig: Signature { r: B256::ZERO, s: B256::ZERO, v: 27 },
+        },
+    }
+}
+
+#[test]
+fn funding_is_allocated_across_a_wallets_commits_in_order() {
+    use figaro_sequencer::submitter::allocate_funding;
+    use std::collections::HashMap;
+    let base = match &canonical_ops()[0] {
+        KernelOp::Commit { commitment, .. } => commitment.clone(),
+        other => panic!("canonical ops[0] is the commit, got {other:?}"),
+    };
+    // Bonds are 2 × payment on each side. The buyer holds enough for two
+    // commits of 10, not three; the seller is rich.
+    let rich = (alloy_primitives::U256::from(1_000u64), alloy_primitives::U256::from(1_000u64));
+    let mut funds = HashMap::new();
+    funds.insert((base.currency, base.buyer), (alloy_primitives::U256::from(40u64), alloy_primitives::U256::from(1_000u64)));
+    funds.insert((base.currency, base.seller), rich);
+    let ops = vec![commit_from(&base, 1, 10), commit_from(&base, 2, 10), commit_from(&base, 3, 10)];
+    // Each commit alone is funded: the old per-commit check passed all three,
+    // and the batch reverted when the verifier pulled the sum.
+    let (valid, dropped) = allocate_funding(ops, &funds);
+    assert_eq!(valid.iter().map(|p| p.id).collect::<Vec<_>>(), vec![1, 2]);
+    assert_eq!(dropped.len(), 1);
+    assert_eq!(dropped[0].0.id, 3);
+    assert!(dropped[0].1.contains("already draws 40"), "{}", dropped[0].1);
+
+    // The allowance binds the same way as the balance.
+    let mut low_allowance = funds.clone();
+    low_allowance.insert((base.currency, base.buyer), (alloy_primitives::U256::from(1_000u64), alloy_primitives::U256::from(25u64)));
+    let (valid, _) = allocate_funding(vec![commit_from(&base, 1, 10), commit_from(&base, 2, 10)], &low_allowance);
+    assert_eq!(valid.len(), 1);
+
+    // A wallet whose funds could not be read is dropped conservatively.
+    let (valid, dropped) = allocate_funding(vec![commit_from(&base, 1, 10)], &HashMap::new());
+    assert!(valid.is_empty());
+    assert!(dropped[0].1.contains("unverifiable"));
+
+    // Buyer and seller one wallet: both bonds draw on its one balance.
+    let mut same = base.clone();
+    same.seller = same.buyer;
+    let mut one = HashMap::new();
+    one.insert((base.currency, base.buyer), (alloy_primitives::U256::from(30u64), alloy_primitives::U256::from(1_000u64)));
+    let (valid, dropped) = allocate_funding(vec![commit_from(&same, 1, 10)], &one);
+    assert!(valid.is_empty(), "40 of bonds from a wallet holding 30");
+    assert_eq!(dropped.len(), 1);
+}
+
+// ── An attestation's spec is checked against the anchor before proving ──
+
+#[test]
+fn the_spec_an_attestation_carries_is_what_the_registry_check_reads() {
+    use figaro_sequencer::submitter::attestation_spec;
+    let ops = canonical_ops();
+    for index in [1usize, 2] {
+        let (clause, spec_hash) = attestation_spec(&ops[index]).expect("an attestation");
+        let (expected_clause, spec_json) = match &ops[index] {
+            KernelOp::AttestAsSeller { clause_id, proof, .. } | KernelOp::AttestAsBuyer { clause_id, proof, .. } => {
+                (*clause_id, proof.spec_json.clone())
+            }
+            _ => unreachable!(),
+        };
+        assert_eq!(clause, expected_clause);
+        // The anchor the verifier compares: keccak256 of the exact bytes.
+        assert_eq!(spec_hash, keccak256(spec_json.as_bytes()));
+        let mut copy = ops[index].clone();
+        if let KernelOp::AttestAsSeller { proof, .. } | KernelOp::AttestAsBuyer { proof, .. } = &mut copy {
+            proof.spec_json.push(' ');
+        }
+        assert_ne!(attestation_spec(&copy).unwrap().1, spec_hash, "one byte moves the hash");
+    }
+    assert!(attestation_spec(&ops[0]).is_none());
+    assert!(attestation_spec(&ops[3]).is_none());
+}
+
+// ── The state is published, so another relay can start on it ───────────
+
+#[tokio::test]
+async fn api_state_route_serves_the_state_another_relay_starts_on() {
+    let mut state = test_app_state();
+    let next = canonical_next();
+    state.state_mirror = StateMirror::from_snapshot(next.state.clone());
+    let app = api::router(state, ApiConfig::default());
+    let response = app
+        .oneshot(Request::builder().uri("/state").body(Body::empty()).unwrap())
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
+    let header = response.headers()["x-figaro-state-root"].to_str().unwrap().to_string();
+    assert_eq!(header, format!("{:?}", next.root));
+    let body = axum::body::to_bytes(response.into_body(), 1 << 20).await.unwrap();
+
+    // The body is the kept-state file's format: written as STATE_PATH, it is
+    // the state a second relay opens and starts on, with the same root.
+    let path = temp_state("fetched");
+    tokio::fs::write(&path, &body).await.unwrap();
+    let (_, kept) = StateStore::open(Some(path)).await.unwrap();
+    let mirror = StateMirror::from_snapshot(kept.expect("the fetched state parses as a kept state"));
+    assert_eq!(mirror.state_root().await, next.root);
+}

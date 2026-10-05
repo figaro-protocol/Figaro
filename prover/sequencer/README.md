@@ -185,7 +185,7 @@ floors): Groth16 wrap ~14 GB RAM, PLONK wrap ~60 GB; both wrap through the
 | `SEQUENCER_PRIVATE_KEY` | none — required | Resolution tx signer (pays gas; no protocol privilege); the relay refuses to start without it |
 | `LISTEN_ADDR` | `0.0.0.0:3001` | HTTP listen address |
 | `BATCH_INTERVAL_SECS` | `10` | Batch assembly tick |
-| `MAX_BATCH_OPS` | `100` | Max ops per assembled batch |
+| `MAX_BATCH_OPS` | `100` | Most operations one batch takes, oldest first; the rest wait for the next tick |
 | `MEMPOOL_MAX_OPS` | `10000` | Pending-op queue cap |
 | `MEMPOOL_MAX_USAGE_CLAIMS` | `10000` | Pending usage-claim queue cap |
 | `MAX_BODY_BYTES` | `1048576` | Per-request HTTP body cap |
@@ -229,6 +229,12 @@ All errors are structured JSON: `{ "error": "<reason>" }`.
 
 ### Status
 
+- `GET /state` — the state behind this relay's root (`KernelStateSnapshot`,
+  the kept-state file's own format; the root is in the `x-figaro-state-root`
+  header). `curl -o <STATE_PATH> <relay>/state` gives another relay the state
+  to start on; it recomputes the root and refuses to start unless it is the
+  verifier's. Nothing in it is private — it is derived from the signed
+  operations the publication routes serve.
 - `GET /health` — liveness + bounded counts:
   `{ "status": "ok", "pending_ops", "pending_usage_claims", "batches_settled" }`.
 - `GET /status` — the above plus the sequencer's local `state_root` mirror,
@@ -345,10 +351,12 @@ The relay builds only on a held state whose root is the verifier's. It reads
   `last_settle_error`.
 
 A relay that holds no state for a verifier past genesis therefore never
-proves a batch that can only revert. Back up the state file and its journal
-after every batch that lands: losing them — with no other relay holding the
-same state — leaves the open batch-path processes without anyone who can
-build their resolve. A state file or a journal that is there and does not
+proves a batch that can only revert. The relay publishes its state
+(`GET /state`), so a party or a second relay can hold a copy and start on it:
+fetch it into a `STATE_PATH` and start — the relay checks the copy's root
+against the verifier's. Back up the state file and its journal after every
+batch that lands, or keep a copy of `/state`: losing every copy leaves the
+open batch-path processes without anyone who can build their resolve. A state file or a journal that is there and does not
 parse is a refusal to start, never a silent start from less than this host
 held. With `STATE_PATH=` (empty) the state lives in memory and a restart
 holds nothing. The journal carries one full state per held batch and is
@@ -360,9 +368,31 @@ A commit's two bonds — the buyer's 2 × payment, the seller's 2 × cumulative
 value — are read as balance and allowance to the batch verifier twice: when
 the operation arrives (`/submit` answers `402` with the party and the
 shortfall) and again at batch formation, against the latest block, right
-before proving. A commit that no longer funds is dropped there, counted on
-`/status` as dead-lettered with its reason, and re-submittable once funded;
-it is never proved. Without `BATCH_VERIFIER_ADDRESS` (the prove-only dry run)
+before proving. At batch formation each wallet's balance and allowance are
+read once and allocated across the batch's commits in order — the verifier
+pulls a wallet's bonds from one balance and one allowance — so a commit is
+kept only if its wallet still covers it after the commits kept before it
+(both bonds of a commit where the buyer is the seller count together). A
+commit that does not fund is dropped there, counted on `/status` as
+dead-lettered with its reason, and re-submittable once funded; it is never
+proved.
+
+## Before proving
+
+Two more checks run at batch formation, each dropping one operation instead
+of losing the batch:
+
+- **The clock.** The batch's timestamp is the latest block's, read from the
+  node before anything is drained; the guest checks every commitment
+  deadline against it, and the verifier refuses one ahead of its own block.
+  A clock that cannot be read builds nothing that tick. The host's clock is
+  never read.
+- **The witness spec.** An attestation carries its clause spec's text, and
+  the verifier compares its hash with `ClauseRegistry.contentHashOf` for the
+  clause — a mismatch reverts the whole batch. The relay reads the same
+  anchor from the verifier's own registry (`clauseRegistry()`) and drops an
+  attestation whose spec is not it, so a copy of a landed attestation with
+  one byte changed costs nobody else their batch. Without `BATCH_VERIFIER_ADDRESS` (the prove-only dry run)
 nothing is read. A read failure at the door is not a verdict — the batch-time
 check decides; a read failure at batch time drops the commit conservatively.
 

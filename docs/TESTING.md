@@ -215,8 +215,11 @@ attestation under another role order, and an attestation with other witness
 spec bytes each leave the real one queued; the state store — the kept state
 survives a restart with its root, a batch's state is held across a crash
 before its receipt and for as long as the batch can land, a held root is not
-replaced, a damaged state file or journal is refused, and a verifier root
-the relay does not hold finds nothing; assembler fixpoint filtering incl. the resolve-closes-the-evidence-window
+replaced, a damaged state file or journal is refused, a verifier root the
+relay does not hold finds nothing, and `GET /state` serves a state another
+relay opens with the same root; a batch takes at most `MAX_BATCH_OPS`; a
+wallet's funds are allocated across a batch's commits; an attestation's
+spec hash is the registry check's input; assembler fixpoint filtering incl. the resolve-closes-the-evidence-window
 property and the three crafted streams — a bond committed twice, in one batch
 and across two; a resolve that omits an order; a resolve replayed in its own
 batch and in the next — each dead-lettered with the mirror's own reason while
@@ -237,8 +240,9 @@ own order hash and both signatures recover to the parties named inside it).
 the witness payload, the Rust sequencer binary proves + submits, the Solidity
 verifier checks the hashes and the registry anchor on a live Anvil — value
 legs asserted from the chain. Between its two batches the test starts a relay
-that holds no state, which must refuse to start, and restarts the relay that
-built the first batch, which must resume on its kept state and resolve the
+that holds no state, which must refuse to start; starts a second relay on the
+first relay's `GET /state`, which must hold the verifier's root; and restarts
+the relay that built the first batch, which must resume on its kept state and resolve the
 second. The verifier is deployed with the fingerprint
 the binary itself reports (`sequencer --vkey`), so the sequencer's startup
 comparison against `programVKey()` runs for real. Anvil-gated (skips clean without it) locally;

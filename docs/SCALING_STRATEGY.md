@@ -575,8 +575,10 @@ of ~21k gas, repeatable against specific counterparties.
    bonds — the buyer's 2 × payment, the seller's 2 × cumulative value — are
    read as balance and allowance to the verifier when the operation arrives
    (`/submit` refuses an unfunded commit with `402` and a reason) and again at
-   batch formation, right before proving; a commit that no longer funds is
-   dropped there and dead-lettered, never proved. A revocation inside the
+   batch formation, right before proving, where each wallet's funds are
+   allocated across the batch's commits in order (the verifier pulls a
+   wallet's bonds from one balance); a commit that does not fund is dropped
+   there and dead-lettered, never proved. A revocation inside the
    proving window itself still reverts the batch; the chain's evaluated
    refusal is deterministic, so the batch is dead-lettered on the first
    attempt, never re-proved, and its operations are re-submittable.
@@ -600,10 +602,10 @@ of ~21k gas, repeatable against specific counterparties.
    mirror past a landed batch.
 4. **Keep the root's preimage** — the sequencer holds the off-chain PREIMAGE
    of the on-chain state root, on disk at `STATE_PATH`, written before each
-   batch is sent. The publication archive does not carry it and nothing
-   rebuilds it from the chain: back up the file and its `.next.jsonl`
-   journal after every batch that lands. A relay that does not hold the
-   state behind the verifier's root refuses to start.
+   batch is sent, and publishes it (`GET /state`) so a party or a second
+   relay can keep a copy and start on it. The publication archive does not
+   carry it and nothing rebuilds it from the chain: keep copies. A relay
+   that does not hold the state behind the verifier's root refuses to start.
 5. **Retry on gas spikes** — a `settleBatch` that reverts on gas is retried
    with more; proofs are expensive and are not discarded.
 

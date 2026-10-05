@@ -304,9 +304,20 @@ impl Mempool {
     /// Drain all pending operations for batch assembly. Clears the dedup
     /// index: idempotency covers the pending window only.
     pub async fn drain(&self) -> Vec<PendingOp> {
+        self.drain_up_to(usize::MAX).await
+    }
+
+    /// Drain at most `max` pending operations, oldest first, for one batch.
+    /// The rest stay queued in order, deduplicated as before; the drained
+    /// ones leave the dedup index.
+    pub async fn drain_up_to(&self, max: usize) -> Vec<PendingOp> {
         let mut inner = self.inner.lock().await;
-        inner.index.clear();
-        inner.pending.drain(..).collect()
+        let take = max.min(inner.pending.len());
+        let drained: Vec<PendingOp> = inner.pending.drain(..take).collect();
+        for op in &drained {
+            inner.index.remove(&op.key);
+        }
+        drained
     }
 
     /// Drain all pending usage claims for batch assembly.

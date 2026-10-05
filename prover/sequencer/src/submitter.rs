@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use alloy::network::EthereumWallet;
 /// On-chain submitter — sends `settleBatch` transactions to the
 /// FigaroBatchVerifier contract via alloy.
@@ -137,12 +139,70 @@ pub async fn check_commit_funding(
     Ok(Ok(()))
 }
 
+/// What one wallet holds and allows the verifier, in one token.
+pub type Funds = (U256, U256);
+
+/// Allocate each wallet's funds across the batch's commits, in order. A
+/// batch pulls each party's bonds from ONE balance and ONE allowance, so a
+/// commit funds only if the wallet still covers it after every commit kept
+/// before it; one that does not is dropped with the reason, and the commits
+/// after it are judged on what is left. A wallet missing from `funds` (its
+/// read failed) drops its commits conservatively. Every other op passes.
+pub fn allocate_funding(
+    pending: Vec<PendingOp>,
+    funds: &HashMap<(Address, Address), Funds>,
+) -> (Vec<PendingOp>, Vec<(PendingOp, String)>) {
+    let mut committed: HashMap<(Address, Address), U256> = HashMap::new();
+    let mut valid = Vec::with_capacity(pending.len());
+    let mut dropped = Vec::new();
+    for op in pending {
+        let KernelOp::Commit { commitment: c, .. } = &op.op else {
+            valid.push(op);
+            continue;
+        };
+        let (buyer_need, seller_need) = bonds_of(c);
+        // The two bonds of one commit draw on the same wallet when the buyer
+        // is the seller.
+        let mut need: Vec<(&'static str, Address, U256)> = vec![("buyer", c.buyer, buyer_need)];
+        if c.seller == c.buyer {
+            need[0].2 += seller_need;
+        } else {
+            need.push(("seller", c.seller, seller_need));
+        }
+        let mut verdict = Ok(());
+        for (label, who, bond) in &need {
+            let Some(&(balance, allowance)) = funds.get(&(c.currency, *who)) else {
+                verdict = Err(format!("funding unverifiable, dropped conservatively: {label} {who}'s balance and allowance could not be read"));
+                break;
+            };
+            let before = committed.get(&(c.currency, *who)).copied().unwrap_or_default();
+            if !commit_funded(balance, allowance, before + bond) {
+                verdict = Err(format!(
+                    "unfunded commitment: {label} {who} holds {balance} and allows {allowance} to the verifier; this batch already draws {before} and the bond needs {bond}"
+                ));
+                break;
+            }
+        }
+        match verdict {
+            Ok(()) => {
+                for (_, who, bond) in need {
+                    *committed.entry((c.currency, who)).or_default() += bond;
+                }
+                valid.push(op);
+            }
+            Err(reason) => dropped.push((op, reason)),
+        }
+    }
+    (valid, dropped)
+}
+
 /// Batch-formation funding filter over the ops that passed the mirror's
-/// trial-apply. Commits whose bonds do not fund at the latest block are
-/// dropped with the reason (re-submittable once funded); a read failure
-/// drops the commit conservatively, never proves against unverified
-/// funding. Every other op passes. `None` (no verifier configured — a
-/// prove-only dry run) passes everything through untouched.
+/// trial-apply: each wallet's balance and allowance are read once, at the
+/// latest block, and allocated across the batch's commits
+/// ([`allocate_funding`]). A dropped commit is re-submittable once funded; a
+/// read failure drops conservatively, never proves against unverified
+/// funding. `None` (no verifier configured — a prove-only dry run) passes
+/// everything through untouched.
 pub async fn filter_funded_commits(
     gate: Option<&FundingGate>,
     pending: Vec<PendingOp>,
@@ -150,23 +210,123 @@ pub async fn filter_funded_commits(
     let Some(gate) = gate else {
         return (pending, Vec::new());
     };
+    let mut wallets: Vec<(Address, Address)> = Vec::new();
+    for op in &pending {
+        if let KernelOp::Commit { commitment: c, .. } = &op.op {
+            for who in [c.buyer, c.seller] {
+                if !wallets.contains(&(c.currency, who)) {
+                    wallets.push((c.currency, who));
+                }
+            }
+        }
+    }
+    let mut funds = HashMap::new();
+    if let Ok(url) = gate.rpc_url.parse() {
+        let provider = ProviderBuilder::new().connect_http(url);
+        for (currency, who) in wallets {
+            let token = IERC20Funding::new(currency, &provider);
+            let read = async {
+                let balance = token.balanceOf(who).call().await.ok()?;
+                let allowance = token.allowance(who, gate.verifier).call().await.ok()?;
+                Some((balance, allowance))
+            };
+            if let Some(f) = read.await {
+                funds.insert((currency, who), f);
+            }
+        }
+    }
+    allocate_funding(pending, &funds)
+}
+
+/// Whether an attestation's witness spec is the one the registry anchors —
+/// the check the verifier makes on chain (`contentHashOf(clauseKey)`), which
+/// reverts the WHOLE batch. `None` for every other op.
+pub fn attestation_spec(op: &KernelOp) -> Option<(alloy::primitives::B256, alloy::primitives::B256)> {
+    match op {
+        KernelOp::AttestAsSeller { clause_id, proof, .. } | KernelOp::AttestAsBuyer { clause_id, proof, .. } => {
+            Some((*clause_id, alloy::primitives::keccak256(proof.spec_json.as_bytes())))
+        }
+        _ => None,
+    }
+}
+
+/// Drop every attestation whose witness spec is not the registry's anchored
+/// one, before proving: one such op reverts the whole batch on chain, and
+/// anyone can copy a landed attestation with one byte of the spec changed.
+/// The registry is the verifier's own (`clauseRegistry()`), read once per
+/// batch per clause; a read failure drops conservatively. `None` (no
+/// verifier configured — a prove-only dry run) passes everything through.
+pub async fn filter_anchored_attestations(
+    gate: Option<&FundingGate>,
+    pending: Vec<PendingOp>,
+) -> (Vec<PendingOp>, Vec<(PendingOp, String)>) {
+    let Some(gate) = gate else {
+        return (pending, Vec::new());
+    };
+    if !pending.iter().any(|p| attestation_spec(&p.op).is_some()) {
+        return (pending, Vec::new());
+    }
+    let mut anchors: HashMap<alloy::primitives::B256, Option<alloy::primitives::B256>> = HashMap::new();
+    let registry = match gate.rpc_url.parse() {
+        Ok(url) => {
+            let provider = ProviderBuilder::new().connect_http(url);
+            IFigaroBatchVerifier::new(gate.verifier, &provider)
+                .clauseRegistry()
+                .call()
+                .await
+                .ok()
+                .map(|r| (r, provider))
+        }
+        Err(_) => None,
+    };
     let mut valid = Vec::with_capacity(pending.len());
     let mut dropped = Vec::new();
     for op in pending {
-        let verdict = match &op.op {
-            KernelOp::Commit { commitment, .. } => match check_commit_funding(gate, commitment).await {
-                Ok(Ok(())) => Ok(()),
-                Ok(Err(unfunded)) => Err(format!("unfunded commitment: {unfunded}")),
-                Err(read) => Err(format!("funding unverifiable, dropped conservatively: {read}")),
-            },
-            _ => Ok(()),
+        let Some((clause, spec_hash)) = attestation_spec(&op.op) else {
+            valid.push(op);
+            continue;
         };
-        match verdict {
-            Ok(()) => valid.push(op),
-            Err(reason) => dropped.push((op, reason)),
+        if let std::collections::hash_map::Entry::Vacant(slot) = anchors.entry(clause) {
+            let anchored = match &registry {
+                Some((address, provider)) => IClauseRegistry::new(*address, provider)
+                    .contentHashOf(clause)
+                    .call()
+                    .await
+                    .ok(),
+                None => None,
+            };
+            slot.insert(anchored);
+        }
+        match anchors[&clause] {
+            Some(anchored) if anchored == spec_hash => valid.push(op),
+            Some(anchored) => dropped.push((
+                op,
+                format!("witness spec {spec_hash} is not the registry's anchored spec {anchored} for clause {clause} — the verifier would revert the batch"),
+            )),
+            None => dropped.push((
+                op,
+                format!("the registry's spec for clause {clause} could not be read — dropped conservatively"),
+            )),
         }
     }
     (valid, dropped)
+}
+
+/// The latest block's timestamp — the batch's clock. The guest checks every
+/// commitment deadline against it and the verifier refuses a timestamp
+/// ahead of its own block, so it is the chain's, never the host's.
+pub async fn read_chain_timestamp(rpc_url: &str) -> Result<u64, String> {
+    let provider = ProviderBuilder::new().connect_http(
+        rpc_url
+            .parse()
+            .map_err(|e| format!("invalid rpc url: {e}"))?,
+    );
+    let block = provider
+        .get_block_by_number(alloy::eips::BlockNumberOrTag::Latest)
+        .await
+        .map_err(|e| format!("latest block read failed: {e}"))?
+        .ok_or_else(|| "the node returned no latest block".to_string())?;
+    Ok(block.header.timestamp)
 }
 
 // Generate Rust bindings for the FigaroBatchVerifier contract.
@@ -225,6 +385,7 @@ sol! {
         );
 
         function stateRoot() external view returns (bytes32);
+        function clauseRegistry() external view returns (address);
         function programVKey() external view returns (bytes32);
         function batchCount() external view returns (uint64);
     }
@@ -253,6 +414,7 @@ sol! {
     #[sol(rpc)]
     interface IClauseRegistry {
         function depositOf(bytes32 idHash) external view returns (address registeredBy, bool withdrawn);
+        function contentHashOf(bytes32 idHash) external view returns (bytes32);
     }
 }
 

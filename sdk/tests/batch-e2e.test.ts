@@ -21,7 +21,8 @@
  *   4. Start sequencer as child process
  *   5. Submit Commit + AttestAsSeller (RuntimeWitness) via SequencerClient
  *   6. Wait for batch 1: bonds pulled, Attestation re-emitted
- *   6b. A relay holding no state refuses to start; the relay that built
+ *   6b. A relay holding no state refuses to start; a second relay starts
+ *       on the state the first publishes (GET /state); the relay that built
  *       batch 1 restarts and resumes on its kept state
  *   7. Submit Resolve; wait for batch 2
  *   8. Verify: final balances, state root advanced, batch count
@@ -797,6 +798,35 @@ describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
         });
         expect(statelessOutput).toContain("does not hold the state behind the verifier's root");
         expect(statelessExit).toBe(2);
+
+        // A second relay takes over from the published state: it fetches
+        // the first relay's GET /state into its own STATE_PATH and starts on
+        // it, holding the verifier's root. Nothing in the fetched file is
+        // trusted — the relay recomputes the root and would refuse a wrong one.
+        const takeoverState = path.join(os.tmpdir(), `sequencer-state-e2e-${process.pid}-takeover.json`);
+        const publishedState = await fetch(`${SEQUENCER_URL}/state`);
+        expect(publishedState.ok).toBe(true);
+        fs.writeFileSync(takeoverState, Buffer.from(await publishedState.arrayBuffer()));
+        const second = startSequencer(batchVerifierAddress, usageCounterAddress, registries, {
+            STATE_PATH: takeoverState,
+            ARCHIVE_PATH: "",
+            LISTEN_ADDR: `0.0.0.0:${SEQUENCER_PORT + 2}`,
+        });
+        try {
+            await waitForSequencer(`http://127.0.0.1:${SEQUENCER_PORT + 2}`, 10 * 60_000);
+            const secondStatus = await new SequencerClient({ url: `http://127.0.0.1:${SEQUENCER_PORT + 2}` }).status();
+            const rootNow = await publicClient.readContract({
+                address: batchVerifierAddress,
+                abi: BATCH_VERIFIER_ABI,
+                functionName: "stateRoot",
+            });
+            expect(secondStatus.state_root.toLowerCase()).toBe((rootNow as string).toLowerCase());
+        } finally {
+            await stopSequencer(second);
+            for (const suffix of ["", ".tmp", ".next.jsonl", ".next.jsonl.tmp"]) {
+                fs.rmSync(takeoverState + suffix, { force: true });
+            }
+        }
 
         // The relay that built batch 1 restarts and resumes on its kept
         // state: the resolve below lands in a batch built on it.
