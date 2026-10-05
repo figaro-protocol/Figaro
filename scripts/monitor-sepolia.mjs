@@ -7,8 +7,10 @@
 //   RPC_URL          the node (default: a public Sepolia endpoint)
 //   CHAIN_ID         which deployments/<chainId>.json to watch (default 11155111)
 //   WINDOW_BLOCKS    how far back the event-window checks look (default 8000,
-//                    about twenty-seven hours of Sepolia blocks — wider than the
-//                    daily schedule so nothing falls between two runs)
+//                    about twenty-seven hours of Sepolia blocks; the workflow
+//                    sets it from the time since its last successful scheduled
+//                    run, so nothing falls between two runs however late one
+//                    starts)
 //   ALERTS_OUT       where the alerts land as JSON (default monitor-alerts.json)
 //   PACE_MS          the least time between two requests to the node (default
 //                    1000 — a keyed node throttles a burst of reads; paced, the

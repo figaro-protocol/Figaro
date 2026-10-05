@@ -117,7 +117,7 @@ them daily and reports only what departs from the expected.
 | `AttestationCoordinator`, `FigaroBatchVerifier`: `Attestation` | attestations on open orders | none; kept in the log |
 
 Alerts go to the maintainer's channel and to the incident agent. The review
-cadence is daily; the watcher runs just before the review, so an alert is read
+cadence is daily; the watcher runs before the review, so an alert is read
 the day it arrives.
 
 ## Incident response
