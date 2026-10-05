@@ -1,6 +1,6 @@
 name: Dependency Audit CI
 
-# Production-dependency supply-chain gate over the three lockfiles: the two npm
+# Production-dependency supply-chain gate over the four lockfiles: the three npm
 # ones and the prover workspace's Cargo.lock. (The maintainers' whole-tree guard
 # battery and semantic gate run pre-commit on the build side of the tooling seam
 # and are not part of the public tree.)
@@ -47,6 +47,14 @@ jobs:
 
             - name: npm audit — frontend (production deps, critical only, static-export advisories set aside — see comment)
               run: node scripts/audit-frontend.mjs
+
+            # The docs site (/docs) is its own static export with its own
+            # lockfile, served from the wallet app's origin: its scripts run
+            # with the same reach as the signing pages, so its dependencies are
+            # held to the frontend's gate.
+            - name: npm audit — docs-site (production deps, critical only)
+              working-directory: ./docs-site
+              run: npm audit --omit=dev --audit-level=critical
 
     cargo-audit:
         name: cargo audit (prover workspace)

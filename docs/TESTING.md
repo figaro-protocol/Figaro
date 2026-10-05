@@ -630,11 +630,13 @@ Per workflow, what it runs and when:
   watcher's test (`scripts/test-monitor.mjs`). The highest-catch
   layer, run in CI. Broader devnet specs stay
   maintainer-run.
-- **`Dependency Audit CI`** — push/PR, NOT path-filtered: two npm-audit legs (root
+- **`Dependency Audit CI`** — push/PR, NOT path-filtered: three npm-audit legs (root
   production deps at high+; frontend production deps at critical-only, through
   `scripts/audit-frontend.mjs`, which sets aside by id the advisories named in
   `frontend/.audit-ignore.json` — each with the reason it cannot reach a static
-  export — and fails on every other critical one), and a `cargo audit` leg over
+  export — and fails on every other critical one; docs-site production deps at
+  critical-only, since `/docs` is served from the wallet app's origin), and a
+  `cargo audit` leg over
   `prover/Cargo.lock` (fails on any vulnerability advisory; unmaintained and
   yanked notices are warnings). The
   whole-tree guard battery and the Claude semantic open-world gate run
