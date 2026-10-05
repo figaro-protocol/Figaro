@@ -2,11 +2,12 @@ import { describe, it, expect } from "vitest";
 import { createWalletClient, http, type PublicClient } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import {
-    buildChainOffers, originateChain, counterSignOffer, type AssemblyTemplate, type ChainNodeSpec, type OfferPolicy,
+    buildChainOffers, originateChain, counterSignOffer, buildBuyerOffer, originateProcess,
+    type AssemblyTemplate, type ChainNodeSpec, type OfferPolicy,
 } from "../src/agent/originate.js";
 import { InProcessChannel } from "../src/agent/coordination.js";
 import { specSourceFromFixtures } from "./specFixtures.js";
-import { computeCommitmentProcessId, computeOrderHash, ZERO_PROCESS_ID } from "../src/commitments.js";
+import { buildDomain, computeCommitmentProcessId, computeOrderHash, COMMITMENT_TYPES, ZERO_PROCESS_ID } from "../src/commitments.js";
 import type { Address } from "../src/types.js";
 
 const BUYER = privateKeyToAccount("0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"); // anvil[0]
@@ -116,5 +117,64 @@ describe("originateChain — abort on any decline (nothing commits)", () => {
         const explodingPub = { getChainId: () => { throw new Error("chain must not be touched on abort"); } } as unknown as PublicClient;
         const result = await originateChain(buyerW, explodingPub, { core: CORE }, { ...params, channel });
         expect(result).toBeNull();
+    });
+});
+
+// ── The reply must be the offer sent ───────────────────────────────────────────
+
+describe("the buyer commits only the offer it sent", () => {
+    // A PublicClient that throws if used: the check runs before any chain call,
+    // so a bad reply approves nothing and commits nothing.
+    const explodingPub = {
+        getChainId: () => { throw new Error("chain must not be touched on a bad reply"); },
+        readContract: () => { throw new Error("chain must not be touched on a bad reply"); },
+    } as unknown as PublicClient;
+    const rootParams = {
+        template: { agreements: [template.agreements[0]] } as AssemblyTemplate,
+        currency: CURRENCY, payment: 1000n, chainId: CHAIN, core: CORE,
+        buyer: BUYER.address, seller: S0.address,
+        overrides: nodes[0].overrides, salt: 7n, deadline: 1_900_000_000n,
+    };
+
+    it("originateProcess refuses a reply that returns another buyer-signed commitment", async () => {
+        // An earlier offer the buyer signed — a larger payment — counter-signed
+        // and returned in place of the one just sent.
+        const earlier = await buildBuyerOffer(buyerW, {
+            ...rootParams, payment: 5000n, salt: 1n,
+            overrides: { "figaro-commerce": { currency: CURRENCY, payment: "5000", lineItems: [{ itemId: "m", name: "Meal", quantity: 1, unitPrice: "5000" }] } },
+        });
+        const replay = await counterSignOffer(w(S0), earlier, { chainId: CHAIN, core: CORE }, () => true, policy);
+        const channel = new InProcessChannel();
+        channel.register(S0.address, async () => replay);
+        await expect(originateProcess(buyerW, explodingPub, { core: CORE } as never, { ...rootParams, channel }))
+            .rejects.toThrow(/not the offer sent.*does not match the drafted struct/);
+    });
+
+    it("originateProcess refuses a counter-signature from another key", async () => {
+        // The struct is the one sent; the signature is S1's, not the seller's.
+        const channel = new InProcessChannel();
+        channel.register(S0.address, async (o) => ({
+            ...o,
+            sellerSig: await w(S1).signTypedData({
+                account: S1, domain: buildDomain(CHAIN, CORE), types: COMMITMENT_TYPES,
+                primaryType: "Commitment", message: o.commitment,
+            }),
+        }));
+        await expect(originateProcess(buyerW, explodingPub, { core: CORE } as never, { ...rootParams, channel }))
+            .rejects.toThrow(/not the offer sent.*does not recover/);
+    });
+
+    it("originateChain refuses a node's reply that is not the offer sent to that node", async () => {
+        // The courier (order-1) answers with the ROOT's counter-signed offer.
+        let rootReply: Awaited<ReturnType<typeof counterSignOffer>> = null;
+        const channel = new InProcessChannel();
+        channel.register(S0.address, async (o) => {
+            rootReply = await counterSignOffer(w(S0), o, { chainId: CHAIN, core: CORE }, () => true, policy);
+            return rootReply;
+        });
+        channel.register(S1.address, async () => rootReply);
+        channel.register(S2.address, (o) => counterSignOffer(w(S2), o, { chainId: CHAIN, core: CORE }, () => true, policy));
+        await expect(originateChain(buyerW, explodingPub, { core: CORE } as never, { ...params, channel }))
+            .rejects.toThrow(/reply for order-1 is not the offer sent/);
     });
 });

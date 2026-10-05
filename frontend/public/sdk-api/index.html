@@ -118,8 +118,10 @@ the EIP-712 commitment against a CHAIN-time deadline (<code>readChainTimestamp</
 <code>computeDeadline</code> — never the machine clock), and hands the offer to the
 channel. The seller re-hashes the agreement against the committed
 <code>agreementHash</code>, runs the same gate through its own <code>specs</code>, applies its
-floors, approves its 2× bond and counter-signs. The buyer approves its own
-2× bond and submits <code>FigaroCore.commit</code>.</li>
+floors, approves its 2× bond and counter-signs. The buyer checks the reply
+is the offer it sent — the same struct, counter-signed by the seller it
+went to (<code>verifyRaceReply</code>); anything else throws before any chain call —
+then approves its own 2× bond and submits <code>FigaroCore.commit</code>.</li>
 <li><strong>Asserts what landed.</strong> The commit receipt must be <code>success</code>: one
 <code>OrderCommitted</code> on <code>FigaroCore</code>, both bonds pulled into it.</li>
 <li><strong>Reads it back out of band.</strong> A second <code>ctx.sync()</code>, then

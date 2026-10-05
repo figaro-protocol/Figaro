@@ -20,7 +20,7 @@
 
 import type { WalletClient, PublicClient } from "viem";
 import { verifyTypedData } from "viem";
-import { buildCommitment, buildDomain, ZERO_PROCESS_ID, COMMITMENT_TYPES } from "../commitments.js";
+import { buildCommitment, buildDomain, hashCommitmentStruct, verifyCommitmentSignature, ZERO_PROCESS_ID, COMMITMENT_TYPES } from "../commitments.js";
 import { computeAgreementHash, type Agreement } from "../agreement.js";
 import { assertAgreementSignable, type SpecSource } from "../projection.js";
 import { ERC20_ABI } from "../abis.js";
@@ -320,6 +320,32 @@ export async function counterSignOffer(
     return { ...offer, sellerSig };
 }
 
+/**
+ * Buyer-side verification of a countersigned reply — from a race candidate or
+ * from the seller an offer went to. The reply's
+ * commitment must be EXACTLY the struct the buyer drafted for that candidate
+ * (struct-hash equality — a candidate cannot return a doctored payment or
+ * terms; the signature would still recover, so equality is checked first), and
+ * the seller signature must recover to the drafted candidate.
+ */
+export async function verifyRaceReply(
+    reply: CommitmentPayload,
+    draft: CommitmentPayload,
+    ctx: { chainId: number; core: Address },
+): Promise<OfferCheck> {
+    if (!reply.sellerSig) return { ok: false, reason: "reply carries no seller signature" };
+    if (hashCommitmentStruct(reply.commitment) !== hashCommitmentStruct(draft.commitment)) {
+        return { ok: false, reason: "reply commitment does not match the drafted struct" };
+    }
+    // Verify against the buyer's OWN drafted struct (never the reply's echoed
+    // fields), recovering to the drafted candidate seller.
+    const valid = await verifyCommitmentSignature(
+        draft.commitment, reply.sellerSig as Hex, draft.commitment.seller, ctx,
+    );
+    if (!valid) return { ok: false, reason: "seller signature does not recover to the drafted candidate" };
+    return { ok: true };
+}
+
 /** The fully-signed commitment from a completed handshake — the input an
  *  `initiate-process` execution needs. Throws if either signature is missing. */
 export function offerToExecutionInputs(offer: CommitmentPayload): { commitment: Commitment; buyerSig: Hex; sellerSig: Hex } {
@@ -375,7 +401,12 @@ export async function originateProcess(
     const offer = await buildBuyerOffer(wallet, params);
     const signed = await params.channel.sendOffer(params.seller, offer);
     if (!signed?.sellerSig) return null;
-    const { commitment, buyerSig, sellerSig } = offerToExecutionInputs(signed);
+    // The reply must be the offer this buyer sent, counter-signed by the seller
+    // it went to — never another buyer-signed commitment returned in its place.
+    // Checked before anything touches the chain.
+    const check = await verifyRaceReply(signed, offer, { chainId: params.chainId, core: params.core });
+    if (!check.ok) throw new Error(`originateProcess: the seller's reply is not the offer sent — ${check.reason}`);
+    const { commitment, buyerSig, sellerSig } = offerToExecutionInputs({ ...offer, sellerSig: signed.sellerSig });
     if (params.approveBond !== false) {
         await approveBond(wallet, publicClient, addresses.core, params.currency, 2n * params.payment);
     }
@@ -552,11 +583,15 @@ export async function originateChain(
     const offers = await buildChainOffers(wallet, params);
 
     // N handshakes — one offer per node to its seller. A single decline aborts.
+    // Each reply must be the offer sent to that node, counter-signed by its
+    // seller; every reply is checked before anything touches the chain.
     const signed: CommitmentPayload[] = [];
     for (const o of offers) {
         const s = await params.channel.sendOffer(o.seller, o.offer);
         if (!s?.sellerSig) return null;
-        signed.push(s);
+        const check = await verifyRaceReply(s, o.offer, { chainId: params.chainId, core: params.core });
+        if (!check.ok) throw new Error(`originateChain: the reply for ${o.nodeId} is not the offer sent — ${check.reason}`);
+        signed.push({ ...o.offer, sellerSig: s.sellerSig });
     }
 
     if (params.approveBond !== false) {

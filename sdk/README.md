@@ -131,8 +131,10 @@ What it does, in order:
    `computeDeadline` — never the machine clock), and hands the offer to the
    channel. The seller re-hashes the agreement against the committed
    `agreementHash`, runs the same gate through its own `specs`, applies its
-   floors, approves its 2× bond and counter-signs. The buyer approves its own
-   2× bond and submits `FigaroCore.commit`.
+   floors, approves its 2× bond and counter-signs. The buyer checks the reply
+   is the offer it sent — the same struct, counter-signed by the seller it
+   went to (`verifyRaceReply`); anything else throws before any chain call —
+   then approves its own 2× bond and submits `FigaroCore.commit`.
 4. **Asserts what landed.** The commit receipt must be `success`: one
    `OrderCommitted` on `FigaroCore`, both bonds pulled into it.
 5. **Reads it back out of band.** A second `ctx.sync()`, then

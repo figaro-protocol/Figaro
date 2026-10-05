@@ -29,7 +29,10 @@ import { buildCommitment, buildDomain, hashCommitmentStruct, verifyCommitmentSig
 import { computeAgreementHash, type Agreement } from "../agreement.js";
 import type { Hex, Address } from "../types.js";
 import type { CommitmentPayload, CoordinationChannel, PricedField, QuoteRequestTerms } from "./coordination.js";
-import { checkOfferPolicy, instantiateRootAgreement, type OfferCheck, type OfferPolicy } from "./originate.js";
+import { checkOfferPolicy, instantiateRootAgreement, verifyRaceReply, type OfferCheck, type OfferPolicy } from "./originate.js";
+
+// One owner for the reply check: the offer loops and the race both use it.
+export { verifyRaceReply };
 import { assertAgreementSignable, type SpecSource } from "../projection.js";
 import type { AssemblyTemplate } from "../assembly.js";
 
@@ -130,31 +133,6 @@ export async function counterSignDraft(
         account, domain, types: COMMITMENT_TYPES, primaryType: "Commitment", message: draft.commitment,
     });
     return { ...draft, sellerSig };
-}
-
-/**
- * Buyer-side verification of a candidate's countersigned reply. The reply's
- * commitment must be EXACTLY the struct the buyer drafted for that candidate
- * (struct-hash equality — a candidate cannot return a doctored payment or
- * terms; the signature would still recover, so equality is checked first), and
- * the seller signature must recover to the drafted candidate.
- */
-export async function verifyRaceReply(
-    reply: CommitmentPayload,
-    draft: CommitmentPayload,
-    ctx: { chainId: number; core: Address },
-): Promise<OfferCheck> {
-    if (!reply.sellerSig) return { ok: false, reason: "reply carries no seller signature" };
-    if (hashCommitmentStruct(reply.commitment) !== hashCommitmentStruct(draft.commitment)) {
-        return { ok: false, reason: "reply commitment does not match the drafted struct" };
-    }
-    // Verify against the buyer's OWN drafted struct (never the reply's echoed
-    // fields), recovering to the drafted candidate seller.
-    const valid = await verifyCommitmentSignature(
-        draft.commitment, reply.sellerSig as Hex, draft.commitment.seller, ctx,
-    );
-    if (!valid) return { ok: false, reason: "seller signature does not recover to the drafted candidate" };
-    return { ok: true };
 }
 
 /** A verified countersigned reply, paired with the draft it answers. */

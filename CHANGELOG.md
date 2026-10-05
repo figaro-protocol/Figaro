@@ -43,6 +43,13 @@ release lives under **Unreleased**.
   the agent every write in the signer's directory and every signal to an
   outside process, and refuses a signer directory that does not exist or
   sits inside, or contains, the workspace or a temp directory.
+- **SDK 0.2.0: the buyer's offer loops commit only the offer they sent.**
+  `originateProcess` and `originateChain` committed whatever counter-signed
+  commitment a seller's reply carried, so a seller could return an earlier
+  commitment the buyer had signed and have the buyer bond its terms. Each
+  reply is now checked with `verifyRaceReply` — the struct sent, counter-signed
+  by the seller it went to — before any chain call, and a reply that fails
+  throws. `verifyRaceReply` is exported from `/agent` as before.
 - **SDK 0.2.0 (breaking): `SyncResult.newSellers` is renamed to `newMembers`.**
   The field counts member registrations and profile updates; a member may
   buy, sell, or both.
