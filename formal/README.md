@@ -1,6 +1,6 @@
 # Formal Verification — TLA+ models
 
-Four TLC-checked models, all run by `../scripts/test-tla.sh` (the harness
+Five TLC-checked models, all run by `../scripts/test-tla.sh` (the harness
 inventory and state counts are owned by `docs/TESTING.md` § TLA+; the
 invariant → protocol-property mapping by `docs/VERIFICATION_MAP.md` §7):
 
@@ -10,6 +10,7 @@ invariant → protocol-property mapping by `docs/VERIFICATION_MAP.md` §7):
 | `FlorinToken.tla` + `.cfg` | Token supply cap + minter registry | 8 |
 | `WitnessSwapAndCommitCoordinator.tla` + `.cfg` | Swap-funded on-ramp: zero retention, swap↔commit atomicity, allowance hygiene, witness route binding, exact `FigaroCore` deposits | 10 |
 | `ResolutionUniverses.tla` + `.cfg` | CROSS-CONTRACT: FigaroCore + FigaroBatchVerifier + UsageCounter + the guest's mirror under arbitrary interleavings — no cross-universe double payout, per-pool deposits, score composition, `FigaroCore`'s blindness to the batch path (`KernelBlindToBatch`). Carries two named assumption constants (`AssumeDomainSeparation`, `AssumeAccrualGatesAligned`); flipping either to FALSE is the experiment and is EXPECTED to fail | 21 |
+| `RelayState.tla` + `.cfg` | OFF-CHAIN: the relay's state lifecycle (`prover/sequencer`) under crashes, kept-file write failures, refused batches, permissionless resends and takeover — `Recoverable`: whenever the verifier's root is past genesis, some relay has the state behind it on disk. Four switches (`HoldBeforeSend`, `HoldThroughRevert`, `KeepRetainsBuiltOnRoot`, `TakeoverChecksRoot`) each restore one defect when FALSE, and each FALSE must fail `Recoverable` | 7 + 1 action property |
 
 The remainder of this file documents the `FigaroCore` model in depth.
 Exhaustively verifies the economic mechanism (bond math, token conservation,

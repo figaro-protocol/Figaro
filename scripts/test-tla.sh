@@ -1,7 +1,7 @@
 #!/bin/bash
 # test-tla.sh — Reproducible TLA+ model checking for FigaroCore invariants.
 #
-# Runs TLC (TLA+ model checker) against four models:
+# Runs TLC (TLA+ model checker) against five models:
 #
 #   1. FigaroCore — via formal/MC.tla + formal/MC.cfg
 #      (2 buyers, 2-3 sellers, InitialBalance 30, Payments 1-3, MaxProcesses 2,
@@ -50,7 +50,18 @@
 #      the experiment the model exists for and is EXPECTED to fail — do
 #      not "fix" the violations those flips produce.
 #
-# All four models complete exhaustive state exploration in under 20 minutes
+#   5. The relay's state lifecycle — via formal/RelayState.tla +
+#      formal/RelayState.cfg (2 relays, 3 batches). The off-chain relay
+#      (prover/sequencer) under crashes at any step, kept-file write
+#      failures, refused batches, permissionless resends of a public proof,
+#      and takeover from another relay's GET /state. Verifies 7 invariants
+#      and 1 action property; the load-bearing one is Recoverable: whenever
+#      the verifier's root is past genesis, some relay has the state behind
+#      it on disk. Four switches in the .cfg (HoldBeforeSend,
+#      HoldThroughRevert, KeepRetainsBuiltOnRoot, TakeoverChecksRoot) each
+#      restore one defect when FALSE, and each FALSE MUST fail Recoverable.
+#
+# All five models complete exhaustive state exploration in under 20 minutes
 # total with -workers auto on a modern laptop.
 #
 # Prerequisites (one-time):
@@ -67,7 +78,8 @@
 #   TLA2TOOLS=/path/to/tla2tools.jar ./scripts/test-tla.sh
 #
 # Exit codes:
-#   0  — all 46 invariants hold across the explored state space (four models)
+#   0  — all 55 invariants (and RelayState's action property) hold across the
+#        explored state space (five models)
 #   >0 — an invariant violation was found OR the environment is misconfigured
 
 set -e
@@ -100,7 +112,7 @@ echo ""
 # without fragile absolute paths.
 cd formal
 
-echo "▶ Pass 1/4 — FigaroCore (9 invariants)"
+echo "▶ Pass 1/5 — FigaroCore (9 invariants)"
 echo ""
 java -cp "../$TLA2TOOLS" tlc2.TLC \
     -config MC.cfg \
@@ -110,7 +122,7 @@ java -cp "../$TLA2TOOLS" tlc2.TLC \
     "$@"
 
 echo ""
-echo "▶ Pass 2/4 — FlorinToken (8 invariants)"
+echo "▶ Pass 2/5 — FlorinToken (8 invariants)"
 echo ""
 java -cp "../$TLA2TOOLS" tlc2.TLC \
     -config FlorinToken.cfg \
@@ -120,7 +132,7 @@ java -cp "../$TLA2TOOLS" tlc2.TLC \
     "$@"
 
 echo ""
-echo "▶ Pass 3/4 — WitnessSwapAndCommitCoordinator (10 invariants)"
+echo "▶ Pass 3/5 — WitnessSwapAndCommitCoordinator (10 invariants)"
 echo ""
 java -cp "../$TLA2TOOLS" tlc2.TLC \
     -config WitnessSwapAndCommitCoordinator.cfg \
@@ -130,13 +142,23 @@ java -cp "../$TLA2TOOLS" tlc2.TLC \
     "$@"
 
 echo ""
-echo "▶ Pass 4/4 — Composed resolution universes (21 invariants)"
+echo "▶ Pass 4/5 — Composed resolution universes (21 invariants)"
 echo ""
 java -cp "../$TLA2TOOLS" tlc2.TLC \
     -config ResolutionUniverses.cfg \
     -workers auto \
     -cleanup \
     ResolutionUniverses.tla \
+    "$@"
+
+echo ""
+echo "▶ Pass 5/5 — The relay's state lifecycle (7 invariants + 1 action property)"
+echo ""
+java -cp "../$TLA2TOOLS" tlc2.TLC \
+    -config RelayState.cfg \
+    -workers auto \
+    -cleanup \
+    RelayState.tla \
     "$@"
 
 echo ""

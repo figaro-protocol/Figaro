@@ -121,7 +121,7 @@ Companion: `certora/token-ops.inventory` — declarative inventory of every ERC2
 `src/echidna/EchidnaToken.sol` is not a harness — it is the minimal ERC-20 the `FigaroCore`
 harness fuzzes against (`EchidnaFuzzer.sol` imports it); it declares no `echidna_` properties.
 
-## TLA+ (`formal/`) — 48 invariants across 4 models (FigaroCore 9 + FlorinToken 8 + WitnessSwapAndCommitCoordinator 10 + ResolutionUniverses 21)
+## TLA+ (`formal/`) — 55 invariants across 5 models (FigaroCore 9 + FlorinToken 8 + WitnessSwapAndCommitCoordinator 10 + ResolutionUniverses 21 + RelayState 7)
 
 FigaroCore (`MC.tla` + `MC.cfg`): `TokenConservation`, `ContractSolvency`,
 `WalletNonNegative`, `CumulativeIntegrity`, `ActiveCountCorrect`,
@@ -160,6 +160,19 @@ no-double-payout) and `AssumeAccrualGatesAligned` (NOT contract-enforced — a
 dropped batch's accrual is forgone at process granularity, under-pay only).
 Flipping either to FALSE is the experiment, is EXPECTED to fail, and is not a
 regression.
+
+RelayState (`RelayState.tla` + `.cfg`): the relay's state lifecycle
+(`prover/sequencer/src/state.rs`, `main.rs`) — 2 relays, 3 batches, a crash at
+any step, a kept-file write that fails, a batch the chain refuses, anyone
+resending a public proof, and a takeover from another relay's `GET /state`.
+7 invariants — `Recoverable` (whenever the verifier's root is past genesis,
+some relay has the state behind it on disk), `BuiltOnVerifierRoot`,
+`MirrorOnVerifierRoot`, `KeptOnVerifierRoot`, `JournalBuiltOnVerifierRoot`,
+`HistoryHasNoRepeat`, `TypeOK` — and the action property
+`MirrorNeverGoesBack`: 129,589 states / 27,535 distinct, depth 31, seconds.
+Mutation-checked through four `.cfg` switches, each restoring one defect:
+`HoldBeforeSend`, `HoldThroughRevert`, `KeepRetainsBuiltOnRoot`,
+`TakeoverChecksRoot` — each FALSE fails `Recoverable`.
 
 ## Lean 4 (`formal/lean/`) — the equilibrium, machine-checked
 

@@ -564,7 +564,7 @@ unless a line says otherwise. Which invariant each layer carries is
 | Halmos | 32 of 32 properties proved |
 | Certora | 6 of 6 specs, every rule verified |
 | Echidna | every property held on both harnesses |
-| TLA+ | 4 models, 48 invariants, no error; `FigaroCore` explored 8,380,329 states |
+| TLA+ | 4 models, 48 invariants, no error; `FigaroCore` explored 8,380,329 states. Added after the tag: `RelayState` (the relay's state lifecycle, 7 invariants + 1 action property), no error over 27,535 distinct states, each of its four defect switches caught |
 | Rust (`cargo test`, five crates) | 195 passed, 0 failed; 2 ignored by design, run by the fuzz script |
 | Differential fuzz | 4 rounds, no divergence: 1,600 kernel operations, 256 agreements, about 22,000 clause cases |
 | SDK (Vitest) | 813 passed; frontend (Vitest) 873 passed |

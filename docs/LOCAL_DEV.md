@@ -19,7 +19,7 @@ forge test --via-ir
 # --- Symbolic / formal / fuzz ---
 ./scripts/test-halmos.sh      # Halmos symbolic execution (z3). Prereq: brew install z3 && pipx install halmos
 ./scripts/test-echidna.sh     # Echidna property fuzzing.       Prereq: brew install echidna
-./scripts/test-tla.sh         # TLA+ (48 invariants / 4 models — see TESTING.md § TLA+). Prereq: Java 11+ and a one-time manual `tla2tools.jar` download into `formal/` (the script prints the curl and exits if absent)
+./scripts/test-tla.sh         # TLA+ (55 invariants / 5 models — see TESTING.md § TLA+). Prereq: Java 11+ and a one-time manual `tla2tools.jar` download into `formal/` (the script prints the curl and exits if absent)
 (cd formal/lean && lake build) # Lean 4 equilibrium proof (see TESTING.md § Lean 4). Prereq: elan (curl elan.lean-lang.org); toolchain auto-pinned
 ./scripts/test-certora.sh     # Certora (paid cloud). Prereq: pip install certora-cli ; export CERTORAKEY=...
                               #   Prelude: the maintainers' pre-commit guard battery gates

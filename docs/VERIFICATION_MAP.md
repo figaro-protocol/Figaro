@@ -24,7 +24,7 @@ a test file). Where a check runs, and what shows it is load-bearing:
 | Halmos | `scripts/test-halmos.sh` | `foundry-ci` | the properties marked MUTATION-CHECKED in §9 (MembersRegistry 2, UsageCounter 2, the two designer registries 4); the seven `HalmosFigaroCore` properties are not mutation-checked |
 | Certora | `scripts/test-certora.sh` | the maintainer's gate — needs `CERTORAKEY`, never CI | `RpgfMinter`'s conservation, double-claim and eligibility rules and all three `BatchVerifierStateRoot` rules (§10); the other five specs are not mutation-checked |
 | Echidna | `scripts/test-echidna.sh` | the gate | not mutation-checked |
-| TLA+ | `scripts/test-tla.sh` | the gate | `WitnessSwapAndCommitCoordinator` 6 mutations, `ResolutionUniverses` 5 + 7 non-vacuity witnesses (§7); `FigaroCore.tla` and `FlorinToken.tla` are not mutation-checked |
+| TLA+ | `scripts/test-tla.sh` | the gate | `WitnessSwapAndCommitCoordinator` 6 mutations, `ResolutionUniverses` 5 + 7 non-vacuity witnesses, `RelayState` 4 (§7); `FigaroCore.tla` and `FlorinToken.tla` are not mutation-checked |
 | Lean 4 | `lake build` in `formal/lean/` | the gate | proof-checked; a mutation is a build failure |
 | Rust | `cargo test` | `prover-ci`: the guest crates on every push, the relay and the batch end-to-end on main | `cargo-mutants` over the guest crates: 617 mutants, 12 survivors each read as equivalent (`AUDITOR_HANDOVER.md` § "Mutation testing, Rust"); the relay is not mutation-tested |
 | SDK Vitest | `cd sdk && npm test` | `sdk-ci` | not mutation-checked; the encoders are held by the cross-language vectors and the differential fuzz (`prover-ci`) |
@@ -171,10 +171,10 @@ This section tracks features that are not protocol invariants but are significan
 
 ## 7) TLA+ formal models — current posture
 
-Four models: `FigaroCore.tla` (detailed below), `FlorinToken.tla` (its 8
-invariants are the E-6 rows), `WitnessSwapAndCommitCoordinator.tla` and
-`ResolutionUniverses.tla` (both detailed below; harness inventory + state counts:
-`TESTING.md` § TLA+).
+Five models: `FigaroCore.tla` (detailed below), `FlorinToken.tla` (its 8
+invariants are the E-6 rows), `WitnessSwapAndCommitCoordinator.tla`,
+`ResolutionUniverses.tla` and `RelayState.tla` (all three detailed below;
+harness inventory + state counts: `TESTING.md` § TLA+).
 
 ### Model file: `formal/FigaroCore.tla`
 
@@ -267,6 +267,22 @@ minimum-support floor case runs as a second green pass at `MinSellers=2`
 (both at once needs >31M states). `AssumeAccrualGatesAligned` is not
 contract-enforced — a dropped batch's accrual is forgone at process granularity,
 under-pay only.
+
+### Model file: `formal/RelayState.tla`
+
+The off-chain relay's state lifecycle. The verifier holds a root and the state
+behind it is off chain; a bond committed on the batch path is refunded only by
+a batch built on that state. 7 invariants and 1 action property:
+
+| Property | Code | Formal |
+|---|---|---|
+| Whenever the verifier's root is past genesis, some relay has the state behind it on disk — through a crash at any step, a refused batch, a resend by anyone, a takeover | `StateStore::hold_next` before the send; `StateStore::keep` writes the kept file, then retains the journal entries built on the new root; a refused batch's entry stays held | `Recoverable` |
+| A relay builds only on a root the verifier has held, and its mirror never goes back | `step_to` / `held_state_for` at start and before every batch; the start refusal | `BuiltOnVerifierRoot`, `MirrorOnVerifierRoot`, `KeptOnVerifierRoot`, `JournalBuiltOnVerifierRoot`, `MirrorNeverGoesBack` |
+| A takeover overwrites a kept file only with the verifier's state | NOT relay-enforced: writing `GET /state` over a state file is safe only when its `x-figaro-state-root` header is the verifier's `stateRoot`; the relay refuses to start on a wrong state, but a file it overwrote is gone | carried by **`TakeoverChecksRoot`** — FALSE: a stale served state written over the only copy of the verifier's state |
+
+Mutation-checked: each of the four switches FALSE (`HoldBeforeSend`,
+`HoldThroughRevert`, `KeepRetainsBuiltOnRoot`, `TakeoverChecksRoot`) fails
+`Recoverable`; the counterexamples are 6, 8, 13 and 10 states long.
 
 ---
 
