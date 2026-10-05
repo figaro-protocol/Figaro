@@ -757,7 +757,7 @@ plan has been rehearsed.
 | Auditing | Moderate | Events cover every state change (`renounceDeployerMint` excepted, documented). The watcher runs in CI and the incident procedure is written (`SECURITY.md` § Monitoring, § Incident response); a rehearsal of the redeploy leg is what Satisfactory still needs. |
 | Access controls | Satisfactory | Two privileged relations, both immutable, documented, tested (§ "Actors"). |
 | Complexity management | Satisfactory | The functions at or above the rubric's threshold of 11 are `commit` and `settleBatch` (§ "Conventions and measured complexity"), each justified there and in NatSpec; the naming convention is written; the only duplication is the documented mirrors, locked by vectors and fuzz. |
-| Decentralization | Strong | No admin, pause, upgrade, or proxy; every parameter immutable; the direct path always open to a new process beside the batch path (batch-path liveness rests on the state the relay holds, Known limitation 7); immutability proved in CVL. |
+| Decentralization | Strong | No admin, pause, upgrade, or proxy; every parameter immutable; the direct path always open to a new process beside the batch path; the state behind the batch path's root is published by the relay that holds it (`GET /state`), so any party or a second relay can keep a copy and take over (Known limitation 7 states what remains); immutability proved in CVL. |
 | Documentation | Satisfactory | Glossary, invariant map, design-decision catalogue, review goals, dense NatSpec; the stale comment referents listed under § "Known stale comments in the kernel". |
 | Transaction ordering | Satisfactory | Route substitution closed by the Permit2 witness; registry front-running and reward capture accepted and priced; no oracle. |
 | Low-level manipulation | Satisfactory | Assembly confined to four hash packers, mirrored by `abi.encodePacked` tests, differentially fuzzed against those mirrors, and pinned by Rust cross-language vectors. |
@@ -770,7 +770,7 @@ plan has been rehearsed.
 | State validation | Validity proof | `FigaroBatchVerifier.settleBatch` verifies an SP1 proof and checks every witness-spec binding against the live `ClauseRegistry`. |
 | Data availability | Off-chain by design | The chain holds hashes; the parties hold the preimages. `DATA_LAYER.md` owns the seam. |
 | Exit window | Immutable | No admin, no upgrade path, no pause, in every contract. A changed program is a new verifier under a new address. |
-| Proposer failure | Direct path open to a new process; a batch-path process needs the state | The kernel needs no relay, and any new process can open on `FigaroCore`. A process opened on the batch path resolves only through a batch built on the state behind the verifier's root (Known limitation 7). |
+| Proposer failure | Direct path open to a new process; a batch-path process needs the state | The kernel needs no relay, and any new process can open on `FigaroCore`. A process opened on the batch path resolves only through a batch built on the state behind the verifier's root, which the relay publishes so another can take over (Known limitation 7). |
 | Sequencer failure | Same | A batch-resolved process never acquires kernel status (`FigaroBatchVerifier.sol` NatSpec on designer rewards); the two resolution paths are disjoint, and `UsageCounter` bridges only the accrual. |
 
 ## Reading list
