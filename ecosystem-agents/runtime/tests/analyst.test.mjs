@@ -266,14 +266,16 @@ test("an empty corpus answers zeroes — resolved-empty is absence, not failure"
 
 test("divergent endpoints over the same pinned range are reported, gap attributed", async () => {
     // Stubbed transports: the primary sees one log the extra endpoint lacks.
-    const log = (blockNumber, transactionHash, logIndex) => ({ blockNumber, transactionHash, logIndex });
+    // Each log names the contract it came from, as a node's answer does.
+    const core = "0x000000000000000000000000000000000000c0de";
+    const log = (blockNumber, transactionHash, logIndex) => ({ address: core, blockNumber, transactionHash, logIndex });
     const byUrl = {
         "http://rpc-full.test": [log(10n, "0xaaa", 0), log(11n, "0xbbb", 1)],
         "http://rpc-short.test": [log(10n, "0xaaa", 0)],
     };
     const report = await corroborateEndpoints({
         endpoints: ["http://rpc-full.test", "http://rpc-short.test"],
-        addresses: { core: "0x000000000000000000000000000000000000c0de" },
+        addresses: { core },
         fromBlock: 0n,
         toBlock: 99n,
         makeClient: (url) => ({ getLogs: async () => byUrl[url] }),
