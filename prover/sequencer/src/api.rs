@@ -397,11 +397,14 @@ async fn status(State(state): State<AppState>) -> impl IntoResponse {
 }
 
 /// `GET /state` — the state behind this relay's root: the kept-state file's
-/// own format (`KernelStateSnapshot`), so `curl -o <STATE_PATH> …/state`
-/// gives another relay the state to start on. Nothing in it is private: it
-/// is derived from the signed operations the publication routes serve. It is
-/// checked, never trusted — a relay started on it recomputes the root and
-/// refuses to start when it is not the verifier's.
+/// own format (`KernelStateSnapshot`), so saved to a file it gives another
+/// relay the state to start on. Nothing in it is private: it is derived from
+/// the signed operations the publication routes serve. It is checked, never
+/// trusted — a relay started on it recomputes the root and refuses to start
+/// when it is not the verifier's. Saved over an existing state file, it
+/// replaces that file whatever root it carries: the `x-figaro-state-root`
+/// header is read against the verifier's `stateRoot` first, since a stale
+/// relay serves a stale state and the file it replaces may be the only copy.
 async fn get_state(State(state): State<AppState>) -> impl IntoResponse {
     let snapshot = state.state_mirror.snapshot().await;
     let root = state.state_mirror.state_root().await;
