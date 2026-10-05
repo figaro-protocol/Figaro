@@ -144,9 +144,11 @@ from a clean checkout of the audit tag, so the wrapper compiles the audited
 tree; the check, at the same tag, is what binds the result to the audit (the
 code, the guest key, the gateway). The list below is the procedure around it:
 
-- Verify the `--rpc-url` target by hand immediately before every `--broadcast` —
-  neither deploy script guards `block.chainid`; the devnet script would happily
-  deploy its mock stack to a public chain.
+- Verify the `--rpc-url` target by hand immediately before every `--broadcast`.
+  The Sepolia and mainnet wrappers read the chain id back and refuse any other
+  chain (their Guard 3); the devnet script (`scripts/deploy-local.sh`) deploys
+  to whatever `RPC_URL` names, so pointed at a public chain it deploys its mock
+  stack there.
 - `SP1_VERIFIER_GATEWAY` = Succinct's Groth16 gateway
   `0x397A5f7f3dBd538f23DE225B51f532c34448dA9B` with `SP1_PROOF_MODE=groth16` — the
   deploy wrappers' Guard 4 (`scripts/check-sp1-gateway-route.sh`) refuses to

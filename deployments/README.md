@@ -103,4 +103,6 @@ every contract in the record shape above — the surface a non-TS integrator
 needs (the TS SDK exports the same ABIs as constants). Emitted from the
 forge build artifacts by `scripts/emit-abi-bundle.sh`; pre-commit's
 `lint-abi-bundle.sh` fails any commit where the tracked bundle drifts from
-the build, so `abi/` is always the deployed truth, never a stale copy.
+the build, so `abi/` is always the ABI of the code in this tree. A
+deployment carries the ABI of the code it was deployed from: where a chain's
+contracts predate the tree, read their ABI at the commit that deployed them.
