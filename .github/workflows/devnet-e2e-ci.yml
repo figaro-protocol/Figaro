@@ -22,6 +22,10 @@ on:
             - "sdk/**"
             - "frontend/**"
             - "clauses/**"
+            # The deploy, and what must hold after it (it runs the check).
+            - "scripts/deploy-local.sh"
+            - "scripts/check-deployment.mjs"
+            - "deployments/*.expected.json"
             - ".github/workflows/devnet-e2e-ci.yml"
     pull_request:
         branches: [main, develop]
@@ -31,6 +35,9 @@ on:
             - "sdk/**"
             - "frontend/**"
             - "clauses/**"
+            - "scripts/deploy-local.sh"
+            - "scripts/check-deployment.mjs"
+            - "deployments/*.expected.json"
 
 permissions:
     contents: read
