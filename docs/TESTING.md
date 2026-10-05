@@ -626,7 +626,8 @@ Per workflow, what it runs and when:
   Anvil (`--accounts 38`), a full `deploy-local.sh` stack,
   `populate-test-data`, the `orders-accept` devnet spec against the production
   static export — then the FOUR origination proofs on the same stack
-  (`verify-origination{,-http,-a2a,-chain}.devnet.mjs`). The highest-catch
+  (`verify-origination{,-http,-a2a,-chain}.devnet.mjs`), and last the
+  watcher's test (`scripts/test-monitor.mjs`). The highest-catch
   layer, run in CI. Broader devnet specs stay
   maintainer-run.
 - **`Dependency Audit CI`** — push/PR, NOT path-filtered: two npm-audit legs (root
@@ -655,7 +656,11 @@ Per workflow, what it runs and when:
   genesis, a florin minted outside the reward path, a dropped batch accrual,
   a withdrawal burst, and `FigaroCore`'s held bonds against invariant A-8 —
   and raises each condition as an issue labelled `monitor`, assigned to the
-  maintainer; a run that cannot read the node fails, which is the heartbeat.
+  maintainer; a run that cannot read the node, or finds a record address
+  with no code, fails, which is the heartbeat. `scripts/test-monitor.mjs`
+  (the last step of `devnet-e2e-ci`) produces each alert with real contracts
+  on the devnet and asserts the watcher raises it — all but the dropped batch
+  accrual, which needs a batch the counter refuses between prove and submit.
   `SEPOLIA_RPC_URL` as a repository secret switches it to a keyed node; the
   dispatch input `rehearsal` raises one synthetic alert without reading the
   chain, to prove the issue and e-mail path. Every read waits its turn at one

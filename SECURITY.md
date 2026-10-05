@@ -103,8 +103,10 @@ node on a schedule, keeps its findings off the chain, and raises an alert on
 the conditions below. The watcher is `scripts/monitor-sepolia.mjs`, run daily
 by the `monitor` workflow in `.github/workflows/` against the addresses in
 `deployments/<chainId>.json`; each alert becomes an issue labelled `monitor`,
-assigned to the maintainer, and a run that cannot read the node fails the
-workflow, which is the heartbeat. The open issues are the log; an agent reviews
+assigned to the maintainer, and a run that cannot read the node, or finds an
+address in the record that holds no code, fails the workflow, which is the
+heartbeat. `scripts/test-monitor.mjs` produces the alerts on a devnet and
+asserts each is raised. The open issues are the log; an agent reviews
 them daily and reports only what departs from the expected.
 
 | Watch | Expected | Alert when |

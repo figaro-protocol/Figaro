@@ -26,6 +26,8 @@ on:
             - "scripts/deploy-local.sh"
             - "scripts/check-deployment.mjs"
             - "deployments/*.expected.json"
+            - "scripts/monitor-sepolia.mjs"
+            - "scripts/test-monitor.mjs"
             - ".github/workflows/devnet-e2e-ci.yml"
     pull_request:
         branches: [main, develop]
@@ -38,6 +40,8 @@ on:
             - "scripts/deploy-local.sh"
             - "scripts/check-deployment.mjs"
             - "deployments/*.expected.json"
+            - "scripts/monitor-sepolia.mjs"
+            - "scripts/test-monitor.mjs"
 
 permissions:
     contents: read
@@ -152,6 +156,16 @@ jobs:
                   node scripts/verify-origination-http.devnet.mjs
                   node scripts/verify-origination-a2a.devnet.mjs
                   node scripts/verify-origination-chain.devnet.mjs
+
+            # ── The watcher under test, last: it changes the devnet ──────
+            # Each alert scripts/monitor-sepolia.mjs promises, produced with
+            # real contracts (a florin minter and mint after genesis, a
+            # withdrawal burst, FigaroCore short of its open bonds in a
+            # rebasing token) and asserted from the watcher's own output; a
+            # clean devnet raises nothing, and a record address with no code
+            # fails the watch.
+            - name: Run the watcher's test
+              run: node scripts/test-monitor.mjs
 
             - name: Upload Playwright report
               if: failure()

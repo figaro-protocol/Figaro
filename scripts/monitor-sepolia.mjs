@@ -6,6 +6,8 @@
 //
 //   RPC_URL          the node (default: a public Sepolia endpoint)
 //   CHAIN_ID         which deployments/<chainId>.json to watch (default 11155111)
+//   RECORD           a record file to watch instead (a devnet's, in the
+//                    watcher's own test: scripts/test-monitor.mjs)
 //   WINDOW_BLOCKS    how far back the event-window checks look (default 8000,
 //                    about twenty-seven hours of Sepolia blocks; the workflow
 //                    sets it from the time since its last successful scheduled
@@ -48,7 +50,7 @@ const CHUNK = 9_500n; // the SDK's DEFAULT_LOG_CHUNK_SIZE — under every public
 const ASKS = 3; // times each log chunk is asked; the fullest answer wins
 const BURST = 3;
 
-const record = JSON.parse(readFileSync(`deployments/${CHAIN_ID}.json`, "utf8"));
+const record = JSON.parse(readFileSync(process.env.RECORD || `deployments/${CHAIN_ID}.json`, "utf8"));
 const abiOf = (name) => {
     const parsed = JSON.parse(readFileSync(`abi/${name}.json`, "utf8"));
     return parsed.abi ?? parsed;
@@ -94,6 +96,15 @@ const head = await client.getBlockNumber();
 const chainId = await client.getChainId();
 if (chainId !== CHAIN_ID) throw new Error(`node is chain ${chainId}, record is chain ${CHAIN_ID}`);
 const deployBlock = BigInt(record.deploymentBlock);
+
+// Every address the watch reads must hold code: a wrong address in the record
+// answers every event query with nothing, and a watcher reading nothing
+// raises nothing. A record the chain does not carry is a heartbeat failure.
+const WATCHED = ["figaroCore", "florinToken", "rpgfMinter", "batchVerifier", "membersRegistry", "clauseRegistry", "assemblyRegistry"];
+for (const key of WATCHED) {
+    const code = await client.getCode({ address: record[key] });
+    if (!code || code === "0x") throw new Error(`record ${key} ${record[key]} holds no code on chain ${chainId} — the record is not this chain's deployment`);
+}
 const windowFrom = head - WINDOW > deployBlock ? head - WINDOW : deployBlock;
 notes.push(`chain ${CHAIN_ID}, head ${head}, window ${windowFrom}-${head}, history from ${deployBlock}`);
 
