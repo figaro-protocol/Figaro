@@ -22,7 +22,7 @@ a test file). Where a check runs, and what shows it is load-bearing:
 |---|---|---|---|
 | Foundry | `forge test --via-ir` | the pre-commit hook; `foundry-ci` on every push, the fork tests included | `mewt` over every contract in scope: 921 mutants, 913 caught, 8 survivors each read as unreachable or equivalent (`AUDITOR_HANDOVER.md` § "Mutation testing, Solidity") |
 | Halmos | `scripts/test-halmos.sh` | `foundry-ci` | the properties marked MUTATION-CHECKED in §9 (MembersRegistry 2, UsageCounter 2, the two designer registries 4); the seven `HalmosFigaroCore` properties are not mutation-checked |
-| Certora | `scripts/test-certora.sh` | the maintainer's gate — needs `CERTORAKEY`, never CI | `RpgfMinter`'s conservation, double-claim and eligibility rules (§10); the other six specs are not mutation-checked |
+| Certora | `scripts/test-certora.sh` | the maintainer's gate — needs `CERTORAKEY`, never CI | `RpgfMinter`'s conservation, double-claim and eligibility rules and all three `BatchVerifierStateRoot` rules (§10); the other five specs are not mutation-checked |
 | Echidna | `scripts/test-echidna.sh` | the gate | not mutation-checked |
 | TLA+ | `scripts/test-tla.sh` | the gate | `WitnessSwapAndCommitCoordinator` 6 mutations, `ResolutionUniverses` 5 + 7 non-vacuity witnesses (§7); `FigaroCore.tla` and `FlorinToken.tla` are not mutation-checked |
 | Lean 4 | `lake build` in `formal/lean/` | the gate | proof-checked; a mutation is a build failure |
@@ -430,6 +430,8 @@ Foundry-covered companion:
 | `settleBatchChainsTheRoot` | E-9 (the state advance → `newRoot`) | A resolved batch's `prevRoot` == the held `stateRoot`; after it, `stateRoot` == its `newRoot` |
 | `settleBatchCountsOneBatch` | E-9 | `batchCount` advances by exactly one per resolved batch |
 | `onlySettleBatchMovesTheRoot` | E-9 | Parametric (all other methods): neither `stateRoot` nor `batchCount` moves |
+
+Mutation-checked, all three: with the `StateRootMismatch` check blanked and `++batchCount` replaced by `batchCount + 1` in the verifier, and a root-setting function added to the harness, each rule FAILED on its own mutation and on nothing else; the files were restored byte-identical. Report: https://prover.certora.com/output/9512759/9fb2a938b04847b8b44c83fee498631a
 
 **RpgfMinter (8 declared rules — deps summarized via ghosts/wildcard dispatch)**
 
