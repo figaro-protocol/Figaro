@@ -9,14 +9,15 @@
 # The script runs each committed spec against Certora's cloud and reports
 # per-spec outcome. Verification reports are returned as URLs.
 #
-# Specs currently committed (37 rules total — VERIFICATION_MAP.md is the owner):
-#   certora/FigaroCore.spec             — FigaroCore state-machine invariants (8 rules)
-#   certora/AttestationCoordinator.spec — role-gate + parametric Core-immutability (4 rules)
-#   certora/TokenOpsVerification.spec   — FigaroCore token-flow invariants (7 rules)
-#   certora/FlorinToken.spec            — supply cap + minter registry (6 rules)
-#   certora/BatchVerifierTokenOps.spec  — batch-path token-flow invariants (4 rules)
+# Specs currently committed (TESTING.md § Certora is the owner of the rule counts):
+#   certora/FigaroCore.spec             — FigaroCore state-machine invariants
+#   certora/AttestationCoordinator.spec — role-gate + parametric Core-immutability
+#   certora/TokenOpsVerification.spec   — FigaroCore token-flow invariants
+#   certora/FlorinToken.spec            — supply cap + minter registry
+#   certora/BatchVerifierTokenOps.spec  — batch-path token-flow invariants
+#   certora/BatchVerifierStateRoot.spec — the batch state root's unbroken chain
 #   certora/RpgfMinter.spec             — RPGF payout conservation, no-double-claim,
-#                                         eligibility + budget monotonicity (8 rules)
+#                                         eligibility + budget monotonicity
 #
 # Conf flag note:
 #   Any spec whose rules pass symbolic `bytes` (dynamic-length) to a function
@@ -72,7 +73,7 @@ fi
 if [ "$#" -gt 0 ]; then
     SPECS=("$@")
 else
-    SPECS=(FigaroCore AttestationCoordinator TokenOpsVerification FlorinToken BatchVerifierTokenOps RpgfMinter)
+    SPECS=(FigaroCore AttestationCoordinator TokenOpsVerification FlorinToken BatchVerifierTokenOps BatchVerifierStateRoot RpgfMinter)
 fi
 
 for spec in "${SPECS[@]}"; do

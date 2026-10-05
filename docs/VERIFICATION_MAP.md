@@ -22,7 +22,7 @@ a test file). Where a check runs, and what shows it is load-bearing:
 |---|---|---|---|
 | Foundry | `forge test --via-ir` | the pre-commit hook; `foundry-ci` on every push, the fork tests included | `mewt` over every contract in scope: 921 mutants, 913 caught, 8 survivors each read as unreachable or equivalent (`AUDITOR_HANDOVER.md` § "Mutation testing, Solidity") |
 | Halmos | `scripts/test-halmos.sh` | `foundry-ci` | the properties marked MUTATION-CHECKED in §9 (MembersRegistry 2, UsageCounter 2, the two designer registries 4); the seven `HalmosFigaroCore` properties are not mutation-checked |
-| Certora | `scripts/test-certora.sh` | the maintainer's gate — needs `CERTORAKEY`, never CI | `RpgfMinter`'s conservation, double-claim and eligibility rules (§10); the other five specs are not mutation-checked |
+| Certora | `scripts/test-certora.sh` | the maintainer's gate — needs `CERTORAKEY`, never CI | `RpgfMinter`'s conservation, double-claim and eligibility rules (§10); the other six specs are not mutation-checked |
 | Echidna | `scripts/test-echidna.sh` | the gate | not mutation-checked |
 | TLA+ | `scripts/test-tla.sh` | the gate | `WitnessSwapAndCommitCoordinator` 6 mutations, `ResolutionUniverses` 5 + 7 non-vacuity witnesses (§7); `FigaroCore.tla` and `FlorinToken.tla` are not mutation-checked |
 | Lean 4 | `lake build` in `formal/lean/` | the gate | proof-checked; a mutation is a build failure |
@@ -423,6 +423,14 @@ Foundry-covered companion:
 | `minterCapImmutable` | E-6 | Per-minter immutability |
 | `minterMintedWithinCap` | E-6 | Inductive (unconditional `minted <= cap`, strictly strong enough to exclude symbolic unreachable pre-states) |
 
+**BatchVerifierStateRoot (3 declared rules — read through `certora/harness/FigaroBatchVerifierHarness.sol`)**
+
+| CVL rule | Maps to | Type |
+|---|---|---|
+| `settleBatchChainsTheRoot` | E-9 (the state advance → `newRoot`) | A resolved batch's `prevRoot` == the held `stateRoot`; after it, `stateRoot` == its `newRoot` |
+| `settleBatchCountsOneBatch` | E-9 | `batchCount` advances by exactly one per resolved batch |
+| `onlySettleBatchMovesTheRoot` | E-9 | Parametric (all other methods): neither `stateRoot` nor `batchCount` moves |
+
 **RpgfMinter (8 declared rules — deps summarized via ghosts/wildcard dispatch)**
 
 | CVL rule | Maps to | Type |
@@ -488,7 +496,7 @@ table maps each layer to what it covers.
 |---|---|---|
 | **TLA+ model checking** | `TESTING.md` § TLA+ — `./scripts/test-tla.sh` | `FigaroCore` safety (conservation, solvency, bonding, atomicity, resolution) + florin token registry (max supply, minter cap, non-negative, no-mint-to-zero, balance-sum-to-supply, cap-below-max-supply, supply-equals-sum-minted, deployer-cannot-mint-after-renounce) + the swap-funded on-ramp (zero retention, swap↔commit atomicity, allowance hygiene, witness route binding, exact `FigaroCore` deposits) + the two paths composed (no cross-path double payout, per-pool deposits, score composition, `FigaroCore` blindness) |
 | **Halmos symbolic testing** | `TESTING.md` § Halmos — `./scripts/test-halmos.sh` | FigaroCore (7): token conservation, contract solvency, bond amounts, resolution payouts, status transition, buyer dominance, cumulative monotonicity. MembersRegistry (7): the stake-machine properties behind E-5. UsageCounter (6): the accrual arithmetic — batch-replace-not-add, score composition across the two paths, period bucketing, isolation. ClauseRegistry + AssemblyRegistry (6 each): the designer-side stake machines designer-reward eligibility reads. |
-| **Certora formal verification** | `TESTING.md` § Certora — `./scripts/test-certora.sh` | FigaroCore: state-machine invariants. AttestationCoordinator: role-gate correctness + Core immutability (merkle-only — no content-shape validation). TokenOpsVerification: universal balance-flow proofs for FigaroCore commit + single-order resolve. FlorinToken: supply cap + minter registry preservation. BatchVerifierTokenOps: batch-path token-flow invariants. RpgfMinter: mint conservation, no-double-claim, duplicate rejection, live-stake eligibility. |
+| **Certora formal verification** | `TESTING.md` § Certora — `./scripts/test-certora.sh` | FigaroCore: state-machine invariants. AttestationCoordinator: role-gate correctness + Core immutability (merkle-only — no content-shape validation). TokenOpsVerification: universal balance-flow proofs for FigaroCore commit + single-order resolve. FlorinToken: supply cap + minter registry preservation. BatchVerifierTokenOps: batch-path token-flow invariants. BatchVerifierStateRoot: the batch state root's unbroken, gap-free chain. RpgfMinter: mint conservation, no-double-claim, duplicate rejection, live-stake eligibility. |
 | **Echidna fuzzing** | `TESTING.md` § Echidna — `./scripts/test-echidna.sh` | `EchidnaFuzzer` (`FigaroCore`, 7): solvency, monotonicity, buyer dominance, atomicity, cumulative accounting, conservation, active-count consistency. `EchidnaFlorinToken` (8): FlorinToken supply/minter fuzzing. (`EchidnaToken` is the `FigaroCore` harness's support ERC-20, not a harness.) |
 | **Foundry unit tests** | derive: `forge test --via-ir` (the summary line is the census; the fork suite skips without `MAINNET_RPC_URL`) | Core lifecycle, revert branches, coordinators (incl. the Permit2 witness + its mainnet-fork parity suite), gas, florin |
 | **SDK Vitest** | derive: `cd sdk && npx vitest run` | Event parsing, state reconstruction, bond math, commitments, discovery, clauses, swap-funding witness parity, agent origination |

@@ -581,6 +581,7 @@ Certora reports:
 | FlorinToken | https://prover.certora.com/output/9512759/7e9a532568dd4249b99397a564fe8c4e |
 | BatchVerifierTokenOps | https://prover.certora.com/output/9512759/79f9b51977c74a9db3e38d479bd69692 |
 | RpgfMinter | https://prover.certora.com/output/9512759/cfdf957d26fd4b2393c8576d2c5ec372 |
+| BatchVerifierStateRoot (added after the tag, run 2026-10-05 against the verifier as tagged; the spec reads the contract through `certora/harness/FigaroBatchVerifierHarness.sol`, which adds only a decoding view) | https://prover.certora.com/output/9512759/69781170fd464b3596575f725896b9c0 |
 
 ### Test coverage, Solidity
 

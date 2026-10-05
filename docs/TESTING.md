@@ -97,7 +97,7 @@ properties are mutation-checked: a deliberate recycling bug in
 any new property whose failure mode matters — "it proved" is not evidence that
 it *could* fail.
 
-## Certora (`certora/`) — 6 specs
+## Certora (`certora/`) — 7 specs
 
 | Spec | Rules | Covers |
 |---|---|---|
@@ -106,6 +106,7 @@ it *could* fail.
 | `TokenOpsVerification.spec` | 7 | Universal FigaroCore token-flow: exact commit deltas (buyer/seller/Core), allowance-drain safety (∀ address), commit + single-order resolve conservation, single-order resolve exact payouts. Generalizes Halmos root-only coverage to arbitrary sub-orders. |
 | `FlorinToken.spec` | 6 | Supply cap, registered-cap bound, registered-cap monotonicity, renounce one-way latch, minter cap immutability, minter within cap |
 | `BatchVerifierTokenOps.spec` | 4 | FigaroBatchVerifier net positions: user delta = payout−deposit, contract delta = deposit−payout, allowance-drain safety, conservation (single-position; inductive generalization documented in-spec). Aligned to the witness model and the usage-bridge `settleBatch` signature (`BatchUsageData` threaded, usage loops bounded). |
+| `BatchVerifierStateRoot.spec` | 3 | FigaroBatchVerifier's state root chains: a resolved batch's `prevRoot` is the root the verifier held and its `newRoot` the root it leaves; each resolved batch advances `batchCount` by one; no other function moves either. So the `BatchSettled` events form one unbroken, gap-free chain from the initial root. Read through `certora/harness/FigaroBatchVerifierHarness.sol` (the contract plus a pure `decodedRoots` view over its own `_decodePV`). |
 | `RpgfMinter.spec` | 8 | Per-period mint conservation (`minted ≤ periodAmount` under any claim sequence), no double-claim per wallet-period, no claim while the period is open, duplicate-clause-or-assembly rejection, live-stake eligibility (`_isAuthor`, the gate on a live registration), minted monotonicity — plus two supplementary rules proving `claimable`'s view quote matches `claim`'s behavior. Mutation-checked: conservation, double-claim, eligibility. |
 
 Companion: `certora/token-ops.inventory` — declarative inventory of every ERC20 transfer call site in `src/`; `scripts/lint-token-ops.sh` (lint-staged on any staged `.sol` or on the inventory, and the prelude of `./scripts/test-certora.sh`) fails a commit that adds a transfer call without an inventory entry.
