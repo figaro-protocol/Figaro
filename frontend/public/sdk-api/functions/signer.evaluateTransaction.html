@@ -18,8 +18,11 @@
 <div class="tsd-description">
 <div class="tsd-comment tsd-typography"><p>Decide a <code>signTransaction</code> request: target + selector must be allowlisted;
 an <code>approve</code> on the denomination counts its amount (and its spender
-must itself be an allowlisted contract); a payable <code>value</code> counts against
-the native ceiling. Contract creation (<code>to</code> absent) is refused.</p>
+must itself be an allowlisted contract); the payable <code>value</code> and the
+worst-case fee (<code>gas</code> × the fee cap) count together against the native
+ceiling. The transaction must name the policy's chain. Contract creation
+(<code>to</code> absent), a fee that cannot be bounded, and a field the gate does not
+evaluate are refused.</p>
 </div>
 <div class="tsd-parameters">
 <h4 class="tsd-parameters-title">Parameters</h4>
@@ -29,7 +32,7 @@ the native ceiling. Contract creation (<code>to</code> absent) is refused.</p>
 <li><span><span class="tsd-kind-parameter">spent</span>: <a href="../interfaces/signer.SpentWindow.html" class="tsd-signature-type tsd-kind-interface">SpentWindow</a></span></li></ul></div>
 <h4 class="tsd-returns-title">Returns <a href="../interfaces/signer.GateDecision.html" class="tsd-signature-type tsd-kind-interface">GateDecision</a></h4><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/signer/gate.ts#L161">signer/gate.ts:161</a></li></ul></aside></div></li></ul></section></div>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/signer/gate.ts#L193">signer/gate.ts:193</a></li></ul></aside></div></li></ul></section></div>
 <div class="col-sidebar">
 <div class="page-menu">
 <div class="tsd-navigation settings">

@@ -88,7 +88,10 @@ wrapper composes two pieces: the profile denies ALL outbound network except
 loopback, and a **policy-driven egress proxy** — started by the launcher
 OUTSIDE the sandbox, reading the same policy file the signer owns — is the
 only way out, forwarding only to the policy's `egress` hosts. Writes are
-denied outside the agent's workspace and temp; the environment is scrubbed of
+denied outside the agent's workspace and temp, and denied in the signer's own
+directory wherever it sits — the spend journal and the audit log live there
+beside the socket, and an agent that could write the journal would set its
+own ceiling; the environment is scrubbed of
 anything key-shaped (broad pattern — a missed secret is a bug); the named
 secret paths are unreadable; and the signer's UNIX socket is the one signing
 capability that crosses the boundary. The signing key itself is never on the
@@ -96,23 +99,37 @@ sandboxed side at all.
 
 ```sh
 npx figaro-run-sandboxed --policy …/deployments/signer-policy.11155111.json \
-  --workspace ~/operator-workspace [--signer-socket /tmp/figaro-signer.sock] \
+  --workspace ~/operator-workspace [--signer-socket ~/.figaro-signer/signer.sock] \
   [--deny-read <path>]... -- <the agent's own launch command>
 ```
 
 The launcher sets `HTTP(S)_PROXY` and preloads `proxy-bootstrap.mjs`
 (`NODE_OPTIONS --import`) so node's fetch — which does not honor proxy env on
 its own — routes through the proxy; `FIGARO_SIGNER_SOCKET` carries the socket
-path in. Deny paths are canonicalized before they reach the profile (`/var`
+path in. The socket's directory is the signer's own (`~/.figaro-signer` by
+default), and the profile denies every write in it. That rule covers the
+directory and what is under it, not its parents, and matches real paths, so
+the launcher refuses a directory that is inside, or contains, the workspace or
+a temp directory (a parent the agent could rename), and one that does not
+exist yet (start the signer first). A signer started with `--dir <dir>` is
+matched here with `--signer-socket <dir>/signer.sock`. The agent may signal
+its own processes and no other: the signer daemon cannot be killed from
+inside. Deny paths are canonicalized before they reach the profile (`/var`
 is a symlink to `/private/var`; an uncanonicalized deny matches nothing).
 
 The test suite exercises the boundaries as DENY CASES — a write escape, a
-secret read, a direct outbound connection — each an attempt that must fail,
+secret read, a direct outbound connection, nine ways of changing the
+signer's journal, audit log or socket (append, truncate, delete, replace,
+rewrite the audit log, delete the socket, move the directory, a hard link, a
+symlink), a signer directory the launcher must refuse, and a signal to an
+outside process — each an attempt that must fail,
 plus the composed proof: a framed live fetch from inside the sandbox through
 the proxy.
 
 **The Linux variant** (exercised in CI on demand — `on-demand-docker.yml` Job 2
-runs these deny cases on ubuntu runners; never on the authoring host, which has no
+runs the write, secret, egress and socket cases on ubuntu runners; the
+signer-directory cases run on macOS, since the container mounts the socket
+alone and the journal never enters it; never on the authoring host, which has no
 container runtime): run the same launcher minus `sandbox-exec` inside a
 container with equivalent boundaries — workspace and temp mounted writable,
 the repo read-only, no secret mounts, network `--internal` plus the proxy

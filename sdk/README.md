@@ -1565,18 +1565,48 @@ signed. The gate enforces: EIP-712 **domain binding** (chainId + a
 verifyingContract on the policy's allowlist — `FigaroCore` and
 `FigaroBatchVerifier`, the batch path's own domain), a **contract +
 selector allowlist** for transactions, **per-action and rolling-period value
-ceilings** (token risk = the wallet's own bond side of a Commitment plus every
-`approve` at its amount; native risk = a payable call's `value`, refused
-unless the policy grants a native ceiling), a **simulation veto** (`eth_call`
-plus best-effort asset tracing), and an **audit log**. `personal_sign` is
-refused always. The rolling window persists in a signer-owned journal — a
-restart cannot reset the ceiling.
+ceilings**, a **simulation veto** (`eth_call` plus best-effort asset tracing),
+and an **audit log**. `personal_sign` is refused always.
+
+What the ceilings count:
+
+- **Token risk** — the wallet's bonds on a Commitment (the buyer's, the
+  seller's, or both when the wallet is both) plus every `approve` at its
+  amount.
+- **Native risk** — a transaction's `value` PLUS the most gas it can cost:
+  the gas limit at the highest price per gas it allows (`gas × maxFeePerGas`
+  or `gas × gasPrice`, the larger when both are present). Gas is ETH leaving
+  the wallet, so a policy that grants no native ceiling (`perActionNative` /
+  `perPeriodNative`, in wei; absent means zero) refuses every transaction
+  that costs gas, and the ceiling it grants must cover the gas. The ceiling is
+  the owner's choice of what the agent may put at risk: per action, the
+  largest stake the agent may pay plus one transaction's worst-case gas; per
+  period, that times the transactions a day allows. The worst case is set when
+  the transaction is built, at the network's price then, so a ceiling too low
+  for a busy day refuses — loudly, with the reason in the audit log.
+
+A transaction is read field by field. It must name the policy's chain
+(`chainId`), carry a gas limit and a price per gas, and carry no field the
+gate does not evaluate — a blob gas price or an authorization list is refused,
+never signed blind.
+
+The signer keeps three files in ONE directory of its own, `~/.figaro-signer`
+unless `--dir` names another: the socket (`signer.sock`), the audit log
+(`audit.jsonl`) and the spend journal (`window.jsonl`). The journal is what
+makes the per-period ceiling a bound — a restart replays it — so the directory
+is never one the gated agent can write: the daemon refuses a directory that
+group or others can write (a shared temp directory) and refuses to split the
+three files across directories; the macOS sandbox profile denies the agent
+every write in that directory (the Linux container mounts the socket alone);
+and a journal with an entry that is not a time and two non-negative amounts
+refuses the start.
 
 Run it:
 
 ```sh
 npx figaro-signer --policy deployments/signer-policy.11155111.json \
-  --keystore ~/operator.keystore.json --socket /tmp/figaro-signer.sock
+  --keystore ~/operator.keystore.json
+# socket, audit log and journal: ~/.figaro-signer/ (--dir <dir> to move them)
 # passphrase: FIGARO_SIGNER_PASSPHRASE env, or the hidden prompt
 ```
 
@@ -1584,10 +1614,11 @@ Consume it — the account drops into the `WalletClient` the agent layer
 already takes; the agent's code path is unchanged and the key is unreachable:
 
 ```ts
+import os from "node:os";
 import { socketSignerAccount } from "@figaro-protocol/sdk/signer";
 import { createWalletClient, http } from "viem";
 
-const account = socketSignerAccount({ socketPath: "/tmp/figaro-signer.sock", address: operated });
+const account = socketSignerAccount({ socketPath: `${os.homedir()}/.figaro-signer/signer.sock`, address: operated });
 const walletClient = createWalletClient({ account, chain, transport: http(rpcUrl) });
 ```
 

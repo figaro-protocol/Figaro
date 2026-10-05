@@ -8,10 +8,13 @@
  * Risk accounting is deliberately closed-world over how value can LEAVE the
  * wallet: the denomination moves only through allowances (no `transfer`
  * selector is ever allowlisted), so counting every `approve` at its amount
- * bounds all token outflow; native ETH moves only as a payable call's
- * `value`, counted against its own ceiling (absent = zero = refused). A
- * typed-data signature's risk is the wallet's own side of the 2× bond math
- * on a Commitment; the other protocol structs put nothing new at risk.
+ * bounds all token outflow; native ETH leaves as a payable call's `value`
+ * and as the transaction's fee, counted together against the native ceiling
+ * (absent = zero = every transaction refused: a fee is ETH). A transaction
+ * is read field by field, and one carrying a field the gate does not
+ * evaluate is refused. A typed-data signature's risk is the wallet's bonds
+ * under the 2× bond math on a Commitment — both when it is buyer and seller;
+ * the other protocol structs put nothing new at risk.
  */
 
 import type { Address, Hex } from "viem";
@@ -130,9 +133,13 @@ export function evaluateTypedData(
         }
         const me = wallet.toLowerCase();
         const bonds = calculateBonds(cumulative, payment);
-        if (buyer === me) risk = { token: bonds.buyerBond, native: 0n };
-        else if (seller === me) risk = { token: bonds.sellerBond, native: 0n };
-        else return refuse("wallet is neither buyer nor seller of the Commitment");
+        // The Core admits buyer == seller and pulls both bonds from the one
+        // wallet.
+        const mine = (buyer === me ? bonds.buyerBond : 0n) + (seller === me ? bonds.sellerBond : 0n);
+        if (buyer !== me && seller !== me) {
+            return refuse("wallet is neither buyer nor seller of the Commitment");
+        }
+        risk = { token: mine, native: 0n };
     } else if (!ZERO_RISK_PRIMARY_TYPES.has(req.primaryType)) {
         return refuse(`unknown primaryType ${req.primaryType} — never signed blind`);
     }
@@ -143,11 +150,33 @@ export function evaluateTypedData(
 
 // ── Transactions ────────────────────────────────────────────────────────────
 
+/** A transaction as the wallet client hands it to the signer. Every field
+ *  present is read: the ones below are evaluated, and any other refuses the
+ *  request. */
 export interface TransactionRequest {
     to?: unknown;
     data?: unknown;
     value?: unknown;
+    gas?: unknown;
+    maxFeePerGas?: unknown;
+    maxPriorityFeePerGas?: unknown;
+    gasPrice?: unknown;
+    chainId?: unknown;
+    [field: string]: unknown;
 }
+
+/** The fields `evaluateTransaction` accounts for. `maxPriorityFeePerGas` is
+ *  bounded by `maxFeePerGas`; an access list spends gas inside `gas`; `nonce`
+ *  and `from` move no value. Blob fees and authorization lists are outside
+ *  this set, and so refused. */
+const EVALUATED_TX_FIELDS = new Set([
+    "to", "data", "value", "gas", "maxFeePerGas", "maxPriorityFeePerGas",
+    "gasPrice", "chainId", "nonce", "type", "accessList", "from",
+]);
+const EVALUATED_TX_TYPES = new Set(["legacy", "eip2930", "eip1559"]);
+const QUANTITY_TX_FIELDS = [
+    "value", "gas", "maxFeePerGas", "maxPriorityFeePerGas", "gasPrice", "nonce", "chainId",
+] as const;
 
 /** `approve(address,uint256)` — the one selector whose calldata is risk. */
 export const APPROVE_SELECTOR: Hex = "0x095ea7b3";
@@ -155,14 +184,41 @@ export const APPROVE_SELECTOR: Hex = "0x095ea7b3";
 /**
  * Decide a `signTransaction` request: target + selector must be allowlisted;
  * an `approve` on the denomination counts its amount (and its spender
- * must itself be an allowlisted contract); a payable `value` counts against
- * the native ceiling. Contract creation (`to` absent) is refused.
+ * must itself be an allowlisted contract); the payable `value` and the
+ * worst-case fee (`gas` × the fee cap) count together against the native
+ * ceiling. The transaction must name the policy's chain. Contract creation
+ * (`to` absent), a fee that cannot be bounded, and a field the gate does not
+ * evaluate are refused.
  */
 export function evaluateTransaction(
     policy: SignerPolicy,
     req: TransactionRequest,
     spent: SpentWindow,
 ): GateDecision {
+    // Absent is `undefined` only: the serializer reads a `null` field as
+    // present (a `null` authorization list makes an EIP-7702 transaction).
+    for (const [field, v] of Object.entries(req)) {
+        if (v === undefined) continue;
+        if (!EVALUATED_TX_FIELDS.has(field)) {
+            return refuse(`transaction field ${field} is not one the gate evaluates — never signed blind`);
+        }
+    }
+    if (req.type !== undefined && (typeof req.type !== "string" || !EVALUATED_TX_TYPES.has(req.type))) {
+        return refuse(`transaction type ${String(req.type)} is not one the gate evaluates — never signed blind`);
+    }
+    // Every quantity present is one the gate can read. The serializer reads
+    // more spellings than `toBigInt` does (" 1e15", "0X…", ["…"], true): a
+    // quantity the gate cannot read is one it would not count, so it refuses.
+    for (const field of QUANTITY_TX_FIELDS) {
+        if (req[field] !== undefined && toBigInt(req[field]) === null) {
+            return refuse(`transaction ${field} is not a quantity`);
+        }
+    }
+    const chainId = toBigInt(req.chainId);
+    if (chainId === null || chainId !== BigInt(policy.chainId)) {
+        return refuse(`transaction chainId ${String(req.chainId ?? "(missing)")} is not the policy chain ${policy.chainId}`);
+    }
+
     const to = typeof req.to === "string" ? req.to.toLowerCase() : "";
     if (!to) return refuse("transaction has no target — contract creation is refused");
     const selectors = policy.contracts[to as Address];
@@ -178,6 +234,15 @@ export function evaluateTransaction(
     const value = toBigInt(req.value ?? 0n);
     if (value === null) return refuse("transaction value is not a quantity");
 
+    // The fee is ETH leaving the wallet, to whoever builds the block. The
+    // most it can be is the gas limit at the fee cap.
+    const gas = toBigInt(req.gas);
+    const caps = [toBigInt(req.maxFeePerGas), toBigInt(req.gasPrice)].filter((c): c is bigint => c !== null);
+    if (gas === null || caps.length === 0) {
+        return refuse("transaction carries no gas limit or no fee cap — its fee cannot be bounded");
+    }
+    const fee = gas * caps.reduce((a, b) => (a > b ? a : b));
+
     let tokenRisk = 0n;
     if (to === policy.token && selector === APPROVE_SELECTOR) {
         if (data.length < 10 + 128) return refuse("approve calldata is truncated");
@@ -189,7 +254,7 @@ export function evaluateTransaction(
         tokenRisk = amount;
     }
 
-    const risk: RiskDelta = { token: tokenRisk, native: value };
+    const risk: RiskDelta = { token: tokenRisk, native: value + fee };
     return checkCeilings(policy, risk, spent)
         ?? { allow: true, risk, reason: `ok: ${selector} on ${to}` };
 }

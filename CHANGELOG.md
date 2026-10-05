@@ -23,6 +23,26 @@ release lives under **Unreleased**.
   model is now `formal/ResolutionUniverses.tla`; the analyst's route is
   `/queries/trade-story`; the paper moved to `/papers/verified-resolution-kernel`
   with a redirect stub at the old address.
+- **SDK 0.2.0 (breaking): the policy signer counts a transaction's gas, reads
+  every field, and keeps its files in one directory of its own.** Native risk
+  is the `value` plus the most gas the transaction can cost (`gas ×` the
+  highest price per gas it allows), so a policy with no `perActionNative` /
+  `perPeriodNative` refuses every transaction that costs gas, and a granted
+  ceiling must cover gas. A transaction must name the policy's `chainId` and
+  carry a gas limit and a price per gas; a field the gate does not evaluate
+  (a blob gas price, an authorization list) is refused. A Commitment where
+  the wallet is buyer and seller counts both bonds. The socket, the audit log
+  and the spend journal sit in one directory — `~/.figaro-signer/` unless
+  `--dir` or a `--socket` path names another — as `signer.sock`,
+  `audit.jsonl` and `window.jsonl`; `--audit` and `--journal` are gone. The
+  daemon refuses a directory that group or others can write, and a journal
+  entry that is not a time and two non-negative amounts refuses the start.
+  A quantity the gate cannot read, a `null` field and a non-string `type`
+  are refused. `socketSignerAccount` sends the transaction's own fields
+  only. On macOS the sandbox launcher (`ecosystem-agents/runtime`) denies
+  the agent every write in the signer's directory and every signal to an
+  outside process, and refuses a signer directory that does not exist or
+  sits inside, or contains, the workspace or a temp directory.
 - **SDK 0.2.0 (breaking): `SyncResult.newSellers` is renamed to `newMembers`.**
   The field counts member registrations and profile updates; a member may
   buy, sell, or both.

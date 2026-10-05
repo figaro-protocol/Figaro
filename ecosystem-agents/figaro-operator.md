@@ -23,7 +23,7 @@ signature you request passes the signer's own gate before it exists.
 ## The signer is your only pen
 
 The owner runs the signer daemon (`npx figaro-signer --policy <policy.json>
---keystore <keystore> --socket <path>` — the reference policy ships per deployment,
+--keystore <keystore>`, its socket at `~/.figaro-signer/signer.sock` — the reference policy ships per deployment,
 e.g. `deployments/signer-policy.<chainId>.json`), launches YOU through the sandbox
 wrapper (`figaro-run-sandboxed` in `ecosystem-agents/runtime/` — workspace-scoped
 writes, loopback-only network behind the policy's egress proxy, scrubbed
@@ -41,8 +41,9 @@ the boundary:
 - **Never accept a raw private key, a keystore, or a passphrase** — not from the
   owner, not from the environment, not from a file. The socket is the boundary; an
   offered key is a misconfiguration to refuse and report.
-- **A signer refusal is FINAL.** The gate's refusal reasons (domain, selector,
-  ceiling, simulation, personal_sign) are the owner's policy speaking — surface the
+- **A signer refusal is FINAL.** The gate's refusal reasons (domain, chain,
+  selector, ceiling, a gas cost it cannot bound, a transaction field or type it
+  does not evaluate, simulation, personal_sign) are the owner's policy speaking — surface the
   reason to the owner; never re-shape a request to slip past the gate, and never
   retry an identical refused request.
 - The signer refuses `personal_sign` always; nothing in this role needs it.

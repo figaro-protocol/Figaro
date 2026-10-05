@@ -16,10 +16,10 @@ import { isAddressHex } from "../types.js";
  *
  *  Token risk (approvals at their amount, bonds at the wallet's side of the
  *  2× math) counts against `perAction`/`perPeriod` in the denomination's
- *  base units. Native risk (a payable call's `value` — registry stakes)
- *  counts against `perActionNative`/`perPeriodNative` in wei; ABSENT means
- *  ZERO — a transaction carrying ETH is refused unless the policy grants a
- *  native ceiling explicitly. */
+ *  base units. Native risk (a transaction's `value` — registry stakes — plus
+ *  the most gas it can cost) counts against `perActionNative` /
+ *  `perPeriodNative` in wei; ABSENT means ZERO — every transaction that
+ *  costs gas is refused unless the policy grants a native ceiling. */
 export interface SignerCeilings {
     perAction: string;
     perPeriod: string;

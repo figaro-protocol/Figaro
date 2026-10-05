@@ -76,7 +76,14 @@ export function socketSignerAccount(config: SocketSignerConfig): LocalAccount {
             throw new Error("unreachable: the signer never grants personal_sign");
         },
         async signTransaction(tx) {
-            const result = await request(config, "signTransaction", tx);
+            // A request a WalletClient prepared carries the account and the
+            // chain it was prepared for. Neither is a field of the
+            // transaction (its `chainId` is), and the gate refuses a field
+            // it does not evaluate: the transaction's own fields cross the
+            // socket, nothing else.
+            const { account: _account, chain: _chain, ...transaction } =
+                tx as typeof tx & { account?: unknown; chain?: unknown };
+            const result = await request(config, "signTransaction", transaction);
             return result.serializedTransaction as Hex;
         },
         async signTypedData(typedData) {

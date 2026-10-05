@@ -21,6 +21,7 @@ export {
 } from "./gate.js";
 export { decryptKeystore, type KeystoreV3 } from "./keystore.js";
 export { SpendJournal } from "./window.js";
+export { resolveSignerPaths, assertPrivateDir, assertOneDir, SIGNER_DIRNAME, type SignerPaths } from "./paths.js";
 export { appendAudit, type AuditEntry } from "./audit.js";
 export {
     createSignerDaemon, reviveTypedMessage,

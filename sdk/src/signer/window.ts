@@ -9,6 +9,7 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import type { SpentWindow } from "./gate.js";
+import { parseAmount } from "./policy.js";
 
 interface JournalEntry {
     ts: number;
@@ -24,18 +25,37 @@ export class SpendJournal {
         private readonly periodSecs: number,
     ) {
         if (fs.existsSync(file)) {
-            for (const line of fs.readFileSync(file, "utf-8").split("\n")) {
-                if (!line.trim()) continue;
+            const text = fs.readFileSync(file, "utf-8");
+            const lines = text.split("\n").filter((l) => l.trim());
+            lines.forEach((line, i) => {
+                let e: Partial<JournalEntry> | null;
                 try {
-                    const e = JSON.parse(line) as JournalEntry;
-                    if (typeof e.ts === "number" && typeof e.token === "string" && typeof e.native === "string") {
-                        this.entries.push(e);
-                    }
+                    e = JSON.parse(line) as Partial<JournalEntry> | null;
                 } catch {
-                    // A torn tail line (crash mid-append) is dropped; every
-                    // complete line still counts.
+                    // A torn tail line (crash mid-append) is cut off the
+                    // file, so the next append starts a line of its own;
+                    // every complete line still counts. Anywhere else it is
+                    // damage. The journal is ASCII: characters are bytes.
+                    if (i === lines.length - 1) {
+                        fs.truncateSync(file, text.lastIndexOf("\n") + 1);
+                        return;
+                    }
+                    throw new Error(`the spend journal ${file} is damaged: entry ${i + 1} does not parse`);
                 }
-            }
+                // Every entry is a time and two non-negative amounts. An
+                // entry that is anything else — a negative amount gives spend
+                // back — refuses the start: the window is the ceiling's
+                // record, and a record that cannot be read whole bounds
+                // nothing.
+                if (
+                    typeof e !== "object" || e === null
+                    || typeof e.ts !== "number" || !Number.isFinite(e.ts) || e.ts < 0
+                    || parseAmount(e.token) === null || parseAmount(e.native) === null
+                ) {
+                    throw new Error(`the spend journal ${file} is damaged: entry ${i + 1} is not a time and two non-negative amounts`);
+                }
+                this.entries.push({ ts: e.ts, token: e.token as string, native: e.native as string });
+            });
         }
     }
 

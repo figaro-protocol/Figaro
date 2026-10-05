@@ -1418,19 +1418,46 @@ signed. The gate enforces: EIP-712 <strong>domain binding</strong> (chainId + a
 verifyingContract on the policy's allowlist — <code>FigaroCore</code> and
 <code>FigaroBatchVerifier</code>, the batch path's own domain), a <strong>contract +
 selector allowlist</strong> for transactions, <strong>per-action and rolling-period value
-ceilings</strong> (token risk = the wallet's own bond side of a Commitment plus every
-<code>approve</code> at its amount; native risk = a payable call's <code>value</code>, refused
-unless the policy grants a native ceiling), a <strong>simulation veto</strong> (<code>eth_call</code>
-plus best-effort asset tracing), and an <strong>audit log</strong>. <code>personal_sign</code> is
-refused always. The rolling window persists in a signer-owned journal — a
-restart cannot reset the ceiling.</p>
+ceilings</strong>, a <strong>simulation veto</strong> (<code>eth_call</code> plus best-effort asset tracing),
+and an <strong>audit log</strong>. <code>personal_sign</code> is refused always.</p>
+<p>What the ceilings count:</p>
+<ul>
+<li><strong>Token risk</strong> — the wallet's bonds on a Commitment (the buyer's, the
+seller's, or both when the wallet is both) plus every <code>approve</code> at its
+amount.</li>
+<li><strong>Native risk</strong> — a transaction's <code>value</code> PLUS the most gas it can cost:
+the gas limit at the highest price per gas it allows (<code>gas × maxFeePerGas</code>
+or <code>gas × gasPrice</code>, the larger when both are present). Gas is ETH leaving
+the wallet, so a policy that grants no native ceiling (<code>perActionNative</code> /
+<code>perPeriodNative</code>, in wei; absent means zero) refuses every transaction
+that costs gas, and the ceiling it grants must cover the gas. The ceiling is
+the owner's choice of what the agent may put at risk: per action, the
+largest stake the agent may pay plus one transaction's worst-case gas; per
+period, that times the transactions a day allows. The worst case is set when
+the transaction is built, at the network's price then, so a ceiling too low
+for a busy day refuses — loudly, with the reason in the audit log.</li>
+</ul>
+<p>A transaction is read field by field. It must name the policy's chain
+(<code>chainId</code>), carry a gas limit and a price per gas, and carry no field the
+gate does not evaluate — a blob gas price or an authorization list is refused,
+never signed blind.</p>
+<p>The signer keeps three files in ONE directory of its own, <code>~/.figaro-signer</code>
+unless <code>--dir</code> names another: the socket (<code>signer.sock</code>), the audit log
+(<code>audit.jsonl</code>) and the spend journal (<code>window.jsonl</code>). The journal is what
+makes the per-period ceiling a bound — a restart replays it — so the directory
+is never one the gated agent can write: the daemon refuses a directory that
+group or others can write (a shared temp directory) and refuses to split the
+three files across directories; the macOS sandbox profile denies the agent
+every write in that directory (the Linux container mounts the socket alone);
+and a journal with an entry that is not a time and two non-negative amounts
+refuses the start.</p>
 <p>Run it:</p>
-<pre><code class="sh"><span class="hl-0">npx</span><span class="hl-1"> </span><span class="hl-2">figaro-signer</span><span class="hl-1"> </span><span class="hl-4">--policy</span><span class="hl-1"> </span><span class="hl-2">deployments/signer-policy.11155111.json</span><span class="hl-1"> </span><span class="hl-11">\</span><br/><span class="hl-1">  </span><span class="hl-4">--keystore</span><span class="hl-1"> </span><span class="hl-2">~/operator.keystore.json</span><span class="hl-1"> </span><span class="hl-4">--socket</span><span class="hl-1"> </span><span class="hl-2">/tmp/figaro-signer.sock</span><br/><span class="hl-3"># passphrase: FIGARO_SIGNER_PASSPHRASE env, or the hidden prompt</span>
+<pre><code class="sh"><span class="hl-0">npx</span><span class="hl-1"> </span><span class="hl-2">figaro-signer</span><span class="hl-1"> </span><span class="hl-4">--policy</span><span class="hl-1"> </span><span class="hl-2">deployments/signer-policy.11155111.json</span><span class="hl-1"> </span><span class="hl-11">\</span><br/><span class="hl-1">  </span><span class="hl-4">--keystore</span><span class="hl-1"> </span><span class="hl-2">~/operator.keystore.json</span><br/><span class="hl-3"># socket, audit log and journal: ~/.figaro-signer/ (--dir &lt;dir&gt; to move them)</span><br/><span class="hl-3"># passphrase: FIGARO_SIGNER_PASSPHRASE env, or the hidden prompt</span>
 </code><button type="button">Copy</button></pre>
 
 <p>Consume it — the account drops into the <code>WalletClient</code> the agent layer
 already takes; the agent's code path is unchanged and the key is unreachable:</p>
-<pre><code class="ts"><span class="hl-6">import</span><span class="hl-1"> { </span><span class="hl-5">socketSignerAccount</span><span class="hl-1"> } </span><span class="hl-6">from</span><span class="hl-1"> </span><span class="hl-2">&quot;@figaro-protocol/sdk/signer&quot;</span><span class="hl-1">;</span><br/><span class="hl-6">import</span><span class="hl-1"> { </span><span class="hl-5">createWalletClient</span><span class="hl-1">, </span><span class="hl-5">http</span><span class="hl-1"> } </span><span class="hl-6">from</span><span class="hl-1"> </span><span class="hl-2">&quot;viem&quot;</span><span class="hl-1">;</span><br/><br/><span class="hl-4">const</span><span class="hl-1"> </span><span class="hl-7">account</span><span class="hl-1"> = </span><span class="hl-0">socketSignerAccount</span><span class="hl-1">({ </span><span class="hl-5">socketPath:</span><span class="hl-1"> </span><span class="hl-2">&quot;/tmp/figaro-signer.sock&quot;</span><span class="hl-1">, </span><span class="hl-5">address:</span><span class="hl-1"> </span><span class="hl-5">operated</span><span class="hl-1"> });</span><br/><span class="hl-4">const</span><span class="hl-1"> </span><span class="hl-7">walletClient</span><span class="hl-1"> = </span><span class="hl-0">createWalletClient</span><span class="hl-1">({ </span><span class="hl-5">account</span><span class="hl-1">, </span><span class="hl-5">chain</span><span class="hl-1">, </span><span class="hl-5">transport:</span><span class="hl-1"> </span><span class="hl-0">http</span><span class="hl-1">(</span><span class="hl-5">rpcUrl</span><span class="hl-1">) });</span>
+<pre><code class="ts"><span class="hl-6">import</span><span class="hl-1"> </span><span class="hl-5">os</span><span class="hl-1"> </span><span class="hl-6">from</span><span class="hl-1"> </span><span class="hl-2">&quot;node:os&quot;</span><span class="hl-1">;</span><br/><span class="hl-6">import</span><span class="hl-1"> { </span><span class="hl-5">socketSignerAccount</span><span class="hl-1"> } </span><span class="hl-6">from</span><span class="hl-1"> </span><span class="hl-2">&quot;@figaro-protocol/sdk/signer&quot;</span><span class="hl-1">;</span><br/><span class="hl-6">import</span><span class="hl-1"> { </span><span class="hl-5">createWalletClient</span><span class="hl-1">, </span><span class="hl-5">http</span><span class="hl-1"> } </span><span class="hl-6">from</span><span class="hl-1"> </span><span class="hl-2">&quot;viem&quot;</span><span class="hl-1">;</span><br/><br/><span class="hl-4">const</span><span class="hl-1"> </span><span class="hl-7">account</span><span class="hl-1"> = </span><span class="hl-0">socketSignerAccount</span><span class="hl-1">({ </span><span class="hl-5">socketPath:</span><span class="hl-1"> </span><span class="hl-2">`</span><span class="hl-4">${</span><span class="hl-5">os</span><span class="hl-12">.</span><span class="hl-0">homedir</span><span class="hl-12">()</span><span class="hl-4">}</span><span class="hl-2">/.figaro-signer/signer.sock`</span><span class="hl-1">, </span><span class="hl-5">address:</span><span class="hl-1"> </span><span class="hl-5">operated</span><span class="hl-1"> });</span><br/><span class="hl-4">const</span><span class="hl-1"> </span><span class="hl-7">walletClient</span><span class="hl-1"> = </span><span class="hl-0">createWalletClient</span><span class="hl-1">({ </span><span class="hl-5">account</span><span class="hl-1">, </span><span class="hl-5">chain</span><span class="hl-1">, </span><span class="hl-5">transport:</span><span class="hl-1"> </span><span class="hl-0">http</span><span class="hl-1">(</span><span class="hl-5">rpcUrl</span><span class="hl-1">) });</span>
 </code><button type="button">Copy</button></pre>
 
 <p>A reference policy for the live public deployment ships at

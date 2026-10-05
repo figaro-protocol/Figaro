@@ -15,10 +15,10 @@
 <div class="tsd-comment tsd-typography"><p>Value ceilings, all amounts as decimal strings in base units.</p>
 <p>Token risk (approvals at their amount, bonds at the wallet's side of the
 2× math) counts against <code>perAction</code>/<code>perPeriod</code> in the denomination's
-base units. Native risk (a payable call's <code>value</code> — registry stakes)
-counts against <code>perActionNative</code>/<code>perPeriodNative</code> in wei; ABSENT means
-ZERO — a transaction carrying ETH is refused unless the policy grants a
-native ceiling explicitly.</p>
+base units. Native risk (a transaction's <code>value</code> — registry stakes — plus
+the most gas it can cost) counts against <code>perActionNative</code> /
+<code>perPeriodNative</code> in wei; ABSENT means ZERO — every transaction that
+costs gas is refused unless the policy grants a native ceiling.</p>
 </div></section>
 <div class="tsd-signature"><span class="tsd-signature-keyword">interface</span> <span class="tsd-kind-interface">SignerCeilings</span> <span class="tsd-signature-symbol">{</span><br/>    <a class="tsd-kind-property" href="#peraction">perAction</a><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#peractionnative">perActionNative</a><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#periodsecs">periodSecs</a><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#perperiod">perPeriod</a><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#perperiodnative">perPeriodNative</a><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">;</span><br/><span class="tsd-signature-symbol">}</span></div><aside class="tsd-sources">
 <ul>

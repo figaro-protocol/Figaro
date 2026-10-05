@@ -11,6 +11,7 @@
 
 import * as fs from "node:fs";
 import * as net from "node:net";
+import * as path from "node:path";
 import { createPublicClient, http, type Address, type Hex, type TransactionSerializable } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { simulateCalls } from "viem/actions";
@@ -21,6 +22,7 @@ import {
 import type { SignerPolicy } from "./policy.js";
 import { appendAudit } from "./audit.js";
 import { SpendJournal } from "./window.js";
+import { assertOneDir, assertPrivateDir } from "./paths.js";
 import { parseRequest, wireStringify, type WireResponse } from "./wire.js";
 
 export interface SignerDaemonOptions {
@@ -80,6 +82,10 @@ function reviveTx(params: Record<string, unknown>): TransactionSerializable {
 
 export function createSignerDaemon(opts: SignerDaemonOptions): SignerDaemon {
     const { policy, socketPath, auditPath, journalPath } = opts;
+    // The journal bounds the period and the audit log is the owner's record:
+    // neither sits where other users can write.
+    assertOneDir({ socketPath, auditPath, journalPath });
+    assertPrivateDir(path.dirname(socketPath));
     const account = privateKeyToAccount(opts.privateKey);
     const journal = new SpendJournal(journalPath, policy.ceilings.periodSecs);
     const nowSecs = opts.nowSecs ?? (() => Math.floor(Date.now() / 1000));
@@ -175,11 +181,11 @@ export function createSignerDaemon(opts: SignerDaemonOptions): SignerDaemon {
 
         // signTransaction
         const tx = reviveTx(params);
-        const decision = evaluateTransaction(policy, {
-            to: (tx as { to?: string }).to,
-            data: (tx as { data?: string }).data,
-            value: (tx as { value?: bigint }).value ?? 0n,
-        }, journal.spent(nowSecs()));
+        // The gate reads the transaction that is signed, whole: every field
+        // it carries, the fee and the chain among them.
+        const decision = evaluateTransaction(
+            policy, tx as unknown as Record<string, unknown>, journal.spent(nowSecs()),
+        );
         const subject = `${String((tx as { to?: string }).to)}:${String((tx as { data?: string }).data ?? "0x").slice(0, 10)}`;
         if (!decision.allow) {
             audit(req.op, decision, subject);

@@ -380,11 +380,18 @@ allowlist of verifying contracts read from the deployment record — `FigaroCore
 `FigaroBatchVerifier`, since the batch path signs over the verifier's domain and a
 core-only allowlist would lock the wallet out of batched trade; a **contract and
 selector allowlist**; **ceilings** per action and per rolling period, which survive a
-restart; and a **simulation veto**. Token approvals count at face value. Native ETH —
-the payable registry stakes — carries its OWN ceiling pair
-(`perActionNative`/`perPeriodNative`, in wei) rather than sharing the token cap, and
-absent means zero, so a value-carrying transaction is refused unless the policy grants
-it explicitly. The policy is a JSON file beside the deployment record: `chainId`,
+restart; and a **simulation veto**. Token approvals count at face value, and a
+Commitment counts the wallet's bonds — both when it is buyer and seller. Native ETH
+carries its OWN ceiling pair (`perActionNative`/`perPeriodNative`, in wei) rather than
+sharing the token cap, and it counts everything that leaves as ETH: a payable call's
+value (the registry stakes) and the most gas the transaction can cost, its gas limit at
+the highest price per gas it allows. Absent means zero, so every transaction that costs
+gas is refused unless the policy grants ETH explicitly. A transaction is read field by
+field: it names the policy's chain, and one carrying a field the gate does not evaluate
+is refused. The ceilings are kept in the spend journal, which a restart replays; it
+sits with the socket and the audit log in one directory of the signer's own, which the
+macOS sandbox profile denies the agent every write in (`sdk/README.md` § "The Policy
+Signer"). The policy is a JSON file beside the deployment record: `chainId`,
 `contracts` (address → allowed selectors), `token`, `ceilings`, `egress`. It is
 validated at start, and a malformed policy refuses to start. A reference policy is
 generated from the deployment record plus the SDK ABIs, per network.

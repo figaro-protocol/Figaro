@@ -2,7 +2,9 @@
 ;; launched by run-sandboxed.mjs via sandbox-exec.
 ;;
 ;; Posture: default-deny on the two boundaries prose cannot enforce —
-;;   WRITES  — only the agent's own workspace and the temp dirs;
+;;   WRITES  — only the agent's own workspace and the temp dirs, and never
+;;             the signer's own directory;
+;;   SIGNALS — only to the agent's own processes;
 ;;   NETWORK — loopback only, so the egress proxy (outside the sandbox,
 ;;             enforcing the policy's allowlist) and the signer socket are
 ;;             the only ways out.
@@ -30,6 +32,21 @@
     (literal "/dev/stdout")
     (literal "/dev/stderr")
     (literal "/dev/tty"))
+;; The signer's own directory — its socket, its spend journal, its audit log.
+;; The journal is what bounds the period: an agent that could truncate it, or
+;; append to it, would set its own ceiling. The socket stays connectable: a
+;; connection is network-outbound, allowed above. This rule covers the
+;; directory and what is under it, not its parents: a directory inside one
+;; the agent may write could be renamed away from under the rule, so the
+;; launcher refuses a signer directory that is inside the workspace or a temp
+;; dir, and passes the directory's real path (the rule matches real paths).
+(deny file-write* (subpath (param "SIGNER_DIR")))
+
+;; ── Signals: the agent's own processes only ────────────────────────────
+;; A process outside the sandbox — the signer daemon above all — cannot be
+;; killed or stopped from inside it.
+(deny signal)
+(allow signal (target same-sandbox))
 
 ;; ── Reads: named secrets are unreadable ────────────────────────────────
 (deny file-read* (subpath (param "DENY_READ_A")))
