@@ -136,8 +136,10 @@ can answer are stated ahead in `deployments/1.expected.json` and read by
 `scripts/check-deployment.mjs` (run with `--artifacts` from a
 `forge build --via-ir` at the audit tag): it must report nothing that does not
 hold before the record is published. Its `null`s — the deposits (Task 3), the
-cooldown, the wallets — are the decisions still owed. The list below is the
-procedure around it:
+cooldown, the wallets — are the decisions still owed. The broadcast itself runs
+from a clean checkout of the audit tag, so the wrapper compiles the audited
+tree; the check, at the same tag, is what binds the result to the audit (the
+code, the guest key, the gateway). The list below is the procedure around it:
 
 - Verify the `--rpc-url` target by hand immediately before every `--broadcast` —
   neither deploy script guards `block.chainid`; the devnet script would happily
