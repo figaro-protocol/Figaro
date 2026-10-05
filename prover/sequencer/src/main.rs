@@ -12,7 +12,7 @@
 use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use alloy_primitives::Address;
+use alloy_primitives::{Address, B256};
 use tokio::sync::RwLock;
 use tokio::time;
 use tracing::{error, info, warn};
@@ -20,9 +20,10 @@ use tracing::{error, info, warn};
 use figaro_sequencer::api::{self, AppState, FailureLog};
 use figaro_sequencer::archive::{self, Archive, ArchiveConfig, BatchRecord};
 use figaro_sequencer::assembler::{self, AssemblerConfig};
-use figaro_sequencer::mempool::Mempool;
+use figaro_kernel::state::KernelState;
+use figaro_sequencer::mempool::{Mempool, PendingOp};
 use figaro_sequencer::prover;
-use figaro_sequencer::state::StateMirror;
+use figaro_sequencer::state::{self, Held, NextState, StateMirror, StateStore};
 use figaro_sequencer::submitter::{self, FundingGate, SubmitterConfig};
 
 fn env_or(key: &str, default: &str) -> String {
@@ -52,7 +53,10 @@ async fn main() {
     tracing_subscriber::fmt()
         .with_env_filter(
             tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "figaro_sequencer=info".into()),
+                // Two targets: the library's modules log as
+                // `figaro_sequencer`, this binary (startup, every refusal to
+                // start, the batch loop) as `sequencer`.
+                .unwrap_or_else(|_| "figaro_sequencer=info,sequencer=info".into()),
         )
         .init();
 
@@ -143,7 +147,16 @@ async fn main() {
     let archive_max_batches: usize = env_or("ARCHIVE_MAX_BATCHES", "10000")
         .parse()
         .expect("invalid ARCHIVE_MAX_BATCHES");
-    info!(%rpc_url, %chain_id, ?verifier_addr, ?verifying_contract, %listen_addr, %batch_interval, %max_ops, %mempool_max_ops, %mempool_max_usage, %max_body_bytes, %archive_path, %archive_max_batches, "Starting Figaro sequencer");
+    // The state behind the verifier's root, kept across restarts. The
+    // default names the chain and the verifier, so two deployments never
+    // share a file. `STATE_PATH=` (empty) keeps it in memory only: a restart
+    // then holds nothing, and against a verifier past genesis refuses to
+    // start.
+    let state_path = env_or(
+        "STATE_PATH",
+        &format!("sequencer-state-{chain_id}-{verifier_addr:#x}.json"),
+    );
+    info!(%rpc_url, %chain_id, ?verifier_addr, ?verifying_contract, %listen_addr, %batch_interval, %max_ops, %mempool_max_ops, %mempool_max_usage, %max_body_bytes, %archive_path, %archive_max_batches, %state_path, "Starting Figaro sequencer");
 
     // ── Initialize components ─────────────────────────────────────
     let mempool = Mempool::with_caps(
@@ -152,7 +165,18 @@ async fn main() {
         mempool_max_ops,
         mempool_max_usage,
     );
-    let state_mirror = StateMirror::genesis();
+    let (state_store, kept_state) =
+        match StateStore::open((!state_path.is_empty()).then(|| state_path.clone().into())).await {
+            Ok(opened) => opened,
+            Err(reason) => {
+                error!(%reason, "refusing to start");
+                std::process::exit(2);
+            }
+        };
+    let state_mirror = match kept_state {
+        Some(snapshot) => StateMirror::from_snapshot(snapshot),
+        None => StateMirror::genesis(),
+    };
     let archive = Archive::open(ArchiveConfig {
         path: (!archive_path.is_empty()).then(|| archive_path.clone().into()),
         max_batches: archive_max_batches,
@@ -167,7 +191,7 @@ async fn main() {
     // revert ProofInvalid after minutes of proving. Compared here, once,
     // before anything is queued: a mismatch is a refusal to start, with
     // both values printed. A verifier that cannot be read is not a
-    // verdict (it may not be deployed yet); the state-root sync below
+    // verdict (it may not be deployed yet); the state-root check below
     // warns the same way.
     if verifier_addr != Address::ZERO {
         match (
@@ -196,19 +220,27 @@ async fn main() {
         }
     }
 
-    // Sync initial state root from chain (if verifier is deployed)
+    // The verifier holds a root; a bond committed on the batch path is
+    // refunded only by a batch built on the state behind it. This relay
+    // builds on a state it holds whose root is the verifier's, and on no
+    // other: holding none, it refuses to start, the way a relay with
+    // another guest does. A verifier that cannot be read is not a verdict
+    // (it may not be deployed yet); the batch loop asks again before every
+    // batch.
     if verifier_addr != Address::ZERO {
         match submitter::read_state_root(&rpc_url, verifier_addr).await {
             Ok(root) => {
-                info!(?root, "Synced on-chain state root");
-                // For genesis, the on-chain root should match our local genesis root.
-                let local_root = state_mirror.state_root().await;
-                if root != local_root {
-                    warn!(
-                        ?root,
-                        ?local_root,
-                        "On-chain state root differs from local genesis — state sync needed"
+                if step_to(root, &rpc_url, verifier_addr, &state_mirror, &state_store, &archive, &batch_count).await {
+                    info!(?root, "This relay holds the state behind the verifier's root");
+                } else {
+                    error!(
+                        on_chain_root = ?root,
+                        local_root = ?state_mirror.state_root().await,
+                        held_next = ?state_store.next_roots().await,
+                        %state_path,
+                        "refusing to start: this relay does not hold the state behind the verifier's root — start it on the state file (STATE_PATH) of the relay that built the verifier's last batch"
                     );
+                    std::process::exit(2);
                 }
             }
             Err(e) => {
@@ -244,6 +276,7 @@ async fn main() {
     let failures = FailureLog::default();
     let loop_mempool = mempool.clone();
     let loop_state = state_mirror.clone();
+    let loop_state_store = state_store.clone();
     let loop_batch_count = batch_count.clone();
     let loop_archive = archive.clone();
     let loop_failures = failures.clone();
@@ -252,6 +285,7 @@ async fn main() {
         batch_loop(
             loop_mempool,
             loop_state,
+            loop_state_store,
             loop_archive,
             loop_batch_count,
             loop_failures,
@@ -303,6 +337,7 @@ async fn main() {
 async fn batch_loop(
     mempool: Mempool,
     state_mirror: StateMirror,
+    state_store: StateStore,
     archive: Archive,
     batch_count: Arc<RwLock<u64>>,
     failures: FailureLog,
@@ -314,9 +349,41 @@ async fn batch_loop(
 ) {
     let interval = Duration::from_secs(config.interval_secs);
     let mut ticker = time::interval(interval);
+    let dry_run = submitter_config.verifier_address == Address::ZERO;
+    // The verifier root this relay last found it holds no state for.
+    let mut out_of_step: Option<B256> = None;
 
     loop {
         ticker.tick().await;
+
+        // Build only on the state behind the verifier's root. Asked before
+        // anything is drained: a batch this relay sent may have landed
+        // unread (its state is held, and becomes the mirror's here), or
+        // another submitter's batch may have landed (its state is not held,
+        // and no batch is built until it is). A root that cannot be read
+        // leaves the tick's submissions queued.
+        if !dry_run {
+            match submitter::read_state_root(&submitter_config.rpc_url, submitter_config.verifier_address).await {
+                Ok(root) => {
+                    if !step_to(root, &submitter_config.rpc_url, submitter_config.verifier_address, &state_mirror, &state_store, &archive, &batch_count).await {
+                        if out_of_step != Some(root) {
+                            out_of_step = Some(root);
+                            let why = format!(
+                                "the verifier's root {root:?} is not a state this relay holds — no batch is built until it is"
+                            );
+                            error!("{why}");
+                            failures.record(0, why).await;
+                        }
+                        continue;
+                    }
+                    out_of_step = None;
+                }
+                Err(e) => {
+                    warn!(%e, "Could not read the verifier's root — no batch this tick");
+                    continue;
+                }
+            }
+        }
 
         // Drain pending operations AND the RPGF usage claims together.
         //
@@ -472,25 +539,59 @@ async fn batch_loop(
             }
         };
 
+        // The state this batch produces is on disk BEFORE the batch is
+        // sent: once the transaction is out, the verifier's root can move to
+        // it whether or not this relay reads the receipt, or lives to. A
+        // batch that leaves the root where it is (attestations alone change
+        // no state) produces no new state to hold.
+        let next_root = result.public_values.new_state_root;
+        let moves_root = next_root != result.public_values.prev_state_root;
+        let mut next = NextState {
+            root: next_root,
+            state: result.post_state.to_snapshot(),
+            record: batch_record(&batch, &result),
+        };
+        if moves_root {
+            if let Err(e) = state_store.hold_next(next.clone()).await {
+                error!(%e, "Could not write the batch's state — the batch is not sent; re-queuing operations");
+                requeue_or_dead_letter(&mempool, &failures, valid).await;
+                continue;
+            }
+        }
+
         // Submit on-chain (advance state mirror only on success)
-        if submitter_config.verifier_address != Address::ZERO {
-            match submitter::submit_batch(&submitter_config, &result).await {
+        if !dry_run {
+            let outcome = submitter::submit_batch(&submitter_config, &result).await;
+            // The chain's root decides, not this transaction's fate alone:
+            // the same batch sent on an earlier tick, its receipt unread,
+            // may be what moved the root here. Asked only of a batch that
+            // moves the root — one that does not leaves nothing to read.
+            let landed_earlier = moves_root
+                && outcome.is_err()
+                && submitter::read_state_root(&submitter_config.rpc_url, submitter_config.verifier_address)
+                    .await
+                    .is_ok_and(|root| root == next_root);
+            if landed_earlier {
+                step_to(next_root, &submitter_config.rpc_url, submitter_config.verifier_address, &state_mirror, &state_store, &archive, &batch_count).await;
+                info!(new_root = ?next_root, ops = op_count, "Batch already resolved on-chain by an earlier send, state mirror advanced");
+                continue;
+            }
+            match outcome {
                 Ok(tx_hash) => {
-                    state_mirror.advance(result.post_state.clone()).await;
+                    next.record.resolution_tx = Some(tx_hash);
+                    adopt(next, true, &state_mirror, &state_store, &archive, &batch_count).await;
                     info!(
                         ?tx_hash,
-                        new_root = ?result.public_values.new_state_root,
+                        new_root = ?next_root,
                         ops = op_count,
                         "Batch resolved on-chain, state mirror advanced"
                     );
-                    let number = {
-                        let mut count = batch_count.write().await;
-                        *count += 1;
-                        *count
-                    };
-                    publish(&archive, number, &batch, &result, Some(tx_hash)).await;
                 }
                 Err(e) if e.deterministic => {
+                    // The batch's state stays held: its proof is public now,
+                    // and anyone can send it again while the verifier's root
+                    // is its previous root.
+                    //
                     // The chain EVALUATED the resolve and refused — retrying
                     // re-proves the identical batch (~minutes each) for the
                     // same refusal. Dead-letter now, loudly; the counter and
@@ -505,58 +606,136 @@ async fn batch_loop(
                     // cap an op is dead-lettered instead, so a batch that
                     // never lands is not re-proved forever.
                     error!(error = %e, "On-chain submission failed (transient) — re-queuing operations");
-                    let dropped = mempool.requeue(valid).await;
-                    for (op, why) in dropped {
-                        error!(id = op.id, %why, "Dead-lettered after repeated transient failures");
-                        failures.record(1, why).await;
-                    }
+                    requeue_or_dead_letter(&mempool, &failures, valid).await;
                 }
             }
         } else {
-            state_mirror.advance(result.post_state.clone()).await;
+            adopt(next, true, &state_mirror, &state_store, &archive, &batch_count).await;
             info!(
-                new_root = ?result.public_values.new_state_root,
+                new_root = ?next_root,
                 ops = op_count,
                 "Batch proved (no verifier configured — dry run), state mirror advanced"
             );
-            let number = {
-                let mut count = batch_count.write().await;
-                *count += 1;
-                *count
-            };
-            publish(&archive, number, &batch, &result, None).await;
         }
     }
 }
 
-/// Publish what the batch resolved — the per-order commitments and their
-/// signatures, and the per-process resolution facts. This is the batch
-/// universe's mirror of the events `FigaroCore` emits on the direct path;
-/// without it, a batch-resolved order exists only under a proven state root
-/// and no reader can see it at all.
+/// Re-queue ops whose batch was not evaluated by the chain; past the
+/// re-queue cap an op is dead-lettered instead.
+async fn requeue_or_dead_letter(mempool: &Mempool, failures: &FailureLog, ops: Vec<PendingOp>) {
+    let dropped = mempool.requeue(ops).await;
+    for (op, why) in dropped {
+        error!(id = op.id, %why, "Dead-lettered after repeated transient failures");
+        failures.record(1, why).await;
+    }
+}
+
+/// Bring the mirror to the held state whose root is `root`, the verifier's.
+/// `false`: this relay holds no such state, and builds nothing on what it has.
 ///
-/// Publication follows resolution and never gates it: a failure here is
-/// logged inside the archive and the batch stays resolved.
-async fn publish(
+/// A held next state arrives here when its batch landed without this relay
+/// reading the receipt: its own transaction, or the same proof sent by
+/// someone else. The transaction is read from the verifier's `BatchSettled`
+/// log; the record is published under it, once, and not at all when the log
+/// is not found. The record's `block_timestamp` is the held batch's own.
+async fn step_to(
+    root: B256,
+    rpc_url: &str,
+    verifier: Address,
+    state_mirror: &StateMirror,
+    state_store: &StateStore,
     archive: &Archive,
-    number: u64,
-    batch: &figaro_kernel::types::BatchInput,
-    result: &prover::ProveResult,
-    resolution_tx: Option<alloy_primitives::B256>,
+    batch_count: &Arc<RwLock<u64>>,
+) -> bool {
+    match state::held_state_for(state_mirror, state_store, root).await {
+        Some(Held::Current) => true,
+        Some(Held::Next(next)) => {
+            let mut next = *next;
+            let last = archive.last_batch().await;
+            let published = archive
+                .range(last, Some(1))
+                .await
+                .batches
+                .last()
+                .is_some_and(|r| r.new_state_root == root && r.resolution_tx.is_some());
+            let mut publish = false;
+            if !published {
+                match submitter::find_settle_tx(rpc_url, verifier, next.record.prev_state_root, root).await {
+                    Ok(Some(tx)) => {
+                        next.record.resolution_tx = Some(tx);
+                        publish = true;
+                    }
+                    Ok(None) => {
+                        error!(?root, "A batch of this relay landed and its BatchSettled log was not found — its state is adopted, its record is not published");
+                    }
+                    Err(e) => {
+                        error!(?root, %e, "A batch of this relay landed and its transaction could not be read — its state is adopted, its record is not published");
+                    }
+                }
+            }
+            adopt(next, publish, state_mirror, state_store, archive, batch_count).await;
+            true
+        }
+        None => false,
+    }
+}
+
+/// A batch landed (or, in a dry run, proved): its state becomes the mirror's
+/// and the kept one, and with `publish` its record goes out under the next
+/// batch number. A kept file that cannot be written leaves the state held in
+/// the journal, where the next start finds it.
+async fn adopt(
+    next: NextState,
+    publish: bool,
+    state_mirror: &StateMirror,
+    state_store: &StateStore,
+    archive: &Archive,
+    batch_count: &Arc<RwLock<u64>>,
 ) {
-    let (commits, resolutions) =
-        archive::publication_from_ops(batch.chain_id, batch.verifying_contract, &batch.operations);
+    state_mirror.advance(KernelState::from_snapshot(&next.state)).await;
+    if let Err(e) = state_store.keep(next.root, &next.state).await {
+        error!(%e, root = ?next.root, "Could not write the kept state — it stays held in the next-state journal");
+    }
+    if !publish {
+        return;
+    }
+    let number = {
+        let mut count = batch_count.write().await;
+        *count += 1;
+        *count
+    };
     archive
         .record(BatchRecord {
             batch: number,
-            chain_id: batch.chain_id,
-            verifying_contract: batch.verifying_contract,
-            prev_state_root: result.public_values.prev_state_root,
-            new_state_root: result.public_values.new_state_root,
-            resolution_tx,
-            block_timestamp: batch.block_timestamp,
-            commits,
-            resolutions,
+            ..next.record
         })
         .await;
+}
+
+/// What the batch publishes once it lands — the per-order commitments and
+/// their signatures, and the per-process resolution facts. This is the batch
+/// universe's mirror of the events `FigaroCore` emits on the direct path;
+/// without it, a batch-resolved order exists only under a proven state root
+/// and no reader can see it at all. The batch number and the transaction are
+/// set when the batch lands ([`adopt`]).
+///
+/// Publication follows resolution and never gates it: a failure there is
+/// logged inside the archive and the batch stays resolved.
+fn batch_record(
+    batch: &figaro_kernel::types::BatchInput,
+    result: &prover::ProveResult,
+) -> BatchRecord {
+    let (commits, resolutions) =
+        archive::publication_from_ops(batch.chain_id, batch.verifying_contract, &batch.operations);
+    BatchRecord {
+        batch: 0,
+        chain_id: batch.chain_id,
+        verifying_contract: batch.verifying_contract,
+        prev_state_root: result.public_values.prev_state_root,
+        new_state_root: result.public_values.new_state_root,
+        resolution_tx: None,
+        block_timestamp: batch.block_timestamp,
+        commits,
+        resolutions,
+    }
 }

@@ -209,7 +209,14 @@ words the on-chain verifier hashes against the proof's digest — and decode bac
 field-for-field against host `apply_batch`; in-VM Gate-S
 rejection; `SP1_REAL_PROOF=1` generates + verifies a real local Core proof),
 and `figaro-sequencer` (mempool runs the mirror's own witness gates at the
-door; assembler fixpoint filtering incl. the resolve-closes-the-evidence-window
+door; a dedup slot belongs to the submission that will be accepted — a
+stranger's resolve, the buyer's signature over another order list, a seller
+attestation under another role order, and an attestation with other witness
+spec bytes each leave the real one queued; the state store — the kept state
+survives a restart with its root, a batch's state is held across a crash
+before its receipt and for as long as the batch can land, a held root is not
+replaced, a damaged state file or journal is refused, and a verifier root
+the relay does not hold finds nothing; assembler fixpoint filtering incl. the resolve-closes-the-evidence-window
 property and the three crafted streams — a bond committed twice, in one batch
 and across two; a resolve that omits an order; a resolve replayed in its own
 batch and in the next — each dead-lettered with the mirror's own reason while
@@ -229,7 +236,10 @@ own order hash and both signatures recover to the parties named inside it).
 `sdk/tests/batch-e2e.test.ts` is the cross-language lock: TS signs + builds
 the witness payload, the Rust sequencer binary proves + submits, the Solidity
 verifier checks the hashes and the registry anchor on a live Anvil — value
-legs asserted from the chain. The verifier is deployed with the fingerprint
+legs asserted from the chain. Between its two batches the test starts a relay
+that holds no state, which must refuse to start, and restarts the relay that
+built the first batch, which must resume on its kept state and resolve the
+second. The verifier is deployed with the fingerprint
 the binary itself reports (`sequencer --vkey`), so the sequencer's startup
 comparison against `programVKey()` runs for real. Anvil-gated (skips clean without it) locally;
 `prover-ci`'s `sp1` job runs it on main with `REQUIRE_BATCH_E2E=1`, where a

@@ -21,6 +21,8 @@
  *   4. Start sequencer as child process
  *   5. Submit Commit + AttestAsSeller (RuntimeWitness) via SequencerClient
  *   6. Wait for batch 1: bonds pulled, Attestation re-emitted
+ *   6b. A relay holding no state refuses to start; the relay that built
+ *       batch 1 restarts and resumes on its kept state
  *   7. Submit Resolve; wait for batch 2
  *   8. Verify: final balances, state root advanced, batch count
  */
@@ -44,6 +46,7 @@ import { privateKeyToAccount } from "viem/accounts";
 import { foundry } from "viem/chains";
 import { ChildProcess, spawn, spawnSync } from "node:child_process";
 import * as fs from "node:fs";
+import * as os from "node:os";
 import * as path from "node:path";
 
 import {
@@ -177,10 +180,14 @@ function embeddedVkey(): Hex {
     return line.slice("SP1_PROGRAM_VKEY=".length).trim() as Hex;
 }
 
+/** The relay's state file for this run: the preimage of the verifier's root. */
+const STATE_PATH = path.join(os.tmpdir(), `sequencer-state-e2e-${process.pid}.json`);
+
 function startSequencer(
     batchVerifierAddress: Address,
     usageCounterAddress: Address,
     registries: { clauses: Address; assemblies: Address; members: Address },
+    overrides: Record<string, string> = {},
 ): ChildProcess {
     const binPath = sequencerBinaryPath();
     const child = spawn(binPath, [], {
@@ -209,15 +216,42 @@ function startSequencer(
             // against the PREVIOUS run's (dead) contract addresses — the
             // batch poisons and nothing resolves.
             ARCHIVE_PATH: `sequencer-archive-e2e-${process.pid}.jsonl`,
+            // The relay's state, kept across the restart this test performs
+            // between its two batches.
+            STATE_PATH,
             LISTEN_ADDR: `0.0.0.0:${SEQUENCER_PORT}`,
             BATCH_INTERVAL_SECS: "2",
             MAX_BATCH_OPS: "50",
-            RUST_LOG: "figaro_sequencer=debug",
+            // Both targets: the library's modules and the binary's own lines
+            // (startup, refusals, the batch loop).
+            RUST_LOG: "figaro_sequencer=debug,sequencer=info",
+            ...overrides,
         },
         stdio: ["ignore", "pipe", "pipe"],
     });
 
     return child;
+}
+
+function attachLogs(child: ChildProcess): void {
+    child.stderr?.on("data", (chunk: Buffer) => {
+        const line = chunk.toString().trim();
+        if (line) console.error("[sequencer:err]", line);
+    });
+    child.stdout?.on("data", (chunk: Buffer) => {
+        const line = chunk.toString().trim();
+        if (line) console.log("[sequencer:out]", line);
+    });
+}
+
+/** Stop a relay and wait until its process has exited (and its port is free). */
+async function stopSequencer(child: ChildProcess): Promise<void> {
+    if (child.exitCode !== null) return;
+    const gone = new Promise<void>((resolve) => child.once("exit", () => resolve()));
+    child.kill("SIGTERM");
+    const timer = setTimeout(() => child.kill("SIGKILL"), 5000);
+    await gone;
+    clearTimeout(timer);
 }
 
 async function waitForSequencer(url: string, timeoutMs = 15000): Promise<void> {
@@ -308,6 +342,7 @@ describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
     let hasBinary = false;
     let sequencerProcess: ChildProcess | null = null;
     let sequencerClient: SequencerClient;
+    let registries: { clauses: Address; assemblies: Address; members: Address };
 
     const PAYMENT = 100n * 10n ** 18n;
     const bonds = calculateBonds(PAYMENT, PAYMENT);
@@ -582,20 +617,14 @@ describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
 
         // ── Start sequencer ─────────────────────────────────────
 
-        sequencerProcess = startSequencer(batchVerifierAddress, usageCounterAddress, {
+        registries = {
             clauses: clauseRegistryAddress,
             assemblies: assemblyRegistryAddress,
             members: membersAddress,
-        });
+        };
+        sequencerProcess = startSequencer(batchVerifierAddress, usageCounterAddress, registries);
 
-        sequencerProcess.stderr?.on("data", (chunk: Buffer) => {
-            const line = chunk.toString().trim();
-            if (line) console.error("[sequencer:err]", line);
-        });
-        sequencerProcess.stdout?.on("data", (chunk: Buffer) => {
-            const line = chunk.toString().trim();
-            if (line) console.log("[sequencer:out]", line);
-        });
+        attachLogs(sequencerProcess);
 
         sequencerClient = new SequencerClient({ url: SEQUENCER_URL });
         // The sequencer derives its guest fingerprint at startup (minutes on
@@ -611,6 +640,9 @@ describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
                 sequencerProcess.kill("SIGKILL");
             }
             sequencerProcess = null;
+        }
+        for (const suffix of ["", ".tmp", ".next.jsonl", ".next.jsonl.tmp"]) {
+            fs.rmSync(STATE_PATH + suffix, { force: true });
         }
     });
 
@@ -736,6 +768,50 @@ describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
             sellerAccount.address.toLowerCase(),
         );
         expect(attestationLogs[0].args.contentRef).toBe(contentRef);
+
+        // ── 4b. The relay's state is the preimage of the verifier's root ──
+        // The bonds now sit in the verifier, and only a batch built on the
+        // state behind its root refunds them. Two chain-facing facts:
+
+        // A relay that does not hold that state refuses to start. It never
+        // builds on genesis against a verifier that is past it.
+        const stateless = startSequencer(batchVerifierAddress, usageCounterAddress, registries, {
+            STATE_PATH: path.join(os.tmpdir(), `sequencer-state-e2e-${process.pid}-holds-nothing.json`),
+            ARCHIVE_PATH: "",
+            LISTEN_ADDR: `0.0.0.0:${SEQUENCER_PORT + 1}`,
+        });
+        let statelessOutput = "";
+        stateless.stdout?.on("data", (chunk: Buffer) => (statelessOutput += chunk.toString()));
+        stateless.stderr?.on("data", (chunk: Buffer) => (statelessOutput += chunk.toString()));
+        const statelessExit = await new Promise<number | null>((resolve) => {
+            const timer = setTimeout(() => {
+                stateless.kill("SIGKILL");
+                resolve(null);
+            }, 2 * 60_000);
+            // "close", not "exit": the pipes are drained by then, so the
+            // refusal line is in `statelessOutput`.
+            stateless.once("close", (code) => {
+                clearTimeout(timer);
+                resolve(code);
+            });
+        });
+        expect(statelessOutput).toContain("does not hold the state behind the verifier's root");
+        expect(statelessExit).toBe(2);
+
+        // The relay that built batch 1 restarts and resumes on its kept
+        // state: the resolve below lands in a batch built on it.
+        await stopSequencer(sequencerProcess!);
+        sequencerProcess = startSequencer(batchVerifierAddress, usageCounterAddress, registries);
+        attachLogs(sequencerProcess);
+        await waitForSequencer(SEQUENCER_URL, 10 * 60_000);
+        const onChainRoot = await publicClient.readContract({
+            address: batchVerifierAddress,
+            abi: BATCH_VERIFIER_ABI,
+            functionName: "stateRoot",
+        });
+        expect((await sequencerClient.status()).state_root.toLowerCase()).toBe(
+            (onChainRoot as string).toLowerCase(),
+        );
 
         // ── 5. Sign + submit Resolve; wait for batch 2 ──────────
 
@@ -883,5 +959,5 @@ describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
             commitAnchor.resolution_tx,
             resolutionAnchor.resolution_tx,
         ]);
-    }, 60_000);
+    }, 5 * 60_000);
 });

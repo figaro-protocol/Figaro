@@ -158,7 +158,9 @@ contracts are immutable, so their incident is the redeployment above. The site
 there is fixed and republished within the hour, nothing on the chain changes,
 and it becomes an advisory only if the page misrepresented what a participant
 signed. The batch sequencer (`prover/sequencer`, off-chain) is trusted for
-liveness alone: if it stops or misbehaves, every process keeps its direct path
-to `FigaroCore`, and the incident is to stop the sequencer and say so.
+liveness, which includes keeping the state its batches are built on: if it
+stops or misbehaves, every new process can open on `FigaroCore` directly, a
+process open on the batch path waits for a sequencer that holds that state,
+and the incident is to stop the sequencer, keep its state file, and say so.
 
 There is no fixed response time. Every report is read the day it arrives.

@@ -86,7 +86,10 @@ the same signatures.
 
 **The relay** (`prover/sequencer/`). `settleBatch` is permissionless and the
 proof is checked on chain, so the relay cannot forge; the direct path stays
-open, so it cannot censor terminally (`SCALING_STRATEGY.md` § Trust analysis).
+open to every new process (`SCALING_STRATEGY.md` § Trust analysis). A process
+opened on the batch path resolves on the batch path, through a batch built on
+the state behind the verifier's root, which the relay that built the last
+batch holds (Known limitation 7).
 It holds one key, `SEQUENCER_PRIVATE_KEY`, which signs the `settleBatch`
 transaction and pays its gas; the key grants no protocol privilege. What the
 relay publishes is how a stranger checks that a batch happened; nothing it
@@ -165,8 +168,30 @@ whole scope, Solidity and Rust together.
 git rev-parse 'audit-2026-10^{commit}'
 ```
 
-No change is made to a path in scope during the audit window. The tag is never
-moved: a change to the scope is a new tag.
+No change is made to a path in scope during the audit window, the three below
+excepted. The tag is never moved: a change to the scope is a new tag.
+
+### Changes after the tag
+
+Three changes were made to the relay (`prover/sequencer/`) after the tag, on
+the maintainer's override, each closing a defect the project's own review
+found. None touches a contract, a guest crate, a `Cargo.toml` or the lock, so the
+guest's bytes and the verification key are the tag's. The relay's source is
+3,555 lines at the tag and 4,029 with them. This prints all three:
+
+```bash
+git diff audit-2026-10 -- prover/sequencer/
+```
+
+| Change | The defect it closes | Where | Held by |
+|---|---|---|---|
+| A submission's dedup identity covers every input the proof or the verifier judges and admission cannot | A resolve was deduplicated by process id alone, and admission accepts a resolve signed by any key (the root buyer is state). A stranger's resolve for an open process therefore made the buyer's own a duplicate; batch formation refused the stranger's, and the buyer's was never queued. Repeated every tick, it kept the resolve out of every batch at no cost. The same held for the buyer's signature replayed over an incomplete order list, for a seller attestation replayed under another role order, and for an attestation copied with other witness spec bytes. | `prover/sequencer/src/mempool.rs` (`op_key`) | `mempool_resolve_signed_by_a_stranger_does_not_take_the_buyers_slot`, `mempool_resolve_with_another_order_list_does_not_take_the_slot`, `mempool_seller_attest_under_another_role_does_not_take_the_slot`, `mempool_attest_with_other_spec_bytes_does_not_take_the_slot`, `mempool_duplicate_resolve_is_idempotent` |
+| The relay keeps the state behind the verifier's root on disk and builds on no other | The state lived in memory, every start began from genesis, and a root that differed from the verifier's was a warning. After one landed batch a restarted relay proved batches that could only revert, and the state every open batch-path process needs for its resolve ended with the process. The state a batch produces is written before the batch is sent and held for as long as the batch can land (a refused batch's proof is public, and anyone can send it again while the verifier's root is its previous root); the relay reads `stateRoot()` at startup and before every batch, adopts a held state whose root it is, refuses to start when it reads the root and holds no state for it, and builds nothing while it holds none. A batch that landed without the relay reading its receipt is published under the transaction its `BatchSettled` log names. | `prover/sequencer/src/state.rs` (`StateStore`, `held_state_for`), `prover/sequencer/src/main.rs` (`step_to`, `adopt`, the batch loop), `prover/sequencer/src/submitter.rs` (`find_settle_tx`) | the `state_store_*` and `held_state_for_*` tests in `prover/sequencer/tests/sequencer.rs`; `sdk/tests/batch-e2e.test.ts` restarts the relay between its two batches and starts a relay holding no state, which must exit 2 |
+| The binary's own log lines are on by default | The relay's default log filter named the library's target (`figaro_sequencer`) and not the binary's (`sequencer`), so startup, every refusal to start (the signing key, the guest fingerprint) and every batch-loop line (a batch landed, an operation dropped or dead-lettered) were filtered out unless `RUST_LOG` named both: a relay that refused to start exited 2 and said nothing. | `prover/sequencer/src/main.rs` (the default filter) | `sdk/tests/batch-e2e.test.ts` reads the refusal line of the relay that holds no state |
+
+All three are liveness or operability defects of the relay: none let a batch
+move value the parties did not sign, and the proof and the verifier are as
+tagged. What the second change leaves standing is Known limitation 7.
 
 ### The kernel
 
@@ -383,8 +408,9 @@ read it first.
   effect. Accepted (the buyer chose the token and the seller), a token-choice
   concern, not a kernel escape hatch. On the batch path the same class reverts one
   batch, not the protocol: a payout the token refuses reverts `settleBatch` in
-  `_executePositions` (`FigaroBatchVerifier.sol:566`), and every process in the
-  batch keeps its direct path. The relay reads each party's balance and
+  `_executePositions` (`FigaroBatchVerifier.sol:566`), and the batch's
+  operations are dead-lettered and re-submittable; a process open on the batch
+  path resolves on the batch path only. The relay reads each party's balance and
   allowance before it submits (`prover/sequencer/src/submitter.rs`); it does not
   yet drop a revoking party and re-run the batch without it
   (§ "Known limitations").
@@ -483,10 +509,12 @@ Stated so the review does not spend hours finding them.
    proof of equivalence.
 2. **The relay is not mutation-tested.** Mutation testing covers the guest
    (`figaro-kernel`, `figaro-clause`), where a defect costs a wrong resolution.
-   The relay has its 62 tests and the batch end-to-end test.
+   The relay has its 75 integration tests, 12 unit tests and the batch
+   end-to-end test.
 3. **The relay does not yet re-batch around a revoker.** A party who revokes
    its allowance after the relay's funding check and before `settleBatch`
-   reverts that batch; the relay re-queues. The direct path stays open.
+   reverts that batch; its operations are dead-lettered and re-submittable.
+   The direct path stays open to a new process.
 4. **The full devnet end-to-end suite runs by hand.** CI runs its spine. Run
    once on a fresh devnet at the audit commit: 55 specs, 52 passed at the
    first attempt, 3 passed at the second — a three-seller chain's accept and
@@ -499,6 +527,15 @@ Stated so the review does not spend hours finding them.
    risk 2's ceiling is to be re-measured on it.
 6. **The incident procedure is written and not rehearsed.** `SECURITY.md`
    § "Incident response"; its redeploy leg is owed one run on Sepolia.
+7. **The state behind the verifier's root is held by the relay that built the
+   last batch.** The verifier stores a root. The state it commits to is on
+   that relay's disk (`STATE_PATH`); no route publishes it, and nothing in
+   this repository rebuilds it from the chain or from the publication
+   archive. A process opened on the batch path resolves only through a batch
+   built on that state, so a relay lost with its disk, or another submitter
+   that lands a batch and keeps its state, leaves those processes with no one
+   who can build their resolve, and their bonds in the verifier. A relay
+   that does not hold the state refuses to start and builds nothing.
 
 ## Accepted runtime posture
 
@@ -714,7 +751,7 @@ plan has been rehearsed.
 | Auditing | Moderate | Events cover every state change (`renounceDeployerMint` excepted, documented). The watcher runs in CI and the incident procedure is written (`SECURITY.md` § Monitoring, § Incident response); a rehearsal of the redeploy leg is what Satisfactory still needs. |
 | Access controls | Satisfactory | Two privileged relations, both immutable, documented, tested (§ "Actors"). |
 | Complexity management | Satisfactory | The functions at or above the rubric's threshold of 11 are `commit` and `settleBatch` (§ "Conventions and measured complexity"), each justified there and in NatSpec; the naming convention is written; the only duplication is the documented mirrors, locked by vectors and fuzz. |
-| Decentralization | Strong | No admin, pause, upgrade, or proxy; every parameter immutable; the direct path always open beside the batch path; immutability proved in CVL. |
+| Decentralization | Strong | No admin, pause, upgrade, or proxy; every parameter immutable; the direct path always open to a new process beside the batch path (batch-path liveness rests on the state the relay holds, Known limitation 7); immutability proved in CVL. |
 | Documentation | Satisfactory | Glossary, invariant map, design-decision catalogue, review goals, dense NatSpec; the stale comment referents listed under § "Known stale comments in the kernel". |
 | Transaction ordering | Satisfactory | Route substitution closed by the Permit2 witness; registry front-running and reward capture accepted and priced; no oracle. |
 | Low-level manipulation | Satisfactory | Assembly confined to four hash packers, mirrored by `abi.encodePacked` tests, differentially fuzzed against those mirrors, and pinned by Rust cross-language vectors. |
@@ -727,7 +764,7 @@ plan has been rehearsed.
 | State validation | Validity proof | `FigaroBatchVerifier.settleBatch` verifies an SP1 proof and checks every witness-spec binding against the live `ClauseRegistry`. |
 | Data availability | Off-chain by design | The chain holds hashes; the parties hold the preimages. `DATA_LAYER.md` owns the seam. |
 | Exit window | Immutable | No admin, no upgrade path, no pause, in every contract. A changed program is a new verifier under a new address. |
-| Proposer failure | Direct path always open | The kernel needs no relay; every process can resolve through `FigaroCore` directly. |
+| Proposer failure | Direct path open to a new process; a batch-path process needs the state | The kernel needs no relay, and any new process can open on `FigaroCore`. A process opened on the batch path resolves only through a batch built on the state behind the verifier's root (Known limitation 7). |
 | Sequencer failure | Same | A batch-resolved process never acquires kernel status (`FigaroBatchVerifier.sol` NatSpec on designer rewards); the two resolution paths are disjoint, and `UsageCounter` bridges only the accrual. |
 
 ## Reading list

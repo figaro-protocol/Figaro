@@ -214,7 +214,7 @@ if (!sellerRegistered) {
 }
 if (excluded) gaps.push(`${WITNESS_CLAUSE} is on the counter's exclusion list`);
 if (status.state_root !== stateRoot) {
-    gaps.push(`sequencer state-root mirror ${status.state_root} != on-chain ${stateRoot} — stale archive? start it with a fresh ARCHIVE_PATH`);
+    gaps.push(`sequencer state-root mirror ${status.state_root} != on-chain ${stateRoot} — the relay does not hold the state behind the verifier's root (its STATE_PATH file)`);
 }
 
 const [buyerToken, sellerToken, buyerEth, sellerEth, verifierToken,

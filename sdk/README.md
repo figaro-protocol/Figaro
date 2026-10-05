@@ -1092,9 +1092,12 @@ import { deserializeCommitmentPayload } from "@figaro-protocol/sdk/agent";
 //
 // A RELAY, NOT AN AUTHORITY: it holds no key of yours, its admission checks
 // call the same FigaroCore functions the proof runs (so it rejects earlier than
-// the proof, never accepts more), and its honest powers are censor and delay —
-// never forge. Fall back to direct FigaroCore submission with the SAME
-// signed operations. There is no hosted public endpoint today; the URL is deployment
+// the proof, never accepts more), and its powers are censor, delay, and
+// withhold the state behind the verifier's root — never forge. A process open
+// on the batch path resolves only through a relay holding that state. Batch
+// signatures name FigaroBatchVerifier as verifyingContract and do not verify
+// on FigaroCore: going direct is a NEW process, signed again for FigaroCore's
+// domain. There is no hosted public endpoint today; the URL is deployment
 // config, like an RPC URL. Surface + run-your-own recipe: prover/sequencer.
 //
 // A batch operation is the SIGNED PAYLOAD AND NOTHING ELSE — there is no

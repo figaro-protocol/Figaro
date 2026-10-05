@@ -23,7 +23,7 @@ use figaro_sequencer::api::{self, ApiConfig, AppState};
 use figaro_sequencer::archive::{self, Archive, ArchiveConfig, BatchRecord};
 use figaro_sequencer::assembler::{self, AssemblerConfig, UsageContext};
 use figaro_sequencer::mempool::{Mempool, PendingOp, SubmitError};
-use figaro_sequencer::state::StateMirror;
+use figaro_sequencer::state::{held_state_for, Held, NextState, StateMirror, StateStore};
 
 fn mempool() -> Mempool {
     Mempool::new(CHAIN_ID, CORE)
@@ -1706,4 +1706,364 @@ async fn api_status_reports_the_publication_window() {
     assert_eq!(json["archive"]["last_batch"], 7);
     assert_eq!(json["archive"]["retained_batches"], 1);
     assert_eq!(json["archive"]["max_batches"], 64);
+}
+
+// ── Mempool: a dedup slot belongs to the op the proof will accept ─────
+
+/// The canonical resolve, taken apart.
+fn canonical_resolve() -> (B256, Vec<Commitment>, Signature) {
+    match &canonical_ops()[3] {
+        KernelOp::Resolve {
+            process_id,
+            commitments,
+            buyer_sig,
+        } => (*process_id, commitments.clone(), buyer_sig.clone()),
+        other => panic!("canonical ops[3] is the resolve, got {other:?}"),
+    }
+}
+
+#[tokio::test]
+async fn mempool_resolve_signed_by_a_stranger_does_not_take_the_buyers_slot() {
+    // Anyone can sign a resolve for any process id; admission cannot know the
+    // root buyer. A stranger's resolve must not make the buyer's a duplicate.
+    let (process_id, commitments, buyer_sig) = canonical_resolve();
+    let domain = domain_separator(CHAIN_ID, CORE);
+    let digest = typed_data_hash(&domain, &resolve_struct_hash(&process_id));
+    let stranger_sig = sign_digest(&make_signing_key(SELLER1_KEY), &digest);
+
+    let mp = mempool();
+    mp.submit(canonical_ops()[0].clone()).await.unwrap();
+    let squat = mp
+        .submit(KernelOp::Resolve {
+            process_id,
+            commitments: commitments.clone(),
+            buyer_sig: stranger_sig,
+        })
+        .await
+        .unwrap();
+    let real = mp
+        .submit(KernelOp::Resolve {
+            process_id,
+            commitments,
+            buyer_sig,
+        })
+        .await
+        .unwrap();
+    assert!(!real.duplicate, "the buyer's resolve is its own submission");
+    assert_ne!(real.id, squat.id);
+    assert_eq!(mp.len().await, 3);
+
+    // At batch formation the stranger's is dropped and the buyer's resolves.
+    let (valid, poison) = assembler::filter_applicable_ops(
+        CHAIN_ID,
+        CORE,
+        1000,
+        &empty_snapshot(),
+        mp.drain().await,
+    );
+    assert_eq!(poison.len(), 1);
+    assert_eq!(poison[0].0.id, squat.id);
+    assert!(valid.iter().any(|p| p.id == real.id), "the buyer's resolve is in the batch");
+}
+
+#[tokio::test]
+async fn mempool_resolve_with_another_order_list_does_not_take_the_slot() {
+    // The buyer signs the process id alone; the order list rides unsigned.
+    // The buyer's signature replayed over a list the proof refuses must not
+    // make the complete resolve a duplicate.
+    let (process_id, commitments, buyer_sig) = canonical_resolve();
+    let mp = mempool();
+    let squat = mp
+        .submit(KernelOp::Resolve {
+            process_id,
+            commitments: vec![],
+            buyer_sig: buyer_sig.clone(),
+        })
+        .await
+        .unwrap();
+    let real = mp
+        .submit(KernelOp::Resolve {
+            process_id,
+            commitments,
+            buyer_sig,
+        })
+        .await
+        .unwrap();
+    assert!(!real.duplicate);
+    assert_ne!(real.id, squat.id);
+}
+
+#[tokio::test]
+async fn mempool_duplicate_resolve_is_idempotent() {
+    let mp = mempool();
+    let resolve = canonical_ops()[3].clone();
+    let first = mp.submit(resolve.clone()).await.unwrap();
+    let second = mp.submit(resolve).await.unwrap();
+    assert_eq!(second.id, first.id);
+    assert!(second.duplicate);
+    assert_eq!(mp.len().await, 1);
+}
+
+#[tokio::test]
+async fn mempool_seller_attest_under_another_role_does_not_take_the_slot() {
+    // `role` rides unsigned beside the seller's signature. The same signature
+    // over a role order the proof refuses must not make the real attestation
+    // a duplicate.
+    let real_op = canonical_ops()[1].clone();
+    let forged_op = match &real_op {
+        KernelOp::AttestAsSeller {
+            role,
+            target,
+            clause_id,
+            stage,
+            content_ref,
+            seller_sig,
+            proof,
+        } => {
+            let mut forged_role = role.clone();
+            forged_role.salt += alloy_primitives::U256::from(1u64);
+            KernelOp::AttestAsSeller {
+                role: forged_role,
+                target: target.clone(),
+                clause_id: *clause_id,
+                stage: *stage,
+                content_ref: *content_ref,
+                seller_sig: seller_sig.clone(),
+                proof: proof.clone(),
+            }
+        }
+        other => panic!("canonical ops[1] is the seller attestation, got {other:?}"),
+    };
+    let mp = mempool();
+    let squat = mp.submit(forged_op).await.unwrap();
+    let real = mp.submit(real_op).await.unwrap();
+    assert!(!real.duplicate);
+    assert_ne!(real.id, squat.id);
+}
+
+// ── The state on disk: the verifier's root has a preimage on this host ──
+
+fn temp_state(tag: &str) -> std::path::PathBuf {
+    let nanos = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_nanos();
+    std::env::temp_dir().join(format!("figaro-state-{tag}-{nanos}.json"))
+}
+
+/// The canonical batch applied to genesis: the state it produces, held the
+/// way the batch loop holds it before sending.
+fn canonical_next() -> NextState {
+    let batch = assembler::assemble_batch(
+        CHAIN_ID,
+        CORE,
+        1000,
+        canonical_ops(),
+        empty_snapshot(),
+        UsageContext::default(),
+    );
+    let (pv, _, _, post) = apply_batch_with_state(&batch).expect("the canonical batch applies");
+    let record = settle_and_publish(0, canonical_ops(), None);
+    assert_eq!(record.prev_state_root, pv.prev_state_root);
+    assert_eq!(record.new_state_root, pv.new_state_root);
+    NextState {
+        root: pv.new_state_root,
+        state: post.to_snapshot(),
+        record,
+    }
+}
+
+/// A held state with the given roots; its state content is not what the
+/// test is about.
+fn next_between(prev: B256, root: B256) -> NextState {
+    let mut next = canonical_next();
+    next.root = root;
+    next.record.prev_state_root = prev;
+    next.record.new_state_root = root;
+    next
+}
+
+#[tokio::test]
+async fn state_store_kept_state_survives_a_restart() {
+    let path = temp_state("kept");
+    let next = canonical_next();
+    assert_ne!(next.root, StateMirror::genesis().state_root().await);
+
+    let (store, kept) = StateStore::open(Some(path.clone())).await.unwrap();
+    assert!(kept.is_none(), "a first run holds no kept state");
+    store.hold_next(next.clone()).await.unwrap();
+    store.keep(next.root, &next.state).await.unwrap();
+    drop(store);
+
+    // A restart: the mirror starts on the kept state, and its root — through
+    // the file and back — is the one the batch committed.
+    let (store, kept) = StateStore::open(Some(path.clone())).await.unwrap();
+    let mirror = StateMirror::from_snapshot(kept.expect("the kept state is on disk"));
+    assert_eq!(mirror.state_root().await, next.root);
+    assert!(store.next_roots().await.is_empty(), "the journal holds no entry for the landed batch");
+    assert!(matches!(
+        held_state_for(&mirror, &store, next.root).await,
+        Some(Held::Current)
+    ));
+}
+
+#[tokio::test]
+async fn state_store_holds_the_next_state_across_a_crash_before_the_receipt() {
+    // Held, sent, and the relay dies before it reads the receipt or keeps
+    // anything. The batch landed. A restart finds the verifier's root among
+    // the held next states.
+    let path = temp_state("crash");
+    let next = canonical_next();
+
+    let (store, _) = StateStore::open(Some(path.clone())).await.unwrap();
+    store.hold_next(next.clone()).await.unwrap();
+    drop(store);
+
+    let (store, kept) = StateStore::open(Some(path.clone())).await.unwrap();
+    assert!(kept.is_none());
+    let mirror = StateMirror::genesis();
+    match held_state_for(&mirror, &store, next.root).await {
+        Some(Held::Next(found)) => {
+            assert_eq!(found.root, next.root);
+            assert_eq!(found.record.prev_state_root, mirror.state_root().await);
+            let rebuilt = StateMirror::from_snapshot(found.state);
+            assert_eq!(rebuilt.state_root().await, next.root);
+        }
+        other => panic!("the landed batch's state is held, got {other:?}"),
+    }
+    // The batch did not land: the verifier still holds genesis, and the
+    // mirror's own state is the one.
+    let genesis_root = mirror.state_root().await;
+    assert!(matches!(
+        held_state_for(&mirror, &store, genesis_root).await,
+        Some(Held::Current)
+    ));
+}
+
+#[tokio::test]
+async fn held_state_for_is_none_when_the_verifiers_root_is_not_held() {
+    // Another submitter's batch, or a lost state file: nothing here has the
+    // verifier's root, and the relay must build on nothing.
+    let next = canonical_next();
+    let (store, _) = StateStore::open(Some(temp_state("unheld"))).await.unwrap();
+    let mirror = StateMirror::genesis();
+    let foreign = B256::repeat_byte(0xee);
+    assert!(held_state_for(&mirror, &store, foreign).await.is_none());
+    store.hold_next(next).await.unwrap();
+    assert!(held_state_for(&mirror, &store, foreign).await.is_none());
+}
+
+#[tokio::test]
+async fn state_store_holds_a_state_for_as_long_as_its_batch_can_land() {
+    // A batch the chain refused can be sent again by anyone while the
+    // verifier's root is the batch's previous root: its proof is public.
+    // So a held state goes only when the kept root moves off that previous
+    // root — never because a transaction failed, and not when a batch that
+    // leaves the root where it is (attestations alone) lands.
+    let path = temp_state("landable");
+    let (p, r1, r2, r3) = (
+        B256::repeat_byte(0x0a),
+        B256::repeat_byte(0x01),
+        B256::repeat_byte(0x02),
+        B256::repeat_byte(0x03),
+    );
+    let (store, _) = StateStore::open(Some(path.clone())).await.unwrap();
+    store.hold_next(next_between(p, r1)).await.unwrap();
+    store.hold_next(next_between(p, r2)).await.unwrap();
+    store.hold_next(next_between(r1, r3)).await.unwrap();
+    let state = canonical_next().state;
+
+    // A batch lands that leaves the root at P: everything built on P stays.
+    store.keep(p, &state).await.unwrap();
+    assert_eq!(store.next_roots().await, vec![r1, r2]);
+
+    // The P→R1 batch lands: the other batch built on P can no longer land;
+    // nothing built on R1 is held any more, and R1's own entry is the kept
+    // state now.
+    store.hold_next(next_between(r1, r3)).await.unwrap();
+    store.keep(r1, &state).await.unwrap();
+    assert_eq!(store.next_roots().await, vec![r3]);
+
+    // And the journal on disk says the same.
+    drop(store);
+    let (store, _) = StateStore::open(Some(path)).await.unwrap();
+    assert_eq!(store.next_roots().await, vec![r3]);
+}
+
+#[tokio::test]
+async fn state_store_does_not_replace_a_held_root() {
+    // The same ops proved on a later tick produce the same root: the root
+    // binds the state, and the entry already on disk stands.
+    let (store, _) = StateStore::open(Some(temp_state("held"))).await.unwrap();
+    let first = canonical_next();
+    let mut second = canonical_next();
+    second.record.block_timestamp += 10;
+    store.hold_next(first.clone()).await.unwrap();
+    store.hold_next(second).await.unwrap();
+    assert_eq!(store.next_roots().await, vec![first.root]);
+    let held = store.next_for(first.root).await.unwrap();
+    assert_eq!(held.record.block_timestamp, first.record.block_timestamp);
+}
+
+#[tokio::test]
+async fn state_store_refuses_a_kept_file_that_does_not_parse() {
+    // A damaged state file is an error at start, never a silent genesis.
+    let path = temp_state("damaged");
+    tokio::fs::write(&path, b"{ not a state").await.unwrap();
+    let err = StateStore::open(Some(path)).await.err().expect("a damaged file is refused");
+    assert!(err.contains("does not parse"), "{err}");
+}
+
+#[tokio::test]
+async fn state_store_refuses_a_journal_that_does_not_parse() {
+    // The journal is written whole, so a record that does not parse is
+    // damage — and the damaged record may be the verifier's next root.
+    let path = temp_state("journal");
+    let (store, _) = StateStore::open(Some(path.clone())).await.unwrap();
+    store.hold_next(canonical_next()).await.unwrap();
+    drop(store);
+    let mut journal = path.clone().into_os_string();
+    journal.push(".next.jsonl");
+    let mut contents = tokio::fs::read(&journal).await.unwrap();
+    contents.extend_from_slice(b"{\"root\":\"0x12");
+    tokio::fs::write(&journal, contents).await.unwrap();
+
+    let err = StateStore::open(Some(path)).await.err().expect("a damaged journal is refused");
+    assert!(err.contains("next-state journal"), "{err}");
+}
+
+#[tokio::test]
+async fn state_store_without_a_path_holds_for_the_process_only() {
+    let next = canonical_next();
+    let (store, kept) = StateStore::open(None).await.unwrap();
+    assert!(kept.is_none());
+    store.hold_next(next.clone()).await.unwrap();
+    assert!(store.next_for(next.root).await.is_some());
+    store.keep(next.root, &next.state).await.unwrap();
+    assert!(store.next_roots().await.is_empty());
+}
+
+// ── Mempool: an attestation's witness spec is part of its identity ────
+
+#[tokio::test]
+async fn mempool_attest_with_other_spec_bytes_does_not_take_the_slot() {
+    // The spec's bytes are judged on chain, against the registry's anchor;
+    // admission parses them and nothing more. A copy of an attestation whose
+    // spec bytes differ (here: trailing whitespace) passes the door, would
+    // revert the batch on chain, and must not make the real one a duplicate.
+    for index in [1usize, 2] {
+        let real_op = canonical_ops()[index].clone();
+        let mut copy = real_op.clone();
+        match &mut copy {
+            KernelOp::AttestAsSeller { proof, .. } | KernelOp::AttestAsBuyer { proof, .. } => {
+                proof.spec_json.push('\n');
+            }
+            other => panic!("canonical ops[{index}] is an attestation, got {other:?}"),
+        }
+        let mp = mempool();
+        let squat = mp.submit(copy).await.unwrap();
+        let real = mp.submit(real_op).await.unwrap();
+        assert!(!real.duplicate, "ops[{index}]");
+        assert_ne!(real.id, squat.id);
+    }
 }

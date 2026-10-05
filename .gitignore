@@ -114,6 +114,12 @@ prover/target/
 *sequencer-archive.jsonl
 *sequencer-archive.jsonl.tmp
 *sequencer-archive-e2e-*.jsonl
+# The relay's state (STATE_PATH) and its next-state journal — the preimage of
+# the verifier's root; local runtime state, not source.
+*sequencer-state*.json
+*sequencer-state*.json.tmp
+*sequencer-state*.json.next.jsonl
+*sequencer-state*.json.next.jsonl.tmp
 
 # Local tool state
 .solcx-lock-*

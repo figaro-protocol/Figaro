@@ -8,12 +8,15 @@ resolves it against `FigaroBatchVerifier` — and **publishes what it resolved**
 
 `FigaroBatchVerifier.settleBatch` is **permissionless**: anyone can prove and
 resolve a batch, so this sequencer is one relay among any number — run your
-own. Its honest powers are censor-or-delay, never forge: the SP1 proof binds
+own. Its powers are to delay, to censor, and to withhold the state its
+batches are built on (§ "The state behind the root"), never to forge: the SP1 proof binds
 resolution to the EIP-712 structs both parties signed, and every admission
 pre-check here (signature recovery, the mirror's witness gates) is the same
 code the proof enforces — the mempool can only reject earlier, never accept
-more. The endpoint holds one key — the account that signs `settleBatch` and pays its gas (`SEQUENCER_PRIVATE_KEY`) — and grants no privilege; participants can
-always fall back to direct `FigaroCore` submission.
+more. The endpoint holds one key — the account that signs `settleBatch` and pays its gas (`SEQUENCER_PRIVATE_KEY`) — and grants no privilege. A new process can
+always go to `FigaroCore` directly; a process opened on the batch path
+resolves on the batch path, through any relay that holds the state behind the
+verifier's root (§ "The state behind the root").
 
 ### Publication inherits the same posture
 
@@ -191,6 +194,8 @@ floors): Groth16 wrap ~14 GB RAM, PLONK wrap ~60 GB; both wrap through the
 | `SUBMITS_PER_MINUTE_PER_IP` | `60` | Submissions one client address may make a minute before `429`; `0` disables |
 | `ARCHIVE_PATH` | `sequencer-archive.jsonl` | Publication journal; empty = in-memory only |
 | `ARCHIVE_MAX_BATCHES` | `10000` | Retained resolved batches (see Publication bounds) |
+| `RUST_LOG` | `figaro_sequencer=info,sequencer=info` | Log filter. Two targets: the library's modules log as `figaro_sequencer`, the binary's own lines (startup, every refusal to start, the batch loop) as `sequencer` — name both |
+| `STATE_PATH` | `sequencer-state-<chain id>-<verifier>.json` | The relay's state, the preimage of the verifier's root (see The state behind the root); empty = in-memory only |
 
 ## HTTP API
 
@@ -204,7 +209,11 @@ All errors are structured JSON: `{ "error": "<reason>" }`.
   `SequencerClient` (`@figaro-protocol/sdk/agent`) emits exactly this wire format.
   `200 {"id": n}` on admission — idempotent: re-submitting the same semantic
   operation (same order hash / process id / attestation identity) returns the
-  original id and enqueues nothing. `400` on signature or witness-gate
+  original id and enqueues nothing. The identity covers every input the proof
+  or the verifier judges and admission cannot — a resolve's signer and its
+  order list, a seller attestation's role order, an attestation's witness
+  spec bytes — so a submission that will be refused never makes the one that
+  will be accepted a duplicate. `400` on signature or witness-gate
   rejection, `422` on valid JSON that is not a `KernelOp` (wrong shape, unknown
   variant, missing field), `402` for a commit whose bonds do not fund
   (balance and allowance to the verifier, read at the door — see Funding
@@ -298,6 +307,52 @@ the guest bytes: one setup per guest per machine. The fingerprint is a function 
 source, the SP1 library version in `prover/Cargo.lock`, the SP1 toolchain
 (read from the same lock by the release workflow and the prover box), and
 the host — the reproducible build is the prover box's docker recipe.
+
+## The state behind the root
+
+The verifier holds a state ROOT. The state itself — every open process and
+order, and the usage already counted — is held off chain by whoever built the
+last batch, and a bond committed on the batch path is refunded only by a
+batch built on that state. This relay keeps it on disk:
+
+- **`STATE_PATH`** holds the kept state: the state of the last batch this
+  relay saw land. Before the first, the file is absent and the state is
+  genesis.
+- **`<STATE_PATH>.next.jsonl`** holds the state of every batch of this relay
+  that can still land. A batch's state is written there BEFORE its
+  transaction is sent, so a batch of this relay can never move the
+  verifier's root to a state this host does not hold — whether or not the
+  relay reads the receipt, or lives to. A failed transaction does not remove
+  it: `settleBatch` is permissionless and a sent proof is public, so a batch
+  the chain refused once (a bond that did not fund) can be sent again by
+  anyone while the verifier's root is the batch's previous root. A held
+  state goes only when the kept root moves off that previous root.
+
+The relay builds only on a held state whose root is the verifier's. It reads
+`stateRoot()` at startup and before every batch:
+
+- the root is the mirror's own: it builds;
+- the root is a held next state's: that batch landed without this relay
+  reading the receipt. Its state becomes the mirror's and the kept one. The
+  transaction is read from the verifier's `BatchSettled` log and the record
+  is published under it; when the log is not found in the blocks read, the
+  state is adopted and the record is NOT published (the log names the root);
+- the root is neither: another submitter's batch landed, the state file is
+  not this verifier's, or it is older than the verifier's last batch (a
+  stale backup, or a reorg past a kept batch). At startup that is a refusal
+  to start, with the roots printed. While running, no batch is built and
+  submissions stay queued; `/status` carries the reason in
+  `last_settle_error`.
+
+A relay that holds no state for a verifier past genesis therefore never
+proves a batch that can only revert. Back up the state file and its journal
+after every batch that lands: losing them — with no other relay holding the
+same state — leaves the open batch-path processes without anyone who can
+build their resolve. A state file or a journal that is there and does not
+parse is a refusal to start, never a silent start from less than this host
+held. With `STATE_PATH=` (empty) the state lives in memory and a restart
+holds nothing. The journal carries one full state per held batch and is
+bounded by the batches proved since the last one landed.
 
 ## Funding
 

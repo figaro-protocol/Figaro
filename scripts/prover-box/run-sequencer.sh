@@ -29,6 +29,7 @@ SP1_PROVER=cpu \
 SP1_PROOF_MODE=groth16 \
 BATCH_INTERVAL_SECS=30 \
 ARCHIVE_PATH="$HOME/sequencer-archive-$(date +%s).jsonl" \
+STATE_PATH="$HOME/sequencer-state-$BATCH_VERIFIER.json" \
 LISTEN_ADDR=127.0.0.1:3001 \
 RUST_LOG=figaro_sequencer=debug,info \
 nohup ./target/release/sequencer > "$HOME/sequencer-current.log" 2>&1 &

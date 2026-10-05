@@ -179,6 +179,14 @@ impl Mempool {
     /// Semantic dedup key: the on-chain identity of the op's effect, not
     /// its byte encoding — so a re-signed duplicate (ECDSA signatures are
     /// not unique per digest) still deduplicates.
+    ///
+    /// The key covers every input the proof or the verifier judges and
+    /// admission cannot: a resolve's signer and its order list, a seller
+    /// attestation's role order, an attestation's witness spec bytes (the
+    /// verifier checks them against the registry's anchor). Two submissions
+    /// share a slot only when both are accepted or both are refused, so one
+    /// that will be refused never makes the one that will be accepted a
+    /// duplicate.
     fn op_key(&self, op: &KernelOp) -> B256 {
         let domain = domain_separator(self.chain_id, self.verifying_contract);
         let mut buf: Vec<u8> = Vec::new();
@@ -188,29 +196,54 @@ impl Mempool {
                 buf.extend_from_slice(b"commit");
                 buf.extend_from_slice(order_hash.as_slice());
             }
-            KernelOp::Resolve { process_id, .. } => {
+            KernelOp::Resolve {
+                process_id,
+                commitments,
+                buyer_sig,
+            } => {
                 buf.extend_from_slice(b"resolve");
                 buf.extend_from_slice(process_id.as_slice());
+                // Admission checks that the signature recovers, never to
+                // whom: the root buyer is state. The signer is in the key.
+                let digest = typed_data_hash(&domain, &resolve_struct_hash(process_id));
+                if let Ok(signer) = recover_signer(&digest, buyer_sig) {
+                    buf.extend_from_slice(signer.as_slice());
+                }
+                // The signature covers the process id alone; the order list
+                // rides unsigned and the proof refuses an incomplete one.
+                for commitment in commitments {
+                    let (order_hash, _) = derive_commitment_ids(&domain, commitment);
+                    buf.extend_from_slice(order_hash.as_slice());
+                }
             }
             KernelOp::AttestAsSeller {
+                role,
                 target,
                 clause_id,
                 stage,
                 content_ref,
+                proof,
                 ..
             } => {
                 let (order_hash, _) = derive_commitment_ids(&domain, target);
+                // `role` rides unsigned: admission checks the signature
+                // against `role.seller`, and whether that order is live in
+                // the target's process is state.
+                let (role_order_hash, _) = derive_commitment_ids(&domain, role);
                 buf.extend_from_slice(b"attest-seller");
+                buf.extend_from_slice(role_order_hash.as_slice());
                 buf.extend_from_slice(order_hash.as_slice());
                 buf.extend_from_slice(clause_id.as_slice());
                 buf.push(*stage);
                 buf.extend_from_slice(content_ref.as_slice());
+                buf.extend_from_slice(keccak256(proof.spec_json.as_bytes()).as_slice());
             }
             KernelOp::AttestAsBuyer {
                 target,
                 clause_id,
                 stage,
                 content_ref,
+                proof,
                 ..
             } => {
                 let (order_hash, _) = derive_commitment_ids(&domain, target);
@@ -219,6 +252,7 @@ impl Mempool {
                 buf.extend_from_slice(clause_id.as_slice());
                 buf.push(*stage);
                 buf.extend_from_slice(content_ref.as_slice());
+                buf.extend_from_slice(keccak256(proof.spec_json.as_bytes()).as_slice());
             }
         }
         keccak256(&buf)

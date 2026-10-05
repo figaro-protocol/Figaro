@@ -453,8 +453,11 @@ the trust model.
 
 The sequencer is a **coordination convenience, not a trust assumption**. It
 cannot fabricate operations (every operation requires valid EIP-712
-signatures, verified inside the zkVM). It cannot censor terminally
-(participants always have the direct `FigaroCore` path). It cannot collect
+signatures, verified inside the zkVM). It cannot keep a new process out
+(any process can open on `FigaroCore` directly); a process already open on
+the batch path resolves only through a batch built on the state behind the
+verifier's root, which the relay that built the last batch holds
+(§ "Operational requirements"). It cannot collect
 anything (`FigaroCore` takes no cut and offers no MEV surface).
 
 ### Operation lifecycle
@@ -523,7 +526,8 @@ require trust is **liveness**: a slow or stopped sequencer delays
 net-position payout for participants waiting on a batch. It cannot affect
 `FigaroCore` — `FigaroCore`'s path is independent of batches — so the sequencer
 is liveness-trusted infrastructure, never safety-trusted: an off-protocol
-convenience with a permanent direct-path fallback, not a trade party. This is
+convenience, not a trade party, and the direct path stays open to every new
+process. This is
 also why it does not weaken no-escape-hatches: the invariants are enforced by
 the proof, and the sequencer is analogous to a block producer ordering
 transactions, never to a council making discretionary decisions.
@@ -533,20 +537,21 @@ transactions, never to a council making discretionary decisions.
 | State-transition correctness | none | SP1 proof + on-chain verifier |
 | Chain continuity | none | `prevStateRoot == stateRoot` check |
 | Cross-chain replay prevention | none | `chainId` + `verifyingContract` in public inputs |
-| Batch liveness | the sequencer | operational, with the direct-path fallback |
+| Batch liveness | the sequencer | operational; a new process can open on the direct path, an open batch-path process needs the state the sequencer holds |
 | Approval integrity before a batch | the sequencer | pre-submission approval check (operational) |
 | Ordering within a batch | none | deterministic mirror execution |
 
 ### State synchronization
 
-The sequencer starts from the genesis state, checks its root against the
-verifier's on-chain `stateRoot`, and advances its mirror only after each
-successful `settleBatch`. Direct `FigaroCore` transactions never touch this
-state — the two paths share none — so nothing on the direct path can move the
-verifier's root. What CAN move it is another submitter: `settleBatch` is
-permissionless, so if a different sequencer instance lands a batch, this
-one's `prevRoot` fails to match and it must detect the divergence and
-re-sync before its next batch.
+The sequencer starts from its kept state (`STATE_PATH`; genesis on a first
+run), reads the verifier's on-chain `stateRoot` at startup and before every
+batch, and builds only when it holds a state with that root; it advances its
+mirror only after a `settleBatch` of its own has landed. Direct `FigaroCore`
+transactions never touch this state — the two paths share none — so nothing
+on the direct path can move the verifier's root. What CAN move it is another
+submitter: `settleBatch` is permissionless, so if a different sequencer
+instance lands a batch, this one holds no state for the new root and builds
+nothing until it is started on that state.
 
 ### Batch DoS via approval revocation
 
@@ -584,8 +589,9 @@ of ~21k gas, repeatable against specific counterparties.
 
 ### Operational requirements
 
-1. **Monitor the verifier** — watch `stateRoot` and `BatchSettled` so a batch
-   landed by another submitter is detected before the next proof is generated
+1. **Monitor the verifier** — the relay reads `stateRoot` before every batch
+   and builds only on a state it holds whose root that is, so a batch landed
+   by another submitter is detected before the next proof is generated
    against a stale root.
 2. **Check approvals before submission** — for every position,
    `allowance(participant, verifier) >= netAmount` at a recent block; exclude
@@ -593,8 +599,11 @@ of ~21k gas, repeatable against specific counterparties.
 3. **Handle reorgs** — apply a finality threshold before advancing the local
    mirror past a landed batch.
 4. **Keep the root's preimage** — the sequencer holds the off-chain PREIMAGE
-   of the on-chain state root; losing it means replaying landed batches from
-   the publication archive to reconstruct it.
+   of the on-chain state root, on disk at `STATE_PATH`, written before each
+   batch is sent. The publication archive does not carry it and nothing
+   rebuilds it from the chain: back up the file and its `.next.jsonl`
+   journal after every batch that lands. A relay that does not hold the
+   state behind the verifier's root refuses to start.
 5. **Retry on gas spikes** — a `settleBatch` that reverts on gas is retried
    with more; proofs are expensive and are not discarded.
 
@@ -603,5 +612,8 @@ of ~21k gas, repeatable against specific counterparties.
 The sequencer's trusted scope cannot reach `FigaroCore`: it cannot undo a
 resolved process, cannot reorder or modify payouts, cannot drain `FigaroCore`
 (the verifier is a separate contract), and cannot forge proofs. The worst
-outcome of a compromised or stopped sequencer is delayed batch resolution —
-recoverable by pointing a new sequencer at the same on-chain state root.
+outcome of a compromised or stopped sequencer is delayed batch resolution
+while the state behind the on-chain root survives: a sequencer started on
+that state resumes. That state is held by the relay that built the last
+batch; a relay that loses or withholds it leaves the processes open on the
+batch path with no resolve (`AUDITOR_HANDOVER.md` Known limitation 7).
