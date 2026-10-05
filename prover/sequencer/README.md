@@ -231,10 +231,13 @@ All errors are structured JSON: `{ "error": "<reason>" }`.
 
 - `GET /state` — the state behind this relay's root (`KernelStateSnapshot`,
   the kept-state file's own format; the root is in the `x-figaro-state-root`
-  header). `curl -o <STATE_PATH> <relay>/state` gives another relay the state
-  to start on; it recomputes the root and refuses to start unless it is the
-  verifier's. Nothing in it is private — it is derived from the signed
-  operations the publication routes serve.
+  header). It gives another relay the state to start on: save it to a new
+  file, and make that file a relay's `STATE_PATH` only when the header's root
+  is the verifier's `stateRoot` (`cast call <verifier> "stateRoot()"`). A
+  relay refuses to start on a state whose root is not the verifier's, but a
+  state file written over is gone — and it may have been the only copy.
+  Nothing in it is private — it is derived from the signed operations the
+  publication routes serve.
 - `GET /health` — liveness + bounded counts:
   `{ "status": "ok", "pending_ops", "pending_usage_claims", "batches_settled" }`.
 - `GET /status` — the above plus the sequencer's local `state_root` mirror,
@@ -353,8 +356,11 @@ The relay builds only on a held state whose root is the verifier's. It reads
 A relay that holds no state for a verifier past genesis therefore never
 proves a batch that can only revert. The relay publishes its state
 (`GET /state`), so a party or a second relay can hold a copy and start on it:
-fetch it into a `STATE_PATH` and start — the relay checks the copy's root
-against the verifier's. Back up the state file and its journal after every
+save it to a new file, check its `x-figaro-state-root` against the
+verifier's `stateRoot`, and only then make it a `STATE_PATH` and start — the
+relay checks the copy's root against the verifier's again. Never write a
+served state over a state file whose root has not been checked: a stale
+relay serves a stale state, and the file it replaces may be the only copy. Back up the state file and its journal after every
 batch that lands, or keep a copy of `/state`: losing every copy leaves the
 open batch-path processes without anyone who can build their resolve. A state file or a journal that is there and does not
 parse is a refusal to start, never a silent start from less than this host

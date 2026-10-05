@@ -469,7 +469,8 @@ safety you do not have:
   batches are built on**. It cannot forge a signature, alter a struct you signed, resolve
   something you did not sign, or take a bond.
 - Because `settleBatch` is permissionless, censorship is not a trap: the owner can run
-  their own relay on a copy of that state (the relay's `GET /state`), and a new trade can
+  their own relay on a copy of that state (the relay's `GET /state`, saved to a new file and
+  started on only once its `x-figaro-state-root` header is the verifier's `stateRoot`), and a new trade can
   open on `FigaroCore` as a NEW process, signed again for its domain — a batch-path
   signature names `FigaroBatchVerifier` as `verifyingContract` and does not verify there.
   A process already open on the batch path resolves only through a relay holding that

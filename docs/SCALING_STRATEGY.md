@@ -603,7 +603,9 @@ of ~21k gas, repeatable against specific counterparties.
 4. **Keep the root's preimage** — the sequencer holds the off-chain PREIMAGE
    of the on-chain state root, on disk at `STATE_PATH`, written before each
    batch is sent, and publishes it (`GET /state`) so a party or a second
-   relay can keep a copy and start on it. The publication archive does not
+   relay can keep a copy and start on it — saved to a new file, its
+   `x-figaro-state-root` checked against the verifier's `stateRoot` before
+   it replaces any state file. The publication archive does not
    carry it and nothing rebuilds it from the chain: keep copies. A relay
    that does not hold the state behind the verifier's root refuses to start.
 5. **Retry on gas spikes** — a `settleBatch` that reverts on gas is retried

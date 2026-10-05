@@ -1227,7 +1227,7 @@ should build them.
 | `POST /submit-usage` | `{ "claim": <UsageClaim> }` | `{ "pending": n }` | `submitUsageClaim` |
 | `GET /health` | — | `{ status, pending_ops, pending_usage_claims, batches_settled }` | none — `isAvailable()` probes `/status` instead |
 | `GET /status` | — | the `/health` fields plus `state_root`, `dead_lettered_ops`, `last_settle_error`, `archive: { first_batch, last_batch, retained_batches, max_batches }` | `status()` |
-| `GET /state` | — | the state behind the relay's root, in the relay's state-file format (`KernelStateSnapshot`); the root is in the `x-figaro-state-root` header | none — save it as another relay's `STATE_PATH` to start it on this state; the relay checks the root against the verifier's |
+| `GET /state` | — | the state behind the relay's root, in the relay's state-file format (`KernelStateSnapshot`); the root is in the `x-figaro-state-root` header | none — save it to a new file; when the header's root is the verifier's `stateRoot`, make that file a relay's `STATE_PATH` and start it on this state (the relay checks the root again). Never write it over a state file unchecked: a stale relay serves a stale state, and the file it replaces may be the only copy |
 | `GET /orders/{orderHash}` | 32-byte hex in the path | `{ order_hash, process_id, commit, resolution }` — either leg `null` | `order()` → `null` on `404` |
 | `GET /processes/{processId}` | 32-byte hex in the path | `{ process_id, orders[], resolution }` | `process()` → `null` on `404` |
 | `GET /batches?from=&limit=` | `from` defaults to the oldest retained batch; `limit` defaults to 10, **clamped to 50** | `{ batches[], next_cursor, retained }` | `batches()` — follow `next_cursor` |

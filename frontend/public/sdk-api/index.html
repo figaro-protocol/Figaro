@@ -1243,7 +1243,7 @@ should build them.</p>
 <td><code>GET /state</code></td>
 <td>—</td>
 <td>the state behind the relay's root, in the relay's state-file format (<code>KernelStateSnapshot</code>); the root is in the <code>x-figaro-state-root</code> header</td>
-<td>none — save it as another relay's <code>STATE_PATH</code> to start it on this state; the relay checks the root against the verifier's</td>
+<td>none — save it to a new file; when the header's root is the verifier's <code>stateRoot</code>, make that file a relay's <code>STATE_PATH</code> and start it on this state (the relay checks the root again). Never write it over a state file unchecked: a stale relay serves a stale state, and the file it replaces may be the only copy</td>
 </tr>
 <tr>
 <td><code>GET /orders/{orderHash}</code></td>
