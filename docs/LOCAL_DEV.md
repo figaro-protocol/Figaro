@@ -57,6 +57,7 @@ cd sdk && npm run lint                   # tsc --noEmit
 ./scripts/deploy-mainnet.sh              # MAINNET wrapper for script/DeployMainnet.s.sol — refuses without MAINNET_DEPLOY_CONFIRM=yes + all env vars + chain-id 1 read-back; never run casually
 ./scripts/deploy-sepolia.sh              # SEPOLIA wrapper for script/DeploySepolia.s.sol — same guard structure (SEPOLIA_DEPLOY_CONFIRM=yes + chain-id 11155111 read-back); SKIP_VERIFY=1 for the Anvil-fork rehearsal only
 ./scripts/deploy-swap-coordinator.sh     # deploy WitnessSwapAndCommitCoordinator ALONE onto a LIVE public stack (script/DeploySwapCoordinator.s.sol): FIGARO_CORE from the chain's record, PERMIT2 canonical, SWAP_ROUTER = Uniswap SwapRouter02 probed by BEHAVIOUR (factory()/WETH9() must be contracts); merges the three addresses into deployments/<chainId>.json; SKIP_VERIFY=1 = fork rehearsal (record diverted).
+node scripts/check-deployment.mjs <record.json> deployments/<chainId>.expected.json [--artifacts out]   # what must hold on chain after the deploy and the genesis registration, written before them; deploy-local.sh runs it on devnet; a null expectation (undecided) fails
 ./scripts/check-sp1-gateway-route.sh     # both wrappers' Guard 4 (also standalone): SP1_VERIFIER_GATEWAY must ROUTE the proof form (SP1_PROOF_MODE groth16|plonk) for the sp1-sdk version prover/Cargo.lock pins — read live from the gateway + Succinct's sp1-contracts; fails closed offline
 ```
 

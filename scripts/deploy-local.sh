@@ -233,3 +233,18 @@ echo "   Deployment: $CORE_DEPLOYMENT"
 echo ""
 echo "📎 Populating clauses (pin → IPFS, anchor → ClauseRegistry)..."
 (cd "$REPO_ROOT/frontend" && node scripts/populate-clauses.mjs)
+
+# ── What must hold, checked against the chain ────────────────────────────────
+# deployments/31337.expected.json states, ahead of the deploy, what the stack
+# and the clause registration must read on chain; check-deployment.mjs reads
+# the chain against it. `forge script --via-ir` above leaves the deploy's own
+# compiled artifacts in out/, so each contract's code is compared too. The
+# devnet run is the rehearsal of deployments/1.expected.json.
+# Run on a devnet only: the expectations are 31337's.
+if [ "$(cast chain-id --rpc-url "$RPC_URL")" = "31337" ]; then
+    echo ""
+    echo "🔎 Checking the deployment against deployments/31337.expected.json..."
+    RPC_URL="$RPC_URL" node "$REPO_ROOT/scripts/check-deployment.mjs" \
+        "$REPO_ROOT/.deployments/local.json" "$REPO_ROOT/deployments/31337.expected.json" \
+        --artifacts "$REPO_ROOT/out"
+fi

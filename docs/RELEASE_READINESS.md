@@ -131,7 +131,13 @@ Before mainnet genesis seeding:
 ## Pre-Mainnet Deployment Verification
 
 Deploy-time checks to run against the mainnet deployment before it is treated as
-live. These are separate from the external-audit gate above:
+live. These are separate from the external-audit gate above. The ones the chain
+can answer are stated ahead in `deployments/1.expected.json` and read by
+`scripts/check-deployment.mjs` (run with `--artifacts` from a
+`forge build --via-ir` at the audit tag): it must report nothing that does not
+hold before the record is published. Its `null`s — the deposits (Task 3), the
+cooldown, the wallets — are the decisions still owed. The list below is the
+procedure around it:
 
 - Verify the `--rpc-url` target by hand immediately before every `--broadcast` —
   neither deploy script guards `block.chainid`; the devnet script would happily

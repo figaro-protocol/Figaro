@@ -1,0 +1,33 @@
+{
+    "chainId": 31337,
+    "about": "What must hold on a devnet after scripts/deploy-local.sh (script/Deploy.s.sol, then frontend/scripts/populate-clauses.mjs). Read by scripts/check-deployment.mjs; the rehearsal of deployments/1.expected.json.",
+    "wallets": {
+        "seeder": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+        "dao": { "record": "daoTreasury" }
+    },
+    "batchVerifier": {
+        "programVKey": "0xe14b43dabfe8ce719bfb7a9177cb30f6353e144ac96b0efe165c56fe892eb8aa",
+        "verifier": { "code": "MockSP1Verifier" }
+    },
+    "registries": {
+        "membersRegistrationDeposit": "1000000000000000",
+        "membersWithdrawalCooldown": "0",
+        "clauseRegistrationDeposit": "1000000000000000",
+        "assemblyRegistrationDeposit": "1000000000000000"
+    },
+    "usageCounter": {
+        "minSellers": "3",
+        "periodCount": "9",
+        "provenanceClause": "figaro-assembly-provenance@1",
+        "excluded": ["figaro-assembly-provenance@1"],
+        "notExcluded": ["figaro-commerce@1", "figaro-topology@1"]
+    },
+    "rpgfMinter": { "periodAmountSum": "600000000000000000000000000" },
+    "florin": {
+        "deployerMintRenounced": true,
+        "totalSupply": "400000000000000000000000000",
+        "rpgfMinterCap": "600000000000000000000000000",
+        "balances": { "dao": "300000000000000000000000000" }
+    },
+    "registrations": { "default": "seeder" }
+}

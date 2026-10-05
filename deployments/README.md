@@ -68,6 +68,24 @@ checked from outside it:
   with a Sigstore provenance attestation binding the tarball to this
   repository — `npm audit signatures` checks it.
 
+## What must hold — `<chainId>.expected.json`
+
+Beside each record, `<chainId>.expected.json` states what the chain must read
+after the deploy and the genesis registration, and is written BEFORE them: the
+audited guest key and the SP1 gateway the batch verifier pins, every
+parameter the contracts fix forever (registration deposits, the cooldown, the
+reward schedule, the excluded clause), the florin genesis, and who registers
+each clause (the genesis registration plan). `scripts/check-deployment.mjs`
+reads a chain against it — and against the contracts as compiled, with
+`--artifacts` from a `forge build --via-ir` at the audit tag — and fails on
+every value that differs. A value not yet decided is written `null`, and the
+check fails on it until it is decided.
+
+- `1.expected.json` — mainnet. The deposits, the cooldown and the wallets are
+  `null` today.
+- `31337.expected.json` — the devnet, where `scripts/deploy-local.sh` runs the
+  check after every deploy: the rehearsal.
+
 ## The record discipline
 
 This directory is the **source of truth** for public-network addresses,
