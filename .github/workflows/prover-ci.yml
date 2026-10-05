@@ -231,7 +231,10 @@ jobs:
                   GITHUB_TOKEN: ${{ github.token }}
               run: |
                   mkdir -p "$HOME/.sp1/bin"
-                  curl -sSfL https://raw.githubusercontent.com/succinctlabs/sp1/main/sp1up/sp1up \
+                  # The installer script at the locked release's tag, never
+                  # `main`: the same pin sequencer-release.yml uses beside
+                  # its signing identity, so this job proves the pinned script.
+                  curl -sSfL "https://raw.githubusercontent.com/succinctlabs/sp1/${SP1_VERSION}/sp1up/sp1up" \
                       -o "$HOME/.sp1/bin/sp1up"
                   chmod +x "$HOME/.sp1/bin/sp1up"
                   "$HOME/.sp1/bin/sp1up" --version "$SP1_VERSION"

@@ -30,6 +30,10 @@ on:
 permissions:
     contents: read
 
+env:
+    # The npm release the publish runs on — never `latest` (see the step).
+    NPM_VERSION: "11.21.0"
+
 jobs:
     publish:
         name: Test, build, publish with provenance
@@ -81,9 +85,11 @@ jobs:
 
             # Trusted Publishing's OIDC credential exchange ships in npm 11.5.1;
             # Node 22 (.nvmrc) bundles npm 10.x, which would look for a token,
-            # find none, and fail auth.
-            - name: Upgrade npm for Trusted Publishing
-              run: npm install -g npm@latest
+            # find none, and fail auth. A fixed release, never `latest`: this
+            # job holds `id-token: write` and mints the provenance users
+            # trust, so only a version named here runs beside it.
+            - name: Install npm ${{ env.NPM_VERSION }} for Trusted Publishing
+              run: npm install -g "npm@${NPM_VERSION}"
 
             - name: Publish to npm with provenance
               working-directory: ./sdk
