@@ -31,8 +31,14 @@ name: Estate Snapshot
 
 on:
     schedule:
-        # Mondays, 05:23 UTC — a quiet hour, off the on-the-hour crowd.
-        - cron: "23 5 * * 1"
+        # Mondays, 00:23 UTC. GitHub starts this repository's scheduled runs
+        # hours after their cron time (five to eight, measured on this workflow
+        # and on monitor.yml) and may drop one under load; the digest routine
+        # reads the estate-snapshots branch at 12:00 UTC, so the capture is
+        # scheduled half a day ahead of it. When the newest capture is still
+        # last week's at that hour, the routine starts this workflow itself
+        # through workflow_dispatch below.
+        - cron: "23 0 * * 1"
     workflow_dispatch:
 
 permissions:

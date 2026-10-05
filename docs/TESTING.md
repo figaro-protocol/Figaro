@@ -625,7 +625,7 @@ Per workflow, what it runs and when:
   whole-tree guard battery and the Claude semantic open-world gate run
   maintainer-side, in pre-commit — they are private tooling and not part of
   the public CI tree.
-- **`estate-snapshot`** — weekly (Mondays 05:23 UTC) + dispatch: captures the
+- **`estate-snapshot`** — weekly (Mondays 00:23 UTC) + dispatch: captures the
   perishable estate signals (GitHub traffic, which the API retains only ~14
   days; the Cloudflare daily site-traffic series for figaroprotocol.com; the
   npm downloads trend) as a workflow artifact with 90-day retention, and
