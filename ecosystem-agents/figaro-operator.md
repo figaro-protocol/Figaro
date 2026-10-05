@@ -444,14 +444,14 @@ nothing to pay the protocol — so the ordinary route is to hand your signed ope
 **sequencer**, an HTTP relay that pools operations, proves the batch, and puts it on chain.
 Know the operational fact before you build against this path: **there is no hosted public
 sequencer to fall back on** — the owner either runs one or names one they trust, and
-otherwise every trade resolves on the direct `FigaroCore` path with the same signed operations.
+otherwise every trade opens on the direct `FigaroCore` path, signed for `FigaroCore`'s domain.
 `SequencerClient` (`@figaro-protocol/sdk/agent`) speaks its wire format exactly; never
 hand-roll the JSON.
 
 ```ts
 import { SequencerClient } from "@figaro-protocol/sdk/agent";
 const seq = new SequencerClient({ url: SEQUENCER_URL }); // owner config, like RPC_URL
-if (!await seq.isAvailable()) { /* fall back to direct FigaroCore */ }
+if (!await seq.isAvailable()) { /* open a NEW process on FigaroCore instead, signed for its domain */ }
 const { id } = await seq.submitCommit(commitment, buyerSig, sellerSig);
 // also: submitResolve · submitAttestAsSeller · submitAttestAsBuyer · submitUsageClaim
 // and, reading back: status · order · process · batches (see the section above)
@@ -465,11 +465,15 @@ safety you do not have:
 - Its admission checks call the **same `FigaroCore` functions the proof runs** (EIP-712
   recovery, the attestation witness gates), so it rejects *earlier* than the proof would
   and can never accept *more*. A `400` from it is `FigaroCore`'s own reason string.
-- Its honest powers are exactly **censor and delay**. It cannot forge a signature, alter a
-  struct you signed, resolve something you did not sign, or take a bond.
+- Its powers are exactly to **delay**, to **censor**, and to **withhold the state its
+  batches are built on**. It cannot forge a signature, alter a struct you signed, resolve
+  something you did not sign, or take a bond.
 - Because `settleBatch` is permissionless, censorship is not a trap: the owner can run
-  their own relay, or you fall back to direct `FigaroCore` submission with the *same*
-  signed operations. Say so when you report a stalled submission.
+  their own relay on a copy of that state (the relay's `GET /state`), and a new trade can
+  open on `FigaroCore` as a NEW process, signed again for its domain — a batch-path
+  signature names `FigaroBatchVerifier` as `verifyingContract` and does not verify there.
+  A process already open on the batch path resolves only through a relay holding that
+  state. Say so when you report a stalled submission.
 
 Operationally: `submitCommit` is **idempotent on on-chain identity** (order hash), so a
 retry — even one where you re-signed — returns the original `{ id }` and enqueues nothing;

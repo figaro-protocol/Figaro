@@ -1109,7 +1109,7 @@ import { deserializeCommitmentPayload } from "@figaro-protocol/sdk/agent";
 // FigaroCore. (See "Bonding in a token you do not hold" above.)
 import { SequencerClient } from "@figaro-protocol/sdk/agent";
 const seq = new SequencerClient({ url: SEQUENCER_URL });
-if (!(await seq.isAvailable())) { /* direct path instead */ }
+if (!(await seq.isAvailable())) { /* open a NEW process on FigaroCore instead, signed for its domain */ }
 const { id } = await seq.submitCommit(commitment, buyerSig, sellerSig);
 // Admission is IDEMPOTENT on ON-CHAIN IDENTITY (order hash / process id /
 // attestation identity) — a retry, even a RE-SIGNED one, returns the original
