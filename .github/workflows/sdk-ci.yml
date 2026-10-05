@@ -13,6 +13,8 @@ on:
             # what the live TS encoder emits — either side moving re-runs it.
             - "prover/clause/tests/encode_conformance.rs"
             - "scripts/generate-encode-conformance-vectors.mjs"
+            # The agent runtime consumes the SDK's build; either moving re-runs it.
+            - "ecosystem-agents/runtime/**"
             - ".github/workflows/sdk-ci.yml"
     pull_request:
         branches: [main, develop]
@@ -21,6 +23,7 @@ on:
             - "frontend/public/sdk-api/**"
             - "prover/clause/tests/encode_conformance.rs"
             - "scripts/generate-encode-conformance-vectors.mjs"
+            - "ecosystem-agents/runtime/**"
 
 permissions:
     contents: read
@@ -80,3 +83,37 @@ jobs:
                   node scripts/generate-encode-conformance-vectors.mjs
                   git diff --exit-code --stat -- prover/clause/tests/encode_conformance.rs \
                     || { echo "prover/clause/tests/encode_conformance.rs is stale — run 'node scripts/generate-encode-conformance-vectors.mjs' and commit the regen"; exit 1; }
+
+    # The agent runtime (ecosystem-agents/runtime) is the SDK's first consumer
+    # outside this repo's frontend: it links the SDK's build, so an SDK change
+    # that breaks it shows here, on the push that made it. The sandbox tests
+    # need macOS sandbox-exec and skip on this runner; the live-model test
+    # skips with no model configured.
+    runtime:
+        name: Agent runtime tests
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+            - name: Setup Node.js
+              uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+              with:
+                  node-version-file: .nvmrc
+                  cache: "npm"
+                  cache-dependency-path: |
+                      package-lock.json
+                      ecosystem-agents/runtime/package-lock.json
+
+            - name: Build the SDK the runtime links
+              run: |
+                  npm ci --workspace sdk
+                  npm --prefix sdk run build
+
+            - name: Install the runtime
+              working-directory: ./ecosystem-agents/runtime
+              run: npm ci
+
+            - name: Run tests
+              working-directory: ./ecosystem-agents/runtime
+              run: npm test

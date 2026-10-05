@@ -619,7 +619,11 @@ Per workflow, what it runs and when:
   (`frontend/public/sdk-api`) must equal what typedoc emits from source — and
   the encoder-vector freshness gate — the committed Rust conformance vectors
   (`prover/clause/tests/encode_conformance.rs`) must equal what the live TS
-  encoder emits through `scripts/generate-encode-conformance-vectors.mjs`.
+  encoder emits through `scripts/generate-encode-conformance-vectors.mjs`. A
+  second job runs the agent runtime's `node --test` suite
+  (`ecosystem-agents/runtime/tests/`) against the SDK's build, on every push
+  that changes the SDK or the runtime; its macOS sandbox tests skip on the
+  Linux runner.
 - **`frontend-ci`** — push/PR, path-filtered: type-check, ESLint, Vitest
   (+coverage), the **mobile** Playwright project, production build.
 - **`devnet-e2e-ci`** — push/PR, path-filtered: the **bilateral spine**

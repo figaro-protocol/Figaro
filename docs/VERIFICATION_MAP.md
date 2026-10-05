@@ -28,6 +28,7 @@ a test file). Where a check runs, and what shows it is load-bearing:
 | Lean 4 | `lake build` in `formal/lean/` | the gate | proof-checked; a mutation is a build failure |
 | Rust | `cargo test` | `prover-ci`: the guest crates on every push, the relay and the batch end-to-end on main | `cargo-mutants` over the guest crates: 617 mutants, 12 survivors each read as equivalent (`AUDITOR_HANDOVER.md` § "Mutation testing, Rust"); the relay is not mutation-tested |
 | SDK Vitest | `cd sdk && npm test` | `sdk-ci` | not mutation-checked; the encoders are held by the cross-language vectors and the differential fuzz (`prover-ci`) |
+| Agent runtime | `cd ecosystem-agents/runtime && npm test` | `sdk-ci` (the sandbox tests skip off macOS) | not mutation-checked |
 | Frontend Vitest | `cd frontend && npx vitest run` | `frontend-ci` | not mutation-checked |
 | Playwright | `cd frontend && npx playwright test --project=devnet` | `devnet-e2e-ci` runs `orders-accept` alone; the suite runs by hand | not mutation-checked |
 
