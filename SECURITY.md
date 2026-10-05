@@ -106,17 +106,27 @@ by the `monitor` workflow in `.github/workflows/` against the addresses in
 assigned to the maintainer, and a run that cannot read the node, or finds an
 address in the record that holds no code, fails the workflow, which is the
 heartbeat. `scripts/test-monitor.mjs` produces the alerts on a devnet and
-asserts each is raised. The open issues are the log; an agent reviews
-them daily and reports only what departs from the expected.
+asserts each is raised. Anyone may run a relay and each operator sets its
+own pace, so the watcher watches only the relays it is given (the
+repository variable `MONITOR_RELAYS`); none is given while no relay runs
+publicly. The open issues
+are the log; an agent reviews them daily and reports only what departs from
+the expected.
 
 | Watch | Expected | Alert when |
 |---|---|---|
 | `FlorinToken`: `MinterRegistered`, and any `Transfer` from the zero address | none after genesis; mints only from `RpgfMinter.claim` | a minter is registered after the renounce, or a mint arrives from any other address |
 | `FigaroCore`: `OrderCommitted`, each order's `orderStatus`, and the contract's token balance | the balance equals the bonds of every order it reports open (invariant A-8 in `docs/VERIFICATION_MAP.md`) | the balance is below those bonds by any amount; a surplus is noted, not alerted |
-| `FigaroBatchVerifier`: `BatchSettled`, `BatchAccrualSkipped` | one root chains to the next; accrual applies | `BatchAccrualSkipped` (read the reason), or no batch for longer than the sequencer's stated cadence while its queue holds work |
-| `UsageCounter`: `UsageRecorded`, `BatchUsageRecorded`; `RpgfMinter`: `Claimed` | accrual within an open period; claims after it closes | a claim in an open period, or a period's claims exceeding its tranche |
+| `FigaroBatchVerifier`: `BatchSettled`, `BatchAccrualSkipped`; each relay the watcher is given: `GET /status` | accrual applies; a relay's queued work resolves within the wait its operator states | `BatchAccrualSkipped` (read the reason); a relay holding work with no batch resolved for longer than its stated wait, on the chain's clock; a relay that does not answer |
 | Registries: `ClauseRegistered`, `AssemblyRegistered`, `MemberRegistered`, `DepositWithdrawn`, `MemberWithdrawalRequested`, `MemberWithdrawn` | steady registration and the occasional withdrawal | a burst of withdrawals, which is what a scare looks like from the chain |
 | `AttestationCoordinator`, `FigaroBatchVerifier`: `Attestation` | attestations on open orders | none; kept in the log |
+
+A state the contracts refuse is proved unreachable, not watched: a reward
+claim while its period is open, and a period's claims past its budget
+(`certora/RpgfMinter.spec`); a batch that does not resolve from the root the
+verifier holds, or a gap in the batch numbering
+(`certora/BatchVerifierStateRoot.spec`). That the deployed contract is the
+proved code is checked by `scripts/check-deployment.mjs`.
 
 Alerts go to the maintainer's channel and to the incident agent. The review
 cadence is daily; the watcher runs before the review, so an alert is read

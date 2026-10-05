@@ -17,15 +17,26 @@
 //   PACE_MS          the least time between two requests to the node (default
 //                    1000 — a keyed node throttles a burst of reads; paced, the
 //                    reads never become one)
+//   RELAYS           the relays to watch, as JSON:
+//                    [{"url":"https://…","maxWaitSeconds":3600}, …] (default
+//                    none). Anyone may run a relay and each sets its own pace,
+//                    so the watcher watches only the relays it is given.
 //
-// Two kinds of check. Window checks read only the last WINDOW_BLOCKS blocks:
+// Three kinds of check. Window checks read only the last WINDOW_BLOCKS blocks:
 // a minter registered after genesis, a florin minted outside the reward path,
 // a batch whose accrual did not apply, a burst of withdrawals. The solvency
 // check reads FigaroCore's whole history from the deployment block: for every
 // token a process was ever denominated in, FigaroCore must hold exactly the
 // bonds of the orders still open — 2·payment + 2·cumulativeValue per order
 // (VERIFICATION_MAP.md A-8). Less than that is the incident; more is a surplus
-// someone sent, reported but not an alert.
+// someone sent, reported but not an alert. The relay check reads each given
+// relay's `GET /status`: work queued there while no batch has resolved for
+// longer than that relay's stated wait — measured on the chain's clock — is a
+// relay that has stopped resolving.
+//
+// What the contracts refuse is proved, never watched: the claim gates and the
+// period budget (`certora/RpgfMinter.spec`), the state root's chain
+// (`certora/BatchVerifierStateRoot.spec`).
 //
 // The events DISCOVER; FigaroCore's own state DECIDES. A public node is a
 // load-balanced fleet whose backends can omit logs (never invent them), so
@@ -46,6 +57,7 @@ const RPC_URL = process.env.RPC_URL || "https://ethereum-sepolia-rpc.publicnode.
 const WINDOW = BigInt(process.env.WINDOW_BLOCKS ?? "8000");
 const ALERTS_OUT = process.env.ALERTS_OUT ?? "monitor-alerts.json";
 const PACE_MS = Number(process.env.PACE_MS ?? "1000");
+const RELAYS = JSON.parse(process.env.RELAYS || "[]");
 const CHUNK = 9_500n; // the SDK's DEFAULT_LOG_CHUNK_SIZE — under every public node's range cap
 const ASKS = 3; // times each log chunk is asked; the fullest answer wins
 const BURST = 3;
@@ -142,6 +154,36 @@ for (const s of skipped) {
 }
 const settled = await eventsChunked({ address: record.batchVerifier, abi: verifierAbi, eventName: "BatchSettled", fromBlock: windowFrom, toBlock: head });
 notes.push(`${settled.length} batch(es) resolved in window, ${skipped.length} accrual(s) skipped`);
+
+// ── Relays: queued work waits no longer than each relay's stated wait ──
+
+if (RELAYS.length > 0) {
+    const allSettled = await eventsChunked({ address: record.batchVerifier, abi: verifierAbi, eventName: "BatchSettled", fromBlock: deployBlock, toBlock: head });
+    const lastBlock = allSettled.length > 0 ? allSettled[allSettled.length - 1].blockNumber : deployBlock;
+    const [last, now] = await Promise.all([client.getBlock({ blockNumber: lastBlock }), client.getBlock({ blockNumber: head })]);
+    const age = Number(now.timestamp - last.timestamp);
+    const since = allSettled.length > 0 ? `the last batch (block ${lastBlock})` : `the deployment (block ${lastBlock}), with no batch since`;
+    for (const { url, maxWaitSeconds } of RELAYS) {
+        let status;
+        try {
+            const res = await fetch(new URL("/status", url), { signal: AbortSignal.timeout(15_000) });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            status = await res.json();
+        } catch (e) {
+            alert("notice", `relay-unreachable-${url}`,
+                `Monitor: the relay at ${url} did not answer`,
+                `\`GET /status\` failed: ${e instanceof Error ? e.message : String(e)}. Work it holds cannot be seen, and a relay that is down resolves nothing.`);
+            continue;
+        }
+        const queued = Number(status.pending_ops ?? 0) + Number(status.pending_usage_claims ?? 0);
+        notes.push(`relay ${url}: ${queued} queued, ${age}s since ${since}, wait ${maxWaitSeconds}s`);
+        if (queued > 0 && age > maxWaitSeconds) {
+            alert("high", `relay-stalled-${url}`,
+                `Monitor: the relay at ${url} holds work and has resolved no batch for ${age}s`,
+                `${status.pending_ops} operation(s) and ${status.pending_usage_claims} usage claim(s) queued; ${age}s of chain time since ${since}, past the relay's stated wait of ${maxWaitSeconds}s. Its last resolve error: ${status.last_settle_error ?? "none"}; ${status.dead_lettered_ops} operation(s) dead-lettered. Anyone holding the state can take over: \`GET /state\` from this relay gives another relay the state to start on.`);
+        }
+    }
+}
 
 const withdrawals = [
     ...(await eventsChunked({ address: record.membersRegistry, abi: abiOf("MembersRegistry"), eventName: "MemberWithdrawalRequested", fromBlock: windowFrom, toBlock: head })),

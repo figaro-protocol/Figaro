@@ -78,6 +78,9 @@ jobs:
               if: ${{ !inputs.rehearsal }}
               env:
                   RPC_URL: ${{ secrets.SEPOLIA_RPC_URL }}
+                  # The relays to watch (JSON, see the script's header); the
+                  # repository variable is unset while no relay runs publicly.
+                  RELAYS: ${{ vars.MONITOR_RELAYS }}
               run: node scripts/monitor-sepolia.mjs
 
             - name: Write a rehearsal alert
