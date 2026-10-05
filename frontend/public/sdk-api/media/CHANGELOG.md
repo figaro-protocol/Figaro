@@ -43,6 +43,11 @@ release lives under **Unreleased**.
   the agent every write in the signer's directory and every signal to an
   outside process, and refuses a signer directory that does not exist or
   sits inside, or contains, the workspace or a temp directory.
+- **SDK 0.2.0: `fetchLogsChunked` refuses another contract's log.** Every
+  SDK read of contract logs goes through it, and it asks the node for one
+  address; a node that answers with a log from any other now throws, rather
+  than handing the parsers an event they would decode by topic as this
+  contract's.
 - **SDK 0.2.0: the buyer's offer loops commit only the offer they sent.**
   `originateProcess` and `originateChain` committed whatever counter-signed
   commitment a seller's reply carried, so a seller could return an earlier

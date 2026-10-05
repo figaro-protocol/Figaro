@@ -109,7 +109,8 @@ describe("checkEndpointLogAgreement", () => {
 
 describe("fetchEndpointLogAgreement", () => {
     function fakeLog(blockNumber: bigint, transactionHash: string, logIndex: number): Log {
-        return { blockNumber, transactionHash, logIndex } as unknown as Log;
+        // A real log names its contract: the queried one.
+        return { blockNumber, transactionHash, logIndex, address: ADDRESS } as unknown as Log;
     }
 
     /** A stub client answering the pinned range from a fixed log set. */

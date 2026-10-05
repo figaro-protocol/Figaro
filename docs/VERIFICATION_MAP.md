@@ -464,6 +464,8 @@ export CERTORAKEY=<your-key>
 |---|---|---|
 | `integration.test.ts` | SDK round-trip on a LIVE chain (the one sanctioned chain-touching Vitest file, skipIf-gated): built+signed commitment accepted by `commit`, events fetch + reconstruct, reconstruction resolves. Asserts no `FigaroCore` math — amounts are Foundry/Certora-owned | K-8, K-9 (live-chain acceptance) |
 | `bonds.test.ts` | Bond calculations (2×), payouts at resolution, approval amounts, validation | K-1, K-5 |
+| `bondsCoreParity.test.ts` | The SDK's bonds and payouts, summed per party, equal what `FigaroCore` pulled and paid in every scenario of `test/fixtures/kernel-transition-vectors.json` (harvested from the live contract), buyer == seller included | K-1, K-5 |
+| `abiParity.test.ts` | Every function, event and error in the SDK's hand-written ABIs (`sdk/src/abis.ts`) exists in the compiled ABI (`abi/*.json`) with the same inputs, `indexed` flags and outputs; the Core's ERC-20 errors are checked against the repo's own OpenZeppelin ERC-20 | K-8, K-9 |
 | `commitments.test.ts` | EIP-712 domain building, salt generation, deadline, commitment building | K-8, K-9 |
 | `state.test.ts` | Event reconstruction, Topology (incremental), active/seller/buyer queries | A-4, A-5 |
 | `proposer.test.ts` | Agent proposer: proposeActions, typed action generation | K-2 (buyer action routing) |

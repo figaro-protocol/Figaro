@@ -216,6 +216,15 @@ export async function fetchLogsChunked(
     while (from <= resolvedToBlock) {
         const to = from + chunkSize - 1n < resolvedToBlock ? from + chunkSize - 1n : resolvedToBlock;
         const chunk = await client.getLogs({ address: params.address, fromBlock: from, toBlock: to });
+        // The query names one contract. A log from any other is the node's
+        // error, never data: the parsers decode by topic and would read
+        // another contract's event as this one's.
+        const wanted = params.address.toLowerCase();
+        for (const log of chunk) {
+            if (log.address.toLowerCase() !== wanted) {
+                throw new Error(`fetchLogsChunked: the node answered a log query for ${params.address} with a log from ${log.address} (block ${log.blockNumber}) — refusing its answer`);
+            }
+        }
         logs.push(...chunk);
         from = to + 1n;
     }

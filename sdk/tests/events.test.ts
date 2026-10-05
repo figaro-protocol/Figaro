@@ -5,8 +5,8 @@ import type { Address, FigaroAddresses } from "../src/types.js";
 
 const ADDRESS = "0x000000000000000000000000000000000000c0de" as Address;
 
-function fakeLog(blockNumber: bigint): Log {
-    return { blockNumber } as unknown as Log;
+function fakeLog(blockNumber: bigint, address: string = ADDRESS): Log {
+    return { blockNumber, address } as unknown as Log;
 }
 
 /** A stub client whose `getLogs` answers from a fixed in-memory log set,
@@ -22,6 +22,21 @@ function mockClient(allLogs: Log[], latest = 999_999n): PublicClient {
 }
 
 describe("fetchLogsChunked", () => {
+    it("refuses a node that answers with another contract's log", async () => {
+        // The parsers decode by topic: another contract's event with the same
+        // signature would read as this one's.
+        const foreign = "0x000000000000000000000000000000000000beef";
+        const client = mockClient([fakeLog(1n), fakeLog(2n, foreign)]);
+        await expect(fetchLogsChunked(client, { address: ADDRESS, fromBlock: 0n, toBlock: 5n }))
+            .rejects.toThrow(/answered a log query for .* with a log from 0x0+beef/i);
+    });
+
+    it("accepts the queried address in any letter case", async () => {
+        const client = mockClient([fakeLog(1n, ADDRESS.toUpperCase().replace("0X", "0x"))]);
+        const logs = await fetchLogsChunked(client, { address: ADDRESS, fromBlock: 0n, toBlock: 5n });
+        expect(logs).toHaveLength(1);
+    });
+
     it("issues one call per chunk with contiguous, non-overlapping, inclusive sub-ranges (exact boundary)", async () => {
         const client = mockClient([]);
         await fetchLogsChunked(client, { address: ADDRESS, fromBlock: 0n, toBlock: 25n, chunkSize: 10n });
