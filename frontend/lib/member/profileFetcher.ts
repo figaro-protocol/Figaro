@@ -22,7 +22,7 @@ const profileFetcher = createUriFetcher<MemberProfileMetadata>({
 });
 
 /** Fetch and parse a member profile document from a content URI. Null on
- *  empty URI, fetch failure, or unrecognised shape. Cached by URI — a
+ *  empty URI, fetch failure, or unrecognized shape. Cached by URI — a
  *  profile update re-pins to a NEW URI, so no invalidation surface is
  *  needed (or exported). */
 export const fetchMemberProfile = profileFetcher.fetch;
