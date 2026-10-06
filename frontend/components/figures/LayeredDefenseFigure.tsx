@@ -61,7 +61,7 @@ const FAQ_CAPTION = (
 /**
  * The canonical five-layer defense-in-depth stack, nested inside-out as
  * concentric rings so the one load-bearing fact reads as shape, not
- * prose: the inner three are where bonded funds actually sit (only the
+ * prose: the inner three are where bonds actually sit (only the
  * buyer's own resolveProcess signature moves them); the outer two act on
  * the on-chain data from outside the trade and cannot reach in.
  *

@@ -5,7 +5,7 @@ import { FigureFrame } from "@/components/figures/FigureFrame";
 export type LockedFundsStateFigureProps = BaseFigureProps;
 
 /**
- * The locked-funds state machine, derived read-only from FigaroCore
+ * The bond state machine, derived read-only from FigaroCore
  * (`src/core/kernel/FigaroCore.sol`, cross-checked against `docs/CONTRACTS.md`):
  *
  *   Unknown (orderStatus 0) --commit()--> Committed/Active (orderStatus 1)
@@ -23,7 +23,7 @@ export type LockedFundsStateFigureProps = BaseFigureProps;
  * by design") and §5 ("Buyer key loss permanently locks bonds — by
  * design"): "There is no timeout, no recovery path, no admin override."
  * If the buyer never calls resolveProcess, Committed simply persists —
- * this figure draws that as a stable state, never as funds "trapped" or
+ * this figure draws that as a stable state, never as a bond "trapped" or
  * "held hostage" (the failure-story doctrine: the buyer's own signature
  * is the only door, by design, not a bug to be excused).
  */
@@ -46,7 +46,7 @@ export function LockedFundsStateFigure({
             className={className}
             svgProps={svgProps}
             viewBox="0 0 400 500"
-            title="The locked-funds state machine"
+            title="The bond state machine"
             desc={
                 <>
                     Three states connected by two transitions. Unknown moves
@@ -147,11 +147,11 @@ export function LockedFundsStateFigure({
                 <g>
                     <text x={cx1} y="296" fontSize="9" fontWeight="600" textAnchor="middle" className="fill-ink-body">buyer</text>
                     <rect x={cx1 - 44} y="302" width="88" height="8" rx="2" className="fill-none stroke-default" strokeWidth="0.75" />
-                    <text x={cx1} y="322" fontSize="8" textAnchor="middle" className="fill-ink-muted">funds in wallet</text>
+                    <text x={cx1} y="322" fontSize="8" textAnchor="middle" className="fill-ink-muted">balance in wallet</text>
 
                     <text x={cx1} y="342" fontSize="9" fontWeight="600" textAnchor="middle" className="fill-ink-body">seller</text>
                     <rect x={cx1 - 44} y="348" width="88" height="8" rx="2" className="fill-none stroke-default" strokeWidth="0.75" />
-                    <text x={cx1} y="368" fontSize="8" textAnchor="middle" className="fill-ink-muted">funds in wallet</text>
+                    <text x={cx1} y="368" fontSize="8" textAnchor="middle" className="fill-ink-muted">balance in wallet</text>
                 </g>
 
                 <g>

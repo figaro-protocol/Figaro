@@ -119,7 +119,7 @@ describe("TokenApprovalFlow", () => {
             />,
         );
 
-        expect(screen.getByText(/Insufficient funds/i)).toBeInTheDocument();
+        expect(screen.getByText(/Insufficient balance/i)).toBeInTheDocument();
         expect(screen.getByText(/Required: 1/i)).toBeInTheDocument();
         expect(screen.getByText(/Available: 0.5/i)).toBeInTheDocument();
     });

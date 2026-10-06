@@ -109,7 +109,7 @@ export function TokenApprovalFlow({
 
     if (hasInsufficientBalance || errorMessage) {
         const message = hasInsufficientBalance
-            ? `Insufficient funds. Required: ${formatToken(requiredAmount, decimals)}, Available: ${formatToken(balance, decimals)}`
+            ? `Insufficient balance. Required: ${formatToken(requiredAmount, decimals)}, Available: ${formatToken(balance, decimals)}`
             : errorMessage;
 
         return (

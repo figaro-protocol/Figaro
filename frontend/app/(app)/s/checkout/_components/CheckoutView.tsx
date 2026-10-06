@@ -252,7 +252,7 @@ export function CheckoutView({ sellerAddress }: Props) {
     const { runWithApproval } = useApproveThenAct({ needsApproval, approve, isApproveSuccess });
     const [checkoutError, setCheckoutError] = useState<string | null>(null);
     // Swap-funded bond leg (buyer side): the ON-RAMP into the process
-    // denomination — a buyer short of the picked/pinned token funds from
+    // denomination — a buyer short of the picked/pinned token draws on
     // another of the seller's accepted tokens, and the coordinator swaps it
     // at commit time. Funding is never the order's denomination; the
     // candidate set IS the seller's acceptedTokens minus the process
@@ -631,7 +631,7 @@ export function CheckoutView({ sellerAddress }: Props) {
         if (cartItems.length === 0) return;
         if (hasInsufficientBalance && !fundingToken) {
             setCheckoutError(
-                `Insufficient funds. Required: ${formatToken(lockedTotal, tokenDecimals)}, available: ${formatToken(balance, tokenDecimals)}`
+                `Insufficient balance. Required: ${formatToken(lockedTotal, tokenDecimals)}, available: ${formatToken(balance, tokenDecimals)}`
                 + (fundingCandidates.length > 0 ? " — or fund your bond from another accepted token below." : ""),
             );
             return;
