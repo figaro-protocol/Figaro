@@ -321,7 +321,7 @@ describe("wallet record", () => {
         expect(walletOrderRows(record({}))).toEqual([]);
     });
 
-    it("summarises both sides and dedupes denominations", () => {
+    it("summarizes both sides and dedupes denominations", () => {
         const summary = walletRecordSummary(
             record({
                 ordersAsBuyer: [order({}), order({ currency: TOKEN_B, orderHash: `0x${"12".repeat(32)}` })],
