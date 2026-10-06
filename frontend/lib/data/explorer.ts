@@ -20,7 +20,7 @@
  * (`projectProcessGraph`, `projectResolutionGraph`, `extractOverlays`,
  * `projectValueFlow`, `marketShape`, `walletRecord`) and the I/O is
  * `lib/data/graphCorpus.ts`. This module only shapes rows, states absence, and
- * parses/serialises the URL query so every view is a permalink.
+ * parses/serializes the URL query so every view is a permalink.
  */
 
 import type { TruthBoundary, MarketShape, ChainShape, OverlayGraph, ProcessGraph, ValueFlowGraph, ValueFlowEdge, WalletRecord } from "@figaro-protocol/sdk/derive";
@@ -62,7 +62,7 @@ export function parseDataExplorerQuery(params: URLSearchParams | Record<string, 
     };
 }
 
-/** Serialise state back to a query string, omitting empties so a permalink
+/** Serialize state back to a query string, omitting empties so a permalink
  *  stays short (`?view=market` is the whole default state). */
 export function serializeDataExplorerQuery(state: DataExplorerQuery): string {
     const p = new URLSearchParams();
