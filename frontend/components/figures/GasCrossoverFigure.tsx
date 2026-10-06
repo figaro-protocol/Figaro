@@ -47,7 +47,7 @@ export interface GasCrossoverFigureProps extends BaseFigureProps {
  *    measured on Anvil receipts by `test/core/kernel/GasCeilingTest.t.sol` and
  *    lint-pinned across the two. `resolveProcess` also carries a one-time
  *    `RESOLVE_FIXED_OVERHEAD` of 38,000 that this per-order line excludes —
- *    stated on the figure rather than buried, since excluding it FAVOURS the
+ *    stated on the figure rather than buried, since excluding it FAVORS the
  *    direct path and so cannot flatter the crossover.
  *  - `batchMarginal` 26,500 = ~2k/position hash verification + ~24k/position
  *    for the net token transfer (/spec § "What the proof costs to verify on
@@ -321,7 +321,7 @@ export function GasCrossoverFigure({
                     Direct = {fmt(directPerOrder - resolvePerOrder)} sub-order commit + {fmt(resolvePerOrder)} per-order resolve. It excludes the resolve
                 </text>
                 <text x="18" y="305" fontSize="7.5" className="fill-ink-body">
-                    call&apos;s one-time {fmt(resolveFixedOverhead)} &mdash; an exclusion that favours the direct path.
+                    call&apos;s one-time {fmt(resolveFixedOverhead)} &mdash; an exclusion that favors the direct path.
                 </text>
                 <text x="18" y="315" fontSize="7.5" className="fill-ink-body">
                     Positions, not orders: netting collapses many orders into few positions.
