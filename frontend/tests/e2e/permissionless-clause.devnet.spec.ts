@@ -14,7 +14,7 @@
  *              ONE generic capability rail (no clause named in the page)
  *   audit    → fed from network state (indexer events + IPFS), the audit package
  *              surfaces the whole lifecycle: EVERY committed leaf's value (commerce,
- *              topology, AND the never-seen clause, each labelled from its spec), the
+ *              topology, AND the never-seen clause, each labeled from its spec), the
  *              seller's runtime ATTESTATION (stage label + attester, from the event
  *              log), and a hash verifier that recomputes the merkle root over all
  *              leaves to match the on-chain agreementHash — the whole tree, tied to chain
@@ -334,7 +334,7 @@ test.describe('PERMISSIONLESS CLAUSE — the definition of green (devnet)', () =
         await expect(attest).toBeEnabled({ timeout: 30000 });
         await attest.click();
 
-        // The novel clause's first stage, labelled STRAIGHT from its spec, must
+        // The novel clause's first stage, labeled STRAIGHT from its spec, must
         // surface on the TIMELINE after the attestation lands. Scope to the timeline
         // list (`order-timeline`) — the capability rail also renders the stage label
         // ('Probe opened' on both its card and its execute button), so an unscoped
@@ -362,7 +362,7 @@ test.describe('PERMISSIONLESS CLAUSE — the definition of green (devnet)', () =
             witnessRow,
             'the witness attestation lands on the timeline',
         ).toBeVisible({ timeout: 60000 });
-        await expect(witnessRow, 'the row is labelled by the never-seen spec title')
+        await expect(witnessRow, 'the row is labeled by the never-seen spec title')
             .toContainText(WITNESS_TITLE);
         await expect(
             witnessCap,
@@ -374,7 +374,7 @@ test.describe('PERMISSIONLESS CLAUSE — the definition of green (devnet)', () =
         //    reads the OrderCommitted/OrderResolved EVENT logs through the indexer
         //    query layer (lib/kernel/indexer.ts), the SAME events the seller's list
         //    reads — there is NO separate buyer/seller inbox. The committed-but-
-        //    unresolved process shows under "In progress", labelled from its state. ──
+        //    unresolved process shows under "In progress", labeled from its state. ──
         await gotoAsWallet(page, BUYER, '/orders?e2e=devnet');
         await page.getByTestId('orders-list').waitFor({ timeout: 30000 });
         await waitForConnected(page);
@@ -384,7 +384,7 @@ test.describe('PERMISSIONLESS CLAUSE — the definition of green (devnet)', () =
         ).toBeVisible({ timeout: 30000 });
         await expect(
             page.getByTestId(`order-status-${processId}`),
-            "the buyer's in-progress row is labelled In progress",
+            "the buyer's in-progress row is labeled In progress",
         ).toHaveText(/In progress/, { timeout: 15000 });
 
         // ── RESOLVE: the buyer resolves atomically ──
@@ -424,7 +424,7 @@ test.describe('PERMISSIONLESS CLAUSE — the definition of green (devnet)', () =
         ).toBeVisible({ timeout: 30000 });
         await expect(
             page.getByTestId(`order-status-${processId}`),
-            "the buyer's completed row is labelled Completed",
+            "the buyer's completed row is labeled Completed",
         ).toHaveText(/Completed/, { timeout: 15000 });
 
         // ── AUDIT (fed from network state — indexer events + IPFS, never a local
