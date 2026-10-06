@@ -125,7 +125,7 @@ a clause's pinned bytes MUST equal its canonical bytes. Pin readable JSON here;
 let `templateCompositionHash` — never a hand-rolled hash over the raw bytes —
 derive identity.
 
-- **One `agreement` per future `FigaroCore` order**, labelled `"order-<index>"` (`order-0`,
+- **One `agreement` per future `FigaroCore` order**, labeled `"order-<index>"` (`order-0`,
   `order-1`, …). The label is the topology reference target — stable within the template,
   not a chain id and not a party (the template is party-agnostic; addresses bind at
   runtime).
