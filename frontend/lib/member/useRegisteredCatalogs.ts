@@ -1,11 +1,11 @@
 /**
- * lib/mechanisms/useRegisteredCatalogues.ts
+ * lib/mechanisms/useRegisteredCatalogs.ts
  *
  * Hook that discovers all registered members from MembersRegistry
- * events (via the indexer), fetches their catalogues from IPFS, and
- * projects them to the buyer-side `MemberCatalogue` UI type for the
+ * events (via the indexer), fetches their catalogs from IPFS, and
+ * projects them to the buyer-side `MemberCatalog` UI type for the
  * discovery module. Plural-of-wallets — each wallet has at most one
- * catalogue.
+ * catalog.
  *
  * Returns an empty list when the registry isn't configured or no
  * members have registered. Empty-state copy is the caller's
@@ -15,33 +15,33 @@
 
 import { useState, useEffect } from "react";
 import { usePublicClient, useChainId } from "wagmi";
-import type { MemberCatalogue } from "@/lib/member/types";
+import type { MemberCatalog } from "@/lib/member/types";
 import {
     DEFAULT_DISCOVERY_SERVICE,
     type DiscoveryService,
 } from "@/lib/member/discoveryService";
 import { usePublishedAssemblies } from "@/lib/protocol/useAssemblyRegistry";
 
-export interface UseRegisteredCataloguesResult {
-    catalogues: MemberCatalogue[];
+export interface UseRegisteredCatalogsResult {
+    catalogs: MemberCatalog[];
     isLoading: boolean;
 }
 
-export interface UseRegisteredCataloguesOptions {
+export interface UseRegisteredCatalogsOptions {
     service?: DiscoveryService;
 }
 
-const EMPTY_RESULT: UseRegisteredCataloguesResult = {
-    catalogues: [],
+const EMPTY_RESULT: UseRegisteredCatalogsResult = {
+    catalogs: [],
     isLoading: false,
 };
 
-export function useRegisteredCatalogues(
-    options: UseRegisteredCataloguesOptions = {},
-): UseRegisteredCataloguesResult {
+export function useRegisteredCatalogs(
+    options: UseRegisteredCatalogsOptions = {},
+): UseRegisteredCatalogsResult {
     const service = options.service ?? DEFAULT_DISCOVERY_SERVICE;
     const [discoveryResult, setDiscoveryResult] =
-        useState<UseRegisteredCataloguesResult>(EMPTY_RESULT);
+        useState<UseRegisteredCatalogsResult>(EMPTY_RESULT);
     const [isLoading, setIsLoading] = useState(false);
     // Re-read generation — bumped when the tab regains focus so a long-open
     // discovery surface refreshes from the chain instead of going stale.
@@ -69,7 +69,7 @@ export function useRegisteredCatalogues(
         let cancelled = false;
         setIsLoading(true);
 
-        service.listCatalogues(client, chainId, publishedSlugs)
+        service.listCatalogs(client, chainId, publishedSlugs)
             .then((result) => {
                 if (cancelled) return;
                 setDiscoveryResult({ ...result, isLoading: false });
@@ -86,7 +86,7 @@ export function useRegisteredCatalogues(
         };
     }, [client, chainId, service, publishedAssemblies, generation]);
 
-    // A long-open tab's catalogue goes stale as members register/de-surface.
+    // A long-open tab's catalog goes stale as members register/de-surface.
     // Refresh on focus (returning to the tab) and on tab re-visibility.
     useEffect(() => {
         if (typeof window === "undefined") return;
@@ -103,7 +103,7 @@ export function useRegisteredCatalogues(
     }, []);
 
     return {
-        catalogues: discoveryResult.catalogues,
+        catalogs: discoveryResult.catalogs,
         isLoading,
     };
 }

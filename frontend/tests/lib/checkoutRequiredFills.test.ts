@@ -42,7 +42,7 @@ const groupsFor = (file: string) =>
     deriveAgreementGroups({
         pickedAssembly: { assemblyTemplate: template(file), counterpartyBindings: [] } as never,
         leadAddress: LEAD,
-        sellerCatalogues: [] as never,
+        sellerCatalogs: [] as never,
     });
 
 /** `clauseId.fieldName` for every demanded fill, deduplicated across orders. */
@@ -125,7 +125,7 @@ describe("unfilledRequiredFills — the six-party import chain, nothing filled",
         expect(all).not.toContain("figaro-consent.documents");
         expect(all).not.toContain("figaro-applicable-law.applicableLaw");
         expect(all).not.toContain("figaro-geolocation.geocoder");
-        // Seller-sourced: the carrier's catalogue fills the cold chain.
+        // Seller-sourced: the carrier's catalog fills the cold chain.
         expect(all).not.toContain("figaro-cold-chain.tempClass");
         expect(all).not.toContain("figaro-freight-class.nmfcClass");
     });
@@ -205,7 +205,7 @@ describe("unfilledRequiredFills — a value already composed on the template cou
         const groups = deriveAgreementGroups({
             pickedAssembly: { assemblyTemplate: composed, counterpartyBindings: [] } as never,
             leadAddress: LEAD,
-            sellerCatalogues: [] as never,
+            sellerCatalogs: [] as never,
         });
         const acceptance = unfilledRequiredFills(groups, {}).filter((m) => m.fieldName === "acceptanceBasis");
         expect(acceptance.map((m) => m.groupKey)).toEqual(["order-1"]);

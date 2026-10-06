@@ -48,7 +48,7 @@ sale — the content-handoff clause family names datasets and access credentials
 as digital value-added, delivered over the sealed channel.
 
 The voluntary data market around that capacity is Core-native and needs no
-contract of its own: data products are catalogue items; the disclosure regime for
+contract of its own: data products are catalog items; the disclosure regime for
 a process's own data is the composable
 `figaro-data-terms` clause (designer-set regime, buyer-committed choice over
 their own half); the terms of a specific sale are the `figaro-data-license`

@@ -49,12 +49,12 @@ describe('discoveryService', () => {
     it('returns an empty result when the registry has no members', async () => {
         getActiveMembersMock.mockResolvedValueOnce([]);
 
-        const result = await discoveryService.listCatalogues({} as never, 31337, ANCHORED);
+        const result = await discoveryService.listCatalogs({} as never, 31337, ANCHORED);
 
-        expect(result.catalogues).toHaveLength(0);
+        expect(result.catalogs).toHaveLength(0);
     });
 
-    it('maps a MemberCatalogueMetadata document into a discovery restaurant', async () => {
+    it('maps a MemberCatalogMetadata document into a discovery restaurant', async () => {
         getActiveMembersMock.mockResolvedValueOnce([
             {
                 address: '0x70997970c51812dc3a010c7d01b50e0d17dc79c8',
@@ -83,15 +83,15 @@ describe('discoveryService', () => {
             version: '1.0.0',
         }));
 
-        const result = await discoveryService.listCatalogues({} as never, 31337, ANCHORED);
-        expect(result.catalogues).toHaveLength(1);
-        expect(result.catalogues[0]).toEqual(expect.objectContaining({
+        const result = await discoveryService.listCatalogs({} as never, 31337, ANCHORED);
+        expect(result.catalogs).toHaveLength(1);
+        expect(result.catalogs[0]).toEqual(expect.objectContaining({
             name: 'Merchant A',
             specialty: 'Italian',
         }));
     });
 
-    it('maps a member profile document into a discovery restaurant and follows catalogueURI', async () => {
+    it('maps a member profile document into a discovery restaurant and follows catalogURI', async () => {
         getActiveMembersMock.mockResolvedValueOnce([
             {
                 address: '0xaabbccddaabbccddaabbccddaabbccddaabbccdd',
@@ -107,9 +107,9 @@ describe('discoveryService', () => {
                 { address: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48', symbol: 'USDC' },
             ],
             assemblyBindings: anchoredBinding('0xaabbccddaabbccddaabbccddaabbccddaabbccdd'),
-            catalogueURI: 'ipfs://Qmopcatakogue111111111111111111111111111111111',
+            catalogURI: 'ipfs://Qmopcatakogue111111111111111111111111111111111',
         }));
-        // Second fetch: catalogue document
+        // Second fetch: catalog document
         fetchDocumentMock.mockResolvedValueOnce(makeJsonResponse({
             version: '1',
             items: [
@@ -117,15 +117,15 @@ describe('discoveryService', () => {
             ],
         }));
 
-        const result = await discoveryService.listCatalogues({} as never, 31337, ANCHORED);
-        expect(result.catalogues[0]).toEqual(expect.objectContaining({
+        const result = await discoveryService.listCatalogs({} as never, 31337, ANCHORED);
+        expect(result.catalogs[0]).toEqual(expect.objectContaining({
             name: 'Street Tacos',
         }));
-        expect(result.catalogues[0].items).toHaveLength(1);
-        expect(result.catalogues[0].items[0].name).toBe('Al Pastor');
+        expect(result.catalogs[0].items).toHaveLength(1);
+        expect(result.catalogs[0].items[0].name).toBe('Al Pastor');
     });
 
-    it('maps a member profile without a catalogueURI into a restaurant with an empty menu', async () => {
+    it('maps a member profile without a catalogURI into a restaurant with an empty menu', async () => {
         getActiveMembersMock.mockResolvedValueOnce([
             {
                 address: '0xaabbccddaabbccddaabbccddaabbccddaabbccdd',
@@ -138,18 +138,18 @@ describe('discoveryService', () => {
             assemblyBindings: anchoredBinding('0xaabbccddaabbccddaabbccddaabbccddaabbccdd'),
         }));
 
-        const result = await discoveryService.listCatalogues({} as never, 31337, ANCHORED);
-        expect(result.catalogues[0].name).toBe('Ghost Kitchen');
-        expect(result.catalogues[0].items).toHaveLength(0);
+        const result = await discoveryService.listCatalogs({} as never, 31337, ANCHORED);
+        expect(result.catalogs[0].name).toBe('Ghost Kitchen');
+        expect(result.catalogs[0].items).toHaveLength(0);
         expect(fetchDocumentMock).toHaveBeenCalledTimes(1);
     });
 
     it('returns an empty result when the seller-event lookup fails', async () => {
         getActiveMembersMock.mockRejectedValueOnce(new Error('indexer offline'));
 
-        const result = await discoveryService.listCatalogues({} as never, 31337, ANCHORED);
+        const result = await discoveryService.listCatalogs({} as never, 31337, ANCHORED);
 
-        expect(result.catalogues).toHaveLength(0);
+        expect(result.catalogs).toHaveLength(0);
     });
 
     it('excludes sellers without an anchored assembly binding (surfacing rule, applied evenly)', async () => {
@@ -173,9 +173,9 @@ describe('discoveryService', () => {
             }],
         }));
 
-        const result = await discoveryService.listCatalogues({} as never, 31337, ANCHORED);
+        const result = await discoveryService.listCatalogs({} as never, 31337, ANCHORED);
 
-        expect(result.catalogues).toHaveLength(0);
+        expect(result.catalogs).toHaveLength(0);
     });
 
     it('excludes sellers whose documents cannot be fetched', async () => {
@@ -188,8 +188,8 @@ describe('discoveryService', () => {
         ]);
         fetchDocumentMock.mockResolvedValueOnce({ ok: false } as Response);
 
-        const result = await discoveryService.listCatalogues({} as never, 31337, ANCHORED);
+        const result = await discoveryService.listCatalogs({} as never, 31337, ANCHORED);
 
-        expect(result.catalogues).toHaveLength(0);
+        expect(result.catalogs).toHaveLength(0);
     });
 });

@@ -21,10 +21,10 @@
  *              assembly to its profile through the seller-edit surface and
  *              DESIGNATES its courier (Cardinal Couriers); the courier pins
  *              the assembly it participates in (the even-surfacing rule:
- *              only a bound seller's catalogue is readable anywhere).
+ *              only a bound seller's catalog is readable anywhere).
  *   checkout → the buyer orders the paperback from the merchant's page; the
  *              method line shows the delivery assembly; the P&L breakdown
- *              prices the courier LIVE from the courier's own catalogue;
+ *              prices the courier LIVE from the courier's own catalog;
  *              the buyer signs BOTH orders through the one confirm gate.
  *   accept   → merchant accepts first (root creates the process), courier
  *              second (extends it) — exact bond deltas asserted after each:
@@ -71,8 +71,8 @@
  * Cast (scenario labels only — FigaroCore sees ordinary wallets):
  *   author   anvil[0]  (any wallet designs; neither party here)
  *   buyer    anvil[2]  (used as a buyer by no other spec)
- *   merchant anvil[7]  Meridian Books  (seeded; catalogue: Paperback @1)
- *   courier  anvil[8]  Cardinal Couriers (seeded; catalogue: Standard delivery @1)
+ *   merchant anvil[7]  Meridian Books  (seeded; catalog: Paperback @1)
+ *   courier  anvil[8]  Cardinal Couriers (seeded; catalog: Standard delivery @1)
  *
  * No evmSnapshot/evmRevert — devnet is a mainnet rehearsal; both gates are
  * idempotent and the run leaves its state on-chain for out-of-band checks.
@@ -250,7 +250,7 @@ test.describe('LOCAL COMMERCE — item delivery: canvas → bind → order → a
 
         // ── CHECKOUT: the buyer orders the paperback with delivery. One bound
         //    assembly → the static method line names it; the breakdown prices
-        //    the courier live from the courier's own catalogue. ──
+        //    the courier live from the courier's own catalog. ──
         await gotoAsWallet(page, BUYER, `/s/view?seller=${MERCHANT}&e2e=devnet`);
         await page.getByTestId('member-detail-view').waitFor({ timeout: 30000 });
         await waitForConnected(page);
@@ -377,7 +377,7 @@ test.describe('LOCAL COMMERCE — item delivery: canvas → bind → order → a
 
         const merchantEvent = await acceptAs(MERCHANT, 'merchant');
         const processId = merchantEvent.args.processId!;
-        expect(merchantEvent.args.payment, "item payment = the merchant's catalogue price").toBe(parseEther('1'));
+        expect(merchantEvent.args.payment, "item payment = the merchant's catalog price").toBe(parseEther('1'));
         expect(merchantEvent.args.cumulativeValue, 'root cumulative = its own payment').toBe(parseEther('1'));
         const merchantBonds = calculateBonds(merchantEvent.args.cumulativeValue!, merchantEvent.args.payment!);
         {
@@ -389,7 +389,7 @@ test.describe('LOCAL COMMERCE — item delivery: canvas → bind → order → a
 
         const courierEvent = await acceptAs(COURIER, 'courier');
         expect(courierEvent.args.processId, 'the courier order extends the SAME process').toBe(processId);
-        expect(courierEvent.args.payment, "delivery payment = the courier's own catalogue price").toBe(parseEther('1'));
+        expect(courierEvent.args.payment, "delivery payment = the courier's own catalog price").toBe(parseEther('1'));
         expect(courierEvent.args.cumulativeValue, 'courier cumulative = item + delivery').toBe(parseEther('2'));
         const courierBonds = calculateBonds(courierEvent.args.cumulativeValue!, courierEvent.args.payment!);
         {

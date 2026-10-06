@@ -3,7 +3,7 @@
  *
  * The erasure half of the member's publish story (author pins → author pays
  * → author erases): when a profile is superseded, the prior document — and
- * any authored artifact the successor no longer references (catalogue,
+ * any authored artifact the successor no longer references (catalog,
  * branding assets) — is unpinned from the author's node so it stops being
  * served and becomes garbage-collectable. On withdraw nothing survives, so
  * everything the profile referenced is unpinned.
@@ -19,7 +19,7 @@ import type { MemberProfileMetadata } from "@/lib/member/memberProfileMetadata";
 function referencedUris(profile: MemberProfileMetadata | null | undefined): string[] {
     if (!profile) return [];
     return [
-        profile.catalogueURI,
+        profile.catalogURI,
         profile.branding?.logoURI,
         profile.assets?.imageBaseURI,
     ].filter((u): u is string => Boolean(u));

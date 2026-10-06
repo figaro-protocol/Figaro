@@ -32,7 +32,7 @@ const FIELDS: HintedFieldDef<
         key: "ipfsApiUrl",
         label: "IPFS node (API)",
         placeholder: "https://ipfs.example.com:5001",
-        hint: "Your own node. Everything you publish — profile, catalogue, clauses, assemblies, evidence — pins here: you pay for it, you can erase it.",
+        hint: "Your own node. Everything you publish — profile, catalog, clauses, assemblies, evidence — pins here: you pay for it, you can erase it.",
     },
     {
         key: "ipfsGatewayUrl",

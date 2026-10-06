@@ -337,7 +337,7 @@ export function OnboardingProfileForm({
         const next: Record<string, string> = {};
         if (!form.name.trim()) next.name = "Name is required.";
         if (validTokens.length === 0) {
-            next.acceptedTokens = "Add at least one accepted token. Catalogue prices are denominated in your default token.";
+            next.acceptedTokens = "Add at least one accepted token. Catalog prices are denominated in your default token.";
         } else {
             // Reject zero-address, EIP-55 checksum mismatches, and
             // duplicate entries before letting the form pass — these
@@ -364,7 +364,7 @@ export function OnboardingProfileForm({
             if (rowError) {
                 next.acceptedTokens = rowError;
             } else if (!form.defaultTokenAddress) {
-                next.defaultTokenAddress = "Pick which accepted token your catalogue is priced in.";
+                next.defaultTokenAddress = "Pick which accepted token your catalog is priced in.";
             }
         }
         setErrors(next);
@@ -597,13 +597,13 @@ export function OnboardingProfileForm({
                     alignment, a commodity-backed token signals value
                     anchoring. The accepted-token list is your brand — buyers
                     searching for aligned counterparties read it before they
-                    read your catalogue.
+                    read your catalog.
                 </p>
                 <p className="text-sm text-ink-body">
                     Operationally: buyers pay in any one of the tokens listed
                     here at commit time, and the frontend converts from your
                     default pricing token at quote time. Add at least one
-                    token if you want to publish a catalogue.
+                    token if you want to publish a catalog.
                 </p>
 
                 {commonTokens.length > 0 && (
@@ -669,7 +669,7 @@ export function OnboardingProfileForm({
                         error={errors.defaultTokenAddress}
                     >
                         <p className="text-xs text-ink-faint mb-2">
-                            Your catalogue is priced in this token. Buyers paying
+                            Your catalog is priced in this token. Buyers paying
                             in another accepted token see a converted price (via
                             Uniswap) at the moment of commit.
                         </p>

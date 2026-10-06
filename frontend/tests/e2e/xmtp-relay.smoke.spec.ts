@@ -26,7 +26,7 @@
  *    `context.exposeFunction` handler) — XMTP's identity signature included.
  *    Chromium is Playwright's bundled browser; no extension wallet is needed.
  *  - The seller is onboarded IN-SPEC from chain state: `seedRegisteredMember`
- *    (the dispatch-race pattern) pins a catalogue + profile bound to the
+ *    (the dispatch-race pattern) pins a catalog + profile bound to the
  *    simplest anchored assembly; `anvil_setBalance` funds the registration
  *    deposit. Idempotent — re-runs route through updateProfile.
  *  - The `/settings` XMTP opt-in is flipped through the real settings form in
@@ -150,7 +150,7 @@ test.describe('REAL XMTP RELAY — buyer signs, relays over the hosted dev netwo
             functionName: 'mint',
             args: [BUYER, parseUnits('1000', 18)],
         });
-        const { uri: catalogueURI } = await pinJSONToIPFS({
+        const { uri: catalogURI } = await pinJSONToIPFS({
             subjectAddress: SELLER,
             version: '1.0.0',
             unitSystem: 'metric' as const,
@@ -169,7 +169,7 @@ test.describe('REAL XMTP RELAY — buyer signs, relays over the hosted dev netwo
             profile: {
                 name: 'XMTP Smoke Seller',
                 description: 'Device-unique seller onboarded by xmtp-relay.smoke.spec.ts',
-                catalogueURI,
+                catalogURI,
                 acceptedTokens: [{ address: token!, symbol: 'MOCK', chainId: 31337 }],
                 defaultTokenAddress: token!,
                 assemblyBindings: [{
@@ -183,7 +183,7 @@ test.describe('REAL XMTP RELAY — buyer signs, relays over the hosted dev netwo
 
         // The profile must persist ONLY the XMTP identity (OPFS database).
         // Everything else it could persist is contamination: the HTTP cache
-        // serves stale Next.js chunks across rebuilds (empty catalogue, run
+        // serves stale Next.js chunks across rebuilds (empty catalog, run
         // 8), and app localStorage carries cart state between attempts —
         // so the disk cache is disabled and app storage cleared per launch.
         const launchProfile = async (name: string, address: Hex): Promise<BrowserContext> => {

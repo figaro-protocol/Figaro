@@ -104,7 +104,7 @@ test.describe('AssemblyRegistry withdraw — the commits==resolves gate (devnet)
         const compositionHash = binding!.args.compositionHash as Hex;
 
         // ── BIND: onboard the dedicated member through the real wizard — one
-        //    catalogue item, EXACTLY this run's assembly bound (a prior run's
+        //    catalog item, EXACTLY this run's assembly bound (a prior run's
         //    binding is unchecked; its assembly is withdrawn → de-surfaced). ──
         await gotoAsWallet(page, SELLER, '/members');
         await page.goto('/members/identity', { waitUntil: 'domcontentloaded' });
@@ -125,7 +125,7 @@ test.describe('AssemblyRegistry withdraw — the commits==resolves gate (devnet)
         await page.getByRole('button', { name: /^Next/ }).click();
         await expect(page).toHaveURL(/\/members\/buyer/);
         await page.getByRole('button', { name: /^Next/ }).click();
-        await expect(page).toHaveURL(/\/members\/catalogue/);
+        await expect(page).toHaveURL(/\/members\/catalog/);
 
         await page.locator('[id^="item-"][id$="-name"]').first().fill('Gate item');
         await page.locator('[id^="item-"][id$="-price"]').first().fill('1');

@@ -1,28 +1,28 @@
 import type { PublicClient } from 'viem';
 import { getActiveMembers } from '@/lib/protocol/membersRegistryIndexer';
-import type { MemberCatalogue } from '@/lib/member/types';
+import type { MemberCatalog } from '@/lib/member/types';
 import { CONTRACTS } from "@/lib/kernel/contracts";
 import { fetchCappedContent, resolveContentUri, type CappedContentResponse } from "@/lib/shared/ipfsService";
-import type { MemberCatalogueMetadata } from '@/lib/member/memberCatalogueMetadata';
+import type { MemberCatalogMetadata } from '@/lib/member/memberCatalogMetadata';
 import {
     MemberProfileMetadata,
     tryParseMemberProfileDocument,
 } from '@/lib/member/memberProfileMetadata';
-import { tryParseCatalogueItems } from '@/lib/member/memberProfileAdapter';
+import { tryParseCatalogItems } from '@/lib/member/memberProfileAdapter';
 import { safeJsonFromResponse } from '@/lib/shared/safeJson';
 
 interface DiscoveryResult {
-    catalogues: MemberCatalogue[];
+    catalogs: MemberCatalog[];
 }
 
-function profileToCatalogue(
+function profileToCatalog(
     profile: MemberProfileMetadata,
-    catalogue: MemberCatalogueMetadata | undefined,
-): MemberCatalogue | null {
+    catalog: MemberCatalogMetadata | undefined,
+): MemberCatalog | null {
     // No address ⇒ no listing. The real path stamps the on-chain wallet onto
-    // the profile (fetchSellerAsCatalogue), so this only drops genuinely
+    // the profile (fetchSellerAsCatalog), so this only drops genuinely
     // address-less docs — never coins a 0x0 / positional id.
-    const address = profile.subjectAddress ?? catalogue?.subjectAddress;
+    const address = profile.subjectAddress ?? catalog?.subjectAddress;
     if (!address) return null;
     return {
         name: profile.name,
@@ -37,22 +37,22 @@ function profileToCatalogue(
             : undefined,
         geohash: profile.location?.geohash,
         addressText: profile.location?.addressText,
-        items: catalogue?.items ?? [],
+        items: catalog?.items ?? [],
         acceptedTokens: profile.acceptedTokens,
         defaultTokenAddress: profile.defaultTokenAddress,
         profileClauseValues: profile.profileClauseValues,
         agentServices: profile.services,
         disclosurePolicy: profile.disclosurePolicy,
-        unitSystem: catalogue?.unitSystem,
+        unitSystem: catalog?.unitSystem,
     };
 }
 
-async function fetchSellerAsCatalogue(
+async function fetchSellerAsCatalog(
     address: string,
     metadataURI: string,
     fetchFn: (url: string) => Promise<CappedContentResponse>,
     publishedSlugs: ReadonlySet<string>,
-): Promise<MemberCatalogue | null> {
+): Promise<MemberCatalog | null> {
     const url = resolveContentUri(metadataURI);
     if (!url) return null;
 
@@ -62,7 +62,7 @@ async function fetchSellerAsCatalogue(
 
     // The on-chain metadataURI points to the member profile document.
     // The profile carries identity / branding / accepted tokens, plus a
-    // catalogueURI pointing to the (separately-pinned) volatile items
+    // catalogURI pointing to the (separately-pinned) volatile items
     // list.
     const profile = tryParseMemberProfileDocument(doc);
     if (!profile) return null;
@@ -85,17 +85,17 @@ async function fetchSellerAsCatalogue(
         subjectAddress: profile.subjectAddress ?? (address as `0x${string}`),
     };
 
-    let items: ReturnType<typeof tryParseCatalogueItems> = null;
+    let items: ReturnType<typeof tryParseCatalogItems> = null;
 
-    // First-class items live in the catalogue document at profile.catalogueURI.
-    if (profile.catalogueURI) {
+    // First-class items live in the catalog document at profile.catalogURI.
+    if (profile.catalogURI) {
         try {
-            const catUrl = resolveContentUri(profile.catalogueURI);
+            const catUrl = resolveContentUri(profile.catalogURI);
             if (catUrl) {
                 const catRes = await fetchFn(catUrl);
                 const catDoc = await safeJsonFromResponse<unknown>(catRes);
                 if (catDoc) {
-                    items = tryParseCatalogueItems(catDoc);
+                    items = tryParseCatalogItems(catDoc);
                 }
             }
         } catch {
@@ -103,7 +103,7 @@ async function fetchSellerAsCatalogue(
         }
     }
 
-    const catalogue: MemberCatalogueMetadata | undefined = items && items.length > 0
+    const catalog: MemberCatalogMetadata | undefined = items && items.length > 0
         ? {
             subjectAddress: stamped.subjectAddress!,
             items: items,
@@ -111,7 +111,7 @@ async function fetchSellerAsCatalogue(
         }
         : undefined;
 
-    return profileToCatalogue(stamped, catalogue);
+    return profileToCatalog(stamped, catalog);
 }
 
 export interface DiscoveryService {
@@ -119,19 +119,19 @@ export interface DiscoveryService {
     /** `publishedSlugs` = the AssemblyRegistry's anchored slugs; the surfacing
      *  rule drops members without ≥1 anchored binding (applied evenly across
      *  every projection). */
-    listCatalogues(client: PublicClient, chainId: number, publishedSlugs: ReadonlySet<string>): Promise<DiscoveryResult>;
+    listCatalogs(client: PublicClient, chainId: number, publishedSlugs: ReadonlySet<string>): Promise<DiscoveryResult>;
 }
 
 export interface DiscoveryServiceOptions {
     fetchDocument?: (url: string) => Promise<Response>;
 }
 
-const EMPTY_RESULT: DiscoveryResult = { catalogues: [] };
+const EMPTY_RESULT: DiscoveryResult = { catalogs: [] };
 
 export function createDiscoveryService(
     options: DiscoveryServiceOptions = {},
 ): DiscoveryService {
-    // Size-capped fetch (F4): member-pinned profile/catalogue documents are
+    // Size-capped fetch (F4): member-pinned profile/catalog documents are
     // external-party-controlled — an oversized body aborts mid-stream (throws →
     // the per-member catch → that member drops). An injected `fetchDocument`
     // transport is capped the same way.
@@ -141,7 +141,7 @@ export function createDiscoveryService(
         isRegistryConfigured() {
             return !!CONTRACTS.membersRegistry && CONTRACTS.membersRegistry.length === 42;
         },
-        async listCatalogues(client: PublicClient, chainId: number, publishedSlugs: ReadonlySet<string>) {
+        async listCatalogs(client: PublicClient, chainId: number, publishedSlugs: ReadonlySet<string>) {
             if (!service.isRegistryConfigured()) {
                 return EMPTY_RESULT;
             }
@@ -150,16 +150,16 @@ export function createDiscoveryService(
                 const sellers = await getActiveMembers(client, chainId);
                 if (sellers.length === 0) return EMPTY_RESULT;
 
-                // The catalogue's items signal what business the member is
+                // The catalog's items signal what business the member is
                 // in; there is no nominal categorization field to filter on.
-                // fetchSellerAsCatalogue is the gate that drops members
-                // whose document doesn't parse as a member catalogue or
+                // fetchSellerAsCatalog is the gate that drops members
+                // whose document doesn't parse as a member catalog or
                 // binds no anchored assembly (the surfacing rule).
                 const results = await Promise.all(
                     sellers.map(async (seller) => {
                         try {
                             if (!seller.metadataURI) return null;
-                            return await fetchSellerAsCatalogue(
+                            return await fetchSellerAsCatalog(
                                 seller.address,
                                 seller.metadataURI,
                                 fetchFn,
@@ -171,9 +171,9 @@ export function createDiscoveryService(
                     }),
                 );
 
-                const catalogues = results.filter((r): r is MemberCatalogue => r !== null);
+                const catalogs = results.filter((r): r is MemberCatalog => r !== null);
                 return {
-                    catalogues,
+                    catalogs,
                 };
             } catch {
                 return EMPTY_RESULT;

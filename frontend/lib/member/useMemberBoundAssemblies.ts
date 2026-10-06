@@ -58,7 +58,7 @@ export interface MemberBoundAssemblies {
  *
  * When `hasOnChainBinding` is true, `assemblies` is the authoritative
  * buyer-facing choice set — the buyer picks one assembly at checkout —
- * When false, the caller falls back to the catalogue.
+ * When false, the caller falls back to the catalog.
  */
 export function useMemberBoundAssemblies(
     sellerAddress: `0x${string}` | undefined,

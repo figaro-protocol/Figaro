@@ -7,7 +7,7 @@
  * `order-geodistance` — the great-circle distance between the sub-order's
  * committed geolocation endpoints (authored on the designer canvas), billed
  * per STARTED km — so the whole figure is derivable and replayable from the
- * agreement alone, no oracle and no reference back to the mutable catalogue.
+ * agreement alone, no oracle and no reference back to the mutable catalog.
  *
  * Self-contained (permissionless-clause discipline): the spec authors its own
  * 2-order assembly, onboards its own lead + rate-priced hauler THROUGH the
@@ -87,7 +87,7 @@ async function findRateAssembly(): Promise<string | undefined> {
     })?.slug;
 }
 
-/** Walk the registration wizard for a wallet — catalogue item per `product`,
+/** Walk the registration wizard for a wallet — catalog item per `product`,
  *  including the rate-pricing fields when `product.rate` is set. Idempotent:
  *  callers gate on a conformance check before invoking. */
 async function onboardSeller(page: Page, opts: {
@@ -122,7 +122,7 @@ async function onboardSeller(page: Page, opts: {
     await page.getByRole('button', { name: /^Next/ }).click();
     await expect(page).toHaveURL(/\/members\/buyer/);
     await page.getByRole('button', { name: /^Next/ }).click();
-    await expect(page).toHaveURL(/\/members\/catalogue/);
+    await expect(page).toHaveURL(/\/members\/catalog/);
 
     await page.locator('[id^="item-"][id$="-name"]').first().fill(opts.product.name);
     await page.locator('[id^="item-"][id$="-price"]').first().fill(opts.product.price);

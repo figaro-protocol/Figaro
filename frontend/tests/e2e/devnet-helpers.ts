@@ -190,7 +190,7 @@ export interface SeedMemberProfile {
     name: string;
     description?: string;
     specialty?: string;
-    catalogueURI?: string;
+    catalogURI?: string;
     location?: { geohash?: string };
     acceptedTokens?: Array<{ address: `0x${string}`; symbol: string; chainId: number }>;
     defaultTokenAddress?: `0x${string}`;
@@ -232,7 +232,7 @@ export interface SeededSeller {
 /**
  * Pin a fresh member profile JSON to local Kubo and register the wallet
  * on `MembersRegistry`. Pairs with `merchant-page.devnet.spec.ts`'s
- * inline seeder (which inlines this for the catalogue+merchant case); the
+ * inline seeder (which inlines this for the catalog+merchant case); the
  * helper here is the generic "any registered seller" seed, used by
  * Phase 4 C4 to set up the `/members/edit/*` UI tests (those routes
  * require a real IPFS-pinned profile so `MemberEditProfile` can mount
@@ -325,7 +325,7 @@ export async function seedRegisteredMember(opts: {
  *
  * Mirrors what `ipfsService.publishJSON` does in the browser, but talks to
  * Kubo from Node directly. Used by devnet tests that need to seed an
- * member profile or catalogue document in IPFS without walking the
+ * member profile or catalog document in IPFS without walking the
  * full onboarding wizard.
  */
 export async function pinJSONToIPFS(data: unknown): Promise<{ cid: string; uri: string }> {
@@ -399,7 +399,7 @@ export async function assertPinnedInIpfs(cid: string): Promise<void> {
 // on-chain `assemblyBindings`. NO roster, NO hardcoded addresses/names/keys — a
 // spec that takes seller identity from a TS file is not testing mainnet usage.
 // (This mirrors what the indexer / `discoveryService` does; it additionally keeps
-// the `assemblyBindings` that the buyer-facing `MemberCatalogue` projection drops.)
+// the `assemblyBindings` that the buyer-facing `MemberCatalog` projection drops.)
 
 /** MembersRegistry registration events — carry the profile metadataURI. Internal
  *  to discovery; read by `discoverMembers`. */

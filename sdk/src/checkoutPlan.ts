@@ -21,7 +21,7 @@ import {
     specDeclaresContentField,
     specDeclaresDesignFill,
     specDeclaresField,
-    specCatalogueFills,
+    specCatalogFills,
     specProfileFills,
     type ProjectionSpecView,
     type SpecSource,
@@ -30,7 +30,7 @@ import { templateParentOrderHashes, type AssemblyTemplate, type TemplateAgreemen
 import { topologicalOrder } from "./topology.js";
 import { isAddressHex } from "./types.js";
 import type { CounterpartyBinding } from "./memberProfile.js";
-import type { CatalogueItemMetadata } from "./memberCatalogue.js";
+import type { CatalogItemMetadata } from "./memberCatalog.js";
 
 /** An order's clause fields — the same map the agreement commits. */
 type ClauseFields = Record<string, Record<string, unknown>>;
@@ -41,7 +41,7 @@ export interface AssemblyCheckoutLineItem {
     quantity: number;
     /** Decimal string, smallest unit (matches the commerce clause's bigint field). */
     unitPrice: string;
-    /** Physical attributes from the catalogue item — folded onto THIS order's
+    /** Physical attributes from the catalog item — folded onto THIS order's
      *  cargo leaf at checkout (mass/volume sum × quantity; packaged dimensions
      *  only when the order is a single parcel — dims don't sum). Optional:
      *  services / un-annotated items omit them. */
@@ -50,7 +50,7 @@ export interface AssemblyCheckoutLineItem {
     lengthMm?: number;
     widthMm?: number;
     heightMm?: number;
-    /** Catalogue-sourced clause values (freight class / hazmat / cold-chain, …)
+    /** Catalog-sourced clause values (freight class / hazmat / cold-chain, …)
      *  folded onto their leaves. Keyed by clauseId → field values. */
     clauseValues?: Record<string, Record<string, unknown>>;
 }
@@ -291,11 +291,11 @@ export function fillCargoSection(
 }
 
 /**
- * Fold the catalogue-authored class values onto their leaves. For each
- * clause the order composes with catalogue-authored fields (freight-class /
+ * Fold the catalog-authored class values onto their leaves. For each
+ * clause the order composes with catalog-authored fields (freight-class /
  * hazmat / cold-chain, …, discovered by `block.checkout.catalogueFills`, never
  * by name), write the first line's authored values — restricted to the spec's
- * DECLARED catalogue-authored subset (`specCatalogueFills`), the same
+ * DECLARED catalog-authored subset (`specCatalogFills`), the same
  * discipline as the profile fold — a homogeneous-order assumption (mixed
  * classes are a multi-ORDER concern per the aggregate model). Absent when no
  * line carries declared values for that clause.
@@ -308,12 +308,12 @@ export function fillClassSections(
     let out = clauses;
     for (const clauseId of Object.keys(clauses)) {
         const spec = specs.get(clauseId);
-        if (!spec || specCatalogueFills(spec).length === 0) continue;
+        if (!spec || specCatalogFills(spec).length === 0) continue;
         const line = lines.find(
             (li) => li.clauseValues?.[clauseId] && Object.keys(li.clauseValues[clauseId]).length > 0,
         );
         if (!line) continue;
-        const declared = specCatalogueFills(spec);
+        const declared = specCatalogFills(spec);
         const authored = Object.fromEntries(
             Object.entries(line.clauseValues![clauseId]).filter(([k, v]) => declared.includes(k) && v !== undefined && v !== ""),
         );
@@ -345,7 +345,7 @@ function mergeUnderTemplate(
  * DECLARED profile-authored subset (`specProfileFills`), with the template's
  * committed terms winning over authored data. Absent when the seller stores no
  * values for that clause. The seller-level sibling of `fillClassSections`
- * (catalogue = what is sold, profile = who sells).
+ * (catalog = what is sold, profile = who sells).
  */
 export function fillProfileSections(
     clauses: ClauseFields,
@@ -402,7 +402,7 @@ export function fillDimweightSection(
 
 /**
  * Fill every derivable LOGISTICS section on an order, wherever composed — cargo
- * (physical measure), the class leaves (catalogue-sourced), the profile leaves
+ * (physical measure), the class leaves (catalog-sourced), the profile leaves
  * (seller master data), then the derived dimweight (reads the cargo and the
  * profile-folded divisor it just wrote). Each fill is a no-op when its clause
  * isn't composed, so the same call serves the root and every sub-order.
@@ -421,12 +421,12 @@ export function fillDerivedSections(
 
 // ── Contributor pricing context ─────────────────────────────────────────────
 
-/** The pricing slice of a seller's catalogue projection — the structural
- *  subset the checkout planning reads (any richer catalogue projection passes
+/** The pricing slice of a seller's catalog projection — the structural
+ *  subset the checkout planning reads (any richer catalog projection passes
  *  structurally). */
-export interface PricingCatalogue {
+export interface PricingCatalog {
     address: string;
-    items: CatalogueItemMetadata[];
+    items: CatalogItemMetadata[];
     /** The seller's PROFILE-authored clause values (seller master data:
      *  dimweight's divisor, a declared credential id), keyed clauseId →
      *  field → value. Folded onto composed profile-sourced leaves at
@@ -435,13 +435,13 @@ export interface PricingCatalogue {
 }
 
 /** The seller's profile-authored clause values, looked up by the order's
- *  seller address from the checkout's catalogue projections. Undefined when
+ *  seller address from the checkout's catalog projections. Undefined when
  *  the seller stores none — profile-sourced leaves then stay unfilled. */
 export function profileValuesFor(
     seller: `0x${string}`,
-    catalogues: readonly PricingCatalogue[],
+    catalogs: readonly PricingCatalog[],
 ): Readonly<Record<string, Record<string, unknown>>> | undefined {
-    return catalogues.find((c) => c.address.toLowerCase() === seller.toLowerCase())?.profileClauseValues;
+    return catalogs.find((c) => c.address.toLowerCase() === seller.toLowerCase())?.profileClauseValues;
 }
 
 // ── Sub-order seller plan (the per-clause binding cursor) ──────────────────
@@ -497,11 +497,11 @@ export function planSubOrderSellers(
  *  breakdown (display) and the checkout walk (commit) read, so they cannot
  *  drift. `billedQuantity × unitPrice = payment` always holds, making the
  *  committed line item replay the payment with no reference back to the
- *  (mutable) catalogue. */
+ *  (mutable) catalog. */
 export interface SubOrderPricing {
-    /** The catalogue item priced — the contributor's first available item;
+    /** The catalog item priced — the contributor's first available item;
      *  null when the contributor publishes none. */
-    item: CatalogueItemMetadata | null;
+    item: CatalogItemMetadata | null;
     /** The payment the buyer signs, in the currency's smallest unit. 0n when
      *  unpriceable (no item, or a rate quantity that doesn't resolve). */
     payment: bigint;
@@ -519,12 +519,12 @@ export interface SubOrderPricing {
 }
 
 /**
- * Price a sub-order from its contributor's OWN catalogue — the lead included.
+ * Price a sub-order from its contributor's OWN catalog — the lead included.
  * The template carries no payment (it's a runtime value), so the figure is
- * resolved LIVE from the pricing seller's catalogue — the same path the
+ * resolved LIVE from the pricing seller's catalog — the same path the
  * delivery leg uses, minus the picker. The item rule is the contributor's
  * first available item (open refinement, kit-assembly: an itemId on the
- * binding — catalogue categories are seller-authored free-form values, never
+ * binding — catalog categories are seller-authored free-form values, never
  * a closed set this code may branch on).
  *
  * A `pricingPolicy: "rate"` item prices as rate × quantity, the quantity
@@ -537,17 +537,17 @@ export interface SubOrderPricing {
 export function resolveSubOrderPricing(args: {
     node: TemplateAgreement;
     seller: `0x${string}`;
-    sellerCatalogues: readonly PricingCatalogue[];
+    sellerCatalogs: readonly PricingCatalog[];
     tokenDecimals: number;
     specs: SpecSource;
     /** The buyer's entered units for this node (the "checkout-quantity"
      *  source's input), when the surface collected one. */
     checkoutQuantity?: number;
 }): SubOrderPricing {
-    const catalogue = args.sellerCatalogues.find(
+    const catalog = args.sellerCatalogs.find(
         (c) => c.address.toLowerCase() === args.seller.toLowerCase(),
     );
-    const item = catalogue?.items.find((i) => i.available !== false) ?? null;
+    const item = catalog?.items.find((i) => i.available !== false) ?? null;
     if (!item) {
         return { item: null, payment: 0n, billedQuantity: 1, unitPrice: 0n, resolvedUnits: null, issue: "no-item" };
     }
@@ -577,7 +577,7 @@ export function resolveSubOrderPricing(args: {
 
 // ── The rate-quantity-source → resolver registry ────────────────────────────
 //
-// A rate-priced catalogue item declares WHERE its billed quantity comes from
+// A rate-priced catalog item declares WHERE its billed quantity comes from
 // (`rateQuantitySource`) — an OPEN axis, the same discipline as the field
 // `format` registry: the KEY is a semantic the item declares, never a sector,
 // a clause id, or a component name. The pricing site consults it wherever a

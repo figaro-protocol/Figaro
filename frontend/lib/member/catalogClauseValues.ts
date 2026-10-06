@@ -1,5 +1,5 @@
 /**
- * Catalogue clause-value validation — the off-chain validation gate for the product master
+ * Catalog clause-value validation — the off-chain validation gate for the product master
  * data a member authors per item (freight class, hazmat, cold-chain, …).
  *
  * Open-world and clause-agnostic: no clause is named. Each entry in an item's
@@ -11,17 +11,17 @@
 
 import { validateContent, type FieldSpec } from "@figaro-protocol/sdk/clauses";
 import {
-    clauseCatalogueFills,
+    clauseCatalogFills,
     getClauseSpec,
-    listCatalogueSourcedClauses,
+    listCatalogSourcedClauses,
 } from "@/lib/shared/clauseSpecSource";
-import type { CatalogueItemMetadata } from "@/lib/member/memberCatalogueMetadata";
+import type { CatalogItemMetadata } from "@/lib/member/memberCatalogMetadata";
 
 /**
- * Validate an item's catalogue-sourced clause values against each clause's
+ * Validate an item's catalog-sourced clause values against each clause's
  * registered spec. Returns `clauseId.path: message` strings; empty = valid.
  */
-export function validateCatalogueClauseValues(item: CatalogueItemMetadata): string[] {
+export function validateCatalogClauseValues(item: CatalogItemMetadata): string[] {
     const values = item.clauseValues;
     if (!values) return [];
     const errors: string[] = [];
@@ -39,11 +39,11 @@ export function validateCatalogueClauseValues(item: CatalogueItemMetadata): stri
 }
 
 /**
- * The catalogue-authored clause sections a member's items actually offer:
+ * The catalog-authored clause sections a member's items actually offer:
  * every registered clause with `block.checkout.catalogueFills` that one of the
  * assemblies this member has BOUND composes. Two derivations, one direction —
  * the bindings decide the clauses, the clauses decide the fields; the
- * catalogue never opens a field no trade of this member's can carry.
+ * catalog never opens a field no trade of this member's can carry.
  *
  * Empty until an assembly is bound, and empty for a member whose bound
  * assemblies compose no product-property clause (the member of one mug sees no
@@ -53,7 +53,7 @@ export function validateCatalogueClauseValues(item: CatalogueItemMetadata): stri
  * `choices` is the live registry projection (`useAssemblyChoices`); nothing
  * here knows any clause or assembly by name.
  */
-export function catalogueClausesForBindings(
+export function catalogClausesForBindings(
     bindings: readonly { assemblySlug: string }[],
     choices: readonly { slug: string; clauses: readonly string[] | null }[],
 ): readonly { clauseId: string; version: number }[] {
@@ -64,22 +64,22 @@ export function catalogueClausesForBindings(
         for (const clauseId of choice.clauses ?? []) composed.add(clauseId);
     }
     if (composed.size === 0) return [];
-    return listCatalogueSourcedClauses().filter((c) => composed.has(c.clauseId));
+    return listCatalogSourcedClauses().filter((c) => composed.has(c.clauseId));
 }
 
 /**
- * The fields of one clause the CATALOGUE authors — the clause's own
+ * The fields of one clause the CATALOG authors — the clause's own
  * `block.checkout.catalogueFills`, resolved against its registered spec and
  * returned in spec order. Fields the clause assigns to another source (the
  * designer's fills, the buyer's checkout particulars, the member's profile)
- * are not the catalogue's to ask for. Empty while the spec is uncached.
+ * are not the catalog's to ask for. Empty while the spec is uncached.
  */
-export function catalogueFieldsOfClause(
+export function catalogFieldsOfClause(
     clauseId: string,
     version?: number,
 ): readonly FieldSpec[] {
     const spec = getClauseSpec(clauseId, version);
     if (!spec) return [];
-    const fills = new Set(clauseCatalogueFills(clauseId, version));
+    const fills = new Set(clauseCatalogFills(clauseId, version));
     return spec.fields.filter((f) => fills.has(f.name));
 }

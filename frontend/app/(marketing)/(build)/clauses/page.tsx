@@ -108,7 +108,7 @@ export default function Clauses() {
                             <tr>
                                 <td className="py-2 pr-4"><code>block.checkout.catalogueFills</code> · <code>block.checkout.profileFills</code></td>
                                 <td className="py-2 pr-4"><strong><code>agreementHash</code></strong></td>
-                                <td className="py-2">Names which of your fields the seller&apos;s catalogue (per-item) and profile (master data) folds write onto the leaf at checkout. A field not named here is never folded &mdash; it stays empty unless a party types it.</td>
+                                <td className="py-2">Names which of your fields the seller&apos;s catalog (per-item) and profile (master data) folds write onto the leaf at checkout. A field not named here is never folded &mdash; it stays empty unless a party types it.</td>
                             </tr>
                             <tr>
                                 <td className="py-2 pr-4">a field&apos;s <code>default</code></td>

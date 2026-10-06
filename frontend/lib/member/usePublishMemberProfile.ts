@@ -4,9 +4,9 @@
  * usePublishMemberProfile — atomic publish flow for the member
  * wizard's final step. Mirrors `usePublishAssembly` in shape:
  *
- *   1. Pin the catalogue document to IPFS (skipped if a cached
- *      `cachedCatalogueURI` is supplied — useful on retry).
- *   2. Build the profile document with the catalogue URI embedded.
+ *   1. Pin the catalog document to IPFS (skipped if a cached
+ *      `cachedCatalogURI` is supplied — useful on retry).
+ *   2. Build the profile document with the catalog URI embedded.
  *   3. Pin the profile document to IPFS.
  *   4. Read the on-chain `registrationDeposit` AND the wallet's
  *      registration status (`registered(wallet)`) ON DEMAND (NOT via a
@@ -39,37 +39,37 @@ import {
     parseMemberProfileDocument,
     type MemberProfileMetadata,
 } from "@/lib/member/memberProfileMetadata";
-import { publishMemberCatalogue } from "@/lib/member/cataloguePublisher";
+import { publishMemberCatalog } from "@/lib/member/catalogPublisher";
 import type {
-    CatalogueItemMetadata,
-    MemberCatalogueMetadata,
+    CatalogItemMetadata,
+    MemberCatalogMetadata,
     UnitSystem,
-} from "@/lib/member/memberCatalogueMetadata";
+} from "@/lib/member/memberCatalogMetadata";
 import { getMembersRegistry } from "@/lib/kernel/contracts";
 import { MEMBERS_REGISTRY_ABI } from "@figaro-protocol/sdk";
 
 export interface PublishMemberInput {
-    /** Profile fields collected by the wizard, MINUS the catalogueURI
-     *  (which the hook fills in after pinning the catalogue). */
-    profileTemplate: Omit<MemberProfileMetadata, "catalogueURI">;
-    /** Catalogue items to pin. Must be non-empty — FigaroCore doesn't
-     *  enforce this but the onboarding UX expects it (the catalogue step's
+    /** Profile fields collected by the wizard, MINUS the catalogURI
+     *  (which the hook fills in after pinning the catalog). */
+    profileTemplate: Omit<MemberProfileMetadata, "catalogURI">;
+    /** Catalog items to pin. Must be non-empty — FigaroCore doesn't
+     *  enforce this but the onboarding UX expects it (the catalog step's
      *  own gate refuses an empty list). */
-    items: CatalogueItemMetadata[];
-    /** The member's preferred unit system; goes onto the catalogue doc. */
+    items: CatalogItemMetadata[];
+    /** The member's preferred unit system; goes onto the catalog doc. */
     unitSystem?: UnitSystem;
-    /** Subject wallet — used as the catalogue's `subjectAddress`. */
+    /** Subject wallet — used as the catalog's `subjectAddress`. */
     wallet: `0x${string}`;
     /** Idempotency cache: if the previous publish attempt pinned the
-     *  catalogue but failed at the on-chain step, the caller can pass
+     *  catalog but failed at the on-chain step, the caller can pass
      *  the prior URI to skip re-pinning. */
-    cachedCatalogueURI?: string;
+    cachedCatalogURI?: string;
 }
 
 export interface PublishMemberOutcome {
     hash: `0x${string}`;
     profileURI: string;
-    catalogueURI: string;
+    catalogURI: string;
 }
 
 function translatePublishRevert(err: unknown): Error {
@@ -109,26 +109,26 @@ export function usePublishMemberProfile() {
             throw new Error("No public client available to read the registration deposit.");
         }
         if (input.items.length === 0) {
-            throw new Error("Catalogue is empty — add at least one item before publishing.");
+            throw new Error("Catalog is empty — add at least one item before publishing.");
         }
 
-        // (a) Pin the catalogue document, unless a cached URI was passed.
-        let catalogueURI = input.cachedCatalogueURI;
-        if (!catalogueURI) {
-            const catalogue: MemberCatalogueMetadata = {
+        // (a) Pin the catalog document, unless a cached URI was passed.
+        let catalogURI = input.cachedCatalogURI;
+        if (!catalogURI) {
+            const catalog: MemberCatalogMetadata = {
                 subjectAddress: input.wallet,
                 items: input.items,
                 version: "1.0.0",
                 unitSystem: input.unitSystem,
             };
-            const cataloguePin = await publishMemberCatalogue(catalogue);
-            catalogueURI = cataloguePin.uri;
+            const catalogPin = await publishMemberCatalog(catalog);
+            catalogURI = catalogPin.uri;
         }
 
-        // (b) Build + validate the profile document with the catalogueURI embedded.
+        // (b) Build + validate the profile document with the catalogURI embedded.
         const profile: MemberProfileMetadata = {
             ...input.profileTemplate,
-            catalogueURI,
+            catalogURI,
         };
         parseMemberProfileDocument(profile, "onboarding-publish");
 
@@ -189,7 +189,7 @@ export function usePublishMemberProfile() {
             });
         }
 
-        return { hash: txHash, profileURI, catalogueURI };
+        return { hash: txHash, profileURI, catalogURI };
     }
 
     return {

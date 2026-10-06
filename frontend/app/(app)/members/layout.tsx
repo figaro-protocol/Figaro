@@ -2,7 +2,7 @@ import { ReactNode } from "react";
 
 /**
  * Shared layout for `/members` and all its sub-routes (the wizard
- * steps at /members/identity, /catalogue, /assemblies, /agents,
+ * steps at /members/identity, /catalog, /assemblies, /agents,
  * /review, and the edit surfaces at /members/edit/*). Provides the
  * container + max-width the onboarding surface carried before the
  * directory restructure.

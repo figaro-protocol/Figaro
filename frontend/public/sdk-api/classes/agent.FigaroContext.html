@@ -86,7 +86,7 @@ Wraps Topology with chain sync capabilities.</p>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="discovery"><code class="tsd-tag">Readonly</code><span>discovery</span><a href="#discovery" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">discovery</span><span class="tsd-signature-symbol">:</span> <a href="index.DiscoveryGraph.html" class="tsd-signature-type tsd-kind-class">DiscoveryGraph</a></div>
-<div class="tsd-comment tsd-typography"><p>What EXISTS on the network — the live clause/seller/assembly catalogue.
+<div class="tsd-comment tsd-typography"><p>What EXISTS on the network — the live clause/seller/assembly catalog.
 A parallel family (registries have no on-chain edges to FigaroCore), so
 a distinct reducer, never folded into <code>topology</code>.</p>
 </div><aside class="tsd-sources">
@@ -288,7 +288,7 @@ Calls the callback after each sync with new events.</p>
 <div class="tsd-signature tsd-anchor-link" id="sync-1"><span class="tsd-kind-call-signature">sync</span><span class="tsd-signature-symbol">()</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/agent.SyncResult.html" class="tsd-signature-type tsd-kind-interface">SyncResult</a><span class="tsd-signature-symbol">&gt;</span><a href="#sync-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
 <div class="tsd-description">
 <div class="tsd-comment tsd-typography"><p>Sync all events from chain — both the agent's processes AND the network
-catalogue (the registries). First call fetches from genesis; subsequent
+catalog (the registries). First call fetches from genesis; subsequent
 calls fetch only new blocks (incremental). Registry families whose address
 is unconfigured simply contribute nothing.</p>
 </div>

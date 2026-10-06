@@ -9,7 +9,7 @@ import {
     planSubOrderSellers,
     resolveSubOrderPricing,
     type BoundAssemblyPlanInput,
-    type PricingCatalogue,
+    type PricingCatalog,
 } from "../src/checkoutPlan.js";
 import type { TemplateAgreement } from "../src/assembly.js";
 import { specSourceFromFixtures } from "./specFixtures.js";
@@ -51,9 +51,9 @@ const assembly: BoundAssemblyPlanInput = {
     },
 };
 
-// Every seller — the lead included — prices from its OWN catalogue's component
+// Every seller — the lead included — prices from its OWN catalog's component
 // item at the item's published price.
-const catalogues = [
+const catalogs = [
     {
         address: SWIFT,
         items: [{
@@ -75,12 +75,12 @@ const catalogues = [
             price: "0.25", available: true,
         }],
     },
-] as unknown as PricingCatalogue[];
+] as unknown as PricingCatalog[];
 
 const orderById = (id: string): TemplateAgreement =>
     assembly.assemblyTemplate.agreements.find((o) => o.id === id)!;
 const payArgs = (node: TemplateAgreement, seller: `0x${string}`) => ({
-    node, seller, sellerCatalogues: catalogues, tokenDecimals: 18, specs: NO_SPECS,
+    node, seller, sellerCatalogs: catalogs, tokenDecimals: 18, specs: NO_SPECS,
 });
 
 describe("planSubOrderSellers", () => {
@@ -102,7 +102,7 @@ describe("planSubOrderSellers", () => {
 });
 
 describe("resolveSubOrderPricing — fixed items", () => {
-    it("prices a contributor node live from its published catalogue price", () => {
+    it("prices a contributor node live from its published catalog price", () => {
         const p = resolveSubOrderPricing(payArgs(orderById("B"), SWIFT));
         expect(p.payment).toBe(600000000000000000n);
         // Fixed items commit as quantity 1 × the full payment.
@@ -111,12 +111,12 @@ describe("resolveSubOrderPricing — fixed items", () => {
         expect(p.issue).toBeUndefined();
     });
 
-    it("prices the lead's own node from the lead's own catalogue", () => {
+    it("prices the lead's own node from the lead's own catalog", () => {
         expect(resolveSubOrderPricing(payArgs(orderById("D"), MERCATO)).payment).toBe(250000000000000000n);
     });
 
     it("returns 0 + no-item when the seller publishes no component item", () => {
-        const p = resolveSubOrderPricing({ ...payArgs(orderById("B"), SWIFT), sellerCatalogues: [] });
+        const p = resolveSubOrderPricing({ ...payArgs(orderById("B"), SWIFT), sellerCatalogs: [] });
         expect(p.payment).toBe(0n);
         expect(p.item).toBeNull();
         expect(p.issue).toBe("no-item");
@@ -143,8 +143,8 @@ const SCHEDULE = "figaro-schedule";
 const SF = "9q8yy";
 const LA = "9q5ct";
 
-const rateCatalogue = (item: Record<string, unknown>): PricingCatalogue[] =>
-    [{ address: SWIFT, items: [item] }] as unknown as PricingCatalogue[];
+const rateCatalog = (item: Record<string, unknown>): PricingCatalog[] =>
+    [{ address: SWIFT, items: [item] }] as unknown as PricingCatalog[];
 
 const nodeWithClauses = (clauses: Record<string, Record<string, unknown>>): TemplateAgreement =>
     ({ id: "R", clauses: { ...clauses, ...parents(["A"]) } }) as TemplateAgreement;
@@ -154,7 +154,7 @@ describe("resolveSubOrderPricing — rate items", () => {
         const p = resolveSubOrderPricing({
             node: nodeWithClauses({}),
             seller: SWIFT,
-            sellerCatalogues: rateCatalogue({
+            sellerCatalogs: rateCatalog({
                 id: "consulting", name: "Consulting", price: "0.5", available: true,
                 pricingPolicy: "rate", rateUnit: "hour", rateQuantitySource: "checkout-quantity",
             }),
@@ -172,7 +172,7 @@ describe("resolveSubOrderPricing — rate items", () => {
         const p = resolveSubOrderPricing({
             node: nodeWithClauses({}),
             seller: SWIFT,
-            sellerCatalogues: rateCatalogue({
+            sellerCatalogs: rateCatalog({
                 id: "consulting", name: "Consulting", price: "0.5", available: true,
                 pricingPolicy: "rate", rateUnit: "hour", rateQuantitySource: "checkout-quantity",
             }),
@@ -187,7 +187,7 @@ describe("resolveSubOrderPricing — rate items", () => {
         const p = resolveSubOrderPricing({
             node: nodeWithClauses({ [GEO]: { geocodeStandard: "geohash", origin: SF, destination: LA } }),
             seller: SWIFT,
-            sellerCatalogues: rateCatalogue({
+            sellerCatalogs: rateCatalog({
                 id: "haul", name: "Haul", price: "0.01", available: true,
                 pricingPolicy: "rate", rateUnit: "km", rateQuantitySource: "order-geodistance",
             }),
@@ -205,7 +205,7 @@ describe("resolveSubOrderPricing — rate items", () => {
         const p = resolveSubOrderPricing({
             node: nodeWithClauses({ [GEO]: { geocodeStandard: "geohash", origin: SF, destination: SF } }),
             seller: SWIFT,
-            sellerCatalogues: rateCatalogue({
+            sellerCatalogs: rateCatalog({
                 id: "haul", name: "Haul", price: "0.01", available: true,
                 pricingPolicy: "rate", rateUnit: "km", rateQuantitySource: "order-geodistance",
             }),
@@ -220,7 +220,7 @@ describe("resolveSubOrderPricing — rate items", () => {
         const p = resolveSubOrderPricing({
             node: nodeWithClauses({}),
             seller: SWIFT,
-            sellerCatalogues: rateCatalogue({
+            sellerCatalogs: rateCatalog({
                 id: "haul", name: "Haul", price: "0.01", available: true,
                 pricingPolicy: "rate", rateUnit: "km", rateQuantitySource: "order-geodistance",
             }),
@@ -238,7 +238,7 @@ describe("resolveSubOrderPricing — rate items", () => {
                 [SCHEDULE]: { windowStart: "2026-07-22T09:00:00Z", windowEnd: "2026-07-22T12:30:00Z" },
             }),
             seller: SWIFT,
-            sellerCatalogues: rateCatalogue({
+            sellerCatalogs: rateCatalog({
                 id: "consulting", name: "Consulting", price: "0.5", available: true,
                 pricingPolicy: "rate", rateUnit: "hour", rateQuantitySource: "booking-window",
             }),
@@ -257,7 +257,7 @@ describe("resolveSubOrderPricing — rate items", () => {
                 [SCHEDULE]: { windowStart: "2026-07-22T09:00:00Z", windowEnd: "2026-07-22T09:20:00Z" },
             }),
             seller: SWIFT,
-            sellerCatalogues: rateCatalogue({
+            sellerCatalogs: rateCatalog({
                 id: "consulting", name: "Consulting", price: "0.5", available: true,
                 pricingPolicy: "rate", rateUnit: "hour", rateQuantitySource: "booking-window",
             }),
@@ -277,7 +277,7 @@ describe("resolveSubOrderPricing — rate items", () => {
             const p = resolveSubOrderPricing({
                 node: nodeWithClauses({ [SCHEDULE]: window }),
                 seller: SWIFT,
-                sellerCatalogues: rateCatalogue({
+                sellerCatalogs: rateCatalog({
                     id: "consulting", name: "Consulting", price: "0.5", available: true,
                     pricingPolicy: "rate", rateUnit: "hour", rateQuantitySource: "booking-window",
                 }),
@@ -293,7 +293,7 @@ describe("resolveSubOrderPricing — rate items", () => {
         const p = resolveSubOrderPricing({
             node: nodeWithClauses({}),
             seller: SWIFT,
-            sellerCatalogues: rateCatalogue({
+            sellerCatalogs: rateCatalog({
                 id: "x", name: "X", price: "0.5", available: true,
                 pricingPolicy: "rate", rateUnit: "unit", rateQuantitySource: "never-seen-source",
             }),

@@ -1,16 +1,16 @@
 /**
  * member-page.devnet.spec.ts
  *
- * /s/view is the buyer-facing catalogue page — branding hero,
+ * /s/view is the buyer-facing catalog page — branding hero,
  * menu grid, cart, place-order CTA. The page reads the seller's
- * profile + catalogue from IPFS via useRegisteredCatalogues and
+ * profile + catalog from IPFS via useRegisteredCatalogs and
  * mounts the cart against useCheckout.
  *
  * Seed flow (no UI wizard):
- *   1. Pin a MemberCatalogueMetadata JSON to local Kubo.
+ *   1. Pin a MemberCatalogMetadata JSON to local Kubo.
  *   2. Register/update the seller through the canonical idempotent
  *      seeder (devnet-helpers.seedRegisteredMember) with a profile
- *      pointing at the catalogue AND binding an assembly DISCOVERED
+ *      pointing at the catalog AND binding an assembly DISCOVERED
  *      from the AssemblyRegistry (frontend/scripts/populate-test-data.mjs anchors
  *      them before Playwright runs). The surfacing rule applies EVENLY:
  *      a seller without ≥1 anchored binding is absent on
@@ -18,14 +18,14 @@
  *   3. Open /s/view?seller=<sellerAddress>?e2e=devnet from a buyer wallet.
  *
  * Assertions: the seller-detail-view shell renders for the seller
- * address, the menu item from the seeded catalogue appears, clicking
+ * address, the menu item from the seeded catalog appears, clicking
  * Add lands a cart line. The full place-order flow is owned by
  * place-order.devnet.spec.ts; what this spec protects is the
- * seller-page composition: IPFS-pinned profile + catalogue →
+ * seller-page composition: IPFS-pinned profile + catalog →
  * MemberDetailView's menu render → cart.
  *
  * PERSISTED, like mainnet: no chain snapshot/revert — each run re-pins
- * the profile/catalogue and updates the registration in place.
+ * the profile/catalog and updates the registration in place.
  *
  * Requires:
  *   - Anvil + ./scripts/deploy-local.sh
@@ -83,18 +83,18 @@ interface SeededSeller {
 }
 
 /**
- * Pin a seller catalogue to the local Kubo and register/update the seller
+ * Pin a seller catalog to the local Kubo and register/update the seller
  * on-chain via the canonical seeder. Returns the seeded menu item's id/name
  * so the test can locate it via testid.
  */
-async function seedRegisteredMemberWithCatalogue(): Promise<SeededSeller> {
+async function seedRegisteredMemberWithCatalog(): Promise<SeededSeller> {
     const config = readLocalDeploymentConfig();
     const tokenAddress = (process.env.NEXT_PUBLIC_TOKEN_ADDRESS ?? config.tokenAddress) as Hex;
 
     const itemId = `seller-page-item-${Date.now()}`;
     const itemName = 'Devnet Test Item';
 
-    const catalogue = {
+    const catalog = {
         subjectAddress: SELLER_ADDR,
         version: '1.0.0',
         unitSystem: 'metric' as const,
@@ -110,7 +110,7 @@ async function seedRegisteredMemberWithCatalogue(): Promise<SeededSeller> {
             },
         ],
     };
-    const { uri: catalogueURI } = await pinJSONToIPFS(catalogue);
+    const { uri: catalogURI } = await pinJSONToIPFS(catalog);
 
     const anchoredSlug = await discoverAnchoredAssemblySlug();
     await seedRegisteredMember({
@@ -118,7 +118,7 @@ async function seedRegisteredMemberWithCatalogue(): Promise<SeededSeller> {
         profile: {
             name: `Devnet Seller ${Date.now()}`,
             description: 'Seller seeded by member-page.devnet.spec.ts',
-            catalogueURI,
+            catalogURI,
             acceptedTokens: [{ address: tokenAddress, symbol: 'MOCK', chainId: 31337 }],
             defaultTokenAddress: tokenAddress,
             assemblyBindings: [{
@@ -137,15 +137,15 @@ test.describe('/s/view (devnet)', () => {
     // Discovery + IPFS round-trip pushes this past the 60s default.
     test.setTimeout(120_000);
 
-    test('renders the seller view, lists the seeded catalogue item, and adds it to the cart', async ({ page }) => {
-        const seeded = await seedRegisteredMemberWithCatalogue();
+    test('renders the seller view, lists the seeded catalog item, and adds it to the cart', async ({ page }) => {
+        const seeded = await seedRegisteredMemberWithCatalog();
 
         // Buyer wallet is anvil[0] by default — connect via ?e2e=devnet.
         await page.goto(`/s/view?seller=${seeded.address}&e2e=devnet`, { waitUntil: 'domcontentloaded' });
 
         // The page mounts MemberDetailView and queries
-        // useRegisteredCatalogues, which iterates registered sellers and
-        // fetches profile+catalogue from IPFS. NO reload fallbacks: the
+        // useRegisteredCatalogs, which iterates registered sellers and
+        // fetches profile+catalog from IPFS. NO reload fallbacks: the
         // seeding awaited its receipts and pins before navigation, so the
         // first mount MUST discover the seller — a reload here would mask a
         // real discovery bug.
@@ -154,9 +154,9 @@ test.describe('/s/view (devnet)', () => {
 
         await expect(detailView).toHaveAttribute('data-seller-address', seeded.address.toLowerCase());
 
-        const catalogueItem = page.getByTestId(`catalogue-item-${seeded.itemId}`);
-        await catalogueItem.waitFor({ state: 'visible', timeout: 30000 });
-        await expect(catalogueItem).toContainText(seeded.itemName);
+        const catalogItem = page.getByTestId(`catalog-item-${seeded.itemId}`);
+        await catalogItem.waitFor({ state: 'visible', timeout: 30000 });
+        await expect(catalogItem).toContainText(seeded.itemName);
 
         // Cart starts empty; clicking the Add button lands a cart line
         // for the seeded item.

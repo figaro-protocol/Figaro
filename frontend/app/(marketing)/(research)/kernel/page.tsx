@@ -127,7 +127,7 @@ A forfeited bond is simply value that is never refunded, locked in the smart con
                 Resolved or left to sit, the protocol writes down every step permanently as it happens, so an arbitrator or a court never has to reconstruct what took place.
             </p>
             <p className="text-base text-ink-body leading-relaxed">
-                That is the whole of it. The claim is proved, not promised — the derivation is in <Link href="/papers/asymmetric-bonding" className="text-ink-heading font-medium hover:underline">Asymmetric Bonding and Buyer Dominance</Link>, and the smart contract itself is catalogued on <Link href="/spec" className="text-ink-heading font-medium hover:underline">Specifications</Link>. The bonds and the one-resolver rule are what survived the peeling: deliberately too small to say anything about a trade on their own. What they license is everything a trade actually needs, rebuilt one level up by whoever wants to build it — and nobody holding anything in the middle.
+                That is the whole of it. The claim is proved, not promised — the derivation is in <Link href="/papers/asymmetric-bonding" className="text-ink-heading font-medium hover:underline">Asymmetric Bonding and Buyer Dominance</Link>, and the smart contract itself is catalogd on <Link href="/spec" className="text-ink-heading font-medium hover:underline">Specifications</Link>. The bonds and the one-resolver rule are what survived the peeling: deliberately too small to say anything about a trade on their own. What they license is everything a trade actually needs, rebuilt one level up by whoever wants to build it — and nobody holding anything in the middle.
             </p>
         </section>
     );

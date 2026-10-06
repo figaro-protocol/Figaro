@@ -8,16 +8,16 @@ import {
 
 // The wizard's order: the two assembly steps are one loop walked twice — what
 // the member sells through, then what it buys through — and both precede
-// Catalogue, because the bindings decide the catalogue's clause fields and the
-// catalogue prices the data offers both steps declare. Both sit before the
+// Catalog, because the bindings decide the catalog's clause fields and the
+// catalog prices the data offers both steps declare. Both sit before the
 // agents step, so that step delegates control of the member's WHOLE profile.
 describe("ONBOARDING_STEPS — member wizard order", () => {
-    it("runs identity → sell through → buy through → catalogue → agents → endpoints → review (no welcome — /join owns the pitch; both assembly steps precede the catalogue they feed)", () => {
+    it("runs identity → sell through → buy through → catalog → agents → endpoints → review (no welcome — /join owns the pitch; both assembly steps precede the catalog they feed)", () => {
         expect(ONBOARDING_STEPS.map((s) => s.id)).toEqual([
             "profile",
             "assemblies",
             "buyer",
-            "catalogue",
+            "catalog",
             "agents",
             "endpoints",
             "review",
@@ -57,7 +57,7 @@ describe("wizard navigation derives from the step order", () => {
         expect(walk).toEqual([
             "/members/assemblies",
             "/members/buyer",
-            "/members/catalogue",
+            "/members/catalog",
             "/members/agents",
             "/members/endpoints",
             "/members/review",
@@ -69,7 +69,7 @@ describe("wizard navigation derives from the step order", () => {
     it("walks back in ONBOARDING_STEPS order and stops at the first step", () => {
         expect(onboardingPrevHref("assemblies")).toBe("/members/identity");
         expect(onboardingPrevHref("buyer")).toBe("/members/assemblies");
-        expect(onboardingPrevHref("catalogue")).toBe("/members/buyer");
+        expect(onboardingPrevHref("catalog")).toBe("/members/buyer");
         expect(onboardingPrevHref("profile")).toBe("/members/identity");
     });
 

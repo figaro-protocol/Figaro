@@ -63,4 +63,4 @@ export {
 } from "./encode.js";
 
 // Clause specs are NOT bundled — they live in ClauseRegistry (→ IPFS) and are
-// fetched at runtime. There is no embedded catalogue.
+// fetched at runtime. There is no embedded catalog.

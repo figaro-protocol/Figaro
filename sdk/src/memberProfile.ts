@@ -4,8 +4,8 @@
  * The profile is the stable identity envelope a member pins to IPFS and
  * points `MembersRegistry.metadataURI` at: name, branding, location,
  * accepted-token list, default pricing token, assembly bindings, agent
- * endpoints, and the URI of the volatile catalogue document. Item lists
- * live in the catalogue (`memberCatalogue.ts` — the member's price list:
+ * endpoints, and the URI of the volatile catalog document. Item lists
+ * live in the catalog (`memberCatalog.ts` — the member's price list:
  * goods, services, and data) so item edits re-pin one
  * small JSON instead of the whole identity envelope.
  *
@@ -18,7 +18,7 @@
  * Carries no role / archetype / category / cuisine taxonomy field —
  * `specialty` below is free PROSE (a self-description), never a closed
  * vocabulary, and nothing dispatches on it. Buyers infer what a seller
- * does from the items in the catalogue; protocol-tier role attribution is
+ * does from the items in the catalog; protocol-tier role attribution is
  * event-derived via the indexer.
  *
  * This module owns the document TYPES and the strict + lenient PARSERS.
@@ -45,7 +45,7 @@ import { isBytes32Hex } from "./types.js";
 /**
  * The tokens a member accepts for resolution. Token acceptance IS identity —
  * the set of tokens a member bonds in defines their coordination surface and
- * value system. Distinct from the catalogue (the items they offer).
+ * value system. Distinct from the catalog (the items they offer).
  */
 export interface AcceptedTokenMetadata {
     /** ERC-20 contract address. */
@@ -60,7 +60,7 @@ export interface AcceptedTokenMetadata {
 
 /**
  * The member's branding (identity / presentation). A distinct concern from the
- * catalogue (the items they offer) and the rest of the profile.
+ * catalog (the items they offer) and the rest of the profile.
  */
 export interface MemberBrandingMetadata {
     logoURI?: string;
@@ -160,7 +160,7 @@ export interface DisclosureCalendar {
  * Same genus as `acceptedTokens[]`: a self-declared OFFER. It says
  * WHAT co-produced data is offered or withheld, to WHOM
  * (whitelist), and WHEN (calendar). It never carries prices — a data
- * product is priced as an item in the member's own catalogue
+ * product is priced as an item in the member's own catalog
  * (fixed | rate), the item naming the data it sells via `dataSold`.
  *
  * Members hold buyer AND seller postures; `posture` names which side
@@ -227,7 +227,7 @@ export interface MemberProfileMetadata {
      */
     acceptedTokens?: AcceptedTokenMetadata[];
     /**
-     * The token in which the catalogue is denominated. Must be the
+     * The token in which the catalog is denominated. Must be the
      * address of one of the entries in `acceptedTokens`. Frontends
      * convert from this default to whatever accepted token the buyer
      * commits in via Uniswap quote at commit time.
@@ -236,7 +236,7 @@ export interface MemberProfileMetadata {
     /**
      * PROFILE-authored clause values — the member's master data for any registered
      * clause declaring `block.checkout.profileFills` (the member-level sibling of the
-     * catalogue's per-item `clauseValues`): keyed clauseId → field → value,
+     * catalog's per-item `clauseValues`): keyed clauseId → field → value,
      * restricted by each spec's declared profile-authored subset. Examples:
      * `figaro-dimweight`'s `divisor` (the member's shipping convention, e.g.
      * ~5000 metric), `figaro-credential`'s `credentialId` (a declared license
@@ -273,8 +273,8 @@ export interface MemberProfileMetadata {
     disclosurePolicy?: DisclosurePolicyEntry[];
     /** ERC-8004 agent service endpoints (mcp, a2a, rest, did, ens). */
     services?: MemberAgentServices;
-    /** IPFS URI of the wallet's catalogue document. */
-    catalogueURI?: string;
+    /** IPFS URI of the wallet's catalog document. */
+    catalogURI?: string;
 }
 
 /** Parse the profile-authored clause-values map (clauseId → field → value).
@@ -503,14 +503,14 @@ export function parseMemberProfileDocument(
         buyerAssemblies: parseBuyerAssemblies(record.buyerAssemblies, `${sourceLabel}.buyerAssemblies`),
         disclosurePolicy: parseDisclosurePolicy(record.disclosurePolicy, `${sourceLabel}.disclosurePolicy`),
         services: parseAgentServicesField(record.services, `${sourceLabel}.services`),
-        catalogueURI: asOptionalString(record.catalogueURI, `${sourceLabel}.catalogueURI`),
+        catalogURI: asOptionalString(record.catalogURI, `${sourceLabel}.catalogURI`),
     };
 }
 
 /**
  * Lenient parse — returns null instead of throwing. Use in discovery
  * paths where a malformed profile should be silently dropped from the
- * surface (e.g. building a member-catalogue list).
+ * surface (e.g. building a member-catalog list).
  */
 export function tryParseMemberProfileDocument(
     value: unknown,

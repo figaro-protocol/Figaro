@@ -5,7 +5,7 @@
  * requestWithdrawal/withdraw — and for reading event-derived member state.
  *
  * The on-chain surface carries no role taxonomy and no categorization
- * field. A member's business is inferred from their catalogue items
+ * field. A member's business is inferred from their catalog items
  * (referenced by `metadataURI`); role attribution at the runtime tier
  * comes from event-derived state via the indexer, never from a metadata
  * field. Lifecycle / availability is signal-by-availability off-chain,

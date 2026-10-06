@@ -72,7 +72,7 @@ const ROWS: readonly Row[] = [
         read: true,
         label: "discover — ctx.sync()",
         detail: [
-            "The registry event streams fold into a live catalogue, and the chosen",
+            "The registry event streams fold into a live catalog, and the chosen",
             "template hydrates from its contentURI. The commerce clause is located",
             "by the field it DECLARES, never by clause name.",
         ],

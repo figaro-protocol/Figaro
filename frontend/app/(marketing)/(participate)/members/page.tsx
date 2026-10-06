@@ -42,7 +42,7 @@ export default function Join() {
 
             <MarketingSection title="What a member publishes.">
                 <p className="text-base text-ink-body leading-relaxed mb-5">
-                    One profile carries your identity as well as both sides of you. The selling side: a catalogue of items priced in the tokens you accept, and the assemblies you offer through. The buying side: the assemblies you buy through, and which of the data your own trades produce you offer for sale. Either side puts the wallet in the data market, because every trade it takes part in co-produces data &mdash; your side of it is yours to sell, on your terms, at your price.
+                    One profile carries your identity as well as both sides of you. The selling side: a catalog of items priced in the tokens you accept, and the assemblies you offer through. The buying side: the assemblies you buy through, and which of the data your own trades produce you offer for sale. Either side puts the wallet in the data market, because every trade it takes part in co-produces data &mdash; your side of it is yours to sell, on your terms, at your price.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
                     The profile is your own declaration, and what stands behind it is the stake you posted yourself and can withdraw yourself &mdash; nobody else can raise it, lower it, or take it from you. None of it is a grade: nothing here issues a standing, ranks one, or can revoke one.
@@ -72,7 +72,7 @@ export default function Join() {
                         </thead>
                         <tbody className="text-ink-body">
                             <tr className="border-b border-default"><td className="py-2 pr-4">Identity</td><td className="py-2">Name, description, location, the tokens you accept.</td></tr>
-                            <tr className="border-b border-default"><td className="py-2 pr-4">Catalogue</td><td className="py-2">The items you sell, priced in your default token.</td></tr>
+                            <tr className="border-b border-default"><td className="py-2 pr-4">Catalog</td><td className="py-2">The items you sell, priced in your default token.</td></tr>
                             <tr className="border-b border-default"><td className="py-2 pr-4">Assemblies</td><td className="py-2">Bind the assemblies you sell through.</td></tr>
                             <tr className="border-b border-default"><td className="py-2 pr-4">Buyer</td><td className="py-2">Subscribe the assemblies you buy through; choose the data you offer for sale.</td></tr>
                             <tr className="border-b border-default"><td className="py-2 pr-4">Agents</td><td className="py-2">Publish service endpoints, if anything needs to reach this wallet directly.</td></tr>

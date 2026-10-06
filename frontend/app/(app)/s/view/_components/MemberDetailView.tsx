@@ -4,13 +4,13 @@
  * MemberDetailView — the buyer's BROWSE surface at `/s/view?seller=<address>`.
  *
  * Browse only: the seller's branding/hero, public-graph track record, and
- * catalogue grid. The buyer selects items into the merchant-scoped cart and
+ * catalog grid. The buyer selects items into the merchant-scoped cart and
  * follows the "Review order" CTA to `/s/checkout?seller=<address>`, where the method is
  * chosen and the bonded order is committed. This page composes NO order and
  * holds NO checkout state — that concern lives entirely on the checkout surface.
  *
  * Data sources:
- *  - `useRegisteredCatalogues` — IPFS catalogue discovery.
+ *  - `useRegisteredCatalogs` — IPFS catalog discovery.
  *  - `useMemberTrackRecord` — on-chain resolution/coordination history.
  *  - `useCartStore` — global cart state (selection only; commit is checkout's).
  */
@@ -25,7 +25,7 @@ import { MemberLogo } from "@/components/modules/MemberBrandingModule";
 import { MemberAgentIdentity } from "@/components/members/MemberAgentIdentity";
 import { useCommerce } from "@/lib/checkout";
 import { useCartStore } from "@/lib/checkout/cartStore";
-import { useRegisteredCatalogues } from "@/lib/member/useRegisteredCatalogues";
+import { useRegisteredCatalogs } from "@/lib/member/useRegisteredCatalogs";
 import { MemberTrackRecord } from "@/components/runtime/MemberTrackRecord";
 import { useMemberTrackRecord } from "@/lib/member/useMemberTrackRecord";
 import { useTokenSymbol } from "@/hooks/useTokenSymbol";
@@ -34,7 +34,7 @@ import { truncateHex } from "@/lib/shared/formatHex";
 import { formatMass, formatVolume } from "@/lib/member/unitConversion";
 import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
 
-import type { CatalogueItemMetadata } from "@/lib/member/memberCatalogueMetadata";
+import type { CatalogItemMetadata } from "@/lib/member/memberCatalogMetadata";
 
 interface Props {
     sellerAddress: string;
@@ -43,20 +43,20 @@ interface Props {
 export function MemberDetailView({ sellerAddress }: Props) {
     const { lower: sellerAddressLower, typed: sellerAddressTyped } = normalizeAddressParam(sellerAddress);
 
-    const { catalogues: memberCatalogues, isLoading: cataloguesLoading } = useRegisteredCatalogues();
+    const { catalogs: memberCatalogs, isLoading: catalogsLoading } = useRegisteredCatalogs();
 
-    const memberCatalogue = useMemo(
-        () => memberCatalogues.find((r) => hexEqual(r.address, sellerAddressLower)) ?? null,
-        [memberCatalogues, sellerAddressLower],
+    const memberCatalog = useMemo(
+        () => memberCatalogs.find((r) => hexEqual(r.address, sellerAddressLower)) ?? null,
+        [memberCatalogs, sellerAddressLower],
     );
 
     const { address: buyer } = useCommerce();
     // The seller's declared denomination, or undefined — never a coined
     // default (resolved-empty = absence).
-    const currency = memberCatalogue?.defaultTokenAddress as `0x${string}` | undefined;
+    const currency = memberCatalog?.defaultTokenAddress as `0x${string}` | undefined;
     const { data: resolvedSymbol } = useTokenSymbol(currency ?? "");
     const tokenSymbol = resolvedSymbol
-        ?? (currency ? memberCatalogue?.acceptedTokens?.find((t) => hexEqual(t.address, currency))?.symbol : undefined)
+        ?? (currency ? memberCatalog?.acceptedTokens?.find((t) => hexEqual(t.address, currency))?.symbol : undefined)
         ?? "";
 
     const { items, addItem, removeItem, clearCart } = useCartStore();
@@ -76,7 +76,7 @@ export function MemberDetailView({ sellerAddress }: Props) {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [sellerAddressLower, buyer]);
 
-    if (cataloguesLoading) {
+    if (catalogsLoading) {
         return (
             <div className="container mx-auto px-6 py-16 max-w-3xl">
                 <p className="text-xs font-semibold text-ink-muted mb-3">Seller</p>
@@ -85,14 +85,14 @@ export function MemberDetailView({ sellerAddress }: Props) {
         );
     }
 
-    if (!memberCatalogue) {
+    if (!memberCatalog) {
         return (
             <div className="container mx-auto px-6 py-16 max-w-3xl space-y-4">
                 <p className="text-xs font-semibold text-ink-muted mb-3">Member not found</p>
                 <h1 className="text-3xl font-bold text-ink-primary">No member page for {truncateHex(sellerAddressLower, { head: 10, tail: 0 })}</h1>
                 <p className="text-sm text-ink-body">
                     This wallet holds no live registration in <code className="text-xs">MembersRegistry</code> on the network
-                    you&apos;re connected to, or its profile binds no published assembly, or it has pinned no catalogue. If this is your wallet, you can complete the registration through the onboarding flow.
+                    you&apos;re connected to, or its profile binds no published assembly, or it has pinned no catalog. If this is your wallet, you can complete the registration through the onboarding flow.
                 </p>
                 <div className="flex items-center gap-3 pt-2">
                     <Link href="/members" className="inline-block text-sm px-3 py-1.5 rounded border border-ink-primary bg-ink-primary text-paper hover:bg-ink-body">
@@ -106,33 +106,33 @@ export function MemberDetailView({ sellerAddress }: Props) {
         );
     }
 
-    const handleAddItem = (catalogueItem: CatalogueItemMetadata) => {
+    const handleAddItem = (catalogItem: CatalogItemMetadata) => {
         addItem({
-            catalogueItemId: catalogueItem.id,
+            catalogItemId: catalogItem.id,
             sellerId: sellerAddressLower,
-            sellerAddress: memberCatalogue.address,
-            sellerName: memberCatalogue.name,
-            name: catalogueItem.name,
-            price: catalogueItem.price,
+            sellerAddress: memberCatalog.address,
+            sellerName: memberCatalog.name,
+            name: catalogItem.name,
+            price: catalogItem.price,
             quantity: 1,
-            imageURI: catalogueItem.image || undefined,
-            massGrams: catalogueItem.massGrams,
-            volumeMl: catalogueItem.volumeMl,
-            lengthMm: catalogueItem.lengthMm,
-            widthMm: catalogueItem.widthMm,
-            heightMm: catalogueItem.heightMm,
-            clauseValues: catalogueItem.clauseValues,
-            dataSold: catalogueItem.dataSold,
+            imageURI: catalogItem.image || undefined,
+            massGrams: catalogItem.massGrams,
+            volumeMl: catalogItem.volumeMl,
+            lengthMm: catalogItem.lengthMm,
+            widthMm: catalogItem.widthMm,
+            heightMm: catalogItem.heightMm,
+            clauseValues: catalogItem.clauseValues,
+            dataSold: catalogItem.dataSold,
         });
     };
 
-    const handleRemoveItem = (catalogueItemId: string) => {
-        removeItem(catalogueItemId, sellerAddressLower);
+    const handleRemoveItem = (catalogItemId: string) => {
+        removeItem(catalogItemId, sellerAddressLower);
     };
 
-    const getItemQuantity = (catalogueItemId: string) => {
+    const getItemQuantity = (catalogItemId: string) => {
         const cartItem = items.find(
-            (item) => item.catalogueItemId === catalogueItemId && item.sellerId === sellerAddressLower,
+            (item) => item.catalogItemId === catalogItemId && item.sellerId === sellerAddressLower,
         );
         return cartItem?.quantity || 0;
     };
@@ -141,13 +141,13 @@ export function MemberDetailView({ sellerAddress }: Props) {
     // bond math, method choice, and commit all live on the checkout surface.
     const cartItems = items.filter((it) => it.sellerId === sellerAddressLower);
     const cartCount = cartItems.reduce((sum, it) => sum + it.quantity, 0);
-    const cartUnitSystem = memberCatalogue.unitSystem ?? "metric";
+    const cartUnitSystem = memberCatalog.unitSystem ?? "metric";
 
-    // `category` is optional on a catalogue item; items without one group under
+    // `category` is optional on a catalog item; items without one group under
     // an explicit, visible fallback — never an undefined key / heading-less
     // group. Matches the "(unclassified)" convention groupClausesByArticle uses.
-    const categoryOf = (item: CatalogueItemMetadata) => item.category ?? "(unclassified)";
-    const categories = Array.from(new Set(memberCatalogue.items.map(categoryOf)));
+    const categoryOf = (item: CatalogItemMetadata) => item.category ?? "(unclassified)";
+    const categories = Array.from(new Set(memberCatalog.items.map(categoryOf)));
 
     return (
         <div>
@@ -163,23 +163,23 @@ export function MemberDetailView({ sellerAddress }: Props) {
                     <div className="flex flex-wrap items-start gap-5">
                         <MemberLogo
                             sellerAddress={sellerAddressTyped}
-                            fallbackEmoji={memberCatalogue.image}
-                            fallbackName={memberCatalogue.name}
+                            fallbackEmoji={memberCatalog.image}
+                            fallbackName={memberCatalog.name}
                             size={88}
                         />
                         <div className="flex-1 min-w-0">
-                            {memberCatalogue.specialty && (
-                                <p className="text-xs font-semibold text-ink-muted">{memberCatalogue.specialty}</p>
+                            {memberCatalog.specialty && (
+                                <p className="text-xs font-semibold text-ink-muted">{memberCatalog.specialty}</p>
                             )}
-                            <h1 className="mt-1 text-4xl font-bold text-ink-primary">{memberCatalogue.name}</h1>
-                            <p className="mt-3 max-w-2xl text-base text-ink-body">{memberCatalogue.description}</p>
-                            {memberCatalogue.addressText && (
-                                <p className="mt-2 text-sm text-ink-muted">{memberCatalogue.addressText}</p>
+                            <h1 className="mt-1 text-4xl font-bold text-ink-primary">{memberCatalog.name}</h1>
+                            <p className="mt-3 max-w-2xl text-base text-ink-body">{memberCatalog.description}</p>
+                            {memberCatalog.addressText && (
+                                <p className="mt-2 text-sm text-ink-muted">{memberCatalog.addressText}</p>
                             )}
                             <div className="mt-4 flex flex-wrap items-center gap-3 text-xs text-ink-muted">
-                                {memberCatalogue.acceptedTokens && memberCatalogue.acceptedTokens.length > 0 && (
+                                {memberCatalog.acceptedTokens && memberCatalog.acceptedTokens.length > 0 && (
                                     <span data-testid="seller-accepted-tokens">
-                                        Accepts: {memberCatalogue.acceptedTokens.map((t) => t.symbol).join(", ")}
+                                        Accepts: {memberCatalog.acceptedTokens.map((t) => t.symbol).join(", ")}
                                     </span>
                                 )}
                                 {tokenSymbol && (
@@ -193,7 +193,7 @@ export function MemberDetailView({ sellerAddress }: Props) {
                                     // below the hero. Absent policy renders nothing:
                                     // the default (each party holds its own copy) is not a
                                     // declaration to display.
-                                    const offered = memberCatalogue.disclosurePolicy?.filter((e) => e.offered) ?? [];
+                                    const offered = memberCatalog.disclosurePolicy?.filter((e) => e.offered) ?? [];
                                     if (offered.length === 0) return null;
                                     return (
                                         <span>
@@ -211,9 +211,9 @@ export function MemberDetailView({ sellerAddress }: Props) {
 
                 {/* Data for sale — the member's declared offers: what data, which
                     side they co-produced it on, who may buy, and when it
-                    opens. The PRICED form is a catalogue item carrying dataSold. */}
+                    opens. The PRICED form is a catalog item carrying dataSold. */}
                 {(() => {
-                    const offered = memberCatalogue.disclosurePolicy?.filter((e) => e.offered) ?? [];
+                    const offered = memberCatalog.disclosurePolicy?.filter((e) => e.offered) ?? [];
                     if (offered.length === 0) return null;
                     return (
                         <section
@@ -251,7 +251,7 @@ export function MemberDetailView({ sellerAddress }: Props) {
                                 })}
                             </ul>
                             <p className="text-xs text-ink-muted">
-                                Priced data appears in the catalogue below.
+                                Priced data appears in the catalog below.
                             </p>
                         </section>
                     );
@@ -262,31 +262,31 @@ export function MemberDetailView({ sellerAddress }: Props) {
                 <MemberTrackRecord record={trackRecord} isLoading={trackRecordLoading} />
 
                 <div className="grid grid-cols-1 lg:grid-cols-[1fr,360px] gap-8 items-start">
-                    {/* Catalogue */}
-                    <section className="space-y-8" data-testid="seller-catalogue">
-                        <p className="text-xs font-semibold text-ink-muted">Catalogue</p>
+                    {/* Catalog */}
+                    <section className="space-y-8" data-testid="seller-catalog">
+                        <p className="text-xs font-semibold text-ink-muted">Catalog</p>
                         {categories.map((category) => (
                             <div key={category}>
                                 <h2 className="text-lg font-semibold text-ink-primary mb-3">{category}</h2>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    {memberCatalogue.items
+                                    {memberCatalog.items
                                         .filter((item) => categoryOf(item) === category)
-                                        .map((catalogueItem) => {
-                                            const quantity = getItemQuantity(catalogueItem.id);
+                                        .map((catalogItem) => {
+                                            const quantity = getItemQuantity(catalogItem.id);
                                             return (
                                                 <div
-                                                    key={catalogueItem.id}
+                                                    key={catalogItem.id}
                                                     className="bg-paper border border-default rounded-lg p-4 hover:border-default-strong transition-all shadow-sm"
-                                                    data-testid={`catalogue-item-${catalogueItem.id}`}
+                                                    data-testid={`catalog-item-${catalogItem.id}`}
                                                 >
                                                     <div className="flex items-start gap-3">
                                                         <ContentImage
-                                                            src={catalogueItem.image ?? ""}
-                                                            alt={catalogueItem.name}
+                                                            src={catalogItem.image ?? ""}
+                                                            alt={catalogItem.name}
                                                             className="w-12 h-12 rounded object-cover text-3xl flex items-center justify-center"
                                                             fallback={
                                                                 <InitialsAvatar
-                                                                    name={catalogueItem.name}
+                                                                    name={catalogItem.name}
                                                                     tone="neutral"
                                                                     size={48}
                                                                     className="shrink-0"
@@ -295,39 +295,39 @@ export function MemberDetailView({ sellerAddress }: Props) {
                                                             }
                                                         />
                                                         <div className="flex-1">
-                                                            <h3 className="font-semibold text-ink-primary mb-1">{catalogueItem.name}</h3>
-                                                            <p className="text-sm text-ink-muted mb-2">{catalogueItem.description}</p>
-                                                            {catalogueItem.dataSold && (
+                                                            <h3 className="font-semibold text-ink-primary mb-1">{catalogItem.name}</h3>
+                                                            <p className="text-sm text-ink-muted mb-2">{catalogItem.description}</p>
+                                                            {catalogItem.dataSold && (
                                                                 <p
                                                                     className="text-[11px] text-ink-muted mb-2"
-                                                                    data-testid={`catalogue-item-data-sold-${catalogueItem.id}`}
+                                                                    data-testid={`catalog-item-data-sold-${catalogItem.id}`}
                                                                 >
-                                                                    Data for sale · {getClauseSpec(catalogueItem.dataSold.clauseId)?.title ?? catalogueItem.dataSold.clauseId} · as {catalogueItem.dataSold.posture}
+                                                                    Data for sale · {getClauseSpec(catalogItem.dataSold.clauseId)?.title ?? catalogItem.dataSold.clauseId} · as {catalogItem.dataSold.posture}
                                                                 </p>
                                                             )}
-                                                            {(catalogueItem.massGrams || catalogueItem.volumeMl) && (
+                                                            {(catalogItem.massGrams || catalogItem.volumeMl) && (
                                                                 <p
                                                                     className="text-[11px] text-ink-muted mb-2 flex flex-wrap gap-x-2"
-                                                                    data-testid={`catalogue-item-logistics-${catalogueItem.id}`}
+                                                                    data-testid={`catalog-item-logistics-${catalogItem.id}`}
                                                                 >
-                                                                    {catalogueItem.massGrams ? <span>{formatMass(catalogueItem.massGrams, cartUnitSystem)}</span> : null}
-                                                                    {catalogueItem.volumeMl ? <span>· {formatVolume(catalogueItem.volumeMl, cartUnitSystem)}</span> : null}
+                                                                    {catalogItem.massGrams ? <span>{formatMass(catalogItem.massGrams, cartUnitSystem)}</span> : null}
+                                                                    {catalogItem.volumeMl ? <span>· {formatVolume(catalogItem.volumeMl, cartUnitSystem)}</span> : null}
                                                                 </p>
                                                             )}
                                                             <div className="flex items-center justify-between">
                                                                 <span className="font-semibold text-ink-primary">
-                                                                    {catalogueItem.price}{tokenSymbol ? ` ${tokenSymbol}` : ""}
-                                                                    {catalogueItem.pricingPolicy === "rate" && (
-                                                                        <span className="text-ink-muted font-normal"> / {catalogueItem.rateUnit || "unit"}</span>
+                                                                    {catalogItem.price}{tokenSymbol ? ` ${tokenSymbol}` : ""}
+                                                                    {catalogItem.pricingPolicy === "rate" && (
+                                                                        <span className="text-ink-muted font-normal"> / {catalogItem.rateUnit || "unit"}</span>
                                                                     )}
                                                                 </span>
                                                                 {quantity === 0 ? (
                                                                     <button
                                                                         type="button"
-                                                                        onClick={() => handleAddItem(catalogueItem)}
-                                                                        disabled={!catalogueItem.available}
+                                                                        onClick={() => handleAddItem(catalogItem)}
+                                                                        disabled={!catalogItem.available}
                                                                         className="rounded border border-ink-heading px-3 py-1.5 text-sm font-semibold text-ink-primary hover:bg-subtle disabled:opacity-40"
-                                                                        data-testid={`btn-add-${catalogueItem.id}`}
+                                                                        data-testid={`btn-add-${catalogItem.id}`}
                                                                     >
                                                                         Add
                                                                     </button>
@@ -335,18 +335,18 @@ export function MemberDetailView({ sellerAddress }: Props) {
                                                                     <div className="flex items-center gap-2">
                                                                         <button
                                                                             type="button"
-                                                                            onClick={() => handleRemoveItem(catalogueItem.id)}
+                                                                            onClick={() => handleRemoveItem(catalogItem.id)}
                                                                             className="w-8 h-8 rounded border border-default bg-paper text-ink-primary hover:bg-subtle"
-                                                                            aria-label={`Remove one ${catalogueItem.name}`}
+                                                                            aria-label={`Remove one ${catalogItem.name}`}
                                                                         >
                                                                             −
                                                                         </button>
                                                                         <span className="w-6 text-center text-ink-primary font-semibold">{quantity}</span>
                                                                         <button
                                                                             type="button"
-                                                                            onClick={() => handleAddItem(catalogueItem)}
+                                                                            onClick={() => handleAddItem(catalogItem)}
                                                                             className="w-8 h-8 rounded border border-ink-primary bg-ink-primary text-paper hover:bg-ink-body"
-                                                                            aria-label={`Add another ${catalogueItem.name}`}
+                                                                            aria-label={`Add another ${catalogItem.name}`}
                                                                         >
                                                                             +
                                                                         </button>
@@ -371,8 +371,8 @@ export function MemberDetailView({ sellerAddress }: Props) {
                         <p className="text-xs font-semibold text-ink-muted">Order</p>
                         {cartItems.length === 0 ? (
                             <p className="text-sm text-ink-muted">
-                                Your cart is empty. Add items from the catalogue to start an order with{" "}
-                                <span className="font-semibold text-ink-primary">{memberCatalogue.name}</span>.
+                                Your cart is empty. Add items from the catalog to start an order with{" "}
+                                <span className="font-semibold text-ink-primary">{memberCatalog.name}</span>.
                             </p>
                         ) : (
                             <>

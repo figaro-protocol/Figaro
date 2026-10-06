@@ -1,7 +1,7 @@
 /**
- * unitConversion — metric ↔ imperial helpers for catalogue mass/volume.
+ * unitConversion — metric ↔ imperial helpers for catalog mass/volume.
  *
- * Storage on `CatalogueItemMetadata.massGrams` / `volumeMl` is always
+ * Storage on `CatalogItemMetadata.massGrams` / `volumeMl` is always
  * metric. These helpers do two jobs:
  *   - parse editor input in the member's chosen unit system into
  *     metric for storage (`parseInputToGrams`, `parseInputToMl`);
@@ -13,7 +13,7 @@
  * Conversion is purely a UX edge.
  */
 
-import type { UnitSystem } from "@/lib/member/memberCatalogueMetadata";
+import type { UnitSystem } from "@/lib/member/memberCatalogMetadata";
 
 // ── Conversion constants ─────────────────────────────────────────────────────
 
@@ -28,7 +28,7 @@ const MM_PER_INCH = 25.4;
 
 /**
  * Parse a number the member typed in the editor into grams. When the
- * catalogue's `unitSystem` is "imperial", the input is interpreted as
+ * catalog's `unitSystem` is "imperial", the input is interpreted as
  * ounces. Returns `undefined` when the input is empty or not a finite
  * number; the caller treats undefined as "no mass on this item".
  */
@@ -40,7 +40,7 @@ export function parseInputToGrams(input: string, system: UnitSystem): number | u
 
 /**
  * Parse a number the member typed in the editor into millilitres. When
- * the catalogue's `unitSystem` is "imperial", the input is interpreted
+ * the catalog's `unitSystem` is "imperial", the input is interpreted
  * as US fluid ounces. Returns `undefined` per `parseInputToGrams`.
  */
 export function parseInputToMl(input: string, system: UnitSystem): number | undefined {
@@ -51,7 +51,7 @@ export function parseInputToMl(input: string, system: UnitSystem): number | unde
 
 /**
  * Parse a number the member typed in the editor into millimetres — one
- * parcel dimension (length/width/height). When the catalogue's
+ * parcel dimension (length/width/height). When the catalog's
  * `unitSystem` is "imperial", the input is interpreted as inches.
  * Returns `undefined` per `parseInputToGrams`.
  */

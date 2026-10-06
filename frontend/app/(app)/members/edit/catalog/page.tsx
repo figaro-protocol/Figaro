@@ -1,0 +1,24 @@
+import type { Metadata } from "next";
+import { withOg } from "@/lib/shared/pageMetadata";
+import { MemberEditCatalog } from "@/components/members/MemberEditCatalog";
+
+export const metadata: Metadata = withOg({
+    title: "Edit catalog — Figaro Protocol",
+    description: "Update the pinned catalog document. Re-pins items to IPFS, then re-pins the member profile pointing at the new catalog CID, then dispatches MembersRegistry.updateProfile.",
+});
+
+export default function EditCatalogPage() {
+    return (
+        <section className="container mx-auto px-6 pt-24 pb-24 max-w-2xl space-y-10">
+            <div>
+                <h1 className="text-heading-h1 text-ink-heading mb-4">
+                    Edit catalog.
+                </h1>
+                <p className="text-body-lead text-ink-body">
+                    Add, remove, or update items. Saving pins a new catalog document, then a new profile document pointing at it, then dispatches <code>updateProfile</code>. Two pins, one transaction. Deposit and lock period are unaffected.
+                </p>
+            </div>
+            <MemberEditCatalog />
+        </section>
+    );
+}

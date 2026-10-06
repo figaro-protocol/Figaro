@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderHook, waitFor, act } from "@testing-library/react";
-import { useRegisteredCatalogues } from "@/lib/member/useRegisteredCatalogues";
+import { useRegisteredCatalogs } from "@/lib/member/useRegisteredCatalogs";
 import type { DiscoveryService } from "@/lib/member/discoveryService";
-import type { MemberCatalogue } from "@/lib/member/types";
+import type { MemberCatalog } from "@/lib/member/types";
 
 const usePublicClientMock = vi.fn();
 const useChainIdMock = vi.fn();
@@ -22,7 +22,7 @@ vi.mock("@/lib/protocol/useAssemblyRegistry", () => ({
 
 const publicClient = { transport: { type: "http" } };
 
-function cat(name: string): MemberCatalogue {
+function cat(name: string): MemberCatalog {
     return {
         name,
         description: "",
@@ -33,7 +33,7 @@ function cat(name: string): MemberCatalogue {
     };
 }
 
-describe("useRegisteredCatalogues focus refresh", () => {
+describe("useRegisteredCatalogs focus refresh", () => {
     beforeEach(() => {
         usePublicClientMock.mockReset();
         useChainIdMock.mockReset();
@@ -42,27 +42,27 @@ describe("useRegisteredCatalogues focus refresh", () => {
     });
 
     it("re-runs discovery on window focus so a long-open tab does not go stale", async () => {
-        const listCatalogues = vi
+        const listCatalogs = vi
             .fn()
-            .mockResolvedValueOnce({ catalogues: [cat("First")] })
-            .mockResolvedValue({ catalogues: [cat("First"), cat("Second")] });
+            .mockResolvedValueOnce({ catalogs: [cat("First")] })
+            .mockResolvedValue({ catalogs: [cat("First"), cat("Second")] });
         const service = {
             isRegistryConfigured: () => true,
-            listCatalogues,
+            listCatalogs,
         } as unknown as DiscoveryService;
 
-        const { result } = renderHook(() => useRegisteredCatalogues({ service }));
+        const { result } = renderHook(() => useRegisteredCatalogs({ service }));
 
-        await waitFor(() => expect(result.current.catalogues).toHaveLength(1));
-        expect(listCatalogues).toHaveBeenCalledTimes(1);
+        await waitFor(() => expect(result.current.catalogs).toHaveLength(1));
+        expect(listCatalogs).toHaveBeenCalledTimes(1);
 
         // Returning to a long-open tab: the window regains focus and the
-        // catalogue should refresh from the chain rather than stay stale.
+        // catalog should refresh from the chain rather than stay stale.
         act(() => {
             window.dispatchEvent(new Event("focus"));
         });
 
-        await waitFor(() => expect(result.current.catalogues).toHaveLength(2));
-        expect(listCatalogues).toHaveBeenCalledTimes(2);
+        await waitFor(() => expect(result.current.catalogs).toHaveLength(2));
+        expect(listCatalogs).toHaveBeenCalledTimes(2);
     });
 });

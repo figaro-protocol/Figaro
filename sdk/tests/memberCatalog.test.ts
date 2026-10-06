@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
 
 import {
-    parseMemberCatalogueDocument,
-    type MemberCatalogueMetadata,
-} from "../src/memberCatalogue.js";
+    parseMemberCatalogDocument,
+    type MemberCatalogMetadata,
+} from "../src/memberCatalog.js";
 
 const subjectAddress = "0x70997970C51812dc3A010C7d01b50e0d17dc79C8";
 
-const VALID_DOC: MemberCatalogueMetadata = {
+const VALID_DOC: MemberCatalogMetadata = {
     subjectAddress,
     items: [
         {
@@ -22,9 +22,9 @@ const VALID_DOC: MemberCatalogueMetadata = {
     version: "1",
 };
 
-describe("parseMemberCatalogueDocument (strict)", () => {
-    it("parses a valid catalogue document", () => {
-        const parsed = parseMemberCatalogueDocument(VALID_DOC);
+describe("parseMemberCatalogDocument (strict)", () => {
+    it("parses a valid catalog document", () => {
+        const parsed = parseMemberCatalogDocument(VALID_DOC);
         expect(parsed.subjectAddress).toBe(subjectAddress);
         expect(parsed.items).toHaveLength(1);
         expect(parsed.items[0].name).toBe("Margherita");
@@ -32,22 +32,22 @@ describe("parseMemberCatalogueDocument (strict)", () => {
     });
 
     it("accepts an empty item list", () => {
-        const parsed = parseMemberCatalogueDocument({ ...VALID_DOC, items: [] });
+        const parsed = parseMemberCatalogDocument({ ...VALID_DOC, items: [] });
         expect(parsed.items).toEqual([]);
     });
 
     it("throws when items is missing", () => {
-        expect(() => parseMemberCatalogueDocument({ subjectAddress, version: "1" }))
+        expect(() => parseMemberCatalogDocument({ subjectAddress, version: "1" }))
             .toThrow(/items must be an array/);
     });
 
     it("throws when subjectAddress is malformed", () => {
-        expect(() => parseMemberCatalogueDocument({ ...VALID_DOC, subjectAddress: "not-an-address" }))
+        expect(() => parseMemberCatalogDocument({ ...VALID_DOC, subjectAddress: "not-an-address" }))
             .toThrow(/subjectAddress must be a 20-byte hex address/);
     });
 
     it("throws when an item is missing a required field (available)", () => {
-        expect(() => parseMemberCatalogueDocument({
+        expect(() => parseMemberCatalogDocument({
             subjectAddress,
             version: "1",
             items: [{ id: "i1", name: "X", price: "1" }],
@@ -55,7 +55,7 @@ describe("parseMemberCatalogueDocument (strict)", () => {
     });
 
     it("rejects an out-of-set pricingPolicy", () => {
-        expect(() => parseMemberCatalogueDocument({
+        expect(() => parseMemberCatalogDocument({
             subjectAddress,
             version: "1",
             items: [{ id: "i1", name: "X", price: "1", available: true, pricingPolicy: "auction" }],
@@ -63,7 +63,7 @@ describe("parseMemberCatalogueDocument (strict)", () => {
     });
 
     it("carries a rate item's pricingPolicy/rateUnit/rateQuantitySource through a parse", () => {
-        const parsed = parseMemberCatalogueDocument({
+        const parsed = parseMemberCatalogDocument({
             subjectAddress,
             version: "1",
             items: [{
@@ -79,7 +79,7 @@ describe("parseMemberCatalogueDocument (strict)", () => {
     });
 
     it("carries lengthMm/widthMm/heightMm + mass/volume through a parse (physical dims floor)", () => {
-        const parsed = parseMemberCatalogueDocument({
+        const parsed = parseMemberCatalogDocument({
             subjectAddress,
             version: "1",
             items: [{
@@ -98,7 +98,7 @@ describe("parseMemberCatalogueDocument (strict)", () => {
             clauseId: "figaro-geolocation",
             posture: "buyer",
         };
-        const parsed = parseMemberCatalogueDocument({
+        const parsed = parseMemberCatalogDocument({
             subjectAddress: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
             version: "1",
             items: [{ id: "i1", name: "Flight record", price: "5", available: true, dataSold }],
@@ -107,18 +107,18 @@ describe("parseMemberCatalogueDocument (strict)", () => {
     });
 
     it("throws on a dataSold with a malformed compositionHash", () => {
-        expect(() => parseMemberCatalogueDocument({
+        expect(() => parseMemberCatalogDocument({
             subjectAddress: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
             version: "1",
             items: [{ id: "i1", name: "Bad", price: "5", available: true, dataSold: { compositionHash: "0x12", clauseId: "c", posture: "buyer" } }],
         })).toThrow(/dataSold\.compositionHash must be a 32-byte hex hash/);
     });
 
-    it("carries the catalogue-sourced clauseValues map through a parse", () => {
+    it("carries the catalog-sourced clauseValues map through a parse", () => {
         const clauseValues = {
             "figaro-hazmat": { unNumber: "UN1203", properShippingName: "Petrol", hazardClass: "3" },
         };
-        const parsed = parseMemberCatalogueDocument({
+        const parsed = parseMemberCatalogDocument({
             subjectAddress,
             version: "1",
             items: [{ id: "i1", name: "Drum", price: "1", available: true, clauseValues }],
@@ -127,7 +127,7 @@ describe("parseMemberCatalogueDocument (strict)", () => {
     });
 
     it("parses the optional unitSystem preference", () => {
-        const parsed = parseMemberCatalogueDocument({ ...VALID_DOC, unitSystem: "imperial" });
+        const parsed = parseMemberCatalogDocument({ ...VALID_DOC, unitSystem: "imperial" });
         expect(parsed.unitSystem).toBe("imperial");
     });
 });

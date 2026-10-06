@@ -3,7 +3,7 @@
 /**
  * A labeled text-input list where every field carries a hint line —
  * the shape shared by the endpoint-style wizard forms. The field
- * CATALOGUES stay with each form (they are designed content, not
+ * CATALOGS stay with each form (they are designed content, not
  * chrome); this component owns only the FormField + Input + hint
  * render.
  */

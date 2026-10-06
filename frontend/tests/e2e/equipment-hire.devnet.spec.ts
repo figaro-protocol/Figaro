@@ -83,7 +83,7 @@ async function ensureEquipmentHireSeller(mockToken: Hex, permitToken: Hex): Prom
     const slug = await findEquipmentHireAssembly(mockToken);
     const bound = (await memberProfileBindings(SELLER)).some((b) => b.assemblySlug === slug);
     if (!bound) {
-        const { uri: catalogueURI } = await pinJSONToIPFS({
+        const { uri: catalogURI } = await pinJSONToIPFS({
             subjectAddress: SELLER,
             version: '1.0.0',
             unitSystem: 'metric' as const,
@@ -101,7 +101,7 @@ async function ensureEquipmentHireSeller(mockToken: Hex, permitToken: Hex): Prom
             profile: {
                 name: 'Focal Point Rentals',
                 description: 'Equipment-hire reference seller — seeded by equipment-hire.devnet.spec.ts',
-                catalogueURI,
+                catalogURI,
                 // BOTH devnet tokens accepted — the picker would normally
                 // render (more than one accepted token); the assembly's pin
                 // must suppress it regardless. The default is deliberately

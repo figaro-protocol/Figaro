@@ -66,13 +66,13 @@ export interface UseMemberProfileEditorOptions {
     /** What a blind save would clobber, in the fetch-error explainer. */
     clobberNoun?: string;
     /**
-     * Extra in-flight state (e.g. a catalogue pin) that must also hold
+     * Extra in-flight state (e.g. a catalog pin) that must also hold
      * off the redirect guard and be reflected in `saveInFlight`.
      */
     extraSaveInFlight?: boolean;
     /**
      * An extra fetch the caller performs before seeding can run (e.g.
-     * the catalogue JSON behind `profile.catalogueURI`). While
+     * the catalog JSON behind `profile.catalogURI`). While
      * `pending`, the gate shows `message` and seeding waits.
      */
     extraFetch?: { pending: boolean; message: string };
@@ -88,7 +88,7 @@ export interface UseMemberProfileEditorResult {
     saveInFlight: boolean;
     /** `updater.error` rendered for the form's `externalError` prop. */
     externalError: string | null;
-    /** Report a fetch failure from a caller-owned fetch (e.g. catalogue). */
+    /** Report a fetch failure from a caller-owned fetch (e.g. catalog). */
     setFetchError: (message: string) => void;
     /** Non-null while the form must not render; give it to `MemberEditGate`. */
     gate: MemberEditGateState | null;

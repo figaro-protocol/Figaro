@@ -8,8 +8,8 @@ import {
     loadClauseSpec,
     setClauseSpecFetcher,
     clauseIsProcessLog,
-    clauseCatalogueFills,
-    listCatalogueSourcedClauses,
+    clauseCatalogFills,
+    listCatalogSourcedClauses,
     clauseLadderField,
     labelEnumValue,
     specSource,
@@ -46,17 +46,17 @@ describe("clauseSpecSource — chain-only cache", () => {
     });
 });
 
-describe("clauseSpecSource — catalogue-authored fills (derive, not hardcode)", () => {
+describe("clauseSpecSource — catalog-authored fills (derive, not hardcode)", () => {
     it("reads block.checkout.catalogueFills; the set is derived from the registry", async () => {
         await primeClauseSpecs();
-        // The three product-property clauses declare catalogue-authored fields.
-        expect(clauseCatalogueFills("figaro-freight-class").length).toBeGreaterThan(0);
-        expect(clauseCatalogueFills("figaro-hazmat").length).toBeGreaterThan(0);
-        expect(clauseCatalogueFills("figaro-cold-chain")).toContain("tempClass");
+        // The three product-property clauses declare catalog-authored fields.
+        expect(clauseCatalogFills("figaro-freight-class").length).toBeGreaterThan(0);
+        expect(clauseCatalogFills("figaro-hazmat").length).toBeGreaterThan(0);
+        expect(clauseCatalogFills("figaro-cold-chain")).toContain("tempClass");
         // A commerce / coordination clause does not.
-        expect(clauseCatalogueFills("figaro-commerce")).toEqual([]);
-        expect(clauseCatalogueFills("figaro-geolocation")).toEqual([]);
-        expect(listCatalogueSourcedClauses().map((c) => c.clauseId).sort()).toEqual([
+        expect(clauseCatalogFills("figaro-commerce")).toEqual([]);
+        expect(clauseCatalogFills("figaro-geolocation")).toEqual([]);
+        expect(listCatalogSourcedClauses().map((c) => c.clauseId).sort()).toEqual([
             "figaro-cold-chain",
             "figaro-data-license",
             "figaro-freight-class",
@@ -64,9 +64,9 @@ describe("clauseSpecSource — catalogue-authored fills (derive, not hardcode)",
         ]);
     });
 
-    it("an unloaded clause has no catalogue fills; the empty cache derives an empty set", () => {
-        expect(clauseCatalogueFills("figaro-never-seen")).toEqual([]);
-        expect(listCatalogueSourcedClauses()).toEqual([]);
+    it("an unloaded clause has no catalog fills; the empty cache derives an empty set", () => {
+        expect(clauseCatalogFills("figaro-never-seen")).toEqual([]);
+        expect(listCatalogSourcedClauses()).toEqual([]);
     });
 });
 

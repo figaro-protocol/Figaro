@@ -7,7 +7,7 @@
  * with NO courier designation. Coordination is an ADOPTION property, not
  * stored composition: a binding WITH a designation runs seller-assigned;
  * a binding WITHOUT one leaves the courier node unbound, and checkout falls
- * to the buyer's choice — the SellerCataloguePicker, this spec's NEW
+ * to the buyer's choice — the SellerCatalogPicker, this spec's NEW
  * coverage (no other e2e drives the unbound path).
  *
  *   ensure   → the delivery assembly is discovered by SHAPE (or authored
@@ -20,7 +20,7 @@
  *              reads "(choose below)"; the picker renders (unbound path);
  *              the buyer types the courier's address — itself DISCOVERED
  *              from MembersRegistry events + IPFS, never a roster — picks an
- *              item from that courier's live catalogue, and the P&L updates
+ *              item from that courier's live catalog, and the P&L updates
  *              to the picked price. The buyer signs BOTH orders through the
  *              one confirm gate.
  *   accept   → merchant first (root creates the process), courier second —
@@ -117,7 +117,7 @@ test.describe('BUYER-ASSIGNED — the buyer picks the courier at checkout (devne
 
         // ── The COURIER the buyer will pick — DISCOVERED from MembersRegistry
         //    events + IPFS (never a roster): the first bound seller that is
-        //    not the merchant (a binding is what admits a catalogue to every
+        //    not the merchant (a binding is what admits a catalog to every
         //    read — the even-surfacing rule). Filtered to anvil-held wallets:
         //    the spec later DRIVES the courier (accept + bond), and foreign
         //    sellers (the relay smoke's device-unique seller) legitimately
@@ -162,13 +162,13 @@ test.describe('BUYER-ASSIGNED — the buyer picks the courier at checkout (devne
         const breakdown = page.getByTestId('cart-contributor-breakdown');
         await expect(breakdown, 'the P&L renders the per-contributor breakdown').toBeVisible({ timeout: 30000 });
         await expect(breakdown, 'the unbound node awaits the buyer\'s choice').toContainText('(choose below)');
-        const picker = page.getByTestId('seller-catalogue-picker');
+        const picker = page.getByTestId('seller-catalog-picker');
         await expect(picker, 'the unbound path mounts the seller picker (buyer-assigned)').toBeVisible({ timeout: 15000 });
 
-        // The buyer types the courier's address; the courier's LIVE catalogue
+        // The buyer types the courier's address; the courier's LIVE catalog
         // renders from IPFS and the buyer picks an item at its published price.
         await page.getByTestId('input-seller-address').fill(COURIER);
-        await page.getByTestId('seller-catalogue-list').waitFor({ state: 'visible', timeout: 30000 });
+        await page.getByTestId('seller-catalog-list').waitFor({ state: 'visible', timeout: 30000 });
         await page.locator('[data-testid^="seller-item-"]').first().check();
         await expect(breakdown, 'the picked courier prices into the P&L').not.toContainText('(choose below)', { timeout: 15000 });
 

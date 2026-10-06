@@ -34,7 +34,7 @@ export function splitFirstSentence(desc: string): { lead: string; rest: string }
 }
 
 /**
- * Catalogue row for a contract or interface. Used inside `<ul>` lists on
+ * Catalog row for a contract or interface. Used inside `<ul>` lists on
  * `/spec` and any other page that needs to enumerate the on-chain surface.
  * Stable shape: title (mono) → optional meta-pill → one-line purpose → the
  * rest of the description behind a native `<details>` disclosure (renders in

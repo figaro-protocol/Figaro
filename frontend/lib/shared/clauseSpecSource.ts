@@ -299,30 +299,30 @@ export function clauseDesignFills(clauseId: string, version?: number): readonly 
     return getClauseSpec(clauseId, version)?.block?.design.fills ?? [];
 }
 
-/** The content fields (by name) authored per-item on the member's CATALOGUE
+/** The content fields (by name) authored per-item on the member's CATALOG
  *  (item master data: freight class, hazmat, cold-chain), read from the
  *  clause's own `block.checkout.catalogueFills`. Generic surfaces render a
- *  spec-driven authoring section per such clause on the catalogue item and
+ *  spec-driven authoring section per such clause on the catalog item and
  *  fold the stored values onto the matching leaf at checkout. Empty for
- *  clauses with no catalogue-authored fields — and while the spec is
+ *  clauses with no catalog-authored fields — and while the spec is
  *  uncached. ANY registered clause declaring fills participates — including
  *  one this codebase has never seen. */
-export function clauseCatalogueFills(clauseId: string, version?: number): readonly string[] {
+export function clauseCatalogFills(clauseId: string, version?: number): readonly string[] {
     return getClauseSpec(clauseId, version)?.block?.checkout.catalogueFills ?? [];
 }
 
-/** Every loaded clause identity with catalogue-authored fields — the set a
- *  catalogue item's authoring section iterates. Derived from the live registry
+/** Every loaded clause identity with catalog-authored fields — the set a
+ *  catalog item's authoring section iterates. Derived from the live registry
  *  cache, never a bundled list; a newly registered product-property clause
  *  appears here with zero code change. */
-export function listCatalogueSourcedClauses(): readonly { clauseId: string; version: number }[] {
-    return listKnownClauses().filter((c) => clauseCatalogueFills(c.clauseId, c.version).length > 0);
+export function listCatalogSourcedClauses(): readonly { clauseId: string; version: number }[] {
+    return listKnownClauses().filter((c) => clauseCatalogFills(c.clauseId, c.version).length > 0);
 }
 
 /** The content fields (by name) authored ONCE on the member's PROFILE (the member's
  *  master data: a dim-weight divisor, a declared credential id), read from the
  *  clause's own `block.checkout.profileFills` — the seller-level sibling of
- *  `clauseCatalogueFills` (item master data): catalogue = what is sold,
+ *  `clauseCatalogFills` (item master data): catalog = what is sold,
  *  profile = who sells. The profile editor renders exactly these fields; other
  *  fields belong to other sources (designer fills, checkout derivation). Empty
  *  for clauses with no profile-authored fields — and while the spec is

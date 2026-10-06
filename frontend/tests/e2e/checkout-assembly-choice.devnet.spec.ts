@@ -97,9 +97,9 @@ async function onboardViaWizard(page: Page, assemblySlugs: string[]) {
 
     // Step 3 — Buy through: skip
     await page.getByRole('button', { name: /^Next/ }).click();
-    await expect(page).toHaveURL(/\/members\/catalogue/);
+    await expect(page).toHaveURL(/\/members\/catalog/);
 
-    // Step 4 — Catalogue: one product (after both assembly steps: the bindings decide its clause fields)
+    // Step 4 — Catalog: one product (after both assembly steps: the bindings decide its clause fields)
     await page.locator('[id^="item-"][id$="-name"]').first().fill(SELLER.product.name);
     await page.locator('[id^="item-"][id$="-price"]').first().fill(SELLER.product.price);
     await page.getByRole('button', { name: /^Next/ }).click();
@@ -113,7 +113,7 @@ async function onboardViaWizard(page: Page, assemblySlugs: string[]) {
     await page.getByRole('button', { name: /^Next/ }).click();
     await page.waitForURL(/\/members\/review/, { timeout: 30_000 });
 
-    // Step 6 — Review + publish (pin catalogue + profile → register tx)
+    // Step 6 — Review + publish (pin catalog + profile → register tx)
     await expect(page.getByText(SELLER.name)).toBeVisible();
     await page.getByTestId('review-confirm-publish').click();
     await expect(page.getByRole('heading', { name: /Registered\.|Profile updated/i }))

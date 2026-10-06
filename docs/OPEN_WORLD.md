@@ -38,7 +38,7 @@ prohibition-only frame leaves a vacuum the base model fills with its default.
    set of drawer selections, an *output* of the live registry, never its definition.
 
 3. **It's protocol infrastructure; the frontend is a SURFACE.** The TCP/IP of trade;
-   surfaces compose the `lib/` catalogues and render indexer state; lifecycle =
+   surfaces compose the `lib/` catalogs and render indexer state; lifecycle =
    Design → First use → Checkout → Runtime; trust sits at the boundary/edge.
    *Tell:* "the app", "onboarding funnel", "user journey", UI-as-product.
 
@@ -90,7 +90,7 @@ Three legitimately bundled categories (do NOT flag):
    (the Core's 2× bond ratio, a token's max supply); bundle the constant, read
    live state for the variable part.
 3. **Off-chain content the chain commits only a hash/URI of** — clause specs,
-   agreements, profiles/catalogues. Fetching the pre-image of an on-chain
+   agreements, profiles/catalogs. Fetching the pre-image of an on-chain
    commitment is the pattern, not a copy. The SET stays event-driven; the per-item
    CONTENT resolves from the committed pointer.
 
@@ -278,7 +278,7 @@ metadata — not through bespoke app forks.)
   semantic adapters, capability mappings, default inspector/action modules, guarantee +
   risk copy.
 - **Service binding** — connects the institution to off-chain/hybrid infra (identity,
-  catalogue metadata, discovery, messaging/handoff, evidence transport, geospatial) through
+  catalog metadata, discovery, messaging/handoff, evidence transport, geospatial) through
   stable interfaces, not hardwired per use-case.
 - **View definition** — the UI composition primitive (surface id, accepted context, visible
   slots, module ordering, role-specific visibility).

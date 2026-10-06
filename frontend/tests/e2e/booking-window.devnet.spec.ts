@@ -6,13 +6,13 @@
  * window: rate × ceil(windowEnd − windowStart in hours). The quantity source
  * is `booking-window` (the time dual of `order-geodistance`), so the whole
  * figure is derivable and replayable from the agreement alone — no oracle, no
- * reference back to the mutable catalogue. The window is committed through the
+ * reference back to the mutable catalog. The window is committed through the
  * `figaro-schedule` clause, filled at checkout via the iso-datetime picker.
  *
  * Self-contained (permissionless-clause discipline, mirroring rate-pricing):
  * the spec authors its own 2-order assembly (a fixed lead + a booked hourly
  * sub-order carrying figaro-schedule), onboards its own lead + hourly provider
- * THROUGH the wizard (the rate lives in the member's CATALOGUE — pricing-policy
+ * THROUGH the wizard (the rate lives in the member's CATALOG — pricing-policy
  * / rate-unit / rate-source), binds + designates through seller-edit, and
  * checks out as the buyer. Discovered from chain + IPFS by SHAPE; idempotent.
  *
@@ -77,8 +77,8 @@ async function findBookingAssembly(): Promise<string | undefined> {
     })?.slug;
 }
 
-/** Walk the registration wizard for a wallet — catalogue item per `product`,
- *  including the rate-pricing fields (the rate lives in the CATALOGUE) when
+/** Walk the registration wizard for a wallet — catalog item per `product`,
+ *  including the rate-pricing fields (the rate lives in the CATALOG) when
  *  `product.rate` is set. Idempotent: callers gate on a conformance check. */
 async function onboardSeller(page: Page, opts: {
     wallet: Hex;
@@ -112,12 +112,12 @@ async function onboardSeller(page: Page, opts: {
     await page.getByRole('button', { name: /^Next/ }).click();
     await expect(page).toHaveURL(/\/members\/buyer/);
     await page.getByRole('button', { name: /^Next/ }).click();
-    await expect(page).toHaveURL(/\/members\/catalogue/);
+    await expect(page).toHaveURL(/\/members\/catalog/);
 
     await page.locator('[id^="item-"][id$="-name"]').first().fill(opts.product.name);
     await page.locator('[id^="item-"][id$="-price"]').first().fill(opts.product.price);
     if (opts.product.rate) {
-        // The wizard's pricing-policy axis writes the rate into the catalogue.
+        // The wizard's pricing-policy axis writes the rate into the catalog.
         await page.locator('[data-testid^="item-"][data-testid$="-pricing-policy"]').first()
             .selectOption('rate');
         await page.locator('[data-testid^="item-"][data-testid$="-rate-unit"]').first()

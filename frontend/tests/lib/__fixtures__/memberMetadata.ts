@@ -1,5 +1,5 @@
 /**
- * Synthetic example payloads for `MemberCatalogueMetadata` and
+ * Synthetic example payloads for `MemberCatalogMetadata` and
  * `MemberProfileMetadata`. Test-only — production code does not consume
  * these; kept out of `lib/shared/` so the runtime bundle never carries
  * fixture data.
@@ -31,5 +31,5 @@ export const MEMBER_PROFILE_METADATA_EXAMPLE: MemberProfileMetadata = {
         { address: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", symbol: "USDC", name: "USD Coin" },
     ],
     defaultTokenAddress: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
-    catalogueURI: "ipfs://example/catalogue.json",
+    catalogURI: "ipfs://example/catalog.json",
 };

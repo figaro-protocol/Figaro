@@ -6,7 +6,7 @@ import { hexEqual } from "@/lib/shared/evm";
 /**
  * Generic member-listing surface for `/discover`.
  *
- * Independent of the local-commerce-shaped `MemberCatalogue` type:
+ * Independent of the local-commerce-shaped `MemberCatalog` type:
  * a `Listing` is the projection of (subject + bindings + optional metadata)
  * into a shape the `MemberCard` can render across any assembly. An
  * member with zero bindings still produces a `Listing`; clicking any
@@ -82,7 +82,7 @@ export function profileToListing(
 import { truncateHex } from "@/lib/shared/formatHex";
 
 /** Find a member listing by wallet address. Case-insensitive. Accepts any
- *  {address}-keyed collection (Listing[], MemberCatalogue[], …). */
+ *  {address}-keyed collection (Listing[], MemberCatalog[], …). */
 export function findListingByAddress<T extends { address: string }>(
     listings: ReadonlyArray<T>,
     address: string,
@@ -92,7 +92,7 @@ export function findListingByAddress<T extends { address: string }>(
 }
 
 /** Resolve an address to a human-readable display name from any loaded
- *  {address, name} collection (registry listings, member catalogues),
+ *  {address, name} collection (registry listings, member catalogs),
  *  falling back to the truncated address when the wallet isn't in it (or
  *  it hasn't loaded yet). The ONE counterparty-name resolver — orders
  *  list, order timeline, checkout breakdown. */
@@ -136,9 +136,9 @@ export function sellerPageHref(address: string): string {
 
 /**
  * The destination URL for a listing card click: the per-member detail
- * page. The /s page reads the member's catalogue and bindings; assembly
+ * page. The /s page reads the member's catalog and bindings; assembly
  * disambiguation happens inside that page. A member with no bindings still
- * has a page — it surfaces the catalogue without a modality path.
+ * has a page — it surfaces the catalog without a modality path.
  */
 export function listingClickThroughHref(listing: Listing): string {
     return sellerPageHref(listing.address);

@@ -167,7 +167,7 @@ to. The shipped projections are in `@figaro-protocol/sdk/derive`.
 **Reconstructing the free part.** `fetchCoreEvents(client, addresses, fromBlock)`
 then `reconstruct(events)` (`@figaro-protocol/sdk`) returns the processes as a map;
 `FigaroContext.sync()` (`@figaro-protocol/sdk/agent`) does both and adds the live
-registry catalogue. What a wallet may then DO is read off that state
+registry catalog. What a wallet may then DO is read off that state
 (`proposeActions` / `proposeInitiations`, above), never off a stored role.
 
 Two things the Core does not hold, which no amount of querying will produce:
@@ -262,7 +262,7 @@ What is emitted, and what each thing is evidence of:
 - **A wallet published a profile, and staked to keep it surfaced.**
   `MembersRegistry.MemberRegistered(member, metadataURI)` and `MemberProfileUpdated`; the
   URI resolves to the member-profile document (`parseMemberProfileDocument`) carrying the
-  name, optional branding, accepted tokens, an optional `catalogueURI`, and optional
+  name, optional branding, accepted tokens, an optional `catalogURI`, and optional
   `services`. `MemberWithdrawalRequested` / `MemberWithdrawn` are the same signal run
   backwards. Evidence of: a counterparty holding a live, reclaimable stake — never a
   score, never a gate.

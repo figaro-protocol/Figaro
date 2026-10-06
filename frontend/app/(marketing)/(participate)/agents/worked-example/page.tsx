@@ -146,7 +146,7 @@ export default function WorkedExample() {
                     protocol is built to reward is the next one: whoever composes the shape a
                     market ends up trading through draws from the reserve set aside for exactly
                     that (<Link href="/rpgf" className="text-ink-heading font-medium hover:underline">Designer Rewards</Link>).
-                    The worked example is a start, not a catalogue.
+                    The worked example is a start, not a catalog.
                 </p>
             </MarketingSection>
         </>

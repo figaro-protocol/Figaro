@@ -1,5 +1,5 @@
 /**
- * ContractEntry — two-tier catalogue row. `splitFirstSentence` is the pure
+ * ContractEntry — two-tier catalog row. `splitFirstSentence` is the pure
  * derivation (first ". " boundary → lead / rest); the component always
  * shows `lead` and puts `rest` behind a native `<details>` disclosure so the
  * text still renders in static HTML (no JS-gated content).

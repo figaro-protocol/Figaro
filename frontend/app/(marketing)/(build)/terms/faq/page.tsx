@@ -156,7 +156,7 @@ export default function Faq() {
                     The forum rules on the open process, using the data both sides hold. It cannot resolve the process and no ruling reaches the bonds. The parties carry its ruling into a remedy before the buyer resolves.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
-                    Kleros is one forum. Any other composes the same way. The catalogue of what composes is on <Link href="/composition" className="text-ink-heading font-medium hover:underline">Composition</Link>.
+                    Kleros is one forum. Any other composes the same way. The catalog of what composes is on <Link href="/composition" className="text-ink-heading font-medium hover:underline">Composition</Link>.
                 </p>
             </MarketingSection>
 

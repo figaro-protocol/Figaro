@@ -83,7 +83,7 @@ async function ensurePosSeller(token: Hex): Promise<Hex> {
     const slug = await findPosAssembly();
     const bound = (await memberProfileBindings(POS_SELLER)).some((b) => b.assemblySlug === slug);
     if (!bound) {
-        const { uri: catalogueURI } = await pinJSONToIPFS({
+        const { uri: catalogURI } = await pinJSONToIPFS({
             subjectAddress: POS_SELLER,
             version: '1.0.0',
             unitSystem: 'metric' as const,
@@ -102,7 +102,7 @@ async function ensurePosSeller(token: Hex): Promise<Hex> {
             profile: {
                 name: 'Corner Counter',
                 description: 'POS reference seller — seeded by orders-accept.devnet.spec.ts',
-                catalogueURI,
+                catalogURI,
                 acceptedTokens: [{ address: token, symbol: 'MOCK', chainId: 31337 }],
                 defaultTokenAddress: token,
                 assemblyBindings: [{

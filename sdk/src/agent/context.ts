@@ -48,7 +48,7 @@ export interface SyncResult {
 export class FigaroContext {
     /** The processes this agent is in — reconstructed from FigaroCore events. */
     readonly topology: Topology;
-    /** What EXISTS on the network — the live clause/seller/assembly catalogue.
+    /** What EXISTS on the network — the live clause/seller/assembly catalog.
      *  A parallel family (registries have no on-chain edges to FigaroCore), so
      *  a distinct reducer, never folded into `topology`. */
     readonly discovery: DiscoveryGraph;
@@ -70,7 +70,7 @@ export class FigaroContext {
 
     /**
      * Sync all events from chain — both the agent's processes AND the network
-     * catalogue (the registries). First call fetches from genesis; subsequent
+     * catalog (the registries). First call fetches from genesis; subsequent
      * calls fetch only new blocks (incremental). Registry families whose address
      * is unconfigured simply contribute nothing.
      */
@@ -156,7 +156,7 @@ export class FigaroContext {
         });
     }
 
-    // ── Discovery (the cold-start catalogue) ─────────────────────────────────
+    // ── Discovery (the cold-start catalog) ─────────────────────────────────
 
     /** All live-staked clauses on the network. */
     getClauses(): RegisteredClause[] {

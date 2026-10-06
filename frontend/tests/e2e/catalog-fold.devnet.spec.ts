@@ -1,9 +1,9 @@
 /**
- * catalogue-fold.devnet.spec.ts — the CATALOGUE→LEAF→DOCUMENT pipeline, end to end.
+ * catalog-fold.devnet.spec.ts — the CATALOG→LEAF→DOCUMENT pipeline, end to end.
  *
  * The antecedent is permissionless-clause (a never-seen clause flows soup to nuts
  * generically); this is its sibling for the checkout FOLD. It proves the other
- * open-world half: physical product data a seller authors on its CATALOGUE
+ * open-world half: physical product data a seller authors on its CATALOG
  * (mass, volume, packaged L×W×H) is DERIVED onto the committed cargo leaf at
  * checkout — by declared field, naming no clause — and then surfaces in the audit
  * bundle GENERICALLY (the same clause-evidence view + merkle verifier that
@@ -11,8 +11,8 @@
  * hand-rolled BoL/invoice: the folded leaf is just another committed leaf,
  * rendered from its registered spec and hash-verified against the on-chain root.
  *
- *   catalogue → the seller authors an item carrying mass/volume/dimensions
- *               through the REAL catalogue form (the P1 floor inputs)
+ *   catalog → the seller authors an item carrying mass/volume/dimensions
+ *               through the REAL catalog form (the P1 floor inputs)
  *   compose   → an assembly carrying figaro-cargo is authored on the REAL canvas
  *   fold      → at checkout the fold sums mass/volume across the cart and writes
  *               the single-parcel packaged dimensions onto the cargo leaf
@@ -84,7 +84,7 @@ async function waitForConnected(page: Page) {
     );
 }
 
-test.describe('CATALOGUE→LEAF fold — physical catalogue data derives onto the cargo leaf, surfaced generically (devnet)', () => {
+test.describe('CATALOG→LEAF fold — physical catalog data derives onto the cargo leaf, surfaced generically (devnet)', () => {
     test.setTimeout(360_000);
 
     test('authored mass/volume/dimensions fold onto the committed cargo leaf and surface in the generic audit', async ({ page }) => {
@@ -122,8 +122,8 @@ test.describe('CATALOGUE→LEAF fold — physical catalogue data derives onto th
         // Stable editorial name: identity is the composition, not the name.
         const assemblyName = 'Cargo fold';
         await page.getByTestId('designer-name-input').fill(assemblyName);
-        await page.getByTestId('designer-summary-input').fill('Catalogue→leaf fold: authored physical data lands on the cargo leaf.');
-        await page.getByTestId('designer-description-input').fill('Single-node assembly carrying figaro-cargo — the fold derives mass/volume/dimensions from the catalogue.');
+        await page.getByTestId('designer-summary-input').fill('Catalog→leaf fold: authored physical data lands on the cargo leaf.');
+        await page.getByTestId('designer-description-input').fill('Single-node assembly carrying figaro-cargo — the fold derives mass/volume/dimensions from the catalog.');
         await expect(page.getByTestId('designer-review')).toBeEnabled({ timeout: 5000 });
         await page.getByTestId('designer-review').click();
 
@@ -156,8 +156,8 @@ test.describe('CATALOGUE→LEAF fold — physical catalogue data derives onto th
             expect(slug, 'publish receipt shows the content slug').toMatch(/^asm-/);
         }
 
-        // ── CATALOGUE: onboard anvil[15] and author an item carrying mass, volume,
-        //    and packaged dimensions through the REAL catalogue form (the P1 floor
+        // ── CATALOG: onboard anvil[15] and author an item carrying mass, volume,
+        //    and packaged dimensions through the REAL catalog form (the P1 floor
         //    inputs), binding the cargo assembly. Storage is metric. ──
         await gotoAsWallet(page, SELLER, '/members');
         await page.goto('/members/identity', { waitUntil: 'domcontentloaded' });
@@ -176,7 +176,7 @@ test.describe('CATALOGUE→LEAF fold — physical catalogue data derives onto th
         await page.getByRole('button', { name: /^Next/ }).click();
         await expect(page).toHaveURL(/\/members\/buyer/);
         await page.getByRole('button', { name: /^Next/ }).click();
-        await expect(page).toHaveURL(/\/members\/catalogue/);
+        await expect(page).toHaveURL(/\/members\/catalog/);
 
         // The item + its physical facts. The dim/mass/volume inputs are the P1 floor
         // fields (`item-<uid>-{name,price,mass,volume,length,width,height}`).

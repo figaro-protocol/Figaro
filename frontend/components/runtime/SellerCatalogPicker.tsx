@@ -1,11 +1,11 @@
 "use client";
 
 /**
- * SellerCataloguePicker — the counterparty-seller selection step at checkout.
+ * SellerCatalogPicker — the counterparty-seller selection step at checkout.
  *
  * When an order names a second seller (the order's coordination clause is what
  * makes it a coordination sub-order, never this picker), that seller is its own
- * buyer↔seller order, priced from the seller's own catalogue. Two coordination
+ * buyer↔seller order, priced from the seller's own catalog. Two coordination
  * modes, one mechanism — they differ only in how the seller's address is
  * obtained:
  *
@@ -13,12 +13,12 @@
  *     (`partnerAddresses`).
  *   - buyer-assigned  — the buyer enters any seller's address.
  *
- * Either way: the address resolves the seller's catalogue, and the buyer
+ * Either way: the address resolves the seller's catalog, and the buyer
  * selects an item from its published price list.
  *
- * Catalogues come from `useRegisteredCatalogues` — the discovered member
- * set. Any wallet that publishes a catalogue is a registered member, so an
- * address outside that set has no catalogue to show.
+ * Catalogs come from `useRegisteredCatalogs` — the discovered member
+ * set. Any wallet that publishes a catalog is a registered member, so an
+ * address outside that set has no catalog to show.
  *
  * Reports the completed selection up via `onSelect`; reports `null` while
  * the selection is incomplete.
@@ -26,15 +26,15 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { isAddress } from "viem";
-import { useRegisteredCatalogues } from "@/lib/member/useRegisteredCatalogues";
-import type { CatalogueItemMetadata } from "@/lib/member/memberCatalogueMetadata";
+import { useRegisteredCatalogs } from "@/lib/member/useRegisteredCatalogs";
+import type { CatalogItemMetadata } from "@/lib/member/memberCatalogMetadata";
 import { hexEqual } from "@/lib/shared/evm";
 
 export interface SellerSelection {
     seller: `0x${string}`;
-    /** The chosen item from the seller's catalogue. */
-    item: CatalogueItemMetadata;
-    /** The effective price — the item's published catalogue figure. */
+    /** The chosen item from the seller's catalog. */
+    item: CatalogItemMetadata;
+    /** The effective price — the item's published catalog figure. */
     price: string;
 }
 
@@ -47,26 +47,26 @@ interface Props {
 
 const FIELD = "w-full rounded border border-default bg-surface px-3 py-2 text-sm text-ink-primary focus:outline-none focus:ring-2 focus:ring-focus focus:border-transparent";
 
-export function SellerCataloguePicker({ tokenSymbol, onSelect }: Props) {
+export function SellerCatalogPicker({ tokenSymbol, onSelect }: Props) {
     const [selectedSellerAddress, setSelectedSellerAddress] = useState("");
     const [selectedItemId, setSelectedItemId] = useState("");
 
     const validSeller = isAddress(selectedSellerAddress) ? (selectedSellerAddress as `0x${string}`) : undefined;
-    const { catalogues: memberCatalogues, isLoading } = useRegisteredCatalogues();
+    const { catalogs: memberCatalogs, isLoading } = useRegisteredCatalogs();
 
-    const memberCatalogue = useMemo(
-        () => (validSeller ? memberCatalogues.find((c) => hexEqual(c.address, validSeller)) : undefined),
-        [validSeller, memberCatalogues],
+    const memberCatalog = useMemo(
+        () => (validSeller ? memberCatalogs.find((c) => hexEqual(c.address, validSeller)) : undefined),
+        [validSeller, memberCatalogs],
     );
-    // The seller's published catalogue is the selectable set — `category` is a
+    // The seller's published catalog is the selectable set — `category` is a
     // free-form seller label, never a closed tag the picker may branch on (the
     // coordination context comes from the order's coordination clause, not from
     // an item's category string).
-    const catalogueItems = useMemo(
-        () => memberCatalogue?.items ?? [],
-        [memberCatalogue],
+    const catalogItems = useMemo(
+        () => memberCatalog?.items ?? [],
+        [memberCatalog],
     );
-    const selectedItem = catalogueItems.find((i) => i.id === selectedItemId);
+    const selectedItem = catalogItems.find((i) => i.id === selectedItemId);
 
     // Report the completed selection up. `onSelect` is expected to be a
     // stable setter; the deps are primitives + a stable item ref.
@@ -81,7 +81,7 @@ export function SellerCataloguePicker({ tokenSymbol, onSelect }: Props) {
     const resetItem = () => setSelectedItemId("");
 
     return (
-        <div className="space-y-2" data-testid="seller-catalogue-picker">
+        <div className="space-y-2" data-testid="seller-catalog-picker">
             <label className="text-xs font-semibold text-ink-muted block">
                 Seller address
             </label>
@@ -96,22 +96,22 @@ export function SellerCataloguePicker({ tokenSymbol, onSelect }: Props) {
                 className={FIELD}
             />
 
-            {/* Catalogue step — the seller's published price list. */}
-            {validSeller && isLoading && catalogueItems.length === 0 && (
-                <p className="text-xs text-ink-muted">Loading the seller&apos;s catalogue…</p>
+            {/* Catalog step — the seller's published price list. */}
+            {validSeller && isLoading && catalogItems.length === 0 && (
+                <p className="text-xs text-ink-muted">Loading the seller&apos;s catalog…</p>
             )}
-            {validSeller && !isLoading && catalogueItems.length === 0 && (
+            {validSeller && !isLoading && catalogItems.length === 0 && (
                 <p className="text-xs text-ink-muted" data-testid="seller-no-items">
-                    This seller publishes no catalogue items.
+                    This seller publishes no catalog items.
                 </p>
             )}
-            {catalogueItems.length > 0 && (
-                <div className="space-y-1 rounded border border-default p-2" data-testid="seller-catalogue-list">
-                    {catalogueItems.map((item) => (
+            {catalogItems.length > 0 && (
+                <div className="space-y-1 rounded border border-default p-2" data-testid="seller-catalog-list">
+                    {catalogItems.map((item) => (
                         <label key={item.id} className="flex items-center gap-2 text-sm cursor-pointer">
                             <input
                                 type="radio"
-                                name="seller-catalogue-item"
+                                name="seller-catalog-item"
                                 value={item.id}
                                 checked={selectedItemId === item.id}
                                 onChange={() => setSelectedItemId(item.id)}

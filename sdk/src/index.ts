@@ -125,7 +125,7 @@ export type {
 export { reconstruct, Topology } from "./state.js";
 export type { CoreEvents } from "./state.js";
 
-// Discovery — the cold-start catalogue (clauses, members, assemblies)
+// Discovery — the cold-start catalog (clauses, members, assemblies)
 export {
     computeClauseKey,
     parseClauseRegistryLogs,
@@ -228,7 +228,7 @@ export {
     specDeclaresContentField,
     specDeclaresDesignFill,
     specHasPrivateField,
-    specCatalogueFills,
+    specCatalogFills,
     specProfileFills,
     specIsProcessLog,
     specIsAssemblyScoped,
@@ -285,7 +285,7 @@ export {
 export type {
     AssemblyCheckoutLineItem,
     BoundAssemblyPlanInput,
-    PricingCatalogue,
+    PricingCatalog,
     RateQuantityContext,
     RateQuantityResolver,
     SubOrderPricing,
@@ -326,14 +326,14 @@ export type {
     AgentServiceInfo,
 } from "./memberProfile.js";
 
-// Member catalogue document — the volatile item list pinned to
-// MemberProfileMetadata.catalogueURI. Types + strict parser.
-export { parseMemberCatalogueDocument } from "./memberCatalogue.js";
+// Member catalog document — the volatile item list pinned to
+// MemberProfileMetadata.catalogURI. Types + strict parser.
+export { parseMemberCatalogDocument } from "./memberCatalog.js";
 export type {
     UnitSystem,
-    CatalogueItemMetadata,
-    MemberCatalogueMetadata,
-} from "./memberCatalogue.js";
+    CatalogItemMetadata,
+    MemberCatalogMetadata,
+} from "./memberCatalog.js";
 
 // THE MECHANISM'S EQUILIBRIUM, stated once — sdk/src/equilibrium.json: the bonds,
 // the payoffs, the outcome table, the deterrent gap, and the hypotheses every

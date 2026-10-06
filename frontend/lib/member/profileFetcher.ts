@@ -7,7 +7,7 @@
  * surface (the surfaces previously each hand-rolled `fetch(url).json()`).
  * The write path (pin + updateProfile) lives in `useUpdateMemberProfile`.
  * Backed by the generic `createUriFetcher` pipeline, sibling of
- * `catalogueFetcher.ts`.
+ * `catalogFetcher.ts`.
  *
  * Cache is keyed by URI: a profile update re-pins to a NEW URI, so reads
  * after a write are fresh without explicit invalidation.

@@ -3,17 +3,17 @@
  *
  * MEMBER REGISTRATION WIZARD (lifecycle Phase 2) — the UI test that a wallet can
  * register through the real wizard (no welcome — /join owns the pitch):
- * identity → assemblies → catalogue → buyer → agents → endpoints → review →
+ * identity → assemblies → catalog → buyer → agents → endpoints → review →
  * publish, ending anchored on `MembersRegistry`, pinned to IPFS, and surfacing
  * on `/s/view` and `/discover`. The buyer step subscribes an assembly the
  * wallet buys through and offers some of its data — the pinned document must
  * carry BOTH halves.
  *
- * Assemblies precede Catalogue because the bindings decide which clauses the
+ * Assemblies precede Catalog because the bindings decide which clauses the
  * seller's trades carry, and those clauses decide which item fields the
- * catalogue asks for. The walk asserts that direction: on the catalogue step,
+ * catalog asks for. The walk asserts that direction: on the catalog step,
  * every clause section rendered belongs to a clause the BOUND assembly
- * composes, and a catalogue-authored clause from an unbound assembly is
+ * composes, and a catalog-authored clause from an unbound assembly is
  * absent.
  *
  * The draft is browser-side and wallet-keyed, so the walk reloads mid-wizard
@@ -137,9 +137,9 @@ async function onboardViaWizard(
     await page.getByRole("button", { name: /^Next/ }).click();
     await expect(page).toHaveURL(/\/members\/assemblies/);
 
-    // Assemblies come BEFORE the catalogue: the bindings decide which clauses
+    // Assemblies come BEFORE the catalog: the bindings decide which clauses
     // the seller's trades carry, and those clauses decide which item fields
-    // the catalogue step asks for. MANDATORY: a profile without bindings
+    // the catalog step asks for. MANDATORY: a profile without bindings
     // cannot be ordered from. An update-mode run hydrates
     // the wallet's prior bindings — clear them first: this scenario's premise
     // is EXACTLY ONE single-order binding (the bilateral flow orders-accept
@@ -216,9 +216,9 @@ async function onboardViaWizard(
         await offerBox.check();
     }
     await page.getByRole("button", { name: /^Next/ }).click();
-    await expect(page).toHaveURL(/\/members\/catalogue/);
+    await expect(page).toHaveURL(/\/members\/catalog/);
 
-    // Catalogue: one product. The clause sections on an item derive from the
+    // Catalog: one product. The clause sections on an item derive from the
     // assemblies bound on the Sell through step, so a member who binds none sees none.
     await page.locator('[id^="item-"][id$="-name"]').first().fill(SELLER.product.name);
     await page.locator('[id^="item-"][id$="-price"]').first().fill(SELLER.product.price);
@@ -250,11 +250,11 @@ async function onboardViaWizard(
     for (const clauseId of renderedClauseIds) {
         expect(
             composed.has(clauseId),
-            `the catalogue asks for "${clauseId}", which the bound assembly does not compose`,
+            `the catalog asks for "${clauseId}", which the bound assembly does not compose`,
         ).toBe(true);
     }
 
-    // And the filter BITES: a catalogue-authored clause composed by some OTHER
+    // And the filter BITES: a catalog-authored clause composed by some OTHER
     // anchored assembly, but not by this one, has no section here.
     const unboundClause = (await discoverAnchoredAssemblies())
         .filter((a) => a.slug !== assemblySlug)
@@ -275,7 +275,7 @@ async function onboardViaWizard(
     await page.getByRole("button", { name: /^Next/ }).click();
     await page.waitForURL(/\/members\/review/, { timeout: 30_000 });
 
-    // Review + publish (pin catalogue + profile → register tx)
+    // Review + publish (pin catalog + profile → register tx)
     await expect(page.getByText(SELLER.name)).toBeVisible();
 
     // The route the review step PROMISES the seller must be the route the site

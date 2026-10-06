@@ -11,7 +11,7 @@
  *              (courier + supplier wallets) on the chain assembly's binding;
  *              the courier + supplier each pin the chain assembly to their OWN
  *              profiles through the seller-edit surface — the even-surfacing
- *              rule admits a seller's catalogue to every
+ *              rule admits a seller's catalog to every
  *              read (discovery, checkout pricing) only with an anchored
  *              binding, and a participating seller binding the assembly it
  *              participates in IS the designed conformance path
@@ -47,7 +47,7 @@
  * members-onboarding's wizard member is. anvil[15] is used by no other spec;
  * the courier/supplier counterparties are the seeded Cardinal Couriers
  * (anvil[8]) and Fernhill Nursery (anvil[11]) — pre-populated sellers whose
- * catalogues price the sub-orders live.
+ * catalogs price the sub-orders live.
  *
  * No evmSnapshot/evmRevert — devnet is a mainnet rehearsal; the gate is
  * idempotent (skips when the lead's profile already carries the conformant
@@ -92,7 +92,7 @@ const BUYER = ANVIL_ACCOUNTS[0] as Hex; // anvil[0] — the fixture's default bu
 //    wizard member): the lead's identity, and the wallets the lead designates
 //    to fill the chain's sub-orders. anvil[15]: outside the buyer range and
 //    every other spec's seller set. The counterparties are seeded sellers —
-//    their catalogues price the sub-orders live at checkout.
+//    their catalogs price the sub-orders live at checkout.
 const LEAD = {
     address: mnemonicToAccount(ANVIL_MNEMONIC, { addressIndex: 15 }).address as Hex,
     name: 'Chain Lead Workshop',
@@ -206,7 +206,7 @@ test.describe('VALUE-ADDED CHAIN — one buyer binds three sellers; one resolve 
             await page.getByRole('button', { name: /^Next/ }).click();
             await expect(page).toHaveURL(/\/members\/buyer/);
             await page.getByRole('button', { name: /^Next/ }).click();
-            await expect(page).toHaveURL(/\/members\/catalogue/);
+            await expect(page).toHaveURL(/\/members\/catalog/);
 
             await page.locator('[id^="item-"][id$="-name"]').first().fill(LEAD.product.name);
             await page.locator('[id^="item-"][id$="-price"]').first().fill(LEAD.product.price);
@@ -231,7 +231,7 @@ test.describe('VALUE-ADDED CHAIN — one buyer binds three sellers; one resolve 
 
         // ── GATE, second half (idempotent): the courier + supplier PIN the chain
         //    assembly to their own profiles through the seller-edit surface. The
-        //    even-surfacing rule admits a seller's catalogue to every read
+        //    even-surfacing rule admits a seller's catalog to every read
         //    (discovery, checkout counterparty pricing) only with an anchored
         //    binding — a participating seller binds the assembly it participates
         //    in. Verified out-of-band from the registry events + IPFS. ──
@@ -297,7 +297,7 @@ test.describe('VALUE-ADDED CHAIN — one buyer binds three sellers; one resolve 
         await methodSelect.selectOption(chainSlug);
 
         // The P&L, externalized BEFORE signing: one row per contributor, each
-        // priced live from that contributor's own catalogue (lead 1 + courier 1 +
+        // priced live from that contributor's own catalog (lead 1 + courier 1 +
         // supplier 1), and the buyer's total lock = 2× the chain total.
         const breakdown = page.getByTestId('cart-contributor-breakdown');
         await expect(breakdown, 'checkout shows the per-contributor breakdown').toBeVisible({ timeout: 30000 });
@@ -358,7 +358,7 @@ test.describe('VALUE-ADDED CHAIN — one buyer binds three sellers; one resolve 
         // Root — the lead. Creates the process at cumulative 1.
         const rootEvent = await acceptAs(LEAD.address, 'lead');
         const processId = rootEvent.args.processId!;
-        expect(rootEvent.args.payment, 'root payment = the lead catalogue price').toBe(parseEther('1'));
+        expect(rootEvent.args.payment, 'root payment = the lead catalog price').toBe(parseEther('1'));
         {
             const { buyerBond, sellerBond } = calculateBonds(rootEvent.args.cumulativeValue!, rootEvent.args.payment!);
             const [b, l, c] = await Promise.all([balanceOf(BUYER), balanceOf(LEAD.address), balanceOf(core)]);
@@ -439,7 +439,7 @@ test.describe('VALUE-ADDED CHAIN — one buyer binds three sellers; one resolve 
             return event;
         })();
         expect(courierEvent.args.processId, 'the courier order extends the SAME process').toBe(processId);
-        expect(courierEvent.args.payment, "courier payment = the courier's own catalogue price").toBe(parseEther('1'));
+        expect(courierEvent.args.payment, "courier payment = the courier's own catalog price").toBe(parseEther('1'));
         // THE regression condition: a sub-order's cumulative value exceeds its
         // own payment — the two calculateBonds args are NOT interchangeable here.
         expect(courierEvent.args.cumulativeValue! > courierEvent.args.payment!,
@@ -460,7 +460,7 @@ test.describe('VALUE-ADDED CHAIN — one buyer binds three sellers; one resolve 
         // Second sub — the supplier. Extends to cumulative 3.
         const supplierEvent = await acceptAs(SUPPLIER, 'supplier');
         expect(supplierEvent.args.processId, 'the supplier order extends the SAME process').toBe(processId);
-        expect(supplierEvent.args.payment, "supplier payment = the supplier's own catalogue price").toBe(parseEther('1'));
+        expect(supplierEvent.args.payment, "supplier payment = the supplier's own catalog price").toBe(parseEther('1'));
         const courierBonds = calculateBonds(courierEvent.args.cumulativeValue!, courierEvent.args.payment!);
         const supplierBonds = calculateBonds(supplierEvent.args.cumulativeValue!, supplierEvent.args.payment!);
         {

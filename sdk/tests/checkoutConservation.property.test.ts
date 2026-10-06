@@ -19,7 +19,7 @@ import fc from "fast-check";
 import { parseUnits } from "viem";
 import { describe, expect, it } from "vitest";
 import { reconstructOrdersFromTemplate } from "../src/reconstructOrders.js";
-import { resolveSubOrderPricing, type PricingCatalogue } from "../src/checkoutPlan.js";
+import { resolveSubOrderPricing, type PricingCatalog } from "../src/checkoutPlan.js";
 import type { AssemblyTemplate, TemplateAgreement } from "../src/assembly.js";
 import { specSourceFromFixtures } from "./specFixtures.js";
 import { addressArb } from "./propertyArbs.js";
@@ -158,13 +158,13 @@ describe("resolveSubOrderPricing — replay invariant", () => {
     it("fixed items: payment = unitPrice, billedQuantity = 1, exactly the published price", () => {
         fc.assert(
             fc.property(priceArb, addressArb, ({ price, decimals }, seller) => {
-                const catalogues = [
+                const catalogs = [
                     { address: seller, items: [{ id: "i", name: "I", price, available: true }] },
-                ] as unknown as PricingCatalogue[];
+                ] as unknown as PricingCatalog[];
                 const p = resolveSubOrderPricing({
                     node,
                     seller,
-                    sellerCatalogues: catalogues,
+                    sellerCatalogs: catalogs,
                     tokenDecimals: decimals,
                     specs: NO_SPECS,
                 });
@@ -180,7 +180,7 @@ describe("resolveSubOrderPricing — replay invariant", () => {
         const unitsArb = fc.integer({ min: 1, max: 100_000 }).map((v) => v / 100); // 0.01 … 1000.00
         fc.assert(
             fc.property(priceArb, addressArb, unitsArb, ({ price, decimals }, seller, units) => {
-                const catalogues = [
+                const catalogs = [
                     {
                         address: seller,
                         items: [{
@@ -189,11 +189,11 @@ describe("resolveSubOrderPricing — replay invariant", () => {
                             rateQuantitySource: "checkout-quantity",
                         }],
                     },
-                ] as unknown as PricingCatalogue[];
+                ] as unknown as PricingCatalog[];
                 const p = resolveSubOrderPricing({
                     node,
                     seller,
-                    sellerCatalogues: catalogues,
+                    sellerCatalogs: catalogs,
                     tokenDecimals: decimals,
                     specs: NO_SPECS,
                     checkoutQuantity: units,
@@ -201,7 +201,7 @@ describe("resolveSubOrderPricing — replay invariant", () => {
                 expect(p.billedQuantity).toBe(Math.max(1, Math.ceil(units)));
                 expect(p.unitPrice).toBe(parseUnits(price, decimals));
                 // The replay invariant: the committed line item reproduces the
-                // signed payment with no reference back to the catalogue.
+                // signed payment with no reference back to the catalog.
                 expect(p.payment).toBe(p.unitPrice * BigInt(p.billedQuantity));
             }),
         );

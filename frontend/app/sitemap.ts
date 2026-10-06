@@ -31,7 +31,7 @@ type Entry = {
 //     the id is an open-world value unknowable at build time, so there is no
 //     enumerable URL set to publish.
 //   - `/assemblies/designer/new`: a per-instance authoring form, not a document.
-//   - The `/members/{identity,catalogue,assemblies,buyer,endpoints,agents,review}`
+//   - The `/members/{identity,catalog,assemblies,buyer,endpoints,agents,review}`
 //     and `/members/edit/*` steps: interior states of the `/members` enrolment
 //     wizard, entered from it and meaningless as landings.
 //   - `/evidence-display`: a deliberate orphan — the iframe target for a

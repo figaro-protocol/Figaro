@@ -1,8 +1,8 @@
 /**
- * memberCatalogue.ts — the member CATALOGUE document (off-chain).
+ * memberCatalog.ts — the member CATALOG document (off-chain).
  *
- * The catalogue is the volatile sales-context payload a member pins to
- * IPFS and points to from `MemberProfileMetadata.catalogueURI`: the list
+ * The catalog is the volatile sales-context payload a member pins to
+ * IPFS and points to from `MemberProfileMetadata.catalogURI`: the list
  * of items for sale plus a version and the subject wallet. Identity,
  * branding, location, accepted tokens, agent endpoints, and assembly
  * bindings all live on the member profile (`memberProfile.ts`) so an item
@@ -10,7 +10,7 @@
  *
  * This module owns the document TYPES and the strict PARSER. Discovery
  * hands an integrator a `metadataURI` (the profile); the profile's
- * `catalogueURI` points here — `parseMemberCatalogueDocument` is the
+ * `catalogURI` points here — `parseMemberCatalogDocument` is the
  * natural next call after fetching that JSON.
  */
 
@@ -26,14 +26,14 @@ import {
 import { isBytes32Hex } from "./types.js";
 
 /**
- * The member's preferred unit system for the catalogue editor + display.
+ * The member's preferred unit system for the catalog editor + display.
  * Storage of `massGrams` / `volumeMl` is ALWAYS metric — `unitSystem`
  * only governs how the editor accepts input and how the display
  * formats the stored metric values back to the seller's locale.
  */
 export type UnitSystem = "metric" | "imperial";
 
-export interface CatalogueItemMetadata {
+export interface CatalogItemMetadata {
     id: string;
     name: string;
     description?: string;
@@ -53,7 +53,7 @@ export interface CatalogueItemMetadata {
     available: boolean;
     /**
      * Item mass in grams. Storage canonical: always metric. The editor
-     * accepts oz/lbs input when the catalogue's `unitSystem` is
+     * accepts oz/lbs input when the catalog's `unitSystem` is
      * "imperial" and converts to grams before persisting. Optional —
      * items that aren't physical (virtual services) or aren't yet
      * annotated can omit it.
@@ -83,7 +83,7 @@ export interface CatalogueItemMetadata {
      * `rateQuantitySource` — billed per STARTED unit (quantity = ceil of the
      * resolved units, min 1), so the committed line item alone replays the
      * payment (quantity × unitPrice) with no reference back to this mutable
-     * catalogue.
+     * catalog.
      */
     pricingPolicy?: "fixed" | "rate";
     /**
@@ -100,7 +100,7 @@ export interface CatalogueItemMetadata {
      */
     rateQuantitySource?: string;
     /**
-     * Catalogue-sourced clause values — product master data authored per item
+     * Catalog-sourced clause values — product master data authored per item
      * for clauses that declare `block.checkout.catalogueFills` (freight class, hazmat,
      * cold-chain, …). Keyed by clauseId → the clause's content field values
      * (the same `{clause, data}` shape as an agreement section's `data`).
@@ -128,32 +128,32 @@ export interface CatalogueItemMetadata {
 }
 
 /**
- * The catalogue document — a wallet's list of items for sale.
+ * The catalog document — a wallet's list of items for sale.
  *
  * Identity, location, branding, accepted tokens, agent endpoints,
  * assembly bindings, and operational config all live on the seller
- * profile (`MemberProfileMetadata`); the catalogue carries only the
+ * profile (`MemberProfileMetadata`); the catalog carries only the
  * volatile sales-context payload, so an item edit re-pins one small
  * JSON instead of the whole identity envelope.
  *
- * Pricing: the catalogue is denominated in the profile's
+ * Pricing: the catalog is denominated in the profile's
  * `defaultTokenAddress`. Frontends convert to whatever accepted token
  * the buyer commits in via Uniswap quote at commit time.
  */
-export interface MemberCatalogueMetadata {
+export interface MemberCatalogMetadata {
     subjectAddress: `0x${string}`;
-    items: CatalogueItemMetadata[];
+    items: CatalogItemMetadata[];
     version: string;
     /**
      * The member's preferred unit system for editor + display. Storage of
-     * mass/volume on `CatalogueItemMetadata` is always metric; this
+     * mass/volume on `CatalogItemMetadata` is always metric; this
      * field is a UI preference only. Defaults to "metric" when unset.
      */
     unitSystem?: UnitSystem;
 }
 
 const ALLOWED_UNIT_SYSTEMS = new Set<UnitSystem>(["metric", "imperial"]);
-const ALLOWED_PRICING_POLICIES = new Set<NonNullable<CatalogueItemMetadata["pricingPolicy"]>>([
+const ALLOWED_PRICING_POLICIES = new Set<NonNullable<CatalogItemMetadata["pricingPolicy"]>>([
     "fixed",
     "rate",
 ]);
@@ -161,7 +161,7 @@ const ALLOWED_PRICING_POLICIES = new Set<NonNullable<CatalogueItemMetadata["pric
 function parseOptionalPricingPolicy(
     value: unknown,
     path: string,
-): CatalogueItemMetadata["pricingPolicy"] {
+): CatalogItemMetadata["pricingPolicy"] {
     if (value === undefined) return undefined;
     return asEnum(value, ALLOWED_PRICING_POLICIES, path);
 }
@@ -171,7 +171,7 @@ function parseOptionalUnitSystem(value: unknown, path: string): UnitSystem | und
     return asEnum(value, ALLOWED_UNIT_SYSTEMS, path);
 }
 
-function parseItem(value: unknown, path: string): CatalogueItemMetadata {
+function parseItem(value: unknown, path: string): CatalogItemMetadata {
     const record = asRecord(value, path);
     return {
         id: asString(record.id, `${path}.id`),
@@ -199,7 +199,7 @@ const DATA_SOLD_POSTURES = new Set<"buyer" | "seller">(["buyer", "seller"]);
 function parseOptionalDataSold(
     value: unknown,
     path: string,
-): CatalogueItemMetadata["dataSold"] {
+): CatalogItemMetadata["dataSold"] {
     if (value === undefined) return undefined;
     const record = asRecord(value, path);
     const compositionHash = record.compositionHash;
@@ -214,7 +214,7 @@ function parseOptionalDataSold(
 }
 
 /**
- * Parse the catalogue-sourced clause-value map — a `Record<clauseId, Record<field, unknown>>`.
+ * Parse the catalog-sourced clause-value map — a `Record<clauseId, Record<field, unknown>>`.
  * Structural only: the outer shape is a record of records; the inner field
  * values are validated against each clause's registered spec (off-chain) at
  * authoring / read time, not here (this parser has no spec cache). Field
@@ -223,7 +223,7 @@ function parseOptionalDataSold(
 function parseClauseValues(
     value: unknown,
     path: string,
-): CatalogueItemMetadata["clauseValues"] {
+): CatalogItemMetadata["clauseValues"] {
     if (value === undefined) return undefined;
     const record = asRecord(value, path);
     const out: Record<string, Record<string, unknown>> = {};
@@ -233,17 +233,17 @@ function parseClauseValues(
     return out;
 }
 
-function parseItems(value: unknown, path: string): CatalogueItemMetadata[] {
+function parseItems(value: unknown, path: string): CatalogItemMetadata[] {
     if (!Array.isArray(value)) {
         throw new Error(`${path} must be an array.`);
     }
     return value.map((entry, index) => parseItem(entry, `${path}[${index}]`));
 }
 
-export function parseMemberCatalogueDocument(
+export function parseMemberCatalogDocument(
     value: unknown,
-    sourceLabel = "member catalogue metadata",
-): MemberCatalogueMetadata {
+    sourceLabel = "member catalog metadata",
+): MemberCatalogMetadata {
     const record = asRecord(value, sourceLabel);
 
     return {

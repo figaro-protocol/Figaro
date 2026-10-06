@@ -2,7 +2,7 @@ import type { BaseFigureProps } from "@/components/figures/BaseFigureProps";
 import { FigureFrame } from "@/components/figures/FigureFrame";
 
 export interface DisciplineIntersectionFigureProps extends BaseFigureProps {
-    /** One circle per discipline. Pass the live catalogue
+    /** One circle per discipline. Pass the live catalog
      *  (`PAPER_GROUPS.map((g) => g.name)`), never a copied list. */
     labels: string[];
 }

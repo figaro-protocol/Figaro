@@ -125,12 +125,12 @@
                 "catalogueFills": {
                     "type": "array",
                     "items": { "type": "string", "minLength": 1 },
-                    "description": "The content fields (by name) authored per-item on the member's CATALOGUE (item master data: freight class, hazmat class, cold-chain window) and folded onto the matching leaf at checkout. Generic surfaces render a spec-driven authoring section on the catalogue item for ANY clause declaring this — including one this codebase has never seen. Express as [] when no field is catalogue-authored."
+                    "description": "The content fields (by name) authored per-item on the member's CATALOG (item master data: freight class, hazmat class, cold-chain window) and folded onto the matching leaf at checkout. Generic surfaces render a spec-driven authoring section on the catalog item for ANY clause declaring this — including one this codebase has never seen. Express as [] when no field is catalog-authored."
                 },
                 "profileFills": {
                     "type": "array",
                     "items": { "type": "string", "minLength": 1 },
-                    "description": "The content fields (by name) authored ONCE on the member's PROFILE (the member's master data: a dim-weight divisor, a declared credential id) and folded onto the matching leaf at checkout. The seller-level sibling of catalogueFills (catalogue = what is sold, profile = who sells). Express as [] when no field is profile-authored."
+                    "description": "The content fields (by name) authored ONCE on the member's PROFILE (the member's master data: a dim-weight divisor, a declared credential id) and folded onto the matching leaf at checkout. The seller-level sibling of catalogueFills (catalog = what is sold, profile = who sells). Express as [] when no field is profile-authored."
                 }
             }
         },

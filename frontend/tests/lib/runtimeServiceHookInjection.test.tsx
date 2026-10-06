@@ -2,12 +2,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { useHandoffCleanup } from "@/lib/handoff/useHandoffCleanup";
-import { useRegisteredCatalogues } from "@/lib/member/useRegisteredCatalogues";
+import { useRegisteredCatalogs } from "@/lib/member/useRegisteredCatalogs";
 import {
     RuntimeServicesProvider,
     useRuntimeServices,
 } from "@/lib/shared/runtimeServicesContext";
-import type { MemberCatalogue } from "@/lib/member/types";
+import type { MemberCatalog } from "@/lib/member/types";
 import type { DiscoveryService } from "@/lib/member/discoveryService";
 import type { IpfsService } from "@/lib/shared/ipfsService";
 import type { RuntimeServices } from "@/lib/shared/runtimeServices";
@@ -19,7 +19,7 @@ const useWalletClientMock = vi.fn();
 const getMemberMetadataURIMock = vi.fn();
 const getBlockNumberMock = vi.fn();
 const watchContractEventMock = vi.fn();
-const defaultFetchSellerCatalogueMock = vi.fn();
+const defaultFetchSellerCatalogMock = vi.fn();
 const defaultListFallbackRestaurantsMock = vi.fn();
 const defaultIsRegistryConfiguredMock = vi.fn();
 const defaultListRestaurantsMock = vi.fn();
@@ -47,15 +47,15 @@ vi.mock("@/lib/protocol/membersRegistryIndexer", () => ({
 }));
 
 // The surfacing rule's AssemblyRegistry cross-check gate — resolved (empty)
-// so useRegisteredCatalogues proceeds; the filtering itself lives in the
+// so useRegisteredCatalogs proceeds; the filtering itself lives in the
 // (injected) discovery service.
 vi.mock("@/lib/protocol/useAssemblyRegistry", () => ({
     usePublishedAssemblies: () => ({ data: [], isLoading: false }),
 }));
 
-vi.mock("@/lib/member/catalogueService", () => ({
-    DEFAULT_CATALOGUE_SERVICE: {
-        fetchMemberCatalogue: (...args: unknown[]) => defaultFetchSellerCatalogueMock(...args),
+vi.mock("@/lib/member/catalogService", () => ({
+    DEFAULT_CATALOG_SERVICE: {
+        fetchMemberCatalog: (...args: unknown[]) => defaultFetchSellerCatalogMock(...args),
     },
 }));
 
@@ -107,9 +107,9 @@ const publicClient = {
     getBlockNumber: (...args: unknown[]) => getBlockNumberMock(...args),
     watchContractEvent: (...args: unknown[]) => watchContractEventMock(...args),
 };
-const fallbackRestaurant: MemberCatalogue = {
+const fallbackRestaurant: MemberCatalog = {
     name: "Fallback Merchant",
-    description: "Fallback catalogue",
+    description: "Fallback catalog",
     specialty: "Test",
     image: "🍽️",
     address: "0x0000000000000000000000000000000000000001",
@@ -117,7 +117,7 @@ const fallbackRestaurant: MemberCatalogue = {
     acceptedTokens: [],
 };
 
-const injectedRestaurant: MemberCatalogue = {
+const injectedRestaurant: MemberCatalog = {
     name: "Injected Merchant",
     description: "Injected discovery result",
     specialty: "Italian",
@@ -129,7 +129,7 @@ const injectedRestaurant: MemberCatalogue = {
 
 function createRuntimeServices(overrides: Partial<RuntimeServices> = {}): RuntimeServices {
     return {
-        catalogue: {} as RuntimeServices["catalogue"],
+        catalog: {} as RuntimeServices["catalog"],
         discovery: {} as RuntimeServices["discovery"],
         evidenceTransport: {
             pinJSON: vi.fn(),
@@ -161,7 +161,7 @@ describe("runtime service hook injection", () => {
         getMemberMetadataURIMock.mockReset();
         getBlockNumberMock.mockReset();
         watchContractEventMock.mockReset();
-        defaultFetchSellerCatalogueMock.mockReset();
+        defaultFetchSellerCatalogMock.mockReset();
         defaultListFallbackRestaurantsMock.mockReset();
         defaultIsRegistryConfiguredMock.mockReset();
         defaultListRestaurantsMock.mockReset();
@@ -191,28 +191,28 @@ describe("runtime service hook injection", () => {
     });
 
     it("uses an injected discovery service instead of the default provider", async () => {
-        const listFallbackCatalogues = vi.fn().mockReturnValue({
-            catalogues: [fallbackRestaurant],
+        const listFallbackCatalogs = vi.fn().mockReturnValue({
+            catalogs: [fallbackRestaurant],
             source: { ipfs: 0, mock: 1 },
         });
         const isRegistryConfigured = vi.fn().mockReturnValue(true);
-        const listCatalogues = vi.fn().mockResolvedValue({
-            catalogues: [injectedRestaurant],
+        const listCatalogs = vi.fn().mockResolvedValue({
+            catalogs: [injectedRestaurant],
             source: { ipfs: 1, mock: 0 },
         });
         const service = {
-            listFallbackCatalogues,
+            listFallbackCatalogs,
             isRegistryConfigured,
-            listCatalogues,
+            listCatalogs,
         } as unknown as DiscoveryService;
 
-        const { result } = renderHook(() => useRegisteredCatalogues({ service }));
+        const { result } = renderHook(() => useRegisteredCatalogs({ service }));
 
         await waitFor(() => {
-            expect(result.current.catalogues).toEqual([injectedRestaurant]);
+            expect(result.current.catalogs).toEqual([injectedRestaurant]);
         });
 
-        expect(listCatalogues).toHaveBeenCalledWith(publicClient, 31337, new Set());
+        expect(listCatalogs).toHaveBeenCalledWith(publicClient, 31337, new Set());
         expect(defaultListRestaurantsMock).not.toHaveBeenCalled();
     });
 
@@ -226,7 +226,7 @@ describe("runtime service hook injection", () => {
             buildGatewayUrl: vi.fn(),
         } as unknown as IpfsService;
         const services = {
-            catalogue: {} as RuntimeServices["catalogue"],
+            catalog: {} as RuntimeServices["catalog"],
             discovery: {} as RuntimeServices["discovery"],
             evidenceTransport,
             handoffMessaging: {} as RuntimeServices["handoffMessaging"],

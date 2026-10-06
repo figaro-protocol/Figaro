@@ -10,7 +10,7 @@ import { useOnboardingState } from "@/lib/member/onboardingState";
  * for a moment with no address. A form that hydrates in that window hydrates
  * from the EMPTY state, latches its `hydrated` flag, and then persists the
  * empty form over the real draft the moment the wallet arrives — the seller's
- * identity, catalogue and bindings gone without a word, the step falling back
+ * identity, catalog and bindings gone without a word, the step falling back
  * to its "go set a default token" guard.
  *
  * `subject` is the seam: the hook says whose draft `state` is (the wallet, or

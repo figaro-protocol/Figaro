@@ -98,7 +98,7 @@ test.describe('/sign counter-sign — shared review before commit (devnet)', () 
             .toHaveText(new RegExp(BUYER, 'i'));
         await expect(page.getByTestId('preview-seller'), 'the seller party renders in full')
             .toHaveText(new RegExp(SELLER, 'i'));
-        await expect(page.getByTestId('preview-line-items'), 'the catalogue line items render')
+        await expect(page.getByTestId('preview-line-items'), 'the catalog line items render')
             .toBeVisible();
         await expect(page.getByTestId('preview-agreement-hash'), 'the signed hash renders beside the terms')
             .toHaveText(/^0x[0-9a-f]{64}$/i);

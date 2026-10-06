@@ -19,14 +19,14 @@ export const metadata: Metadata = withOg({
 // to, never by adding prose here.
 const SUBJECTS: { line: string; body: string; cta: string; href: string }[] = [
     {
-        line: "You buy from a member's catalogue with nothing but a wallet.",
-        body: "The member directory shows who sells what, searchable by place and by name. You order from a seller's catalogue, in a token the seller accepts.",
+        line: "You buy from a member's catalog with nothing but a wallet.",
+        body: "The member directory shows who sells what, searchable by place and by name. You order from a seller's catalog, in a token the seller accepts.",
         cta: "Discover",
         href: "/discover",
     },
     {
         line: "You sell by publishing a profile buyers can find.",
-        body: "Your profile carries a catalogue of what you offer, the tokens you accept and the terms you trade under. A person, a business and an agent register the same way.",
+        body: "Your profile carries a catalog of what you offer, the tokens you accept and the terms you trade under. A person, a business and an agent register the same way.",
         cta: "Join",
         href: "/members",
     },

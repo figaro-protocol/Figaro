@@ -26,9 +26,9 @@ import type {
     MemberAssetReferences,
 } from "@/lib/member/memberProfileMetadata";
 import type {
-    CatalogueItemMetadata,
+    CatalogItemMetadata,
     UnitSystem,
-} from "@/lib/member/memberCatalogueMetadata";
+} from "@/lib/member/memberCatalogMetadata";
 import type { AcceptedTokenMetadata } from "@/lib/member/acceptedTokenMetadata";
 import type { MemberBrandingMetadata } from "@/lib/member/memberBrandingMetadata";
 
@@ -53,8 +53,8 @@ export interface OnboardingProfileDraft {
     profileClauseValues?: Record<string, Record<string, unknown>>;
 }
 
-interface OnboardingCatalogueDraft {
-    items?: CatalogueItemMetadata[];
+interface OnboardingCatalogDraft {
+    items?: CatalogItemMetadata[];
     /** The member's preferred unit system for editor + display. Storage of
      *  per-item mass / volume is always metric; this is a UI preference. */
     unitSystem?: UnitSystem;
@@ -64,7 +64,7 @@ interface OnboardingState {
     /** Wallet that owns this draft. Stamped on first write so reads can detect wallet-switch. */
     walletAddress?: `0x${string}`;
     profile?: OnboardingProfileDraft;
-    catalogue?: OnboardingCatalogueDraft;
+    catalog?: OnboardingCatalogDraft;
     /** Per-assembly bindings declared on the assemblies step. */
     assemblies?: AssemblyBindingRecord[];
     /** The buyer's assembly subscriptions, declared on the buyer step —
@@ -81,8 +81,8 @@ interface OnboardingState {
     services?: MemberAgentServices;
     /** IPFS URI of the published profile, set on screen 4 success. */
     publishedProfileURI?: string;
-    /** IPFS URI of the published catalogue, set on screen 3 success. */
-    publishedCatalogueURI?: string;
+    /** IPFS URI of the published catalog, set on screen 3 success. */
+    publishedCatalogURI?: string;
     /** True when the on-chain register/updateProfile transaction has confirmed. */
     complete?: boolean;
     /** ISO timestamp of last write (for staleness checks). */
@@ -228,7 +228,7 @@ export function useOnboardingState(walletAddress: `0x${string}` | undefined): Us
 
 export interface OnboardingStep {
     /** Stable id used in URLs and step-indicator keys. */
-    id: "profile" | "catalogue" | "assemblies" | "buyer" | "agents" | "endpoints" | "review";
+    id: "profile" | "catalog" | "assemblies" | "buyer" | "agents" | "endpoints" | "review";
     /** 1-based step number for the visible indicator. */
     number: number;
     /** Human-readable label. */
@@ -250,12 +250,12 @@ export interface OnboardingStep {
 // The two assembly steps are one loop walked twice — the assemblies a member
 // sells through (it BINDS them) and the assemblies it buys through (it
 // SUBSCRIBES them) — and each ends by choosing which of the data those trades
-// co-produce is offered. They sit side by side, and both precede Catalogue,
+// co-produce is offered. They sit side by side, and both precede Catalog,
 // because the authority runs that way: the assemblies a member binds decide
 // which clauses its trades carry, and the clauses decide which item fields
 // exist to author (a freight class, a hazmat number, a cold-chain range); and
-// the catalogue's data-product option reads the disclosure entries BOTH steps
-// derive. Ask for the items first and the catalogue has nothing to derive
+// the catalog's data-product option reads the disclosure entries BOTH steps
+// derive. Ask for the items first and the catalog has nothing to derive
 // from, so it opens every registered logistics field to a member selling one
 // mug and cannot price a data offer that has not been declared yet.
 export const ONBOARDING_STEPS: readonly OnboardingStep[] = [
@@ -263,7 +263,7 @@ export const ONBOARDING_STEPS: readonly OnboardingStep[] = [
     { id: "assemblies", number: 2, label: "Sell through", path: "assemblies", optional: false },
     // Optional: a member who buys through no assembly leaves it empty.
     { id: "buyer", number: 3, label: "Buy through", path: "buyer", optional: true },
-    { id: "catalogue", number: 4, label: "Catalogue", path: "catalogue", optional: false },
+    { id: "catalog", number: 4, label: "Catalog", path: "catalog", optional: false },
     // Both postures are declared before agents, so the agents step delegates
     // control of the member's whole profile — seller and buyer alike.
     { id: "agents", number: 5, label: "Agents", path: "agents", optional: true },
@@ -289,7 +289,7 @@ export function onboardingNextHref(id: OnboardingStep["id"]): string {
     return onboardingStepHref(next.id);
 }
 
-/** How a step is named to the member — "Step 3 (Catalogue)". Numbered from
+/** How a step is named to the member — "Step 3 (Catalog)". Numbered from
  *  the order above, so a reorder renumbers the prose with it. */
 export function onboardingStepLabel(id: OnboardingStep["id"]): string {
     const step = ONBOARDING_STEPS.find((s) => s.id === id);

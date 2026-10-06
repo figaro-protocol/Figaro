@@ -23,7 +23,7 @@
  * DESIGNER composes into the template — the tailoring; every other clause's
  * template values are `{}` and the fields fill at checkout →
  * compositionHash), and the `checkout` fills (`catalogueFills` /
- * `profileFills` — which sections the catalogue and member-profile folds
+ * `profileFills` — which sections the catalog and member-profile folds
  * write → agreementHash). `parseProjectionHints` extracts exactly those from
  * a raw spec document; everything else in `block` remains presentation the
  * SDK never reads. (A field's `default` is the sixth thing that reaches a
@@ -63,7 +63,7 @@ export interface ProjectionHints {
      *  clause. */
     designFills?: readonly string[];
     /** The spec's `block.checkout.catalogueFills` — the content fields (by
-     *  name) authored per-item on the member's CATALOGUE and folded onto the
+     *  name) authored per-item on the member's CATALOG and folded onto the
      *  matching leaf at checkout. */
     catalogueFills?: readonly string[];
     /** The spec's `block.checkout.profileFills` — the content fields (by
@@ -106,8 +106,8 @@ export function parseProjectionHints(rawSpec: unknown): ProjectionHints {
     const checkout = block.checkout;
     if (checkout && typeof checkout === "object" && !Array.isArray(checkout)) {
         const c = checkout as Record<string, unknown>;
-        const catalogue = parseFillList(c.catalogueFills);
-        if (catalogue) hints.catalogueFills = catalogue;
+        const catalog = parseFillList(c.catalogueFills);
+        if (catalog) hints.catalogueFills = catalog;
         const profile = parseFillList(c.profileFills);
         if (profile) hints.profileFills = profile;
     }
@@ -231,17 +231,17 @@ export function specIsAssemblyScoped(spec: ProjectionSpecView): boolean {
     return spec.hints?.scope === "assembly";
 }
 
-/** The CATALOGUE-authored field names of a clause
+/** The CATALOG-authored field names of a clause
  *  (`block.checkout.catalogueFills`) — content authored per-item on the
- *  member's catalogue and folded onto the matching leaf at checkout. Empty
- *  for clauses with no catalogue-authored fields. */
-export function specCatalogueFills(spec: ProjectionSpecView): readonly string[] {
+ *  member's catalog and folded onto the matching leaf at checkout. Empty
+ *  for clauses with no catalog-authored fields. */
+export function specCatalogFills(spec: ProjectionSpecView): readonly string[] {
     return spec.hints?.catalogueFills ?? [];
 }
 
 /** The PROFILE-authored field names of a clause
  *  (`block.checkout.profileFills`) — the member's master data, authored once on the
- *  member's profile (the sibling of the catalogue's per-item data) and folded
+ *  member's profile (the sibling of the catalog's per-item data) and folded
  *  onto the matching leaf at checkout. Editors render exactly these fields;
  *  the fold folds only these values. Empty for clauses with no
  *  profile-authored fields. */
@@ -283,7 +283,7 @@ export function warnProcessLogFillsTrap(spec: ProjectionSpecView): readonly stri
             `different article; "attestations" is reserved for runtime event ladders.`,
         );
     }
-    if (specCatalogueFills(spec).length > 0 || specProfileFills(spec).length > 0) {
+    if (specCatalogFills(spec).length > 0 || specProfileFills(spec).length > 0) {
         warnings.push(
             `${spec.clauseId}: block.design.article is "attestations" (a process-log clause — ` +
             `content arrives via later runtime attestations, never the initial agreement) but the ` +

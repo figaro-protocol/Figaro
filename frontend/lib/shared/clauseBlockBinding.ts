@@ -93,16 +93,16 @@ interface ClauseBlockDesign {
  *  come from before the buyer signs. */
 interface ClauseBlockCheckout {
     /** The content fields (by name) authored per-item on the seller's
-     *  CATALOGUE (item master data: freight class, hazmat class, cold-chain
+     *  CATALOG (item master data: freight class, hazmat class, cold-chain
      *  window) and folded onto the matching leaf at checkout. Generic
-     *  surfaces render a spec-driven authoring section on the catalogue item
+     *  surfaces render a spec-driven authoring section on the catalog item
      *  for ANY clause declaring a non-empty list — including one this
      *  codebase has never seen. */
     catalogueFills: readonly string[];
     /** The content fields (by name) authored ONCE on the member's PROFILE
      *  (seller master data: a dim-weight divisor, a declared credential id)
      *  and folded onto the matching leaf at checkout. The seller-level
-     *  sibling of `catalogueFills` — two distinct layers: catalogue = what is
+     *  sibling of `catalogueFills` — two distinct layers: catalog = what is
      *  sold, profile = who sells. ANY registered clause opts in by declaring
      *  a non-empty list. */
     profileFills: readonly string[];
@@ -250,9 +250,9 @@ export function parseBlockBinding(
             errors.push({ path: `${path}.checkout`, message: "checkout section must be an object when present" });
             return null;
         }
-        const parsedCatalogue = parseFieldNameList(raw.checkout.catalogueFills, `${path}.checkout.catalogueFills`, errors);
-        if (parsedCatalogue === null) return null;
-        catalogueFills = parsedCatalogue;
+        const parsedCatalog = parseFieldNameList(raw.checkout.catalogueFills, `${path}.checkout.catalogueFills`, errors);
+        if (parsedCatalog === null) return null;
+        catalogueFills = parsedCatalog;
         const parsedProfile = parseFieldNameList(raw.checkout.profileFills, `${path}.checkout.profileFills`, errors);
         if (parsedProfile === null) return null;
         profileFills = parsedProfile;

@@ -55,7 +55,7 @@ export const C = {
     consent: 'figaro-consent',
 } as const;
 
-/** Catalogue prices per seller — fixed items; the chain total is their sum.
+/** Catalog prices per seller — fixed items; the chain total is their sum.
  *  COMMIT order (root first, then topological): shipper, inspector,
  *  forwarder, carrier, customs, inland. */
 export const PRICES = {
@@ -110,7 +110,7 @@ async function forEachCheckoutField(
 }
 
 /** The buyer's transaction particulars — every general-clause fill the
- *  six-order chain needs (templates arrive value-free; catalogue-sourced
+ *  six-order chain needs (templates arrive value-free; catalog-sourced
  *  cargo/cold-chain/freight-class values fold from the items, never here). */
 export async function fillTradelensCheckout(page: Page): Promise<void> {
     await checkoutFields(page, C.modalities, 'modality-delivery').first().check();
@@ -125,7 +125,7 @@ export async function fillTradelensCheckout(page: Page): Promise<void> {
     // applicable-law + arbitration are DESIGNER-authored assembly terms
     // (design.fills) — nothing for the buyer to fill.
     // The emissions methodology is committed at signing by the parties — not
-    // catalogue-sourced (no block.checkout.catalogueFills on the spec).
+    // catalog-sourced (no block.checkout.catalogueFills on the spec).
     await forEachCheckoutField(page, C.emissions, 'standard', (c) => c.fill('EN 16258'));
     await forEachCheckoutField(page, C.handoff, 'handoff-face-to-face', (c) => c.check());
     await forEachCheckoutField(page, C.proximity, 'bands-zone-wifi', (c) => c.check());
@@ -144,9 +144,9 @@ export async function fillTradelensCheckout(page: Page): Promise<void> {
     });
 }
 
-/** Onboard + bind the six sellers (idempotent re-assert): pinned catalogue
+/** Onboard + bind the six sellers (idempotent re-assert): pinned catalog
  *  per seller (cargo master data on the shipper's ITEM — the fold channel;
- *  catalogue-sourced cold-chain + freight-class on the carrier's), the
+ *  catalog-sourced cold-chain + freight-class on the carrier's), the
  *  shipper's binding carrying the five counterparty designations. */
 export async function seedTradelensSellers(slug: string, token: Hex): Promise<void> {
     const seed = async (
@@ -154,7 +154,7 @@ export async function seedTradelensSellers(slug: string, token: Hex): Promise<vo
         itemProps?: Record<string, unknown>,
         counterpartyBindings: Array<{ clauseId: string; addresses: string[] }> = [],
     ) => {
-        const { uri: catalogueURI } = await pinJSONToIPFS({
+        const { uri: catalogURI } = await pinJSONToIPFS({
             subjectAddress: who.address,
             version: '1.0.0',
             unitSystem: 'metric' as const,
@@ -174,7 +174,7 @@ export async function seedTradelensSellers(slug: string, token: Hex): Promise<vo
             profile: {
                 name,
                 description: `${name} — seeded by the Tradelens scenario pair`,
-                catalogueURI,
+                catalogURI,
                 acceptedTokens: [{ address: token, symbol: 'MOCK', chainId: 31337 }],
                 defaultTokenAddress: token,
                 assemblyBindings: [{
@@ -193,13 +193,13 @@ export async function seedTradelensSellers(slug: string, token: Hex): Promise<vo
         if (!b || !(b.counterpartyBindings ?? []).some((cb) => cb.clauseId === C.merchant && cb.addresses.length === 3)) return false;
         // The cargo master data must ride the ITEM level (massGrams/volumeMl)
         // — the channel figaro-cargo folds from; a clauseValues copy does NOT
-        // fold. Re-seed a stale catalogue.
+        // fold. Re-seed a stale catalog.
         const profileURI = await latestMemberProfileURI(SHIPPER.address as Hex);
         if (!profileURI) return false;
-        const profile = await (await fetch(resolveIpfsURI(profileURI))).json() as { catalogueURI?: string };
-        if (!profile.catalogueURI) return false;
-        const catalogue = await (await fetch(resolveIpfsURI(profile.catalogueURI))).json() as { items?: Array<{ massGrams?: number }> };
-        return (catalogue.items ?? []).some((i) => (i.massGrams ?? 0) > 0);
+        const profile = await (await fetch(resolveIpfsURI(profileURI))).json() as { catalogURI?: string };
+        if (!profile.catalogURI) return false;
+        const catalog = await (await fetch(resolveIpfsURI(profile.catalogURI))).json() as { items?: Array<{ massGrams?: number }> };
+        return (catalog.items ?? []).some((i) => (i.massGrams ?? 0) > 0);
     };
 
     if (await conformant()) return;

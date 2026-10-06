@@ -25,20 +25,20 @@ describe("unpinSupersededProfileArtifacts", () => {
             ipfs: { unpin },
             priorProfileUri: "ipfs://QmPriorProfile",
             priorProfile: profile({
-                catalogueURI: "ipfs://QmOldCatalogue",
+                catalogURI: "ipfs://QmOldCatalog",
                 branding: { logoURI: "ipfs://QmLogo" },
             }),
             nextProfile: profile({
-                catalogueURI: "ipfs://QmNewCatalogue",
+                catalogURI: "ipfs://QmNewCatalog",
                 branding: { logoURI: "ipfs://QmLogo" }, // unchanged — survives
             }),
         });
 
         const unpinned = unpin.mock.calls.map((c) => c[0]);
         expect(unpinned).toContain("QmPriorProfile");
-        expect(unpinned).toContain("QmOldCatalogue");
+        expect(unpinned).toContain("QmOldCatalog");
         expect(unpinned).not.toContain("QmLogo");
-        expect(unpinned).not.toContain("QmNewCatalogue");
+        expect(unpinned).not.toContain("QmNewCatalog");
     });
 
     it("withdraw (no successor) erases everything the profile referenced", async () => {
@@ -47,7 +47,7 @@ describe("unpinSupersededProfileArtifacts", () => {
             ipfs: { unpin },
             priorProfileUri: "ipfs://QmPriorProfile",
             priorProfile: profile({
-                catalogueURI: "ipfs://QmCatalogue",
+                catalogURI: "ipfs://QmCatalog",
                 branding: { logoURI: "ipfs://QmLogo" },
                 assets: { imageBaseURI: "ipfs://QmImages" },
             }),
@@ -56,7 +56,7 @@ describe("unpinSupersededProfileArtifacts", () => {
 
         const unpinned = unpin.mock.calls.map((c) => c[0]);
         expect(new Set(unpinned)).toEqual(
-            new Set(["QmPriorProfile", "QmCatalogue", "QmLogo", "QmImages"]),
+            new Set(["QmPriorProfile", "QmCatalog", "QmLogo", "QmImages"]),
         );
     });
 

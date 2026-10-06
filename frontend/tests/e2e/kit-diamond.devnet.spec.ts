@@ -32,7 +32,7 @@
  *              assembly to its own profile (the even-surfacing rule).
  *   checkout → the buyer orders the kit from the lead: ONE place signs all
  *              FOUR orders through the same confirm gate; every sub priced
- *              live from its counterparty's own catalogue.
+ *              live from its counterparty's own catalog.
  *   accept   → walk order (root, B, C, D — FigaroCore's exact-match cumulative
  *              accumulator enforces the sequence): after every commit the
  *              exact bond-driven BALANCE deltas are asserted for every party,
@@ -53,7 +53,7 @@
  *   lead       anvil[17]  Kit Works (this spec's wizard member)
  *   suppliers  DESIGNATED seeded sellers: Cardinal Couriers (anvil[8]),
  *              Fernhill Nursery (anvil[11]), Sterling Goods (anvil[12]) —
- *              their catalogues price the sub-orders live.
+ *              their catalogs price the sub-orders live.
  *
  * K3 note: cross-order sibling attest has no client plumbing — no sister-
  * clause pairing produces it, and no consumer leg reads it. The on-chain
@@ -101,7 +101,7 @@ const LEAD = {
     geohash: '9q8yyk8z5',
     product: { name: 'Component kit', price: '1' },
 };
-// Seeded counterparties (their catalogues price the sub-orders live).
+// Seeded counterparties (their catalogs price the sub-orders live).
 const SUPPLIER_B = mnemonicToAccount(ANVIL_MNEMONIC, { addressIndex: 8 }).address as Hex; // Cardinal Couriers
 const SUPPLIER_D = mnemonicToAccount(ANVIL_MNEMONIC, { addressIndex: 11 }).address as Hex; // Fernhill Nursery
 const SUPPLIER_C = mnemonicToAccount(ANVIL_MNEMONIC, { addressIndex: 12 }).address as Hex; // Sterling Goods
@@ -274,7 +274,7 @@ test.describe('KIT DIAMOND — a DAG join: one buyer, four orders, two parents o
             await page.getByRole('button', { name: /^Next/ }).click();
             await expect(page).toHaveURL(/\/members\/buyer/);
             await page.getByRole('button', { name: /^Next/ }).click();
-            await expect(page).toHaveURL(/\/members\/catalogue/);
+            await expect(page).toHaveURL(/\/members\/catalog/);
             await page.locator('[id^="item-"][id$="-name"]').first().fill(LEAD.product.name);
             await page.locator('[id^="item-"][id$="-price"]').first().fill(LEAD.product.price);
             await page.getByRole('button', { name: /^Next/ }).click();
@@ -332,7 +332,7 @@ test.describe('KIT DIAMOND — a DAG join: one buyer, four orders, two parents o
         }
         await expect(
             page.getByTestId('cart-contributor-breakdown'),
-            'the P&L renders one row per contributor, each priced from its own catalogue',
+            'the P&L renders one row per contributor, each priced from its own catalog',
         ).toBeVisible({ timeout: 30000 });
         // The buyer authors every node's transaction particulars: TWO nodes
         // compose hand-off + proximity (B and D), one composes emissions (C) —

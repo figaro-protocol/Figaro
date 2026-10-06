@@ -2,11 +2,11 @@ import React from "react";
 import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { MemberDetailView } from "@/app/(app)/s/view/_components/MemberDetailView";
-import type { MemberCatalogue } from "@/lib/member/types";
+import type { MemberCatalog } from "@/lib/member/types";
 
 const SELLER = "0x00000000000000000000000000000000000000aa";
 
-const CATALOGUE: MemberCatalogue = {
+const CATALOG: MemberCatalog = {
     name: "Test Seller",
     description: "",
     specialty: "",
@@ -19,8 +19,8 @@ const CATALOGUE: MemberCatalogue = {
     acceptedTokens: [],
 };
 
-vi.mock("@/lib/member/useRegisteredCatalogues", () => ({
-    useRegisteredCatalogues: () => ({ catalogues: [CATALOGUE], isLoading: false }),
+vi.mock("@/lib/member/useRegisteredCatalogs", () => ({
+    useRegisteredCatalogs: () => ({ catalogs: [CATALOG], isLoading: false }),
 }));
 vi.mock("@/lib/checkout", () => ({
     useCommerce: () => ({ address: undefined }),
@@ -49,7 +49,7 @@ vi.mock("@/components/runtime/MemberTrackRecord", () => ({
     MemberTrackRecord: () => null,
 }));
 
-describe("MemberDetailView catalogue categories", () => {
+describe("MemberDetailView catalog categories", () => {
     let errorSpy: ReturnType<typeof vi.spyOn>;
     beforeEach(() => {
         errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);

@@ -26,7 +26,7 @@ content. (This is the instruction-system form of "derive, don't store.")
 | What the protocol has no contract for (not listed = does not exist) | `CONTRACTS.md` § "What the protocol has no contract for" |
 | Contract inventory | `CONTRACTS.md` |
 | Clause table, validation architecture, adding-a-clause | `CLAUSES.md` |
-| Route catalogue, lib map, designer surface | `FRONTEND.md` |
+| Route catalog, lib map, designer surface | `FRONTEND.md` |
 | Wire formats, agreement/template projection, the template→orders walk, checkout planning | `sdk/README.md` (+ the `sdk/dist` docblocks after `npm --prefix sdk run build`) |
 | Test-harness inventory, layer boundaries | `TESTING.md` |
 | Guard scripts — each guard's rule, rationale, and ruling | maintainer-private build tooling (not shipped in a public clone; TESTING.md inventories test harnesses, not guards) |
@@ -73,7 +73,7 @@ forest) before any per-object detail, and never assumes the reader induces it.
 **Where the technical detail behind the doors goes:** the four hashes and the
 clause-spec format, how an assembly is composed and the composition hash,
 document-anchoring, on-chain and off-chain composition, sharp edges, the invariant
-list, the contract catalogue with its inheritance/install/deployments/errors, and
+list, the contract catalog with its inheritance/install/deployments/errors, and
 the verification stack with its counts all move to docs-site. Each marketing door
 keeps one screen — what a clause is, what an assembly is, how the code is secured
 — and links to docs-site for the rest. `/security` stays a one-screen marketing
@@ -103,7 +103,7 @@ Each layer owns one thing; every other layer states it as a summary plus a point
 ## Main Groups
 
 - **Protocol and framing**: `VISION.md`, `THEORY.md`, `FLORIN_TOKEN.md`, `DESIGNER_REWARDS.md`, `DAO.md`
-- **Runtime and frontend**: `OPEN_WORLD.md` (the open-world paradigm + runtime composition model + semantic-derivation layer), `FRONTEND.md` (route + lib catalogue), `DESIGN_TOKENS.md` (MUJI theme spec), `AI_AGENT_COORDINATION.md`
+- **Runtime and frontend**: `OPEN_WORLD.md` (the open-world paradigm + runtime composition model + semantic-derivation layer), `FRONTEND.md` (route + lib catalog), `DESIGN_TOKENS.md` (MUJI theme spec), `AI_AGENT_COORDINATION.md`
 - **Inventories**: `CONTRACTS.md`, `CLAUSES.md`, `FRONTEND.md`, `TESTING.md`, `LOCAL_DEV.md` — the five split-out inventory docs (contracts / clauses / frontend / tests / commands; `CLAUSES.md` also carries the anchoring doctrine)
 - **Composition and disclosure**: `DATA_LAYER.md` (the emissions clause + witness-stage disclosure channel is owned by `CLAUSES.md`, which also carries the two load-bearing disclosure rulings: reader-derived scope, offsets out of scope)
 - **Scaling**: `SCALING_STRATEGY.md` (carries the batch-sequencer architecture + sequencer trust model)

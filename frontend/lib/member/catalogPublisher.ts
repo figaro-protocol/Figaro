@@ -1,10 +1,10 @@
 /**
- * lib/shared/cataloguePublisher.ts
+ * lib/shared/catalogPublisher.ts
  *
- * Write path for member catalogues.
- * Serializes a MemberCatalogueMetadata document → pins to IPFS → returns
+ * Write path for member catalogs.
+ * Serializes a MemberCatalogMetadata document → pins to IPFS → returns
  * the IPFS URI. The URI is then referenced from the member's profile
- * document (as `catalogueURI`) which itself is pinned and registered
+ * document (as `catalogURI`) which itself is pinned and registered
  * on-chain via `MembersRegistry.register(profileURI)` for first-time
  * members or `MembersRegistry.updateProfile(profileURI)` for already-
  * registered members (the latter does not consume the deposit or
@@ -12,10 +12,10 @@
  * the caller orchestrates the on-chain call.
  */
 
-import type { MemberCatalogueMetadata } from "@/lib/member/memberCatalogueMetadata";
-import { parseMemberCatalogueDocument } from "@/lib/member/memberCatalogueMetadataParser";
+import type { MemberCatalogMetadata } from "@/lib/member/memberCatalogMetadata";
+import { parseMemberCatalogDocument } from "@/lib/member/memberCatalogMetadataParser";
 import { DEFAULT_IPFS_SERVICE, type IpfsService } from "@/lib/shared/ipfsService";
-import { invalidateCatalogueCache } from "@/lib/member/catalogueFetcher";
+import { invalidateCatalogCache } from "@/lib/member/catalogFetcher";
 import { clearBrandingCache } from "@/lib/member/memberBranding";
 
 export interface PublishResult {
@@ -26,25 +26,25 @@ export interface PublishResult {
 }
 
 /**
- * Validate, pin to IPFS, and return the URI for a member catalogue.
+ * Validate, pin to IPFS, and return the URI for a member catalog.
  *
  * Performs a round-trip validation: the document is parsed through the
  * strict parser before pinning to ensure only valid documents get published.
  *
  * @throws If the document fails validation or IPFS pinning fails.
  */
-export async function publishMemberCatalogue(
-    catalogue: MemberCatalogueMetadata,
+export async function publishMemberCatalog(
+    catalog: MemberCatalogMetadata,
     evidenceTransport: Pick<IpfsService, "pinJSON" | "buildURI"> = DEFAULT_IPFS_SERVICE,
 ): Promise<PublishResult> {
     // Round-trip validation — rejects invalid documents before pinning
-    parseMemberCatalogueDocument(catalogue, "catalogue-publish");
+    parseMemberCatalogDocument(catalog, "catalog-publish");
 
-    const cid = await evidenceTransport.pinJSON(catalogue);
+    const cid = await evidenceTransport.pinJSON(catalog);
     const uri = evidenceTransport.buildURI(cid);
 
     // Invalidate caches so the next read picks up the new version
-    invalidateCatalogueCache(uri);
+    invalidateCatalogCache(uri);
     clearBrandingCache();
 
     return { cid, uri };

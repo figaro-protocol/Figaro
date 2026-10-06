@@ -73,7 +73,7 @@ const ROWS: readonly Row[] = [
         leg: true,
         lines: [
             "Countersign the draft as it stands: available at",
-            "the price the catalogue already posted.",
+            "the price the catalog already posted.",
         ],
     },
     {
@@ -168,7 +168,7 @@ export function MarketFormationSwimlaneFigure({
                     knows the balance the commitment will require of it before it answers.
                     Step two or step three, in the candidates&apos; lane and never both: on
                     the race leg a candidate countersigns the draft exactly as it stands,
-                    which answers availability at the price its catalogue already posted; on
+                    which answers availability at the price its catalog already posted; on
                     the quote leg it returns the draft re-priced at its own figure, at or
                     below the ceiling the buyer drafted at. Step four, back in the
                     buyer&apos;s lane: the buyer verifies — on the race leg the answer must

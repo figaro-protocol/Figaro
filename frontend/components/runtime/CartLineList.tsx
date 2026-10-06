@@ -5,7 +5,7 @@
  * optional trailing subtotal row sums every line the same way.
  */
 export interface CartLineItemLike {
-    catalogueItemId: string;
+    catalogItemId: string;
     name: string;
     price: string;
     quantity: number;
@@ -43,9 +43,9 @@ export function CartLineList({ items, tokenSymbol, emphasizePrice = false, showS
             <ul className="space-y-2 text-sm">
                 {items.map((item) => (
                     <li
-                        key={item.catalogueItemId}
+                        key={item.catalogItemId}
                         className="flex items-baseline justify-between gap-2"
-                        data-testid={`cart-line-${item.catalogueItemId}`}
+                        data-testid={`cart-line-${item.catalogItemId}`}
                     >
                         <span className="flex-1 min-w-0 text-ink-primary font-medium truncate">
                             {item.name} <span className="text-ink-faint">× {item.quantity}</span>

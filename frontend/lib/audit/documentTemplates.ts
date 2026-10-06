@@ -13,7 +13,7 @@
  * DECISION (maintainer): these templates are a hardcoded array in this
  * file. They are NOT moved to an on-chain registry — no on-chain document registry
  * at this time. Do NOT "graduate" this to a registry, and do NOT call it a
- * "catalogue" (that word is the MEMBER'S catalogue — a different object entirely).
+ * "catalog" (that word is the MEMBER'S catalog — a different object entirely).
  * It is a list of document-template objects. Leave it here.
  */
 

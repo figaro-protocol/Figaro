@@ -4,8 +4,8 @@
  *
  * One trade, end to end, exactly as a stranger would do it on the live site:
  *   1. a member registers through the onboarding WIZARD (identity, one
- *      catalogue item priced in the denomination, binds the `pos`
- *      reference assembly, publishes — the app pins profile + catalogue,
+ *      catalog item priced in the denomination, binds the `pos`
+ *      reference assembly, publishes — the app pins profile + catalog,
  *      MembersRegistry.register lands with the stake);
  *   2. `/discover` lists the seller (the buyer's surface);
  *   3. the buyer orders the item on `/s/view` → checkout → signs → relays;
@@ -131,7 +131,7 @@ test.describe('LIVE ORDER — a public deployment traded through the real UI', (
                 return String((all[all.length - 1]?.args as { metadataURI?: string })?.metadataURI ?? '');
             };
             // Idempotent on a persisted network: a rerun must NOT walk the
-            // wizard again — every publish mints a fresh catalogue item id, so
+            // wizard again — every publish mints a fresh catalog item id, so
             // "the same" profile re-pins under a new CID and the pointer moves
             // to content the public gateway has not propagated yet (the member
             // vanishes from /discover until it does). Skip when the chain
@@ -178,7 +178,7 @@ test.describe('LIVE ORDER — a public deployment traded through the real UI', (
             await page.getByRole('button', { name: /^Next/ }).click();
             await expect(page).toHaveURL(/\/members\/buyer/);
             await page.getByRole('button', { name: /^Next/ }).click();
-            await expect(page).toHaveURL(/\/members\/catalogue/);
+            await expect(page).toHaveURL(/\/members\/catalog/);
             await page.locator('[id^="item-"][id$="-name"]').first().fill('Smoke espresso');
             await page.locator('[id^="item-"][id$="-price"]').first().fill(ITEM_PRICE);
             await page.getByRole('button', { name: /^Next/ }).click();
@@ -200,11 +200,11 @@ test.describe('LIVE ORDER — a public deployment traded through the real UI', (
             const profileUri = await latestUri();
             expect(profileUri.startsWith('ipfs://'), 'the registry points at a pinned profile').toBe(true);
             await assertPinnedInIpfs(profileUri.slice('ipfs://'.length));
-            // …and the catalogue the profile points at (a second pinned
+            // …and the catalog the profile points at (a second pinned
             // document — the seller page's item list reads it).
-            const profileDoc = await (await fetch(`${gateway}/ipfs/${profileUri.slice('ipfs://'.length)}`)).json() as { catalogueURI?: string };
-            expect(String(profileDoc.catalogueURI ?? '').startsWith('ipfs://'), 'the profile points at a pinned catalogue').toBe(true);
-            await assertPinnedInIpfs(String(profileDoc.catalogueURI).slice('ipfs://'.length));
+            const profileDoc = await (await fetch(`${gateway}/ipfs/${profileUri.slice('ipfs://'.length)}`)).json() as { catalogURI?: string };
+            expect(String(profileDoc.catalogURI ?? '').startsWith('ipfs://'), 'the profile points at a pinned catalog').toBe(true);
+            await assertPinnedInIpfs(String(profileDoc.catalogURI).slice('ipfs://'.length));
 
             // ═══ 2. DISCOVER — the buyer's surface lists the seller ═══════════
             // Poll with reloads: a profile read that 504'd before propagation
@@ -223,7 +223,7 @@ test.describe('LIVE ORDER — a public deployment traded through the real UI', (
             await switchTo(buyer.address, `/s/view?seller=${seller.address}&e2e=devnet`);
             await page.getByTestId('member-detail-view').waitFor({ timeout: 120_000 });
             const addBtn = page.locator('[data-testid^="btn-add-"]').first();
-            // The catalogue may still be propagating on the gateway for the
+            // The catalog may still be propagating on the gateway for the
             // browser's own read — reload until the item renders.
             await expect.poll(async () => {
                 if (await addBtn.isVisible().catch(() => false)) return true;
@@ -231,7 +231,7 @@ test.describe('LIVE ORDER — a public deployment traded through the real UI', (
                 await page.getByTestId('member-detail-view').waitFor({ timeout: 60_000 }).catch(() => {});
                 await page.waitForTimeout(8_000);
                 return addBtn.isVisible().catch(() => false);
-            }, { timeout: E2E_CHAIN === 'sepolia' ? 300_000 : 60_000, intervals: [1_000], message: 'the catalogue item renders on the seller page' }).toBe(true);
+            }, { timeout: E2E_CHAIN === 'sepolia' ? 300_000 : 60_000, intervals: [1_000], message: 'the catalog item renders on the seller page' }).toBe(true);
             await addBtn.click();
             await page.getByTestId('btn-review-order').click();
             await page.getByTestId('checkout-view').waitFor({ timeout: 60_000 });

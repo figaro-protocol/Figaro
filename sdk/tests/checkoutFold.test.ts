@@ -1,6 +1,6 @@
 /**
  * The fill-where-composed section writers (checkoutPlan) — cargo measure,
- * catalogue-sourced class leaves, derived dimensional weight. Sections are
+ * catalog-sourced class leaves, derived dimensional weight. Sections are
  * found by declared field / spec hints through the SpecSource, never by
  * clause id. Migrated from the frontend's assemblyCheckoutFold suite when the
  * fills promoted to the SDK.
@@ -122,7 +122,7 @@ describe("readUtilityTokenPin — routed on the DESIGN FILL, never on first matc
     });
 });
 
-describe("fillClassSections — catalogue-sourced values folded onto their leaves", () => {
+describe("fillClassSections — catalog-sourced values folded onto their leaves", () => {
     it("folds a line's authored freight-class value", () => {
         const out = fillClassSections({ "figaro-freight-class": {} }, [
             line({ clauseValues: { "figaro-freight-class": { nmfcClass: "100" } } }),
@@ -130,16 +130,16 @@ describe("fillClassSections — catalogue-sourced values folded onto their leave
         expect(out["figaro-freight-class"]).toMatchObject({ nmfcClass: "100" });
     });
 
-    it("no-ops when the composed clause isn't catalogue-sourced", () => {
+    it("no-ops when the composed clause isn't catalog-sourced", () => {
         const clauses: ClauseFields = { "figaro-commerce": {} };
         expect(fillClassSections(clauses, [line({ clauseValues: { "figaro-commerce": { x: 1 } } })], COMMERCE)).toEqual(clauses);
     });
 
-    it("template's committed value WINS over the catalogue's (terms outrank master data)", () => {
+    it("template's committed value WINS over the catalog's (terms outrank master data)", () => {
         const out = fillClassSections({ "figaro-freight-class": { nmfcClass: "70" } }, [
             line({ clauseValues: { "figaro-freight-class": { nmfcClass: "100", nmfcItem: "156600" } } }),
         ], FREIGHT);
-        // The pinned class survives; the un-pinned item number fills from the catalogue.
+        // The pinned class survives; the un-pinned item number fills from the catalog.
         expect(out["figaro-freight-class"]).toMatchObject({ nmfcClass: "70", nmfcItem: "156600" });
     });
 
@@ -151,7 +151,7 @@ describe("fillClassSections — catalogue-sourced values folded onto their leave
         expect(out["figaro-freight-class"]).not.toHaveProperty("rate");
     });
 
-    it("an empty-string template entry is not a pin — the catalogue value fills it", () => {
+    it("an empty-string template entry is not a pin — the catalog value fills it", () => {
         const out = fillClassSections({ "figaro-freight-class": { nmfcClass: "" } }, [
             line({ clauseValues: { "figaro-freight-class": { nmfcClass: "100" } } }),
         ], FREIGHT);

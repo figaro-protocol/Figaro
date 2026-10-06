@@ -321,8 +321,8 @@ function AssemblyRows({ rows, assemblies, onFacet }: { rows: Array<ExplorerRow &
 }
 
 /** Every registered member — the registry, not the buyer's discover list.
- *  A member offering assemblies links to its catalogue (`/s/view`); one
- *  without renders its own declaration inline (no hollow catalogue page). */
+ *  A member offering assemblies links to its catalog (`/s/view`); one
+ *  without renders its own declaration inline (no hollow catalog page). */
 function MemberRows({ rows, members }: { rows: Array<ExplorerRow & RowText>; members: ReturnType<typeof useRegisteredMembers>["data"] & object }) {
     if (rows.length === 0) return <Empty family="members" />;
     const byAddress = new Map((members ?? []).map((m) => [m.address.toLowerCase(), m]));

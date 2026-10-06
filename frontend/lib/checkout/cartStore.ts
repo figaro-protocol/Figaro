@@ -2,11 +2,11 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { PartyRole } from "@/lib/kernel/walletProcessQueries";
 
-/** A line in the buyer's cart — items selected from a seller's catalogue.
+/** A line in the buyer's cart — items selected from a seller's catalog.
  *  Internal to the store; consumers receive it structurally via `useCartStore`
  *  (they pass object literals to `addItem`, never the named type). */
 interface CartItem {
-    catalogueItemId: string;
+    catalogItemId: string;
     sellerId: string;
     sellerAddress: string;
     sellerName: string;
@@ -14,7 +14,7 @@ interface CartItem {
     price: string;
     quantity: number;
     imageURI?: string;
-    /** Physical attributes copied from the catalogue item at add-to-cart —
+    /** Physical attributes copied from the catalog item at add-to-cart —
      *  checkout folds them onto the order's cargo leaf (`figaro-cargo`).
      *  Optional: virtual, service, or un-annotated items omit them. Parcel
      *  dimensions (L/W/D) ride along for dimensional-weight derivation. */
@@ -23,16 +23,16 @@ interface CartItem {
     lengthMm?: number;
     widthMm?: number;
     heightMm?: number;
-    /** Catalogue-sourced clause values (freight class, hazmat, cold-chain,
-     *  a data product's license terms, …), copied from the catalogue item —
+    /** Catalog-sourced clause values (freight class, hazmat, cold-chain,
+     *  a data product's license terms, …), copied from the catalog item —
      *  the checkout fold lands them on the matching clause leaves. Keyed by
      *  clauseId → field values. */
     clauseValues?: Record<string, Record<string, unknown>>;
     /** Data-market context: the data this item sells
      *  (assembly compositionHash × clauseId × the posture the seller
-     *  co-produced on), copied from the catalogue item so checkout can
+     *  co-produced on), copied from the catalog item so checkout can
      *  show what is being licensed. The license TERMS ride `clauseValues`
-     *  like any catalogue-authored clause. */
+     *  like any catalog-authored clause. */
     dataSold?: {
         compositionHash: `0x${string}`;
         clauseId: string;
@@ -47,13 +47,13 @@ interface CartStore {
      * Decrement an item's quantity by 1, removing the line entirely if the
      * decrement reaches zero.
      */
-    removeItem: (catalogueItemId: string, sellerId: string) => void;
+    removeItem: (catalogItemId: string, sellerId: string) => void;
     /**
      * Remove a cart line entirely regardless of quantity. Used by cart-aside
      * "remove" buttons where the user wants to drop a whole line in one click
      * rather than tapping the decrement button N times.
      */
-    removeLine: (catalogueItemId: string, sellerId: string) => void;
+    removeLine: (catalogItemId: string, sellerId: string) => void;
     clearCart: () => void;
     getTotalPrice: () => string;
     getItemCount: () => number;
@@ -68,7 +68,7 @@ export const useCartStore = create<CartStore>()(
                 set((state) => {
                     const existingIndex = state.items.findIndex(
                         (item) =>
-                            item.catalogueItemId === newItem.catalogueItemId &&
+                            item.catalogItemId === newItem.catalogItemId &&
                             item.sellerId === newItem.sellerId
                     );
                     if (existingIndex >= 0) {
@@ -82,11 +82,11 @@ export const useCartStore = create<CartStore>()(
                     return { items: [...state.items, newItem] };
                 }),
 
-            removeItem: (catalogueItemId, sellerId) =>
+            removeItem: (catalogItemId, sellerId) =>
                 set((state) => {
                     const existingIndex = state.items.findIndex(
                         (item) =>
-                            item.catalogueItemId === catalogueItemId &&
+                            item.catalogItemId === catalogItemId &&
                             item.sellerId === sellerId
                     );
                     if (existingIndex < 0) return state;
@@ -102,11 +102,11 @@ export const useCartStore = create<CartStore>()(
                     return { items: updated };
                 }),
 
-            removeLine: (catalogueItemId, sellerId) =>
+            removeLine: (catalogItemId, sellerId) =>
                 set((state) => ({
                     items: state.items.filter(
                         (item) =>
-                            !(item.catalogueItemId === catalogueItemId && item.sellerId === sellerId),
+                            !(item.catalogItemId === catalogItemId && item.sellerId === sellerId),
                     ),
                 })),
 

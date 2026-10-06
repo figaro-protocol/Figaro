@@ -54,10 +54,10 @@ function collectAssemblyClauses(template: AssemblyTemplate): string[] {
 
 /** Process clauses the seller may bind counterparty wallets to when they
  *  adopt this assembly. Emitted for every non-root order that carries a
- *  process-log clause — whatever the seller binds in their catalogue is
+ *  process-log clause — whatever the seller binds in their catalog is
  *  seller-assigned; whatever they leave unbound becomes the buyer's
  *  checkout-time choice. There is NO coordination clause: the fill mechanism
- *  is DERIVED (bound vs unbound in the catalogue), never read from a
+ *  is DERIVED (bound vs unbound in the catalog), never read from a
  *  stored field.
  *
  *  The sub-order's process clause is identified from its SPEC, never by

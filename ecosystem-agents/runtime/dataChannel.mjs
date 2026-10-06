@@ -4,7 +4,7 @@
  * signer runtime", component 2 of the design).
  *
  * Everything an agent syncs is attacker-authorable: clause text, member
- * profiles, catalogue descriptions, assembly templates, offer envelopes,
+ * profiles, catalog descriptions, assembly templates, offer envelopes,
  * coordination messages. This module is the ONE way such content reaches a
  * model: inside a typed envelope, rendered as a delimited block whose
  * boundary carries a per-render random nonce — content cannot know the

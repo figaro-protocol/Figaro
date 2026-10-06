@@ -175,7 +175,7 @@ export function MemberDiscovery() {
                         </p>
                         <p className="text-sm text-ink-muted max-w-md mx-auto">
                             Every member listed here is a wallet that registered itself &mdash;
-                            an identity, a catalogue, accepted tokens; no application, no
+                            an identity, a catalog, accepted tokens; no application, no
                             approval, no one to say yes. You can be the first.
                         </p>
                         <a

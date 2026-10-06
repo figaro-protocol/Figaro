@@ -7,7 +7,7 @@ is correct.
 
 The intended audience is an external security auditor. Reading this document
 before reviewing the code will prevent the most common false-positive
-findings. The catalogue's size is the summary table at the bottom — count it
+findings. The catalog's size is the summary table at the bottom — count it
 there, never quote a remembered number.
 
 ---
@@ -237,7 +237,7 @@ observed in the wild; the fallback is commit-reveal on `AssemblyRegistry` alone.
 
 ---
 
-## 9. No competitive-pricing mechanism — pricing is a catalogue concern
+## 9. No competitive-pricing mechanism — pricing is a catalog concern
 
 **Pattern**: there is no auction, order-book, or price-discovery contract
 anywhere in `src/`; every payment is a figure both parties sign.
@@ -250,7 +250,7 @@ price or counterparty is unknown at signing is structurally incompatible with
 `FigaroCore`'s exact-match cumulative accumulator (`expectedCumulativeValue`),
 and the workaround (a market contract standing in as the seller
 `FigaroCore` sees, bonds borrowed from a float vault) is banned three ways:
-ECDSA-only parties, no bond lending, no intermediary holding. Pricing is a catalogue
+ECDSA-only parties, no bond lending, no intermediary holding. Pricing is a catalog
 concern (e.g. rate × geohash distance).
 
 ---
@@ -458,7 +458,7 @@ keeps its plaintext off-chain.
 the mechanism needs it beyond the two endpoints — and line items are exactly that:
 invoices and audit documents derive from them, disputes verify against them, and
 bond/price checks read them. Mitigation is compositional, not mechanical: item
-*names* are the seller's catalogue authoring choice, so a discreet catalogue names
+*names* are the seller's catalog authoring choice, so a discreet catalog names
 discreetly ("item #123" — `itemId` is already committed alongside), and `marks`
 follows bill-of-lading practice (reference codes, never personal names — the spec
 description says so). Pseudonymity of the wallet does the rest.
@@ -735,12 +735,12 @@ keys are revoked.
 | 6 | No prevrandao salt | Core-critical | Missing on-chain entropy | Validators predict prevrandao; party-chosen salt sufficient |
 | 7 | Attestation reverts on resolved orders | evidence-layer | Rejecting legitimate late evidence | Evidence window closes with the institution; forums get the closed data |
 | 8 | Permissionless clause registry | registry/discovery | Namespace squatting | Integrity routes through contentHash, never the registry; squatting pollutes discovery only, priced by the stake |
-| 9 | No competitive-pricing contract | — | A market protocol without a price primitive looks unfinished | Mid-chain unknown price or counterparty is incompatible with the exact-match accumulator; pricing is a catalogue concern |
+| 9 | No competitive-pricing contract | — | A market protocol without a price primitive looks unfinished | Mid-chain unknown price or counterparty is incompatible with the exact-match accumulator; pricing is a catalog concern |
 | 10 | Strict token compatibility rejection | Core-critical | Overly restrictive | Bond math requires exact amounts; wrapping is the solution |
 | 11 | Single currency per process | Core-critical | Can't do multi-token commerce | 2:1 bond ratio is Nash-stable only in one currency; multi-token lives at composition layer (process / wallet swap / Level-3 bundler) |
 | 12 | No `transferTitle` / `endorse` / `nominate` for BoLs | Core-critical | Industry-standard MLETR-aligned eBLs are negotiable; CargoX / TradeTrust / TradeLens all implement this | Single-buyer invariant + parties-fixed-at-commit + no-escape-hatches each separately rule it out; cargo doesn't carry rights, the commitment does |
 | 13 | `deadline` alongside `salt` | Core-critical | Redundant / auction residue | Salt is identity, deadline is expiry of the unconsummated signature window; no-cancel `FigaroCore` needs signatures to age out |
-| 14 | Committed `lineItems.name` / `cargo.marks` are public | privacy/evidence | Wallet-linkable purchase content leaks | Mechanism needs line items beyond the endpoints (invoices, disputes, price checks); mitigation is compositional (discreet catalogue naming, coded marks) + wallet pseudonymity |
+| 14 | Committed `lineItems.name` / `cargo.marks` are public | privacy/evidence | Wallet-linkable purchase content leaks | Mechanism needs line items beyond the endpoints (invoices, disputes, price checks); mitigation is compositional (discreet catalog naming, coded marks) + wallet pseudonymity |
 | 15 | `MembersRegistry` withdrawal cooldown holds ETH on a timer | registry/stake | Looks like stuck funds + a Core-forbidden time lock | PROTOCOL tier, not the Core — no bond or commitment involved; without it one stake is recycled across identities and prices nothing; bounded, immutable, and unconditionally claimable after `releaseAt` |
 | 16 | `applyBatchAccrual` has one privileged caller | reward-path | A named writer on the reward path is the shape of an admin backdoor | Discretion, not permission, is the test: the caller may only relay numbers an immutable vkey committed; the counter still enforces period, seller stake and exclusions itself |
 | 17 | Recorded usage can score zero (`minSellers` floor) | reward-path | Real resolved trade with `score = 0` reads like lost accrual | Below 3 staked sellers sits what one actor fabricates alone; sub-floor accrual defers within the period (full score springs at the third seller) and expires when the period closes; per-path because the paths' seller sets cannot be unioned |

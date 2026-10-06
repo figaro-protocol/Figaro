@@ -2,14 +2,14 @@
  * lib/member/useUpdateMemberProfile.ts
  *
  * Shared edit-side write path for the four member-managed
- * surfaces (profile / catalogue-link / assemblies / agents).
+ * surfaces (profile / catalog-link / assemblies / agents).
  * Each of these resolves on-chain through one mechanism —
  * `MembersRegistry.updateProfile(metadataURI)` — so they share
  * the same workflow:
  *
  *   1. Take a partial draft of the fields the user just edited.
  *   2. Merge with the wallet's current on-chain profile so
- *      unchanged fields (catalogueURI, assemblyBindings,
+ *      unchanged fields (catalogURI, assemblyBindings,
  *      services, branding, etc.) survive the round-trip.
  *   3. Validate the merged document via `parseMemberProfileDocument`
  *      so a malformed update fails before it leaves the browser.
@@ -44,7 +44,7 @@ interface SaveOptions {
     /**
      * Fields to explicitly clear in the merged profile. Useful for
      * destructive actions that remove a pointer (e.g. clearing
-     * `catalogueURI` to delete the catalogue link from the profile)
+     * `catalogURI` to delete the catalog link from the profile)
      * without touching the rest of the document.
      *
      * `undefined` in `patch` means "leave existing alone"; this

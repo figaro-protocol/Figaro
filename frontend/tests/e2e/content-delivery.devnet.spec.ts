@@ -184,7 +184,7 @@ test.describe('CONTENT DELIVERY — the digital hand-off ceremony, encrypted to 
         await page.getByRole('button', { name: /^Next/ }).click();
         await expect(page).toHaveURL(/\/members\/buyer/);
         await page.getByRole('button', { name: /^Next/ }).click();
-        await expect(page).toHaveURL(/\/members\/catalogue/);
+        await expect(page).toHaveURL(/\/members\/catalog/);
         await page.locator('[id^="item-"][id$="-name"]').first().fill('Production cut');
         await page.locator('[id^="item-"][id$="-price"]').first().fill('1');
         await page.getByRole('button', { name: /^Next/ }).click();

@@ -288,7 +288,7 @@ export function OnboardingAssembliesForm({
             {/* Profile-sourced clause values (a dim-weight divisor, a declared
                 credential id) — the member's master data the bound assemblies read at
                 checkout. Scoped to the clauses the assemblies selected above
-                compose, exactly as the catalogue step scopes its item
+                compose, exactly as the catalog step scopes its item
                 properties; filled here, where a binding exists, never on
                 Identity, where nothing is bound yet. Stored on the profile
                 draft, which is the document they belong to. */}

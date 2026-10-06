@@ -26,15 +26,15 @@ import { usePublishMemberProfile } from "@/lib/member/usePublishMemberProfile";
  * Final step — review and publish.
  *
  * Renders the wallet's pre-publish profile in member-page-style
- * chrome: name, branding, specialty, description, location, catalogue
+ * chrome: name, branding, specialty, description, location, catalog
  * items, accepted tokens, assemblies. Each section carries an "Edit"
  * link back to its wizard step. Autosave on each wizard step means
  * the member can edit, return via the step indicator, and the review
  * re-reads from localStorage.
  *
  * Publish is one user action; three serial operations under the hood:
- * (a) pin catalogue to IPFS (cached on retry), (b) pin profile JSON
- * with the catalogue URI embedded, (c) dispatch
+ * (a) pin catalog to IPFS (cached on retry), (b) pin profile JSON
+ * with the catalog URI embedded, (c) dispatch
  * `MembersRegistry.register(profileURI)` (first-time) or
  * `updateProfile(profileURI)` (returning member). On success the
  * router redirects to /members — the registered-dashboard view
@@ -42,22 +42,22 @@ import { usePublishMemberProfile } from "@/lib/member/usePublishMemberProfile";
  */
 
 interface DraftSummary {
-    /** Profile shape before the catalogueURI is pinned. Submit fills in `catalogueURI`. */
-    profileTemplate: Omit<MemberProfileMetadata, "catalogueURI">;
+    /** Profile shape before the catalogURI is pinned. Submit fills in `catalogURI`. */
+    profileTemplate: Omit<MemberProfileMetadata, "catalogURI">;
 }
 
 function buildDraft(state: ReturnType<typeof useOnboardingState>["state"], wallet: `0x${string}`): DraftSummary | { error: string } {
     if (!state.profile?.name) return { error: `${onboardingStepLabel("profile")} is incomplete: name is required.` };
-    if (!state.profile.defaultTokenAddress) return { error: `${onboardingStepLabel("profile")} is incomplete: pick the accepted token your catalogue is priced in.` };
+    if (!state.profile.defaultTokenAddress) return { error: `${onboardingStepLabel("profile")} is incomplete: pick the accepted token your catalog is priced in.` };
     // Reported in wizard order, so the member is sent to the earliest step
     // that still needs them. A profile without assembly bindings cannot be
     // ordered from — the register is refused, not just the step navigation
     // (deep links and stale drafts land here too).
     if ((state.assemblies ?? []).length === 0) return { error: `${onboardingStepLabel("assemblies")} is incomplete: bind at least one published assembly — a member profile without one cannot be ordered from.` };
-    const items = state.catalogue?.items ?? [];
-    if (items.length === 0) return { error: `${onboardingStepLabel("catalogue")} is incomplete: add at least one item before publishing.` };
+    const items = state.catalog?.items ?? [];
+    if (items.length === 0) return { error: `${onboardingStepLabel("catalog")} is incomplete: add at least one item before publishing.` };
 
-    const profileTemplate: Omit<MemberProfileMetadata, "catalogueURI"> = {
+    const profileTemplate: Omit<MemberProfileMetadata, "catalogURI"> = {
         subjectAddress: wallet,
         name: state.profile.name,
         description: state.profile.description,
@@ -126,7 +126,7 @@ export function OnboardingReview() {
     const [receipt, setReceipt] = useState<{
         hash: `0x${string}`;
         profileURI: string;
-        catalogueURI: string;
+        catalogURI: string;
     } | null>(null);
 
     const draft = useMemo(() => {
@@ -142,7 +142,7 @@ export function OnboardingReview() {
     async function handlePublish() {
         if ("error" in draft) return;
         if (!address) return;
-        const items = state.catalogue?.items ?? [];
+        const items = state.catalog?.items ?? [];
 
         setPinning(true);
         setPinError(null);
@@ -150,12 +150,12 @@ export function OnboardingReview() {
             const outcome = await publish({
                 profileTemplate: draft.profileTemplate,
                 items,
-                unitSystem: state.catalogue?.unitSystem,
+                unitSystem: state.catalog?.unitSystem,
                 wallet: address,
-                cachedCatalogueURI: state.publishedCatalogueURI,
+                cachedCatalogURI: state.publishedCatalogURI,
             });
             update({
-                publishedCatalogueURI: outcome.catalogueURI,
+                publishedCatalogURI: outcome.catalogURI,
                 publishedProfileURI: outcome.profileURI,
             });
             setReceipt(outcome);
@@ -221,7 +221,7 @@ export function OnboardingReview() {
                         rows={[
                             { label: "Transaction", value: receipt.hash },
                             { label: "Profile URI", value: receipt.profileURI },
-                            { label: "Catalogue URI", value: receipt.catalogueURI },
+                            { label: "Catalog URI", value: receipt.catalogURI },
                         ]}
                     />
                 </Card>
@@ -241,7 +241,7 @@ export function OnboardingReview() {
     }
 
     const profile = "profileTemplate" in draft ? draft.profileTemplate : undefined;
-    const items = state.catalogue?.items ?? [];
+    const items = state.catalog?.items ?? [];
     const acceptedTokens = profile?.acceptedTokens ?? [];
     const bindings = profile?.assemblyBindings ?? [];
     const subscriptions = profile?.buyerAssemblies ?? [];
@@ -293,15 +293,15 @@ export function OnboardingReview() {
                 </div>
             </Card>
 
-            {/* Catalogue */}
+            {/* Catalog */}
             <Card className="p-6 space-y-3">
                 <div className="flex items-start justify-between gap-4">
-                    <h2 className="text-heading-h2 text-ink-heading">Catalogue ({items.length} item{items.length === 1 ? "" : "s"})</h2>
+                    <h2 className="text-heading-h2 text-ink-heading">Catalog ({items.length} item{items.length === 1 ? "" : "s"})</h2>
                     <Link
-                        href="/members/catalogue"
+                        href="/members/catalog"
                         className="text-xs text-ink-faint hover:text-ink-heading underline"
                     >
-                        Edit catalogue →
+                        Edit catalog →
                     </Link>
                 </div>
                 {items.length > 0 ? (
@@ -441,14 +441,14 @@ export function OnboardingReview() {
                     {isRegistered ? (
                         <>
                             Your wallet is already registered. Publishing here re-pins
-                            the catalogue + profile JSON to IPFS and calls{" "}
+                            the catalog + profile JSON to IPFS and calls{" "}
                             <code>updateProfile</code> with the new URI. The stake
                             is unaffected.
                         </>
                     ) : (
                         <>
-                            Publishing pins your catalogue to IPFS, then pins your
-                            profile (with the catalogue URI embedded), then calls{" "}
+                            Publishing pins your catalog to IPFS, then pins your
+                            profile (with the catalog URI embedded), then calls{" "}
                             <code>register(profileURI)</code> on the MembersRegistry,
                             placing the reclaimable ETH stake. One user action; three
                             serial operations.

@@ -4,7 +4,7 @@ import { MarketingHero } from "@/components/marketing/MarketingHero";
 import { MarketingSection } from "@/components/marketing/MarketingSection";
 
 // One-screen marketing door: the hero states what the surface is; the full
-// catalogue (every contract with its ABI and install, the clause and agreement
+// catalog (every contract with its ABI and install, the clause and agreement
 // model, the per-chain deployment records with the tamper-check recipe, and
 // every named revert) lives once in the builder documentation at
 // /docs/protocol/contracts. Point to it, never fork it.
@@ -27,7 +27,7 @@ export default function Spec() {
                 }
             />
 
-            <MarketingSection title="The contract catalogue.">
+            <MarketingSection title="The contract catalog.">
                 <p className="text-sm text-ink-body leading-relaxed">
                     Every contract with its ABI and install, the clause and agreement model, the per-chain deployment records, and every named revert an integrator can hit are in the <a href="/docs/protocol/contracts/" className="text-ink-heading font-medium hover:underline">builder documentation</a>.
                 </p>

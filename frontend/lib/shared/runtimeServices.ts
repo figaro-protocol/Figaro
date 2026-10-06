@@ -1,5 +1,5 @@
-import type { CatalogueService } from "@/lib/member/catalogueService";
-import { DEFAULT_CATALOGUE_SERVICE } from "@/lib/member/catalogueService";
+import type { CatalogService } from "@/lib/member/catalogService";
+import { DEFAULT_CATALOG_SERVICE } from "@/lib/member/catalogService";
 import type { HandoffMessagingService } from "@/lib/handoff/handoffMessagingService";
 import { DEFAULT_HANDOFF_MESSAGING_SERVICE } from "@/lib/handoff/handoffMessagingService";
 import type { DiscoveryService } from "@/lib/member/discoveryService";
@@ -13,7 +13,7 @@ import { DEFAULT_TOKEN_CONVERSION_SERVICE } from "@/lib/shared/tokenConversion";
 
 /** The 6 service slots a runtime carries. */
 type RuntimeServiceKey =
-    | "catalogue"
+    | "catalog"
     | "discovery"
     | "evidenceTransport"
     | "handoffMessaging"
@@ -21,7 +21,7 @@ type RuntimeServiceKey =
     | "tokenConversion";
 
 export interface RuntimeServices {
-    catalogue: CatalogueService;
+    catalog: CatalogService;
     discovery: DiscoveryService;
     evidenceTransport: IpfsService;
     handoffMessaging: HandoffMessagingService;
@@ -32,7 +32,7 @@ export interface RuntimeServices {
 type RuntimeServiceProviderKeys = Record<RuntimeServiceKey, string>;
 
 const DEFAULT_RUNTIME_SERVICE_PROVIDER_KEYS: Record<RuntimeServiceKey, string> = {
-    catalogue: "default-catalogue",
+    catalog: "default-catalog",
     discovery: "default-discovery",
     evidenceTransport: "default-ipfs",
     handoffMessaging: "default-coordination-messaging",
@@ -41,7 +41,7 @@ const DEFAULT_RUNTIME_SERVICE_PROVIDER_KEYS: Record<RuntimeServiceKey, string> =
 };
 
 export const DEFAULT_RUNTIME_SERVICES: RuntimeServices = {
-    catalogue: DEFAULT_CATALOGUE_SERVICE,
+    catalog: DEFAULT_CATALOG_SERVICE,
     discovery: DEFAULT_DISCOVERY_SERVICE,
     evidenceTransport: DEFAULT_IPFS_SERVICE,
     handoffMessaging: DEFAULT_HANDOFF_MESSAGING_SERVICE,
@@ -55,7 +55,7 @@ type RuntimeServiceProviderRegistry = {
 
 function createRuntimeServiceProviderRegistry(): RuntimeServiceProviderRegistry {
     return {
-        catalogue: new Map([[DEFAULT_RUNTIME_SERVICE_PROVIDER_KEYS.catalogue, DEFAULT_RUNTIME_SERVICES.catalogue]]),
+        catalog: new Map([[DEFAULT_RUNTIME_SERVICE_PROVIDER_KEYS.catalog, DEFAULT_RUNTIME_SERVICES.catalog]]),
         discovery: new Map([[DEFAULT_RUNTIME_SERVICE_PROVIDER_KEYS.discovery, DEFAULT_RUNTIME_SERVICES.discovery]]),
         evidenceTransport: new Map([[DEFAULT_RUNTIME_SERVICE_PROVIDER_KEYS.evidenceTransport, DEFAULT_RUNTIME_SERVICES.evidenceTransport]]),
         handoffMessaging: new Map([[DEFAULT_RUNTIME_SERVICE_PROVIDER_KEYS.handoffMessaging, DEFAULT_RUNTIME_SERVICES.handoffMessaging]]),

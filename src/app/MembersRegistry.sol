@@ -31,12 +31,12 @@ pragma solidity 0.8.26;
 ///
 ///         The metadataURI JSON document is the member's composability surface:
 ///         it declares which clauses from ClauseRegistry the member operates
-///         under and the member's catalogue. It is ONE document — there is no
+///         under and the member's catalog. It is ONE document — there is no
 ///         buyer half and no seller half. The document is already split on
 ///         stable↔volatile (identity envelope here, item list behind
-///         `catalogueURI`); a buyer/seller split would be a second, crossing
+///         `catalogURI`); a buyer/seller split would be a second, crossing
 ///         axis, and every field it would divide (`acceptedTokens`,
-///         `catalogueURI`, location, branding) serves either side unchanged.
+///         `catalogURI`, location, branding) serves either side unchanged.
 ///
 ///         The deposit exists for spam protection only — it does not gate
 ///         metadata edits. `updateProfile` lets a registered member publish

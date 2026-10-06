@@ -12,9 +12,9 @@
  * must reproduce it hash-for-hash), the cheapest quote wins, and the commit
  * lands at the QUOTED figure — not the ceiling, not the posted price.
  *
- * Posted catalogue prices (2 and 3 MOCK) serve ONLY as the candidate filter
+ * Posted catalog prices (2 and 3 MOCK) serve ONLY as the candidate filter
  * here; the couriers quote 2.5 and 4 — the winner's committed payment is 2.5,
- * proving the quote, not the catalogue, set the figure. The losing quoter
+ * proving the quote, not the catalog, set the figure. The losing quoter
  * nets exactly zero.
  *
  * Cast: buyer anvil[14] · merchant anvil[6] (Aurora) · couriers anvil[10]/[11]
@@ -93,7 +93,7 @@ test.describe('RFQ AT CHECKOUT — the candidates author the price (devnet)', ()
             }).toBe(true);
         }
         const seedCourier = async (walletKey: `0x${string}`, address: Hex, name: string, price: string) => {
-            const { uri: catalogueURI } = await pinJSONToIPFS({
+            const { uri: catalogURI } = await pinJSONToIPFS({
                 subjectAddress: address,
                 version: '1.0.0',
                 unitSystem: 'metric' as const,
@@ -112,7 +112,7 @@ test.describe('RFQ AT CHECKOUT — the candidates author the price (devnet)', ()
                 profile: {
                     name,
                     description: 'Courier seeded for the market-formation specs',
-                    catalogueURI,
+                    catalogURI,
                     acceptedTokens: [{ address: token, symbol: 'MOCK', chainId: 31337 }],
                     defaultTokenAddress: token,
                     assemblyBindings: [{
@@ -250,7 +250,7 @@ test.describe('RFQ AT CHECKOUT — the candidates author the price (devnet)', ()
         }).toBe(committedBefore + 2);
 
         // THE scenario asserts: committed at the QUOTE — not the ceiling, not
-        // the posted catalogue price — to the quoting winner, same process.
+        // the posted catalog price — to the quoting winner, same process.
         const courierEvent = (await queryCommitted())[committedBefore + 1];
         expect(courierEvent.args.processId).toBe(processId);
         expect(courierEvent.args.seller?.toLowerCase(), 'the committed seller is the winning QUOTER')

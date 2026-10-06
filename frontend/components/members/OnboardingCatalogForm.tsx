@@ -21,11 +21,11 @@ import {
     useOnboardingState,
 } from "@/lib/member/onboardingState";
 import type { DisclosurePolicyEntry } from "@/lib/member/memberProfileMetadata";
-import { parseCatalogueCsv } from "@/lib/member/parseCatalogueCsv";
+import { parseCatalogCsv } from "@/lib/member/parseCatalogCsv";
 import type {
-    CatalogueItemMetadata,
+    CatalogItemMetadata,
     UnitSystem,
-} from "@/lib/member/memberCatalogueMetadata";
+} from "@/lib/member/memberCatalogMetadata";
 import {
     gramsToInput,
     lengthUnitLabel,
@@ -44,15 +44,15 @@ import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
 import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
 import { useAssemblyChoices } from "@/lib/protocol/assemblyChoices";
 import {
-    catalogueClausesForBindings,
-    catalogueFieldsOfClause,
-    validateCatalogueClauseValues,
-} from "@/lib/member/catalogueClauseValues";
+    catalogClausesForBindings,
+    catalogFieldsOfClause,
+    validateCatalogClauseValues,
+} from "@/lib/member/catalogClauseValues";
 
 /**
- * The catalogue step of the onboarding wizard. Collects the catalogue items —
+ * The catalog step of the onboarding wizard. Collects the catalog items —
  * the volatile sales-context payload that gets pinned to IPFS as
- * `MemberCatalogueMetadata { subjectAddress, items, version }`.
+ * `MemberCatalogMetadata { subjectAddress, items, version }`.
  *
  * Each item: id (auto), name (required), price (required), category
  * (optional), description (optional), image (optional, via IPFS
@@ -75,16 +75,16 @@ interface FormItem {
     category: string;
     image: string;
     available: boolean;
-    /** Editor input — in the catalogue's `unitSystem`. Parsed to metric at save. */
+    /** Editor input — in the catalog's `unitSystem`. Parsed to metric at save. */
     mass: string;
-    /** Editor input — in the catalogue's `unitSystem`. Parsed to metric at save. */
+    /** Editor input — in the catalog's `unitSystem`. Parsed to metric at save. */
     volume: string;
-    /** Parcel dimensions — editor input in the catalogue's `unitSystem`
+    /** Parcel dimensions — editor input in the catalog's `unitSystem`
      *  (mm metric / inches imperial). Parsed to metric mm at save. */
     length: string;
     width: string;
     height: string;
-    /** Catalogue-sourced clause values (freight class, hazmat, cold-chain, …),
+    /** Catalog-sourced clause values (freight class, hazmat, cold-chain, …),
      *  keyed by clauseId → field values. Authored via spec-driven controls;
      *  empty entries stripped at save. */
     clauseValues: Record<string, Record<string, unknown>>;
@@ -101,11 +101,11 @@ interface FormItem {
 }
 
 /** Encode the data reference as a stable select-option key. */
-function dataSoldKeyOf(rc: NonNullable<CatalogueItemMetadata["dataSold"]>): string {
+function dataSoldKeyOf(rc: NonNullable<CatalogItemMetadata["dataSold"]>): string {
     return [rc.compositionHash, rc.clauseId, rc.posture].join("|");
 }
 
-function dataSoldFromKey(key: string): CatalogueItemMetadata["dataSold"] {
+function dataSoldFromKey(key: string): CatalogItemMetadata["dataSold"] {
     const [compositionHash, clauseId, posture] = key.split("|");
     if (!compositionHash || !clauseId || (posture !== "buyer" && posture !== "seller")) {
         return undefined;
@@ -139,7 +139,7 @@ function emptyItem(): FormItem {
     };
 }
 
-function fromItem(item: CatalogueItemMetadata, unitSystem: UnitSystem): FormItem {
+function fromItem(item: CatalogItemMetadata, unitSystem: UnitSystem): FormItem {
     return {
         id: item.id,
         name: item.name,
@@ -176,7 +176,7 @@ function clauseValuesForSave(
     return Object.keys(out).length ? out : undefined;
 }
 
-function toItem(form: FormItem, unitSystem: UnitSystem): CatalogueItemMetadata {
+function toItem(form: FormItem, unitSystem: UnitSystem): CatalogItemMetadata {
     const clauseValues = clauseValuesForSave(form.clauseValues);
     const dataSold = form.dataSoldKey ? dataSoldFromKey(form.dataSoldKey) : undefined;
     return {
@@ -208,27 +208,27 @@ function isItemComplete(form: FormItem): boolean {
     return Boolean(form.name.trim()) && Boolean(form.price.trim());
 }
 
-export interface OnboardingCatalogueFormProps extends OnboardingStepChromeProps {
+export interface OnboardingCatalogFormProps extends OnboardingStepChromeProps {
     /**
      * Edit-mode override. When provided, the submit handler calls
      * `onSave(items, unitSystem)` instead of routing to the next
-     * wizard step. The caller assembles the MemberCatalogueMetadata
+     * wizard step. The caller assembles the MemberCatalogMetadata
      * document with both, pins it, and chases with `updateProfile`.
      *
      * Resolves on success (caller redirects); rejects on failure
      * (caller surfaces the error via `externalError`).
      */
-    onSave?: (items: CatalogueItemMetadata[], unitSystem: UnitSystem) => Promise<void>;
+    onSave?: (items: CatalogItemMetadata[], unitSystem: UnitSystem) => Promise<void>;
 }
 
-export function OnboardingCatalogueForm({
+export function OnboardingCatalogForm({
     onSave,
     submitLabel,
     backHref,
     backLabel,
     submitInFlight = false,
     externalError = null,
-}: OnboardingCatalogueFormProps = {}) {
+}: OnboardingCatalogFormProps = {}) {
     const router = useRouter();
     const mounted = useMounted();
     const { address, isConnected } = useAccount();
@@ -244,7 +244,7 @@ export function OnboardingCatalogueForm({
     const [importedCount, setImportedCount] = useState<number | null>(null);
 
     // The item properties this member is actually asked for: the
-    // catalogue-filled fields of the clauses their BOUND assemblies compose
+    // catalog-filled fields of the clauses their BOUND assemblies compose
     // (freight class, hazmat, cold-chain, a data licence — whatever those
     // assemblies carry). Derived live from the registry through the bindings,
     // never a bundled list and never the whole registry: a member selling one mug
@@ -252,34 +252,34 @@ export function OnboardingCatalogueForm({
     // newly registered product-property clause surfaces with zero change here.
     const { version: clauseSpecsVersion } = useClauseSpecs();
     const { data: assemblyChoices } = useAssemblyChoices();
-    const catalogueClauses = useMemo(
-        () => catalogueClausesForBindings(state.assemblies ?? [], assemblyChoices ?? []),
+    const catalogClauses = useMemo(
+        () => catalogClausesForBindings(state.assemblies ?? [], assemblyChoices ?? []),
         // eslint-disable-next-line react-hooks/exhaustive-deps
         [clauseSpecsVersion, state.assemblies, assemblyChoices],
     );
 
     // Hydrate once the wallet-keyed state has actually been read from
-    // localStorage (`loaded === true`). Gating on `state.catalogue`
+    // localStorage (`loaded === true`). Gating on `state.catalog`
     // alone races the hook's read-effect — for users with stored
     // items, hydration could fire against the EMPTY_STATE snapshot
     // and the persistence effect would then overwrite their saved
     // items with the local default `[emptyItem()]`.
     useEffect(() => {
         if (hydrated || !loaded) return;
-        const storedUnitSystem = state.catalogue?.unitSystem ?? "metric";
+        const storedUnitSystem = state.catalog?.unitSystem ?? "metric";
         setUnitSystem(storedUnitSystem);
-        const stored = state.catalogue?.items;
+        const stored = state.catalog?.items;
         if (stored && stored.length > 0) {
             setItems(stored.map((item) => fromItem(item, storedUnitSystem)));
         }
         setHydratedFor(subject);
-    }, [hydrated, loaded, subject, state.catalogue]);
+    }, [hydrated, loaded, subject, state.catalog]);
 
     // Persist on every form change.
     useEffect(() => {
         if (!hydrated) return;
         const validItems = items.filter(isItemComplete).map((it) => toItem(it, unitSystem));
-        update({ catalogue: { items: validItems, unitSystem } });
+        update({ catalog: { items: validItems, unitSystem } });
     }, [items, unitSystem, hydrated, update]);
 
     // Data-for-sale options: the member's declared data offers
@@ -318,7 +318,7 @@ export function OnboardingCatalogueForm({
         setImportedCount(null);
         try {
             const text = await file.text();
-            const { items: parsed, errors } = parseCatalogueCsv(text);
+            const { items: parsed, errors } = parseCatalogCsv(text);
             if (errors.length > 0) {
                 setImportErrors(errors);
             }
@@ -337,7 +337,7 @@ export function OnboardingCatalogueForm({
             });
             setImportedCount(parsed.length);
         } catch (err) {
-            setImportErrors([extractErrorMessage(err, "Importing the catalogue failed.")]);
+            setImportErrors([extractErrorMessage(err, "Importing the catalog failed.")]);
         }
     }
 
@@ -349,23 +349,23 @@ export function OnboardingCatalogueForm({
             return;
         }
         const savedItems = completeItems.map((it) => toItem(it, unitSystem));
-        // Off-chain validation gate: catalogue-sourced clause values must conform to each
+        // Off-chain validation gate: catalog-sourced clause values must conform to each
         // clause's registered spec before publish (reuses the sign/attest validator).
-        const clauseErrors = savedItems.flatMap(validateCatalogueClauseValues);
+        const clauseErrors = savedItems.flatMap(validateCatalogClauseValues);
         if (clauseErrors.length > 0) {
             setSubmitError(`Fix the logistics classifications — ${clauseErrors.join("; ")}`);
             return;
         }
         setSubmitError(null);
         if (onSave) {
-            // Edit mode: caller pins the catalogue + chases with
+            // Edit mode: caller pins the catalog + chases with
             // updateProfile. The wizard navigation is suppressed.
             onSave(savedItems, unitSystem).catch(() => {
                 // The caller surfaces failures via `externalError`.
             });
             return;
         }
-        router.push(onboardingNextHref("catalogue"));
+        router.push(onboardingNextHref("catalog"));
     }
 
     if (!mounted) {
@@ -377,7 +377,7 @@ export function OnboardingCatalogueForm({
         return (
             <Card className="p-6 space-y-4">
                 <p className="text-sm text-ink-body">
-                    Your catalogue is priced in your profile&apos;s default token. Go back to {onboardingStepLabel("profile")} and set it before adding items.
+                    Your catalog is priced in your profile&apos;s default token. Go back to {onboardingStepLabel("profile")} and set it before adding items.
                 </p>
                 <Link href="/members/identity">
                     <Button variant="outline">← Set default token</Button>
@@ -438,7 +438,7 @@ export function OnboardingCatalogueForm({
                         index={index}
                         priceSymbol={defaultTokenSymbol}
                         unitSystem={unitSystem}
-                        catalogueClauses={catalogueClauses}
+                        catalogClauses={catalogClauses}
                         dataSoldOptions={dataSoldOptions}
                         onChange={(key, value) => setItemField(index, key, value)}
                         onRemove={items.length > 1 || isItemComplete(item) ? () => removeItem(index) : undefined}
@@ -462,13 +462,13 @@ export function OnboardingCatalogueForm({
                                 if (file) await handleCsvImport(file);
                                 e.target.value = "";
                             }}
-                            data-testid="catalogue-csv-import"
+                            data-testid="catalog-csv-import"
                         />
                         Import CSV →
                     </label>
                 </div>
                 {importedCount !== null && importedCount > 0 && (
-                    <p className="text-xs text-ink-body" data-testid="catalogue-csv-imported">
+                    <p className="text-xs text-ink-body" data-testid="catalog-csv-imported">
                         Imported {importedCount} item{importedCount === 1 ? "" : "s"} from CSV.
                     </p>
                 )}
@@ -494,7 +494,7 @@ export function OnboardingCatalogueForm({
 
             <div className="flex items-center justify-between pt-4 border-t border-default">
                 <Link
-                    href={backHref ?? onboardingPrevHref("catalogue")}
+                    href={backHref ?? onboardingPrevHref("catalog")}
                     className="text-sm text-ink-faint hover:text-ink-heading transition-colors"
                 >
                     {backLabel ?? "← Back"}
@@ -512,9 +512,9 @@ interface ItemRowProps {
     index: number;
     priceSymbol: string;
     unitSystem: UnitSystem;
-    /** Catalogue-sourced clauses to author on this item (freight class, hazmat,
+    /** Catalog-sourced clauses to author on this item (freight class, hazmat,
      *  cold-chain, …), derived live from the registry by the parent. */
-    catalogueClauses: readonly { clauseId: string; version: number }[];
+    catalogClauses: readonly { clauseId: string; version: number }[];
     /** The member's declared data offers (offered entries) — the
      *  options a data-product item can reference for its price. */
     dataSoldOptions: readonly DisclosurePolicyEntry[];
@@ -522,7 +522,7 @@ interface ItemRowProps {
     onRemove?: () => void;
 }
 
-function ItemRow({ item, index, priceSymbol, unitSystem, catalogueClauses, dataSoldOptions, onChange, onRemove }: ItemRowProps) {
+function ItemRow({ item, index, priceSymbol, unitSystem, catalogClauses, dataSoldOptions, onChange, onRemove }: ItemRowProps) {
     const idPrefix = `item-${item.id}`;
     return (
         <Card className="p-5 space-y-4">
@@ -719,21 +719,21 @@ function ItemRow({ item, index, priceSymbol, unitSystem, catalogueClauses, dataS
                 ))}
             </div>
 
-            {/* Catalogue-filled clause values — one spec-driven group per
+            {/* Catalog-filled clause values — one spec-driven group per
                 clause the member's bound assemblies compose, rendered from the
-                registry, never hardcoded. Only each clause's OWN catalogue
+                registry, never hardcoded. Only each clause's OWN catalog
                 fills appear; its checkout- and profile-filled fields belong
                 to other surfaces. Optional throughout: an item that has no
                 freight class leaves it blank. */}
-            {catalogueClauses.length > 0 && (
+            {catalogClauses.length > 0 && (
                 <div className="space-y-4 border-t border-default pt-3" data-testid={`${idPrefix}-clauses`}>
                     <p className="text-xs text-ink-muted">
                         Item properties the assemblies you bound ask for (all optional)
                     </p>
-                    {catalogueClauses.map(({ clauseId, version }) => {
+                    {catalogClauses.map(({ clauseId, version }) => {
                         const spec = getClauseSpec(clauseId, version);
                         if (!spec) return null;
-                        const fields = catalogueFieldsOfClause(clauseId, version);
+                        const fields = catalogFieldsOfClause(clauseId, version);
                         if (fields.length === 0) return null;
                         const data = item.clauseValues[clauseId] ?? {};
                         const setField = (fieldName: string, next: unknown) => {

@@ -10,7 +10,7 @@
  *              MOCK minted to them + the buyer (permissionless devnet mint —
  *              MintTokens covers only anvil[0..9]).
  *   race     → the buyer's checkout drafts one exact struct per candidate —
- *              the candidate set is EVERY discovered catalogue that can price
+ *              the candidate set is EVERY discovered catalog that can price
  *              the node (the seeded price-1 sellers included!) — and relays
  *              them UNSIGNED. Both couriers counter-sign & return on THEIR
  *              own /sign pages (concurrent tabs, one per wallet); the cheaper
@@ -75,7 +75,7 @@ const MERCHANT = mnemonicToAccount(ANVIL_MNEMONIC, { addressIndex: 6 }).address 
 
 // The racing couriers — seeded sellers no spec references, re-seeded here
 // with distinct posted prices (the canonical seeder is idempotent; other
-// specs DISCOVER sellers, never assume their catalogues).
+// specs DISCOVER sellers, never assume their catalogs).
 const COURIER_CHEAP_KEY = ANVIL_KEYS[25];
 const COURIER_DEAR_KEY = ANVIL_KEYS[26];
 const COURIER_CHEAP = privateKeyToAccount(COURIER_CHEAP_KEY).address as Hex; // 2 MOCK
@@ -124,7 +124,7 @@ test.describe('DISPATCH RACE — countersign-first market formation, zero contra
         // ── SEED the two racing couriers (idempotent re-seed) + fund the
         //    out-of-mint-range wallets. Pre-population, not a UI action. ──
         const seedCourier = async (walletKey: `0x${string}`, address: Hex, name: string, price: string) => {
-            const { uri: catalogueURI } = await pinJSONToIPFS({
+            const { uri: catalogURI } = await pinJSONToIPFS({
                 subjectAddress: address,
                 version: '1.0.0',
                 unitSystem: 'metric' as const,
@@ -143,7 +143,7 @@ test.describe('DISPATCH RACE — countersign-first market formation, zero contra
                 profile: {
                     name,
                     description: 'Courier seeded by dispatch-race.devnet.spec.ts',
-                    catalogueURI,
+                    catalogURI,
                     acceptedTokens: [{ address: token, symbol: 'MOCK', chainId: 31337 }],
                     defaultTokenAddress: token,
                     assemblyBindings: [{
@@ -196,7 +196,7 @@ test.describe('DISPATCH RACE — countersign-first market formation, zero contra
 
         // The unbound node surfaces BOTH resolutions of the same absence: the
         // manual picker and the race panel.
-        await expect(page.getByTestId('seller-catalogue-picker'), 'the manual picker renders').toBeVisible({ timeout: 30000 });
+        await expect(page.getByTestId('seller-catalog-picker'), 'the manual picker renders').toBeVisible({ timeout: 30000 });
         await expect(page.getByTestId('race-panel'), 'the race panel renders beside it').toBeVisible({ timeout: 15000 });
 
         // The buyer authors the transaction particulars BEFORE racing — the
@@ -206,7 +206,7 @@ test.describe('DISPATCH RACE — countersign-first market formation, zero contra
 
         await page.getByTestId('race-start').click();
 
-        // The candidate set is OPEN: every discovered catalogue that can
+        // The candidate set is OPEN: every discovered catalog that can
         // price the node — the seeded price-1 sellers race too. Our couriers
         // must be among the drafted candidates.
         const cheapRow = page.getByTestId(`race-candidate-${COURIER_CHEAP.toLowerCase()}`);

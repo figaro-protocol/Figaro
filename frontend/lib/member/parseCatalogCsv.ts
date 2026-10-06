@@ -1,12 +1,12 @@
 /**
- * lib/member/parseCatalogueCsv.ts
+ * lib/member/parseCatalogCsv.ts
  *
- * Minimal RFC-4180-ish CSV parser scoped to the member catalogue
- * import surface in OnboardingCatalogueForm. Handles quoted fields,
+ * Minimal RFC-4180-ish CSV parser scoped to the member catalog
+ * import surface in OnboardingCatalogForm. Handles quoted fields,
  * embedded commas/quotes/newlines, and column-header rebinding.
  *
  * NOT a general-purpose CSV library — accepts UTF-8 text, returns
- * `CatalogueItemMetadata[]` (the wizard's row shape). For anything
+ * `CatalogItemMetadata[]` (the wizard's row shape). For anything
  * fancier (BOM handling, custom delimiters, streaming) the member
  * should pre-process their export.
  *
@@ -34,11 +34,11 @@
  */
 
 import type {
-    CatalogueItemMetadata,
-} from "@/lib/member/memberCatalogueMetadata";
+    CatalogItemMetadata,
+} from "@/lib/member/memberCatalogMetadata";
 
-export interface CatalogueCsvParseResult {
-    items: CatalogueItemMetadata[];
+export interface CatalogCsvParseResult {
+    items: CatalogItemMetadata[];
     errors: string[];
 }
 
@@ -124,7 +124,7 @@ function parseNumber(value: string): number | undefined {
     return Number.isFinite(n) ? n : undefined;
 }
 
-export function parseCatalogueCsv(text: string): CatalogueCsvParseResult {
+export function parseCatalogCsv(text: string): CatalogCsvParseResult {
     const rows = splitRows(text);
     if (rows.length === 0) {
         return { items: [], errors: ["File is empty."] };
@@ -157,7 +157,7 @@ export function parseCatalogueCsv(text: string): CatalogueCsvParseResult {
     const rateUnitCol = idx("rateunit");
     const rateSourceCol = idx("ratequantitysource");
 
-    const items: CatalogueItemMetadata[] = [];
+    const items: CatalogItemMetadata[] = [];
     const errors: string[] = [];
 
     for (let r = 1; r < rows.length; r += 1) {
@@ -169,7 +169,7 @@ export function parseCatalogueCsv(text: string): CatalogueCsvParseResult {
             errors.push(`Row ${r + 1}: missing required name or price.`);
             continue;
         }
-        const item: CatalogueItemMetadata = {
+        const item: CatalogItemMetadata = {
             id: uid(),
             name,
             price,

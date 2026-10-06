@@ -1,7 +1,7 @@
 /**
  * lib/mechanisms/useMemberListings.ts
  *
- * Discover-side counterpart to `useRegisteredCatalogues`. Reads
+ * Discover-side counterpart to `useRegisteredCatalogs`. Reads
  * registered members from the on-chain `MembersRegistry` (via
  * event logs), fetches each member's profile JSON from IPFS,
  * CROSS-CHECKS each profile's claimed assembly bindings against the

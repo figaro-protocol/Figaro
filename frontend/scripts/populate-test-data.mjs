@@ -9,7 +9,7 @@
  *
  * This is the single source of the test SELLERS — it replaces `seller-roster.ts`
  * (which was wrongly imported by runtime specs as a parallel path). The seller
- * DATA here (names, specialties, catalogues) is legitimate setup input;
+ * DATA here (names, specialties, catalogs) is legitimate setup input;
  * every ADDRESS is derived from the standard anvil mnemonic — nothing hardcoded.
  *
  * Production members onboard themselves through the wizard; this script exists for
@@ -223,7 +223,7 @@ async function main() {
     await anchorAssembly({ ...anchorArgs, template: seedTemplateChain() });
     await populateReferenceAssemblies({ ...anchorArgs, tokenAddress: mockErc20 });
 
-    // ── 2. Members (catalogue → profile → register, all pinned + anchored) ──
+    // ── 2. Members (catalog → profile → register, all pinned + anchored) ──
     const [tokenSymbol, tokenName] = await Promise.all([
         publicClient.readContract({ address: mockErc20, abi: ERC20_ABI, functionName: 'symbol' }),
         publicClient.readContract({ address: mockErc20, abi: ERC20_ABI, functionName: 'name' }),
@@ -245,11 +245,11 @@ async function main() {
         const account = mnemonicToAccount(ANVIL_MNEMONIC, { addressIndex: s.addressIndex });
         const sellerClient = createWalletClient({ account, chain: LOCAL_ANVIL, transport: http(RPC_URL) });
 
-        // The canonical catalogue-document shape (`MemberCatalogueMetadata`):
-        // the items key is `items` (a `menu` key parses to an EMPTY catalogue —
+        // The canonical catalog-document shape (`MemberCatalogMetadata`):
+        // the items key is `items` (a `menu` key parses to an EMPTY catalog —
         // the item list every read projects from, incl. sub-order pricing);
         // `category` only when authored (never a coined default).
-        const catalogue = {
+        const catalog = {
             subjectAddress: account.address,
             version: '0.1.0',
             unitSystem: 'metric',
@@ -262,13 +262,13 @@ async function main() {
                 available: true,
             })),
         };
-        const catalogueURI = await pinJSON(ipfsApiUrl, JSON.stringify(catalogue));
+        const catalogURI = await pinJSON(ipfsApiUrl, JSON.stringify(catalog));
 
         const profile = {
             subjectAddress: account.address,
             name: s.name,
             specialty: s.specialty,
-            catalogueURI,
+            catalogURI,
             location: { geohash: s.geohash },
             acceptedTokens: [{ address: mockErc20, symbol: tokenSymbol, name: tokenName }, ...permitTokenEntry],
             defaultTokenAddress: mockErc20,

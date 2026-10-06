@@ -2,7 +2,7 @@
 
 Next.js 14 (App Router), TypeScript, Tailwind CSS. **`frontend/` is the only frontend.** A frontend change ships in `frontend/` only.
 
-This file owns the per-route catalogue, lib map, designer surface, and wallet-provider scope.
+This file owns the per-route catalog, lib map, designer surface, and wallet-provider scope.
 
 ## Routes (`frontend/app/`)
 
@@ -53,8 +53,8 @@ writes via `WalletGate`.**
 | `/sign` | |
 | `/s/checkout?seller=` | Order review + commit. |
 | `/members/manage` | The registered dashboard + stake claim. |
-| `/members/{identity,agents,assemblies,buyer,catalogue,endpoints,review}` | The member wizard: Identity, Sell through (`assemblies`: bind, and offer the data those trades produce), Buy through (`buyer`: subscribe, and offer the data those trades produce), Catalogue, Agents, Endpoints, Review. The two assembly steps are one loop walked twice and both precede Catalogue, which prices what they declare. |
-| `/members/edit/{identity,agents,assemblies,buyer,catalogue,endpoints}` | Endpoints are the member's own infrastructure — device configuration via `lib/shared/userEndpoints.ts`, never pinned or published. |
+| `/members/{identity,agents,assemblies,buyer,catalog,endpoints,review}` | The member wizard: Identity, Sell through (`assemblies`: bind, and offer the data those trades produce), Buy through (`buyer`: subscribe, and offer the data those trades produce), Catalog, Agents, Endpoints, Review. The two assembly steps are one loop walked twice and both precede Catalog, which prices what they declare. |
+| `/members/edit/{identity,agents,assemblies,buyer,catalog,endpoints}` | Endpoints are the member's own infrastructure — device configuration via `lib/shared/userEndpoints.ts`, never pinned or published. |
 | `/orders`, `/orders/view?process=` | The wallet's actor-neutral order list, buyer and seller both; "Your turn" is where counter-sign/accept fires, and `resolveProcess` fires on the detail view: its confirm names how many usage writes the wallet signs next (`lib/semantic/planUsageRecords.ts` plans them, one per distinct key and never an excluded one; each is simulated before it is sent), and a resolved order links the party's data (`/data/yours`). |
 
 The build-baked `NEXT_PUBLIC_*` values are defaults only, so a hosted deploy never
@@ -121,7 +121,7 @@ Tiered, bottom to top; each tier imports only what sits below it (enforced by th
     `@figaro-protocol/sdk`'s `checkoutPlan`.
   - *The dispatch race:* `dispatchRace.ts` — `useDispatchRace` plus the race relay
     legs. An unbound sub-order is filled by racing every priceable discovered
-    catalogue instead of a manual pick: unsigned drafts out, counter-signatures
+    catalog instead of a manual pick: unsigned drafts out, counter-signatures
     back — or QUOTES back under the buyer's ceiling — cheapest valid reply wins,
     with buyer override. Transport is per candidate: one whose profile declares
     `services.rest` is an AGENT candidate and exchanges the same artifacts over
@@ -163,7 +163,7 @@ Tiered, bottom to top; each tier imports only what sits below it (enforced by th
     `components/runtime/PayoutRoutingPanel.tsx` beside what resolution paid out.
 - **`designer/`** — assembly authoring: synthetic DAG session + autosave + fork + publish (`syntheticProcess.ts`, `syntheticDesignStore.ts`, `forkAssembly.ts`, `assemblyTemplateToDraft.ts`, `draftToAssemblyTemplate.ts` — the authoring mirror of `assemblyTemplateToDraft.ts` and the ONE draft→template walk that publish, the hand-off panel, the canvas identity readout, and the review screen share (`projectSnapshotForReview` is that walk's review face: the composition a review renders comes out of the template publish anchors, never a second reading of the draft) — `publishAssembly.ts`; the template build itself — `buildAssemblyTemplate`/`serializeAssemblyTemplate` — is `@figaro-protocol/sdk`)
 - **`handoff/`** — handoff-clause runtime TRANSPORTS + persistence: the channel factory (`channel.ts` — mock/null/XMTP chosen by DERIVED facts, never a setting: XMTP iff the wallet already has an inbox, `walletHasXmtpInbox` probe — one seam, one choreography, and no per-wallet transport setting), the transport implementations (`xmtpChannel.ts`, `mockChannel.ts`, `nullChannel.ts`), the relay adapter (`relayChannel.ts` — the handoff relay's PRE-COMMIT cell speaking the SDK's `CoordinationChannel`, so the dispatch race runs ONE choreography over every transport; also home of `relayCommitmentPayload`), per-order ECDH keypair sessionStorage (`ecdh.ts`), handoff-messaging + handoff-persistence services (`handoffMessagingService.ts`, `handoffPersistenceService.ts`). The wire protocol itself (message shapes, ECDH derivation, AES-GCM wrapping) is `@figaro-protocol/sdk/handoff`.
-- **`member/`** — the participant's own data: member-profile document family (`memberProfileMetadata.ts`, `memberProfileAdapter.ts`), branding (`memberBranding*.ts`, `useMemberBranding.ts`), the MembersRegistry write/read hooks (`useMembersRegistry.ts`, `usePublishMemberProfile.ts`, `useUpdateMemberProfile.ts`), profile geocoding (`geocode.ts`), the cached URI-fetch pipeline (`uriFetcher.ts` — a single-layer reader, so it lives here), the cached profile read path (`profileFetcher.ts`) and its erasure half (`profileErasure.ts`); the catalogue family — authoring/publication/reads (`catalogue*.ts`, `memberCatalogueMetadata*.ts`, on the same `uriFetcher.ts` pipeline), listings + discovery (`useMemberListings.ts`, `discoveryService.ts`), the enrolment-wizard state (`onboardingState.ts` — the wizard spans profile, catalogue, seller and buyer steps), and the ONE counterparty-name resolver (`memberListing.ts` `displayNameForAddress`, over any `{address, name}` collection). Both sides live here: member = what a wallet IS, seller = which side of a trade it stands on.
+- **`member/`** — the participant's own data: member-profile document family (`memberProfileMetadata.ts`, `memberProfileAdapter.ts`), branding (`memberBranding*.ts`, `useMemberBranding.ts`), the MembersRegistry write/read hooks (`useMembersRegistry.ts`, `usePublishMemberProfile.ts`, `useUpdateMemberProfile.ts`), profile geocoding (`geocode.ts`), the cached URI-fetch pipeline (`uriFetcher.ts` — a single-layer reader, so it lives here), the cached profile read path (`profileFetcher.ts`) and its erasure half (`profileErasure.ts`); the catalog family — authoring/publication/reads (`catalog*.ts`, `memberCatalogMetadata*.ts`, on the same `uriFetcher.ts` pipeline), listings + discovery (`useMemberListings.ts`, `discoveryService.ts`), the enrolment-wizard state (`onboardingState.ts` — the wizard spans profile, catalog, seller and buyer steps), and the ONE counterparty-name resolver (`memberListing.ts` `displayNameForAddress`, over any `{address, name}` collection). Both sides live here: member = what a wallet IS, seller = which side of a trade it stands on.
 - **`semantic/`** — runtime derivation from committed state: `deriveProcessModelFromRuntime.ts`, `processTopology.ts`, `processRecourse.ts`, `models.ts`, capability execution
 
 ## Designer tool surface (`frontend/`)
@@ -171,7 +171,7 @@ Tiered, bottom to top; each tier imports only what sits below it (enforced by th
 The Designer is a DAG editor — assembly designers start blank or fork an existing published assembly, modify the bonded-process DAG on the canvas, edit per-node clauses in a side drawer, save drafts to local storage, and publish to the on-chain `AssemblyRegistry` when ready. The canvas DAG is an assembly-tier composition; `FigaroCore` itself only ever sees the linear `commit` chains that result at runtime. It is not a three-column palette/canvas/inspector tool, and is not to be rebuilt as one.
 
 **Routes:**
-- `/assemblies/designer` — landing. Three sections: drafts (`<DraftsList>`, localStorage), the wallet's published assemblies (`<PublishedList>`, reconstructed from `AssemblyRegistered` events), and the clauses catalogue (`<ClausesList>`, read from `ClauseRegistry`).
+- `/assemblies/designer` — landing. Three sections: drafts (`<DraftsList>`, localStorage), the wallet's published assemblies (`<PublishedList>`, reconstructed from `AssemblyRegistered` events), and the clauses catalog (`<ClausesList>`, read from `ClauseRegistry`).
 - `/assemblies/designer/new` — blank DAG editor. Three init paths: `?draft=slug` query, autosaved current session, or fresh blank.
 - `/assemblies/designer/edit?slug=<slug>` — fork an existing published assembly into the editor.
 - `/assemblies/designer/view?slug=<slug>` — read-only view of a published assembly, and (with `&intent=publish`, where the Review button lands) the review-before-publish surface for a local draft. Everything it shows — node clauses, drawer ticks, assembly-scoped terms, composition identity — is read out of the assembly template; publish is reachable only while that template builds and the stored draft still hashes to the composition on screen.
@@ -203,7 +203,7 @@ The Designer is a DAG editor — assembly designers start blank or fork an exist
     anchors on the ROOT order's agreement, edited from process-level controls.
 - `DraftsList.tsx` — saved-drafts list on the landing.
 - `PublishedList.tsx` — published-assemblies list for the connected wallet.
-- `ClausesList.tsx` — clauses catalogue on the landing.
+- `ClausesList.tsx` — clauses catalog on the landing.
 - Shared DAG canvas: `components/runtime/TopologyCanvas.tsx` (drag green handle to spawn sub-orders; drag onto another node to merge fan-in).
 
 **State:** `lib/designer/syntheticProcess.ts` (synthetic session + DAG mutation helpers — `createSyntheticRootOrder`, `createSyntheticSubOrder`, `mergeSyntheticParent`, `collectDescendants`, `isRootOrder`). Persistence: `lib/designer/syntheticDesignStore.ts` (localStorage); agreements via `lib/designer/syntheticAgreementStore.ts` (`saveAgreement`). Bridge: `lib/designer/forkAssembly.ts` + `lib/designer/assemblyTemplateToDraft.ts` (fork a published assembly's template into an editable draft).
@@ -229,7 +229,7 @@ The Designer is a DAG editor — assembly designers start blank or fork an exist
 ## Components (`components/`)
 
 - **`runtime/`** — order flows, bond/token, attestation + capability surfaces (the lens system; e.g. `CapabilityRail`)
-- **`members/`** — member onboarding shell + edit panels (profile, catalogue)
+- **`members/`** — member onboarding shell + edit panels (profile, catalog)
 - **`registries/`** — the registry-explorer surfaces (`RegistryExplorer`)
 - **`assemblies/`** — assembly display + designer surfaces
 - **`data/`** — the data-explorer surfaces (`DataExplorer`)
@@ -337,7 +337,7 @@ Y", not as an open-ended build.)
 
 Every route in `frontend/app/` is classified into one of three tiers
 governing wallet-provider load. **The per-tier route lists live in the ONE
-catalogue at § "Routes" above** — do not maintain a second list here.
+catalog at § "Routes" above** — do not maintain a second list here.
 
 - **Marketing** — pure publication / explanation. Lives in `app/(marketing)/`; does not load the wallet provider.
 - **Reference / read-only (in `(app)/` or `(tools)/`)** — registries / tools whose primary purpose is read-only inspection but which mount the wallet provider for inline write affordances via `WalletGate`.

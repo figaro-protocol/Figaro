@@ -9,7 +9,7 @@
  *     the registration doorway (a link to /join and Begin — nothing the
  *     /join page already says is repeated here).
  *
- * Wizard sub-routes (/members/identity, /members/catalogue, etc.) are
+ * Wizard sub-routes (/members/identity, /members/catalog, etc.) are
  * separate pages; only the doorway / dashboard split is collapsed here.
  */
 
@@ -232,7 +232,7 @@ function RegisteredCard({
 
 /**
  * Single-column muted list of management entry-points. Profile,
- * Catalogue, Assemblies, Agents are placeholders until the edit/
+ * Catalog, Assemblies, Agents are placeholders until the edit/
  * delete UI ships; Withdraw is live but de-emphasised — last row,
  * same visual weight, action revealed on click.
  *
@@ -258,7 +258,7 @@ function ManageList({
         { label: "Identity", description: "Name, description, tokens, location.", href: "/members/edit/identity" },
         { label: "Sell through", description: "Assemblies you sell through; the data you sell from those trades.", href: "/members/edit/assemblies" },
         { label: "Buy through", description: "Assemblies you buy through; the data you sell from those trades.", href: "/members/edit/buyer" },
-        { label: "Catalogue", description: "Items.", href: "/members/edit/catalogue" },
+        { label: "Catalog", description: "Items.", href: "/members/edit/catalog" },
         { label: "Agents", description: "Service endpoints.", href: "/members/edit/agents" },
         { label: "Endpoints", description: "Your own IPFS node, RPC, verifier relay — this browser only.", href: "/members/edit/endpoints" },
     ];
@@ -503,7 +503,7 @@ function WithdrawRow({
     return (
         <li className="py-3 border-b border-default space-y-2 text-sm text-ink-body">
             <p className="text-xs">
-                Two steps, deliberately. This one clears your registration and de-lists you from discovery immediately — the stake is what keeps you surfaced — and you can register again at once. The {deposit !== undefined ? formatEther(deposit) : "…"} ETH stake is released separately{cooldown !== undefined && cooldown > 0n ? ", after a cooldown" : ""}; a stake that could be recycled the moment you left would not price anything. Your profile and catalogue pins are unpinned as part of this step.
+                Two steps, deliberately. This one clears your registration and de-lists you from discovery immediately — the stake is what keeps you surfaced — and you can register again at once. The {deposit !== undefined ? formatEther(deposit) : "…"} ETH stake is released separately{cooldown !== undefined && cooldown > 0n ? ", after a cooldown" : ""}; a stake that could be recycled the moment you left would not price anything. Your profile and catalog pins are unpinned as part of this step.
             </p>
             <div className="flex items-center gap-3">
                 <Button variant="outline" size="sm" onClick={handleWithdraw} disabled={isProcessing}>

@@ -11,7 +11,7 @@ import { MarketingSection } from "@/components/marketing/MarketingSection";
 export const metadata: Metadata = withOg({
     title: "Composition — Figaro Protocol",
     description:
-        "What composes with Figaro — an open category, not a catalogue.",
+        "What composes with Figaro — an open category, not a catalog.",
 });
 
 export default function Composes() {
@@ -26,7 +26,7 @@ export default function Composes() {
                 }
             />
 
-            <MarketingSection title="An open category, not a catalogue.">
+            <MarketingSection title="An open category, not a catalog.">
                 <p className="text-sm text-ink-body leading-relaxed">
                     A process composes any on-chain contract that fits, all at once &mdash; a swap to fund a bond in a token you do not hold, storage and messaging while an order is live, a payout splitter after resolution, a dispute-resolution forum on the same record. The four places a contract can stand relative to the two signatures, the wired examples, and the one-token-per-process cost model are in the <a href="/docs/protocol/composition/" className="text-ink-heading font-medium hover:underline">builder documentation</a>.
                 </p>

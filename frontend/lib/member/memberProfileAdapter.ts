@@ -1,20 +1,20 @@
 /**
  * lib/member/memberProfileAdapter.ts
  *
- * Catalogue-items reader for the separately-pinned catalogue document at
- * `profile.catalogueURI`. Profile parsing is delegated to the canonical
+ * Catalog-items reader for the separately-pinned catalog document at
+ * `profile.catalogURI`. Profile parsing is delegated to the canonical
  * strict parser in `memberProfileMetadata.ts`.
  */
 
-import type { CatalogueItemMetadata } from "@/lib/member/memberCatalogueMetadata";
+import type { CatalogItemMetadata } from "@/lib/member/memberCatalogMetadata";
 import { isBytes32Hex } from "@/lib/shared/evm";
 
 /**
- * Parse catalogue items from a catalogue document (`items`). Returns null if
- * absent. Yields the canonical `CatalogueItemMetadata` directly — there is
+ * Parse catalog items from a catalog document (`items`). Returns null if
+ * absent. Yields the canonical `CatalogItemMetadata` directly — there is
  * no separate adapter item type.
  */
-export function tryParseCatalogueItems(doc: unknown): CatalogueItemMetadata[] | null {
+export function tryParseCatalogItems(doc: unknown): CatalogItemMetadata[] | null {
     if (!doc || typeof doc !== 'object' || Array.isArray(doc)) return null;
     const r = doc as Record<string, unknown>;
     const raw = Array.isArray(r.items) ? r.items : null;
@@ -32,7 +32,7 @@ export function tryParseCatalogueItems(doc: unknown): CatalogueItemMetadata[] | 
             // Physical measures fold onto the cargo leaf at checkout (mass/volume
             // sum × quantity; packaged dimensions written for a single parcel).
             // Drop any one here and it silently vanishes from the committed leaf —
-            // keep this symmetric with the canonical parser (memberCatalogueMetadataParser).
+            // keep this symmetric with the canonical parser (memberCatalogMetadataParser).
             massGrams: typeof item.massGrams === 'number' ? item.massGrams : undefined,
             volumeMl: typeof item.volumeMl === 'number' ? item.volumeMl : undefined,
             lengthMm: typeof item.lengthMm === 'number' ? item.lengthMm : undefined,
@@ -42,11 +42,11 @@ export function tryParseCatalogueItems(doc: unknown): CatalogueItemMetadata[] | 
                 : item.pricingPolicy === 'fixed' ? 'fixed' as const : undefined,
             rateUnit: typeof item.rateUnit === 'string' ? item.rateUnit : undefined,
             rateQuantitySource: typeof item.rateQuantitySource === 'string' ? item.rateQuantitySource : undefined,
-            // Catalogue-sourced clause values (freight class, hazmat, cold-chain,
+            // Catalog-sourced clause values (freight class, hazmat, cold-chain,
             // a data product's license terms, …) fold onto their own leaves;
             // pass the record through structurally.
             clauseValues: item.clauseValues && typeof item.clauseValues === 'object' && !Array.isArray(item.clauseValues)
-                ? (item.clauseValues as CatalogueItemMetadata['clauseValues'])
+                ? (item.clauseValues as CatalogItemMetadata['clauseValues'])
                 : undefined,
             // The data this item sells (data-market listing). Same warning as
             // the physical measures: drop it here and the buyer surface loses

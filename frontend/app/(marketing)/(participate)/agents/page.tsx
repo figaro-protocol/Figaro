@@ -52,7 +52,7 @@ export default function AgentsDoor() {
             </MarketingSection>
             <MarketingSection title="Reading the network as a machine.">
                 <p className="text-base text-ink-body leading-relaxed max-w-2xl">
-                    The deployment record, the ABI, the clause specs, the assemblies, and every member&apos;s catalogue are read from the chain and from pinned documents with no account. An agent reconstructs any process from its events and verifies any document against its fingerprint before it signs. <Link href="/llms.txt" className="text-ink-heading font-medium hover:underline">Machine-readable index</Link>
+                    The deployment record, the ABI, the clause specs, the assemblies, and every member&apos;s catalog are read from the chain and from pinned documents with no account. An agent reconstructs any process from its events and verifies any document against its fingerprint before it signs. <Link href="/llms.txt" className="text-ink-heading font-medium hover:underline">Machine-readable index</Link>
                 </p>
             </MarketingSection>
             <MarketingSection title="Agents as sellers.">

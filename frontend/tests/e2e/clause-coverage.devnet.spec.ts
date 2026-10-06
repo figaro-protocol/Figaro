@@ -9,7 +9,7 @@
  *
  *   drawer  → the target clause surfaces from the live ClauseRegistry → IPFS
  *   encode  → composing it (a selection or nested sub-clause tick at design
- *             time; values from the checkout fill surface, the catalogue, or
+ *             time; values from the checkout fill surface, the catalog, or
  *             a designer-fills affix — design time is STRUCTURAL)
  *             carries its section into the committed agreement,
  *             past the off-chain validation sign gate
@@ -44,7 +44,7 @@
  *   permissionless-clause's and local-commerce's assertion.
  *
  * The rung table's values are TEST INPUT (what a buyer/seller/designer would
- * type), not network data: sellers, catalogues, specs, and agreements are all
+ * type), not network data: sellers, catalogs, specs, and agreements are all
  * read from chain + IPFS through the real UI.
  *
  * Rungs resolve no funds (no resolve): full-cycle resolution is
@@ -86,7 +86,7 @@ const SELLER = seller.address;
  *  the checkout fill surface (`checkout-field-<orderId>-<clauseId>-<field>
  *  [-<option>]` — general-clause transaction particulars), the drawer's
  *  designer-fills editors (`drawer-field-<clauseId>-<field>` — consent's
- *  affix), the wizard's catalogue clause-values editor
+ *  affix), the wizard's catalog clause-values editor
  *  (`item-<uid>-clause-<clauseId>-<field>[-<option>]`), and the nested
  *  sub-clause tree (`drawer-nested-<hostField>-<clauseId>`). */
 interface ClauseRung {
@@ -106,9 +106,9 @@ interface ClauseRung {
     nestedUnder?: string;
     /** Wizard identity-step fills (profile-level fields, e.g. the divisor). */
     profile?: (page: Page) => Promise<void>;
-    /** Catalogue-step fills on the wizard's first item (clause values and
+    /** Catalog-step fills on the wizard's first item (clause values and
      *  physical facts — the item's own master data). */
-    catalogue?: (page: Page) => Promise<void>;
+    catalog?: (page: Page) => Promise<void>;
     /** Assertions inside the buyer's PREVIEW MODAL (the signing moment) —
      *  e.g. the consent-terms notice that tells the signer their signature
      *  records acceptance of the affixed documents. */
@@ -152,11 +152,11 @@ const assemblyTermsFill = (clauseId: string, field: string, value: string) =>
 const assemblyTermsPick = (clauseId: string, field: string, option: string) =>
     async (page: Page) =>
         page.getByTestId(`assembly-terms-field-${clauseId}-${field}-${option}`).check();
-/** Wizard catalogue clause-values input (suffix-matched — the item uid is dynamic). */
-const catalogueFill = (clauseId: string, field: string, value: string) =>
+/** Wizard catalog clause-values input (suffix-matched — the item uid is dynamic). */
+const catalogFill = (clauseId: string, field: string, value: string) =>
     async (page: Page) =>
         page.locator(`[data-testid$="-clause-${clauseId}-${field}"]`).first().fill(value);
-const cataloguePick = (clauseId: string, field: string, option: string) =>
+const catalogPick = (clauseId: string, field: string, option: string) =>
     async (page: Page) =>
         page.locator(`[data-testid$="-clause-${clauseId}-${field}-${option}"]`).first().check();
 
@@ -275,17 +275,17 @@ const RUNGS: ClauseRung[] = [
         },
     },
     {
-        // Catalogue-sourced: the seller authors the values on the catalogue
+        // Catalog-sourced: the seller authors the values on the catalog
         // ITEM (the wizard's spec-driven clause-values editor); checkout folds
         // them onto the composed leaf.
         clauseId: 'figaro-cold-chain',
-        catalogue: all(
-            cataloguePick('figaro-cold-chain', 'tempClass', 'frozen'),
-            catalogueFill('figaro-cold-chain', 'tempMinC', '-25'),
-            catalogueFill('figaro-cold-chain', 'tempMaxC', '-18'),
+        catalog: all(
+            catalogPick('figaro-cold-chain', 'tempClass', 'frozen'),
+            catalogFill('figaro-cold-chain', 'tempMinC', '-25'),
+            catalogFill('figaro-cold-chain', 'tempMaxC', '-18'),
             // The periodicity is a COMMITTED TERM (no external standard mandates
             // one interval); 900 s = the common 15-min logger cadence.
-            catalogueFill('figaro-cold-chain', 'recordingIntervalSeconds', '900'),
+            catalogFill('figaro-cold-chain', 'recordingIntervalSeconds', '900'),
         ),
         auditTexts: ['Cold chain', 'Frozen (≤ -18 °C)', '900'],
         leaf: (data) => {
@@ -312,7 +312,7 @@ const RUNGS: ClauseRung[] = [
     },
     {
         // The DERIVATION path, end to end: the seller declares a dim-weight
-        // divisor on the profile and physical facts on the catalogue item;
+        // divisor on the profile and physical facts on the catalog item;
         // checkout derives billed = max(gross 500 g, volumetric
         // ceil(300×200×150 mm³ ÷ 5000) = 1800 g) onto the composed dimweight
         // leaf — nothing is authored at design time.
@@ -321,7 +321,7 @@ const RUNGS: ClauseRung[] = [
         // The divisor is PROFILE-SOURCED master data — authored in the generic
         // profile clause-values section (spec-driven, from the live registry).
         profile: async (page) => page.getByTestId('profile-clause-figaro-dimweight-divisor').fill('5000'),
-        catalogue: async (page) => {
+        catalog: async (page) => {
             await page.locator('[id^="item-"][id$="-mass"]').first().fill('500');
             await page.locator('[id^="item-"][id$="-volume"]').first().fill('1000');
             await page.locator('[id^="item-"][id$="-length"]').first().fill('300');
@@ -336,13 +336,13 @@ const RUNGS: ClauseRung[] = [
     },
     {
         clauseId: 'figaro-freight-class',
-        catalogue: cataloguePick('figaro-freight-class', 'nmfcClass', '70'),
+        catalog: catalogPick('figaro-freight-class', 'nmfcClass', '70'),
         auditTexts: ['Freight class', 'Class 70 — 15–22.5 lb/ft³'],
         leaf: (data) => expect(data.nmfcClass).toBe('70'),
     },
     {
         // Trade-delivery terms per the ICC's Incoterms® 2020 — a per-trade
-        // commercial term (NOT catalogue-sourced product master data), so the
+        // commercial term (NOT catalog-sourced product master data), so the
         // BUYER fills rule + named place at checkout like applicable-law.
         clauseId: 'figaro-incoterms',
         checkout: all(
@@ -397,11 +397,11 @@ const RUNGS: ClauseRung[] = [
     },
     {
         clauseId: 'figaro-hazmat',
-        catalogue: all(
-            catalogueFill('figaro-hazmat', 'unNumber', 'UN1263'),
-            catalogueFill('figaro-hazmat', 'properShippingName', 'Paint'),
-            cataloguePick('figaro-hazmat', 'hazardClass', '3'),
-            cataloguePick('figaro-hazmat', 'packingGroup', 'II'),
+        catalog: all(
+            catalogFill('figaro-hazmat', 'unNumber', 'UN1263'),
+            catalogFill('figaro-hazmat', 'properShippingName', 'Paint'),
+            catalogPick('figaro-hazmat', 'hazardClass', '3'),
+            catalogPick('figaro-hazmat', 'packingGroup', 'II'),
         ),
         auditTexts: ['Dangerous goods (hazmat)', 'Flammable liquids', 'UN1263'],
         leaf: (data) => {
@@ -581,8 +581,8 @@ test.describe('PER-CLAUSE COVERAGE — every protocol clause flows the generic p
                 expect(slug, 'publish receipt shows the content slug').toMatch(/^asm-/);
             }
 
-            // ── BIND: onboard anvil[16] through the REAL wizard — one catalogue
-            //    item (plus the rung's catalogue-authored clause values) and
+            // ── BIND: onboard anvil[16] through the REAL wizard — one catalog
+            //    item (plus the rung's catalog-authored clause values) and
             //    EXACTLY this rung's assembly bound (earlier rungs' bindings are
             //    unchecked so checkout is unambiguous). Rows are slug-keyed. ──
             await gotoAsWallet(page, SELLER, '/members');
@@ -609,11 +609,11 @@ test.describe('PER-CLAUSE COVERAGE — every protocol clause flows the generic p
             await page.getByRole('button', { name: /^Next/ }).click();
             await expect(page).toHaveURL(/\/members\/buyer/);
             await page.getByRole('button', { name: /^Next/ }).click();
-            await expect(page).toHaveURL(/\/members\/catalogue/);
+            await expect(page).toHaveURL(/\/members\/catalog/);
 
             await page.locator('[id^="item-"][id$="-name"]').first().fill('Coverage item');
             await page.locator('[id^="item-"][id$="-price"]').first().fill('1');
-            if (rung.catalogue) await rung.catalogue(page);
+            if (rung.catalog) await rung.catalog(page);
             await page.getByRole('button', { name: /^Next/ }).click();
             await expect(page).toHaveURL(/\/members\/agents/);
             await page.getByRole('button', { name: /^Next/ }).click();

@@ -156,7 +156,7 @@ registry's seed data; the published definition of the format is
   the reference parser is `ClauseBlockBinding`
   (`frontend/lib/shared/clauseBlockBinding.ts`) — derive the attribute list from
   that type. **One verb — `fills` — says who fills which content fields**
-  (designer / catalogue / profile); the buyer owns every field named in no fills
+  (designer / catalog / profile); the buyer owns every field named in no fills
   list, derived as the complement, never stored.
 
 `fields` are the protocol; everything in `block` is replaceable presentation.

@@ -130,7 +130,7 @@ export default function Faq() {
 
             <MarketingSection title="Where do my orders come from?" sectionId="orders">
                 <p className="text-base text-ink-body leading-relaxed mb-5">
-                    No platform routes orders to you. A buyer finds you in the members catalogue on <Link href="/discover" className="text-ink-heading font-medium hover:underline">Discover</Link>, or through a link you share. The customers you already have can order from you directly.
+                    No platform routes orders to you. A buyer finds you in the members catalog on <Link href="/discover" className="text-ink-heading font-medium hover:underline">Discover</Link>, or through a link you share. The customers you already have can order from you directly.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
                     What a buyer can order from you is set by the assemblies you bind to. Each published assembly answers its own questions below, under Questions about a trade.
@@ -142,7 +142,7 @@ export default function Faq() {
                     No. Nobody can remove your wallet, your registration, or your history. There is no operator to do it.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
-                    Only you can withdraw your own registration stake, and withdrawing takes you off the catalogue. A forum or a court can act on you outside a trade, as it always could. It cannot reach into the protocol.
+                    Only you can withdraw your own registration stake, and withdrawing takes you off the catalog. A forum or a court can act on you outside a trade, as it always could. It cannot reach into the protocol.
                 </p>
             </MarketingSection>
 

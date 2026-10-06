@@ -164,7 +164,7 @@ test.describe('TRADELENS RUNTIME — six sellers bond, the container story attes
             else expect(event.args.processId, `${label}'s order extends the SAME process`).toBe(processId);
             const payment = parseUnits(PRICES[label], 18);
             expectedCumulative += payment;
-            expect(event.args.payment, `${label}'s payment = its catalogue price`).toBe(payment);
+            expect(event.args.payment, `${label}'s payment = its catalog price`).toBe(payment);
             expect(event.args.cumulativeValue, `cumulative after ${label} = the running chain value`)
                 .toBe(expectedCumulative);
             const bonds = calculateBonds(event.args.cumulativeValue!, event.args.payment!);

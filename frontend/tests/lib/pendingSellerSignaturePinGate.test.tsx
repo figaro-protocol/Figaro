@@ -66,7 +66,7 @@ let callbacks: Array<(cid: string, orderId: string) => Promise<void> | void>;
 
 function makeServices(): RuntimeServices {
     return {
-        catalogue: {} as RuntimeServices["catalogue"],
+        catalog: {} as RuntimeServices["catalog"],
         discovery: {} as RuntimeServices["discovery"],
         evidenceTransport: {
             resolveFetchUrl: (uri: string) => `https://gateway.test/${uri}`,

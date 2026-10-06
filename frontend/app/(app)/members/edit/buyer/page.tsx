@@ -18,7 +18,7 @@ export default function EditBuyerPage() {
                     Toggle which assemblies your wallet buys through and which of
                     the records those trades co-produce you offer for sale. Saving
                     re-pins the profile JSON and dispatches <code>updateProfile</code>.
-                    Prices live in your catalogue.
+                    Prices live in your catalog.
                 </p>
             </div>
             <MemberEditBuyer />

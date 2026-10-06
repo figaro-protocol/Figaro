@@ -19,7 +19,7 @@
  *     and there is NO checkout clause-content surface (the old "provided at
  *     checkout" stub pointed at the ripped-out beta-tester consent ceremony —
  *     legacy, deleted): a value not filled here comes from its PRODUCING
- *     surface (catalogue fold, derivation, spec default, companion routing)
+ *     surface (catalog fold, derivation, spec default, companion routing)
  *     or stays absent.
  *   - `"runtime"` — the composition form's policy: every scalar (string / integer
  *     / bigint) is an input the party fills NOW. Nothing defers — these fields ARE
@@ -428,7 +428,7 @@ export function FieldControl({
     }
 
     // Everything else has no control HERE — the value comes from its PRODUCING
-    // surface (catalogue fold, derivation, spec default, companion routing) or
+    // surface (catalog fold, derivation, spec default, companion routing) or
     // stays absent. Absence of an OPTIONAL field is a valid committed state,
     // not a gap: there is no checkout clause-content surface — the old
     // "provided at checkout" promise was legacy from the ripped-out beta-tester

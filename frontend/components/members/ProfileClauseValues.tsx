@@ -3,15 +3,15 @@
 /**
  * ProfileClauseValues — the member-profile authoring section for
  * PROFILE-filled clause values (the member's master data: dimweight's divisor, a
- * declared credential id). The profile-level sibling of the catalogue item's
- * clause-values editor (`OnboardingCatalogueForm`): one spec-driven group per
+ * declared credential id). The profile-level sibling of the catalog item's
+ * clause-values editor (`OnboardingCatalogForm`): one spec-driven group per
  * clause declaring `block.checkout.profileFills`, derived live from the
  * registry, never hardcoded — restricted to each spec's DECLARED
  * profile-filled field subset (`clauseProfileFills`; the rest belong to
  * designer fills or checkout derivation). Optional throughout: a member
  * authors what applies and leaves the rest blank, so a field's checkout
  * `required` never marks it here. Scoped by `clauseIds` to the clauses the
- * member's bound assemblies compose — the same derivation the catalogue
+ * member's bound assemblies compose — the same derivation the catalog
  * step makes — so a member is asked only what its own assemblies read.
  *
  * Testids: `profile-clause-<clauseId>-<field>[-<option>]`.
@@ -40,7 +40,7 @@ export function ProfileClauseValues({
 }) {
     // Warm the chain→IPFS spec cache at this surface's boundary; `version`
     // bumps as specs land and re-renders the section (same pattern as the
-    // catalogue clause-values editor).
+    // catalog clause-values editor).
     useClauseSpecs();
     const scope = clauseIds ? new Set(clauseIds) : null;
     const profileClauses = listProfileSourcedClauses().filter((c) => !scope || scope.has(c.clauseId));

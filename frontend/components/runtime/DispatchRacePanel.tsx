@@ -6,7 +6,7 @@
  *
  * The same derived absence the picker resolves (an unbound sub-order), filled
  * by racing the market instead: unsigned drafts go to every candidate whose
- * catalogue can price the node, each countersignature is an "available at my
+ * catalog can price the node, each countersignature is an "available at my
  * posted price" answer, and the cheapest valid countersigner wins at window
  * close. The buyer may close the race early or pick any reply instead —
  * selection authority stays with the buyer (buyer dominance); the mechanism
@@ -56,7 +56,7 @@ export function DispatchRacePanel({ race, onStart, tokenSymbol, decimals }: Prop
         return (
             <div className="rounded-lg border border-default bg-paper p-4 space-y-3" data-testid="race-panel">
                 <p className="text-xs text-ink-body">
-                    Or form the market: every registered member whose catalogue can
+                    Or form the market: every registered member whose catalog can
                     serve this order receives your draft; whoever counter-signs is
                     in, and the cheapest wins unless you pick otherwise.
                 </p>

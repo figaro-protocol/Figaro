@@ -9,7 +9,7 @@
  * wrapper that drives the walk with THIS surface's inputs and UX sequencing:
  *
  *   - the resolve-ceiling refusal before any signature,
- *   - per-node fills from the cart / the contributor's own catalogue,
+ *   - per-node fills from the cart / the contributor's own catalog,
  *   - buyer-assigned selections + on-network compositions per node,
  *   - off-chain validation through the SAME confirm gate the seller's accept
  *     uses (no checkout-only bypass),
@@ -51,7 +51,7 @@ import { specSource } from "@/lib/shared/clauseSpecSource";
 import { parseToken } from "@/lib/shared/utils";
 import { hexEqual } from "@/lib/shared/evm";
 import type { BoundAssembly } from "@/lib/member/useMemberBoundAssemblies";
-import type { MemberCatalogue } from "@/lib/member/types";
+import type { MemberCatalog } from "@/lib/member/types";
 
 /** The signing capabilities the algorithm drives — provided by `useCheckout`,
  *  which backs them with the order* commitment flow. */
@@ -112,13 +112,13 @@ export interface AssemblyCheckoutParams {
     lineItems: AssemblyCheckoutLineItem[];
     assembly: BoundAssembly;
     /** Contributor pricing context (each sub-order is priced LIVE from its
-     *  own seller's catalogue). */
-    sellerCatalogues: MemberCatalogue[];
+     *  own seller's catalog). */
+    sellerCatalogs: MemberCatalog[];
     tokenDecimals: number;
     /** The buyer's checkout-time counterparty choices, keyed by template
      *  node id — fills sub-orders the adopting seller's profile leaves
      *  unbound (buyer-assigned coordination). The price is the picker's
-     *  resolved figure and `item` the picked catalogue item (it becomes
+     *  resolved figure and `item` the picked catalog item (it becomes
      *  the sub-order's commerce line item). Checkout-phase data, like the
      *  cart — never design-time clause activation. */
     subOrderSelections?: Record<string, {
@@ -300,7 +300,7 @@ function checkoutNodes(
     },
 ): (planned: PlannedTemplateOrder) => ReconstructNodeSpec {
     const { rootId, boundSellerByNode, compositionByNode, specs } = ctx;
-    const { leadSellerAddress, currency, payment, lineItems, sellerCatalogues, tokenDecimals, subOrderSelections } = params;
+    const { leadSellerAddress, currency, payment, lineItems, sellerCatalogs, tokenDecimals, subOrderSelections } = params;
     const template = params.assembly.assemblyTemplate;
     return (planned) => {
         const node = template.agreements.find((a) => a.id === planned.nodeId)!;
@@ -316,7 +316,7 @@ function checkoutNodes(
                     fillDerivedSections(
                         { ...node.clauses, ...(params.clauseFills?.[planned.nodeId] ?? {}) },
                         lineItems, specs,
-                        profileValuesFor(leadSellerAddress, sellerCatalogues),
+                        profileValuesFor(leadSellerAddress, sellerCatalogs),
                     ),
                     payment, currency, specs, lineItems,
                 ),
@@ -346,7 +346,7 @@ function checkoutNodes(
             ? null
             : resolveSubOrderPricing({
                 node: { ...node, clauses: nodeClauses },
-                seller: subSeller, sellerCatalogues, tokenDecimals, specs,
+                seller: subSeller, sellerCatalogs, tokenDecimals, specs,
                 checkoutQuantity: params.subOrderQuantities?.[planned.nodeId],
             });
         if (pricing?.issue === "unresolvable-quantity") {
@@ -358,7 +358,7 @@ function checkoutNodes(
             ? parseToken(selection.price, tokenDecimals)
             : pricing!.payment;
         // The sub-order's commerce section states WHAT the payment buys: the
-        // contributor's resolved catalogue item (the same item the payment
+        // contributor's resolved catalog item (the same item the payment
         // was priced from), or the buyer's picked item on the unbound path.
         // The commerce clause requires lineItems on EVERY order, subs
         // included. Rate items commit their derivation: quantity = billed
@@ -382,7 +382,7 @@ function checkoutNodes(
                 : undefined;
         // Same fill-where-composed as the root: this sub-order's own
         // logistics leaves (cargo / class / dimweight) from its own
-        // catalogue item + its own seller's profile values. A no-op for orders
+        // catalog item + its own seller's profile values. A no-op for orders
         // composing none (e.g. a service leg) → G7 absence. The topology
         // section is the WALK's to complete (template-local parent ids →
         // real order hashes), so it is never in the overrides.
@@ -391,7 +391,7 @@ function checkoutNodes(
                 fillDerivedSections(
                     { ...nodeClauses },
                     subLineItems ?? [], specs,
-                    profileValuesFor(subSeller, sellerCatalogues),
+                    profileValuesFor(subSeller, sellerCatalogs),
                 ),
                 subPayment, currency, specs, subLineItems,
             ),

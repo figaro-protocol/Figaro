@@ -1,15 +1,15 @@
-import type { CatalogueItemMetadata, UnitSystem } from "@/lib/member/memberCatalogueMetadata";
+import type { CatalogItemMetadata, UnitSystem } from "@/lib/member/memberCatalogMetadata";
 import type { AcceptedTokenMetadata } from "@/lib/member/acceptedTokenMetadata";
 import type { DisclosurePolicyEntry, MemberAgentServices } from "@/lib/member/memberProfileMetadata";
 
 /**
- * Buyer-side projection of a member's profile + catalogue.
+ * Buyer-side projection of a member's profile + catalog.
  *
  * Sources:
  *  - profile (`MemberProfileMetadata`): name, slug, description,
  *    specialty, location (geohash + addressText), branding, accepted
  *    tokens, default token, agent services.
- *  - catalogue (`MemberCatalogueMetadata`): items.
+ *  - catalog (`MemberCatalogMetadata`): items.
  *
  * Carries no closed-taxonomy fields. A field like `cuisine`, `rating`,
  * `deliveryTime`, or `minimumOrder` has no home here — none of those exist in
@@ -17,7 +17,7 @@ import type { DisclosurePolicyEntry, MemberAgentServices } from "@/lib/member/me
  * default rather than from clause data. `specialty` is the free-form
  * open-string self-description the member authors themselves.
  */
-export interface MemberCatalogue {
+export interface MemberCatalog {
     name: string;
     address: string;
     description: string;
@@ -30,10 +30,10 @@ export interface MemberCatalogue {
     geohash?: string;
     /** Free-form public street address (optional). */
     addressText?: string;
-    items: CatalogueItemMetadata[];
+    items: CatalogItemMetadata[];
     /** Tokens the member accepts at resolution. */
     acceptedTokens?: AcceptedTokenMetadata[];
-    /** The token catalogue prices are denominated in (one of `acceptedTokens`). */
+    /** The token catalog prices are denominated in (one of `acceptedTokens`). */
     defaultTokenAddress?: `0x${string}`;
     /** The member's PROFILE-authored clause values (member master data:
      *  dimweight's divisor, a declared credential id), keyed clauseId →

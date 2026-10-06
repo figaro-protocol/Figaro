@@ -1,7 +1,7 @@
 {
     "name": "Freelance deliverable",
     "summary": "A digital work product handed over privately, with proof of delivery \u2014 and no marketplace fee.",
-    "description": "A client commissions a digital deliverable \u2014 a design file, a production cut, a dataset, an access credential \u2014 from an independent professional. The hand-off travels an encrypted channel straight between the two of them, and a fingerprint of the file is recorded as proof it arrived. Both sides are bonded, so the client's payment and the freelancer's delivery secure each other; the freelancer's catalogue can price a fixed fee or by the hour. No marketplace takes a cut.",
+    "description": "A client commissions a digital deliverable \u2014 a design file, a production cut, a dataset, an access credential \u2014 from an independent professional. The hand-off travels an encrypted channel straight between the two of them, and a fingerprint of the file is recorded as proof it arrived. Both sides are bonded, so the client's payment and the freelancer's delivery secure each other; the freelancer's catalog can price a fixed fee or by the hour. No marketplace takes a cut.",
     "faq": [
         {
             "question": "Where does the work come from?",

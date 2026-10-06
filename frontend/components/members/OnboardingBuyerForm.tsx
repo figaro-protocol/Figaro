@@ -27,7 +27,7 @@ import type { OnboardingStepChromeProps } from "@/components/members/OnboardingS
  *
  * Optional: a member who only sells ships with no subscriptions.
  * Prices never live here — data products are priced as items in the
- * member's own catalogue.
+ * member's own catalog.
  */
 
 /** Restrict the buyer-posture policy to the data of the
@@ -146,7 +146,7 @@ export function OnboardingBuyerForm({
                 </p>
                 <p>
                     Prices never live here. Data products are priced as items in
-                    your own catalogue, like anything else you sell.
+                    your own catalog, like anything else you sell.
                 </p>
             </Card>
 
@@ -178,8 +178,8 @@ export function OnboardingBuyerForm({
                 <Card className="p-6 text-sm text-ink-body space-y-2">
                     <p>
                         Price what you offered: list that data as items in{" "}
-                        <Link href="/members/catalogue" className="text-ink-heading font-medium hover:underline">
-                            your catalogue
+                        <Link href="/members/catalog" className="text-ink-heading font-medium hover:underline">
+                            your catalog
                         </Link>
                         {" "}— fixed or rate, in the tokens you accept. The item&apos;s
                         license terms (scope, access, redistribution, source

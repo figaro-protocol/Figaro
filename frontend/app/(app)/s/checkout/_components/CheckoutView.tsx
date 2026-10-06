@@ -27,7 +27,7 @@ import { Button } from "@/components/ui/Button";
 import { CartLineList } from "@/components/runtime/CartLineList";
 import { useCommerce, useCheckout } from "@/lib/checkout";
 import { useCartStore } from "@/lib/checkout/cartStore";
-import { useRegisteredCatalogues } from "@/lib/member/useRegisteredCatalogues";
+import { useRegisteredCatalogs } from "@/lib/member/useRegisteredCatalogs";
 import { planSubOrderSellers, readUtilityTokenPin, resolveSubOrderPricing } from "@figaro-protocol/sdk";
 import { executeAssemblyCheckout, type AssemblyCheckoutParams } from "@/lib/checkout/assemblyCheckout";
 import {
@@ -41,7 +41,7 @@ import { postToAgentEndpoint, useDispatchRace } from "@/lib/checkout/dispatchRac
 import { DispatchRacePanel, type RaceStartPolicy } from "@/components/runtime/DispatchRacePanel";
 import { templateParentOrderHashes } from "@/lib/shared/assemblyTemplate";
 import { CommitmentSharePanel } from "@/components/runtime/CommitmentSharePanel";
-import { SellerCataloguePicker, type SellerSelection } from "@/components/runtime/SellerCataloguePicker";
+import { SellerCatalogPicker, type SellerSelection } from "@/components/runtime/SellerCatalogPicker";
 import { useCompositionActions } from "@/lib/composition/useCompositionActions";
 import { inputForOutput, readVenueRate, resolveSwapFundingContracts, type VenueRate } from "@/lib/composition/swapFunding";
 import { SwapFundingPanel, fundingAuthorization, fundingBlocksTheAct } from "./SwapFundingPanel";
@@ -88,11 +88,11 @@ export function CheckoutView({ sellerAddress }: Props) {
     // no canonical deployment record to check against.
     const deploymentFp = useMemo(() => deploymentFingerprint(), []);
     const { compose } = useCompositionActions();
-    const { catalogues: sellerCatalogues, isLoading: cataloguesLoading } = useRegisteredCatalogues();
+    const { catalogs: sellerCatalogs, isLoading: catalogsLoading } = useRegisteredCatalogs();
 
-    const memberCatalogue = useMemo(
-        () => sellerCatalogues.find((r) => hexEqual(r.address, sellerAddressLower)) ?? null,
-        [sellerCatalogues, sellerAddressLower],
+    const memberCatalog = useMemo(
+        () => sellerCatalogs.find((r) => hexEqual(r.address, sellerAddressLower)) ?? null,
+        [sellerCatalogs, sellerAddressLower],
     );
 
     const { address: buyer } = useCommerce();
@@ -103,7 +103,7 @@ export function CheckoutView({ sellerAddress }: Props) {
 
     // The buyer's options ARE the seller's bound assemblies — each is one
     // option, labelled by the assembly's own name and keyed by its slug.
-    // Fill-mechanism variants (a catalogue-bound counterparty, a buyer pick)
+    // Fill-mechanism variants (a catalog-bound counterparty, a buyer pick)
     // are DISTINCT assemblies, so picking the assembly picks the mechanism;
     // the checkout hardcodes no taxonomy and reads no coordination field —
     // the mechanism is derived from binding state.
@@ -127,7 +127,7 @@ export function CheckoutView({ sellerAddress }: Props) {
     // BUYER'S PICK from the seller's accepted array (the social layer — the
     // seller is PAID in the picked token and spends it onward; the pick is
     // what the commitment carries), else the seller's declared default (the
-    // unit of account the catalogue quotes in). None ⇒ undefined — never a
+    // unit of account the catalog quotes in). None ⇒ undefined — never a
     // coined default (resolved-empty = absence); ordering is gated off below.
     // The pin lives at the ASSEMBLY level of the template (design.scope:
     // "assembly") — a term of the composition, folded into
@@ -135,15 +135,15 @@ export function CheckoutView({ sellerAddress }: Props) {
     const utilityTokenPin = pickedAssembly
         ? readUtilityTokenPin(pickedAssembly.assemblyTemplate.assemblyClauses ?? {}, specSource())
         : undefined;
-    const sellerDefault = memberCatalogue?.defaultTokenAddress as `0x${string}` | undefined;
+    const sellerDefault = memberCatalog?.defaultTokenAddress as `0x${string}` | undefined;
     // What this surface already knows, offered to the format inputs as
     // one-click fills, keyed by FORMAT: the seller's declared locality to any
     // geohash-format field (a buyer collecting at the counter states origin
     // and destination as the seller's place, with no device read and no code
     // to know). Never keyed by clause or field name — a never-seen clause
     // declaring the format gets the offer.
-    const sellerGeohash = memberCatalogue?.geohash;
-    const sellerAddressText = memberCatalogue?.addressText;
+    const sellerGeohash = memberCatalog?.geohash;
+    const sellerAddressText = memberCatalog?.addressText;
     const formatPresets = useMemo(() => {
         const presets: Record<string, FormatPreset[]> = {};
         if (sellerGeohash) {
@@ -153,7 +153,7 @@ export function CheckoutView({ sellerAddress }: Props) {
     }, [sellerGeohash, sellerAddressText]);
     const [paymentPick, setPaymentPick] = useState<`0x${string}` | null>(null);
     const currency = utilityTokenPin ?? paymentPick ?? sellerDefault;
-    // Price conversion, unit of account → the process denomination: catalogue
+    // Price conversion, unit of account → the process denomination: catalog
     // prices are quoted in the seller's default; when the pick/pin differs,
     // every amount converts at the venue's live rate BEFORE display and
     // commit (the converted price is the input the venue needs to yield the
@@ -182,7 +182,7 @@ export function CheckoutView({ sellerAddress }: Props) {
     const toCurrency = (amount: bigint) => (priceRate ? inputForOutput(amount, priceRate) : amount);
     const { data: resolvedSymbol } = useTokenSymbol(currency ?? "");
     const tokenSymbol = resolvedSymbol
-        ?? (currency ? memberCatalogue?.acceptedTokens?.find((t) => hexEqual(t.address, currency))?.symbol : undefined)
+        ?? (currency ? memberCatalog?.acceptedTokens?.find((t) => hexEqual(t.address, currency))?.symbol : undefined)
         ?? "";
     const {
         decimals: tokenDecimals,
@@ -195,20 +195,20 @@ export function CheckoutView({ sellerAddress }: Props) {
         signAndShare,
         order: { step: commitStep, error: commitError, payload },
     } = useCheckout(currency);
-    // The catalogue projections re-quoted into the process denomination —
+    // The catalog projections re-quoted into the process denomination —
     // sub-order pricing, picker options, and the commit walk read prices
     // already converted, so shown = committed in ONE basis. Identity when no
     // conversion applies.
-    const pricedCatalogues = useMemo(() => {
-        if (!priceRate || (priceRate.num === 1n && priceRate.den === 1n)) return sellerCatalogues;
-        return sellerCatalogues.map((c) => ({
+    const pricedCatalogs = useMemo(() => {
+        if (!priceRate || (priceRate.num === 1n && priceRate.den === 1n)) return sellerCatalogs;
+        return sellerCatalogs.map((c) => ({
             ...c,
             items: c.items.map((it) => ({
                 ...it,
                 price: formatToken(inputForOutput(parseToken(it.price || "0", tokenDecimals), priceRate), tokenDecimals),
             })),
         }));
-    }, [sellerCatalogues, priceRate, tokenDecimals]);
+    }, [sellerCatalogs, priceRate, tokenDecimals]);
     // Runtime inputs for any order that composes an on-network contract — the
     // clause's `block.runtime.fields`, filled at checkout (like the cart line items),
     // keyed by template node id then field name. Interface-agnostic: the form
@@ -260,9 +260,9 @@ export function CheckoutView({ sellerAddress }: Props) {
     // Permit2 + venue) is configured. Resolved-empty = the path is absent.
     const fundingCandidates = useMemo(
         () => (swapFundingContracts && currency
-            ? (memberCatalogue?.acceptedTokens ?? []).filter((t) => !hexEqual(t.address, currency))
+            ? (memberCatalog?.acceptedTokens ?? []).filter((t) => !hexEqual(t.address, currency))
             : []),
-        [swapFundingContracts, currency, memberCatalogue],
+        [swapFundingContracts, currency, memberCatalog],
     );
     const [fundingToken, setFundingToken] = useState<`0x${string}` | null>(null);
     // The one-time Permit2 authorization for the chosen funding token (the
@@ -273,7 +273,7 @@ export function CheckoutView({ sellerAddress }: Props) {
         spender: (swapFundingContracts?.permit2 ?? ZERO_ADDRESS) as `0x${string}`,
     });
     // The buyer's checkout-time counterparty choice for a sub-order the
-    // adopting seller's catalogue leaves unbound (the buyer assigns it).
+    // adopting seller's catalog leaves unbound (the buyer assigns it).
     const [sellerSelection, setSellerSelection] = useState<SellerSelection | null>(null);
     // The dispatch race — the OTHER way to fill the same unbound sub-order:
     // candidates countersign unsigned drafts, cheapest valid reply wins, the
@@ -299,7 +299,7 @@ export function CheckoutView({ sellerAddress }: Props) {
     // then stays on the share panel; each order commits when its seller
     // counter-signs in their /orders list. The buyer is never the broadcaster here.
 
-    if (cataloguesLoading) {
+    if (catalogsLoading) {
         return (
             <div className="container mx-auto px-6 py-16 max-w-3xl">
                 <p className="text-xs font-semibold text-ink-muted mb-3">Checkout</p>
@@ -308,7 +308,7 @@ export function CheckoutView({ sellerAddress }: Props) {
         );
     }
 
-    if (!memberCatalogue) {
+    if (!memberCatalog) {
         return (
             <div className="container mx-auto px-6 py-16 max-w-3xl space-y-4">
                 <p className="text-xs font-semibold text-ink-muted mb-3">Member not found</p>
@@ -323,8 +323,8 @@ export function CheckoutView({ sellerAddress }: Props) {
     // Filter cart to items from THIS merchant only — the buyer's line-item input,
     // read-only here (edited on the browse page).
     const cartItems = items.filter((it) => it.sellerId === sellerAddressLower);
-    // Sub-orders the adopting seller's catalogue leaves UNBOUND take the buyer's
-    // checkout-time choice; bound sub-orders keep the catalogue's designation
+    // Sub-orders the adopting seller's catalog leaves UNBOUND take the buyer's
+    // checkout-time choice; bound sub-orders keep the catalog's designation
     // (seller-assigned). The fill mechanism is DERIVED from binding state +
     // composition — there is no coordination field.
     const unboundSubOrders = (() => {
@@ -410,9 +410,9 @@ export function CheckoutView({ sellerAddress }: Props) {
     );
     const kitBreakdown = deriveKitBreakdown({
         pickedAssembly,
-        leadAddress: memberCatalogue.address as `0x${string}`,
-        sellerCatalogues,
-        pricedCatalogues,
+        leadAddress: memberCatalog.address as `0x${string}`,
+        sellerCatalogs,
+        pricedCatalogs,
         cartTotal,
         clauseFills: expandedClauseFills,
         subOrderQuantities,
@@ -445,8 +445,8 @@ export function CheckoutView({ sellerAddress }: Props) {
     // buyer-chosen terms; they stay out of the review.
     const agreementGroups = deriveAgreementGroups({
         pickedAssembly,
-        leadAddress: memberCatalogue.address as `0x${string}`,
-        sellerCatalogues,
+        leadAddress: memberCatalog.address as `0x${string}`,
+        sellerCatalogs,
     });
     // The REQUIRED terms the buyer still has to author — the same required-ness
     // the off-chain validator applies at the sign gate, applied HERE so the
@@ -457,16 +457,16 @@ export function CheckoutView({ sellerAddress }: Props) {
     // and every required field is filled.
     const termsReady = clauseSpecsLoaded && missingFills.length === 0;
 
-    const cartUnitSystem = memberCatalogue.unitSystem ?? "metric";
+    const cartUnitSystem = memberCatalog.unitSystem ?? "metric";
     const cartMassGrams = cartItems.reduce((sum, cartItem) => {
-        const catalogueItem = memberCatalogue.items.find((m) => m.id === cartItem.catalogueItemId);
-        if (!catalogueItem?.massGrams) return sum;
-        return sum + catalogueItem.massGrams * cartItem.quantity;
+        const catalogItem = memberCatalog.items.find((m) => m.id === cartItem.catalogItemId);
+        if (!catalogItem?.massGrams) return sum;
+        return sum + catalogItem.massGrams * cartItem.quantity;
     }, 0);
     const cartVolumeMl = cartItems.reduce((sum, cartItem) => {
-        const catalogueItem = memberCatalogue.items.find((m) => m.id === cartItem.catalogueItemId);
-        if (!catalogueItem?.volumeMl) return sum;
-        return sum + catalogueItem.volumeMl * cartItem.quantity;
+        const catalogItem = memberCatalog.items.find((m) => m.id === cartItem.catalogItemId);
+        if (!catalogItem?.volumeMl) return sum;
+        return sum + catalogItem.volumeMl * cartItem.quantity;
     }, 0);
 
     // ONE walk-params construction — the race's dry draft walks and the final
@@ -493,11 +493,11 @@ export function CheckoutView({ sellerAddress }: Props) {
         };
         return {
             buyer,
-            leadSellerAddress: memberCatalogue.address as `0x${string}`,
+            leadSellerAddress: memberCatalog.address as `0x${string}`,
             currency,
             payment: cartTotal,
             lineItems: cartItems.map((item) => ({
-                itemId: item.catalogueItemId,
+                itemId: item.catalogItemId,
                 name: item.name,
                 quantity: item.quantity,
                 // Cart prices were snapshotted in the seller's default
@@ -512,7 +512,7 @@ export function CheckoutView({ sellerAddress }: Props) {
                 clauseValues: item.clauseValues,
             })),
             assembly: pickedAssembly,
-            sellerCatalogues: pricedCatalogues,
+            sellerCatalogs: pricedCatalogs,
             tokenDecimals,
             subOrderSelections: Object.keys(selections).length > 0 ? selections : undefined,
             subOrderCompositions: orderCompositions.length > 0
@@ -554,7 +554,7 @@ export function CheckoutView({ sellerAddress }: Props) {
             setCheckoutError("Choose how you'd like to order before placing it.");
             return;
         }
-        const leadSellerAddress = memberCatalogue.address as `0x${string}`;
+        const leadSellerAddress = memberCatalog.address as `0x${string}`;
         // Every order commits against a published, profile-bound assembly — no
         // synthesized fallback. `orderReady` already guarantees this; assert it
         // for the type. FigaroCore sees a linear commit chain; the parent edges
@@ -660,13 +660,13 @@ export function CheckoutView({ sellerAddress }: Props) {
         <div data-testid="checkout-view" data-seller-address={sellerAddressLower} className="container mx-auto px-6 py-10 max-w-2xl space-y-6">
             <div>
                 <Link href={`/s/view?seller=${sellerAddressLower}`} className="text-sm text-ink-muted hover:text-ink-primary">
-                    ← Back to {memberCatalogue.name}
+                    ← Back to {memberCatalog.name}
                 </Link>
             </div>
 
             <header className="space-y-1">
                 <p className="text-xs font-semibold text-ink-muted">Checkout</p>
-                <h1 className="text-2xl font-bold text-ink-primary">Order from {memberCatalogue.name}</h1>
+                <h1 className="text-2xl font-bold text-ink-primary">Order from {memberCatalog.name}</h1>
             </header>
 
             <section
@@ -677,7 +677,7 @@ export function CheckoutView({ sellerAddress }: Props) {
                     <p className="text-sm text-ink-muted">
                         Your cart is empty.{" "}
                         <Link href={`/s/view?seller=${sellerAddressLower}`} className="underline text-ink-primary hover:text-ink-body">
-                            Browse {memberCatalogue.name}&apos;s catalogue
+                            Browse {memberCatalog.name}&apos;s catalog
                         </Link>{" "}
                         to add items.
                     </p>
@@ -693,11 +693,11 @@ export function CheckoutView({ sellerAddress }: Props) {
                             convert at the venue rate. A designer's denomination
                             pin replaces the pick entirely; a single-entry array
                             offers no choice. */}
-                        {!utilityTokenPin && currency && (memberCatalogue?.acceptedTokens?.length ?? 0) > 1 && (
+                        {!utilityTokenPin && currency && (memberCatalog?.acceptedTokens?.length ?? 0) > 1 && (
                             <div className="border-t border-default pt-3 space-y-1" data-testid="payment-token-picker">
                                 <p className="text-xs font-semibold text-ink-muted">Pay in</p>
                                 <div className="flex flex-wrap gap-3 text-sm">
-                                    {memberCatalogue!.acceptedTokens!.map((t) => (
+                                    {memberCatalog!.acceptedTokens!.map((t) => (
                                         <label key={t.address} className="flex items-center gap-1.5 cursor-pointer">
                                             <input
                                                 type="radio"
@@ -967,9 +967,9 @@ export function CheckoutView({ sellerAddress }: Props) {
                             </div>
                         )}
 
-                        {/* Buyer-assigned: the catalogue leaves the sub-order
+                        {/* Buyer-assigned: the catalog leaves the sub-order
                             unbound — the buyer chooses the counterparty here,
-                            priced from that seller's own catalogue.
+                            priced from that seller's own catalog.
                             Checkout-phase data, like the cart. The dispatch
                             race below fills the SAME derived absence by racing
                             the market instead — race vs manual pick is
@@ -977,7 +977,7 @@ export function CheckoutView({ sellerAddress }: Props) {
                         {buyerChoosesCounterparty && (
                             <>
                                 {!raceOutcome && (
-                                    <SellerCataloguePicker
+                                    <SellerCatalogPicker
                                         tokenSymbol={tokenSymbol}
                                         onSelect={setSellerSelection}
                                     />

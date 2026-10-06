@@ -5,7 +5,7 @@
  * sub-order position is filled by racing the market instead of a manual pick:
  * the buyer sends the SAME unsigned draft shape to k candidate sellers — each
  * draft naming that candidate as `seller` at the candidate's own posted
- * catalogue price — candidates countersign to signal availability, and the
+ * catalog price — candidates countersign to signal availability, and the
  * buyer signs EXACTLY ONE winner. The buyer's single signature is
  * simultaneously the selection event and the seller-address answer; losing
  * countersignatures expire inert at the struct `deadline`, and an unfunded
@@ -162,7 +162,7 @@ export function selectRaceWinner(replies: readonly RaceReply[]): RaceReply | nul
 // ── RFQ — the quote leg: the CANDIDATE authors the price ─────────────────────
 //
 // The race asks "available at your posted price?"; RFQ asks "at what price are
-// you available?" — bespoke jobs and thin markets, where no posted catalogue
+// you available?" — bespoke jobs and thin markets, where no posted catalog
 // figure fits. Same choreography, one inversion: the request draft goes out at
 // the buyer's CEILING (their reservation price), the candidate returns a
 // COUNTER-DRAFT re-priced at their quote, and the buyer verifies it by

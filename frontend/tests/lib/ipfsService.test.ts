@@ -197,7 +197,7 @@ describe("ipfsService", () => {
         });
 
         it("REJECTS raw http(s) locators — no hotlink to an attacker-chosen host", () => {
-            // The deanonymization vector: an attacker-authored branding/catalogue
+            // The deanonymization vector: an attacker-authored branding/catalog
             // image pointing at their own server. Must never become an <img src>.
             expect(resolveImageUri("https://tracker.evil/px.png?v=victim")).toBeNull();
             expect(resolveImageUri("http://tracker.evil/px.png")).toBeNull();

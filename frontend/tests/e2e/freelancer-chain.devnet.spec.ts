@@ -52,7 +52,7 @@ const BUYER = ANVIL_ACCOUNTS[0] as Hex;
 // Indices 22-24: DEDICATED to this spec, past the populate-seeded sellers
 // (5-12) and every other spec's self-seeded range. Self-seeding a
 // populate-owned index (this spec once used 9/10/11 = Saffron/Pomodoro/Harbor)
-// STOMPS the shared catalogue that adopters like assembly-chain read
+// STOMPS the shared catalog that adopters like assembly-chain read
 // read-only — the wallet-index-collision class. anvil runs --accounts 38.
 const CHAIN_SELLERS: Array<{ index: number; label: string; item: string; price: string }> = [
     { index: 22, label: 'lead', item: 'Lead deliverable', price: '2' },
@@ -95,7 +95,7 @@ test.describe('FREELANCE VALUE CHAIN — three bonded deliverables over the encr
         //    binding designates the contributors — the per-clause cursor maps
         //    the content clause to [c1, c2] in commit order. ──
         for (const s of sellers) {
-            const { uri: catalogueURI } = await pinJSONToIPFS({
+            const { uri: catalogURI } = await pinJSONToIPFS({
                 subjectAddress: s.address,
                 version: '1.0.0',
                 unitSystem: 'metric' as const,
@@ -114,7 +114,7 @@ test.describe('FREELANCE VALUE CHAIN — three bonded deliverables over the encr
                 profile: {
                     name: `Chain ${s.label}`,
                     description: `${s.label} — seeded by freelancer-chain.devnet.spec.ts`,
-                    catalogueURI,
+                    catalogURI,
                     acceptedTokens: [{ address: token, symbol: 'MOCK', chainId: 31337 }],
                     defaultTokenAddress: token,
                     assemblyBindings: [{
@@ -203,7 +203,7 @@ test.describe('FREELANCE VALUE CHAIN — three bonded deliverables over the encr
             else expect(event.args.processId, `${s.label} extends the SAME process`).toBe(processId);
             const payment = parseUnits(s.price, 18);
             expectedCumulative += payment;
-            expect(event.args.payment, `${s.label}'s payment = its catalogue price`).toBe(payment);
+            expect(event.args.payment, `${s.label}'s payment = its catalog price`).toBe(payment);
             expect(event.args.cumulativeValue, `cumulative after ${s.label}`).toBe(expectedCumulative);
             const bonds = calculateBonds(event.args.cumulativeValue!, event.args.payment!);
             buyerBondSoFar += bonds.buyerBond;

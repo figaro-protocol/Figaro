@@ -17,7 +17,7 @@ import {
 import { displayNameForAddress } from "@/lib/member/memberListing";
 import { templateParentOrderHashes } from "@/lib/shared/assemblyTemplate";
 import {
-    clauseCatalogueFills,
+    clauseCatalogFills,
     clauseDesignFills,
     clauseIsMandatory,
     clauseIsProcessLog,
@@ -29,8 +29,8 @@ import { parseToken } from "@/lib/shared/utils";
 import type { FieldSpec } from "@figaro-protocol/sdk/clauses";
 
 type PlanAssembly = Parameters<typeof planSubOrderSellers>[0];
-type PricingCatalogues = Parameters<typeof resolveSubOrderPricing>[0]["sellerCatalogues"];
-type ListingCatalogues = Parameters<typeof displayNameForAddress>[0];
+type PricingCatalogs = Parameters<typeof resolveSubOrderPricing>[0]["sellerCatalogs"];
+type ListingCatalogs = Parameters<typeof displayNameForAddress>[0];
 
 /** A candidate pick (the buyer's manual choice or a race winner's) — the
  *  structural shape both surfaces share; no component type crosses into lib. */
@@ -63,7 +63,7 @@ export interface KitBreakdown {
 
 /**
  * Multi-order price transparency: the buyer pays the lead's cut plus every
- * contributor's cut, each priced LIVE from that contributor's own catalogue.
+ * contributor's cut, each priced LIVE from that contributor's own catalog.
  * Built from the SAME planSubOrderSellers + resolveSubOrderPricing the
  * commit walks (same checkout-entered quantities included), so the shown
  * figures — rate derivations and all — equal what commits. Null for a
@@ -72,8 +72,8 @@ export interface KitBreakdown {
 export function deriveKitBreakdown(args: {
     pickedAssembly: (PlanAssembly & { assemblyTemplate: { agreements: readonly unknown[] } }) | undefined;
     leadAddress: `0x${string}`;
-    sellerCatalogues: ListingCatalogues;
-    pricedCatalogues: PricingCatalogues;
+    sellerCatalogs: ListingCatalogs;
+    pricedCatalogs: PricingCatalogs;
     cartTotal: bigint;
     clauseFills: Record<string, Record<string, Record<string, unknown>>>;
     subOrderQuantities: Record<string, Parameters<typeof resolveSubOrderPricing>[0]["checkoutQuantity"]>;
@@ -88,7 +88,7 @@ export function deriveKitBreakdown(args: {
 }): KitBreakdown | null {
     const assembly = args.pickedAssembly;
     if (!assembly || assembly.assemblyTemplate.agreements.length <= 1) return null;
-    const nameOf = (addr: `0x${string}`) => displayNameForAddress(args.sellerCatalogues, addr);
+    const nameOf = (addr: `0x${string}`) => displayNameForAddress(args.sellerCatalogs, addr);
     let plan: ReturnType<typeof planSubOrderSellers>;
     try {
         plan = planSubOrderSellers(assembly);
@@ -105,7 +105,7 @@ export function deriveKitBreakdown(args: {
                 // Same merge the commit walk performs, so shown = committed.
                 const pricing = resolveSubOrderPricing({
                     node: { ...node, clauses: { ...node.clauses, ...args.clauseFills[node.id] } },
-                    seller, sellerCatalogues: args.pricedCatalogues, tokenDecimals: args.tokenDecimals,
+                    seller, sellerCatalogs: args.pricedCatalogs, tokenDecimals: args.tokenDecimals,
                     specs: specSource(),
                     checkoutQuantity: args.subOrderQuantities[node.id],
                 });
@@ -146,12 +146,12 @@ export function deriveAgreementGroups(args: {
         assemblyTemplate: { agreements: Array<{ id?: string | number; clauses: Record<string, Record<string, unknown>> }> };
     }) | undefined;
     leadAddress: `0x${string}`;
-    sellerCatalogues: ListingCatalogues & Parameters<typeof profileValuesFor>[1];
+    sellerCatalogs: ListingCatalogs & Parameters<typeof profileValuesFor>[1];
 }): AgreementGroup[] {
-    const { pickedAssembly, leadAddress, sellerCatalogues } = args;
+    const { pickedAssembly, leadAddress, sellerCatalogs } = args;
     if (!pickedAssembly) return [];
     const orders = pickedAssembly.assemblyTemplate.agreements;
-    const nameOf = (addr: `0x${string}`) => displayNameForAddress(sellerCatalogues, addr);
+    const nameOf = (addr: `0x${string}`) => displayNameForAddress(sellerCatalogs, addr);
     let plan: ReturnType<typeof planSubOrderSellers> = [];
     if (orders.length > 1) {
         try { plan = planSubOrderSellers(pickedAssembly); } catch { plan = []; }
@@ -182,7 +182,7 @@ export function deriveAgreementGroups(args: {
                 // it is fillable iff at least one field is NOT designer-owned.
                 fillable: specFields.some((f) => !clauseDesignFills(clauseId).includes(f.name))
                     && !clauseIsProcessLog(clauseId)
-                    && clauseCatalogueFills(clauseId).length === 0
+                    && clauseCatalogFills(clauseId).length === 0
                     && clauseProfileFills(clauseId).length === 0,
             };
         }),
@@ -197,7 +197,7 @@ export function deriveAgreementGroups(args: {
         // credential before placing the order).
         const previewClauses = fillProfileSections(
             Object.fromEntries(Object.entries(order.clauses).filter(([clauseId]) => !clauseIsMandatory(clauseId))),
-            assigned ? profileValuesFor(assigned, sellerCatalogues) : undefined,
+            assigned ? profileValuesFor(assigned, sellerCatalogs) : undefined,
             specSource(),
         );
         // Fields the checkout walk fills MECHANICALLY (the provenance
@@ -220,7 +220,7 @@ export function deriveAgreementGroups(args: {
                         // the buyer authors here. Not fillable: designer-fills
                         // values (the designer's tailoring, from the template),
                         // process-log anchors (attested at runtime, empty at
-                        // commit), catalogue-sourced sections (the seller's
+                        // commit), catalog-sourced sections (the seller's
                         // items fill them), profile-sourced sections (the
                         // seller's standing declarations fill them), and
                         // sections whose every field the walk fills
@@ -231,7 +231,7 @@ export function deriveAgreementGroups(args: {
                         fillable: specFields.some((f) =>
                             !clauseDesignFills(clauseId).includes(f.name) && !mechanicalFields.has(f.name))
                             && !clauseIsProcessLog(clauseId)
-                            && clauseCatalogueFills(clauseId).length === 0
+                            && clauseCatalogFills(clauseId).length === 0
                             && clauseProfileFills(clauseId).length === 0,
                     };
                 }),

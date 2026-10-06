@@ -6,9 +6,9 @@ import { withOg } from "@/lib/shared/pageMetadata";
 // layout: the one static-export-compatible home for a client page's own og
 // card.
 export const metadata: Metadata = withOg({
-    title: "Member catalogue — Figaro Protocol",
+    title: "Member catalog — Figaro Protocol",
     description:
-        "Browse a member's published catalogue and place a bonded order.",
+        "Browse a member's published catalog and place a bonded order.",
 });
 
 export default function MemberViewLayout({ children }: { children: React.ReactNode }) {

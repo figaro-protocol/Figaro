@@ -164,7 +164,7 @@ test.describe('MIXED PAIRING — a human buyer races an agent service and a huma
                 walletKey: `0x${string}`, address: Hex, name: string, price: string,
                 services?: { rest: string },
             ) => {
-                const { uri: catalogueURI } = await pinJSONToIPFS({
+                const { uri: catalogURI } = await pinJSONToIPFS({
                     subjectAddress: address,
                     version: '1.0.0',
                     unitSystem: 'metric' as const,
@@ -183,7 +183,7 @@ test.describe('MIXED PAIRING — a human buyer races an agent service and a huma
                     profile: {
                         name,
                         description: 'Courier seeded for the market-formation specs',
-                        catalogueURI,
+                        catalogURI,
                         acceptedTokens: [{ address: token, symbol: 'MOCK', chainId: 31337 }],
                         defaultTokenAddress: token,
                         assemblyBindings: [{

@@ -210,7 +210,7 @@ test.describe('PERMISSIONLESS CLAUSE — the definition of green (devnet)', () =
         await page.getByRole('button', { name: /^Next/ }).click();
         await expect(page).toHaveURL(/\/members\/buyer/);
         await page.getByRole('button', { name: /^Next/ }).click();
-        await expect(page).toHaveURL(/\/members\/catalogue/);
+        await expect(page).toHaveURL(/\/members\/catalog/);
 
         await page.locator('[id^="item-"][id$="-name"]').first().fill('Probe item');
         await page.locator('[id^="item-"][id$="-price"]').first().fill('1');

@@ -23,7 +23,7 @@ import type { PartyRole } from "@/lib/kernel/walletProcessQueries";
  * `offered: true` on the profile). Unchecking removes the entry —
  * the paper-contract default: each party holds its own copy; absence
  * of a policy is not a policy of openness. Prices never live here —
- * a data product is priced as an item in the member's own catalogue
+ * a data product is priced as an item in the member's own catalog
  * (fixed | rate), the item naming the data it sells via `dataSold`.
  */
 
@@ -94,7 +94,7 @@ export function DisclosurePolicyEditor({ choices, entries, onChange, postures = 
                     You hold both postures — data you co-produce as a seller
                     and data you co-produce as a buyer are equally yours to
                     offer. Prices never live here: a data product is priced as
-                    an item in your own catalogue, like anything else you sell.
+                    an item in your own catalog, like anything else you sell.
                     Leave everything unchecked for the default: each party
                     simply holds its own copy, and nothing is offered.
                 </p>

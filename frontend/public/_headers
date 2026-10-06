@@ -15,7 +15,7 @@
 #     this frontend at its OWN RPC + IPFS endpoints (/members/edit/endpoints),
 #     so the endpoint set is the USER'S, not enumerable here. https: also covers XMTP's :5558 gRPC-web ports.
 #   - img-src loopback: the local Kubo gateway (127.0.0.1:8080) serves
-#     catalogue/branding pins on a devnet.
+#     catalog/branding pins on a devnet.
 #   - font-src data:: fontkit loads its WASM as a data: URI; fonts.gstatic
 #     kept from the former policy.
 #   - worker-src blob:: @react-pdf's layout worker.

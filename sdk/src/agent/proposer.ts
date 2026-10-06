@@ -196,7 +196,7 @@ export function proposeActions(process: Process, myAddress: Address): ProposedAc
 }
 
 /**
- * Propose origination actions from the discovered assembly catalogue — the
+ * Propose origination actions from the discovered assembly catalog — the
  * cold-start "act" verb. `proposeActions` reasons about processes the agent is
  * already IN; this reasons about processes it could START, one per live-staked
  * assembly. Pure over discovery output (`FigaroContext.getAssemblies()`).

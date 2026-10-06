@@ -155,7 +155,7 @@ function render(template: DocumentTemplate, unit: Unit): RenderedDocument {
  * Project every applicable document for a process from its committed record.
  * `orders` are the process's orders; `agreements` maps agreementHash → agreement.
  * Order-scoped templates emit one document per matching order; seller-scoped emit
- * one per seller (orders grouped by seller). Templates are applied in catalogue
+ * one per seller (orders grouped by seller). Templates are applied in catalog
  * order; genres are added by adding a template, never engine code.
  */
 export function projectDocuments(

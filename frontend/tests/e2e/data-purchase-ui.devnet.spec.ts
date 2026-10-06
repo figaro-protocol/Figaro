@@ -12,9 +12,9 @@
  *                  co-produces AS A SELLER.
  *   Buy through  → subscribes the survey assembly (it also buys surveys) and
  *                  offers the flight-record data it co-produces AS A BUYER.
- *   Catalogue    → prices both offers as DATA-PRODUCT items, in one pass: the
+ *   Catalog    → prices both offers as DATA-PRODUCT items, in one pass: the
  *                  step follows both assembly steps, so both offers are there
- *                  to price. The license terms are CATALOGUE-AUTHORED
+ *                  to price. The license terms are CATALOG-AUTHORED
  *                  (figaro-data-license declares checkout.catalogueFills, so
  *                  the fold — not the buyer's keyboard — carries
  *                  scope/access/redistribution into the agreement both sign).
@@ -90,21 +90,21 @@ interface PublishedDataMember {
         clauseValues?: Record<string, Record<string, unknown>> }>;
 }
 
-/** The member's CURRENT published profile and catalogue, read out-of-band:
+/** The member's CURRENT published profile and catalog, read out-of-band:
  *  the latest registry event for the wallet → the pinned profile → the pinned
- *  catalogue. Null when the wallet has published nothing. */
+ *  catalog. Null when the wallet has published nothing. */
 async function readPublishedDataMember(): Promise<PublishedDataMember | null> {
     const latest = await latestMemberProfileURI(DATA_SELLER);
     if (!latest) return null;
     const fetchPinned = async (uri: string) => (await fetch(resolveIpfsURI(uri))).json();
     const profile = await fetchPinned(latest);
-    const catalogue = profile.catalogueURI ? await fetchPinned(profile.catalogueURI) : { items: [] };
+    const catalog = profile.catalogURI ? await fetchPinned(profile.catalogURI) : { items: [] };
     return {
         bindings: ((profile.assemblyBindings ?? []) as Array<{ assemblySlug: string }>).map((b) => b.assemblySlug),
         subscriptions: ((profile.buyerAssemblies ?? []) as Array<{ compositionHash: string }>).map((s) => s.compositionHash),
         offered: ((profile.disclosurePolicy ?? []) as Array<{ compositionHash: string; clauseId: string; posture: string; offered: boolean }>)
             .filter((e) => e.offered),
-        items: (catalogue.items ?? []) as PublishedDataMember['items'],
+        items: (catalog.items ?? []) as PublishedDataMember['items'],
     };
 }
 
@@ -172,9 +172,9 @@ async function authorDataMemberThroughWizard(page: Page, surveyHash: string, sur
     await buyerOffer.waitFor({ state: 'visible', timeout: 30000 });
     if (!(await buyerOffer.isChecked())) await buyerOffer.check();
     await page.getByRole('button', { name: /^Next/ }).click();
-    await expect(page).toHaveURL(/\/members\/catalogue/);
+    await expect(page).toHaveURL(/\/members\/catalog/);
 
-    // Catalogue: one data product per posture. Both offers are already
+    // Catalog: one data product per posture. Both offers are already
     // declared, so each item's "Data for sale" names its offer here, in the
     // same pass; the license terms are authored on the item.
     const names = page.locator('[id^="item-"][id$="-name"]');
@@ -212,7 +212,7 @@ async function authorDataMemberThroughWizard(page: Page, surveyHash: string, sur
  *  registers once and persists: the wizard is walked only when the wallet's
  *  published profile is not already this one. Returns what the buyer's flow
  *  reads — the delivery assembly to pick and each product's item id — taken
- *  from the published catalogue, never from the wizard's screen. */
+ *  from the published catalog, never from the wizard's screen. */
 async function ensureDataMember(page: Page): Promise<{ streamSlug: string; itemIds: Record<'buyer' | 'seller', string> }> {
     const anchored = await discoverAnchoredAssemblies();
     const surveySlug = referenceAssemblySlug('aerial-survey.json');
@@ -291,7 +291,7 @@ test.describe('Buyer-side data sale through the UI (devnet)', () => {
             'the buyer-side flight-record data is listed',
         ).toBeVisible();
         await expect(
-            page.getByTestId(`catalogue-item-data-sold-${itemIds.buyer}`),
+            page.getByTestId(`catalog-item-data-sold-${itemIds.buyer}`),
             'the priced item carries its data-product badge',
         ).toBeVisible();
 
@@ -303,7 +303,7 @@ test.describe('Buyer-side data sale through the UI (devnet)', () => {
         // delivered under the data-stream assembly.
         await page.getByTestId('select-method').selectOption(streamSlug);
 
-        // The license terms are CATALOGUE-AUTHORED: checkout renders NO
+        // The license terms are CATALOG-AUTHORED: checkout renders NO
         // data-license field for the buyer to type into.
         await expect(
             page.locator('[data-testid^="checkout-field-"][data-testid*="figaro-data-license"]'),
@@ -396,7 +396,7 @@ test.describe('Buyer-side data sale through the UI (devnet)', () => {
             'the seller-side data offer is listed',
         ).toBeVisible({ timeout: 30000 });
         await expect(
-            page.getByTestId(`catalogue-item-data-sold-${itemIds.seller}`),
+            page.getByTestId(`catalog-item-data-sold-${itemIds.seller}`),
             'the seller-posture item carries its data marking',
         ).toBeVisible();
         const removeLeg1 = page.getByRole('button', { name: 'Remove one Flight records — live stream' });

@@ -11,7 +11,7 @@
  *
  * Routes covered:
  *   /members/edit/identity   — change name, submit via OnboardingProfileForm
- *   /members/edit/catalogue  — Delete-catalogue affordance (clear catalogueURI)
+ *   /members/edit/catalog  — Delete-catalog affordance (clear catalogURI)
  *   /members/edit/agents     — set MCP endpoint, submit
  *   /members/edit/assemblies — toggle a registered assembly on, submit
  *
@@ -168,14 +168,14 @@ test.describe('Seller edit UI surfaces (devnet)', () => {
         await expect(page).toHaveURL(/\/members\/manage\/?$/, { timeout: 30_000 });
     });
 
-    test('/members/edit/catalogue — Delete-catalogue affordance dispatches updateProfile', async ({ page }) => {
+    test('/members/edit/catalog — Delete-catalog affordance dispatches updateProfile', async ({ page }) => {
         const seller = ANVIL_ACCOUNTS[0] as Hex;
         const tokenAddress = requireEnv('NEXT_PUBLIC_TOKEN_ADDRESS');
 
-        // Pin a catalogue document so `existingProfile.catalogueURI` is set.
-        // MemberCatalogueMetadata shape per `parseMemberCatalogueDocument`:
+        // Pin a catalog document so `existingProfile.catalogURI` is set.
+        // MemberCatalogMetadata shape per `parseMemberCatalogDocument`:
         // every menu item requires `id`, `name`, `price`, `category`, `available`.
-        const { uri: catalogueURI } = await pinJSONToIPFS({
+        const { uri: catalogURI } = await pinJSONToIPFS({
             subjectAddress: seller,
             items: [{
                 id: 'item-1',
@@ -189,22 +189,22 @@ test.describe('Seller edit UI surfaces (devnet)', () => {
         const seeded = await seedRegisteredMember({
             walletKey: SELLER_KEY,
             profile: {
-                name: 'Seller with Catalogue',
-                catalogueURI,
+                name: 'Seller with Catalog',
+                catalogURI,
                 acceptedTokens: [{ address: tokenAddress, symbol: 'MOCK', chainId: 31337 }],
                 defaultTokenAddress: tokenAddress,
             },
         });
 
-        await page.goto('/members/edit/catalogue?e2e=devnet', { waitUntil: 'domcontentloaded' });
+        await page.goto('/members/edit/catalog?e2e=devnet', { waitUntil: 'domcontentloaded' });
 
-        // Form mounts when the catalogue load resolves. The Delete
+        // Form mounts when the catalog load resolves. The Delete
         // affordance is at the bottom — its first state is a muted link.
-        const deleteToggle = page.getByRole('button', { name: 'Delete catalogue entirely' });
+        const deleteToggle = page.getByRole('button', { name: 'Delete catalog entirely' });
         await expect(deleteToggle).toBeVisible({ timeout: 30000 });
         await deleteToggle.click();
 
-        // Confirm-delete reveals; click it to fire `updater.save({}, {clear:['catalogueURI']})`.
+        // Confirm-delete reveals; click it to fire `updater.save({}, {clear:['catalogURI']})`.
         await page.getByRole('button', { name: 'Confirm delete' }).click();
 
         // The on-chain event is the system-of-record that the edit shipped.

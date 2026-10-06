@@ -267,7 +267,7 @@ interface MemberEntry {
 }
 
 /**
- * Mutable discovery graph — the "shadow catalogue" an agent maintains, sibling
+ * Mutable discovery graph — the "shadow catalog" an agent maintains, sibling
  * to `Topology`. Incrementally updated as new registry events arrive.
  */
 export class DiscoveryGraph {

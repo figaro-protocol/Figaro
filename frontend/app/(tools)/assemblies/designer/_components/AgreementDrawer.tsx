@@ -509,7 +509,7 @@ function ClauseControl({
                             // consent document, a pinned denomination).
                             // Every other field shows no inputs here: it is a
                             // transaction particular (the buyer's, at checkout)
-                            // or a seller fill (catalogue/profile, folded at
+                            // or a seller fill (catalog/profile, folded at
                             // checkout). Sub-clause NESTING is structure and
                             // always renders.
                             const editable = clauseDesignFills(clauseKey, clause.version).includes(field.name);

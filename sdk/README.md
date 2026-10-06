@@ -86,7 +86,7 @@ network — no assemblies, no members, nothing to buy, and discovery correctly
 returns nothing. Fill it either way:
 
 - **the real path**, identical to what you would do on a public chain: publish a
-  profile + catalogue (`MembersRegistry` — "Member Profile + Catalogue
+  profile + catalog (`MembersRegistry` — "Member Profile + Catalog
   Documents" below) and register an assembly
   (`AssemblyRegistry.registerAssembly`), each under its stake;
 - **the shortcut**, to reach a commit today — the repo's test seeder, which
@@ -113,7 +113,7 @@ cd sdk && node scripts/verify-origination.devnet.mjs
 What it does, in order:
 
 1. **Discovers the network.** `new FigaroContext(publicClient, addresses)` +
-   `await ctx.sync()` folds the registry event streams into a live catalogue. It
+   `await ctx.sync()` folds the registry event streams into a live catalog. It
    picks its assembly by HYDRATING each `contentURI` from the IPFS gateway and
    taking the first single-order template — no hardcoded id — and locates the
    commerce clause by the field it DECLARES (`lineItems`), never by clause name.
@@ -348,9 +348,9 @@ definition) and `RPGF_*` constant is a **root** export.
 | `fetchDiscoveryEvents` | root | Registry events (clauses, assemblies, members); an unconfigured registry contributes nothing. |
 | `fetchEndpointLogAgreement` | root | The same agreement report, fetched from caller-supplied clients over one pinned `[fromBlock, toBlock]`. |
 | `fetchUsageRecords` | root | `UsageRecorded` events — the direct-path half of the rewards mirror. |
-| `FigaroContext` | `/agent` | The stateful agent context; `sync()` folds chain events into a live catalogue and process set. |
+| `FigaroContext` | `/agent` | The stateful agent context; `sync()` folds chain events into a live catalog and process set. |
 | `fillCargoSection` | root | Fold the order's summed mass and volume onto its cargo leaf, found by declared field. |
-| `fillClassSections` | root | Fold catalogue-filled class values (freight class, hazmat, cold chain, …) onto their leaves. |
+| `fillClassSections` | root | Fold catalog-filled class values (freight class, hazmat, cold chain, …) onto their leaves. |
 | `fillCommerceSection` | root | Write payment, currency and (root only) the cart's line items into the commerce leaf. |
 | `fillDerivedSections` | root | Run every logistics fill the order composes — cargo, class, profile, then dimweight. |
 | `fillDimweightSection` | root | Billed weight = max(gross mass, volumetric) onto the dimweight leaf. DERIVED, never hand-filled. |
@@ -377,12 +377,12 @@ definition) and `RPGF_*` constant is a **root** export.
 | `parseAttestationLogs` | root | Decode `Attestation` logs — filter by contract ADDRESS; the topic hash is shared with the batch path. |
 | `parseClauseSpec` | `/clauses` | Parse and validate an unknown value as a `ClauseSpec` (the spec's own structure, not its content). |
 | `parseFieldSpec` | `/clauses` | Parse ONE field spec — for fields declared outside a clause's content `fields`. |
-| `parseMemberCatalogueDocument` | root | Strict parse of a pinned catalogue document; throws on malformed input. |
+| `parseMemberCatalogDocument` | root | Strict parse of a pinned catalog document; throws on malformed input. |
 | `parseMemberProfileDocument` | root | Strict parse of a pinned profile document; throws on malformed input. |
 | `parseProjectionHints` | root | Read a spec's `block` projection hints — design fills, checkout fills, article. |
 | `planSubOrderSellers` | root | Topologically order an assembly's sub-orders and resolve each one's bound seller. |
 | `planTemplateOrders` | root | A template's agreements in commit order, each with its clause bag and complete version map. |
-| `profileValuesFor` | root | The profile-filled clause values a given seller publishes, read from its catalogue. |
+| `profileValuesFor` | root | The profile-filled clause values a given seller publishes, read from its catalog. |
 | `projectAgentServices` | root | Read the agent service endpoints out of a profile document, tolerating partial ones. |
 | `projectProcessGraph` | `/derive` | The process graph, labelled protocol-enforced — `reconstruct()`'s topology as a first-class object. |
 | `projectResolutionGraph` | `/derive` | Per-order bonds locked and payouts at resolve, grouped into `FigaroCore`'s LINEAR per-process chains. |
@@ -395,12 +395,12 @@ definition) and `RPGF_*` constant is a **root** export.
 | `reconstructDiscovery` | root | Rebuild the live registry view; a member's current profile URI is EVENT-derived, not a getter. |
 | `reconstructOrdersFromTemplate` | root | THE template→orders walk: root signs `processId = 0`, children carry real parent order hashes. |
 | `recordProcessUsage` | `/agent` | File direct-path usage at resolution: one leg per distinct key the counter does not exclude (`excluded` names the rest); a sent leg that reverts lands in `failures`, never thrown. |
-| `registerRateQuantitySource` | root | Register a resolver for a catalogue's rate-quantity source (a composition tenant, no core edit). |
+| `registerRateQuantitySource` | root | Register a resolver for a catalog's rate-quantity source (a composition tenant, no core edit). |
 | `requestCounterSignatures` | `/agent` | Fan out race drafts, verify each reply by exact struct match, rank cheapest first. |
 | `requestQuotes` | `/agent` | Fan out RFQ requests, verify each reply by reconstruction, rank cheapest first. |
 | `resolveDidWeb` | `/agent` | Resolve a `did:web` identifier — https-only, no redirects, size-capped (SSRF-hardened). |
 | `resolveProcess` | `/agent` | The low-level buyer-only resolve. Does NOT restore signed root ids — prefer `executeAction`. |
-| `resolveSubOrderPricing` | root | Price a sub-order live from its own contributor's catalogue. |
+| `resolveSubOrderPricing` | root | Price a sub-order live from its own contributor's catalog. |
 | `restoreSignedProcessId` | root | Turn an event-derived ROOT commitment back into the struct that was signed (`processId = 0`). |
 | `sectionByField` | root | Find the agreement section whose spec DECLARES a field — never look one up by clause name. |
 | `sectionDataHash` | root | A section's canonical-JSON fingerprint; a content-withheld section carries it directly. |
@@ -878,7 +878,7 @@ import { FigaroContext, proposeActions, proposeInitiations, ActionQueue } from "
 import { commit, executeAction } from "@figaro-protocol/sdk/agent";
 
 // Sync on-chain state into a live context — the agent's own processes AND the
-// live-staked network catalogue (clauses, members, assemblies).
+// live-staked network catalog (clauses, members, assemblies).
 const ctx = new FigaroContext(client, addresses);
 await ctx.sync();
 
@@ -887,7 +887,7 @@ const assemblies = ctx.getAssemblies();
 
 // FigaroContext wraps the low-level discovery primitives, which are ROOT
 // `@figaro-protocol/sdk` exports — NOT `@figaro-protocol/sdk/agent`. Use them directly for a
-// one-shot catalogue read without a context:
+// one-shot catalog read without a context:
 import { fetchDiscoveryEvents, reconstructDiscovery } from "@figaro-protocol/sdk";
 const discovery = reconstructDiscovery(await fetchDiscoveryEvents(client, addresses, 0n));
 
@@ -1395,7 +1395,7 @@ code.
 > `FigaroBatchVerifier` resolves the batch only if the witness's hash matches
 > `ClauseRegistry.contentHashOf` — so never-seen clauses stay attestable AND
 > batch-resolvable with zero per-clause code. There are no per-clause validator
-> contracts, permanently. The contract catalogue that states this is published
+> contracts, permanently. The contract catalog that states this is published
 > at `/spec`; the clause-authoring path is at `/clauses`.
 
 ```ts
@@ -1693,7 +1693,7 @@ import type { SpecSource, ProjectionSpecView } from "@figaro-protocol/sdk";
 //
 // `warnProcessLogFillsTrap(view)` catches the one construction that never
 // makes sense under "attestations": declaring `design.fills` or
-// `checkout.catalogueFills`/`profileFills` (designer/catalogue/profile
+// `checkout.catalogueFills`/`profileFills` (designer/catalog/profile
 // content pins) on a clause the article marks a process-log. A process-log
 // section is unvalidated at commit (`validateCommitmentAgreement` skips it
 // outright), so a pinned fill there is content the author believes is
@@ -1784,7 +1784,7 @@ value, and derive each order's hash and the process id from the root.
 single home; do not hand-assemble sections order-by-order.
 
 **Who fills what**: the designer selected the clauses and wrote any
-`design.fills` values (the tailoring); the seller filled profile/catalogue
+`design.fills` values (the tailoring); the seller filled profile/catalog
 master data at first use (`checkout.profileFills` / `checkout.catalogueFills`,
 folded at checkout); the buyer fills the remaining checkout values here as
 per-node `overrides` — the buyer owns every content field named in no fills
@@ -1874,7 +1874,7 @@ import {
 - **Section fills** (by declared field): `fillCommerceSection` (payment terms — `lineItems` supplied only for the root cart), `writeTopologySection`
   (the REAL parent-order hashes into `parentOrderHashes`), and the logistics
   fills `fillDerivedSections` folds together — `fillCargoSection` (mass/volume
-  sum × quantity), `fillClassSections` (catalogue-filled freight-class/hazmat/…),
+  sum × quantity), `fillClassSections` (catalog-filled freight-class/hazmat/…),
   `fillProfileSections` (the seller's profile-filled master data — dimweight's
   divisor, a declared credential id — restricted to each spec's declared
   `block.checkout.profileFills` subset, with the template's committed terms winning),
@@ -1887,9 +1887,9 @@ import {
   checkout's commit order (throws on a cyclic topology; `topologicalOrder` is the
   underlying pure math). `seller` is `null` when no counterparty is bound.
 - **Pricing**: `resolveSubOrderPricing` prices a sub-order from its contributor's
-  OWN catalogue (`billedQuantity × unitPrice = payment` always holds, so the
+  OWN catalog (`billedQuantity × unitPrice = payment` always holds, so the
   committed line item replays the payment with no reference back to the mutable
-  catalogue); `profileValuesFor` looks up a seller's profile-filled clause
+  catalog); `profileValuesFor` looks up a seller's profile-filled clause
   values for the profile fold.
 - **Open rate-quantity registry**: `registerRateQuantitySource(source, resolver)`
   / `getRateQuantityResolver(source)` — a `pricingPolicy: "rate"` item resolves
@@ -1916,10 +1916,10 @@ import {
 } from "@figaro-protocol/sdk";
 
 // Hardcoded here for brevity. Building `lineItems` from a fetched
-// `MemberCatalogueMetadata` item has no exported helper — there is no
-// `catalogueItemToLineItem` in the SDK — so do the mapping yourself:
+// `MemberCatalogMetadata` item has no exported helper — there is no
+// `catalogItemToLineItem` in the SDK — so do the mapping yourself:
 // `id` → `itemId`, `price` (human decimal) → `unitPrice` (smallest unit, via
-// viem's `parseUnits(item.price, tokenDecimals)` — see `CatalogueItemMetadata.price`'s
+// viem's `parseUnits(item.price, tokenDecimals)` — see `CatalogItemMetadata.price`'s
 // doc comment), and `clauseValues` copied through UNCHANGED (same
 // `{clauseId: fieldValues}` shape `fillClassSections` reads below).
 const lineItems: AssemblyCheckoutLineItem[] = [
@@ -1940,7 +1940,7 @@ await reconstructOrdersFromTemplate(template, {
           fillCommerceSection(planned.clauses, payment, currency, specs, lineItems),
           lineItems, specs,
         ),
-        profileValuesFor(seller, memberCatalogues), specs,
+        profileValuesFor(seller, memberCatalogs), specs,
       ),
       templateCompositionHash(template), specs,
     );
@@ -1975,7 +1975,7 @@ fold inside `reconstructOrdersFromTemplate` guarantees that — but it arrives
 creditable to its assembly's designer of record
 (`UsageCounter.recordAssemblyUsage`).
 
-## Member Profile + Catalogue Documents
+## Member Profile + Catalog Documents
 
 Two off-chain JSON documents describe a participant. Both are **off-chain SDK types** — their
 types and strict parsers are exported from the ROOT `@figaro-protocol/sdk` (next to
@@ -1985,8 +1985,8 @@ document is bundled — each is pinned to IPFS and read at runtime.
 
 The profile is ONE document for every participant — there is no buyer half and no
 seller half. It is already split on stable↔volatile (identity envelope here, the
-volatile item list behind `catalogueURI`); a buyer/seller split would be a second,
-crossing axis, and the fields it would divide (`acceptedTokens`, `catalogueURI`,
+volatile item list behind `catalogURI`); a buyer/seller split would be a second,
+crossing axis, and the fields it would divide (`acceptedTokens`, `catalogURI`,
 location, branding) serve either side unchanged. Registering is how a wallet
 PUBLISHES, never how it QUALIFIES — transacting through the Core needs no
 registration at all.
@@ -1996,17 +1996,17 @@ registration at all.
   else is optional (`subjectAddress`, `description`, `specialty`, `location`,
   `branding`, `assets`, `acceptedTokens`, `defaultTokenAddress`,
   `profileClauseValues`, `assemblyBindings`, `buyerAssemblies`,
-  `disclosurePolicy`, `services`, and `catalogueURI` — the pointer to the
-  catalogue). Token
+  `disclosurePolicy`, `services`, and `catalogURI` — the pointer to the
+  catalog). Token
   acceptance is an identity declaration, not a market position. Carries no
   role / archetype / category taxonomy — what a seller does is inferred from the
-  catalogue.
+  catalog.
   - `subjectAddress` is the wallet the profile speaks for. Optional in the
     on-chain-pinned shape because the registry already binds wallet →
     `metadataURI`, so a solitary document need not repeat it — but stamp it
     anyway: the moment profiles are materialised side by side (an indexer's
-    array, a fixture file, a catalogue joined to its profile) it is the only
-    join key, and `MemberCatalogueMetadata` REQUIRES its own. Treat it as
+    array, a fixture file, a catalog joined to its profile) it is the only
+    join key, and `MemberCatalogMetadata` REQUIRES its own. Treat it as
     non-clearable once set; a patch that drops it silently orphans the
     document.
   - `assemblyBindings` is an array of `AssemblyBindingRecord` — one entry per
@@ -2030,7 +2030,7 @@ registration at all.
     (absent = any counterparty, once offered); `calendar` says when
     (`{ embargoDaysAfterResolution?, notBefore?, notAfter? }`). Prices never
     appear here — a data product is priced as an item in the member's own
-    catalogue (fixed | rate), the item referencing the class via `dataSold`.
+    catalog (fixed | rate), the item referencing the class via `dataSold`.
     Field absent = the paper-contract default: each party holds its own
     copy; absence of a policy is NOT a policy of openness.
   - `buyerAssemblies` is an array of `BuyerAssemblySubscription` — the buyer's
@@ -2040,9 +2040,9 @@ registration at all.
     buy through the assemblies it sells through); subscribing is the buyer's
     verb, binding stays the seller's. Buyer-posture `disclosurePolicy` entries
     derive their candidate classes from this list.
-- **Catalogue** (`MemberCatalogueMetadata`) — the volatile item list pinned at
-  `profile.catalogueURI`. Required: `subjectAddress`, `items[]`, `version` — and
-  `version` is a **string** (`"1"`, never `1`): `parseMemberCatalogueDocument`
+- **Catalog** (`MemberCatalogMetadata`) — the volatile item list pinned at
+  `profile.catalogURI`. Required: `subjectAddress`, `items[]`, `version` — and
+  `version` is a **string** (`"1"`, never `1`): `parseMemberCatalogDocument`
   throws `…version must be a string.` on a number rather than coercing it.
   Each item requires `id`, `name`, `price`, `available`; optional are
   `description`, `category`, `image`, `dataSold` (marks a DATA-PRODUCT
@@ -2051,7 +2051,7 @@ registration at all.
   this item is the price), physical measures (`massGrams`,
   `volumeMl`, `lengthMm`/`widthMm`/`heightMm`), rate pricing
   (`pricingPolicy: "fixed" | "rate"`, `rateUnit`, `rateQuantitySource`), and
-  the catalogue-sourced `clauseValues` map. Split off the profile so an item
+  the catalog-sourced `clauseValues` map. Split off the profile so an item
   edit re-pins one small JSON, not the whole identity envelope.
 
 ```ts
@@ -2059,10 +2059,10 @@ import {
   reconstructDiscovery,
   parseMemberProfileDocument,       // throws on malformed input
   tryParseMemberProfileDocument,    // returns null on malformed input
-  parseMemberCatalogueDocument,
+  parseMemberCatalogDocument,
   projectAgentServices,             // pull ERC-8004 agent endpoints from a profile
 } from "@figaro-protocol/sdk";
-import type { MemberProfileMetadata, MemberCatalogueMetadata } from "@figaro-protocol/sdk";
+import type { MemberProfileMetadata, MemberCatalogMetadata } from "@figaro-protocol/sdk";
 
 // 1. Discovery hands you the metadataURI for each registered seller.
 const graph = reconstructDiscovery(events);
@@ -2076,10 +2076,10 @@ const profileJson = await (await fetch(gateway(registeredMember.metadataURI))).j
 const profile: MemberProfileMetadata = parseMemberProfileDocument(profileJson);
 const { reachable, services } = projectAgentServices(profileJson);
 
-// 3. Follow catalogueURI to the item list.
-if (profile.catalogueURI) {
-  const catJson = await (await fetch(gateway(profile.catalogueURI))).json();
-  const catalogue: MemberCatalogueMetadata = parseMemberCatalogueDocument(catJson);
+// 3. Follow catalogURI to the item list.
+if (profile.catalogURI) {
+  const catJson = await (await fetch(gateway(profile.catalogURI))).json();
+  const catalog: MemberCatalogMetadata = parseMemberCatalogDocument(catJson);
 }
 ```
 
@@ -2089,7 +2089,7 @@ it through the strict parser, pin it, then anchor the URI on-chain:
 ```ts
 import { MEMBERS_REGISTRY_ABI } from "@figaro-protocol/sdk";
 
-const doc: MemberProfileMetadata = { name: "Bob Pizza", catalogueURI: "ipfs://Qm…" };
+const doc: MemberProfileMetadata = { name: "Bob Pizza", catalogURI: "ipfs://Qm…" };
 parseMemberProfileDocument(doc);                 // throws if malformed — validate before pinning
 const metadataURI = await pinJSON(doc);          // your IPFS pin → "ipfs://…"
 
@@ -2166,8 +2166,8 @@ freshly registered assembly correctly reads `depositWithdrawn == false`; that fa
 name the registering wallet `registeredBy` (one role, one name), and
 `RpgfMinter._isAuthor` treats it as the clause-or-assembly's designer of record for reward eligibility.
 
-The catalogue follows the same shape: `parseMemberCatalogueDocument(cat)` →
-`pinJSON(cat)` → set the resulting URI as the profile's `catalogueURI` and
+The catalog follows the same shape: `parseMemberCatalogDocument(cat)` →
+`pinJSON(cat)` → set the resulting URI as the profile's `catalogURI` and
 `updateProfile`. First-write-wins binding means the wallet→profile edge is
 permanent; `updateProfile` swaps only the pointer.
 
@@ -2196,7 +2196,7 @@ name.
 
 ### 1. SELL — declare the terms, price the item
 
-Two documents you already own (both from "Member Profile + Catalogue Documents"
+Two documents you already own (both from "Member Profile + Catalog Documents"
 above), each carrying exactly half of the offer:
 
 - The **profile's `disclosurePolicy`** carries the DISCLOSURE terms: one entry
@@ -2207,14 +2207,14 @@ above), each carrying exactly half of the offer:
   on. Absence of a row is the paper-contract default (each party holds its own
   copy), **not** a policy of openness; `offered: false` is an explicit
   withholding, which is a different statement.
-- The **catalogue item's `dataSold`** carries the PRICE: `{ compositionHash,
+- The **catalog item's `dataSold`** carries the PRICE: `{ compositionHash,
   clauseId, posture }` pointing at one of your own declared rows, plus the
   ordinary `price` / `pricingPolicy` fields every other item uses. Prices never
   appear in the policy, and the terms of the SALE (§2) ride the item's
   `clauseValues`, not `dataSold`.
 
 ```ts
-import { parseMemberProfileDocument, parseMemberCatalogueDocument } from "@figaro-protocol/sdk";
+import { parseMemberProfileDocument, parseMemberCatalogDocument } from "@figaro-protocol/sdk";
 
 // The record is a LEAF of an assembly this wallet already trades under — here,
 // the flight-record leaf of a survey assembly, co-produced as its seller. Pick
@@ -2228,17 +2228,17 @@ const dataOffer = {
 
 const profile = {
   name: "Survey operator",
-  catalogueURI: "ipfs://…",
+  catalogURI: "ipfs://…",
   disclosurePolicy: [{ ...dataOffer, offered: true,
                        calendar: { embargoDaysAfterResolution: 30 } }],
 };
-const catalogue = {
+const catalog = {
   subjectAddress: me, version: "1",
   items: [{
     id: "telemetry-2026q3", name: "Flight telemetry — 2026 Q3",
     price: "50", available: true,              // HUMAN DECIMAL, like every item
     dataSold: dataOffer,                        // WHAT is sold — the policy row above
-    clauseValues: {                             // the SALE's catalogue-filled terms
+    clauseValues: {                             // the SALE's catalog-filled terms
       "figaro-data-license": {
         licenseScope: "Flight telemetry — 2026 Q3 survey window",
         access: "stream", redistribution: "prohibited",
@@ -2248,7 +2248,7 @@ const catalogue = {
   }],
 };
 parseMemberProfileDocument(profile);            // validate BEFORE pinning — both throw
-parseMemberCatalogueDocument(catalogue);        // on malformed input
+parseMemberCatalogDocument(catalog);        // on malformed input
 // …then pin + updateProfile exactly as the publish flow above does.
 ```
 
@@ -2279,7 +2279,7 @@ const { agreement, agreementHash } = buildOrderAgreement(buyer, seller, clauses,
 assertAgreementSignable(agreement, agreementHash, specs, commitment, "data sale");
 ```
 
-The literal map above is the hand-written form. In a catalogue checkout you do
+The literal map above is the hand-written form. In a catalog checkout you do
 not write those license values at all — `fillClassSections` folds them out of
 the line item's `clauseValues` onto the leaf, found by the spec's declared
 `block.checkout.catalogueFills` and never by clause name (Checkout Planning
@@ -2290,7 +2290,7 @@ two licenses into one cart.
 Two placement rules the specs themselves state, readable with
 `parseProjectionHints` — do not hand-place these:
 
-- The license terms are **catalogue-filled**: `figaro-data-license` declares
+- The license terms are **catalog-filled**: `figaro-data-license` declares
   all five of its fields in `block.checkout.catalogueFills`, so the data's owner writes them on the data item and checkout folds them into the agreement
   both parties sign. The item's price stays the item's own field, and who may
   buy and when stay the profile's policy — neither is a field on the clause.

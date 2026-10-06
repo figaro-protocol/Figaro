@@ -247,7 +247,7 @@ test.describe('CLAUSE AUTHORING — register on /clauses/register, inventory rea
         await page.getByRole('button', { name: /^Next/ }).click();
         await expect(page).toHaveURL(/\/members\/buyer/);
         await page.getByRole('button', { name: /^Next/ }).click();
-        await expect(page).toHaveURL(/\/members\/catalogue/);
+        await expect(page).toHaveURL(/\/members\/catalog/);
         await page.locator('[id^="item-"][id$="-name"]').first().fill('Authored item');
         await page.locator('[id^="item-"][id$="-price"]').first().fill('1');
         await page.getByRole('button', { name: /^Next/ }).click();

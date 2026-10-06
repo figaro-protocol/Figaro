@@ -10,7 +10,7 @@ import { colorTokens } from "@/lib/shared/designTokenValues";
  *    Tailwind `text-xs`)
  *  - the seller-detail hero logo fallback (`tone="accent"`, caller-picked
  *    size, 6px radius, font size scaled with `size`)
- *  - the catalogue-item image fallback (`tone="neutral"`, fixed 48px, 4px
+ *  - the catalog-item image fallback (`tone="neutral"`, fixed 48px, 4px
  *    radius, bordered, `aria-hidden`)
  */
 export interface InitialsAvatarProps {

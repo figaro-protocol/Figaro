@@ -8,7 +8,7 @@
  * counterparty — the SAME derived absence the manual picker resolves) can be
  * filled by racing the market instead of picking by hand:
  *
- *   1. Candidates are the live discovered-seller set whose catalogue can
+ *   1. Candidates are the live discovered-seller set whose catalog can
  *      price the node (`resolveSubOrderPricing` — the ruled first-available-
  *      item rule, rate items included). A registry read, never a roster;
  *      resolved-empty = nothing to race.
@@ -309,14 +309,14 @@ export function useDispatchRace() {
             const specs = specSource();
             const nodeClauses = { ...node.clauses, ...(checkout.clauseFills?.[racedNodeId] ?? {}) };
 
-            // The candidate set: the live discovered-seller catalogues that can
+            // The candidate set: the live discovered-seller catalogs that can
             // price this node — the same registry read the manual path uses,
-            // resolved fresh here. The buyer's own catalogue is skipped (the
+            // resolved fresh here. The buyer's own catalog is skipped (the
             // buyer does not race itself over the channel). Sorted best-priced
             // first so the buyer's k (a policy knob, never stored) means "the
             // k cheapest posted" — on the quotes leg the posted figure is only
             // the eligibility/ranking signal; the quote sets the price.
-            const priced = checkout.sellerCatalogues
+            const priced = checkout.sellerCatalogs
                 .filter((cat) => !hexEqual(cat.address, checkout.buyer))
                 .map((cat) => ({
                     address: cat.address as Hex,
@@ -324,7 +324,7 @@ export function useDispatchRace() {
                     pricing: resolveSubOrderPricing({
                         node: { ...node, clauses: nodeClauses },
                         seller: cat.address as Hex,
-                        sellerCatalogues: checkout.sellerCatalogues,
+                        sellerCatalogs: checkout.sellerCatalogs,
                         tokenDecimals: checkout.tokenDecimals,
                         specs,
                         checkoutQuantity: checkout.subOrderQuantities?.[racedNodeId],
@@ -334,7 +334,7 @@ export function useDispatchRace() {
                 .sort((a, b) => (a.pricing.payment < b.pricing.payment ? -1 : a.pricing.payment > b.pricing.payment ? 1 : 0))
                 .slice(0, args.maxCandidates && args.maxCandidates > 0 ? args.maxCandidates : undefined);
             if (priced.length === 0) {
-                throw new Error("No registered member's catalogue can price this order — nothing to race.");
+                throw new Error("No registered member's catalog can price this order — nothing to race.");
             }
             // Route each candidate — through the DID-verifying resolver where a
             // DID is declared — in parallel: a slow or hostile document host

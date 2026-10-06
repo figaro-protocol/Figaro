@@ -56,7 +56,7 @@ Out of scope:
 
 ## Read this before reporting
 
-`docs/DESIGN_DECISIONS.md` documents **a catalogue of patterns that look like
+`docs/DESIGN_DECISIONS.md` documents **a catalog of patterns that look like
 vulnerabilities but are correct by design** — missing timeouts, no admin
 recovery path, bonds locked permanently on buyer key loss, attestations on
 resolved orders, and others. Each is a deliberate consequence of the
