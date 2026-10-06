@@ -5,7 +5,7 @@
  * out-of-band through the share/receive URI flow: the counter-party opens a
  * shared link, no broker relays anything. This channel therefore does
  * nothing — every send is a no-op that resolves, every subscription returns
- * an inert unsubscribe. It exists so the channel factory can honour the
+ * an inert unsubscribe. It exists so the channel factory can honor the
  * `links-only` floor WITHOUT loading or initializing the XMTP chunk, while
  * callers keep the same interface they use for the mock and XMTP channels.
  */
