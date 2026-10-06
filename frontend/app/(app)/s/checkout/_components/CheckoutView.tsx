@@ -102,7 +102,7 @@ export function CheckoutView({ sellerAddress }: Props) {
     const { assemblies: boundAssemblies } = useMemberBoundAssemblies(sellerAddressTyped);
 
     // The buyer's options ARE the seller's bound assemblies — each is one
-    // option, labelled by the assembly's own name and keyed by its slug.
+    // option, labeled by the assembly's own name and keyed by its slug.
     // Fill-mechanism variants (a catalog-bound counterparty, a buyer pick)
     // are DISTINCT assemblies, so picking the assembly picks the mechanism;
     // the checkout hardcodes no taxonomy and reads no coordination field —
