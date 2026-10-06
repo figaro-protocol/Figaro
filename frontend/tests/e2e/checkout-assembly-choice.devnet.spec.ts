@@ -3,7 +3,7 @@
  *
  * MULTI-ASSEMBLY BUYER CHOICE — a seller bound to MORE THAN ONE published
  * assembly forces the buyer's checkout to disambiguate: the buyer's options
- * ARE the seller's bound assemblies (one option per binding, labelled by the
+ * ARE the seller's bound assemblies (one option per binding, labeled by the
  * assembly's own name, keyed by slug — the mechanism is derived from binding
  * state, no taxonomy). The spec asserts the whole designed behavior:
  *
