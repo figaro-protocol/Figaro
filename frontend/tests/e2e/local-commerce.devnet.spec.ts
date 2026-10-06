@@ -287,7 +287,7 @@ test.describe('LOCAL COMMERCE — item delivery: canvas → bind → order → a
         // …and nothing the sign gate requires is described as optional.
         await expect(
             page.locator('[data-testid^="checkout-field-"][data-testid$="-geocodeStandard-deferred"]'),
-            'a required field is never labelled optional',
+            'a required field is never labeled optional',
         ).toHaveCount(0);
 
         // The geolocation clause requires origin + destination under EVERY
@@ -407,7 +407,7 @@ test.describe('LOCAL COMMERCE — item delivery: canvas → bind → order → a
 
         // ── ATTEST: the story on the timeline. Each seller walks its WHOLE
         //    ladder through the ONE generic capability rail — the rail offers
-        //    exactly the next unattested stage, labelled from the clause spec;
+        //    exactly the next unattested stage, labeled from the clause spec;
         //    each executed stage lands on the timeline; a finished ladder
         //    leaves the rail. Ladder buttons are targeted by their clause
         //    (data-clause-id): the proximity WITNESS capability shares the
