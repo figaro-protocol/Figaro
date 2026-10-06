@@ -486,7 +486,7 @@ list, is the census):
   deployment — `CONTRACTS.md` owns the address; devnet: `MockDisperse`): one atomic
   `disperseToken`; chain facts: each earmark received its leg exactly, the seller paid
   exactly the total, the multisender retains nothing (its bytecode carries the selector
-  the panel calls — behaviour on the public chain, never the mirror alone).
+  the panel calls — behavior on the public chain, never the mirror alone).
   Live-run facts — tx hashes, blocks, addresses, times — live in `git log` (the
   commits that landed each run), never duplicated here.
   All four run after each other on one chain (the smoke first: it registers the seller
@@ -569,7 +569,7 @@ stranger auditing the chain would. Assert on that. The UI's own display is a
   broken read into an empty section. If a surface can render empty, assert the
   populated case explicitly — `toHaveCount(n)`, never `not.toHaveCount(0)`.
 
-**Where it stops.** This does not replace Foundry: contract behaviour belongs
+**Where it stops.** This does not replace Foundry: contract behavior belongs
 there and is cheaper to prove there. Chain-fact e2e covers the seam Foundry
 cannot see — *whether the product actually calls the contract, with the right
 arguments, and reads the answer back*. The two are complements, and the seam
@@ -682,7 +682,7 @@ Per workflow, what it runs and when:
   the contracts' events through a public node — a minter registered after
   genesis, a florin minted outside the reward path, a dropped batch accrual,
   a withdrawal burst, and `FigaroCore`'s held bonds against invariant A-8 —
-  and raises each condition as an issue labelled `monitor`, assigned to the
+  and raises each condition as an issue labeled `monitor`, assigned to the
   maintainer; a run that cannot read the node, or finds a record address
   with no code, fails, which is the heartbeat. `scripts/test-monitor.mjs`
   (the last step of `devnet-e2e-ci`) produces each alert with real contracts
@@ -693,7 +693,7 @@ Per workflow, what it runs and when:
   chain, to prove the issue and e-mail path. Every read waits its turn at one
   gate, `PACE_MS` apart (default 1000), because a keyed node throttles a burst
   of reads and the transport's own backoff does not save a whole run.
-- **`notify`** — on an issue opened or labelled `monitor`, `ci`, `digest`, or
+- **`notify`** — on an issue opened or labeled `monitor`, `ci`, `digest`, or
   `triage`: the Actions bot posts one comment mentioning the maintainer, so
   the issues the cloud routines write under the maintainer's own account
   still reach the maintainer's inbox (GitHub never e-mails an actor about
