@@ -2,7 +2,7 @@
  * agreementFetch.ts — get a committed agreement from the network.
  *
  * The chain stores only an agreement's 32-byte merkle hash; the body lives on
- * IPFS, the SSoT. `fetchAgreement` resolves the body by the URI that travelled
+ * IPFS, the SSoT. `fetchAgreement` resolves the body by the URI that traveled
  * in the order's payload, then VERIFIES the fetched bytes against the on-chain
  * `agreementHash` before trusting them — so a tampered IPFS copy is rejected.
  *
