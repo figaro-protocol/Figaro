@@ -11,7 +11,7 @@
  *   ← Assemblies | Agent assist | saved hint | Save | Review | Reset
  *
  * Buttons are weighted by the action we want to incentivize:
- *   - Publish:  filled primary    — irreversible, costs the registration deposit
+ *   - Publish:  filled primary    — irreversible, places the stake
  *   - Save:     outline           — frequent, recoverable; the everyday action
  *   - Reset:    subtle/text-link  — destructive but recoverable (autosave caught it)
  *

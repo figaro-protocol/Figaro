@@ -519,7 +519,7 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                 disabled={confirming || !clauseSpecsLoaded || !review?.ok || missingTerms.length > 0}
                 className="font-semibold"
                 data-testid="review-confirm-publish"
-                title="Pin the assembly template to IPFS, lock the registration deposit, anchor the slug on-chain. Irreversible."
+                title="Pin the assembly template to IPFS, place the stake, anchor the slug on-chain. Irreversible."
             >
                 {confirming
                     ? "Publishing…"
@@ -597,8 +597,8 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                         Review before publish — this action is irreversible.
                     </p>
                     <p className="text-xs text-warning-fg mt-1 max-w-3xl leading-relaxed">
-                        Confirming will pin the assembly assemblyTemplate to IPFS, lock the
-                        registration deposit, and anchor the slug{" "}
+                        Confirming will pin the assembly assemblyTemplate to IPFS, place the
+                        stake, and anchor the slug{" "}
                         <code className="font-mono">/{slug}</code> on-chain. The slug
                         binding is permanent — once registered it cannot be reassigned,
                         renamed, or transferred. The canvas below is read-only;

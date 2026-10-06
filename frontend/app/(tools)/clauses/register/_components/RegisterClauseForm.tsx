@@ -169,7 +169,7 @@ export function RegisterClauseForm() {
             )}
             {validation.state === "valid" && (
                 <p className="text-sm text-success-fg" data-testid="clause-validation-ok">
-                    Spec is well-formed. Registering pins it to IPFS, posts the registration deposit, and anchors it on-chain — permanent per (name, version).
+                    Spec is well-formed. Registering pins it to IPFS, places the stake, and anchors it on-chain — permanent per (name, version).
                 </p>
             )}
 
