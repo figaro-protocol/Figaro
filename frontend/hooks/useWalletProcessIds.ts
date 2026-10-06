@@ -8,7 +8,7 @@
  * Only two events: OrderCommitted and OrderResolved. The fold is the SDK's
  * (`projectProcessGraph` + `walletRecord` — the same one `/data/explore`
  * answers wallet history with); this hook keeps only its own view mapping,
- * the per-process rollup `summarise` builds.
+ * the per-process rollup `summarize` builds.
  */
 
 import { useState, useEffect, useCallback, useRef } from "react";
@@ -33,7 +33,7 @@ import type { ProcessSummary } from "@/lib/kernel/walletProcessQueries";
  *  carry data/topics, so the one decoder runs over either. */
 type SdkLogs = Parameters<typeof parseOrderCommittedLogs>[0];
 
-function summarise(orders: Order[]): ProcessSummary[] {
+function summarize(orders: Order[]): ProcessSummary[] {
     const map = new Map<string, Order[]>();
     for (const o of orders) {
         const arr = map.get(o.processId) ?? [];
@@ -74,7 +74,7 @@ export function useWalletProcessIds(address: string | undefined): ProcessSummary
             seen.add(o.orderHash);
             combined.push(orderFromSdk(o));
         }
-        setSummaries(summarise(combined));
+        setSummaries(summarize(combined));
     }, []);
 
     useEffect(() => {
