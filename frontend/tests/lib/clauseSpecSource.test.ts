@@ -142,13 +142,13 @@ describe("clauseSpecSource — valueLabels humanize runtime enum codes (audit wo
         expect(ladder?.valueLabels?.["handed-off"]).toBe("Handed off");
     });
 
-    it("labelEnumValue humanizes a raw code via valueLabels, and falls back to the raw token when unlabelled", async () => {
+    it("labelEnumValue humanizes a raw code via valueLabels, and falls back to the raw token when unlabeled", async () => {
         await primeClauseSpecs(["figaro-modalities"]);
         const ladder = clauseLadderField("figaro-modalities");
         expect(labelEnumValue(ladder, "consume-onsite")).toBe("Consume on-site");
         expect(labelEnumValue(ladder, "virtual")).toBe("Virtual");
-        // Fallback: an unlabelled value renders as its raw token (never blank).
-        expect(labelEnumValue(ladder, "unlabelled-code")).toBe("unlabelled-code");
+        // Fallback: an unlabeled value renders as its raw token (never blank).
+        expect(labelEnumValue(ladder, "unlabeled-code")).toBe("unlabeled-code");
     });
 });
 
