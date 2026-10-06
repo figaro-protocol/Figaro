@@ -7,7 +7,7 @@
  *   - CORE state — placed / active / completed, from the commit + process
  *     state (the bilateral commit IS the order's arrival and the seller's
  *     approval; nobody "marks it received").
- *   - the GENERIC timeline — every attestation on the process, labelled
+ *   - the GENERIC timeline — every attestation on the process, labeled
  *     straight from its clause's off-chain spec (`describeAttestation`), the
  *     clauseId taken from the event DATA.
  *   - the CAPABILITY rail — every action the buyer/seller can take, DERIVED by
@@ -208,7 +208,7 @@ export function OrderTimelineView({ processId }: Props) {
                 <p className="text-sm text-error-fg" data-testid="workspace-action-error">{workspace.actionError}</p>
             )}
 
-            {/* Timeline — the process's attestation log, each row labelled from
+            {/* Timeline — the process's attestation log, each row labeled from
                 the clause's own spec (clauseId comes from the event data). */}
             <section className="space-y-3">
                 <p className="text-xs font-semibold text-ink-muted">Timeline</p>
