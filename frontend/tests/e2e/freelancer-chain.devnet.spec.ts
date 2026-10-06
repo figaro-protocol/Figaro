@@ -4,7 +4,7 @@
  * FREELANCE VALUE CHAIN — the reference assembly's named test
  * (assemblies/freelancer-value-chain.json; family 8b — a lead freelancer and
  * two contributors, each a co-equal bonded order in one process, every
- * deliverable travelling the encrypted content hand-off, one resolution).
+ * deliverable traveling the encrypted content hand-off, one resolution).
  *
  * The spec CONSUMES the anchored reference (registry → IPFS, discovered by
  * shape: three orders, every one composing the content hand-off — no other
