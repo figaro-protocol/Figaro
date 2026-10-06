@@ -32,7 +32,7 @@
  * draft — and the template publish would have anchored — carried them.
  *
  * A second test covers what a design fill's VALUE does to the composition:
- * the enum options render through the spec's own valueLabels (a labelled
+ * the enum options render through the spec's own valueLabels (a labeled
  * choice, not a raw token), and changing the chosen value MOVES the canvas's
  * live composition identity — the designer sees that a regime variant is a
  * SIBLING assembly, not a setting on the one they are editing. Every enum
