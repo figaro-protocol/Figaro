@@ -37,7 +37,7 @@ const LOCAL_ANVIL = defineChain({
 });
 const PROBE_VERSION = 1;
 
-/** A runtime-attestable lifecycle clause with one enum ladder — modelled on the
+/** A runtime-attestable lifecycle clause with one enum ladder — modeled on the
  *  SHAPE of merchant-process, but a name nothing in this repo knows. */
 export function makeProbeSpec(clauseId: string, title: string, version: number = PROBE_VERSION) {
     return {
