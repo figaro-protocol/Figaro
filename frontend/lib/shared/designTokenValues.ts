@@ -11,7 +11,7 @@
  * SVG canvases (React Flow edge `stroke` / marker `color`), `<canvas>`
  * painters, QR encoders and `next/og` image routes all need a literal
  * hex at render time. Those sites are the reason this file exists — they
- * are NOT licence to hardcode hexes elsewhere (DESIGN_TOKENS §8 still
+ * are NOT license to hardcode hexes elsewhere (DESIGN_TOKENS §8 still
  * bans hardcoded hex in components; the fix for such a site is to import
  * from here).
  *
