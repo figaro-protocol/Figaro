@@ -19,7 +19,7 @@
  * `triggerClassName` / `panelClassName`.
  *
  * The panel MOUNTS only while expanded — matching `NavTreeRow`'s shipped
- * behaviour, and keeping collapsed content out of every focus-trap query
+ * behavior, and keeping collapsed content out of every focus-trap query
  * (a `hidden` panel still matches `querySelectorAll('a[href]')`, which is how
  * a trap ends up trying to focus an invisible element).
  */
