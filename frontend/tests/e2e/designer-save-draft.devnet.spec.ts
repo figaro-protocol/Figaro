@@ -87,7 +87,7 @@ test.describe('Designer save-draft (devnet)', () => {
         expect(Array.isArray(snapshot.orders)).toBe(true);
         expect(snapshot.orders.length).toBe(1);
 
-        // DraftsList surfaces the new draft by its handle, labelled with the name.
+        // DraftsList surfaces the new draft by its handle, labeled with the name.
         const row = page.getByTestId(`draft-row-${slug}`);
         await expect(row).toBeVisible({ timeout: 10000 });
         await expect(row).toContainText(draftName);
