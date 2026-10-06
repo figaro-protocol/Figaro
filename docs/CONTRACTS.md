@@ -164,7 +164,7 @@ verifier-gateway ABI, `verifyProof(programVKey, publicValues, proof)`.
 ### Registries (`src/build/registries/`)
 
 Three parallel anchors, each with its own identity scheme, event stream, and
-withdrawal behaviour; none references another. Registering publishes; it
+withdrawal behavior; none references another. Registering publishes; it
 never qualifies — the Core gates nothing on registry state. Two are here; the
 third, `MembersRegistry`, is in `src/app/`.
 
