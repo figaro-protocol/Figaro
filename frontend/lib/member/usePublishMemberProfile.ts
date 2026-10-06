@@ -16,7 +16,7 @@
  *      a stuck receipt that never renders).
  *   5. Simulate the appropriate registry call (`register` for first-
  *      time, `updateProfile` for re-pin) BEFORE opening the wallet,
- *      so a wrong-deposit / unauthorised revert surfaces as a typed
+ *      so a wrong-deposit / unauthorized revert surfaces as a typed
  *      error instead of a silent on-chain failure post-submission.
  *   6. Submit via `writeContractAsync`.
  *   7. Explicitly wait for the receipt + verify status === "success".
