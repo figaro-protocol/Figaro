@@ -23,7 +23,7 @@ import { safeJsonFromResponse } from "@/lib/shared/safeJson";
 export interface UriFetcherConfig<T> {
     /**
      * Parse / validate the fetched document. Either return a parsed `T`
-     * or `null` to signal "unrecognised shape, drop this URI". Throwing
+     * or `null` to signal "unrecognized shape, drop this URI". Throwing
      * is also acceptable — callers see null on any error.
      */
     parse: (doc: unknown, sourceLabel: string) => T | null;
@@ -40,7 +40,7 @@ export interface UriFetcherConfig<T> {
 }
 
 export interface UriFetcher<T> {
-    /** Fetch + parse + cache. Returns null on empty URI, fetch failure, or unrecognised shape. */
+    /** Fetch + parse + cache. Returns null on empty URI, fetch failure, or unrecognized shape. */
     fetch(uri: string): Promise<T | null>;
     /** Drop a single entry from the cache. Call after a write so the next read sees fresh data. */
     invalidate(uri: string): void;
