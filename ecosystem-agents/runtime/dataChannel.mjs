@@ -41,7 +41,7 @@ export function makeEnvelope({ source, refKind, ref, content }) {
 }
 
 /**
- * Render an envelope as the delimited, provenance-labelled block the model
+ * Render an envelope as the delimited, provenance-labeled block the model
  * reads. The boundary nonce is fresh per render: a payload inside `content`
  * that imitates the closing line cannot match it, so the block cannot be
  * escaped from inside. The header restates the one rule the frame exists
