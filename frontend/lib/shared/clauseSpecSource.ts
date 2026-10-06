@@ -354,7 +354,7 @@ export function composesForumUrl(clauseId: string): string | undefined {
  *  `block.design.composes.interface` — the open-world discriminator for WHICH on-network
  *  contract an order composes with (e.g. an auction standard, an NFT credential
  *  check — never a dispute forum, which is `forumUrl`, a link and not a tenant).
- *  Generic surfaces derive composition behaviour from this string, never a
+ *  Generic surfaces derive composition behavior from this string, never a
  *  bundled clause-id. Undefined when the clause composes with nothing, or its
  *  spec isn't loaded.
  *  @public pending consumer: the composes-seam reader; its next consumer is
@@ -425,7 +425,7 @@ function firstEnumField(spec: ClauseSpec | undefined): EnumFieldSpec | undefined
     return undefined;
 }
 
-/** The enum field carrying `value` as a member — for labelling a raw value
+/** The enum field carrying `value` as a member — for labeling a raw value
  *  through its spec. Returns the enum (or array-of-enum item) field, or undefined. */
 function enumFieldOf(field: FieldSpec): EnumFieldSpec | undefined {
     if (field.type === "enum") return field;
@@ -435,7 +435,7 @@ function enumFieldOf(field: FieldSpec): EnumFieldSpec | undefined {
 
 /** Label a raw enum value through its field's `valueLabels` — the spec is the
  *  SSoT for human-readable value display; falls back to the raw token when the
- *  spec declares no label (a never-labelled clause still renders). Internal —
+ *  spec declares no label (a never-labeled clause still renders). Internal —
  *  shared by the spec-derived readers below (`describeAttestation`,
  *  `renderFieldValues`) and by the capability deriver (the runtime action label). */
 export function labelEnumValue(field: { valueLabels?: Readonly<Record<string, string>> } | null | undefined, value: string): string {
@@ -443,7 +443,7 @@ export function labelEnumValue(field: { valueLabels?: Readonly<Record<string, st
 }
 
 /** Display text for a runtime attestation, read STRAIGHT from the clause spec:
- *  the title and the (labelled) enum value at `stage`. Callers pass DATA (the
+ *  the title and the (labeled) enum value at `stage`. Callers pass DATA (the
  *  event's clauseId hash + uint8 stage) — no surface names a clause. Falls back
  *  to the short hash + stage when the clause is unknown (not yet loaded). */
 export function describeAttestation(
@@ -456,7 +456,7 @@ export function describeAttestation(
     const spec = clauseSpecForHash(clauseIdHash) ?? getClauseSpec(clauseIdHash);
     if (!spec) return { clauseTitle: truncateHex(clauseIdHash, { head: 10, tail: 0 }), eventLabel: `stage ${stage}`, eventCode: `stage-${stage}` };
     // A DECLARED witness stage (spec.stages[stage]) is not a ladder ordinal —
-    // labelling it through the committed enum would misread (e.g. a cold-chain
+    // labeling it through the committed enum would misread (e.g. a cold-chain
     // record at stage 1 is not "refrigerated"). The witness's display name is
     // the clause's own title; its stable code is the stage number.
     if (spec.stages?.[stage] !== undefined) {
