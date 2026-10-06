@@ -161,9 +161,10 @@ jobs:
               working-directory: ./prover
               run: |
                   (cd program && cargo prove build --docker --tag "$SP1_VERSION")
-                  # The container runs as root and leaves target/elf-compilation
-                  # root-owned; the injection below runs as the runner user.
-                  sudo chown -R "$(id -u):$(id -g)" target/elf-compilation
+                  # The container runs as root and leaves the whole target/
+                  # tree root-owned; the injection below and the cargo builds
+                  # after it run as the runner user.
+                  sudo chown -R "$(id -u):$(id -g)" target
                   sha256sum target/elf-compilation/docker/riscv64im-succinct-zkvm-elf/release/figaro-prover
                   mkdir -p target/elf-compilation/riscv64im-succinct-zkvm-elf/release
                   cp target/elf-compilation/docker/riscv64im-succinct-zkvm-elf/release/figaro-prover \
