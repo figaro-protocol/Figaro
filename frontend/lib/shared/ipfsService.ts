@@ -114,7 +114,7 @@ async function warmPublicGateway(cid: string, gatewayUrl: string): Promise<void>
 /**
  * The single resolver from a content URI to a gateway HTTP URL. Handles
  * `ipfs://CID`, `/ipfs/path`, `http(s)://` passthrough, and bare CIDv0/CIDv1.
- * Returns `null` for empty or unrecognised/unsafe schemes (javascript:, data:,
+ * Returns `null` for empty or unrecognized/unsafe schemes (javascript:, data:,
  * blob:, …). The `IpfsService.resolveFetchUrl` method delegates here; free
  * callers import this directly.
  */
@@ -132,7 +132,7 @@ export function resolveContentUri(uri: string, gatewayUrl: string = activeIpfsGa
     if (uri.startsWith("http://") || uri.startsWith("https://")) return uri;
     // Bare CIDv0 (Qm…) / CIDv1 (bafy…) fallback.
     if (isCidPath(uri)) return `${gatewayUrl}/ipfs/${uri}`;
-    // RA-2: reject unrecognised schemes.
+    // RA-2: reject unrecognized schemes.
     return null;
 }
 
@@ -166,7 +166,7 @@ export function resolveImageUri(uri: string): string | null {
 
 /**
  * Extract the bare CID from an `ipfs://CID`, `/ipfs/CID` path, or bare CID.
- * Returns `null` for http(s) and unrecognised schemes — only IPFS content is
+ * Returns `null` for http(s) and unrecognized schemes — only IPFS content is
  * unpinnable, so this is the erasure path's admission check.
  */
 export function extractIpfsCid(uri: string): string | null {
