@@ -17,11 +17,13 @@ name: Sequencer Release
 # Reproducibility is the point, not convenience. The sequencer embeds the SP1
 # guest ELF at compile time (`sp1_sdk::include_elf!("figaro-prover")` in
 # prover/sequencer/src/prover.rs), and that ELF's hash IS the verification key
-# `FigaroBatchVerifier` pins as its `programVKey` immutable. So the host Rust
-# version and the SP1 version are not cosmetic build trivia — they determine
-# whether a binary's proofs are accepted at all. Both are pinned below and
-# printed into the release body, alongside the computed vkey, so anyone can
-# rebuild and compare.
+# `FigaroBatchVerifier` pins as its `programVKey` immutable. The guest is
+# therefore built in the pinned SP1 DOCKER IMAGE — the canonical,
+# host-independent build (scripts/prover-box/build-guest.sh is the same
+# recipe) — injected where include_elf! resolves, and the computed key must
+# equal the deployment record's programVKey or the release refuses to
+# publish. The pins are printed into the release body so anyone can rebuild
+# and compare.
 
 on:
     push:
@@ -69,14 +71,11 @@ jobs:
                 include:
                     - runner: ubuntu-latest
                       target: x86_64-unknown-linux-gnu
-                    # aarch64-apple-darwin was removed 2026-08-13: the maiden
-                    # release run proved the SP1 guest ELF is not bit-reproducible
-                    # across build hosts (linux/darwin vkeys diverged; the
-                    # cross-target check below refused to publish). Relay
-                    # operation is server work, so Linux is the release target;
-                    # Mac developers build from source. A darwin leg may return
-                    # once the guest is built once (reproducibly) and injected
-                    # into the host build — the Task 11 reproducible-build work.
+                    # Linux is the only release target by role: relay operation
+                    # is server work; Mac developers build from source. The
+                    # guest ELF is the docker image build (host-independent),
+                    # so a darwin leg would now agree on the key — it stays
+                    # absent by role, not by reproducibility.
 
         steps:
             # No `submodules: recursive` here, unlike the Solidity workflows:
@@ -152,29 +151,59 @@ jobs:
                   fi
                   protoc --version
 
+            # The canonical guest: built in the pinned SP1 docker image —
+            # host-independent, the same recipe as the prover box's
+            # build-guest.sh — then injected where include_elf! resolves.
+            # SP1_SKIP_PROGRAM_BUILD on every later cargo invocation keeps
+            # sp1_build from silently replacing it with a host build (the
+            # drift the maiden release shipped).
+            - name: Build the guest reproducibly (docker)
+              working-directory: ./prover
+              run: |
+                  (cd program && cargo prove build --docker --tag "$SP1_VERSION")
+                  sha256sum target/elf-compilation/docker/riscv64im-succinct-zkvm-elf/release/figaro-prover
+                  mkdir -p target/elf-compilation/riscv64im-succinct-zkvm-elf/release
+                  cp target/elf-compilation/docker/riscv64im-succinct-zkvm-elf/release/figaro-prover \
+                     target/elf-compilation/riscv64im-succinct-zkvm-elf/release/figaro-prover
+
             # No build cache. A release build should be a clean build from the
             # committed lockfile — the same thing a third party rebuilding from
             # source gets. Cache reuse would trade that away for minutes.
             - name: Build sequencer
               working-directory: ./prover
+              env:
+                  SP1_SKIP_PROGRAM_BUILD: "true"
               run: cargo build --release --locked -p figaro-sequencer --bin sequencer
 
             # The vkey is the guest ELF's hash: the value DeployMainnet.s.sol
             # requires as SP1_PROGRAM_VKEY and FigaroBatchVerifier stores as its
-            # `programVKey` immutable. Publishing it lets a downloader check that
-            # this binary proves against the same key the deployed verifier pins.
-            - name: Compute guest program vkey
+            # `programVKey` immutable. Derived through the sdk that verifies
+            # (the same SP1_VKEY_ONLY path build-guest.sh uses — the CLI's
+            # `cargo prove vkey` can disagree with the sdk across releases),
+            # and REQUIRED to equal the deployment record's: a release whose
+            # binary proves against a key no deployed verifier pins is not a
+            # release.
+            - name: Compute guest program vkey and check it against the record
               id: vkey
               working-directory: ./prover
+              env:
+                  SP1_SKIP_PROGRAM_BUILD: "true"
               run: |
                   test -f "$GUEST_ELF" || { echo "guest ELF missing at $GUEST_ELF"; exit 1; }
-                  vkey=$(cargo-prove prove vkey --elf "$GUEST_ELF" | tail -n 1 | tr -d '[:space:]')
+                  vkey=$(SP1_VKEY_ONLY=1 cargo run --release --locked -p figaro-prove-test 2>&1 \
+                      | grep -oE 'SP1_PROGRAM_VKEY=0x[0-9a-fA-F]{64}' | tail -n 1 | cut -d= -f2)
                   # Fail loudly rather than publishing an empty or malformed key:
                   # a silently blank vkey would look like a successful release.
                   if ! [[ "$vkey" =~ ^0x[0-9a-fA-F]{64}$ ]]; then
                       echo "unexpected vkey output: '$vkey'"
                       exit 1
                   fi
+                  recorded=$(python3 -c "import json;print(json.load(open('../deployments/11155111.json'))['programVKey'])")
+                  if [ "${vkey,,}" != "${recorded,,}" ]; then
+                      echo "computed vkey $vkey is not the record's programVKey $recorded — refusing to publish"
+                      exit 1
+                  fi
+                  echo "vkey matches deployments/11155111.json"
                   echo "vkey=$vkey" >> "$GITHUB_OUTPUT"
                   echo "vkey: $vkey"
 
