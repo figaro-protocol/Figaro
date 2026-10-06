@@ -4,7 +4,7 @@
  * THE process event record for `audit/`: given a processId, queries all
  * FigaroCore lifecycle events AND every clause's runtime attestations (the
  * unified AttestationCoordinator event) and reconstructs a chronological,
- * human-readable timeline. Attestations are labelled from each clause's OWN
+ * human-readable timeline. Attestations are labeled from each clause's OWN
  * spec via `describeAttestation` (clause title + the enum value at `stage`) —
  * no clause names, no per-clause label maps, so a permissionlessly-registered
  * clause's attestations appear correctly with no code change.
@@ -133,7 +133,7 @@ export async function buildProcessTimeline(
     // chunks, cached across renders — the same cache FigaroCore indexer
     // fills); the processId narrowing is client-side over it.
     // Cached logs type blockNumber as number | bigint (the IDB round-trip is
-    // bigint-tagged, but the type stays open); normalise once here.
+    // bigint-tagged, but the type stays open); normalize once here.
     type ScanLog = { args?: Record<string, unknown>; blockNumber?: number | bigint | null; transactionHash?: `0x${string}` | null };
     const byProcess = (logs: ScanLog[]) =>
         logs
@@ -219,7 +219,7 @@ export async function buildProcessTimeline(
     // ── Runtime attestations (every clause) ─────────────────────────
     // All attestations — lifecycle, proximity, disclosure, any permissionless
     // clause — arrive through AttestationCoordinator's unified Attestation
-    // event, each labelled from its OWN spec. No clause names; an unknown
+    // event, each labeled from its OWN spec. No clause names; an unknown
     // clause falls back to a short hash + stage (describeAttestation handles
     // it). The event's `contentRef = keccak256(content)` is a verification
     // digest, not an off-chain pointer.
