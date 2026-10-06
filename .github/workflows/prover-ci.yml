@@ -259,7 +259,7 @@ jobs:
             # The release binary is what the batch e2e launches
             # (sdk/tests/batch-e2e.test.ts: prover/target/release/sequencer):
             # SP1's key setup runs inside it at startup and for `--vkey`,
-            # seconds optimised and the better part of an hour unoptimised.
+            # seconds optimized and the better part of an hour unoptimized.
             - name: Build the sequencer
               working-directory: ./prover
               run: cargo build --release --locked -p figaro-sequencer --bin sequencer
