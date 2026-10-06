@@ -245,7 +245,7 @@ export function OnboardingCatalogForm({
 
     // The item properties this member is actually asked for: the
     // catalog-filled fields of the clauses their BOUND assemblies compose
-    // (freight class, hazmat, cold-chain, a data licence — whatever those
+    // (freight class, hazmat, cold-chain, a data license — whatever those
     // assemblies carry). Derived live from the registry through the bindings,
     // never a bundled list and never the whole registry: a member selling one mug
     // binds an assembly that composes none of them and is asked for none. A
