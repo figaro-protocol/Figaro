@@ -91,7 +91,7 @@ describe("MobileNav", () => {
         }
     });
 
-    // Disclosure semantics: the trigger controls a panel that is labelled by
+    // Disclosure semantics: the trigger controls a panel that is labeled by
     // the trigger, so the group name announces with its own page list.
     it("wires aria-controls to the panel the group trigger opens", () => {
         pathnameMock = "/kernel/";
