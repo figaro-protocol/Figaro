@@ -12,7 +12,7 @@ import { resolveImageUri } from "@/lib/shared/ipfsService";
 /**
  * MemberLogo — renders the member's logo from IPFS/HTTP, with two
  * possible fallbacks: an initials block (when `fallbackName` is supplied)
- * coloured by the seller's accent, or a plain emoji (backward-compatible
+ * colored by the seller's accent, or a plain emoji (backward-compatible
  * default for consumers that don't pass a name).
  */
 interface MemberLogoProps {
