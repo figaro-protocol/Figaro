@@ -173,7 +173,7 @@ excepted. The tag is never moved: a change to the scope is a new tag.
 
 ### Changes after the tag
 
-Seven changes were made to the relay (`prover/sequencer/`) after the tag, on
+Eight changes were made to the relay (`prover/sequencer/`) after the tag, on
 the maintainer's override, each closing a defect the project's own review
 found. None touches a contract, a guest crate, a `Cargo.toml` or the lock, so the
 guest's bytes and the verification key are the tag's. This prints them all:
@@ -192,8 +192,9 @@ git diff audit-2026-10 -- prover/sequencer/
 | Funding is allocated per wallet | Each commit was checked against its wallet's balance alone, so several commits from one wallet each passed and `settleBatch` reverted when it pulled their sum, dead-lettering every operation in the batch after minutes of proving. A wallet's balance and allowance are now read once and allocated across the batch's commits in order. | `prover/sequencer/src/submitter.rs` (`allocate_funding`, `filter_funded_commits`) | `funding_is_allocated_across_a_wallets_commits_in_order` |
 | An attestation's witness spec is checked against the registry before proving | The relay checked that the spec parsed; the verifier checks that its hash is `ClauseRegistry.contentHashOf` for the clause and reverts the whole batch otherwise. Anyone could copy a landed attestation with one byte of the spec changed and sink every batch at no cost. The relay now reads the anchor from the verifier's own registry and drops such an attestation alone. | `prover/sequencer/src/submitter.rs` (`attestation_spec`, `filter_anchored_attestations`) | `the_spec_an_attestation_carries_is_what_the_registry_check_reads`; the batch end-to-end test's attestation passes the check against the live registry |
 | The binary's own log lines are on by default | The relay's default log filter named the library's target (`figaro_sequencer`) and not the binary's (`sequencer`), so startup, every refusal to start (the signing key, the guest fingerprint) and every batch-loop line (a batch landed, an operation dropped or dead-lettered) were filtered out unless `RUST_LOG` named both: a relay that refused to start exited 2 and said nothing. | `prover/sequencer/src/main.rs` (the default filter) | `sdk/tests/batch-e2e.test.ts` reads the refusal line of the relay that holds no state |
+| A batch refused by a mid-flight revocation re-batches around the revoker | A party who revoked its allowance after the funding check and before `settleBatch` reverted the whole batch, and every operation in it was dead-lettered after minutes of proving — a repeatable way, priced only in gas, for one address to keep every operation it shared a batch with out of every batch. On a deterministic revert the relay now re-reads funding at the latest block: the named revoker's operations alone are dead-lettered (re-submittable once funded), the rest re-queue (a wallet whose re-read failed re-queues too, never logged as a revoker), and the next tick builds a fresh batch without the revoker — the refused batch itself is never re-sent, though its state stays held (its proof is public; a revoker who re-approves revives it). Repeated revocation from one address within an hour is logged as the adversarial signal. Known limitation 3 states what remains. | `prover/sequencer/src/main.rs` (the deterministic-revert arm), `prover/sequencer/src/submitter.rs` (`allocate_funding` names the failing party; `RevocationLog`) | `funding_is_allocated_across_a_wallets_commits_in_order` (the drop names the party), `revocation_log_counts_within_the_window_only`; `formal/RelayState.tla` — the `RebatchDropsRevoker` switch FALSE fails `SendsExcludeKnownRevoked` |
 
-All seven are liveness or operability defects of the relay: none let a batch
+All eight are liveness or operability defects of the relay: none let a batch
 move value the parties did not sign, and the proof and the verifier are as
 tagged. Known limitation 7 states what the state changes leave standing.
 
@@ -415,9 +416,9 @@ read it first.
   `_executePositions` (`FigaroBatchVerifier.sol:566`), and the batch's
   operations are dead-lettered and re-submittable; a process open on the batch
   path resolves on the batch path only. The relay reads each party's balance and
-  allowance before it submits (`prover/sequencer/src/submitter.rs`); it does not
-  yet drop a revoking party and re-run the batch without it
-  (§ "Known limitations").
+  allowance before it submits (`prover/sequencer/src/submitter.rs`), and a batch
+  a mid-flight revocation reverts is re-run without the revoker
+  (§ "Changes after the tag").
 - The kernel recovers ECDSA signers (`ECDSA.recover` in `commit()`), so a
   smart-contract wallet (multisig) cannot be a kernel party directly; it transacts
   through an EOA it controls (the off-protocol auxiliary pattern). The buyer-key-loss
@@ -514,12 +515,20 @@ Stated so the review does not spend hours finding them.
    proof of equivalence.
 2. **The relay is not mutation-tested.** Mutation testing covers the guest
    (`figaro-kernel`, `figaro-clause`), where a defect costs a wrong resolution.
-   The relay has its 79 integration tests, 12 unit tests and the batch
+   The relay has its 79 integration tests, 13 unit tests and the batch
    end-to-end test.
-3. **The relay does not yet re-batch around a revoker.** A party who revokes
-   its allowance after the relay's funding check and before `settleBatch`
-   reverts that batch; its operations are dead-lettered and re-submittable.
-   The direct path stays open to a new process.
+3. **Narrowed after the tag** (§ "Changes after the tag", last row). The
+   relay re-batches around a revoker it can name: a party who revokes its
+   allowance after the funding check and before `settleBatch` reverts that
+   batch once; the relay re-reads funding at the latest block, dead-letters
+   the named revoker's operations alone, re-queues the rest, and the next
+   batch is built without it. Two gas-priced ways to sink a shared batch
+   remain: a party who re-approves (or moves its balance back) before the
+   re-read is not named, and the whole batch dead-letters re-submittable,
+   as before; and each refusal costs the innocent operations one of their
+   three re-queues, so distinct revoking addresses — the per-address signal
+   does not aggregate them — can burn a co-batched operation's cap. The
+   direct path stays open to a new process throughout.
 4. **The full devnet end-to-end suite runs by hand.** CI runs its spine. Run
    once on a fresh devnet at the audit commit: 55 specs, 52 passed at the
    first attempt, 3 passed at the second — a three-seller chain's accept and

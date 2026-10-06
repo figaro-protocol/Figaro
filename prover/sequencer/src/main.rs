@@ -352,6 +352,10 @@ async fn batch_loop(
     let dry_run = submitter_config.verifier_address == Address::ZERO;
     // The verifier root this relay last found it holds no state for.
     let mut out_of_step: Option<B256> = None;
+    // Refusals caused by a revoked approval, counted per address for the
+    // adversarial signal (exclusion itself needs no state — funding is
+    // re-read from the chain at every batch formation).
+    let revocations = submitter::RevocationLog::new(submitter::REVOCATION_SIGNAL_WINDOW);
 
     loop {
         ticker.tick().await;
@@ -449,7 +453,7 @@ async fn batch_loop(
         // whose bonds no longer pull would revert the whole settle. Dropped
         // here it is dead-lettered and re-submittable, never proved.
         let (valid, unfunded) = submitter::filter_funded_commits(funding.as_ref(), valid).await;
-        for (p, reason) in &unfunded {
+        for (p, reason, _) in &unfunded {
             warn!(id = p.id, %reason, "Dropped commit at batch formation");
             failures.record(1, reason.clone()).await;
         }
@@ -607,15 +611,65 @@ async fn batch_loop(
                 Err(e) if e.deterministic => {
                     // The batch's state stays held: its proof is public now,
                     // and anyone can send it again while the verifier's root
-                    // is its previous root.
+                    // is its previous root (a revoker who re-approves
+                    // revives it).
                     //
-                    // The chain EVALUATED the resolve and refused — retrying
-                    // re-proves the identical batch (~minutes each) for the
-                    // same refusal. Dead-letter now, loudly; the counter and
-                    // the reason surface on /status so a polling driver sees
-                    // the death instead of waiting it out.
-                    error!(error = %e, ops = op_count, "Deterministic resolve revert — dead-lettered, NOT re-proving");
-                    failures.record(op_count as u64, e.message).await;
+                    // The chain EVALUATED the resolve and refused. One cause
+                    // is adversarial and recoverable: a party who revoked
+                    // its approval after the funding check reverts the whole
+                    // pull at no cost to itself. Funding is re-read at the
+                    // latest block to name it — the revoker's operations
+                    // alone are dead-lettered (re-submittable once funded),
+                    // everyone else's re-queue, and the next tick builds a
+                    // fresh batch without the revoker; the refused batch
+                    // itself is never re-sent. Repeated revocation from one
+                    // address within the window is the adversarial signal.
+                    let (mut still_funded, unfunded) =
+                        submitter::filter_funded_commits(funding.as_ref(), valid).await;
+                    // Only a VERIFIED shortfall names a revoker; a wallet
+                    // whose read failed is dropped conservatively elsewhere
+                    // and must not be logged as one.
+                    let (revoked, unverifiable): (Vec<_>, Vec<_>) = unfunded
+                        .into_iter()
+                        .partition(|(_, why, _)| !submitter::is_unverifiable_drop(why));
+                    if revoked.is_empty() {
+                        // No revoker named: some other deterministic cause,
+                        // or the re-read could not see one (a revoker who
+                        // re-approved before the re-read lands here — the
+                        // residual the handover's limitation 3 states).
+                        // Retrying re-proves the identical batch (~minutes
+                        // each) for the same refusal. Dead-letter now,
+                        // loudly; the counter and the reason surface on
+                        // /status so a polling driver sees the death instead
+                        // of waiting it out.
+                        error!(error = %e, ops = op_count, "Deterministic resolve revert — dead-lettered, NOT re-proving");
+                        failures.record(op_count as u64, e.message).await;
+                    } else {
+                        let mut revokers: Vec<Address> = Vec::new();
+                        for (op, why, who) in &revoked {
+                            error!(id = op.id, %who, %why, "Approval revoked after the funding check — dead-lettered, re-submittable once funded");
+                            failures.record(1, format!("revoked after the funding check: {why}")).await;
+                            if !revokers.contains(who) {
+                                revokers.push(*who);
+                            }
+                        }
+                        for who in revokers {
+                            let hits = revocations.record(who);
+                            if hits > 1 {
+                                error!(%who, hits, window_secs = submitter::REVOCATION_SIGNAL_WINDOW.as_secs(), "ADVERSARIAL SIGNAL — repeated revocation refusals from one address within the window");
+                            }
+                        }
+                        // A wallet whose re-read failed re-queues with the
+                        // funded ops: the next formation reads funding again
+                        // and decides. Re-queued ops re-prove at most to the
+                        // re-queue cap — "never re-proved" holds only for
+                        // the whole-batch dead-letter above.
+                        still_funded.extend(unverifiable.into_iter().map(|(op, _, _)| op));
+                        if !still_funded.is_empty() {
+                            info!(ops = still_funded.len(), "Re-queuing the funded operations — the next batch is built without the revoker");
+                            requeue_or_dead_letter(&mempool, &failures, still_funded).await;
+                        }
+                    }
                 }
                 Err(e) => {
                     // Transport trouble is transient — the ops are valid,

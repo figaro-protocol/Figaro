@@ -2129,6 +2129,7 @@ fn funding_is_allocated_across_a_wallets_commits_in_order() {
     assert_eq!(dropped.len(), 1);
     assert_eq!(dropped[0].0.id, 3);
     assert!(dropped[0].1.contains("already draws 40"), "{}", dropped[0].1);
+    assert_eq!(dropped[0].2, base.buyer, "the drop names the party that fails funding — the revoker a refusal dead-letters");
 
     // The allowance binds the same way as the balance.
     let mut low_allowance = funds.clone();

@@ -168,11 +168,15 @@ resending a public proof, and a takeover from another relay's `GET /state`.
 7 invariants — `Recoverable` (whenever the verifier's root is past genesis,
 some relay has the state behind it on disk), `BuiltOnVerifierRoot`,
 `MirrorOnVerifierRoot`, `KeptOnVerifierRoot`, `JournalBuiltOnVerifierRoot`,
-`HistoryHasNoRepeat`, `TypeOK` — and the action property
-`MirrorNeverGoesBack`: 129,589 states / 27,535 distinct, depth 31, seconds.
-Mutation-checked through four `.cfg` switches, each restoring one defect:
+`HistoryHasNoRepeat`, `TypeOK` — and two action properties:
+`MirrorNeverGoesBack`, and `SendsExcludeKnownRevoked` (a relay never sends a
+batch carrying a party whose revocation a refusal already showed it — the
+re-batch drops the revoker and rebuilds with everyone else):
+10,837,227 states / 1,959,944 distinct, depth 32, under two minutes.
+Mutation-checked through five `.cfg` switches, each restoring one defect:
 `HoldBeforeSend`, `HoldThroughRevert`, `KeepRetainsBuiltOnRoot`,
-`TakeoverChecksRoot` — each FALSE fails `Recoverable`.
+`TakeoverChecksRoot` — each FALSE fails `Recoverable` — and
+`RebatchDropsRevoker` — FALSE fails `SendsExcludeKnownRevoked`.
 
 ## Lean 4 (`formal/lean/`) — the equilibrium, machine-checked
 

@@ -1,4 +1,6 @@
 use std::collections::HashMap;
+use std::sync::Mutex;
+use std::time::{Duration, Instant};
 
 use alloy::network::EthereumWallet;
 /// On-chain submitter — sends `settleBatch` transactions to the
@@ -42,6 +44,41 @@ impl std::fmt::Display for SettleError {
 /// rejection.
 pub fn is_deterministic_send_error(message: &str) -> bool {
     message.contains("execution reverted")
+}
+
+/// How long one address's revocation refusals are counted together. One
+/// revocation is indistinguishable from a wallet managing its approvals;
+/// repetition within the window is the adversarial signal.
+pub const REVOCATION_SIGNAL_WINDOW: Duration = Duration::from_secs(3600);
+
+/// Counts, per address, the batch refusals its revoked approval caused.
+/// Operational memory for the log signal only — exclusion itself needs no
+/// state, because funding is re-read from the chain at every batch
+/// formation, so a revoker is out of the next batch whether or not this
+/// log survives a restart.
+pub struct RevocationLog {
+    window: Duration,
+    hits: Mutex<HashMap<Address, Vec<Instant>>>,
+}
+
+impl RevocationLog {
+    pub fn new(window: Duration) -> Self {
+        Self { window, hits: Mutex::new(HashMap::new()) }
+    }
+
+    /// Record one refusal caused by `who`; returns how many refusals its
+    /// address has caused within the window, this one included.
+    pub fn record(&self, who: Address) -> usize {
+        self.record_at(who, Instant::now())
+    }
+
+    pub fn record_at(&self, who: Address, at: Instant) -> usize {
+        let mut hits = self.hits.lock().expect("revocation log poisoned");
+        let v = hits.entry(who).or_default();
+        v.retain(|t| at.saturating_duration_since(*t) < self.window);
+        v.push(at);
+        v.len()
+    }
 }
 
 /// The resolution transaction signer's key, from the environment and never
@@ -92,6 +129,14 @@ pub struct FundingGate {
 /// verifier — both, or the pull reverts.
 pub fn commit_funded(balance: U256, allowance: U256, need: U256) -> bool {
     balance >= need && allowance >= need
+}
+
+/// Whether a funding drop is the conservative no-read kind rather than a
+/// verified shortfall. Bound to the "funding unverifiable" reason
+/// [`allocate_funding`] writes — the revert arm must not log a wallet whose
+/// balance merely could not be read as a revoker.
+pub fn is_unverifiable_drop(reason: &str) -> bool {
+    reason.starts_with("funding unverifiable")
 }
 
 /// The two bonds a commit pulls: the buyer's 2 × payment, the seller's
@@ -145,13 +190,14 @@ pub type Funds = (U256, U256);
 /// Allocate each wallet's funds across the batch's commits, in order. A
 /// batch pulls each party's bonds from ONE balance and ONE allowance, so a
 /// commit funds only if the wallet still covers it after every commit kept
-/// before it; one that does not is dropped with the reason, and the commits
-/// after it are judged on what is left. A wallet missing from `funds` (its
-/// read failed) drops its commits conservatively. Every other op passes.
+/// before it; one that does not is dropped with the reason and the party
+/// that fails it, and the commits after it are judged on what is left. A
+/// wallet missing from `funds` (its read failed) drops its commits
+/// conservatively. Every other op passes.
 pub fn allocate_funding(
     pending: Vec<PendingOp>,
     funds: &HashMap<(Address, Address), Funds>,
-) -> (Vec<PendingOp>, Vec<(PendingOp, String)>) {
+) -> (Vec<PendingOp>, Vec<(PendingOp, String, Address)>) {
     let mut committed: HashMap<(Address, Address), U256> = HashMap::new();
     let mut valid = Vec::with_capacity(pending.len());
     let mut dropped = Vec::new();
@@ -172,14 +218,14 @@ pub fn allocate_funding(
         let mut verdict = Ok(());
         for (label, who, bond) in &need {
             let Some(&(balance, allowance)) = funds.get(&(c.currency, *who)) else {
-                verdict = Err(format!("funding unverifiable, dropped conservatively: {label} {who}'s balance and allowance could not be read"));
+                verdict = Err((format!("funding unverifiable, dropped conservatively: {label} {who}'s balance and allowance could not be read"), *who));
                 break;
             };
             let before = committed.get(&(c.currency, *who)).copied().unwrap_or_default();
             if !commit_funded(balance, allowance, before + bond) {
-                verdict = Err(format!(
+                verdict = Err((format!(
                     "unfunded commitment: {label} {who} holds {balance} and allows {allowance} to the verifier; this batch already draws {before} and the bond needs {bond}"
-                ));
+                ), *who));
                 break;
             }
         }
@@ -190,7 +236,7 @@ pub fn allocate_funding(
                 }
                 valid.push(op);
             }
-            Err(reason) => dropped.push((op, reason)),
+            Err((reason, who)) => dropped.push((op, reason, who)),
         }
     }
     (valid, dropped)
@@ -206,7 +252,7 @@ pub fn allocate_funding(
 pub async fn filter_funded_commits(
     gate: Option<&FundingGate>,
     pending: Vec<PendingOp>,
-) -> (Vec<PendingOp>, Vec<(PendingOp, String)>) {
+) -> (Vec<PendingOp>, Vec<(PendingOp, String, Address)>) {
     let Some(gate) = gate else {
         return (pending, Vec::new());
     };
@@ -918,6 +964,27 @@ mod tests {
         assert_eq!(valid.len(), 1, "the resolve passes");
         assert_eq!(dropped.len(), 1, "the commit is dropped");
         assert!(dropped[0].1.contains("funding unverifiable"), "{}", dropped[0].1);
+        let KernelOp::Commit { commitment, .. } = &dropped[0].0.op else {
+            panic!("the dropped op is the commit");
+        };
+        assert_eq!(dropped[0].2, commitment.buyer, "the drop names the party that fails funding");
+    }
+
+    /// The revocation log counts one address's refusals within the window
+    /// and forgets the ones that aged out — the repeated-revocation signal.
+    #[test]
+    fn revocation_log_counts_within_the_window_only() {
+        let window = Duration::from_secs(3600);
+        let log = RevocationLog::new(window);
+        let who = Address::repeat_byte(0x0a);
+        let other = Address::repeat_byte(0x0b);
+        let now = Instant::now();
+        let old = now.checked_sub(window * 2).expect("the clock has run longer than two windows");
+
+        assert_eq!(log.record_at(who, old), 1, "the first refusal stands alone");
+        assert_eq!(log.record_at(who, now), 1, "an aged-out refusal is not repetition");
+        assert_eq!(log.record_at(who, now), 2, "two within the window are the signal");
+        assert_eq!(log.record_at(other, now), 1, "addresses are counted apart");
     }
 
     /// No key, no relay: unset and blank both refuse, and the refusal names
