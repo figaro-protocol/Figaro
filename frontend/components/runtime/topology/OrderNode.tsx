@@ -74,7 +74,7 @@ export const OrderNode = ({ data }: { data: OrderNodeData }) => {
     const sellerShort = data.seller ? truncateHex(data.seller) : "—";
 
     // Designer mode: a derived "what this order does" summary — one chip per
-    // composed clause, labelled by its own spec (the salient value, else the
+    // composed clause, labeled by its own spec (the salient value, else the
     // clause title). Generic via `describeClause`; no clause id is named. Makes
     // a node self-describing without opening the drawer.
     const designerChips = data.designerMode && data.designerClauseValues
