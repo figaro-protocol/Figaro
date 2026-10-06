@@ -69,7 +69,7 @@ describe("isLogRangeCapError", () => {
         "exceed maximum block range: 50000",
         "eth_getLogs is limited to 0 - 50 blocks range",
         "query returned more than 10000 results",
-    ])("recognises %s", (msg) => {
+    ])("recognizes %s", (msg) => {
         expect(isLogRangeCapError(new Error(msg))).toBe(true);
     });
     it("does not mistake other failures for a range cap", () => {
