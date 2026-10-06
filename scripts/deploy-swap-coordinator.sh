@@ -8,7 +8,7 @@
 #      PERMIT2 defaults to the canonical address; FIGARO_CORE is read from the
 #      record for the RPC's chain id);
 #   2. chain-id read-back — the RPC's chain must have a deployment record;
-#   3. the router answers by BEHAVIOUR (factory() + WETH9() are contracts) —
+#   3. the router answers by BEHAVIOR (factory() + WETH9() are contracts) —
 #      re-checked in Solidity before broadcast;
 #   4. record merge: deployments/<chainId>.json gains
 #      witnessSwapAndCommitCoordinator / swapRouter / permit2. SKIP_VERIFY=1
