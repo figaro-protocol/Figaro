@@ -8,7 +8,7 @@
  * the earmarks are sub-accounts DERIVED from the seller's own key (tax,
  * savings), the amounts a share of the payment (never the returned bond —
  * that was the seller's all along). This is a composition with a LIVE
- * external contract, so — the SP1-gateway lesson — it is proved by BEHAVIOUR
+ * external contract, so — the SP1-gateway lesson — it is proved by BEHAVIOR
  * on the public chain, not by the mirror alone.
  *
  * Runs AFTER `live-order.sepolia.spec.ts` on the same chain: that spec leaves
@@ -59,7 +59,7 @@ test.describe('PAYOUT ROUTING — a resolved seller routes receipts through the 
         const decimals = await publicClient.readContract({ address: currency, abi: ERC20_ABI, functionName: 'decimals' }) as number;
         const symbol = await publicClient.readContract({ address: currency, abi: ERC20_ABI, functionName: 'symbol' }) as string;
 
-        // The composed contract, by behaviour not by existence: its bytecode
+        // The composed contract, by behavior not by existence: its bytecode
         // carries the selector the panel calls (the canonical Disperse's).
         const code = await publicClient.getCode({ address: multisender });
         expect(code && code.length > 2, `a multisender is deployed at ${multisender}`).toBe(true);
