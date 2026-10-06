@@ -115,7 +115,7 @@ export const PAPER_GROUPS: PaperGroup[] = [
             {
                 title: "Self-Authenticating Data Sales: Dissolving Arrow's Information Paradox Through the Bonded Commitment",
                 href: "/papers/self-authenticating-data-sales",
-                summary: "Arrow's paradox for data, dissolved economically: each entry sold carries a proof it came from a real resolved trade, the licence carries a proof of the sale, and the doubled bond leaves a misdescribing seller out of pocket.",
+                summary: "Arrow's paradox for data, dissolved economically: each entry sold carries a proof it came from a real resolved trade, the license carries a proof of the sale, and the doubled bond leaves a misdescribing seller out of pocket.",
                 keywords: ["information paradox", "mechanism design", "merkle proofs", "data markets", "asymmetric bonding", "disclosure", "repeated games"],
                 industries: ["Data markets"],
             },
@@ -311,7 +311,7 @@ export const PAPER_GROUPS: PaperGroup[] = [
             {
                 title: "Behavioral Game Theory of the Two-Mechanism Bonded Commitment",
                 href: "/papers/behavioral-game-theory",
-                summary: "How the equilibrium argument fares with loss-averse, boundedly rational, stranger-wary people: the payoffs straddle the reference point, so loss aversion weights defection alone, and the coordination-failure results cut in the mechanism's favour.",
+                summary: "How the equilibrium argument fares with loss-averse, boundedly rational, stranger-wary people: the payoffs straddle the reference point, so loss aversion weights defection alone, and the coordination-failure results cut in the mechanism's favor.",
                 keywords: ["behavioral game theory", "loss aversion", "prospect theory", "weakest-link coordination", "peer pressure", "incentive legibility", "mechanism design", "experimental economics", "interface cognition"],
                 industries: [],
             },
@@ -327,7 +327,7 @@ export const PAPER_GROUPS: PaperGroup[] = [
 ];
 
 /** Where a paper page sits in the corpus grouping — its discipline plus its
- *  neighbours within that discipline. Drives the `PaperLayout` breadcrumb
+ *  neighbors within that discipline. Drives the `PaperLayout` breadcrumb
  *  (Papers › Discipline › this paper) and the prev/next-in-discipline nav.
  *  `null` when the slug is not registered (no chrome is rendered). */
 export interface PaperNavigation {
