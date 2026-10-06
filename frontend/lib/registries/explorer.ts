@@ -10,7 +10,7 @@
  *
  * The URL query IS the state (permalinkable: `?family=clauses&article=…`,
  * `?registeredBy=0x…`, `?family=assemblies&clause=figaro-schedule`), parsed
- * and serialised here so the page, the marketing count-links, and agents all
+ * and serialized here so the page, the marketing count-links, and agents all
  * speak one shape.
  */
 
@@ -67,7 +67,7 @@ export function parseExplorerQuery(params: URLSearchParams | Record<string, stri
     };
 }
 
-/** Serialise state back to a query string, omitting defaults so permalinks
+/** Serialize state back to a query string, omitting defaults so permalinks
  *  stay short and stable (`?family=clauses` is the whole default state). */
 export function serializeExplorerQuery(state: ExplorerQuery): string {
     const p = new URLSearchParams();
