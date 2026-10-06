@@ -29,6 +29,23 @@ set -e
 #   SP1_VERIFIER_GATEWAY=0x... SP1_PROGRAM_VKEY=0x... \
 #   ETHERSCAN_API_KEY=... \
 #   ./scripts/deploy-sepolia.sh
+#
+# PAIR_ONLY=1 redeploys ONLY the counter↔verifier pair (UsageCounter +
+# FigaroBatchVerifier) via script/DeploySepoliaPair.s.sol against the stack the
+# record already names — the Core, the three registries and their stakes are
+# untouched. The EXISTING_* addresses are read from deployments/11155111.json,
+# RPGF_GENESIS is derived from the LIVE counter's periodEnd[0] (never invented;
+# a preset RPGF_GENESIS that disagrees refuses), and the record is UPDATED in
+# place: only batchVerifier, usageCounter and programVKey change. The live
+# RpgfMinter stays bound to the old counter (florin minter registration is
+# renounced) — usage accrued through the new counter is not claimable on
+# Sepolia; docs/AUDITOR_HANDOVER.md records it.
+#
+#   PAIR_ONLY=1 SEPOLIA_DEPLOY_CONFIRM=yes \
+#   RPC_URL=https://... PRIVATE_KEY=0x... \
+#   SP1_VERIFIER_GATEWAY=0x... SP1_PROGRAM_VKEY=0x... \
+#   ETHERSCAN_API_KEY=... \
+#   ./scripts/deploy-sepolia.sh
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
@@ -58,8 +75,14 @@ export PERMIT2="${PERMIT2:-0x000000000022D473030F116dDEE9F6B43aC78BA3}"
 # Required by this script for the target/verification:
 #   RPC_URL                 — Sepolia RPC endpoint (or an Anvil fork of it)
 #   ETHERSCAN_API_KEY       — unless SKIP_VERIFY=1 (fork rehearsal)
-REQUIRED=(PRIVATE_KEY FOUNDER_WALLET SUPPORTERS_WALLET RPGF_GENESIS \
-          SP1_VERIFIER_GATEWAY SP1_PROGRAM_VKEY RPC_URL SWAP_ROUTER SWAP_QUOTER)
+if [ "${PAIR_ONLY:-}" = "1" ]; then
+  # Pair-only: no florin genesis, no swap composition, no founder/supporters —
+  # RPGF_GENESIS is derived from the live counter below, never required.
+  REQUIRED=(PRIVATE_KEY SP1_VERIFIER_GATEWAY SP1_PROGRAM_VKEY RPC_URL)
+else
+  REQUIRED=(PRIVATE_KEY FOUNDER_WALLET SUPPORTERS_WALLET RPGF_GENESIS \
+            SP1_VERIFIER_GATEWAY SP1_PROGRAM_VKEY RPC_URL SWAP_ROUTER SWAP_QUOTER)
+fi
 if [ "${SKIP_VERIFY:-}" != "1" ]; then
   REQUIRED+=(ETHERSCAN_API_KEY)
 fi
@@ -98,6 +121,104 @@ fi
 # the whole stack redeploys. Binding a gateway that routes a different proof
 # system is the failure this guard exists to prevent.
 bash "$(dirname "$0")/check-sp1-gateway-route.sh" || exit 1
+
+# ── PAIR_ONLY: redeploy the counter↔verifier pair against the live stack ────
+if [ "${PAIR_ONLY:-}" = "1" ]; then
+  RECORD_PATH="$DEPLOY_DIR/${SEPOLIA_CHAIN_ID}.json"
+  if [ ! -f "$RECORD_PATH" ]; then
+    echo "❌ PAIR_ONLY needs the live record at $RECORD_PATH — there is no stack to pair into."
+    exit 1
+  fi
+
+  export EXISTING_FIGARO_CORE=$(jq -r .figaroCore "$RECORD_PATH")
+  export EXISTING_MEMBERS_REGISTRY=$(jq -r .membersRegistry "$RECORD_PATH")
+  export EXISTING_CLAUSE_REGISTRY=$(jq -r .clauseRegistry "$RECORD_PATH")
+  export EXISTING_ASSEMBLY_REGISTRY=$(jq -r .assemblyRegistry "$RECORD_PATH")
+  OLD_COUNTER=$(jq -r .usageCounter "$RECORD_PATH")
+  OLD_VERIFIER=$(jq -r .batchVerifier "$RECORD_PATH")
+
+  # The schedule anchor comes from the LIVE counter, never invented: genesis =
+  # periodEnd[0] − one real period. A preset RPGF_GENESIS that disagrees refuses.
+  PERIOD_SECONDS=31536000 # 365 days — DeploySepoliaPair.s.sol's PERIOD
+  PERIOD0_END=$(cast call --rpc-url "$RPC_URL" "$OLD_COUNTER" 'periodEnd(uint256)(uint64)' 0 | awk '{print $1}')
+  DERIVED_GENESIS=$(( PERIOD0_END - PERIOD_SECONDS ))
+  if [ -n "${RPGF_GENESIS:-}" ] && [ "$RPGF_GENESIS" != "$DERIVED_GENESIS" ]; then
+    echo "❌ RPGF_GENESIS=$RPGF_GENESIS disagrees with the live counter's schedule"
+    echo "   (periodEnd[0]=$PERIOD0_END − 365d = $DERIVED_GENESIS). The new counter keeps"
+    echo "   the live schedule; unset RPGF_GENESIS to use the derived value."
+    exit 1
+  fi
+  export RPGF_GENESIS=$DERIVED_GENESIS
+
+  echo ""
+  echo "🚀 Redeploying the counter↔verifier PAIR on SEPOLIA (chain id $ACTUAL_CHAIN_ID)..."
+  echo "   deployer (from PRIVATE_KEY) = $(cast wallet address --private-key "$PRIVATE_KEY")"
+  echo "   existing FigaroCore         = $EXISTING_FIGARO_CORE"
+  echo "   existing MembersRegistry    = $EXISTING_MEMBERS_REGISTRY"
+  echo "   existing ClauseRegistry     = $EXISTING_CLAUSE_REGISTRY"
+  echo "   existing AssemblyRegistry   = $EXISTING_ASSEMBLY_REGISTRY"
+  echo "   replacing UsageCounter      = $OLD_COUNTER"
+  echo "   replacing FigaroBatchVerifier = $OLD_VERIFIER"
+  echo "   rpgf genesis (from chain)   = $RPGF_GENESIS"
+  if [ "${SKIP_VERIFY:-}" = "1" ]; then
+    echo "   verification                = SKIPPED (fork rehearsal)"
+  fi
+  echo ""
+
+  VERIFY_FLAG="--verify"
+  if [ "${SKIP_VERIFY:-}" = "1" ]; then
+    VERIFY_FLAG=""
+  fi
+  FORGE_OUT=$(forge script script/DeploySepoliaPair.s.sol:DeploySepoliaPair \
+      --rpc-url "$RPC_URL" \
+      --broadcast --slow --via-ir $VERIFY_FLAG 2>&1)
+  echo "$FORGE_OUT"
+
+  USAGE_COUNTER_ADDR=$(echo "$FORGE_OUT"  | grep 'NEXT_PUBLIC_USAGE_COUNTER='  | grep -oE '0x[0-9a-fA-F]+')
+  BATCH_VERIFIER_ADDR=$(echo "$FORGE_OUT" | grep 'NEXT_PUBLIC_BATCH_VERIFIER=' | grep -oE '0x[0-9a-fA-F]+')
+  if [ -z "$USAGE_COUNTER_ADDR" ] || [ -z "$BATCH_VERIFIER_ADDR" ]; then
+    echo "❌ Could not parse the pair's addresses from forge output. Aborting record update."
+    echo "   (The broadcast above may still have succeeded or partially succeeded —"
+    echo "   check the forge output and the chain directly before retrying.)"
+    exit 1
+  fi
+
+  PROGRAM_VKEY_ONCHAIN=$(cast call --rpc-url "$RPC_URL" "$BATCH_VERIFIER_ADDR" 'programVKey()(bytes32)')
+  if [ "$(echo "$PROGRAM_VKEY_ONCHAIN" | tr '[:upper:]' '[:lower:]')" != "$(echo "$SP1_PROGRAM_VKEY" | tr '[:upper:]' '[:lower:]')" ]; then
+    echo "❌ The verifier pins $PROGRAM_VKEY_ONCHAIN, not the SP1_PROGRAM_VKEY given ($SP1_PROGRAM_VKEY)."
+    exit 1
+  fi
+  echo "   programVKey pinned = $PROGRAM_VKEY_ONCHAIN"
+
+  # Update the record in place: only the pair and the key it pins change. A
+  # FORK REHEARSAL must never clobber the real record (same branch as below).
+  if [ "${SKIP_VERIFY:-}" = "1" ]; then
+    DEPLOY_DIR="${TMPDIR:-/tmp}/figaro-rehearsal-deployments"
+    echo ""
+    echo "ℹ️  Fork rehearsal — record diverted to $DEPLOY_DIR (deployments/ untouched)"
+    mkdir -p "$DEPLOY_DIR"
+  fi
+  OUT_RECORD="$DEPLOY_DIR/${ACTUAL_CHAIN_ID}.json"
+  echo ""
+  echo "✍️  Updating $OUT_RECORD ..."
+  jq --arg uc "$USAGE_COUNTER_ADDR" --arg bv "$BATCH_VERIFIER_ADDR" --arg vk "$PROGRAM_VKEY_ONCHAIN" \
+     '.usageCounter = $uc | .batchVerifier = $bv | .programVKey = $vk' \
+     "$RECORD_PATH" > "$OUT_RECORD.tmp"
+  mv "$OUT_RECORD.tmp" "$OUT_RECORD"
+
+  echo ""
+  echo "✅ Pair redeploy complete!"
+  echo ""
+  echo "   UsageCounter            = $USAGE_COUNTER_ADDR (was $OLD_COUNTER)"
+  echo "   FigaroBatchVerifier     = $BATCH_VERIFIER_ADDR (was $OLD_VERIFIER)"
+  echo "   Record: $OUT_RECORD"
+  echo ""
+  echo "⚠️  The live RpgfMinter stays bound to $OLD_COUNTER (minter registration"
+  echo "   renounced): usage accrued through the new counter is not claimable on"
+  echo "   Sepolia. The relay must be rebuilt against the new verifier's key and"
+  echo "   the site rebuilt from the updated record."
+  exit 0
+fi
 
 echo ""
 echo "🚀 Deploying Figaro Protocol stack to SEPOLIA (chain id $ACTUAL_CHAIN_ID)..."

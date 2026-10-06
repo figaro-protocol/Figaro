@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 import "forge-std/Test.sol";
 import {Deploy} from "script/Deploy.s.sol";
 import {DeployMainnet} from "script/DeployMainnet.s.sol";
+import {DeploySepoliaPair} from "script/DeploySepoliaPair.s.sol";
 import {FigaroCore} from "src/core/kernel/FigaroCore.sol";
 import {AttestationCoordinator} from "src/core/attestation/AttestationCoordinator.sol";
 import {WitnessSwapAndCommitCoordinator} from "src/app/WitnessSwapAndCommitCoordinator.sol";
@@ -102,6 +103,17 @@ contract MainnetDeployHarness is DeployMainnet {
 
     function rpgfMinter() external view returns (address) {
         return _rpgfMinter;
+    }
+
+    function batchVerifier() external view returns (address) {
+        return _batchVerifier;
+    }
+}
+
+/// @dev The same for the Sepolia pair-only script.
+contract SepoliaPairDeployHarness is DeploySepoliaPair {
+    function usageCounter() external view returns (address) {
+        return _usageCounter;
     }
 
     function batchVerifier() external view returns (address) {
@@ -277,6 +289,74 @@ contract DeployWiringTest is Test {
         assertEq(AssemblyRegistry(d.assemblies()).registrationDeposit(), 0.05 ether, "mainnet assembly deposit");
         assertEq(MembersRegistry(d.members()).registrationDeposit(), 0.05 ether, "mainnet member deposit");
         assertEq(MembersRegistry(d.members()).withdrawalCooldown(), 28 days, "mainnet cooldown");
+    }
+
+    // ── Sepolia pair-only redeploy ───────────────────────────────
+
+    /// @dev The pair script against a stack that already stands: real Core and
+    ///      registries deployed here as the EXISTING set, a mock gateway, and
+    ///      the live schedule's shape. `runWith` is called directly
+    ///      (vm.setEnv is process-global and tests run in parallel). Read back:
+    ///      the mutual counter↔verifier binding, every address the pair binds
+    ///      to the EXISTING set, the vkey, the derived genesis root, and
+    ///      schedule continuity (periodEnd[0] is genesis + one real period —
+    ///      the value a pair redeploy could lose).
+    function test_sepoliaPairDeploy_wiresThePairToTheExistingStack() public {
+        FigaroCore core = new FigaroCore();
+        MembersRegistry members = new MembersRegistry(0.05 ether, 28 days);
+        ClauseRegistry clauses = new ClauseRegistry(0.05 ether);
+        AssemblyRegistry assemblies = new AssemblyRegistry(0.05 ether);
+        address gateway = address(new MockSP1Verifier());
+        bytes32 vkey = keccak256("pair-vkey");
+        uint64 genesis = uint64(block.timestamp);
+
+        SepoliaPairDeployHarness d = new SepoliaPairDeployHarness();
+        d.runWith(
+            DEPLOYER_KEY, address(core), address(members), address(clauses), address(assemblies), gateway, vkey, genesis
+        );
+
+        FigaroBatchVerifier bv = FigaroBatchVerifier(d.batchVerifier());
+        UsageCounter uc = UsageCounter(d.usageCounter());
+        assertEq(address(bv.usageCounter()), address(uc), "verifier -> counter");
+        assertEq(uc.batchVerifier(), address(bv), "counter -> verifier (the adjacent pair)");
+        assertEq(address(bv.clauseRegistry()), address(clauses), "verifier -> the EXISTING clause registry");
+        assertEq(address(bv.verifier()), gateway, "verifier -> SP1_VERIFIER_GATEWAY");
+        assertEq(bv.programVKey(), vkey, "verifier -> SP1_PROGRAM_VKEY");
+        assertEq(bv.stateRoot(), _genesisRoot(), "derived genesis root");
+        assertEq(bv.batchCount(), 0, "a fresh verifier");
+
+        assertEq(address(uc.core()), address(core), "counter -> the EXISTING FigaroCore");
+        assertEq(address(uc.members()), address(members), "counter -> the EXISTING members registry");
+        assertEq(address(uc.clauses()), address(clauses), "counter -> the EXISTING clause registry");
+        assertEq(address(uc.assemblies()), address(assemblies), "counter -> the EXISTING assembly registry");
+        assertEq(uc.provenanceClause(), PROV_KEY, "provenance clause");
+        assertTrue(uc.excludedClauseOrAssembly(PROV_KEY), "only the provenance clause is excluded");
+        assertEq(uc.periodCount(), 9, "nine annual periods");
+        assertEq(uc.minSellers(), 3, "the minimum-support floor");
+        assertEq(uc.currentPeriod(), 0, "the schedule starts at genesis");
+        assertEq(uc.periodEnd(0), genesis + 365 days, "periodEnd[0] continues the live schedule");
+    }
+
+    /// @dev An EXISTING address without code refuses the whole run — the
+    ///      pair must never bind to an address that merely exists.
+    function test_sepoliaPairDeploy_refusesAnExistingAddressWithoutCode() public {
+        MembersRegistry members = new MembersRegistry(0.05 ether, 28 days);
+        ClauseRegistry clauses = new ClauseRegistry(0.05 ether);
+        AssemblyRegistry assemblies = new AssemblyRegistry(0.05 ether);
+        address gateway = address(new MockSP1Verifier());
+
+        SepoliaPairDeployHarness d = new SepoliaPairDeployHarness();
+        vm.expectRevert(bytes("EXISTING_FIGARO_CORE has no code on this chain"));
+        d.runWith(
+            DEPLOYER_KEY,
+            makeAddr("no-code-core"),
+            address(members),
+            address(clauses),
+            address(assemblies),
+            gateway,
+            keccak256("pair-vkey"),
+            uint64(block.timestamp)
+        );
     }
 
     function _assertMainnetMinterAndFlorin(MainnetDeployHarness d, MainnetInputs memory in_) internal view {

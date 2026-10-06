@@ -1,0 +1,49 @@
+{
+    "chainId": 11155111,
+    "about": "What must hold on Sepolia after the pair redeploy (scripts/deploy-sepolia.sh PAIR_ONLY=1) and the genesis registration. Read by scripts/check-deployment.mjs with --artifacts from a `forge build --via-ir` at the audit tag. The links entry states the pair-redeploy residual: the live RpgfMinter keeps the counter it was deployed with (minter registration renounced), so it never follows a pair redeploy.",
+    "wallets": {
+        "founder": "0xB4592b12F02a46a8FD8529CE992f067403BDe3e9",
+        "supporters": "0xE75DA40Ee55ecECBc1161A4dD6798086b968C87C",
+        "dao": { "record": "daoTreasury" },
+        "daoVault": { "record": "daoTreasury" }
+    },
+    "links": {
+        "rpgfMinter.counter": "0xF45e73D66319bc900A9d227c5f6a91AFb0959fda"
+    },
+    "batchVerifier": {
+        "programVKey": "0x005f16f47c211b066a9cd85fb78295ae76df7f888f2e4962871f25636a0b3452",
+        "verifier": "0x397A5f7f3dBd538f23DE225B51f532c34448dA9B"
+    },
+    "registries": {
+        "membersRegistrationDeposit": "50000000000000000",
+        "membersWithdrawalCooldown": "2419200",
+        "clauseRegistrationDeposit": "50000000000000000",
+        "assemblyRegistrationDeposit": "50000000000000000"
+    },
+    "usageCounter": {
+        "minSellers": "3",
+        "periodCount": "9",
+        "provenanceClause": "figaro-assembly-provenance@1",
+        "excluded": ["figaro-assembly-provenance@1"],
+        "notExcluded": ["figaro-commerce@1", "figaro-topology@1"]
+    },
+    "rpgfMinter": { "periodAmountSum": "600000000000000000000000000" },
+    "florin": {
+        "deployerMintRenounced": true,
+        "totalSupply": "400000000000000000000000000",
+        "rpgfMinterCap": "600000000000000000000000000",
+        "balances": {
+            "founder": "70000000000000000000000000",
+            "supporters": "30000000000000000000000000",
+            "dao": "300000000000000000000000000"
+        }
+    },
+    "registrations": {
+        "default": "founder",
+        "byClause": {
+            "figaro-commerce": "daoVault",
+            "figaro-topology": "daoVault",
+            "figaro-assembly-provenance": "daoVault"
+        }
+    }
+}

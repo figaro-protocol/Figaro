@@ -17,6 +17,9 @@
 //   { "record": "<key>" }   the address the record gives under <key>
 //   { "code": "<Name>" }    an address that must hold the compiled <Name>'s code
 //
+// "links" maps "<contract>.<getter>" to a literal address a wired link must
+// read INSTEAD of the record's — a stated divergence, never a skip.
+//
 // Checked, whatever the expectations: the RPC's chain is the record's; every
 // record address holds code; every contract-to-contract link the deploy wires
 // reads back as the record's addresses. With --artifacts <dir> (a build with
@@ -222,7 +225,20 @@ async function main() {
         ["witnessSwapAndCommitCoordinator", "permit2", "permit2"],
         ["witnessSwapAndCommitCoordinator", "router", "swapRouter"],
     ];
+    // A link the expectations file lists under "links" must read as that
+    // literal instead of the record's address — the stated divergence (on
+    // Sepolia, rpgfMinter.counter keeps the counter it was deployed with
+    // across a pair redeploy: minter registration is renounced).
+    const linkOverrides = expected.links ?? {};
     for (const [from, getter, to] of links) {
+        const override = linkOverrides[`${from}.${getter}`];
+        if (override !== undefined) {
+            if (!record[from]) { bad(`${from}.${getter}()`, `the record lacks ${from}`); continue; }
+            const got = await read(record[from], getter);
+            if (same(got, override)) ok(`${from}.${getter}() is the stated divergence ${override}`);
+            else bad(`${from}.${getter}()`, `reads ${got}, the stated divergence is ${override}`);
+            continue;
+        }
         if (!record[from] || !record[to]) { bad(`${from}.${getter}()`, `the record lacks ${record[from] ? to : from}`); continue; }
         const got = await read(record[from], getter);
         if (same(got, record[to])) ok(`${from}.${getter}() is ${to}`);
