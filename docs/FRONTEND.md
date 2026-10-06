@@ -74,7 +74,7 @@ tool keeps at most one intro paragraph plus a pointer back to the concept page,
 rather than re-deriving it.
 
 **Deliberate orphan:** `/evidence-display` is unlinked from every in-app surface BY
-DESIGN — it is the iframe target a recognised arbitration forum embeds (hence the
+DESIGN — it is the iframe target a recognized arbitration forum embeds (hence the
 `frame-ancestors` override for it in `public/_headers`), reached by a
 forum-composed URL, never by navigation. It is excluded from `app/sitemap.ts` for
 the same reason. Reachability audits should not flag it.
@@ -110,7 +110,7 @@ Tiered, bottom to top; each tier imports only what sits below it (enforced by th
 - `lib/protocol/registryWrites.ts` — the one signal a registry write sends to the readers that derive from its events (`noteRegistryWrite` after a confirmed write; `useRegistryWriteVersion` in a read-at-edge panel, which refetches when it changes). Nothing stored; the chain stays the source.
 - **`agent/`** — did:web identity for agents acting for wallets (`useDidWeb.ts`)
 - **`audit/`** — audit-bundle assembly + dispute evidence (read path for `/audit/view?process=<id>`). Witness VALUES resolve from the network: an `Attestation` event's `contentRef` is the keccak-CID digest of the published preimage (`lib/composition/witnessContent.ts`), so the reader derives the address from the event alone, verifies the bytes hash back to the fingerprint, and decodes them through the spec's declared stage fields (`describeWitness`); private-disposition, withheld, or erased content resolves absent and the fingerprint receipt still renders.
-- **`data/`** — the data explorer's read model (`/data/explore`): `explorer.ts` (PURE — the query↔permalink parse/serialise, the layer descriptors with their truth boundaries, and the row projections with their absence postures: an unresolved clause family is a fingerprint-only row, an unattributed process is counted and said to be, an unread venue is "unreadable" and never "empty"), `graphCorpus.ts` (the I/O — the existing event caches folded through `@figaro-protocol/sdk/derive`'s projections; substance recovered at the edge from each attestation's own fingerprint, assembly attribution read from the DECLARED `compositionHash` field of an attested provenance overlay, never a clause name), `analystEndpoint.ts` (the analyst wire — same configuration-not-doctrine posture as the batch relay: no shipped fallback, user override wins, unset means no prompt box at all)
+- **`data/`** — the data explorer's read model (`/data/explore`): `explorer.ts` (PURE — the query↔permalink parse/serialize, the layer descriptors with their truth boundaries, and the row projections with their absence postures: an unresolved clause family is a fingerprint-only row, an unattributed process is counted and said to be, an unread venue is "unreadable" and never "empty"), `graphCorpus.ts` (the I/O — the existing event caches folded through `@figaro-protocol/sdk/derive`'s projections; substance recovered at the edge from each attestation's own fingerprint, assembly attribution read from the DECLARED `compositionHash` field of an attested provenance overlay, never a clause name), `analystEndpoint.ts` (the analyst wire — same configuration-not-doctrine posture as the batch relay: no shipped fallback, user override wins, unset means no prompt box at all)
 - **`checkout/`** — the Checkout lifecycle phase.
   - *Cart:* `cartStore.ts`, `CommerceProvider.tsx`, `useCheckout.ts`.
   - *The template→orders walk:* `assemblyCheckout.ts` is a thin wrapper over the
