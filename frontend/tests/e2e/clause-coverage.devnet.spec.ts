@@ -16,7 +16,7 @@
  *   commit  → a real bilateral order commits that agreement on-chain, and the
  *             asymmetric bonds actually move in the payment token
  *   audit   → the audit package surfaces the target clause's committed leaf,
- *             labelled from its spec, and the hash verifier recomputes the
+ *             labeled from its spec, and the hash verifier recomputes the
  *             merkle root over ALL leaves against the on-chain agreementHash
  *
  * There is NO probe clause here — the probe (register an UNKNOWN clause at
@@ -300,7 +300,7 @@ const RUNGS: ClauseRung[] = [
         witness: {
             fill: all(
                 // iso-datetime fields render the datetime picker (datetime-local
-                // value: minute precision, no Z); the input normalises back to
+                // value: minute precision, no Z); the input normalizes back to
                 // ISO 8601 UTC, so the committed value is unchanged.
                 witnessFill('figaro-cold-chain', 'periodStart', '2026-07-10T08:00'),
                 witnessFill('figaro-cold-chain', 'periodEnd', '2026-07-10T12:00'),
@@ -749,7 +749,7 @@ test.describe('PER-CLAUSE COVERAGE — every protocol clause flows the generic p
                     witnessRow,
                     'the witness attestation lands on the timeline',
                 ).toBeVisible({ timeout: 60000 });
-                await expect(witnessRow, 'the row is labelled by the spec title')
+                await expect(witnessRow, 'the row is labeled by the spec title')
                     .toContainText(registeredSpec.title);
                 // Repeatable while the order is active: filing once does NOT
                 // retire the capability (periodic records are the point).
@@ -828,7 +828,7 @@ test.describe('PER-CLAUSE COVERAGE — every protocol clause flows the generic p
                 ).toBeHidden({ timeout: 30000 });
             }
 
-            // ── AUDIT: the target clause's committed leaf surfaces, labelled
+            // ── AUDIT: the target clause's committed leaf surfaces, labeled
             //    from its spec, and the merkle root over ALL leaves matches the
             //    on-chain agreementHash. ──
             await page.goto(`/audit/view?process=${processId}&e2e=devnet`, { waitUntil: 'domcontentloaded' });
