@@ -48,7 +48,7 @@ export function GeohashFieldInput({ value, onChange, testId, pattern, dispositio
     }
 
     const trimmed = value.trim();
-    // ReDoS-safe against an attacker-authored spec `pattern` (finding 5).
+    // ReDoS-safe against an attacker-written spec `pattern` (finding 5).
     const shapeOk = trimmed === "" || !pattern || safeRegexTest(pattern, trimmed);
 
     return (

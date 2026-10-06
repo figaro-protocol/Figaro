@@ -176,7 +176,7 @@ export function RewardsView() {
                                 )}
                                 {account && t.accruals.length === 0 && status !== "upcoming" && (
                                     <p className="text-sm text-ink-muted mb-3" data-testid={`period-no-accrual-${t.periodId}`}>
-                                        Nothing you authored has carried trade in this period yet.
+                                        Nothing you designed has carried trade in this period yet.
                                     </p>
                                 )}
                                 {t.periodClosed && !t.claimed && t.claimable > 0n && (

@@ -58,7 +58,7 @@ interface Row {
     /** A chain READ rather than a write — drawn dashed. */
     read?: boolean;
     label: string;
-    /** SVG does not wrap text — the break points are authored here. */
+    /** SVG does not wrap text — the break points are written here. */
     detail: readonly string[];
     /** A refusal that ends the handshake at this step, one entry per line. */
     exit?: readonly string[];

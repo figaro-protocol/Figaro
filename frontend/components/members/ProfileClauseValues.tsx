@@ -2,12 +2,12 @@
 
 /**
  * ProfileClauseValues — the member-profile authoring section for
- * PROFILE-authored clause values (the member's master data: dimweight's divisor, a
+ * PROFILE-filled clause values (the member's master data: dimweight's divisor, a
  * declared credential id). The profile-level sibling of the catalogue item's
  * clause-values editor (`OnboardingCatalogueForm`): one spec-driven group per
  * clause declaring `block.checkout.profileFills`, derived live from the
  * registry, never hardcoded — restricted to each spec's DECLARED
- * profile-authored field subset (`clauseProfileFills`; the rest belong to
+ * profile-filled field subset (`clauseProfileFills`; the rest belong to
  * designer fills or checkout derivation). Optional throughout: a member
  * authors what applies and leaves the rest blank, so a field's checkout
  * `required` never marks it here. Scoped by `clauseIds` to the clauses the
@@ -35,7 +35,7 @@ export function ProfileClauseValues({
     values: ProfileClauseValuesMap;
     onChange: (next: ProfileClauseValuesMap) => void;
     /** The clauses the member's bound assemblies compose; only their
-     *  profile-authored fields render. Absent = every registered clause. */
+     *  profile-filled fields render. Absent = every registered clause. */
     clauseIds?: readonly string[];
 }) {
     // Warm the chain→IPFS spec cache at this surface's boundary; `version`

@@ -55,7 +55,7 @@ const R_X = 206;
 const R_W = 178;
 
 // SVG does not wrap text, and both panels are 178 units wide — so the figure's
-// own fixed strings are authored as LINES, and the geometry below is computed
+// own fixed strings are written as LINES, and the geometry below is computed
 // from how many each takes. Written as single strings, the right panel's
 // subheading and the accumulator note both ran past the plate's right edge.
 const SUB_LEADING = 10;

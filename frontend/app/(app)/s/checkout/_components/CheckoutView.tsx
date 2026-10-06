@@ -216,7 +216,7 @@ export function CheckoutView({ sellerAddress }: Props) {
     const [compositionInputs, setCompositionInputs] = useState<Record<string, Record<string, unknown>>>({});
     // The buyer's GENERAL-clause field fills, nodeId → clauseId → values.
     // Design time is structural: general clauses arrive
-    // from the template as `{}`; their transaction particulars are authored
+    // from the template as `{}`; their transaction particulars are filled
     // here, at checkout. Spec-routed — the checkout names no clause.
     const [clauseFills, setClauseFills] = useState<Record<string, Record<string, Record<string, unknown>>>>({});
     const setClauseFill = (nodeId: string, clauseId: string, field: string, value: unknown) =>
@@ -454,7 +454,7 @@ export function CheckoutView({ sellerAddress }: Props) {
     // reads which term is missing instead of a spec path.
     const missingFills = unfilledRequiredFills(agreementGroups, clauseFills);
     // The terms are placeable when their specs are real (not a half-warm cache)
-    // and every required fill is authored.
+    // and every required field is filled.
     const termsReady = clauseSpecsLoaded && missingFills.length === 0;
 
     const cartUnitSystem = memberCatalogue.unitSystem ?? "metric";

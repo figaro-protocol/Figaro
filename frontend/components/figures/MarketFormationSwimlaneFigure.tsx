@@ -48,7 +48,7 @@ interface Row {
      *  the brace rather than the sequence. */
     n: string;
     title: string;
-    /** SVG does not wrap text — the break points are authored here. */
+    /** SVG does not wrap text — the break points are written here. */
     lines: readonly string[];
     /** Part of the either/or pair braced in the candidates lane. */
     leg?: boolean;

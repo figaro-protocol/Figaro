@@ -162,7 +162,7 @@ function fromItem(item: CatalogueItemMetadata, unitSystem: UnitSystem): FormItem
 }
 
 /** Strip empty field-values and empty clauses; return undefined when nothing
- *  is authored (so the item omits the key rather than storing `{}`). */
+ *  is filled (so the item omits the key rather than storing `{}`). */
 function clauseValuesForSave(
     values: Record<string, Record<string, unknown>>,
 ): Record<string, Record<string, unknown>> | undefined {
@@ -244,7 +244,7 @@ export function OnboardingCatalogueForm({
     const [importedCount, setImportedCount] = useState<number | null>(null);
 
     // The item properties this member is actually asked for: the
-    // catalogue-authored fields of the clauses their BOUND assemblies compose
+    // catalogue-filled fields of the clauses their BOUND assemblies compose
     // (freight class, hazmat, cold-chain, a data licence — whatever those
     // assemblies carry). Derived live from the registry through the bindings,
     // never a bundled list and never the whole registry: a member selling one mug
@@ -719,10 +719,10 @@ function ItemRow({ item, index, priceSymbol, unitSystem, catalogueClauses, dataS
                 ))}
             </div>
 
-            {/* Catalogue-authored clause values — one spec-driven group per
+            {/* Catalogue-filled clause values — one spec-driven group per
                 clause the member's bound assemblies compose, rendered from the
                 registry, never hardcoded. Only each clause's OWN catalogue
-                fills appear; its checkout- and profile-authored fields belong
+                fills appear; its checkout- and profile-filled fields belong
                 to other surfaces. Optional throughout: an item that has no
                 freight class leaves it blank. */}
             {catalogueClauses.length > 0 && (

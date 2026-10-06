@@ -10,7 +10,7 @@
  * offers only these — the two surfaces partition the registry by declared
  * scope, so a duplicate is structurally impossible on this canvas (and
  * `buildAssemblyTemplate` re-verifies at draft/publish for imported or
- * hand-authored compositions).
+ * hand-written compositions).
  *
  * At checkout every assembly-scoped section folds into EVERY agreement, so
  * every party signs it — stated in the panel copy for the designer.

@@ -467,7 +467,7 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
     }
 
     const orders = resolved.orders;
-    // The connected wallet authored this published assembly — the reclaim
+    // The connected wallet designed this published assembly — the reclaim
     // affordance (and its caveat strip) renders only for them.
     const isAuthor =
         resolved.kind === "published" && !!address && hexEqual(resolved.registeredBy, address);

@@ -5,7 +5,7 @@
  *
  * Figaro does NOT run arbitration — the forum the assembly's dispute-resolution
  * clause names does. This panel does the one thing Figaro owns:
- *   - shows the dispute-resolution clause(s) the assembly authored, resolved
+ *   - shows the dispute-resolution clause(s) the assembly composed, resolved
  *     GENERICALLY by article and rendered from each clause's own spec — the
  *     panel knows no clause, so any ADR / applicable-law clause (present or
  *     future) surfaces here unchanged;
@@ -34,7 +34,7 @@ import type { RecourseClause } from "@/lib/semantic/processRecourse";
 
 interface RecoursePanelProps {
     processId: `0x${string}`;
-    /** The dispute-resolution clause(s) the assembly authored, resolved
+    /** The dispute-resolution clause(s) the assembly composed, resolved
      *  generically by article (any ADR/applicable-law clause, present or
      *  future). Rendered from each clause's own spec; a forum that integrates
      *  its own dispute UI gets a deep-link via the composition layer. */
@@ -136,7 +136,7 @@ export function RecoursePanel({
                 Dispute Resolution
             </h3>
 
-            {/* ── Recourse forum(s) the assembly authored ─────── */}
+            {/* ── Recourse forum(s) the assembly composed ─────── */}
             {recourses && recourses.length > 0 && (
                 <div
                     className="mb-3 rounded border border-default bg-subtle p-2 space-y-1"

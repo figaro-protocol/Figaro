@@ -54,7 +54,7 @@ interface FormState {
     logoURI: string;
     acceptedTokens: Array<{ address: string; symbol: string }>;
     defaultTokenAddress: string;
-    /** PROFILE-authored clause values (the member's master data: dimweight's
+    /** PROFILE-filled clause values (the member's master data: dimweight's
      *  divisor, a declared credential id) — the generic profile-sourced
      *  section's map, clauseId → field → value. */
     profileClauseValues: ProfileClauseValuesMap;
@@ -458,7 +458,7 @@ export function OnboardingProfileForm({
                     </p>
                 </FormField>
                 {/* Profile-sourced clause values (dimweight's divisor, a declared
-                    credential id) are authored on the Sell through step, scoped to the
+                    credential id) are filled on the Sell through step, scoped to the
                     clauses the bound assemblies compose; this form only carries the
                     draft's values through. */}
             </section>

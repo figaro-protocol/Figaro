@@ -114,7 +114,7 @@ function scalarConstraintIssue(field: FieldSpec, raw: string): string | null {
         return `Must be at most ${field.maxLength} characters.`;
     }
     if (field.pattern) {
-        // ReDoS-safe: `field.pattern` is attacker-authored (permissionless clause
+        // ReDoS-safe: `field.pattern` is attacker-written (permissionless clause
         // spec), and this runs on every keystroke — a catastrophic pattern would
         // hang the tab. `safeRegexTest` screens the exponential shape and bounds
         // the input, treating an unsafe/invalid pattern as satisfied (finding 5).
@@ -245,7 +245,7 @@ export function FieldControl({
                                 value={item}
                                 onValue={(nextItem) => onChange(arr.map((it, j) => (j === i ? nextItem : it)))}
                                 testIdBase={`${testId}-${i}`}
-                                // An authored entry is authored WHOLE: its
+                                // A written entry is written WHOLE: its
                                 // children never defer (the item exists
                                 // because the designer is filling it now).
                                 mode="runtime"

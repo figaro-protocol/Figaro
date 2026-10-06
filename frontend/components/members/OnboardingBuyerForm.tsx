@@ -183,7 +183,7 @@ export function OnboardingBuyerForm({
                         </Link>
                         {" "}— fixed or rate, in the tokens you accept. The item&apos;s
                         license terms (scope, access, redistribution, source
-                        processes) are authored on the item and ride into the
+                        processes) are filled on the item and ride into the
                         agreement both parties sign.
                     </p>
                     <p>
