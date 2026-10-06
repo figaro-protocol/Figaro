@@ -1,7 +1,7 @@
 /**
  * lib/shared/urlQuery.ts — "the URL query IS the state" helpers shared by
  * the explorer read-models (`lib/data/explorer.ts`, `lib/registries/explorer.ts`),
- * whose pages parse the query into state and serialise it back so every view
+ * whose pages parse the query into state and serialize it back so every view
  * is a permalink. Nothing here throws on a hand-typed link.
  */
 
