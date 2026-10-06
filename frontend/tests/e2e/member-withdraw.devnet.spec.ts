@@ -12,7 +12,7 @@
  * you left would price nothing, because one stake would serve identity after
  * identity. Devnet deploys cooldown 0 (`new MembersRegistry(0.001 ether, 0)`)
  * so both steps run in one test without warping a chain the frontend shares;
- * the cooldown's own behaviour is covered in Foundry against a non-zero value.
+ * the cooldown's own behavior is covered in Foundry against a non-zero value.
  *
  * `members-onboarding.devnet.spec.ts` covers the register path; this covers
  * leave → claim: /members/manage dashboard → Begin → Confirm and leave → receipt →
