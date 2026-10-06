@@ -8,7 +8,7 @@ import { BackToTop } from "./BackToTop";
 
 interface PaperLayoutProps {
     /** `/papers/<slug>` folder name — resolves the paper's discipline and
-     *  neighbours from the registry for the breadcrumb + prev/next nav. */
+     *  neighbors from the registry for the breadcrumb + prev/next nav. */
     slug: string;
     title: string;
     subtitle?: string;
