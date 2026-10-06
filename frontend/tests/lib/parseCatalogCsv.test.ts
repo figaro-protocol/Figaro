@@ -94,14 +94,14 @@ describe("parseCatalogCsv", () => {
     });
 
     it("ignores unknown columns silently", () => {
-        const csv = "name,price,sku,colour\nA,1,SKU001,red";
+        const csv = "name,price,sku,color\nA,1,SKU001,red";
         const { items, errors } = parseCatalogCsv(csv);
         expect(errors).toEqual([]);
         expect(items[0].name).toBe("A");
         expect((items[0] as unknown as { sku?: string }).sku).toBeUndefined();
     });
 
-    it("normalises CRLF line endings", () => {
+    it("normalizes CRLF line endings", () => {
         const csv = "name,price\r\nA,1\r\nB,2";
         const { items, errors } = parseCatalogCsv(csv);
         expect(errors).toEqual([]);
