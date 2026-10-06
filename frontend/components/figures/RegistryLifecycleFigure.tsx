@@ -31,7 +31,7 @@ export type RegistryLifecycleFigureProps = BaseFigureProps;
  *
  * `src/build/registries/ClauseRegistry.sol` + `AssemblyRegistry.sol`
  *  - `registerClause(...)` / `registerAssembly(...)` take the exact deposit
- *    (`WrongDeposit`), record `registeredBy`, and are first-write-wins:
+ *    (`WrongDeposit`), keep `registeredBy`, and are first-write-wins:
  *    `AlreadyRegistered(clauseId)` / `CompositionAlreadyRegistered(hash)`.
  *    First-write-wins is anti-DISPLACEMENT, NOT anti-squatting: a clause key is
  *    `keccak256(abi.encode(clauseId, version))` over a CALLER-CHOSEN name, so a
