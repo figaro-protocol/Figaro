@@ -7,7 +7,7 @@
  * agreement NAMES it — the dispute-resolution clause(s) the assembly designer
  * authored into the order(s).
  *
- * This reader is OPEN-WORLD: it recognises a recourse clause by its
+ * This reader is OPEN-WORLD: it recognizes a recourse clause by its
  * `block.design.article === "dispute-resolution"`, never by a hardcoded field name or
  * clause id. So ANY decentralized-ADR or applicable-law clause — the two that
  * exist today, or a `figaro-arbitration-<provider>` registered tomorrow — is
