@@ -3,7 +3,7 @@
 /**
  * MemberDetailView — the buyer's BROWSE surface at `/s/view?seller=<address>`.
  *
- * Browse only: the seller's branding/hero, public-graph track record, and
+ * Browse only: the seller's branding/hero, public-graph resolution history, and
  * catalogue grid. The buyer selects items into the merchant-scoped cart and
  * follows the "Review order" CTA to `/s/checkout?seller=<address>`, where the method is
  * chosen and the bonded order is committed. This page composes NO order and
@@ -11,7 +11,7 @@
  *
  * Data sources:
  *  - `useRegisteredCatalogues` — IPFS catalogue discovery.
- *  - `useMemberTrackRecord` — on-chain resolution/coordination history.
+ *  - `useMemberResolutionHistory` — on-chain resolution/coordination history.
  *  - `useCartStore` — global cart state (selection only; commit is checkout's).
  */
 
@@ -26,8 +26,8 @@ import { MemberAgentIdentity } from "@/components/members/MemberAgentIdentity";
 import { useCommerce } from "@/lib/checkout";
 import { useCartStore } from "@/lib/checkout/cartStore";
 import { useRegisteredCatalogues } from "@/lib/member/useRegisteredCatalogues";
-import { MemberTrackRecord } from "@/components/runtime/MemberTrackRecord";
-import { useMemberTrackRecord } from "@/lib/member/useMemberTrackRecord";
+import { MemberResolutionHistory } from "@/components/runtime/MemberResolutionHistory";
+import { useMemberResolutionHistory } from "@/lib/member/useMemberResolutionHistory";
 import { useTokenSymbol } from "@/hooks/useTokenSymbol";
 import { hexEqual, normalizeAddressParam } from "@/lib/shared/evm";
 import { truncateHex } from "@/lib/shared/formatHex";
@@ -60,7 +60,7 @@ export function MemberDetailView({ sellerAddress }: Props) {
         ?? "";
 
     const { items, addItem, removeItem, clearCart } = useCartStore();
-    const { trackRecord, isLoading: trackRecordLoading } = useMemberTrackRecord(sellerAddressLower);
+    const { resolutionHistory, isLoading: resolutionHistoryLoading } = useMemberResolutionHistory(sellerAddressLower);
 
     // Cart hygiene — clear the persisted cart on mount when it leaked across
     // merchants (zustand persists to one global key) or when the connected
@@ -257,9 +257,9 @@ export function MemberDetailView({ sellerAddress }: Props) {
                     );
                 })()}
 
-                {/* Seller track record — public-graph-derived resolution
+                {/* Seller resolution history — public-graph-derived resolution
                     + coordination history, recomputed from on-chain events. */}
-                <MemberTrackRecord record={trackRecord} isLoading={trackRecordLoading} />
+                <MemberResolutionHistory record={resolutionHistory} isLoading={resolutionHistoryLoading} />
 
                 <div className="grid grid-cols-1 lg:grid-cols-[1fr,360px] gap-8 items-start">
                     {/* Catalogue */}
