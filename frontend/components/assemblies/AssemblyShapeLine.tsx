@@ -16,7 +16,7 @@ import {
  *   error   → "Document unavailable …"  (the on-chain identity still rendered)
  *   loaded  → "N orders · M clauses: <clause list>"
  *
- * `className` carries surface-specific size/spacing; the state colour is owned
+ * `className` carries surface-specific size/spacing; the state color is owned
  * here so it stays consistent. `testId` attaches to the loaded line for the
  * surfaces whose specs key off it.
  */
