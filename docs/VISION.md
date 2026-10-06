@@ -62,7 +62,7 @@ its resolution. There is no restaurant and no shipping line, only the wallets
 that did the work, paid directly for the value each added. Because the assets
 themselves hold the wallets, nothing needs pooling and nothing needs a container;
 what remains of the firm is a legal wrapper around assets, whose last chores —
-a distribution among an asset's owners, a licence, a governing law — composition
+a distribution among an asset's owners, a license, a governing law — composition
 performs. This is the **Coasean collapse**; the paper on transaction-scoped
 institutions develops it.
 
