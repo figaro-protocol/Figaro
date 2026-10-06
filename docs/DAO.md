@@ -70,6 +70,10 @@ is named when that network deploys, not before — never withheld, just not yet
 real. *No vault contract exists or is needed* — the arrangement is composed,
 not written.
 
+**Who votes: the Safe's signers.** A treasury decision is the signers' act under
+the Safe's threshold; the signer set changes only by the signers' own act, and
+no florin carries a vote (`FLORIN_TOKEN.md` § "What the token is not").
+
 **The DAO meets the ecosystem through ONE account: its operator EOA**, an
 externally-owned account carrying an EIP-7702 delegation to
 governance-controlled code — the same delegation shape `DESIGN_DECISIONS.md`
