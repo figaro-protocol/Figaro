@@ -81,7 +81,7 @@ function sectionHoldingReader(groups: NavGroup[], pathname: string): string | nu
  * "You are here" runs on the same three ORTHOGONAL channels as the desktop
  * tree (`NavTreeRow`), per DESIGN_TOKENS §7: FILL is hover, RING is focus,
  * RULE + WEIGHT is current. pl-3.5 (14px) + the 2px rule restores px-4's 16px
- * inset, so a current row's label does not shift against its neighbours.
+ * inset, so a current row's label does not shift against its neighbors.
  */
 export function MobileNav({ links, logo, topCta }: MobileNavProps) {
     links = links ?? NAV_LINKS;
