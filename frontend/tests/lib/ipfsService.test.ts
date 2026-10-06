@@ -162,10 +162,10 @@ describe("ipfsService", () => {
             );
         });
 
-        it("accepts every real CID form the recogniser must know — the SDK's canonical derivations, not hard-coded strings", () => {
-            // The CID recogniser once knew base 32 only and rejected the base-16 witness
+        it("accepts every real CID form the recognizer must know — the SDK's canonical derivations, not hard-coded strings", () => {
+            // The CID recognizer once knew base 32 only and rejected the base-16 witness
             // CID the SDK derives from a keccak fingerprint. This drives the
-            // recogniser from the SDK's own derivation so a narrowing cannot pass unseen.
+            // recognizer from the SDK's own derivation so a narrowing cannot pass unseen.
             const contentRef = "0x11223344556677889900aabbccddeeff11223344556677889900aabbccddeeff" as const;
             const forms = [
                 witnessContentCid(contentRef), // f01551b20… — CIDv1, multibase base 16
@@ -326,7 +326,7 @@ describe("ipfsService", () => {
             );
         });
 
-        it("returns null for http(s) and unrecognised schemes — only IPFS content is unpinnable", () => {
+        it("returns null for http(s) and unrecognized schemes — only IPFS content is unpinnable", () => {
             expect(extractIpfsCid("https://example.com/file.json")).toBeNull();
             expect(extractIpfsCid("data:image/png;base64,abc")).toBeNull();
             expect(extractIpfsCid("")).toBeNull();
