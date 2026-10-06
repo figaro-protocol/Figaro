@@ -81,7 +81,7 @@ export default function ClientInit() {
 
     // Raw `?e2e=` param — deliberately NOT getE2EModeFromSearchParams, which
     // collapses any non-exact value (e.g. `devnet-share`) to null.
-    // `isDevnetMode` below recognises the whole `devnet-` family, so it needs
+    // `isDevnetMode` below recognizes the whole `devnet-` family, so it needs
     // the raw value; otherwise `?e2e=devnet-share` (commitment-share) never
     // auto-connects and `window.__FIGARO_WALLET__` is never published.
     const getE2EMode = useCallback(() => {
