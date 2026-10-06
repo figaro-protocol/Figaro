@@ -65,7 +65,7 @@ design disagreement, not a vulnerability; the doc explains the reasoning.
 
 ## Audit status
 
-Audit in progress: the commit under audit is the tag `audit-2026-10` — the
+Audit in progress: the commit under audit is the tag `audit-2026-10b` — the
 Solidity in `src/` and the Rust in `prover/` together — and it is being placed
 with an independent security firm (`docs/AUDITOR_HANDOVER.md` is the
 handover); findings and remediations are published when they exist. The

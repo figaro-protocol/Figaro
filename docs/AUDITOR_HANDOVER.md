@@ -9,7 +9,7 @@ project's own verification found, and the gate the audited tree passes.
 
 | | |
 |---|---|
-| Commit under audit | the tag `audit-2026-10` (§ "The audit commit") |
+| Commit under audit | the tag `audit-2026-10b` (§ "The audit commit") |
 | Languages in scope | Solidity (`src/`, three deploy scripts) and Rust (`prover/`, four crates) |
 | Solidity in scope | 14 contract files, 3,184 lines; 3 deploy scripts, 852 lines |
 | Rust in scope | 4 crates, 20 files, 7,394 lines under `src/` |
@@ -161,25 +161,29 @@ came from the program with that key. The other external dependencies are in
 
 ## The audit commit
 
-**The commit under audit is the tag `audit-2026-10`.** One commit covers the
+**The commit under audit is the tag `audit-2026-10b`.** One commit covers the
 whole scope, Solidity and Rust together.
 
 ```bash
-git rev-parse 'audit-2026-10^{commit}'
+git rev-parse 'audit-2026-10b^{commit}'
 ```
 
-No change is made to a path in scope during the audit window, the changes below
-excepted. The tag is never moved: a change to the scope is a new tag.
+No change is made to a path in scope while the tag stands. The tag is never
+moved: a change to the scope is a new tag — this one succeeded
+`audit-2026-10` when the last relay change below landed, and contains all
+eight.
 
-### Changes after the tag
+### Changes after the previous baseline
 
-Eight changes were made to the relay (`prover/sequencer/`) after the tag, on
-the maintainer's override, each closing a defect the project's own review
-found. None touches a contract, a guest crate, a `Cargo.toml` or the lock, so the
-guest's bytes and the verification key are the tag's. This prints them all:
+Eight changes were made to the relay (`prover/sequencer/`) after
+`audit-2026-10`, on the maintainer's override, each closing a defect the
+project's own review found; `audit-2026-10b` contains them all, so the scope
+at this tag carries no post-tag change. None touches a contract, a guest
+crate, a `Cargo.toml` or the lock, so the guest's bytes and the verification
+key are unchanged across the two tags. This prints them all:
 
 ```bash
-git diff audit-2026-10 -- prover/sequencer/
+git diff audit-2026-10 audit-2026-10b -- prover/sequencer/
 ```
 
 | Change | The defect it closes | Where | Held by |
@@ -200,12 +204,16 @@ tagged. Known limitation 7 states what the state changes leave standing.
 
 ### The kernel
 
-The kernel — `FigaroCore.sol` and `CommitmentTypes.sol` — last changed at
-`c7f85d0d` (2026-08-12). Since then the two files moved directory and nothing
-else. This prints two renames and `0 insertions(+), 0 deletions(-)`:
+The kernel — `FigaroCore.sol` and `CommitmentTypes.sol` — last changed in
+CODE at `c7f85d0d` (2026-08-12). Since then the two files moved directory
+and comment lines moved in place; `scripts/lint-kernel-frozen.sh` holds
+their code byte-identical to the standing tag. The rename prints as two
+renames and `0 insertions(+), 0 deletions(-)`, and the later diff is
+comment-only:
 
 ```bash
 git diff -M --stat c7f85d0d audit-2026-10 -- src/kernel/ src/core/kernel/
+git diff audit-2026-10 audit-2026-10b -- src/core/kernel/
 ```
 
 ### Toolchains
@@ -418,7 +426,7 @@ read it first.
   path resolves on the batch path only. The relay reads each party's balance and
   allowance before it submits (`prover/sequencer/src/submitter.rs`), and a batch
   a mid-flight revocation reverts is re-run without the revoker
-  (§ "Changes after the tag").
+  (§ "Changes after the previous baseline").
 - The kernel recovers ECDSA signers (`ECDSA.recover` in `commit()`), so a
   smart-contract wallet (multisig) cannot be a kernel party directly; it transacts
   through an EOA it controls (the off-protocol auxiliary pattern). The buyer-key-loss
@@ -517,7 +525,7 @@ Stated so the review does not spend hours finding them.
    (`figaro-kernel`, `figaro-clause`), where a defect costs a wrong resolution.
    The relay has its 79 integration tests, 13 unit tests and the batch
    end-to-end test.
-3. **Narrowed after the tag** (§ "Changes after the tag", last row). The
+3. **Narrowed at this tag** (§ "Changes after the previous baseline", last row). The
    relay re-batches around a revoker it can name: a party who revokes its
    allowance after the funding check and before `settleBatch` reverts that
    batch once; the relay re-reads funding at the latest block, dead-letters
@@ -530,7 +538,7 @@ Stated so the review does not spend hours finding them.
    does not aggregate them — can burn a co-batched operation's cap. The
    direct path stays open to a new process throughout.
 4. **The full devnet end-to-end suite runs by hand.** CI runs its spine. Run
-   once on a fresh devnet at the audit commit: 55 specs, 52 passed at the
+   once on a fresh devnet at `audit-2026-10`: 55 specs, 52 passed at the
    first attempt, 3 passed at the second — a three-seller chain's accept and
    the two swap-funded on-ramps, whose first attempt on a fresh chain
    revert `ERC20InsufficientAllowance` before the allowance the page has
