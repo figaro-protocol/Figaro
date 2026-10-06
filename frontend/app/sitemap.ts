@@ -35,7 +35,7 @@ type Entry = {
 //     and `/members/edit/*` steps: interior states of the `/members` enrolment
 //     wizard, entered from it and meaningless as landings.
 //   - `/evidence-display`: a deliberate orphan — the iframe target for a
-//     recognised arbitration forum, with a `frame-ancestors` override in
+//     recognized arbitration forum, with a `frame-ancestors` override in
 //     `public/_headers`. Nothing in-app links it by design.
 const PUBLIC_ROUTES: Entry[] = [
     { path: "/", changeFrequency: "weekly", priority: 1.0 },
