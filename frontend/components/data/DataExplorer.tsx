@@ -18,7 +18,7 @@
  * wallet. The wallet-data view takes ANY address — a spectator reads a
  * stranger's public data exactly as they read a stranger's process.
  *
- * The URL query is the state (`lib/data/explorer.ts` parses and serialises
+ * The URL query is the state (`lib/data/explorer.ts` parses and serializes
  * it), so every view and every wallet subject is a permalink.
  */
 
