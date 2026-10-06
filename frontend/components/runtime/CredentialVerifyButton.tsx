@@ -8,7 +8,7 @@
  * discovered by declared field, never by clause id, so a never-seen clause
  * declaring the same fields participates.
  *
- * A LINK, not a gate: it opens the authority's own record (the register is the
+ * A LINK, not a gate: it opens the authority's own entry (the register is the
  * source of truth; the reader interprets it). Nothing is fetched, parsed, or
  * stored — verification status is the reader's read-time judgment. https-only,
  * mirroring the forum deep-link rule (`block.design.composes.forumUrl`).

@@ -177,7 +177,7 @@ export function AgreementReview({ commitment, agreement }: Props) {
                             This agreement composes a consent clause and affixes its
                             documents to the trade. Your signature over the{" "}
                             <code className="font-mono">agreementHash</code> cryptographically
-                            records your acceptance of each document listed below — consent as
+                            binds your acceptance of each document listed below — consent as
                             an agreement term, the pattern the European Data Protection Board
                             recommends for blockchains (Guidelines 02/2025): the documents stay
                             off-chain; the chain keeps only fingerprints.

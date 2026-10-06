@@ -41,7 +41,7 @@ export type OriginationSequenceFigureProps = BaseFigureProps;
  *    own 2× payment bond before submitting `commit`.
  *  - Attestation: `AttestationCoordinator` binds each attestation to the signed
  *    `agreementHash` by merkle inclusion proof (`docs/CONTRACTS.md`).
- *  - Close: `resolveProcess` is buyer-only and atomic, and the usage record
+ *  - Close: `resolveProcess` is buyer-only and atomic, and the usage count
  *    belongs in the same breath (`sdk/README.md` step 5).
  */
 
@@ -184,7 +184,7 @@ const ROWS: readonly Row[] = [
         label: "resolveProcess(processId, commitments)",
         detail: [
             "Buyer-only, and atomic across every active order in the process. Call",
-            "recordProcessUsage in the same breath: a record counts in whatever period",
+            "recordProcessUsage in the same breath: a usage counts in whatever period",
             "is open when you call — or in none at all, once accrual has closed.",
         ],
     },
@@ -263,7 +263,7 @@ export function OriginationSequenceFigure({
                     value, and counter-signs. The buyer approves twice the
                     payment and submits the commit, which pulls both bonds. The
                     seller attests during execution, and the buyer alone
-                    resolves the process and records the usage. Two refusals end
+                    resolves the process and counts the usage. Two refusals end
                     the handshake before anything is committed: the buyer&apos;s
                     own gate refuses to sign a non-conforming agreement, and the
                     seller throws on an agreement-hash or signature mismatch.

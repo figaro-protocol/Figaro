@@ -6,13 +6,13 @@
  *
  * `/audit`'s other panels read the network directly. This one reads a RELAY,
  * which is transport and not authority, so it never presents relay data as
- * chain truth: every record is re-derived by `lib/audit/batchRelay`
+ * chain truth: every order is re-derived by `lib/audit/batchRelay`
  * (struct → its own order hash and process id, both signatures → the parties
  * named inside that struct under the VERIFIER's domain, payouts → recomputed
  * from the struct, batch → anchored to a `BatchSettled` on chain) and this
  * panel reports the verdict per check.
  *
- * A record that fails any check is shown as FAILED, naming the check and the
+ * An order that fails any check is shown as FAILED, naming the check and the
  * mismatch. It is never dropped and never softened — a relay publishing
  * something nobody signed must be visible, not invisible.
  */
@@ -62,7 +62,7 @@ function StatusNotice({ batch }: { batch: VerifiedBatchProcess }) {
         return (
             <p className="text-sm text-ink-body" data-testid="batch-status-no-verifier">
                 No FigaroBatchVerifier is configured on this network, so nothing a
-                relay published could be anchored on chain. Unanchorable records are
+                relay published could be anchored on chain. Unanchorable orders are
                 not displayed.
             </p>
         );
@@ -111,7 +111,7 @@ export function BatchUniversePanel({ batch }: { batch: VerifiedBatchProcess | nu
                     A batch-resolved order emits no FigaroCore event &mdash; its struct
                     exists only under the verifier&rsquo;s proven state root &mdash; so
                     reading it means reading a relay. Nothing below is taken on the
-                    relay&rsquo;s word: each record&rsquo;s struct must re-derive its own
+                    relay&rsquo;s word: each order&rsquo;s struct must re-derive its own
                     order hash, both signatures must recover to the parties named
                     inside that struct, the payouts must recompute from it, and the
                     batch&rsquo;s state root must be anchored in a{" "}

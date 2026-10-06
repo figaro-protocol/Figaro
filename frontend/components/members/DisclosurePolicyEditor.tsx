@@ -16,7 +16,7 @@ import type { PartyRole } from "@/lib/kernel/walletProcessQueries";
  * pair (assembly compositionHash, clauseId) enumerated from the
  * assemblies the member is binding right now (the `choices` prop is
  * the live-registry selection), crossed with the two postures a member
- * holds — records co-produced AS A SELLER and AS A BUYER. The buyer
+ * holds — data co-produced AS A SELLER and AS A BUYER. The buyer
  * half is first-class: the same offer structure, the same terms.
  *
  * Checking a row declares that data offered (an entry with
@@ -84,15 +84,15 @@ export function DisclosurePolicyEditor({ choices, entries, onChange, postures = 
             <h3 className="text-heading-h3 text-ink-heading">Data disclosure</h3>
             <Card className="p-6 space-y-3 text-sm text-ink-body">
                 <p>
-                    Optional. Every bonded process co-produces records — one per
+                    Optional. Every bonded process co-produces data — one per
                     clause, per order. The rows below are the data those
                     assemblies’ trades produce. Checking a row offers that data
                     for sale or disclosure; a whitelist narrows who may buy or see
                     it, and an embargo delays it until N days after resolution.
                 </p>
                 <p>
-                    You hold both postures — records you co-produce as a seller
-                    and records you co-produce as a buyer are equally yours to
+                    You hold both postures — data you co-produce as a seller
+                    and data you co-produce as a buyer are equally yours to
                     offer. Prices never live here: a data product is priced as
                     an item in your own catalogue, like anything else you sell.
                     Leave everything unchecked for the default: each party
@@ -207,7 +207,7 @@ function PolicyLeafRow({
                     data-testid={`${rowId}-offer`}
                 />
                 <span>
-                    Offer records I co-produce{" "}
+                    Offer data I co-produce{" "}
                     <span className="font-semibold">as {posture === "seller" ? "a seller" : "a buyer"}</span>
                 </span>
             </label>

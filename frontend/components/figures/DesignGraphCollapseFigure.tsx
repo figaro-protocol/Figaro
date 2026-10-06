@@ -45,7 +45,7 @@ export interface DesignGraphCollapseFigureProps extends BaseFigureProps {
  * buyer, with no parent-child structure anywhere in resolution state. The
  * ordering survives the collapse only because the parties committed it in
  * their agreement — the topology clause is agreement-only, enforced off-chain
- * by whoever reconstructs the graph from the record (`docs/CLAUSES.md`).
+ * by whoever reconstructs the graph from the data (`docs/CLAUSES.md`).
  */
 
 const ROW_H = 26;
@@ -249,7 +249,7 @@ export function DesignGraphCollapseFigure({
                     </text>
                 ))}
                 <text x={L_X} y={seamY} fontSize="8.5" className="fill-ink-muted">
-                    Resolution state records no parent, no child, and no branch &mdash; {designNodes.length} nodes
+                    Resolution state carries no parent, no child, and no branch &mdash; {designNodes.length} nodes
                 </text>
                 <text x={L_X} y={seamY + 11} fontSize="8.5" className="fill-ink-muted">
                     on the left, {commitOrder.length} commits and one accumulator on the right.

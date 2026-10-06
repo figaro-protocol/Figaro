@@ -8,15 +8,15 @@
  * The IA is `docs/DATA_LAYER.md` § "Truth boundaries": one
  * layer at a time, each carrying its own truth boundary, so a Core guarantee
  * and an institution's declaration are never rendered as the same kind of
- * fact. The rows inside a layer are derived from the record — the overlay list
+ * fact. The rows inside a layer are derived from the data — the overlay list
  * is a census of the clause families this corpus contains, never a menu this
  * component knows in advance, and a family whose spec will not resolve is a
  * row that says so rather than a row that is dropped.
  *
  * WALLETLESS by construction: like `/audit`, every view here reads from the
  * chain through the standalone client and no view is gated on a connected
- * wallet. The wallet-record view takes ANY address — a spectator reads a
- * stranger's public record exactly as they read a stranger's process.
+ * wallet. The wallet-data view takes ANY address — a spectator reads a
+ * stranger's public data exactly as they read a stranger's process.
  *
  * The URL query is the state (`lib/data/explorer.ts` parses and serialises
  * it), so every view and every wallet subject is a permalink.
@@ -110,7 +110,7 @@ export function DataExplorer() {
 
             <p className="text-sm text-ink-muted leading-relaxed max-w-3xl">
                 Every graph below is projected in this browser from the network&apos;s own event
-                record &mdash; no account, no wallet, no server in between. What each layer
+                data &mdash; no account, no wallet, no server in between. What each layer
                 is <em>for</em> lives on{" "}
                 <Link href="/data" className="text-ink-heading hover:underline">/data</Link>;
                 this page is where you query it.
@@ -138,11 +138,11 @@ export function DataExplorer() {
             {failed ? (
                 <p className="text-sm text-ink-muted" data-testid="corpus-failed">
                     The event read failed on this network, so nothing is shown rather than a
-                    stale or partial picture. That is unknown chain state &mdash; not an empty record.
+                    stale or partial picture. That is unknown chain state &mdash; not empty data.
                 </p>
             ) : isLoading || !corpus ? (
                 <p className="text-sm text-ink-muted" data-testid="corpus-loading">
-                    Reading the record and projecting the graphs&hellip;
+                    Reading the data and projecting the graphs&hellip;
                 </p>
             ) : (
                 <>
@@ -216,7 +216,7 @@ function MarketView({ corpus, state, onQuery }: { corpus: GraphCorpus; state: Da
                 </p>
             ) : null}
             {/* Unattributed is a POSTURE, not a hiding place: those processes
-                resolved on the same public record, so their ids open the same
+                resolved on the same public data, so their ids open the same
                 way an attributed one's does. */}
             {corpus.market.unattributedProcessCount > 0 ? (
                 <ProcessList
@@ -333,9 +333,9 @@ function MarketProcesses({ corpus, marketKey }: { corpus: GraphCorpus; marketKey
  * A list of processes, each carrying its OWN id and the one link that opens
  * it at `/audit/view` — the surface that already narrates a process whole
  * (timeline, financials, clause evidence, signature verdicts). Without this a
- * reader can count the processes on the record but cannot open one: the ids
+ * reader can count the processes in the data but cannot open one: the ids
  * are derivable from the same events every figure above is derived from, so
- * withholding them would be the surface's choice, not the record's.
+ * withholding them would be the surface's choice, not the data's.
  *
  * Capped at `PROCESS_ROW_CAP` with the window STATED — never silently
  * truncated.
@@ -372,7 +372,7 @@ function ProcessList({ rows, corpus, testId }: { rows: readonly ProcessRow[]; co
                 {rows.length > shown.length
                     ? `${shown.length} of ${rows.length} processes, most recent first.`
                     : `${rows.length} process${rows.length === 1 ? "" : "es"}, most recent first.`}
-                {" "}Each opens its own record at <code className="font-mono">/audit/view</code>.
+                {" "}Each opens its own data at <code className="font-mono">/audit/view</code>.
             </p>
         </div>
     );
@@ -439,7 +439,7 @@ function OverlaysView({ corpus, state, onQuery }: { corpus: GraphCorpus; state: 
                                         {r.decodedCount} of {r.entryCount} payload
                                         {r.entryCount === 1 ? "" : "s"} recovered and decoded against the
                                         registered spec. What a decoded field says is the attester&apos;s
-                                        declaration; the record proves it sat under that agreement&apos;s root.
+                                        declaration; the data proves it sat under that agreement&apos;s root.
                                     </>
                                 )}
                             </p>
@@ -502,7 +502,7 @@ function ValueFlowView({ corpus }: { corpus: GraphCorpus }) {
     );
 }
 
-// ── Wallet record ───────────────────────────────────────────────────────────
+// ── Wallet data ────────────────────────────────────────────────────────────
 
 function WalletView({ corpus, state, onQuery }: { corpus: GraphCorpus; state: DataExplorerQuery; onQuery: (p: Partial<DataExplorerQuery>) => void }) {
     const subject = state.wallet.trim();
@@ -527,7 +527,7 @@ function WalletView({ corpus, state, onQuery }: { corpus: GraphCorpus; state: Da
             />
             {!subject ? (
                 <p className="text-sm text-ink-muted" data-testid="wallet-prompt">
-                    Paste any address. This record is public by construction, so no wallet
+                    Paste any address. This data is public by construction, so no wallet
                     needs to be connected and no permission asked &mdash; the same posture as the
                     audit surface.
                 </p>
@@ -538,7 +538,7 @@ function WalletView({ corpus, state, onQuery }: { corpus: GraphCorpus; state: Da
             ) : summary?.empty ? (
                 <p className="text-sm text-ink-muted" data-testid="wallet-empty">
                     No orders for <code className="font-mono">{truncateHex(subject)}</code> in this
-                    reader&apos;s record. That is an answer, not an error: the wallet may have traded
+                    reader&apos;s data. That is an answer, not an error: the wallet may have traded
                     on the batch path, which emits no order events, or outside the block range
                     this browser scanned.
                 </p>
@@ -563,7 +563,7 @@ function WalletView({ corpus, state, onQuery }: { corpus: GraphCorpus; state: Da
                                     with <code className="font-mono">{truncateHex(r.counterparty)}</code> · block{" "}
                                     {r.blockNumber} ·{" "}
                                     <Link href={`/audit/view?process=${r.processId}`} className="underline hover:text-ink-heading">
-                                        open the process record
+                                        open the process data
                                     </Link>
                                 </span>
                             </li>
@@ -585,7 +585,7 @@ function TradeView() {
                 resolution and payouts &mdash; is already told at{" "}
                 <code className="font-mono text-xs">/audit/view?process=&lt;id&gt;</code>, where every
                 figure is re-derived and every signature checked. Open it there rather than
-                have a second surface narrate the same record differently.
+                have a second surface narrate the same data differently.
             </p>
             <ProcessAuditOpen />
         </Card>

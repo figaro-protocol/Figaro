@@ -411,7 +411,7 @@ export function OnboardingReview() {
                 ) : (
                     <p className="text-sm text-ink-faint">
                         None declared — the default applies: each party holds its
-                        own copy of co-produced records; nothing is offered.
+                        own copy of co-produced data; nothing is offered.
                     </p>
                 )}
             </Card>

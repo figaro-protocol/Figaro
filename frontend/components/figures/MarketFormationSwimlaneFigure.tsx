@@ -185,7 +185,7 @@ export function MarketFormationSwimlaneFigure({
                     seller was raced for, quoted against, or chosen by hand. Answers not
                     taken need no cancellation: the buyer fixes one deadline inside every
                     draft, and the mechanism refuses a commitment past it, so losing
-                    answers expire inert at no cost and leave no record.
+                    answers expire inert at no cost and leave no data.
                 </>
             }
             caption={

@@ -11,7 +11,7 @@ import { PinErasureControl } from "@/components/runtime/PinErasureControl";
  * that publish story — the same author-pins → author-erases symmetry as the
  * member profile, device evidence, and committed-agreement pins. Deliberate,
  * never automatic: the values are runtime evidence a dispute forum may want,
- * so a party erases them once the process's records are no longer needed.
+ * so a party erases them once the process's data are no longer needed.
  *
  * Best-effort by construction: the CID is derived from each attestation's
  * on-chain fingerprint, and unpinning an absent pin is absence — so offering

@@ -75,7 +75,7 @@ export function PayoutRoutingPanel({ currency }: Props) {
                 Split what you were paid to earmarked addresses in one transaction,
                 through the public multisender this deployment composes with. Your
                 wallet, your receipts — the batch is atomic and the split becomes
-                part of your own on-chain record.{" "}
+                part of your own on-chain data.{" "}
                 <Link href="/composition#multisender" className="underline">What is this for?</Link>
             </p>
             <div className="space-y-2">

@@ -87,7 +87,7 @@ export function RegistryCountLink({ family }: { family: RegistryFamily }) {
                         <code>{scaffolding.registry}</code> and can be reconstructed
                         programmatically with <code>reconstructDiscovery()</code> from{" "}
                         <code>@figaro-protocol/sdk</code> &mdash; the call, and the deployment
-                        record it takes its addresses from, are in the{" "}
+                        data it takes its addresses from, are in the{" "}
                         <a href={SDK_README} target="_blank" rel="noopener noreferrer" className="underline">
                             SDK README
                         </a>

@@ -260,7 +260,7 @@ export function OrderTimelineView({ processId }: Props) {
                     className="rounded border border-default px-4 py-2 text-ink-body hover:bg-subtle"
                     data-testid="link-audit"
                 >
-                    View audit record
+                    View audit data
                 </Link>
                 {isResolved && (
                     <Link

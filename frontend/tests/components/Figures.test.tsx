@@ -457,7 +457,7 @@ describe("LayeredDefenseFigure", () => {
         render(<LayeredDefenseFigure />);
         expect(screen.getByText("1 · The chain")).toBeInTheDocument();
         expect(screen.getByText("5 · Ordinary courts")).toBeInTheDocument();
-        expect(screen.getByText(/record only below this line/)).toBeInTheDocument();
+        expect(screen.getByText(/data only below this line/)).toBeInTheDocument();
     });
 
     it("renders a citing surface's own numbering and boundary note when passed (parametrized input)", () => {
@@ -554,7 +554,7 @@ describe("OriginationSequenceFigure", () => {
     it("states the accrual period a usage record lands in, not merely that late is bad", () => {
         const { container } = render(<OriginationSequenceFigure />);
         const text = container.textContent ?? "";
-        expect(text).toContain("a record counts in whatever period");
+        expect(text).toContain("a usage counts in whatever period");
         expect(text).toContain("is open when you call — or in none at all, once accrual has closed.");
         expect(text).not.toContain("deferred record is deniable");
     });
@@ -623,7 +623,7 @@ describe("GasCrossoverFigure", () => {
     it("names no network in its accessible description (alt text is not a second register)", () => {
         const { container } = render(<GasCrossoverFigure idPrefix="gd" />);
         const desc = container.querySelector("#gd-desc")?.textContent ?? "";
-        expect(desc).toContain("The two measured resolutions on the public record's chain");
+        expect(desc).toContain("The two measured resolutions on the public chain");
         for (const network of ["Sepolia", "mainnet", "Ethereum", "testnet"]) {
             expect(desc).not.toContain(network);
         }

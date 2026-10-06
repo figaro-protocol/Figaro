@@ -83,9 +83,9 @@ export function CheckoutView({ sellerAddress }: Props) {
     const chainId = useChainId();
     const publicClient = usePublicClient();
     // A tamper-check for the buyer: the sha256 of the on-chain addresses this
-    // build will transact against, recomputable from the canonical record.
+    // build will transact against, recomputable from the canonical deployment record.
     // Shown off the local development chain only, whose per-run addresses have
-    // no canonical record to check against.
+    // no canonical deployment record to check against.
     const deploymentFp = useMemo(() => deploymentFingerprint(), []);
     const { compose } = useCompositionActions();
     const { catalogues: sellerCatalogues, isLoading: cataloguesLoading } = useRegisteredCatalogues();
@@ -126,7 +126,7 @@ export function CheckoutView({ sellerAddress }: Props) {
     // one token the whole assembly runs in, part of its identity), else the
     // BUYER'S PICK from the seller's accepted array (the social layer — the
     // seller is PAID in the picked token and spends it onward; the pick is
-    // what the commitment records), else the seller's declared default (the
+    // what the commitment carries), else the seller's declared default (the
     // unit of account the catalogue quotes in). None ⇒ undefined — never a
     // coined default (resolved-empty = absence); ordering is gated off below.
     // The pin lives at the ASSEMBLY level of the template (design.scope:

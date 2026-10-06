@@ -15,7 +15,7 @@ import { deriveProcessRecourse } from "@/lib/semantic/processRecourse";
 /**
  * Dispute escalation for the process. In the layered dispute model
  * (on-chain-evidence paper, 1-indexed: Layer 2 bonding + Layer 3 coordination, then the
- * evidentiary record exported to an off-chain forum at Layers 4–5), escalation happens
+ * evidentiary data exported to an off-chain forum at Layers 4–5), escalation happens
  * at the end of a process, so the panel lives here, beside the
  * audit-bundle PDF the forum would receive. Process-scoped: one panel per
  * process — not one per order.
@@ -45,7 +45,7 @@ function ProcessDisputeSection({ processId }: { processId: string }) {
 }
 
 /** The batch universe's own section: relay provenance and the per-check
- *  verdict for every record it published. Separate from the panels above
+ *  verdict for every order it published. Separate from the panels above
  *  because that data is RELAY-sourced and verified, never chain-read. */
 function BatchUniverseSection({ processId }: { processId: string }) {
     const { batch } = useAuditProcessOrders(processId);

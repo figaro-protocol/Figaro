@@ -56,7 +56,7 @@ const FIELDS: HintedFieldDef<
         key: "analystUrl",
         label: "Analyst",
         placeholder: "https://analyst.example.com",
-        hint: "An analyst you run over the public event record, asked free-form questions on the data explorer. Yours can also read the private substance you own or bought; unset means no prompt box, and the explorer's derived views still read straight from the chain.",
+        hint: "An analyst you run over the public event data, asked free-form questions on the data explorer. Yours can also read the private substance you own or bought; unset means no prompt box, and the explorer's derived views still read straight from the chain.",
     },
 ];
 

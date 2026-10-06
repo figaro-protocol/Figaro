@@ -83,7 +83,7 @@ const SPEC_DESC =
     "commit plus its share of a resolve — because it never amortizes. The " +
     "batch path is a falling curve: about 333,000 gas of fixed proof " +
     "verification divided by the number of positions, plus about 26,500 per " +
-    "position. The two measured resolutions on the public record's chain sit at " +
+    "position. The two measured resolutions on the public chain sit at " +
     "two positions each, around 190,000 gas per position — above the direct " +
     "path. The curves cross at about 2.4 net positions, so the third net " +
     "position is the first one at which the batch path is cheaper.";

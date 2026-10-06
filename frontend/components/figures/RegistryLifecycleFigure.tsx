@@ -196,7 +196,7 @@ export function RegistryLifecycleFigure({
                     Both families price entry the same way &mdash; a reclaimable
                     deposit, set per deployment. What differs is what leaving clears:
                     a participant is a live identity, a clause or an assembly is a
-                    permanent published record.
+                    permanent published entry.
                 </>
             }
         >

@@ -8,9 +8,9 @@ import { PinErasureControl } from "@/components/runtime/PinErasureControl";
  *
  * The signed agreement is the highest-PII IPFS artifact. Like the member profile,
  * evidence bundle, and device evidence, it has an erasure affordance: a party
- * erases their pinned copies here — deliberately, once the process's records are
+ * erases their pinned copies here — deliberately, once the process's data are
  * no longer needed. Never automatic: the committed
- * agreement is the Layer-3 dispute record an off-chain forum receives, so it must
+ * agreement is the Layer-3 dispute data an off-chain forum receives, so it must
  * outlive `resolveProcess`.
  *
  * Best-effort by construction: content addressing means this erases only THIS

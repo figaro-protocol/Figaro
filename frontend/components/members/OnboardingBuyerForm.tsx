@@ -138,7 +138,7 @@ export function OnboardingBuyerForm({
             <Card className="p-6 space-y-3 text-sm text-ink-body">
                 <p>
                     Subscribe the assemblies you buy through. Every trade
-                    co-produces records, and the records from your side of a
+                    co-produces data, and the data from your side of a
                     purchase are yours — subscribing an assembly surfaces its
                     data below, where you choose what you offer
                     for sale, to whom, and from when. This step is optional: a

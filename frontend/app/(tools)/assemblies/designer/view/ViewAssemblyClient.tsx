@@ -107,7 +107,7 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
     // Receipt held in local state — persists until the user clicks
     // Continue. Mirrors the member wizard's post-publish pattern.
     // Replaces the prior window.alert(`Published. IPFS: … Tx: …`)
-    // which got dismissed instantly and gave no persistent record.
+    // which got dismissed instantly and gave no persistent receipt.
     const [receipt, setReceipt] = useState<{
         hash: `0x${string}`;
         ipfsURI: string;
@@ -420,7 +420,7 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
 
     // Receipt state: publish succeeded, awaiting the designer's dismissal.
     // Mirrors the member wizard's post-publish receipt: a persistent
-    // record of the tx hash + IPFS URI, not a dismissible alert.
+    // receipt of the tx hash + IPFS URI, not a dismissible alert.
     if (receipt) {
         return (
             <TransactionReceipt

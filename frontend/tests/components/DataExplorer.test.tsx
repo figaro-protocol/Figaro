@@ -76,7 +76,7 @@ describe("DataExplorer — layers name their truth boundary", () => {
         searchParams = "view=market";
         corpusMock.mockReturnValue({ corpus: null, isLoading: false, failed: true });
         render(<DataExplorer />);
-        expect(screen.getByTestId("corpus-failed").textContent).toMatch(/not an empty record/i);
+        expect(screen.getByTestId("corpus-failed").textContent).toMatch(/not empty data/i);
         expect(screen.queryByTestId("market-empty")).toBeNull();
     });
 });

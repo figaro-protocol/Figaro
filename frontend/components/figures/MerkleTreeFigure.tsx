@@ -24,7 +24,7 @@ interface TreeNode {
 }
 
 // One merkle tree, drawn as a tree: leaves at the top, pairwise hash nodes
-// below, one root at the bottom — the direction the record travels: terms,
+// below, one root at the bottom — the direction the data travels: terms,
 // hashed pair by pair, down to the single fingerprint the chain holds.
 // Reusable by design — pages draw several trees side by side; give each
 // instance its own idPrefix.

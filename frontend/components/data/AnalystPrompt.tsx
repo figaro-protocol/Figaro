@@ -74,7 +74,7 @@ export function AnalystPrompt() {
                     Answered by the analyst at <code className="font-mono">{endpoint}</code>
                     {status?.syncedToBlock ? `, synced to block ${status.syncedToBlock}` : ""}
                     {status?.prompt?.model ? `, model ${status.prompt.model}` : ""}. It reads the
-                    same public record this page does, holds no key, signs nothing and writes
+                    same public data this page does, holds no key, signs nothing and writes
                     nothing. Point this at{" "}
                     <Link href="/members/edit/endpoints" className="underline hover:text-ink-heading">
                         your own analyst
