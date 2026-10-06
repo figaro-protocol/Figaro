@@ -506,7 +506,7 @@ describe("buildUsageClaims", () => {
         expect(modalityClaim.order.agreement_hash).toBe(order.agreementHash);
     });
 
-    // Not an optimisation. `applyBatchAccrual` reverts `ClauseOrAssemblyExcluded` and
+    // Not an optimization. `applyBatchAccrual` reverts `ClauseOrAssemblyExcluded` and
     // takes the ENTIRE batch with it — every other party's resolution included.
     it("drops excluded clauses or assemblies, because one would revert the whole batch", () => {
         const claims = buildUsageClaims(order, agreementWith([modalities, commerce]), {
