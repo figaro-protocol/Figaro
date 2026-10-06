@@ -82,7 +82,7 @@ export default function Faq() {
              *  derived there. */}
             <MarketingSection title="Before your first real trade." sectionId="before-you-send">
                 <p className="text-base text-ink-body leading-relaxed mb-5">
-                    Sixteen things worth having answered before a first commitment. Every line is the short form; the answer that owns it in full &mdash; with its residual risk &mdash; is one link away. The unfavourable answers are on it too, in the same list as the rest.
+                    Sixteen things worth having answered before a first commitment. Every line is the short form; the answer that owns it in full &mdash; with its residual risk &mdash; is one link away. The unfavorable answers are on it too, in the same list as the rest.
                 </p>
                 <ul className="space-y-3 text-base text-ink-body mb-5 ml-6">
                     <li>&mdash; <strong className="text-ink-heading font-medium">Has the code been audited?</strong> Audit in progress; alongside it, seven independent verification benches and a frozen surface (<Link href="/security" className="text-ink-heading font-medium hover:underline">the full answer</Link>).</li>
