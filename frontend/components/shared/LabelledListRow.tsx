@@ -23,7 +23,7 @@ const WIDTH_CLASS: Record<NonNullable<LabelledListRowProps["labelWidth"]>, strin
 /**
  * Reusable two-column list row: a mono-styled label on the left, prose on
  * the right. Used by `/spec` (subpaths, events, external surfaces) and
- * any other reference page that enumerates a labelled list. Caller wraps
+ * any other reference page that enumerates a labeled list. Caller wraps
  * rows in a `<ul>`.
  */
 export function LabelledListRow({
