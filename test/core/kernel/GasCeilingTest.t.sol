@@ -8,8 +8,8 @@ import "src/mocks/MockPermitToken.sol";
 
 /// @title GasCeilingTest — resolveProcess per-order gas regression guard
 /// @notice The canonical per-order resolve cost (`RESOLVE_GAS_PER_ORDER`) is the
-///         ALL-IN figure measured on REAL Anvil transaction receipts:
-///         `resolveProcess(N)` costs `~38,000 + ~23,000·N` gas. A resolve is its
+///         ALL-IN figure measured on REAL post-fork Sepolia receipts:
+///         `resolveProcess(N)` costs `~73,000 + ~29,800·N` gas. A resolve is its
 ///         own transaction, so each order's distinct `orderStatus`/balance slots
 ///         pay COLD access, and the order's calldata is charged at the tx level.
 ///         This in-process test CANNOT reproduce that all-in number — it commits
@@ -33,13 +33,14 @@ contract GasCeilingTest is Test {
     uint256 internal constant INITIAL_BALANCE = 1_000_000 ether;
 
     // ── Per-order gas anchors (mirror frontend/lib/shared/chainGasCeilings.ts) ──
-    // Measured on real Anvil transaction receipts: resolveProcess(N)
-    // = ~38,000 + ~23,000·N (all-in, cold per-tx); a sub-order commit is ~144k
-    // (root ~235k). `scripts/lint-chain-gas.sh` asserts byte-equality with the TS
-    // module — if you bump one, bump both.
-    uint256 internal constant RESOLVE_GAS_PER_ORDER = 23_000;
-    uint256 internal constant COMMIT_GAS_PER_ORDER = 144_000;
-    uint256 internal constant RESOLVE_FIXED_OVERHEAD = 38_000;
+    // Measured on real transaction receipts: resolveProcess(N)
+    // = ~73,000 + ~29,800·N (all-in, cold per-tx, measured on live
+    // post-Glamsterdam Sepolia receipts — a pre-fork local EVM prices lower);
+    // a sub-order commit is ~382k (root ~794k). `scripts/lint-chain-gas.sh`
+    // asserts byte-equality with the TS module — if you bump one, bump both.
+    uint256 internal constant RESOLVE_GAS_PER_ORDER = 30_000;
+    uint256 internal constant COMMIT_GAS_PER_ORDER = 383_000;
+    uint256 internal constant RESOLVE_FIXED_OVERHEAD = 73_000;
 
     function setUp() public {
         buyer = vm.addr(BUYER_KEY);
@@ -140,8 +141,8 @@ contract GasCeilingTest is Test {
     ///         all-in RESOLVE_GAS_PER_ORDER because storage is pre-warmed by the
     ///         commits and calldata is charged at the tx level, not in the call).
     ///         If this band breaks, the resolve loop changed — RE-MEASURE the
-    ///         all-in cost on Anvil receipts and update RESOLVE_GAS_PER_ORDER +
-    ///         chainGasCeilings.ts in lockstep.
+    ///         all-in cost on live post-fork receipts and update
+    ///         RESOLVE_GAS_PER_ORDER + chainGasCeilings.ts in lockstep.
     function test_Gas_resolveExecutionMarginal() public {
         uint256 g50 = _resolveExecGas(50, 0x510000);
         uint256 g100 = _resolveExecGas(100, 0x520000);

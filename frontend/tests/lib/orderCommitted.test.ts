@@ -66,7 +66,7 @@ describe("commitSignedOrder — resolve-cap guard", () => {
     });
 
     it("refuses the commit that would make the process unresolvable — before broadcasting", async () => {
-        const client = capableClient(1237n); // 30M chain cap = 1237
+        const client = capableClient(947n); // 30M chain cap = 947
         const commit = vi.fn(async () => TX_HASH);
         await expect(
             commitSignedOrder({ payload: payloadFor(PROCESS_ID), commit, publicClient: client }),

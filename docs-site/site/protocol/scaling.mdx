@@ -22,7 +22,7 @@ What follows for a builder, mechanically:
 
 ## Depth is already solved — multi-process composition
 
-Depth (a single process's order count) is bounded by gas: `resolveProcess` iterates every commitment, so the ceiling scales with the block gas limit — on the order of ~1,240 orders at a 30M-gas limit, ~8,260 at a 200M-gas limit; the SDK reads the live limit, and no figure here is mainnet-stable. Practical assemblies stay well below it. Where more depth is wanted, an order in process A roots process B, each process linear and within the ceiling — an existing `FigaroCore` property, not a layer to build. `FigaroCore` sees only linear process chains; topology lives off-chain.
+Depth (a single process's order count) is bounded by gas: `resolveProcess` iterates every commitment, so the ceiling scales with the block gas limit — on the order of ~950 orders at a 30M-gas limit, ~6,330 at a 200M-gas limit; the SDK reads the live limit, and no figure here is mainnet-stable. Practical assemblies stay well below it. Where more depth is wanted, an order in process A roots process B, each process linear and within the ceiling — an existing `FigaroCore` property, not a layer to build. `FigaroCore` sees only linear process chains; topology lives off-chain.
 
 The batch path solves the other constraint, **throughput** — many concurrent processes competing for block space — by moving execution off-chain and landing only the proven net effect.
 

@@ -1,7 +1,7 @@
 # Scaling Strategy
 
 Two resolution paths, one set of rules — `FigaroCore`'s. The direct path — `FigaroCore`'s atomic
-`resolveProcess`, per-process ceiling ~1,240 orders at the 30M gas limit, ~8,260 at Glamsterdam's 200M (the ceiling scales with the block gas limit; the SDK reads it live) — is
+`resolveProcess`, per-process ceiling ~950 orders at the 30M gas limit, ~6,330 at Glamsterdam's 200M (the ceiling scales with the block gas limit; the SDK reads it live) — is
 the always-available floor. The batch path is the throughput tier beside it: a
 Rust mirror of `FigaroCore` plus a generic clause engine (`prover/lib`,
 `prover/clause`) executes many `FigaroCore` transitions off-chain, an SP1 guest
@@ -44,8 +44,8 @@ Scaling involves two distinct constraints. Do not conflate them.
 cheaper execution — the batch path below.
 
 **Depth**: single-process order count bounded by gas. `resolveProcess`
-iterates every commitment in the process (~23k gas per order, all-in), so at a
-30M gas limit the ceiling is ~1,240 orders; practical assemblies stay well
+iterates every commitment in the process (~30k gas per order, all-in, measured
+on live post-fork receipts), so at a 30M gas limit the ceiling is ~950 orders; practical assemblies stay well
 below it (50–100). Depth is already solved by multi-process composition — an
 order in process A roots process B, each process linear and within the
 ceiling. This is an existing `FigaroCore` property, not a scaling layer to build.
@@ -192,9 +192,9 @@ by token transfers, not `FigaroCore` logic.
 
 | Step | Gas | Notes |
 |---|---|---|
-| `commit()` execution | ~235k (root) / ~144k (sub) | ECDSA recovery × 2, storage writes, 2–4 token transfers |
+| `commit()` execution | ~794k (root) / ~382k (sub) | ECDSA recovery × 2, storage writes, 2–4 token transfers |
 | Transaction base cost | 21k | per-transaction overhead |
-| `resolveProcess()` per order | ~12.5k marginal / ~23k all-in | hashStruct + SLOAD + 2 safeTransfer + SSTORE + event |
+| `resolveProcess()` per order | ~12.5k warm-exec marginal / ~30k all-in | hashStruct + SLOAD + 2 safeTransfer + SSTORE + event |
 | **Total per order** | **~190k (sub) – ~257k (root)** | across 2+ separate transactions |
 
 > **Which number to quote.** The rows are ranges because a ROOT commit costs
@@ -229,10 +229,11 @@ path but one net position on the batch path. Netting is the batch path's
 structural advantage.
 
 **Why it is not "half of FigaroCore."** A naive comparison of the batch
-verifier's ~1,130-position ceiling against `resolveProcess`'s ~1,240-order
-ceiling is misleading: the 1,240 figure measures only the resolve step — the
-cheapest part of the direct lifecycle. The ~144k-gas sub-order `commit()`
-calls that precede those resolutions consume ~179M gas across 1,240 separate
+verifier's ~1,130-position ceiling (a pre-fork figure, re-derived by the
+batch-cap measurement task) against `resolveProcess`'s ~950-order
+ceiling is misleading: the 950 figure measures only the resolve step — the
+cheapest part of the direct lifecycle. The ~382k-gas sub-order `commit()`
+calls that precede those resolutions consume ~363M gas across 950 separate
 transactions. The batch path eliminates all of that: every commit, resolution,
 and attestation runs off-chain inside the prover, and only the net effects
 land on-chain.
@@ -241,9 +242,9 @@ land on-chain.
 
 | Path | Ceiling | Unit | Per-unit gas |
 |---|---|---|---|
-| Direct `commit()` | ~208 orders | per block | ~144k/order (sub) |
-| Direct `resolveProcess()` | ~1,240 orders | single call | ~23k/order (all-in) |
-| Batch `settleBatch()` | ~1,130 positions | single call | ~26.5k/position |
+| Direct `commit()` | ~74 orders | per block | ~382k/order (sub) |
+| Direct `resolveProcess()` | ~950 orders | single call | ~30k/order (all-in) |
+| Batch `settleBatch()` | ~1,130 positions (pre-fork figure) | single call | ~26.5k/position (pre-fork) |
 
 The correct comparison is total lifecycle cost: ~167k gas per order (direct)
 against ~26.5k per net position (batch) — roughly **6× cheaper** per resolved

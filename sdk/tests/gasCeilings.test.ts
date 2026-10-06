@@ -27,13 +27,13 @@ function stubClient(activeOrderCount: bigint, gasLimit: bigint): ResolveCapReade
 }
 
 describe("maxOrdersResolvableForGasLimit", () => {
-    it("derives the documented ~1,240-order ceiling from a 30M block", () => {
-        // (30M × 95% − 38k) ÷ 23k = 1,237 — the FigaroCore docstring's "~1,240".
-        expect(maxOrdersResolvableForGasLimit(MAINNET_GAS_LIMIT)).toBe(1237);
+    it("derives the documented ~950-order ceiling from a 30M block", () => {
+        // (30M × 95% − 73k) ÷ 30k = 947 — the post-fork constants' "~950".
+        expect(maxOrdersResolvableForGasLimit(MAINNET_GAS_LIMIT)).toBe(947);
     });
 
     it("scales with the chain's gas limit rather than a hardcoded cap", () => {
-        expect(maxOrdersResolvableForGasLimit(60_000_000n)).toBeGreaterThan(2400);
+        expect(maxOrdersResolvableForGasLimit(60_000_000n)).toBeGreaterThan(1800);
     });
 
     it("returns 0 when the budget cannot cover the fixed overhead", () => {
@@ -43,24 +43,24 @@ describe("maxOrdersResolvableForGasLimit", () => {
 
 describe("maxCommitsLandableForGasLimit", () => {
     it("derives the per-block commit landing rate", () => {
-        // 30M × 95% ÷ 144k = 197
-        expect(maxCommitsLandableForGasLimit(MAINNET_GAS_LIMIT)).toBe(197);
+        // 30M × 95% ÷ 383k = 74
+        expect(maxCommitsLandableForGasLimit(MAINNET_GAS_LIMIT)).toBe(74);
     });
 });
 
 describe("maxOrdersResolvablePerProcess", () => {
     it("reads the live block gas limit", async () => {
         const client = stubClient(0n, MAINNET_GAS_LIMIT);
-        await expect(maxOrdersResolvablePerProcess(client)).resolves.toBe(1237);
+        await expect(maxOrdersResolvablePerProcess(client)).resolves.toBe(947);
         expect(client.getBlock).toHaveBeenCalledWith({ blockTag: "latest" });
     });
 });
 
 describe("readProcessResolveCapacity", () => {
     it("combines FigaroCore's activeOrderCount with the chain ceiling", async () => {
-        const client = stubClient(1200n, MAINNET_GAS_LIMIT);
+        const client = stubClient(900n, MAINNET_GAS_LIMIT);
         const capacity = await readProcessResolveCapacity(client, CORE, PROCESS_ID);
-        expect(capacity).toEqual({ activeOrderCount: 1200, cap: 1237, remaining: 37 });
+        expect(capacity).toEqual({ activeOrderCount: 900, cap: 947, remaining: 47 });
         expect(client.readContract).toHaveBeenCalledWith(
             expect.objectContaining({ address: CORE, functionName: "processes", args: [PROCESS_ID] }),
         );
@@ -88,12 +88,12 @@ describe("assertOrderFitsResolveCap", () => {
     });
 
     it("passes the LAST order that still fits (activeOrderCount + 1 === cap)", async () => {
-        const client = stubClient(1236n, MAINNET_GAS_LIMIT);
+        const client = stubClient(946n, MAINNET_GAS_LIMIT);
         await expect(assertOrderFitsResolveCap(client, CORE, PROCESS_ID)).resolves.toBeUndefined();
     });
 
     it("refuses the order that would make the process unresolvable", async () => {
-        const client = stubClient(1237n, MAINNET_GAS_LIMIT);
+        const client = stubClient(947n, MAINNET_GAS_LIMIT);
         await expect(assertOrderFitsResolveCap(client, CORE, PROCESS_ID)).rejects.toThrow(
             /permanently unresolvable/,
         );

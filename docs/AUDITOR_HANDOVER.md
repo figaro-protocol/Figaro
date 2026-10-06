@@ -544,9 +544,13 @@ Stated so the review does not spend hours finding them.
    revert `ERC20InsufficientAllowance` before the allowance the page has
    just set is read back. A timing fault in the tests, not in the contracts;
    none failed.
-5. **Gas figures predate the chain's latest fork.** The per-order gas constants
-   the SDK carries were measured before Sepolia's fork of 2026-09-28; accepted
-   risk 2's ceiling is to be re-measured on it.
+5. **The batch path's per-position gas figure is pre-fork.** The direct
+   path's per-order constants are measured on live post-fork Sepolia
+   receipts against the deployed kernel (resolve ~73,000 + ~29,800·N;
+   sub-order commit 382,032, root 793,549 — `sdk/src/gasCeilings.ts` carries
+   the provenance); the batch verifier's ~26.5k/position and its ~1,130-position
+   ceiling are still pre-fork figures, re-derived when enough post-fork
+   `settleBatch` receipts accumulate (three stand so far).
 6. **The incident procedure's redeploy leg is rehearsed on Sepolia; the full
    procedure is not.** The counter↔verifier pair was redeployed on live
    Sepolia from a clean worktree at `audit-2026-10b` — fork rehearsal first,

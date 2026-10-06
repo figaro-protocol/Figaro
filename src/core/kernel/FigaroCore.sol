@@ -239,10 +239,10 @@ contract FigaroCore is EIP712, ReentrancyGuard {
     ///         this process cannot be resolved through the contract.
     ///         Use social recovery or multi-sig for the buyer role.
     ///
-    ///         GAS CEILING: Each order costs ~23k gas to resolve
+    ///         GAS CEILING: Each order costs ~30k gas to resolve
     ///         (struct hash, cold SLOAD, two ERC-20 transfers, SSTORE,
     ///         LOG + the order's calldata — measured all-in on real
-    ///         transaction receipts; resolve cost ~= 38,000 + 23,000*N).
+    ///         post-Glamsterdam receipts; resolve cost ~= 73,000 + 29,800*N).
     ///         The maximum number of orders per process therefore varies
     ///         with the network's block gas limit: clients derive it from
     ///         the live limit, never from a fixed number. The ceiling is
