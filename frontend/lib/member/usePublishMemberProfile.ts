@@ -4,8 +4,9 @@
  * usePublishMemberProfile — atomic publish flow for the member
  * wizard's final step. Mirrors `usePublishAssembly` in shape:
  *
- *   1. Pin the catalogue document to IPFS (skipped if a cached
- *      `cachedCatalogueURI` is supplied — useful on retry).
+ *   1. Pin the catalogue document to IPFS (content-addressed: the same
+ *      items always pin to the same URI, so a retry costs nothing and a
+ *      changed item always yields a new one).
  *   2. Build the profile document with the catalogue URI embedded.
  *   3. Pin the profile document to IPFS.
  *   4. Read the on-chain `registrationDeposit` AND the wallet's
@@ -60,10 +61,6 @@ export interface PublishMemberInput {
     unitSystem?: UnitSystem;
     /** Subject wallet — used as the catalogue's `subjectAddress`. */
     wallet: `0x${string}`;
-    /** Idempotency cache: if the previous publish attempt pinned the
-     *  catalogue but failed at the on-chain step, the caller can pass
-     *  the prior URI to skip re-pinning. */
-    cachedCatalogueURI?: string;
 }
 
 export interface PublishMemberOutcome {
@@ -112,18 +109,14 @@ export function usePublishMemberProfile() {
             throw new Error("Catalogue is empty — add at least one item before publishing.");
         }
 
-        // (a) Pin the catalogue document, unless a cached URI was passed.
-        let catalogueURI = input.cachedCatalogueURI;
-        if (!catalogueURI) {
-            const catalogue: MemberCatalogueMetadata = {
-                subjectAddress: input.wallet,
-                items: input.items,
-                version: "1.0.0",
-                unitSystem: input.unitSystem,
-            };
-            const cataloguePin = await publishMemberCatalogue(catalogue);
-            catalogueURI = cataloguePin.uri;
-        }
+        // (a) Pin the catalogue document — always from the items in hand.
+        const catalogue: MemberCatalogueMetadata = {
+            subjectAddress: input.wallet,
+            items: input.items,
+            version: "1.0.0",
+            unitSystem: input.unitSystem,
+        };
+        const catalogueURI = (await publishMemberCatalogue(catalogue)).uri;
 
         // (b) Build + validate the profile document with the catalogueURI embedded.
         const profile: MemberProfileMetadata = {

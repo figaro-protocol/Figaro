@@ -33,7 +33,7 @@ import { usePublishMemberProfile } from "@/lib/member/usePublishMemberProfile";
  * re-reads from localStorage.
  *
  * Publish is one user action; three serial operations under the hood:
- * (a) pin catalogue to IPFS (cached on retry), (b) pin profile JSON
+ * (a) pin catalogue to IPFS, (b) pin profile JSON
  * with the catalogue URI embedded, (c) dispatch
  * `MembersRegistry.register(profileURI)` (first-time) or
  * `updateProfile(profileURI)` (returning member). On success the
@@ -152,10 +152,8 @@ export function OnboardingReview() {
                 items,
                 unitSystem: state.catalogue?.unitSystem,
                 wallet: address,
-                cachedCatalogueURI: state.publishedCatalogueURI,
             });
             update({
-                publishedCatalogueURI: outcome.catalogueURI,
                 publishedProfileURI: outcome.profileURI,
             });
             setReceipt(outcome);

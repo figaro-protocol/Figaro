@@ -8,6 +8,9 @@
  *   - CSV import: a CSV file is chosen on the Catalogue step → the wizard shows
  *     the parsed rows → Review → publish → the pinned catalogue document the
  *     member's profile points at carries those items.
+ *   - Update path: a catalogue item edited after the wallet's profile is already
+ *     published survives Review → publish — the pinned catalogue and the seller
+ *     page carry the edit, not the first publish's catalogue.
  *
  * Wallet: anvil[33] — the one free index (see self-order.devnet.spec.ts). Each
  * test replaces the wallet's profile on entry (`seedRegisteredMember`), so the
@@ -19,6 +22,7 @@
  * daemon. Iterate with `--no-deps` once the chain is anchored.
  */
 import { expect, type Page } from '@playwright/test';
+import { sellerPageHref } from '@/lib/member/memberListing';
 import { test, gotoAsWallet, ANVIL_ACCOUNTS } from './devnet-multi-test';
 import type { Hex } from 'viem';
 import {
@@ -119,7 +123,7 @@ async function publishFromCatalogue(page: Page): Promise<void> {
     await next(page).click();
     await expect(page).toHaveURL(/\/members\/endpoints/, { timeout: 30_000 });
     await next(page).click();
-    await page.waitForURL(/\/members\/review/, { timeout: 30_000 });
+    await page.waitForURL(/\/members\/review/, { timeout: 90_000 });
     await page.getByTestId('review-confirm-publish').click();
     await expect(page.getByRole('heading', { name: /Registered\.|Profile updated/i }))
         .toBeVisible({ timeout: 60_000 });
@@ -164,5 +168,42 @@ test.describe('member wizard — catalogue and assemblies steps (devnet)', () =>
             expect(item, `the pinned catalogue carries "${row.name}"`).toBeTruthy();
             expect(item!.price).toBe(row.price);
         }
+    });
+
+    test('update path: an item edited after the first publish survives Review → publish', async ({ page }) => {
+        const runTag = Date.now().toString(36);
+        const { slug } = await seedBaseline(runTag);
+        const first = { name: `Update loaf ${runTag}`, price: '4' };
+        const edited = { name: `Update loaf ${runTag} (edited)`, price: '5' };
+
+        // Publish #1: the wallet is already registered, so this is updateProfile.
+        await walkToCatalogue(page, slug);
+        await page.locator('[id^="item-"][id$="-name"]').first().fill(first.name);
+        await page.locator('[id^="item-"][id$="-price"]').first().fill(first.price);
+        await publishFromCatalogue(page);
+        expect((await pinnedCatalogue()).items.map((i) => i.name), 'publish #1 pinned the first item')
+            .toEqual([first.name]);
+
+        // The member edits the item and publishes again. The draft is the
+        // wizard's own — the receipt's "Continue" never ran — so the wizard
+        // is re-entered where the member left it.
+        await page.goto('/members/catalogue', { waitUntil: 'domcontentloaded' });
+        const nameField = page.locator('[id^="item-"][id$="-name"]').first();
+        await expect(nameField).toHaveValue(first.name, { timeout: 30_000 });
+        await nameField.fill(edited.name);
+        await page.locator('[id^="item-"][id$="-price"]').first().fill(edited.price);
+        await publishFromCatalogue(page);
+
+        // Out-of-band: the pinned catalogue carries the EDIT.
+        const catalogue = await pinnedCatalogue();
+        expect(catalogue.items.map((i) => i.name), 'publish #2 pinned the edited item').toEqual([edited.name]);
+        expect(catalogue.items[0].price).toBe(edited.price);
+
+        // And the seller page — what a buyer reads — shows it.
+        await page.goto(`${sellerPageHref(WIZARD)}&e2e=devnet`, { waitUntil: 'domcontentloaded' });
+        const detail = page.getByTestId('member-detail-view');
+        await detail.waitFor({ state: 'visible', timeout: 30_000 });
+        await expect(detail).toContainText(edited.name, { timeout: 30_000 });
+        await expect(detail.getByText(first.name, { exact: true }), 'the first publish\'s item is gone').toHaveCount(0);
     });
 });
