@@ -359,7 +359,7 @@ separately rule transferability out:
 
 1. **Single-buyer invariant**. A Figaro process has one buyer at
    the root, and every order in the process carries that same buyer on its
-   buyer side. There is no `FigaroCore` mechanism to fork the buyer (creating
+   buyer side. `FigaroCore` has no mechanism to fork the buyer (creating
    two buyer-roots) or substitute the buyer (changing the orderHash). A
    "transfer of buyer-side title" mid-process has no representation in the
    `processes` mapping.

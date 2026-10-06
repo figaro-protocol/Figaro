@@ -87,9 +87,7 @@ export interface PendingPreview {
  * Thrown when a confirmation is requested while another is still open. The gate
  * is a singleton (one modal at a time), so an overlapping request cannot be
  * shown — but it is NOT a user cancel, and a caller must never surface it as
- * one. Conflating the two is the round-7 "Confirm & sign vanished, no order
- * recorded" defect: an occupied gate answered a fresh checkout with the same
- * `false` a cancel produces, so the order was dropped under a misleading
+ * one. Surfaced as one, the order disappears under a misleading
  * "Signing cancelled by user."
  */
 export class SignConfirmationBusyError extends Error {

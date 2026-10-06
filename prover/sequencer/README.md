@@ -235,7 +235,7 @@ All errors are structured JSON: `{ "error": "<reason>" }`.
   file, and make that file a relay's `STATE_PATH` only when the header's root
   is the verifier's `stateRoot` (`cast call <verifier> "stateRoot()"`). A
   relay refuses to start on a state whose root is not the verifier's, but a
-  state file written over is gone — and it may have been the only copy.
+  state file written over is lost, and it may have been the only copy.
   Nothing in it is private — it is derived from the signed operations the
   publication routes serve.
 - `GET /health` — liveness + bounded counts:

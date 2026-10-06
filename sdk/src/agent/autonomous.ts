@@ -123,7 +123,7 @@ export interface UsageRecordingReport {
      *  certain to revert. At the reference genesis the set is the provenance
      *  clause alone; `figaro-commerce` and `figaro-topology` earn. */
     excluded: Hex[];
-    /** Per-leg failures: a closed accrual, a seller whose stake is no longer
+    /** Per-leg failures: a closed accrual, a seller whose stake is not
      *  live, a key another caller recorded first. */
     failures: string[];
 }

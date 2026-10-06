@@ -220,7 +220,7 @@ test("the signer's directory is never writable; its socket stays connectable", {
         }
         assert.equal(fs.readFileSync(journal, "utf-8"), entry, "the journal changed");
         assert.equal(fs.readFileSync(audit, "utf-8"), '{"allow":true}\n', "the audit log changed");
-        assert.ok(fs.existsSync(socket), "the socket is gone");
+        assert.ok(fs.existsSync(socket), "the socket is absent");
         assert.ok(!fs.existsSync(`${signerDir}-moved`), "the directory moved");
     } finally {
         await new Promise((r) => stub.close(r));

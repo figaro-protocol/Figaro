@@ -275,7 +275,7 @@ describe("transaction fee", () => {
 
     it("refuses a quantity it cannot read — the serializer reads more spellings than the gate", () => {
         // Each of these is a 1e15 price per gas to viem's serializer
-        // (`BigInt(v)`), and was dropped by the gate as no cap at all.
+        // (`BigInt(v)`), and the gate must refuse it rather than read it as no cap.
         const hostile: unknown[] = [" 1000000000000000", "1000000000000000 ", "0X38D7EA4C68000",
             "0b1", "0o7", ["1000000000000000"], true, -1, 1.5];
         for (const v of hostile) {

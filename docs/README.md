@@ -60,8 +60,7 @@ decides where any page or section goes:
 
 **`docs/` is not public documentation.** It is the build reference: this folder,
 read by the maintainer and by agents working on Figaro, part of the build
-process. It is never rendered to the public. docs-site does NOT mirror it (the
-mirror that copied `docs/*.md` into the published site is retired); the two never
+process. It is never rendered to the public. docs-site does NOT mirror it; the two never
 touch.
 
 **docs-site is the public technical manual**, written for an outsider who builds

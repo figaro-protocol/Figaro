@@ -155,7 +155,7 @@ for (const s of skipped) {
 const settled = await eventsChunked({ address: record.batchVerifier, abi: verifierAbi, eventName: "BatchSettled", fromBlock: windowFrom, toBlock: head });
 notes.push(`${settled.length} batch(es) resolved in window, ${skipped.length} accrual(s) skipped`);
 
-// ── Relays: queued work waits no longer than each relay's stated wait ──
+// ── Relays: queued work waits at most each relay's stated wait ──
 
 if (RELAYS.length > 0) {
     const allSettled = await eventsChunked({ address: record.batchVerifier, abi: verifierAbi, eventName: "BatchSettled", fromBlock: deployBlock, toBlock: head });

@@ -278,7 +278,7 @@ a batch built on that state. 7 invariants and 1 action property:
 |---|---|---|
 | Whenever the verifier's root is past genesis, some relay has the state behind it on disk — through a crash at any step, a refused batch, a resend by anyone, a takeover | `StateStore::hold_next` before the send; `StateStore::keep` writes the kept file, then retains the journal entries built on the new root; a refused batch's entry stays held | `Recoverable` |
 | A relay builds only on a root the verifier has held, and its mirror never goes back | `step_to` / `held_state_for` at start and before every batch; the start refusal | `BuiltOnVerifierRoot`, `MirrorOnVerifierRoot`, `KeptOnVerifierRoot`, `JournalBuiltOnVerifierRoot`, `MirrorNeverGoesBack` |
-| A takeover overwrites a kept file only with the verifier's state | NOT relay-enforced: writing `GET /state` over a state file is safe only when its `x-figaro-state-root` header is the verifier's `stateRoot`; the relay refuses to start on a wrong state, but a file it overwrote is gone | carried by **`TakeoverChecksRoot`** — FALSE: a stale served state written over the only copy of the verifier's state |
+| A takeover overwrites a kept file only with the verifier's state | NOT relay-enforced: writing `GET /state` over a state file is safe only when its `x-figaro-state-root` header is the verifier's `stateRoot`; the relay refuses to start on a wrong state, but a file it overwrites is lost | carried by **`TakeoverChecksRoot`** — FALSE: a stale served state written over the only copy of the verifier's state |
 
 Mutation-checked: each of the four switches FALSE (`HoldBeforeSend`,
 `HoldThroughRevert`, `KeepRetainsBuiltOnRoot`, `TakeoverChecksRoot`) fails
