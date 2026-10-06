@@ -687,7 +687,7 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
                 >
                     {/* Guidance leads the form — ink-primary (dark warm) so it
                         stands apart from the amber ink-heading field labels.
-                        No background; the emphasis is colour + size + weight. */}
+                        No background; the emphasis is color + size + weight. */}
                     <p className="mb-4 text-sm font-medium text-ink-primary leading-relaxed">
                         Compose an assembly — a group of bonded orders representing one scenario.
                         Each order is a buyer↔seller relationship; draw the orders and their
