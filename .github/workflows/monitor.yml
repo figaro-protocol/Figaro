@@ -6,7 +6,7 @@ name: Sepolia Monitor
 # incident-review routine reads its log at 11:00 —
 # scripts/monitor-sepolia.mjs reads the contracts' events through a public
 # node and writes the conditions it finds to monitor-alerts.json; each alert
-# becomes an issue labelled `monitor`, assigned to the maintainer, so GitHub's
+# becomes an issue labeled `monitor`, assigned to the maintainer, so GitHub's
 # notification is the alert channel. One issue per condition key: a condition
 # already open gets a comment, not a second issue. A run that cannot read the
 # node fails, and that failure notification is the heartbeat.
