@@ -174,7 +174,7 @@ validator — there is none, by design.
    `withdrawDeposit(idHash)` returns it, de-surfacing the clause for new compositions while
    the binding stays permanent — and it is also the RPGF eligibility gate, so a withdrawn
    deposit ends the author's earnings on that clause. First-write-wins: the id binds
-   permanently. A behaviour change is a NEW `version` (never mutate a registered id).
+   permanently. A behavior change is a NEW `version` (never mutate a registered id).
    There is no reward tag, category or weight to declare — the spec carries no
    `rpgfTag` field and `registerClause` takes no such argument. The 600M retroactive
    reward is UNIFORM: a clause's score is its real usage alone
