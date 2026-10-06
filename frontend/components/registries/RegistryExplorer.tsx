@@ -10,7 +10,7 @@
  * nothing is bundled, and no sort ranks by usage or popularity.
  *
  * The URL query is the state (`lib/registries/explorer.ts` parses and
- * serialises it), so every facet is a permalink and the concept pages can
+ * serializes it), so every facet is a permalink and the concept pages can
  * deep-link a family preselected.
  */
 
