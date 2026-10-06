@@ -86,9 +86,9 @@ function tokeniseRow(line: string): string[] {
  * concatenates lines until quotes balance.
  */
 function splitRows(text: string): string[] {
-    // Normalise line endings.
-    const normalised = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
-    const lines = normalised.split("\n");
+    // Normalize line endings.
+    const normalized = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+    const lines = normalized.split("\n");
     const rows: string[] = [];
     let current = "";
     let inQuotes = false;
