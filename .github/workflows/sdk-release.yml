@@ -16,7 +16,7 @@ name: SDK Release
 # credential from the run's OIDC identity — no stored token. That handshake
 # needs npm ≥ 11.5.1, newer than what the pinned Node bundles, hence the npm
 # upgrade step below. What the maintainer owns (account acts, never automated):
-# the npm organisation holding the `@figaro-protocol` scope, and the trusted-
+# the npm organization holding the `@figaro-protocol` scope, and the trusted-
 # publisher entry itself — if this file is ever renamed, the npm setting must
 # be updated in the same act or publishes fail with an auth error.
 # Provenance and the OIDC handshake require `id-token: write` — the ONLY
