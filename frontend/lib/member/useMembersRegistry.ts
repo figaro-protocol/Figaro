@@ -319,7 +319,7 @@ export function useAgentServices(address: `0x${string}` | undefined) {
             // The on-chain metadataURI is an `ipfs://` URI; the browser
             // cannot fetch that scheme directly — resolve it to the gateway
             // URL first. `resolveContentUri` returns null for an
-            // unrecognised scheme, handled like a missing URI.
+            // unrecognized scheme, handled like a missing URI.
             const url = resolveContentUri(metadataURI);
             if (!url) return NO_AGENT_SERVICES;
             try {
