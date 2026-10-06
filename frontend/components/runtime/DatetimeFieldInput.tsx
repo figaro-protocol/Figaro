@@ -30,7 +30,7 @@ function isoToLocal(iso: string): string {
 function localToIso(local: string): string | undefined {
     if (!local) return undefined;
     // datetime-local yields minute precision (YYYY-MM-DDTHH:mm); some browsers
-    // add seconds when `step` is set. Normalise to seconds + Z either way.
+    // add seconds when `step` is set. Normalize to seconds + Z either way.
     const withSeconds = /T\d{2}:\d{2}:\d{2}$/.test(local) ? local : `${local}:00`;
     return `${withSeconds}Z`;
 }
