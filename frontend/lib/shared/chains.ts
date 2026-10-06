@@ -9,7 +9,7 @@ export const DEVNET_CHAIN_ID = 31337;
  * Local Anvil chain — uses chainId 31337 to exactly match Anvil's default
  * and MetaMask's built-in "Hardhat" entry.  This prevents MetaMask v11+
  * from routing wallet_switchEthereumChain through the Snaps
- * network-management dialog, which would ask the user to authorise sending
+ * network-management dialog, which would ask the user to authorize sending
  * information to third parties.  We name the chain "Localhost" so wallet UI
  * (and this app's own ChainGuard) displays it that way, while the underlying
  * chainId matches the MetaMask preset — no custom chain add required.
