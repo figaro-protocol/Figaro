@@ -450,7 +450,7 @@ async fn batch_loop(
         }
 
         // Funding at batch formation, against the latest block: a commit
-        // whose bonds no longer pull would revert the whole settle. Dropped
+        // whose bonds fail to pull would revert the whole settle. Dropped
         // here it is dead-lettered and re-submittable, never proved.
         let (valid, unfunded) = submitter::filter_funded_commits(funding.as_ref(), valid).await;
         for (p, reason, _) in &unfunded {
