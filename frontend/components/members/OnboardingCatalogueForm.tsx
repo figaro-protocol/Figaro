@@ -399,7 +399,7 @@ export function OnboardingCatalogueForm({
                     Buyers paying in another accepted token see a converted price at commit time.
                 </p>
                 <div className="flex items-center gap-4">
-                    <span className="text-xs font-semibold text-ink-heading uppercase tracking-wide">
+                    <span className="text-xs font-semibold text-ink-heading">
                         Unit system
                     </span>
                     <label className="flex items-center gap-1.5 text-sm cursor-pointer">

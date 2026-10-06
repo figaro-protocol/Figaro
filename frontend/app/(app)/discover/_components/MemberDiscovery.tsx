@@ -118,7 +118,7 @@ export function MemberDiscovery() {
 
             {/* Assembly filter row */}
             <section className="flex flex-wrap gap-2 items-center">
-                <span className="text-xs font-semibold uppercase tracking-wider text-ink-muted mr-1">
+                <span className="text-xs font-semibold text-ink-muted mr-1">
                     Assembly
                 </span>
                 <button

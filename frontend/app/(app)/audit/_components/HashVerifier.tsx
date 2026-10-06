@@ -96,7 +96,7 @@ function HashResult({ computed, expected, label }: {
             className="rounded border border-default bg-subtle p-4 space-y-2"
             data-testid="verify-result"
         >
-            <p className="text-[11px] uppercase font-semibold tracking-wider text-ink-muted">
+            <p className="text-[11px] font-semibold text-ink-muted">
                 {label}
             </p>
             <p className="text-xs font-mono break-all" data-testid="verify-result-computed">{computed}</p>
@@ -336,7 +336,7 @@ function SearchMode() {
             )}
             {hits.length > 0 && (
                 <div className="space-y-2" data-testid="verify-search-results">
-                    <p className="text-[11px] uppercase font-semibold tracking-wider text-ink-muted">
+                    <p className="text-[11px] font-semibold text-ink-muted">
                         {hits.length} match{hits.length > 1 ? "es" : ""}
                     </p>
                     {hits.map((hit, i) => (
@@ -345,7 +345,7 @@ function SearchMode() {
                             className="rounded border border-success/30 bg-success/10 p-4 space-y-1"
                             data-testid={`verify-search-hit-${i}`}
                         >
-                            <p className="text-[10px] uppercase font-semibold tracking-wider text-success-fg">{hit.kind}</p>
+                            <p className="text-[10px] font-semibold text-success-fg">{hit.kind}</p>
                             <p className="text-xs font-semibold text-ink-primary">{hit.label}</p>
                             <p className="text-[11px] text-ink-body">{hit.location}</p>
                         </div>
