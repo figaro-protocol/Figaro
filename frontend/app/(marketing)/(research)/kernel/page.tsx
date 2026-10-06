@@ -41,7 +41,7 @@ export default function Kernel() {
                     <strong className="text-ink-heading">Deterrence, never recovery.</strong> One event refunds a locked bond: the buyer&apos;s resolution, which refunds every bond in the process at once. Any other exit is the attack surface &mdash; whoever could trigger a refund gains a reason to walk away.
                 </li>
                 <li>
-                    <strong className="text-ink-heading">No clock runs on an open process.</strong> Once the bonds are locked nothing expires and nothing times out: the process stays open until the buyer resolves. The one timestamp sits earlier &mdash; a signed order carries a deadline, past which that offer can no longer be committed. So waiting alone never turns a standoff in anyone&apos;s favour.
+                    <strong className="text-ink-heading">No clock runs on an open process.</strong> Once the bonds are locked nothing expires and nothing times out: the process stays open until the buyer resolves. The one timestamp sits earlier &mdash; a signed order carries a deadline, past which that offer can no longer be committed. So waiting alone never turns a standoff in anyone&apos;s favor.
                 </li>
                 <li>
                     <strong className="text-ink-heading">The 2&times; is the mechanism, not a setting.</strong> Both bonds are twice a figure the parties signed &mdash; no multiplier to tune, no discount for a familiar counterparty, no per-party weight.
