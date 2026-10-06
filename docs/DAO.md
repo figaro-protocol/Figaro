@@ -53,7 +53,7 @@ nothing hardcoded:
    crowd, donation, or match-round mechanism: the DAO decides and pays.
 2. **Pay a third party directly** for services rendered — marketing, design,
    audits, anything — as an ordinary token transfer. No protocol involvement
-   and no bond: this is trust-based payment, the same as any organisation
+   and no bond: this is trust-based payment, the same as any organization
    paying an invoice.
 3. **Procure through the protocol as buyer** when the payment should be bonded
    and atomically resolved rather than trusted.
@@ -87,9 +87,9 @@ bounded by caveat enforcers and redeemed through the framework's
 `DelegationManager` to act from the operator's address.
 
 The treasury contract itself can never sign commitments — `FigaroCore` is
-ECDSA-only — so the multisig authorises *upstream*: it pays the operator per
+ECDSA-only — so the multisig authorizes *upstream*: it pays the operator per
 procurement, and through the delegated code it can act from the operator's
-address for `msg.sender`-authorised calls (resolution, recovery) and bound what
+address for `msg.sender`-authorized calls (resolution, recovery) and bound what
 the operator may do, while the operator's own key produces the EIP-712
 signatures.
 
