@@ -158,7 +158,7 @@ payload never published, and a leaf whose substance is for SALE all read identic
 correctly. Absence is never a value to fill in, and never a conclusion that the work did
 not happen.
 
-**3. PROJECT — the graphs, each labelled.**
+**3. PROJECT — the graphs, each labeled.**
 
 ```ts
 import {
