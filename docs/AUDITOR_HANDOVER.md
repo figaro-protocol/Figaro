@@ -547,8 +547,15 @@ Stated so the review does not spend hours finding them.
 5. **Gas figures predate the chain's latest fork.** The per-order gas constants
    the SDK carries were measured before Sepolia's fork of 2026-09-28; accepted
    risk 2's ceiling is to be re-measured on it.
-6. **The incident procedure is written and not rehearsed.** `SECURITY.md`
-   § "Incident response"; its redeploy leg is owed one run on Sepolia.
+6. **The incident procedure's redeploy leg is rehearsed on Sepolia; the full
+   procedure is not.** The counter↔verifier pair was redeployed on live
+   Sepolia from a clean worktree at `audit-2026-10b` — fork rehearsal first,
+   then the broadcast, the record update, and the deployment check with
+   via-IR artifacts at the tag. The run also exercised the procedure's
+   worth: the chain's post-fork gas repricing (~6.8× on these deploys)
+   out-of-gassed the first two attempts at forge's default estimate, and
+   the broadcast landed with the estimator multiplied past it. The
+   disclosure and advisory legs remain unrehearsed.
 7. **The state behind the verifier's root lives off chain.** The verifier
    stores a root. The state it commits to is held by the relay that built the
    last batch (`STATE_PATH`) and published by it (`GET /state`), so a party
@@ -750,7 +757,7 @@ shape, answered from the tree. Each answer names its evidence.
 |---|---|---|---|
 | 1 | Actors, roles, and privileges documented | Yes | The kernel has no privileged role. The two that exist above it, the florin deployer until `renounceDeployerMint` and `FigaroBatchVerifier` as `UsageCounter`'s sole writer, are in `CONTRACTS.md`. |
 | 2 | External services, contracts, and oracles documented | Yes | § "Actors, privileges, and external dependencies" above: one table, with where each is bound and what it is trusted for. There is no oracle. |
-| 3 | Written and tested incident-response plan | Written, not yet rehearsed | `SECURITY.md` § "Incident response": nothing can be paused or upgraded, so the procedure is disclosure, advisory, redeployment at a new address, and propagation of the deployment file. A Sepolia rehearsal of the redeploy leg is owed. |
+| 3 | Written and tested incident-response plan | Written; the redeploy leg rehearsed on Sepolia | `SECURITY.md` § "Incident response": nothing can be paused or upgraded, so the procedure is disclosure, advisory, redeployment at a new address, and propagation of the deployment file. The redeploy leg ran once on live Sepolia (the counter↔verifier pair, from a worktree at the audit tag, checked against the chain with tag artifacts — Known limitation 6); disclosure and advisory stay unrehearsed. |
 | 4 | Best attack paths documented | Yes | `DESIGN_DECISIONS.md`, the public manual's sharp-edges page, § "Behaviors to surface" above. |
 | 5 | Identity verification and background checks on employees | Not applicable | One maintainer. |
 | 6 | A team member with security in their role | Yes | The maintainer. |
@@ -773,7 +780,7 @@ plan has been rehearsed.
 | Category | Rating | What holds it there |
 |---|---|---|
 | Arithmetic | Satisfactory | Checked math throughout, in both languages; one two-line `unchecked` block on `uint64` counters (`UsageCounter.sol:667-670`) carries no inline bound argument. |
-| Auditing | Moderate | Events cover every state change (`renounceDeployerMint` excepted, documented). The watcher runs in CI and the incident procedure is written (`SECURITY.md` § Monitoring, § Incident response); a rehearsal of the redeploy leg is what Satisfactory still needs. |
+| Auditing | Satisfactory | Events cover every state change (`renounceDeployerMint` excepted, documented). The watcher runs in CI, the incident procedure is written, and its redeploy leg is rehearsed on live Sepolia (`SECURITY.md` § Monitoring, § Incident response; Known limitation 6). |
 | Access controls | Satisfactory | Two privileged relations, both immutable, documented, tested (§ "Actors"). |
 | Complexity management | Satisfactory | The functions at or above the rubric's threshold of 11 are `commit` and `settleBatch` (§ "Conventions and measured complexity"), each justified there and in NatSpec; the naming convention is written; the only duplication is the documented mirrors, locked by vectors and fuzz. |
 | Decentralization | Strong | No admin, pause, upgrade, or proxy; every parameter immutable; the direct path always open to a new process beside the batch path; the state behind the batch path's root is published by the relay that holds it (`GET /state`), so any party or a second relay can keep a copy and take over (Known limitation 7 states what remains); immutability proved in CVL. |
