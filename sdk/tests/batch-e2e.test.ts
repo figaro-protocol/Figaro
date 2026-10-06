@@ -159,8 +159,8 @@ function computeGenesisRoot(): Hex {
 function sequencerBinaryPath(): string {
     const repoRoot = path.resolve(import.meta.dirname, "../..");
     // The RELEASE binary: SP1's key setup runs inside the sequencer (the
-    // startup fingerprint check, `--vkey`), seconds optimised and the better
-    // part of an hour unoptimised.
+    // startup fingerprint check, `--vkey`), seconds optimized and the better
+    // part of an hour unoptimized.
     return path.join(repoRoot, "prover", "target", "release", "sequencer");
 }
 
