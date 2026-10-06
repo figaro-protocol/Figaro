@@ -140,7 +140,7 @@ describe("design fills are the composition's identity — the disclosure regime"
         expect(field?.type).toBe("enum");
         if (field?.type !== "enum") return;
         expect(field.values.length, "the regime offers a choice").toBeGreaterThan(1);
-        // The control renders `valueLabels`; an unlabelled value would surface
+        // The control renders `valueLabels`; an unlabeled value would surface
         // to the designer as a raw token.
         for (const value of field.values) {
             expect(field.valueLabels?.[value], `${value} carries a display label`).toBeTruthy();
