@@ -8,6 +8,9 @@
  *   - CSV import: a CSV file is chosen on the Catalogue step → the wizard shows
  *     the parsed rows → Review → publish → the pinned catalogue document the
  *     member's profile points at carries those items.
+ *   - Assemblies step: the rows come in a stable order — the registry's own,
+ *     most recently anchored first — derived here from chain events, held
+ *     through a toggle and a reload.
  *   - Update path: a catalogue item edited after the wallet's profile is already
  *     published survives Review → publish — the pinned catalogue and the seller
  *     page carry the edit, not the first publish's catalogue.
@@ -25,9 +28,12 @@ import { expect, type Page } from '@playwright/test';
 import { sellerPageHref } from '@/lib/member/memberListing';
 import { test, gotoAsWallet, ANVIL_ACCOUNTS } from './devnet-multi-test';
 import type { Hex } from 'viem';
+import { ASSEMBLY_REGISTRY_ABI } from '@figaro-protocol/sdk';
+import { deriveAssemblySlug } from '@/lib/shared/assemblyTemplate';
 import {
     discoverAnchoredAssemblies,
     latestMemberProfileURI,
+    localPublicClient,
     pinJSONToIPFS,
     readLocalDeploymentConfig,
     referenceAssemblySlug,
@@ -84,6 +90,33 @@ async function pinnedCatalogue(): Promise<CatalogueDoc> {
     const profile = await (await fetch(resolveIpfsURI(profileURI!))).json() as { catalogueURI?: string };
     expect(profile.catalogueURI, 'the pinned profile carries a catalogueURI').toMatch(/^ipfs:\/\//);
     return await (await fetch(resolveIpfsURI(profile.catalogueURI!))).json() as CatalogueDoc;
+}
+
+/** The slugs the Assemblies step must list, in the order it must list them,
+ *  from the registry's events alone: every anchored assembly whose stake is
+ *  still held, the most recently anchored first (a block's own logs keep their
+ *  log order). */
+async function expectedAssemblyOrder(): Promise<string[]> {
+    const client = localPublicClient();
+    const config = readLocalDeploymentConfig();
+    const address = (process.env.NEXT_PUBLIC_ASSEMBLY_REGISTRY ?? config.assemblyRegistry) as Hex;
+    const [registered, withdrawn] = await Promise.all([
+        client.getContractEvents({ address, abi: ASSEMBLY_REGISTRY_ABI, eventName: 'AssemblyRegistered', fromBlock: 0n }),
+        client.getContractEvents({ address, abi: ASSEMBLY_REGISTRY_ABI, eventName: 'DepositWithdrawn', fromBlock: 0n }),
+    ]);
+    const gone = new Set(withdrawn.map((e) => String(e.args.compositionHash).toLowerCase()));
+    return registered
+        .filter((e) => !gone.has(String(e.args.compositionHash).toLowerCase()))
+        .map((e, i) => ({ e, i }))
+        .sort((a, b) => Number(b.e.blockNumber! - a.e.blockNumber!) || a.i - b.i)
+        .map(({ e }) => deriveAssemblySlug(e.args.compositionHash as Hex));
+}
+
+/** The slugs the Assemblies step lists right now, top to bottom. */
+async function listedAssemblySlugs(page: Page): Promise<string[]> {
+    const testids = await page.locator('[data-testid^="seller-assembly-row-"]')
+        .evaluateAll((rows) => rows.map((r) => r.getAttribute('data-testid') ?? ''));
+    return testids.map((id) => id.slice('seller-assembly-row-'.length));
 }
 
 const next = (page: Page) => page.getByRole('button', { name: /^Next/ });
@@ -205,5 +238,42 @@ test.describe('member wizard — catalogue and assemblies steps (devnet)', () =>
         await detail.waitFor({ state: 'visible', timeout: 30_000 });
         await expect(detail).toContainText(edited.name, { timeout: 30_000 });
         await expect(detail.getByText(first.name, { exact: true }), 'the first publish\'s item is gone').toHaveCount(0);
+    });
+
+    test('assemblies step: the rows keep the registry\'s order through a toggle and a reload', async ({ page }) => {
+        const { slug } = await seedBaseline(Date.now().toString(36));
+        const expected = await expectedAssemblyOrder();
+        expect(expected.length, 'assemblies are anchored — run populate-test-data').toBeGreaterThan(1);
+
+        await gotoAsWallet(page, WIZARD, '/members/identity?e2e=devnet');
+        await expect(page.locator('#profile-name')).toBeVisible({ timeout: 30_000 });
+        await page.locator('#profile-name').fill(WIZARD_NAME);
+        await page.getByRole('button', { name: /\+ MOCK$/ }).click();
+        await page.locator('input[name="defaultTokenAddress"]').first().check();
+        await next(page).click();
+        await expect(page).toHaveURL(/\/members\/assemblies/, { timeout: 30_000 });
+
+        // Every anchored assembly is a row, in the chain's order — never a
+        // list that waits on its templates to settle into place.
+        const rows = page.locator('[data-testid^="seller-assembly-row-"]');
+        await expect(rows).toHaveCount(expected.length, { timeout: 30_000 });
+        expect(await listedAssemblySlugs(page), 'rows follow the registry order').toEqual(expected);
+
+        // Binding a row does not move it (a selected row stays where it was).
+        const boundRow = page.getByTestId(`seller-assembly-row-${slug}`);
+        await boundRow.locator('input[type="checkbox"]').first().check();
+        await expect(boundRow.locator('input[type="checkbox"]').first()).toBeChecked();
+        expect(await listedAssemblySlugs(page), 'a toggle leaves the order alone').toEqual(expected);
+
+        // A reload restores the draft and the same order.
+        await page.waitForFunction(
+            (needle) => Object.keys(window.localStorage).some((k) => (window.localStorage.getItem(k) ?? '').includes(needle)),
+            slug, { timeout: 15_000 },
+        );
+        await page.reload({ waitUntil: 'domcontentloaded' });
+        await expect(rows).toHaveCount(expected.length, { timeout: 30_000 });
+        await expect(page.getByTestId(`seller-assembly-row-${slug}`).locator('input[type="checkbox"]').first())
+            .toBeChecked({ timeout: 30_000 });
+        expect(await listedAssemblySlugs(page), 'a reload leaves the order alone').toEqual(expected);
     });
 });
