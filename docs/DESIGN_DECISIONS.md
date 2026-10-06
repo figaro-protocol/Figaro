@@ -696,6 +696,33 @@ be carried as a signature, in its minimal sufficient form.
 
 ---
 
+## 23. The public site bundle ships a Pinata pin key — a disposable courtesy, testnet only
+
+**Pattern**: `frontend/lib/shared/ipfsService.ts` inlines
+`NEXT_PUBLIC_IPFS_PIN_SERVICE_JWT` — a scoped Pinata key — into the public
+site bundle, where anyone can extract it. Nothing in the codebase checks the
+key's scope.
+
+**Why it looks wrong**: A credential in a public bundle reads as a leaked
+secret: anyone can pin arbitrary content to the project's Pinata account or
+spend its quota, and a broader key would let a stranger unpin the account's
+content or enumerate its pins.
+
+**Why it is correct**: The key is one of three scoped keys the account keeps
+apart by role — testnet, founder, dao — and only the testnet key ships. Its
+scope, confirmed in the Pinata dashboard, is pinning alone: `pinFileToIPFS`
+and `pinJSONToIPFS` active; unpin, pinList, every other permission, every
+pinning service, every data permission, and every V3 resource inactive. The
+worst a holder can do is pin junk and spend quota on a testnet account.
+Content integrity never rests on the pinning account: every registry read is
+digest-checked against the on-chain anchor (`Anchored<T>` — a read that skips
+the check does not compile), so a hostile pin can serve nothing that
+verifies. The arrangement is testnet-only by ruling: at mainnet, pinning is
+per-party (RELEASE_READINESS Task 6), the account splits by role, and these
+keys are revoked.
+
+---
+
 ## Summary Table
 
 | # | Pattern | Blast radius | Looks wrong because | Is correct because |
@@ -722,3 +749,4 @@ be carried as a signature, in its minimal sufficient form.
 | 20 | Rewards accrual never reverts resolution (skip + try/catch) | reward-path | A silently-droppable reward write looks like lost/manipulable accrual | A reward-tier gate must not unwind resolution-tier trade; a dropped batch is recovered by the next cumulative overwrite or forgone (conservative under-pay); sequencer pre-filters so the catch fires only on the stake-race |
 | 21 | Member-stake gate on the seller of record is retroactive | reward-path | A withdrawal makes resolved-but-unrecorded trades unrecordable — looks like a grief hole | Chain can't see resolve time (`FigaroCore` stores none), so the gate is record-time only; record-at-resolution closes the normal window; residual grief is self-limiting (griefer forfeits own eligibility through period end) |
 | 22 | Batch resolve: nonce-less, deadline-less `ResolveProcess` signature | batch-path | The canonical EIP-712 replay shape | Resolution is terminal and single-shot — the guest's root-chained state rejects a second resolve; the domain pins chain + verifier so the signature travels nowhere; the message authorizes one time-invariant transition, leaving nothing for a nonce to price |
+| 23 | Pinata pin key in the public site bundle | site/pinning | A credential in a public bundle reads as a leaked secret | The testnet key is pin-only (dashboard-confirmed: unpin, list, data and every V3 resource inactive) and disposable; every registry read is digest-checked against the on-chain anchor, so a hostile pin never verifies; testnet only — per-party pinning at mainnet, the keys revoked at the account split |
