@@ -102,7 +102,7 @@ carries each contract's events). Monitoring is a watcher that reads those events
 node on a schedule, keeps its findings off the chain, and raises an alert on
 the conditions below. The watcher is `scripts/monitor-sepolia.mjs`, run daily
 by the `monitor` workflow in `.github/workflows/` against the addresses in
-`deployments/<chainId>.json`; each alert becomes an issue labelled `monitor`,
+`deployments/<chainId>.json`; each alert becomes an issue labeled `monitor`,
 assigned to the maintainer, and a run that cannot read the node, or finds an
 address in the record that holds no code, fails the workflow, which is the
 heartbeat. `scripts/test-monitor.mjs` produces the alerts on a devnet and
