@@ -20,7 +20,7 @@ export const metadata: Metadata = withOg({
 // (`WholeStripFigure`), each frame with the claim it carries as its heading and
 // one fact under it; the two "Composes with" strips; one plain line about the
 // code at the foot. The page states each thing once. Nothing above the foot
-// explains how anything works: certainty is stated as the parties' BEHAVIOUR,
+// explains how anything works: certainty is stated as the parties' BEHAVIOR,
 // never as the bond arithmetic, and every line is in the positive. The six
 // frames are the five parts and the loop: wallets, terms, a process signed and
 // bonded, every seller's payment at once, the evidence, and the count of use
