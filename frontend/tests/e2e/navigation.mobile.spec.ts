@@ -140,7 +140,7 @@ test.describe('Mobile navigation (Pixel 5)', () => {
         await expect(drawer).toBeHidden({ timeout: 5000 });
 
         // A page from BEHIND each doorway. Labels track navLinks.ts (the one nav source): the
-        // invariants page is labelled by its own metadata.title, and the papers
+        // invariants page is labeled by its own metadata.title, and the papers
         // are reached through Working Groups — the corpus is unbounded, so the
         // working-groups page IS the index (no /papers index exists).
         for (const [landing, section, label, href] of [
