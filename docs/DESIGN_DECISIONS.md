@@ -141,9 +141,11 @@ each requires a fresh EIP-712 ECDSA signature from the lost key. The
 delegation must be installed while the key is still held; it cannot be added
 after loss.
 
-**The seller, likewise.** A seller's key loss stalls nothing: only the buyer
-resolves, and resolution pays the seller's address and refunds its bond there,
-whatever became of the key. What the lost key takes is the seller's voice while
+**The seller, likewise.** A seller's key loss stalls nothing on chain: only the
+buyer resolves, and resolution pays the seller's address and refunds its bond
+there, whatever became of the key; without a pre-installed delegation, what
+lands there is unreachable, and a buyer who waits for the seller's attestations
+before resolving waits in vain. What the lost key takes is the seller's voice while
 the process is open: its attestations. The same pre-installed EIP-7702
 delegation answers it. The delegated code can originate `attestAsSeller` from
 the seller's address, and it can authorize another caller through
