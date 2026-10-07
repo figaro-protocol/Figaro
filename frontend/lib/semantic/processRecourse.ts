@@ -26,7 +26,7 @@ import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
  *  job (see the clause model); recourse reads that group, nothing narrower. */
 const RECOURSE_ARTICLE = "dispute-resolution";
 
-/** A dispute-resolution clause a process authored — the clauseId plus its
+/** A dispute-resolution clause a process carries — the clauseId plus its
  *  committed data. Surfaced generically (rendered via `describeClause` at the
  *  edge); the reader never interprets the fields itself. */
 export interface RecourseClause {
@@ -35,9 +35,9 @@ export interface RecourseClause {
 }
 
 /**
- * Derive the dispute-resolution clause(s) a process's orders authored —
+ * Derive the dispute-resolution clause(s) a process's orders carry —
  * array-aware, deduped. Reads every order's committed sections and keeps those
- * whose clause declares the dispute-resolution article. A designer may author
+ * whose clause declares the dispute-resolution article. A designer may compose
  * more than one (e.g. a decentralized-ADR clause + an applicable-law clause),
  * so every distinct one is returned in first-seen order. Named `derive`, not
  * `resolve`, to stay clear of FigaroCore's `resolveProcess` resolve call.
