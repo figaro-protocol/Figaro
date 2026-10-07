@@ -1,6 +1,6 @@
 ---
 title: Designer rewards
-description: The 600M-florin reserve that pays the designers of record for the clauses and assemblies the network actually uses — a uniform meter, a two-sided live ETH stake, and the two on-chain surfaces a designer claims through.
+description: The 600M-florin reserve that rewards the designers of record for the clauses and assemblies the network actually uses — a uniform meter, a two-sided live ETH stake, and the two on-chain surfaces a designer claims through.
 ---
 
 600M florins are reserved for the designers whose clauses and assemblies the network actually uses. The reward is retroactive and it is uniform: a designer earns for real recorded usage alone, and nothing about who they are, what category their work falls in, or how the DAO feels about it enters the meter. Neutrality is achieved by the stake, not by weighting.
@@ -49,7 +49,7 @@ One key is excluded from scoring: `figaro-assembly-provenance`, the leaf whose c
 
 ## How a designer claims
 
-`RpgfMinter` pays from the 600M reserve, pro rata to real recorded usage, one claim per wallet per closed period:
+`RpgfMinter` mints from the 600M reserve, pro rata to real recorded usage, one claim per wallet per closed period:
 
 ```solidity
 function claim(uint8 periodId, bytes32[] calldata clausesOrAssemblies) external;  // RpgfMinter.sol:172
