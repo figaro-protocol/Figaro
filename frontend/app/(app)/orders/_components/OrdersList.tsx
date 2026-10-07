@@ -30,7 +30,7 @@ import { useAccount, useChainId, useWalletClient } from "wagmi";
 import { useViewedWallet } from "@/lib/shared/viewedWallet";
 import { calculateBonds } from "@figaro-protocol/sdk";
 import { formatToken } from "@/lib/shared/utils";
-import { ZERO_ADDRESS } from "@/lib/shared/evm";
+import { ZERO_ADDRESS, hexEqual } from "@/lib/shared/evm";
 import { truncateHex } from "@/lib/shared/formatHex";
 import { formatBlockTimestamp } from "@/lib/shared/formatTimestamp";
 import { Button } from "@/components/ui/Button";
@@ -191,11 +191,19 @@ function ReadyToSubmitCard({ payload, onSubmit, onDismiss, isSubmitting, listing
     );
 }
 
+// The other party on an outbound commitment, read from the connected wallet's
+// side: a seller may originate and relay an order for its buyer to counter-sign,
+// so the wallet that signed first is either party.
+function outboundCounterparty(commitment: CommitmentPayload["commitment"], address: string | undefined): string {
+    return hexEqual(address, commitment.seller) ? commitment.buyer : commitment.seller;
+}
+
 // ── Signed, not yet sent: I signed, the relay has not happened — Send / Discard ──
-function SignedUnsentRow({
-    entry, listings, onSend, onDiscard, sending, error,
+export function SignedUnsentRow({
+    entry, address, listings, onSend, onDiscard, sending, error,
 }: {
     entry: SignedUnsentOrder;
+    address: string | undefined;
     listings: ReadonlyArray<Listing>;
     onSend: () => void;
     onDiscard: () => void;
@@ -204,7 +212,7 @@ function SignedUnsentRow({
 }) {
     const { commitment } = entry.payload;
     const { decimals } = useTokenDecimals(commitment.currency as `0x${string}` | undefined);
-    const counterpartyName = displayNameForAddress(listings, commitment.seller);
+    const counterpartyName = displayNameForAddress(listings, outboundCounterparty(commitment, address));
     return (
         <div className="block rounded-lg border border-default bg-paper p-4" data-testid="order-unsent-row">
             <div className="flex items-start justify-between gap-4">
@@ -241,10 +249,10 @@ function SignedUnsentRow({
 }
 
 // ── Outbound pending row: I signed and relayed, awaiting the counterparty ──
-export function AwaitingAcceptanceRow({ payload, listings, onDismiss }: { payload: CommitmentPayload; listings: ReadonlyArray<Listing>; onDismiss: () => void }) {
+export function AwaitingAcceptanceRow({ payload, address, listings, onDismiss }: { payload: CommitmentPayload; address: string | undefined; listings: ReadonlyArray<Listing>; onDismiss: () => void }) {
     const { commitment } = payload;
     const { decimals } = useTokenDecimals(commitment.currency as `0x${string}` | undefined);
-    const counterpartyName = displayNameForAddress(listings, commitment.seller);
+    const counterpartyName = displayNameForAddress(listings, outboundCounterparty(commitment, address));
     return (
         <div className="block rounded-lg border border-default bg-paper p-4" data-testid="order-pending-row">
             <div className="flex items-start justify-between gap-4">
@@ -531,6 +539,7 @@ export function OrdersList() {
                                     <li key={`unsent-${entry.orderId}`}>
                                         <SignedUnsentRow
                                             entry={entry}
+                                            address={address}
                                             listings={listings}
                                             sending={sendingUnsent === entry.orderId}
                                             error={unsentError[entry.orderId] ?? null}
@@ -549,7 +558,7 @@ export function OrdersList() {
                             <ul className="space-y-3" data-testid="orders-pending">
                                 {visibleOutbound.map(({ payload, index }) => (
                                     <li key={`pending-${index}`}>
-                                        <AwaitingAcceptanceRow payload={payload} listings={listings} onDismiss={() => dismissOutbound(index)} />
+                                        <AwaitingAcceptanceRow payload={payload} address={address} listings={listings} onDismiss={() => dismissOutbound(index)} />
                                     </li>
                                 ))}
                             </ul>
