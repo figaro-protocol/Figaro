@@ -42,6 +42,13 @@ export default function TradePage() {
                     </Link>
                     .
                 </p>
+                <p className="text-base text-ink-body leading-relaxed mt-3">
+                    To sell, or to order with nothing but a wallet, start at{" "}
+                    <Link href="/members" className="text-ink-heading font-medium hover:underline">
+                        Join
+                    </Link>
+                    .
+                </p>
             </MarketingSection>
         </>
     );
