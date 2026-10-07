@@ -14,12 +14,12 @@
  *   3. Validate the merged document via `parseMemberProfileDocument`
  *      so a malformed update fails before it leaves the browser.
  *   4. Pin the new JSON to IPFS.
- *   5. Call `updateProfile(newURI)` on the registry. Deposit and
+ *   5. Call `updateProfile(newURI)` on the registry. Stake and
  *      lock period are not touched (`updateProfile` is the
  *      caller-only metadata-only path, by contract design).
  *   6. After the supersede confirms, best-effort unpin the prior
- *      profile CID and any authored artifact the successor
- *      no longer references (author pins → author erases; the
+ *      profile CID and any published artifact the successor
+ *      no longer references (wallet pins → wallet erases; the
  *      erasure never fails a confirmed save).
  *
  * Hook returns a `save(partial)` function plus progress state. The
@@ -75,7 +75,7 @@ export interface UseUpdateMemberProfileResult {
 export function useUpdateMemberProfile(
     existingProfile: MemberProfileMetadata | null,
     /** The registry metadataURI the save supersedes — its CID (and any
-     *  authored artifact the successor drops) is unpinned after the
+     *  published artifact the successor drops) is unpinned after the
      *  on-chain update confirms. Omit when unknown; erasure is skipped. */
     priorProfileUri?: string | null,
 ): UseUpdateMemberProfileResult {
