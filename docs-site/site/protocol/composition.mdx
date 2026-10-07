@@ -36,7 +36,7 @@ Each token denominates an economy of its own — a community's, a designer's, a 
 
 Provider-agnostic examples of the four placements — each is one instance of an open category, listed the way a trade meets it: what carries value in, what a running process needs, then what the world outside the trade asks for.
 
-- **Uniswap — the swap on-ramp.** `WitnessSwapAndCommitCoordinator` routes a party's input token through Permit2 and an immutable `SwapRouter02` into the denomination its bond is locked in, and commits in the same transaction. The same single hop carries a resolved payout onward.
+- **Uniswap — the swap on-ramp.** `WitnessSwapAndCommitCoordinator` routes a party's input token through Permit2 and an immutable `SwapRouter02` into the denomination its bond is locked in, and commits in the same transaction.
 - **IPFS — storage and evidence.** Off-chain agreement documents, public and private section data, and an audit trail live on IPFS; the chain holds only the fingerprints (`contentHash`, section hashes) that pin them.
 - **XMTP — per-order handoff.** Encrypted per-order channels for exchanging public and private data while an order is live.
 - **Disperse — post-resolution payout splitting.** The canonical Disperse multisender (`0xD152f549545093347A162Dce210e7293f1452150`, the same address across chains) splits a resolved wallet's own receipts, the moment they land, to addresses it earmarked itself — a fiscal set-aside, savings, what it owes a supplier. The split is the wallet's own arithmetic over its own tokens, done afterward; nothing in the trade routed it and no clause computed it. Post-resolution routing is path-blind — both the direct and batch paths deliver by ERC-20 transfer to the party's own address.
