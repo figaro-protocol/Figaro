@@ -157,11 +157,11 @@ contract AttestationCoordinator {
         emit Attestation(targetOrderHash, targetProcessId, msg.sender, clauseId, stage, contentRef);
     }
 
-    // ── Mechanism-delegated attestations ─────────────────────────────
+    // ── Seller-authorized attestations ───────────────────────────────
 
-    /// @notice Attest via the target order's seller (mechanism contract).
-    /// @dev The seller extracted from the commitment must implement IRoleResolver
-    ///      and return `true` for `isAuthorized(orderHash, msg.sender)`.
+    /// @notice Attest as a caller the target order's seller authorizes (`isAuthorized`).
+    /// @dev The seller is an ECDSA EOA, so it answers only through EIP-7702 code it
+    ///      installed on itself: the seller's own act, as a buyer's delegation is its own.
     function attestViaResolver(
         CommitmentTypes.Commitment calldata target,
         bytes32 clauseId,
