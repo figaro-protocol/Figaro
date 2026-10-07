@@ -23,7 +23,7 @@
  * governed rather than trusted. NOTHING a relay says is displayed until this
  * module re-derives it from the signed struct and anchors it on chain:
  *
- *   domain            the record's declared `chain_id` + `verifying_contract`
+ *   domain            the batch's declared `chain_id` + `verifying_contract`
  *                     must be the chain we are reading and the verifier THIS
  *                     deployment trusts. Without this a relay could hand over a
  *                     struct genuinely signed for some other contract and have
@@ -44,7 +44,7 @@
  *   state-root-anchor the batch's `new_state_root` must appear in a
  *                     `BatchSettled` this verifier emitted on chain.
  *
- * A record failing ANY check renders as FAILED — loudly, naming the check and
+ * An order failing ANY check renders as FAILED — loudly, naming the check and
  * the mismatch. It is never silently dropped and never softened, because a
  * relay that publishes a struct nobody signed must be visibly caught, not
  * quietly ignored. A relay can omit or delay; it can never forge.
@@ -159,10 +159,10 @@ const fail = (id: BatchRelayCheckId, detail: string): BatchRelayCheck => ({ id, 
  * - "verified"   every applicable check passed; the order may be displayed.
  * - "failed"     at least one check rejected it; display it as FAILED.
  * - "unretained" the committing batch aged out of this relay's window, so
- *                there is no struct to check. Absence, not a bad record.
+ *                there is no struct to check. Absence, not a bad order.
  *
  * @public — names the type of `VerifiedBatchOrder.verdict`, so any consumer
- * branching on a record's verdict needs it even though nothing imports it by
+ * branching on an order's verdict needs it even though nothing imports it by
  * name today.
  */
 export type BatchOrderVerdict = "verified" | "failed" | "unretained";
@@ -197,20 +197,20 @@ export interface BatchVerifyContext {
 
 // ── Per-order verification ──────────────────────────────────────────────────
 
-/** The record's declared domain must be the one we trust. Checked FIRST: every
+/** The batch's declared domain must be the one we trust. Checked FIRST: every
  *  later check derives against this domain, so accepting the relay's word for
  *  it would let it choose the domain its evidence is graded under. */
 function checkDomain(batch: SequencerBatchRef, ctx: BatchVerifyContext): BatchRelayCheck {
     if (batch.chain_id !== ctx.chainId) {
         return fail(
             "domain",
-            `record declares chain ${batch.chain_id}, but this reader is on chain ${ctx.chainId}`,
+            `batch declares chain ${batch.chain_id}, but this reader is on chain ${ctx.chainId}`,
         );
     }
     if (!hexEqual(batch.verifying_contract, ctx.verifier)) {
         return fail(
             "domain",
-            `record declares verifyingContract ${batch.verifying_contract}, but this deployment's FigaroBatchVerifier is ${ctx.verifier}`,
+            `batch declares verifyingContract ${batch.verifying_contract}, but this deployment's FigaroBatchVerifier is ${ctx.verifier}`,
         );
     }
     return pass("domain", `signed under chain ${batch.chain_id}, verifier ${batch.verifying_contract}`);
@@ -311,7 +311,7 @@ export async function verifyBatchOrder(
         return finish(base, checks, null, batch, null);
     }
 
-    // Derive against the domain the record DECLARES. When `domain` failed, the
+    // Derive against the domain the batch DECLARES. When `domain` failed, the
     // checks below are still run and reported — but the failed domain check
     // already makes the verdict "failed", so nothing here can rehabilitate it.
     const derivationCore = batch.verifying_contract as `0x${string}`;
@@ -400,7 +400,7 @@ function finish(
  * bond math are the shared projection (`orderFromSdk`); only the
  * batch-universe facts are this function's own.
  *
- * `blockNumber` is deliberately absent: a batch record carries a block
+ * `blockNumber` is deliberately absent: a batch order carries a block
  * TIMESTAMP, not a number, and inventing one would fabricate chain state
  * (the placeholder fed to the shared mapping is stripped, never exposed).
  * The batch reference is carried alongside instead.
@@ -498,7 +498,7 @@ export type BatchRelayStatus =
     | "no-relay"
     /** The relay answered, and holds nothing under this process id. */
     | "not-in-archive"
-    /** The relay answered with records. */
+    /** The relay answered with orders. */
     | "found"
     /** The relay could not be reached, or answered unusably. */
     | "unreachable"
@@ -550,7 +550,7 @@ export async function readVerifiedBatchProcess(
     }
     const verifier = getBatchVerifier();
     if (!verifier) {
-        // Without the verifier there is no anchor, and an unanchorable record
+        // Without the verifier there is no anchor, and an unanchorable order
         // is exactly what this module refuses to display.
         return { status: "no-verifier", relayUrl, ...EMPTY };
     }
