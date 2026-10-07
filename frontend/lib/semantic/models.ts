@@ -46,7 +46,7 @@ interface WithdrawSellerDepositCapabilityAction {
  *  - LADDER (process-log clause): the party advances the clause's enum ladder;
  *    the executor builds content = `{ [ladderField]: eventCode }`.
  *  - WITNESS (a clause declaring `spec.stages[stage]`): the party files a
- *    runtime witness (temperature record, measured grams, detected band);
+ *    runtime witness (temperature reading, measured grams, detected band);
  *    values arrive as `CapabilityExecutionInput` from the rail's generic form
  *    and encode against the declared stage's fields. Repeatable while the
  *    order is active. */
