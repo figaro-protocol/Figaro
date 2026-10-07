@@ -16,7 +16,7 @@
  *   name           — required, non-empty after trim
  *   price          — required, non-empty after trim
  *   description    — optional
- *   category       — optional (absent when the member authors none)
+ *   category       — optional (absent when the member fills none)
  *   image          — optional, IPFS or HTTP URI
  *   available      — optional, "true"/"false"/"1"/"0" (default true)
  *   massGrams      — optional, parsed as number
