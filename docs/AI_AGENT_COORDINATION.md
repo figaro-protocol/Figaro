@@ -238,7 +238,15 @@ from its owner on the owner's terms, through the same bonded commitment as any o
 trade, and verifies each disclosed leaf by merkle inclusion against the source
 process's on-chain `agreementHash`. The buyer checks provenance against the chain
 rather than the seller's word; what no chain testifies to is whether the data is
-true about the world.
+true about the world. Each declared or attested value is a party's signed claim, and
+what keeps it accurate is what a false claim costs its signer: before resolution, a
+locked bond, a buyer who can withhold resolution until it is put right, and co-sellers
+whose own payment waits on the same resolution; after it, the data's worth to whoever
+buys or analyses it, the evidence a forum or court reads, and the signer's resolution
+history. An agent weighs a declaration by that history and by the bond its signer had
+at stake — there is no protocol-issued score to read instead — and states that parties
+acting together can produce well-formed false data (`DATA_LAYER.md` § "Truth
+boundaries — what a row is worth").
 
 **Two limits worth stating before an agent claims more than it has.** Resolution
 history is derivable — `OrderResolved` / `ProcessResolved` per address, in
@@ -275,8 +283,10 @@ What is emitted, and what each thing is evidence of:
   it are merkle leaves under `agreementHash` — the chain holds the root; the document is
   fetched from wherever it was pinned, and a fingerprint whose pre-image is unreachable is
   party-private by design, not a hole in the data.
-- **Work advanced.** `AttestationCoordinator.Attestation(orderHash, processId, attester,
-  clauseId, stage, contentRef)`. `clauseId` and `stage` are what make the stream readable
+- **A party signed a claim that work advanced.** `AttestationCoordinator.Attestation(orderHash,
+  processId, attester, clauseId, stage, contentRef)`: the attester's claim, bound to the
+  order and timestamped by its block, never a proof that the work was done. `clauseId`
+  and `stage` are what make the stream readable
   without knowing any clause in advance — `filterByClause` / `filterByStage` /
   `filterByProcess` (`@figaro-protocol/sdk/derive`) slice it. `contentRef` is `keccak256(content)`;
   the pre-image never enters calldata.
