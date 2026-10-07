@@ -20,7 +20,7 @@ import type { CheckoutHandle } from "./types";
  * Replaces the pattern of importing 4-5 hooks + wagmi directly.
  *
  * @param token   The ERC-20 address used for payment
- * @param spender The contract that will pull funds (defaults to FigaroCore)
+ * @param spender The contract that will pull the tokens (defaults to FigaroCore)
  */
 export function useCheckout(
     token: `0x${string}` | undefined,
