@@ -58,7 +58,7 @@ async function getAllAttestations(client: PublicClient, chainId: number): Promis
     );
 }
 
-/** One `Attestation` event flattened to its full record — the shape shared by
+/** One `Attestation` event flattened to its full row — the shape shared by
  *  the audit/evidence bundle and (via the narrower `RuntimeAttestation` view)
  *  the semantic model. clauseId is DATA off the event, never hardcoded. */
 export type AttestationRecord = {
@@ -72,7 +72,7 @@ export type AttestationRecord = {
     blockNumber: number;
 };
 
-/** THE Attestation-log → record reducer — the one parse every consumer shares
+/** THE Attestation-log → row reducer — the one parse every consumer shares
  *  (semantic model, evidence/audit bundle; the juror path stays React-free).
  *  Decoding is the SDK's (`parseAttestationLogs`); this wraps it per-log.
  *  Returns null when the log doesn't decode as an `Attestation` (garbage or
@@ -136,7 +136,7 @@ export async function getAllBatchSettled(client: PublicClient, chainId: number):
 }
 
 /**
- * Every `Attestation` record on this chain, from BOTH resolution paths,
+ * Every `Attestation` event on this chain, from BOTH resolution paths,
  * each row TAGGED with the universe that emitted it — the frontend's read of
  * the SDK's `fetchAttestationRecords` shape (`UniverseAttestationEvent`),
  * served from the event cache instead of a fresh chunked scan.
@@ -193,7 +193,7 @@ export async function getAttestationsByProcess(
 // ── Seller resolution history — public-graph-derived activity ──────────────────────
 //
 // Composes core reads (orders, registrations) WITH non-core reads
-// (attestations) into one address-keyed record — which is why it lives here, not
+// (attestations) into one address-keyed resolution history — which is why it lives here, not
 // in lib/kernel/indexer.ts. Every figure is recomputed from events; nothing is
 // stored, so the result is verifiable by anyone with chain access.
 
