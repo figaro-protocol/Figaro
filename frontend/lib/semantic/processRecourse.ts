@@ -1,11 +1,11 @@
 /**
  * Process-recourse resolution.
  *
- * The five-layer stack (see the on-chain-evidence paper) has one *configured*
- * part: the off-chain forums, Layers 4 (arbitration) and 5 (law). Layers 1
- * (chain security), 2 (bonding, with the evidence the Core emits) and 3
- * (co-seller coordination under atomic resolution) are always on. The parties'
- * agreement NAMES the forum — the dispute-resolution clause(s) the assembly
+ * The five-layer stack (see the on-chain-evidence paper) has one part the
+ * agreement names: the forum, Layer 4 (arbitration). Layers 1 (chain security),
+ * 2 (bonding, with the evidence the Core emits) and 3 (co-seller coordination
+ * under atomic resolution) are always on, and Layer 5 (law) stands regardless.
+ * The parties' agreement NAMES the forum — the dispute-resolution clause(s) the assembly
  * designer composed into the order(s).
  *
  * This reader is OPEN-WORLD: it recognizes a recourse clause by its
