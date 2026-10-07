@@ -15,7 +15,7 @@ import { readJsonStorage, writeJsonStorage } from "@/lib/shared/storage";
  * unreadable, which is the deletability the layered-evidence pattern promises.
  *
  * The DURABLE data side this service once carried (a saved handoff-key store,
- * pending-intent records with geohashes, wallet-signature key recovery) was
+ * pending-intent entries with geohashes, wallet-signature key recovery) was
  * deleted under the same ruling: its producers were burned in the open-world
  * corpse pass (`700cf1a2` — the three handoff facades) and durable key
  * persistence runs against the crypto-shredding posture. Only the purge QUEUE
