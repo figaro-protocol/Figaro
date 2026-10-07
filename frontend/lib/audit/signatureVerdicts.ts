@@ -35,7 +35,7 @@
  * recover the buyer and seller from the commitment digest inside `apply_commit`
  * and reject the batch on mismatch), and an attestation can only be applied to
  * an order the guest already holds as ACTIVE (`require_known_active_commitment`,
- * kernel.rs:311) — a status written ONLY by `apply_commit`. `FigaroBatchVerifier`
+ * `prover/lib/src/kernel.rs:326`) — a status written ONLY by `apply_commit`. `FigaroBatchVerifier`
  * accepts a batch only against an immutable `programVKey`, and chains state via
  * `prevRoot == stateRoot`. So a verifier-re-emitted `Attestation` for an order
  * proves that order's commit passed both signature checks inside a proof this
