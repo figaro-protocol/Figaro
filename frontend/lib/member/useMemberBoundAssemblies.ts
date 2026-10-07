@@ -103,7 +103,7 @@ export function useMemberBoundAssemblies(
                 if (!response.ok) throw new Error("member profile fetch failed");
                 // Prototype-pollution-safe parse (finding 7): the profile is an
                 // external-party-pinned document; the stripping reviver drops
-                // __proto__/constructor keys before any downstream record copy.
+                // __proto__/constructor keys before any downstream object copy.
                 const doc = safeJsonParse(await response.text());
                 const profile = tryParseMemberProfileDocument(doc);
                 if (cancelled) return;
