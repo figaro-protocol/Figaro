@@ -76,7 +76,7 @@ import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
  * Recovery is one gateway round-trip per fingerprint, so an unbounded corpus
  * would open unbounded connections; the cap is stated in the UI as "recovered
  * X of Y" rather than hidden, so a reader knows the substance they are seeing
- * is a window and not the whole record.
+ * is a window and not the whole of the data.
  */
 const SUBSTANCE_RECOVERY_CAP = 250;
 
@@ -118,7 +118,7 @@ export interface GraphCorpus {
 }
 
 /** A published assembly in the minimal shape this read needs: its registered
- *  identity and name, plus every composed clause set the designer authored
+ *  identity and name, plus every composed clause set the designer composed
  *  (the assembly-scoped set, where a denomination pin composes once, and each
  *  agreement's own set). */
 interface CorpusTemplate {
@@ -167,7 +167,7 @@ function attributionFromOverlays(overlays: readonly OverlayGraph[]): Map<string,
     return byProcess;
 }
 
-/** Best-effort `symbol()` + `decimals()` for each denomination the record
+/** Best-effort `symbol()` + `decimals()` for each denomination the data
  *  names. A token that does not answer is simply absent from the map. */
 async function readTokenMeta(
     client: PublicClient,
@@ -286,7 +286,7 @@ async function readGraphCorpus(deps?: {
  * decoded one, and can turn an unattributed process into an attributed one).
  *
  * `corpus` is null while the first read is in flight. `failed` is DISTINCT
- * from a resolved-empty corpus: an empty record is absence and renders as
+ * from a resolved-empty corpus: empty data is absence and renders as
  * such; a failed read is unknown chain state and says so.
  */
 export function useGraphCorpus(): { corpus: GraphCorpus | null; isLoading: boolean; failed: boolean } {
