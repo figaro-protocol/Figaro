@@ -18,7 +18,7 @@
  *   core events are DIRECT-PATH by construction. A batch resolves token
  *   positions and re-emits no order events, so a batch-resolved process is
  *   absent from the process and resolution graphs by design. Only
- *   ATTESTATIONS cross the crease, which is why they are read from both
+ *   ATTESTATIONS are emitted on both paths, which is why they are read from both
  *   emitters and tagged.
  *
  *   substance is recovered AT THE EDGE, and often absent. An attestation's
