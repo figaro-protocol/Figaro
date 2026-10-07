@@ -190,7 +190,7 @@ export async function getAttestationsByProcess(
         .sort((a, b) => a.blockNumber - b.blockNumber);
 }
 
-// ── Seller track record — public-graph-derived activity ──────────────────────
+// ── Seller resolution history — public-graph-derived activity ──────────────────────
 //
 // Composes core reads (orders, registrations) WITH non-core reads
 // (attestations) into one address-keyed record — which is why it lives here, not
@@ -198,35 +198,35 @@ export async function getAttestationsByProcess(
 // stored, so the result is verifiable by anyone with chain access.
 
 /** Value a seller transacted as a seller, summed per currency. */
-interface TrackRecordValue {
+interface ResolutionHistoryValue {
     currency: string;
     total: bigint;
 }
 
 /** Attestations a seller emitted, grouped by clauseId. */
-interface TrackRecordAttestations {
+interface ResolutionHistoryAttestations {
     clauseId: string;
     count: number;
 }
 
 /**
- * A seller's public-graph track record — every indicator reconstructed from
+ * A seller's public-graph resolution history — every indicator reconstructed from
  * on-chain events, recomputable by anyone. NOT a stored or soulbound score;
  * it is the raw resolution/coordination history the public graph exposes
  * (DATA_LAYER.md §"Reputation derivation").
  */
-export interface MemberTrackRecord {
+export interface MemberResolutionHistory {
     operatingSinceBlock: bigint | null;
     operatingSinceTimestamp: bigint | null;
     completedProcesses: number;
     activeProcesses: number;
     ordersSold: number;
     ordersBought: number;
-    valueTransacted: TrackRecordValue[];
+    valueTransacted: ResolutionHistoryValue[];
     buyersServed: number;
     sellersUsed: number;
     attestationsEmitted: number;
-    attestationsByClause: TrackRecordAttestations[];
+    attestationsByClause: ResolutionHistoryAttestations[];
 }
 
 function getBigIntArg(log: IndexedLog, key: string): bigint {
@@ -235,7 +235,7 @@ function getBigIntArg(log: IndexedLog, key: string): bigint {
 }
 
 /**
- * Reconstruct a seller's full public-graph track record from the OrderCommitted
+ * Reconstruct a seller's full public-graph resolution history from the OrderCommitted
  * / OrderResolved process graph and the disclosure graph — all keyed to one
  * address. Attestation tallies fold BOTH resolution paths (coordinator +
  * verifier re-emissions, each stream address-filtered — SCALING_STRATEGY.md
@@ -244,11 +244,11 @@ function getBigIntArg(log: IndexedLog, key: string): bigint {
  * process crosses the crease), so batch-resolved trade surfaces here only
  * through its attestations.
  */
-export async function getSellerTrackRecord(
+export async function getSellerResolutionHistory(
     client: PublicClient,
     chainId: number,
     seller: string,
-): Promise<MemberTrackRecord> {
+): Promise<MemberResolutionHistory> {
     const [sellerOrders, buyerOrders, resolved, registrations, attestations, batchAttestations] =
         await Promise.all([
             getOrderCommittedBySeller(client, chainId, seller),

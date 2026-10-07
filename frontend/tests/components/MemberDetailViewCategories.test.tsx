@@ -33,8 +33,8 @@ vi.mock("@/lib/checkout/cartStore", () => ({
         clearCart: vi.fn(),
     }),
 }));
-vi.mock("@/lib/member/useMemberTrackRecord", () => ({
-    useMemberTrackRecord: () => ({ trackRecord: null, isLoading: false }),
+vi.mock("@/lib/member/useMemberResolutionHistory", () => ({
+    useMemberResolutionHistory: () => ({ resolutionHistory: null, isLoading: false }),
 }));
 vi.mock("@/components/members/TokenAddressInput", () => ({
     useTokenSymbol: () => ({ data: "" }),
@@ -45,8 +45,8 @@ vi.mock("@/components/modules/MemberBrandingModule", () => ({
 vi.mock("@/components/members/MemberAgentIdentity", () => ({
     MemberAgentIdentity: () => null,
 }));
-vi.mock("@/components/runtime/MemberTrackRecord", () => ({
-    MemberTrackRecord: () => null,
+vi.mock("@/components/runtime/MemberResolutionHistory", () => ({
+    MemberResolutionHistory: () => null,
 }));
 
 describe("MemberDetailView catalog categories", () => {

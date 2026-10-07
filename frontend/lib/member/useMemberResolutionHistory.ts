@@ -1,46 +1,46 @@
 "use client";
 
 /**
- * useMemberTrackRecord — a member's public-graph track record, fetched
+ * useMemberResolutionHistory — a member's public-graph resolution history, fetched
  * from the indexer. Recomputed from on-chain events on every load; nothing
  * is stored as a score. See DATA_LAYER.md §"Reputation derivation".
  */
 
 import { useEffect, useState } from "react";
 import { usePublicClient, useChainId } from "wagmi";
-import { getSellerTrackRecord, type MemberTrackRecord } from "@/lib/composition/indexer";
+import { getSellerResolutionHistory, type MemberResolutionHistory } from "@/lib/composition/indexer";
 
-export interface UseSellerTrackRecordResult {
-    trackRecord: MemberTrackRecord | null;
+export interface UseSellerResolutionHistoryResult {
+    resolutionHistory: MemberResolutionHistory | null;
     isLoading: boolean;
 }
 
-export function useMemberTrackRecord(seller: string | undefined): UseSellerTrackRecordResult {
+export function useMemberResolutionHistory(seller: string | undefined): UseSellerResolutionHistoryResult {
     const client = usePublicClient();
     const chainId = useChainId();
-    const [trackRecord, setTrackRecord] = useState<MemberTrackRecord | null>(null);
+    const [resolutionHistory, setResolutionHistory] = useState<MemberResolutionHistory | null>(null);
     const [isLoading, setIsLoading] = useState(false);
 
     useEffect(() => {
         if (!client || !seller) {
-            setTrackRecord(null);
+            setResolutionHistory(null);
             return;
         }
         let cancelled = false;
         setIsLoading(true);
-        getSellerTrackRecord(client, chainId, seller)
+        getSellerResolutionHistory(client, chainId, seller)
             .then((record) => {
                 if (cancelled) return;
-                setTrackRecord(record);
+                setResolutionHistory(record);
                 setIsLoading(false);
             })
             .catch(() => {
                 if (cancelled) return;
-                setTrackRecord(null);
+                setResolutionHistory(null);
                 setIsLoading(false);
             });
         return () => { cancelled = true; };
     }, [client, chainId, seller]);
 
-    return { trackRecord, isLoading };
+    return { resolutionHistory, isLoading };
 }

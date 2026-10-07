@@ -1,23 +1,23 @@
 "use client";
 
 /**
- * MemberTrackRecord — renders a member's public-graph track record:
+ * MemberResolutionHistory — renders a member's public-graph resolution history:
  * the resolution + coordination history reconstructed from on-chain events
  * (DATA_LAYER.md §"Reputation derivation"). Pure render — the
- * caller supplies the record via useMemberTrackRecord.
+ * caller supplies the record via useMemberResolutionHistory.
  *
  * Every figure is recomputed from events, never a stored score. A seller
  * with no history renders as "no on-chain history" rather than a fabricated
- * rating — the honest absence of a track record is itself the signal.
+ * rating — the honest absence of a resolution history is itself the signal.
  */
 
 import { formatUnits } from "viem";
-import type { MemberTrackRecord as TrackRecord } from "@/lib/composition/indexer";
+import type { MemberResolutionHistory as ResolutionHistory } from "@/lib/composition/indexer";
 import { truncateHex } from "@/lib/shared/formatHex";
 import { formatBlockTimestamp } from "@/lib/shared/formatTimestamp";
 
 interface Props {
-    record: TrackRecord | null;
+    record: ResolutionHistory | null;
     isLoading: boolean;
 }
 
@@ -30,11 +30,11 @@ function Stat({ label, value, testId }: { label: string; value: string; testId: 
     );
 }
 
-export function MemberTrackRecord({ record, isLoading }: Props) {
+export function MemberResolutionHistory({ record, isLoading }: Props) {
     if (isLoading) {
         return (
             <p className="text-xs text-ink-muted" data-testid="track-record-loading">
-                Reconstructing track record from the public graph…
+                Reconstructing resolution history from the public graph…
             </p>
         );
     }
@@ -48,7 +48,7 @@ export function MemberTrackRecord({ record, isLoading }: Props) {
     return (
         <section className="space-y-3" data-testid="seller-track-record">
             <div className="flex items-baseline justify-between gap-3">
-                <h3 className="text-sm font-semibold text-ink-primary">Track record</h3>
+                <h3 className="text-sm font-semibold text-ink-primary">Resolution history</h3>
                 <span className="text-xs text-ink-muted">operating since {sinceLabel}</span>
             </div>
 

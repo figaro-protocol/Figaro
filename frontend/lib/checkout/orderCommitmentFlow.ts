@@ -284,7 +284,16 @@ export function useOrderCommitmentFlow() {
     ): Promise<Hex> => {
         setError(null);
         try {
-            const role: PartyRole = hexEqual(address, incoming.commitment.buyer) ? "buyer" : "seller";
+            // The role is the slot that is still EMPTY. The Core admits
+            // buyer == seller (DESIGN_DECISIONS), so one wallet can hold both
+            // slots; the accepting role is then the one whose signature is
+            // missing, never "buyer" by address alone.
+            const isBuyer = hexEqual(address, incoming.commitment.buyer);
+            const isSeller = hexEqual(address, incoming.commitment.seller);
+            const role: PartyRole =
+                isSeller && !incoming.sellerSig ? "seller"
+                : isBuyer && !incoming.buyerSig ? "buyer"
+                : isBuyer ? "buyer" : "seller";
 
             // Verify the COUNTERPARTY's existing signature before we sign and
             // broadcast (acceptOrder): a relayed payload

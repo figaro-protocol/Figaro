@@ -7,7 +7,7 @@ import {
     type Listing,
     listingClickThroughHref,
 } from "@/lib/member/memberListing";
-import { useMemberTrackRecord } from "@/lib/member/useMemberTrackRecord";
+import { useMemberResolutionHistory } from "@/lib/member/useMemberResolutionHistory";
 
 function distinctAssemblySlugs(listing: Listing): string[] {
     return Array.from(new Set(listing.bindings.map((b) => b.assemblySlug)));
@@ -29,7 +29,7 @@ export function MemberCard({
 }: MemberCardProps) {
     const href = listingClickThroughHref(listing);
     const assemblies = distinctAssemblySlugs(listing);
-    const { trackRecord } = useMemberTrackRecord(listing.address);
+    const { resolutionHistory } = useMemberResolutionHistory(listing.address);
 
     return (
         <article
@@ -81,14 +81,14 @@ export function MemberCard({
                 </p>
             )}
 
-            {/* Track record — public-graph-derived. Rendered only once the
+            {/* Resolution history — public-graph-derived. Rendered only once the
                 seller has completed a process; the absence of the line is
                 itself the signal, matching the detail page's honest empty
                 state. The full breakdown lives on /s/view?seller=<address>. */}
-            {trackRecord && trackRecord.completedProcesses > 0 && (
+            {resolutionHistory && resolutionHistory.completedProcesses > 0 && (
                 <p className="text-xs text-ink-body mb-3" data-testid="card-track-record">
                     <span className="font-semibold text-ink-primary tabular-nums">
-                        {trackRecord.completedProcesses}
+                        {resolutionHistory.completedProcesses}
                     </span>
                     {" processes completed on the public graph"}
                 </p>

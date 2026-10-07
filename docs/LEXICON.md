@@ -90,6 +90,8 @@ Nouns and their definitions. One name per thing.
 
 **resolution** — The buyer's single signature that ends a process: every payment transfers and every bond is refunded — the buyer's less the payments it carried — all at once.
 
+**resolution history** — A wallet's public-graph summary of the processes it resolved and the attestations it carries, derived from events at read time, never stored; the honest absence of one is itself the signal. Never a score, a rating, or a protocol-issued credential.
+
 **seller** — A party that adds value in one order of a process and is paid for it at resolution.
 
 **seller of record** — The seller named in an order's commitment: the one whose stake as a member decides whether the order counts toward designer rewards.

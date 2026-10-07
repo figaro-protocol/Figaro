@@ -1,9 +1,9 @@
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
-import { MemberTrackRecord } from "@/components/runtime/MemberTrackRecord";
-import type { MemberTrackRecord as TrackRecord } from "@/lib/composition/indexer";
+import { MemberResolutionHistory } from "@/components/runtime/MemberResolutionHistory";
+import type { MemberResolutionHistory as ResolutionHistory } from "@/lib/composition/indexer";
 
-const WITH_HISTORY: TrackRecord = {
+const WITH_HISTORY: ResolutionHistory = {
     operatingSinceBlock: 100n,
     operatingSinceTimestamp: 1_717_200_000n,
     completedProcesses: 7,
@@ -19,7 +19,7 @@ const WITH_HISTORY: TrackRecord = {
     attestationsByClause: [{ clauseId: "0xabc", count: 25 }],
 };
 
-const NO_HISTORY: TrackRecord = {
+const NO_HISTORY: ResolutionHistory = {
     operatingSinceBlock: 50n,
     operatingSinceTimestamp: 1_717_200_000n,
     completedProcesses: 0,
@@ -33,9 +33,9 @@ const NO_HISTORY: TrackRecord = {
     attestationsByClause: [],
 };
 
-describe("MemberTrackRecord", () => {
+describe("MemberResolutionHistory", () => {
     it("renders every reconstructed indicator", () => {
-        render(<MemberTrackRecord record={WITH_HISTORY} isLoading={false} />);
+        render(<MemberResolutionHistory record={WITH_HISTORY} isLoading={false} />);
         expect(screen.getByTestId("seller-track-record")).toBeInTheDocument();
         // The eight stat tiles — distinct values, one per indicator.
         for (const value of ["7", "2", "14", "6", "9", "4", "25"]) {
@@ -46,18 +46,18 @@ describe("MemberTrackRecord", () => {
     });
 
     it("shows an honest empty state — no fabricated rating — when there is no history", () => {
-        render(<MemberTrackRecord record={NO_HISTORY} isLoading={false} />);
+        render(<MemberResolutionHistory record={NO_HISTORY} isLoading={false} />);
         expect(screen.getByTestId("track-record-empty")).toBeInTheDocument();
         expect(screen.queryByText("processes completed")).not.toBeInTheDocument();
     });
 
     it("renders a loading state while the graph is reconstructed", () => {
-        render(<MemberTrackRecord record={null} isLoading={true} />);
+        render(<MemberResolutionHistory record={null} isLoading={true} />);
         expect(screen.getByTestId("track-record-loading")).toBeInTheDocument();
     });
 
     it("renders nothing when there is no record and no load in flight", () => {
-        const { container } = render(<MemberTrackRecord record={null} isLoading={false} />);
+        const { container } = render(<MemberResolutionHistory record={null} isLoading={false} />);
         expect(container).toBeEmptyDOMElement();
     });
 });

@@ -81,8 +81,6 @@ interface OnboardingState {
     services?: MemberAgentServices;
     /** IPFS URI of the published profile, set on screen 4 success. */
     publishedProfileURI?: string;
-    /** IPFS URI of the published catalog, set on screen 3 success. */
-    publishedCatalogURI?: string;
     /** True when the on-chain register/updateProfile transaction has confirmed. */
     complete?: boolean;
     /** ISO timestamp of last write (for staleness checks). */
