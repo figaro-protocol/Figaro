@@ -440,11 +440,17 @@ function ProcessLogsPage({ doc }: { doc: AuditBundle["processLogs"] }) {
                 Sovereign event logs from off-chain sellers. The buyer&apos;s
                 actions are FigaroCore events (commit / resolveProcess);
                 off-chain sellers record theirs via whatever process clause
-                their order carries, making physical-world state changes
-                tamper-proof. One section per clause, titled from its
+                their order carries, so what each party signed, and when,
+                is fixed in the process&apos;s data. One section per clause, titled from its
                 registered spec. Each contentRef =
                 keccak256(`(uint8 eventType, string evidenceUri)`); eventType
                 indexes the clause&apos;s spec-declared event enum.
+            </Text>
+            <Text style={styles.note}>
+                Each event is its attester&apos;s signed claim, checked for
+                binding to the order and never for truth; what keeps it
+                accurate is what a false claim costs its signer, and parties
+                acting together are outside that reach.
             </Text>
 
             {doc.logs.map((group) => (
