@@ -58,7 +58,7 @@ export interface RegisteredClauseEvent {
     registeredBy: `0x${string}`;
     blockNumber: bigint;
     transactionHash: `0x${string}`;
-    /** True when the registeredBy reclaimed the registration deposit (K4:
+    /** True when the registeredBy reclaimed the registration stake (K4:
      *  surfacing derives from the live stake — withdraw = de-surface for
      *  NEW compositions). The binding is permanent: committed agreements
      *  keep resolving the clause, so spec-loading NEVER filters on this;
@@ -145,7 +145,7 @@ export function clauseRegisterRevertMessage(
         case "WrongDeposit": {
             const provided = (args?.[0] as bigint | undefined)?.toString() ?? "?";
             const required = (args?.[1] as bigint | undefined)?.toString() ?? "?";
-            return `Registration deposit mismatch (provided ${provided} wei, required ${required} wei). The deposit amount changed between the read and the send — retry.`;
+            return `Registration stake mismatch (provided ${provided} wei, required ${required} wei). The stake amount changed between the read and the send — retry.`;
         }
         case "EmptyClauseId":
             return "The spec has an empty clauseId.";
@@ -211,7 +211,7 @@ export function useRegisterClause() {
         if (!registry) {
             throw new Error("ClauseRegistry address not configured (NEXT_PUBLIC_CLAUSE_REGISTRY).");
         }
-        if (!client) throw new Error("No public client available to read the registration deposit.");
+        if (!client) throw new Error("No public client available to read the registration stake.");
         if (!address) throw new Error("Connect a wallet before registering a clause.");
 
         const clauseId = rawSpec.clauseId as string;
@@ -258,8 +258,8 @@ export function useRegisterClause() {
 /**
  * Reclaim a clause's registration stake (`ClauseRegistry.withdrawDeposit`).
  * Mirrors `useWithdrawAssembly` exactly: the binding is permanent — withdraw
- * only moves the deposit and de-surfaces the clause for NEW compositions;
- * committed agreements keep resolving the clause. Gating on in-flight trades is
+ * only moves the stake and de-surfaces the clause for NEW compositions;
+ * committed orders keep resolving under the clause. Gating on in-flight trades is
  * the caller's job via `useWithdrawGate` (advisory, off-chain); this hook is the
  * plain registeredBy-only write. Simulates first to surface a typed revert before
  * opening the wallet, sends, then waits for a `success` receipt. Throws on any
