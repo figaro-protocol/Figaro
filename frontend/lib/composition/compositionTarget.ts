@@ -22,7 +22,7 @@ export interface CompositionTarget {
 
 /** Known standard interfaces, keyed by `block.design.composes.interface`.
  *  EMPTY: a row exists only once a composed contract ships with a handler in
- *  `useCompositionActions` — the registry records what is invocable, never
+ *  `useCompositionActions` — the registry lists what is invocable, never
  *  what is planned. An unknown interface returns null and nothing is called. */
 const STANDARD_INTERFACES: Record<string, { address: () => `0x${string}` | null; abi: Abi }> = {};
 
