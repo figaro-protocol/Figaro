@@ -8,11 +8,11 @@
  * payment and `agreementHash` exist only under `FigaroBatchVerifier`'s proven
  * state root — so every `/audit` surface built on that hook renders NOTHING for
  * batched trade. This hook adds the second universe: the batch relay's
- * published records, each re-derived and chain-anchored by
+ * published orders, each re-derived and chain-anchored by
  * `lib/audit/batchRelay` before it is allowed into the list.
  *
  * The two universes are DISJOINT and stay distinguishable: `orders` carries
- * only records that passed every check, while `batch` carries the full verdict
+ * only orders that passed every check, while `batch` carries the full verdict
  * — including failures and the reason a relay produced nothing — so a surface
  * can report the difference between "no such trade", "no relay configured", and
  * "this relay published something that does not verify". Never collapse them
