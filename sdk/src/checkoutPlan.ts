@@ -374,7 +374,7 @@ export function fillProfileSections(
  * Compute the dimensional (billed) weight onto the dimweight leaf, found by its
  * declared `billedMassGrams` field. DERIVED, not authored: billed = max(gross
  * mass, volumetric), volumetric = packaged volume ÷ divisor with each packaged
- * dimension rounded up to the next whole centimetre first (carriers round per
+ * dimension rounded up to the next whole centimeter first (carriers round per
  * dimension). Reads the cargo leaf just filled and the divisor the PROFILE fold
  * just wrote onto this same leaf (the seller's shipping convention, a
  * profile-sourced value); skipped when the order composes no dimweight clause,

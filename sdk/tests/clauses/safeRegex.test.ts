@@ -6,7 +6,7 @@ import {
 } from "../../src/clauses/safeRegex.js";
 
 /**
- * ReDoS defence for an attacker-authored clause `pattern` (frontend security
+ * ReDoS defense for an attacker-authored clause `pattern` (frontend security
  * audit, finding 5). The binding property is that a pathological
  * pattern cannot hang the caller — it must return quickly and treat the pattern
  * as satisfied.

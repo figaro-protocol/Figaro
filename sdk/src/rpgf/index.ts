@@ -368,7 +368,7 @@ export interface UsageClaimContext {
  * TWO INDEPENDENT LEGS, and the independence is the whole point:
  *
  *  - the CLAUSE leg emits one claim per agreement section, minus the excluded
- *    ones. Dropping them is mandatory, not an optimisation: an excluded
+ *    ones. Dropping them is mandatory, not an optimization: an excluded
  *    clause or assembly reverts `applyBatchAccrual` and takes the ENTIRE BATCH with it,
  *    including every other party's resolution.
  *  - the ASSEMBLY leg credits the assembly's DESIGNER, and it must survive the

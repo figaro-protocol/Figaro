@@ -14,7 +14,7 @@
  *
  * Surfacing derives from the LIVE stake (the registries' staked-intent model):
  * an entry whose deposit has been withdrawn is de-surfaced. The three
- * families withdraw differently, and the reducer honours each:
+ * families withdraw differently, and the reducer honors each:
  *   - clauses/assemblies — binding permanent, withdraw terminal ⇒ set-difference.
  *   - members — requesting withdrawal clears the guard and allows re-registration
  *     ⇒ the live state is order-dependent; the most-recent lifecycle event per

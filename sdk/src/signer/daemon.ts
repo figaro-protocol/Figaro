@@ -6,7 +6,7 @@
  * policy gate (F2, F3) before anything is signed; every decision is audited.
  * The key exists only in this process — the socket carries signatures out,
  * never key bytes, and `signMessage` (personal_sign) is refused always: it
- * is not a protocol operation and a free-form signature is a blank cheque.
+ * is not a protocol operation and a free-form signature is a blank check.
  */
 
 import * as fs from "node:fs";

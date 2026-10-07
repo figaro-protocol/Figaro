@@ -150,7 +150,7 @@ describe("geohashCentroidDistanceKm", () => {
         expect(d).toBeLessThan(620);
     });
 
-    it("adjacent precision-6 cells are sub-kilometre apart", () => {
+    it("adjacent precision-6 cells are sub-kilometer apart", () => {
         const d = geohashCentroidDistanceKm("9q8yyk", "9q8yym");
         expect(d).toBeGreaterThan(0);
         expect(d).toBeLessThan(1.5);

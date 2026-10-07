@@ -360,7 +360,7 @@ definition) and `RPGF_*` constant is a **root** export.
 | `generateOrderKeypair` | `/handoff` | A fresh ephemeral secp256k1 keypair for a single order's handoff. |
 | `geohashesMatch` | `/derive` | Do two geohashes agree at a given precision? Default 6 characters. |
 | `getRateQuantityResolver` | root | Look up a registered rate-quantity resolver by its source name. |
-| `haversineDistance` | `/derive` | Great-circle distance between two lat/lng points, in kilometres. |
+| `haversineDistance` | `/derive` | Great-circle distance between two lat/lng points, in kilometers. |
 | `HttpChannel` | `/agent` | Coordination channel over plain HTTP; `204` is the seller declining, not an error. |
 | `InProcessChannel` | `/agent` | In-process channel — both parties run real sign/validate logic; only the wire is elided. |
 | `instantiateRootAgreement` | `/agent` | Instantiate a template's ROOT order into the signable agreement; same inputs rebuild it identically. |
@@ -384,7 +384,7 @@ definition) and `RPGF_*` constant is a **root** export.
 | `planTemplateOrders` | root | A template's agreements in commit order, each with its clause bag and complete version map. |
 | `profileValuesFor` | root | The profile-filled clause values a given seller publishes, read from its catalog. |
 | `projectAgentServices` | root | Read the agent service endpoints out of a profile document, tolerating partial ones. |
-| `projectProcessGraph` | `/derive` | The process graph, labelled protocol-enforced — `reconstruct()`'s topology as a first-class object. |
+| `projectProcessGraph` | `/derive` | The process graph, labeled protocol-enforced — `reconstruct()`'s topology as a first-class object. |
 | `projectResolutionGraph` | `/derive` | Per-order bonds locked and payouts at resolve, grouped into `FigaroCore`'s LINEAR per-process chains. |
 | `projectValueFlow` | `/derive` | Denomination nodes and flow edges; venue legs are caller-parsed, so no venue list is bundled. |
 | `proposeActions` | `/agent` | Every action a wallet may take on a process it is already in. |
@@ -2008,7 +2008,7 @@ registration at all.
   - `subjectAddress` is the wallet the profile speaks for. Optional in the
     on-chain-pinned shape because the registry already binds wallet →
     `metadataURI`, so a solitary document need not repeat it — but stamp it
-    anyway: the moment profiles are materialised side by side (an indexer's
+    anyway: the moment profiles are materialized side by side (an indexer's
     array, a fixture file, a catalog joined to its profile) it is the only
     join key, and `MemberCatalogMetadata` REQUIRES its own. Treat it as
     non-clearable once set; a patch that drops it silently orphans the
@@ -2336,7 +2336,7 @@ changes it. Two joins that are specific:
 - **The buyer re-hashes what it received** and compares to the attested
   `contentHash`. That is the whole delivery check, and it needs no third party.
 
-**Verification** is the part that has no analogue off-chain. When the license
+**Verification** is the part that has no analog off-chain. When the license
 names `sourceProcesses`, every disclosed leaf is provable against a chain
 fact:
 

@@ -19,7 +19,7 @@
  *   maxCommitsLandableInOneBlock(client)
  *     The cap on independent `commit()` calls that fit in a single block.
  *     Each commit is its own transaction; used for cart-UX progress
- *     signalling and publish-time landing-rate validation.
+ *     signaling and publish-time landing-rate validation.
  *
  * The pure `...ForGasLimit` forms take a gas limit directly (no chain
  * access — just arithmetic, like the bond calculator); the async forms

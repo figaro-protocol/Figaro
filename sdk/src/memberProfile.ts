@@ -199,7 +199,7 @@ export interface MemberProfileMetadata {
     /**
      * Wallet address that owns this profile. Optional in the on-chain-pinned
      * shape (`MembersRegistry` binds wallet → metadataURI; the profile does not
-     * need to repeat the wallet). Present when the profile is materialised
+     * need to repeat the wallet). Present when the profile is materialized
      * by an indexer or fixture loader, where multiple profiles live in a
      * single array and the address is the join key.
      */

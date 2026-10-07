@@ -59,13 +59,13 @@ export interface CatalogItemMetadata {
      * annotated can omit it.
      */
     massGrams?: number;
-    /** Item volume in millilitres. Same convention as `massGrams`. Kept for
+    /** Item volume in milliliters. Same convention as `massGrams`. Kept for
      *  non-parcel items (a drink, a bulk liquid) that have a volume but no
      *  shippable box; for a parcel with L/W/D below, volume is derivable
      *  (`lengthMm × widthMm × heightMm`) and need not be authored. */
     volumeMl?: number;
     /**
-     * Parcel dimensions in whole millimetres. Storage canonical: always metric
+     * Parcel dimensions in whole millimeters. Storage canonical: always metric
      * (same convention as `massGrams`/`volumeMl`; the editor converts imperial
      * input). **Parcel-only** — a shippable box carries all three; a service or
      * a non-parcel item omits them. The individual dimensions are load-bearing:
