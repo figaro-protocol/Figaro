@@ -100,7 +100,7 @@ function cacheSpec(spec: Anchored<ClauseSpecWithBlock>): void {
  * fallback). PERMANENT failures — the document is wrong, not merely not served
  * yet: integrity mismatch, unparseable spec or block, id/version mismatch —
  * are recorded under `getClauseSpecLoadError`, so a re-reading consumer can
- * leave them alone; a network miss records nothing and is re-read. The
+ * leave them alone; a network miss keeps nothing and is re-read. The
  * fetched document is verified against `expectedContentHash` (the
  * `ClauseRegistered` event's digest) before it is parsed — a drifted or
  * tampered pin never enters the cache.
@@ -286,32 +286,32 @@ export function clauseIsAssemblyScoped(clauseId: string, version?: number): bool
     return getClauseSpec(clauseId, version)?.block?.design.scope === "assembly";
 }
 
-/** The content fields (by name) the DESIGNER authors into the assembly
+/** The content fields (by name) the DESIGNER fills into the assembly
  *  template, read from the clause's own `block.design.fills` — the tailoring
  *  that adapts a generic clause to a specific application (a pinned consent
  *  document, a pinned denomination). The drawer exposes field editors
  *  exactly for these; their values survive into the published template.
  *  Empty for clauses the designer only selects (whose fields are transaction
- *  particulars, authored by the buyer at checkout) — and while the spec is
+ *  particulars, filled by the buyer at checkout) — and while the spec is
  *  uncached. ANY registered clause declaring fills participates — including
  *  one this codebase has never seen. */
 export function clauseDesignFills(clauseId: string, version?: number): readonly string[] {
     return getClauseSpec(clauseId, version)?.block?.design.fills ?? [];
 }
 
-/** The content fields (by name) authored per-item on the member's CATALOG
+/** The content fields (by name) filled per-item on the member's CATALOG
  *  (item master data: freight class, hazmat, cold-chain), read from the
  *  clause's own `block.checkout.catalogueFills`. Generic surfaces render a
  *  spec-driven authoring section per such clause on the catalog item and
  *  fold the stored values onto the matching leaf at checkout. Empty for
- *  clauses with no catalog-authored fields — and while the spec is
+ *  clauses with no catalog-filled fields — and while the spec is
  *  uncached. ANY registered clause declaring fills participates — including
  *  one this codebase has never seen. */
 export function clauseCatalogFills(clauseId: string, version?: number): readonly string[] {
     return getClauseSpec(clauseId, version)?.block?.checkout.catalogueFills ?? [];
 }
 
-/** Every loaded clause identity with catalog-authored fields — the set a
+/** Every loaded clause identity with catalog-filled fields — the set a
  *  catalog item's authoring section iterates. Derived from the live registry
  *  cache, never a bundled list; a newly registered product-property clause
  *  appears here with zero code change. */
@@ -319,20 +319,20 @@ export function listCatalogSourcedClauses(): readonly { clauseId: string; versio
     return listKnownClauses().filter((c) => clauseCatalogFills(c.clauseId, c.version).length > 0);
 }
 
-/** The content fields (by name) authored ONCE on the member's PROFILE (the member's
+/** The content fields (by name) filled ONCE on the member's PROFILE (the member's
  *  master data: a dim-weight divisor, a declared credential id), read from the
  *  clause's own `block.checkout.profileFills` — the seller-level sibling of
  *  `clauseCatalogFills` (item master data): catalog = what is sold,
  *  profile = who sells. The profile editor renders exactly these fields; other
  *  fields belong to other sources (designer fills, checkout derivation). Empty
- *  for clauses with no profile-authored fields — and while the spec is
+ *  for clauses with no profile-filled fields — and while the spec is
  *  uncached. ANY registered clause declaring fills participates — including
  *  one this codebase has never seen. */
 export function clauseProfileFills(clauseId: string, version?: number): readonly string[] {
     return getClauseSpec(clauseId, version)?.block?.checkout.profileFills ?? [];
 }
 
-/** Every loaded clause identity with profile-authored fields — the set the
+/** Every loaded clause identity with profile-filled fields — the set the
  *  member-profile authoring section iterates. Derived from the live registry
  *  cache, never a bundled list. */
 export function listProfileSourcedClauses(): readonly { clauseId: string; version: number }[] {
@@ -371,7 +371,7 @@ export function composesInterface(clauseId: string): string | undefined {
  *  axis — never by field shape: "has an enum" is NOT "is a lifecycle", because
  *  every committed-choice clause (modalities, any bounded category) carries an
  *  enum too. `coordination`-article clauses declare WHICH scenario everyone
- *  runs; `attestations`-article clauses record the transfers that run it. A
+ *  runs; `attestations`-article clauses attest the transfers that run it. A
  *  never-seen process-log clause participates by declaring the article. */
 export function clauseIsProcessLog(clauseId: string, version?: number): boolean {
     return getClauseSpec(clauseId, version)?.block?.design.article === "attestations";
@@ -399,7 +399,7 @@ export function clauseLadderField(clauseId: string, version?: number): { name: s
 
 /** The WITNESS stages a clause declares — its `spec.stages` entries, each a
  *  runtime attestation whose content differs from the committed content (a
- *  temperature record, measured grams, a detected band). Declaration IS the
+ *  temperature reading, measured grams, a detected band). Declaration IS the
  *  signal: any registered clause declaring `stages[N]` surfaces a runtime
  *  witness capability at N with a form generated from that stage's fields —
  *  including a clause this codebase has never seen. Empty for clauses that
@@ -457,7 +457,7 @@ export function describeAttestation(
     if (!spec) return { clauseTitle: truncateHex(clauseIdHash, { head: 10, tail: 0 }), eventLabel: `stage ${stage}`, eventCode: `stage-${stage}` };
     // A DECLARED witness stage (spec.stages[stage]) is not a ladder ordinal —
     // labeling it through the committed enum would misread (e.g. a cold-chain
-    // record at stage 1 is not "refrigerated"). The witness's display name is
+    // reading at stage 1 is not "refrigerated"). The witness's display name is
     // the clause's own title; its stable code is the stage number.
     if (spec.stages?.[stage] !== undefined) {
         return { clauseTitle: spec.title, eventLabel: spec.title, eventCode: `stage-${stage}` };
