@@ -1330,7 +1330,11 @@ Pure folds over events you already fetched — no chain client, no network. Each
 projection carries the **truth boundary** of its own rows (`TruthBoundary`: one
 of `protocol-enforced`, `institution-declared`, `protocol-derived`,
 `composition-derived`), so a consumer never conflates a protocol guarantee with
-an institution-level claim.
+an institution-level claim. `TRUTH_BOUNDARY_GLOSS` (`@figaro-protocol/sdk/derive`)
+is the one-line meaning of each boundary, render-ready. The two whose rows are a
+party's signed claim — `institution-declared` and `protocol-derived` — also carry
+what keeps that claim accurate when the chain cannot check it: what a false claim
+costs its signer, before resolution and after.
 
 ```ts
 import { fetchCoreEvents, fetchAttestationRecords } from "@figaro-protocol/sdk";
@@ -2378,7 +2382,13 @@ built from tampered section data does **not** — the check is not vacuous.
 **State the boundary honestly to whoever you build for.** What this proves is
 that *this content sat under that agreement's root, signed by those two parties,
 at that commit* — provenance and integrity, not veracity: no chain can testify
-that a sensor was pointed where its data says. And `redistribution:
+that a sensor was pointed where its data says. The content is its signer's
+signed claim, and what keeps it accurate is what a false claim costs that signer:
+before resolution, a locked bond and a buyer who can withhold resolution; after
+it, the data's worth to whoever buys it, the evidence a forum or court reads, and
+the signer's resolution history. Weigh a source by that history and by the bond
+it had at stake; there is no protocol-issued score, and parties acting together can
+produce well-formed false data. And `redistribution:
 "prohibited"` is not enforcement — copying cannot be prevented on chain. The
 co-signed term is timestamped evidence for the layers outside the Core (the
 co-sellers' live interest in the same unresolved process, a composed arbitration
