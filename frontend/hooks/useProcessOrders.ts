@@ -203,7 +203,7 @@ export function useWalletOrders(): Order[] {
                 });
                 const record = walletRecord(graph, address as Address);
                 // An order where the wallet is BOTH parties appears once here
-                // (this is a loader, not the two-sided record table).
+                // (this is a loader, not the two-sided order table).
                 const seen = new Set<string>();
                 const result: Order[] = [];
                 for (const o of [...record.ordersAsBuyer, ...record.ordersAsSeller]) {
