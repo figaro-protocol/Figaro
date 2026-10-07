@@ -98,7 +98,7 @@ export function OnboardingReview() {
     const router = useRouter();
     const mounted = useMounted();
     const { address, isConnected } = useAccount();
-    const { state, update, clear } = useOnboardingState(address);
+    const { state, clear } = useOnboardingState(address);
 
     const { data: profileData } = useMemberProfile(address);
     const isRegistered = !!profileData;
@@ -152,9 +152,6 @@ export function OnboardingReview() {
                 items,
                 unitSystem: state.catalog?.unitSystem,
                 wallet: address,
-            });
-            update({
-                publishedProfileURI: outcome.profileURI,
             });
             setReceipt(outcome);
             setPinning(false);

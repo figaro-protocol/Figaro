@@ -79,8 +79,6 @@ interface OnboardingState {
     disclosurePolicy?: DisclosurePolicyEntry[];
     /** Agent endpoints declared on screen 6 (advanced; optional). */
     services?: MemberAgentServices;
-    /** IPFS URI of the published profile, set on screen 4 success. */
-    publishedProfileURI?: string;
     /** True when the on-chain register/updateProfile transaction has confirmed. */
     complete?: boolean;
     /** ISO timestamp of last write (for staleness checks). */
