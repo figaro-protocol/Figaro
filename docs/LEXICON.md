@@ -12,7 +12,7 @@ Nouns and their definitions. One name per thing.
 
 **asset** — A productive thing that owns a wallet and trades through it: a kitchen, a vehicle, a person's labor, a machine, an agent selling its own service. The asset is the party; whoever holds its key operates it.
 
-**attestation** — A representation or warranty a party gives about a process while it is open, signed and bound to the order it concerns: a term of the agreement, executed before resolve. Attestations are the evidence a process's data holds. The chain checks that an attestation is signed and bound, never that it is true; what keeps it accurate is what a false one costs its signer, before resolution and after it (`DATA_LAYER.md` § "Truth boundaries").
+**attestation** — A representation or warranty a party gives about a process while it is open, signed and bound to the order it concerns: a term of the agreement, executed before resolve. Attestations are the evidence a process's data holds. The chain checks that an attestation is signed and bound, never that it is true; what stands behind a seller's attestation is the buyer's decision to withhold resolution, at the price of its own bond, until a false one is put right, and after resolution the attestation stays in the public data and in its signer's resolution history (`DATA_LAYER.md` § "Truth boundaries").
 
 **batch** — A set of processes resolved together in one transaction on the strength of a validity proof, instead of one at a time through `FigaroCore`.
 
@@ -47,6 +47,8 @@ Nouns and their definitions. One name per thing.
 **DAO** — The body that holds and spends the treasury by human judgment.
 
 **data** — The trail a process leaves: what was committed, attested, and resolved, kept where anyone can verify its integrity. The aggregate map is public; the private detail belongs to the parties, who may keep it sealed or sell it on their own terms.
+
+**declaration** — Content a wallet signs outside the Core's checks: a term both parties signed into the agreement at commit, or what a wallet publishes about itself in its registry profile (a service area, a catalog item, a price). The chain never validates a declaration; a term is backed by both signatures, a profile by the member stake and the wallet's resolution history. Never an attestation, which is given about a process while it is open.
 
 **denomination** — The ERC-20 token in which every payment and every bond of one process is counted. One process, one token.
 

@@ -213,23 +213,29 @@ referential integrity, never substantive accuracy. **Composition-derived** rows 
 read from a composed venue's own events — a swap pool, the multisender, a forum —
 true per that contract's rules and outside the Core's guarantees.
 
-**What keeps a signed claim accurate.** An institution-declared row and an attestation
-behind a protocol-derived row are both a party's signed claim, and the chain checks
-neither. The mechanism is what stands behind both: the claim is signed while the
-process is open, and a false one costs its signer at two moments. Before resolution,
-the signer's bond is locked, the buyer can withhold resolution until the claim is put
-right, and the co-sellers, whose own payment waits on the same resolution, have their
-own reason to press. After resolution, which no one can reverse, the claim lives on in
-the data: its worth to whoever buys it or analyses it, the evidence a forum or court
-reads, and the signer's resolution history. The same data serves monetization,
-evidence, public and private analysis, and the application of a norm or standard, so
-a lie is paid for in each of them. The SDK carries this text once
-(`SIGNED_CLAIM_ACCURACY` in `sdk/src/derive/truth.ts`) inside both glosses. What it
-does not reach is parties acting together, covered below.
+**What stands behind a declaration or an attestation.** An institution-declared row is
+a declaration: content both parties signed into the agreement at commit, which the
+chain never validates. An attestation behind a protocol-derived row is a party's
+representation about the process while it is open, signed and bound to its order,
+which the chain checks for binding and never for truth. What stands behind a seller's
+attestation is the buyer's decision: a buyer who finds it false before resolving can
+withhold resolution, which keeps the seller's bond locked, and its own, and pays
+nobody, until it is put right; the co-sellers, whose own payment waits on the same
+resolution, have their own reason to press. That reach has three edges. A buyer's own
+attestation meets no such pressure, since the buyer resolves at will. A declaration is
+a term both parties agreed, so there is nothing to put right; what stands behind it is
+that both signed it. A member's profile is a declaration outside any process, backed by
+the member stake and the wallet's resolution history. On the resolver path the attester
+an event names is the caller the seller's own code authorized; the seller's bond stands
+behind it. After resolution, which no one can reverse, an attestation or a declaration
+stays in the public data: its worth to whoever buys or analyses it, the evidence a forum
+or court reads, and the signer's resolution history. The SDK carries the two tails once
+(`TRUTH_BOUNDARY_GLOSS` in `sdk/src/derive/truth.ts`). What none of this reaches is
+parties acting together, covered below.
 
 A third party that relies on the corpus — a lender, an insurer, a court — reads the
 boundary with the row. The chain enforced the bonds and the payment; every claim
-about the world entered as a party's signed claim, and parties acting together can
+about the world entered as a party's declaration or attestation, and parties acting together can
 emit perfectly formed books for a trade whose service was never rendered. The data
 proves what the Core enforced, never the world, and whoever builds a decision on
 the books carries that boundary into the decision.
