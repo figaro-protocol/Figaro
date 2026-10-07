@@ -30,7 +30,7 @@
  *
  * ── What is trusted ─────────────────────────────────────────────────────────
  *
- * Nothing structural. An analyst answer is a READING of a public record, and
+ * Nothing structural. An analyst answer is a READING of public data, and
  * every answer carries the TRUTH BOUNDARY of what it reports, in the wire's own
  * vocabulary — the caller renders that label with the claim, never louder than
  * the guarantee behind it. An analyst can be wrong, stale, or hostile; the
