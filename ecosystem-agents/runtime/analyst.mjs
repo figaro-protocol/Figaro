@@ -110,7 +110,9 @@ async function loadSpecSource(discovery, { gateways } = {}) {
  * data market — and admit only those that verify against a committed
  * `agreementHash` read from the chain. This is the provenance gate: a document
  * whose recomputed root is not on chain informs nothing, whoever handed it
- * over. It proves provenance and integrity, never veracity.
+ * over. It proves provenance and integrity, never veracity: what a held
+ * document declares is its parties' signed claim, weighed by their
+ * resolution history and the bonds they had at stake.
  *
  * @param dir    directory of `*.json` agreement documents (absent dir = none)
  * @param events the fetched core events — the source of committed roots
