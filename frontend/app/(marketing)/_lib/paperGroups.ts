@@ -30,7 +30,7 @@ export interface PaperRef {
     /** Full title. */
     title: string;
     /** Page route (`/papers/<slug>`) for a migrated paper, or path to the
-     *  PDF (`/papers/<name>.pdf`) for one still authored in LaTeX. */
+     *  PDF (`/papers/<name>.pdf`) for one still written in LaTeX. */
     href: string;
     /** The abstract in one breath, at most about forty-five words, so the
      *  corpus index can show what the paper treats without opening it. */
@@ -146,7 +146,7 @@ export const PAPER_GROUPS: PaperGroup[] = [
             {
                 title: "After TradeLens: A Permissionless Bonded Replacement",
                 href: "/papers/after-tradelens",
-                summary: "Why TradeLens failed as a structure, not as software, and the permissionless alternative at the same perimeter: carriers, ports, customs, forwarders, and financiers each bonded into one import chain under incoterms, custody, and cold-chain terms.",
+                summary: "Why TradeLens failed as a structure, not as software, and the permissionless alternative at the same perimeter: carriers, ports, customs, forwarders, and financiers each bonded into one import chain under incoterms, chain of custody and cold-chain terms.",
                 keywords: ["container shipping", "supply-chain coordination", "bills of lading", "Incoterms", "MLETR", "transferable records", "process modeling"],
                 industries: ["Container shipping", "Freight and customs"],
             },
