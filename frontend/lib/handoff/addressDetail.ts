@@ -98,7 +98,7 @@ export function addressDetailBlobHash(blobB64: string): `0x${string}` {
 }
 
 /** What the Attestation event's contentRef equals for a hash-only anchor:
- *  the coordinator records keccak256(content), and the content IS the blob
+ *  the coordinator keeps keccak256(content), and the content IS the blob
  *  hash — so the receiving party verifies the event's contentRef against
  *  this double hash of the received blob. */
 export function addressDetailAnchorRef(blobB64: string): `0x${string}` {
