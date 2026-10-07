@@ -26,9 +26,9 @@ import type { PartyRole } from "@/lib/kernel/walletProcessQueries";
 
 // ── Template DSL (declared data) ───────────────────────────────────────────────
 
-/** A value drawn from the committed record — resolved by the engine, never
+/** A value drawn from the committed data — resolved by the engine, never
  *  naming a clause (leaves are found by their DECLARED FIELD). @public — the
- *  template DSL vocabulary a document-template author writes against. */
+ *  template DSL vocabulary a document template is written against. */
 export type ValueRef =
     | { const: string }
     | { orderHash: true }
@@ -39,7 +39,7 @@ export type ValueRef =
     | { lineItemNames: true }                             // commerce lineItems → names joined
     | { sumPayments: true };                              // Σ payment over the unit's orders
 
-/** When a document applies — a declarative predicate over the committed record. @public */
+/** When a document applies — a declarative predicate over the committed data. @public */
 export type Predicate =
     | { always: true }
     | { hasLeafField: string }   // some committed leaf declares this field
@@ -154,7 +154,7 @@ function render(template: DocumentTemplate, unit: Unit): RenderedDocument {
 }
 
 /**
- * Project every applicable document for a process from its committed record.
+ * Project every applicable document for a process from its committed data.
  * `orders` are the process's orders; `agreements` maps agreementHash → agreement.
  * Order-scoped templates emit one document per matching order; seller-scoped emit
  * one per seller (orders grouped by seller). Templates are applied in catalog
