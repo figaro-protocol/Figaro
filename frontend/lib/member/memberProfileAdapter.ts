@@ -44,7 +44,7 @@ export function tryParseCatalogItems(doc: unknown): CatalogItemMetadata[] | null
             rateQuantitySource: typeof item.rateQuantitySource === 'string' ? item.rateQuantitySource : undefined,
             // Catalog-sourced clause values (freight class, hazmat, cold-chain,
             // a data product's license terms, …) fold onto their own leaves;
-            // pass the record through structurally.
+            // pass the object through structurally.
             clauseValues: item.clauseValues && typeof item.clauseValues === 'object' && !Array.isArray(item.clauseValues)
                 ? (item.clauseValues as CatalogItemMetadata['clauseValues'])
                 : undefined,
