@@ -17,8 +17,8 @@
  * section of its FIRST reader (`design.composes` is declared at design,
  * dispatched at runtime). The one verb `fills` recurs across sections and
  * always means the same thing: the content fields (by name) whose values that
- * phase's actor authors — the BUYER owns every content field named in no
- * fills list, authored at checkout (the default case; always derived as the
+ * phase's actor fills — the BUYER owns every content field named in no
+ * fills list, filled at checkout (the default case; always derived as the
  * complement, never stored).
  *
  * This module lives in the FRONTEND because the frontend is `block`'s
@@ -63,7 +63,7 @@ interface ClauseBlockDesign {
      *  never a hardcoded tree (e.g. a proximity-policy clause nests under a
      *  hand-off clause's `handoff` field). Null for top-level clauses. */
     nestsUnder: string | null;
-    /** The content fields (by name) the DESIGNER authors into the assembly
+    /** The content fields (by name) the DESIGNER fills into the assembly
      *  template — the tailoring that adapts a generic clause to a specific
      *  application (a pinned consent document, a pinned denomination).
      *  The drawer exposes field editors exactly for these; their values
@@ -92,14 +92,14 @@ interface ClauseBlockDesign {
 /** The `checkout` section — read by the checkout fold: where declared values
  *  come from before the buyer signs. */
 interface ClauseBlockCheckout {
-    /** The content fields (by name) authored per-item on the seller's
+    /** The content fields (by name) filled per-item on the seller's
      *  CATALOG (item master data: freight class, hazmat class, cold-chain
      *  window) and folded onto the matching leaf at checkout. Generic
      *  surfaces render a spec-driven authoring section on the catalog item
      *  for ANY clause declaring a non-empty list — including one this
      *  codebase has never seen. */
     catalogueFills: readonly string[];
-    /** The content fields (by name) authored ONCE on the member's PROFILE
+    /** The content fields (by name) filled ONCE on the member's PROFILE
      *  (seller master data: a dim-weight divisor, a declared credential id)
      *  and folded onto the matching leaf at checkout. The seller-level
      *  sibling of `catalogueFills` — two distinct layers: catalog = what is
