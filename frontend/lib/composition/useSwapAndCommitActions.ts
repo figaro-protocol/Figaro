@@ -28,7 +28,7 @@ export function useSwapAndCommitActions() {
     const publicClient = usePublicClient();
 
     /** Broadcast `swapAndCommit` with either party's funding leg (an absent
-     *  leg is passed disabled — that party self-funds, as in the plain flow). */
+     *  leg is passed disabled — that party bonds from its own balance, as in the plain flow). */
     const swapAndCommit = async (
         commitment: Commitment,
         buyerSig: Hex,
