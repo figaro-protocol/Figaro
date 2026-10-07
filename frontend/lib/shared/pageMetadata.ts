@@ -4,7 +4,7 @@ const SITE_SUFFIX = " — Figaro Protocol";
 
 /**
  * Derives a page's Open Graph + Twitter metadata from its OWN `title` +
- * `description` — no new copy authored. Next.js does not fall back to
+ * `description` — no new copy written. Next.js does not fall back to
  * `metadata.title` for `openGraph`/`twitter`: a page with no `openGraph`
  * block inherits the root layout's site-wide one wholesale, so a shared
  * link unfurls as the generic homepage card instead of that page's own
