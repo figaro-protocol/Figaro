@@ -87,6 +87,9 @@ export interface GraphLayer {
 }
 
 export const GRAPH_LAYERS: readonly GraphLayer[] = [
+    // An assembly attribution is a party's signed claim; what keeps it accurate
+    // is `TRUTH_BOUNDARY_GLOSS` (sdk/src/derive/truth.ts) and
+    // docs/DATA_LAYER.md § "Truth boundaries".
     {
         view: "market",
         label: "Market shape",
@@ -94,6 +97,9 @@ export const GRAPH_LAYERS: readonly GraphLayer[] = [
         statement:
             "Per-assembly aggregates over the process graph. The underlying commits and resolutions are protocol-enforced; the grouping rides provenance the parties declared, so an assembly attribution is a declaration, not a FigaroCore guarantee. Processes whose provenance is not recoverable here are counted as unattributed, never binned under a fabricated key.",
     },
+    // A decoded overlay field is the attester's signed claim; what keeps it
+    // accurate is `TRUTH_BOUNDARY_GLOSS` (sdk/src/derive/truth.ts) and
+    // docs/DATA_LAYER.md § "Truth boundaries".
     {
         view: "overlays",
         label: "Attestation overlays",
