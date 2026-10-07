@@ -28,7 +28,7 @@
  * The race window and the candidate count are checkout-time buyer policy —
  * never a stored field on the payload, the template, or any profile.
  *
- * THE CHOREOGRAPHY IS THE SDK'S (`startRace` — one authored loop):
+ * THE CHOREOGRAPHY IS THE SDK'S (`startRace` — one loop, written once):
  * this surface drafts the candidates, supplies each one's
  * channel (declared endpoint → the offer wire behind the browser-edge https
  * guard, resolved through the DID-verifying resolver when the profile
@@ -207,7 +207,7 @@ export function useDispatchRace() {
     const [result, setResult] = useState<DispatchRaceResult | null>(null);
 
     // The choreography lives in the SDK's race engine (`startRace` — the one
-    // authored loop); these refs hold only SURFACE state:
+    // loop, written once); these refs hold only SURFACE state:
     // the drafted candidates (render + winner mapping), the run handle (buyer
     // overrides call its finish), the relay adapter (closed on cleanup), and
     // the window timer (window duration is checkout policy).
@@ -217,7 +217,7 @@ export function useDispatchRace() {
     const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const ctxRef = useRef<{ nodeId: string; salts: Map<string, bigint>; deadline: bigint; decimals: number } | null>(null);
     const finishedRef = useRef(false);
-    // The quotes leg: same choreography, the CANDIDATE authors the price.
+    // The quotes leg: same choreography, the CANDIDATE sets the price.
     // Set for the run by start(); rendered so the panel can label rows.
     const [quoting, setQuoting] = useState(false);
 
@@ -284,7 +284,7 @@ export function useDispatchRace() {
      * long to wait), `maxCandidates` (race only the k best-priced), and
      * `quote` — the RFQ leg: drafts go out at the buyer's CEILING with the
      * priced fields derived from the built agreement (spec-routed, no clause
-     * named), candidates author the price, and replies verify by
+     * named), candidates set the price, and replies verify by
      * reconstruction instead of exact match.
      */
     const start = useCallback(async (args: {
@@ -400,7 +400,7 @@ export function useDispatchRace() {
             draftsRef.current = drafts;
             setCandidates(drafts.map((d) => ({ address: d.address, itemName: d.item.name, payment: d.payment, replied: false })));
 
-            // THE race — the SDK engine runs the one authored choreography
+            // THE race — the SDK engine runs the one choreography
             // (fan-out, verification, arrival-order accumulation, selection);
             // this surface supplies only the per-candidate channel and renders
             // progress. Candidate routing is the profile-keyed rule:
