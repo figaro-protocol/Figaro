@@ -50,8 +50,8 @@ export function usePublishAssembly() {
     const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
 
     /** Build a assemblyTemplate from the snapshot, pin to IPFS, fetch the
-     *  registry's deposit amount, simulate to catch reverts (composition
-     *  already anchored, wrong deposit) BEFORE opening the wallet, send the
+     *  registry's stake amount, simulate to catch reverts (composition
+     *  already anchored, wrong stake) BEFORE opening the wallet, send the
      *  transaction, then wait for the receipt and verify status is
      *  `success`. Returns the transaction hash + IPFS URI on confirmed
      *  success. Throws on any failure — no wallet, IPFS down,
@@ -73,14 +73,14 @@ export function usePublishAssembly() {
             );
         }
         if (!client) {
-            throw new Error("No public client available to read the registration deposit.");
+            throw new Error("No public client available to read the registration stake.");
         }
         if (!address) {
             throw new Error("Connect a wallet before publishing.");
         }
         // Hard cap = the resolve ceiling: every order must resolve in one atomic
         // resolveProcess within a block. Same ceiling the designer canvas gates
-        // node addition on, so an assembly authored there never trips this — the
+        // node addition on, so an assembly designed there never trips this — the
         // guard catches forked / hand-crafted templates. (Commit landing rate is
         // a checkout-time signal, not a size cap; see chainGasCeilings.)
         const perProcessCap = await maxOrdersResolvablePerProcess(client);
