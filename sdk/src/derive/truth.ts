@@ -16,15 +16,20 @@ export type TruthBoundary =
     | "protocol-derived"
     | "composition-derived";
 
+/** What keeps a signed claim accurate when the chain cannot check it — one text,
+ *  carried by both boundaries whose rows are a party's signed claim. */
+const SIGNED_CLAIM_ACCURACY =
+    "what keeps it accurate is what a false claim costs its signer: before resolution, a bond locked and a payment the buyer can withhold, with co-sellers whose own payment waits on the same resolution; after it, the data's worth to whoever buys or analyses it, the evidence a forum or court reads, and the signer's resolution history.";
+
 /** The one-line meaning of each truth boundary — render-ready, the same text
  *  for every consumer that explains a projection's guarantee. */
 export const TRUTH_BOUNDARY_GLOSS: Record<TruthBoundary, string> = {
     "protocol-enforced":
         "every row is economically backed by FigaroCore — bonds locked at commit, payouts at resolve — tamper-proof by design (the Process and Resolution graphs).",
     "institution-declared":
-        "the runtime encodes it, the protocol never validates it; bonding pressure incentivizes accuracy (declared agreement-body data — e.g. a geohash field's substance).",
+        "the runtime encodes it, the protocol never validates it (declared agreement-body data — e.g. a geohash field's substance); " + SIGNED_CLAIM_ACCURACY,
     "protocol-derived":
-        "the anchoring is on-chain (merkle-bound sections, timestamped attestations) while the content behind the fingerprint lives off-chain — referential integrity, not substantive accuracy (attestation overlays, provenance links).",
+        "the anchoring is on-chain (merkle-bound sections, timestamped attestations) while the content behind the fingerprint lives off-chain — referential integrity, not substantive accuracy (attestation overlays, provenance links); " + SIGNED_CLAIM_ACCURACY,
     "composition-derived":
         "read from a composed venue's own events — a swap pool, a multisender, a forum — true per that contract's rules, outside FigaroCore's guarantees (the fifth-noun trail).",
 };
