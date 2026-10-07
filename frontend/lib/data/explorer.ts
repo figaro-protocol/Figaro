@@ -10,7 +10,7 @@
  * conflates a Core guarantee with an institution's declaration.
  *
  * The LAYERS are the doc's canonical presentation grouping and are therefore a
- * fixed list here; everything INSIDE a layer is derived from the record. In
+ * fixed list here; everything INSIDE a layer is derived from the data. In
  * particular the graph CLASS is open: the overlay rows
  * are one per attestable clause family the corpus actually contains — a family
  * this codebase has never seen draws its own row, and a family whose spec will
@@ -44,9 +44,9 @@ export type GraphView = (typeof GRAPH_VIEWS)[number];
 export interface DataExplorerQuery {
     /** Which graph layer is in focus. */
     view: GraphView;
-    /** The wallet-record subject — ANY address, never only the reader's own
+    /** The wallet-data subject — ANY address, never only the reader's own
      *  (this surface is walletless: a spectator reads any wallet's public
-     *  record, exactly as `/audit` reads any process). */
+     *  data, exactly as `/audit` reads any process). */
     wallet: string;
     /** Free text, matched case-insensitively against the active view's rows. */
     q: string;
@@ -79,7 +79,7 @@ export interface GraphLayer {
     label: string;
     /** The doc's own vocabulary — a layer PICKS a boundary, never coins one.
      *  `null` on the trade view, which renders no rows of its own: it hands
-     *  off to `/audit/view`, whose record carries its own boundaries. */
+     *  off to `/audit/view`, whose data carries its own boundaries. */
     boundary: TruthBoundary | null;
     /** What the layer's rows are, and what its boundary does and does not
      *  guarantee about them. */
@@ -112,21 +112,21 @@ export const GRAPH_LAYERS: readonly GraphLayer[] = [
         label: "Value flow",
         boundary: "composition-derived",
         statement:
-            "Denominations the record resolves in, plus the corridors between them. Resolution flow per denomination is protocol-enforced; a corridor between two denominations is read from a composed venue's OWN events and is true per that contract's rules, outside FigaroCore's guarantees.",
+            "Denominations the data resolves in, plus the corridors between them. Resolution flow per denomination is protocol-enforced; a corridor between two denominations is read from a composed venue's OWN events and is true per that contract's rules, outside FigaroCore's guarantees.",
     },
     {
         view: "wallet",
-        label: "Wallet record",
+        label: "Wallet data",
         boundary: "protocol-enforced",
         statement:
-            "One wallet's public trading record: the processes it resolves as root buyer and the orders it stands either side of. Every row is a bonded commitment on chain.",
+            "One wallet's public trading data: the processes it resolves as root buyer and the orders it stands either side of. Every row is a bonded commitment on chain.",
     },
     {
         view: "trade",
         label: "Trade story",
         boundary: null,
         statement:
-            "One process, narrated from its own record. The full narration already exists at /audit/view — timeline, financials, clause evidence, signature verdicts — so this view hands off rather than telling the story twice.",
+            "One process, narrated from its own data. The full narration already exists at /audit/view — timeline, financials, clause evidence, signature verdicts — so this view hands off rather than telling the story twice.",
     },
 ];
 
@@ -285,7 +285,7 @@ export function processRows(graph: ProcessGraph): ProcessRow[] {
  * provenance overlay declared, the same map the market layer counts with. Pass
  * `null` for `marketKey` to select the processes NO attestation claims: the
  * honest unattributed set, which is counted in `MarketShape` and would
- * otherwise be the one part of the record a reader cannot open.
+ * otherwise be the one part of the data a reader cannot open.
  *
  * `attributionByProcess` maps a lowercased processId to its attribution key —
  * `overlaysForMarket`'s parameter, unchanged.
@@ -404,7 +404,7 @@ export interface DenominationRow {
     text: string;
 }
 
-/** The denomination nodes, ordered by how much of the record runs in them —
+/** The denomination nodes, ordered by how much of the data runs in them —
  *  by COUNTS, because volumes in different tokens are incomparable. */
 export function denominationRows(graph: ValueFlowGraph): DenominationRow[] {
     return graph.nodes
@@ -455,7 +455,7 @@ export function venuePosture(venue: string | null, edges: readonly ValueFlowEdge
 export function venuePostureNote(posture: VenuePosture): string {
     switch (posture.state) {
         case "no-venue":
-            return "No swap venue is composed in this deployment's record, so there are no corridors to read here. That is the absence of a reader, never the absence of trade.";
+            return "No swap venue is composed in this deployment record, so there are no corridors to read here. That is the absence of a reader, never the absence of trade.";
         case "unreadable":
             return `A swap venue is composed at ${posture.venue}, and the corridor trail is that venue's OWN event log — read against that venue's ABI, discovered from the deployment record and the clause fields that name it. No such reader is configured here, so corridors are unreadable rather than empty.`;
         case "read":
@@ -463,7 +463,7 @@ export function venuePostureNote(posture: VenuePosture): string {
     }
 }
 
-// ── Wallet record ───────────────────────────────────────────────────────────
+// ── Wallet data ─────────────────────────────────────────────────────────────
 
 export interface WalletRecordSummary {
     wallet: string;
@@ -473,7 +473,7 @@ export interface WalletRecordSummary {
     ordersAsSeller: number;
     /** Denominations this wallet has traded in, deduped and sorted. */
     denominations: string[];
-    /** True when the wallet appears nowhere in the record — an answer, not an
+    /** True when the wallet appears nowhere in the data — an answer, not an
      *  error, and never a claim that the wallet did not trade (it may have
      *  traded on the batch path, or outside this reader's block range). */
     empty: boolean;
@@ -498,7 +498,7 @@ export function walletRecordSummary(record: WalletRecord): WalletRecordSummary {
     };
 }
 
-/** One order row of a wallet's record — the shape the table renders. */
+/** One order row of a wallet's data — the shape the table renders. */
 export interface WalletOrderRow {
     orderHash: string;
     processId: string;
@@ -513,7 +513,7 @@ export interface WalletOrderRow {
 }
 
 /** Both sides of a wallet's order history in one block-ordered list. An order
- *  where the wallet is BOTH parties appears once per side — the record says
+ *  where the wallet is BOTH parties appears once per side — the data says
  *  what it says. */
 export function walletOrderRows(record: WalletRecord): WalletOrderRow[] {
     const rows: WalletOrderRow[] = [];
