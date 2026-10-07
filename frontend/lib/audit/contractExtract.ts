@@ -141,7 +141,7 @@ export function extractContract(
     // parties) over the order's currency field (which is event-derived, normally
     // identical, but the commerce section is the authoritative party-signed
     // source). When the commerce section is absent, fall back to order.currency
-    // — FigaroCore records currency on the commitment regardless.
+    // — FigaroCore emits the commitment's currency regardless.
     const commerce = sectionByField(agreement, "lineItems", specSource());
     const commerceCurrency = (commerce?.data as { currency?: string } | undefined)?.currency;
 
