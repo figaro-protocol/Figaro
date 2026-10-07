@@ -1,6 +1,6 @@
 /**
  * Catalog clause-value validation — the off-chain validation gate for the product master
- * data a member authors per item (freight class, hazmat, cold-chain, …).
+ * data a member fills per item (freight class, hazmat, cold-chain, …).
  *
  * Open-world and clause-agnostic: no clause is named. Each entry in an item's
  * `clauseValues` map is validated against that clause's REGISTERED spec via the
@@ -39,7 +39,7 @@ export function validateCatalogClauseValues(item: CatalogItemMetadata): string[]
 }
 
 /**
- * The catalog-authored clause sections a member's items actually offer:
+ * The catalog-filled clause sections a member's items actually offer:
  * every registered clause with `block.checkout.catalogueFills` that one of the
  * assemblies this member has BOUND composes. Two derivations, one direction —
  * the bindings decide the clauses, the clauses decide the fields; the
@@ -68,7 +68,7 @@ export function catalogClausesForBindings(
 }
 
 /**
- * The fields of one clause the CATALOG authors — the clause's own
+ * The fields of one clause the CATALOG fills — the clause's own
  * `block.checkout.catalogueFills`, resolved against its registered spec and
  * returned in spec order. Fields the clause assigns to another source (the
  * designer's fills, the buyer's checkout particulars, the member's profile)
