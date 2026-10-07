@@ -5,6 +5,7 @@ import Link from "@/components/shared/Link";
 import { MarketingHero } from "@/components/marketing/MarketingHero";
 import { CtaLink } from "@/components/marketing/CtaLink";
 import { WholeStripFrame } from "@/components/figures/WholeStripFigure";
+import { KERNEL_EQUILIBRIUM } from "@figaro-protocol/sdk";
 
 export const metadata: Metadata = withOg({
     title: "Figaro Protocol",
@@ -14,17 +15,25 @@ export const metadata: Metadata = withOg({
 
 // THE HOME PAGE, in simplex.chat's shape and nothing more: the headline is the
 // one phrase a reader arrives already believing; the lead under it says what a
-// visitor can do; then the THREE DOORS the header carries — Participate, Build,
+// visitor can do and states the bond rule, because a costly signal the reader
+// cannot see persuades nobody; one line renders the two-party example from the
+// equilibrium owner, and /kernel's subtitle links to the page that owns the
+// mechanism. Then the THREE DOORS the header carries — Participate, Build,
 // Research — each one sentence and one button to its landing; then the ONE
 // PICTURE — the whole of Figaro as six frames in the trade strip's own language
 // (`WholeStripFigure`), each frame with the claim it carries as its heading and
-// one fact under it; the two "Composes with" strips; one plain line about the
-// code at the foot. The page states each thing once. Nothing above the foot
-// explains how anything works: certainty is stated as the parties' BEHAVIOR,
-// never as the bond arithmetic, and every line is in the positive. The six
-// frames are the five parts and the loop: wallets, terms, a process signed and
-// bonded, every seller's payment at once, the evidence, and the count of use
-// that the designers' reward follows. The claims sit on the frames they belong to.
+// one fact under it that the lead does not already state; the two "Composes
+// with" strips, each on-chain mark with a few words of what it does; two plain
+// lines at the foot, the code and the interfaces. The page states each thing
+// once, in the positive, and stays generic: no named trade and no named
+// industry, because the activity the protocol carries is unbounded. The six
+// frames are the five parts and the loop, in time order: wallets, terms, a
+// process signed and bonded, every seller's payment at once, the evidence, and
+// the count of use that the designers' reward follows.
+// Every number on this page is rendered from sdk/src/equilibrium.json, never
+// typed here (scripts/lint-equilibrium-owner.sh).
+const EX = KERNEL_EQUILIBRIUM.example;
+
 const DOORS: { label: string; line: string; href: string }[] = [
     {
         label: "Participate",
@@ -58,7 +67,7 @@ const FRAMES: { line: string; fact: string }[] = [
     },
     {
         line: "Everyone is paid at once when the buyer confirms.",
-        fact: "When the buyer confirms, every seller in the trade is paid in full and every bond is refunded, in one transaction. A buyer who never confirms leaves their own bond locked.",
+        fact: "Confirming is one transaction, and only the buyer can send it. Nothing expires while the process is open: a buyer who never confirms leaves every bond locked, their own included.",
     },
     {
         line: "The evidence is yours.",
@@ -75,13 +84,13 @@ const FRAMES: { line: string; fact: string }[] = [
 // the deployments table) — each mark from the project's own brand assets,
 // unaltered, linking to the project. One strip below the sections, above the
 // code line.
-const COMPOSES_WITH: { name: string; href: string; src: string }[] = [
-    { name: "IPFS", href: "https://ipfs.tech", src: "/built-with/ipfs.svg" },
-    { name: "Uniswap", href: "https://uniswap.org", src: "/built-with/uniswap.svg" },
-    { name: "XMTP", href: "https://xmtp.org", src: "/built-with/xmtp.svg" },
-    { name: "Disperse", href: "https://disperse.app", src: "/built-with/disperse.png" },
-    { name: "Kleros", href: "https://kleros.io", src: "/built-with/kleros.svg" },
-    { name: "Succinct", href: "https://succinct.xyz", src: "/built-with/succinct.svg" },
+const COMPOSES_WITH: { name: string; href: string; src: string; note: string }[] = [
+    { name: "IPFS", href: "https://ipfs.tech", src: "/built-with/ipfs.svg", note: "Holds clause specs and profiles; the chain keeps their fingerprint." },
+    { name: "Uniswap", href: "https://uniswap.org", src: "/built-with/uniswap.svg", note: "Swaps another token into the process's denomination for a bond, in the same transaction as the commit." },
+    { name: "XMTP", href: "https://xmtp.org", src: "/built-with/xmtp.svg", note: "One channel a buyer and each seller coordinate on." },
+    { name: "Disperse", href: "https://disperse.app", src: "/built-with/disperse.png", note: "Lets a wallet split what it was paid, after resolution." },
+    { name: "Kleros", href: "https://kleros.io", src: "/built-with/kleros.svg", note: "One arbitration forum: it rules on a process's evidence, and the buyer resolves." },
+    { name: "Succinct", href: "https://succinct.xyz", src: "/built-with/succinct.svg", note: "SP1 validity proofs, so one transaction resolves a batch of processes." },
 ];
 
 // Off-chain, a process composes with the legal and regulatory norms a trade
@@ -99,8 +108,14 @@ export default function Home() {
         <>
             <MarketingHero
                 title="My word is my bond"
-                lead="You can buy and sell goods, work or data with anyone, anywhere, and every party puts a bond behind its word."
+                lead="You can buy and sell goods, work or data with anyone, anywhere. The buyer bonds twice the payment. Each seller bonds twice the value the trade has accumulated through its link. When the buyer confirms, every seller is paid and every bond is refunded, the buyer's less the payments, at once."
             >
+                <p className="mt-4 text-base text-ink-body leading-relaxed max-w-2xl" data-testid="home-example">
+                    For a payment of {EX.payment} tokens, the buyer locks {EX.buyer_locks}, the payment carried inside it, and the seller locks {EX.seller_locks}: {EX.held} held until the buyer confirms.{" "}
+                    <Link href="/kernel" className="text-ink-heading font-medium italic hover:underline">
+                        Two bonds, each bigger than the trade. One rule for who resolves. That is the entire machine.
+                    </Link>
+                </p>
                 <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-8" data-testid="home-doors">
                     {DOORS.map((d) => (
                         <div key={d.href} className="flex flex-col">
@@ -131,7 +146,7 @@ export default function Home() {
 
                 <div className="mt-12 border-t border-default pt-8" data-testid="built-with">
                     <p className="text-sm text-ink-muted mb-4">Composes with on-chain</p>
-                    <ul className="flex flex-wrap items-center gap-x-8 gap-y-4">
+                    <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-5">
                         {COMPOSES_WITH.map((b) => (
                             <li key={b.name}>
                                 <a href={b.href} target="_blank" rel="noopener noreferrer" title={b.name} className="flex items-center gap-2 text-sm text-ink-body hover:text-ink-heading">
@@ -139,6 +154,7 @@ export default function Home() {
                                     <img src={b.src} alt={b.name} width={24} height={24} className="h-6 w-6 object-contain" />
                                     <span>{b.name}</span>
                                 </a>
+                                <p className="mt-1 text-sm text-ink-muted leading-relaxed">{b.note}</p>
                             </li>
                         ))}
                     </ul>
@@ -158,6 +174,13 @@ export default function Home() {
                         The smart contracts are decentralized and permissionless, the code is open, and seven independent benches check it and the equilibrium it enforces. What each covers:{" "}
                         <Link href="/security" className="text-ink-heading font-medium hover:underline">
                             Security
+                        </Link>
+                        .
+                    </p>
+                    <p className="mt-4 text-sm text-ink-muted leading-relaxed max-w-2xl">
+                        This website is one interface among any number; the registries are optional, and FigaroCore runs with neither:{" "}
+                        <Link href="/about#what-to-check" className="text-ink-heading font-medium hover:underline">
+                            About
                         </Link>
                         .
                     </p>
