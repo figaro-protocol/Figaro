@@ -59,7 +59,7 @@ export function useProcessAgreements(agreementHashes: string[]): Map<string, Agr
         };
     }, [store]);
 
-    // Stabilise the hydration dep: drive the effect by the set of distinct
+    // Stabilize the hydration dep: drive the effect by the set of distinct
     // non-zero hashes, not by the parent's array identity.
     const stableKey = useMemo(
         () => [...new Set(agreementHashes.filter((h) => Boolean(h) && h !== ZERO_BYTES32))]

@@ -207,7 +207,7 @@ export function FieldControl({
                                 tooltip. Same `labelEnumValue` the READ surfaces
                                 use (describeClause → the canvas node chips), so a
                                 choice reads identically where it is MADE and where
-                                it is REPORTED. Unlabelled ⇒ the raw token. */}
+                                it is REPORTED. Unlabeled ⇒ the raw token. */}
                             <span title={opt}>{labelEnumValue(field, opt)}</span>
                         </label>
                     ))}

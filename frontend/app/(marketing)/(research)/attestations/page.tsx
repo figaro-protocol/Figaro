@@ -111,7 +111,7 @@ export default function Attestations() {
                     is locked. The buyer can withhold resolution until a false one is put
                     right, and the other sellers are paid only when the buyer resolves,
                     so they press too. After resolution, the attestation stays in the
-                    data its signer sells and others analyse, and in its signer&apos;s
+                    data its signer sells and others analyze, and in its signer&apos;s
                     resolution history. None of this reaches parties acting together: they can
                     file perfectly formed attestations for a service never rendered. What a
                     false one costs, at each moment, is on{" "}

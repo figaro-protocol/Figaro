@@ -203,7 +203,7 @@ export function TopologyCanvas({
             );
             const isRoot = knownParents.length === 0;
             // Add-parent picker options: every other order not already a
-            // parent. Labelled "Order N" to match the drawer's node tabs.
+            // parent. Labeled "Order N" to match the drawer's node tabs.
             const candidateParents = onAddParent
                 ? orders
                     .filter((o) => o.orderHash !== order.orderHash && !knownParents.includes(o.orderHash))

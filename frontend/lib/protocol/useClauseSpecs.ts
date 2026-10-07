@@ -10,7 +10,7 @@
  * describeAttestation / groupClausesByArticle / clauseNestsUnder) resolve for every
  * registered clause.
  *
- * This is the clause analogue of the assembly loader: spec-consuming surfaces
+ * This is the clause analog of the assembly loader: spec-consuming surfaces
  * call this and gate their render on `loaded`, so nothing reads a half-warm
  * cache. The cache is a module singleton, so the fetch happens once per spec
  * across the whole app; `version` bumps as specs resolve so dependents recompute.

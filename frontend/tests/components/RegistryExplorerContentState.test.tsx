@@ -86,13 +86,13 @@ describe("RegistryExplorer — the state of the content behind a pointer is show
         clauseEventsMock.mockReturnValue({ data: [], failed: false });
         assembliesMock.mockReturnValue({ data: [
             { slug: "asm-fresh", registeredBy: "0xAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", compositionHash: "0x1", contentURI: "ipfs://a", blockNumber: 2n, networkTargets: [], state: "error", name: "asm-fresh", agreementCount: null, clauses: null, assemblyTemplate: null },
-            { slug: "asm-named", registeredBy: "0xAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", compositionHash: "0x2", contentURI: "ipfs://b", blockNumber: 3n, networkTargets: [], state: "loaded", name: "Containerised import chain", agreementCount: 3, clauses: [], assemblyTemplate: { name: "Containerised import chain", agreements: [] } },
+            { slug: "asm-named", registeredBy: "0xAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", compositionHash: "0x2", contentURI: "ipfs://b", blockNumber: 3n, networkTargets: [], state: "loaded", name: "Containerized import chain", agreementCount: 3, clauses: [], assemblyTemplate: { name: "Containerized import chain", agreements: [] } },
         ] });
 
         render(<RegistryExplorer />);
 
         expect(screen.getByTestId("assembly-view-asm-fresh").textContent).toBe("asm-fresh");
-        expect(screen.getByTestId("assembly-view-asm-named").textContent).toBe("Containerised import chain");
+        expect(screen.getByTestId("assembly-view-asm-named").textContent).toBe("Containerized import chain");
         expect(screen.getAllByTestId("content-resolving")).toHaveLength(1);
         expect(screen.getByTestId("content-resolving").textContent).toMatch(/not served by the gateway yet/);
     });

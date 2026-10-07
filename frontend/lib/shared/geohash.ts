@@ -9,7 +9,7 @@
  * machine scenario) keeps fine grain, because its plaintext never lands on a
  * public artifact. Door-level detail on a public field travels only inside the
  * per-order ECDH addressee envelope (`lib/handoff/addressDetail.ts`), where it
- * stays deletable (EDPB 02/2025: minimise location data on pinned / immutable
+ * stays deletable (EDPB 02/2025: minimize location data on pinned / immutable
  * media). This is the geohash-standard case of `cap(disposition,
  * geocodeStandard)`; unknown standards carry no reader grain knowledge and are
  * bounded only by the field's `maxLength`.

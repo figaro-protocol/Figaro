@@ -47,7 +47,7 @@ function uid(): string {
 }
 
 /**
- * Tokenise one CSV row into fields. Handles double-quoted fields with
+ * Tokenize one CSV row into fields. Handles double-quoted fields with
  * embedded commas and the standard `""` escape for a literal quote.
  */
 function tokeniseRow(line: string): string[] {
@@ -82,7 +82,7 @@ function tokeniseRow(line: string): string[] {
 
 /**
  * Split the raw CSV text into rows. Newlines inside quoted fields are
- * preserved (the tokeniser handles them per-row), so this splitter
+ * preserved (the tokenizer handles them per-row), so this splitter
  * concatenates lines until quotes balance.
  */
 function splitRows(text: string): string[] {

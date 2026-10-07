@@ -741,7 +741,7 @@ export async function fillDeliveryCheckout(page: Page): Promise<void> {
     // ("geohash" — the built frontend) as placeholder: left untouched the
     // build commits the default, and the endpoints below fill as geohash text.
     // The format-keyed device-capture control retired with the standards
-    // generalisation; its successor is standard-gated (punch-listed).
+    // generalization; its successor is standard-gated (punch-listed).
     await checkoutField(page, DELIVERY_CLAUSES.geo, 'origin')
         .fill(encodeGeohash(DELIVERY_DEVICE.lat, DELIVERY_DEVICE.lon, 6));
     await checkoutField(page, DELIVERY_CLAUSES.geo, 'destination').fill(DELIVERY_DEVICE.destination);

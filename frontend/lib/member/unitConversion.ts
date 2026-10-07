@@ -19,9 +19,9 @@ import type { UnitSystem } from "@/lib/member/memberCatalogMetadata";
 
 /** 1 oz = 28.349523125 grams (international avoirdupois ounce). */
 const GRAMS_PER_OUNCE = 28.349523125;
-/** 1 US fluid ounce = 29.5735295625 millilitres. */
+/** 1 US fluid ounce = 29.5735295625 milliliters. */
 const ML_PER_FLOZ = 29.5735295625;
-/** 1 inch = 25.4 millimetres (international inch). */
+/** 1 inch = 25.4 millimeters (international inch). */
 const MM_PER_INCH = 25.4;
 
 // ── Editor input parsing (member-typed string → metric number) ─────────────
@@ -39,7 +39,7 @@ export function parseInputToGrams(input: string, system: UnitSystem): number | u
 }
 
 /**
- * Parse a number the member typed in the editor into millilitres. When
+ * Parse a number the member typed in the editor into milliliters. When
  * the catalog's `unitSystem` is "imperial", the input is interpreted
  * as US fluid ounces. Returns `undefined` per `parseInputToGrams`.
  */
@@ -50,7 +50,7 @@ export function parseInputToMl(input: string, system: UnitSystem): number | unde
 }
 
 /**
- * Parse a number the member typed in the editor into millimetres — one
+ * Parse a number the member typed in the editor into millimeters — one
  * parcel dimension (length/width/height). When the catalog's
  * `unitSystem` is "imperial", the input is interpreted as inches.
  * Returns `undefined` per `parseInputToGrams`.
@@ -90,7 +90,7 @@ export function mlToInput(ml: number | undefined, system: UnitSystem): string {
 }
 
 /**
- * Convert a stored millimetre dimension into a number the member's
+ * Convert a stored millimeter dimension into a number the member's
  * editor can display. Returns "" for missing values. For imperial,
  * returns inches formatted to two decimals.
  */

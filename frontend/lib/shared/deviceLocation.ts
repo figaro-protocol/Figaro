@@ -12,7 +12,7 @@
 export interface DeviceLocation {
     lat: number;
     lon: number;
-    /** Position accuracy radius in metres, as the Geolocation API reports it. */
+    /** Position accuracy radius in meters, as the Geolocation API reports it. */
     accuracyM: number;
 }
 

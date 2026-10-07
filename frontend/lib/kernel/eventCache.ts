@@ -191,7 +191,7 @@ export async function getLogsAdaptive(
     client: LogScanClient,
     params: { address: `0x${string}`; event: PublicGetLogsParams["event"]; fromBlock: bigint },
 ): Promise<CachedLog[]> {
-    // Uncached: viem memoises getBlockNumber for `cacheTime` (4 s default);
+    // Uncached: viem memoizes getBlockNumber for `cacheTime` (4 s default);
     // a read fired right after a receipt would otherwise bound the range
     // BELOW the block that just landed and miss its events.
     const toBlock = await client.getBlockNumber({ cacheTime: 0 });

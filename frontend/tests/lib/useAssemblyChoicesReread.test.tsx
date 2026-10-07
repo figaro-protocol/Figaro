@@ -14,7 +14,7 @@ import { useAssemblyChoices } from "@/lib/protocol/assemblyChoices";
 const EVENT = {
     slug: "asm-fresh", registeredBy: "0xA", compositionHash: "0x1", contentURI: "ipfs://fresh", blockNumber: 2n,
 };
-const TEMPLATE = { name: "Containerised import chain", agreements: [], assemblyClauses: {} };
+const TEMPLATE = { name: "Containerized import chain", agreements: [], assemblyClauses: {} };
 
 const flush = () => act(async () => { await Promise.resolve(); await Promise.resolve(); await Promise.resolve(); });
 
@@ -36,7 +36,7 @@ describe("useAssemblyChoices — a template the gateway has not served yet is re
         await act(async () => { vi.advanceTimersByTime(contentRetryDelayMs(0)); });
         await flush();
         expect(fetchAssemblyTemplateMock).toHaveBeenCalledTimes(2);
-        expect(result.current.data?.[0]).toMatchObject({ state: "loaded", name: "Containerised import chain" });
+        expect(result.current.data?.[0]).toMatchObject({ state: "loaded", name: "Containerized import chain" });
 
         // Loaded: no further re-reads.
         await act(async () => { vi.advanceTimersByTime(10 * 60_000); });

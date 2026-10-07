@@ -134,7 +134,7 @@ function ManageHeader() {
             <p className="text-base text-ink-body leading-relaxed">
                 The registered member&apos;s dashboard &mdash; view and edit the profile, leave
                 the registry, reclaim a released stake; a wallet that is not registered is sent
-                on to the enrolment steps.
+                on to the enrollment steps.
             </p>
         </header>
     );
@@ -233,7 +233,7 @@ function RegisteredCard({
 /**
  * Single-column muted list of management entry-points. Profile,
  * Catalog, Assemblies, Agents are placeholders until the edit/
- * delete UI ships; Withdraw is live but de-emphasised — last row,
+ * delete UI ships; Withdraw is live but de-emphasized — last row,
  * same visual weight, action revealed on click.
  *
  * "Muted that doesn't attract attention" per user direction: no

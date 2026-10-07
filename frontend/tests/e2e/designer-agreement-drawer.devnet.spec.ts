@@ -166,7 +166,7 @@ test.describe('Designer AgreementDrawer (devnet)', () => {
         await expect(regimeToggle, 'the drawer surfaces the regime clause').toHaveCount(1, { timeout: 20000 });
         await regimeToggle.check();
 
-        // The design fill renders as a LABELLED choice. Its options — and their
+        // The design fill renders as a LABELED choice. Its options — and their
         // raw tokens — come off the live spec: each radio's testid carries the
         // token, and the option's label span titles it.
         const group = page.getByTestId(`drawer-field-${REGIME_CLAUSE_KEY}-${REGIME_FIELD}-group`);

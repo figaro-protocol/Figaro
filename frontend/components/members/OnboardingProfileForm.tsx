@@ -454,7 +454,7 @@ export function OnboardingProfileForm({
                         onChange={(e) => setField("specialty", e.target.value)}
                     />
                     <p className="text-xs text-ink-faint mt-1">
-                        Free-form. What you specialise in, in your own words.
+                        Free-form. What you specialize in, in your own words.
                     </p>
                 </FormField>
                 {/* Profile-sourced clause values (dimweight's divisor, a declared

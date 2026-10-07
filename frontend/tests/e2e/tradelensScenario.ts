@@ -203,7 +203,7 @@ export async function seedTradelensSellers(slug: string, token: Hex): Promise<vo
     };
 
     if (await conformant()) return;
-    await seed(SHIPPER, 15, 'Meridian Exports', 'Containerised cargo (invoice)', PRICES.shipper,
+    await seed(SHIPPER, 15, 'Meridian Exports', 'Containerized cargo (invoice)', PRICES.shipper,
         { massGrams: 12_000_000, volumeMl: 33_000_000 },
         [
             { clauseId: C.merchant, addresses: [INSPECTOR.address, FORWARDER.address, CUSTOMS.address] },

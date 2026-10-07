@@ -89,7 +89,7 @@ export function RpcBanner() {
     return (
         // Opaque `bg-canvas` rather than a `bg-warning/N` tint: the banner is
         // `fixed`, so a translucent fill would composite over whatever scrolls
-        // beneath it. The status is carried by the ochre rule and the `-fg`
+        // beneath it. The status is carried by the ocher rule and the `-fg`
         // text channel, both measured against canvas (DESIGN_TOKENS §1).
         <div className="fixed left-0 right-0 top-16 z-50 bg-canvas border-y border-warning text-warning-fg text-sm py-2 text-center">
             RPC unreachable — on-chain queries are disabled until your node is available.
