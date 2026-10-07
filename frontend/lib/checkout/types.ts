@@ -62,7 +62,7 @@ export interface CheckoutHandle {
     //                 panel; the buyer relays it (XMTP / QR / copy) from there.
     //   signAndShare: signs + relays a sub-order to its bound seller in one step.
     // The optional funding request attaches a witness-signed swap-funded bond
-    // leg to the payload (the buyer funds their bond from another accepted
+    // leg to the payload (the buyer swaps into their bond from another accepted
     // token; broadcast routes through the swap-and-commit coordinator).
     // signAndShare's opts carry a race winner's countersignature — the relayed
     // payload then holds BOTH signatures and arrives commit-ready.
