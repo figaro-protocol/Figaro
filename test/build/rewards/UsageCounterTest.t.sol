@@ -419,7 +419,7 @@ contract UsageCounterTest is Test {
     }
 
     /// Repeat trade is bounded by the SCORE, not by a cliff — never reintroduce
-    /// a per-pair cap: it cannot bind for an attacker optimising score per unit
+    /// a per-pair cap: it cannot bind for an attacker optimizing score per unit
     /// cost and only binds honest repeat trade. What does the work is `c^(1/3)`:
     /// one seller carrying many trades adds volume that is discounted far more
     /// steeply than any cliff would be.

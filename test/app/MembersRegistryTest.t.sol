@@ -312,7 +312,7 @@ contract MembersRegistryTest is Test {
         assertEq(alice.balance, balBefore + 2 * REG_DEPOSIT);
     }
 
-    // ── Degenerate parameterisations ────────────────────────────────────
+    // ── Degenerate parameterizations ────────────────────────────────────
 
     function test_zeroCooldown_claimableInTheSameBlock() public {
         MembersRegistry fastReg = new MembersRegistry(REG_DEPOSIT, 0);

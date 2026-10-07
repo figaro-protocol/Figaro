@@ -134,7 +134,7 @@ contract SwapRouterShape {
 }
 
 /// @title DeployWiringTest — the deploy scripts, run, then read back
-/// @notice Nothing in the stack can be upgraded, paused or re-parameterised
+/// @notice Nothing in the stack can be upgraded, paused or re-parameterized
 ///         after deployment, so the deploy scripts are the one place a wrong
 ///         immutable is cheap to catch. Each script runs here exactly as it
 ///         would broadcast, and every immutable and genesis parameter is then

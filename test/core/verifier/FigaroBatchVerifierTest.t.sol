@@ -1079,7 +1079,7 @@ contract FigaroBatchVerifierTest is Test {
     /// bindings. So: hand it random inputs with the MIRROR hashes as the public
     /// values, make the first binding one the registry does not anchor, and
     /// require exactly that LATER revert. Reaching `SpecBindingMismatch` proves
-    /// every assembly hash equalled its mirror on this input; a packing slip in
+    /// every assembly hash equaled its mirror on this input; a packing slip in
     /// any of the four surfaces instead as the corresponding `*HashMismatch`.
     ///
     /// Slot 0 of every array carries the fuzzer's own values (its edge cases —
