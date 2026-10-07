@@ -101,6 +101,9 @@ const WEB_MODE = process.env.PLAYWRIGHT_WEB_MODE === 'dev' ? 'dev' : 'prod';
 
 export default defineConfig({
     testDir: './tests/e2e',
+    // The devnet seed precondition: a run that selects a project sharing the
+    // populate-test-data seed stops with one line when the chain lacks it.
+    globalSetup: './tests/e2e/devnet-seed-check.ts',
     timeout: 60_000,
     expect: { timeout: 10_000 },
     fullyParallel: true,

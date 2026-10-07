@@ -427,6 +427,13 @@ list, is the census):
   `assembly-withdraw`, `clause-authoring`); they share no seeded state, so they
   do not pull the authoring gate.
 - **`devnet`** — every other `*.devnet.spec.ts`; depends on `devnet-authoring`.
+
+The seed precondition is the config's `globalSetup`
+(`frontend/tests/e2e/devnet-seed-check.ts`): when a run selects `devnet` or
+`devnet-authoring` (by `--project`, narrowed by any file filter), it reads the
+anchored assemblies out-of-band for the populate-test-data "Devnet seed" and
+stops with one line when it is absent — `--no-deps` runs included. Runs that
+select only the other projects, and `E2E_CHAIN=sepolia`, pass through silently.
 - **`mobile`** — the lone non-e2e browser project: responsive/viewport chrome
   jsdom can't render.
 - **`stranger`** — the blind visitor (`crawl.stranger.spec.ts`,
