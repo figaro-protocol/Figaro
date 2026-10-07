@@ -1,16 +1,16 @@
 "use client";
 
 /**
- * useRpgfRewards — read + act on the RPGF minter (the 600M distribution).
+ * useRpgfRewards — read + act on `RpgfMinter` (the designer rewards, the 600M).
  * Composition layer: the minter and the counter are contracts the frontend
  * composes with, never core.
  *
- * THERE IS NOTHING TO POST AND NOTHING TO DISPUTE. `UsageCounter` records
+ * THERE IS NOTHING TO POST AND NOTHING TO DISPUTE. `UsageCounter` counts
  * verified usage as it happens — a resolved order plus merkle inclusion of the
  * clause or assembly in the agreement both parties signed — so a period's payout is arithmetic
  * over numbers that are already final. A period's counts stop moving the
  * moment it ends; the minter rewards a wallet its clauses' and assemblies' score over the
- * period's total, UNIFORM pro rata (no cap), to live-staked authors of record.
+ * period's total, UNIFORM pro rata (no cap), to live-staked designers of record.
  * The one act is `claim`.
  *
  * The wallet's clauses and assemblies are DISCOVERED from the two registries' own event
@@ -28,7 +28,7 @@ import { getRpgfMinter, getUsageCounter } from "@/lib/composition/contracts";
 import { verifyTxSuccess } from "@/lib/shared/verifyTxSuccess";
 import { truncateHex } from "@/lib/shared/formatHex";
 
-/** One clause or assembly the connected wallet is author of record for, with
+/** One clause or assembly the connected wallet is designer of record for, with
  *  the accrual it carried in a given period. `c` = distinct resolved processes,
  *  `d` = distinct staked sellers, `score` = the uniform breadth
  *  measure (`icbrt(c·d²·1e18)`) the payout divides by. */
@@ -92,9 +92,9 @@ export function useRpgfRewards(subject?: `0x${string}`) {
 
     const refresh = useCallback(() => setRefreshNonce((n) => n + 1), []);
 
-    /** Every clause and assembly the wallet is author of record for, from the
+    /** Every clause and assembly the wallet is designer of record for, from the
      *  registries' event streams. Empty (not an error) when the wallet
-     *  authored nothing — resolved-empty is absence. */
+     *  designed nothing — resolved-empty is absence. */
     const discoverClausesAndAssemblies = useCallback(async (): Promise<
         Array<Pick<RpgfClauseOrAssemblyAccrual, "clauseOrAssembly" | "label" | "family">>
     > => {
@@ -248,16 +248,16 @@ export function useRpgfRewards(subject?: `0x${string}`) {
     }, [minter, counter, publicClient, account, discoverClausesAndAssemblies, refreshNonce]);
 
     /** Claim a closed period: one call per wallet per period, carrying every
-     *  clause or assembly the wallet authored. simulate → write → receipt → refresh, per
+     *  clause or assembly the wallet designed. simulate → write → receipt → refresh, per
      *  the publish-flow pattern — any minter revert (still accruing, already
-     *  claimed, not author of record) surfaces BEFORE the wallet prompt. */
+     *  claimed, not designer of record) surfaces BEFORE the wallet prompt. */
     const claim = useCallback(
         async (periodId: number) => {
-            if (!minter) throw new Error("RPGF minter unconfigured.");
+            if (!minter) throw new Error("Designer-rewards minter unconfigured.");
             if (!account) throw new Error("Connect a wallet to claim.");
             const row = periods.find((t) => t.periodId === periodId);
             const clausesOrAssemblies = row?.accruals.map((a) => a.clauseOrAssembly) ?? [];
-            if (clausesOrAssemblies.length === 0) throw new Error("This wallet authored nothing that accrued in this period.");
+            if (clausesOrAssemblies.length === 0) throw new Error("This wallet designed nothing that accrued in this period.");
             const call = {
                 address: minter,
                 abi: RPGF_MINTER_ABI,
