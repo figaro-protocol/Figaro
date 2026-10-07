@@ -1,10 +1,10 @@
 /**
- * profileErasure — best-effort unpin of profile-authored IPFS artifacts.
+ * profileErasure — best-effort unpin of profile-published IPFS artifacts.
  *
- * The erasure half of the member's publish story (author pins → author pays
- * → author erases): when a profile is superseded, the prior document — and
- * any authored artifact the successor no longer references (catalog,
- * branding assets) — is unpinned from the author's node so it stops being
+ * The erasure half of the member's publish story (wallet pins → wallet pays
+ * → wallet erases): when a profile is superseded, the prior document — and
+ * any published artifact the successor no longer references (catalog,
+ * branding assets) — is unpinned from the member's node so it stops being
  * served and becomes garbage-collectable. On withdraw nothing survives, so
  * everything the profile referenced is unpinned.
  *
