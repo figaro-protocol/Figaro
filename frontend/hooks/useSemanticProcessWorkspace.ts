@@ -195,7 +195,7 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
         confirmResolve: (plannedUsageWrites) => window.confirm(
             "This resolves the whole process: every seller is paid and every bond is refunded at once, and it cannot be undone."
             + (plannedUsageWrites > 0
-                ? ` Your wallet then signs up to ${plannedUsageWrites} more ${plannedUsageWrites === 1 ? "transaction" : "transactions"} that record which clauses and which assembly this trade used, so their designers are rewarded.`
+                ? ` Your wallet then signs up to ${plannedUsageWrites} more ${plannedUsageWrites === 1 ? "transaction" : "transactions"} that count which clauses and which assembly this trade used, so their designers are rewarded.`
                 : "")
             + " Continue?",
         ),
