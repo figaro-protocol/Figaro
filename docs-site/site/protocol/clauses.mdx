@@ -66,11 +66,11 @@ One clause is always the order's shape: `figaro-topology` states which seller fo
 
 ## How an assembly composes from agreements
 
-An assembly is a composition template: it wires per-order agreements into a multi-order process and registers once, so anyone who fits the shape trades through it without drawing it again. An author spawns sub-orders from any node and attaches the clauses that define each edge; those clauses are read live from `ClauseRegistry`, never a fixed menu.
+An assembly is a composition template: it wires per-order agreements into a multi-order process and registers once, so anyone who fits the shape trades through it without drawing it again. A designer spawns sub-orders from any node and attaches the clauses that define each edge; those clauses are read live from `ClauseRegistry`, never a fixed menu.
 
 Every assembly folds in three clauses automatically: `figaro-commerce` (payment and denomination), `figaro-topology` (order shape), and `figaro-assembly-provenance` — the leaf whose committed content *is* the assembly's `compositionHash`, which is how a resolved process credits the assembly's designer through `UsageCounter.recordAssemblyUsage`. That provenance leaf is the one key excluded from scoring, so the credit-carrying leaf never earns twice.
 
-The `compositionHash` covers the composition and nothing else: a different clause set, one different design-authored value, a re-wired topology, or a different clause `version` pin all produce a different assembly; editorial prose (`name`, `summary`, `description`) is excluded, so renaming never forks it. The flip side of excluding prose: prose is not identity, so it does not protect a composition from being anchored by someone else first.
+The `compositionHash` covers the composition and nothing else: a different clause set, one different design-filled value, a re-wired topology, or a different clause `version` pin all produce a different assembly; editorial prose (`name`, `summary`, `description`) is excluded, so renaming never forks it. The flip side of excluding prose: prose is not identity, so it does not protect a composition from being anchored by someone else first.
 
 ```ts
 import { templateCompositionHash, deriveAssemblySlug } from "@figaro-protocol/sdk";
@@ -100,7 +100,7 @@ function registerClause(string clauseId, uint64 version, bytes32 contentHash, st
     external payable;   // ClauseRegistry — first-write-wins, immutable, under a stake
 ```
 
-The key is `keccak256(abi.encode(clauseId, version))`, `clauseId` being the bare human-readable name (`figaro-emissions`). Registration anchors identity and integrity only — no group field (grouping is `block.design.article`, off-chain), no reward tag (designer rewards are uniform on real use), no validator (a registered clause is immediately attestable and batch-resolvable). The stake is a deploy-time deposit: read `registrationDeposit()` live and send exactly it. `version` is an integer lineage counter, never semver — consumers pin an exact `(clauseId, version)`, every content change produces a different hash, and compatibility, if it ever matters, is derived by diffing two immutable specs.
+The key is `keccak256(abi.encode(clauseId, version))`, `clauseId` being the bare human-readable name (`figaro-emissions`). Registration anchors identity and integrity only — no group field (grouping is `block.design.article`, off-chain), no reward tag (designer rewards are uniform on real use), no validator (a registered clause is immediately attestable and batch-resolvable). The stake is a deploy-time parameter: read `registrationDeposit()` live and send exactly it. `version` is an integer lineage counter, never semver — consumers pin an exact `(clauseId, version)`, every content change produces a different hash, and compatibility, if it ever matters, is derived by diffing two immutable specs.
 
 Withdrawing the stake de-surfaces the clause for new compositions but never deletes the binding: orders already committed against it still resolve. Assemblies register the same way on `AssemblyRegistry` (keyed by `compositionHash`), with the same permanence.
 
