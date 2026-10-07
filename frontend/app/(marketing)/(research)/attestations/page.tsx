@@ -106,6 +106,16 @@ export default function Attestations() {
                     trade belongs to its buyer alone.
                 </p>
                 <p className="text-sm text-ink-body leading-relaxed mb-4">
+                    The chain does not check an attestation, and the mechanism stands
+                    behind it instead. It is signed while the attesting seller&apos;s bond
+                    is locked. The buyer can withhold resolution until a false one is put
+                    right, and the other sellers are paid only when the buyer resolves,
+                    so they press too. After resolution, the attestation stays in the
+                    data its signer sells and others analyse, and in its signer&apos;s
+                    resolution history. What a false one costs, at each moment, is on{" "}
+                    <Link href="/data" className="text-ink-heading font-medium hover:underline">Evidence</Link>.
+                </p>
+                <p className="text-sm text-ink-body leading-relaxed mb-4">
                     Who may file is the order&apos;s own parties. A seller is always a
                     wallet that signs for itself; one whose wallet installs an EIP-7702
                     delegation can name through it the agent authorized to attest on its
