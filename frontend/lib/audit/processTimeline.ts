@@ -1,7 +1,7 @@
 /**
  * Process audit timeline.
  *
- * THE process event record for `audit/`: given a processId, queries all
+ * THE process event log for `audit/`: given a processId, queries all
  * FigaroCore lifecycle events AND every clause's runtime attestations (the
  * unified AttestationCoordinator event) and reconstructs a chronological,
  * human-readable timeline. Attestations are labeled from each clause's OWN
@@ -10,7 +10,7 @@
  * clause's attestations appear correctly with no code change.
  *
  * This is the audit documentation, and the audit documentation IS the
- * evidence: the same record the parties read is what a forum (Kleros or any
+ * evidence: the same data the parties read is what a forum (Kleros or any
  * other) reads. There is no separate "evidence" timeline — the audit-bundle
  * PDF and the forum-facing `/evidence-display` reader are two views of THIS one
  * timeline. Pure read — no contract writes, no on-chain storage; the output is
