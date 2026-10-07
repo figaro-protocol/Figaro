@@ -32,6 +32,7 @@ import { calculateBonds } from "@figaro-protocol/sdk";
 import { formatToken } from "@/lib/shared/utils";
 import { ZERO_ADDRESS } from "@/lib/shared/evm";
 import { truncateHex } from "@/lib/shared/formatHex";
+import { formatBlockTimestamp } from "@/lib/shared/formatTimestamp";
 import { Button } from "@/components/ui/Button";
 import { WalletGate, STRANGER_EXPLAINER } from "@/components/runtime/WalletGate";
 import { useWalletProcessRows, type ProcessRow } from "@/lib/kernel/walletProcessQueries";
@@ -240,7 +241,7 @@ function SignedUnsentRow({
 }
 
 // ── Outbound pending row: I signed and relayed, awaiting the counterparty ──
-function AwaitingAcceptanceRow({ payload, listings, onDismiss }: { payload: CommitmentPayload; listings: ReadonlyArray<Listing>; onDismiss: () => void }) {
+export function AwaitingAcceptanceRow({ payload, listings, onDismiss }: { payload: CommitmentPayload; listings: ReadonlyArray<Listing>; onDismiss: () => void }) {
     const { commitment } = payload;
     const { decimals } = useTokenDecimals(commitment.currency as `0x${string}` | undefined);
     const counterpartyName = displayNameForAddress(listings, commitment.seller);
@@ -257,7 +258,12 @@ function AwaitingAcceptanceRow({ payload, listings, onDismiss }: { payload: Comm
                             Awaiting acceptance
                         </span>
                     </div>
-                    <p className="mt-1 text-xs text-ink-muted">Waiting for {counterpartyName} to counter-sign. Nothing is on-chain yet, and the commitment expires on its deadline if never accepted.</p>
+                    <p className="mt-1 text-xs text-ink-muted" data-testid="order-pending-no-bond">
+                        Waiting for {counterpartyName} to counter-sign. Nothing has moved: no bond is locked until the order is committed.
+                    </p>
+                    <p className="mt-1 text-xs text-ink-muted" data-testid="order-pending-deadline">
+                        After its deadline, {formatBlockTimestamp(commitment.deadline)}, it can no longer be committed.
+                    </p>
                 </div>
                 <div className="text-right shrink-0">
                     <p className="text-xs text-ink-muted">Order value</p>
