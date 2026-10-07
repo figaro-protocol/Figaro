@@ -146,7 +146,7 @@ if [ -z "$CORE_ADDR" ]; then
 fi
 
 # ── Guard 5: read the wiring back from the chain ────────────────────────────
-# Nothing in the stack can be upgraded or re-parameterised, so the deploy is
+# Nothing in the stack can be upgraded or re-parameterized, so the deploy is
 # the one moment a wrong immutable is cheap to catch. Every binding below is
 # read from the deployed contracts and compared with what this script was
 # given; a mismatch prints the addresses (the broadcast has happened) and

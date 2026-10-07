@@ -112,7 +112,7 @@ contract DeploySepolia is Script {
         // ── WitnessSwapAndCommitCoordinator (the swap-funded on-ramp) ──────
         // Composition, not Core: points at FigaroCore, canonical Permit2 and
         // the chain's Uniswap SwapRouter02 (env — from Uniswap's deployment docs).
-        // The router is probed for BEHAVIOUR (factory() + WETH9() answer with
+        // The router is probed for BEHAVIOR (factory() + WETH9() answer with
         // contracts): an address is never trusted for existing alone (the SP1
         // gateway lesson, RELEASE_READINESS 7.3(c)). A stack already live
         // without it takes it alone via script/DeploySwapCoordinator.s.sol.
