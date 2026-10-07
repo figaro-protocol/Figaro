@@ -6,7 +6,7 @@
  * in the order's payload, then VERIFIES the fetched bytes against the on-chain
  * `agreementHash` before trusting them — so a tampered IPFS copy is rejected.
  *
- * No body cache, no store of record: the in-memory `useProcessAgreements`
+ * No body cache, no authoritative store: the in-memory `useProcessAgreements`
  * singleton holds bodies for the session (pure UX), and re-fetches from IPFS
  * each load. The ONLY local state here is the witnessed-URI pointer — FigaroCore
  * never puts the URI on-chain, so "which URI for this hash" is event-driven
@@ -33,7 +33,7 @@ export interface AgreementFetchOptions {
 
 const transport = (o?: AgreementFetchOptions) => o?.evidenceTransport ?? DEFAULT_IPFS_SERVICE;
 
-/** Record the IPFS URI a wallet witnessed for an agreementHash (event-driven).
+/** Store the IPFS URI a wallet witnessed for an agreementHash (event-driven).
  *  Internal: the witnessed-URI pointer is written via `publishAgreement` and read
  *  via `fetchAgreement` — both in this file. */
 function saveAgreementUri(agreementHash: Hex | string, uri: string): void {
@@ -112,13 +112,13 @@ export interface PublishedAgreement {
  * Erase a witnessed agreement pin: best-effort unpin the body from this
  * wallet's node and forget the local URI pointer (unpin + forget — the same
  * erasure symmetry as the member profile and device-evidence paths, and the
- * controller-erasure half of "author pins → author erases"). The committed
+ * controller-erasure half of "wallet pins → wallet erases"). The committed
  * agreement carries the most participant-linkable content of any pin, and this
  * is its erasure affordance.
  *
  * Controller-initiated, never automatic: the committed agreement is the Layer-3
- * dispute record an off-chain forum receives, so it must outlive `resolveProcess`
- * — a party erases it deliberately, once the record is no longer needed.
+ * dispute evidence an off-chain forum receives, so it must outlive `resolveProcess`
+ * — a party erases it deliberately, once the evidence is no longer needed.
  *
  * Best-effort and idempotent by design: content addressing means this erases
  * only THIS wallet's copy (a counterparty node or a gateway may still hold it);
