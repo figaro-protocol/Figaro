@@ -2,7 +2,7 @@
  * witnessContent — publication, lookup, and erasure of an attestation's
  * content preimage, keyed by the fingerprint the chain carries.
  *
- * The coordinator records only `contentRef = keccak256(content)` (WS2: calldata
+ * The coordinator keeps only `contentRef = keccak256(content)` (WS2: calldata
  * never holds a preimage). This module makes the PUBLIC half of that seam
  * readable again: the attester pins the exact ABI content bytes to IPFS as a
  * RAW block multihashed with keccak-256 — so the CID's digest IS the on-chain
@@ -16,7 +16,7 @@
  * `private` field withholds — a private value's plaintext never lands on
  * public IPFS; its holder proves the fingerprint match off-chain instead.
  *
- * Erasure mirrors `profileErasure`/`unpinAgreement` (author pins → author
+ * Erasure mirrors `profileErasure`/`unpinAgreement` (wallet pins → wallet
  * erases): best-effort unpin of the derived CID, idempotent, never throwing —
  * content addressing means only THIS node's copy is erased, and a resolved-
  * empty lookup reads as absence, exactly like a withheld or never-published
