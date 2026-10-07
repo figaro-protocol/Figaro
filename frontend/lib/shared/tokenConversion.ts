@@ -11,7 +11,7 @@
  *      reflects what they will actually commit.
  *   2. Commit: at signing time, the buyer's frontend re-quotes (under
  *      the buyer's chosen slippage tolerance) and FigaroCore commitment
- *      records the chosen-token amount.
+ *      carries the chosen-token amount.
  *
  * Pluggable per the runtime-services pattern. The protocol does not pick
  * a quoter; the buyer's frontend (or the assembly's service binding)
@@ -47,7 +47,7 @@ export interface TokenConversionQuote {
     amountOut: bigint;
     /** Block at which the quote was computed (when available). */
     blockNumber?: bigint;
-    /** Identifier of the quote source (e.g. "uniswap-v3-fee-3000", "fixed-rate", "identity"). */
+    /** Identifier of the quote source (e.g. `uniswap-v3-fee-3000`, `fixed-rate`, `identity`). */
     source: string;
 }
 
