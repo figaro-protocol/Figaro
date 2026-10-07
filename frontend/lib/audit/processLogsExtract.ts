@@ -9,12 +9,12 @@
  * order, and when; each entry's content is the seller's attestation
  * (docs/DATA_LAYER.md § "Truth boundaries"). FigaroCore logs
  * the buyer's actions directly (commit / resolveProcess); the off-chain
- * sellers record theirs via whatever process clause their order carries —
+ * sellers attest theirs via whatever process clause their order carries —
  * including clauses this codebase has never seen.
  *
  * The content shape is `(uint8 eventType, string evidenceUri)`; eventType
  * indexes the clause's spec-declared enum ladder. The audit document
- * records the receipt; recovering the eventType label and evidenceUri
+ * carries the receipt; recovering the eventType label and evidenceUri
  * requires decoding the transaction calldata.
  */
 
@@ -73,7 +73,7 @@ export function extractProcessLogs(
         const clauseId = clauseIdForHash(att.clauseId) ?? att.clauseId;
         // Two runtime-evidence shapes share this timeline: process-log LADDERS
         // (attestations article) and declared WITNESS stages (spec.stages[N] —
-        // a temperature record, measured grams, a detected band). Both are
+        // a temperature reading, measured grams, a detected band). Both are
         // spec-declared; neither is named here.
         const isWitness = clauseWitnessStages(clauseId).some((w) => w.stage === att.stage);
         if (!clauseIsProcessLog(clauseId) && !isWitness) continue;
