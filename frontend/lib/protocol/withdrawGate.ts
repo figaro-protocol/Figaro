@@ -3,7 +3,7 @@
 /**
  * withdrawGate — the ADVISORY, off-chain half of the K4 commits==resolves gate.
  *
- * A clause registeredBy or assembly author must not reclaim their registration
+ * A clause's or an assembly's designer must not reclaim their registration
  * stake while trades COMPOSED FROM that clause or assembly are still in
  * flight. The whole join lives in `@figaro-protocol/sdk/derive` (`deriveInFlightOrders`
  * + `deriveClauseWithdrawGate` / `deriveAssemblyWithdrawGate`) — this hook does
@@ -16,7 +16,7 @@
  * clauses it composes. An order this wallet never witnessed resolves to a null
  * agreement (no witnessed URI — bodies are PARTY-PRIVATE) — the SDK gate
  * counts that as unverified and SURFACES it as a caveat, never a block:
- * blocking on unverifiable foreign trades would dead-lock every author's
+ * blocking on unverifiable foreign trades would dead-lock every designer's
  * withdraw — and nothing on-chain locks the stake on unrevealed trades anyway
  * (FigaroCore holds no composition provenance, so this gate has no on-chain
  * enforcement). Only VERIFIED in-flight
