@@ -46,7 +46,7 @@ const COMMERCIAL_INVOICE: DocumentTemplate = {
     leafSections: [
         { label: "Delivery terms (Incoterms 2020)", byField: "incotermsRule" },
     ],
-    note: "Derived from the committed record — not separately authored. The interpretive VAT class is jurisdiction/graph-supplied and absent from this core projection (applicable, with a stablecoin denomination, to the EU e-invoice profile).",
+    note: "Derived from the committed data — not separately written. The interpretive VAT class is jurisdiction/graph-supplied and absent from this core projection (applicable, with a stablecoin denomination, to the EU e-invoice profile).",
 };
 
 /** Non-negotiable Bill of Lading — one per carriage-leg ORDER. Never a document of
