@@ -201,6 +201,25 @@ cat > "$CORE_DEPLOYMENT" <<EOF
 }
 EOF
 
+# ── Write the local signer policy ────────────────────────────────────────────
+# The policy signer (sdk/dist/signer/cli.js) reads .deployments/signer-policy.31337.json:
+# the reference policy's selectors paired by record key with THIS record's
+# addresses, token, RPC and egress. The devnet token has 18 decimals, so the
+# ceilings are set here (the reference token's 6-decimal ceilings would refuse
+# every action). A policy the record cannot produce is removed, never left
+# naming a previous deploy's addresses.
+SIGNER_POLICY="$DEPLOY_DIR/signer-policy.31337.json"
+echo "✍️  Writing $SIGNER_POLICY ..."
+if RPC_URL="$RPC_URL" \
+    CEILING_PER_ACTION="${CEILING_PER_ACTION:-50000000000000000000}" \
+    CEILING_PER_PERIOD="${CEILING_PER_PERIOD:-200000000000000000000}" \
+    node "$REPO_ROOT/sdk/scripts/signer-policy-from-record.mjs" "$CORE_DEPLOYMENT" > "$SIGNER_POLICY.tmp"; then
+    mv "$SIGNER_POLICY.tmp" "$SIGNER_POLICY"
+else
+    rm -f "$SIGNER_POLICY.tmp" "$SIGNER_POLICY"
+    echo "❌ No signer policy: signer-policy-from-record.mjs could not derive one from $CORE_DEPLOYMENT (its error is above). The policy signer has no policy on this devnet."
+fi
+
 echo ""
 echo "✅ Deployment complete!"
 echo ""
