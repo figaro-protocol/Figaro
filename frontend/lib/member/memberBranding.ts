@@ -6,7 +6,7 @@
  * member profile document, and extracts branding + asset fields.
  *
  * The metadata document the on-chain `metadataURI` points to is an
- * `MemberProfileMetadata` record; only its branding-relevant subset
+ * `MemberProfileMetadata` document; only its branding-relevant subset
  * (name, branding, assets) is extracted here. The profile pins the
  * branding payload (logo, hero, image base URI) so buyer
  * frontends can render the member's identity.
