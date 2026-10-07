@@ -182,8 +182,9 @@ stated as dilution per unit of attacker capital, never as a profit threshold.
 **The objective is a public, verifiable god's-eye view.** Aggregated over time,
 these attestations form a heat-map of physical/virtual flows — demand clusters,
 routes, service areas — every datum emitted by event, content-addressed,
-independently verifiable. No operator owns it; the bonds securing each order give
-participants reason to attest accurately.
+its integrity independently verifiable. No operator owns it. What keeps each
+attestation accurate is what a false one costs its signer, before resolution and
+after it (§ "Truth boundaries", below).
 
 **The payoff is the point.** Today the map of who-moves-what-where is the private
 asset on which platform companies build their value capture: they sit between
