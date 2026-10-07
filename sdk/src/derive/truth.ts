@@ -19,7 +19,7 @@ export type TruthBoundary =
 /** What keeps a signed claim accurate when the chain cannot check it — one text,
  *  carried by both boundaries whose rows are a party's signed claim. */
 const SIGNED_CLAIM_ACCURACY =
-    "what keeps it accurate is what a false claim costs its signer: before resolution, a bond locked and a payment the buyer can withhold, with co-sellers whose own payment waits on the same resolution; after it, the data's worth to whoever buys or analyses it, the evidence a forum or court reads, and the signer's resolution history.";
+    "what keeps it accurate is what a false claim costs its signer: before resolution, the signer's bond stays locked and the buyer can withhold resolution, every payment and every bond, its own included, until the claim is put right, with co-sellers whose own payment waits on the same resolution; after it, the data's worth to whoever buys or analyses it, the evidence a forum or court reads, and the signer's resolution history.";
 
 /** The one-line meaning of each truth boundary — render-ready, the same text
  *  for every consumer that explains a projection's guarantee. */

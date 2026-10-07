@@ -104,8 +104,8 @@ export const EV_PROCESS_RESOLVED = parseAbiItem(
 // `core.DOMAIN_SEPARATOR` derives root processIds with no silent-drift risk.
 // Read-side role *display* is indexer-derived in the UI; write-side role
 // *verification* stays here — that is what makes the record evidence.
-// `attestViaResolver` (IRoleResolver) is the open composition path for
-// mechanism-contract sellers.
+// `attestViaResolver` (IRoleResolver) is the open composition path for a
+// seller whose own EIP-7702 code authorizes the caller.
 
 export const ATTESTATION_COORDINATOR_ABI = parseAbi([
     "function core() view returns (address)",

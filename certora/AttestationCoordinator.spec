@@ -16,7 +16,7 @@
 //   B) Parametric rules: no AC call can modify FigaroCore state
 //
 // The seller path (attestAsSeller — takes role + target commitments) and the
-// mechanism path (attestViaResolver) are covered by the Foundry suite in
+// resolver path (attestViaResolver) are covered by the Foundry suite in
 // test/core/attestation/AttestationCoordinatorTest.t.sol.
 //
 // Foundry-covered invariants NOT re-proven here:
