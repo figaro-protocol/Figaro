@@ -1,11 +1,12 @@
 /**
  * Process-recourse resolution.
  *
- * Layer 3 of the three-layer dispute model (see the on-chain-evidence paper) is the only
- * *configured* layer: Layers 1 (bonding) and 2 (peer coordination) are Core
- * mechanisms, always on. Layer 3 is the off-chain forum, and the parties'
- * agreement NAMES it — the dispute-resolution clause(s) the assembly designer
- * authored into the order(s).
+ * The five-layer stack (see the on-chain-evidence paper) has one *configured*
+ * part: the off-chain forums, Layers 4 (arbitration) and 5 (law). Layers 1
+ * (chain security), 2 (bonding, with the evidence the Core emits) and 3
+ * (co-seller coordination under atomic resolution) are always on. The parties'
+ * agreement NAMES the forum — the dispute-resolution clause(s) the assembly
+ * designer composed into the order(s).
  *
  * This reader is OPEN-WORLD: it recognizes a recourse clause by its
  * `block.design.article === "dispute-resolution"`, never by a hardcoded field name or
