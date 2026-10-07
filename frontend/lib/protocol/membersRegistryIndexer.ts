@@ -39,7 +39,7 @@ const EV_MEMBER_PROFILE_UPDATED = getAbiItem({ abi: MEMBERS_REGISTRY_ABI, name: 
 // calls now: the request clears the guard immediately while the ETH stays locked
 // for the cooldown, and the claim can land much later. Folding the claim here
 // would keep a member who has already left showing as registered — and, because
-// the RPGF gate reads the same liveness, would misreport eligibility too.
+// the designer-rewards gate reads the same liveness, would misreport eligibility too.
 const EV_MEMBER_WITHDRAWAL_REQUESTED = getAbiItem({ abi: MEMBERS_REGISTRY_ABI, name: "MemberWithdrawalRequested" });
 
 /** Fetch one event stream through the cache and decode it with the SDK parser.
