@@ -14,6 +14,14 @@ release lives under **Unreleased**.
 
 ### Changed
 
+- **SDK: the truth-boundary glosses say what keeps a signed claim accurate.**
+  `TRUTH_BOUNDARY_GLOSS["institution-declared"]` and `["protocol-derived"]`,
+  whose rows are a party's signed claim the chain never checks, each end with
+  the same text: what a false claim costs its signer before resolution (a
+  locked bond, a buyer who can withhold resolution, co-sellers whose payment
+  waits on it) and after it (the data's worth, a forum's evidence, the
+  signer's resolution history). The two labels and their meaning are
+  unchanged; a consumer that renders the gloss shows the longer text.
 - **SDK 0.2.0 (breaking): the `Settlement*` export family is renamed to
   `Resolution*`** — `ResolutionGraph`, `ResolutionChain`, `ResolutionEntry`,
   `ResolutionBreakdown`, `ResolutionUniverse`, `calculateResolution`,

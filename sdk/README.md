@@ -964,10 +964,10 @@ await attestAsSeller(
 //                          pass the same struct twice for same-order attestation).
 //   • attestAsBuyer      — the root buyer attests (target commitment only; the
 //                          commit invariant makes msg.sender == c.buyer the check).
-//   • attestViaResolver  — the order's seller is a MECHANISM CONTRACT implementing
-//                          IRoleResolver, which authorizes msg.sender via
-//                          isAuthorized(orderHash, caller): delegated attestation
-//                          for contract-seller mechanisms.
+//   • attestViaResolver  — a caller the order's seller authorizes through
+//                          IRoleResolver.isAuthorized(orderHash, caller); the
+//                          seller is an ECDSA EOA, so it answers only through
+//                          EIP-7702 code it installed on its own address.
 // The SDK ships wrappers for the first two (attestAsSeller / attestAsBuyer, both
 // from @figaro-protocol/sdk/agent); attestViaResolver is in ATTESTATION_COORDINATOR_ABI —
 // call it directly (writeContract) when the seller is a resolver contract.
