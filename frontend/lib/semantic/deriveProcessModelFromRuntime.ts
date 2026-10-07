@@ -156,7 +156,7 @@ function roleCapabilities(
         }
 
         // GENERIC witness stages: any composed clause DECLARING spec.stages[N]
-        // surfaces a runtime witness capability at N — a temperature record,
+        // surfaces a runtime witness capability at N — a temperature reading,
         // measured grams, a detected band. Declaration is the signal (a
         // never-seen clause participates by declaring); the form is generated
         // from the declared stage's fields. Offered to BOTH parties — who must
@@ -271,7 +271,7 @@ function deriveProcessCapabilities(
     if (canResolve) {
         capabilities.push({
             id: `${processId}-resolve`,
-            label: "Resolve & release funds",
+            label: "Resolve: pay sellers, refund bonds",
             actionKind: "resolve-process",
             action: {
                 executionType: "transaction",
