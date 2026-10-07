@@ -388,7 +388,9 @@ test.describe('Buyer-side data sale through the UI (devnet)', () => {
 
         // ═══ LEG 2 — the SELLER-posture copy through the SAME UI: both market
         // sides sell. Fresh balance baselines; the cart still carries leg 1's
-        // item (checkout does not clear it), so remove it first. ═══
+        // item — the persisted cart is cleared only by the member page, and
+        // only on a different seller or a self-view, neither of which holds
+        // here — so remove it first. ═══
         await gotoAsWallet(page, DATA_BUYER, `/s/view?seller=${DATA_SELLER}&e2e=devnet`);
         await page.getByTestId('member-detail-view').waitFor({ timeout: 30000 });
         await waitForConnected(page);
@@ -401,10 +403,10 @@ test.describe('Buyer-side data sale through the UI (devnet)', () => {
             'the seller-posture item carries its data marking',
         ).toBeVisible();
         const removeLeg1 = page.getByRole('button', { name: 'Remove one Flight records — live stream' });
-        // optional-ui: the remove control renders only while the cart still holds leg 1's item
-        if (await removeLeg1.isVisible().catch(() => false)) {
-            await removeLeg1.click();
-        }
+        await expect(removeLeg1, "the cart still holds leg 1's item after its checkout").toBeVisible({ timeout: 30000 });
+        await removeLeg1.click();
+        await expect(page.getByTestId(`btn-add-${itemIds.buyer}`), "leg 1's item is out of the cart")
+            .toBeVisible({ timeout: 15000 });
         await page.getByTestId(`btn-add-${itemIds.seller}`).click();
         await page.getByTestId('btn-review-order').click();
         await page.getByTestId('checkout-view').waitFor({ timeout: 20000 });
