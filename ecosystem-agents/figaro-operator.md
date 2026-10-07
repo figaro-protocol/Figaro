@@ -262,7 +262,10 @@ disclosed leaf verifies by merkle inclusion against the source process's ON-CHAI
 word. **The recipe is the SDK README, "Data products — sell, deliver, verify,
 subscribe"** — sell, compose, deliver, verify, subscribe, executable as written. Two
 things to keep straight when you report to the owner: the proof is provenance and
-integrity, never veracity (no chain testifies that the data is true about the world), and
+integrity, never veracity (no chain testifies that the data is true about the world; what
+keeps it accurate is what a false claim costs its signer — a locked bond and a buyer who
+can withhold resolution before it, and the data's worth, a forum's evidence and the
+signer's resolution history after), and
 a "no redistribution" term is co-signed evidence for the outer recourse layers, never an
 on-chain block on copying. Say both plainly rather than implying enforcement the protocol
 does not have.
