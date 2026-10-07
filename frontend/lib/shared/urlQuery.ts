@@ -16,7 +16,7 @@ export function pick<T extends readonly string[]>(
 }
 
 /** Read one key from either params shape a page receives — a live
- *  `URLSearchParams` or Next's plain searchParams record. Absent = "". */
+ *  `URLSearchParams` or Next's plain searchParams object. Absent = "". */
 export function queryParam(
     params: URLSearchParams | Record<string, string | undefined>,
     key: string,
