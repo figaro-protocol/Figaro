@@ -19,7 +19,6 @@ export const metadata: Metadata = withOg({
 });
 
 const QUESTIONS: { id: string; title: string }[] = [
-    { id: "verification", title: "Has the code been audited?" },
     { id: "shutdown", title: "Who can shut this down or freeze your funds?" },
     { id: "layers", title: "What stands behind a trade?" },
     { id: "custody", title: "Who holds the tokens?" },
@@ -72,11 +71,6 @@ export default function Faq() {
                 </nav>
             </MarketingSection>
 
-            <MarketingSection title="Has the code been audited?" sectionId="verification">
-                <p className="text-base text-ink-body leading-relaxed">
-                    Audit in progress. The full answer lives on its own page: the verification stack (seven independent benches) and the external-audit posture are on <Link href="/security" className="text-ink-heading font-medium hover:underline">Security</Link>. How to verify any trade yourself is the two checks under <Link href="#signing" className="text-ink-heading font-medium hover:underline">signing</Link>, below. The audit&apos;s results will be published on Security when they exist.
-                </p>
-            </MarketingSection>
 
             <MarketingSection title="Who can shut this down or freeze your funds?" sectionId="shutdown">
                 <p className="text-base text-ink-body leading-relaxed mb-5">
@@ -287,7 +281,7 @@ export default function Faq() {
 
             <MarketingSection title="What exactly is frozen?" sectionId="frozen">
                 <p className="text-base text-ink-body leading-relaxed mb-5">
-                    While the audit stands, every contract the audit reviews: the four Core contracts, the registries, the usage counter, the reward minter, the florin token, the swap coordinator, and the batch path&apos;s Rust. Only comments change until the auditors&apos; findings are closed.
+                    Every contract in the frozen scope: the four Core contracts, the registries, the usage counter, the reward minter, the florin token, the swap coordinator, and the batch path&apos;s Rust. Only comments change while the freeze stands; why, and what it covers, is on <Link href="/security" className="text-ink-heading font-medium hover:underline">Security</Link>.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
                     Once deployed, a contract is what it is: no admin, no upgrade path, no pause. A change is a new contract at a new address, deployed beside the old one.
@@ -313,11 +307,8 @@ export default function Faq() {
             </MarketingSection>
 
             <MarketingSection title="What has been verified, and what has not?" sectionId="verified">
-                <p className="text-base text-ink-body leading-relaxed mb-5">
-                    Unit and fuzz tests, symbolic execution, formal specification checking, and a machine-checked proof of the equilibrium. Each bench and what it reaches is on <Link href="/security" className="text-ink-heading font-medium hover:underline">Security</Link>.
-                </p>
                 <p className="text-base text-ink-body leading-relaxed">
-                    The external audit is in progress; the results will be published there when they exist.
+                    Unit and fuzz tests, symbolic execution, formal specification checking, and a machine-checked proof of the equilibrium. Each bench and what it reaches is on <Link href="/security" className="text-ink-heading font-medium hover:underline">Security</Link>.
                 </p>
             </MarketingSection>
 
