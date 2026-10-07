@@ -36,7 +36,7 @@ export interface ChainConfig {
     assemblyRegistry: `0x${string}`;
     /** The florin — the protocol's own token. */
     florinToken: `0x${string}`;
-    /** UsageCounter — RPGF's verified-usage ledger (record at resolve, claim per period). */
+    /** UsageCounter — the designer rewards' verified-usage ledger (counted at resolve, claimed per period). */
     usageCounter: `0x${string}`;
 }
 
