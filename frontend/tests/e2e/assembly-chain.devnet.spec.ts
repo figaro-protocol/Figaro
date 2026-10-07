@@ -390,13 +390,23 @@ test.describe('VALUE-ADDED CHAIN — one buyer binds three sellers; one resolve 
                 await approveBond.click();
             }
             // The on-ramp: fund the cumulative-scaled bond from MPMT. The
-            // panel AUTO-SURFACES when the seller's denomination balance is
-            // short of the bond — toggle it open only when it hasn't (the
-            // treasury-choice case); driving state, not a fixed script.
+            // panel AUTO-OPENS from /sign's balance-read effect when the
+            // seller's denomination balance is short of the bond; otherwise it
+            // stays collapsed (the treasury choice) and the courier opens it.
+            // Which case holds is a CHAIN FACT read here, never the screen's
+            // state at one instant: the auto-opened panel flips the toggle to
+            // its collapse label, which only the effect's run renders.
             const fundingPanel = page.getByTestId('swap-funding-panel');
-            await page.getByTestId('seller-funding-toggle').waitFor({ state: 'visible', timeout: 30000 });
-            if (!(await fundingPanel.isVisible().catch(() => false))) {
-                await page.getByTestId('seller-funding-toggle').click();
+            const fundingToggle = page.getByTestId('seller-funding-toggle');
+            const courierBond = calculateBonds(rootEvent.args.cumulativeValue! + parseEther('1'), parseEther('1')).sellerBond;
+            const courierShort = (await balanceOf(COURIER)) < courierBond;
+            if (courierShort) {
+                await expect(fundingToggle, 'the balance read auto-opened the funding panel (short of the bond)')
+                    .toHaveText(/Bond from the order's token instead/, { timeout: 30000 });
+            } else {
+                await expect(fundingToggle, 'the funding panel stays collapsed when the bond is covered')
+                    .toHaveText(/Fund bond from another token/, { timeout: 30000 });
+                await fundingToggle.click();
             }
             await fundingPanel.waitFor({ state: 'visible', timeout: 30000 });
             await page.getByTestId(`funding-token-option-${permitToken.toLowerCase()}`).click();
