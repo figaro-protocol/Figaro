@@ -76,7 +76,7 @@ export function createCapabilityExecutors(deps: CapabilityExecutorDeps) {
         );
         if (activeOrders.length === 0) throw new Error("No active orders are available to resolve.");
 
-        // Reconstruct each order's Commitment from its indexer event record —
+        // Reconstruct each order's Commitment from its indexed event —
         // resolveProcess needs the full Commitment[] to resolve the process
         // atomically. expectedCumulativeValue is the order's committed cumulativeValue.
         // resolveProcess recomputes each order's hash from hashStruct(commitment),
@@ -214,8 +214,8 @@ export function createCapabilityExecutors(deps: CapabilityExecutorDeps) {
             content,
             failureMessage: `${action.clauseId} ${action.eventCode ?? (action.reasserts ? "re-assert" : `stage-${action.stage}`)} attestation failed`,
         };
-        // Custody is READER-DERIVED: a diary event is one
-        // custodian's own record, and any transfer-evidence witness (e.g. the
+        // Chain of custody is READER-DERIVED: a diary event is one
+        // holder's own entry, and any transfer-evidence witness (e.g. the
         // proximity clause's) is filed by a party through its OWN standalone
         // capability — the engine declares no pairing and reads no
         // presentation metadata at runtime.
