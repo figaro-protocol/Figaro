@@ -93,7 +93,7 @@ export function TradeStripFigure({ idPrefix = "trade-strip", className, firstPay
                     </Panel>
                 </li>
                 <li>
-                    <Panel idPrefix={idPrefix} n={6} title="The evidence, yours" desc="The signed sheet, one copy beside each wallet: what was agreed, delivered and paid, kept by each of the three." caption="The evidence, yours.">
+                    <Panel idPrefix={idPrefix} n={6} title="The evidence, yours" desc="The signed sheet, one copy beside each wallet: what was agreed and paid, and what each side attested about delivery, kept by each of the three." caption="The evidence, yours.">
                         <Wallet x={FIRST_X} y={ROW_Y - 20} />
                         <Wallet x={SECOND_X} y={ROW_Y - 20} />
                         <Person x={BUYER_X} y={ROW_Y - 20} />
