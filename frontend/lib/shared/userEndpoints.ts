@@ -4,7 +4,7 @@
  * The build-baked NEXT_PUBLIC_* endpoints are only DEFAULTS: on a hosted
  * deploy they would otherwise seize every visitor onto the operator's RPC
  * provider key and IPFS node — the only traffic-scaling cost, and the
- * wrong custody (author pins → author pays → author erases; readers read
+ * wrong holder (wallet pins → wallet pays → wallet erases; readers read
  * through their own provider). These overrides are the user's, stored in
  * localStorage, consulted at call time by the IpfsService seam and at
  * config creation by wagmi (an RPC change applies on reload).
@@ -33,7 +33,7 @@ export interface UserEndpointOverrides {
      *  is safe by construction rather than by reputation. */
     batchRelayUrl?: string;
     /** An ANALYST to ask free-form questions of on `/data/explore`. An analyst
-     *  is an agent anyone runs over the public event record — operator-hosted
+     *  is an agent anyone runs over the public event log — operator-hosted
      *  for a site's public analyses, user-run for analyses that also read the
      *  private substance that user OWNS or BOUGHT (the first-class case, which
      *  is why this is a per-reader endpoint and not a site service). Unset =
