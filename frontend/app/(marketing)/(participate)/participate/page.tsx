@@ -13,10 +13,12 @@ export const metadata: Metadata = withOg({
 // THE PARTICIPATE LANDING — the door of buyers and sellers, a person's wallet
 // or an agent's. Its shape is the Core landing's (`/core`): one declarative
 // sentence per subject as its heading, one paragraph as its card, one button
-// to the page that owns the how — buy, sell, through an agent. Then one trade
-// in numbers, the link to the whole trade in pictures, and the two link lines.
-// A comprehension gap found by any tester is closed on the page a card points
-// to, never by adding prose here.
+// to the page that owns the how — buy, sell, through an agent. Then the bond
+// rule in two sentences with its link to the mechanism, one trade in numbers
+// that the rule's figures match, the link lines, and last the link to the
+// whole trade in pictures, the next step of the reading path. The rule stands
+// here because a reader meets the numbers here. Every other comprehension gap
+// is closed on the page a card points to.
 const SUBJECTS: { line: string; body: string; cta: string; href: string }[] = [
     {
         line: "You buy from a member's catalog with nothing but a wallet.",
@@ -73,6 +75,12 @@ export default function ParticipateDoor() {
 
             <section className="container mx-auto px-6 pb-20 max-w-3xl">
                 <div className="border-t border-default pt-10">
+                    <p className="text-base text-ink-body leading-relaxed mb-6">
+                        The buyer bonds twice the payment, and each seller bonds twice the cumulative value through its order, which for one seller is the payment. When the buyer confirms, the seller is paid and every bond is refunded, the buyer&apos;s less the payment.{" "}
+                        <Link href="/kernel" className={LINK_CLASS}>
+                            Why this holds
+                        </Link>
+                    </p>
                     <div className="overflow-x-auto mb-4">
                         <table className="w-full max-w-2xl text-sm text-left">
                             <caption className="caption-top text-left text-base text-ink-heading font-medium mb-3">
@@ -96,25 +104,25 @@ export default function ParticipateDoor() {
                             </tbody>
                         </table>
                     </div>
-                    <p className="text-sm text-ink-muted leading-relaxed mb-6">
+                    <p className="text-sm text-ink-muted leading-relaxed mb-8">
                         Gas, the chain&apos;s charge for each transaction, is on top of these amounts.
-                    </p>
-                    <p className="text-base text-ink-body leading-relaxed mb-8">
-                        <Link href="/trade" className={LINK_CLASS}>
-                            A whole trade, start to finish, in six pictures
-                        </Link>
                     </p>
                 </div>
 
                 <div className="border-t border-default pt-8 space-y-2">
                     <p className="text-sm text-ink-muted leading-relaxed">
-                        <Link href="/faq" className={LINK_CLASS}>
-                            What it costs, and what happens if something goes wrong
+                        <Link href="/faq#before-you-send" className={LINK_CLASS}>
+                            Before your first trade: what it costs, and what happens if something goes wrong
                         </Link>
                     </p>
                     <p className="text-sm text-ink-muted leading-relaxed">
                         <Link href="/communities" className={LINK_CLASS}>
                             Communities: what you can trade, and who offers each kind
+                        </Link>
+                    </p>
+                    <p className="text-base text-ink-body leading-relaxed pt-6">
+                        <Link href="/trade" className={LINK_CLASS}>
+                            A whole trade, start to finish, in six pictures
                         </Link>
                     </p>
                 </div>
