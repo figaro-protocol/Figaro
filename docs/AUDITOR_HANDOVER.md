@@ -168,8 +168,9 @@ whole scope, Solidity and Rust together.
 git rev-parse 'audit-2026-10b^{commit}'
 ```
 
-No change is made to a path in scope while the tag stands. The tag is never
-moved: a change to the scope is a new tag — this one succeeded
+No code changes in a path in scope while the tag stands; comments and NatSpec
+may, in place, and § "Comment-only changes after the tag" lists each one. The
+tag is never moved: a change to the scope's code is a new tag — this one succeeded
 `audit-2026-10` when the last relay change below landed, and contains all
 eight.
 
@@ -201,6 +202,24 @@ git diff audit-2026-10 audit-2026-10b -- prover/sequencer/
 All eight are liveness or operability defects of the relay: none let a batch
 move value the parties did not sign, and the proof and the verifier are as
 tagged. Known limitation 7 states what the state changes leave standing.
+
+### Comment-only changes after the tag
+
+| File | The comment now says | Why it changed |
+|---|---|---|
+| `src/core/attestation/AttestationCoordinator.sol:160-164` (`attestViaResolver`) | the section is seller-authorized attestations; the seller, an ECDSA EOA, answers `isAuthorized` only through EIP-7702 code it installed on itself, and what that code authorizes is the seller's own act, as a buyer's delegation is its own (`DESIGN_DECISIONS.md` #5) | it named the seller a "mechanism contract", which `FigaroCore`'s ECDSA-only parties cannot be |
+| `src/core/attestation/IRoleResolver.sol:6-10` | the interface is the authorization a seller address grants for attestations on its orders; no contract in the repository implements it | it said mechanism contracts implement it |
+
+The code of both files, stripped of comments, is byte-identical to the tag
+(`scripts/lint-kernel-frozen.sh` holds it at every commit), and the line counts
+are unchanged, so every `file:line` citation of them stands. NatSpec enters the
+compiler's metadata (`foundry.toml` sets no `bytecode_hash`), so a build at a
+later commit carries a different metadata hash in its bytecode suffix than a
+build at the tag; the review builds at the tag.
+
+```bash
+git diff audit-2026-10b -- src/core/attestation/
+```
 
 ### The kernel
 
