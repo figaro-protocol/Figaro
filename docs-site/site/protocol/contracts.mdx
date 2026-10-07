@@ -135,7 +135,7 @@ function registered(address member) external view returns (bool);  // :120
 function withdrawable(address member) external view returns (bool);// :131
 ```
 
-Withdrawal is two steps: `requestWithdrawal()` de-lists you at once and schedules the stake, `withdraw()` releases it after `withdrawalCooldown` elapses — so one stake cannot serve identity after identity. `registered(address)` is the seller-side gate `UsageCounter` reads for designer rewards. Availability is signalled off-chain, never as registry state — there is no active flag, no role field.
+Withdrawal is two steps: `requestWithdrawal()` de-lists you at once and schedules the stake, `withdraw()` releases it after `withdrawalCooldown` elapses — so one stake cannot serve identity after identity. `registered(address)` is the seller-side gate `UsageCounter` reads for designer rewards. Availability is signaled off-chain, never as registry state — there is no active flag, no role field.
 
 **Errors** (`:92-97`): `AlreadyRegistered`, `NotRegistered`, `InsufficientDeposit` (the exact-match deposit check, despite the name), `NothingPending`, `CooldownActive(releaseAt)`, `TransferFailed`. **Events:** `MemberRegistered`, `MemberProfileUpdated`, `MemberWithdrawalRequested`, `MemberWithdrawn`.
 

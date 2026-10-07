@@ -129,7 +129,7 @@ exists to route that off the general-purpose RISC-V execution and onto the
 SP1 secp256k1 precompile; no patched-cycle or patched-proof-time figure is
 published in-repo yet, so measure your own setup rather than assume one. The
 paid alternative to self-hosting is the **Succinct Prover Network** — a
-decentralised proof marketplace: submit program + inputs, receive a proof —
+decentralized proof marketplace: submit program + inputs, receive a proof —
 covered in `docs/SCALING_STRATEGY.md` § "Proving Infrastructure — Succinct
 (SP1)".
 

@@ -244,8 +244,8 @@ append-only: new meaning is a new `clauseId`, never a mutation of an old one.
 
 **Merge when two clauses duplicate one concept.** If two clauses occupy the
 same conceptual space and differ only in which enum field they expose, they
-are one concept parameterised twice. Replace them with one clause whose
-orthogonal fields make the parameterisation explicit — but only when the fields
+are one concept parameterized twice. Replace them with one clause whose
+orthogonal fields make the parameterization explicit — but only when the fields
 are genuinely facets of one decision. A request for a modality is not the same
 decision as a physical hand-off point; two honest clauses beat a merge that has
 to be undone.

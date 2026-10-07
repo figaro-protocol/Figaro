@@ -109,4 +109,4 @@ Each layer owns one thing; every other layer states it as a summary plus a point
 - **Scaling**: `SCALING_STRATEGY.md` (carries the batch-sequencer architecture + sequencer trust model)
 - **Status and readiness**: `RELEASE_READINESS.md` (the open release tasks, TODO only — closed work is deleted; git is the log)
 - **Audit / verification**: `AUDITOR_HANDOVER.md` (scope in both languages, the audit commit, change policy, validation gate, accepted risks), `DESIGN_DECISIONS.md`, `VERIFICATION_MAP.md`
-- **Research**: the paper corpus (the project's lineage is stated in the asymmetric-bonding paper's acknowledgement; naming in `FLORIN_TOKEN.md` § "Name")
+- **Research**: the paper corpus (the project's lineage is stated in the asymmetric-bonding paper's acknowledgment; naming in `FLORIN_TOKEN.md` § "Name")

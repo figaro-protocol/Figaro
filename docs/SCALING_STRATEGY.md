@@ -199,7 +199,7 @@ by token transfers, not `FigaroCore` logic.
 
 > **Which number to quote.** The rows are ranges because a ROOT commit costs
 > more than a SUB-order commit, and resolve's MARGINAL cost (warm storage,
-> mid-loop) sits below its ALL-IN cost (cold, amortising the call). The single
+> mid-loop) sits below its ALL-IN cost (cold, amortizing the call). The single
 > source of truth for anything downstream is the pinned pair
 > `COMMIT_GAS_PER_ORDER = 144_000` and `RESOLVE_GAS_PER_ORDER = 23_000`
 > (`sdk/src/gasCeilings.ts` ↔ `test/core/kernel/GasCeilingTest.t.sol`) — the same
@@ -428,7 +428,7 @@ decision, not an SP1 limit.
 **Proof generation — the Succinct Prover Network.** The sequencer's
 `prove_wrapped` (`prover/sequencer/src/prover.rs`) proves with the backend
 `SP1_PROVER` names: `cpu`/`cuda` locally (Groth16 wrapping is RAM-heavy —
-~14 GB), or `network` — the Succinct Prover Network, a decentralised proof
+~14 GB), or `network` — the Succinct Prover Network, a decentralized proof
 marketplace: submit program + inputs, receive a proof, paid per proof in PROVE
 by the REQUESTER (the relay operator; never the protocol, never its
 participants). It is a liveness dependency only: the proof still verifies

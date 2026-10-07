@@ -260,7 +260,7 @@ stream that folds both paths.
 ## Coordination signals — what the network actually emits
 
 THEORY.md calls these signals **economic pheromones**, and the metaphor is exact about
-one thing: nobody emits them for anybody else. There is **no signalling channel, no
+one thing: nobody emits them for anybody else. There is **no signaling channel, no
 broadcast, no ranking and no analytics feed** — every signal below is an ordinary event
 or view, written because some wallet did something for its own account. Any aggregate
 picture is the reader's own derivation, never a surface someone maintains.

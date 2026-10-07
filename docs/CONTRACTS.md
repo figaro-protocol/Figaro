@@ -18,7 +18,7 @@ in `LOCAL_DEV.md`; the mechanism's derivation is in `THEORY.md`.
 
 Every arrow is an immutable pointer fixed at construction (a read, unless
 marked); parenthesized nodes are external canonical contracts, not this
-repo's. Two structural facts: `FigaroCore` is the centre and points at nothing,
+repo's. Two structural facts: `FigaroCore` is the center and points at nothing,
 and the three registries carry no edges among themselves — parallel anchors,
 never nested.
 

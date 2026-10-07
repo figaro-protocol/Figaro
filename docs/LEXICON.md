@@ -10,7 +10,7 @@ Nouns and their definitions. One name per thing.
 
 **assembly** — Agreements composed into one reusable design of a process: which relationships it holds, in what order, under what terms. Published under the hash of its composition; a process instantiates it.
 
-**asset** — A productive thing that owns a wallet and trades through it: a kitchen, a vehicle, a person's labour, a machine, an agent selling its own service. The asset is the party; whoever holds its key operates it.
+**asset** — A productive thing that owns a wallet and trades through it: a kitchen, a vehicle, a person's labor, a machine, an agent selling its own service. The asset is the party; whoever holds its key operates it.
 
 **attestation** — A representation or warranty a party gives about a process while it is open, signed and bound to the order it concerns: a term of the agreement, executed before resolve. Attestations are the evidence a process's data holds. The chain checks that an attestation is signed and bound, never that it is true; what keeps it accurate is what a false one costs its signer, before resolution and after it (`DATA_LAYER.md` § "Truth boundaries").
 

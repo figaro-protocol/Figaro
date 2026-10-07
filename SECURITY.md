@@ -23,7 +23,7 @@ Either way, include:
 - the impact — what an attacker gains, and whose bonds, stakes, tokens or state are at risk;
 - a proof-of-concept or reproduction steps, if you have them.
 
-You will get an acknowledgement. There is no fixed response SLA — this is a
+You will get an acknowledgment. There is no fixed response SLA — this is a
 small project — but every report is read.
 
 ## Scope

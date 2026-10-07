@@ -581,7 +581,7 @@ holds counts, not the pair sets needed to union them.
 
 **Looks wrong because:** a clause or assembly with genuinely resolved, genuinely recorded trade shows
 `c > 0`, `d > 0` and `score = 0` — which reads like lost accrual, or like the counter
-penalising honest early adopters.
+penalizing honest early adopters.
 
 **Is correct because:** below `minSellers` (mainnet 3) distinct
 live-staked sellers sit exactly the clauses and assemblies one actor can fabricate alone — self-farms,

@@ -53,7 +53,7 @@ the single mistake that makes an analyst wrong about a market it has never seen.
   below say.
 - **Cross-process** links come from provenance — a template commitment, a resolution
   provenance link, a cascade attestation. Truth boundary: **protocol-derived**; the link
-  is on chain, its meaning ("this delivery fulfils that purchase order") is declared.
+  is on chain, its meaning ("this delivery fulfills that purchase order") is declared.
 - **COMPOSITION graphs come from fifth-noun venues** — the on-network contracts a process
   record touches. A swap venue gives you value-flow between denominations; a multisender
   gives you post-payout fiscal routing; a forum venue gives you a rulings overlay. Truth
