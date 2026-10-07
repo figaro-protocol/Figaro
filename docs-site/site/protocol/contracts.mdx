@@ -118,7 +118,7 @@ function registerAssembly(bytes32 compositionHash, string calldata contentURI) e
 function withdrawDeposit(bytes32 compositionHash) external;                                        // :175
 ```
 
-`compositionHash = keccak256` of the assembly's canonical composition subset (composed agreements — clauses, values, topology; editorial prose excluded), so identical compositions collapse to one binding and no caller-chosen name exists on chain; the human slug is derived off-chain. `bindings(compositionHash)` returns `(address registeredBy, uint64 registeredAt, bool depositWithdrawn, string contentURI)` — the whole on-chain record. Withdrawal refunds the stake and de-surfaces the assembly; the binding stays, because buyers and sellers referencing it rely on stable content.
+`compositionHash = keccak256` of the assembly's canonical composition subset (composed agreements — clauses, values, topology; editorial prose excluded), so identical compositions collapse to one binding and no caller-chosen name exists on chain; the human slug is derived off-chain. `bindings(compositionHash)` returns `(address registeredBy, uint64 registeredAt, bool depositWithdrawn, string contentURI)` — everything the chain stores for the binding. Withdrawal refunds the stake and de-surfaces the assembly; the binding stays, because buyers and sellers referencing it rely on stable content.
 
 **Errors** (`:120-127`): `EmptyContentURI`, `ZeroCompositionHash`, `CompositionAlreadyRegistered(compositionHash)`, `WrongDeposit(provided, required)`, `NotRegistered`, `NotRegisteredBy(caller, registeredBy)`, `AlreadyWithdrawn`, `TransferFailed`. **Events:** `AssemblyRegistered`, `DepositWithdrawn`. Compute the hash off-chain with `templateCompositionHash(template)` from the SDK — see [Clauses and agreements](/protocol/clauses/).
 
@@ -196,7 +196,7 @@ function settleBatch(
 ) external;                                    // :261  (nonReentrant, external, no caller gate)
 ```
 
-`settleBatch` verifies the proof against the immutable `programVKey`, checks state-root continuity and chain binding, hash-verifies the calldata byte-for-byte, checks every `(clause key → witness-spec hash)` binding against `ClauseRegistry.contentHashOf` — the vkey covers the generic clause engine, the registry anchors the constraint set, so a new clause never touches the prover — then reconciles net token positions (pulls net deposits, pushes net payouts), re-emits proven `Attestation` events, and forwards usage accrual to `UsageCounter.applyBatchAccrual`. Public state is `stateRoot() → bytes32` and `batchCount() → uint64`, advanced per `BatchSettled`.
+`settleBatch` verifies the proof against the immutable `programVKey`, checks state-root continuity and chain binding, hash-verifies the calldata byte-for-byte, checks every `(clause key → witness-spec hash)` binding against `ClauseRegistry.contentHashOf` — the vkey covers the generic clause engine, the registry anchors the constraint set, so a new clause never touches the prover — then reconciles net token positions (pulls each position's net `deposit`, pushes its net `payout`), re-emits proven `Attestation` events, and forwards usage accrual to `UsageCounter.applyBatchAccrual`. Public state is `stateRoot() → bytes32` and `batchCount() → uint64`, advanced per `BatchSettled`.
 
 **The public values are nine 32-byte words** (`src/core/verifier/FigaroBatchVerifier.sol:70-79`): `prevStateRoot`, `newStateRoot`, `chainId`, `verifyingContract`, `tokenOpsHash`, `attestationEventsHash`, `specBindingsHash`, `usageAccrualHash`, and word 8 **`blockTimestamp`** (uint64). That last word is bounded: `settleBatch` reverts unless `blockTimestamp <= block.timestamp` and `block.timestamp - blockTimestamp <= MAX_BATCH_STALENESS`, where `MAX_BATCH_STALENESS = 1 hours` (`:98`, `:289`). It pins the clock the guest checked deadlines against to reality — a batch is proven then submitted, so a few minutes of lag is normal — while stopping a caller from picking an arbitrary past time to bond an already-expired commitment.
 
@@ -272,16 +272,16 @@ Addresses are deploy-time configuration, published in a per-chain deployment rec
 
 | Network | Chain ID | Where the addresses are |
 |---|---|---|
-| Local Anvil | `31337` | the local run's own record, handed to you by the run |
-| Ethereum Sepolia | `11155111` | the committed public record: [`deployments/11155111.json`](https://github.com/figaro-protocol/Figaro/blob/main/deployments/11155111.json) |
+| Local Anvil | `31337` | the local run's own deployment record, handed to you by the run |
+| Ethereum Sepolia | `11155111` | the committed public deployment record: [`deployments/11155111.json`](https://github.com/figaro-protocol/Figaro/blob/main/deployments/11155111.json) |
 
-Fetch the public record and hash it to confirm the site and the repository serve the same bytes:
+Fetch the public deployment record and hash it to confirm the site and the repository serve the same bytes:
 
 ```bash
 curl -s https://raw.githubusercontent.com/figaro-protocol/Figaro/main/deployments/11155111.json | shasum -a 256
 ```
 
-Before you sign a commit, the checkout shows a fingerprint of the on-chain addresses that order will touch — the `sha256:` value beneath the place-order button. It is derived, never stored, over the exact thirteen address fields below; reproduce it from the canonical record and compare:
+Before you sign a commit, the checkout shows a fingerprint of the on-chain addresses that order will touch — the `sha256:` value beneath the place-order button. It is derived, never stored, over the exact thirteen address fields below; reproduce it from the canonical deployment record and compare:
 
 ```bash
 curl -s https://raw.githubusercontent.com/figaro-protocol/Figaro/main/deployments/11155111.json \
