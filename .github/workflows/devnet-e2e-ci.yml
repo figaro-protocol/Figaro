@@ -6,14 +6,31 @@ name: Devnet E2E CI
 # layer was maintainer-discipline-only — nothing exercised action→reaction across
 # the whole stack on push.
 #
-# Scope: the `orders-accept` spec (the bilateral spine), then the three
-# origination proofs (in-process / HTTP socket / multi-order chain) against the
-# same live stack. The proofs were operator-manual scripts before — which is
-# how they rotted dead undetected, twice; broader devnet specs stay
-# maintainer-run for now.
+# Scope on push and pull request: the `orders-accept` spec (the bilateral
+# spine), then the four origination proofs (in-process / HTTP socket / A2A /
+# multi-order chain) against the same live stack, then the watcher's test.
+#
+# Scope on the nightly schedule (and on a dispatch with suite=full): the whole
+# Playwright `devnet` project — every runtime *.devnet.spec.ts after its
+# `devnet-authoring` dependency — through `npm run test:e2e:devnet`, the same
+# command a laptop runs, in place of the spine spec; the proofs and the
+# watcher's test follow as on push. One job, one copy of the stack setup: the
+# trigger picks the scope.
 
 on:
+    # Nightly, 03:37 UTC. GitHub starts this repository's scheduled runs hours
+    # after their cron time (five to eight, measured on monitor.yml and
+    # estate-snapshot.yml) and may drop one under load; a dispatch with
+    # suite=full runs the same scope on demand.
+    schedule:
+        - cron: "37 3 * * *"
     workflow_dispatch:
+        inputs:
+            suite:
+                description: "spine = the orders-accept spec (the push scope); full = the whole devnet project (the nightly scope)"
+                type: choice
+                options: [spine, full]
+                default: spine
     push:
         branches: [main, develop]
         paths:
@@ -48,9 +65,15 @@ permissions:
 
 jobs:
     devnet-e2e:
-        name: Bilateral spine (orders-accept)
+        name: ${{ (github.event_name == 'schedule' || inputs.suite == 'full') && 'Full devnet suite' || 'Bilateral spine (orders-accept)' }}
         runs-on: ubuntu-latest
-        timeout-minutes: 30
+        # The spine: 30 minutes. The full suite: 38 spec files (37 in `devnet`
+        # plus the `devnet-authoring` wizard), one worker, one retry per test,
+        # about 40 minutes on a laptop; the runner has two cores and builds the
+        # export inside the run, so the budget is three times that.
+        timeout-minutes: ${{ (github.event_name == 'schedule' || inputs.suite == 'full') && 120 || 30 }}
+        env:
+            FULL_SUITE: ${{ github.event_name == 'schedule' || inputs.suite == 'full' }}
 
         steps:
             - name: Checkout code
@@ -135,6 +158,7 @@ jobs:
             # `devnet` webServer builds + serves the production static export on
             # :3100; the `devnet-authoring` dependency project sets up the seller.
             - name: Run orders-accept e2e
+              if: env.FULL_SUITE != 'true'
               run: |
                   cd frontend
                   node scripts/verify-devnet-deployment.mjs
@@ -143,12 +167,23 @@ jobs:
               env:
                   CI: true
 
+            # ── The whole devnet project (nightly) ───────────────────────
+            # test:e2e:devnet = the same preflight + seed, then every runtime
+            # devnet spec after the devnet-authoring wizard, one worker.
+            - name: Run the full devnet e2e suite
+              if: env.FULL_SUITE == 'true'
+              run: |
+                  cd frontend
+                  npm run test:e2e:devnet
+              env:
+                  CI: true
+
             # ── The four origination proofs, same live stack ─────────────
             # Autonomous agents (keys only, no browser): in-process channel,
             # real HTTP socket, the A2A interop wire, and the multi-order
             # value-added chain. Each is a full sign/validate/bond/commit
             # cycle landing on the devnet chain; the stack and seed data are
-            # the e2e step's.
+            # the e2e step's (the spine's or the full suite's).
             - name: Run origination proofs
               run: |
                   cd sdk

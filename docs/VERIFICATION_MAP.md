@@ -30,7 +30,7 @@ a test file). Where a check runs, and what shows it is load-bearing:
 | SDK Vitest | `cd sdk && npm test` | `sdk-ci` | not mutation-checked; the encoders are held by the cross-language vectors and the differential fuzz (`prover-ci`) |
 | Agent runtime | `cd ecosystem-agents/runtime && npm test` | `sdk-ci` (the sandbox tests skip off macOS) | not mutation-checked |
 | Frontend Vitest | `cd frontend && npx vitest run` | `frontend-ci` | not mutation-checked |
-| Playwright | `cd frontend && npx playwright test --project=devnet` | `devnet-e2e-ci` runs `orders-accept` alone; the suite runs by hand | not mutation-checked |
+| Playwright | `cd frontend && npx playwright test --project=devnet` | `devnet-e2e-ci` runs `orders-accept` on push and the whole `devnet` project nightly | not mutation-checked |
 
 Run evidence — when each layer last ran, at which commit, and the Certora report
 URLs — is `AUDITOR_HANDOVER.md` § "Verification evidence". This document maps;

@@ -650,8 +650,12 @@ Per workflow, what it runs and when:
   static export — then the FOUR origination proofs on the same stack
   (`verify-origination{,-http,-a2a,-chain}.devnet.mjs`), and last the
   watcher's test (`scripts/test-monitor.mjs`). The highest-catch
-  layer, run in CI. Broader devnet specs stay
-  maintainer-run.
+  layer, run in CI. Nightly (03:37 UTC cron, started hours late like every
+  scheduled run here) and on a dispatch with `suite=full`, the same job runs
+  the whole `devnet` project through `npm run test:e2e:devnet` in place of
+  the spine spec — every runtime devnet spec after the `devnet-authoring`
+  wizard, under a 120-minute budget. The `devnet-standalone` and `stranger`
+  projects run on a laptop.
 - **`Dependency Audit CI`** — push/PR, NOT path-filtered: three npm-audit legs (root
   production deps at high+; frontend production deps at critical-only, through
   `scripts/audit-frontend.mjs`, which sets aside by id the advisories named in
