@@ -567,8 +567,8 @@ test.describe('PER-CLAUSE COVERAGE — every protocol clause flows the generic p
             await confirmBtn.click();
             const receipt = page.getByTestId('assembly-publish-receipt');
             const publishError = page.getByTestId('publish-error');
-            await expect(receipt.or(publishError)).toBeVisible({ timeout: 60000 });
             let slug: string;
+            await expect(receipt.or(publishError)).toBeVisible({ timeout: 60000 });
             if (await publishError.isVisible()) {
                 await expect(
                     publishError,

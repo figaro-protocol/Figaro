@@ -154,6 +154,7 @@ test.describe('RFQ AT CHECKOUT — the candidates author the price (devnet)', ()
         await page.getByTestId('btn-review-order').click();
         await page.getByTestId('checkout-view').waitFor({ timeout: 20000 });
         const methodSelect = page.getByTestId('select-method');
+        await expect(methodSelect.or(page.getByTestId('method-static')), 'the method row renders').toBeVisible({ timeout: 30000 });
         if (await methodSelect.isVisible().catch(() => false)) {
             await methodSelect.selectOption(deliverySlug);
         }

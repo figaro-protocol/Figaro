@@ -156,6 +156,7 @@ test.describe('LIVE ORDER — a public deployment traded through the real UI', (
             // Accepted token: the denomination — via the picker where the
             // chain offers one (devnet mock), else the manual address row.
             const picker = page.getByRole('button', { name: new RegExp(`\\+ ${symbol}$`) });
+            // optional-ui: the picker renders only where the chain offers the token; the else branch is the manual row
             if (await picker.isVisible().catch(() => false)) {
                 await picker.click();
             } else {
@@ -211,6 +212,7 @@ test.describe('LIVE ORDER — a public deployment traded through the real UI', (
             // is not cached, so the next load picks it up.
             await switchTo(buyer.address, '/discover?e2e=devnet');
             await expect.poll(async () => {
+                // optional-ui: a read polled by expect.poll, which retries until true
                 if (await page.getByText(sellerName).first().isVisible().catch(() => false)) return true;
                 await page.reload({ waitUntil: 'domcontentloaded' });
                 await page.waitForTimeout(10_000);
@@ -226,6 +228,7 @@ test.describe('LIVE ORDER — a public deployment traded through the real UI', (
             // The catalog may still be propagating on the gateway for the
             // browser's own read — reload until the item renders.
             await expect.poll(async () => {
+                // optional-ui: a read polled by expect.poll, which retries until true
                 if (await addBtn.isVisible().catch(() => false)) return true;
                 await page.reload({ waitUntil: 'domcontentloaded' });
                 await page.getByTestId('member-detail-view').waitFor({ timeout: 60_000 }).catch(() => {});

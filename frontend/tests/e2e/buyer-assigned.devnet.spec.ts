@@ -152,6 +152,7 @@ test.describe('BUYER-ASSIGNED — the buyer picks the courier at checkout (devne
         // A multi-binding merchant offers the method choice; a single-binding
         // one preselects. Either way the delivery assembly drives this order.
         const methodSelect = page.getByTestId('select-method');
+        await expect(methodSelect.or(page.getByTestId('method-static')), 'the method row renders').toBeVisible({ timeout: 30000 });
         if (await methodSelect.isVisible().catch(() => false)) {
             await methodSelect.selectOption(deliverySlug);
         }

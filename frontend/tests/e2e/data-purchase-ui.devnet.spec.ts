@@ -138,6 +138,7 @@ async function authorDataMemberThroughWizard(page: Page, surveyHash: string, sur
     // An update-mode walk hydrates the tokens the wallet already accepts; the
     // quick-add button is there only while MOCK is not yet in the set.
     const addMock = page.getByRole('button', { name: /\+ MOCK$/ });
+    // optional-ui: the quick-add renders only while MOCK is not yet an accepted token
     if (await addMock.isVisible().catch(() => false)) await addMock.click();
     await page.locator('input[name="defaultTokenAddress"]').first().check();
     await page.getByRole('button', { name: /^Next/ }).click();
@@ -400,6 +401,7 @@ test.describe('Buyer-side data sale through the UI (devnet)', () => {
             'the seller-posture item carries its data marking',
         ).toBeVisible();
         const removeLeg1 = page.getByRole('button', { name: 'Remove one Flight records — live stream' });
+        // optional-ui: the remove control renders only while the cart still holds leg 1's item
         if (await removeLeg1.isVisible().catch(() => false)) {
             await removeLeg1.click();
         }

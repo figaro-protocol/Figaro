@@ -144,7 +144,8 @@ test.describe('VERIFICATION COVERAGE — FigaroCore-revert path, evidence reader
         await counterSign.waitFor({ state: 'visible', timeout: 60000 });
         await counterSign.click();
         const previewModal = page.getByTestId('agreement-preview-modal');
-        if (await previewModal.isVisible({ timeout: 5000 }).catch(() => false)) {
+        await previewModal.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {});
+        if (await previewModal.isVisible()) {
             await page.getByTestId('preview-confirm').click();
         }
         await expect(

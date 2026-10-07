@@ -394,6 +394,7 @@ test.describe('VALUE-ADDED CHAIN — one buyer binds three sellers; one resolve 
             // short of the bond — toggle it open only when it hasn't (the
             // treasury-choice case); driving state, not a fixed script.
             const fundingPanel = page.getByTestId('swap-funding-panel');
+            await page.getByTestId('seller-funding-toggle').waitFor({ state: 'visible', timeout: 30000 });
             if (!(await fundingPanel.isVisible().catch(() => false))) {
                 await page.getByTestId('seller-funding-toggle').click();
             }

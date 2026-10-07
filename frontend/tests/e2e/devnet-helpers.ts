@@ -554,6 +554,7 @@ export async function confirmAgreementPreviews(
 ): Promise<void> {
     const confirmed = new Set<string>();
     for (let i = 0; i < 600; i++) {
+        // optional-ui: a read polled by this loop, which re-reads it every pass
         if (await page.getByTestId('buyer-share-panel').isVisible().catch(() => false)) break;
         const modal = page.getByTestId('agreement-preview-modal');
         if (i === 0) await modal.waitFor({ state: 'visible', timeout: 60000 });

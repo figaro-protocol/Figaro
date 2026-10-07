@@ -152,8 +152,8 @@ test.describe('CONTENT DELIVERY — the digital hand-off ceremony, encrypted to 
         await confirmBtn.click();
         const receipt = page.getByTestId('assembly-publish-receipt');
         const publishError = page.getByTestId('publish-error');
-        await expect(receipt.or(publishError)).toBeVisible({ timeout: 60000 });
         let slug: string;
+        await expect(receipt.or(publishError)).toBeVisible({ timeout: 60000 });
         if (await publishError.isVisible()) {
             await expect(publishError, 'the registry refuses the identical composition (adopt path)')
                 .toContainText(/already published/);
