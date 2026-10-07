@@ -60,7 +60,7 @@ interface PublishedAssembly {
     contentURI: string;
     blockNumber: bigint;
     transactionHash: `0x${string}`;
-    /** True when the registeredBy reclaimed the registration deposit (K4:
+    /** True when the registeredBy reclaimed the registration stake (K4:
      *  surfacing derives from the live stake — withdraw = de-surface).
      *  The binding itself is permanent; committed processes are
      *  unaffected. */
@@ -80,7 +80,7 @@ export function translatePublishRevert(err: unknown, attemptedSlug: string): Err
             case "WrongDeposit": {
                 const provided = (args?.[0] as bigint | undefined)?.toString() ?? "?";
                 const required = (args?.[1] as bigint | undefined)?.toString() ?? "?";
-                return `Registration deposit mismatch (provided ${provided} wei, required ${required} wei). The deposit amount changed between the read and the send — retry.`;
+                return `Registration stake mismatch (provided ${provided} wei, required ${required} wei). The stake amount changed between the read and the send — retry.`;
             }
             case "EmptyContentURI":
                 return "The IPFS pin returned an empty URI.";
@@ -94,7 +94,7 @@ export function translatePublishRevert(err: unknown, attemptedSlug: string): Err
 
 /**
  * Reclaim an assembly's registration stake (`AssemblyRegistry.withdrawDeposit`).
- * The binding is permanent — withdraw only moves the deposit and de-surfaces
+ * The binding is permanent — withdraw only moves the stake and de-surfaces
  * the assembly for NEW orders; committed processes keep resolving. Gating on
  * in-flight trades is the caller's job via `useWithdrawGate` (advisory,
  * off-chain); this hook is the plain registeredBy-only write. Simulates first to
@@ -207,7 +207,7 @@ export async function fetchAssemblyTemplate(
         // the catch below → null) before the hash check would buffer it.
         const response = await fetchCappedContent(url);
         if (!response.ok) return null;
-        // Reviver-backed parse: the compositionHash proves AUTHOR-integrity,
+        // Reviver-backed parse: the compositionHash proves DESIGNER-integrity,
         // not prototype-pollution safety — the registering wallet is untrusted (the
         // AssemblyRegistry is permissionless), so a hostile template can be
         // anchored under its own hash and pass verification.
