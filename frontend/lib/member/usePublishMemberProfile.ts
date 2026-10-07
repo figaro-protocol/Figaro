@@ -75,7 +75,7 @@ function translatePublishRevert(err: unknown): Error {
     // come from Solidity's `revert("...")` and viem's error formatting.
     if (/insufficient.*deposit|wrong.*deposit|invalid.*deposit/i.test(message)) {
         return new Error(
-            "Registration deposit mismatch — the on-chain `registrationDeposit` differs from what we submitted. Anvil may have been redeployed; reload and try again.",
+            "Registration stake mismatch — the on-chain `registrationDeposit` differs from what we submitted. Anvil may have been redeployed; reload and try again.",
         );
     }
     if (/already registered/i.test(message)) {
@@ -103,7 +103,7 @@ export function usePublishMemberProfile() {
             );
         }
         if (!client) {
-            throw new Error("No public client available to read the registration deposit.");
+            throw new Error("No public client available to read the registration stake.");
         }
         if (input.items.length === 0) {
             throw new Error("Catalog is empty — add at least one item before publishing.");
@@ -131,7 +131,7 @@ export function usePublishMemberProfile() {
         );
         const profileURI = profilePin.uri;
 
-        // (d) Read the registration status + deposit ON DEMAND. A React
+        // (d) Read the registration status + stake ON DEMAND. A React
         //     query (`useMemberProfile` / `useRegistrationDeposit`) can be
         //     undefined when the wizard's submit fires — trusting a stale
         //     `false` would call `register` on an already-registered wallet
