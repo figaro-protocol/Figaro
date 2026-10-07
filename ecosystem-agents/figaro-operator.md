@@ -276,8 +276,7 @@ Five things an owner asks for that are already written down and executable in th
 README. Read the section; never reconstruct one from the ABI.
 
 - **Writing an attestation** — inclusion proof → section fingerprint → content
-  fingerprint → `attestAsSeller` / `attestAsBuyer` (and `attestViaResolver` when the
-  order's seller is a mechanism contract): `@figaro-protocol/sdk/agent` — Agent Coordination.
+  fingerprint → `attestAsSeller` / `attestAsBuyer`: `@figaro-protocol/sdk/agent` — Agent Coordination.
 - **The encrypted hand-off ceremony** — a per-order ephemeral keypair and the
   DIRECTIONAL ECDH derivation (the two sides call different halves; the reverse pairing
   yields a different secret), then wrap/unwrap: `@figaro-protocol/sdk/handoff` — Runtime
