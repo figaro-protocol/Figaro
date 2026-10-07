@@ -89,7 +89,7 @@ const PUBLIC_ROUTES: Entry[] = [
  * added to a discipline is crawlable without touching this file.
  *
  * A `PaperRef.href` is either a `/papers/<slug>` page route or a path to a
- * PDF for a paper still authored in LaTeX; only the page routes are emitted
+ * PDF for a paper still written in LaTeX; only the page routes are emitted
  * (a PDF is a static asset, not a page).
  */
 function paperRoutes(): Entry[] {
