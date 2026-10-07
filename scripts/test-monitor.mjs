@@ -8,9 +8,9 @@
 // it writes (ALERTS_OUT):
 //
 //   clean          the devnet as deployed                  → no alert
-//   minter, mint   a florin token whose deployer never renounced registers
+//   mint           a florin token whose deployer never renounced registers
 //                  a minter and mints outside RpgfMinter.claim
-//                                                          → minter-…, mint-…
+//                                                          → mint-…
 //   withdrawals    three clause deposits withdrawn in the window
 //                                                          → withdrawal-burst-…
 //   insolvency     an order committed in a rebasing token, then rebased down:
@@ -125,13 +125,12 @@ async function main() {
     const clean = await watch("clean", base);
     check("no alert on a clean devnet", clean.alerts?.length === 0, clean.failed ?? JSON.stringify(keysOf(clean)));
 
-    console.log("\nA florin minter after genesis, and a mint outside the reward path");
+    console.log("\nA mint outside the reward path");
     const florin = await deploy(KEYS.deployer, "FlorinToken");
     const deployer = account(KEYS.deployer).address;
     await send(KEYS.deployer, florin.address, florin.abi, "registerMinter", [deployer, parseEther("1")]);
     await send(KEYS.deployer, florin.address, florin.abi, "mint", [account(KEYS.buyer).address, 1n]);
-    const minted = await watch("minter", { ...base, florinToken: florin.address });
-    check("minter-… raised", keysOf(minted).some((k) => k.startsWith("minter-")), minted.failed ?? JSON.stringify(keysOf(minted)));
+    const minted = await watch("mint", { ...base, florinToken: florin.address });
     check("mint-… raised", keysOf(minted).some((k) => k.startsWith("mint-")), minted.failed ?? JSON.stringify(keysOf(minted)));
 
     console.log("\nThree deposits withdrawn in the window");

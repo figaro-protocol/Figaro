@@ -115,7 +115,7 @@ the expected.
 
 | Watch | Expected | Alert when |
 |---|---|---|
-| `FlorinToken`: `MinterRegistered`, and any `Transfer` from the zero address | none after genesis; mints only from `RpgfMinter.claim` | a minter is registered after the renounce, or a mint arrives from any other address |
+| `FlorinToken`: any `Transfer` from the zero address | mints only from `RpgfMinter.claim`; no minter is registered after genesis, which is proved, not watched: `registerMinter` reverts once `deployerMintRenounced` is set, the renounce is one-way (`certora/FlorinToken.spec`, rule `deployerMintRenouncedIsOneWayLatch`), and `scripts/check-deployment.mjs` asserts the renounce on the deployed token | a mint arrives from any other address |
 | `FigaroCore`: `OrderCommitted`, each order's `orderStatus`, and the contract's token balance | the balance equals the bonds of every order it reports open (invariant A-8 in `docs/VERIFICATION_MAP.md`) | the balance is below those bonds by any amount; a surplus is noted, not alerted |
 | `FigaroBatchVerifier`: `BatchSettled`, `BatchAccrualSkipped`; each relay the watcher is given: `GET /status` | accrual applies; a relay's queued work resolves within the wait its operator states | `BatchAccrualSkipped` (read the reason); a relay holding work with no batch resolved for longer than its stated wait, on the chain's clock; a relay that does not answer |
 | Registries: `ClauseRegistered`, `AssemblyRegistered`, `MemberRegistered`, `DepositWithdrawn`, `MemberWithdrawalRequested`, `MemberWithdrawn` | steady registration and the occasional withdrawal | a burst of withdrawals, which is what a scare looks like from the chain |

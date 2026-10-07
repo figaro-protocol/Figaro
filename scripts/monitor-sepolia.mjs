@@ -23,7 +23,7 @@
 //                    so the watcher watches only the relays it is given.
 //
 // Three kinds of check. Window checks read only the last WINDOW_BLOCKS blocks:
-// a minter registered after genesis, a florin minted outside the reward path,
+// a florin minted outside the reward path,
 // a batch whose accrual did not apply, a burst of withdrawals. The solvency
 // check reads FigaroCore's whole history from the deployment block: for every
 // token a process was ever denominated in, FigaroCore must hold exactly the
@@ -36,7 +36,10 @@
 //
 // What the contracts refuse is proved, never watched: the claim gates and the
 // period budget (`certora/RpgfMinter.spec`), the state root's chain
-// (`certora/BatchVerifierStateRoot.spec`).
+// (`certora/BatchVerifierStateRoot.spec`), a florin minter registered after
+// the renounce (`FlorinToken.registerMinter` reverts once
+// `deployerMintRenounced`; scripts/check-deployment.mjs asserts the renounce
+// on the deployed token).
 //
 // The events DISCOVER; FigaroCore's own state DECIDES. A public node is a
 // load-balanced fleet whose backends can omit logs (never invent them), so
@@ -123,13 +126,6 @@ notes.push(`chain ${CHAIN_ID}, head ${head}, window ${windowFrom}-${head}, histo
 // ── Window checks ─────────────────────────────────────────────────────
 
 const florinAbi = abiOf("FlorinToken");
-const minters = await eventsChunked({ address: record.florinToken, abi: florinAbi, eventName: "MinterRegistered", fromBlock: windowFrom, toBlock: head });
-for (const m of minters) {
-    alert("critical", `minter-${m.transactionHash}`,
-        `Monitor: a florin minter was registered after genesis (block ${m.blockNumber})`,
-        `\`MinterRegistered\` for ${m.args.minter} with cap ${m.args.cap} in tx ${m.transactionHash}. After \`renounceDeployerMint\` this cannot happen; either the renounce never ran on this deployment or the token is not the one in the record.`);
-}
-
 const mints = (await eventsChunked({ address: record.florinToken, abi: florinAbi, eventName: "Transfer", fromBlock: windowFrom, toBlock: head }))
     .filter((t) => t.args.from === "0x0000000000000000000000000000000000000000");
 if (mints.length > 0) {

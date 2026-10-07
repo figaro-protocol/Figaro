@@ -683,8 +683,8 @@ Per workflow, what it runs and when:
   they warn and the npm leg still lands.
 - **`monitor`** — daily (01:17 UTC, which GitHub's late start lands before the incident-review routine; the event window reaches back to the last successful scheduled run) + dispatch: the public deployment's
   watcher (`scripts/monitor-sepolia.mjs`, SECURITY.md § "Monitoring") reads
-  the contracts' events through a public node — a minter registered after
-  genesis, a florin minted outside the reward path, a dropped batch accrual,
+  the contracts' events through a public node — a florin minted outside the
+  reward path, a dropped batch accrual,
   a withdrawal burst, and `FigaroCore`'s held bonds against invariant A-8 —
   and raises each condition as an issue labeled `monitor`, assigned to the
   maintainer; a run that cannot read the node, or finds a record address
