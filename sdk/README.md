@@ -970,7 +970,7 @@ await attestAsSeller(
 //                          EIP-7702 code it installed on its own address.
 // The SDK ships wrappers for the first two (attestAsSeller / attestAsBuyer, both
 // from @figaro-protocol/sdk/agent); attestViaResolver is in ATTESTATION_COORDINATOR_ABI —
-// call it directly (writeContract) when the seller is a resolver contract.
+// call it directly (writeContract) when the seller's address carries EIP-7702 code implementing `IRoleResolver`.
 
 // Autonomous origination — the two-party handshake over a coordination channel:
 // buyer instantiates a discovered assembly + signs; seller validates + counter-signs.
@@ -1332,9 +1332,9 @@ of `protocol-enforced`, `institution-declared`, `protocol-derived`,
 `composition-derived`), so a consumer never conflates a protocol guarantee with
 an institution-level claim. `TRUTH_BOUNDARY_GLOSS` (`@figaro-protocol/sdk/derive`)
 is the one-line meaning of each boundary, render-ready. The two whose rows are a
-party's signed claim — `institution-declared` and `protocol-derived` — also carry
-what keeps that claim accurate when the chain cannot check it: what a false claim
-costs its signer, before resolution and after.
+party's declaration or attestation — `institution-declared` and `protocol-derived` —
+also carry what stands behind it when the chain cannot check it: both signatures
+for a declaration; for an attestation, the buyer's decision to withhold resolution.
 
 ```ts
 import { fetchCoreEvents, fetchAttestationRecords } from "@figaro-protocol/sdk";
@@ -2383,10 +2383,10 @@ built from tampered section data does **not** — the check is not vacuous.
 that *this content sat under that agreement's root, signed by those two parties,
 at that commit* — provenance and integrity, not veracity: no chain can testify
 that a sensor was pointed where its data says. The content is its signer's
-signed claim, and what keeps it accurate is what a false claim costs that signer:
-before resolution, a locked bond and a buyer who can withhold resolution; after
-it, the data's worth to whoever buys it, the evidence a forum or court reads, and
-the signer's resolution history. Weigh a source by that history and by the bond
+declaration or attestation; what stands behind a seller's attestation is the buyer's
+decision to withhold resolution, at the price of its own bond, until a false one is
+put right, and after resolution it stays in the public data, in the evidence a forum
+or court reads, and in the signer's resolution history. Weigh a source by that history and by the bond
 it had at stake; there is no protocol-issued score, and parties acting together can
 produce well-formed false data. And `redistribution:
 "prohibited"` is not enforcement — copying cannot be prevented on chain. The

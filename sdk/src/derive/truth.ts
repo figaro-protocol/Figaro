@@ -16,10 +16,12 @@ export type TruthBoundary =
     | "protocol-derived"
     | "composition-derived";
 
-/** What keeps a signed claim accurate when the chain cannot check it — one text,
- *  carried by both boundaries whose rows are a party's signed claim. */
-const SIGNED_CLAIM_ACCURACY =
-    "what keeps it accurate is what a false claim costs its signer: before resolution, the signer's bond stays locked and the buyer can withhold resolution, every payment and every bond, its own included, until the claim is put right, with co-sellers whose own payment waits on the same resolution; after it, the data's worth to whoever buys or analyses it, the evidence a forum or court reads, and the signer's resolution history.";
+/** What stands behind a declaration or an attestation when the chain cannot check
+ *  it: the tail of the two glosses whose rows are a party's declaration or attestation. */
+const DECLARATION_BACKING =
+    "what stands behind it is that both parties signed it into the agreement at commit; after resolution it stays in the public data and in their resolution histories.";
+const ATTESTATION_BACKING =
+    "what stands behind a seller's attestation is the buyer's decision: a buyer who finds it false before resolving can withhold resolution, which keeps the seller's bond locked, and its own, and pays nobody, until it is put right; a buyer's own attestation meets no such pressure; after resolution the attestation stays in the public data and in its signer's resolution history.";
 
 /** The one-line meaning of each truth boundary — render-ready, the same text
  *  for every consumer that explains a projection's guarantee. */
@@ -27,9 +29,9 @@ export const TRUTH_BOUNDARY_GLOSS: Record<TruthBoundary, string> = {
     "protocol-enforced":
         "every row is economically backed by FigaroCore — bonds locked at commit, payouts at resolve — tamper-proof by design (the Process and Resolution graphs).",
     "institution-declared":
-        "the runtime encodes it, the protocol never validates it (declared agreement-body data — e.g. a geohash field's substance); " + SIGNED_CLAIM_ACCURACY,
+        "the runtime encodes it, the protocol never validates it (declared agreement-body data — e.g. a geohash field's substance); " + DECLARATION_BACKING,
     "protocol-derived":
-        "the anchoring is on-chain (merkle-bound sections, timestamped attestations) while the content behind the fingerprint lives off-chain — referential integrity, not substantive accuracy (attestation overlays, provenance links); " + SIGNED_CLAIM_ACCURACY,
+        "the anchoring is on-chain (merkle-bound sections, timestamped attestations) while the content behind the fingerprint lives off-chain — referential integrity, not substantive accuracy (attestation overlays, provenance links); " + ATTESTATION_BACKING,
     "composition-derived":
         "read from a composed venue's own events — a swap pool, a multisender, a forum — true per that contract's rules, outside FigaroCore's guarantees (the fifth-noun trail).",
 };

@@ -15,8 +15,8 @@
  * attestations bound to merkle-committed agreements) while the content behind
  * the fingerprint lives off-chain. The SUBSTANCE of a decoded field is the
  * attester's declaration; the projection guarantees referential integrity,
- * not accuracy. What keeps that declaration accurate is what a false one costs
- * its signer — `SIGNED_CLAIM_ACCURACY` in `./truth.ts`, carried inside the
+ * not accuracy. What stands behind that representation is
+ * `ATTESTATION_BACKING` in `./truth.ts`, carried inside the
  * protocol-derived `TRUTH_BOUNDARY_GLOSS`.
  *
  * Geo is just the worked instance of this class: a consumer finds the
