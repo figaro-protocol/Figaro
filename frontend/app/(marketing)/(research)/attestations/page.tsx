@@ -107,10 +107,10 @@ export default function Attestations() {
                 </p>
                 <p className="text-sm text-ink-body leading-relaxed mb-4">
                     The chain does not check an attestation, and the mechanism stands
-                    behind it instead. It is signed while the attesting seller&apos;s bond
-                    is locked. The buyer can withhold resolution until a false one is put
-                    right, and the other sellers are paid only when the buyer resolves,
-                    so they press too. After resolution, the attestation stays in the
+                    behind it instead. A buyer who finds a seller&apos;s attestation false before resolving
+                    can withhold resolution, which keeps the seller&apos;s bond locked, and
+                    its own, until it is put right; the other sellers are paid only when
+                    the buyer resolves, so they have their own reason to press. After resolution, the attestation stays in the
                     data its signer sells and others analyze, and in its signer&apos;s
                     resolution history. None of this reaches parties acting together: they can
                     file perfectly formed attestations for a service never rendered. What a
