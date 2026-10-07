@@ -178,7 +178,7 @@ export function deriveAgreementGroups(args: {
                 data: fields as Record<string, unknown>,
                 // Design fills are FIELD-level, not clause-level: a clause the
                 // designer tailored (a pinned geocoder, a consent document) can
-                // still carry transaction particulars the buyer authors here —
+                // still carry transaction particulars the buyer fills here —
                 // it is fillable iff at least one field is NOT designer-owned.
                 fillable: specFields.some((f) => !clauseDesignFills(clauseId).includes(f.name))
                     && !clauseIsProcessLog(clauseId)
@@ -217,7 +217,7 @@ export function deriveAgreementGroups(args: {
                         values: clauseValueSummary(fields),
                         data: fields as Record<string, unknown>,
                         // A GENERAL clause's fields are transaction particulars
-                        // the buyer authors here. Not fillable: designer-fills
+                        // the buyer fills here. Not fillable: designer-fills
                         // values (the designer's tailoring, from the template),
                         // process-log anchors (attested at runtime, empty at
                         // commit), catalog-sourced sections (the seller's
@@ -259,7 +259,7 @@ export function isFilledValue(value: unknown): boolean {
     return true;
 }
 
-/** Whether the buyer must author this field before the order can be signed:
+/** Whether the buyer must fill this field before the order can be signed:
  *  REQUIRED, with no spec `default` (the agreement build applies declared
  *  defaults), and of a type the form renders a control for — a `bigint` defers
  *  to its producing surface at design time, so it is never demanded here. */
@@ -279,7 +279,7 @@ export interface MissingFill {
 }
 
 /**
- * Every REQUIRED buyer-authored fill still empty across the reviewed orders —
+ * Every REQUIRED buyer fill still empty across the reviewed orders —
  * the check the off-chain validator makes at the sign gate, made HERE, before
  * the wallet opens, in the buyer's own words. Without it an unfilled term
  * reaches the gate and comes back as a spec-path dump ("$.acceptanceBasis:
