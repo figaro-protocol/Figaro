@@ -49,7 +49,7 @@ export default function Invariants() {
                             <strong className="text-ink-heading">Atomic resolution.</strong> When the buyer resolves, every order in the trade resolves in one transaction, or none of them does. <em>What it means for you:</em> nobody is paid while somebody else is left hanging &mdash; so everyone bonded in has their own reason to help put a fault right before the resolution.
                         </li>
                         <li>
-                            <strong className="text-ink-heading">Immutable evidence.</strong> Each step is written down as it happens and bound to the signed agreement by its fingerprint. <em>What it means for you:</em> nobody can swap anything in underneath the data. A forum or a court reads what happened. It does not have to reconstruct it.
+                            <strong className="text-ink-heading">Immutable evidence.</strong> Each step is written down as it happens and bound to the signed agreement by its fingerprint. <em>What it means for you:</em> nobody can swap anything in underneath the data. A forum or a court reads what was recorded and signed. It does not have to reconstruct it.
                         </li>
                         <li>
                             <strong className="text-ink-heading">No escape hatches.</strong> Committing and resolving are the only two moves the smart contract knows &mdash; no refund path, no timeout, no third party who can reach in. <em>What it means for you:</em> nothing can be pulled out of a trade by anyone outside it &mdash; and inside it, only the buyer&apos;s resolution moves anything &mdash; which is also why whatever is wrong gets put right before the resolution rather than argued about after it.
@@ -97,7 +97,7 @@ export default function Invariants() {
                         </figcaption>
                     </figure>
                     <p>
-                        The agreement, the terms, the proof that something was delivered all live outside the chain, pinned where their owner chooses; the fingerprint cannot rebuild any of it and never tries, it just makes exactly one version of the outside detail acceptable &mdash; change anything out there by a hair and the math throws it out. What that leaves in your hands &mdash; what stays sealed, and what you can sell &mdash; is on{" "}
+                        The agreement, the terms, the evidence that something was delivered all live outside the chain, pinned where their owner chooses; the fingerprint cannot rebuild any of it and never tries, it just makes exactly one version of the outside detail acceptable &mdash; change anything out there by a hair and the math throws it out. What that leaves in your hands &mdash; what stays sealed, and what you can sell &mdash; is on{" "}
                         <Link href="/data" className="text-ink-heading font-medium hover:underline">
                             Data
                         </Link>
@@ -113,7 +113,7 @@ export default function Invariants() {
                     </p>
                     <ul className="space-y-3">
                         <li>
-                            <strong className="text-ink-heading">Your data stays yours.</strong> The documents, the photos, the trail of what happened &mdash; they live in storage you control, not in a company&apos;s database. Nothing has to be handed over to be made trustworthy.
+                            <strong className="text-ink-heading">Your data stays yours.</strong> The documents, the photos, the trail of what happened &mdash; they live in storage you control, not in a company&apos;s database. Nothing has to be handed over to be bound to the trade.
                         </li>
                         <li>
                             <strong className="text-ink-heading">Your identity stays yours.</strong> A wallet is enough to act. A name, a reputation, a web address can attach to it &mdash; or not. Figaro issues none of it and can revoke none of it.
