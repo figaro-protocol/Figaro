@@ -213,7 +213,7 @@ export function useUpdateProfile() {
 /**
  * Step 1 of leaving: de-surface NOW. Clears the dedup guard, so the member
  * disappears from discovery and may re-register immediately — but the ETH stays
- * locked until `withdrawalCooldown` has elapsed. This is the step that ends RPGF
+ * locked until `withdrawalCooldown` has elapsed. This is the step that ends designer-rewards
  * eligibility and the step profile erasure should follow, not the later claim.
  */
 export function useRequestWithdrawal() {
