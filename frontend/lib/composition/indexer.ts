@@ -241,7 +241,7 @@ function getBigIntArg(log: IndexedLog, key: string): bigint {
  * verifier re-emissions, each stream address-filtered — SCALING_STRATEGY.md
  * § "A reader must fold BOTH"). The process/value figures are direct-path by
  * construction: the batch universe emits no per-order events (no status, no
- * process crosses the crease), so batch-resolved trade surfaces here only
+ * process passes from one path to the other), so batch-resolved trade surfaces here only
  * through its attestations.
  */
 export async function getSellerResolutionHistory(
