@@ -131,8 +131,8 @@ describe("projectFinancialStatements — the 3 statements AS a document (no dupl
         const c = "0xtoken";
         const bs = doc.leafSections!.find((s) => s.label === `Balance sheet · ${c}`)!;
         const val = (k: string) => BigInt(bs.entries.find((e) => e.key.startsWith(k))!.value);
-        // assets (custody) = liabilities (refunds) + retained earnings
-        expect(val("Buyer custody") + val("Seller custody"))
+        // assets (bonds) = liabilities (refunds) + retained earnings
+        expect(val("Buyer bonds") + val("Seller bonds"))
             .toBe(val("Refund owed to buyer") + val("Refund owed to seller") + val("Retained earnings"));
         // cash flow: 2 commit events for one active order
         expect(doc.lines!.rows).toHaveLength(2);
@@ -149,5 +149,49 @@ describe("projectFinancialStatements — the 3 statements AS a document (no dupl
         const docs = projectAllFinancialStatements(orders, "0xPROC");
         expect(docs.filter((d) => d.genre === "financial-statements-seller")).toHaveLength(2);
         expect(docs.filter((d) => d.genre === "financial-statements-process")).toHaveLength(1);
+    });
+});
+
+// ── The legend: every label the statements emit is explained ───────────────────
+
+import { FINANCIAL_STATEMENT_LEGEND } from "@/lib/audit/documentProjection";
+
+describe("financial statements legend — derived from the projection's own labels", () => {
+    // One open order and one resolved order, so every row key AND every
+    // cash-flow kind (commit and resolve) is emitted.
+    const docs = projectAllFinancialStatements([
+        withBonds({ orderHash: "0xA", seller: "0xS1", payment: 100n, cumulativeValue: 100n }),
+        withBonds({ orderHash: "0xB", seller: "0xS2", payment: 40n, cumulativeValue: 140n, state: OrderState.Resolved }),
+    ], "0xPROC");
+
+    it("every emitted row key and cash-flow kind has a legend entry, on every statement", () => {
+        for (const d of docs) {
+            const emitted = [
+                ...d.leafSections!.flatMap((s) => s.entries.map((e) => e.key)),
+                ...d.lines!.rows.map((r) => r[0]),
+            ];
+            const legendKeys = d.legend!.map((l) => l.key);
+            for (const key of emitted) {
+                expect(Object.keys(FINANCIAL_STATEMENT_LEGEND), key).toContain(key);
+                expect(legendKeys, key).toContain(key);
+            }
+            // …and the legend explains nothing the statement does not show.
+            for (const key of legendKeys) expect(emitted, key).toContain(key);
+        }
+    });
+
+    it("the consolidated statement explains every label in the map", () => {
+        const consolidated = docs.find((d) => d.genre === "financial-statements-process")!;
+        expect(consolidated.legend!.map((l) => l.key)).toEqual(Object.keys(FINANCIAL_STATEMENT_LEGEND));
+        expect(consolidated.legend!.every((l) => l.description.length > 0)).toBe(true);
+    });
+
+    it("Σ2P and Σ2G are the bonds: the buyer's twice the payment, the sellers' twice the cumulative value", () => {
+        expect(FINANCIAL_STATEMENT_LEGEND["Buyer bonds (Σ2P)"]).toMatch(/buyer's bonds.*twice each payment/);
+        expect(FINANCIAL_STATEMENT_LEGEND["Seller bonds (Σ2G)"]).toMatch(/sellers' bonds.*twice each order's cumulative value/);
+    });
+
+    it("no orders: no rows, no legend", () => {
+        expect(projectFinancialStatements([], "process", "0xPROC").legend).toBeUndefined();
     });
 });

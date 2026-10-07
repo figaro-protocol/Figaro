@@ -76,6 +76,8 @@ export interface RenderedDocument {
     header: { label: string; value: string }[];
     lines?: { columns: string[]; rows: string[][]; total?: { label: string; value: string } };
     leafSections?: { label: string; entries: { key: string; value: string }[] }[];
+    /** Optional legend: what each label the document emits means. */
+    legend?: { key: string; description: string }[];
     note?: string;
 }
 
@@ -199,8 +201,35 @@ export function projectDocuments(
 // arithmetic is unsafe). FigaroCore math is never re-implemented:
 // bonds are READ from the order, resolution from the SDK's calculateResolution.
 
+/**
+ * What every label the financial statements emit means — the balance-sheet and
+ * income-statement row keys and the cash-flow kinds. The projection writes its
+ * labels FROM this map's keys (`FinancialStatementLabel`), so a label without a
+ * legend entry does not type-check. P is an order's payment, G its cumulative
+ * value; Σ sums over the orders in scope. @public
+ */
+export const FINANCIAL_STATEMENT_LEGEND = {
+    "Buyer bonds (Σ2P)": "The buyer's bonds the Core holds for open orders: twice each payment, summed.",
+    "Seller bonds (Σ2G)": "The sellers' bonds the Core holds for open orders: twice each order's cumulative value, summed.",
+    "Refund owed to buyer (ΣP)": "What resolution refunds the buyer on open orders: its bond less the payment it carries, P per order.",
+    "Refund owed to seller (Σ2G)": "What resolution refunds the sellers on open orders: each seller's bond whole, 2G per order.",
+    "Retained earnings (ΣP)": "The payments the buyer's bonds carry on open orders: P per order, transferred to the sellers at resolution.",
+    "Sales (ΣP)": "Every order's payment, counted at commit.",
+    "Cost (ΣP resolved)": "The payments of resolved orders, counted at resolution.",
+    "Net income": "Sales less cost: the payments of orders still open.",
+    "commit-buyer-deposit": "Cash flow: the buyer's bond moving into the Core at commit (2P).",
+    "commit-seller-deposit": "Cash flow: the seller's bond moving into the Core at commit (2G).",
+    "resolve-buyer-refund": "Cash flow: the buyer's bond refunded at resolution, less the payment (2P − P).",
+    "resolve-seller-payout": "Cash flow: the seller's bond refunded whole at resolution, plus the payment (2G + P).",
+} as const satisfies Record<string, string>;
+
+/** A label the financial statements emit — a key of `FINANCIAL_STATEMENT_LEGEND`. */
+type FinancialStatementLabel = keyof typeof FINANCIAL_STATEMENT_LEGEND;
+
+const statementRow = (key: FinancialStatementLabel, value: bigint) => ({ key, value: value.toString() });
+
 interface CurrencyAgg {
-    buyerCustody: bigint; sellerCustody: bigint;
+    buyerBonds: bigint; sellerBonds: bigint;
     refundOwedToBuyer: bigint; refundOwedToSeller: bigint; retainedEarnings: bigint;
     sales: bigint; cost: bigint;
 }
@@ -217,11 +246,11 @@ export function projectFinancialStatements(
     scopeId: string,
 ): RenderedDocument {
     const byCurrency = new Map<string, CurrencyAgg>();
-    const cashFlow: string[][] = [];
+    const cashFlow: [FinancialStatementLabel, string, string, string][] = [];
     const agg = (c: string): CurrencyAgg => {
         let a = byCurrency.get(c);
         if (!a) {
-            a = { buyerCustody: 0n, sellerCustody: 0n, refundOwedToBuyer: 0n, refundOwedToSeller: 0n, retainedEarnings: 0n, sales: 0n, cost: 0n };
+            a = { buyerBonds: 0n, sellerBonds: 0n, refundOwedToBuyer: 0n, refundOwedToSeller: 0n, retainedEarnings: 0n, sales: 0n, cost: 0n };
             byCurrency.set(c, a);
         }
         return a;
@@ -231,8 +260,8 @@ export function projectFinancialStatements(
         const a = agg(c);
         const active = o.state === OrderState.Active;
         if (active) {
-            a.buyerCustody += o.buyerBond;         // 2P
-            a.sellerCustody += o.sellerBond;       // 2G
+            a.buyerBonds += o.buyerBond;           // 2P
+            a.sellerBonds += o.sellerBond;         // 2G
             a.refundOwedToBuyer += o.payment;      // P
             a.refundOwedToSeller += o.sellerBond;  // 2G
             a.retainedEarnings += o.payment;       // P
@@ -250,18 +279,26 @@ export function projectFinancialStatements(
     const leafSections: { label: string; entries: { key: string; value: string }[] }[] = [];
     for (const [c, a] of byCurrency) {
         leafSections.push({ label: `Balance sheet · ${c}`, entries: [
-            { key: "Buyer custody (Σ2P)", value: a.buyerCustody.toString() },
-            { key: "Seller custody (Σ2G)", value: a.sellerCustody.toString() },
-            { key: "Refund owed to buyer (ΣP)", value: a.refundOwedToBuyer.toString() },
-            { key: "Refund owed to seller (Σ2G)", value: a.refundOwedToSeller.toString() },
-            { key: "Retained earnings (ΣP)", value: a.retainedEarnings.toString() },
+            statementRow("Buyer bonds (Σ2P)", a.buyerBonds),
+            statementRow("Seller bonds (Σ2G)", a.sellerBonds),
+            statementRow("Refund owed to buyer (ΣP)", a.refundOwedToBuyer),
+            statementRow("Refund owed to seller (Σ2G)", a.refundOwedToSeller),
+            statementRow("Retained earnings (ΣP)", a.retainedEarnings),
         ] });
         leafSections.push({ label: `Income statement · ${c}`, entries: [
-            { key: "Sales (ΣP)", value: a.sales.toString() },
-            { key: "Cost (ΣP resolved)", value: a.cost.toString() },
-            { key: "Net income", value: (a.sales - a.cost).toString() },
+            statementRow("Sales (ΣP)", a.sales),
+            statementRow("Cost (ΣP resolved)", a.cost),
+            statementRow("Net income", a.sales - a.cost),
         ] });
     }
+    // The legend explains exactly the labels this document emits, in the map's order.
+    const emitted = new Set<string>([
+        ...leafSections.flatMap((s) => s.entries.map((e) => e.key)),
+        ...cashFlow.map((row) => row[0]),
+    ]);
+    const legend = (Object.keys(FINANCIAL_STATEMENT_LEGEND) as FinancialStatementLabel[])
+        .filter((key) => emitted.has(key))
+        .map((key) => ({ key, description: FINANCIAL_STATEMENT_LEGEND[key] }));
     return {
         genre: `financial-statements-${scope}`,
         title: scope === "seller" ? "Financial statements · individual" : "Financial statements · consolidated",
@@ -271,7 +308,8 @@ export function projectFinancialStatements(
         ],
         ...(cashFlow.length > 0 && { lines: { columns: ["kind", "order", "party", "amount"], rows: cashFlow } }),
         leafSections,
-        note: "Cash-basis projection of on-chain commit + resolve. Assets (custody) = liabilities (refunds) + retained earnings at every block, by construction. Amounts in the currency's smallest unit.",
+        ...(legend.length > 0 && { legend }),
+        note: "Cash-basis projection of on-chain commit + resolve. Assets (bonds) = liabilities (refunds) + retained earnings at every block, by construction. Amounts in the currency's smallest unit.",
     };
 }
 

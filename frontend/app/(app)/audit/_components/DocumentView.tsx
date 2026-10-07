@@ -5,7 +5,8 @@
  *
  * The on-screen twin of `pdfBundle.tsx`'s `DocumentPage`: it knows no genre.
  * It draws whatever the generic document engine produced — header rows, an
- * optional line table with a total, generic whole-leaf sections, a note.
+ * optional line table with a total, generic whole-leaf sections, an optional
+ * legend of what each label means, a note.
  * Invoice, bill of lading, financial statements: all the same
  * `RenderedDocument` shape, all this one component. A new genre is a new
  * template / projector in `lib/audit/` — this renderer never changes.
@@ -84,6 +85,22 @@ export function DocumentView({ document }: { document: RenderedDocument }) {
                             </tfoot>
                         )}
                     </table>
+                </div>
+            )}
+
+            {document.legend && document.legend.length > 0 && (
+                <div className="space-y-1" data-testid={`document-legend-${document.genre}`}>
+                    <h4 className="text-xs font-semibold uppercase tracking-wider text-ink-body">
+                        Legend
+                    </h4>
+                    <dl className="grid grid-cols-1 gap-2 text-xs text-ink-body max-w-2xl">
+                        {document.legend.map((l) => (
+                            <div key={l.key}>
+                                <dt className="font-mono text-ink-muted">{l.key}</dt>
+                                <dd>{l.description}</dd>
+                            </div>
+                        ))}
+                    </dl>
                 </div>
             )}
 

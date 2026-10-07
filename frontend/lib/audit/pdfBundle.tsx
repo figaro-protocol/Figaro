@@ -715,6 +715,16 @@ function DocumentPage({ document }: { document: RenderedDocument }) {
                     </View>
                 </View>
             ))}
+            {document.legend && document.legend.length > 0 && (
+                <View>
+                    <Text style={styles.h2}>Legend</Text>
+                    <View style={styles.section}>
+                        {document.legend.map((l) => (
+                            <MetaRow key={l.key} k={l.key} v={l.description} />
+                        ))}
+                    </View>
+                </View>
+            )}
             {document.note && <Text style={styles.note}>{document.note}</Text>}
         </AuditPage>
     );
