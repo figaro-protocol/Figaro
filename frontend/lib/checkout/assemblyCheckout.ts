@@ -139,7 +139,7 @@ export interface AssemblyCheckoutParams {
     /** The buyer's checkout-time GENERAL-clause field fills, keyed by
      *  template node id → clauseId → field values. Design time is
      *  structural: a general clause arrives from the
-     *  template as `{}` and its transaction particulars are authored
+     *  template as `{}` and its transaction particulars are filled
      *  HERE. Specific-T&C values (consent's affix) come from the template
      *  and are never overridden by this map. Spec-routed — no clause is
      *  named. */
@@ -191,7 +191,7 @@ export async function executeAssemblyCheckout(
 
     // Resolve-ceiling refusal BEFORE any signature: a process grown past the
     // chain's atomic-resolve cap can never resolve, so the buyer must not bond
-    // into one. Publish-side already refuses over-cap templates authored here;
+    // into one. Publish-side already refuses over-cap templates composed here;
     // this catches templates anchored by other clients (the registry is
     // permissionless).
     const orderCount = template.agreements.length;
