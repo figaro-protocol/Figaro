@@ -22,7 +22,7 @@ import { MarketingSection } from "@/components/marketing/MarketingSection";
 export const metadata: Metadata = withOg({
     title: "Tokenomics — Figaro Protocol",
     description:
-        "The florin: one billion, minted once, closed by a one-way latch. Who holds what and on what terms — 70 million the founder, 30 million supporters, 300 million the DAO treasury, 600 million reserved for the designers whose clauses and assemblies get used — and where the florin sits among the units a trade can be denominated in.",
+        "The florin: a unit two strangers can converge on when they share no other. One billion, minted once, closed by a one-way latch. 600 million is reserved for designers, drawn in fixed period budgets in proportion to how much processes use their clauses and assemblies. The rest is held openly: 300 million the DAO treasury, 70 million the founder, 30 million supporters. The page also places the florin among the units a trade can be denominated in.",
 });
 
 export default function Tokenomics() {
