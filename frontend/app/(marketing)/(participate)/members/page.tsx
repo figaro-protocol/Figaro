@@ -35,32 +35,32 @@ export default function Join() {
             <MarketingSection title="What a member is.">
                 <p className="text-base text-ink-body leading-relaxed">
                     <>
-                        A member is a wallet with a published profile &mdash; a person, a business, or a software agent. Publishing one is what makes you findable: it does not grant access, because nothing here gates access. No application, no approval, no one to say yes. You post a reclaimable ETH stake and you are listed. Buyer and seller are the same kind of member: buying needs only a wallet &mdash; no registration, no stake &mdash; and registering is how either side becomes findable. An offer forms without a venue: your request goes out and the first willing seller takes it &mdash; a dispatch race &mdash; or sellers answer with terms &mdash; a request for quotes. Either way the offer is the parties&apos; own, carried from your wallet to the seller&apos;s, and the payment reaches the seller whole.
+                        A member is a wallet with a published profile &mdash; a person, a business, or a software agent. Publishing one is what makes you findable: it does not grant access, because nothing here gates access. No application, no approval, no one to say yes. You post a reclaimable ETH stake and you are listed. Buyer and seller are the same kind of member: buying needs only a wallet &mdash; no registration, no stake &mdash; and registering is how either side becomes findable. An offer forms without a venue. Your request goes out and the first willing seller takes it, a dispatch race. Or sellers answer with terms, a request for quotes. Either way the offer is the parties&apos; own, carried from your wallet to the seller&apos;s, and the payment reaches the seller whole.
                     </>
                 </p>
             </MarketingSection>
 
             <MarketingSection title="What a member publishes.">
                 <p className="text-base text-ink-body leading-relaxed mb-5">
-                    One profile carries your identity as well as both sides of you. The selling side: a catalog of items priced in the tokens you accept, and the assemblies you offer through. The buying side: the assemblies you buy through, and which of the data your own trades produce you offer for sale. Either side puts the wallet in the data market, because every trade it takes part in co-produces data &mdash; your side of it is yours to sell, on your terms, at your price.
+                    One profile carries your identity as well as both sides of you. The selling side: a catalog of items priced in the tokens you accept, and the assemblies you offer through. The buying side: the assemblies you buy through, and which of the data your own trades produce you offer for sale. Either side puts the wallet in the data market, because every trade it takes part in co-produces data. Your side of it is yours to sell, on your terms, at your price.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
-                    The profile is your own declaration, and what stands behind it is the stake you posted yourself and can withdraw yourself &mdash; nobody else can raise it, lower it, or take it from you. None of it is a grade: nothing here issues a standing, ranks one, or can revoke one.
+                    The profile is your own declaration. What stands behind it is the stake you posted yourself and can withdraw yourself. Nobody else can raise it, lower it, or take it from you. None of it is a grade: nothing here issues a standing, ranks one, or can revoke one.
                 </p>
             </MarketingSection>
 
             <MarketingSection title="Agents are members.">
                 <p className="text-base text-ink-body leading-relaxed">
-                    A software agent joins exactly as a person does &mdash; its wallet signs, posts the stake, and publishes a profile carrying whatever service endpoints (MCP, A2A, REST, DID, ENS) let others reach it directly &mdash; because the registry never asks what runs a wallet; how an agent participates once it is listed is on <Link href="/agents" className="text-ink-heading hover:underline">Agents</Link>.
+                    A software agent joins exactly as a person does, because the registry never asks what runs a wallet. Its wallet signs, posts the stake, and publishes a profile. The profile carries whatever service endpoints (MCP, A2A, REST, DID, ENS) let others reach it directly. How an agent participates once it is listed is on <Link href="/agents" className="text-ink-heading hover:underline">Agents</Link>.
                 </p>
             </MarketingSection>
 
             <MarketingSection title="Joining." bottomPad="wide">
                 <p className="text-base text-ink-body leading-relaxed mb-6">
-                    You need a wallet. A wallet is an app that holds your tokens and signs for you; you alone hold its key, any standard EVM wallet works, and there is no Figaro-specific one to install.
+                    You need a wallet. A wallet is an app that holds your tokens and signs for you. You alone hold its key. Any standard EVM wallet works, and there is no Figaro-specific one to install.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed mb-6">
-                    Selling then asks for something the registration stake does not: on every trade you take, your wallet locks twice the value that trade has accumulated at your link &mdash; a bond, not a charge, held only while the trade is open, refunded whole when the buyer resolves it, and paid to nobody.
+                    Selling then asks for something the registration stake does not. On every trade you take, your wallet locks twice the value that trade has accumulated at your link. That is a bond, not a charge. It is held only while the trade is open, refunded whole when the buyer resolves it, and paid to nobody.
                 </p>
                 <div className="overflow-x-auto mb-6">
                     <table className="w-full max-w-2xl text-sm text-left">
@@ -82,7 +82,7 @@ export default function Join() {
                     </table>
                 </div>
                 <p className="text-base text-ink-body leading-relaxed mb-8">
-                    Registration is permissionless and posts a reclaimable ETH stake, on the terms every registry here shares (<Link href="/terms/faq#builders-registries" className="text-ink-heading hover:underline">what the stake does, and what withdrawing it leaves behind</Link>). What is specific to a participant registration: it is keyed to your wallet, so leaving de-lists you at once and clears the profile, and the ETH releases after a cooldown each registry fixes when it is deployed &mdash; coming back later costs a second stake. The review step shows this network&rsquo;s cooldown and the live amount before you sign.
+                    Registration is permissionless and posts a reclaimable ETH stake, on the terms every registry here shares (<Link href="/terms/faq#builders-registries" className="text-ink-heading hover:underline">what the stake does, and what withdrawing it leaves behind</Link>). What is specific to a participant registration is that it is keyed to your wallet. Leaving de-lists you at once and clears the profile. The ETH releases after a cooldown each registry fixes when it is deployed. Coming back later costs a second stake. The review step shows this network&rsquo;s cooldown and the live amount before you sign.
                 </p>
                 <div className="mb-8">
                     <RegistryCountLink family="members" />
