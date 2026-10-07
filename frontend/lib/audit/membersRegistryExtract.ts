@@ -27,7 +27,7 @@ import type { Order } from "@/lib/kernel/store";
 import type { ExtractedDocument } from "./types";
 import { hexEqual } from "@/lib/shared/evm";
 
-/** Which party of an order a registry record is about. */
+/** Which party of an order a registry entry is about. */
 export type OrderParty = "seller" | "buyer";
 
 export interface MemberRegisteredEvent {
@@ -46,9 +46,9 @@ export interface MemberRegisteredEvent {
 }
 
 export interface MembersRegistryDocument extends ExtractedDocument {
-    /** Which party of the order this record is about. */
+    /** Which party of the order this entry is about. */
     party: OrderParty;
-    /** The wallet the record is about — the order's seller or its buyer. */
+    /** The wallet the entry is about — the order's seller or its buyer. */
     member: string;
     /** Whether that wallet has a current `MemberRegistered` event on chain. */
     registered: boolean;
@@ -74,7 +74,7 @@ export interface MembersRegistryDocument extends ExtractedDocument {
  * @param events       `MemberRegistered` events. Rows of other wallets are
  *                     ignored. Pass an empty array if the party has no
  *                     registration. If multiple rows are passed (e.g. the
- *                     member re-registered after withdrawing the deposit),
+ *                     member re-registered after withdrawing the stake),
  *                     the most recent block wins.
  * @param party        Which party to read: the order's seller (the
  *                     default) or its buyer.
@@ -86,7 +86,7 @@ export function extractMembersRegistry(
 ): MembersRegistryDocument {
     const member = party === "seller" ? order.seller : order.buyer;
     const base = {
-        title: `Members registry record — the ${party}`,
+        title: `Members registry entry — the ${party}`,
         orderHash: order.orderHash,
         processId: order.processId,
         agreementHash: order.agreementHash ?? "0x",
@@ -126,7 +126,7 @@ export function extractMembersRegistry(
             notice:
                 `The ${party} registered in MembersRegistry but has since WITHDRAWN ` +
                 "(MemberWithdrawalRequested at or after the registration) and is no longer current. " +
-                `Audit-significant: the ${party} de-surfaced after this registration record was created.`,
+                `Audit-significant: the ${party} de-surfaced after this registration entry was created.`,
             auditSignificant: true,
         };
     }
