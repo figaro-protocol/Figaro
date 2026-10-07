@@ -440,6 +440,7 @@ function OverlaysView({ corpus, state, onQuery }: { corpus: GraphCorpus; state: 
                                         {r.entryCount === 1 ? "" : "s"} recovered and decoded against the
                                         registered spec. What a decoded field says is the attester&apos;s
                                         declaration; the data proves it sat under that agreement&apos;s root.
+                                        What keeps it accurate is in the layer&apos;s boundary note above.
                                     </>
                                 )}
                             </p>
