@@ -169,7 +169,7 @@ async function captureGeolocationCrossCheck(): Promise<DeviceEvidence> {
     };
 }
 
-/** One NFC tap: scan until the first reading (bounded), record serial +
+/** One NFC tap: scan until the first reading (bounded), capture serial +
  *  decoded text records. Android Chrome only — callers gate on
  *  `availableCaptures()`. */
 async function captureNfcTap(timeoutMs = 20_000): Promise<DeviceEvidence> {
