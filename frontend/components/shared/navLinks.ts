@@ -61,7 +61,7 @@ export const NAV_LINKS_APP_PRIMARY: NavLink[] = [
     // Also a Research leaf beside /data in MARKETING_MAP; both listings are the
     // ruled "distinct entry point", not a duplication.
     { href: "/data/explore", label: "Data explorer" },
-    // The RPGF distribution's runtime surface (read your accrual, claim a
+    // The designer rewards' runtime surface (read your accrual, claim a
     // closed period) — a protocol surface (the composed UsageCounter +
     // RpgfMinter), not a product feature; claiming is permissionless network
     // participation.
