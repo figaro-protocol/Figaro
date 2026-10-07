@@ -112,7 +112,9 @@ export default function Attestations() {
                     right, and the other sellers are paid only when the buyer resolves,
                     so they press too. After resolution, the attestation stays in the
                     data its signer sells and others analyse, and in its signer&apos;s
-                    resolution history. What a false one costs, at each moment, is on{" "}
+                    resolution history. None of this reaches parties acting together: they can
+                    file perfectly formed attestations for a service never rendered. What a
+                    false one costs, at each moment, is on{" "}
                     <Link href="/data" className="text-ink-heading font-medium hover:underline">Evidence</Link>.
                 </p>
                 <p className="text-sm text-ink-body leading-relaxed mb-4">
