@@ -86,7 +86,7 @@ export function inputForOutput(amountOut: bigint, rate: VenueRate): bigint {
 export interface QuoteFundingLegArgs {
     publicClient: PublicClient;
     chainId: number;
-    /** The token the party funds from. */
+    /** The token the party swaps from. */
     inputToken: Hex;
     /** The process denomination the swap must yield. */
     currency: Hex;
