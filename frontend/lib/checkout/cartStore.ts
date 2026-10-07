@@ -32,7 +32,7 @@ interface CartItem {
      *  (assembly compositionHash × clauseId × the posture the seller
      *  co-produced on), copied from the catalog item so checkout can
      *  show what is being licensed. The license TERMS ride `clauseValues`
-     *  like any catalog-authored clause. */
+     *  like any catalog-filled clause. */
     dataSold?: {
         compositionHash: `0x${string}`;
         clauseId: string;
