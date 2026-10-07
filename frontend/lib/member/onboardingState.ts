@@ -8,7 +8,7 @@
  *
  * Storage key shape: `figaro:onboarding:0x<wallet-address>`.
  *
- * Each top-level field is authored on the step of the same name; the order
+ * Each top-level field is filled on the step of the same name; the order
  * of the steps is `ONBOARDING_STEPS` below and nothing else.
  *
  * The `complete` flag is set after the publish path runs successfully on the
@@ -46,10 +46,10 @@ export interface OnboardingProfileDraft {
     assets?: MemberAssetReferences;
     acceptedTokens?: AcceptedTokenMetadata[];
     defaultTokenAddress?: `0x${string}`;
-    /** PROFILE-authored clause values (the member's master data: dimweight's
+    /** PROFILE-filled clause values (the member's master data: dimweight's
      *  divisor, a declared credential id), clauseId → field → value —
      *  checkout folds them onto composed profile-sourced leaves. Absent when
-     *  the member authors none. */
+     *  the member fills none. */
     profileClauseValues?: Record<string, Record<string, unknown>>;
 }
 
@@ -68,7 +68,7 @@ interface OnboardingState {
     /** Per-assembly bindings declared on the assemblies step. */
     assemblies?: AssemblyBindingRecord[];
     /** The buyer's assembly subscriptions, declared on the buyer step —
-     *  which process designs this wallet buys through and monetizes records
+     *  which process designs this wallet buys through and monetizes data
      *  from. Independent of `assemblies` (the bindings the member sells through). */
     buyerAssemblies?: BuyerAssemblySubscription[];
     /** Data-disclosure policy. One list; each entry carries the posture
@@ -249,7 +249,7 @@ export interface OnboardingStep {
 // co-produce is offered. They sit side by side, and both precede Catalog,
 // because the authority runs that way: the assemblies a member binds decide
 // which clauses its trades carry, and the clauses decide which item fields
-// exist to author (a freight class, a hazmat number, a cold-chain range); and
+// exist to fill (a freight class, a hazmat number, a cold-chain range); and
 // the catalog's data-product option reads the disclosure entries BOTH steps
 // derive. Ask for the items first and the catalog has nothing to derive
 // from, so it opens every registered logistics field to a member selling one
