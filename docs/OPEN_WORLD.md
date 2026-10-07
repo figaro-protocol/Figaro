@@ -354,7 +354,7 @@ Every semantic field is one of: `protocol-enforced` · `protocol-derived` ·
 `TruthBoundary`). This prevents confusing a secured
 guarantee with helpful presentation — load-bearing especially for guarantees, resolution
 breakdowns, and provenance/accounting distinctions. A declared or attested field is a
-party's signed claim; what keeps it accurate is `DATA_LAYER.md` § "Truth boundaries".
+party's declaration or attestation; what stands behind it is `DATA_LAYER.md` § "Truth boundaries".
 
 ### Derivation pipeline (stages, not one transformer)
 

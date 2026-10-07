@@ -49,7 +49,7 @@ the single mistake that makes an analyst wrong about a market it has never seen.
   the spec you loaded from the registry. Truth boundary: **protocol-derived**. The
   anchoring is on chain (a timestamped attestation, merkle-bound to a signed agreement);
   the content behind the fingerprint lives off chain. Referential integrity, not
-  substantive accuracy: the content is the attester's signed claim, weighed as the rules
+  substantive accuracy: the content is the attester's representation, weighed as the rules
   below say.
 - **Cross-process** links come from provenance — a template commitment, a resolution
   provenance link, a cascade attestation. Truth boundary: **protocol-derived**; the link
@@ -114,10 +114,12 @@ close its own frame.
   integrity, never veracity**. No chain testifies that a sensor was pointed where its
   record says.
 - **Weigh a declaration by what a false one costs its signer.** A declared or attested
-  value is a party's signed claim. Before resolution, a false one puts the signer's bond
-  at stake: the buyer can withhold resolution until it is put right, and co-sellers whose
-  payment waits on the same resolution press too. After resolution, which no one can
-  reverse, it stays in the data, in the evidence a forum or court reads, and in the
+  value is a party's declaration or attestation. What stands behind a seller's attestation
+  is the buyer's decision: a buyer who finds it false before resolving can withhold
+  resolution, which keeps the seller's bond locked, and its own, until it is put right;
+  co-sellers whose payment waits on the same resolution press too. A declaration is
+  backed by both signatures at commit. After resolution, which no one can reverse, either
+  stays in the data, in the evidence a forum or court reads, and in the
   signer's resolution history. So read that history (`walletRecord` for the signer's
   address) and the bond it had at stake when it signed (twice `cumulativeValue` for a
   seller, twice `payment` for a buyer), and report both beside the claim. There is no

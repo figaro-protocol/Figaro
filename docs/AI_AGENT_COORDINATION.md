@@ -238,11 +238,11 @@ from its owner on the owner's terms, through the same bonded commitment as any o
 trade, and verifies each disclosed leaf by merkle inclusion against the source
 process's on-chain `agreementHash`. The buyer checks provenance against the chain
 rather than the seller's word; what no chain testifies to is whether the data is
-true about the world. Each declared or attested value is a party's signed claim, and
-what keeps it accurate is what a false claim costs its signer: before resolution, a
-locked bond, a buyer who can withhold resolution until it is put right, and co-sellers
-whose own payment waits on the same resolution; after it, the data's worth to whoever
-buys or analyses it, the evidence a forum or court reads, and the signer's resolution
+true about the world. Each declared or attested value is a party's declaration or attestation.
+What stands behind a seller's attestation is the buyer's decision to withhold
+resolution, at the price of its own bond, until a false one is put right; a declaration
+is backed by both signatures at commit; after resolution either stays in the public
+data, in the evidence a forum or court reads, and in the signer's resolution
 history. An agent weighs a declaration by that history and by the bond its signer had
 at stake — there is no protocol-issued score to read instead — and states that parties
 acting together can produce well-formed false data (`DATA_LAYER.md` § "Truth

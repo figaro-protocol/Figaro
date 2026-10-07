@@ -111,7 +111,7 @@ async function loadSpecSource(discovery, { gateways } = {}) {
  * `agreementHash` read from the chain. This is the provenance gate: a document
  * whose recomputed root is not on chain informs nothing, whoever handed it
  * over. It proves provenance and integrity, never veracity: what a held
- * document declares is its parties' signed claim, weighed by their
+ * document declares is its parties' declaration, weighed by their
  * resolution history and the bonds they had at stake.
  *
  * @param dir    directory of `*.json` agreement documents (absent dir = none)
