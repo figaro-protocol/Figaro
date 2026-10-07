@@ -15,13 +15,13 @@ import type { DisclosurePolicyEntry, MemberAgentServices } from "@/lib/member/me
  * `deliveryTime`, or `minimumOrder` has no home here — none of those exist in
  * the underlying clauses, so adding one back means rendering from a hardcoded
  * default rather than from clause data. `specialty` is the free-form
- * open-string self-description the member authors themselves.
+ * open-string self-description the member writes themselves.
  */
 export interface MemberCatalog {
     name: string;
     address: string;
     description: string;
-    /** Free-form self-description (e.g. "Italian", "Mobile espresso", etc.). Authored by the member; no closed taxonomy. */
+    /** Free-form self-description (e.g. "Italian", "Mobile espresso", etc.). Written by the member; no closed taxonomy. */
     specialty: string;
     /** Member logo URI (ipfs:// or https://), when the member declared a
      *  resolvable one. Absent ⇒ the UI renders a neutral placeholder; never a
@@ -35,7 +35,7 @@ export interface MemberCatalog {
     acceptedTokens?: AcceptedTokenMetadata[];
     /** The token catalog prices are denominated in (one of `acceptedTokens`). */
     defaultTokenAddress?: `0x${string}`;
-    /** The member's PROFILE-authored clause values (member master data:
+    /** The member's PROFILE-filled clause values (member master data:
      *  dimweight's divisor, a declared credential id), keyed clauseId →
      *  field → value — the checkout folds them onto composed
      *  profile-sourced leaves. */
