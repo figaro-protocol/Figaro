@@ -432,7 +432,7 @@ export interface IpfsService {
     publishJSON(data: unknown): Promise<IpfsPublishResult>;
     uploadFile(file: File): Promise<IpfsPublishResult>;
     /** Remove the pin for a CID on the configured node — the erasure half of
-     *  pinJSON/pinBlob (author pins → author erases). Resolves silently when
+     *  pinJSON/pinBlob (wallet pins → wallet erases). Resolves silently when
      *  the CID is already unpinned: erasing an absence is absence. */
     unpin(cid: string): Promise<void>;
     buildURI(cid: string): string;
