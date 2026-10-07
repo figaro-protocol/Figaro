@@ -255,7 +255,7 @@ export function useOrderCommitmentFlow() {
 
     // Broadcast routing: a payload carrying a witness-signed buyer funding
     // leg — or an accept carrying the seller's — goes through the
-    // coordinator's `swapAndCommit` (which swaps, funds each party in-place,
+    // coordinator's `swapAndCommit` (which swaps each party's tokens in place,
     // then calls FigaroCore); everything else goes straight to FigaroCore's
     // `commit`. The routes are signature-bound, so either party (or anyone)
     // may safely broadcast the funded form.
