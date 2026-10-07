@@ -7,7 +7,7 @@
  * document (as `catalogURI`) which itself is pinned and registered
  * on-chain via `MembersRegistry.register(profileURI)` for first-time
  * members or `MembersRegistry.updateProfile(profileURI)` for already-
- * registered members (the latter does not consume the deposit or
+ * registered members (the latter takes no second stake and does not
  * restart the lock period). This module handles the off-chain pin only;
  * the caller orchestrates the on-chain call.
  */
