@@ -141,6 +141,17 @@ each requires a fresh EIP-712 ECDSA signature from the lost key. The
 delegation must be installed while the key is still held; it cannot be added
 after loss.
 
+**The seller, likewise.** A seller's key loss stalls nothing: only the buyer
+resolves, and resolution pays the seller's address and refunds its bond there,
+whatever became of the key. What the lost key takes is the seller's voice while
+the process is open: its attestations. The same pre-installed EIP-7702
+delegation answers it. The delegated code can originate `attestAsSeller` from
+the seller's address, and it can authorize another caller through
+`attestViaResolver` (`IRoleResolver.isAuthorized`), whose events name that
+caller as the attester. What the code allows is the seller's own act and the
+seller's own risk, as the buyer's is. New commitments are not rescuable, for the
+same reason: each needs a fresh signature from the lost key.
+
 (`FigaroCore`'s NatSpec at `FigaroCore.sol:238-240` still says "use social
 recovery or multi-sig for the buyer role" — a stale comment on a frozen
 contract, contradicted by its own ECDSA-only verification; recorded for
