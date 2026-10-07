@@ -13,7 +13,7 @@
  * tracker. That failure surfaces as `network-error` and the form's
  * message names extensions as the likely cause; pointing the
  * geocoder override at another Nominatim-compatible endpoint is the
- * user-custody remedy.
+ * user's own remedy.
  *
  * Returns a discriminated outcome — callers can distinguish
  * "no match for this query" from "we couldn't reach the geocoder" and
