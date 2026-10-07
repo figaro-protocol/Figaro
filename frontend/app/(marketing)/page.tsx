@@ -108,12 +108,12 @@ export default function Home() {
         <>
             <MarketingHero
                 title="My word is my bond"
-                lead="You can buy and sell goods, work or data with anyone, anywhere. The buyer bonds twice the payment. Each seller bonds twice the value the trade has accumulated through its link. When the buyer confirms, every seller is paid and every bond is refunded, the buyer's less the payments, at once."
+                lead="You can buy and sell goods, work or data with anyone, anywhere. The buyer bonds twice the payment. Each seller bonds twice the cumulative value through its order. When the buyer confirms, every seller is paid and every bond is refunded, the buyer's less the payments, at once."
             >
                 <p className="mt-4 text-base text-ink-body leading-relaxed max-w-2xl" data-testid="home-example">
                     For a payment of {EX.payment} tokens, the buyer locks {EX.buyer_locks}, the payment carried inside it, and the seller locks {EX.seller_locks}: {EX.held} held until the buyer confirms.{" "}
                     <Link href="/kernel" className="text-ink-heading font-medium italic hover:underline">
-                        Two bonds, each bigger than the trade. One rule for who resolves. That is the entire machine.
+                        Why each side&apos;s best move is to keep its word.
                     </Link>
                 </p>
                 <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-8" data-testid="home-doors">

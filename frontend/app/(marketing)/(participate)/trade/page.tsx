@@ -43,7 +43,11 @@ export default function TradePage() {
                     .
                 </p>
                 <p className="text-base text-ink-body leading-relaxed mt-3">
-                    To sell, or to order with nothing but a wallet, start at{" "}
+                    To order, start at{" "}
+                    <Link href="/discover" className="text-ink-heading font-medium hover:underline">
+                        Discover
+                    </Link>
+                    ; to sell, at{" "}
                     <Link href="/members" className="text-ink-heading font-medium hover:underline">
                         Join
                     </Link>
