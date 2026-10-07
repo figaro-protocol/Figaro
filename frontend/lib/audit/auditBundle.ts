@@ -44,7 +44,7 @@ export interface AuditBundle {
      *  where a cargo leaf, a freight-class leaf, or a never-seen clause all
      *  surface — no genre document required. */
     clauseData: ClauseDataDocument;
-    /** One record per party of the order: the seller's registration and the
+    /** One entry per party of the order: the seller's registration and the
      *  buyer's. Both are members when they register. */
     membersRegistry: { seller: MembersRegistryDocument; buyer: MembersRegistryDocument };
     hashAppendix: HashAppendixDocument;
