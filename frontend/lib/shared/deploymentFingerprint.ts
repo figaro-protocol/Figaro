@@ -6,7 +6,7 @@
  * addresses will not match.
  *
  * Cross-origin by design: this site shows a fingerprint, the repository serves
- * the record, and neither origin's word alone is trusted — the buyer compares
+ * the deployment record, and neither origin's word alone is trusted — the buyer compares
  * two independently produced hashes. The serialization is byte-identical to the
  * documented `jq -j … | shasum -a 256` recipe on /docs/protocol/contracts: the
  * address fields below, each written `recordField=loweraddress`, sorted by
@@ -15,7 +15,7 @@
  *
  * SWC inlines process.env.NEXT_PUBLIC_* only when read DIRECTLY (never via a
  * dynamic key), so every field is a literal reference. The set is kept in
- * lockstep with the record and the docs recipe by
+ * lockstep with the deployment record and the docs recipe by
  * scripts/lint-deployment-fingerprint.sh.
  */
 import { sha256, isAddress } from "viem";
@@ -38,7 +38,7 @@ const OPERATIVE_ADDRESSES: readonly (readonly [string, string | undefined])[] = 
 
 /** The canonical serialization the fingerprint hashes, or null when the
  *  operative set is incomplete — a fingerprint over a partial set would match
- *  no canonical record, so it is better withheld than shown wrong. */
+ *  no canonical deployment record, so it is better withheld than shown wrong. */
 function canonicalSerialization(): string | null {
     const lines: string[] = [];
     for (const [field, value] of OPERATIVE_ADDRESSES) {
