@@ -13,7 +13,7 @@
  * Every extractor is a PURE function: it takes already-loaded chain data and
  * returns a structured per-section document. Callers (PDF renderer, the
  * `/audit` verify surface) fetch `Agreement`, `Order`, and the attestation
- * records from chain.
+ * entries from chain.
  */
 
 export interface ExtractedDocument {
