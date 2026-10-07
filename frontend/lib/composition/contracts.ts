@@ -61,7 +61,7 @@ export function getSwapQuoter(): `0x${string}` | null {
     return resolveAddress(COMPOSITION_CONTRACTS.swapQuoter);
 }
 
-/** The RPGF minter — the 600M distribution's claim surface. Each period's budget pays
+/** `RpgfMinter` — the designer rewards' claim surface (the 600M). Each period's budget is minted
  *  pro rata from a CLOSED accrual period, so the only act here is `claim`.
  *  Resolved-empty: null = the rewards runtime is unavailable (the marketing
  *  prose still renders). */
