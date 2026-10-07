@@ -8,7 +8,7 @@ import { MerkleForestFigure } from "@/components/figures/MerkleForestFigure";
 export const metadata: Metadata = withOg({
     title: "Your data — Figaro Protocol",
     description:
-        "Opening your own books to a buyer is an ordinary bonded sale, on your terms. What arrives is provable. The protocol never holds your private trade data, only a fingerprint.",
+        "Opening your own books to a buyer is an ordinary bonded sale, on your terms. What arrives carries proof of where it came from. The protocol never holds your private trade data, only a fingerprint.",
 });
 
 export default function Data() {
@@ -31,7 +31,7 @@ export default function Data() {
 
             <MarketingSection title="What the chain keeps.">
                 <p className="text-base text-ink-body leading-relaxed mb-5">
-                    A trade commits its fingerprint on-chain, and resolution closes it. The fingerprint is a hash of the agreement, timestamped and permanent, never the agreement itself. The agreement becomes a merkle tree: the clauses are its leaves, and the root is the fingerprint the chain keeps. The detail itself lives on storage you control, which is why the ownership is real. What the fingerprint buys is narrow, and worth being exact about. It proves that a specific piece of data matches a specific resolved trade. It proves nothing about what that data says. Why a boundary this thin can hold an unbounded world honest is on <Link href="/invariants" className="text-ink-heading font-medium hover:underline">Invariants</Link>.
+                    A trade commits its fingerprint on-chain, and resolution closes it. The fingerprint is a hash of the agreement, timestamped and permanent, never the agreement itself. The agreement becomes a merkle tree: the clauses are its leaves, and the root is the fingerprint the chain keeps. The detail itself lives on storage you control, which is why the ownership is real. What the fingerprint buys is narrow, and worth being exact about. It proves that a specific piece of data matches a specific resolved trade. It proves nothing about what that data says. What keeps that data accurate, when the chain cannot check it, is on <Link href="/data" className="text-ink-heading font-medium hover:underline">Evidence</Link>.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed mb-8">
                     The arrangement is easiest to see as a direction of travel. Value converges. Every payment and every bond is pulled into one resolution. It radiates back out the moment the buyer resolves, payouts and bonds together, in a single transaction. The data does the opposite. Only a fingerprint crosses onto the chain. The detail disperses to the people who produced it. What travels outward is the aggregate public map, to everyone at once. A platform ran both the other way.
@@ -45,9 +45,9 @@ export default function Data() {
                 </p>
             </MarketingSection>
 
-            <MarketingSection title="What arrives is provable, not promised.">
+            <MarketingSection title="What arrives carries its provenance.">
                 <p className="text-base text-ink-body leading-relaxed">
-                    Licensed data does not arrive on the seller&apos;s word. A delivery that names its source trades carries a proof tying it back to the exact resolved trades that produced it. The proof is checked against those trades&apos; own on-chain fingerprints. So a buyer can confirm the data is genuine without trusting the seller selling it. That is what makes selling access to it practical in the first place. The same doubled bond that secures every other trade here replaces the usual need to inspect the goods before agreeing to pay for them.
+                    Where licensed data came from does not rest on the seller&apos;s word. A delivery that names its source trades carries a proof tying it back to the exact resolved trades that produced it, each bound under its agreement&apos;s root. The proof is checked against those trades&apos; own on-chain fingerprints. So a buyer can confirm where the data came from without trusting the seller selling it. That is what makes selling access to it practical in the first place. The proof says nothing about whether the content is true. What keeps the content accurate is what a false claim costs the seller who sells it. While the sale is open, that seller&apos;s bond is locked, and the buyer can withhold resolution until the claim is put right. After resolution, a false claim stays in the data: in its price to the next buyer, and in the seller&apos;s resolution history. The same doubled bond that secures every other trade here replaces the usual need to inspect the goods before agreeing to pay for them.
                 </p>
             </MarketingSection>
 
