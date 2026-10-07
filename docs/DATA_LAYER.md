@@ -206,12 +206,25 @@ them rather than coining its own.
 
 Briefly: **protocol-enforced** rows are economically backed by the Core, bonds
 locked at commit and payouts at resolution. **Institution-declared** rows are what a
-runtime encoded and the protocol never validated — bonding pressure is what
-incentivizes their accuracy. **Protocol-derived** rows are anchored on chain, with
-the content behind the fingerprint living off it: referential integrity, never
-substantive accuracy. **Composition-derived** rows are read from a composed venue's
-own events — a swap pool, the multisender, a forum — true per that contract's rules
-and outside the Core's guarantees.
+runtime encoded and the protocol never validated. **Protocol-derived** rows are
+anchored on chain, with the content behind the fingerprint living off it:
+referential integrity, never substantive accuracy. **Composition-derived** rows are
+read from a composed venue's own events — a swap pool, the multisender, a forum —
+true per that contract's rules and outside the Core's guarantees.
+
+**What keeps a signed claim accurate.** An institution-declared row and an attestation
+behind a protocol-derived row are both a party's signed claim, and the chain checks
+neither. The mechanism is what stands behind both: the claim is signed while the
+process is open, and a false one costs its signer at two moments. Before resolution,
+the signer's bond is locked, the buyer can withhold resolution until the claim is put
+right, and the co-sellers, whose own payment waits on the same resolution, have their
+own reason to press. After resolution, which no one can reverse, the claim lives on in
+the data: its worth to whoever buys it or analyses it, the evidence a forum or court
+reads, and the signer's resolution history. The same data serves monetization,
+evidence, public and private analysis, and the application of a norm or standard, so
+a lie is paid for in each of them. The SDK carries this text once
+(`SIGNED_CLAIM_ACCURACY` in `sdk/src/derive/truth.ts`) inside both glosses. What it
+does not reach is parties acting together, covered below.
 
 A third party that relies on the corpus — a lender, an insurer, a court — reads the
 boundary with the row. The chain enforced the bonds and the payment; every claim
