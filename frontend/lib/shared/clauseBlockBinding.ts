@@ -1,6 +1,6 @@
 /**
  * Clause block-binding — the `block` slice of a clause spec: the UI half of
- * the clause document, on the frontend side of the UI/protocol crease.
+ * the clause document, on the frontend side of the UI/protocol seam.
  *
  * A clause spec has two halves. The TOP LEVEL is the protocol half — identity,
  * registration, and the content `fields`/`stages` that become sections of
