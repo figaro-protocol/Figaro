@@ -6,7 +6,7 @@
  * (per its spec — `clauseIsProcessLog`; never named in code). Such clauses
  * exist because off-chain sellers need a sovereign event log that fixes
  * what they signed about their physical-world state changes, against which
- * order, and when; each entry's content is the seller's signed claim
+ * order, and when; each entry's content is the seller's attestation
  * (docs/DATA_LAYER.md § "Truth boundaries"). FigaroCore logs
  * the buyer's actions directly (commit / resolveProcess); the off-chain
  * sellers record theirs via whatever process clause their order carries —

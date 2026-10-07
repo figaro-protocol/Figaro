@@ -447,10 +447,11 @@ function ProcessLogsPage({ doc }: { doc: AuditBundle["processLogs"] }) {
                 indexes the clause&apos;s spec-declared event enum.
             </Text>
             <Text style={styles.note}>
-                Each event is its attester&apos;s signed claim, checked for
-                binding to the order and never for truth; what keeps it
-                accurate is what a false claim costs its signer, and parties
-                acting together are outside that reach.
+                Each event is its attester&apos;s representation, checked for
+                binding to the order and never for truth; what stands behind
+                a seller&apos;s attestation is the buyer&apos;s decision to withhold
+                resolution, at the price of its own bond, until a false one is
+                put right, and parties acting together are outside that reach.
             </Text>
 
             {doc.logs.map((group) => (

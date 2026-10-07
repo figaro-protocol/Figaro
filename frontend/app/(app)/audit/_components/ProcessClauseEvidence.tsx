@@ -268,8 +268,8 @@ export function ProcessClauseEvidence({ processId }: { processId: string }) {
                     documents the audit-bundle PDF carries; names no clause and
                     assumes no field.
                 </p>
-                <p className="text-sm text-ink-body max-w-2xl" data-testid="audit-signed-claim-note">
-                    Every clause field and attested value here is the signing party&apos;s signed claim: the
+                <p className="text-sm text-ink-body max-w-2xl" data-testid="audit-attestation-note">
+                    Every clause field and attested value here is the signing party&apos;s declaration or attestation: the
                     chain fixes what was signed, bound to which order, and when
                     &mdash; never that it is true.
                 </p>
@@ -335,7 +335,7 @@ export function ProcessClauseEvidence({ processId }: { processId: string }) {
                                                     {/* The evidence the chain actually carries: a fingerprint of
                                                         what was attested, timestamped and tamper-evident (any
                                                         change to the content changes the fingerprint). The
-                                                        content itself is the attester's signed claim. Anyone
+                                                        content itself is the attester's representation. Anyone
                                                         holding the preimage proves the match off-chain. */}
                                                     <dl
                                                         className="mt-1 ml-4 grid grid-cols-[max-content_1fr] gap-x-6 gap-y-0.5 text-xs"
