@@ -116,7 +116,9 @@ a clause not committed at signing cannot be attested (`InvalidInclusionProof`),
 and a never-seen clause is attestable with zero per-clause on-chain code.
 
 **`src/core/attestation/IRoleResolver.sol`** — `isAuthorized(orderHash,
-caller)`, the interface a seller address implements to delegate attestation.
+caller)`, the interface `attestViaResolver` reads. No contract in this tree
+implements it; a seller reaches the path only through EIP-7702 code on its own
+address.
 
 ### `src/core/verifier/` — `FigaroBatchVerifier` and `ISP1Verifier`
 
