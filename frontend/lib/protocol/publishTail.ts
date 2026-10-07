@@ -50,7 +50,7 @@ export interface PublishTailConfig {
     abi: Abi;
     functionName: string;
     args: readonly unknown[];
-    /** The ETH deposit accompanying the call; omit for a non-payable function. */
+    /** The ETH sent with the call (a registry's stake); omit for a non-payable function. */
     value?: bigint;
     account: `0x${string}`;
     /** Maps a simulate-time revert to a user-facing Error — called only when
