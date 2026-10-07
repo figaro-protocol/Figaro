@@ -102,9 +102,9 @@ export default function Tokenomics() {
                 </p>
             </MarketingSection>
 
-            <MarketingSection title="The reserve grows as the network does.">
+            <MarketingSection title="Each year's budget is fixed in advance and rises in three steps.">
                 <p className="text-base text-ink-body leading-relaxed mb-5">
-                    The 600 million is not held by anyone waiting to be handed out. It is minted only when a designer claims a closed period&apos;s share against use the chain already holds &mdash; nine annual periods in three rising steps, ending after the ninth. Funding the network before there is evidence to measure is the treasury&apos;s job, not the counter&apos;s. The schedule itself, and how a share is worked out from a period&apos;s usage &mdash; the same rule for every clause and every assembly, no weights, no categories, no per-wallet cap, and nothing taken from anyone to fund it &mdash; is set out on <Link href="/rpgf" className="text-ink-heading hover:underline">Designer Rewards</Link>, which owns that mechanism; it is not restated here.
+                    The largest budgets fall in the later years, when there is the most use to measure. The 600 million is not held by anyone waiting to be handed out. It is minted only when a designer claims a closed period&apos;s share against use the chain already holds &mdash; nine annual periods in three rising steps, ending after the ninth. Funding the network before there is evidence to measure is the treasury&apos;s job, not the counter&apos;s. The schedule itself, and how a share is worked out from a period&apos;s usage &mdash; the same rule for every clause and every assembly, no weights, no categories, no per-wallet cap, and nothing taken from anyone to fund it &mdash; is set out on <Link href="/rpgf" className="text-ink-heading hover:underline">Designer Rewards</Link>, which owns that mechanism; it is not restated here.
                 </p>
                 <p className="text-base text-ink-body leading-relaxed">
                     Two limits belong beside the schedule. The pool is fixed, so a wallet manufacturing usage dilutes everyone&apos;s share and inflates nothing &mdash; it can never mint a florin that was not already reserved. And the budgets end: after the ninth period nothing renews them &mdash; by design.
