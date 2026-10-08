@@ -158,7 +158,7 @@ describe("usePendingSellerSignature wallet-arrival resubscription", () => {
         h.rerender();
         await waitFor(() => expect(callbacks).toHaveLength(1));
 
-        // The relayed order now reaches this (previously dead) surface.
+        // After the retry, the relayed order reaches this surface.
         await act(async () => {
             for (const cb of callbacks) await cb(inboundBody, "order-2");
         });

@@ -34,12 +34,10 @@ export async function waitForReactHydration(
             { timeout },
         );
     } catch {
-        // THROW — never swallow. This helper previously ended in `.catch(() => {})`,
-        // so a page that never hydrated returned success and the spec clicked a dead
-        // button: the assertion after it either flaked or passed vacuously, and the
-        // helper existing at all implied a guarantee it did not give. A hydration
-        // timeout is a real failure — of the app, the selector, or the fixture — and
-        // the caller must see it.
+        // THROW — never swallow. A swallowed timeout returns success for a page that
+        // never hydrated, and the spec clicks a dead button: the assertion after it
+        // either flakes or passes vacuously. A hydration timeout is a real failure —
+        // of the app, the selector, or the fixture — and the caller must see it.
         const present = await page.locator(selector).count().catch(() => 0);
         throw new Error(
             `waitForReactHydration: "${selector}" did not hydrate within ${timeout}ms ` +

@@ -608,9 +608,7 @@ function TimelinePage({ timeline }: { timeline: ProcessTimeline }) {
             )}
             <Text style={styles.note}>
                 Generated {timeline.generatedAt}. Same data surface used by
-                the in-iframe evidence-display view and previously submitted
-                as standalone timeline JSON evidence prior to this bundle&apos;s
-                consolidation.
+                the in-iframe evidence-display view.
             </Text>
         </AuditPage>
     );

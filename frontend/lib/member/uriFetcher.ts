@@ -2,8 +2,8 @@
  * lib/member/uriFetcher.ts
  *
  * Generic fetch+parse+cache helper for IPFS / HTTP content-addressed
- * documents. Two lib modules (`catalogFetcher`, `memberBranding`)
- * previously each rolled their own copy of the same pipeline:
+ * documents. The one pipeline its callers (`catalogFetcher`,
+ * `memberBranding`, `profileFetcher`) share:
  *
  *   if (!uri) return null;
  *   if (cache.hit) return cache.value;
@@ -13,7 +13,7 @@
  *   cache.set(uri, parsed);
  *   return parsed;
  *
- * This module is the single source. Each fetcher becomes a 3-line wrapper
+ * This module is the single source. Each fetcher is a short wrapper
  * that supplies a `parse` function and (optionally) a TTL.
  */
 

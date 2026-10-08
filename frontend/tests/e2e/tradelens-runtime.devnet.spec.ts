@@ -323,8 +323,7 @@ test.describe('TRADELENS RUNTIME — six sellers bond, the container story attes
         }).toBeGreaterThanOrEqual(15);
         // The provenance section carries the adopted assembly's own
         // compositionHash, so the ASSEMBLY itself must be among the
-        // recorded clauses and assemblies — the assembly-designer credit leg, previously
-        // dead end-to-end.
+        // recorded clauses and assemblies — the assembly-designer credit leg.
         const adopted = (await discoverAnchoredAssemblies()).find((t) => t.slug === slug);
         expect(adopted?.compositionHash, 'the adopted assembly re-discovers from chain').toBeTruthy();
         const clausesAndAssemblies = (await usageEvents()).map((e) => (e.args.clauseOrAssembly as string).toLowerCase());

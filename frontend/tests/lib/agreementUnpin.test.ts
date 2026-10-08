@@ -1,8 +1,8 @@
 /**
  * unpinAgreement — controller-erasure of the committed-agreement pin.
  *
- * The agreement body is the highest-PII IPFS artifact and, until now, the one
- * with no erasure affordance. unpinAgreement best-effort unpins THIS wallet's
+ * The agreement body is the highest-PII IPFS artifact. unpinAgreement
+ * best-effort unpins THIS wallet's
  * copy and forgets the witnessed-URI pointer (unpin + forget), never throwing
  * on a node hiccup; a forgotten pointer means a later fetch returns null.
  */

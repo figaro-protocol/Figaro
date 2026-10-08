@@ -4,7 +4,7 @@
  * Fetches the MemberProfileMetadata document from a member's on-chain
  * metadataURI (pointer → IPFS/HTTP → parsed profile) — the ONE cached
  * profile read path, shared by the listings hook and every profile-edit
- * surface (the surfaces previously each hand-rolled `fetch(url).json()`).
+ * surface.
  * The write path (pin + updateProfile) lives in `useUpdateMemberProfile`.
  * Backed by the generic `createUriFetcher` pipeline, sibling of
  * `catalogFetcher.ts`.

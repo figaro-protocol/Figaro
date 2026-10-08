@@ -11,7 +11,7 @@ export const metadata: Metadata = withOg({
 /**
  * /audit/view?process=<processId> — consolidated process-level audit surface.
  *
- * Unifies what previously lived at `/financials/[processId]` and `/verify`:
+ * One page for the process's audit surfaces:
  *
  *   - Process financials (invoice-style: balance sheet + income statement
  *     + per-order line items + cash-flow log; balance-sheet identity check)

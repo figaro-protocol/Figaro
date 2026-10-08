@@ -51,9 +51,8 @@ function serializeDraft(snapshot: DesignSnapshot | null): { json: string | null;
     if (!snapshot) return { json: null, error: "Add at least one order to the canvas first." };
     try {
         // The ONE draft→template walk publish uses — so the handoff template
-        // is byte-identical to what publish would anchor. (It previously
-        // rebuilt the walk inline and dropped `assemblyClauses`, silently
-        // handing out a template missing the assembly-level terms.)
+        // is byte-identical to what publish would anchor, the assembly-level
+        // terms (`assemblyClauses`) included.
         const { json } = serializeAssemblyTemplate(snapshotToAssemblyTemplate(snapshot));
         return { json: JSON.stringify(JSON.parse(json), null, 2), error: null };
     } catch (cause) {

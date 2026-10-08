@@ -3,8 +3,7 @@
 /**
  * ModalChrome — accessible dialog chrome shared by every modal in the app.
  *
- * Owns the cross-cutting modal concerns that previously lived inline,
- * inconsistently, across 4 modal components:
+ * Owns the cross-cutting modal concerns, the same for every modal:
  *   - Backdrop with click-to-dismiss
  *   - Escape-to-dismiss
  *   - Tab focus trap inside the dialog
