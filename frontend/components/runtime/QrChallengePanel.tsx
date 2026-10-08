@@ -51,7 +51,7 @@ async function generateQRDataURL(payload: string): Promise<string> {
     });
 }
 
-export function QrChallengePanel({ processId, orderHash, clauseId }: InteractionSurfaceProps) {
+export function QrChallengePanel({ processId, orderHash, clauseId, version }: InteractionSurfaceProps) {
     const identity = encodeIdentity({ processId, orderHash });
     const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
     const [scanned, setScanned] = useState("");
@@ -70,7 +70,7 @@ export function QrChallengePanel({ processId, orderHash, clauseId }: Interaction
     const matches = decoded !== null
         && hexEqual(decoded.processId, processId)
         && hexEqual(decoded.orderHash, orderHash);
-    const clauseTitle = getClauseSpec(clauseId)?.title ?? clauseId;
+    const clauseTitle = getClauseSpec(clauseId, version)?.title ?? clauseId;
 
     return (
         <section

@@ -39,7 +39,7 @@ import {
 } from "@/lib/checkout/checkoutDerivations";
 import { postToAgentEndpoint, useDispatchRace } from "@/lib/checkout/dispatchRace";
 import { DispatchRacePanel, type RaceStartPolicy } from "@/components/runtime/DispatchRacePanel";
-import { templateParentOrderHashes } from "@/lib/shared/assemblyTemplate";
+import { templateClauseVersion, templateParentOrderHashes } from "@/lib/shared/assemblyTemplate";
 import { CommitmentSharePanel } from "@/components/runtime/CommitmentSharePanel";
 import { SellerCatalogPicker, type SellerSelection } from "@/components/runtime/SellerCatalogPicker";
 import { useCompositionActions } from "@/lib/composition/useCompositionActions";
@@ -133,7 +133,7 @@ export function CheckoutView({ sellerAddress }: Props) {
     // "assembly") — a term of the composition, folded into
     // every agreement at checkout; the old root-order convention is dead.
     const utilityTokenPin = pickedAssembly
-        ? readUtilityTokenPin(pickedAssembly.assemblyTemplate.assemblyClauses ?? {}, specSource())
+        ? readUtilityTokenPin(pickedAssembly.assemblyTemplate.assemblyClauses ?? {}, specSource(), pickedAssembly.assemblyTemplate.assemblyClauseVersions)
         : undefined;
     const sellerDefault = memberCatalog?.defaultTokenAddress as `0x${string}` | undefined;
     // What this surface already knows, offered to the format inputs as
@@ -190,7 +190,7 @@ export function CheckoutView({ sellerAddress }: Props) {
         balance: tokenBalance,
         needsAuthorization: needsApproval,
         authorize: approve,
-        authorization: { isPending: isApprovePending, isConfirming: isApproveConfirming, isSuccess: isApproveSuccess },
+        authorization: { isPending: isApprovePending, isConfirming: isApproveConfirming, isSuccess: isApproveSuccess, isError: isApproveError },
         signRoot,
         signAndShare,
         order: { step: commitStep, error: commitError, payload },
@@ -249,7 +249,7 @@ export function CheckoutView({ sellerAddress }: Props) {
 
     const balance = tokenBalance ?? 0n;
     const isApproving = isApprovePending || isApproveConfirming;
-    const { runWithApproval } = useApproveThenAct({ needsApproval, approve, isApproveSuccess });
+    const { runWithApproval } = useApproveThenAct({ needsApproval, approve, isApproveSuccess, isApproveError });
     const [checkoutError, setCheckoutError] = useState<string | null>(null);
     // Swap-funded bond leg (buyer side): the ON-RAMP into the process
     // denomination — a buyer short of the picked/pinned token draws on
@@ -345,7 +345,7 @@ export function CheckoutView({ sellerAddress }: Props) {
         const out: OrderComposition[] = [];
         for (const order of pickedAssembly.assemblyTemplate.agreements) {
             for (const cid of Object.keys(order.clauses)) {
-                const block = getClauseSpec(cid)?.block;
+                const block = getClauseSpec(cid, templateClauseVersion(order, cid))?.block;
                 if (block?.design.composes && block.runtime.fields.length > 0) {
                     out.push({ nodeId: order.id, clauseId: cid, interface: block.design.composes.interface, fields: block.runtime.fields });
                     break; // one composition per order
@@ -869,11 +869,12 @@ export function CheckoutView({ sellerAddress }: Props) {
                                             <p className="text-[11px] font-medium text-ink-muted">{group.label}</p>
                                         )}
                                         <ul className="text-xs text-ink-body space-y-0.5">
-                                            {group.clauses.map(({ clauseId, values, data, fillable }) => {
-                                                const specFields = getClauseSpec(clauseId)?.fields ?? [];
+                                            {group.clauses.map(({ clauseId, version, values, data, fillable }) => {
+                                                const spec = getClauseSpec(clauseId, version);
+                                                const specFields = spec?.fields ?? [];
                                                 return (
                                                 <li key={clauseId} data-testid={`agreement-clause-${clauseId}`}>
-                                                    {getClauseSpec(clauseId)?.title ?? clauseId}
+                                                    {spec?.title ?? clauseId}
                                                     {values && <span className="text-ink-primary"> — {values}</span>}
                                                     <CredentialVerifyButton data={data} />
                                                     {fillable && (
@@ -882,7 +883,7 @@ export function CheckoutView({ sellerAddress }: Props) {
                                                                 checks (`buyerAuthoredFields`), so no
                                                                 required term can be demanded without
                                                                 a control on screen. */}
-                                                            {buyerAuthoredFields(clauseId).map((field) => {
+                                                            {buyerAuthoredFields(clauseId, version).map((field) => {
                                                                 const inputFormat = resolveInputFormat(field, specFields, clauseFills[group.key]?.[clauseId]);
                                                                 return (
                                                                 <FieldControl
@@ -891,7 +892,7 @@ export function CheckoutView({ sellerAddress }: Props) {
                                                                     value={clauseFills[group.key]?.[clauseId]?.[field.name]}
                                                                     onChange={(v) => setClauseFill(group.key, clauseId, field.name, v)}
                                                                     testId={`checkout-field-${group.key}-${clauseId}-${field.name}`}
-                                                                    hideLabel={field.name.toLowerCase() === (getClauseSpec(clauseId)?.title ?? "").toLowerCase()}
+                                                                    hideLabel={field.name.toLowerCase() === (spec?.title ?? "").toLowerCase()}
                                                                     resolvedFormat={inputFormat}
                                                                     siblingFormatSource={isSiblingFormatSource(field, specFields)}
                                                                     presets={inputFormat ? formatPresets[inputFormat] : undefined}
@@ -1006,6 +1007,11 @@ export function CheckoutView({ sellerAddress }: Props) {
                                 authorization={buyerFunding}
                                 onAuthorize={() => permit2Funding.approve(maxUint256)}
                             />
+                        )}
+                        {permit2Funding.isApproveError && (
+                            <p className="text-error-fg text-xs" data-testid="funding-authorize-error">
+                                The funding token was not authorized: the wallet refused it or the transaction reverted.
+                            </p>
                         )}
 
                         {/* On-network composition inputs (the sixth noun): any

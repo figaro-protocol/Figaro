@@ -25,10 +25,10 @@ affects the hash.</p>
 The ONE spec-driven step: each clause spec's own declared field defaults
 fill fields the composing input omitted — the SPEC speaks, the code
 injects nothing of its own.</p>
-<p><code>clauseVersions</code>: clauseId → the registered version composed
-(template-sourced). Absent entries fall back to the loaded spec's version —
-the non-template compose paths, where whatever the registry surfaced is
-what was picked.</p>
+<p><code>clauseVersions</code>: clauseId → the registered version composed — sparse,
+the template's rule: an absent entry is version 1, never the highest
+loaded, since every (clauseId, version) slot is open to anyone. A caller
+composing any other version states it here.</p>
 </div>
 <div class="tsd-parameters">
 <h4 class="tsd-parameters-title">Parameters</h4>
@@ -40,7 +40,7 @@ what was picked.</p>
 <li><span><code class="tsd-tag">Optional</code><span class="tsd-kind-parameter">clauseVersions</span>: <span class="tsd-signature-type">Readonly</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">Record</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">,</span> <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">&gt;</span></span></li></ul></div>
 <h4 class="tsd-returns-title">Returns <a href="../interfaces/index.OrderAgreement.html" class="tsd-signature-type tsd-kind-interface">OrderAgreement</a></h4><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/projection.ts#L344">projection.ts:344</a></li></ul></aside></div></li></ul></section></div>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/projection.ts#L349">projection.ts:349</a></li></ul></aside></div></li></ul></section></div>
 <div class="col-sidebar">
 <div class="page-menu">
 <div class="tsd-navigation settings">

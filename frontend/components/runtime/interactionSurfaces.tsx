@@ -30,6 +30,9 @@ export interface InteractionSurfaceProps {
     /** The clause that declared the interaction — for display attribution
      *  and section anchoring, never for dispatch. */
     clauseId: string;
+    /** The committed section's version — with `clauseId`, the exact spec a
+     *  surface encodes from and keys its attestation by. */
+    version: number;
     buyer: `0x${string}`;
     seller: `0x${string}`;
 }

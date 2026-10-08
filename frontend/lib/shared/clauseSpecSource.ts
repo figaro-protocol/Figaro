@@ -199,10 +199,9 @@ export function clauseIdForHash(clauseIdHashHex: string): string | undefined {
 
 /** Resolve an on-chain clause hash to its EXACT loaded spec — hash → identity
  *  → cache. The version-precise sibling of `clauseIdForHash`; the runtime
- *  attestation reader (`describeAttestation`) resolves through this so two
- *  live versions never conflate. Internal — export when an outside reader
- *  holds a raw hash. */
-function clauseSpecForHash(clauseIdHashHex: string): ClauseSpecWithBlock | undefined {
+ *  attestation reader (`describeAttestation`) and the witness-content
+ *  publisher resolve through this so two live versions never conflate. */
+export function clauseSpecForHash(clauseIdHashHex: string): ClauseSpecWithBlock | undefined {
     const id = HASH_TO_ID.get(clauseIdHashHex.toLowerCase());
     return id ? SPEC_CACHE.get(specKey(id.clauseId, id.version)) : undefined;
 }

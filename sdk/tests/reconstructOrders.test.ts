@@ -12,9 +12,14 @@ import {
     reconstructOrdersFromTemplate,
 } from "../src/reconstructOrders.js";
 import type { AssemblyTemplate } from "../src/assembly.js";
-import { specSourceFromFixtures } from "./specFixtures.js";
+import type { ProjectionSpecView } from "../src/projection.js";
+import { specSourceFromFixtures, specSourceWithRegistrations } from "./specFixtures.js";
 
-const SPECS = specSourceFromFixtures(["figaro-commerce", "figaro-topology"]);
+const FIXTURES = specSourceFromFixtures(["figaro-commerce", "figaro-topology"]);
+const COMMERCE_V1 = FIXTURES.get("figaro-commerce", 1)!;
+/** The template below composes the commerce clause at v2 on one node, so a v2
+ *  is loaded: the walk reads each section's spec at its composed version. */
+const SPECS = specSourceWithRegistrations(FIXTURES, [{ ...COMMERCE_V1, version: 2 }]);
 
 const BUYER = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266" as const;
 const SELLER_A = "0x2546BcD3c84621e976D8185a91A922aE77ECEc30" as const;
@@ -123,5 +128,48 @@ describe("reconstructOrdersFromTemplate — realization", () => {
                 nodes: () => ({ seller: SELLER_A, payment: 1n }),
             }),
         ).rejects.toThrow(/parent "ghost" was not built/);
+    });
+});
+
+describe("reconstructOrdersFromTemplate — the walk's fills read each section at its composed version", () => {
+    // A stranger's v2 of the commerce clause that declares `currency` as a
+    // DESIGN FILL (a pin, not content): the highest loaded, which a
+    // versionless read would route through. The template composes v1
+    // (absent = 1), so the walk still fills v1's currency leaf.
+    const strangerV2: ProjectionSpecView = {
+        ...COMMERCE_V1,
+        version: 2,
+        hints: { ...COMMERCE_V1.hints, designFills: ["currency"] },
+    };
+    const specs = specSourceWithRegistrations(FIXTURES, [strangerV2]);
+    const params = {
+        buyer: BUYER,
+        currency: CURRENCY,
+        chainId: 31337,
+        core: CORE,
+        specs,
+        nodes: () => ({ seller: SELLER_A, payment: 1n }),
+        salt: () => 1n,
+        deadline: 1770000000n,
+    };
+
+    it("an unstated version fills v1's currency leaf", async () => {
+        const [root] = await reconstructOrdersFromTemplate(
+            { agreements: [{ id: "only", clauses: { "figaro-commerce": {} } }] },
+            params,
+        );
+        const commerce = root.agreement.sections.find((s) => s.clause === "figaro-commerce");
+        expect(commerce?.version).toBe(1);
+        expect(commerce?.data.currency).toBe(CURRENCY);
+    });
+
+    it("a stated v2 is read as v2, whose currency is no content leaf", async () => {
+        const [root] = await reconstructOrdersFromTemplate(
+            { agreements: [{ id: "only", clauses: { "figaro-commerce": {} }, clauseVersions: { "figaro-commerce": 2 } }] },
+            params,
+        );
+        const commerce = root.agreement.sections.find((s) => s.clause === "figaro-commerce");
+        expect(commerce?.version).toBe(2);
+        expect(commerce?.data.currency).toBeUndefined();
     });
 });

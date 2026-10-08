@@ -23,9 +23,11 @@ import {
     type DesignSnapshot,
 } from "@/lib/designer/syntheticDesignStore";
 import {
+    buildSyntheticOrder,
     createSyntheticRootOrder,
     createSyntheticSubOrder,
     startSyntheticSession,
+    syntheticAddress,
 } from "@/lib/designer/syntheticProcess";
 import {
     snapshotCompositionIdentity,
@@ -230,5 +232,33 @@ describe("design fills are the composition's identity — the disclosure regime"
         };
         expect(snapshotCompositionIdentity(withStrayValues).compositionHash)
             .toBe(snapshotCompositionIdentity(base).compositionHash);
+    });
+});
+
+describe("buildSyntheticOrder — the version a node states is the version its agreement carries", () => {
+    beforeEach(async () => {
+        window.localStorage.clear();
+        await primeClauseSpecs();
+    });
+
+    const build = (clauseVersions?: Record<string, number>) => {
+        const { agreementHash } = buildSyntheticOrder({
+            orderId: `0x${"01".repeat(32)}`,
+            processId: `0x${"00".repeat(32)}`,
+            buyer: syntheticAddress(0),
+            seller: syntheticAddress(1),
+            currency: `0x${"00".repeat(20)}`,
+            payment: 1n,
+            salt: 1n,
+            clauseFields: { "figaro-geolocation": {} },
+            clauseVersions,
+        });
+        const stored = JSON.parse(window.localStorage.getItem(`figaro:agreement:${agreementHash}`) ?? "null");
+        return stored.sections.find((s: { clause: string }) => s.clause === "figaro-geolocation").version;
+    };
+
+    it("an unstated version is v1; a stated one is carried", () => {
+        expect(build()).toBe(1);
+        expect(build({ "figaro-geolocation": 2 })).toBe(2);
     });
 });

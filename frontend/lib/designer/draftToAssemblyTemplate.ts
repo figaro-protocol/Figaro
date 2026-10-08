@@ -53,10 +53,11 @@ export function snapshotToAssemblyTemplate(snapshot: DesignSnapshot): AssemblyTe
  *  publish (review) or has already published (`/view`).
  *
  *  Keyed by the template's own agreement ids (`order-<i>`). The auto-folded
- *  MANDATORY clauses are left out: they are not the designer's picks, so a
- *  review that listed them would read as terms nobody composed. Everything
- *  shown here comes from the pinned bytes, never from a second walk over the
- *  draft — that divergence is the defect this exists to make impossible. */
+ *  MANDATORY clauses are left out here: they are not the designer's picks, and
+ *  `templateFoldedClauses` lists them on their own, by id and version.
+ *  Everything shown here comes from the pinned bytes, never from a second walk
+ *  over the draft — that divergence is the defect this exists to make
+ *  impossible. */
 export function templateComposedByAgreement(
     template: AssemblyTemplate,
 ): Record<string, Record<string, Record<string, unknown>>> {
@@ -71,6 +72,71 @@ export function templateComposedByAgreement(
             ),
         ]),
     );
+}
+
+/** A clause the designer picked on one agreement, by id and version. */
+export interface ComposedClause {
+    clauseId: string;
+    version: number;
+    /** The spec's title, or the id when the spec is not loaded. */
+    title: string;
+}
+
+/** The designer's picks per agreement, by id AND version — the listing face
+ *  of `templateComposedByAgreement`, keyed the same way. A clause's identity
+ *  is (id, version) and any version is anyone's registration, so a review
+ *  names the version beside the id, read version-exact from the pinned bytes
+ *  (absent = 1, the template's sparse rule). */
+export function templateComposedClauses(template: AssemblyTemplate): Record<string, ComposedClause[]> {
+    const byAgreement = templateComposedByAgreement(template);
+    return Object.fromEntries(
+        template.agreements.map((agreement) => [
+            agreement.id,
+            Object.keys(byAgreement[agreement.id] ?? {}).map((clauseId) => {
+                const version = templateClauseVersion(agreement, clauseId);
+                return { clauseId, version, title: getClauseSpec(clauseId, version)?.title ?? clauseId };
+            }),
+        ]),
+    );
+}
+
+/** A clause the template carries because its spec marks it mandatory, not
+ *  because the designer picked it. */
+export interface FoldedClause {
+    clauseId: string;
+    version: number;
+    /** The spec's title, or the id when the spec is not loaded. */
+    title: string;
+    /** The template agreement ids carrying it, or `["assembly"]` for an
+     *  assembly-scoped term. */
+    carriedBy: string[];
+}
+
+/** Every clause the template carries as MANDATORY, by id AND version — the
+ *  complement of `templateComposedByAgreement`. "Mandatory" is the spec's
+ *  `block.design.article`, written by whoever registered the clause and open
+ *  to anyone's registration, so it confers no standing: a review lists every
+ *  one of these for the designer to confirm before anchoring, never folds
+ *  them out of sight. Read from the pinned bytes, version-exact. */
+export function templateFoldedClauses(template: AssemblyTemplate): FoldedClause[] {
+    const folded = new Map<string, FoldedClause>();
+    const note = (clauseId: string, version: number, carrier: string) => {
+        if (!clauseIsMandatory(clauseId, version)) return;
+        const key = `${clauseId}#${version}`;
+        const entry = folded.get(key)
+            ?? { clauseId, version, title: getClauseSpec(clauseId, version)?.title ?? clauseId, carriedBy: [] };
+        entry.carriedBy.push(carrier);
+        folded.set(key, entry);
+    };
+    for (const clauseId of Object.keys(template.assemblyClauses ?? {})) {
+        note(clauseId, template.assemblyClauseVersions?.[clauseId] ?? 1, "assembly");
+    }
+    for (const agreement of template.agreements) {
+        for (const clauseId of Object.keys(agreement.clauses)) {
+            note(clauseId, templateClauseVersion(agreement, clauseId), agreement.id);
+        }
+    }
+    return Array.from(folded.values());
 }
 
 /** A draft projected onto the bytes that publish anchors, plus the readout
@@ -88,8 +154,14 @@ export type SnapshotReview =
         slug: string;
         /** canvas order id → clauseId → composed values (mandatory folds out). */
         composedByOrderId: Record<string, Record<string, Record<string, unknown>>>;
+        /** canvas order id → the same picks by id and version, for the
+         *  review's listing. */
+        composedClausesByOrderId: Record<string, ComposedClause[]>;
         /** The assembly-scoped composition exactly as the template carries it. */
         assemblyClauses: Record<string, Record<string, unknown>>;
+        /** The mandatory clauses the template carries, by id and version — what
+         *  the designer confirms before publish. */
+        folded: FoldedClause[];
     }
     | { ok: false; error: string };
 
@@ -102,11 +174,14 @@ export function projectSnapshotForReview(snapshot: DesignSnapshot): SnapshotRevi
         const template = snapshotToAssemblyTemplate(snapshot);
         const { compositionHash } = serializeAssemblyTemplate(template);
         const byAgreement = templateComposedByAgreement(template);
+        const clausesByAgreement = templateComposedClauses(template);
         const composedByOrderId: Record<string, Record<string, Record<string, unknown>>> = {};
+        const composedClausesByOrderId: Record<string, ComposedClause[]> = {};
         snapshot.orders.forEach((order, index) => {
             const agreementId = template.agreements[index]?.id;
             if (agreementId === undefined) return;
             composedByOrderId[order.orderHash] = byAgreement[agreementId] ?? {};
+            composedClausesByOrderId[order.orderHash] = clausesByAgreement[agreementId] ?? [];
         });
         return {
             ok: true,
@@ -114,7 +189,9 @@ export function projectSnapshotForReview(snapshot: DesignSnapshot): SnapshotRevi
             compositionHash,
             slug: deriveAssemblySlug(compositionHash),
             composedByOrderId,
+            composedClausesByOrderId,
             assemblyClauses: template.assemblyClauses ?? {},
+            folded: templateFoldedClauses(template),
         };
     } catch (cause) {
         return {
@@ -165,9 +242,11 @@ export interface MissingAssemblyTerm {
  * required fill with a declared default (a forum's subcourt) is filled
  * from the first moment and the anchored template carries it explicitly.
  * A fill with no default (a utility token's currency) stays empty, and
- * `unfilledAssemblyTerms` names it until the designer fills it.
+ * `unfilledAssemblyTerms` names it until the designer fills it. Read at the
+ * selected version, absent = 1 (the template's sparse rule) — never the
+ * highest version of the id the registry read loaded.
  */
-export function assemblyClauseDefaults(clauseId: string, version?: number): Record<string, unknown> {
+export function assemblyClauseDefaults(clauseId: string, version = 1): Record<string, unknown> {
     const spec = getClauseSpec(clauseId, version);
     if (!spec) return {};
     const fills = clauseDesignFills(clauseId, version);
@@ -184,9 +263,11 @@ export function unfilledAssemblyTerms(
 ): MissingAssemblyTerm[] {
     const missing: MissingAssemblyTerm[] = [];
     for (const [clauseId, values] of Object.entries(assemblyClauses)) {
-        const spec = getClauseSpec(clauseId, versions?.[clauseId]);
+        // The version map is sparse: absent = 1, exactly as the template reads.
+        const version = versions?.[clauseId] ?? 1;
+        const spec = getClauseSpec(clauseId, version);
         if (!spec) continue;
-        const fills = clauseDesignFills(clauseId, versions?.[clauseId]);
+        const fills = clauseDesignFills(clauseId, version);
         for (const field of spec.fields) {
             if (!field.required || !fills.includes(field.name)) continue;
             if (isFilledValue(values?.[field.name])) continue;

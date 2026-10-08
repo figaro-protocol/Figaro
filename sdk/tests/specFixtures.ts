@@ -26,3 +26,21 @@ export function specSourceFromFixtures(clauseIds: readonly string[]): SpecSource
         list: () => views,
     };
 }
+
+/** A registry-shaped SpecSource over `base` plus further registrations: `get`
+ *  with no version returns the HIGHEST loaded version, as the frontend's
+ *  registry cache does — the read a version fallback must never take, since
+ *  every (clauseId, version) slot is open to anyone. */
+export function specSourceWithRegistrations(
+    base: SpecSource,
+    extra: readonly ProjectionSpecView[],
+): SpecSource {
+    const views = [...base.list(), ...extra];
+    return {
+        get: (clauseId, version) =>
+            views
+                .filter((v) => v.clauseId === clauseId && (version === undefined || v.version === version))
+                .sort((a, b) => b.version - a.version)[0],
+        list: () => views,
+    };
+}

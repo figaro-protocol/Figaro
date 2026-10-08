@@ -11,6 +11,7 @@ describe("executeTransactionCapabilityAction", () => {
             kind: "submit-clause-attestation" as const,
             orderHash: "merchant-order",
             clauseId: "figaro-merchant-process",
+            version: 1,
             stage: 2,
             eventCode: "handed-off",
             ladderField: "eventType",
@@ -33,6 +34,7 @@ describe("executeTransactionCapabilityAction", () => {
             kind: "submit-clause-attestation" as const,
             orderHash: "courier-order",
             clauseId: "figaro-proximity-policy",
+            version: 1,
             stage: 1,
             party: "seller" as const,
         };

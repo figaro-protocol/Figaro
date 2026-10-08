@@ -305,10 +305,13 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
     const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
 
     const toggleClause = useCallback((orderId: string, clauseId: string, next: boolean, version?: number) => {
+        // A pick at another version is another clause: its design fills start
+        // empty, so a value declared by v1 never rides on a v2 composition.
+        const versionChanged = (clauseVersionsByOrderId[orderId]?.[clauseId] ?? 1) !== (version ?? 1);
         setClausesByOrderId((prev) => {
             const order = { ...(prev[orderId] ?? {}) };
             if (next) {
-                if (!(clauseId in order)) order[clauseId] = {};
+                if (!(clauseId in order) || versionChanged) order[clauseId] = {};
             } else {
                 delete order[clauseId];
             }
@@ -322,7 +325,7 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
             else delete order[clauseId];
             return { ...prev, [orderId]: order };
         });
-    }, []);
+    }, [clauseVersionsByOrderId]);
 
     const setClauseField = useCallback(
         (orderId: string, clauseId: string, field: string, value: unknown) => {
@@ -798,6 +801,7 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
                         <TopologyCanvas
                             orders={orders}
                             clauseValuesByOrderId={clausesByOrderId}
+                            clauseVersionsByOrderId={clauseVersionsByOrderId}
                             designerMode
                             onAddSubOrder={handleAddSubOrder}
                             onAddParent={handleAddParent}
@@ -818,6 +822,9 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
                     onClose={() => setSelectedOrderId(null)}
                     selectedClauseValues={
                         selectedOrderId ? (clausesByOrderId[selectedOrderId] ?? {}) : undefined
+                    }
+                    selectedClauseVersions={
+                        selectedOrderId ? (clauseVersionsByOrderId[selectedOrderId] ?? {}) : undefined
                     }
                     onToggleClause={(clauseId, next, version) => {
                         if (selectedOrderId) toggleClause(selectedOrderId, clauseId, next, version);

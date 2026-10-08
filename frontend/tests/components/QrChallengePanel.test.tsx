@@ -28,7 +28,7 @@ describe("interactionSurfaces registry", () => {
 
 describe("QrChallengePanel", () => {
     const props = {
-        processId: PROCESS_ID, orderHash: ORDER_HASH, clauseId: "figaro-handoff",
+        processId: PROCESS_ID, orderHash: ORDER_HASH, clauseId: "figaro-handoff", version: 1,
         buyer: ("0x" + "55".repeat(20)) as `0x${string}`, seller: ("0x" + "66".repeat(20)) as `0x${string}`,
     };
 

@@ -18,7 +18,9 @@
 <div class="tsd-description">
 <div class="tsd-comment tsd-typography"><p>An agreement, verified against the commitment's <code>agreementHash</code>: the
 merkle root over its section leaves is the hash. A document whose sections
-do not hash (malformed, duplicated clause keys) is not the agreement.</p>
+do not hash (malformed, duplicated clause keys) is not the agreement. The
+top-level <code>buyer</code> and <code>seller</code> are outside the hash and pass unchecked
+here — check them against the commitment.</p>
 </div>
 <div class="tsd-parameters">
 <h4 class="tsd-parameters-title">Parameters</h4>
@@ -27,7 +29,7 @@ do not hash (malformed, duplicated clause keys) is not the agreement.</p>
 <li><span><span class="tsd-kind-parameter">agreementHash</span>: <span class="tsd-signature-type">string</span></span></li></ul></div>
 <h4 class="tsd-returns-title">Returns <a href="../types/index.Anchored.html" class="tsd-signature-type tsd-kind-type-alias">Anchored</a><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/index.Agreement.html" class="tsd-signature-type tsd-kind-interface">Agreement</a><span class="tsd-signature-symbol">&gt;</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">null</span></h4><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/anchored.ts#L62">anchored.ts:62</a></li></ul></aside></div></li></ul></section></div>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/anchored.ts#L71">anchored.ts:71</a></li></ul></aside></div></li></ul></section></div>
 <div class="col-sidebar">
 <div class="page-menu">
 <div class="tsd-navigation settings">

@@ -62,6 +62,7 @@ import { templateToOrders } from "@/lib/designer/assemblyTemplateToDraft";
 import {
     projectSnapshotForReview,
     templateComposedByAgreement,
+    templateComposedClauses,
     unfilledAssemblyTerms,
 } from "@/lib/designer/draftToAssemblyTemplate";
 import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
@@ -283,6 +284,19 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
     const composedByOrderId = useMemo(() => {
         if (resolved.kind === "published") return templateComposedByAgreement(resolved.assemblyTemplate);
         return review?.ok ? review.composedByOrderId : {};
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [resolved, review, clauseSpecsVersion]);
+    /** canvas order id → clauseId → version, read from the template exactly as
+     *  `templateComposedClauses` reads it (absent = 1), so the canvas chips
+     *  and the drawer name the version each composed clause is. */
+    const composedVersionsByOrderId = useMemo(() => {
+        const lists = resolved.kind === "published"
+            ? templateComposedClauses(resolved.assemblyTemplate)
+            : review?.ok ? review.composedClausesByOrderId : {};
+        return Object.fromEntries(Object.entries(lists).map(([orderId, picks]) => [
+            orderId,
+            Object.fromEntries(picks.map((c) => [c.clauseId, c.version])),
+        ])) as Record<string, Record<string, number>>;
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [resolved, review, clauseSpecsVersion]);
     /** The assembly-scoped terms the composition carries — composed once for the
@@ -649,6 +663,51 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                             it cannot be published from here: {review.error}
                         </p>
                     )}
+                    {review?.ok && review.folded.length > 0 && (
+                        <div className="mt-2 max-w-3xl space-y-1" data-testid="review-folded-clauses">
+                            <p className="text-xs text-warning-fg leading-relaxed">
+                                Required clauses: their specs mark them required, so they are added
+                                without your pick. Anyone can register a clause, so check that each
+                                id and version below is one you mean to publish; confirming
+                                publishes them with this assembly.
+                            </p>
+                            <ul className="text-xs text-warning-fg font-mono space-y-0.5">
+                                {review.folded.map((clause) => (
+                                    <li key={`${clause.clauseId}#${clause.version}`} data-testid={`review-folded-${clause.clauseId}-v${clause.version}`}>
+                                        {clause.clauseId} · v{clause.version}
+                                        <span className="font-sans"> — {clause.title} (
+                                            {clause.carriedBy[0] === "assembly"
+                                                ? "assembly terms"
+                                                : `${clause.carriedBy.length} of ${review.template.agreements.length} agreements`}
+                                        )</span>
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                    )}
+                    {review?.ok && Object.values(review.composedClausesByOrderId).some((picks) => picks.length > 0) && (
+                        <div className="mt-2 max-w-3xl space-y-1" data-testid="review-composed-clauses">
+                            <p className="text-xs text-warning-fg leading-relaxed">
+                                Your clauses, by order and version:
+                            </p>
+                            <ul className="text-xs text-warning-fg font-mono space-y-0.5">
+                                {orders.map((order, index) => {
+                                    const picks = review.composedClausesByOrderId[order.orderHash] ?? [];
+                                    if (picks.length === 0) return null;
+                                    return (
+                                        <li key={order.orderHash} data-testid={`review-composed-order-${index}`}>
+                                            <span className="font-sans">Order {index + 1}: </span>
+                                            {picks.map((clause, i) => (
+                                                <span key={`${clause.clauseId}#${clause.version}`} data-testid={`review-composed-${clause.clauseId}-v${clause.version}`}>
+                                                    {i > 0 ? ", " : ""}{clause.clauseId} · v{clause.version}
+                                                </span>
+                                            ))}
+                                        </li>
+                                    );
+                                })}
+                            </ul>
+                        </div>
+                    )}
                     {review?.ok && anchoredBinding && (
                         <p
                             className="text-xs text-warning-fg mt-2 max-w-3xl leading-relaxed"
@@ -755,6 +814,7 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                         <TopologyCanvas
                             orders={orders}
                             clauseValuesByOrderId={composedByOrderId}
+                            clauseVersionsByOrderId={composedVersionsByOrderId}
                             title={`${resolved.name} (read-only)`}
                             designerMode
                             onSelectNode={setSelectedOrderId}
@@ -766,6 +826,9 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                     onClose={() => setSelectedOrderId(null)}
                     selectedClauseValues={
                         selectedOrderId ? (composedByOrderId[selectedOrderId] ?? {}) : undefined
+                    }
+                    selectedClauseVersions={
+                        selectedOrderId ? (composedVersionsByOrderId[selectedOrderId] ?? {}) : undefined
                     }
                     embedded
                     readOnly

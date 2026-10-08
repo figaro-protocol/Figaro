@@ -41,7 +41,7 @@ describe("CapabilityRail — a choice card opens a chooser", () => {
         id: `p:o:${clauseId}-seller-reassert`,
         label: title,
         actionKind: "reassert-committed-section",
-        action: { executionType: "transaction", kind: "submit-clause-attestation", orderHash: "o", clauseId, stage: 0, party: "seller", reasserts: true },
+        action: { executionType: "transaction", kind: "submit-clause-attestation", orderHash: "o", clauseId, version: 1, stage: 0, party: "seller", reasserts: true },
         preconditions: [],
     } as unknown as CapabilityModel);
     const card = (choices: CapabilityModel[]): CapabilityModel => ({

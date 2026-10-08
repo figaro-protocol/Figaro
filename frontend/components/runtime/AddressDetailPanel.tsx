@@ -43,7 +43,7 @@ import { extractErrorMessage } from "@/lib/shared/errors";
 import type { InteractionSurfaceProps } from "@/components/runtime/interactionSurfaces";
 import type { PartyRole } from "@/lib/kernel/walletProcessQueries";
 
-export function AddressDetailPanel({ processId, orderHash, clauseId, buyer, seller }: InteractionSurfaceProps) {
+export function AddressDetailPanel({ processId, orderHash, clauseId, version, buyer, seller }: InteractionSurfaceProps) {
     const { address } = useAccount();
     const { data: walletClient } = useWalletClient();
     const attestationActions = useAttestationCoordinatorActions();
@@ -131,10 +131,11 @@ export function AddressDetailPanel({ processId, orderHash, clauseId, buyer, sell
             // hash-only, so the ciphertext never reaches calldata and stays
             // deletable on the channel; the coordinator merkle-binds the
             // section and hash-binds the content.
-            const spec = getClauseSpec(clauseId);
+            // Keyed by the committed section's own version — the clause hash
+            // the signed agreement committed.
             const anchorArgs = {
                 orderHash: orderHash as `0x${string}`,
-                clauseId: computeClauseKey(clauseId, spec?.version ?? 1),
+                clauseId: computeClauseKey(clauseId, version),
                 stage: 0,
                 content: addressDetailBlobHash(blobB64),
                 failureMessage: "Anchoring the address detail failed",
@@ -146,10 +147,10 @@ export function AddressDetailPanel({ processId, orderHash, clauseId, buyer, sell
         } finally {
             setBusy(false);
         }
-    }, [channel, address, peerPubKey, walletClient, counterparty, orderHash, clauseId, form, attestationActions, role]);
+    }, [channel, address, peerPubKey, walletClient, counterparty, orderHash, clauseId, version, form, attestationActions, role]);
 
     if (!role) return null;
-    const clauseTitle = getClauseSpec(clauseId)?.title ?? clauseId;
+    const clauseTitle = getClauseSpec(clauseId, version)?.title ?? clauseId;
     // Role-flavored copy over ONE symmetric body: what I ask for and what I
     // might share differ by seat, the ceremony does not.
     const requestLabel = role === "seller" ? "Request delivery address" : "Request pickup address";

@@ -141,6 +141,10 @@ export interface TopologyCanvasProps {
     /** Authoring mode: per-order composed clause values (clauseId → field
      *  values), used to render each node's derived "what it does" chips. */
     clauseValuesByOrderId?: Record<string, Record<string, Record<string, unknown>>>;
+    /** Authoring mode: per-order clause versions (clauseId → version) for the
+     *  clauses in `clauseValuesByOrderId`. Supplied, each chip reads its spec
+     *  at that version and names it; omitted, chips name no version. */
+    clauseVersionsByOrderId?: Record<string, Record<string, number>>;
 }
 
 export function TopologyCanvas({
@@ -156,6 +160,7 @@ export function TopologyCanvas({
     onDeleteNode,
     designerMode = false,
     clauseValuesByOrderId,
+    clauseVersionsByOrderId,
 }: TopologyCanvasProps) {
     // IPFS-first agreement hydration (the shared singleton) — the canvas never
     // reads localStorage synchronously; nodes rebuild as hydration completes.
@@ -214,7 +219,7 @@ export function TopologyCanvas({
                 id: order.orderHash,
                 type: "order",
                 position: posMap.get(order.orderHash) ?? { x: 0, y: 0 },
-                data: { ...order, decimals, isBuyer, isSeller, orderNumber: orderIndex + 1, onDelete: onDeleteNode, isRoot, designerMode, designerClauseValues: clauseValuesByOrderId?.[order.orderHash], onAddSubOrderClick: onAddSubOrder, onAddParentClick: onAddParent, candidateParents } satisfies OrderNodeData,
+                data: { ...order, decimals, isBuyer, isSeller, orderNumber: orderIndex + 1, onDelete: onDeleteNode, isRoot, designerMode, designerClauseValues: clauseValuesByOrderId?.[order.orderHash], designerClauseVersions: clauseVersionsByOrderId?.[order.orderHash], onAddSubOrderClick: onAddSubOrder, onAddParentClick: onAddParent, candidateParents } satisfies OrderNodeData,
             };
         });
 
@@ -241,7 +246,7 @@ export function TopologyCanvas({
 
         setNodes(newNodes);
         setEdges(newEdges);
-    }, [orders, agreements, walletAddress, decimals, designerMode, clauseValuesByOrderId, setNodes, setEdges, onDeleteNode]);
+    }, [orders, agreements, walletAddress, decimals, designerMode, clauseValuesByOrderId, clauseVersionsByOrderId, setNodes, setEdges, onDeleteNode]);
 
     return (
         <div>

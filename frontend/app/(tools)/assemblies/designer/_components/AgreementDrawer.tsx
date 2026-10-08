@@ -48,6 +48,11 @@ interface Props {
      *  `block.design.fills` (the designer's tailoring — consent's affix);
      *  every other clause carries `{}`, its fields fill at checkout. */
     selectedClauseValues?: Record<string, Record<string, unknown>>;
+    /** clauseId → the version the composition carries for the current order
+     *  (absent = 1, the template's sparse rule). Supplied, a registry row is
+     *  checked only at that exact version and every row names its version;
+     *  omitted, presence of the id alone checks the row. */
+    selectedClauseVersions?: Record<string, number>;
     /** Toggle a clause on/off for the current order. */
     onToggleClause?: (clauseId: string, next: boolean, version?: number) => void;
     /** Set one field named in a selected clause's `design.fills` (the only
@@ -63,6 +68,7 @@ export function AgreementDrawer({
     orders,
     onSelectOrder,
     selectedClauseValues,
+    selectedClauseVersions,
     onToggleClause,
     onSetClauseField,
 }: Props) {
@@ -313,6 +319,7 @@ export function AgreementDrawer({
                     {openSection === "registry" && (
                         <ClauseRegistryPanel
                             selectedClauseValues={selectedClauseValues}
+                            selectedClauseVersions={selectedClauseVersions}
                             onToggleClause={onToggleClause}
                             onSetClauseField={onSetClauseField}
                         />
@@ -337,6 +344,7 @@ export function AgreementDrawer({
  */
 interface ClauseRegistryPanelProps {
     selectedClauseValues?: Record<string, Record<string, unknown>>;
+    selectedClauseVersions?: Record<string, number>;
     onToggleClause?: (clauseId: string, next: boolean, version?: number) => void;
     onSetClauseField?: (clauseId: string, field: string, value: unknown) => void;
 }
@@ -349,6 +357,7 @@ interface ClauseRegistryPanelProps {
  */
 function ClauseRegistryPanel({
     selectedClauseValues,
+    selectedClauseVersions,
     onToggleClause,
     onSetClauseField,
 }: ClauseRegistryPanelProps) {
@@ -433,6 +442,7 @@ function ClauseRegistryPanel({
                                                 clause={clause}
                                                 registeredClauses={registeredClauses}
                                                 selectedClauseValues={selectedClauseValues}
+                                                selectedClauseVersions={selectedClauseVersions}
                                                 onToggleClause={onToggleClause}
                                                 onSetClauseField={onSetClauseField}
                                             />
@@ -448,17 +458,24 @@ function ClauseControl({
     clause,
     registeredClauses,
     selectedClauseValues,
+    selectedClauseVersions,
     onToggleClause,
     onSetClauseField,
 }: {
     clause: RegisteredClauseEvent;
     registeredClauses: ReadonlyArray<RegisteredClauseEvent> | null | undefined;
     selectedClauseValues?: Record<string, Record<string, unknown>>;
+    selectedClauseVersions?: Record<string, number>;
     onToggleClause?: (clauseKey: string, next: boolean, version?: number) => void;
     onSetClauseField?: (clauseKey: string, field: string, value: unknown) => void;
 }) {
     const clauseKey = clause.clauseId ?? clause.idHash;
-    const selected = selectedClauseValues ? clauseKey in selectedClauseValues : false;
+    // A clause is (id, version): with the composition's versions supplied, a
+    // registered row is checked only at the version the composition carries.
+    const selected = selectedClauseValues
+        ? clauseKey in selectedClauseValues
+            && (!selectedClauseVersions || (selectedClauseVersions[clauseKey] ?? 1) === clause.version)
+        : false;
     const values = selectedClauseValues?.[clauseKey] ?? {};
     const spec = clause.clauseId ? getClauseSpec(clause.clauseId, clause.version) : undefined;
     return (
@@ -476,7 +493,7 @@ function ClauseControl({
                     title={spec?.description}
                 >
                     {spec?.title ?? clause.clauseId ?? truncateHex(clause.idHash, { head: 10, tail: 0 })}
-                    {clause.version > 1 ? <span className="ml-1 font-mono text-[10px] text-ink-muted">v{clause.version}</span> : null}
+                    {clause.version > 1 || selectedClauseVersions ? <span className="ml-1 font-mono text-[10px] text-ink-muted">v{clause.version}</span> : null}
                 </span>
             </label>
             {selected && spec && spec.fields.length > 0 && (
@@ -533,6 +550,7 @@ function ClauseControl({
                                                 clause={nc}
                                                 registeredClauses={registeredClauses}
                                                 selectedClauseValues={selectedClauseValues}
+                                                selectedClauseVersions={selectedClauseVersions}
                                                 onToggleClause={onToggleClause}
                                                 onSetClauseField={onSetClauseField}
                                             />

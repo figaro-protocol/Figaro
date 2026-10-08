@@ -15,7 +15,7 @@ import {
     type SubOrderPricing,
 } from "@figaro-protocol/sdk";
 import { displayNameForAddress } from "@/lib/member/memberListing";
-import { templateParentOrderHashes } from "@/lib/shared/assemblyTemplate";
+import { templateClauseVersion, templateParentOrderHashes } from "@/lib/shared/assemblyTemplate";
 import {
     clauseCatalogFills,
     clauseDesignFills,
@@ -130,7 +130,9 @@ export function deriveKitBreakdown(args: {
 export interface AgreementGroup {
     key: string;
     label: string;
-    clauses: Array<{ clauseId: string; values: string; data: Record<string, unknown>; fillable: boolean }>;
+    /** `version` is the clause version the template composed for the section
+     *  (`templateClauseVersion`) — every spec read the row makes is keyed on it. */
+    clauses: Array<{ clauseId: string; version: number; values: string; data: Record<string, unknown>; fillable: boolean }>;
 }
 
 /**
@@ -139,11 +141,16 @@ export interface AgreementGroup {
  * values, spec-driven. Mandatory clauses are protocol-composed and stay out
  * of the review; the profile fold and the mechanical-fill subtraction are
  * the SAME ones the order build applies, so the buyer reviews what will
- * actually commit.
+ * actually commit. Every spec read is EXACT — the version the template
+ * composed for the section (`templateClauseVersion`), never whichever version
+ * of the clause id the registry read loaded highest: a stranger's later
+ * version of the same id declares nothing about this template's section.
  */
 export function deriveAgreementGroups(args: {
     pickedAssembly: (PlanAssembly & {
-        assemblyTemplate: { agreements: Array<{ id?: string | number; clauses: Record<string, Record<string, unknown>> }> };
+        assemblyTemplate: {
+            agreements: Array<{ id?: string | number; clauses: Record<string, Record<string, unknown>>; clauseVersions?: Record<string, number> }>;
+        };
     }) | undefined;
     leadAddress: `0x${string}`;
     sellerCatalogs: ListingCatalogs & Parameters<typeof profileValuesFor>[1];
@@ -162,28 +169,33 @@ export function deriveAgreementGroups(args: {
     // the checkout walk folds them into every agreement, so every party
     // signs them. Same fillable rules as per-order clauses; keyed by the
     // reserved group key "assembly" (never a template order id).
-    const assemblySections = (pickedAssembly.assemblyTemplate as {
+    const { assemblyClauses: assemblySections = {}, assemblyClauseVersions } = pickedAssembly.assemblyTemplate as {
         assemblyClauses?: Record<string, Record<string, unknown>>;
-    }).assemblyClauses ?? {};
+        assemblyClauseVersions?: Record<string, number>;
+    };
+    const assemblyVersion = (clauseId: string) =>
+        templateClauseVersion({ clauseVersions: assemblyClauseVersions }, clauseId);
     const assemblyGroup: AgreementGroup[] = Object.keys(assemblySections).length === 0 ? [] : [{
         key: "assembly",
         label: "Assembly terms (every agreement)",
         clauses: Object.entries(assemblySections)
-            .filter(([clauseId]) => !clauseIsMandatory(clauseId))
+            .filter(([clauseId]) => !clauseIsMandatory(clauseId, assemblyVersion(clauseId)))
             .map(([clauseId, fields]) => {
-            const specFields = getClauseSpec(clauseId)?.fields ?? [];
+            const version = assemblyVersion(clauseId);
+            const specFields = getClauseSpec(clauseId, version)?.fields ?? [];
             return {
                 clauseId,
+                version,
                 values: clauseValueSummary(fields),
                 data: fields as Record<string, unknown>,
                 // Design fills are FIELD-level, not clause-level: a clause the
                 // designer tailored (a pinned geocoder, a consent document) can
                 // still carry transaction particulars the buyer fills here —
                 // it is fillable iff at least one field is NOT designer-owned.
-                fillable: specFields.some((f) => !clauseDesignFills(clauseId).includes(f.name))
-                    && !clauseIsProcessLog(clauseId)
-                    && clauseCatalogFills(clauseId).length === 0
-                    && clauseProfileFills(clauseId).length === 0,
+                fillable: specFields.some((f) => !clauseDesignFills(clauseId, version).includes(f.name))
+                    && !clauseIsProcessLog(clauseId, version)
+                    && clauseCatalogFills(clauseId, version).length === 0
+                    && clauseProfileFills(clauseId, version).length === 0,
             };
         }),
     }];
@@ -196,24 +208,28 @@ export function deriveAgreementGroups(args: {
         // what will actually commit (and can Verify a declared
         // credential before placing the order).
         const previewClauses = fillProfileSections(
-            Object.fromEntries(Object.entries(order.clauses).filter(([clauseId]) => !clauseIsMandatory(clauseId))),
+            Object.fromEntries(Object.entries(order.clauses).filter(
+                ([clauseId]) => !clauseIsMandatory(clauseId, templateClauseVersion(order, clauseId)))),
             assigned ? profileValuesFor(assigned, sellerCatalogs) : undefined,
             specSource(),
+            order.clauseVersions,
         );
         // Fields the checkout walk fills MECHANICALLY (the provenance
         // anchor, the topology rewrite, …) — a buyer input the walk
         // would overwrite is a false affordance, so a clause whose
         // declared fields are ALL mechanical is not fillable. Derived
         // from the planner's own fill set, never a clause id.
-        const mechanicalFields = mechanicallyFilledFieldNames(previewClauses, specSource());
+        const mechanicalFields = mechanicallyFilledFieldNames(previewClauses, specSource(), order.clauseVersions);
         return {
             key: String(order.id ?? i),
             label: assigned ? nameOf(assigned) : "(to be assigned)",
             clauses: Object.entries(previewClauses)
                 .map(([clauseId, fields]) => {
-                    const specFields = getClauseSpec(clauseId)?.fields ?? [];
+                    const version = templateClauseVersion(order, clauseId);
+                    const specFields = getClauseSpec(clauseId, version)?.fields ?? [];
                     return {
                         clauseId,
+                        version,
                         values: clauseValueSummary(fields),
                         data: fields as Record<string, unknown>,
                         // A GENERAL clause's fields are transaction particulars
@@ -229,10 +245,10 @@ export function deriveAgreementGroups(args: {
                         // only its block.runtime.fields runtime params, never its
                         // content.
                         fillable: specFields.some((f) =>
-                            !clauseDesignFills(clauseId).includes(f.name) && !mechanicalFields.has(f.name))
-                            && !clauseIsProcessLog(clauseId)
-                            && clauseCatalogFills(clauseId).length === 0
-                            && clauseProfileFills(clauseId).length === 0,
+                            !clauseDesignFills(clauseId, version).includes(f.name) && !mechanicalFields.has(f.name))
+                            && !clauseIsProcessLog(clauseId, version)
+                            && clauseCatalogFills(clauseId, version).length === 0
+                            && clauseProfileFills(clauseId, version).length === 0,
                     };
                 }),
         };
@@ -244,10 +260,12 @@ export function deriveAgreementGroups(args: {
  * fields minus the designer's tailoring (`block.design.fills`, already valued on
  * the template). ONE list — the form renders it and the place-order gate below
  * checks it, so the sign gate can never demand a term the form never offered.
+ * Read at the EXACT version the template composed for the section (the row's
+ * `version`): a later registration of the same id changes no field offered here.
  */
-export function buyerAuthoredFields(clauseId: string): readonly FieldSpec[] {
-    const designFills = clauseDesignFills(clauseId);
-    return (getClauseSpec(clauseId)?.fields ?? []).filter((f) => !designFills.includes(f.name));
+export function buyerAuthoredFields(clauseId: string, version: number): readonly FieldSpec[] {
+    const designFills = clauseDesignFills(clauseId, version);
+    return (getClauseSpec(clauseId, version)?.fields ?? []).filter((f) => !designFills.includes(f.name));
 }
 
 /** A value counts as filled when it is present and non-empty — the same
@@ -273,6 +291,7 @@ export interface MissingFill {
     groupKey: string;
     groupLabel: string;
     clauseId: string;
+    version: number;
     clauseTitle: string;
     fieldName: string;
     fieldLabel: string;
@@ -298,14 +317,15 @@ export function unfilledRequiredFills(
         for (const clause of group.clauses) {
             if (!clause.fillable) continue;
             const values = { ...clause.data, ...(fills[group.key]?.[clause.clauseId] ?? {}) };
-            for (const field of buyerAuthoredFields(clause.clauseId)) {
+            for (const field of buyerAuthoredFields(clause.clauseId, clause.version)) {
                 if (!isDemandedOfBuyer(field)) continue;
                 if (isFilledValue(values[field.name])) continue;
                 missing.push({
                     groupKey: group.key,
                     groupLabel: group.label,
                     clauseId: clause.clauseId,
-                    clauseTitle: getClauseSpec(clause.clauseId)?.title ?? clause.clauseId,
+                    version: clause.version,
+                    clauseTitle: getClauseSpec(clause.clauseId, clause.version)?.title ?? clause.clauseId,
                     fieldName: field.name,
                     fieldLabel: field.label ?? field.name,
                 });

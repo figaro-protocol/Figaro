@@ -57,8 +57,8 @@ interface RuntimeIndexes {
  *    `attestAsSeller` and stands for its own order, not this one;
  *  - any other attester reached the order only through `attestViaResolver`,
  *    i.e. the order's seller authorized it, so it stands for that seller. */
-function attestationStandsFor(
-    order: Order,
+export function attestationStandsFor(
+    order: Pick<Order, "buyer" | "seller">,
     attester: string,
     party: PartyRole,
     processSellers: Set<string>,
@@ -140,8 +140,8 @@ function roleCapabilities(
         const orderAttestations = indexes.attestationsByOrder.get(orderIdStr) ?? [];
         for (const section of agreement.sections) {
             const clauseId = section.clause;
-            if (!clauseIsProcessLog(clauseId)) continue;               // only attestations-article ladders are lifecycles
-            const ladder = clauseLadderField(clauseId);
+            if (!clauseIsProcessLog(clauseId, section.version)) continue; // only attestations-article ladders are lifecycles
+            const ladder = clauseLadderField(clauseId, section.version);
             if (!ladder) continue;                                     // process-log clause without a declared ladder yet → nothing to advance
             const clauseIdHash = computeClauseKey(clauseId, section.version).toLowerCase();
             const parties: Array<PartyRole> = ["seller"];
@@ -174,6 +174,7 @@ function roleCapabilities(
                         kind: "submit-clause-attestation",
                         orderHash: orderIdStr,
                         clauseId,
+                        version: section.version,
                         stage,
                         eventCode,
                         ladderField: ladder.name,
@@ -201,9 +202,15 @@ function roleCapabilities(
         // read time against the committed policy) — and REPEATABLE while the
         // order is active (one attestation per reporting period; the evidence
         // window closes at resolve, on-chain and here).
+        //
+        // Each card names its order — position on the process chain and
+        // seller — as the re-assert card below does: the buyer is a party to
+        // every order of its process and the rail lists every order's cards
+        // together, so one clause's witness card repeats once per order.
+        const orderLabel = `Order ${indexes.positionByOrder.get(orderIdStr)} of ${indexes.positionByOrder.size} · seller ${truncateHex(order.seller)}`;
         for (const section of agreement.sections) {
             const clauseId = section.clause;
-            if (clauseIsProcessLog(clauseId)) continue;                // a ladder's stage overrides shape its content, not a witness
+            if (clauseIsProcessLog(clauseId, section.version)) continue; // a ladder's stage overrides shape its content, not a witness
             for (const witness of clauseWitnessStages(clauseId, section.version)) {
                 const title = getClauseSpec(clauseId, section.version)?.title ?? clauseId;
                 for (const party of ["seller", "buyer"] as const) {
@@ -212,6 +219,7 @@ function roleCapabilities(
                     out.push({
                         id: capId,
                         label: title,
+                        orderLabel,
                         eventCode: `stage-${witness.stage}`,
                         actionKind: "submit-clause-attestation",
                         action: {
@@ -219,6 +227,7 @@ function roleCapabilities(
                             kind: "submit-clause-attestation",
                             orderHash: orderIdStr,
                             clauseId,
+                            version: section.version,
                             stage: witness.stage,
                             party,
                         },
@@ -251,17 +260,12 @@ function roleCapabilities(
         // own attestation: the coordinator attests one section per call, so
         // an "all" act would be N wallet prompts that can stop half-way. The
         // card is absent once every section is re-asserted.
-        //
-        // The card names its order — position on the process chain and seller —
-        // because the buyer is a party to every order of its process and the
-        // rail lists every order's cards together.
-        const orderLabel = `Order ${indexes.positionByOrder.get(orderIdStr)} of ${indexes.positionByOrder.size} · seller ${truncateHex(order.seller)}`;
         for (const party of ["seller", "buyer"] as const) {
             if (party === "seller" ? !isSeller : !isBuyer) continue;
             const choices: CapabilityModel[] = [];
             for (const section of agreement.sections) {
                 const clauseId = section.clause;
-                if (clauseIsProcessLog(clauseId)) continue;
+                if (clauseIsProcessLog(clauseId, section.version)) continue;
                 if (clauseWitnessStages(clauseId, section.version).some((w) => w.stage === 0)) continue;
                 const clauseIdHash = computeClauseKey(clauseId, section.version).toLowerCase();
                 const already = orderAttestations.some(
@@ -280,6 +284,7 @@ function roleCapabilities(
                         kind: "submit-clause-attestation",
                         orderHash: orderIdStr,
                         clauseId,
+                        version: section.version,
                         stage: 0,
                         party,
                         reasserts: true,

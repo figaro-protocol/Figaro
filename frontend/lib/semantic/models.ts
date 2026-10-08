@@ -56,6 +56,10 @@ export interface SubmitClauseAttestationCapabilityAction {
     orderHash: string;
     /** Human clauseId (the readable registry id, not its keccak hash). */
     clauseId: string;
+    /** The committed section's version — with `clauseId`, the full identity
+     *  the agreement committed; the executor encodes and keys the attestation
+     *  from exactly that spec, never a later registered version. */
+    version: number;
     /** The on-chain uint8 stage — the enum ordinal for a ladder, the declared
      *  `spec.stages` key for a witness. */
     stage: number;

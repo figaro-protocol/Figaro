@@ -248,10 +248,12 @@ export async function reconstructOrdersFromTemplate(
                           params.currency,
                           params.specs,
                           node.nodeId,
+                          node.clauseVersions,
                       ),
                       walkCompositionHash ?? (walkCompositionHash = templateCompositionHash(template)),
                       params.specs,
                       node.nodeId,
+                      node.clauseVersions,
                   ),
                   params.specs,
                   node.clauseVersions,
@@ -332,8 +334,9 @@ function withRealParents(
 }
 
 /** The ONE guarded walk fill: write a derived `field` value onto the composed
- *  clause whose loaded spec satisfies `predicate` — the same spec-routed
- *  lookup the checkout fills run (`composedClauseWhere`); no clause is ever
+ *  clause whose loaded spec, at its composed version (`clauseVersions`,
+ *  sparse — absent = 1), satisfies `predicate` — the same spec-routed lookup
+ *  the checkout fills run (`composedClauseWhere`); no clause is ever
  *  named. No match (nothing composed, or a cold spec cache) is a no-op,
  *  matching every other spec-routed fill in this SDK. An existing value is
  *  accepted only when IDENTICAL to `value` (case-insensitive — every tenant
@@ -347,12 +350,13 @@ function fillWalkField(
     value: string,
     specs: SpecSource,
     nodeId: string,
+    clauseVersions: Readonly<Record<string, number>> | undefined,
     opts: {
         predicate: (spec: ProjectionSpecView) => boolean;
         contradiction: (existing: string) => string;
     },
 ): Record<string, Record<string, unknown>> {
-    const clauseId = composedClauseWhere(clauses, specs, opts.predicate);
+    const clauseId = composedClauseWhere(clauses, specs, opts.predicate, clauseVersions);
     if (!clauseId) return clauses;
     const existing = clauses[clauseId]?.[field];
     if (typeof existing === "string" && existing.length > 0 && existing.toLowerCase() !== value.toLowerCase()) {
@@ -374,8 +378,9 @@ function fillWalkCurrency(
     currency: Address,
     specs: SpecSource,
     nodeId: string,
+    clauseVersions: Readonly<Record<string, number>>,
 ): Record<string, Record<string, unknown>> {
-    return fillWalkField(clauses, "currency", currency, specs, nodeId, {
+    return fillWalkField(clauses, "currency", currency, specs, nodeId, clauseVersions, {
         predicate: (spec) => specDeclaresField(spec, "payment") && specDeclaresContentField(spec, "currency"),
         contradiction: (existing) =>
             `override names commerce currency ${existing}, which contradicts this process's ` +
@@ -391,14 +396,16 @@ function fillWalkCurrency(
  *  (`fillProvenanceSection` in checkoutPlan routes the same way). A
  *  CONTRADICTING override throws — an agreement claiming to instantiate a
  *  different composition than the one that built it is a forgery to surface,
- *  not a value to reconcile. */
+ *  not a value to reconcile. Each section's spec is read at its composed
+ *  version (`clauseVersions`, sparse — absent = 1). */
 export function fillWalkProvenance(
     clauses: Record<string, Record<string, unknown>>,
     compositionHash: `0x${string}`,
     specs: SpecSource,
     nodeId: string,
+    clauseVersions?: Readonly<Record<string, number>>,
 ): Record<string, Record<string, unknown>> {
-    return fillWalkField(clauses, "compositionHash", compositionHash, specs, nodeId, {
+    return fillWalkField(clauses, "compositionHash", compositionHash, specs, nodeId, clauseVersions, {
         predicate: (spec) => specDeclaresContentField(spec, "compositionHash"),
         contradiction: (existing) =>
             `override names compositionHash ${existing}, which contradicts this template's ` +

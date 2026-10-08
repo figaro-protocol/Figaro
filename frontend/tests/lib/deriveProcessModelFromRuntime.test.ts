@@ -1,6 +1,7 @@
-import { describe, it, expect } from "vitest";
+import { beforeAll, describe, it, expect } from "vitest";
 import type { Agreement } from "@figaro-protocol/sdk";
-import { computeClauseKey } from "@figaro-protocol/sdk";
+import { canonicalContentHash, computeClauseKey } from "@figaro-protocol/sdk";
+import { loadClauseSpec, setClauseSpecFetcher } from "@/lib/shared/clauseSpecSource";
 import { deriveProcessModelFromRuntime } from "@/lib/semantic/deriveProcessModelFromRuntime";
 import { OrderState, type Order } from "@/lib/kernel/store";
 import type { ProcessSummary } from "@/lib/kernel/walletProcessQueries";
@@ -188,5 +189,69 @@ describe("re-assert committed sections — several orders in one process", () =>
         const crossOrder = reasserted(1, SELLER_B);
         const [sellerCard] = cardsFor(SELLER, [crossOrder]);
         expect(choicesOf(sellerCard)).toHaveLength(K);
+    });
+});
+
+// A clause declaring a witness stage surfaces one witness card per order to
+// the buyer, who is a party to every order of its process: each card names
+// its order (position on the chain, seller), as the re-assert card does, and
+// carries the committed section's version.
+describe("witness-stage cards — several orders in one process", () => {
+    const WITNESS_SPEC = {
+        clauseId: "test-witness-reading",
+        version: 1,
+        title: "Witness reading",
+        description: "Declares one witness stage.",
+        fields: [{ name: "note", type: "string", required: false }],
+        stages: { "1": [{ name: "reading", type: "string", required: true }] },
+    };
+    const SELLER_B = "0x5555555555555555555555555555555555555555" as const;
+    const ORDER_B = `0x${"0b".repeat(32)}`;
+    const AGREEMENT_B = `0x${"0e".repeat(32)}`;
+    const orderB: Order = {
+        ...order,
+        orderHash: ORDER_B,
+        seller: SELLER_B,
+        cumulativeValue: 5n,
+        payment: 2n,
+        sellerBond: 10n,
+        buyerBond: 4n,
+        agreementHash: AGREEMENT_B,
+    };
+    const witnessSection = { clause: WITNESS_SPEC.clauseId, version: 1, data: {} };
+    const agreements = new Map<string, Agreement>([
+        [AGREEMENT_HASH, { ...agreement, sections: [witnessSection] }],
+        [AGREEMENT_B, { ...agreement, seller: SELLER_B, sections: [witnessSection] }],
+    ]);
+
+    beforeAll(async () => {
+        setClauseSpecFetcher(async () => WITNESS_SPEC);
+        await loadClauseSpec(WITNESS_SPEC.clauseId, 1, "mem://test-witness-reading", canonicalContentHash(WITNESS_SPEC));
+    });
+
+    const witnessCards = (address: string): CapabilityModel[] =>
+        deriveProcessModelFromRuntime(summary, [orderB, order], agreements, address, undefined, [])
+            .orders.flatMap((o) => o.capabilities)
+            .filter((c) => c.actionKind === "submit-clause-attestation");
+
+    it("two orders → two buyer witness cards, one title, sub-lines naming each order", () => {
+        const cards = witnessCards(BUYER);
+        expect(cards).toHaveLength(2);
+        expect(new Set(cards.map((c) => c.label))).toEqual(new Set(["Witness reading"]));
+        const byOrder = new Map(cards.map((c) => [c.scopeId, c.orderLabel]));
+        expect(byOrder.get(ORDER_HASH)).toBe(`Order 1 of 2 · seller ${truncateHex(SELLER)}`);
+        expect(byOrder.get(ORDER_B)).toBe(`Order 2 of 2 · seller ${truncateHex(SELLER_B)}`);
+    });
+
+    it("each witness card carries the committed section's version", () => {
+        for (const card of witnessCards(BUYER)) {
+            expect(card.action.executionType === "transaction" && card.action.kind === "submit-clause-attestation" && card.action.version).toBe(1);
+        }
+    });
+
+    it("the seller of one order sees its own order's card, named", () => {
+        const cards = witnessCards(SELLER_B);
+        expect(cards).toHaveLength(1);
+        expect(cards[0].orderLabel).toBe(`Order 2 of 2 · seller ${truncateHex(SELLER_B)}`);
     });
 });

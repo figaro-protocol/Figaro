@@ -1594,7 +1594,8 @@ What the ceilings count:
 
 - **Token risk** — the wallet's bonds on a Commitment (the buyer's, the
   seller's, or both when the wallet is both) plus every `approve` at its
-  amount.
+  amount; `approve` is the only selector a policy may allow on the
+  denomination token, and a policy naming another is refused at load.
 - **Native risk** — a transaction's `value` PLUS the most gas it can cost:
   the gas limit at the highest price per gas it allows (`gas × maxFeePerGas`
   or `gas × gasPrice`, the larger when both are present). Gas is ETH leaving
@@ -1761,8 +1762,9 @@ clause specs.
 import { buildOrderAgreement, assertAgreementSignable, sectionByField } from "@figaro-protocol/sdk";
 
 // clauses: clauseId → field values (design-time ∪ runtime fill); clauseVersions:
-// clauseId → the registered version composed (template-sourced; absent entries
-// fall back to the loaded spec's version).
+// clauseId → the registered version composed (sparse; an absent entry is
+// version 1, never the highest loaded — every (clauseId, version) slot is open
+// to anyone, so a caller composing another version states it).
 const { agreement, agreementHash } = buildOrderAgreement(
   buyer, seller, clauses, specs, clauseVersions,
 );
@@ -1941,12 +1943,12 @@ await reconstructOrdersFromTemplate(template, {
     const filled = fillProvenanceSection(
       fillProfileSections(
         fillClassSections(
-          fillCommerceSection(planned.clauses, payment, currency, specs, lineItems),
-          lineItems, specs,
+          fillCommerceSection(planned.clauses, payment, currency, specs, lineItems, planned.clauseVersions),
+          lineItems, specs, planned.clauseVersions,
         ),
-        profileValuesFor(seller, memberCatalogs), specs,
+        profileValuesFor(seller, memberCatalogs), specs, planned.clauseVersions,
       ),
-      templateCompositionHash(template), specs,
+      templateCompositionHash(template), specs, planned.clauseVersions,
     );
     return { seller, payment, overrides: filled };
   },
@@ -1967,7 +1969,7 @@ hand before running any fill:
 ```ts
 const rawNode = template.agreements.find((a) => a.id === planned.nodeId)!;
 const clauses = { ...template.assemblyClauses, ...rawNode.clauses }; // ← the pre-merge
-const filled = fillProvenanceSection(clauses, templateCompositionHash(template), specs);
+const filled = fillProvenanceSection(clauses, templateCompositionHash(template), specs, planned.clauseVersions);
 ```
 
 Skip the pre-merge and `fillProvenanceSection` (which writes the mandatory,

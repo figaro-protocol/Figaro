@@ -57,18 +57,18 @@ describe("buyerAuthoredFields — the ONE list the form renders and the gate che
     beforeAll(async () => { await primeClauseSpecs(); });
 
     it("offers the transaction particulars and withholds the designer's tailoring", () => {
-        const names = buyerAuthoredFields("figaro-geolocation").map((f) => f.name);
+        const names = buyerAuthoredFields("figaro-geolocation", 1).map((f) => f.name);
         // origin/destination and the standard they are written in are the
         // buyer's; the geocoder is a `block.design.fills` term.
         expect(names).toEqual(["geocodeStandard", "origin", "destination"]);
     });
 
     it("a clause with no cached spec offers nothing (resolved-empty = absence)", () => {
-        expect(buyerAuthoredFields("figaro-never-registered")).toEqual([]);
+        expect(buyerAuthoredFields("figaro-never-registered", 1)).toEqual([]);
     });
 
     it("the required field a sibling reads its format from is offered despite its default", () => {
-        const fields = buyerAuthoredFields("figaro-geolocation");
+        const fields = buyerAuthoredFields("figaro-geolocation", 1);
         const standard = fields.find((f) => f.name === "geocodeStandard")!;
         // Required, defaulted — and the sibling origin/destination declare
         // `formatFromField`, so the form must let the buyer set it. Without it
@@ -140,7 +140,7 @@ describe("unfilledRequiredFills — the six-party import chain, nothing filled",
     it("filling every demanded term empties the gate", () => {
         const fills: Record<string, Record<string, Record<string, unknown>>> = {};
         for (const m of unfilledRequiredFills(groupsFor("tradelens.json"), {})) {
-            const field = buyerAuthoredFields(m.clauseId).find((f) => f.name === m.fieldName)!;
+            const field = buyerAuthoredFields(m.clauseId, m.version).find((f) => f.name === m.fieldName)!;
             const value = field.type === "array"
                 ? ["face-to-face"]
                 : field.type === "enum"
@@ -187,7 +187,7 @@ describe("unfilledRequiredFills — a value already composed on the template cou
     it("every reference assembly demands only terms the checkout offers a control for", () => {
         for (const file of ["tradelens.json", "local-commerce.json", "freelancer-value-chain.json"]) {
             for (const m of unfilledRequiredFills(groupsFor(file), {})) {
-                const field = buyerAuthoredFields(m.clauseId).find((f) => f.name === m.fieldName)!;
+                const field = buyerAuthoredFields(m.clauseId, m.version).find((f) => f.name === m.fieldName)!;
                 expect(field, `${file}: ${m.clauseId}.${m.fieldName} is on the offered list`).toBeDefined();
                 expect(field.required).toBe(true);
                 expect(field.default).toBeUndefined();

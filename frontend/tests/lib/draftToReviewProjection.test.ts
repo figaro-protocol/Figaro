@@ -14,17 +14,23 @@
  * Orders are composed the way the canvas composes them (synthetic session →
  * root → sub-order, then the drawer's clause map), never hand-written.
  */
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { beforeAll, describe, expect, it } from "vitest";
-import { serializeAssemblyTemplate } from "@figaro-protocol/sdk";
+import { canonicalContentHash, serializeAssemblyTemplate } from "@figaro-protocol/sdk";
 import { primeClauseSpecs } from "./primeClauseSpecs";
 import {
     projectSnapshotForReview,
     snapshotCompositionIdentity,
     snapshotToAssemblyTemplate,
     templateComposedByAgreement,
+    templateComposedClauses,
+    templateFoldedClauses,
     unfilledAssemblyTerms,
     assemblyClauseDefaults,
 } from "@/lib/designer/draftToAssemblyTemplate";
+import { assemblyTemplateToDraft } from "@/lib/designer/assemblyTemplateToDraft";
+import { loadClauseSpec, setClauseSpecFetcher } from "@/lib/shared/clauseSpecSource";
 import {
     createSyntheticRootOrder,
     createSyntheticSubOrder,
@@ -109,6 +115,18 @@ describe("projectSnapshotForReview — the review reads the bytes publish sends"
                 "an order the canvas composed terms on never reviews as empty",
             ).toBeGreaterThan(0);
         }
+    });
+
+    it("lists each order's picks by id AND version, read from the bytes", () => {
+        const review = projectSnapshotForReview(composed);
+        if (!review.ok) throw new Error(review.error);
+        const listed = (orderHash: string) => review.composedClausesByOrderId[orderHash]
+            .map((c) => `${c.clauseId}#${c.version}`).sort();
+        expect(listed(drawn.orders[0].orderHash)).toEqual(["figaro-acceptance-criteria#1", "figaro-schedule#1"]);
+        expect(listed(drawn.orders[1].orderHash)).toEqual(["figaro-acceptance-criteria#1"]);
+        // The same listing the /view path reads off a published template.
+        expect(templateComposedClauses(review.template)["order-0"].map((c) => c.clauseId).sort())
+            .toEqual([...ORDER_CLAUSES].sort());
     });
 
     it("keys the projection by the CANVAS's order ids, not the template's local labels", () => {
@@ -255,5 +273,165 @@ describe("assemblyClauseDefaults", () => {
     it("leaves a fill with no default empty, and an unknown clause seeds nothing", () => {
         expect(assemblyClauseDefaults("figaro-utility-token")).not.toHaveProperty("currency");
         expect(assemblyClauseDefaults("figaro-never-seen")).toEqual({});
+    });
+});
+
+// A spec marks itself mandatory in its own `block`, written by whoever
+// registered it, and any (clauseId, version) slot is anyone's. The review
+// lists every mandatory clause the bytes carry by id AND version, and a
+// stranger's later registration neither displaces the version a new design
+// folds nor the version a fork states. Runs LAST in this file: it adds the
+// stranger's specs to the module cache.
+describe("the mandatory fold — listed on the review, never displaced by a stranger's registration", () => {
+    let drawn: ReturnType<typeof drawCanvas>;
+    const CLAUSES_DIR = path.resolve(process.cwd(), "../clauses");
+    const commerce = JSON.parse(readFileSync(path.join(CLAUSES_DIR, "figaro-commerce.json"), "utf8")) as Record<string, unknown>;
+
+    /** Register (into the cache, as `useClauseSpecs` would from the chain) a
+     *  stranger's spec: the real commerce spec under another id or version. */
+    async function registerStranger(clauseId: string, version: number): Promise<void> {
+        const document = { ...commerce, clauseId, version, title: `${clauseId} v${version}` };
+        const uri = `stranger://${clauseId}/${version}`;
+        setClauseSpecFetcher(async (u) => (u === uri ? document : JSON.parse(readFileSync(u, "utf8"))));
+        await loadClauseSpec(clauseId, version, uri, canonicalContentHash(document));
+    }
+
+    beforeAll(async () => {
+        await primeClauseSpecs([...ORDER_CLAUSES, ...ASSEMBLY_CLAUSES, ...MANDATORY, "figaro-assembly-provenance"]);
+        drawn = drawCanvas();
+    });
+
+    it("lists every mandatory clause the bytes carry, by id and version, with what carries it", () => {
+        const review = projectSnapshotForReview(snapshotOf(drawn));
+        if (!review.ok) throw new Error(review.error);
+        const listed = review.folded.map((f) => `${f.clauseId}#${f.version}:${f.carriedBy.join(",")}`).sort();
+        expect(listed).toEqual([
+            "figaro-assembly-provenance#1:assembly",
+            "figaro-commerce#1:order-0,order-1",
+            "figaro-topology#1:order-0,order-1",
+        ]);
+        // The complement of the composed readout: together they are the template.
+        for (const agreement of review.template.agreements) {
+            const composed = Object.keys(templateComposedByAgreement(review.template)[agreement.id]);
+            const folded = templateFoldedClauses(review.template)
+                .filter((f) => f.carriedBy.includes(agreement.id)).map((f) => f.clauseId);
+            expect([...composed, ...folded].sort()).toEqual(Object.keys(agreement.clauses).sort());
+        }
+    });
+
+    it("a later registration of commerce marked mandatory displaces neither a new design nor a fork", async () => {
+        const before = projectSnapshotForReview(snapshotOf(drawn));
+        if (!before.ok) throw new Error(before.error);
+        await registerStranger("figaro-commerce", 99);
+
+        const after = projectSnapshotForReview(snapshotOf(drawn));
+        if (!after.ok) throw new Error(after.error);
+        expect(after.compositionHash).toBe(before.compositionHash);
+        expect(after.folded.some((f) => f.clauseId === "figaro-commerce" && f.version === 99)).toBe(false);
+
+        const fork = assemblyTemplateToDraft(before.template, { slug: "asm-fork" });
+        const forked = projectSnapshotForReview(fork);
+        if (!forked.ok) throw new Error(forked.error);
+        expect(forked.compositionHash).toBe(before.compositionHash);
+    });
+
+    it("a new clause id marked mandatory is listed on the review, never folded out of sight", async () => {
+        await registerStranger("stranger-term", 1);
+        const review = projectSnapshotForReview(snapshotOf(drawn));
+        if (!review.ok) throw new Error(review.error);
+        expect(review.folded).toContainEqual(expect.objectContaining({
+            clauseId: "stranger-term",
+            version: 1,
+            carriedBy: ["order-0", "order-1"],
+        }));
+    });
+});
+
+// The canvas records only non-1 versions, so a v1 pick reaches the build with
+// no version. A later v2 of the same id is anyone's registration: the review
+// lists, and the bytes carry, the v1 the designer picked. Runs LAST: it adds
+// a v2 spec to the module cache.
+describe("a pick with no recorded version — v1, never the highest loaded", () => {
+    let drawn: ReturnType<typeof drawCanvas>;
+    const CLAUSES_DIR = path.resolve(process.cwd(), "../clauses");
+    const schedule = JSON.parse(readFileSync(path.join(CLAUSES_DIR, "figaro-schedule.json"), "utf8")) as Record<string, unknown>;
+
+    beforeAll(async () => {
+        await primeClauseSpecs([...ORDER_CLAUSES, ...ASSEMBLY_CLAUSES, ...MANDATORY, "figaro-assembly-provenance"]);
+        drawn = drawCanvas();
+    });
+
+    it("a v2 registered after the pick neither moves the bytes nor the version the review lists", async () => {
+        const picked = snapshotOf(drawn, {
+            clausesByOrderId: { [drawn.orders[0].orderHash]: { "figaro-schedule": {} } },
+        });
+        const before = projectSnapshotForReview(picked);
+        if (!before.ok) throw new Error(before.error);
+
+        const document = { ...schedule, version: 2, title: "figaro-schedule v2" };
+        const uri = "stranger://figaro-schedule/2";
+        setClauseSpecFetcher(async (u) => (u === uri ? document : JSON.parse(readFileSync(u, "utf8"))));
+        await loadClauseSpec("figaro-schedule", 2, uri, canonicalContentHash(document));
+
+        const after = projectSnapshotForReview(picked);
+        if (!after.ok) throw new Error(after.error);
+        expect(after.compositionHash).toBe(before.compositionHash);
+        expect(after.template.agreements[0].clauseVersions).toBeUndefined();
+        expect(after.composedClausesByOrderId[drawn.orders[0].orderHash])
+            .toEqual([{ clauseId: "figaro-schedule", version: 1, title: expect.any(String) }]);
+
+        // Stating 2 is the only way to compose v2, and the listing says so.
+        const stated = projectSnapshotForReview({
+            ...picked,
+            clauseVersionsByOrderId: { [drawn.orders[0].orderHash]: { "figaro-schedule": 2 } },
+        });
+        if (!stated.ok) throw new Error(stated.error);
+        expect(stated.compositionHash).not.toBe(before.compositionHash);
+        expect(stated.composedClausesByOrderId[drawn.orders[0].orderHash])
+            .toEqual([{ clauseId: "figaro-schedule", version: 2, title: "figaro-schedule v2" }]);
+    });
+});
+
+// The assembly-terms gate and the toggle-on seed read the version map the
+// template carries, which is sparse: an absent entry is v1, never the highest
+// version of the id the registry read loaded. A stranger's v2 that drops the
+// required fill (or changes its default) moves neither Confirm's gate nor the
+// seed. Runs LAST: it adds v2 specs to the module cache.
+describe("assembly terms with no recorded version — read at v1", () => {
+    const CLAUSES_DIR = path.resolve(process.cwd(), "../clauses");
+    const read = (id: string) => JSON.parse(readFileSync(path.join(CLAUSES_DIR, `${id}.json`), "utf8")) as {
+        fields: Array<{ name: string; default?: unknown }>;
+        block: { design: { fills: string[] } };
+    };
+
+    async function registerV2(clauseId: string, document: Record<string, unknown>): Promise<void> {
+        const uri = `stranger://${clauseId}/2`;
+        setClauseSpecFetcher(async (u) => (u === uri ? document : JSON.parse(readFileSync(u, "utf8"))));
+        await loadClauseSpec(clauseId, 2, uri, canonicalContentHash(document));
+    }
+
+    beforeAll(async () => {
+        await primeClauseSpecs(["figaro-utility-token", "figaro-arbitration-kleros"]);
+        const token = read("figaro-utility-token");
+        await registerV2("figaro-utility-token", {
+            ...token, version: 2, block: { ...token.block, design: { ...token.block.design, fills: [] } },
+        });
+        const kleros = read("figaro-arbitration-kleros");
+        await registerV2("figaro-arbitration-kleros", {
+            ...kleros,
+            version: 2,
+            fields: kleros.fields.map((f) => (f.name === "klerosCourt" ? { ...f, default: "english-language" } : f)),
+        });
+    });
+
+    it("an unfilled v1 term still gates Confirm when a v2 declares no fill", () => {
+        expect(unfilledAssemblyTerms({ "figaro-utility-token": {} }, {}).map((m) => m.clauseId))
+            .toEqual(["figaro-utility-token"]);
+        expect(unfilledAssemblyTerms({ "figaro-utility-token": {} }, { "figaro-utility-token": 2 })).toEqual([]);
+    });
+
+    it("toggling a term on seeds v1's declared default, not v2's", () => {
+        expect(assemblyClauseDefaults("figaro-arbitration-kleros").klerosCourt).toBe("general");
+        expect(assemblyClauseDefaults("figaro-arbitration-kleros", 2).klerosCourt).toBe("english-language");
     });
 });

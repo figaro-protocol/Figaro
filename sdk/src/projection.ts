@@ -200,7 +200,12 @@ export function publicForm(agreement: Agreement, specs: SpecSource): Agreement {
 /** True for the MANDATORY clauses (`block.design.article: "mandatory"` —
  *  commerce, topology) that auto-fold into every template agreement; they are
  *  not designer choices. Never name this article "structural" — that word
- *  collides with the design/DAG sense. */
+ *  collides with the design/DAG sense.
+ *
+ *  The article is read from the spec's `block`, which whoever registered the
+ *  clause wrote: it confers no protocol standing. A surface that shows a
+ *  composition before it is anchored or signed lists the clauses this marks
+ *  by id and version, never leaves them out. */
 export function specIsMandatory(spec: ProjectionSpecView): boolean {
     return spec.hints?.article === "mandatory";
 }
@@ -336,10 +341,10 @@ function withSpecDefaults(
  * fill fields the composing input omitted — the SPEC speaks, the code
  * injects nothing of its own.
  *
- * `clauseVersions`: clauseId → the registered version composed
- * (template-sourced). Absent entries fall back to the loaded spec's version —
- * the non-template compose paths, where whatever the registry surfaced is
- * what was picked.
+ * `clauseVersions`: clauseId → the registered version composed — sparse,
+ * the template's rule: an absent entry is version 1, never the highest
+ * loaded, since every (clauseId, version) slot is open to anyone. A caller
+ * composing any other version states it here.
  */
 export function buildOrderAgreement(
     buyer: `0x${string}`,
@@ -350,7 +355,7 @@ export function buildOrderAgreement(
 ): OrderAgreement {
     const sections: AgreementSection[] = Object.keys(clauses)
         .map((clause) => {
-            const version = clauseVersions?.[clause] ?? specs.get(clause)?.version ?? 1;
+            const version = clauseVersions?.[clause] ?? 1;
             return {
                 clause,
                 version,
@@ -658,13 +663,15 @@ export function buildAssemblyTemplate(args: {
     orders: readonly TemplateOrderNode[];
     clausesByOrderId: Readonly<Record<string, Readonly<Record<string, Record<string, unknown>>>>>;
     /** orderId → clauseId → the registered version the designer composed.
-     *  Optional; absent entries mean version 1. */
+     *  Optional; absent entries mean version 1 — never the highest loaded,
+     *  since every (clauseId, version) slot is open to anyone. */
     clauseVersionsByOrderId?: Readonly<Record<string, Readonly<Record<string, number>>>>;
     /** ASSEMBLY-SCOPED composition — clauses declaring
      *  `block.design.scope: "assembly"`, composed ONCE for the whole design
      *  (clauseId → the designer's values). Optional; absent = none. */
     assemblyClauses?: Readonly<Record<string, Record<string, unknown>>>;
-    /** clauseId → registered version for the assembly-scoped clauses. */
+    /** clauseId → registered version for the assembly-scoped clauses.
+     *  Optional; absent entries mean version 1, as for the orders. */
     assemblyClauseVersions?: Readonly<Record<string, number>>;
     specs: SpecSource;
 }): AssemblyTemplate {
@@ -675,10 +682,24 @@ export function buildAssemblyTemplate(args: {
     // agreement-scoped clause composed at assembly level) is a build error,
     // never a silent no-op. Duplicates across levels are impossible once both
     // directions are refused.
+    //
+    // A composed clause is the (clauseId, version) the draft states, and an
+    // absent version is 1 — the template's sparse rule. Every slot is open to
+    // anyone, so the highest loaded version may be anyone's registration: a
+    // pick never resolves to it, and a stated version whose spec is not
+    // loaded is a build error, never a silent swap.
+    const orderPick = (orderId: string, clauseId: string): ProjectionSpecView => {
+        const version = clauseVersionsByOrderId?.[orderId]?.[clauseId] ?? 1;
+        const spec = specs.get(clauseId, version);
+        if (!spec) {
+            throw new Error(`${clauseId} v${version} is composed on an order but its spec is not loaded`);
+        }
+        return spec;
+    };
     for (const [orderId, clauseMap] of Object.entries(clausesByOrderId)) {
         for (const clauseId of Object.keys(clauseMap)) {
-            const spec = specs.get(clauseId, clauseVersionsByOrderId?.[orderId]?.[clauseId]);
-            if (spec && specIsAssemblyScoped(spec)) {
+            const spec = orderPick(orderId, clauseId);
+            if (specIsAssemblyScoped(spec)) {
                 throw new Error(
                     `${clauseId} declares design.scope "assembly" — compose it once at the assembly level, not on an order`,
                 );
@@ -686,9 +707,10 @@ export function buildAssemblyTemplate(args: {
         }
     }
     for (const clauseId of Object.keys(assemblyClauses ?? {})) {
-        const spec = specs.get(clauseId, assemblyClauseVersions?.[clauseId]);
+        const version = assemblyClauseVersions?.[clauseId] ?? 1;
+        const spec = specs.get(clauseId, version);
         if (!spec) {
-            throw new Error(`${clauseId} is composed at the assembly level but its spec is not loaded`);
+            throw new Error(`${clauseId} v${version} is composed at the assembly level but its spec is not loaded`);
         }
         if (!specIsAssemblyScoped(spec)) {
             throw new Error(
@@ -697,18 +719,25 @@ export function buildAssemblyTemplate(args: {
         }
     }
     // Dedupe by clauseId (list() is per-version): the fold wants each
-    // mandatory clause once, at its highest loaded version. A MANDATORY
-    // clause folds AT THE LEVEL ITS SCOPE NAMES:
-    // agreement-scoped mandatory (commerce, topology) folds into every
+    // mandatory clause once. A MANDATORY clause folds AT THE LEVEL ITS SCOPE
+    // NAMES: agreement-scoped mandatory (commerce, topology) folds into every
     // agreement; assembly-scoped mandatory (assembly-provenance) folds into
     // every published assembly's terms below.
+    //
+    // The article is the spec's `block`, which its registrant writes, and
+    // every (clauseId, version) slot is open to anyone, so no choice of
+    // version resists a stranger's registration — the highest would hand
+    // every new template to the latest registration. The fold takes the LOWEST
+    // loaded version of an id the draft does not state, never overrides a
+    // version the draft states (below), and every folded clause is in the
+    // template, where a review shows it by id and version before anchoring.
     const mandatory = new Map<string, ProjectionSpecView>();
     const assemblyMandatory = new Map<string, ProjectionSpecView>();
     for (const spec of specs.list()) {
         if (!specIsMandatory(spec)) continue;
         const target = specIsAssemblyScoped(spec) ? assemblyMandatory : mandatory;
         const seen = target.get(spec.clauseId);
-        if (!seen || spec.version > seen.version) target.set(spec.clauseId, spec);
+        if (!seen || spec.version < seen.version) target.set(spec.clauseId, spec);
     }
     if (mandatory.size === 0) {
         // Without the chain→IPFS spec set the mandatory clauses cannot be
@@ -733,13 +762,16 @@ export function buildAssemblyTemplate(args: {
     const assemblySelection: Record<string, Record<string, unknown>> = {};
     const assemblyVersions: Record<string, number> = {};
     for (const spec of assemblyMandatory.values()) {
+        // A mandatory clause the draft already composes (a fork of a
+        // published template carries it) keeps the draft's version below.
+        if (assemblyClauses !== undefined && spec.clauseId in assemblyClauses) continue;
         assemblySelection[spec.clauseId] = {};
         if (spec.version !== 1) assemblyVersions[spec.clauseId] = spec.version;
     }
     for (const [clauseId, values] of Object.entries(assemblyClauses ?? {})) {
-        const spec = specs.get(clauseId, assemblyClauseVersions?.[clauseId]);
-        assemblySelection[clauseId] = designFillValues(spec, values);
-        const v = assemblyClauseVersions?.[clauseId] ?? specs.get(clauseId)?.version ?? 1;
+        // The sparse version map reads absent as 1 (verified loaded above).
+        const v = assemblyClauseVersions?.[clauseId] ?? 1;
+        assemblySelection[clauseId] = designFillValues(specs.get(clauseId, v), values);
         if (v !== 1) assemblyVersions[clauseId] = v;
     }
     return {
@@ -756,29 +788,35 @@ export function buildAssemblyTemplate(args: {
             // designer's tailoring, consent's affixed documents) keep their
             // composed values; everything else strips to `{}` here, so
             // templates are value-free by construction, not by convention.
+            const composed = clausesByOrderId[order.orderHash] ?? {};
+            const orderVersions = clauseVersionsByOrderId?.[order.orderHash];
             const selection: Record<string, Record<string, unknown>> = {};
-            for (const [clauseId, values] of Object.entries(clausesByOrderId[order.orderHash] ?? {})) {
-                const spec = specs.get(clauseId, clauseVersionsByOrderId?.[order.orderHash]?.[clauseId]);
-                selection[clauseId] = designFillValues(spec, values);
+            for (const [clauseId, values] of Object.entries(composed)) {
+                selection[clauseId] = designFillValues(orderPick(order.orderHash, clauseId), values);
             }
+            // The fold never overrides a version the draft states: a mandatory
+            // clause the draft already composes (a fork of a published
+            // template carries commerce and topology) folds at the draft's
+            // version — absent = 1, the template's sparse rule — never at
+            // whichever version of that id was registered since.
+            const foldSpecs = mandatorySpecs.map((spec) =>
+                spec.clauseId in composed ? orderPick(order.orderHash, spec.clauseId) : spec);
+            const foldedVersion = new Map(foldSpecs.map((spec) => [spec.clauseId, spec.version]));
             const clauses = {
                 ...selection,
                 ...composeMandatoryClauses(
-                    mandatorySpecs,
+                    foldSpecs,
                     (order.parentOrderHashes ?? []).map((p) => idToLocal.get(p) ?? p),
                 ),
             };
             // Record each composed clause's registered version — the designer's
-            // pick for selected clauses, the loaded spec's version for the
-            // auto-folded mandatory ones. NORMALIZED SPARSE: v1 entries are
+            // pick for selected clauses (absent = 1), the folded spec's version
+            // for the mandatory ones. NORMALIZED SPARSE: v1 entries are
             // dropped and an empty map is omitted, so templates composed
             // entirely from v1 clauses hash identically to the pre-version form.
             const versions: Record<string, number> = {};
             for (const clauseId of Object.keys(clauses)) {
-                const v =
-                    clauseVersionsByOrderId?.[order.orderHash]?.[clauseId] ??
-                    specs.get(clauseId)?.version ??
-                    1;
+                const v = orderVersions?.[clauseId] ?? foldedVersion.get(clauseId) ?? 1;
                 if (v !== 1) versions[clauseId] = v;
             }
             return {

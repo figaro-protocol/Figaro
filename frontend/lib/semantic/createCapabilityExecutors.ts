@@ -178,8 +178,11 @@ export function createCapabilityExecutors(deps: CapabilityExecutorDeps) {
         action: SubmitClauseAttestationCapabilityAction,
         values?: Record<string, unknown>,
     ) => {
-        const spec = getClauseSpec(action.clauseId);
-        if (!spec) throw new Error(`Clause spec not loaded: ${action.clauseId}`);
+        // The exact spec the agreement committed (name + version): a later
+        // registered version keys a different clause hash the signed
+        // agreement never committed.
+        const spec = getClauseSpec(action.clauseId, action.version);
+        if (!spec) throw new Error(`Clause spec not loaded: ${action.clauseId} v${action.version}`);
         const isLadder = action.ladderField !== undefined && action.eventCode !== undefined;
         let content: Hex | undefined;
         if (action.reasserts) {

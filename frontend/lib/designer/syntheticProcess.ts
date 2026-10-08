@@ -92,6 +92,9 @@ export function buildSyntheticOrder(params: {
     payment: bigint;
     salt: bigint;
     clauseFields: ClauseFields;
+    /** clauseId → the registered version composed (sparse — absent = 1,
+     *  never the highest loaded). A template node states its versions here. */
+    clauseVersions?: Readonly<Record<string, number>>;
     parentOrderHashes?: string[];
 }): CreatedOrder {
     // The clause map IS the seller's pinned assembly, valued for this order —
@@ -101,6 +104,7 @@ export function buildSyntheticOrder(params: {
         params.seller,
         params.clauseFields,
         specSource(),
+        params.clauseVersions,
     );
     // Persist to the designer's authoring store (localStorage) so the in-progress
     // design survives until publish — the assembly-management counterpart to the

@@ -55,6 +55,9 @@ export type OrderNodeData = Order & {
      *  without opening the drawer. Each clause is described generically via
      *  `describeClause` — no clause id is named here. */
     designerClauseValues?: Record<string, Record<string, unknown>>;
+    /** Designer mode: clauseId → the version composed for each chip's clause.
+     *  Supplied, each chip reads its spec at that version and names it. */
+    designerClauseVersions?: Record<string, number>;
     /** Designer click-authoring: spawn a sub-order child of this node — the
      *  single add affordance (the card "+" button). */
     onAddSubOrderClick?: (parentOrderId: string) => void;
@@ -79,9 +82,10 @@ export const OrderNode = ({ data }: { data: OrderNodeData }) => {
     // a node self-describing without opening the drawer.
     const designerChips = data.designerMode && data.designerClauseValues
         ? Object.entries(data.designerClauseValues).map(([clauseId, vals]) => {
-            const desc = describeClause(clauseId, vals as Record<string, unknown>);
+            const version = data.designerClauseVersions ? data.designerClauseVersions[clauseId] ?? 1 : undefined;
+            const desc = describeClause(clauseId, vals as Record<string, unknown>, version);
             const salient = desc.fields[0]?.values;
-            return { clauseId, label: salient && salient.length > 0 ? salient.join(" / ") : desc.title };
+            return { clauseId, version, label: salient && salient.length > 0 ? salient.join(" / ") : desc.title };
         })
         : [];
 
@@ -195,10 +199,12 @@ export const OrderNode = ({ data }: { data: OrderNodeData }) => {
                         {designerChips.map((c) => (
                             <span
                                 key={c.clauseId}
-                                title={c.clauseId}
+                                title={c.version === undefined ? c.clauseId : `${c.clauseId} v${c.version}`}
                                 className="px-1.5 py-0.5 rounded bg-subtle text-ink-body text-[10px] leading-tight"
+                                data-testid={c.version === undefined ? undefined : `node-clause-${data.orderHash}-${c.clauseId}-v${c.version}`}
                             >
                                 {c.label}
+                                {c.version !== undefined && <span className="ml-1 font-mono text-ink-muted">v{c.version}</span>}
                             </span>
                         ))}
                     </div>

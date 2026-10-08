@@ -33,7 +33,7 @@ import {
     type CappedFetchOptions,
     type IpfsService,
 } from "@/lib/shared/ipfsService";
-import { clauseIdForHash, getClauseSpec } from "@/lib/shared/clauseSpecSource";
+import { clauseIdForHash, clauseSpecForHash, getClauseSpec } from "@/lib/shared/clauseSpecSource";
 import { isBytes32Hex, isEmptyHex } from "@/lib/shared/evm";
 
 export interface PublishWitnessContentParams {
@@ -57,7 +57,9 @@ export async function publishWitnessContent(params: PublishWitnessContentParams)
     const { stage, content } = params;
     if (isEmptyHex(content)) return; // nothing to learn from empty content
     const clauseId = clauseIdForHash(params.clauseId) ?? params.clauseId;
-    const spec = getClauseSpec(clauseId);
+    // A hash names the exact (name, version) attested — resolve that spec;
+    // a readable id carries no version and falls back to the name lookup.
+    const spec = clauseSpecForHash(params.clauseId) ?? getClauseSpec(clauseId);
     if (!spec) {
         // FAIL-CLOSED: an unknown spec is withheld (the committed-pin rule).
         // Loud, because at attest time the spec was just used to encode — a

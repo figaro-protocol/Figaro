@@ -84,7 +84,7 @@ export function instantiateRootAgreement(template: AssemblyTemplate, params: Ins
     // caller-supplied compositionHash throws instead of slipping past the fill.
     const merged = mergeOverrides(folded, params.overrides);
     const filled = params.specs
-        ? fillWalkProvenance(merged, templateCompositionHash(template), params.specs, root.id ?? "root")
+        ? fillWalkProvenance(merged, templateCompositionHash(template), params.specs, root.id ?? "root", node.clauseVersions)
         : merged;
     // The one clause-bag → Agreement builder (root and multi-order alike)
     // lives with the template walk: ../reconstructOrders.js.

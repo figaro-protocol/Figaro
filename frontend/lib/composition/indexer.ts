@@ -15,6 +15,7 @@ import {
     getStringArg,
     getOrderCommittedBySeller,
     getOrderCommittedByBuyer,
+    getAllOrderCommitted,
     getAllOrderResolved,
     type IndexedLog,
 } from "@/lib/kernel/indexer";
@@ -29,6 +30,7 @@ import {
     type UniverseAttestationEvent,
 } from "@figaro-protocol/sdk";
 import { getAttestationCoordinator, getBatchVerifier } from "@/lib/composition/contracts";
+import { attestationStandsFor } from "@/lib/semantic/deriveProcessModelFromRuntime";
 
 // ── AttestationCoordinator ────────────────────────────────────────────────────
 
@@ -203,7 +205,8 @@ interface ResolutionHistoryValue {
     total: bigint;
 }
 
-/** Attestations a seller emitted, grouped by clauseId. */
+/** Attestations standing for the member — its own, and an authorized
+ *  resolver's on orders it sold — grouped by clauseId. */
 interface ResolutionHistoryAttestations {
     clauseId: string;
     count: number;
@@ -249,10 +252,11 @@ export async function getSellerResolutionHistory(
     chainId: number,
     seller: string,
 ): Promise<MemberResolutionHistory> {
-    const [sellerOrders, buyerOrders, resolved, registrations, attestations, batchAttestations] =
+    const [sellerOrders, buyerOrders, allOrders, resolved, registrations, attestations, batchAttestations] =
         await Promise.all([
             getOrderCommittedBySeller(client, chainId, seller),
             getOrderCommittedByBuyer(client, chainId, seller),
+            getAllOrderCommitted(client, chainId),
             getAllOrderResolved(client, chainId),
             getAllMemberRegistered(client, chainId),
             getAllAttestations(client, chainId),
@@ -303,9 +307,46 @@ export async function getSellerResolutionHistory(
         }
     }
 
+    // Who an attestation stands for is derived from its order, by the
+    // capability model's own rule (`attestationStandsFor`): the member's own
+    // attestations count wherever they land, and on an order the member sold,
+    // an attester that is neither its buyer nor a seller of another order of
+    // the process reached it through `attestViaResolver` — the member
+    // authorized it, so it stands for the member. The batch universe emits no
+    // OrderCommitted, so its re-emissions count by attester alone.
+    const soldOrders = new Map<string, { buyer: string; seller: string; processId: string }>();
+    for (const log of sellerOrders) {
+        const orderHash = getStringArg(log, "orderHash")?.toLowerCase();
+        const buyer = getStringArg(log, "buyer");
+        const processId = getStringArg(log, "processId")?.toLowerCase();
+        if (orderHash && buyer && processId) soldOrders.set(orderHash, { buyer, seller, processId });
+    }
+    const soldProcesses = new Set([...soldOrders.values()].map((o) => o.processId));
+    const processSellers = new Map<string, Set<string>>();
+    for (const log of allOrders) {
+        const processId = getStringArg(log, "processId")?.toLowerCase();
+        const orderSeller = getStringArg(log, "seller")?.toLowerCase();
+        if (!processId || !orderSeller || !soldProcesses.has(processId)) continue;
+        const sellers = processSellers.get(processId) ?? new Set<string>();
+        sellers.add(orderSeller);
+        processSellers.set(processId, sellers);
+    }
+    const standsForMember = (log: IndexedLog, direct: boolean): boolean => {
+        const attester = getStringArg(log, "attester");
+        if (!attester) return false;
+        if (hexEqual(attester, seller)) return true;
+        if (!direct) return false;
+        const order = soldOrders.get(getStringArg(log, "orderHash")?.toLowerCase() ?? "");
+        if (!order) return false;
+        return attestationStandsFor(order, attester, "seller", processSellers.get(order.processId) ?? new Set());
+    };
+
     const attestationsByClauseMap = new Map<string, number>();
-    for (const log of [...attestations, ...batchAttestations]) {
-        if (!hexEqual(getStringArg(log, "attester"), seller)) continue;
+    for (const [log, direct] of [
+        ...attestations.map((l) => [l, true] as const),
+        ...batchAttestations.map((l) => [l, false] as const),
+    ]) {
+        if (!standsForMember(log, direct)) continue;
         const clauseId = getStringArg(log, "clauseId") ?? "unknown";
         attestationsByClauseMap.set(clauseId, (attestationsByClauseMap.get(clauseId) ?? 0) + 1);
     }

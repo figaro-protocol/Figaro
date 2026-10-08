@@ -50,6 +50,7 @@ export function templateToOrders(template: AssemblyTemplate): Order[] {
             salt: BigInt(planned.index + 1),
             clauseFields: planned.clauses as ClauseFields,
             parentOrderHashes: planned.parentLocalIds,
+            clauseVersions: planned.clauseVersions,
         }).order,
     );
 }

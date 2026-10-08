@@ -48,7 +48,7 @@ import type { PartyRole } from "@/lib/kernel/walletProcessQueries";
 /** The stage the declaring clause's completion evidence files at. */
 const COMPLETION_STAGE = 1;
 
-export function ContentDeliveryPanel({ processId, orderHash, clauseId, buyer, seller }: InteractionSurfaceProps) {
+export function ContentDeliveryPanel({ processId, orderHash, clauseId, version, buyer, seller }: InteractionSurfaceProps) {
     const { address } = useAccount();
     const { data: walletClient } = useWalletClient();
     const attestationActions = useAttestationCoordinatorActions();
@@ -78,13 +78,13 @@ export function ContentDeliveryPanel({ processId, orderHash, clauseId, buyer, se
     // contentRef = keccak(content)).
     const expectedAnchor = useCallback(
         (delivered: DeliveredContent) => {
-            const spec = getClauseSpec(clauseId);
+            const spec = getClauseSpec(clauseId, version);
             if (!spec) return null;
             return keccak256(
                 encodeContentFromSpec(spec, { contentHash: delivered.contentHash }, { stage: COMPLETION_STAGE }),
             );
         },
-        [clauseId],
+        [clauseId, version],
     );
 
     // Both parties send ECDH pubkeys on the derived content-ceremony id.
@@ -134,8 +134,8 @@ export function ContentDeliveryPanel({ processId, orderHash, clauseId, buyer, se
             // keccak256, encoded per the declaring clause's own stage shape
             // and merkle-bound by the coordinator. The URI field stays
             // omitted — counterparty-private transfers have no locator.
-            const spec = getClauseSpec(clauseId);
-            if (!spec) throw new Error(`Clause spec not loaded: ${clauseId}`);
+            const spec = getClauseSpec(clauseId, version);
+            if (!spec) throw new Error(`Clause spec not loaded: ${clauseId} v${version}`);
             const attestArgs = {
                 orderHash: orderHash as `0x${string}`,
                 clauseId: computeClauseKey(clauseId, spec.version),
@@ -150,7 +150,7 @@ export function ContentDeliveryPanel({ processId, orderHash, clauseId, buyer, se
         } finally {
             setBusy(false);
         }
-    }, [channel, address, peerPubKey, walletClient, counterparty, orderHash, clauseId, attestationActions, role]);
+    }, [channel, address, peerPubKey, walletClient, counterparty, orderHash, clauseId, version, attestationActions, role]);
 
     const handleDownload = useCallback(() => {
         if (!received) return;
@@ -163,7 +163,7 @@ export function ContentDeliveryPanel({ processId, orderHash, clauseId, buyer, se
     }, [received]);
 
     if (!role) return null;
-    const clauseTitle = getClauseSpec(clauseId)?.title ?? clauseId;
+    const clauseTitle = getClauseSpec(clauseId, version)?.title ?? clauseId;
     // Role-flavored copy over ONE symmetric body: the buyer asks for the
     // deliverable, a seller may ask for source materials the same way.
     const requestLabel = role === "buyer" ? "Request the deliverable" : "Request counterparty content";

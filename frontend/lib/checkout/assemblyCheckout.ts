@@ -177,7 +177,7 @@ export async function executeAssemblyCheckout(
     // compositionHash), the commitment currency MUST be that token — refuse
     // before any signature rather than let the signed struct contradict the
     // signed term.
-    const pin = readUtilityTokenPin(template.assemblyClauses ?? {}, specs);
+    const pin = readUtilityTokenPin(template.assemblyClauses ?? {}, specs, template.assemblyClauseVersions);
     if (pin && !hexEqual(pin, currency)) {
         throw new Error(
             `this assembly is denominated by design (${pin}); the commitment currency ${currency} contradicts the pinned term`,
@@ -317,10 +317,11 @@ function checkoutNodes(
                         { ...node.clauses, ...(params.clauseFills?.[planned.nodeId] ?? {}) },
                         lineItems, specs,
                         profileValuesFor(leadSellerAddress, sellerCatalogs),
+                        planned.clauseVersions,
                     ),
-                    payment, currency, specs, lineItems,
+                    payment, currency, specs, lineItems, planned.clauseVersions,
                 ),
-                templateCompositionHash(template), specs,
+                templateCompositionHash(template), specs, planned.clauseVersions,
             );
             return {
                 seller: leadSellerAddress,
@@ -392,10 +393,11 @@ function checkoutNodes(
                     { ...nodeClauses },
                     subLineItems ?? [], specs,
                     profileValuesFor(subSeller, sellerCatalogs),
+                    planned.clauseVersions,
                 ),
-                subPayment, currency, specs, subLineItems,
+                subPayment, currency, specs, subLineItems, planned.clauseVersions,
             ),
-            templateCompositionHash(template), specs,
+            templateCompositionHash(template), specs, planned.clauseVersions,
         );
         return {
             seller: subSeller,
