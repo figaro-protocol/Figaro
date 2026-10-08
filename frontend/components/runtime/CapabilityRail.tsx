@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
+import { ModalChrome } from "@/components/ui/ModalChrome";
 import { FieldControl } from "@/components/runtime/FieldControl";
 import { CapabilityExecutionInput, CapabilityModel } from "@/lib/semantic/models";
 
@@ -24,6 +25,10 @@ export function CapabilityRail({
     // stage's field set) through the ONE generic FieldControl — no clause and
     // no stage is named here.
     const [inputValues, setInputValues] = useState<Record<string, Record<string, unknown>>>({});
+    // The card whose chooser is open, by capability id. A card that is no
+    // longer derived (its last choice landed) renders nothing, so its chooser
+    // closes with it.
+    const [openChooserId, setOpenChooserId] = useState<string | null>(null);
 
     /** The readable clauseId of an attestation capability (undefined for every
      *  other kind) — stamped as `data-clause-id` so a consumer can target one
@@ -69,6 +74,50 @@ export function CapabilityRail({
                         <div className="flex items-center justify-between gap-3">
                             <p className="font-semibold text-ink-primary text-sm">{capability.label}</p>
                         </div>
+                        {capability.action?.executionType === "choice" && openChooserId === capability.id && (
+                            <ModalChrome
+                                onClose={() => setOpenChooserId(null)}
+                                aria-labelledby={`capability-chooser-title-${capability.id}`}
+                                panelClassName="bg-paper rounded-lg shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-4"
+                                panelTestId={`capability-chooser-${capability.actionKind}`}
+                            >
+                                <p id={`capability-chooser-title-${capability.id}`} className="text-sm font-semibold text-ink-primary">
+                                    {capability.label}
+                                </p>
+                                <p className="mt-1 mb-3 text-xs text-ink-muted">Choose a section to re-assert. Each is its own transaction.</p>
+                                <ul className="space-y-2">
+                                    {capability.action.choices.map((choice) => (
+                                        <li
+                                            key={choice.id}
+                                            className="flex items-center justify-between gap-3 rounded border border-default p-3"
+                                            data-testid={`capability-choice-${choice.actionKind}`}
+                                            data-clause-id={attestClauseId(choice)}
+                                        >
+                                            <p className="text-sm text-ink-primary">{choice.label}</p>
+                                            {onExecute && (
+                                                <Button
+                                                    type="button"
+                                                    size="sm"
+                                                    variant="outline"
+                                                    data-testid={`capability-execute-${choice.actionKind}`}
+                                                    data-clause-id={attestClauseId(choice)}
+                                                    // A choice is executable when the card that carries it is.
+                                                    disabled={!executableCapabilityIds?.has(capability.id) || !!executingCapabilityId}
+                                                    onClick={() => onExecute(choice)}
+                                                >
+                                                    {executingCapabilityId === choice.id ? "Processing..." : "Re-assert"}
+                                                </Button>
+                                            )}
+                                        </li>
+                                    ))}
+                                </ul>
+                                <div className="mt-3 flex justify-end">
+                                    <Button type="button" size="sm" variant="outline" onClick={() => setOpenChooserId(null)}>
+                                        Close
+                                    </Button>
+                                </div>
+                            </ModalChrome>
+                        )}
                         {capability.inputFields && capability.inputFields.length > 0 && (
                             <div className="mt-3 space-y-3" data-testid={`capability-inputs-${capability.id}`}>
                                 {capability.inputFields.map((field) => (
@@ -96,7 +145,9 @@ export function CapabilityRail({
                                     data-event-code={capability.eventCode}
                                     data-clause-id={attestClauseId(capability)}
                                     disabled={!executableCapabilityIds?.has(capability.id) || !!executingCapabilityId || inputsIncomplete(capability)}
-                                    onClick={() => onExecute(capability, executionInput(capability))}
+                                    onClick={() => capability.action?.executionType === "choice"
+                                        ? setOpenChooserId(capability.id)
+                                        : onExecute(capability, executionInput(capability))}
                                 >
                                     {executingCapabilityId === capability.id ? "Processing..." : capability.label}
                                 </Button>

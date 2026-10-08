@@ -27,8 +27,9 @@
  * each rung's assembly and every later run ADOPTS it — the protocol-correct
  * behavior (identical composition = one binding, first-write-wins). The
  * publish leg therefore accepts both outcomes: a fresh receipt, or the
- * registry's "already published" refusal naming the same content-derived
- * slug, which the rung then binds and orders against.
+ * Review screen's anchored notice (the registry binding, read at the edge)
+ * naming the same content-derived slug with publish closed, which the rung
+ * then binds and orders against.
  *
  * witness → DERIVED, never enumerated: after the commit, the rung reads the
  *   clause's REGISTERED spec from the network (ClauseRegistered → IPFS — the
@@ -60,8 +61,8 @@ import { privateKeyToAccount, mnemonicToAccount } from 'viem/accounts';
 import { readLocalDeploymentConfig, assertPinnedInIpfs } from './devnet-helpers';
 import { keccak256 } from 'viem';
 import { ANVIL_KEYS } from '../anvilAccounts';
-import { CORE_ABI } from '@/lib/kernel/contracts';
-import { calculateBonds, ATTESTATION_COORDINATOR_ABI, CLAUSE_REGISTRY_ABI } from '@figaro-protocol/sdk';
+import { ASSEMBLY_REGISTRY_ABI, CORE_ABI } from '@/lib/kernel/contracts';
+import { calculateBonds, computeClauseKey, ATTESTATION_COORDINATOR_ABI, CLAUSE_REGISTRY_ABI } from '@figaro-protocol/sdk';
 import { clauseIsAssemblyScoped } from '@/lib/shared/clauseSpecSource';
 import { primeClauseSpecs } from '../lib/primeClauseSpecs';
 import type { Page } from '@playwright/test';
@@ -556,27 +557,34 @@ test.describe('PER-CLAUSE COVERAGE — every protocol clause flows the generic p
 
             // ── PUBLISH OR ADOPT: on a fresh deployment the publish anchors the
             //    assembly (receipt names the content slug); on a re-run the
-            //    registry correctly refuses the identical composition
-            //    (first-write-wins) and its refusal NAMES the anchored slug —
-            //    the rung ADOPTS that assembly. Either way the slug comes from
-            //    the network's answer, never derived locally. ──
+            //    composition is already bound (first-write-wins), the Review
+            //    screen reads that binding at the edge, names the anchored slug
+            //    and closes publish — the rung ADOPTS that assembly. The chain
+            //    fact, read out-of-band, decides which branch to expect; either
+            //    way the slug comes from the network's answer, never derived
+            //    locally. ──
             await page.goto(`/assemblies/designer/view?slug=${handle}&intent=publish&e2e=devnet`, { waitUntil: 'domcontentloaded' });
             const confirmBtn = page.getByTestId('review-confirm-publish');
             await confirmBtn.waitFor({ state: 'visible', timeout: 15000 });
             await waitForConnected(page);
-            await confirmBtn.click();
-            const receipt = page.getByTestId('assembly-publish-receipt');
-            const publishError = page.getByTestId('publish-error');
+            const reviewedHash = await page.getByTestId('designer-composition-hash').getAttribute('title') as Hex;
+            expect(reviewedHash, 'the review screen states the composition it would anchor').toMatch(/^0x[0-9a-f]{64}$/i);
+            const [, registeredAt] = await publicClient.readContract({
+                address: readLocalDeploymentConfig().assemblyRegistry as Hex,
+                abi: ASSEMBLY_REGISTRY_ABI,
+                functionName: 'bindings',
+                args: [reviewedHash],
+            }) as readonly [Hex, bigint, boolean, string];
             let slug: string;
-            await expect(receipt.or(publishError)).toBeVisible({ timeout: 60000 });
-            if (await publishError.isVisible()) {
-                await expect(
-                    publishError,
-                    'the registry refuses the identical composition (adopt path)',
-                ).toContainText(/already published/);
-                slug = (await publishError.textContent())?.match(/"(asm-[a-z0-9-]+)"/)?.[1] ?? '';
-                expect(slug, 'the refusal names the anchored content slug').toMatch(/^asm-/);
+            if (registeredAt > 0n) {
+                const anchored = page.getByTestId('review-already-anchored');
+                await expect(anchored, 'the Review screen says the composition is anchored (adopt path)').toBeVisible({ timeout: 30000 });
+                await expect(confirmBtn, 'publish is closed for an anchored composition').toBeDisabled();
+                slug = (await anchored.locator('a').textContent())?.trim() ?? '';
+                expect(slug, 'the notice names the anchored content slug').toMatch(/^asm-/);
             } else {
+                await confirmBtn.click();
+                await expect(page.getByTestId('assembly-publish-receipt')).toBeVisible({ timeout: 60000 });
                 slug = (await page.getByTestId('receipt-slug').textContent())?.trim() ?? '';
                 expect(slug, 'publish receipt shows the content slug').toMatch(/^asm-/);
             }
@@ -776,9 +784,10 @@ test.describe('PER-CLAUSE COVERAGE — every protocol clause flows the generic p
             //    without a declared stage-0 witness offers the generic
             //    re-assert capability — an attestation whose content IS the
             //    committed sectionData (the coordinator's omit-content
-            //    default). Drive the target clause's card as the seller and
-            //    certify ON THE WIRE, from the tx calldata the UI sent, that
-            //    content === sectionData. ──
+            //    default). The seller's ONE card for this order opens a
+            //    chooser of its not-yet-re-asserted sections; drive the target
+            //    clause's row and certify ON THE WIRE, from the tx calldata
+            //    the UI sent, that content === sectionData. ──
             if (!declaredStages.includes(0)) {
                 const reassertBaseline = (await publicClient.getContractEvents({
                     address: config.attestationCoordinator as Hex, abi: ATTESTATION_COORDINATOR_ABI,
@@ -787,15 +796,40 @@ test.describe('PER-CLAUSE COVERAGE — every protocol clause flows the generic p
                 await gotoAsWallet(page, SELLER, `/orders/view?process=${processId}&e2e=devnet`);
                 await page.getByTestId('order-timeline-view').waitFor({ timeout: 30000 });
                 await waitForConnected(page);
-                const reassertCap = page.locator(
-                    `[data-testid="capability-reassert-committed-section"][data-clause-id="${rung.clauseId}"]`,
+                // One card per party per order: this rung's process carries
+                // one order, so the seller sees exactly one.
+                const reassertCard = page.getByTestId('capability-reassert-committed-sections');
+                await expect(
+                    reassertCard,
+                    'the rail derives ONE re-assert card for the seller on this order',
+                ).toHaveCount(1, { timeout: 30000 });
+                const reassertOpen = reassertCard.getByTestId('capability-execute-reassert-committed-sections');
+                const cardLabel = (await reassertOpen.textContent()) ?? '';
+                const countMatch = /^Re-assert committed sections \((\d+)\)$/.exec(cardLabel.trim());
+                expect(countMatch, `the card states its count of sections: "${cardLabel}"`).toBeTruthy();
+                const reassertCountBefore = Number(countMatch![1]);
+                await reassertOpen.click();
+
+                const chooser = page.getByTestId('capability-chooser-reassert-committed-sections');
+                await expect(chooser, 'the card opens its chooser').toBeVisible({ timeout: 15000 });
+                await expect(
+                    chooser.getByTestId('capability-choice-reassert-committed-section'),
+                    'the chooser lists one row per section the card counts',
+                ).toHaveCount(reassertCountBefore);
+                const reassertRow = chooser.locator(
+                    `[data-testid="capability-choice-reassert-committed-section"][data-clause-id="${rung.clauseId}"]`,
                 );
                 await expect(
-                    reassertCap,
-                    `the rail derives ${rung.clauseId}'s re-assert capability (committed section, no stage-0 witness)`,
-                ).toBeVisible({ timeout: 30000 });
-                await reassertCap.getByTestId('capability-execute-reassert-committed-section').click();
+                    reassertRow,
+                    `the chooser lists ${rung.clauseId} (committed section, no stage-0 witness)`,
+                ).toBeVisible({ timeout: 15000 });
+                await chooser.locator(
+                    `[data-testid="capability-execute-reassert-committed-section"][data-clause-id="${rung.clauseId}"]`,
+                ).click();
 
+                // Out-of-band: THIS clause's stage-0 Attestation, attested by
+                // the seller, read fresh from the chain.
+                const rungClauseKey = computeClauseKey(rung.clauseId, Number(registration!.args.version)).toLowerCase();
                 let reassertTxHash: Hex | undefined;
                 await expect.poll(async () => {
                     const events = await publicClient.getContractEvents({
@@ -804,6 +838,7 @@ test.describe('PER-CLAUSE COVERAGE — every protocol clause flows the generic p
                     });
                     const fresh = events.slice(reassertBaseline).find((e) =>
                         e.args.stage === 0
+                        && (e.args.clauseId as string).toLowerCase() === rungClauseKey
                         && (e.args.attester as string).toLowerCase() === SELLER.toLowerCase());
                     reassertTxHash = fresh?.transactionHash;
                     return !!fresh;
@@ -821,11 +856,22 @@ test.describe('PER-CLAUSE COVERAGE — every protocol clause flows the generic p
                 expect(contentArg, 're-assert on the wire: content IS the committed sectionData').toBe(sectionDataArg);
 
                 // Once per party per section: a repeat adds nothing (same
-                // bytes, same contentRef) — the capability retires.
-                await expect(
-                    reassertCap,
-                    'the re-assert capability retires once asserted',
-                ).toBeHidden({ timeout: 30000 });
+                // bytes, same contentRef) — the section leaves the chooser and
+                // the card's count falls by one; at zero the card, and its
+                // chooser with it, is gone.
+                if (reassertCountBefore > 1) {
+                    await expect(
+                        reassertRow,
+                        'the re-asserted section leaves the chooser',
+                    ).toHaveCount(0, { timeout: 30000 });
+                    await expect(
+                        reassertOpen,
+                        'the card\'s count falls by one',
+                    ).toHaveText(`Re-assert committed sections (${reassertCountBefore - 1})`, { timeout: 30000 });
+                } else {
+                    await expect(reassertCard, 'the last section re-asserted retires the card').toHaveCount(0, { timeout: 30000 });
+                    await expect(chooser, 'the chooser closes with its card').toHaveCount(0);
+                }
             }
 
             // ── AUDIT: the target clause's committed leaf surfaces, labeled

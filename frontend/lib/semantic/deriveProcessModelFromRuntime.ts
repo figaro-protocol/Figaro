@@ -209,27 +209,30 @@ function roleCapabilities(
         // same contentRef). Process-log ladders advance instead — their
         // lifecycle IS their attestation — and a clause declaring witness
         // stage 0 owns that slot with its own form.
-        for (const section of agreement.sections) {
-            const clauseId = section.clause;
-            if (clauseIsProcessLog(clauseId)) continue;
-            if (clauseWitnessStages(clauseId, section.version).some((w) => w.stage === 0)) continue;
-            const clauseIdHash = computeClauseKey(clauseId, section.version).toLowerCase();
-            const title = getClauseSpec(clauseId, section.version)?.title ?? clauseId;
-            for (const party of ["seller", "buyer"] as const) {
-                if (party === "seller" ? !isSeller : !isBuyer) continue;
-                const partyAddr = party === "seller" ? order.seller : order.buyer;
+        //
+        // ONE card per party per order, opening a chooser of the sections
+        // that party has not yet re-asserted. Each choice is one section's
+        // own attestation: the coordinator attests one section per call, so
+        // an "all" act would be N wallet prompts that can stop half-way. The
+        // card is absent once every section is re-asserted.
+        for (const party of ["seller", "buyer"] as const) {
+            if (party === "seller" ? !isSeller : !isBuyer) continue;
+            const partyAddr = party === "seller" ? order.seller : order.buyer;
+            const choices: CapabilityModel[] = [];
+            for (const section of agreement.sections) {
+                const clauseId = section.clause;
+                if (clauseIsProcessLog(clauseId)) continue;
+                if (clauseWitnessStages(clauseId, section.version).some((w) => w.stage === 0)) continue;
+                const clauseIdHash = computeClauseKey(clauseId, section.version).toLowerCase();
                 const already = orderAttestations.some(
                     (a) => hexEqual(a.clauseId, clauseIdHash) && hexEqual(a.attester, partyAddr) && a.stage === 0,
                 );
                 if (already) continue;
+                const title = getClauseSpec(clauseId, section.version)?.title ?? clauseId;
                 const capId = `${order.processId}:${orderIdStr}:${clauseId}-${party}-reassert`;
-                out.push({
+                choices.push({
                     id: capId,
-                    label: `Re-assert: ${title}`,
-                    // Its OWN actionKind (→ its own `capability-*` testid): the
-                    // rail renders many attestation cards per order, and the
-                    // re-assert card must never collide with a ladder/witness
-                    // card's locator. Dispatch still routes on `action.kind`.
+                    label: title,
                     actionKind: "reassert-committed-section",
                     action: {
                         executionType: "transaction",
@@ -245,10 +248,32 @@ function roleCapabilities(
                     scopeId: orderIdStr,
                     preconditions: [party === "seller" ? "seller-of-active-order" : "buyer-of-active-order"],
                     riskLabel: "standard",
-                    uiPriority: party === "buyer" ? 56 : 55,
                     source: runtimeSource(`${party} re-asserts ${clauseId}`, capId),
                 });
             }
+            if (choices.length === 0) continue;
+            const cardId = `${order.processId}:${orderIdStr}:${party}-reassert-committed-sections`;
+            out.push({
+                id: cardId,
+                label: `Re-assert committed sections (${choices.length})`,
+                // Its OWN actionKind (→ its own `capability-*` testid): the
+                // rail renders many attestation cards per order, and the
+                // re-assert card must never collide with a ladder/witness
+                // card's locator, nor with one of its own choices.
+                actionKind: "reassert-committed-sections",
+                action: {
+                    executionType: "choice",
+                    kind: "choose-capability",
+                    choices,
+                },
+                mechanismId: "attestation-coordinator",
+                scopeType: "order",
+                scopeId: orderIdStr,
+                preconditions: [party === "seller" ? "seller-of-active-order" : "buyer-of-active-order"],
+                riskLabel: "standard",
+                uiPriority: party === "buyer" ? 56 : 55,
+                source: runtimeSource(`${party} re-asserts committed sections`, cardId),
+            });
         }
     }
 

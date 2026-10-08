@@ -75,6 +75,17 @@ export interface SubmitClauseAttestationCapabilityAction {
 }
 
 
+/** A capability that opens a chooser of complete capabilities, each executed
+ *  on its own by its own submit — the card is never executed itself. One
+ *  party's re-assert card on one order carries a choice per committed section
+ *  that party has not yet re-asserted: the coordinator attests one section
+ *  per call, so each choice is one deliberate transaction. */
+interface ChooseCapabilityAction {
+    executionType: "choice";
+    kind: "choose-capability";
+    choices: CapabilityModel[];
+}
+
 interface PrototypeCapabilityAction {
     executionType: "prototype";
     kind: string;
@@ -86,6 +97,7 @@ export type CapabilityActionDescriptor =
     | UpdateMemberProfileCapabilityAction
     | WithdrawSellerDepositCapabilityAction
     | SubmitClauseAttestationCapabilityAction
+    | ChooseCapabilityAction
     | PrototypeCapabilityAction;
 
 interface RegisterSellerCapabilityInput {
