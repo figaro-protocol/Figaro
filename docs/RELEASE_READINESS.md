@@ -42,6 +42,55 @@ audit tag kept current for the day an external audit is.
 3. findings resolved, or accepted in writing in the handover
 4. the outcome stated in the release docs, and the footer's audit line changed
 
+The program's checklist, from the survey of audit firms' open-source tooling and
+programs (sources in the commit that added it; an item marked *unverified* was
+read from a search summary, never the firm's own page):
+
+- **Repository controls, free.** Secret scanning with push protection, Dependabot
+  security updates and a ruleset on `main` are off today (read from the
+  repository settings); CodeQL's default setup covers TypeScript, Rust and
+  Actions on a public repository; `zizmor` audits the workflows and the OpenSSF
+  Scorecard scores the repository. All are the maintainer's switches or one CI
+  step each.
+- **The trusted dependency.** SP1 has published five high- or medium-rated
+  advisories; RustSec carries none of them, so `cargo audit` cannot see them.
+  `prover/Cargo.lock` pins `sp1-sdk` 6.8.1, past every fix. A CI check reads the
+  GitHub advisory database for the `sp1*` crates directly.
+- **Solidity.** In use: Foundry invariants, Halmos (dormant upstream since
+  2025-08), Certora through the cloud, Echidna, Slither, Semgrep, Mythril by
+  hand, mutation testing. To add where they pay: Medusa (coverage-guided
+  fuzzing beside Echidna), `crytic/properties` for the florin's ERC-20
+  properties, Aderyn, `necessist` over the Foundry tests (a test that passes
+  with a statement removed is no test), Gambit over the CVL rules (today
+  mutation-checked by hand), Kontrol over the Foundry tests. The GPL Certora
+  Prover may run locally, which would bring Certora into CI — *unverified*.
+- **Rust.** In use: the mirror, `cargo-mutants`, differential fuzz, Clippy,
+  `cargo audit`. To add: Kani proof harnesses on the guest's mirror (they live in
+  test files, so the guest code and its key do not move), `cargo-fuzz`,
+  `cargo-deny` and `cargo-vet` for the supply chain, `necessist` and `mewt` over
+  the Rust tests.
+- **SDK, frontend, agents.** Semgrep and CodeQL are the only firm-published
+  tools that reach TypeScript and the Node sandbox; `mewt` reaches the SDK tests.
+  The client-surface re-review's eight domains stay the review frame.
+- **Deployment and monitoring.** OpenZeppelin Monitor (self-hosted) beside the
+  daily scan; SEAL's frameworks for incident management, monitoring and supply
+  chain; SEAL Wargames would rehearse the disclosure and advisory legs the Rekt
+  Test leaves unrehearsed (cost not published).
+- **Checklists to score against,** beside the Rekt Test, Trail of Bits' maturity
+  categories and L2BEAT already scored: OWASP Smart Contract Top 10 with its
+  checklist, Cyfrin's audit checklist, Hacken's methodology v3.0, OpenZeppelin's
+  audit-readiness guide, Immunefi's severity classification (to map
+  `SECURITY.md`'s table onto).
+- **Programs that cost nothing or by quote.** HackerOne Community Edition lists a
+  bounty without charge, keeping five percent of a cash payout only, for an
+  OSI-licensed project with a `SECURITY.md`; Cantina's free bounty tier, *unverified*. Guardian's
+  audit grants are the one route to an external audit without charge, by application.
+  Contest platforms price by quote: Sherlock's own market reference puts a
+  mid-complexity audit at tens of thousands of dollars; Code4rena is winding
+  down; Immunefi and Cantina quote per pool. Vanta and Testlio do not apply to
+  this stack; 20squares' open-game engine addresses the equilibrium the Lean
+  proof already covers.
+
 ### Task 3 (residue): state the mainnet γ-curve point
 
 The registry parameters are hardcoded in `script/DeployMainnet.s.sol` (reasoning
