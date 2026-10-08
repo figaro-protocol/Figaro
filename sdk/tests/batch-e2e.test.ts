@@ -115,6 +115,8 @@ const SECTION_DATA = `{"modality":"delivery"}`;
 
 /** The relay's state file for this run: the preimage of the verifier's root. */
 const STATE_PATH = path.join(os.tmpdir(), `sequencer-state-e2e-${process.pid}.json`);
+/** The relay's sequencer archive for this run, deleted with the state in afterAll. */
+const ARCHIVE_PATH = `sequencer-archive-e2e-${process.pid}.jsonl`;
 
 // ── Batch-only typed data (EIP-712 signature replaces msg.sender) ───────────
 
@@ -280,7 +282,7 @@ describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
             // The relay's state, kept across the restart this test performs
             // between its two batches.
             statePath: STATE_PATH,
-            archivePath: `sequencer-archive-e2e-${process.pid}.jsonl`,
+            archivePath: ARCHIVE_PATH,
         };
         sequencerProcess = startSequencer(relay);
 
@@ -304,6 +306,7 @@ describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
         for (const suffix of ["", ".tmp", ".next.jsonl", ".next.jsonl.tmp"]) {
             fs.rmSync(STATE_PATH + suffix, { force: true });
         }
+        fs.rmSync(ARCHIVE_PATH, { force: true });
     });
 
     it("skips when Anvil is unreachable", () => {
