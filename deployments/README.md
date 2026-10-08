@@ -37,8 +37,9 @@ agents start their event scans there (`NEXT_PUBLIC_DEPLOYMENT_BLOCK`): public
 RPC gateways cap an `eth_getLogs` range (1 000 / 10 000 / 50 000 blocks by
 gateway), so a from-genesis scan of a real network never completes.
 
-A public deployment's record carries only the contracts
-`script/DeployMainnet.s.sol` actually deploys — no devnet mocks
+A public deployment's record carries the contracts
+`script/DeployMainnet.s.sol` actually deploys and the canonical externals it
+wires (Permit2, the swap router and quoter, the Disperse multisender) — no devnet mocks
 (`MockERC20`, `MockPermitToken`, the swap/permit2 mocks, `MockTreasuryMultisig`,
 `MockDisperse`). `scripts/deploy-mainnet.sh` writes the mainnet deployment record (chain id 1) in
 this shape as part of a mainnet deploy.

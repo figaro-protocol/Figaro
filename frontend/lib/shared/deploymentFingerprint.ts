@@ -28,6 +28,7 @@ const OPERATIVE_ADDRESSES: readonly (readonly [string, string | undefined])[] = 
     ["figaroCore", process.env.NEXT_PUBLIC_FIGARO_CORE],
     ["florinToken", process.env.NEXT_PUBLIC_FLORIN_TOKEN_ADDRESS],
     ["membersRegistry", process.env.NEXT_PUBLIC_MEMBERS_REGISTRY],
+    ["multisender", process.env.NEXT_PUBLIC_MULTISENDER],
     ["permit2", process.env.NEXT_PUBLIC_PERMIT2],
     ["rpgfMinter", process.env.NEXT_PUBLIC_RPGF_MINTER],
     ["swapQuoter", process.env.NEXT_PUBLIC_SWAP_QUOTER],

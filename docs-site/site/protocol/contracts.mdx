@@ -281,11 +281,11 @@ Fetch the public deployment record and hash it to confirm the site and the repos
 curl -s https://raw.githubusercontent.com/figaro-protocol/Figaro/main/deployments/11155111.json | shasum -a 256
 ```
 
-Before you sign a commit, the checkout shows a fingerprint of the on-chain addresses that order will touch — the `sha256:` value beneath the place-order button. It is derived, never stored, over the exact thirteen address fields below; reproduce it from the canonical deployment record and compare:
+Before you sign a commit, the checkout shows a fingerprint of the on-chain addresses the site was built with — the `sha256:` value beneath the place-order button. It is derived, never stored, over the exact fourteen address fields below; reproduce it from the canonical deployment record and compare:
 
 ```bash
 curl -s https://raw.githubusercontent.com/figaro-protocol/Figaro/main/deployments/11155111.json \
-  | jq -j '{assemblyRegistry,attestationCoordinator,batchVerifier,clauseRegistry,figaroCore,florinToken,membersRegistry,permit2,rpgfMinter,swapQuoter,swapRouter,usageCounter,witnessSwapAndCommitCoordinator}
+  | jq -j '{assemblyRegistry,attestationCoordinator,batchVerifier,clauseRegistry,figaroCore,florinToken,membersRegistry,multisender,permit2,rpgfMinter,swapQuoter,swapRouter,usageCounter,witnessSwapAndCommitCoordinator}
       | to_entries | map(select(.value != null)) | sort_by(.key)
       | map("\(.key)=\(.value|ascii_downcase)") | join("\n")' \
   | shasum -a 256

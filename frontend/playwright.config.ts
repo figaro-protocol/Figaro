@@ -39,7 +39,7 @@ if (E2E_CHAIN === 'sepolia') {
         NEXT_PUBLIC_WITNESS_SWAP_AND_COMMIT_COORDINATOR: String(record.witnessSwapAndCommitCoordinator ?? ''),
         NEXT_PUBLIC_SWAP_ROUTER: String(record.swapRouter ?? ''),
         NEXT_PUBLIC_SWAP_QUOTER: String(record.swapQuoter ?? ''),
-        NEXT_PUBLIC_MULTISENDER: '0xD152f549545093347A162Dce210e7293f1452150',
+        NEXT_PUBLIC_MULTISENDER: String(record.multisender ?? ''),
         // The read chain of the deployed site: a dedicated gateway on the
         // site's pin service first when the deploy env names one, the public
         // gateway as fallback — so the smoke exercises the same chain visitors get.

@@ -311,6 +311,7 @@ cat > "$DEPLOY_DIR/${ACTUAL_CHAIN_ID}.json" <<EOF
   "swapRouter": "$SWAP_ROUTER",
   "swapQuoter": "$SWAP_QUOTER",
   "permit2": "$PERMIT2",
+  "multisender": "0xD152f549545093347A162Dce210e7293f1452150",
   "daoTreasury": "$DAO_TREASURY_ADDR",
   "deploymentBlock": $DEPLOYMENT_BLOCK
 }

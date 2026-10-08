@@ -226,6 +226,7 @@ cat > "$DEPLOY_DIR/${ACTUAL_CHAIN_ID}.json" <<EOF
   "witnessSwapAndCommitCoordinator": "$SWAP_COORD_ADDR",
   "swapRouter": "$SWAP_ROUTER",
   "permit2": "$PERMIT2",
+  "multisender": "0xD152f549545093347A162Dce210e7293f1452150",
   "deploymentBlock": $DEPLOYMENT_BLOCK
 }
 EOF

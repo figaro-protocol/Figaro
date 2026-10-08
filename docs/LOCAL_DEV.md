@@ -142,8 +142,10 @@ NEXT_PUBLIC_SWAP_ROUTER=0x...
 NEXT_PUBLIC_SWAP_QUOTER=
 
 # Multisender — batch dispersal for post-resolution fiscal routing. Devnet:
-# MockDisperse (mirrors Disperse.app's verified interface); mainnet: the
-# canonical Disperse deployment (0xD152f5…2150, same address across chains)
+# MockDisperse (mirrors Disperse.app's verified interface); Sepolia + mainnet:
+# the canonical Disperse deployment (0xD152f5…2150, same address across chains),
+# the deployment record's `multisender` — one of the checkout fingerprint's fields,
+# so a public build without it shows no fingerprint
 NEXT_PUBLIC_MULTISENDER=0x...
 
 # The florin + the RPGF distribution. UsageCounter records verified usage of
