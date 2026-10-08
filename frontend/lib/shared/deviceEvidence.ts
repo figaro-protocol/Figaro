@@ -12,8 +12,8 @@
  *   - geolocation cross-check — universal (desktop + mobile): position +
  *     accuracy at the moment of witnessing, cross-checkable against the
  *     order's committed geohash endpoints at read time.
- *   - NFC tap read — Android Chrome (mobile): the tag's serial + decoded
- *     records, the `contact-nfc` band's artifact.
+ *   - NFC tap read — Android Chrome (mobile): the tag's serial + its
+ *     decoded NDEF records, the `contact-nfc` band's artifact.
  *   - BLE sighting — Chromium (desktop + Android): the chosen device's
  *     name/id from the browser chooser, the `nearby-ble` band's artifact.
  * Richer ranging (UWB, BSSID, continuous BLE RSSI) arrives via the
@@ -68,7 +68,7 @@ export interface PublicDeviceEvidence {
     /** NFC tap: keccak256 of the tag serial — counterparty-consistency
      *  checkable by re-hashing, never linkable. */
     tagSerialHash?: string;
-    /** Record TYPES only (e.g. "text", "url") — contents stay raw-side. */
+    /** NDEF record TYPES only (e.g. "text", "url") — contents stay raw-side. */
     recordTypes?: string[];
     /** BLE sighting: keccak256 of the chooser's device id. */
     deviceIdHash?: string;
@@ -170,7 +170,7 @@ async function captureGeolocationCrossCheck(): Promise<DeviceEvidence> {
 }
 
 /** One NFC tap: scan until the first reading (bounded), capture serial +
- *  decoded text records. Android Chrome only — callers gate on
+ *  decoded text NDEF records. Android Chrome only — callers gate on
  *  `availableCaptures()`. */
 async function captureNfcTap(timeoutMs = 20_000): Promise<DeviceEvidence> {
     type NdefRecordLike = { recordType: string; data?: DataView; encoding?: string };
