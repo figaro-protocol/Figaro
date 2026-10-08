@@ -10,6 +10,21 @@ import "src/core/attestation/IRoleResolver.sol";
 import "src/mocks/MockPermitToken.sol";
 import {AgreementTestHelper} from "test/helpers/AgreementTestHelper.sol";
 
+/// @dev The code a seller EOA installs on its own address under EIP-7702 to
+///      answer `isAuthorized`. Delegated code runs in the seller's storage, so
+///      the one caller it authorizes is an immutable, carried in the code.
+contract SingleCallerResolver is IRoleResolver {
+    address public immutable authorized;
+
+    constructor(address authorized_) {
+        authorized = authorized_;
+    }
+
+    function isAuthorized(bytes32, address caller) external view returns (bool) {
+        return caller == authorized;
+    }
+}
+
 /// @title AttestationCoordinatorTest
 /// @notice Tests for the rewritten zero-storage attestation coordinator.
 ///         Covers: seller/buyer attestation, unauthorized callers, cross-order
@@ -348,6 +363,48 @@ contract AttestationCoordinatorTest is Test {
         vm.mockCall(seller1, abi.encodeWithSelector(IRoleResolver.isAuthorized.selector), abi.encode(false));
 
         vm.prank(seller2);
+        vm.expectRevert(AttestationCoordinator.NotAuthorized.selector);
+        coordinator.attestViaResolver(c, LIFECYCLE_CLAUSE, 3, EMPTY, _emptyProof(), EMPTY);
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // TEST 8a: Resolver path with a plain-EOA seller reverts with empty data
+    // ═══════════════════════════════════════════════════════════════
+
+    /// @dev No mock stands in for the seller: seller1 is a plain EOA with no
+    ///      code, so the high-level `isAuthorized` call fails Solidity's
+    ///      extcodesize check and reverts with empty data, never `NotAuthorized`.
+    function test_resolverAttestation_plainEoaSeller_revertsEmpty() public {
+        (,, CommitmentTypes.Commitment memory c) = _commitRootSingle(50 ether, 1, LIFECYCLE_CLAUSE, "");
+        assertEq(seller1.code.length, 0, "seller1 has no code");
+
+        vm.prank(seller2);
+        vm.expectRevert(bytes(""));
+        coordinator.attestViaResolver(c, LIFECYCLE_CLAUSE, 3, EMPTY, _emptyProof(), EMPTY);
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // TEST 8b: Resolver path with an EIP-7702 seller answering isAuthorized
+    // ═══════════════════════════════════════════════════════════════
+
+    /// @dev seller1 delegates its own address to `SingleCallerResolver` with its
+    ///      own key before it signs and commits, so the SAME address that signed
+    ///      the order by ECDSA answers `isAuthorized`. It authorizes seller2 only.
+    function test_resolverAttestation_eip7702Seller_authorizesCaller() public {
+        SingleCallerResolver impl = new SingleCallerResolver(seller2);
+        vm.signAndAttachDelegation(address(impl), SELLER1_KEY);
+        assertGt(seller1.code.length, 0, "seller1 carries delegated code");
+
+        (bytes32 processId, bytes32 orderHash, CommitmentTypes.Commitment memory c) =
+            _commitRootSingle(50 ether, 1, LIFECYCLE_CLAUSE, "");
+
+        vm.expectEmit(true, true, true, true, address(coordinator));
+        emit AttestationCoordinator.Attestation(orderHash, processId, seller2, LIFECYCLE_CLAUSE, 3, EMPTY);
+        vm.prank(seller2);
+        coordinator.attestViaResolver(c, LIFECYCLE_CLAUSE, 3, EMPTY, _emptyProof(), EMPTY);
+
+        // A caller the seller's code does not authorize is refused by the coordinator.
+        vm.prank(buyer);
         vm.expectRevert(AttestationCoordinator.NotAuthorized.selector);
         coordinator.attestViaResolver(c, LIFECYCLE_CLAUSE, 3, EMPTY, _emptyProof(), EMPTY);
     }
