@@ -14,13 +14,9 @@ import { readJsonStorage, writeJsonStorage } from "@/lib/shared/storage";
  * a key is crypto-shredding — the encrypted channel blobs become permanently
  * unreadable, which is the deletability the layered-evidence pattern promises.
  *
- * The DURABLE data side this service once carried (a saved handoff-key store,
- * pending-intent entries with geohashes, wallet-signature key recovery) was
- * deleted under the same ruling: its producers were burned in the open-world
- * corpse pass (`700cf1a2` — the three handoff facades) and durable key
- * persistence runs against the crypto-shredding posture. Only the purge QUEUE
- * survives in localStorage — pseudonymous order references plus timestamps,
- * never key material.
+ * Nothing durable holds a key: durable key persistence runs against the
+ * crypto-shredding posture. The only thing in localStorage is the purge QUEUE —
+ * pseudonymous order references plus timestamps, never key material.
  */
 
 interface PurgeEntry {
