@@ -77,9 +77,9 @@ export interface QuoteRequestTerms {
  * payload is KB-scale; this generous bound is only ever crossed by a
  * pathological order carrying megabytes of inline field content, which
  * belongs behind a content-handoff clause (already encrypted), not inline in
- * the signed agreement. Two divergent caps (8 MiB response read vs 256 KiB
- * inline) previously guarded different legs of the same race — the
- * channel-seam audit's finding 3; this is the consolidation.
+ * the signed agreement. Every leg of the race reads this one cap (the
+ * endpoint response read and the inline relay), so no leg accepts a payload
+ * another leg refuses.
  */
 export const MAX_COMMITMENT_PAYLOAD_BYTES = 256 * 1024;
 

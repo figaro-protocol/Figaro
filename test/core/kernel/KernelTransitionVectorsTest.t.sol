@@ -12,8 +12,8 @@ import "src/mocks/MockPermitToken.sol";
 ///         of `FigaroCore` that must compute the same transition: the same
 ///         process ids and order hashes, the same bonds pulled at commit, the
 ///         same payouts at resolution, the same accumulator and active count.
-///         Until now the mirror's payout expectations were hand-written
-///         constants. This test RUNS the scenarios below through the frozen
+///         The mirror's payout expectations are never hand-written
+///         constants: this test RUNS the scenarios below through the frozen
 ///         FigaroCore and writes what happened — every commitment, every party's
 ///         deposit and payout, every process's final state — to
 ///         `test/fixtures/kernel-transition-vectors.json`;

@@ -1,5 +1,5 @@
 version: 2
-# POLICY (maintainer-ruled 2026-08-13): routine version-bump PRs are DISABLED
+# POLICY: routine version-bump PRs are DISABLED
 # (open-pull-requests-limit: 0 on every ecosystem) — the audited surface is
 # frozen and dependency churn is noise. Dependabot SECURITY updates remain on
 # (repo setting, independent of these limits) and still open PRs when a used

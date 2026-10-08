@@ -19,9 +19,9 @@ name: Estate Snapshot
 # PAT scoped to THIS repository only, with Administration: read (costs
 # nothing, but it is a PAT). The npm capture succeeds either way.
 #
-# SITE TRAFFIC — the same posture, third channel (ruled 2026-08-26:
-# server-side-only Cloudflare metrics; no client beacon before the launch
-# flip). The figaroprotocol.com zone's edge already counts every request;
+# SITE TRAFFIC — the same posture, third channel (server-side-only
+# Cloudflare metrics; no client beacon before the launch flip).
+# The figaroprotocol.com zone's edge already counts every request;
 # this captures the daily series (requests, page views, uniques, threats)
 # over the GraphQL Analytics API before the free-plan retention window
 # rolls. Needs a repo secret ESTATE_CF_ANALYTICS_TOKEN: a Cloudflare API

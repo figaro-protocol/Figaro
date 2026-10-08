@@ -10,7 +10,7 @@ name: SDK Release
 # `version` — the workflow refuses a mismatch, so a tag can never publish
 # something other than what the tree names.
 #
-# Auth is npm Trusted Publishing (configured 2026-08-25): the package's npm
+# Auth is npm Trusted Publishing: the package's npm
 # settings name THIS workflow file in THIS repository as the trusted publisher
 # (allowed action: publish, no environment), and npm mints a short-lived
 # credential from the run's OIDC identity — no stored token. That handshake

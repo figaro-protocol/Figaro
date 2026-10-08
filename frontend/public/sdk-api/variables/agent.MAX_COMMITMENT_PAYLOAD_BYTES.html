@@ -18,9 +18,9 @@ HTTP and A2A channels, inline relay delivery in the frontend race). A real
 payload is KB-scale; this generous bound is only ever crossed by a
 pathological order carrying megabytes of inline field content, which
 belongs behind a content-handoff clause (already encrypted), not inline in
-the signed agreement. Two divergent caps (8 MiB response read vs 256 KiB
-inline) previously guarded different legs of the same race — the
-channel-seam audit's finding 3; this is the consolidation.</p>
+the signed agreement. Every leg of the race reads this one cap (the
+endpoint response read and the inline relay), so no leg accepts a payload
+another leg refuses.</p>
 </div><aside class="tsd-sources">
 <ul>
 <li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/agent/coordination.ts#L84">agent/coordination.ts:84</a></li></ul></aside></div>

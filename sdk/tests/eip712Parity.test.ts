@@ -3,9 +3,9 @@
  *
  * The SDK computes EIP-712 hashes off-chain (the `typedData` a wallet signs to
  * build a commitment); FigaroCore recomputes them on-chain. If the two ever
- * disagree by a single byte, every signature fails. Until now that agreement
- * was only checked by the skipIf-gated live round-trip (`integration.test.ts`)
- * — nothing ran in CI without a chain.
+ * disagree by a single byte, every signature fails. The skipIf-gated live
+ * round-trip (`integration.test.ts`) checks the two hashes match only beside a
+ * chain; this file checks them in CI without one.
  *
  * This file freezes a set of SDK-computed vectors into
  * `test/fixtures/eip712-vectors.json`; `test/core/kernel/Eip712ParityTest.t.sol` reads that
