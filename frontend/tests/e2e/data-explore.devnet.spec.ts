@@ -480,7 +480,7 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
         expect(termsFold.entries, 'the data-terms family exists on chain').toBeGreaterThanOrEqual(1);
         expect(termsFold.decoded, 'no data-terms substance is served — the withheld posture holds out-of-band').toBe(0);
 
-        // Wallet record fold for the seeded buyer.
+        // Wallet view fold for the seeded buyer.
         const clientBuyerOrders = allCommitted.filter((e) => (e.args.buyer as string).toLowerCase() === client.address.toLowerCase());
         const clientSellerOrders = allCommitted.filter((e) => (e.args.seller as string).toLowerCase() === client.address.toLowerCase());
         const clientProcesses = new Set(clientBuyerOrders.map((e) => (e.args.processId as string).toLowerCase()));
@@ -608,7 +608,7 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
             await expect(venuePosture).toContainText('No swap venue is composed');
         }
 
-        // Wallet record — the seeded buyer against its out-of-band order
+        // Wallet view — the seeded buyer against its out-of-band order
         // set; then a never-used wallet as an ANSWERED absence.
         await page.getByTestId('graph-view-wallet').click();
         await expect(page.getByTestId('layer-boundary')).toContainText('protocol-enforced');

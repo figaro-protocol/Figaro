@@ -1,7 +1,7 @@
 /**
  * rpgf-rewards.devnet.spec.ts
  *
- * The RPGF distribution's runtime surface at /rewards, against the
+ * The designer-rewards distribution's runtime surface at /rewards, against the
  * count-it-when-it-happens design: `UsageCounter` records verified usage of a
  * clause or assembly at the moment a process resolves, accrual buckets into
  * fixed periods, and `RpgfMinter.claim` pays a closed period's budget UNIFORM
@@ -87,7 +87,7 @@ const SELLER_KEYS = [ANVIL_KEYS[19], ANVIL_KEYS[34], ANVIL_KEYS[35]] as const;
 const USED_CLAUSE = 'figaro-geolocation';
 const USED_CLAUSE_VERSION = 1;
 
-test.describe('RPGF rewards — usage accrues, the UI reads it (devnet)', () => {
+test.describe('designer rewards — usage accrues, the UI reads it (devnet)', () => {
     test.setTimeout(300_000);
 
     test('a resolved process records usage, and /rewards shows the author their accrual', async ({ page }) => {
