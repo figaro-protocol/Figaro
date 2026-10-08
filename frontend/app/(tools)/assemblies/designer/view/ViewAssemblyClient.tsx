@@ -299,6 +299,36 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
             : []),
         [resolved.kind, review],
     );
+    /**
+     * The registry's answer for the composition under review, read at the edge
+     * (`AssemblyRegistry.bindings(compositionHash)`): `null` is resolved-empty —
+     * nothing anchored, publish stays open; a binding means this composition is
+     * already anchored (an unchanged fork, say: the name and descriptions sit
+     * outside the hash), so publish could only revert. `undefined` is not yet
+     * read, or a read that failed — publish stays open and its simulate remains
+     * the backstop (`translatePublishRevert`).
+     */
+    const reviewedHash = isPublishReview && review?.ok ? review.compositionHash : null;
+    const [anchoredBinding, setAnchoredBinding] = useState<{ registeredBy: `0x${string}` } | null | undefined>(undefined);
+    useEffect(() => {
+        setAnchoredBinding(undefined);
+        const registry = getAssemblyRegistry();
+        if (!reviewedHash || !client || !registry) return;
+        let cancelled = false;
+        client.readContract({
+            address: registry,
+            abi: ASSEMBLY_REGISTRY_ABI,
+            functionName: "bindings",
+            args: [reviewedHash],
+        }).then((binding) => {
+            if (cancelled) return;
+            const [registeredBy, registeredAt] = binding as readonly [`0x${string}`, bigint, boolean, string];
+            setAnchoredBinding(registeredAt > 0n ? { registeredBy } : null);
+        }).catch(() => { /* unknown — publish's simulate stays the backstop */ });
+        return () => {
+            cancelled = true;
+        };
+    }, [reviewedHash, client]);
 
     const handleConfirmPublish = useCallback(async () => {
         if (resolved.kind !== "draft") return;
@@ -516,7 +546,9 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                 // And gated on the composition BUILDING: an assembly whose
                 // template this screen could not derive is one whose terms it
                 // could not show, so it must not be anchorable from here.
-                disabled={confirming || !clauseSpecsLoaded || !review?.ok || missingTerms.length > 0}
+                // And closed once the registry answers that this composition is
+                // already anchored: the publish could only revert.
+                disabled={confirming || !clauseSpecsLoaded || !review?.ok || missingTerms.length > 0 || !!anchoredBinding}
                 className="font-semibold"
                 data-testid="review-confirm-publish"
                 title="Pin the assembly template to IPFS, place the stake, anchor the slug on-chain. Irreversible."
@@ -525,6 +557,8 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                     ? "Publishing…"
                     : !clauseSpecsLoaded
                         ? "Loading clause specs…"
+                        : anchoredBinding
+                            ? "Already anchored"
                         : review?.ok && missingTerms.length > 0
                             ? "Fill the required assembly terms"
                         : review?.ok
@@ -613,6 +647,24 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                         >
                             This composition could not be built, so its terms cannot be shown and
                             it cannot be published from here: {review.error}
+                        </p>
+                    )}
+                    {review?.ok && anchoredBinding && (
+                        <p
+                            className="text-xs text-warning-fg mt-2 max-w-3xl leading-relaxed"
+                            role="status"
+                            data-testid="review-already-anchored"
+                        >
+                            This composition is already anchored on the AssemblyRegistry as{" "}
+                            <Link
+                                href={`/assemblies/designer/view?slug=${encodeURIComponent(deriveAssemblySlug(review.compositionHash))}`}
+                                className="font-mono underline"
+                            >
+                                {deriveAssemblySlug(review.compositionHash)}
+                            </Link>
+                            . Its identity is the composition, and the name and descriptions sit outside
+                            it, so publishing would anchor nothing new. To publish a different assembly,
+                            change a composed clause or one of its values in the editor.
                         </p>
                     )}
                 </div>
