@@ -93,17 +93,32 @@ export function useCeremonyChannel<T>(
     const chainId = useChainId();
     const publicClient = usePublicClient();
 
-    const [channel, setChannel] = useState<HandoffChannel | null>(null);
-    const [peerPubKey, setPeerPubKey] = useState<string | null>(null);
-    const [blob, setBlob] = useState<string | null>(null);
+    // Every received or verified value is tagged with the ceremony it belongs
+    // to — wallet, ceremony id, counterparty, order. A change of any is a new
+    // ceremony: a value tagged with another one reads as absent, so nothing
+    // received, decrypted or verified carries over (and an in-flight answer
+    // for the old ceremony lands under its own tag, never the new one).
+    const ceremonyKey = `${address?.toLowerCase() ?? ""}|${ceremonyId}|${counterparty.toLowerCase()}|${orderHash.toLowerCase()}`;
+    type Tagged<V> = { key: string; value: V } | null;
+    const current = <V,>(tagged: Tagged<V>, absent: V): V => (tagged && tagged.key === ceremonyKey ? tagged.value : absent);
+
+    const [channelTagged, setChannel] = useState<Tagged<HandoffChannel>>(null);
+    const [peerTagged, setPeerPubKey] = useState<Tagged<string>>(null);
+    const [blobTagged, setBlob] = useState<Tagged<string>>(null);
     const [requested, setRequested] = useState(false);
-    const [received, setReceived] = useState<T | null>(null);
-    const [anchored, setAnchored] = useState<AnchorVerificationState>("unknown");
+    const [receivedTagged, setReceived] = useState<Tagged<T | null>>(null);
+    const [anchoredTagged, setAnchored] = useState<Tagged<AnchorVerificationState>>(null);
+    const channel = current(channelTagged, null);
+    const peerPubKey = current(peerTagged, null);
+    const blob = current(blobTagged, null);
+    const received = current(receivedTagged, null);
+    const anchored = current<AnchorVerificationState>(anchoredTagged, "unknown");
 
     // The channel + subscriptions, under the verify-and-skip contract
     // documented above.
     useEffect(() => {
         if (!address || !enabled) return;
+        const key = ceremonyKey;
         let disposed = false;
         const unsubs: Array<() => void> = [];
         const acceptFromCounterparty = async (msg: AuthenticatedEcdhMessage): Promise<boolean> => {
@@ -112,15 +127,15 @@ export function useCeremonyChannel<T>(
         };
         void getHandoffChannel(address).then((ch) => {
             if (disposed) return;
-            setChannel(ch);
+            setChannel({ key, value: ch });
             unsubs.push(ch.onEcdhPubkey(ceremonyId, (msg) => {
                 void acceptFromCounterparty(msg).then((ok) => {
-                    if (ok && !disposed) setPeerPubKey(msg.pubKeyHex);
+                    if (ok && !disposed) setPeerPubKey({ key, value: msg.pubKeyHex });
                 });
             }));
             unsubs.push(ch.onWrappedKey(ceremonyId, (msg) => {
                 void acceptFromCounterparty(msg).then((ok) => {
-                    if (ok && !disposed) setBlob(msg.wrappedKeyB64);
+                    if (ok && !disposed) setBlob({ key, value: msg.wrappedKeyB64 });
                 });
             }));
         });
@@ -130,12 +145,13 @@ export function useCeremonyChannel<T>(
             disposed = true;
             for (const u of unsubs) u();
         };
-    }, [address, enabled, ceremonyId, counterparty]);
+    }, [address, enabled, ceremonyId, counterparty, ceremonyKey]);
 
     // Decrypt once both halves arrived, then poll the expected fingerprint
     // against the on-chain anchor until it lands.
     useEffect(() => {
         if (!enabled || !address || !peerPubKey || !blob) return;
+        const key = ceremonyKey;
         let canceled = false;
         let timer: ReturnType<typeof setTimeout> | undefined;
         void (async () => {
@@ -143,7 +159,7 @@ export function useCeremonyChannel<T>(
                 myAddress: address, senderPubKeyHex: peerPubKey, blobB64: blob,
             });
             if (canceled) return;
-            setReceived(decrypted);
+            setReceived({ key, value: decrypted });
             if (!decrypted) return;
             const expected = expectedAnchor(decrypted, blob);
             if (!expected) return;
@@ -151,7 +167,7 @@ export function useCeremonyChannel<T>(
                 if (!publicClient || canceled) return;
                 const verified = await attestationAnchorMatches(publicClient, chainId, orderHash, expected);
                 if (canceled) return;
-                setAnchored(verified ? "verified" : "missing");
+                setAnchored({ key, value: verified ? "verified" : "missing" });
                 if (!verified) timer = setTimeout(() => void checkAnchor(), 3000);
             };
             await checkAnchor();
@@ -160,7 +176,7 @@ export function useCeremonyChannel<T>(
             canceled = true;
             if (timer) clearTimeout(timer);
         };
-    }, [enabled, address, peerPubKey, blob, orderHash, publicClient, chainId, decrypt, expectedAnchor]);
+    }, [enabled, address, peerPubKey, blob, orderHash, publicClient, chainId, decrypt, expectedAnchor, ceremonyKey]);
 
     return { channel, peerPubKey, requested, setRequested, received, anchored };
 }

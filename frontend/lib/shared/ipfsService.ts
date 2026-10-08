@@ -538,16 +538,16 @@ class DefaultIpfsService implements IpfsService {
             } finally {
                 clearTimeout(timer);
             }
-            // 404: already absent — the state unpin exists to reach. 403: the
-            // scoped key cannot unpin (pin-only by intent) — the content stays
-            // pinned on the service account; loud but non-fatal, cleanup is
-            // account hygiene, not a user flow.
+            // 404: already absent — the state unpin exists to reach. Any other
+            // answer — 403 included, a scoped pin-only key — leaves the content
+            // pinned, so it is a refusal carrying the service's own answer;
+            // callers that erase best-effort catch it, a party's erase control
+            // shows it.
             if (res.ok || res.status === 404) return;
-            if (res.status === 403) {
-                console.warn(`[ipfs] pin service refused unpin of ${cid} (scoped key) — content stays pinned`);
-                return;
-            }
-            throw new Error(`IPFS unpin failed: ${res.status} ${res.statusText}`);
+            const answer = (await res.text().catch(() => "")).trim().slice(0, 300);
+            throw new Error(
+                `The pin service refused to unpin ${cid}: ${res.status} ${res.statusText}${answer ? ` — ${answer}` : ""}. The content stays pinned.`,
+            );
         }
         const controller = new AbortController();
         const timer = setTimeout(() => controller.abort(), IPFS_REQUEST_TIMEOUT_MS);

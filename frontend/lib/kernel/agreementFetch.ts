@@ -122,8 +122,10 @@ export interface PublishedAgreement {
  *
  * Best-effort and idempotent by design: content addressing means this erases
  * only THIS wallet's copy (a counterparty node or a gateway may still hold it);
- * an unpin failure is logged and swallowed; unpinning an absent pin or forgetting
- * an absent pointer is absence, not an error.
+ * an unpin failure is logged and swallowed, and the pointer is KEPT — it alone
+ * names which CID to unpin, so a retry (the erasure control's) reaches the same
+ * pin; unpinning an absent pin or forgetting an absent pointer is
+ * absence, not an error.
  */
 export async function unpinAgreement(
     agreementHash: Hex | string,
@@ -135,7 +137,8 @@ export async function unpinAgreement(
         try {
             await ipfs.unpin(cid);
         } catch (err) {
-            console.warn(`[agreementFetch] unpin ${cid} failed (content stays pinned):`, err);
+            console.warn(`[agreementFetch] unpin ${cid} failed (content stays pinned; pointer kept for a retry):`, err);
+            return;
         }
     }
     forgetAgreementUri(agreementHash);

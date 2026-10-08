@@ -424,6 +424,10 @@ export async function createXmtpChannel(
                 "COMMITMENT_PAYLOAD",
                 orderId,
                 (msg, senderInboxId) => callback(msg.payload, senderInboxId),
+                // Every match: the sender's own relayed draft echoes on the
+                // same key ahead of the counterparty's reply, and the
+                // CONSUMER decides which payload answers (relayChannel).
+                { once: false },
             );
         },
 

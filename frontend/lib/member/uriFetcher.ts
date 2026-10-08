@@ -1,13 +1,13 @@
 /**
  * lib/member/uriFetcher.ts
  *
- * Generic fetch+parse+cache helper for IPFS / HTTP content-addressed
- * documents. The one pipeline its callers (`catalogFetcher`,
- * `memberBranding`, `profileFetcher`) share:
+ * Generic fetch+parse+cache helper for a member's own IPFS documents. The
+ * one pipeline its callers (`catalogFetcher`, `memberBranding`,
+ * `profileFetcher`) share:
  *
  *   if (!uri) return null;
  *   if (cache.hit) return cache.value;
- *   url = resolveContentUri(uri);
+ *   url = resolveMemberDocumentUri(uri);   // null for http(s)
  *   doc = await safeJsonFromResponse(await fetch(url));
  *   parsed = parse(doc);
  *   cache.set(uri, parsed);
@@ -15,6 +15,15 @@
  *
  * This module is the single source. Each fetcher is a short wrapper
  * that supplies a `parse` function and (optionally) a TTL.
+ *
+ * IPFS-only, as images are (`resolveImageUri`): every URI read here is
+ * chosen by a member through a permissionless registry, and a raw http(s)
+ * locator would send every viewer's IP, User-Agent and timing to a host that
+ * member picked. Through IPFS the viewer's own gateway answers. The write
+ * path pins to IPFS and anchors `ipfs://` (`catalogPublisher`), so a profile
+ * this frontend publishes always reads back; an http(s) URI reads as absent.
+ * `resolveMemberDocumentUri` is that rule, exported for the member reads that
+ * keep their own fetch (`discoveryService`, `useMemberBoundAssemblies`).
  */
 
 import { fetchCappedContent, resolveContentUri } from "@/lib/shared/ipfsService";
@@ -53,6 +62,21 @@ interface CacheEntry<T> {
     ts: number;
 }
 
+/** A raw http(s) locator — a host the member chose. */
+function isHttpUri(uri: string): boolean {
+    return uri.startsWith("http://") || uri.startsWith("https://");
+}
+
+/**
+ * The gateway URL a document a member pinned is read from, or null — an
+ * http(s) locator reads as absent (the viewer's request never goes to a host
+ * the member chose), as does any URI `resolveContentUri` refuses.
+ */
+export function resolveMemberDocumentUri(uri: string): string | null {
+    if (!uri || isHttpUri(uri)) return null;
+    return resolveContentUri(uri);
+}
+
 /**
  * Build a fetch+parse+cache pipeline keyed by content URI. The returned
  * object has stable identity — keep it module-local so its cache survives
@@ -72,7 +96,7 @@ export function createUriFetcher<T>(config: UriFetcherConfig<T>): UriFetcher<T> 
             }
 
             try {
-                const url = resolveContentUri(uri);
+                const url = resolveMemberDocumentUri(uri);
                 if (!url) return null;
                 // Size-capped fetch (F4): an oversized member-pinned document
                 // aborts mid-stream (throws → the catch below → null). An

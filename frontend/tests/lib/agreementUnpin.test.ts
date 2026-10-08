@@ -4,7 +4,8 @@
  * The agreement body is the highest-PII IPFS artifact. unpinAgreement
  * best-effort unpins THIS wallet's
  * copy and forgets the witnessed-URI pointer (unpin + forget), never throwing
- * on a node hiccup; a forgotten pointer means a later fetch returns null.
+ * on a node hiccup; a forgotten pointer means a later fetch returns null. A
+ * refused unpin keeps the pointer, so a retry reaches the same CID.
  */
 import { describe, expect, it, vi } from "vitest";
 import { fetchAgreement, publishAgreement, unpinAgreement } from "@/lib/kernel/agreementFetch";
@@ -38,17 +39,27 @@ describe("unpinAgreement", () => {
         expect(await fetchAgreement(agreementHash, undefined, { evidenceTransport: transport })).toBeNull();
     });
 
-    it("swallows an unpin failure and still forgets the pointer", async () => {
-        const transport = seedTransport("QmDoomedBody");
+    it("swallows a refused unpin and keeps the pointer, so a retry unpins the same CID", async () => {
+        const transport = seedTransport("QmRefusedBody");
         const { agreementHash } = await publishAgreement(AGREEMENT, { evidenceTransport: transport });
 
-        const unpin = vi.fn().mockRejectedValue(new Error("node down"));
+        const refused = vi.fn().mockRejectedValue(new Error("node down"));
         const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
 
-        await expect(unpinAgreement(agreementHash, { unpin })).resolves.toBeUndefined();
-        expect(unpin).toHaveBeenCalledOnce();
-        expect(await fetchAgreement(agreementHash, undefined, { evidenceTransport: transport })).toBeNull();
+        await expect(unpinAgreement(agreementHash, { unpin: refused })).resolves.toBeUndefined();
+        expect(refused).toHaveBeenCalledExactlyOnceWith("QmRefusedBody");
         warn.mockRestore();
+
+        // The retry finds the pointer, unpins the same CID, then forgets it.
+        const retry = vi.fn().mockResolvedValue(undefined);
+        await unpinAgreement(agreementHash, { unpin: retry });
+        expect(retry).toHaveBeenCalledExactlyOnceWith("QmRefusedBody");
+        expect(await fetchAgreement(agreementHash, undefined, { evidenceTransport: transport })).toBeNull();
+
+        // Forgotten after the successful unpin: a third erase has nothing to unpin.
+        const third = vi.fn().mockResolvedValue(undefined);
+        await unpinAgreement(agreementHash, { unpin: third });
+        expect(third).not.toHaveBeenCalled();
     });
 
     it("is a no-op with no witnessed URI (nothing to unpin)", async () => {

@@ -10,7 +10,8 @@
  */
 
 import { useEffect, useState } from "react";
-import { fetchCappedContent, resolveContentUri } from "@/lib/shared/ipfsService";
+import { fetchCappedContent } from "@/lib/shared/ipfsService";
+import { resolveMemberDocumentUri } from "@/lib/member/uriFetcher";
 import { safeJsonParse } from "@/lib/shared/safeJson";
 import type { Anchored } from "@figaro-protocol/sdk";
 import type { AssemblyTemplate } from "@/lib/shared/assemblyTemplate";
@@ -86,7 +87,8 @@ export function useMemberBoundAssemblies(
         }
 
         const [metadataURI] = registryData;
-        const url = resolveContentUri(metadataURI);
+        // IPFS-only: an http(s) metadataURI reads as absent (`uriFetcher`).
+        const url = resolveMemberDocumentUri(metadataURI);
         if (!url) {
             setResult({ assemblies: [], isLoading: false, hasOnChainBinding: false });
             return;

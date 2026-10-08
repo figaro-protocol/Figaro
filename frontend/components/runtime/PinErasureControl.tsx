@@ -2,6 +2,8 @@
 
 import { useCallback, useState } from "react";
 import type { ReactNode } from "react";
+import { DEFAULT_IPFS_SERVICE, type IpfsService } from "@/lib/shared/ipfsService";
+import { extractErrorMessage } from "@/lib/shared/errors";
 
 /**
  * The shared idle/erasing/done control behind every author-pins →
@@ -9,18 +11,44 @@ import type { ReactNode } from "react";
  * best-effort unpin of this wallet's own copies, deliberate and never
  * automatic. Content addressing means a counterparty node or a gateway may
  * still hold the value — each wrapper states that in its own `doneLabel`.
+ * An unpin the node or pin service refuses is shown as refused, with the
+ * service's answer — never as unpinned.
  */
 export interface PinErasureControlProps {
     /** The hashes/refs to unpin. Renders nothing when empty. */
     hashes: string[];
-    /** Base id for the three testids: `{prefix}`, `{prefix}-button`, `{prefix}-done`. */
+    /** Base id for the testids: `{prefix}`, `{prefix}-button`, `{prefix}-done`,
+     *  `{prefix}-refused`. */
     testidPrefix: string;
-    /** Called once per hash; failures are not surfaced individually — the
-     *  control moves to "done" once every call has completed. */
+    /** Called once per hash; a rejection is a refused unpin — the control
+     *  lists each refusal instead of reporting the copies unpinned. */
     unpinOne: (hash: string) => Promise<unknown>;
     buttonLabel: string;
     erasingLabel: string;
     doneLabel: ReactNode;
+}
+
+/**
+ * Adapt a best-effort erase (`unpinAgreement`, `unpinWitnessContent` — each
+ * logs and swallows an unpin failure so automatic callers never throw) into an
+ * `unpinOne` that rejects with the refusal: the erase runs through its own
+ * `ipfs` injection seam, and the first refusal the service answered is
+ * re-thrown once the erase has finished its own bookkeeping.
+ */
+export function reportingUnpin(
+    erase: (hash: string, ipfs: Pick<IpfsService, "unpin">) => Promise<void>,
+    ipfs: Pick<IpfsService, "unpin"> = DEFAULT_IPFS_SERVICE,
+): (hash: string) => Promise<void> {
+    return async (hash) => {
+        let refusal: unknown = undefined;
+        await erase(hash, {
+            unpin: (cid) => ipfs.unpin(cid).catch((err: unknown) => {
+                refusal ??= err;
+                throw err;
+            }),
+        });
+        if (refusal !== undefined) throw refusal;
+    };
 }
 
 export function PinErasureControl({
@@ -32,11 +60,17 @@ export function PinErasureControl({
     doneLabel,
 }: PinErasureControlProps) {
     const [status, setStatus] = useState<"idle" | "erasing" | "done">("idle");
+    const [refusals, setRefusals] = useState<string[]>([]);
 
     const handleUnpin = useCallback(async () => {
         setStatus("erasing");
-        await Promise.all(hashes.map((h) => unpinOne(h)));
-        setStatus("done");
+        setRefusals([]);
+        const results = await Promise.allSettled(hashes.map((h) => unpinOne(h)));
+        const refused = results.flatMap((r) =>
+            r.status === "rejected" ? [extractErrorMessage(r.reason, "The unpin was refused.")] : [],
+        );
+        setRefusals(refused);
+        setStatus(refused.length > 0 ? "idle" : "done");
     }, [hashes, unpinOne]);
 
     if (hashes.length === 0) return null;
@@ -48,14 +82,23 @@ export function PinErasureControl({
                     {doneLabel}
                 </p>
             ) : (
-                <button
-                    onClick={() => void handleUnpin()}
-                    disabled={status === "erasing"}
-                    data-testid={`${testidPrefix}-button`}
-                    className="text-xs text-ink-muted hover:text-ink-body underline disabled:opacity-50"
-                >
-                    {status === "erasing" ? erasingLabel : buttonLabel}
-                </button>
+                <>
+                    <button
+                        onClick={() => void handleUnpin()}
+                        disabled={status === "erasing"}
+                        data-testid={`${testidPrefix}-button`}
+                        className="text-xs text-ink-muted hover:text-ink-body underline disabled:opacity-50"
+                    >
+                        {status === "erasing" ? erasingLabel : buttonLabel}
+                    </button>
+                    {refusals.length > 0 && (
+                        <ul className="mt-2 space-y-1 text-xs text-error-fg" data-testid={`${testidPrefix}-refused`}>
+                            {refusals.map((message, i) => (
+                                <li key={i}>{message}</li>
+                            ))}
+                        </ul>
+                    )}
+                </>
             )}
         </div>
     );

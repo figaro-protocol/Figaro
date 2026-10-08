@@ -49,19 +49,31 @@ describe("ipfsService", () => {
             expect(String(fetchMock.mock.calls[0][0])).toBe("http://my-node:5001/api/v0/add?pin=true");
         });
 
-        it("tolerates a scoped-key 403 on unpin (content stays pinned, flow continues)", async () => {
+        it("reports a scoped-key 403 on unpin as a refusal carrying the service's answer", async () => {
             vi.stubEnv("NEXT_PUBLIC_IPFS_PIN_SERVICE_JWT", "test-jwt");
             globalThis.fetch = vi.fn().mockResolvedValue({
                 ok: false,
                 status: 403,
                 statusText: "Forbidden",
                 json: async () => ({}),
+                text: async () => '{"error":{"reason":"NO_SCOPES_FOUND"}}',
+            });
+
+            const unpin = DEFAULT_IPFS_SERVICE.unpin("QmGone1111111111111111111111111111111111111111");
+            await expect(unpin).rejects.toThrow(/refused to unpin QmGone1+: 403 Forbidden — \{"error":\{"reason":"NO_SCOPES_FOUND"\}\}\. The content stays pinned\./);
+        });
+
+        it("a 404 on unpin is absence — the state unpin exists to reach", async () => {
+            vi.stubEnv("NEXT_PUBLIC_IPFS_PIN_SERVICE_JWT", "test-jwt");
+            globalThis.fetch = vi.fn().mockResolvedValue({
+                ok: false,
+                status: 404,
+                statusText: "Not Found",
+                json: async () => ({}),
                 text: async () => "",
             });
-            const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
 
             await expect(DEFAULT_IPFS_SERVICE.unpin("QmGone1111111111111111111111111111111111111111")).resolves.toBeUndefined();
-            expect(warn).toHaveBeenCalledOnce();
         });
     });
 

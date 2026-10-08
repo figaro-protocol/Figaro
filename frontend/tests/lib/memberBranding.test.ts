@@ -65,12 +65,20 @@ describe('memberBranding', () => {
                 text: () => Promise.resolve(JSON.stringify(mockDoc)),
             } as Response);
 
-            const result = await fetchMemberBranding('http://example.com/metadata.json');
+            const result = await fetchMemberBranding('ipfs://QmMinima11111111111111111111111111111111111111');
 
             expect(result).not.toBeNull();
             expect(result!.assets.imageBaseURI).toBe('ipfs://QmBase1111111111111111111111111111111111111111');
             expect(result!.branding.logoURI).toBeUndefined();
             expect(result!.logoURI).toBeUndefined();
+        });
+
+        it('reads an http(s) metadataURI as absent, without a request to the host it names', async () => {
+            const fetchSpy = vi.spyOn(globalThis, 'fetch');
+
+            expect(await fetchMemberBranding('https://tracker.example/metadata.json')).toBeNull();
+            expect(await fetchMemberBranding('http://tracker.example/metadata.json')).toBeNull();
+            expect(fetchSpy).not.toHaveBeenCalled();
         });
 
         it('returns null when fetch fails', async () => {
@@ -152,7 +160,7 @@ describe('memberBranding', () => {
                 text: () => Promise.resolve(JSON.stringify(mockDoc)),
             } as Response);
 
-            const result = await fetchMemberBranding('http://example.com/bare.json');
+            const result = await fetchMemberBranding('ipfs://QmBare1111111111111111111111111111111111111111');
 
             expect(result).not.toBeNull();
             expect(result!.branding).toEqual({

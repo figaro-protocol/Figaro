@@ -125,6 +125,41 @@ describe('discoveryService', () => {
         expect(result.catalogs[0].items[0].name).toBe('Al Pastor');
     });
 
+    it('reads an http(s) metadataURI as absent: no request leaves for the member-chosen host', async () => {
+        getActiveMembersMock.mockResolvedValueOnce([
+            {
+                address: '0xaabbccddaabbccddaabbccddaabbccddaabbccdd',
+                role: 1,
+                metadataURI: 'https://member-chosen.example/profile.json',
+            },
+        ]);
+
+        const result = await discoveryService.listCatalogs({} as never, 31337, ANCHORED);
+        expect(result.catalogs).toHaveLength(0);
+        expect(fetchDocumentMock).not.toHaveBeenCalled();
+    });
+
+    it('reads an http(s) catalogURI as absent: the profile lists with an empty menu and the catalog is never requested', async () => {
+        getActiveMembersMock.mockResolvedValueOnce([
+            {
+                address: '0xaabbccddaabbccddaabbccddaabbccddaabbccdd',
+                role: 1,
+                metadataURI: 'ipfs://Qmopprofike11111111111111111111111111111111111',
+            },
+        ]);
+        fetchDocumentMock.mockResolvedValueOnce(makeJsonResponse({
+            name: 'Street Tacos',
+            assemblyBindings: anchoredBinding('0xaabbccddaabbccddaabbccddaabbccddaabbccdd'),
+            catalogURI: 'https://member-chosen.example/catalog.json',
+        }));
+
+        const result = await discoveryService.listCatalogs({} as never, 31337, ANCHORED);
+        expect(result.catalogs).toHaveLength(1);
+        expect(result.catalogs[0].items).toHaveLength(0);
+        expect(fetchDocumentMock).toHaveBeenCalledTimes(1);
+        expect(String(fetchDocumentMock.mock.calls[0][0])).toMatch(/\/ipfs\/Qmopprofike/);
+    });
+
     it('maps a member profile without a catalogURI into a restaurant with an empty menu', async () => {
         getActiveMembersMock.mockResolvedValueOnce([
             {

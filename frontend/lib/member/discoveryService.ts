@@ -10,6 +10,7 @@ import {
 } from '@/lib/member/memberProfileMetadata';
 import { tryParseCatalogItems } from '@/lib/member/memberProfileAdapter';
 import { safeJsonFromResponse } from '@/lib/shared/safeJson';
+import { resolveMemberDocumentUri } from '@/lib/member/uriFetcher';
 
 interface DiscoveryResult {
     catalogs: MemberCatalog[];
@@ -53,7 +54,9 @@ async function fetchSellerAsCatalog(
     fetchFn: (url: string) => Promise<CappedContentResponse>,
     publishedSlugs: ReadonlySet<string>,
 ): Promise<MemberCatalog | null> {
-    const url = resolveContentUri(metadataURI);
+    // IPFS-only: the profile and its catalog are member-chosen URIs, and an
+    // http(s) one reads as absent (`uriFetcher`).
+    const url = resolveMemberDocumentUri(metadataURI);
     if (!url) return null;
 
     const res = await fetchFn(url);
@@ -90,7 +93,7 @@ async function fetchSellerAsCatalog(
     // First-class items live in the catalog document at profile.catalogURI.
     if (profile.catalogURI) {
         try {
-            const catUrl = resolveContentUri(profile.catalogURI);
+            const catUrl = resolveMemberDocumentUri(profile.catalogURI);
             if (catUrl) {
                 const catRes = await fetchFn(catUrl);
                 const catDoc = await safeJsonFromResponse<unknown>(catRes);
