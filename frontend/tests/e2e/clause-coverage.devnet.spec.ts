@@ -58,10 +58,10 @@
 import { test, expect, gotoAsWallet } from './devnet-multi-test';
 import { createPublicClient, decodeFunctionData, defineChain, http, parseAbi, type Hex } from 'viem';
 import { privateKeyToAccount, mnemonicToAccount } from 'viem/accounts';
-import { readLocalDeploymentConfig, assertPinnedInIpfs } from './devnet-helpers';
+import { readLocalDeploymentConfig, assertPinnedInIpfs, publishOrAdoptReviewed } from './devnet-helpers';
 import { keccak256 } from 'viem';
 import { ANVIL_KEYS } from '../anvilAccounts';
-import { ASSEMBLY_REGISTRY_ABI, CORE_ABI } from '@/lib/kernel/contracts';
+import { CORE_ABI } from '@/lib/kernel/contracts';
 import { calculateBonds, computeClauseKey, ATTESTATION_COORDINATOR_ABI, CLAUSE_REGISTRY_ABI } from '@figaro-protocol/sdk';
 import { clauseIsAssemblyScoped } from '@/lib/shared/clauseSpecSource';
 import { primeClauseSpecs } from '../lib/primeClauseSpecs';
@@ -563,31 +563,7 @@ test.describe('PER-CLAUSE COVERAGE — every protocol clause flows the generic p
             //    fact, read out-of-band, decides which branch to expect; either
             //    way the slug comes from the network's answer, never derived
             //    locally. ──
-            await page.goto(`/assemblies/designer/view?slug=${handle}&intent=publish&e2e=devnet`, { waitUntil: 'domcontentloaded' });
-            const confirmBtn = page.getByTestId('review-confirm-publish');
-            await confirmBtn.waitFor({ state: 'visible', timeout: 15000 });
-            await waitForConnected(page);
-            const reviewedHash = await page.getByTestId('designer-composition-hash').getAttribute('title') as Hex;
-            expect(reviewedHash, 'the review screen states the composition it would anchor').toMatch(/^0x[0-9a-f]{64}$/i);
-            const [, registeredAt] = await publicClient.readContract({
-                address: readLocalDeploymentConfig().assemblyRegistry as Hex,
-                abi: ASSEMBLY_REGISTRY_ABI,
-                functionName: 'bindings',
-                args: [reviewedHash],
-            }) as readonly [Hex, bigint, boolean, string];
-            let slug: string;
-            if (registeredAt > 0n) {
-                const anchored = page.getByTestId('review-already-anchored');
-                await expect(anchored, 'the Review screen says the composition is anchored (adopt path)').toBeVisible({ timeout: 30000 });
-                await expect(confirmBtn, 'publish is closed for an anchored composition').toBeDisabled();
-                slug = (await anchored.locator('a').textContent())?.trim() ?? '';
-                expect(slug, 'the notice names the anchored content slug').toMatch(/^asm-/);
-            } else {
-                await confirmBtn.click();
-                await expect(page.getByTestId('assembly-publish-receipt')).toBeVisible({ timeout: 60000 });
-                slug = (await page.getByTestId('receipt-slug').textContent())?.trim() ?? '';
-                expect(slug, 'publish receipt shows the content slug').toMatch(/^asm-/);
-            }
+            const slug = await publishOrAdoptReviewed(page, handle!);
 
             // ── BIND: onboard anvil[16] through the REAL wizard — one catalog
             //    item (plus the rung's catalog-authored clause values) and

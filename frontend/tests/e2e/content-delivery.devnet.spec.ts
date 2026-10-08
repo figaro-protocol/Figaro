@@ -13,7 +13,7 @@
  *   compose  → the assembly composing figaro-content-handoff is authored on
  *              the REAL canvas and published — or ADOPTED when the identical
  *              composition is already anchored (first-write-wins; the
- *              refusal names the slug); identity is the composition
+ *              Review screen names the slug); identity is the composition
  *   bind     → a fresh member registers through the REAL wizard and binds
  *              the assembly (funded by a plain ETH transfer — the one
  *              mainnet-real way a new wallet arrives)
@@ -38,7 +38,7 @@
 import { test, expect, gotoAsWallet } from './devnet-multi-test';
 import { createPublicClient, createWalletClient, defineChain, http, keccak256, parseAbi, parseEther, type Hex } from 'viem';
 import { mnemonicToAccount, privateKeyToAccount } from 'viem/accounts';
-import { readLocalDeploymentConfig } from './devnet-helpers';
+import { readLocalDeploymentConfig, publishOrAdoptReviewed } from './devnet-helpers';
 import { ANVIL_KEYS } from '../anvilAccounts';
 import { CORE_ABI } from '@/lib/kernel/contracts';
 import { calculateBonds, ATTESTATION_COORDINATOR_ABI, CLAUSE_REGISTRY_ABI } from '@figaro-protocol/sdk';
@@ -110,7 +110,7 @@ test.describe('CONTENT DELIVERY — the digital hand-off ceremony, encrypted to 
 
         // ── COMPOSE-OR-ADOPT: author the digital-deliverable assembly on the
         //    real canvas; identity is the composition, so a re-run adopts the
-        //    anchored slug from the registry's refusal. ──
+        //    anchored slug the Review screen names. ──
         await page.addInitScript(() => {
             try {
                 window.localStorage.removeItem('figaro:designer:current');
@@ -145,24 +145,7 @@ test.describe('CONTENT DELIVERY — the digital hand-off ceremony, encrypted to 
         const handle = page.url().match(/[?&]slug=(asm-[a-z0-9-]+)/)?.[1];
         expect(handle, 'review navigated to a draft handle').toBeTruthy();
 
-        await page.goto(`/assemblies/designer/view?slug=${handle}&intent=publish&e2e=devnet`, { waitUntil: 'domcontentloaded' });
-        const confirmBtn = page.getByTestId('review-confirm-publish');
-        await confirmBtn.waitFor({ state: 'visible', timeout: 15000 });
-        await waitForConnected(page);
-        await confirmBtn.click();
-        const receipt = page.getByTestId('assembly-publish-receipt');
-        const publishError = page.getByTestId('publish-error');
-        let slug: string;
-        await expect(receipt.or(publishError)).toBeVisible({ timeout: 60000 });
-        if (await publishError.isVisible()) {
-            await expect(publishError, 'the registry refuses the identical composition (adopt path)')
-                .toContainText(/already published/);
-            slug = (await publishError.textContent())?.match(/"(asm-[a-z0-9-]+)"/)?.[1] ?? '';
-            expect(slug, 'the refusal names the anchored content slug').toMatch(/^asm-/);
-        } else {
-            slug = (await page.getByTestId('receipt-slug').textContent())?.trim() ?? '';
-            expect(slug, 'publish receipt shows the content slug').toMatch(/^asm-/);
-        }
+        const slug = await publishOrAdoptReviewed(page, handle!);
 
         // ── BIND: the member onboards through the REAL wizard and binds
         //    exactly this assembly. ──

@@ -37,15 +37,15 @@
  * FIXED — and assembly identity IS the composition (editorial names are
  * excluded from the compositionHash). On the persistent devnet the first run
  * against a deployment ANCHORS the assembly; every later run ADOPTS it: the
- * publish leg accepts either the fresh receipt or the registry's
- * "already published" refusal naming the same content-derived slug
- * (first-write-wins — the protocol-correct behavior), then binds and orders
- * against that slug.
+ * publish leg reads the binding from the chain: unbound, it publishes and
+ * reads the receipt; bound (first-write-wins), the Review screen closes publish
+ * and names the anchored content-derived slug, which the spec adopts
+ * (`publishOrAdoptReviewed`), then binds and orders against that slug.
  */
 import { test, expect, gotoAsWallet } from './devnet-multi-test';
 import { createPublicClient, defineChain, http, parseAbi, type Hex } from 'viem';
 import { privateKeyToAccount, mnemonicToAccount } from 'viem/accounts';
-import { readLocalDeploymentConfig, assertPinnedInIpfs } from './devnet-helpers';
+import { readLocalDeploymentConfig, assertPinnedInIpfs, publishOrAdoptReviewed } from './devnet-helpers';
 import { ANVIL_KEYS } from '../anvilAccounts';
 import { CORE_ABI } from '@/lib/kernel/contracts';
 import { calculateBonds } from '@figaro-protocol/sdk';
@@ -131,30 +131,11 @@ test.describe('CATALOG→LEAF fold — physical catalog data derives onto the ca
         const handle = page.url().match(/[?&]slug=(asm-[a-z0-9-]+)/)?.[1];
         expect(handle, 'review navigated to a draft handle').toBeTruthy();
 
-        // Publish or ADOPT: fresh deployment → the receipt names the content
-        // slug; re-run → the registry refuses the identical composition
-        // (first-write-wins) and its refusal NAMES the anchored slug. Either
-        // way the slug comes from the network's answer.
-        await page.goto(`/assemblies/designer/view?slug=${handle}&intent=publish&e2e=devnet`, { waitUntil: 'domcontentloaded' });
-        const confirmBtn = page.getByTestId('review-confirm-publish');
-        await confirmBtn.waitFor({ state: 'visible', timeout: 15000 });
-        await waitForConnected(page);
-        await confirmBtn.click();
-        const receipt = page.getByTestId('assembly-publish-receipt');
-        const publishError = page.getByTestId('publish-error');
-        let slug: string;
-        await expect(receipt.or(publishError)).toBeVisible({ timeout: 60000 });
-        if (await publishError.isVisible()) {
-            await expect(
-                publishError,
-                'the registry refuses the identical composition (adopt path)',
-            ).toContainText(/already published/);
-            slug = (await publishError.textContent())?.match(/"(asm-[a-z0-9-]+)"/)?.[1] ?? '';
-            expect(slug, 'the refusal names the anchored content slug').toMatch(/^asm-/);
-        } else {
-            slug = (await page.getByTestId('receipt-slug').textContent())?.trim() ?? '';
-            expect(slug, 'publish receipt shows the content slug').toMatch(/^asm-/);
-        }
+        // Publish or ADOPT: the binding, read from the chain, decides — unbound,
+        // the receipt names the content slug; bound (first-write-wins), the
+        // Review screen names the anchored slug. Either way the slug comes from
+        // the network's answer.
+        const slug = await publishOrAdoptReviewed(page, handle!);
 
         // ── CATALOG: onboard anvil[15] and author an item carrying mass, volume,
         //    and packaged dimensions through the REAL catalog form (the P1 floor

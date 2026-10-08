@@ -757,6 +757,45 @@ export async function waitForConnected(page: Page): Promise<void> {
 }
 
 /**
+ * PUBLISH OR ADOPT the reviewed composition and return its content slug. Opens
+ * the Review screen for the draft `handle` with the publish intent and reads the
+ * composition it would anchor from `designer-composition-hash`'s title. The
+ * chain fact — `AssemblyRegistry.bindings(hash)`, read out-of-band — decides the
+ * branch: unbound, the publish anchors it and the receipt names the slug; bound
+ * (first-write-wins), the Review screen reads that binding at the edge, closes
+ * publish, and its `review-already-anchored` notice names the anchored slug,
+ * which the caller ADOPTS. Either way the slug is the network's answer, never
+ * derived locally. The caller's page must be on the devnet wallet.
+ */
+export async function publishOrAdoptReviewed(page: Page, handle: string): Promise<string> {
+    await page.goto(`/assemblies/designer/view?slug=${handle}&intent=publish&e2e=devnet`, { waitUntil: 'domcontentloaded' });
+    const confirmBtn = page.getByTestId('review-confirm-publish');
+    await confirmBtn.waitFor({ state: 'visible', timeout: 15000 });
+    await waitForConnected(page);
+    const reviewedHash = await page.getByTestId('designer-composition-hash').getAttribute('title') as `0x${string}`;
+    expect(reviewedHash, 'the review screen states the composition it would anchor').toMatch(/^0x[0-9a-f]{64}$/i);
+    const [, registeredAt] = await localPublicClient().readContract({
+        address: readLocalDeploymentConfig().assemblyRegistry as `0x${string}`,
+        abi: ASSEMBLY_REGISTRY_ABI,
+        functionName: 'bindings',
+        args: [reviewedHash],
+    }) as readonly [`0x${string}`, bigint, boolean, string];
+    if (registeredAt > 0n) {
+        const anchored = page.getByTestId('review-already-anchored');
+        await expect(anchored, 'the Review screen says the composition is anchored (adopt path)').toBeVisible({ timeout: 30000 });
+        await expect(confirmBtn, 'publish is closed for an anchored composition').toBeDisabled();
+        const slug = (await anchored.locator('a').textContent())?.trim() ?? '';
+        expect(slug, 'the notice names the anchored content slug').toMatch(/^asm-/);
+        return slug;
+    }
+    await confirmBtn.click();
+    await expect(page.getByTestId('assembly-publish-receipt')).toBeVisible({ timeout: 60000 });
+    const slug = (await page.getByTestId('receipt-slug').textContent())?.trim() ?? '';
+    expect(slug, 'publish receipt shows the content slug').toMatch(/^asm-/);
+    return slug;
+}
+
+/**
  * Hold the page's Kubo API requests until `release()` — the agreement pin a
  * Send makes before it hands the signed order to the channel. On the devnet the
  * channel answers at once, so the wait a user sees on a public network never
