@@ -130,6 +130,10 @@ export type CapabilityExecutionInput =
 export interface CapabilityModel {
     id: string;
     label: string;
+    /** The order this capability acts on, named for its reader (position on
+     *  the process chain and seller): the buyer holds a card per order of
+     *  its process, and the rail renders this under the label. */
+    orderLabel?: string;
     /** The raw enum stage/band CODE for a clause-attestation capability (e.g.
      *  "prep-started", "zone-wifi"). Stable across label changes — surfaced as a
      *  `data-event-code` attribute so a test (or any consumer) can target a

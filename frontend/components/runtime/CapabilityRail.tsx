@@ -74,6 +74,9 @@ export function CapabilityRail({
                         <div className="flex items-center justify-between gap-3">
                             <p className="font-semibold text-ink-primary text-sm">{capability.label}</p>
                         </div>
+                        {capability.orderLabel && (
+                            <p className="mt-1 text-xs text-ink-muted" data-testid="capability-order-label">{capability.orderLabel}</p>
+                        )}
                         {capability.action?.executionType === "choice" && openChooserId === capability.id && (
                             <ModalChrome
                                 onClose={() => setOpenChooserId(null)}
@@ -84,6 +87,9 @@ export function CapabilityRail({
                                 <p id={`capability-chooser-title-${capability.id}`} className="text-sm font-semibold text-ink-primary">
                                     {capability.label}
                                 </p>
+                                {capability.orderLabel && (
+                                    <p className="mt-1 text-xs text-ink-muted">{capability.orderLabel}</p>
+                                )}
                                 <p className="mt-1 mb-3 text-xs text-ink-muted">Choose a section to re-assert. Each is its own transaction.</p>
                                 <ul className="space-y-2">
                                     {capability.action.choices.map((choice) => (

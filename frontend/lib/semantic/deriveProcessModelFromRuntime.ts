@@ -7,6 +7,7 @@ import type { RuntimeAttestation } from "@/lib/composition/indexer";
 import { clauseIsProcessLog, clauseLadderField, clauseWitnessStages, getClauseSpec, labelEnumValue, specSource } from "@/lib/shared/clauseSpecSource";
 import { computeClauseKey } from "@figaro-protocol/sdk";
 import { ZERO_BYTES32, hexEqual } from "@/lib/shared/evm";
+import { truncateHex } from "@/lib/shared/formatHex";
 import {
     CapabilityModel,
     EconomicBreakdownModel,
@@ -38,6 +39,33 @@ interface RuntimeIndexes {
     /** Off-chain topology edges, both directions, keyed by order id. */
     childrenByOrder: Map<string, string[]>;
     parentsByOrder: Map<string, string[]>;
+    /** Every seller of an order in the process, lowercased — tells a
+     *  co-seller's cross-order attestation from a seller-authorized attester's. */
+    processSellers: Set<string>;
+    /** Each order's 1-based position on the process chain, by id. */
+    positionByOrder: Map<string, number>;
+}
+
+/** Whether an attestation on `order` stands for `party` of that order.
+ *  AttestationCoordinator emits `msg.sender` as the attester on every path,
+ *  so the party is derived from the order, never read off the event:
+ *  - the buyer path requires the order's buyer as sender, so only an attester
+ *    equal to the buyer stands for the buyer;
+ *  - an attester equal to the order's seller stands for the seller (a
+ *    self-order's one address stands for both);
+ *  - a seller of ANOTHER order in the process attests cross-order through
+ *    `attestAsSeller` and stands for its own order, not this one;
+ *  - any other attester reached the order only through `attestViaResolver`,
+ *    i.e. the order's seller authorized it, so it stands for that seller. */
+function attestationStandsFor(
+    order: Order,
+    attester: string,
+    party: PartyRole,
+    processSellers: Set<string>,
+): boolean {
+    if (party === "buyer") return hexEqual(attester, order.buyer);
+    if (hexEqual(attester, order.seller)) return true;
+    return !hexEqual(attester, order.buyer) && !processSellers.has(attester.toLowerCase());
 }
 
 function buildRuntimeIndexes(
@@ -66,7 +94,16 @@ function buildRuntimeIndexes(
         }
     }
 
-    return { attestationsByOrder, childrenByOrder, parentsByOrder };
+    const processSellers = new Set(processOrders.map((order) => order.seller.toLowerCase()));
+
+    // Position on the process chain: the Core accepts each commit only at the
+    // process's running cumulative value plus a non-zero payment, so the
+    // cumulative value rises strictly in commit order and ranks the orders.
+    const byChain = processOrders.slice().sort((left, right) =>
+        left.cumulativeValue < right.cumulativeValue ? -1 : left.cumulativeValue > right.cumulativeValue ? 1 : 0);
+    const positionByOrder = new Map(byChain.map((order, i) => [order.orderHash.toString(), i + 1]));
+
+    return { attestationsByOrder, childrenByOrder, parentsByOrder, processSellers, positionByOrder };
 }
 
 function roleCapabilities(
@@ -111,10 +148,9 @@ function roleCapabilities(
 
             for (const party of parties) {
                 if (party === "seller" ? !isSeller : !isBuyer) continue;
-                const partyAddr = party === "seller" ? order.seller : order.buyer;
                 const mine = orderAttestations.filter(
                     (a) => hexEqual(a.clauseId, clauseIdHash)
-                        && hexEqual(a.attester, partyAddr),
+                        && attestationStandsFor(order, a.attester, party, indexes.processSellers),
                 );
                 const seen = new Set(mine.map((a) => a.stage));
                 const stage = ladder.values.findIndex((_v, i) => !seen.has(i));
@@ -215,9 +251,13 @@ function roleCapabilities(
         // own attestation: the coordinator attests one section per call, so
         // an "all" act would be N wallet prompts that can stop half-way. The
         // card is absent once every section is re-asserted.
+        //
+        // The card names its order — position on the process chain and seller —
+        // because the buyer is a party to every order of its process and the
+        // rail lists every order's cards together.
+        const orderLabel = `Order ${indexes.positionByOrder.get(orderIdStr)} of ${indexes.positionByOrder.size} · seller ${truncateHex(order.seller)}`;
         for (const party of ["seller", "buyer"] as const) {
             if (party === "seller" ? !isSeller : !isBuyer) continue;
-            const partyAddr = party === "seller" ? order.seller : order.buyer;
             const choices: CapabilityModel[] = [];
             for (const section of agreement.sections) {
                 const clauseId = section.clause;
@@ -225,7 +265,8 @@ function roleCapabilities(
                 if (clauseWitnessStages(clauseId, section.version).some((w) => w.stage === 0)) continue;
                 const clauseIdHash = computeClauseKey(clauseId, section.version).toLowerCase();
                 const already = orderAttestations.some(
-                    (a) => hexEqual(a.clauseId, clauseIdHash) && hexEqual(a.attester, partyAddr) && a.stage === 0,
+                    (a) => hexEqual(a.clauseId, clauseIdHash) && a.stage === 0
+                        && attestationStandsFor(order, a.attester, party, indexes.processSellers),
                 );
                 if (already) continue;
                 const title = getClauseSpec(clauseId, section.version)?.title ?? clauseId;
@@ -256,6 +297,7 @@ function roleCapabilities(
             out.push({
                 id: cardId,
                 label: `Re-assert committed sections (${choices.length})`,
+                orderLabel,
                 // Its OWN actionKind (→ its own `capability-*` testid): the
                 // rail renders many attestation cards per order, and the
                 // re-assert card must never collide with a ladder/witness

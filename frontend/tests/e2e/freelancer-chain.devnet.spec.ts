@@ -37,6 +37,7 @@ import {
     waitForConnected,
 } from './devnet-helpers';
 import { CORE_ABI } from '@/lib/kernel/contracts';
+import { truncateHex } from '@/lib/shared/formatHex';
 import { ANVIL_ACCOUNTS, ANVIL_KEYS } from '../anvilAccounts';
 
 const ANVIL_MNEMONIC = 'test test test test test test test test test test test junk';
@@ -53,7 +54,7 @@ const BUYER = ANVIL_ACCOUNTS[0] as Hex;
 // (5-12) and every other spec's self-seeded range. Self-seeding a
 // populate-owned index (this spec once used 9/10/11 = Saffron/Pomodoro/Harbor)
 // STOMPS the shared catalog that adopters like assembly-chain read
-// read-only — the wallet-index-collision class. anvil runs --accounts 38.
+// read-only — the wallet-index-collision class. anvil runs --accounts 39.
 const CHAIN_SELLERS: Array<{ index: number; label: string; item: string; price: string }> = [
     { index: 22, label: 'lead', item: 'Lead deliverable', price: '2' },
     { index: 23, label: 'contributor-1', item: 'Edit pass', price: '0.5' },
@@ -225,6 +226,25 @@ test.describe('FREELANCE VALUE CHAIN — three bonded deliverables over the encr
 
         await gotoAsWallet(page, BUYER, `/orders/view?process=${processId}&e2e=devnet`);
         await waitForConnected(page);
+
+        // ── RE-ASSERT CARDS name their order: the client is a party to all
+        //    three orders, so it holds one re-assert card per order; each card
+        //    names its order by position on the chain and seller. The expected
+        //    names come from the process's OrderCommitted events, read fresh;
+        //    the chain's cumulative value ranks the orders in commit order. ──
+        const processOrders = (await queryCommitted())
+            .filter((e) => e.args.processId === processId)
+            .sort((a, b) => (a.args.cumulativeValue! < b.args.cumulativeValue! ? -1 : 1));
+        expect(processOrders, 'the process holds exactly three orders').toHaveLength(3);
+        const expectedOrderLabels = processOrders
+            .map((e, i) => `Order ${i + 1} of 3 · seller ${truncateHex(e.args.seller!)}`)
+            .sort();
+        const reassertOrderLabels = page.getByTestId('capability-reassert-committed-sections')
+            .getByTestId('capability-order-label');
+        await expect(reassertOrderLabels, 'one re-assert card per order of the process').toHaveCount(3, { timeout: 30000 });
+        expect((await reassertOrderLabels.allTextContents()).sort(),
+            'each card names a distinct order: its position and its seller').toEqual(expectedOrderLabels);
+
         const panels = page.getByTestId('interaction-content-panel');
         await expect(panels.first(), 'the declared interaction mounts for the client').toBeVisible({ timeout: 30000 });
         await expect(panels, 'one content panel per deliverable').toHaveCount(3, { timeout: 30000 });

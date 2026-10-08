@@ -72,6 +72,23 @@ describe("CapabilityRail — a choice card opens a chooser", () => {
         expect(executed).toEqual([choices[1]]);
     });
 
+    it("renders each card's order under its label, on the card and in its chooser", () => {
+        const a = { ...card([choice("never-seen-a", "Section A")]), id: "p:a:buyer-reassert-committed-sections", orderLabel: "Order 1 of 2 · seller 0x2222…2222" };
+        const b = { ...card([choice("never-seen-a", "Section A")]), id: "p:b:buyer-reassert-committed-sections", orderLabel: "Order 2 of 2 · seller 0x5555…5555" };
+        render(<CapabilityRail capabilities={[a, b]} executableCapabilityIds={new Set([a.id, b.id])} onExecute={() => {}} />);
+        expect(screen.getAllByTestId("capability-order-label").map((p) => p.textContent))
+            .toEqual(["Order 1 of 2 · seller 0x2222…2222", "Order 2 of 2 · seller 0x5555…5555"]);
+        fireEvent.click(screen.getAllByTestId("capability-execute-reassert-committed-sections")[1]);
+        expect(screen.getByTestId("capability-chooser-reassert-committed-sections"))
+            .toHaveTextContent("Order 2 of 2 · seller 0x5555…5555");
+    });
+
+    it("renders no order line for a card without one", () => {
+        const c = card([choice("never-seen-a", "Section A")]);
+        render(<CapabilityRail capabilities={[c]} executableCapabilityIds={new Set([c.id])} onExecute={() => {}} />);
+        expect(screen.queryByTestId("capability-order-label")).not.toBeInTheDocument();
+    });
+
     it("closes when the card is no longer derived", () => {
         const c = card([choice("never-seen-a", "Section A")]);
         const { rerender } = render(<CapabilityRail capabilities={[c]} executableCapabilityIds={new Set([c.id])} onExecute={() => {}} />);
