@@ -267,6 +267,15 @@ comparison against `programVKey()` runs for real. Anvil-gated (skips clean witho
 `prover-ci`'s `sp1` job runs it on main with `REQUIRE_BATCH_E2E=1`, where a
 skip is a failure.
 
+`sdk/tests/batch-revoke-e2e.test.ts` drives the relay's deterministic-revert
+arm on the same harness (`sdk/tests/batchHarness.ts`, which both files share):
+two commits from one buyer with two sellers form one batch; one seller revokes
+its allowance after the funding check and before the send; the batch is
+refused, the revoker's op is dead-lettered alone and the other lands in the
+next batch — the balances, the one `BatchSettled` and the per-order answers
+read from the chain, the dead-letter count and its reason from `/status`.
+Same gate as the batch test; `prover-ci` runs both.
+
 ## Frontend Vitest (`frontend/tests/`) — 2 tiers
 
 `npx vitest run`. UI logic that needs neither a chain nor a real browser.
@@ -634,7 +643,7 @@ Per workflow, what it runs and when:
   main and dispatch — installs the SP1
   toolchain the way `sequencer-release` does, builds the sequencer, runs
   `cargo test` on `figaro-sequencer` and `figaro-prove-test`, then runs
-  `sdk/tests/batch-e2e.test.ts` against a live Anvil with
+  `sdk/tests/batch-e2e.test.ts` and `sdk/tests/batch-revoke-e2e.test.ts` against a live Anvil with
   `REQUIRE_BATCH_E2E=1`, so a missing chain or binary fails instead of
   skipping.
 - **`sdk-ci`** — push/PR, path-filtered (re-triggers on

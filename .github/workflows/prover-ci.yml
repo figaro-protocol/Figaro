@@ -315,7 +315,7 @@ jobs:
               working-directory: ./sdk
               env:
                   REQUIRE_BATCH_E2E: "1"
-              run: npx vitest run tests/batch-e2e.test.ts
+              run: npx vitest run tests/batch-e2e.test.ts tests/batch-revoke-e2e.test.ts
 
             - name: Anvil log on failure
               if: failure()
