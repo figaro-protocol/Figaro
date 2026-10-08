@@ -11,6 +11,13 @@
  * decodeFunctionData, then checks each signature with the SDK's canonical
  * `verifyCommitmentSignature` — zero crypto is implemented in the frontend.
  *
+ * The calldata is read only when the transaction CALLS one of those two
+ * contracts. A selector match alone proves nothing about what reached
+ * FigaroCore: a contract exposing the same `commit` signature may pass other
+ * signature bytes on, so a commit made through any other contract reads
+ * "indirect" — the commit stands (FigaroCore emitted `OrderCommitted`), and
+ * the signatures it verified are not in this transaction's top-level calldata.
+ *
  * The decoded struct is bound back to the order by recomputing the on-chain
  * order hash (`computeOrderHash`); a transaction whose decoded commitment does
  * not reproduce this order's hash (a wrapped commit this reader cannot parse)
@@ -59,7 +66,7 @@ import {
 } from "@figaro-protocol/sdk";
 import { CONTRACTS } from "@/lib/kernel/contracts";
 import { getAllOrderCommitted, getStringArg } from "@/lib/kernel/indexer";
-import { getBatchVerifier } from "@/lib/composition/contracts";
+import { getBatchVerifier, getWitnessSwapAndCommitCoordinator } from "@/lib/composition/contracts";
 import { getAllBatchSettled, getBatchAttestationsByOrder } from "@/lib/composition/indexer";
 import { hexEqual } from "@/lib/shared/evm";
 
@@ -69,9 +76,12 @@ import { hexEqual } from "@/lib/shared/evm";
  *  - "proved" — the signature was verified inside the SP1 proof that resolved a
  *    batch carrying this order. The reader did NOT recompute it; it is trusting
  *    a proof it can independently check. Never conflate with "valid".
+ *  - "indirect" — the commit transaction called neither FigaroCore nor the
+ *    witness swap coordinator, so its calldata is not the call FigaroCore
+ *    verified; nothing is recomputed. Never a failure.
  *  - "unavailable" — nothing on either path answered for this order; absence,
  *    never a failure. */
-type SignatureVerdict = "valid" | "invalid" | "unavailable" | "proved";
+type SignatureVerdict = "valid" | "invalid" | "unavailable" | "proved" | "indirect";
 
 /** What a reader needs to check the proof themselves, plus how tightly the
  *  order could be bound to a batch.
@@ -231,10 +241,17 @@ export async function verifyOrderCommitSignatures(
     if (!transactionHash) return provedOrUnavailable(client, chainId, orderHash);
 
     let input: Hex;
+    let to: `0x${string}` | null;
     try {
-        ({ input } = await client.getTransaction({ hash: transactionHash }));
+        ({ input, to } = await client.getTransaction({ hash: transactionHash }));
     } catch {
         return UNAVAILABLE;
+    }
+
+    // Only a direct call's calldata is the call FigaroCore verified.
+    const coordinator = getWitnessSwapAndCommitCoordinator();
+    if (!hexEqual(to, CONTRACTS.core) && !(coordinator && hexEqual(to, coordinator))) {
+        return { buyer: "indirect", seller: "indirect", transactionHash, batch: null };
     }
 
     const verdicts = await verdictsForCommitCalldata(input, orderHash, {

@@ -19,7 +19,7 @@
 import React from "react";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
-import { canonicalContentHash, templateCompositionHash } from "@figaro-protocol/sdk";
+import { canonicalContentHash, canonicalize, templateCompositionHash } from "@figaro-protocol/sdk";
 
 const fetchCappedContentMock = vi.fn();
 const resolveFetchUrlMock = vi.fn();
@@ -125,6 +125,42 @@ describe("StoredDocument — the pinned document, verbatim", () => {
         const pre = screen.getByTestId("stored-json-clause-figaro-applicable-law");
         expect(pre.textContent).toBe("<html>gateway error page</html>");
         expect(pre.querySelector("html")).toBeNull();
+    });
+
+    it("an honest document shows no 'reads differently' statement", async () => {
+        mount();
+        screen.getByTestId("stored-toggle-clause-figaro-applicable-law").click();
+        await screen.findByTestId("stored-verdict-clause-figaro-applicable-law");
+        expect(screen.queryByTestId("stored-differs-clause-figaro-applicable-law")).toBeNull();
+    });
+
+    it("a repeated key is stated, and the value that was hashed is shown beside the served bytes", async () => {
+        const text = `{"clauseId":"${SPEC.clauseId}","version":1,"title":"Applicable law","title":"Something else","description":"${SPEC.description}","fields":${JSON.stringify(SPEC.fields)}}`;
+        const hashed = { ...SPEC, title: "Something else" };
+        fetchCappedContentMock.mockResolvedValue(served(text));
+        mount({ anchoredHash: canonicalContentHash(hashed) });
+        screen.getByTestId("stored-toggle-clause-figaro-applicable-law").click();
+
+        // The served bytes stay verbatim; the difference is stated, not hidden.
+        expect((await screen.findByTestId("stored-json-clause-figaro-applicable-law")).textContent).toBe(text);
+        const differs = screen.getByTestId("stored-differs-clause-figaro-applicable-law");
+        expect(differs.textContent).toMatch(/repeat a key/i);
+        expect(differs.textContent).toMatch(/LAST occurrence/);
+        const parsed = screen.getByTestId("stored-parsed-clause-figaro-applicable-law");
+        expect(parsed.textContent).toBe(canonicalize(hashed));
+        expect(parsed.textContent).not.toContain("Applicable law");
+    });
+
+    it("a dropped __proto__ key is stated", async () => {
+        const text = `{"__proto__":{"admin":true},"clauseId":"${SPEC.clauseId}","version":1,"title":"${SPEC.title}","description":"${SPEC.description}","fields":${JSON.stringify(SPEC.fields)}}`;
+        fetchCappedContentMock.mockResolvedValue(served(text));
+        mount();
+        screen.getByTestId("stored-toggle-clause-figaro-applicable-law").click();
+
+        const differs = await screen.findByTestId("stored-differs-clause-figaro-applicable-law");
+        expect(differs.textContent).toMatch(/__proto__/);
+        expect(differs.textContent).toMatch(/drops/);
+        expect(screen.getByTestId("stored-parsed-clause-figaro-applicable-law").textContent).not.toContain("admin");
     });
 
     it("an unserved document is stated as the absence of a copy, not as a bad registration", async () => {

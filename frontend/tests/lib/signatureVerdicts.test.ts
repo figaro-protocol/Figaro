@@ -48,11 +48,17 @@ vi.mock("@/lib/kernel/indexer", async (importOriginal) => {
 // the order binds to a batch) is real.
 const BATCH_VERIFIER = "0xfE9A08Cbd38397E2b8f96BC49Bd8d4cd9e622e50" as const;
 const getBatchVerifierMock = vi.fn();
+const COORDINATOR = "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0" as const;
+const getCoordinatorMock = vi.fn();
 const getBatchAttestationsByOrderMock = vi.fn();
 const getAllBatchSettledMock = vi.fn();
 vi.mock("@/lib/composition/contracts", async (importOriginal) => {
     const actual = await importOriginal<typeof import("@/lib/composition/contracts")>();
-    return { ...actual, getBatchVerifier: () => getBatchVerifierMock() };
+    return {
+        ...actual,
+        getBatchVerifier: () => getBatchVerifierMock(),
+        getWitnessSwapAndCommitCoordinator: () => getCoordinatorMock(),
+    };
 });
 vi.mock("@/lib/composition/indexer", async (importOriginal) => {
     const actual = await importOriginal<typeof import("@/lib/composition/indexer")>();
@@ -106,6 +112,7 @@ beforeEach(async () => {
     // Default: the batch universe knows nothing, so every pre-existing
     // direct-path expectation keeps its exact meaning.
     getBatchVerifierMock.mockReset().mockReturnValue(null);
+    getCoordinatorMock.mockReset().mockReturnValue(COORDINATOR);
     getBatchAttestationsByOrderMock.mockReset().mockResolvedValue([]);
     getAllBatchSettledMock.mockReset().mockResolvedValue([]);
     buyerSig = await signCommitment(buyerAccount);
@@ -185,7 +192,9 @@ describe("verdictsForCommitCalldata", () => {
 });
 
 describe("verifyOrderCommitSignatures", () => {
-    const clientWith = (getTransaction: (args: { hash: Hex }) => Promise<{ input: Hex }>) =>
+    const clientWith = (
+        getTransaction: (args: { hash: Hex }) => Promise<{ input: Hex; to: Hex | null }>,
+    ) =>
         ({ getTransaction } as unknown as PublicClient);
     const TX_HASH = `0x${"11".repeat(32)}` as Hex;
 
@@ -195,7 +204,7 @@ describe("verifyOrderCommitSignatures", () => {
         ]);
         const client = clientWith(async ({ hash }) => {
             expect(hash).toBe(TX_HASH);
-            return { input: commitInput };
+            return { input: commitInput, to: CORE };
         });
         const verdicts = await verifyOrderCommitSignatures(client, CHAIN_ID, orderHash);
         expect(verdicts).toEqual({ buyer: "valid", seller: "valid", transactionHash: TX_HASH, batch: null });
@@ -236,9 +245,74 @@ describe("verifyOrderCommitSignatures", () => {
         getAllOrderCommittedMock.mockResolvedValue([
             { args: { orderHash }, transactionHash: TX_HASH },
         ]);
-        const client = clientWith(async () => ({ input: "0xdeadbeef" as Hex }));
+        const client = clientWith(async () => ({ input: "0xdeadbeef" as Hex, to: CORE }));
         const verdicts = await verifyOrderCommitSignatures(client, CHAIN_ID, orderHash);
         expect(verdicts).toEqual({ buyer: "unavailable", seller: "unavailable", transactionHash: TX_HASH, batch: null });
+    });
+
+    it("reports INDIRECT, never invalid, for a commit made through another contract with the same selector", async () => {
+        // A contract exposing `commit(c, bytes, bytes)` whose signature
+        // arguments are its own (here: signed over ITS domain) and that hands
+        // FigaroCore other bytes. The struct reproduces the order hash, so a
+        // selector match alone would read "✗ Invalid" for a commit
+        // FigaroCore accepted.
+        const WRAPPER = strangerAccount.address;
+        const sign = (a: typeof buyerAccount) =>
+            a.signTypedData({
+                domain: buildDomain(CHAIN_ID, WRAPPER),
+                types: COMMITMENT_TYPES,
+                primaryType: "Commitment",
+                message: commitment,
+            });
+        const input = encodeFunctionData({
+            abi: CORE_ABI,
+            functionName: "commit",
+            args: [commitment, await sign(buyerAccount), await sign(sellerAccount)],
+        });
+        // Without the target check this calldata grades as invalid.
+        expect(await verdictsForCommitCalldata(input, orderHash, ctx)).toEqual({
+            buyer: "invalid",
+            seller: "invalid",
+        });
+        getAllOrderCommittedMock.mockResolvedValue([
+            { args: { orderHash }, transactionHash: TX_HASH },
+        ]);
+        const verdicts = await verifyOrderCommitSignatures(
+            clientWith(async () => ({ input, to: WRAPPER })),
+            CHAIN_ID,
+            orderHash,
+        );
+        expect(verdicts).toEqual({ buyer: "indirect", seller: "indirect", transactionHash: TX_HASH, batch: null });
+    });
+
+    it("reads a swapAndCommit sent to the witness swap coordinator", async () => {
+        getAllOrderCommittedMock.mockResolvedValue([
+            { args: { orderHash }, transactionHash: TX_HASH },
+        ]);
+        const input = encodeFunctionData({
+            abi: WITNESS_SWAP_AND_COMMIT_COORDINATOR_ABI,
+            functionName: "swapAndCommit",
+            args: [commitment, buyerSig, sellerSig, DISABLED_SWAP_FUNDING_LEG, DISABLED_SWAP_FUNDING_LEG],
+        });
+        const verdicts = await verifyOrderCommitSignatures(
+            clientWith(async () => ({ input, to: COORDINATOR })),
+            CHAIN_ID,
+            orderHash,
+        );
+        expect(verdicts).toEqual({ buyer: "valid", seller: "valid", transactionHash: TX_HASH, batch: null });
+    });
+
+    it("reports INDIRECT for a coordinator-shaped call when no coordinator is configured", async () => {
+        getCoordinatorMock.mockReturnValue(null);
+        getAllOrderCommittedMock.mockResolvedValue([
+            { args: { orderHash }, transactionHash: TX_HASH },
+        ]);
+        const verdicts = await verifyOrderCommitSignatures(
+            clientWith(async () => ({ input: commitInput, to: COORDINATOR })),
+            CHAIN_ID,
+            orderHash,
+        );
+        expect(verdicts.buyer).toBe("indirect");
     });
 });
 
@@ -347,7 +421,7 @@ describe("verifyOrderCommitSignatures — batch path", () => {
         ]);
         const client = {
             readContract: async () => VKEY as unknown,
-            getTransaction: async () => ({ input: commitInput }),
+            getTransaction: async () => ({ input: commitInput, to: CORE }),
         } as unknown as PublicClient;
         const verdicts = await verifyOrderCommitSignatures(client, CHAIN_ID, orderHash);
         expect(verdicts).toEqual({

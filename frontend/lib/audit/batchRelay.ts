@@ -31,7 +31,10 @@
  *                     its own choosing.
  *   order-hash        the commitment must re-derive its own `order_hash`.
  *   process-id        and, for a root order (signed `processId == 0`), its own
- *                     `process_id` — FigaroCore's derivation, recomputed here.
+ *                     `process_id` — FigaroCore's derivation, recomputed here —
+ *                     which must be the process the reader ASKED for, so a
+ *                     relay cannot file one process's genuine orders under
+ *                     another's id.
  *   buyer-signature   both signatures must recover to the buyer and seller
  *   seller-signature  named INSIDE that struct — over the VERIFIER's EIP-712
  *                     domain, not FigaroCore's.
@@ -39,15 +42,27 @@
  *                     struct (`2 × expectedCumulativeValue + payment`, and
  *                     `payment`) — they are a pure function of what was signed.
  *   resolve-signature the buyer signature that authorized resolution must
- *                     recover to the buyer — the batched form of FigaroCore's
- *                     `msg.sender == rootBuyer`.
- *   state-root-anchor the batch's `new_state_root` must appear in a
+ *                     recover to the buyer named in the process's signed
+ *                     structs, over the process the reader asked for, in a
+ *                     batch anchored on chain — the batched form of
+ *                     FigaroCore's `msg.sender == rootBuyer`.
+ *   state-root-anchor the commit batch's `new_state_root` must appear in a
  *                     `BatchSettled` this verifier emitted on chain.
+ *   resolution-anchor the resolution leg's batch passes the same domain and
+ *                     anchor checks; an order reads as resolved only then.
+ *
+ * WHAT THE ANCHOR DOES NOT PROVE. The relay publishes no inclusion proof, so
+ * this reader shows that a `BatchSettled` carries the root the relay named —
+ * never that this order sits under that root. A struct both parties signed
+ * but never committed passes every check above. The checks and the panel say
+ * so in their own words rather than calling the order verified on chain.
  *
  * An order failing ANY check renders as FAILED — loudly, naming the check and
  * the mismatch. It is never silently dropped and never softened, because a
  * relay that publishes a struct nobody signed must be visibly caught, not
- * quietly ignored. A relay can omit or delay; it can never forge.
+ * quietly ignored. A relay cannot forge a signature, a payout or a state root;
+ * it can omit, delay, and name a batch for an order this reader cannot place
+ * under that batch's root.
  *
  * ZERO new crypto: the derivations are the SDK's own `computeOrderHash`,
  * `computeCommitmentProcessId`, `verifyCommitmentSignature`,
@@ -142,7 +157,8 @@ export type BatchRelayCheckId =
     | "seller-signature"
     | "payouts"
     | "resolve-signature"
-    | "state-root-anchor";
+    | "state-root-anchor"
+    | "resolution-anchor";
 
 export interface BatchRelayCheck {
     id: BatchRelayCheckId;
@@ -192,6 +208,9 @@ export interface BatchVerifyContext {
     chainId: number;
     /** The verifier THIS deployment trusts, from `getBatchVerifier()`. */
     verifier: `0x${string}`;
+    /** The process the reader asked for. An order deriving any other process
+     *  id fails, however genuine its signatures. */
+    processId: string;
     isAnchored: StateRootAnchorCheck;
 }
 
@@ -308,7 +327,7 @@ export async function verifyBatchOrder(
         commitment = fromSequencerCommitment(wire);
     } catch (e) {
         checks.push(fail("order-hash", extractErrorMessage(e, "commitment struct is unparseable")));
-        return finish(base, checks, null, batch, null);
+        return finish(base, checks, null, batch, null, null);
     }
 
     // Derive against the domain the batch DECLARES. When `domain` failed, the
@@ -329,12 +348,17 @@ export async function verifyBatchOrder(
 
     const derivedProcessId = computeCommitmentProcessId(commitment, derivationChain, derivationCore);
     checks.push(
-        hexEqual(derivedProcessId, view.process_id)
-            ? pass("process-id", `struct re-derives ${derivedProcessId}`)
-            : fail(
+        !hexEqual(derivedProcessId, view.process_id)
+            ? fail(
                 "process-id",
                 `struct derives processId ${derivedProcessId}, but the relay published it under ${view.process_id}`,
-            ),
+            )
+            : !hexEqual(derivedProcessId, ctx.processId)
+                ? fail(
+                    "process-id",
+                    `struct derives processId ${derivedProcessId}, but this reader asked for process ${ctx.processId}`,
+                )
+                : pass("process-id", `struct re-derives ${derivedProcessId}`),
     );
 
     // Both signatures must recover to the parties named INSIDE the struct —
@@ -367,7 +391,17 @@ export async function verifyBatchOrder(
 
     checks.push(await ctx.isAnchored(batch));
 
-    return finish(base, checks, commitment, batch, payouts);
+    // The resolution leg carries its own batch. The payouts above are a pure
+    // function anyone computes, so "resolved" rests on THIS batch passing the
+    // same domain and anchor checks as the commit batch.
+    const resolutionBatch = view.resolution?.batch ?? null;
+    if (resolutionBatch) {
+        const resolutionDomain = checkDomain(resolutionBatch, ctx);
+        const anchor = resolutionDomain.ok ? await ctx.isAnchored(resolutionBatch) : resolutionDomain;
+        checks.push({ id: "resolution-anchor", ok: anchor.ok, detail: `resolution batch: ${anchor.detail}` });
+    }
+
+    return finish(base, checks, commitment, batch, resolutionBatch, payouts);
 }
 
 function finish(
@@ -375,6 +409,7 @@ function finish(
     checks: BatchRelayCheck[],
     commitment: Commitment | null,
     batch: SequencerBatchRef,
+    resolutionBatch: SequencerBatchRef | null,
     payouts: { sellerPayout: bigint; buyerPayout: bigint } | null,
 ): VerifiedBatchOrder {
     const failures = checks.filter((c) => !c.ok);
@@ -386,7 +421,12 @@ function finish(
         failures,
         // Unverified data never reaches a render path.
         order: verdict === "verified" && commitment
-            ? toOrder(base.orderHash, base.processId, commitment, payouts !== null, batch)
+            ? toOrder(
+                base.orderHash,
+                base.processId,
+                commitment,
+                payouts !== null ? resolutionBatch : null,
+            )
             : null,
         batch,
         payouts,
@@ -403,15 +443,16 @@ function finish(
  * `blockNumber` is deliberately absent: a batch order carries a block
  * TIMESTAMP, not a number, and inventing one would fabricate chain state
  * (the placeholder fed to the shared mapping is stripped, never exposed).
- * The batch reference is carried alongside instead.
+ * The batch reference is carried alongside instead. `resolvedAt` is the
+ * RESOLUTION batch's timestamp — null `resolutionBatch` means still open.
  */
 function toOrder(
     orderHash: string,
     processId: string,
     c: Commitment,
-    resolved: boolean,
-    batch: SequencerBatchRef,
+    resolutionBatch: SequencerBatchRef | null,
 ): Order {
+    const resolved = resolutionBatch !== null;
     const { blockNumber: _stripped, ...order } = orderFromSdk({
         orderHash: orderHash as Hex,
         processId: processId as Hex,
@@ -428,7 +469,7 @@ function toOrder(
     });
     return {
         ...order,
-        resolvedAt: resolved ? batch.block_timestamp : undefined,
+        resolvedAt: resolutionBatch ? resolutionBatch.block_timestamp : undefined,
     };
 }
 
@@ -482,7 +523,7 @@ export function createStateRootAnchorCheck(
         }
         return pass(
             "state-root-anchor",
-            `state root ${batch.new_state_root} resolved on chain in ${match.transactionHash}`,
+            `state root ${batch.new_state_root} resolved on chain in ${match.transactionHash}; this order's inclusion under that root is not proved here — the relay publishes no inclusion proof`,
         );
     };
 }
@@ -576,10 +617,20 @@ export async function readVerifiedBatchProcess(
     if (!view) {
         return { status: "not-in-archive", relayUrl, ...EMPTY, window };
     }
+    if (!hexEqual(view.process_id, processId)) {
+        return {
+            status: "unreachable",
+            relayUrl,
+            ...EMPTY,
+            window,
+            error: `asked for process ${processId}, the relay answered with process ${view.process_id}`,
+        };
+    }
 
     const ctx: BatchVerifyContext = {
         chainId,
         verifier,
+        processId,
         isAnchored: deps?.isAnchored ?? createStateRootAnchorCheck(client, chainId),
     };
 
@@ -589,24 +640,51 @@ export async function readVerifiedBatchProcess(
     if (view.resolution) {
         const r = view.resolution;
         const domain = checkDomain(r.batch, ctx);
+        // The buyer named in the process's signed structs. A process has one
+        // buyer (FigaroCore: buyer == rootBuyer in every order), so the
+        // resolve signer is held to it, never to the relay's `buyer` field.
+        const structBuyers = orders
+            .map((o) => o.order?.buyer)
+            .filter((b): b is string => typeof b === "string");
+        const strayBuyer = structBuyers.find((b) => !hexEqual(b, r.buyer));
         let signature: BatchRelayCheck;
         if (!domain.ok) {
             signature = fail("resolve-signature", domain.detail);
+        } else if (structBuyers.length === 0) {
+            signature = fail(
+                "resolve-signature",
+                `no order under this process passed its checks, so the signer ${r.buyer} cannot be tied to the buyer named in a signed struct`,
+            );
+        } else if (strayBuyer) {
+            signature = fail(
+                "resolve-signature",
+                `the relay names ${r.buyer} as buyer, but the signed structs name ${strayBuyer} — this process's resolution is NOT proven to be buyer-authorized`,
+            );
         } else {
+            const anchor = await ctx.isAnchored(r.batch);
             let ok = false;
             let reason = "";
-            try {
-                ok = await verifyResolveProcessSignature(
-                    view.process_id,
-                    fromSequencerSig(r.buyer_signature),
-                    r.buyer as `0x${string}`,
-                    { chainId: r.batch.chain_id, core: r.batch.verifying_contract as `0x${string}` },
-                );
-            } catch (e) {
-                reason = extractErrorMessage(e, "resolution signature is malformed");
+            if (!anchor.ok) {
+                reason = `resolution batch: ${anchor.detail}`;
+            } else {
+                try {
+                    // Over the process the reader ASKED for, never the relay's
+                    // own `process_id` field.
+                    ok = await verifyResolveProcessSignature(
+                        processId as Hex,
+                        fromSequencerSig(r.buyer_signature),
+                        r.buyer as `0x${string}`,
+                        { chainId: r.batch.chain_id, core: r.batch.verifying_contract as `0x${string}` },
+                    );
+                } catch (e) {
+                    reason = extractErrorMessage(e, "resolution signature is malformed");
+                }
             }
             signature = ok
-                ? pass("resolve-signature", `buyer ${r.buyer} authorized resolving this process`)
+                ? pass(
+                    "resolve-signature",
+                    `buyer ${r.buyer}, named in the signed structs, authorized resolving this process`,
+                )
                 : fail(
                     "resolve-signature",
                     reason ||

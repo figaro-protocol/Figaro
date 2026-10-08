@@ -83,6 +83,11 @@ function OrderSignatureRows({
                                 &#9670; Proved in a batch &mdash; checked inside the proof, not recomputed here
                             </span>
                         )}
+                        {verdict === "indirect" && (
+                            <span className="text-ink-muted">
+                                Not a direct call &mdash; the commit went through another contract, so this transaction&rsquo;s calldata is not what FigaroCore verified
+                            </span>
+                        )}
                         {verdict === "unavailable" && (
                             <span className="text-ink-muted">
                                 Unavailable &mdash; no readable commit calldata for this order

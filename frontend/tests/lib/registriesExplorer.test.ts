@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { canonicalContentHash, templateCompositionHash } from "@figaro-protocol/sdk";
+import { canonicalContentHash, canonicalize, templateCompositionHash } from "@figaro-protocol/sdk";
 import {
     parseExplorerQuery, serializeExplorerQuery, selectRows, facetValues, explorerBreadcrumb,
     anchorForFamily, storedDocument, STORED_DOCUMENT_NOTE,
@@ -149,6 +149,46 @@ describe("the document as stored — the reader re-derives the anchor themselves
         // Changing the COMPOSITION does break it — the anchor is the terms.
         const retermed = JSON.stringify({ ...TEMPLATE, agreements: [{ id: "order-0", clauses: { "figaro-commerce": { payment: "2" } } }] });
         expect(storedDocument(retermed, anchored, "composition-hash").matches).toBe(false);
+    });
+
+    it("an honest document reads the same as what was hashed — no differences", () => {
+        const v = storedDocument(JSON.stringify(SPEC, null, 2), canonicalContentHash(SPEC), "content-hash");
+        expect(v.differences).toEqual([]);
+        expect(v.parsedCanonical).toBe(canonicalize(SPEC));
+    });
+
+    it("a REPEATED key is named: the text's first occurrence is not what was hashed", () => {
+        // A reader of the text meets "Applicable law"; the parse, and so the
+        // hash, keeps "Something else".
+        const text = JSON.stringify(SPEC).replace(
+            '"title":"Applicable law"',
+            '"title":"Applicable law","title":"Something else"',
+        );
+        const hashed = { ...SPEC, title: "Something else" };
+        const v = storedDocument(text, canonicalContentHash(hashed), "content-hash");
+        expect(v.matches).toBe(true);
+        expect(v.differences).toEqual(["repeated-key"]);
+        expect(v.parsedCanonical).toBe(canonicalize(hashed));
+        expect(v.parsedCanonical).not.toContain("Applicable law");
+    });
+
+    it("a repeated key in DIFFERENT objects, or inside a string, is not a repetition", () => {
+        const text = JSON.stringify({ a: { name: "x" }, b: { name: "y" }, c: '"name":"z","name"' });
+        expect(storedDocument(text, "0x00", "content-hash").differences).toEqual([]);
+    });
+
+    it("a key the parse DROPS is named, and the hashed value carries none of it", () => {
+        const text = JSON.stringify(SPEC).replace("{", '{"__proto__":{"admin":true},');
+        const v = storedDocument(text, canonicalContentHash(SPEC), "content-hash");
+        expect(v.matches).toBe(true);
+        expect(v.differences).toEqual(["dropped-key"]);
+        expect(v.parsedCanonical).not.toContain("admin");
+    });
+
+    it("bytes that will not parse carry no parsed value", () => {
+        const v = storedDocument("not json at all", canonicalContentHash(SPEC), "content-hash");
+        expect(v.parsedCanonical).toBeNull();
+        expect(v.differences).toEqual([]);
     });
 
     it("compares hashes case-insensitively — hex casing is not a mismatch", () => {

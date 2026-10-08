@@ -10,7 +10,10 @@
  * two agree. That is what this shows, and nothing more: the bytes the gateway
  * served, rendered as preformatted TEXT (content is data — it is never parsed
  * into markup and never rendered as HTML), the anchored hash beside them, and
- * the recomputation stated as a verdict.
+ * the recomputation stated as a verdict. Where the served text reads
+ * differently from the value the recomputation ran over — a repeated key, of
+ * which the parse keeps the last; a key the parse drops — the panel says so
+ * and shows that value in canonical form beside the served bytes.
  *
  * The read is the one the site already does everywhere else: the registration
  * event's own `contentURI`, resolved through `lib/shared/ipfsService` (the
@@ -170,6 +173,30 @@ export function StoredDocument({ id, contentURI, anchoredHash, anchor }: StoredD
                                 </>
                             )}
                         </p>
+                        {read.verdict.differences.length > 0 && read.verdict.parsedCanonical !== null ? (
+                            <div className="space-y-2" data-testid={`stored-differs-${id}`}>
+                                <p className="text-xs text-error-fg">
+                                    These bytes read differently from the value that was hashed:
+                                    {read.verdict.differences.includes("repeated-key") && (
+                                        <> they repeat a key within one object, and the parse keeps the
+                                            LAST occurrence where a reader of the text meets the first;</>
+                                    )}
+                                    {read.verdict.differences.includes("dropped-key") && (
+                                        <> they carry a <code className="font-mono">__proto__</code>,{" "}
+                                            <code className="font-mono">constructor</code> or{" "}
+                                            <code className="font-mono">prototype</code> key, which the parse
+                                            drops;</>
+                                    )}{" "}
+                                    the value the recomputation ran over, in canonical form, is:
+                                </p>
+                                <pre
+                                    className="max-h-96 overflow-auto rounded border border-default bg-subtle p-3 text-xs font-mono text-ink-body whitespace-pre-wrap break-words"
+                                    data-testid={`stored-parsed-${id}`}
+                                >
+                                    {read.verdict.parsedCanonical}
+                                </pre>
+                            </div>
+                        ) : null}
                         <p className="text-xs text-ink-muted">{STORED_DOCUMENT_NOTE[read.verdict.anchor]}</p>
                     </>
                 ) : null}

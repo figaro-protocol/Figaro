@@ -14,9 +14,9 @@
  * speak one shape.
  */
 
-import { canonicalContentHash, templateCompositionHash } from "@figaro-protocol/sdk";
+import { canonicalContentHash, canonicalize, templateCompositionHash } from "@figaro-protocol/sdk";
 import type { BreadcrumbItem } from "@/components/shared/Breadcrumb";
-import { safeJsonParse } from "@/lib/shared/safeJson";
+import { safeJsonParse, strippingReviver } from "@/lib/shared/safeJson";
 import { pick, queryParam } from "@/lib/shared/urlQuery";
 
 export const REGISTRY_FAMILIES = ["clauses", "assemblies", "members"] as const;
@@ -194,6 +194,53 @@ export interface StoredDocument {
     /** True only when the recomputation reproduced the anchor. A false here is
      *  a real finding — the pin does not answer for what the chain claims. */
     matches: boolean;
+    /** How the served bytes read differently from the value the recomputation
+     *  ran over; empty when they read the same. A repeated key parses to its
+     *  LAST occurrence, while a reader of the text meets the first; a
+     *  `__proto__`, `constructor` or `prototype` key is dropped at parse. */
+    differences: StoredDocumentDifference[];
+    /** The parsed value in canonical form — the value the recomputation ran
+     *  over. null when the bytes do not parse. */
+    parsedCanonical: string | null;
+}
+
+/** One way served bytes can read differently from what was hashed. */
+type StoredDocumentDifference = "repeated-key" | "dropped-key";
+
+/**
+ * Scan JSON text that has ALREADY parsed for the two ways its text reads
+ * differently from its parsed value: a key repeated within one object, and a
+ * key the parse drops (`strippingReviver`'s set). A scan, not a parse — the
+ * parsed value cannot show either, since both are gone from it.
+ */
+function textDifferences(text: string): StoredDocumentDifference[] {
+    const found = new Set<StoredDocumentDifference>();
+    // One frame per open object/array; an object frame tracks its keys and
+    // whether the next string is a key.
+    const stack: Array<{ keys: Set<string> | null; expectKey: boolean }> = [];
+    for (let i = 0; i < text.length; i++) {
+        const ch = text[i];
+        if (ch === "{") stack.push({ keys: new Set(), expectKey: true });
+        else if (ch === "[") stack.push({ keys: null, expectKey: false });
+        else if (ch === "}" || ch === "]") stack.pop();
+        else if (ch === ",") {
+            const top = stack[stack.length - 1];
+            if (top?.keys) top.expectKey = true;
+        } else if (ch === '"') {
+            let j = i + 1;
+            while (j < text.length && text[j] !== '"') j += text[j] === "\\" ? 2 : 1;
+            const top = stack[stack.length - 1];
+            if (top?.keys && top.expectKey) {
+                const key = JSON.parse(text.slice(i, j + 1)) as string;
+                if (top.keys.has(key)) found.add("repeated-key");
+                if (strippingReviver(key, true) === undefined) found.add("dropped-key");
+                top.keys.add(key);
+                top.expectKey = false;
+            }
+            i = j;
+        }
+    }
+    return Array.from(found);
 }
 
 /**
@@ -205,7 +252,10 @@ export interface StoredDocument {
  */
 export function storedDocument(text: string, anchored: string, anchor: StoredDocumentAnchor): StoredDocument {
     const parsed = safeJsonParse<Record<string, unknown>>(text);
-    if (parsed === null) return { anchor, anchored, recomputed: null, matches: false };
+    if (parsed === null) {
+        return { anchor, anchored, recomputed: null, matches: false, differences: [], parsedCanonical: null };
+    }
+    const read = { differences: textDifferences(text), parsedCanonical: canonicalize(parsed) };
     let recomputed: string;
     try {
         recomputed =
@@ -215,13 +265,14 @@ export function storedDocument(text: string, anchored: string, anchor: StoredDoc
     } catch {
         // A document that parses but carries no composition to hash cannot
         // reproduce the anchor. Absence of a recomputation, never a match.
-        return { anchor, anchored, recomputed: null, matches: false };
+        return { anchor, anchored, recomputed: null, matches: false, ...read };
     }
     return {
         anchor,
         anchored,
         recomputed,
         matches: recomputed.toLowerCase() === anchored.toLowerCase(),
+        ...read,
     };
 }
 

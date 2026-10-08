@@ -7,10 +7,12 @@
  * `/audit`'s other panels read the network directly. This one reads a RELAY,
  * which is transport and not authority, so it never presents relay data as
  * chain truth: every order is re-derived by `lib/audit/batchRelay`
- * (struct → its own order hash and process id, both signatures → the parties
- * named inside that struct under the VERIFIER's domain, payouts → recomputed
- * from the struct, batch → anchored to a `BatchSettled` on chain) and this
- * panel reports the verdict per check.
+ * (struct → its own order hash and the process id this page asked for, both
+ * signatures → the parties named inside that struct under the VERIFIER's
+ * domain, payouts → recomputed from the struct, commit and resolution batches
+ * → their state roots found in a `BatchSettled` on chain) and this panel
+ * reports the verdict per check. The relay publishes no inclusion proof, so
+ * the panel never claims an order sits under the root it found.
  *
  * An order that fails any check is shown as FAILED, naming the check and the
  * mismatch. It is never dropped and never softened — a relay publishing
@@ -112,11 +114,17 @@ export function BatchUniversePanel({ batch }: { batch: VerifiedBatchProcess | nu
                     exists only under the verifier&rsquo;s proven state root &mdash; so
                     reading it means reading a relay. Nothing below is taken on the
                     relay&rsquo;s word: each order&rsquo;s struct must re-derive its own
-                    order hash, both signatures must recover to the parties named
-                    inside that struct, the payouts must recompute from it, and the
-                    batch&rsquo;s state root must be anchored in a{" "}
-                    <code>BatchSettled</code> on chain. A relay can omit or delay; it
-                    cannot forge.
+                    order hash and the process id this page asked for, both
+                    signatures must recover to the parties named inside that
+                    struct, the payouts must recompute from it, the resolve
+                    signature must recover to the buyer those structs name, and
+                    each batch&rsquo;s state root must appear in a{" "}
+                    <code>BatchSettled</code> on chain. A relay cannot forge a
+                    signature, a payout or a state root. It can omit or delay, and
+                    it can name a batch for an order this page cannot place under
+                    that batch&rsquo;s root: the relay publishes no inclusion proof,
+                    so the state-root check shows the root is on chain, not that
+                    the order sits under it.
                 </p>
             </div>
 
@@ -127,7 +135,7 @@ export function BatchUniversePanel({ batch }: { batch: VerifiedBatchProcess | nu
                     <p className="text-xs text-ink-muted" data-testid="batch-relay-source">
                         Read from <span className="font-mono break-all">{batch.relayUrl}</span>
                         {" — "}
-                        {verified.length} verified, {failed.length} failed,{" "}
+                        {verified.length} passed every check, {failed.length} failed,{" "}
                         {unretained.length} unretained.
                     </p>
 
@@ -184,7 +192,7 @@ export function BatchUniversePanel({ batch }: { batch: VerifiedBatchProcess | nu
                                                 }`}
                                             data-testid={`batch-verdict-${o.orderHash}`}
                                         >
-                                            {o.verdict === "verified" && "Verified against the signed struct and the chain"}
+                                            {o.verdict === "verified" && "Passed every check — its inclusion under the state root is not proved here"}
                                             {o.verdict === "failed" && "FAILED verification — not displayed as trade"}
                                             {o.verdict === "unretained" && "Unretained — this relay dropped the committing batch, so there is no struct to check"}
                                         </span>

@@ -146,6 +146,7 @@ const anchored: StateRootAnchorCheck = async () => ({
 const ctx = (isAnchored: StateRootAnchorCheck = anchored): BatchVerifyContext => ({
     chainId: CHAIN_ID,
     verifier: VERIFIER,
+    processId,
     isAnchored,
 });
 
@@ -177,6 +178,7 @@ describe("verifyBatchOrder — an honest relay record", () => {
             "order-hash",
             "payouts",
             "process-id",
+            "resolution-anchor",
             "seller-signature",
             "state-root-anchor",
         ]);
@@ -331,7 +333,88 @@ describe("verifyBatchOrder — what each check rejects", () => {
         expect(checkFor(result.checks, "state-root-anchor")?.ok).toBe(false);
         expect(result.order).toBeNull();
     });
+
+    it("process-id: rejects another process's GENUINE record served under the process asked for", async () => {
+        // Process Y: a different, honestly signed root order. Every signature
+        // recovers and the struct derives the id the relay published — only
+        // the reader's own request tells it apart.
+        const other: Commitment = { ...commitment, salt: 8n };
+        const sign = (a: typeof buyer) =>
+            a.signTypedData({
+                domain: buildDomain(CHAIN_ID, VERIFIER),
+                types: COMMITMENT_TYPES,
+                primaryType: "Commitment",
+                message: other,
+            });
+        const view = honestView({
+            order_hash: computeOrderHash(other, CHAIN_ID, VERIFIER),
+            process_id: computeCommitmentProcessId(other, CHAIN_ID, VERIFIER),
+            commit: {
+                commitment: toSequencerCommitment(other),
+                buyer_signature: toSequencerSig(await sign(buyer)),
+                seller_signature: toSequencerSig(await sign(seller)),
+                batch: batchRef,
+            },
+        });
+        const result = await verifyBatchOrder(view, ctx());
+        expect(checkFor(result.checks, "order-hash")?.ok).toBe(true);
+        expect(checkFor(result.checks, "buyer-signature")?.ok).toBe(true);
+        expect(checkFor(result.checks, "process-id")?.ok).toBe(false);
+        expect(checkFor(result.checks, "process-id")?.detail).toContain("this reader asked for");
+        expect(result.verdict).toBe("failed");
+        expect(result.order).toBeNull();
+    });
+
+    it("resolution-anchor: rejects a resolution leg whose batch is not on chain", async () => {
+        // The payouts are a pure function anyone computes; a relay appending
+        // them to an open order must not make it read as resolved.
+        const commitOnly: StateRootAnchorCheck = async (b) =>
+            b.new_state_root === NEW_ROOT
+                ? { id: "state-root-anchor", ok: true, detail: "anchored (stub)" }
+                : { id: "state-root-anchor", ok: false, detail: "not on chain (stub)" };
+        const view = honestView();
+        view.resolution = {
+            ...view.resolution!,
+            batch: { ...batchRef, batch: 2, new_state_root: `0x${"33".repeat(32)}` },
+        };
+        const result = await verifyBatchOrder(view, ctx(commitOnly));
+        expect(checkFor(result.checks, "payouts")?.ok).toBe(true);
+        expect(checkFor(result.checks, "state-root-anchor")?.ok).toBe(true);
+        expect(checkFor(result.checks, "resolution-anchor")?.ok).toBe(false);
+        expect(checkFor(result.checks, "resolution-anchor")?.detail).toContain("resolution batch");
+        expect(result.verdict).toBe("failed");
+        expect(result.order).toBeNull();
+    });
+
+    it("resolution-anchor: rejects a resolution leg declaring another verifier's domain", async () => {
+        const view = honestView();
+        view.resolution = {
+            ...view.resolution!,
+            batch: { ...batchRef, verifying_contract: stranger.address },
+        };
+        const result = await verifyBatchOrder(view, ctx());
+        expect(checkFor(result.checks, "resolution-anchor")?.ok).toBe(false);
+        expect(checkFor(result.checks, "resolution-anchor")?.detail).toContain("FigaroBatchVerifier");
+        expect(result.verdict).toBe("failed");
+    });
+
+    it("an OPEN order carries no resolution-anchor check", async () => {
+        const result = await verifyBatchOrder(honestView({ resolution: null }), ctx());
+        expect(checkFor(result.checks, "resolution-anchor")).toBeUndefined();
+    });
+
+    it("resolvedAt is the RESOLUTION batch's timestamp, not the commit batch's", async () => {
+        const view = honestView();
+        view.resolution = {
+            ...view.resolution!,
+            batch: { ...batchRef, batch: 2, block_timestamp: 5000 },
+        };
+        const result = await verifyBatchOrder(view, ctx());
+        expect(result.verdict).toBe("verified");
+        expect(result.order?.resolvedAt).toBe(5000);
+    });
 });
+
 
 // ── Retention gap is ABSENCE, not failure ───────────────────────────────────
 
@@ -356,6 +439,8 @@ describe("createStateRootAnchorCheck", () => {
         ]);
         const check = await createStateRootAnchorCheck(client, CHAIN_ID)(batchRef);
         expect(check.ok).toBe(true);
+        // It says what it checked: the root, not the order's inclusion under it.
+        expect(check.detail).toContain("inclusion under that root is not proved");
     });
 
     it("fails when no BatchSettled carries that state root", async () => {
@@ -548,7 +633,7 @@ describe("readVerifiedBatchProcess", () => {
         const relay = {
             process: vi.fn().mockResolvedValue({
                 process_id: processId,
-                orders: [],
+                orders: [honestView()],
                 resolution: {
                     buyer: buyer.address,
                     order_count: 1,
@@ -565,7 +650,104 @@ describe("readVerifiedBatchProcess", () => {
         expect(result.resolution?.signature.ok).toBe(false);
         expect(result.resolution?.signature.detail).toContain("NOT proven to be buyer-authorized");
     });
+
+    /** A relay answering `processId` with these orders and this resolution. */
+    const relayFor = (
+        orders: SequencerOrderView[],
+        resolution: { buyer: Hex; sig: Hex; batch?: SequencerBatchRef } | null,
+        processIdOnWire: Hex = processId,
+    ) => ({
+        process: vi.fn().mockResolvedValue({
+            process_id: processIdOnWire,
+            orders,
+            resolution: resolution && {
+                buyer: resolution.buyer,
+                order_count: orders.length,
+                buyer_signature: toSequencerSig(resolution.sig),
+                batch: resolution.batch ?? batchRef,
+            },
+        }),
+        status: vi.fn().mockResolvedValue({ archive: null }),
+    });
+    const signResolve = (account: typeof buyer, forProcess: Hex = processId) =>
+        account.signTypedData({
+            domain: buildDomain(CHAIN_ID, VERIFIER),
+            types: RESOLVE_PROCESS_TYPES,
+            primaryType: "ResolveProcess",
+            message: { processId: forProcess },
+        });
+
+    it("rejects a resolve signer who is not the buyer the signed structs name", async () => {
+        // The stranger's signature is genuine and the relay names the stranger
+        // as buyer — recovery alone would pass.
+        const relay = relayFor([honestView()], {
+            buyer: stranger.address,
+            sig: await signResolve(stranger),
+        });
+        const result = await readVerifiedBatchProcess(client, CHAIN_ID, processId, {
+            client: relay as never,
+            isAnchored: anchored,
+        });
+        expect(result.resolution?.signature.ok).toBe(false);
+        expect(result.resolution?.signature.detail).toContain("the signed structs name");
+    });
+
+    it("does not tie a resolve signer to a buyer when no order passed its checks", async () => {
+        const relay = relayFor([honestView({ commit: null })], {
+            buyer: buyer.address,
+            sig: await signResolve(buyer),
+        });
+        const result = await readVerifiedBatchProcess(client, CHAIN_ID, processId, {
+            client: relay as never,
+            isAnchored: anchored,
+        });
+        expect(result.resolution?.signature.ok).toBe(false);
+        expect(result.resolution?.signature.detail).toContain("cannot be tied to the buyer");
+    });
+
+    it("rejects a process resolution whose batch is not on chain", async () => {
+        const commitOnly: StateRootAnchorCheck = async (b) =>
+            b.new_state_root === NEW_ROOT
+                ? { id: "state-root-anchor", ok: true, detail: "anchored (stub)" }
+                : { id: "state-root-anchor", ok: false, detail: "not on chain (stub)" };
+        const relay = relayFor([honestView({ resolution: null })], {
+            buyer: buyer.address,
+            sig: await signResolve(buyer),
+            batch: { ...batchRef, batch: 2, new_state_root: `0x${"33".repeat(32)}` },
+        });
+        const result = await readVerifiedBatchProcess(client, CHAIN_ID, processId, {
+            client: relay as never,
+            isAnchored: commitOnly,
+        });
+        expect(result.resolution?.signature.ok).toBe(false);
+        expect(result.resolution?.signature.detail).toContain("not on chain");
+    });
+
+    it("a process resolution signed over ANOTHER process does not verify for this one", async () => {
+        const relay = relayFor([honestView()], {
+            buyer: buyer.address,
+            sig: await signResolve(buyer, `0x${"cd".repeat(32)}`),
+        });
+        const result = await readVerifiedBatchProcess(client, CHAIN_ID, processId, {
+            client: relay as never,
+            isAnchored: anchored,
+        });
+        expect(result.resolution?.signature.ok).toBe(false);
+    });
+
+    it("refuses a relay that answers with a different process than the one asked for", async () => {
+        // Process Y's records served under ?process=X: nothing of Y renders as X.
+        const relay = relayFor([honestView()], null, `0x${"cd".repeat(32)}`);
+        const result = await readVerifiedBatchProcess(client, CHAIN_ID, processId, {
+            client: relay as never,
+            isAnchored: anchored,
+        });
+        expect(result.status).toBe("unreachable");
+        expect(result.orders).toEqual([]);
+        expect(result.error).toContain("the relay answered with process");
+    });
 });
+
 
 // ── A REAL relay payload, produced by the Rust sequencer ────────────────────
 //
@@ -644,6 +826,7 @@ describe("a REAL payload from the Rust relay", () => {
         const result = await verifyBatchOrder(realView(), {
             chainId: 31337,
             verifier: REAL_VERIFIER,
+            processId: REAL_COMMIT.process_id,
             isAnchored: anchored,
         });
         expect(checkFor(result.checks, "buyer-signature")?.ok).toBe(true);
@@ -655,6 +838,7 @@ describe("a REAL payload from the Rust relay", () => {
         const result = await verifyBatchOrder(realView(), {
             chainId: 31337,
             verifier: REAL_VERIFIER,
+            processId: REAL_COMMIT.process_id,
             isAnchored: anchored,
         });
         expect(checkFor(result.checks, "payouts")?.ok).toBe(true);

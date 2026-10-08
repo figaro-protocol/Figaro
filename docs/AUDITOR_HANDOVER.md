@@ -93,7 +93,9 @@ batch holds (Known limitation 7).
 It holds one key, `SEQUENCER_PRIVATE_KEY`, which signs the `settleBatch`
 transaction and pays its gas; the key grants no protocol privilege. What the
 relay publishes is how a stranger checks that a batch happened; nothing it
-publishes is authority, and every field is checkable against the chain.
+publishes is authority, and every field is checkable against the chain, with one
+stated limit: the wire carries no inclusion proof, so a browser can check that a
+batch with the named root landed, never that a given order is under that root.
 Review goals: a stall for free, mempool poisoning, re-queue exhaustion, the
 handling of its one key, and a publication that misleads its reader.
 
