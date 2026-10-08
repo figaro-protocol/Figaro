@@ -265,11 +265,23 @@ export function CommitmentSharePanel({
                             onClick={() => {
                                 void handleSendViaXmtp();
                             }}
+                            // Closed while the channel holds the send: a second
+                            // click would relay the same order twice.
+                            disabled={transportStatus === "sending"}
                             data-testid="send-commitment-xmtp"
                         >
                             {transportStatus === "sending" ? "Sending…" : "Send via XMTP"}
                         </Button>
                     </div>
+                    {transportStatus === "sending" && recipientAddress && (
+                        <p
+                            className="text-[11px] text-ink-muted text-center max-w-sm"
+                            role="status"
+                            data-testid="commitment-xmtp-pending"
+                        >
+                            Sending the signed order to {truncateHex(recipientAddress)}. Waiting for the channel to accept it.
+                        </p>
+                    )}
                     {transportStatus === "sent" && transportRecipient && (
                         <p
                             className="text-[11px] text-success-fg text-center max-w-sm"

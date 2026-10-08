@@ -37,7 +37,7 @@ const LISTINGS = [
     { address: PAYLOAD.commitment.seller, name: "Seller A1" },
 ] as unknown as ReadonlyArray<Listing>;
 
-function renderRow(entry: SignedUnsentOrder, address: string | undefined) {
+function renderRow(entry: SignedUnsentOrder, address: string | undefined, sending = false) {
     render(
         <SignedUnsentRow
             entry={entry}
@@ -45,7 +45,7 @@ function renderRow(entry: SignedUnsentOrder, address: string | undefined) {
             listings={LISTINGS}
             onSend={() => {}}
             onDiscard={() => {}}
-            sending={false}
+            sending={sending}
             error={null}
         />,
     );
@@ -65,5 +65,22 @@ describe("SignedUnsentRow", () => {
         const row = screen.getByTestId("order-unsent-row").textContent ?? "";
         expect(row).toContain("You signed this order; Buyer B1 has not received it.");
         expect(row).not.toContain("Seller A1");
+    });
+
+    it("while the channel holds the send, says so and closes both controls", () => {
+        renderRow({ orderId: "o3", payload: PAYLOAD }, PAYLOAD.commitment.buyer, true);
+        expect(screen.getByTestId("order-unsent-sending").textContent)
+            .toBe("Sending the signed order to Seller A1. Waiting for the channel to accept it.");
+        expect(screen.getByTestId("btn-send-unsent")).toBeDisabled();
+        expect(screen.getByTestId("btn-send-unsent").textContent).toBe("Sending…");
+        expect(screen.getByTestId("btn-discard-unsent")).toBeDisabled();
+        expect(screen.getByTestId("order-unsent-row").textContent).not.toContain("has not received it");
+    });
+
+    it("at rest, offers Send with no sending line", () => {
+        renderRow({ orderId: "o4", payload: PAYLOAD }, PAYLOAD.commitment.buyer, false);
+        expect(screen.queryByTestId("order-unsent-sending")).toBeNull();
+        expect(screen.getByTestId("btn-send-unsent")).toBeEnabled();
+        expect(screen.getByTestId("btn-send-unsent").textContent).toBe("Send");
     });
 });

@@ -757,6 +757,25 @@ export async function waitForConnected(page: Page): Promise<void> {
 }
 
 /**
+ * Hold the page's Kubo API requests until `release()` — the agreement pin a
+ * Send makes before it hands the signed order to the channel. On the devnet the
+ * channel answers at once, so the wait a user sees on a public network never
+ * shows; holding the real request (nothing is faked: it continues untouched)
+ * keeps the Send in flight long enough to assert what the page shows meanwhile.
+ */
+export async function holdIpfsApi(page: Page): Promise<{ release: () => void }> {
+    let open!: () => void;
+    const gate = new Promise<void>((resolve) => { open = resolve; });
+    // Released, the route stays as a pass-through: an unroute while a held
+    // request is in its handler would hand that request on twice.
+    await page.route('**/api/v0/**', async (route) => {
+        await gate;
+        await route.continue();
+    });
+    return { release: () => open() };
+}
+
+/**
  * Authorize the chosen funding token when it needs it, and return only once the
  * funding panel reads `ready`. The panel's `data-authorization` is the app's own
  * derived state (reading → needed → authorizing → ready), and the action beside

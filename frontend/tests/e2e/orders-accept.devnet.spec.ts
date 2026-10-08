@@ -30,6 +30,7 @@ import {
     readLocalDeploymentConfig,
     seedRegisteredMember,
     memberProfileBindings,
+    holdIpfsApi,
 } from './devnet-helpers';
 import { ANVIL_KEYS } from '../anvilAccounts';
 import { CORE_ABI } from '@/lib/kernel/contracts';
@@ -194,8 +195,18 @@ test.describe('Orders consolidation — buyer orders → seller accepts on /orde
         // XMTP" (mock channel in devnet → persisted to localStorage), so the seller's
         // /orders can replay it. (assemblyCheckout's auto-relay is sub-orders only.)
         await page.getByTestId('buyer-share-panel').waitFor({ timeout: 60000 });
-        await page.getByTestId('send-commitment-xmtp').click();
+        // While the channel holds the Send (beta r9: "froze the screen… with no
+        // progress message"), the panel names the recipient and Send stays closed —
+        // the wait is held open on the real pin so the in-flight state is visible.
+        const pin = await holdIpfsApi(page);
+        const send = page.getByTestId('send-commitment-xmtp');
+        await send.click();
+        await expect(page.getByTestId('commitment-xmtp-pending'), 'the panel says the order is being sent, and to whom')
+            .toHaveText(new RegExp(`^Sending the signed order to ${SELLER.slice(0, 6)}…${SELLER.slice(-4)}\\. Waiting for the channel to accept it\\.$`, 'i'), { timeout: 15000 });
+        await expect(send, 'Send is closed while the channel holds it').toBeDisabled();
+        pin.release();
         await expect(page.getByTestId('commitment-xmtp-status')).toBeVisible({ timeout: 30000 });
+        await expect(page.getByTestId('commitment-xmtp-pending'), 'the answer replaces the pending line').toHaveCount(0);
 
         // ── Switch to the discovered seller → /orders "Your turn" ──
         await gotoAsWallet(page, SELLER, '/orders?e2e=devnet');

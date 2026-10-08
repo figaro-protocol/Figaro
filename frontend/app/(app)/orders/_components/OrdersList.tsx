@@ -226,9 +226,15 @@ export function SignedUnsentRow({
                             Signed, not yet sent
                         </span>
                     </div>
-                    <p className="mt-1 text-xs text-ink-muted">
-                        You signed this order; {counterpartyName} has not received it. It stays here for this tab.
-                    </p>
+                    {sending ? (
+                        <p className="mt-1 text-xs text-ink-muted" role="status" data-testid="order-unsent-sending">
+                            Sending the signed order to {counterpartyName}. Waiting for the channel to accept it.
+                        </p>
+                    ) : (
+                        <p className="mt-1 text-xs text-ink-muted">
+                            You signed this order; {counterpartyName} has not received it. It stays here for this tab.
+                        </p>
+                    )}
                     {error && <p className="mt-1 text-xs text-error-fg" data-testid="order-unsent-error">{error}</p>}
                 </div>
                 <div className="text-right shrink-0 space-y-2">

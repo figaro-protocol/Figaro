@@ -18,7 +18,7 @@
 // signed payload and its hand-off to the channel, both read from the page.
 import { test, expect } from './devnet-multi-test';
 import { mnemonicToAccount } from 'viem/accounts';
-import { waitForConnected } from './devnet-helpers';
+import { holdIpfsApi, waitForConnected } from './devnet-helpers';
 
 const ANVIL_MNEMONIC = 'test test test test test test test test test test test junk';
 const STATIONER = mnemonicToAccount(ANVIL_MNEMONIC, { addressIndex: 5 }).address;
@@ -58,7 +58,17 @@ test.describe('signed, not yet sent (devnet)', () => {
         await expect(unsent.first().getByTestId('order-unsent-status')).toHaveText('Signed, not yet sent');
 
         // ── Send from /orders: the tab's copy goes, the channel row takes over ──
-        await unsent.first().getByTestId('btn-send-unsent').click();
+        // While the channel holds the Send (beta r9: "froze the screen… with no
+        // progress message"), the row says so and both controls stay closed — the
+        // wait is held open on the real pin so the in-flight state is visible.
+        const pin = await holdIpfsApi(page);
+        const send = unsent.first().getByTestId('btn-send-unsent');
+        await send.click();
+        await expect(unsent.first().getByTestId('order-unsent-sending'), 'the row says the order is being sent')
+            .toHaveText(/^Sending the signed order to .+\. Waiting for the channel to accept it\.$/, { timeout: 15_000 });
+        await expect(send, 'Send is closed while the channel holds it').toBeDisabled();
+        await expect(unsent.first().getByTestId('btn-discard-unsent'), 'Discard is closed while the channel holds it').toBeDisabled();
+        pin.release();
         await expect(page.getByTestId('order-unsent-row'), 'the unsent row leaves once relayed').toHaveCount(0, { timeout: 30_000 });
         await expect(page.getByTestId('order-pending-row').first(), 'the relayed order awaits acceptance').toBeVisible({ timeout: 30_000 });
 
