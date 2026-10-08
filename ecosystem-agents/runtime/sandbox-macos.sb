@@ -5,20 +5,22 @@
 ;;   WRITES  — only the agent's own workspace and the temp dirs, and never
 ;;             the signer's own directory;
 ;;   SIGNALS — only to the agent's own processes;
-;;   NETWORK — loopback only, so the egress proxy (outside the sandbox,
-;;             enforcing the policy's allowlist) and the signer socket are
-;;             the only ways out.
-;; Reads stay default-allow MINUS the named secret paths: the signing key
-;; already lives outside the sandboxed process entirely (the policy signer
-;; holds it), so the residual read surface is deny-listed explicitly here
-;; and shrunk further per deployment via the launcher's parameters.
+;;   NETWORK — the egress proxy's one loopback port and the signer socket
+;;             are the only ways out; every other loopback service (a local
+;;             IPFS API, a devnet, another proxy) is as closed as the
+;;             internet, so nothing reaches past the policy's allowlist.
+;; Reads stay default-allow MINUS the secret paths: the signing key already
+;; lives outside the sandboxed process entirely (the policy signer holds it),
+;; and the launcher appends one `deny file-read*` rule per secret path — its
+;; default list (keystores, credentials, shell histories), the operator's
+;; --keystore and --deny-read paths, minus any --allow-read — after this file.
 
 (version 1)
 (allow default)
 
-;; ── Network: loopback only ─────────────────────────────────────────────
+;; ── Network: the egress proxy's port only ──────────────────────────────
 (deny network-outbound)
-(allow network-outbound (remote ip "localhost:*"))
+(allow network-outbound (remote ip (string-append "localhost:" (param "PROXY_PORT"))))
 ;; The signer's UNIX socket — the one signing capability.
 (allow network-outbound (literal (param "SIGNER_SOCKET")))
 
@@ -48,7 +50,5 @@
 (deny signal)
 (allow signal (target same-sandbox))
 
-;; ── Reads: named secrets are unreadable ────────────────────────────────
-(deny file-read* (subpath (param "DENY_READ_A")))
-(deny file-read* (subpath (param "DENY_READ_B")))
-(deny file-read* (subpath (param "DENY_READ_C")))
+;; ── Reads: the secret paths are unreadable ─────────────────────────────
+;; The rules follow, appended by the launcher (sandboxProfile.mjs).

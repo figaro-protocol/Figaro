@@ -3,17 +3,23 @@
  * run-sandboxed — the sandbox wrapper (component 4, F5/F6).
  *
  *   run-sandboxed.mjs --policy <policy.json> --workspace <dir> \
- *     [--signer-socket <path>] [--deny-read <path>]... -- <cmd> [args...]
+ *     [--signer-socket <path>] [--keystore <path>] [--deny-read <path>]... \
+ *     [--allow-read <path>]... -- <cmd> [args...]
  *
  * Launches <cmd> with the three structural boundaries prose cannot enforce:
- *   1. NETWORK — the OS profile denies all outbound except loopback; the
- *      policy-driven egress proxy (started here, OUTSIDE the sandbox) is the
- *      only way out, and it forwards only to the policy's `egress` hosts.
+ *   1. NETWORK — the OS profile denies all outbound except the egress
+ *      proxy's one loopback port; the policy-driven proxy (started here,
+ *      OUTSIDE the sandbox) is the only way out, and it forwards only to the
+ *      policy's `egress` origins (host, port and scheme).
  *   2. WRITES — only the workspace and temp dirs, and never the signer's own
  *      directory (its socket, spend journal and audit log), which must be
  *      a directory apart from both.
  *   3. SECRETS — the launcher scrubs the child's environment of anything
- *      key-shaped and marks the named secret paths unreadable; the signing
+ *      key-shaped (by name, and by a credential inside a URL value) and makes
+ *      the secret paths unreadable BY DEFAULT — keystores, credentials, shell
+ *      histories (sandboxProfile.mjs § DEFAULT_DENY_READ), the --keystore
+ *      the signer decrypts, any `*keystore*.json` under the home directory,
+ *      and every --deny-read; --allow-read opens one default. The signing
  *      key itself never was in reach (the policy signer holds it).
  *
  * macOS: sandbox-exec with sandbox-macos.sb. Linux: run the same launcher
@@ -28,6 +34,7 @@ import * as path from "node:path";
 import { fileURLToPath } from "node:url";
 import { resolveSignerPaths, validatePolicy } from "@figaro-protocol/sdk/signer";
 import { startEgressProxy } from "./egress-proxy.mjs";
+import { applyAllowReads, canonical, defaultDenyReads, renderProfile, scrubEnv } from "./sandboxProfile.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -41,7 +48,7 @@ function fail(message) {
 const argv = process.argv.slice(2);
 const sep = argv.indexOf("--");
 if (sep < 0 || sep === argv.length - 1) {
-    fail("usage: run-sandboxed --policy <file> --workspace <dir> [--signer-socket <path>] [--deny-read <path>]... -- <cmd> [args...]  (the signer's socket defaults to ~/.figaro-signer/signer.sock)");
+    fail("usage: run-sandboxed --policy <file> --workspace <dir> [--signer-socket <path>] [--keystore <path>] [--deny-read <path>]... [--allow-read <path>]... -- <cmd> [args...]  (the signer's socket defaults to ~/.figaro-signer/signer.sock)");
 }
 const opts = argv.slice(0, sep);
 const command = argv.slice(sep + 1);
@@ -63,7 +70,9 @@ const workspace = path.resolve(opt("workspace") ?? fail("--workspace <dir> is re
 const signerSocketArg = path.resolve(
     opt("signer-socket") ?? resolveSignerPaths({}, os.homedir()).socketPath,
 );
+const keystore = opt("keystore");
 const extraDenies = optAll("deny-read");
+const allowReads = optAll("allow-read");
 
 if (process.platform !== "darwin") {
     fail("this launcher wraps sandbox-exec (macOS). On Linux, run inside a container with equivalent mounts — see README § 'The Linux variant'.");
@@ -75,40 +84,20 @@ const policy = policyResult.policy;
 
 fs.mkdirSync(workspace, { recursive: true });
 
-// ── Environment: scrubbed, then pointed at the proxy ───────────────────────
-// Anything key-shaped is dropped rather than filtered by name — a secret the
-// scrub misses is a bug, so the pattern is deliberately broad.
-
-const SECRET_ENV = /KEY|SECRET|TOKEN|JWT|PASSPHRASE|MNEMONIC|PRIVATE/i;
-function scrubbedEnv(extra) {
-    const env = {};
-    for (const [k, v] of Object.entries(process.env)) {
-        if (SECRET_ENV.test(k)) continue;
-        env[k] = v;
-    }
-    return { ...env, ...extra };
-}
-
-// ── The default unreadable paths (plus any --deny-read) ────────────────────
+// ── The unreadable paths: the defaults, minus --allow-read, plus the rest ──
+// Deny by default: a secret the operator forgot to name is unreadable all the
+// same. Every path gets its own rule — none is collapsed into a parent.
 
 const home = os.homedir();
-// The kernel matches CANONICAL paths (/var is a symlink to /private/var on
-// macOS) — an uncanonicalized deny silently matches nothing.
-const canonical = (p) => {
-    try { return fs.realpathSync(p); } catch { return path.resolve(p); }
-};
-const denyReads = [
-    ...extraDenies,
-    path.join(home, ".figaro-deploy.env"),
-    path.join(home, ".ssh"),
-].map(canonical);
-// The profile takes exactly three deny params; collapse extras into the
-// nearest common directories rather than silently dropping any.
-while (denyReads.length > 3) {
-    const last = denyReads.pop();
-    denyReads[denyReads.length - 1] = path.dirname(path.resolve(last));
+const allowed = applyAllowReads(defaultDenyReads(home), allowReads);
+if (allowed.unknown.length > 0) {
+    fail(`--allow-read opens a default unreadable path, and these are not on the list: ${allowed.unknown.join(", ")} (the list: sandboxProfile.mjs § DEFAULT_DENY_READ)`);
 }
-while (denyReads.length < 3) denyReads.push(denyReads[denyReads.length - 1]);
+const denyReads = [
+    ...allowed.denies,
+    ...(keystore ? [keystore] : []),
+    ...extraDenies,
+].map(canonical);
 
 // ── The signer's directory: connectable, never writable ───────────────────
 // The spend journal and the audit log sit beside the socket. The profile
@@ -136,28 +125,34 @@ for (const writable of [canonical(workspace), tmpDir, canonical("/tmp")]) {
 // ── Launch ─────────────────────────────────────────────────────────────────
 
 const proxy = await startEgressProxy({ policy, port: 0 });
-console.error(`run-sandboxed: egress proxy on 127.0.0.1:${proxy.port} — allowed hosts from ${policyPath}`);
+console.error(`run-sandboxed: egress proxy on 127.0.0.1:${proxy.port} — allowed origins from ${policyPath}`);
 
-const profile = path.join(__dirname, "sandbox-macos.sb");
+// Environment: anything key-shaped is dropped — by name, or by a credential
+// inside a URL value (sandboxProfile.mjs § valueCarriesUrlCredential) — then
+// pointed at the proxy. NO_PROXY is emptied: the proxy's port is the only
+// loopback port open, so a bypass would only fail.
+const { env, scrubbed } = scrubEnv(process.env, {
+    HTTP_PROXY: `http://127.0.0.1:${proxy.port}`,
+    HTTPS_PROXY: `http://127.0.0.1:${proxy.port}`,
+    NO_PROXY: "",
+    no_proxy: "",
+    NODE_OPTIONS: `--import ${path.join(__dirname, "proxy-bootstrap.mjs")}`,
+    FIGARO_SIGNER_SOCKET: signerSocket,
+});
+if (scrubbed.length > 0) console.error(`run-sandboxed: held back from the sandbox's environment: ${scrubbed.join(", ")}`);
+
 const child = spawn("sandbox-exec", [
-    "-f", profile,
+    "-p", renderProfile({ denyReads, home }),
     "-D", `WORKSPACE=${workspace}`,
     "-D", `TMPDIR=${tmpDir}`,
     "-D", `SIGNER_SOCKET=${signerSocket}`,
     "-D", `SIGNER_DIR=${signerDir}`,
-    "-D", `DENY_READ_A=${denyReads[0]}`,
-    "-D", `DENY_READ_B=${denyReads[1]}`,
-    "-D", `DENY_READ_C=${denyReads[2]}`,
+    "-D", `PROXY_PORT=${proxy.port}`,
     ...command,
 ], {
     cwd: workspace,
     stdio: "inherit",
-    env: scrubbedEnv({
-        HTTP_PROXY: `http://127.0.0.1:${proxy.port}`,
-        HTTPS_PROXY: `http://127.0.0.1:${proxy.port}`,
-        NODE_OPTIONS: `--import ${path.join(__dirname, "proxy-bootstrap.mjs")}`,
-        FIGARO_SIGNER_SOCKET: signerSocket,
-    }),
+    env,
 });
 
 child.on("exit", async (code, signal) => {

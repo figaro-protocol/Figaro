@@ -163,7 +163,7 @@ jobs:
 
                   cat > "$SBX/policy.json" <<'EOF'
                   {
-                      "egress": ["http://127.0.0.1"],
+                      "egress": ["http://127.0.0.1:9999"],
                       "rpcUrl": "http://127.0.0.1:1"
                   }
                   EOF
@@ -228,7 +228,7 @@ jobs:
                   console.log("PASS write boundary");
 
                   // 2. Secrets: nothing key-shaped crossed, and no secret paths are mounted.
-                  const SECRET_ENV = /KEY|SECRET|TOKEN|JWT|PASSPHRASE|MNEMONIC|PRIVATE/i;
+                  const SECRET_ENV = /KEY|SECRET|TOKEN|JWT|PASS|MNEMONIC|PRIVATE|AUTH|CREDENTIAL|COOKIE|SESSION|SEED/i; // the launcher's own pattern (sandboxProfile.mjs)
                   const leaked = Object.keys(process.env).filter((k) => SECRET_ENV.test(k));
                   assert.deepEqual(leaked, [], `key-shaped environment crossed the boundary: ${leaked}`);
                   assert.equal(process.env.PRIVATE_KEY, undefined, "the runner's canary PRIVATE_KEY crossed the boundary");

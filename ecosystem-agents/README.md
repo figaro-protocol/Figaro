@@ -24,8 +24,8 @@ the whole model first.
 > (`ecosystem-agents/runtime/` — `figaro-fetch` frames every network read with
 > provenance and a boundary nonce; fetch through it, never bare), and so is
 > the sandbox wrapper (`figaro-run-sandboxed` — workspace-scoped writes,
-> loopback-only network behind a policy-driven egress proxy, scrubbed
-> environment; deny cases tested on macOS and, for the Linux container
+> network only through a policy-driven egress proxy, secret paths unreadable
+> by default, scrubbed environment; deny cases tested on macOS and, for the Linux container
 > variant, in CI on demand). Run the
 > full shape — signer outside, agent inside the wrapper, reads framed — and
 > the F1–F6 requirements are structural; run any piece bare and that piece

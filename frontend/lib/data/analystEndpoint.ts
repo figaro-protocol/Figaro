@@ -23,7 +23,10 @@
  * of a reader, never the absence of an answer.
  *
  * The user's own choice wins over the build-baked default, exactly as with the
- * batch relay: an analyst is one reader among any number, its answers are
+ * batch relay. The analyst's `/prompt` route asks for the bearer token its run
+ * wrote at start; the reader stores it beside their own endpoint
+ * (`userEndpoints.analystToken`), and it is sent to that endpoint only — never
+ * to the build-baked default: an analyst is one reader among any number, its answers are
  * checkable against the same deterministic routes, and pointing this at your
  * own is the first-class case (a user-run analyst is the one that can read the
  * private substance that user OWNS or BOUGHT).
@@ -60,6 +63,14 @@ function resolveAnalystEndpoint(raw: string | undefined): string | null {
  */
 export function getAnalystUrl(): string | null {
     return resolveAnalystEndpoint(readUserEndpoints().analystUrl) ?? resolveAnalystEndpoint(ANALYST_URL);
+}
+
+/** The reader's analyst token, or null. Paired with the reader's OWN endpoint:
+ *  with no `analystUrl` override the request goes to the build-baked default,
+ *  and the token is never sent there. */
+function getAnalystToken(): string | null {
+    const own = readUserEndpoints();
+    return resolveAnalystEndpoint(own.analystUrl) ? own.analystToken ?? null : null;
 }
 
 // ── The wire (read from `ecosystem-agents/runtime/figaro-analyst.mjs`) ───────
@@ -104,10 +115,56 @@ export type AnalystOutcome =
     | { state: "no-prompt"; reason: string }
     /** The endpoint could not be reached, or answered unusably. */
     | { state: "unreachable"; error: string }
+    /** The endpoint answered 2xx with a body that is not an answer — kept
+     *  apart from transport failure: the analyst spoke, and what it said is
+     *  not readable as an answer. */
+    | { state: "unreadable"; error: string }
+    /** The endpoint asks for its bearer token (401): none is stored for it,
+     *  or the stored one is not this run's (`tokenSent`). */
+    | { state: "needs-token"; tokenSent: boolean }
     /** The question was refused by the wire (empty, over the body cap). */
     | { state: "refused"; error: string };
 
 const REQUEST_TIMEOUT_MS = 120_000;
+
+/**
+ * Read a `POST /prompt` body as an `AnalystAnswer`, or say what is wrong with
+ * it. The body is reader-configured, external JSON: its shape is checked here,
+ * at the edge, so no render path meets a missing trace or a non-string answer.
+ */
+function readAnalystAnswer(body: unknown): AnalystAnswer | string {
+    if (typeof body !== "object" || body === null || Array.isArray(body)) {
+        return "the body is not a JSON object";
+    }
+    const b = body as Record<string, unknown>;
+    if (b.answer !== null && typeof b.answer !== "string") return "`answer` is neither text nor null";
+    if (!Array.isArray(b.trace)) return "`trace` is not a list";
+    const trace: AnalystAnswer["trace"] = [];
+    for (const t of b.trace) {
+        if (typeof t !== "object" || t === null || typeof (t as { tool?: unknown }).tool !== "string") {
+            return "a `trace` entry names no tool";
+        }
+        const input = (t as { input?: unknown }).input;
+        trace.push({
+            tool: (t as { tool: string }).tool,
+            input: typeof input === "object" && input !== null && !Array.isArray(input)
+                ? (input as Record<string, unknown>)
+                : {},
+        });
+    }
+    return {
+        answer: b.answer,
+        trace,
+        turns: typeof b.turns === "number" ? b.turns : 0,
+        truncated: b.truncated === true,
+    };
+}
+
+/** A wire error field as text, or undefined — never an object handed on to a
+ *  render path. */
+function wireText(value: unknown): string | undefined {
+    return typeof value === "string" ? value : undefined;
+}
 
 async function analystFetch(path: string, init?: RequestInit): Promise<Response> {
     const url = getAnalystUrl();
@@ -141,19 +198,23 @@ export async function readAnalystStatus(): Promise<AnalystStatus | null> {
 
 /**
  * Ask a question. The wire's own error shapes are preserved rather than
- * flattened: a 404 means this host runs no model loop (and says why), a 4xx
- * means the question itself was refused, and anything else is a transport
- * failure reported verbatim.
+ * flattened: a 401 means the endpoint asks for its token, a 404 means this host
+ * runs no model loop (and says why), another 4xx means the question itself was
+ * refused, and anything else is a transport failure reported verbatim.
  */
 export async function askAnalyst(question: string): Promise<AnalystOutcome> {
     if (!getAnalystUrl()) {
         return { state: "no-prompt", reason: "no analyst endpoint is configured for this reader" };
     }
+    const token = getAnalystToken();
     let res: Response;
     try {
         res = await analystFetch("/prompt", {
             method: "POST",
-            headers: { "content-type": "application/json" },
+            headers: {
+                "content-type": "application/json",
+                ...(token ? { authorization: `Bearer ${token}` } : {}),
+            },
             body: JSON.stringify({ question }),
         });
     } catch (e) {
@@ -169,8 +230,10 @@ export async function askAnalyst(question: string): Promise<AnalystOutcome> {
     } catch {
         // fall through — the status code still carries the fact
     }
-    const detail = (body as { error?: string; reason?: string } | null) ?? {};
+    const raw = typeof body === "object" && body !== null ? (body as Record<string, unknown>) : {};
+    const detail = { error: wireText(raw.error), reason: wireText(raw.reason) };
 
+    if (res.status === 401) return { state: "needs-token", tokenSent: token !== null };
     if (res.status === 404) {
         return {
             state: "no-prompt",
@@ -183,5 +246,8 @@ export async function askAnalyst(question: string): Promise<AnalystOutcome> {
             error: detail.error ?? `the analyst answered ${res.status}`,
         };
     }
-    return { state: "answered", answer: body as AnalystAnswer };
+    const answer = readAnalystAnswer(body);
+    return typeof answer === "string"
+        ? { state: "unreadable", error: answer }
+        : { state: "answered", answer };
 }

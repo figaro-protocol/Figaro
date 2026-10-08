@@ -60,15 +60,26 @@ const FIELDS: HintedFieldDef<
     },
 ];
 
+/** The analyst's token sits beside its endpoint; a secret, so it renders as one. */
+const TOKEN_FIELDS: HintedFieldDef<"analystToken">[] = [
+    {
+        key: "analystToken",
+        label: "Analyst token",
+        placeholder: "the token your analyst wrote at start",
+        hint: "Its prompt route asks for the bearer token the analyst writes to a file each time it starts. Sent only to the analyst endpoint above, never to this deployment's default.",
+    },
+];
+
 export function OnboardingEndpointsForm({ nextHref }: { nextHref?: string }) {
     const mounted = useMounted();
     const router = useRouter();
-    const [form, setForm] = useState<Required<Pick<UserEndpointOverrides, "ipfsApiUrl" | "ipfsGatewayUrl" | "rpcUrl" | "batchRelayUrl" | "analystUrl">>>({
+    const [form, setForm] = useState<Required<Pick<UserEndpointOverrides, "ipfsApiUrl" | "ipfsGatewayUrl" | "rpcUrl" | "batchRelayUrl" | "analystUrl" | "analystToken">>>({
         ipfsApiUrl: "",
         ipfsGatewayUrl: "",
         rpcUrl: "",
         batchRelayUrl: "",
         analystUrl: "",
+        analystToken: "",
     });
     const [saved, setSaved] = useState(false);
 
@@ -80,6 +91,7 @@ export function OnboardingEndpointsForm({ nextHref }: { nextHref?: string }) {
             rpcUrl: current.rpcUrl ?? "",
             batchRelayUrl: current.batchRelayUrl ?? "",
             analystUrl: current.analystUrl ?? "",
+            analystToken: current.analystToken ?? "",
         });
     }, []);
 
@@ -102,6 +114,15 @@ export function OnboardingEndpointsForm({ nextHref }: { nextHref?: string }) {
                     fields={FIELDS}
                     idPrefix="endpoints"
                     inputType="url"
+                    hintClassName="text-ink-muted"
+                    withTestIds
+                    value={(key) => form[key]}
+                    onChange={(key, value) => setForm((prev) => ({ ...prev, [key]: value }))}
+                />
+                <HintedFieldList
+                    fields={TOKEN_FIELDS}
+                    idPrefix="endpoints"
+                    inputType="password"
                     hintClassName="text-ink-muted"
                     withTestIds
                     value={(key) => form[key]}

@@ -9,7 +9,8 @@
  * ask — the deterministic views above are unaffected, since this browser reads
  * them from the chain itself. Where an endpoint IS configured but its host set
  * up no model, the box says so in the host's own words rather than pretending
- * to answer from nothing.
+ * to answer from nothing. Where the endpoint asks for its bearer token, the box
+ * says so and points at the endpoints page, where the token is stored.
  *
  * Nothing an analyst says is privileged. Every answer names the TRUTH BOUNDARY
  * of what it reports, and the tool trace beneath it lists the deterministic
@@ -136,6 +137,26 @@ function Outcome({ outcome }: { outcome: AnalystOutcome }) {
         return (
             <p className="text-sm text-ink-muted" data-testid="analyst-no-prompt">
                 No prompt endpoint on this analyst &mdash; {outcome.reason}.
+            </p>
+        );
+    }
+    if (outcome.state === "needs-token") {
+        return (
+            <p className="text-sm text-ink-muted" data-testid="analyst-needs-token">
+                This endpoint asks for its token &mdash; the one the analyst wrote when it started.{" "}
+                {outcome.tokenSent ? "The token stored for it was refused; " : "No token is stored for it; "}
+                set it beside the endpoint in{" "}
+                <Link href="/members/edit/endpoints" className="underline hover:text-ink-heading">
+                    your endpoints
+                </Link>
+                .
+            </p>
+        );
+    }
+    if (outcome.state === "unreadable") {
+        return (
+            <p className="text-sm text-ink-muted" data-testid="analyst-unreadable">
+                The analyst answered, but its answer is not readable: {outcome.error}.
             </p>
         );
     }

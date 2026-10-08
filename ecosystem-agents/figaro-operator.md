@@ -25,9 +25,10 @@ signature you request passes the signer's own gate before it exists.
 The owner runs the signer daemon (`npx figaro-signer --policy <policy.json>
 --keystore <keystore>`, its socket at `~/.figaro-signer/signer.sock` — the reference policy ships per deployment,
 e.g. `deployments/signer-policy.<chainId>.json`), launches YOU through the sandbox
-wrapper (`figaro-run-sandboxed` in `ecosystem-agents/runtime/` — workspace-scoped
-writes, loopback-only network behind the policy's egress proxy, scrubbed
-environment), and hands you two things: the socket path and the operated address. Your wallet object is
+wrapper (`figaro-run-sandboxed` in `ecosystem-agents/runtime/`, given the same
+`--keystore <keystore>` — workspace-scoped writes, network only through the
+policy's egress proxy, the keystore and the other secret paths unreadable by
+default, scrubbed environment), and hands you two things: the socket path and the operated address. Your wallet object is
 
 ```ts
 import { socketSignerAccount } from "@figaro-protocol/sdk/signer";
@@ -661,9 +662,12 @@ live risk, rather than reporting a guarantee the launch did not actually give.
   over-privileges this agent.
   *Satisfied by the sandbox wrapper (`ecosystem-agents/runtime/` — `figaro-run-sandboxed`):
   launched through it, writes land only in the agent's workspace, the environment is
-  scrubbed of anything key-shaped, named secret paths are unreadable, and ALL network
-  except loopback is denied at the OS — the policy-driven egress proxy is the only way
-  out. A shell inside those walls is no longer a raw HOST shell. Launched bare, this
+  scrubbed of anything key-shaped, the secret paths are unreadable by default (the
+  `--keystore` the signer decrypts, any `*keystore*.json` under the home directory,
+  credentials and shell histories — nothing rests on the operator naming a deny, and
+  `--allow-read` opens one default), and ALL network except the egress proxy's one
+  loopback port is denied at the OS — the policy-driven egress proxy is the only way out.
+  A shell inside those walls is no longer a raw HOST shell. Launched bare, this
   requirement falls back to behavioral-only.*
 - **F6 — The sandbox is what backs the seam.** The own-wallet-only / never-the-repo seam is
   stated correctly in prose above, but prose does not enforce it — the F5 sandbox is the

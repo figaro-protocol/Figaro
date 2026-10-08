@@ -191,13 +191,13 @@ code, the guest key, the gateway). The list below is the procedure around it:
   sandboxed signer runtime owns them): the policy signer (`@figaro-protocol/sdk/signer` —
   the key stays in its process, out-of-model gate, F1–F3), the operator pointed at the socket account,
   the data channel (`ecosystem-agents/runtime/` — framed, nonce-bounded fetches, F4 at
-  the fetch boundary), and the sandbox wrapper (`run-sandboxed` — loopback-only OS
-  sandbox + policy-driven egress proxy + scrubbed environment, F5/F6; deny cases
-  tested on macOS). Honest residuals, named where they live: the Linux container
+  the fetch boundary), and the sandbox wrapper (`run-sandboxed` — an OS sandbox whose only
+  loopback is the egress proxy's port + policy-driven egress proxy + scrubbed
+  environment, F5/F6; deny cases tested on macOS). Honest residuals, named where they live: the Linux container
   variant is EXERCISED in CI on demand (`on-demand-docker.yml` Job 2, "Linux sandbox
   variant", runs the container deny cases) but never on the
   authoring host — CI-on-demand only; the read surface inside
-  the sandbox is deny-listed (named secret paths), not default-denied — acceptable
+  the sandbox denies the known secret paths by default and allows the rest — acceptable
   because the signing key is never on the sandboxed side at all; and `Bash` remains in
   the operator's grant *inside* the wrapper until the runtime grows typed tools. The
   gate CRITERION — no raw host shell + no ambient key + framed content — is met when

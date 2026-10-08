@@ -427,8 +427,10 @@ coordination messages included.
 
 **4. The sandbox wrapper — the seam becomes a barrier (F5, F6).**
 `figaro-run-sandboxed`, beside the prompts: the OS profile denies all outbound network
-except loopback and all writes outside the workspace and temp; the launcher scrubs
-anything key-shaped from the environment and canonicalizes the named unreadable paths;
+except the egress proxy's own loopback port and all writes outside the workspace and
+temp, and denies reads of the known secret paths by default (the keystore, shell
+histories, the cloud and git credential files; `--allow-read` opens one); the launcher
+scrubs anything key-shaped from the environment, URL-embedded credentials included;
 and because an OS sandbox cannot filter egress by hostname, a **policy-driven egress
 proxy started OUTSIDE the sandbox is the only way out**, forwarding solely to the
 policy's `egress` hosts. That is what makes the own-wallet-only / never-the-repo seam

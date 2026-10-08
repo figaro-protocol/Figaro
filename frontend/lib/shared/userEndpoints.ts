@@ -40,6 +40,11 @@ export interface UserEndpointOverrides {
      *  no prompt box; the page's deterministic views are read by this browser
      *  either way. */
     analystUrl?: string;
+    /** The bearer token the analyst at `analystUrl` wrote at its start (its
+     *  `/prompt` route asks for it). A per-reader convenience stored beside the
+     *  URL it belongs to: sent only to the reader's own `analystUrl`, never to
+     *  a deployment default, never pinned or published. */
+    analystToken?: string;
 }
 
 /** An endpoint is an http(s) base URL — anything else is refused outright
@@ -54,6 +59,14 @@ export function sanitizeEndpointUrl(value: unknown): string | undefined {
     return trimmed.replace(/\/$/, "");
 }
 
+/** A bearer token is one run of printable ASCII — anything else is dropped
+ *  rather than placed in a request header. */
+function sanitizeBearerToken(value: unknown): string | undefined {
+    if (typeof value !== "string") return undefined;
+    const trimmed = value.trim();
+    return /^[\x21-\x7e]+$/.test(trimmed) ? trimmed : undefined;
+}
+
 export function readUserEndpoints(): UserEndpointOverrides {
     const raw = readJsonStorage<UserEndpointOverrides>(STORAGE_KEY, {});
     return {
@@ -63,6 +76,7 @@ export function readUserEndpoints(): UserEndpointOverrides {
         geocodeUrl: sanitizeEndpointUrl(raw.geocodeUrl),
         batchRelayUrl: sanitizeEndpointUrl(raw.batchRelayUrl),
         analystUrl: sanitizeEndpointUrl(raw.analystUrl),
+        analystToken: sanitizeBearerToken(raw.analystToken),
     };
 }
 
@@ -74,5 +88,6 @@ export function writeUserEndpoints(next: UserEndpointOverrides): void {
         geocodeUrl: sanitizeEndpointUrl(next.geocodeUrl),
         batchRelayUrl: sanitizeEndpointUrl(next.batchRelayUrl),
         analystUrl: sanitizeEndpointUrl(next.analystUrl),
+        analystToken: sanitizeBearerToken(next.analystToken),
     });
 }

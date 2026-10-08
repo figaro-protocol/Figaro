@@ -253,8 +253,9 @@ bare, each falls back to behavioral-only and the user MUST be told exactly that.
   the fix is the sandbox denying the above. *Satisfied by the sandbox wrapper
   (`ecosystem-agents/runtime/` — `figaro-run-sandboxed`): launched through it, writes land
   only in this agent's own workspace, the environment is scrubbed of anything key-shaped,
-  named secret paths are unreadable, and ALL network except loopback is denied at the OS —
-  the policy-driven egress proxy is the only way out. A shell inside those walls is no
+  the secret paths (keystores, credentials, shell histories) are unreadable by default, and
+  ALL network except the egress proxy's one loopback port is denied at the OS — the
+  policy-driven egress proxy is the only way out. A shell inside those walls is no
   longer a raw HOST shell. Launched bare, the tool grant over-privileges this agent and the
   requirement falls back to behavioral-only.*
 - **F6 — The sandbox is what backs the seam.** The never-the-repo / user-owned-work seam

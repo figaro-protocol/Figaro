@@ -53,12 +53,16 @@
  *     devnet — spawned per-spec, AFTER the seed, so its one boot sync holds
  *     the whole record (a suite-level webServer entry would sync before the
  *     seed exists) — and its deterministic routes are held to the same
- *     out-of-band folds. The UI half: the endpoint is configured through the
- *     REAL endpoints form (never a localStorage preseed), and the prompt box
- *     appears. The box's ask path IS the model loop, and this host configures
- *     no model — so the box must state the host's own reason instead of
- *     pretending to answer, and the deterministic ANSWERS are asserted over
- *     the analyst's own wire against chain facts.
+ *     out-of-band folds. The analyst writes a bearer token to a file in this
+ *     run's own temp directory; the leg reads it there, holds that the
+ *     market-shape route answers 401 without it, and reads that route with
+ *     `authorization: Bearer <token>`. The UI half: the endpoint and its
+ *     token are configured through the REAL endpoints form (never a
+ *     localStorage preseed), and the prompt box appears. The box's ask path
+ *     IS the model loop, and this host configures no model — so the box
+ *     must state the host's own reason instead of pretending to answer, and
+ *     the deterministic ANSWERS are asserted over the analyst's own wire
+ *     against chain facts.
  *
  *   - THE BATCH-UNIVERSE LEG: one `settleBatch` on the devnet's
  *     `FigaroBatchVerifier` (its `MockSP1Verifier` accepts any proof — the
@@ -82,6 +86,8 @@
  */
 import { test, expect } from '@playwright/test';
 import { spawn } from 'child_process';
+import * as fs from 'fs';
+import * as os from 'os';
 import * as path from 'path';
 import {
     bytesToHex,
@@ -689,6 +695,12 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
         // fallback otherwise defaults to the public ipfs.io). The model vars
         // are STRIPPED: this host deliberately configures no model, so the
         // /prompt loop must be absent whatever the harness shell exports.
+        // The bearer token file lands in this run's own temp directory, never
+        // the repo; the one origin granted CORS reads is the origin this
+        // browser loads the site from.
+        const scratchDir = fs.mkdtempSync(path.join(os.tmpdir(), 'figaro-analyst-e2e-'));
+        const tokenFile = path.join(scratchDir, 'analyst.token');
+        const siteOrigin = new URL(String(test.info().project.use.baseURL)).origin;
         const env: NodeJS.ProcessEnv = {
             ...process.env,
             RPC_URL,
@@ -696,7 +708,10 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
             IPFS_GATEWAY_URL: GATEWAY,
             IPFS_FALLBACK_GATEWAY_URL: GATEWAY,
             FIGARO_ANALYST_PORT: String(ANALYST_PORT),
+            FIGARO_ANALYST_TOKEN_FILE: tokenFile,
+            FIGARO_ANALYST_ALLOW_ORIGINS: siteOrigin,
         };
+        delete env.FIGARO_ANALYST_MAX_PROMPTS;
         delete env.ANTHROPIC_API_KEY;
         delete env.ANTHROPIC_MODEL;
         delete env.FIGARO_ANALYST_CROSSCHECK_RPC_URLS;
@@ -716,6 +731,10 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
                 if (!ready) await new Promise((r) => setTimeout(r, 500));
             }
             expect(ready, `the analyst synced and answered /status — stderr:\n${analystStderr}`).toBe(true);
+            // The bearer token this run wrote at start, read from its file —
+            // the path its operator reads it from.
+            const bearerToken = fs.readFileSync(tokenFile, 'utf-8').trim();
+            expect(bearerToken, 'the analyst wrote its bearer token to the configured file').toMatch(/^[0-9a-f]{64}$/);
 
             // ── OUT-OF-BAND folds: the same raw event scans a stranger runs.
             //    Nothing below is read back from the analyst it checks. ──
@@ -804,7 +823,11 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
             expect(story.heldAgreements).toBe(0);
             expect(story.agreementBodies, 'the body is party-private and the story says so').toContain('party-private');
 
-            const shape = await (await fetch(`${ANALYST_URL}/queries/market-shape`)).json() as {
+            const unauthorizedShape = await fetch(`${ANALYST_URL}/queries/market-shape`);
+            expect(unauthorizedShape.status, 'market shape answers no caller without the bearer token').toBe(401);
+            const shape = await (await fetch(`${ANALYST_URL}/queries/market-shape`, {
+                headers: { authorization: `Bearer ${bearerToken}` },
+            })).json() as {
                 groups: unknown[]; unattributedProcessCount: number;
             };
             expect(shape.groups, 'no held agreements ⇒ no attributed groups — never a guessed bin').toEqual([]);
@@ -817,6 +840,7 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
             //    the host's no-model posture in the host's own words. ──
             await page.goto('/members/edit/endpoints');
             await page.getByTestId('endpoints-analystUrl').fill(ANALYST_URL);
+            await page.getByTestId('endpoints-analystToken').fill(bearerToken);
             await page.getByTestId('endpoints-save').click();
             await expect(page.getByTestId('endpoints-saved'), 'the form confirms the save').toBeVisible();
 
@@ -834,6 +858,7 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
             await expect(promptBox.getByTestId('analyst-question')).toHaveCount(0);
         } finally {
             analyst.kill('SIGTERM');
+            fs.rmSync(scratchDir, { recursive: true, force: true });
         }
     });
 

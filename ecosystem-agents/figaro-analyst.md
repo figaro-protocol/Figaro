@@ -241,10 +241,10 @@ configured:
 |---|---|
 | `GET /status` | what this corpus holds, and the block range it synced |
 | `GET /graphs` | every projected graph with its truth boundary — a census, not a menu |
-| `GET /queries/market-shape` | per-assembly aggregates, plus the unattributed count |
+| `GET /queries/market-shape` | per-assembly aggregates, plus the unattributed count — **bearer token** |
 | `GET /queries/wallet-record?wallet=` | one wallet's public record |
 | `GET /queries/trade-story?process=` | one process, narrated, overlays framed |
-| `POST /prompt` | the model loop — **404 when unconfigured** |
+| `POST /prompt` | the model loop — **404 when unconfigured**, **bearer token** when configured |
 
 The prompt endpoint requires BOTH `ANTHROPIC_API_KEY` and `ANTHROPIC_MODEL`. The model id
 is never defaulted: model names belong to the inference provider's namespace and they
@@ -254,6 +254,22 @@ and name one. With either unset the endpoint is **absent** — an honest `404` t
 reason and points at the deterministic routes — never a stub that answers from nothing.
 The model loop's only capabilities are those same deterministic queries, so every answer it
 gives is one a caller could have reached over the wire and checked.
+
+**Launched through the sandbox wrapper, the analyst has no `POST /prompt`.** The wrapper's
+environment scrub holds back `ANTHROPIC_API_KEY` with every other key-shaped variable, so
+the endpoint is absent and `GET /status` names the reason. The model loop exists only on an
+analyst its host runs outside the wrapper with both variables set; the loop itself reaches
+nothing but the five deterministic queries.
+
+**Two routes answer only the bearer of this run's token:** `POST /prompt` (it spends the
+host's model turns) and `GET /queries/market-shape` (it is attributed from the agreement
+bodies the wallet holds or bought). The analyst draws a fresh token at every start, writes it
+to `FIGARO_ANALYST_TOKEN_FILE` (default `analyst.token` in its working directory, mode
+`0600`), and names the file on stderr without printing the token; send it as
+`Authorization: Bearer <token>`. A browser page reads the wire only from an origin named in
+`FIGARO_ANALYST_ALLOW_ORIGINS` (comma-separated); no origin is granted by default, never
+`*`. `FIGARO_ANALYST_MAX_PROMPTS` (default 1) caps the model loops in flight; past it, the
+answer is `429`.
 
 The runnable is a workspace binary — install it by cloning the public repository;
 there is no standalone `figaro-analyst` package on npm (only `@figaro-protocol/sdk`
@@ -269,8 +285,8 @@ npx figaro-run-sandboxed --policy …/deployments/signer-policy.11155111.json \
   --workspace ~/analyst-workspace -- npx figaro-analyst
 ```
 
-The policy's **`egress` list is the half that binds a read-only analyst** — the RPC, the
-IPFS gateway, and (only if `POST /prompt` is live) the model API origin. Its signing half
+The policy's **`egress` list is the half that binds a read-only analyst** — the RPC and the
+IPFS gateway, each matched by host and port. Its signing half
 (contracts, selectors, ceilings) is inert here because this role emits no signature; leave
 it as the owner's file rather than forking a second one. Omit `IPFS_GATEWAY_URL` and the
 service syncs the resolution skeleton alone and says so in `GET /status` — a smaller honest
@@ -369,8 +385,9 @@ STRUCTURAL and live OUTSIDE the model.
 - **F5 — Tool scoping (no raw host Bash).** `tools: Read, Bash` is strictly larger than
   every boundary this spec asserts. *Satisfied by the sandbox wrapper
   (`ecosystem-agents/runtime/run-sandboxed.mjs`): writes land only in the workspace, the
-  environment is scrubbed of anything key-shaped, and ALL network except loopback is denied
-  at the OS — the policy-driven egress proxy is the only way out, and its allowlist is what
+  environment is scrubbed of anything key-shaped, the secret paths are unreadable by
+  default, and ALL network except the egress proxy's one loopback port is denied at the
+  OS — the policy-driven egress proxy is the only way out, and its allowlist is what
   keeps an analyst reading the chain and the gateway rather than the whole internet.
   Launched bare, this falls back to behavioral-only; say so.*
 - **F6 — The sandbox is what backs the never-the-repo seam.** *Backed when launched through

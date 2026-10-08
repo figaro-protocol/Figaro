@@ -43,6 +43,7 @@ import {
     projectResolutionGraph,
     projectValueFlow,
     walletRecord,
+    witnessContentCid,
 } from "@figaro-protocol/sdk/derive";
 import { frame } from "./dataChannel.mjs";
 import { ipfsGateways } from "./ipfsRead.mjs";
@@ -66,6 +67,32 @@ export function jsonSafe(value) {
     }
     return value;
 }
+
+// ── Framing at the wire edge ────────────────────────────────────────────────
+// Every readable string a stranger authored — a clause id its registrant
+// chose, a field an attester decoded into — leaves this module inside a
+// FIGARO-DATA frame, the same frame the recovered substance wears: a model
+// reading any answer here reads attacker-authored text framed or not at all.
+
+/** An overlay family's readable clause id, framed; `null` when its spec did
+ *  not resolve (the family is then named by its on-chain key alone). */
+function framedClauseId(graph) {
+    const clauseId = graph.spec?.clauseId;
+    if (clauseId === undefined || clauseId === null) return null;
+    return frame({ source: "clause-registry", refKind: "clauseKey", ref: graph.clauseKey, content: String(clauseId) });
+}
+
+/** An overlay entry's spec-decoded fields, framed as JSON; `null` for a
+ *  fingerprint-only entry. */
+function framedDecoded(entry) {
+    if (entry.decoded === null) return null;
+    return frame({
+        source: "attestation-decoded", refKind: "cid", ref: witnessContentCid(entry.contentRef),
+        content: JSON.stringify(jsonSafe(entry.decoded)),
+    });
+}
+
+const BYTES32 = /^0x[0-9a-fA-F]{64}$/;
 
 // ── Spec source (ClauseRegistry → IPFS, at the edge) ────────────────────────
 
@@ -278,7 +305,13 @@ export async function syncCorpus({
             const hit = await fetchAnchoredTemplate(assembly, { gateways });
             if (hit.absent) continue;
             for (const agreement of hit.template.agreements ?? []) {
-                const pin = readUtilityTokenPin(agreement.clauses ?? {}, specs);
+                // The pin is composed at the assembly level and folds into every
+                // agreement's bag, at the versions the template states (absent = 1).
+                const pin = readUtilityTokenPin(
+                    { ...(hit.template.assemblyClauses ?? {}), ...(agreement.clauses ?? {}) },
+                    specs,
+                    { ...(hit.template.assemblyClauseVersions ?? {}), ...(agreement.clauseVersions ?? {}) },
+                );
                 if (pin && !pins.includes(pin)) pins.push(pin);
             }
         } catch {
@@ -327,7 +360,9 @@ function assemblyAttribution(corpus) {
     for (const { agreement, order } of corpus.held.byHash.values()) {
         const section = sectionByField(agreement, "compositionHash", corpus.specs);
         const key = section?.data?.compositionHash;
-        if (typeof key === "string" && key.length > 0) byProcess.set(order.processId.toLowerCase(), key);
+        // A composition hash is a bytes32; anything else in that field is a
+        // party's free text, attributes nothing, and never reaches the wire.
+        if (typeof key === "string" && BYTES32.test(key)) byProcess.set(order.processId.toLowerCase(), key);
     }
     return (processId) => byProcess.get(processId.toLowerCase());
 }
@@ -367,8 +402,8 @@ export function graphInventory(corpus) {
             clauseKey: g.clauseKey,
             // The readable id only exists when the family's spec resolved from
             // the registry; an unresolved family is named by its on-chain key
-            // and nothing else.
-            clauseId: g.spec?.clauseId ?? null,
+            // and nothing else. Its registrant chose it: framed.
+            clauseId: framedClauseId(g),
             specResolved: g.spec !== null,
             entries: g.entries.length,
             decodedEntries: g.entries.filter((e) => e.decoded !== null).length,
@@ -431,8 +466,9 @@ function orderRow(o) {
  * projections, never a third walk of the same events (on-site the same answer
  * is `/audit/view?process=`).
  *
- * `framedSubstance` carries the recovered payloads as DATA blocks: a model
- * reading this story reads the substance framed or not at all.
+ * `framedSubstance` carries the recovered payloads as DATA blocks, and
+ * `decoded` and `clauseId` arrive framed the same way: a model reading this
+ * story reads attacker-authored text framed or not at all.
  */
 export function tradeStory(corpus, processId) {
     const id = processId.toLowerCase();
@@ -457,14 +493,14 @@ export function tradeStory(corpus, processId) {
             overlayEntries.push({
                 truthBoundary: graph.boundary,
                 clauseKey: graph.clauseKey,
-                clauseId: graph.spec?.clauseId ?? null,
+                clauseId: framedClauseId(graph),
                 orderHash: entry.orderHash,
                 attester: entry.attester,
                 stage: entry.stage,
                 universe: entry.universe,
                 blockNumber: entry.blockNumber,
                 contentRef: entry.contentRef,
-                decoded: entry.decoded === null ? null : jsonSafe(entry.decoded),
+                decoded: framedDecoded(entry),
                 framedSubstance: corpus.framedSubstance.get(entry.contentRef.toLowerCase()) ?? null,
             });
         }

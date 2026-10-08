@@ -182,7 +182,9 @@ NEXT_PUBLIC_BATCH_RELAY_URL=
 # an authority. Unset = NO prompt box; the explorer's derived views are projected
 # in the reader's own browser either way. Overridable per-reader
 # (readUserEndpoints().analystUrl) — a user-run analyst is the one that can also
-# read the substance that user OWNS or BOUGHT.
+# read the substance that user OWNS or BOUGHT. Its /prompt route asks for the
+# bearer token the analyst writes at start; the reader stores it beside their own
+# endpoint (readUserEndpoints().analystToken), and it is never sent to this default.
 NEXT_PUBLIC_ANALYST_URL=
 
 # Wallet + dev helpers — injected-only: RainbowKit has

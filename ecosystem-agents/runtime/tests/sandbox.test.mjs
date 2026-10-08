@@ -7,17 +7,19 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { execFileSync, spawn, spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import * as fs from "node:fs";
 import * as http from "node:http";
 import * as net from "node:net";
 import * as os from "node:os";
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
-import { allowedHosts, hostAllowed, startEgressProxy } from "../egress-proxy.mjs";
+import { allowedOrigins, originAllowed, startEgressProxy } from "../egress-proxy.mjs";
+import {
+    applyAllowReads, canonical, defaultDenyReads, renderProfile, scrubEnv, valueCarriesUrlCredential,
+} from "../sandboxProfile.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const PROFILE = path.join(__dirname, "..", "sandbox-macos.sb");
 
 const POLICY = {
     egress: ["https://ethereum-sepolia-rpc.publicnode.com", "https://ipfs.io", "http://127.0.0.1"],
@@ -26,23 +28,34 @@ const POLICY = {
 
 // ── Egress proxy decisions ──────────────────────────────────────────────────
 
-test("the allowlist derives hostnames from policy origins", () => {
-    const hosts = allowedHosts(POLICY);
-    assert.ok(hostAllowed(hosts, "ipfs.io"));
-    assert.ok(hostAllowed(hosts, "ETHEREUM-SEPOLIA-RPC.PUBLICNODE.COM"));
-    assert.ok(hostAllowed(hosts, "127.0.0.1"));
-    assert.ok(!hostAllowed(hosts, "evil.example"));
-    assert.ok(!hostAllowed(hosts, "publicnode.com"), "no suffix matching — exact hosts only");
+test("the allowlist derives host, port and scheme from policy origins", () => {
+    const origins = allowedOrigins(POLICY);
+    assert.ok(originAllowed(origins, { host: "ipfs.io", port: 443 }));
+    assert.ok(originAllowed(origins, { host: "ETHEREUM-SEPOLIA-RPC.PUBLICNODE.COM", port: 443 }));
+    assert.ok(originAllowed(origins, { host: "127.0.0.1", port: 80, protocol: "http:" }));
+    assert.ok(!originAllowed(origins, { host: "evil.example", port: 443 }));
+    assert.ok(!originAllowed(origins, { host: "publicnode.com", port: 443 }), "no suffix matching — exact hosts only");
+    // The port is part of the origin: an allowed host on another port is not.
+    assert.ok(!originAllowed(origins, { host: "ipfs.io", port: 22 }));
+    assert.ok(!originAllowed(origins, { host: "127.0.0.1", port: 8545 }));
+    // A host listed as https: is never reached in the clear.
+    assert.ok(!originAllowed(origins, { host: "ipfs.io", port: 443, protocol: "http:" }));
+    assert.ok(!originAllowed(origins, { host: "ipfs.io", port: 80, protocol: "http:" }));
+    // An explicit port, and a bare host (TLS on 443 unless given).
+    const more = allowedOrigins({ egress: ["http://127.0.0.1:8545", "api.example", "grpc.example:5556"] });
+    assert.ok(originAllowed(more, { host: "127.0.0.1", port: 8545, protocol: "http:" }));
+    assert.ok(originAllowed(more, { host: "api.example", port: 443 }));
+    assert.ok(!originAllowed(more, { host: "api.example", port: 80 }));
+    assert.ok(originAllowed(more, { host: "grpc.example", port: 5556 }));
 });
 
-test("the proxy refuses a CONNECT to a host off the allowlist, tunnels one on it", async () => {
-    // A local echo target stands in for an allowed host (127.0.0.1 is on the
-    // test policy's list).
+test("the proxy refuses a CONNECT off the allowlist or on another port, tunnels one on it", async () => {
+    // A local echo target stands in for an allowed origin.
     const echo = http.createServer((_req, res) => res.end("reached"));
     await new Promise((r) => echo.listen(0, "127.0.0.1", r));
     const denials = [];
     const proxy = await startEgressProxy({
-        policy: POLICY, port: 0,
+        policy: { egress: [`http://127.0.0.1:${echo.address().port}`], rpcUrl: "https://ipfs.io" }, port: 0,
         onDecision: (d) => { if (!d.allowed) denials.push(d.host); },
     });
 
@@ -57,10 +70,88 @@ test("the proxy refuses a CONNECT to a host off the allowlist, tunnels one on it
 
     assert.equal(await connectStatus("evil.example", 443), 403);
     assert.equal(await connectStatus("127.0.0.1", echo.address().port), 200);
-    assert.deepEqual(denials, ["evil.example"]);
+    assert.equal(await connectStatus("127.0.0.1", 22), 403, "an allowed host on another port");
+    assert.equal(await connectStatus("ipfs.io", 8080), 403, "an allowed host on another port");
+    assert.deepEqual(denials, ["evil.example:443", "127.0.0.1:22", "ipfs.io:8080"]);
 
     await proxy.close();
     await new Promise((r) => echo.close(r));
+});
+
+test("absolute-URI forwarding refuses every scheme but http: cleanly, and checks the port", async () => {
+    // An https:/ftp: absolute URI to an ALLOWED host once threw inside the
+    // request handler and took the launcher down; it is a refusal now, and
+    // the proxy keeps answering.
+    const echo = http.createServer((_req, res) => res.end("reached"));
+    await new Promise((r) => echo.listen(0, "127.0.0.1", r));
+    const port = echo.address().port;
+    const proxy = await startEgressProxy({
+        policy: { egress: [`http://127.0.0.1:${port}`, "https://ipfs.io"], rpcUrl: "https://ipfs.io" }, port: 0,
+    });
+    const forward = (target) => new Promise((resolve, reject) => {
+        const req = http.request({ host: "127.0.0.1", port: proxy.port, method: "GET", path: target }, (res) => {
+            let body = "";
+            res.on("data", (c) => (body += c));
+            res.on("end", () => resolve({ status: res.statusCode, body }));
+        });
+        req.on("error", reject);
+        req.end();
+    });
+    try {
+        assert.equal((await forward("https://ipfs.io/")).status, 400);
+        assert.equal((await forward("ftp://ipfs.io/")).status, 400);
+        assert.equal((await forward(`https://127.0.0.1:${port}/`)).status, 400);
+        assert.equal((await forward("http://ipfs.io/")).status, 403, "plain http to a host listed as https:");
+        assert.equal((await forward("http://127.0.0.1:1/")).status, 403, "an allowed host on another port");
+        const ok = await forward(`http://127.0.0.1:${port}/`);
+        assert.equal(ok.status, 200);
+        assert.equal(ok.body, "reached", "the proxy still answers after every refusal");
+    } finally {
+        await proxy.close();
+        await new Promise((r) => echo.close(r));
+    }
+});
+
+// ── The launcher's pure decisions ───────────────────────────────────────────
+
+test("the environment scrub drops secret-shaped names and URL-embedded credentials", () => {
+    const { env, scrubbed } = scrubEnv({
+        PRIVATE_KEY: "0xdead",
+        DB_PASSWORD: "p",
+        GH_AUTH: "a",
+        MY_CREDENTIALS: "c",
+        SITE_COOKIE: "k",
+        RPC_URL: "https://eth-sepolia.g.alchemy.com/v2/AbCdEfGh1234567890ijklMN",
+        INFURA: "https://sepolia.infura.io/v3/0123456789abcdef0123456789abcdef",
+        DATABASE_URL: "postgres://user:hunter2@db.example:5432/app",
+        GATEWAYS: "https://ipfs.io,https://gw.example/?apikey=abc",
+        PUBLIC_RPC: "https://ethereum-sepolia-rpc.publicnode.com",
+        DEPLOYMENT_RECORD: "/home/u/deployments/11155111.json",
+        IPFS_GATEWAY_URL: "https://ipfs.io/ipfs",
+        PATH: "/usr/bin:/bin",
+    }, { HTTPS_PROXY: "http://127.0.0.1:9" });
+    assert.deepEqual(scrubbed, [
+        "DATABASE_URL", "DB_PASSWORD", "GATEWAYS", "GH_AUTH", "INFURA", "MY_CREDENTIALS",
+        "PRIVATE_KEY", "RPC_URL", "SITE_COOKIE",
+    ]);
+    assert.deepEqual(Object.keys(env).sort(), ["DEPLOYMENT_RECORD", "HTTPS_PROXY", "IPFS_GATEWAY_URL", "PATH", "PUBLIC_RPC"]);
+    assert.equal(valueCarriesUrlCredential("https://quick.example.quiknode.pro/a1b2c3d4e5f6a7b8c9d0e1f2/"), true);
+    assert.equal(valueCarriesUrlCredential("not a url"), false);
+});
+
+test("--allow-read opens exactly a default unreadable path, and names one that is not", () => {
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), "sbx-home-"));
+    try {
+        const defaults = defaultDenyReads(home);
+        const root = canonical(home);
+        for (const rel of [".ssh", ".aws", ".config/gh", ".gnupg", ".npmrc", ".zsh_history", ".bash_history", ".foundry/keystores"]) {
+            assert.ok(defaults.includes(path.join(root, rel)), `${rel} is unreadable by default`);
+        }
+        const opened = applyAllowReads(defaults, [path.join(home, ".npmrc")]);
+        assert.ok(!opened.denies.includes(path.join(root, ".npmrc")));
+        assert.equal(opened.denies.length, defaults.length - 1);
+        assert.deepEqual(applyAllowReads(defaults, ["/etc/hosts"]).unknown, [canonical("/etc/hosts")]);
+    } finally { fs.rmSync(home, { recursive: true, force: true }); }
 });
 
 // ── OS-profile deny cases (macOS only) ──────────────────────────────────────
@@ -68,21 +159,28 @@ test("the proxy refuses a CONNECT to a host off the allowlist, tunnels one on it
 const HAS_SANDBOX_EXEC = process.platform === "darwin" &&
     spawnSync("which", ["sandbox-exec"]).status === 0;
 
-function sandboxArgs({ workspace, denyRead, signerDir, cmd }) {
-    const deny = denyRead ?? "/nonexistent-deny";
+/** The profile exactly as the launcher renders it (sandboxProfile.mjs). */
+function sandboxArgs({ workspace, denyRead, signerDir, proxyPort, cmd }) {
     const signer = signerDir ?? `${workspace}-signer`;
     return [
-        "-f", PROFILE,
+        "-p", renderProfile({ denyReads: denyRead ? [denyRead] : [] }),
         "-D", `WORKSPACE=${workspace}`,
         "-D", `TMPDIR=${fs.realpathSync(os.tmpdir())}`,
         "-D", `SIGNER_SOCKET=${path.join(signer, "signer.sock")}`,
         "-D", `SIGNER_DIR=${signer}`,
-        "-D", `DENY_READ_A=${deny}`,
-        "-D", `DENY_READ_B=${deny}`,
-        "-D", `DENY_READ_C=${deny}`,
+        "-D", `PROXY_PORT=${proxyPort ?? 1}`,
         "/bin/sh", "-c", cmd,
     ];
 }
+
+const SBX_POLICY = {
+    chainId: 11155111,
+    verifyingContracts: ["0x1111111111111111111111111111111111111111"],
+    contracts: { "0x1111111111111111111111111111111111111111": ["0xaaaaaaaa"] },
+    token: "0x3333333333333333333333333333333333333333",
+    ceilings: { perAction: "1", perPeriod: "1", periodSecs: 60 },
+    egress: [], rpcUrl: "http://127.0.0.1:1",
+};
 
 function sandboxed(opts) {
     return spawnSync("sandbox-exec", sandboxArgs(opts), { encoding: "utf-8" });
@@ -132,49 +230,134 @@ test("a named secret path is unreadable", { skip: !HAS_SANDBOX_EXEC }, () => {
     }
 });
 
-test("direct outbound network is denied; loopback is not", { skip: !HAS_SANDBOX_EXEC }, async () => {
+test("direct outbound network is denied, and so is every loopback port but the proxy's", { skip: !HAS_SANDBOX_EXEC }, async () => {
     const workspace = fs.mkdtempSync(path.join(os.tmpdir(), "sbx-ws-"));
-    const local = http.createServer((_req, res) => res.end("loopback"));
-    await new Promise((r) => local.listen(0, "127.0.0.1", r));
+    // One loopback listener stands in for the egress proxy; the other for
+    // what else listens on a host — a local IPFS API, a devnet, a proxy that
+    // forwards anywhere. Only the first is a way out.
+    const proxy = http.createServer((_req, res) => res.end("proxy"));
+    const other = http.createServer((_req, res) => res.end("other"));
+    await new Promise((r) => proxy.listen(0, "127.0.0.1", r));
+    await new Promise((r) => other.listen(0, "127.0.0.1", r));
+    const proxyPort = proxy.address().port;
     try {
         // 1.1.1.1:443 — a reachable host on the open internet; the sandbox
         // must refuse the connection attempt itself.
-        const direct = sandboxed({ workspace, cmd: "nc -z -G 3 1.1.1.1 443" });
+        const direct = sandboxed({ workspace, proxyPort, cmd: "nc -z -G 3 1.1.1.1 443" });
         assert.notEqual(direct.status, 0, "outbound escaped the sandbox");
 
-        const loop = sandboxed({ workspace, cmd: `nc -z 127.0.0.1 ${local.address().port}` });
-        assert.equal(loop.status, 0, loop.stderr);
+        const loop = sandboxed({ workspace, proxyPort, cmd: `nc -z 127.0.0.1 ${other.address().port}` });
+        assert.notEqual(loop.status, 0, "a loopback service other than the proxy was reachable");
+
+        const toProxy = sandboxed({ workspace, proxyPort, cmd: `nc -z 127.0.0.1 ${proxyPort}` });
+        assert.equal(toProxy.status, 0, toProxy.stderr);
     } finally {
-        await new Promise((r) => local.close(r));
+        await new Promise((r) => proxy.close(r));
+        await new Promise((r) => other.close(r));
         fs.rmSync(workspace, { recursive: true, force: true });
+    }
+});
+
+test("the launcher makes the secret paths unreadable BY DEFAULT; every --deny-read stands alone", { skip: !HAS_SANDBOX_EXEC }, () => {
+    // A home directory of the test's own, holding what a real one holds.
+    const home = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "sbx-home-")));
+    const workspace = fs.mkdtempSync(path.join(os.tmpdir(), "sbx-ws-"));
+    const policyFile = path.join(workspace, "policy.json");
+    fs.writeFileSync(policyFile, JSON.stringify(SBX_POLICY));
+    const signerDir = fs.mkdtempSync(path.join(os.homedir(), ".sbx-signer-"));
+    const elsewhere = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "sbx-opt-")));
+    const put = (p, body = "secret") => { fs.mkdirSync(path.dirname(p), { recursive: true }); fs.writeFileSync(p, body); return p; };
+    const secrets = {
+        aws: put(path.join(home, ".aws", "credentials")),
+        gh: put(path.join(home, ".config", "gh", "hosts.yml")),
+        gnupg: put(path.join(home, ".gnupg", "private-keys-v1.d", "k.key")),
+        npmrc: put(path.join(home, ".npmrc")),
+        zsh: put(path.join(home, ".zsh_history")),
+        bash: put(path.join(home, ".bash_history")),
+        ssh: put(path.join(home, ".ssh", "id_ed25519")),
+        foundry: put(path.join(home, ".foundry", "keystores", "operator")),
+        // The documented keystore path (sdk/README.md: ~/operator.keystore.json),
+        // never named to the launcher.
+        keystoreJson: put(path.join(home, "operator.keystore.json")),
+        // A keystore outside the home directory, named with --keystore.
+        named: put(path.join(elsewhere, "keys", "signer-key.json")),
+        // Three --deny-read paths in one parent: each stands alone.
+        a: put(path.join(elsewhere, "a", "x")),
+        b: put(path.join(elsewhere, "b", "x")),
+        c: put(path.join(elsewhere, "c", "x")),
+    };
+    const readable = {
+        sibling: put(path.join(elsewhere, "d", "x"), "open"),
+        homeFile: put(path.join(home, "notes.txt"), "open"),
+    };
+    const script = Object.entries({ ...secrets, ...readable })
+        .map(([name, p]) => `if cat '${p}' >/dev/null 2>&1; then echo "READ ${name}"; else echo "DENIED ${name}"; fi`)
+        .join("; ");
+    const launch = (extra) => spawnSync("node", [
+        path.join(__dirname, "..", "run-sandboxed.mjs"),
+        "--policy", policyFile, "--workspace", workspace,
+        "--signer-socket", path.join(signerDir, "signer.sock"),
+        "--keystore", secrets.named,
+        "--deny-read", path.join(elsewhere, "a"),
+        "--deny-read", path.join(elsewhere, "b"),
+        "--deny-read", path.join(elsewhere, "c"),
+        ...extra,
+        "--", "/bin/sh", "-c", script,
+    ], { encoding: "utf-8", env: { ...process.env, HOME: home } });
+    try {
+        const run = launch([]);
+        assert.equal(run.status, 0, run.stderr);
+        for (const name of Object.keys(secrets)) assert.match(run.stdout, new RegExp(`^DENIED ${name}$`, "m"), `${name} was readable`);
+        for (const name of Object.keys(readable)) assert.match(run.stdout, new RegExp(`^READ ${name}$`, "m"), `${name} was over-denied`);
+
+        // --allow-read opens one default, and only that one.
+        const opened = launch(["--allow-read", path.join(home, ".npmrc")]);
+        assert.equal(opened.status, 0, opened.stderr);
+        assert.match(opened.stdout, /^READ npmrc$/m);
+        assert.match(opened.stdout, /^DENIED aws$/m);
+
+        // An --allow-read that names no default is refused, never ignored.
+        const refused = launch(["--allow-read", "/etc/hosts"]);
+        assert.notEqual(refused.status, 0);
+        assert.match(refused.stderr, /not on the list/);
+    } finally {
+        for (const d of [home, workspace, signerDir, elsewhere]) fs.rmSync(d, { recursive: true, force: true });
     }
 });
 
 test("the launcher scrubs key-shaped environment variables", { skip: !HAS_SANDBOX_EXEC }, () => {
     const workspace = fs.mkdtempSync(path.join(os.tmpdir(), "sbx-ws-"));
     const policyFile = path.join(workspace, "policy.json");
-    fs.writeFileSync(policyFile, JSON.stringify({
-        chainId: 11155111,
-        verifyingContracts: ["0x1111111111111111111111111111111111111111"],
-        contracts: { "0x1111111111111111111111111111111111111111": ["0xaaaaaaaa"] },
-        token: "0x3333333333333333333333333333333333333333",
-        ceilings: { perAction: "1", perPeriod: "1", periodSecs: 60 },
-        egress: [], rpcUrl: "http://127.0.0.1:1",
-    }));
+    fs.writeFileSync(policyFile, JSON.stringify(SBX_POLICY));
     // The launcher requires the signer's directory to exist.
     const signerDir = fs.mkdtempSync(path.join(os.homedir(), ".sbx-signer-"));
     try {
-        const out = execFileSync("node", [
+        const run = spawnSync("node", [
             path.join(__dirname, "..", "run-sandboxed.mjs"),
             "--policy", policyFile, "--workspace", workspace,
             "--signer-socket", path.join(signerDir, "signer.sock"),
             "--", "/bin/sh", "-c", "env",
         ], {
             encoding: "utf-8",
-            env: { ...process.env, PRIVATE_KEY: "0xdead", PINATA_DAO_JWT: "j", MY_PASSPHRASE: "p" },
+            env: {
+                ...process.env, PRIVATE_KEY: "0xdead", PINATA_DAO_JWT: "j", MY_PASSPHRASE: "p",
+                DB_PASSWORD: "hunter2", GH_AUTH: "ghauth", AWS_CREDENTIALS: "awscred", SITE_COOKIE: "cookie",
+                RPC_URL: "https://eth-sepolia.g.alchemy.com/v2/AbCdEfGh1234567890ijklMN",
+                DATABASE_URL: "postgres://user:pw0rd@db.example:5432/app",
+                PUBLIC_RPC: "https://ethereum-sepolia-rpc.publicnode.com",
+            },
         });
+        assert.equal(run.status, 0, run.stderr);
+        const out = run.stdout;
         assert.ok(!out.includes("0xdead"), "PRIVATE_KEY leaked into the sandbox");
-        assert.ok(!/PINATA_DAO_JWT|MY_PASSPHRASE/.test(out));
+        for (const leaked of ["PINATA_DAO_JWT", "MY_PASSPHRASE", "DB_PASSWORD", "GH_AUTH", "AWS_CREDENTIALS", "SITE_COOKIE", "RPC_URL", "DATABASE_URL"]) {
+            assert.ok(!new RegExp(`^${leaked}=`, "m").test(out), `${leaked} crossed into the sandbox`);
+        }
+        for (const value of ["hunter2", "AbCdEfGh1234567890ijklMN", "pw0rd"]) assert.ok(!out.includes(value));
+        assert.match(out, /^PUBLIC_RPC=https:\/\/ethereum-sepolia-rpc\.publicnode\.com$/m, "a credential-free URL crosses");
+        // The launcher names what it held back — names only, never values.
+        assert.match(run.stderr, /held back from the sandbox's environment: .*RPC_URL/);
+        assert.ok(!run.stderr.includes("hunter2"));
         assert.match(out, /HTTPS_PROXY=http:\/\/127\.0\.0\.1:\d+/);
         assert.match(out, /FIGARO_SIGNER_SOCKET=/);
     } finally {
@@ -232,14 +415,7 @@ test("the signer's directory is never writable; its socket stays connectable", {
 test("the launcher refuses a signer socket in a directory the sandbox may write", { skip: !HAS_SANDBOX_EXEC }, () => {
     const workspace = fs.mkdtempSync(path.join(os.tmpdir(), "sbx-ws-"));
     const policyFile = path.join(workspace, "policy.json");
-    fs.writeFileSync(policyFile, JSON.stringify({
-        chainId: 11155111,
-        verifyingContracts: ["0x1111111111111111111111111111111111111111"],
-        contracts: { "0x1111111111111111111111111111111111111111": ["0xaaaaaaaa"] },
-        token: "0x3333333333333333333333333333333333333333",
-        ceilings: { perAction: "1", perPeriod: "1", periodSecs: 60 },
-        egress: [], rpcUrl: "http://127.0.0.1:1",
-    }));
+    fs.writeFileSync(policyFile, JSON.stringify(SBX_POLICY));
     const launch = (socket) => spawnSync("node", [
         path.join(__dirname, "..", "run-sandboxed.mjs"),
         "--policy", policyFile, "--workspace", workspace, "--signer-socket", socket,

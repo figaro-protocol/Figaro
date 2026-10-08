@@ -12,6 +12,7 @@ import * as path from "node:path";
 import { fileURLToPath } from "node:url";
 import { canonicalContentHash, templateCompositionHash } from "@figaro-protocol/sdk";
 import { fetchAnchoredClauseSpec, fetchAnchoredTemplate } from "../anchoredContent.mjs";
+import { fetchIpfsBytes } from "../ipfsRead.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SPEC_TEXT = fs.readFileSync(path.join(__dirname, "..", "..", "..", "clauses", "figaro-commerce.json"), "utf8");
@@ -90,4 +91,43 @@ test("the parse strips prototype keys from an anchored document", async () => {
         assert.equal(({}).polluted, undefined);
         if (!hit.absent) assert.equal(Object.prototype.hasOwnProperty.call(hit.template, "__proto__"), false);
     } finally { await gw.close(); }
+});
+
+test("a gateway body past the size cap is cut off AT the cap, never buffered whole", async () => {
+    // A permissionless registrant can point a clause at any CID, and the
+    // analyst fetches every clause on every sync: a gateway serving an
+    // endless body must cost the reader the cap, not its memory.
+    const CAP = 64 * 1024;
+    const CHUNK = Buffer.alloc(16 * 1024, 0x61);
+    let written = 0;
+    let finished = null;
+    const server = http.createServer((req, res) => {
+        if (req.url.endsWith("/declared")) {
+            res.writeHead(200, { "content-length": String(10 * 1024 * 1024 * 1024) });
+            res.write(CHUNK);
+            return; // never ends: the declared length alone must refuse it
+        }
+        res.writeHead(200); // chunked: no declared length to refuse on
+        const pump = () => {
+            while (!res.destroyed && written < 512 * 1024 * 1024) {
+                written += CHUNK.length;
+                if (!res.write(CHUNK)) return res.once("drain", pump);
+            }
+        };
+        res.on("close", () => { finished = written; });
+        pump();
+    });
+    await new Promise((r) => server.listen(0, "127.0.0.1", r));
+    const gw = `http://127.0.0.1:${server.address().port}`;
+    try {
+        await assert.rejects(fetchIpfsBytes("endless", { gateways: [gw], maxBytes: CAP }), /more than the 65536-byte cap/);
+        while (finished === null) await new Promise((r) => setTimeout(r, 10));
+        // The socket closes within a few socket buffers of the cap, nowhere
+        // near the 512 MiB the server was ready to send.
+        assert.ok(finished < 16 * 1024 * 1024, `the reader drew ${finished} bytes before stopping`);
+        await assert.rejects(fetchIpfsBytes("declared", { gateways: [gw], maxBytes: CAP }), /more than the 65536-byte cap/);
+    } finally {
+        server.closeAllConnections();
+        await new Promise((r) => server.close(r));
+    }
 });

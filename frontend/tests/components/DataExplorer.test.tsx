@@ -11,7 +11,7 @@
  */
 import React from "react";
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import type { GraphCorpus } from "@/lib/data/graphCorpus";
 
 let searchParams = "view=market";
@@ -28,9 +28,10 @@ const analystUrlMock = vi.fn();
 vi.mock("@/lib/data/analystEndpoint", () => ({
     getAnalystUrl: () => analystUrlMock(),
     readAnalystStatus: async () => statusMock(),
-    askAnalyst: async () => ({ state: "no-prompt", reason: "unused" }),
+    askAnalyst: async () => askMock(),
 }));
 const statusMock = vi.fn();
+const askMock = vi.fn(() => ({ state: "no-prompt", reason: "unused" }));
 
 import { DataExplorer } from "@/components/data/DataExplorer";
 import { AnalystPrompt } from "@/components/data/AnalystPrompt";
@@ -168,6 +169,42 @@ describe("AnalystPrompt — the box exists only where a reader does", () => {
         expect(await screen.findByTestId("analyst-prompt")).toBeInTheDocument();
         expect((await screen.findByTestId("analyst-no-prompt")).textContent).toMatch(/ANTHROPIC_MODEL is unset/);
         expect(screen.queryByTestId("analyst-question")).toBeNull();
+    });
+
+    it("an answer the edge could not read renders as unreadable, and the card stands", async () => {
+        analystUrlMock.mockReturnValue("https://analyst.example.com");
+        statusMock.mockReturnValue({ prompt: { available: true } });
+        askMock.mockReturnValueOnce({ state: "unreadable", error: "`trace` is not a list" } as never);
+        render(<AnalystPrompt />);
+        fireEvent.change(await screen.findByTestId("analyst-question"), { target: { value: "what resolved?" } });
+        fireEvent.click(screen.getByTestId("analyst-ask"));
+        expect((await screen.findByTestId("analyst-unreadable")).textContent).toMatch(/not readable: `trace` is not a list/);
+        expect(screen.getByTestId("analyst-prompt")).toBeInTheDocument();
+        expect(screen.queryByTestId("analyst-answer")).toBeNull();
+    });
+
+    it("a 401 says the endpoint asks for its token and points at where it is stored", async () => {
+        analystUrlMock.mockReturnValue("https://analyst.example.com");
+        statusMock.mockReturnValue({ prompt: { available: true } });
+        askMock.mockReturnValueOnce({ state: "needs-token", tokenSent: false } as never);
+        render(<AnalystPrompt />);
+        fireEvent.change(await screen.findByTestId("analyst-question"), { target: { value: "what resolved?" } });
+        fireEvent.click(screen.getByTestId("analyst-ask"));
+        const notice = await screen.findByTestId("analyst-needs-token");
+        expect(notice.textContent).toMatch(/This endpoint asks for its token/);
+        expect(notice.textContent).toMatch(/No token is stored for it/);
+        expect(notice.querySelector("a")?.getAttribute("href")).toBe("/members/edit/endpoints");
+        expect(screen.queryByTestId("analyst-error")).toBeNull();
+    });
+
+    it("a refused stored token is told apart from a missing one", async () => {
+        analystUrlMock.mockReturnValue("https://analyst.example.com");
+        statusMock.mockReturnValue({ prompt: { available: true } });
+        askMock.mockReturnValueOnce({ state: "needs-token", tokenSent: true } as never);
+        render(<AnalystPrompt />);
+        fireEvent.change(await screen.findByTestId("analyst-question"), { target: { value: "q" } });
+        fireEvent.click(screen.getByTestId("analyst-ask"));
+        expect((await screen.findByTestId("analyst-needs-token")).textContent).toMatch(/The token stored for it was refused/);
     });
 });
 
