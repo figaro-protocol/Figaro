@@ -84,7 +84,8 @@ read from a search summary, never the firm's own page):
 - **Programs that cost nothing or by quote.** HackerOne Community Edition lists a
   bounty without charge, keeping five percent of a cash payout only, for an
   OSI-licensed project with a `SECURITY.md`; Cantina's free bounty tier, *unverified*. Guardian's
-  audit grants are the one route to an external audit without charge, by application.
+  audit grant was applied for and still priced out, so no audit firm's grant
+  route is open.
   Contest platforms price by quote: Sherlock's own market reference puts a
   mid-complexity audit at tens of thousands of dollars; Code4rena is winding
   down; Immunefi and Cantina quote per pool. Vanta and Testlio do not apply to
