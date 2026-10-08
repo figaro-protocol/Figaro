@@ -132,12 +132,12 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
             setProcessAttestations([]);
             return;
         }
-        let cancelled = false;
+        let canceled = false;
         const chainId = publicClient.chain?.id ?? 0;
         getAttestationsByProcess(publicClient, chainId, effectiveProcessId)
-            .then((logs) => { if (!cancelled) setProcessAttestations(logs); })
-            .catch(() => { if (!cancelled) setProcessAttestations([]); });
-        return () => { cancelled = true; };
+            .then((logs) => { if (!canceled) setProcessAttestations(logs); })
+            .catch(() => { if (!canceled) setProcessAttestations([]); });
+        return () => { canceled = true; };
     }, [publicClient, effectiveProcessId, processReloadKey]);
 
     // `clauseSpecsVersion` is read so this inline derivation re-runs once a

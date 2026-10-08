@@ -165,16 +165,16 @@ export function CheckoutView({ sellerAddress }: Props) {
     const needsConversion = !!currency && !!sellerDefault && !hexEqual(currency, sellerDefault);
     const [venueRate, setVenueRate] = useState<VenueRate | null>(null);
     useEffect(() => {
-        let cancelled = false;
+        let canceled = false;
         setVenueRate(null);
         if (!needsConversion || !publicClient || !swapFundingContracts) return;
         // The pair: the picked denomination is what the buyer pays IN, the
         // seller's default is what the price is quoted in — the venue quotes
         // how much picked token yields one unit of the default.
         readVenueRate(publicClient, swapFundingContracts.router, { tokenIn: currency!, tokenOut: sellerDefault! })
-            .then((r) => { if (!cancelled) setVenueRate(r); })
-            .catch(() => { if (!cancelled) setVenueRate(null); });
-        return () => { cancelled = true; };
+            .then((r) => { if (!canceled) setVenueRate(r); })
+            .catch(() => { if (!canceled) setVenueRate(null); });
+        return () => { canceled = true; };
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [needsConversion, publicClient, swapFundingContracts?.router, currency, sellerDefault]);
     const priceRate = needsConversion ? venueRate : { num: 1n, den: 1n };

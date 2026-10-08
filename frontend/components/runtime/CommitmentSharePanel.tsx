@@ -118,22 +118,22 @@ export function CommitmentSharePanel({
             return;
         }
 
-        let cancelled = false;
+        let canceled = false;
         generateQRDataURL(serialized, qrSize)
             .then((url) => {
-                if (!cancelled) {
+                if (!canceled) {
                     setQrDataUrl(url);
                     setQrUnavailable(false);
                 }
             })
             .catch(() => {
-                if (!cancelled) {
+                if (!canceled) {
                     setQrDataUrl(null);
                     setQrUnavailable(true);
                 }
             });
 
-        return () => { cancelled = true; };
+        return () => { canceled = true; };
     }, [serialized, step, qrSize]);
 
     const handleCopy = useCallback(async () => {

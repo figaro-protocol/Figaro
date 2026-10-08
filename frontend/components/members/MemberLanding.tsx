@@ -161,7 +161,7 @@ function RegisteredCard({
     const [profileError, setProfileError] = useState<string | null>(null);
 
     useEffect(() => {
-        let cancelled = false;
+        let canceled = false;
         setProfile(null);
         setProfileError(null);
         // The shared reviver-backed, size-capped, cached fetcher — NOT a
@@ -170,15 +170,15 @@ function RegisteredCard({
         // prototype-pollution-stripping path every other profile read uses.
         fetchMemberProfile(metadataURI)
             .then((parsed) => {
-                if (cancelled) return;
+                if (canceled) return;
                 if (parsed) setProfile(parsed);
                 else setProfileError("Couldn't load a member profile from that URI.");
             })
             .catch(() => {
-                if (!cancelled) setProfileError("Couldn't fetch profile from IPFS.");
+                if (!canceled) setProfileError("Couldn't fetch profile from IPFS.");
             });
         return () => {
-            cancelled = true;
+            canceled = true;
         };
     }, [metadataURI]);
 

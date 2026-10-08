@@ -92,7 +92,7 @@ export function useWalletProcessRows(role: PartyRole, subject?: `0x${string}`): 
             setRows([]);
             return;
         }
-        let cancelled = false;
+        let canceled = false;
         setIsLoading(true);
 
         (async () => {
@@ -104,7 +104,7 @@ export function useWalletProcessRows(role: PartyRole, subject?: `0x${string}`): 
                     getAllOrderCommitted(publicClient, chainId),
                     getAllOrderResolved(publicClient, chainId),
                 ]);
-                if (cancelled) return;
+                if (canceled) return;
                 const graph = projectProcessGraph({
                     orderCommitted: parseOrderCommittedLogs(committed as unknown as SdkLogs),
                     orderResolved: parseOrderResolvedLogs(resolved as unknown as SdkLogs),
@@ -140,16 +140,16 @@ export function useWalletProcessRows(role: PartyRole, subject?: `0x${string}`): 
                     })
                     : record.ordersAsSeller.map((o) => toRow(o, (order) => order.buyer));
                 built.sort((a, b) => b.blockNumber - a.blockNumber);
-                if (!cancelled) setRows(built);
+                if (!canceled) setRows(built);
             } catch (cause) {
                 console.warn("[useWalletProcessRows] fetch failed", cause);
-                if (!cancelled) setRows([]);
+                if (!canceled) setRows([]);
             } finally {
-                if (!cancelled) setIsLoading(false);
+                if (!canceled) setIsLoading(false);
             }
         })();
 
-        return () => { cancelled = true; };
+        return () => { canceled = true; };
     }, [address, publicClient, chainId, role, tick]);
 
     // Re-fetch on new commits / resolutions for the connected wallet.

@@ -110,7 +110,7 @@ function SignPageContent() {
             return;
         }
 
-        let cancelled = false;
+        let canceled = false;
         let cleanup: (() => void) | null = null;
         setChannelStatus("listening");
         setChannelError(null);
@@ -119,7 +119,7 @@ function SignPageContent() {
             address,
             walletClient,
             callback: async (payloadJson, orderId) => {
-                if (cancelled || receivedTransportOrderIdsRef.current.has(orderId)) {
+                if (canceled || receivedTransportOrderIdsRef.current.has(orderId)) {
                     return;
                 }
 
@@ -127,7 +127,7 @@ function SignPageContent() {
                 // channel (audit F Arm 2), not IPFS — no fetch. Cap defensively:
                 // an unauthenticated inbox can deliver an oversize message.
                 if (new TextEncoder().encode(payloadJson).length > MAX_COMMITMENT_PAYLOAD_BYTES) return;
-                if (cancelled) return;
+                if (canceled) return;
 
                 // The subscription is wallet-wide and the transport may not be
                 // addressed (the mock bus broadcasts) — surface only payloads
@@ -145,8 +145,8 @@ function SignPageContent() {
                 }
 
                 const nextPayload = await parseSerializedPayload(payloadJson);
-                if (cancelled || !nextPayload) {
-                    if (!cancelled && !nextPayload) {
+                if (canceled || !nextPayload) {
+                    if (!canceled && !nextPayload) {
                         setChannelStatus("error");
                         setChannelError("Received an invalid commitment payload over XMTP.");
                     }
@@ -159,14 +159,14 @@ function SignPageContent() {
                 setChannelStatus("received");
             },
         }).then((unsubscribe) => {
-            if (cancelled) {
+            if (canceled) {
                 unsubscribe();
                 return;
             }
 
             cleanup = unsubscribe;
         }).catch((error) => {
-            if (cancelled) {
+            if (canceled) {
                 return;
             }
 
@@ -175,7 +175,7 @@ function SignPageContent() {
         });
 
         return () => {
-            cancelled = true;
+            canceled = true;
             cleanup?.();
         };
     }, [address, handoffMessaging, evidenceTransport, parsed, parseSerializedPayload, rawInput, searchParams, walletClient]);
@@ -255,14 +255,14 @@ function SignPageContent() {
     const { data: memberProfileData } = useMemberProfile(isSeller ? address : undefined);
     const [ownProfile, setOwnProfile] = useState<MemberProfileMetadata | null>(null);
     useEffect(() => {
-        let cancelled = false;
+        let canceled = false;
         setOwnProfile(null);
         const metadataURI = memberProfileData?.[0];
         if (!metadataURI) return;
         fetchMemberProfile(metadataURI)
-            .then((parsed_) => { if (!cancelled && parsed_) setOwnProfile(parsed_); })
+            .then((parsed_) => { if (!canceled && parsed_) setOwnProfile(parsed_); })
             .catch(() => { /* absence — the funding panel simply doesn't render */ });
-        return () => { cancelled = true; };
+        return () => { canceled = true; };
     }, [memberProfileData]);
     const sellerFundingCandidates = useMemo(
         () => (swapContracts && approvalCurrency && isSeller

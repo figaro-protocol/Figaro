@@ -292,14 +292,14 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
     // it's a runtime read; recompute when the chain changes).
     useEffect(() => {
         if (!publicClient) return;
-        let cancelled = false;
+        let canceled = false;
         Promise.all([
             maxCommitsLandableInOneBlock(publicClient),
             maxOrdersResolvablePerProcess(publicClient),
         ])
-            .then(([commit, resolve]) => { if (!cancelled) setOrderCaps({ commit, resolve }); })
+            .then(([commit, resolve]) => { if (!canceled) setOrderCaps({ commit, resolve }); })
             .catch(() => { /* leave null → no client cap; publish-time guard still applies */ });
-        return () => { cancelled = true; };
+        return () => { canceled = true; };
     }, [publicClient, chainId]);
 
     const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);

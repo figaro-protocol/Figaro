@@ -44,12 +44,12 @@ export function AnalystPrompt() {
 
     useEffect(() => {
         if (!endpoint) return;
-        let cancelled = false;
+        let canceled = false;
         readAnalystStatus().then((s) => {
-            if (!cancelled) setStatus(s);
+            if (!canceled) setStatus(s);
         });
         return () => {
-            cancelled = true;
+            canceled = true;
         };
     }, [endpoint]);
 

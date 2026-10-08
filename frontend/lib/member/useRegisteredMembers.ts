@@ -48,13 +48,13 @@ export function useRegisteredMembers(): { data: RegisteredMemberRow[] | null; fa
             setData([]);
             return;
         }
-        let cancelled = false;
+        let canceled = false;
         const timers = new Set<ReturnType<typeof setTimeout>>();
         setFailed(false);
         const chainId = publicClient.chain?.id ?? activeChain.id;
         Promise.all([getAllMemberRegistered(publicClient, chainId), getActiveMembers(publicClient, chainId)])
             .then(async ([registered, active]) => {
-                if (cancelled) return;
+                if (canceled) return;
                 const activeUri = new Map(active.map((m) => [m.address.toLowerCase(), m.metadataURI]));
                 // Latest registration per address (re-registration after a
                 // withdrawal is allowed; the newest event is the live one).
@@ -82,7 +82,7 @@ export function useRegisteredMembers(): { data: RegisteredMemberRow[] | null; fa
                 // schedule, so the member names itself without a reload.
                 const read = async (row: RegisteredMemberRow, attempt: number) => {
                     const profile = await fetchMemberProfile(row.metadataURI).catch(() => null);
-                    if (cancelled) return;
+                    if (canceled) return;
                     if (!profile) {
                         const timer = setTimeout(() => {
                             timers.delete(timer);
@@ -96,13 +96,13 @@ export function useRegisteredMembers(): { data: RegisteredMemberRow[] | null; fa
                 await Promise.all(rows.map((row) => read(row, 0)));
             })
             .catch((err) => {
-                if (cancelled) return;
+                if (canceled) return;
                 console.warn("[useRegisteredMembers] registry read failed:", err);
                 setFailed(true);
                 setData([]);
             });
         return () => {
-            cancelled = true;
+            canceled = true;
             for (const timer of timers) clearTimeout(timer);
             timers.clear();
         };

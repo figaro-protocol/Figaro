@@ -451,7 +451,7 @@ describe("ipfsService", () => {
                         }),
                 }),
             ).rejects.toThrow(/exceeds the maximum size of 1 MB/);
-            // The reader was cancelled — the download stopped at the ceiling
+            // The reader was canceled — the download stopped at the ceiling
             // rather than buffering all 1.75 MB.
             expect(canceled).toBe(true);
         });

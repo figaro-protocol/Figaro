@@ -79,11 +79,11 @@ export function useMemberProfile(address: `0x${string}` | undefined) {
             return;
         }
 
-        let cancelled = false;
+        let canceled = false;
         setIsLoading(true);
 
         getMemberState(client, chainId, address).then((state) => {
-            if (cancelled) return;
+            if (canceled) return;
             if (state) {
                 // Only emit a fresh tuple ref when the underlying values
                 // actually changed — otherwise consumers' `useEffect`s
@@ -102,10 +102,10 @@ export function useMemberProfile(address: `0x${string}` | undefined) {
             }
             setIsLoading(false);
         }).catch(() => {
-            if (!cancelled) setIsLoading(false);
+            if (!canceled) setIsLoading(false);
         });
 
-        return () => { cancelled = true; };
+        return () => { canceled = true; };
     }, [client, chainId, address, generation]);
 
     // Stable refetch — a new arrow function on every render makes any

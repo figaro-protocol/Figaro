@@ -61,7 +61,7 @@ export function useClauseSpecs(): ClauseSpecsState {
 
     useEffect(() => {
         if (!events) return;
-        let cancelled = false;
+        let canceled = false;
         let timer: ReturnType<typeof setTimeout> | undefined;
         setSettled(false);
         const pending = events.filter((e) => e.contentURI && e.clauseId);
@@ -69,7 +69,7 @@ export function useClauseSpecs(): ClauseSpecsState {
          *  passes re-read what is still unresolved and stop when nothing is. */
         const pass = (batch: typeof pending, attempt: number) => {
             Promise.allSettled(batch.map((e) => loadClauseSpec(e.clauseId, e.version, e.contentURI, e.contentHash))).then((results) => {
-                if (cancelled) return;
+                if (canceled) return;
                 setErrors(results.flatMap((r) => (r.status === "rejected" ? [String(r.reason)] : [])));
                 setSettled(true);
                 setVersion((v) => v + 1);
@@ -82,7 +82,7 @@ export function useClauseSpecs(): ClauseSpecsState {
         };
         pass(pending, 0);
         return () => {
-            cancelled = true;
+            canceled = true;
             if (timer !== undefined) clearTimeout(timer);
         };
     }, [events]);

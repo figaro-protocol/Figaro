@@ -136,28 +136,28 @@ export function useCeremonyChannel<T>(
     // against the on-chain anchor until it lands.
     useEffect(() => {
         if (!enabled || !address || !peerPubKey || !blob) return;
-        let cancelled = false;
+        let canceled = false;
         let timer: ReturnType<typeof setTimeout> | undefined;
         void (async () => {
             const decrypted = await decrypt({
                 myAddress: address, senderPubKeyHex: peerPubKey, blobB64: blob,
             });
-            if (cancelled) return;
+            if (canceled) return;
             setReceived(decrypted);
             if (!decrypted) return;
             const expected = expectedAnchor(decrypted, blob);
             if (!expected) return;
             const checkAnchor = async () => {
-                if (!publicClient || cancelled) return;
+                if (!publicClient || canceled) return;
                 const verified = await attestationAnchorMatches(publicClient, chainId, orderHash, expected);
-                if (cancelled) return;
+                if (canceled) return;
                 setAnchored(verified ? "verified" : "missing");
                 if (!verified) timer = setTimeout(() => void checkAnchor(), 3000);
             };
             await checkAnchor();
         })();
         return () => {
-            cancelled = true;
+            canceled = true;
             if (timer) clearTimeout(timer);
         };
     }, [enabled, address, peerPubKey, blob, orderHash, publicClient, chainId, decrypt, expectedAnchor]);

@@ -88,7 +88,7 @@ export interface PendingPreview {
  * is a singleton (one modal at a time), so an overlapping request cannot be
  * shown — but it is NOT a user cancel, and a caller must never surface it as
  * one. Surfaced as one, the order disappears under a misleading
- * "Signing cancelled by user."
+ * "Signing canceled by user."
  */
 export class SignConfirmationBusyError extends Error {
     constructor() {
@@ -118,7 +118,7 @@ function requestConfirmation(
     if (testMode === "auto-approve") return Promise.resolve(true);
     if (testMode === "auto-reject") return Promise.resolve(false);
     // Occupied: one modal at a time. Reject DISTINCTLY — never the `false` a
-    // cancel returns, or the caller drops the order under a false "cancelled".
+    // cancel returns, or the caller drops the order under a false "canceled".
     if (current !== null) return Promise.reject(new SignConfirmationBusyError());
     return new Promise<boolean>((resolve) => {
         current = { id: nextId++, intent, commitment, agreement, swap };

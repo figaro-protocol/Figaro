@@ -86,7 +86,7 @@ export function MemberEditCatalog() {
     // `catalogURI`, once the shared scaffold has the profile.
     useEffect(() => {
         if (!existingProfile) return;
-        let cancelled = false;
+        let canceled = false;
         (async () => {
             try {
                 if (!existingProfile.catalogURI) {
@@ -102,7 +102,7 @@ export function MemberEditCatalog() {
 
                 // The ONE cached catalog read path (lib/member/catalogFetcher).
                 const catalog = await fetchMemberCatalog(existingProfile.catalogURI);
-                if (cancelled) return;
+                if (canceled) return;
                 try {
                     if (!catalog) throw new Error("Couldn't fetch or parse the catalog document.");
                     setExistingCatalog(catalog);
@@ -115,11 +115,11 @@ export function MemberEditCatalog() {
                     );
                 }
             } catch {
-                if (!cancelled) setFetchError("Couldn't fetch profile or catalog from IPFS.");
+                if (!canceled) setFetchError("Couldn't fetch profile or catalog from IPFS.");
             }
         })();
         return () => {
-            cancelled = true;
+            canceled = true;
         };
     }, [existingProfile, address, setFetchError]);
 

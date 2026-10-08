@@ -66,23 +66,23 @@ export function useRegisteredCatalogs(
         }
         const publishedSlugs = new Set(publishedAssemblies.map((a) => a.slug));
 
-        let cancelled = false;
+        let canceled = false;
         setIsLoading(true);
 
         service.listCatalogs(client, chainId, publishedSlugs)
             .then((result) => {
-                if (cancelled) return;
+                if (canceled) return;
                 setDiscoveryResult({ ...result, isLoading: false });
                 setIsLoading(false);
             })
             .catch(() => {
-                if (cancelled) return;
+                if (canceled) return;
                 setDiscoveryResult(EMPTY_RESULT);
                 setIsLoading(false);
             });
 
         return () => {
-            cancelled = true;
+            canceled = true;
         };
     }, [client, chainId, service, publishedAssemblies, generation]);
 

@@ -57,37 +57,37 @@ export function StoredDocument({ id, contentURI, anchoredHash, anchor }: StoredD
     const [expanded, setExpanded] = useState(false);
     const [read, setRead] = useState<ReadState>({ state: "idle" });
     // The effect must not depend on `read`: depending on it re-ran the effect
-    // the moment "reading" was set, and that re-run's cleanup cancelled the
+    // the moment "reading" was set, and that re-run's cleanup canceled the
     // fetch it had just started — the panel then read "Reading…" forever.
     const readRef = useRef(read);
     readRef.current = read;
 
     useEffect(() => {
         if (!expanded || readRef.current.state === "read") return;
-        let cancelled = false;
+        let canceled = false;
         setRead({ state: "reading" });
         (async () => {
             const url = DEFAULT_IPFS_SERVICE.resolveFetchUrl(contentURI);
             if (!url) {
-                if (!cancelled) setRead({ state: "unreachable", detail: `no gateway resolves ${contentURI}` });
+                if (!canceled) setRead({ state: "unreachable", detail: `no gateway resolves ${contentURI}` });
                 return;
             }
             try {
                 const response = await fetchCappedContent(url);
-                if (cancelled) return;
+                if (canceled) return;
                 if (!response.ok) {
                     setRead({ state: "unreachable", detail: `${response.status} ${response.statusText}` });
                     return;
                 }
                 const text = await response.text();
-                if (cancelled) return;
+                if (canceled) return;
                 setRead({ state: "read", text, verdict: storedDocument(text, anchoredHash, anchor) });
             } catch (err) {
-                if (!cancelled) setRead({ state: "unreachable", detail: err instanceof Error ? err.message : String(err) });
+                if (!canceled) setRead({ state: "unreachable", detail: err instanceof Error ? err.message : String(err) });
             }
         })();
         return () => {
-            cancelled = true;
+            canceled = true;
         };
     }, [expanded, contentURI, anchoredHash, anchor]);
 

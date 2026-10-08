@@ -139,19 +139,19 @@ export function useMemberProfileEditor(
     useEffect(() => {
         if (!registryData) return;
         const [metadataURI] = registryData;
-        let cancelled = false;
+        let canceled = false;
         // The ONE cached profile read path (lib/member/profileFetcher).
         fetchMemberProfile(metadataURI)
             .then((parsed) => {
-                if (cancelled) return;
+                if (canceled) return;
                 if (parsed) setExistingProfile(parsed);
                 else setFetchErrorState("Couldn't fetch or parse the member profile.");
             })
             .catch(() => {
-                if (!cancelled) setFetchErrorState("Couldn't fetch profile from IPFS.");
+                if (!canceled) setFetchErrorState("Couldn't fetch profile from IPFS.");
             });
         return () => {
-            cancelled = true;
+            canceled = true;
         };
     }, [registryData]);
 

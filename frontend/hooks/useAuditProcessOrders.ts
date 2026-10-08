@@ -50,22 +50,22 @@ export function useAuditProcessOrders(processId: string | null): AuditProcessOrd
             setBatch(null);
             return;
         }
-        let cancelled = false;
+        let canceled = false;
         setLoading(true);
         (async () => {
             try {
                 const result = await readVerifiedBatchProcess(publicClient, chainId, processId);
-                if (!cancelled) setBatch(result);
+                if (!canceled) setBatch(result);
             } catch (err) {
                 // readVerifiedBatchProcess already folds relay failures into a
                 // status; reaching here means a defect, not an absent relay.
                 console.error("useAuditProcessOrders batch relay error:", err);
-                if (!cancelled) setBatch(null);
+                if (!canceled) setBatch(null);
             } finally {
-                if (!cancelled) setLoading(false);
+                if (!canceled) setLoading(false);
             }
         })();
-        return () => { cancelled = true; };
+        return () => { canceled = true; };
     }, [publicClient, chainId, processId, processReloadKey]);
 
     const orders = useMemo(() => {

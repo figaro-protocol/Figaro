@@ -156,14 +156,14 @@ export function usePendingSellerSignature(
         if (isMock || !address || subscribed.current) return;
         subscribed.current = true;
         let cleanup: (() => void) | null = null;
-        let cancelled = false;
+        let canceled = false;
 
         void services.handoffMessaging
             .subscribeAnyCommitmentPayload({
                 address,
                 walletClient: walletClientRef.current ?? null,
                 callback: async (payloadJson, orderId) => {
-                    if (cancelled || receivedOrderIds.current.has(orderId)) return;
+                    if (canceled || receivedOrderIds.current.has(orderId)) return;
                     try {
                         // The payload arrives INLINE over the E2E-encrypted
                         // coordination channel (audit F Arm 2), not IPFS — no
@@ -171,7 +171,7 @@ export function usePendingSellerSignature(
                         // can deliver an oversize message; oversize → ignored.
                         if (new TextEncoder().encode(payloadJson).length > MAX_COMMITMENT_PAYLOAD_BYTES) return;
                         const payload = deserializeCommitmentPayload(payloadJson);
-                        if (cancelled) return;
+                        if (canceled) return;
                         if (!payload.commitment?.buyer || !payload.commitment?.seller) return;
                         // GATE the pin behind party membership. `COMMITMENT_PAYLOAD`
                         // is unauthenticated, so a stranger's inbox can deliver one;
@@ -215,7 +215,7 @@ export function usePendingSellerSignature(
                 },
             })
             .then((unsubscribe) => {
-                if (cancelled) {
+                if (canceled) {
                     unsubscribe();
                     return;
                 }
@@ -226,7 +226,7 @@ export function usePendingSellerSignature(
             });
 
         return () => {
-            cancelled = true;
+            canceled = true;
             cleanup?.();
             subscribed.current = false;
         };

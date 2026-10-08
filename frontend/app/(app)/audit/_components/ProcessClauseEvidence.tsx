@@ -140,7 +140,7 @@ export function ProcessClauseEvidence({ processId }: { processId: string }) {
             setAttestationsByOrder(new Map());
             return;
         }
-        let cancelled = false;
+        let canceled = false;
         (async () => {
             const next = new Map<string, AttestationRecord[]>();
             await Promise.all(orders.map(async (order) => {
@@ -153,9 +153,9 @@ export function ProcessClauseEvidence({ processId }: { processId: string }) {
                     next.set(order.orderHash, []);
                 }
             }));
-            if (!cancelled) setAttestationsByOrder(next);
+            if (!canceled) setAttestationsByOrder(next);
         })();
-        return () => { cancelled = true; };
+        return () => { canceled = true; };
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [ordersKey, chainId, publicClient]);
 
@@ -168,7 +168,7 @@ export function ProcessClauseEvidence({ processId }: { processId: string }) {
             setSignaturesByOrder(new Map());
             return;
         }
-        let cancelled = false;
+        let canceled = false;
         (async () => {
             const next = new Map<string, OrderSignatureVerdicts>();
             await Promise.all(orders.map(async (order) => {
@@ -178,9 +178,9 @@ export function ProcessClauseEvidence({ processId }: { processId: string }) {
                     // Leave the order without a verdict — rows simply don't render.
                 }
             }));
-            if (!cancelled) setSignaturesByOrder(next);
+            if (!canceled) setSignaturesByOrder(next);
         })();
-        return () => { cancelled = true; };
+        return () => { canceled = true; };
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [ordersKey, chainId, publicClient]);
 
@@ -200,7 +200,7 @@ export function ProcessClauseEvidence({ processId }: { processId: string }) {
     // an empty companion). One fetch per fingerprint; one decode per triple.
     const [witnessValues, setWitnessValues] = useState<Map<string, Record<string, unknown>>>(new Map());
     useEffect(() => {
-        let cancelled = false;
+        let canceled = false;
         (async () => {
             const next = new Map<string, Record<string, unknown>>();
             const jobs: Promise<void>[] = [];
@@ -237,9 +237,9 @@ export function ProcessClauseEvidence({ processId }: { processId: string }) {
                 }
             }
             await Promise.all(jobs);
-            if (!cancelled) setWitnessValues(next);
+            if (!canceled) setWitnessValues(next);
         })();
-        return () => { cancelled = true; };
+        return () => { canceled = true; };
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [attestationsByOrder, clauseSpecsVersion]);
 

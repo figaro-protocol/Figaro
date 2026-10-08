@@ -155,7 +155,7 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
         // until the clause-spec cache is warm; `resolved` stays "loading".
         if (!clauseSpecsLoaded) return;
 
-        let cancelled = false;
+        let canceled = false;
 
         // Backoff schedule for the post-publish indexer race. Single-shot
         // for cold loads (justPublished=false) so non-existent slugs 404
@@ -165,10 +165,10 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
 
         (async () => {
             for (let attempt = 0; attempt < backoffsMs.length; attempt += 1) {
-                if (cancelled) return;
+                if (canceled) return;
                 if (backoffsMs[attempt] > 0) {
                     await new Promise((r) => setTimeout(r, backoffsMs[attempt]));
-                    if (cancelled) return;
+                    if (canceled) return;
                 }
                 try {
                     // The slug is not on-chain — it is derived from the
@@ -181,7 +181,7 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                         abi: ASSEMBLY_REGISTRY_ABI,
                         eventName: "AssemblyRegistered",
                     });
-                    if (cancelled) return;
+                    if (canceled) return;
                     const logs = allLogs.filter(
                         (l) => deriveAssemblySlug((l.args as { compositionHash?: `0x${string}` } | undefined)?.compositionHash as `0x${string}`) === slug,
                     );
@@ -203,7 +203,7 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                         contentURI,
                         compositionHash,
                     );
-                    if (cancelled) return;
+                    if (canceled) return;
                     if (!assemblyTemplate) {
                         setResolved({
                             kind: "error",
@@ -231,7 +231,7 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                     } catch {
                         /* fall back to the event's registeredBy, stakeWithdrawn=false */
                     }
-                    if (cancelled) return;
+                    if (canceled) return;
                     const orders = templateToOrders(assemblyTemplate);
                     // The editorial name the designer published; the
                     // content-derived slug is the fallback (and the identity).
@@ -246,7 +246,7 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                     });
                     return;
                 } catch (err) {
-                    if (cancelled) return;
+                    if (canceled) return;
                     // Treat a thrown error as terminal — don't retry through
                     // a 500 from the provider, that's a different failure.
                     setResolved({
@@ -259,7 +259,7 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
         })();
 
         return () => {
-            cancelled = true;
+            canceled = true;
         };
     }, [slug, client, chainId, justPublished, clauseSpecsLoaded]);
 
@@ -314,19 +314,19 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
         setAnchoredBinding(undefined);
         const registry = getAssemblyRegistry();
         if (!reviewedHash || !client || !registry) return;
-        let cancelled = false;
+        let canceled = false;
         client.readContract({
             address: registry,
             abi: ASSEMBLY_REGISTRY_ABI,
             functionName: "bindings",
             args: [reviewedHash],
         }).then((binding) => {
-            if (cancelled) return;
+            if (canceled) return;
             const [registeredBy, registeredAt] = binding as readonly [`0x${string}`, bigint, boolean, string];
             setAnchoredBinding(registeredAt > 0n ? { registeredBy } : null);
         }).catch(() => { /* unknown — publish's simulate stays the backstop */ });
         return () => {
-            cancelled = true;
+            canceled = true;
         };
     }, [reviewedHash, client]);
 

@@ -27,11 +27,11 @@ export default function useProcessResolveCapacity(
             setCapacity(null);
             return;
         }
-        let cancelled = false;
+        let canceled = false;
         readProcessResolveCapacity(publicClient, CONTRACTS.core, processId)
-            .then((c) => { if (!cancelled) setCapacity(c); })
-            .catch(() => { if (!cancelled) setCapacity(null); });
-        return () => { cancelled = true; };
+            .then((c) => { if (!canceled) setCapacity(c); })
+            .catch(() => { if (!canceled) setCapacity(null); });
+        return () => { canceled = true; };
     }, [publicClient, processId]);
 
     return capacity;

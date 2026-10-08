@@ -102,13 +102,13 @@ export function useWithdrawGate(clauseOrAssembly: WithdrawClauseOrAssembly | nul
             setGate(null);
             return;
         }
-        let cancelled = false;
+        let canceled = false;
         setIsLoading(true);
         setGate(null);
 
         resolveInFlightAgreements(core)
             .then((agreements) => {
-                if (cancelled) return;
+                if (canceled) return;
                 setGate(
                     clauseOrAssembly.kind === "clause"
                         ? deriveClauseWithdrawGate(clauseOrAssembly.clauseId, agreements)
@@ -117,14 +117,14 @@ export function useWithdrawGate(clauseOrAssembly: WithdrawClauseOrAssembly | nul
                 setIsLoading(false);
             })
             .catch((err) => {
-                if (cancelled) return;
+                if (canceled) return;
                 console.warn("[useWithdrawGate] in-flight read failed:", err);
                 setGate(null); // chain state unknown → the affordance stays disabled
                 setIsLoading(false);
             });
 
         return () => {
-            cancelled = true;
+            canceled = true;
         };
         // clauseOrAssemblyKey captures the meaningful identity; clauseOrAssembly
         // is read fresh in the closure from the same render that produced the key.

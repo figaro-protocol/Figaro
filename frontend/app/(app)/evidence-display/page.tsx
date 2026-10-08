@@ -138,7 +138,7 @@ function SummaryBar({ timeline }: { timeline: ProcessTimeline }) {
             {[
                 { label: "Orders", value: s.orderCount },
                 { label: "Resolved", value: s.resolvedCount },
-                { label: "Cancelled", value: s.cancelledCount },
+                { label: "Canceled", value: s.canceledCount },
                 { label: "Total Payment", value: s.totalPayment },
             ].map(({ label, value }) => (
                 <div key={label} className="bg-subtle rounded-lg p-2 text-center">

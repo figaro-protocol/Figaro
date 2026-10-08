@@ -57,12 +57,12 @@ export function QrChallengePanel({ processId, orderHash, clauseId }: Interaction
     const [scanned, setScanned] = useState("");
 
     useEffect(() => {
-        let cancelled = false;
+        let canceled = false;
         void generateQRDataURL(identity).then((url) => {
-            if (!cancelled) setQrDataUrl(url);
+            if (!canceled) setQrDataUrl(url);
         });
         return () => {
-            cancelled = true;
+            canceled = true;
         };
     }, [identity]);
 

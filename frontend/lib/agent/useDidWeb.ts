@@ -43,22 +43,22 @@ export function useDidDocument(did: string | undefined) {
             return;
         }
 
-        let cancelled = false;
+        let canceled = false;
         setIsLoading(true);
         setError(null);
 
         resolveDidWeb(did).then((result) => {
-            if (cancelled) return;
+            if (canceled) return;
             setDocument(result.document);
             setError(result.error);
             setIsLoading(false);
         }).catch((e) => {
-            if (cancelled) return;
+            if (canceled) return;
             setError(extractErrorMessage(e, String(e)));
             setIsLoading(false);
         });
 
-        return () => { cancelled = true; };
+        return () => { canceled = true; };
     }, [did]);
 
     return { document, error, isLoading };

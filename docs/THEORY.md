@@ -22,7 +22,7 @@ into `FigaroCore`: the buyer twice the payment `P`, the seller twice the
 cumulative value `G` through its order — every payment the process has
 accumulated so far, this order's own included. The doubling answers retention:
 value passes off-chain, so a party that walks away keeps what is in its hands,
-and a bond equal to that value would be exactly cancelled by the taking. The
+and a bond equal to that value would be exactly canceled by the taking. The
 same schedule, applied at every order, carries the bilateral result to a
 process of any length.
 

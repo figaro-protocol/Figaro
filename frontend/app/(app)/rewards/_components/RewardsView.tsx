@@ -43,7 +43,7 @@ export function RewardsView() {
 
     useEffect(() => {
         if (!publicClient || !account || !CONTRACTS.florinToken) return;
-        let cancelled = false;
+        let canceled = false;
         publicClient
             .readContract({
                 address: CONTRACTS.florinToken,
@@ -52,11 +52,11 @@ export function RewardsView() {
                 args: [account],
             })
             .then((v) => {
-                if (!cancelled) setFlorinBalance(v as bigint);
+                if (!canceled) setFlorinBalance(v as bigint);
             })
             .catch(() => {});
         return () => {
-            cancelled = true;
+            canceled = true;
         };
     }, [publicClient, account, rewards.periods]);
 

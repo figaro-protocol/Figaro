@@ -81,7 +81,7 @@ export function useWalletProcessIds(address: string | undefined): ProcessSummary
         if (!address || !publicClient || !contractAddr) return;
 
         const client = publicClient;
-        let cancelled = false;
+        let canceled = false;
         const chainId = client.chain?.id ?? 31337;
 
         async function load() {
@@ -90,7 +90,7 @@ export function useWalletProcessIds(address: string | undefined): ProcessSummary
                     getAllOrderCommitted(client, chainId),
                     getAllOrderResolved(client, chainId),
                 ]);
-                if (cancelled) return;
+                if (canceled) return;
                 eventsRef.current = {
                     orderCommitted: parseOrderCommittedLogs(committed as unknown as SdkLogs),
                     orderResolved: parseOrderResolvedLogs(resolved as unknown as SdkLogs),
@@ -103,7 +103,7 @@ export function useWalletProcessIds(address: string | undefined): ProcessSummary
         }
 
         void load();
-        return () => { cancelled = true; };
+        return () => { canceled = true; };
     }, [address, publicClient, contractAddr, processReloadKey, rebuild]);
 
     const realEnabled = !!contractAddr;

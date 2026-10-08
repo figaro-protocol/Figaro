@@ -74,14 +74,14 @@ export function useProcessAgreements(agreementHashes: string[]): Map<string, Agr
         const missing = hashes.filter((h) => !store.cache.has(h) && !store.inflight.has(h));
         if (missing.length === 0) return;
 
-        let cancelled = false;
+        let canceled = false;
         for (const h of missing) store.inflight.add(h);
 
         void Promise.all(
             missing.map(async (hash) => [hash, await fetchAgreement(hash)] as const),
         ).then((results) => {
             for (const [hash] of results) store.inflight.delete(hash);
-            if (cancelled) return;
+            if (canceled) return;
             let changed = false;
             for (const [hash, agreement] of results) {
                 if (agreement && !store.cache.has(hash)) {
@@ -95,7 +95,7 @@ export function useProcessAgreements(agreementHashes: string[]): Map<string, Agr
         });
 
         return () => {
-            cancelled = true;
+            canceled = true;
         };
     }, [stableKey, store]);
 

@@ -399,7 +399,7 @@ describe("MarketFormationSwimlaneFigure", () => {
         expect(text).toContain("Nothing in the artifact says how the seller was found");
     });
 
-    it("states that losing answers expire rather than being cancelled", () => {
+    it("states that losing answers expire rather than being canceled", () => {
         const { container } = render(<MarketFormationSwimlaneFigure />);
         const text = container.textContent ?? "";
         expect(text).toContain("answers not taken expire");

@@ -92,7 +92,7 @@ export function useMemberBoundAssemblies(
             return;
         }
 
-        let cancelled = false;
+        let canceled = false;
         setResult((r) => ({ ...r, isLoading: true }));
 
         (async () => {
@@ -106,7 +106,7 @@ export function useMemberBoundAssemblies(
                 // __proto__/constructor keys before any downstream object copy.
                 const doc = safeJsonParse(await response.text());
                 const profile = tryParseMemberProfileDocument(doc);
-                if (cancelled) return;
+                if (canceled) return;
                 if (!profile?.assemblyBindings || profile.assemblyBindings.length === 0) {
                     setResult({ assemblies: [], isLoading: false, hasOnChainBinding: false });
                     return;
@@ -122,7 +122,7 @@ export function useMemberBoundAssemblies(
                 const assemblyTemplates = await Promise.all(
                     matchedEvents.map((e) => fetchAssemblyTemplate(e.contentURI, e.compositionHash)),
                 );
-                if (cancelled) return;
+                if (canceled) return;
 
                 // matchedEvents and assemblyTemplates are index-aligned (Promise.all
                 // over a .map preserves order). Pair them into BoundAssembly,
@@ -148,14 +148,14 @@ export function useMemberBoundAssemblies(
                     hasOnChainBinding: true,
                 });
             } catch {
-                if (!cancelled) {
+                if (!canceled) {
                     setResult({ assemblies: [], isLoading: false, hasOnChainBinding: false });
                 }
             }
         })();
 
         return () => {
-            cancelled = true;
+            canceled = true;
         };
     }, [sellerAddress, registryData, publishedEvents, registryLoading, eventsLoading]);
 

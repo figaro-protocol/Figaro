@@ -48,31 +48,31 @@ export function useAsyncMemberResource<T>(
             setError(null);
             return;
         }
-        let cancelled = false;
+        let canceled = false;
         setIsLoading(true);
         setError(null);
 
         getMemberMetadataURI(client, chainId, address)
             .then(async (metadataURI) => {
-                if (cancelled) return;
+                if (canceled) return;
                 if (!metadataURI) {
                     setData(null);
                     setIsLoading(false);
                     return;
                 }
                 const result = await fetcher(metadataURI);
-                if (!cancelled) {
+                if (!canceled) {
                     setData(result);
                     setIsLoading(false);
                 }
             })
             .catch((err) => {
-                if (cancelled) return;
+                if (canceled) return;
                 setError(extractErrorMessage(err, failureMessage));
                 setIsLoading(false);
             });
 
-        return () => { cancelled = true; };
+        return () => { canceled = true; };
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [client, chainId, address, fetchKey, fetcher, failureMessage, ...(extraDeps ?? [])]);
 

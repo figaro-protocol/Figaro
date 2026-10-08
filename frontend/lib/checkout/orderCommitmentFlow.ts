@@ -139,7 +139,7 @@ export function useOrderCommitmentFlow() {
         // the SAME confirm — one approval covers the commitment sign AND the
         // Permit2 witness sign the caller does right after.
         const approved = await requestSignConfirmation(commitment, agreement, swap);
-        if (!approved) throw new Error("Signing cancelled by user.");
+        if (!approved) throw new Error("Signing canceled by user.");
         const sig = await signTypedDataAsync({
             domain: buildDomain(chainId, CONTRACTS.core),
             types: COMMITMENT_TYPES,
@@ -479,7 +479,7 @@ export function useOrderCommitmentFlow() {
                 payload.commitment,
                 payload.agreement,
             );
-            if (!approved) throw new Error("Commit cancelled by user.");
+            if (!approved) throw new Error("Commit canceled by user.");
             setStep("committing");
             const hash = await commitSignedOrder({
                 payload,

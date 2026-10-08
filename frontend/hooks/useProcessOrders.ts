@@ -83,7 +83,7 @@ export function useProcessOrders(processId: string | null): Order[] {
         topologyRef.current = new Topology();
         if (!publicClient || !contractAddr || !shouldLoad) return;
 
-        let cancelled = false;
+        let canceled = false;
         const chainId = publicClient.chain?.id ?? 31337;
         const topology = topologyRef.current;
 
@@ -93,7 +93,7 @@ export function useProcessOrders(processId: string | null): Order[] {
                     getAllOrderCommitted(publicClient, chainId),
                     getAllOrderResolved(publicClient, chainId),
                 ]);
-                if (cancelled) return;
+                if (canceled) return;
 
                 topology.applyEvents({
                     orderCommitted: parseOrderCommittedLogs(committed as unknown as SdkLogs),
@@ -102,12 +102,12 @@ export function useProcessOrders(processId: string | null): Order[] {
                 });
                 projectOrders(processId);
             } catch (err) {
-                if (!cancelled) console.error("useProcessOrders indexer error:", err);
+                if (!canceled) console.error("useProcessOrders indexer error:", err);
             }
         })();
 
         return () => {
-            cancelled = true;
+            canceled = true;
         };
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [publicClient, contractAddr, processId, processReloadKey]);
@@ -185,7 +185,7 @@ export function useWalletOrders(): Order[] {
             setOrders([]);
             return;
         }
-        let cancelled = false;
+        let canceled = false;
         const chainId = publicClient.chain?.id ?? 31337;
 
         (async () => {
@@ -194,7 +194,7 @@ export function useWalletOrders(): Order[] {
                     getAllOrderCommitted(publicClient, chainId),
                     getAllOrderResolved(publicClient, chainId),
                 ]);
-                if (cancelled) return;
+                if (canceled) return;
 
                 const graph = projectProcessGraph({
                     orderCommitted: parseOrderCommittedLogs(committed as unknown as SdkLogs),
@@ -212,13 +212,13 @@ export function useWalletOrders(): Order[] {
                     result.push(orderFromSdk(o));
                 }
                 result.sort((a, b) => (a.blockNumber ?? 0) - (b.blockNumber ?? 0));
-                if (!cancelled) setOrders(result);
+                if (!canceled) setOrders(result);
             } catch (err) {
-                if (!cancelled) console.error("useWalletOrders indexer error:", err);
+                if (!canceled) console.error("useWalletOrders indexer error:", err);
             }
         })();
 
-        return () => { cancelled = true; };
+        return () => { canceled = true; };
     }, [publicClient, contractAddr, address, processReloadKey]);
 
     return orders;

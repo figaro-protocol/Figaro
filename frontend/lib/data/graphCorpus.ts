@@ -318,23 +318,23 @@ export function useGraphCorpus(): { corpus: GraphCorpus | null; isLoading: boole
     );
 
     useEffect(() => {
-        let cancelled = false;
+        let canceled = false;
         setIsLoading(true);
         setFailed(false);
         readGraphCorpus({ templates })
             .then((next) => {
-                if (cancelled) return;
+                if (canceled) return;
                 setCorpus(next);
                 setIsLoading(false);
             })
             .catch((err) => {
-                if (cancelled) return;
+                if (canceled) return;
                 console.warn("[useGraphCorpus] read failed:", err);
                 setFailed(true);
                 setIsLoading(false);
             });
         return () => {
-            cancelled = true;
+            canceled = true;
         };
         // `specVersion` bumps as clause specs resolve from IPFS: overlays
         // decode and provenance attributions appear without a reload.

@@ -26,20 +26,20 @@ export function useMemberResolutionHistory(seller: string | undefined): UseSelle
             setResolutionHistory(null);
             return;
         }
-        let cancelled = false;
+        let canceled = false;
         setIsLoading(true);
         getSellerResolutionHistory(client, chainId, seller)
             .then((record) => {
-                if (cancelled) return;
+                if (canceled) return;
                 setResolutionHistory(record);
                 setIsLoading(false);
             })
             .catch(() => {
-                if (cancelled) return;
+                if (canceled) return;
                 setResolutionHistory(null);
                 setIsLoading(false);
             });
-        return () => { cancelled = true; };
+        return () => { canceled = true; };
     }, [client, chainId, seller]);
 
     return { resolutionHistory, isLoading };

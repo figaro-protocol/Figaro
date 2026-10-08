@@ -92,24 +92,24 @@ export function useMemberListings(): UseSellerListingsResult {
         }
         const publishedSlugs = new Set(publishedAssemblies.map((a) => a.slug));
 
-        let cancelled = false;
+        let canceled = false;
         setState((prev) => ({ ...prev, isLoading: true }));
 
         listFromRegistry(client, chainId, publishedSlugs)
             .then((fromRegistry) => {
-                if (cancelled) return;
+                if (canceled) return;
                 setState({
                     listings: fromRegistry,
                     isLoading: false,
                 });
             })
             .catch(() => {
-                if (cancelled) return;
+                if (canceled) return;
                 setState(EMPTY_RESULT);
             });
 
         return () => {
-            cancelled = true;
+            canceled = true;
         };
     }, [client, chainId, publishedAssemblies]);
 

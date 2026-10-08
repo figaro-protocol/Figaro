@@ -104,7 +104,7 @@ describe("orderPreview confirm gate", () => {
     it("rejects a concurrent request distinctly — a busy gate is NOT a user cancel", async () => {
         // The round-7 defect: an occupied gate used to answer a fresh request
         // with the same `false` a cancel produces, so the caller dropped the
-        // order under "Signing cancelled by user." A busy gate now rejects with
+        // order under "Signing canceled by user." A busy gate now rejects with
         // its own error, which a cancel (resolves false) never does.
         const first = requestSignConfirmation(COMMITMENT, AGREEMENT);
         await expect(requestSignConfirmation(COMMITMENT, AGREEMENT)).rejects.toBeInstanceOf(SignConfirmationBusyError);

@@ -74,7 +74,7 @@ export function createRegistryEventScan<Row>(config: RegistryEventScanConfig<Row
                 setData([]);
                 return;
             }
-            let cancelled = false;
+            let canceled = false;
             setIsLoading(true);
             setFailed(false);
 
@@ -93,7 +93,7 @@ export function createRegistryEventScan<Row>(config: RegistryEventScanConfig<Row
                 }),
             ])
                 .then(([registeredRaw, withdrawnRaw]) => {
-                    if (cancelled) return;
+                    if (canceled) return;
                     const registeredLogs = (registeredBy
                         ? registeredRaw.filter(
                             (l) => String((l as { args?: { registeredBy?: string } }).args?.registeredBy ?? "").toLowerCase()
@@ -104,7 +104,7 @@ export function createRegistryEventScan<Row>(config: RegistryEventScanConfig<Row
                     setIsLoading(false);
                 })
                 .catch((err) => {
-                    if (cancelled) return;
+                    if (canceled) return;
                     console.warn(`[${label}] event read failed:`, err);
                     setFailed(true);
                     setData([]);
@@ -112,7 +112,7 @@ export function createRegistryEventScan<Row>(config: RegistryEventScanConfig<Row
                 });
 
             return () => {
-                cancelled = true;
+                canceled = true;
             };
         }, [registeredBy, enabled, client, generation]);
 
