@@ -7,8 +7,13 @@ export interface UseApproveThenActArgs {
     needsApproval: (amount: bigint) => boolean;
     /** Fire the ERC-20 `approve` transaction. */
     approve: (amount: bigint) => void;
-    /** True once the pending approval has confirmed on-chain. */
+    /** True once the pending approval has confirmed on-chain with a
+     *  successful receipt. */
     isApproveSuccess: boolean;
+    /** True once the pending approval has ended without granting the
+     *  allowance — the wallet refused it, the send failed, or it was mined and
+     *  reverted (`useTokenApproval`'s `isApproveError`). */
+    isApproveError: boolean;
 }
 
 /**
@@ -20,14 +25,19 @@ export interface UseApproveThenActArgs {
  * submitted and the action is PENDED until `isApproveSuccess` flips (a prior
  * max approval just makes `needsApproval` false — no-op).
  *
- * A synchronous `approve()` throw clears the pending action before
- * rethrowing, so a failed/rejected approval never leaves a stale pending
- * action to fire on some LATER, unrelated approval's success. (One of the
- * three original copies reset on throw; the other two did not — this is the
- * one correct behavior, adopted everywhere.)
+ * A failed or refused approval clears the pending action, so it never fires
+ * on some LATER, unrelated approval's success. wagmi reports a wallet
+ * refusal asynchronously (`isApproveError` flips; `approve()` returns
+ * normally), a reverted approve the same way (its receipt reads, with
+ * status "reverted"), and a synchronous `approve()` throw is cleared before
+ * it is rethrown.
  */
-export function useApproveThenAct({ needsApproval, approve, isApproveSuccess }: UseApproveThenActArgs) {
+export function useApproveThenAct({ needsApproval, approve, isApproveSuccess, isApproveError }: UseApproveThenActArgs) {
     const pendingAction = useRef<(() => void) | null>(null);
+
+    useEffect(() => {
+        if (isApproveError) pendingAction.current = null;
+    }, [isApproveError]);
 
     useEffect(() => {
         if (isApproveSuccess && pendingAction.current) {

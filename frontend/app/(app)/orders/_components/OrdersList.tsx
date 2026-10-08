@@ -78,12 +78,12 @@ function YourTurnCard({ payload, onAccept, onDismiss, isAccepting, listings }: {
     // confirms (the buyer approves its own bond at checkout — this is the seller's
     // missing half). A prior max approval just makes needsApproval false → no-op.
     const core = CONTRACTS.core as `0x${string}` | undefined;
-    const { needsApproval, approve, isApprovePending, isApproveConfirming, isApproveSuccess } = useTokenApproval({
+    const { needsApproval, approve, isApprovePending, isApproveConfirming, isApproveSuccess, isApproveError } = useTokenApproval({
         tokenAddress: commitment.currency as `0x${string}`,
         owner: address,
         spender: (core ?? ZERO_ADDRESS) as `0x${string}`,
     });
-    const { runWithApproval } = useApproveThenAct({ needsApproval, approve, isApproveSuccess });
+    const { runWithApproval } = useApproveThenAct({ needsApproval, approve, isApproveSuccess, isApproveError });
     const isApproving = isApprovePending || isApproveConfirming;
     const handleAccept = () => runWithApproval(sellerBond, onAccept);
 
@@ -143,12 +143,12 @@ function ReadyToSubmitCard({ payload, onSubmit, onDismiss, isSubmitting, listing
     const { decimals } = useTokenDecimals(commitment.currency as `0x${string}` | undefined);
     const sellerBond = calculateBonds(commitment.expectedCumulativeValue, commitment.payment).sellerBond;
     const core = CONTRACTS.core as `0x${string}` | undefined;
-    const { needsApproval, approve, isApprovePending, isApproveConfirming, isApproveSuccess } = useTokenApproval({
+    const { needsApproval, approve, isApprovePending, isApproveConfirming, isApproveSuccess, isApproveError } = useTokenApproval({
         tokenAddress: commitment.currency as `0x${string}`,
         owner: address,
         spender: (core ?? ZERO_ADDRESS) as `0x${string}`,
     });
-    const { runWithApproval } = useApproveThenAct({ needsApproval, approve, isApproveSuccess });
+    const { runWithApproval } = useApproveThenAct({ needsApproval, approve, isApproveSuccess, isApproveError });
     const isApproving = isApprovePending || isApproveConfirming;
     const handleSubmit = () => runWithApproval(sellerBond, onSubmit);
 

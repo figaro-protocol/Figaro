@@ -40,6 +40,7 @@ export function TokenApprovalFlow({
         approve,
         isApprovePending,
         isApproveConfirming,
+        isApproveError,
     } = useTokenApproval({
         tokenAddress,
         owner: address as `0x${string}` | undefined,
@@ -68,6 +69,15 @@ export function TokenApprovalFlow({
             setCompletionSent(false);
         }
     }, [approved, completionSent, onApprovalComplete]);
+
+    // `approve` never throws: a refused, failed or reverted approval arrives as
+    // the hook's `isApproveError`, and it granted no allowance, so the error
+    // slot names it rather than returning to the authorize step unexplained.
+    useEffect(() => {
+        if (isApproveError) {
+            setErrorMessage("The authorization did not go through: the wallet refused it or the transaction reverted, so nothing was authorized.");
+        }
+    }, [isApproveError]);
 
     const handleApprove = async () => {
         try {

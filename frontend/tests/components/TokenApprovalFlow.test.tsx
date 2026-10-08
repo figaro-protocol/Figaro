@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
     onCancel: vi.fn(),
     isApprovePending: false,
     isApproveConfirming: false,
+    isApproveError: false,
 }));
 
 vi.mock("wagmi", () => ({
@@ -33,6 +34,7 @@ vi.mock("@/hooks/useTokenApproval", () => ({
         approve: mocks.approve,
         isApprovePending: mocks.isApprovePending,
         isApproveConfirming: mocks.isApproveConfirming,
+        isApproveError: mocks.isApproveError,
     }),
 }));
 
@@ -58,6 +60,7 @@ describe("TokenApprovalFlow", () => {
         mocks.onCancel.mockReset();
         mocks.isApprovePending = false;
         mocks.isApproveConfirming = false;
+        mocks.isApproveError = false;
     });
 
     it("calls onApprovalComplete when allowance already covers the bond", async () => {
@@ -146,5 +149,24 @@ describe("TokenApprovalFlow", () => {
         await waitFor(() => {
             expect(screen.getByText("Allowance call failed")).toBeInTheDocument();
         });
+    });
+
+    it("names a refused or reverted approval in the error slot, never the authorize step alone", () => {
+        mocks.balance = 5000n;
+        mocks.allowance = 0n;
+        mocks.needsApproval.mockReturnValue(true);
+        mocks.isApproveError = true;
+
+        render(
+            <TokenApprovalFlow
+                tokenAddress={"0x2222222222222222222222222222222222222222"}
+                requiredAmount={100n}
+                onApprovalComplete={mocks.onApprovalComplete}
+            />,
+        );
+
+        expect(screen.getByText(/did not go through/i)).toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Authorize Payment" })).not.toBeInTheDocument();
+        expect(mocks.onApprovalComplete).not.toHaveBeenCalled();
     });
 });

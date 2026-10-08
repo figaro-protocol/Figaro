@@ -31,6 +31,8 @@ interface AuthorizationState {
     isPending: boolean;
     isConfirming: boolean;
     isSuccess: boolean;
+    /** The latest authorization ended without confirming (refused or failed). */
+    isError: boolean;
 }
 
 // ── Order flow ──────────────────────────────────────────────────

@@ -81,7 +81,7 @@
  */
 import fs from 'fs';
 import { test, expect, gotoAsWallet } from './devnet-multi-test';
-import { createPublicClient, defineChain, http, parseAbi, parseEther, type Hex } from 'viem';
+import { createPublicClient, defineChain, http, maxUint256, parseAbi, parseEther, type Hex } from 'viem';
 import { mnemonicToAccount } from 'viem/accounts';
 import {
     assertPinnedInIpfs,
@@ -110,7 +110,7 @@ const LOCAL_ANVIL = defineChain({
     rpcUrls: { default: { http: [RPC_URL] } },
 });
 const ANVIL_MNEMONIC = 'test test test test test test test test test test test junk';
-const ERC20_ABI = parseAbi(['function balanceOf(address) view returns (uint256)']);
+const ERC20_ABI = parseAbi(['function balanceOf(address) view returns (uint256)', 'function allowance(address, address) view returns (uint256)']);
 
 const BUYER = ANVIL_ACCOUNTS[2] as Hex; // anvil[2] — a buyer no other spec uses
 const MERCHANT = mnemonicToAccount(ANVIL_MNEMONIC, { addressIndex: 7 }).address as Hex; // Meridian Books
@@ -914,8 +914,11 @@ test.describe('LOCAL COMMERCE — item delivery: canvas → bind → order → a
         //    out-of-band via balanceOf, never from the screen. ──
         const MERCHANT_SUPPLIER = '0x00000000000000000000000000000000000000a1' as Hex;
         const MERCHANT_LANDLORD = '0x00000000000000000000000000000000000000b2' as Hex;
-        const [supplier0, landlord0, merchantSettled] = await Promise.all([
-            balanceOf(MERCHANT_SUPPLIER), balanceOf(MERCHANT_LANDLORD), balanceOf(MERCHANT),
+        const multisender = config.multisender as Hex;
+        const allowanceToMultisender = () =>
+            publicClient.readContract({ address: token, abi: ERC20_ABI, functionName: 'allowance', args: [MERCHANT, multisender] }) as Promise<bigint>;
+        const [supplier0, landlord0, merchantSettled, allowance0] = await Promise.all([
+            balanceOf(MERCHANT_SUPPLIER), balanceOf(MERCHANT_LANDLORD), balanceOf(MERCHANT), allowanceToMultisender(),
         ]);
         await gotoAsWallet(page, MERCHANT, `/orders/view?process=${processId}&e2e=devnet`);
         await page.getByTestId('order-timeline-view').waitFor({ timeout: 30000 });
@@ -935,5 +938,13 @@ test.describe('LOCAL COMMERCE — item delivery: canvas → bind → order → a
         expect(await balanceOf(MERCHANT_SUPPLIER) - supplier0, 'the supplier leg arrived exactly').toBe(parseEther('0.3'));
         expect(await balanceOf(MERCHANT_LANDLORD) - landlord0, 'the landlord leg arrived exactly').toBe(parseEther('0.25'));
         expect(merchantSettled - await balanceOf(MERCHANT), 'the merchant paid exactly the batch total').toBe(parseEther('0.55'));
+        // The authorization is the batch total at the token's own decimals,
+        // never more: a short allowance is topped up to exactly the total and
+        // the disperse consumes it; a covering allowance only loses the total.
+        const batchTotal = parseEther('0.55');
+        expect(
+            await allowanceToMultisender(),
+            'the merchant authorized the multisender for exactly the batch total',
+        ).toBe(allowance0 === maxUint256 ? maxUint256 : allowance0 >= batchTotal ? allowance0 - batchTotal : 0n);
     });
 });

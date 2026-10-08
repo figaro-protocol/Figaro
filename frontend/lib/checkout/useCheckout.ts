@@ -52,6 +52,7 @@ export function useCheckout(
         isApprovePending,
         isApproveConfirming,
         isApproveSuccess,
+        isApproveError,
     } = useTokenApproval({
         tokenAddress: token,
         owner: address,
@@ -104,6 +105,7 @@ export function useCheckout(
             isPending: isApprovePending,
             isConfirming: isApproveConfirming,
             isSuccess: isApproveSuccess,
+            isError: isApproveError,
         },
 
         // Order flow

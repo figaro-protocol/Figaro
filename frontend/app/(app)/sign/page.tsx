@@ -502,6 +502,11 @@ function SignPageContent() {
                                     onAuthorize={() => permit2SellerFunding.approve(maxUint256)}
                                 />
                             )}
+                            {fundingOpen && permit2SellerFunding.isApproveError && (
+                                <p className="text-error-fg text-xs" data-testid="funding-authorize-error">
+                                    The funding token was not authorized: the wallet refused it or the transaction reverted.
+                                </p>
+                            )}
                         </div>
                     )}
 

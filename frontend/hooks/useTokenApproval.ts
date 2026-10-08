@@ -13,9 +13,20 @@ function useTokenApproval({ tokenAddress, owner, spender }: { tokenAddress?: `0x
         query: { enabled: !!owner && !!tokenAddress },
     });
 
-    const { writeContract: writeApprove, data: approveHash, isPending: isApprovePending } = useWriteContract();
+    const { writeContract: writeApprove, data: approveHash, isPending: isApprovePending, isError: isApproveWriteError } = useWriteContract();
 
-    const { isLoading: isApproveConfirming, isSuccess: isApproveSuccess } = useWaitForTransactionReceipt({ hash: approveHash });
+    const { data: approveReceipt, isLoading: isApproveConfirming, isSuccess: isApproveReceiptRead, isError: isApproveReceiptError } = useWaitForTransactionReceipt({ hash: approveHash });
+    // A mined approve that REVERTED still resolves the receipt query (wagmi
+    // reports the query's success with `status: "reverted"`), and it granted
+    // no allowance — so only a receipt whose status is "success" is the
+    // approval's success, and a reverted one is its error.
+    const isApproveReverted = isApproveReceiptRead && approveReceipt?.status === "reverted";
+    const isApproveSuccess = isApproveReceiptRead && approveReceipt?.status === "success";
+    // wagmi's `writeContract` never throws: a wallet rejection (or any send
+    // failure) arrives later as the mutation's error state, and a receipt that
+    // cannot be read arrives as the receipt query's. Any of these, or a
+    // reverted receipt, ends the approval.
+    const isApproveError = isApproveWriteError || isApproveReceiptError || isApproveReverted;
 
     // Re-read the allowance once an approve tx has been confirmed so
     // `needsApproval` reflects the updated on-chain state immediately.
@@ -63,6 +74,10 @@ function useTokenApproval({ tokenAddress, owner, spender }: { tokenAddress?: `0x
         isApprovePending,
         isApproveConfirming,
         isApproveSuccess,
+        /** True once the latest approval ended without granting the allowance
+         *  — the wallet refused it, the send failed, its receipt could not be
+         *  read, or it was mined and reverted. */
+        isApproveError,
         refetchAllowance,
     } as const;
 }
