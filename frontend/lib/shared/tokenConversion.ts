@@ -20,14 +20,22 @@
  * environments register a Uniswap V3 quoter (or any other provider) for
  * the active chain.
  *
+ * Which pool a conversion runs through is the SELLER's declaration, never
+ * the code's choice: the request carries `poolFeeTier`, read from the
+ * seller's accepted-token entry for the token being converted
+ * (`AcceptedTokenMetadata.poolFeeTier` — the same declaration the checkout's
+ * `conversionNeed` reads). A pool-based quoter quotes that one pool; a
+ * request with no declared pool is not convertible (null).
+ *
  * Two implementations are shipped here:
- *   - `createUniswapV3Quoter` — calls Uniswap V3's `QuoterV2` via viem.
+ *   - `createUniswapV3Quoter` — calls Uniswap V3's `QuoterV2` via viem, on
+ *     the declared pool alone.
  *   - `createFixedRateQuoter` — table-driven; useful for devnet, tests,
  *     or any environment where on-chain liquidity is not available.
  */
 
 import type { PublicClient } from "viem";
-import { QUOTER_V2_ABI, UNISWAP_V3_FEE_TIERS } from "@figaro-protocol/sdk";
+import { QUOTER_V2_ABI, type AcceptedTokenMetadata } from "@figaro-protocol/sdk";
 import { hexEqual } from "@/lib/shared/evm";
 
 // ── Public types ─────────────────────────────────────────────────────────────
@@ -37,6 +45,11 @@ interface TokenConversionQuoteRequest {
     toTokenAddress: `0x${string}`;
     /** Amount in `fromTokenAddress`'s smallest unit. */
     amountIn: bigint;
+    /** The pool the seller declared for this conversion — the
+     *  `poolFeeTier` of its accepted-token entry for the token being
+     *  converted. Absent ⇒ the seller declared no pool: a pool-based quoter
+     *  returns null rather than choose one. */
+    poolFeeTier?: AcceptedTokenMetadata["poolFeeTier"];
 }
 
 export interface TokenConversionQuote {
@@ -77,39 +90,23 @@ export const DEFAULT_TOKEN_CONVERSION_SERVICE: TokenConversionService = {
     },
 };
 
-// ── Uniswap V3 QuoterV2 implementation (SDK canonical ABI + tier ladder) ─────
-
-/**
- * Uniswap V3 fee tier in hundredths-of-a-bip (1e-6). The V3 contracts
- * support 100, 500, 3000, 10000.
- */
-type UniswapV3FeeTier = (typeof UNISWAP_V3_FEE_TIERS)[number];
+// ── Uniswap V3 QuoterV2 implementation (SDK canonical ABI) ───────────────────
 
 export interface UniswapV3QuoterConfig {
     /** Viem public client connected to the chain whose Uniswap deployment is used. */
     publicClient: PublicClient;
     /** Address of the QuoterV2 deployment on the active chain. */
     quoterAddress: `0x${string}`;
-    /**
-     * Fee tier(s) to attempt. When multiple tiers are listed, the quoter
-     * tries them in order and returns the first one that produces a
-     * non-zero quote. Defaults to the SDK's `UNISWAP_V3_FEE_TIERS` —
-     * the one shared ladder every quoting consumer probes.
-     */
-    feeTiers?: UniswapV3FeeTier[];
 }
 
 /**
  * Build a `TokenConversionService` backed by Uniswap V3's QuoterV2.
  *
- * Tries each configured fee tier in order; returns the first one with a
- * non-zero quote. Returns null if no tier responds with liquidity.
+ * Quotes the request's declared pool (`poolFeeTier`) and no other. Returns
+ * null when no pool is declared, or when the declared pool does not exist
+ * or quotes zero — never a quote from a pool the seller did not name.
  */
 export function createUniswapV3Quoter(config: UniswapV3QuoterConfig): TokenConversionService {
-    const tiers: readonly UniswapV3FeeTier[] = config.feeTiers && config.feeTiers.length > 0
-        ? config.feeTiers
-        : UNISWAP_V3_FEE_TIERS;
-
     return {
         async quote(request) {
             // Identity: skip the quoter entirely.
@@ -123,40 +120,38 @@ export function createUniswapV3Quoter(config: UniswapV3QuoterConfig): TokenConve
                 };
             }
 
-            for (const fee of tiers) {
-                try {
-                    const result = await config.publicClient.simulateContract({
-                        address: config.quoterAddress,
-                        abi: QUOTER_V2_ABI,
-                        functionName: "quoteExactInputSingle",
-                        args: [
-                            {
-                                tokenIn: request.fromTokenAddress,
-                                tokenOut: request.toTokenAddress,
-                                amountIn: request.amountIn,
-                                fee,
-                                sqrtPriceLimitX96: 0n,
-                            },
-                        ],
-                    });
-
-                    const amountOut = (result.result as readonly [bigint, bigint, number, bigint])[0];
-                    if (amountOut > 0n) {
-                        return {
-                            fromTokenAddress: request.fromTokenAddress,
-                            toTokenAddress: request.toTokenAddress,
+            // No declared pool ⇒ not convertible: the code names no pool.
+            const fee = request.poolFeeTier;
+            if (fee === undefined) return null;
+            try {
+                const result = await config.publicClient.simulateContract({
+                    address: config.quoterAddress,
+                    abi: QUOTER_V2_ABI,
+                    functionName: "quoteExactInputSingle",
+                    args: [
+                        {
+                            tokenIn: request.fromTokenAddress,
+                            tokenOut: request.toTokenAddress,
                             amountIn: request.amountIn,
-                            amountOut,
-                            source: `uniswap-v3-fee-${fee}`,
-                        };
-                    }
-                } catch {
-                    // Pool does not exist at this fee tier — try the next one.
-                    continue;
-                }
-            }
+                            fee,
+                            sqrtPriceLimitX96: 0n,
+                        },
+                    ],
+                });
 
-            return null;
+                const amountOut = (result.result as readonly [bigint, bigint, number, bigint])[0];
+                if (amountOut === 0n) return null;
+                return {
+                    fromTokenAddress: request.fromTokenAddress,
+                    toTokenAddress: request.toTokenAddress,
+                    amountIn: request.amountIn,
+                    amountOut,
+                    source: `uniswap-v3-fee-${fee}`,
+                };
+            } catch {
+                // The declared pool does not exist, or cannot quote this amount.
+                return null;
+            }
         },
     };
 }

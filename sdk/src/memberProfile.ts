@@ -56,6 +56,16 @@ export interface AcceptedTokenMetadata {
     name?: string;
     /** URI (IPFS or HTTP) to the token logo. */
     logoURI?: string;
+    /**
+     * The pool this token converts through into the member's quote basis
+     * (`defaultTokenAddress` — the pair's other side is derived from it, never
+     * a second field): the swap venue's fee tier in hundredths of a basis
+     * point, as Uniswap v3 numbers it (3000 = 0.30%). A buyer paying in this
+     * token commits the input an exact-output quote of the plan's total needs
+     * on THIS pool. Absent ⇒ the token is not convertible: no pool is chosen
+     * for the member, and a buyer pays in the quote basis itself.
+     */
+    poolFeeTier?: number;
 }
 
 /**
@@ -389,7 +399,19 @@ function parseAcceptedToken(value: unknown, path: string): AcceptedTokenMetadata
         symbol: asString(record.symbol, `${path}.symbol`),
         name: asOptionalString(record.name, `${path}.name`),
         logoURI: asOptionalString(record.logoURI, `${path}.logoURI`),
+        poolFeeTier: asOptionalPoolFeeTier(record.poolFeeTier, `${path}.poolFeeTier`),
     };
+}
+
+/** A pool fee tier is a uint24 below 100% (1_000_000 hundredths of a bip) and
+ *  above zero; anything else names no pool. */
+function asOptionalPoolFeeTier(value: unknown, path: string): number | undefined {
+    const tier = asOptionalNumber(value, path);
+    if (tier === undefined) return undefined;
+    if (!Number.isInteger(tier) || tier <= 0 || tier >= 1_000_000) {
+        throw new Error(`${path} must be an integer fee tier in (0, 1000000) hundredths of a basis point.`);
+    }
+    return tier;
 }
 
 function parseAcceptedTokens(value: unknown, path: string): AcceptedTokenMetadata[] | undefined {

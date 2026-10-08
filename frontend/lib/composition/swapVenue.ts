@@ -45,7 +45,11 @@ export interface SwapVenue {
      *  reverts inside the coordinator (`SwapCallFailed`) — the party keeps
      *  every token, the commit simply does not happen. */
     slippageBps: number;
-    quote(tokenIn: Hex, tokenOut: Hex, amountOut: bigint): Promise<SwapQuote>;
+    /** Quote exactly `amountOut` of `tokenOut`. With `feeTier` the quote is
+     *  taken on THAT pool alone (a declared pool — no other is consulted, and
+     *  its absence or shallowness throws); without it the venue takes the
+     *  cheapest pool it has for the exact amount. */
+    quote(tokenIn: Hex, tokenOut: Hex, amountOut: bigint, feeTier?: number): Promise<SwapQuote>;
 }
 
 /** The hard ceiling on the headroom the signed input cap may carry. The party
@@ -81,6 +85,8 @@ function mockVenue(publicClient: PublicClient, router: Hex): SwapVenue {
         kind: "devnet-mock",
         router,
         slippageBps: 0,
+        // The mock is one linear rate for every pair: every fee tier names the
+        // same pool, so a declared tier is honored by construction.
         async quote(tokenIn, tokenOut, amountOut) {
             const [num, den] = await Promise.all([
                 publicClient.readContract({ address: router, abi: MOCK_VENUE_ABI, functionName: "rateNumerator" }),
@@ -103,9 +109,10 @@ function mockVenue(publicClient: PublicClient, router: Hex): SwapVenue {
 
 // ── Uniswap v3 venue: SwapRouter02 + QuoterV2 (SDK canonical ABIs) ──────────
 
-// The venue quotes every tier in the SDK's shared `UNISWAP_V3_FEE_TIERS`
-// ladder and takes the cheapest input — the pool set is a fact of the chain,
-// read per quote.
+// Undeclared, the venue quotes every tier in the SDK's shared
+// `UNISWAP_V3_FEE_TIERS` ladder for the exact amount and takes the cheapest
+// input — the pool set is a fact of the chain, read per quote. Declared, it
+// quotes that one tier: the party that declared the pool chose it.
 /** Live-pool headroom between quote and execution. */
 const UNISWAP_SLIPPAGE_BPS = 100;
 
@@ -114,10 +121,11 @@ function uniswapV3Venue(publicClient: PublicClient, router: Hex, quoter: Hex): S
         kind: "uniswap-v3",
         router,
         slippageBps: UNISWAP_SLIPPAGE_BPS,
-        async quote(tokenIn, tokenOut, amountOut) {
+        async quote(tokenIn, tokenOut, amountOut, feeTier) {
             // QuoterV2's quote functions are not `view` (they revert-and-decode
             // internally), so they are read through eth_call, not readContract.
-            const quotes = await Promise.all(UNISWAP_V3_FEE_TIERS.map(async (fee) => {
+            const tiers: readonly number[] = feeTier === undefined ? UNISWAP_V3_FEE_TIERS : [feeTier];
+            const quotes = await Promise.all(tiers.map(async (fee) => {
                 try {
                     const { data } = await publicClient.call({
                         to: quoter,
@@ -137,7 +145,11 @@ function uniswapV3Venue(publicClient: PublicClient, router: Hex, quoter: Hex): S
             const priced: Array<{ fee: number; amountIn: bigint }> = [];
             for (const q of quotes) if (q) priced.push(q);
             const best = priced.sort((a, b) => (a.amountIn < b.amountIn ? -1 : a.amountIn > b.amountIn ? 1 : 0))[0];
-            if (!best) throw new Error("Swap venue has no pool for this pair — cannot fund or quote through it.");
+            if (!best) {
+                throw new Error(feeTier === undefined
+                    ? "Swap venue has no pool for this pair — cannot fund or quote through it."
+                    : `The declared pool (fee tier ${feeTier}) cannot quote this amount — no pool at that tier, or the pool cannot fill that amount.`);
+            }
             return {
                 amountIn: best.amountIn,
                 route: (maxInput, recipient) => encodeFunctionData({

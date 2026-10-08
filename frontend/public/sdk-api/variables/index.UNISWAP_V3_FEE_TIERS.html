@@ -12,12 +12,13 @@
 <li><a href="" aria-current="page">UNISWAP_V3_FEE_TIERS</a></li></ul>
 <h1>Variable UNISWAP_V3_FEE_TIERS<code class="tsd-tag">Const</code></h1></div>
 <div class="tsd-signature"><span class="tsd-kind-variable">UNISWAP_V3_FEE_TIERS</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-keyword">readonly</span> <span class="tsd-signature-symbol">[</span><span class="tsd-signature-type">100</span><span class="tsd-signature-symbol">,</span> <span class="tsd-signature-type">500</span><span class="tsd-signature-symbol">,</span> <span class="tsd-signature-type">3000</span><span class="tsd-signature-symbol">,</span> <span class="tsd-signature-type">10000</span><span class="tsd-signature-symbol">]</span><span class="tsd-signature-symbol"> = ...</span></div>
-<div class="tsd-comment tsd-typography"><p>The Uniswap v3 fee tiers (hundredths of a bip) a quote probe walks —
-0.01%, 0.05%, 0.3%, 1%. One shared list so every quoting consumer probes
-the same tier set.</p>
+<div class="tsd-comment tsd-typography"><p>The Uniswap v3 fee tiers (hundredths of a bip) — 0.01%, 0.05%, 0.3%, 1%.
+The funding leg's quote probe walks them (<code>quoteFundingLeg</code>); a price
+conversion never does — it quotes the one pool the seller declared
+(<code>AcceptedTokenMetadata.poolFeeTier</code>).</p>
 </div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/abis.ts#L222">abis.ts:222</a></li></ul></aside></div>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/abis.ts#L223">abis.ts:223</a></li></ul></aside></div>
 <div class="col-sidebar">
 <div class="page-menu">
 <div class="tsd-navigation settings">

@@ -119,14 +119,14 @@ describe("buildFixedRateTable", () => {
     });
 });
 
-describe("createUniswapV3Quoter", () => {
+describe("createUniswapV3Quoter — the seller's declared pool, never a code-chosen one", () => {
     function makeClient(simulate: ReturnType<typeof vi.fn>) {
         return {
             simulateContract: simulate,
         } as unknown as Parameters<typeof createUniswapV3Quoter>[0]["publicClient"];
     }
 
-    it("returns the QuoterV2's amountOut at the first responding fee tier", async () => {
+    it("quotes the declared pool and no other", async () => {
         const simulate = vi.fn().mockResolvedValue({
             result: [1_900_000n, 0n, 0, 0n] as const,
         });
@@ -139,57 +139,17 @@ describe("createUniswapV3Quoter", () => {
             fromTokenAddress: USDC,
             toTokenAddress: FLORIN,
             amountIn: 1_000_000n,
+            poolFeeTier: 3000,
         });
 
         expect(result?.amountOut).toBe(1_900_000n);
-        // The SDK ladder opens at the 100 (0.01%) tier.
-        expect(result?.source).toBe("uniswap-v3-fee-100");
-        expect(simulate).toHaveBeenCalledTimes(1);
-    });
-
-    it("falls through fee tiers when the first one has no liquidity (zero amountOut)", async () => {
-        const simulate = vi.fn()
-            .mockResolvedValueOnce({ result: [0n, 0n, 0, 0n] })
-            .mockResolvedValueOnce({ result: [1_500_000n, 0n, 0, 0n] });
-        const quoter = createUniswapV3Quoter({
-            publicClient: makeClient(simulate),
-            quoterAddress: QUOTER,
-        });
-
-        const result = await quoter.quote({
-            fromTokenAddress: USDC,
-            toTokenAddress: FLORIN,
-            amountIn: 1_000_000n,
-        });
-
-        expect(result?.amountOut).toBe(1_500_000n);
-        expect(result?.source).toBe("uniswap-v3-fee-500");
-        expect(simulate).toHaveBeenCalledTimes(2);
-    });
-
-    it("falls through fee tiers when a pool simulation throws (pool does not exist)", async () => {
-        const simulate = vi.fn()
-            .mockRejectedValueOnce(new Error("pool not found"))
-            .mockRejectedValueOnce(new Error("pool not found"))
-            .mockResolvedValueOnce({ result: [99n, 0n, 0, 0n] });
-        const quoter = createUniswapV3Quoter({
-            publicClient: makeClient(simulate),
-            quoterAddress: QUOTER,
-        });
-
-        const result = await quoter.quote({
-            fromTokenAddress: USDC,
-            toTokenAddress: FLORIN,
-            amountIn: 1n,
-        });
-
-        expect(result?.amountOut).toBe(99n);
         expect(result?.source).toBe("uniswap-v3-fee-3000");
-        expect(simulate).toHaveBeenCalledTimes(3);
+        expect(simulate).toHaveBeenCalledTimes(1);
+        expect(simulate.mock.calls[0]?.[0]?.args[0]?.fee).toBe(3000);
     });
 
-    it("returns null when no fee tier produces a non-zero quote", async () => {
-        const simulate = vi.fn().mockResolvedValue({ result: [0n, 0n, 0, 0n] });
+    it("no declared pool ⇒ not convertible: null, and the quoter is never asked", async () => {
+        const simulate = vi.fn().mockResolvedValue({ result: [42n, 0n, 0, 0n] });
         const quoter = createUniswapV3Quoter({
             publicClient: makeClient(simulate),
             quoterAddress: QUOTER,
@@ -202,25 +162,48 @@ describe("createUniswapV3Quoter", () => {
         });
 
         expect(result).toBeNull();
-        expect(simulate).toHaveBeenCalledTimes(4);
+        expect(simulate).not.toHaveBeenCalled();
     });
 
-    it("respects custom feeTiers override", async () => {
-        const simulate = vi.fn().mockResolvedValue({ result: [42n, 0n, 0, 0n] });
+    it("a declared pool that does not exist is null — no fall-through to another tier", async () => {
+        const simulate = vi.fn()
+            .mockRejectedValueOnce(new Error("pool not found"))
+            .mockResolvedValue({ result: [99n, 0n, 0, 0n] });
         const quoter = createUniswapV3Quoter({
             publicClient: makeClient(simulate),
             quoterAddress: QUOTER,
-            feeTiers: [100],
         });
 
         const result = await quoter.quote({
             fromTokenAddress: USDC,
             toTokenAddress: FLORIN,
             amountIn: 1n,
+            poolFeeTier: 500,
         });
 
-        expect(result?.source).toBe("uniswap-v3-fee-100");
-        expect(simulate.mock.calls[0]?.[0]?.args[0]?.fee).toBe(100);
+        expect(result).toBeNull();
+        expect(simulate).toHaveBeenCalledTimes(1);
+        expect(simulate.mock.calls[0]?.[0]?.args[0]?.fee).toBe(500);
+    });
+
+    it("a declared pool that quotes zero is null — no fall-through to another tier", async () => {
+        const simulate = vi.fn()
+            .mockResolvedValueOnce({ result: [0n, 0n, 0, 0n] })
+            .mockResolvedValue({ result: [1_500_000n, 0n, 0, 0n] });
+        const quoter = createUniswapV3Quoter({
+            publicClient: makeClient(simulate),
+            quoterAddress: QUOTER,
+        });
+
+        const result = await quoter.quote({
+            fromTokenAddress: USDC,
+            toTokenAddress: FLORIN,
+            amountIn: 1_000_000n,
+            poolFeeTier: 100,
+        });
+
+        expect(result).toBeNull();
+        expect(simulate).toHaveBeenCalledTimes(1);
     });
 
     it("short-circuits on identity (does not call the quoter)", async () => {

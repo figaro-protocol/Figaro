@@ -216,9 +216,10 @@ export const QUOTER_V2_ABI = parseAbi([
     "function quoteExactInputSingle((address tokenIn,address tokenOut,uint256 amountIn,uint24 fee,uint160 sqrtPriceLimitX96) params) returns (uint256 amountOut,uint160 sqrtPriceX96After,uint32 initializedTicksCrossed,uint256 gasEstimate)",
 ]);
 
-/** The Uniswap v3 fee tiers (hundredths of a bip) a quote probe walks —
- *  0.01%, 0.05%, 0.3%, 1%. One shared list so every quoting consumer probes
- *  the same tier set. */
+/** The Uniswap v3 fee tiers (hundredths of a bip) — 0.01%, 0.05%, 0.3%, 1%.
+ *  The funding leg's quote probe walks them (`quoteFundingLeg`); a price
+ *  conversion never does — it quotes the one pool the seller declared
+ *  (`AcceptedTokenMetadata.poolFeeTier`). */
 export const UNISWAP_V3_FEE_TIERS = [100, 500, 3000, 10000] as const;
 
 // ── ClauseRegistry ABI ──────────────────────────────────────────────────────

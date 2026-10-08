@@ -43,7 +43,17 @@ import { templateClauseVersion, templateParentOrderHashes } from "@/lib/shared/a
 import { CommitmentSharePanel } from "@/components/runtime/CommitmentSharePanel";
 import { SellerCatalogPicker, type SellerSelection } from "@/components/runtime/SellerCatalogPicker";
 import { useCompositionActions } from "@/lib/composition/useCompositionActions";
-import { inputForOutput, readVenueRate, resolveSwapFundingContracts, type VenueRate } from "@/lib/composition/swapFunding";
+import {
+    effectiveUnitCost,
+    formatFeeTier,
+    inputForOutput,
+    quotePlanConversion,
+    resolveSwapFundingContracts,
+    sellerConversions,
+    type PlanConversion,
+    type SellerPlanPart,
+    type VenueRate,
+} from "@/lib/composition/swapFunding";
 import { SwapFundingPanel, fundingAuthorization, fundingBlocksTheAct } from "./SwapFundingPanel";
 import useTokenApproval from "@/hooks/useTokenApproval";
 import { useApproveThenAct } from "@/hooks/useApproveThenAct";
@@ -68,6 +78,9 @@ interface Props {
     sellerAddress: string;
 }
 
+/** No conversion: the denomination IS the quote basis. */
+const IDENTITY_RATE: VenueRate = { num: 1n, den: 1n };
+
 /** One order's on-network composition (sixth noun): the composing clause, its
  *  standard interface, and the runtime `block.runtime.fields` the buyer fills. */
 interface OrderComposition {
@@ -82,8 +95,8 @@ export function CheckoutView({ sellerAddress }: Props) {
 
     const chainId = useChainId();
     const publicClient = usePublicClient();
-    // A tamper-check for the buyer: the sha256 of the on-chain addresses this
-    // build will transact against, recomputable from the canonical deployment record.
+    // A tamper-check for the buyer: the sha256 of the on-chain address set this
+    // build was made with, recomputable from the canonical deployment record.
     // Shown off the local development chain only, whose per-run addresses have
     // no canonical deployment record to check against.
     const deploymentFp = useMemo(() => deploymentFingerprint(), []);
@@ -153,33 +166,25 @@ export function CheckoutView({ sellerAddress }: Props) {
     }, [sellerGeohash, sellerAddressText]);
     const [paymentPick, setPaymentPick] = useState<`0x${string}` | null>(null);
     const currency = utilityTokenPin ?? paymentPick ?? sellerDefault;
-    // Price conversion, unit of account → the process denomination: catalog
-    // prices are quoted in the seller's default; when the pick/pin differs,
-    // every amount converts at the venue's live rate BEFORE display and
-    // commit (the converted price is the input the venue needs to yield the
-    // default-quoted amount — the seller is made whole in their quote basis).
-    // Local mock venue = one global rate, same-decimals mocks; a production venue
-    // quotes per-pair behind this same seam. No venue while conversion is
-    // needed ⇒ ordering is gated off (resolved-empty = absence).
+    // Price conversion, unit of account → the process denomination: each
+    // seller's catalog prices are quoted in THAT seller's default; when the
+    // pick/pin differs, that seller's part of the plan is quoted exact-output
+    // on the pool THAT seller declared for the token in its profile (the
+    // party made whole names the pool), and its amounts convert at that
+    // quote's effective rate BEFORE display and commit. A seller with no
+    // declared pool for the token is not convertible; no venue configured is
+    // the same absence. The quotes run below, once every seller's part of the
+    // plan is known.
     const swapFundingContracts = resolveSwapFundingContracts();
-    const needsConversion = !!currency && !!sellerDefault && !hexEqual(currency, sellerDefault);
-    const [venueRate, setVenueRate] = useState<VenueRate | null>(null);
-    useEffect(() => {
-        let canceled = false;
-        setVenueRate(null);
-        if (!needsConversion || !publicClient || !swapFundingContracts) return;
-        // The pair: the picked denomination is what the buyer pays IN, the
-        // seller's default is what the price is quoted in — the venue quotes
-        // how much picked token yields one unit of the default.
-        readVenueRate(publicClient, swapFundingContracts.router, { tokenIn: currency!, tokenOut: sellerDefault! })
-            .then((r) => { if (!canceled) setVenueRate(r); })
-            .catch(() => { if (!canceled) setVenueRate(null); });
-        return () => { canceled = true; };
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [needsConversion, publicClient, swapFundingContracts?.router, currency, sellerDefault]);
-    const priceRate = needsConversion ? venueRate : { num: 1n, den: 1n };
-    const conversionBlocked = needsConversion && !priceRate;
-    const toCurrency = (amount: bigint) => (priceRate ? inputForOutput(amount, priceRate) : amount);
+    const [planQuotes, setPlanQuotes] = useState<
+        { key: string; bySeller: Record<string, { result: PlanConversion | null; error: string | null }> } | null
+    >(null);
+    // The lead's quote basis's symbol — the token its catalog (and so the
+    // cart) is priced in: read from the token, else as the seller declared it.
+    const { data: basisResolvedSymbol } = useTokenSymbol(sellerDefault ?? "");
+    const basisSymbol = basisResolvedSymbol
+        ?? (sellerDefault ? memberCatalog?.acceptedTokens?.find((t) => hexEqual(t.address, sellerDefault))?.symbol : undefined)
+        ?? "";
     const { data: resolvedSymbol } = useTokenSymbol(currency ?? "");
     const tokenSymbol = resolvedSymbol
         ?? (currency ? memberCatalog?.acceptedTokens?.find((t) => hexEqual(t.address, currency))?.symbol : undefined)
@@ -195,20 +200,6 @@ export function CheckoutView({ sellerAddress }: Props) {
         signAndShare,
         order: { step: commitStep, error: commitError, payload },
     } = useCheckout(currency);
-    // The catalog projections re-quoted into the process denomination —
-    // sub-order pricing, picker options, and the commit walk read prices
-    // already converted, so shown = committed in ONE basis. Identity when no
-    // conversion applies.
-    const pricedCatalogs = useMemo(() => {
-        if (!priceRate || (priceRate.num === 1n && priceRate.den === 1n)) return sellerCatalogs;
-        return sellerCatalogs.map((c) => ({
-            ...c,
-            items: c.items.map((it) => ({
-                ...it,
-                price: formatToken(inputForOutput(parseToken(it.price || "0", tokenDecimals), priceRate), tokenDecimals),
-            })),
-        }));
-    }, [sellerCatalogs, priceRate, tokenDecimals]);
     // Runtime inputs for any order that composes an on-network contract — the
     // clause's `block.runtime.fields`, filled at checkout (like the cart line items),
     // keyed by template node id then field name. Interface-agnostic: the form
@@ -295,6 +286,153 @@ export function CheckoutView({ sellerAddress }: Props) {
     // gives the render a `loaded` flag to hold the terms until they are real.
     const { loaded: clauseSpecsLoaded } = useClauseSpecs();
 
+    // Filter cart to items from THIS merchant only — the buyer's line-item input,
+    // read-only here (edited on the browse page).
+    const cartItems = items.filter((it) => it.sellerId === sellerAddressLower);
+    // Assembly-level fills (the "assembly" review group) apply to EVERY
+    // node: expand them under each template order id, designer values under
+    // buyer values, so the walk and the price preview see one merged map.
+    const assemblySections = pickedAssembly?.assemblyTemplate.assemblyClauses ?? {};
+    const assemblyFills = clauseFills["assembly"] ?? {};
+    const mergedAssemblyEntries = Object.fromEntries(
+        Object.keys(assemblySections).map((clauseId) => [
+            clauseId,
+            { ...assemblySections[clauseId], ...(assemblyFills[clauseId] ?? {}) },
+        ]),
+    );
+    const expandedClauseFills: typeof clauseFills = Object.fromEntries(
+        (pickedAssembly?.assemblyTemplate.agreements ?? []).map((o, i) => {
+            const nodeId = String(o.id ?? i);
+            return [nodeId, { ...mergedAssemblyEntries, ...(clauseFills[nodeId] ?? {}) }];
+        }),
+    );
+    // Every seller's part of the plan in ITS OWN quote basis — the SAME
+    // derivation the shown and committed figures use, with no conversion
+    // applied: the lead's cart, every bound contributor priced from its own
+    // catalog, a manual pick's price. A race winner's price is already in the
+    // process denomination, so its node stays out of every quoted amount.
+    const cartBasisTotal = cartItems.reduce(
+        (sum, item) => sum + parseToken(item.price || "0", tokenDecimals) * BigInt(item.quantity),
+        0n,
+    );
+    const subOrderPlan = (() => {
+        if (!pickedAssembly || pickedAssembly.assemblyTemplate.agreements.length <= 1) return [];
+        try {
+            return planSubOrderSellers(pickedAssembly);
+        } catch {
+            return [];
+        }
+    })();
+    const basisKit = memberCatalog
+        ? deriveKitBreakdown({
+            pickedAssembly,
+            leadAddress: memberCatalog.address as `0x${string}`,
+            sellerCatalogs,
+            pricedCatalogs: sellerCatalogs,
+            cartTotal: cartBasisTotal,
+            clauseFills: expandedClauseFills,
+            subOrderQuantities,
+            tokenDecimals,
+            raceOutcome: null,
+            sellerSelection,
+            toCurrency: (amount) => amount,
+        })
+        : null;
+    const planParts: SellerPlanPart[] = memberCatalog
+        ? [
+            { seller: memberCatalog.address, basisAmount: cartBasisTotal },
+            ...subOrderPlan.flatMap(({ node, seller }): SellerPlanPart[] => {
+                if (seller) return [{ seller, basisAmount: basisKit?.rows.find((r) => r.nodeId === node.id)?.payment ?? 0n }];
+                if (raceOutcome && raceOutcome.nodeId === node.id) return [];
+                return sellerSelection
+                    ? [{ seller: sellerSelection.seller, basisAmount: parseToken(sellerSelection.price, tokenDecimals) }]
+                    : [];
+            }),
+        ]
+        : [];
+    // Per seller: each converts on its OWN declared pool, never the lead's.
+    const allConversions = sellerConversions(sellerCatalogs, currency, planParts);
+    const conversions = allConversions.filter((c) => c.need.kind !== "none");
+    const needsConversion = conversions.length > 0;
+    // The sellers whose part is quoted: a declared pool and something to price.
+    const quotable = conversions.flatMap((c) =>
+        c.need.kind === "declared" && c.quoteBasis && c.basisTotal > 0n
+            ? [{ seller: c.seller, quoteBasis: c.quoteBasis, feeTier: c.need.feeTier, basisTotal: c.basisTotal }]
+            : []);
+    const quotesKey = quotable.length > 0 && decimalsReady && swapFundingContracts
+        ? `${currency}|${tokenDecimals}|${quotable.map((q) => `${q.seller}:${q.quoteBasis}:${q.feeTier}:${q.basisTotal}`).join(",")}`
+        : null;
+    useEffect(() => {
+        if (!quotesKey || !publicClient || !swapFundingContracts || !currency) {
+            setPlanQuotes(null);
+            return;
+        }
+        let canceled = false;
+        setPlanQuotes({ key: quotesKey, bySeller: {} });
+        void Promise.all(quotable.map(async (q) => {
+            try {
+                const result = await quotePlanConversion(publicClient, swapFundingContracts.router, {
+                    tokenIn: currency,
+                    tokenOut: q.quoteBasis,
+                    feeTier: q.feeTier,
+                    planBasis: q.basisTotal,
+                    tokenInDecimals: tokenDecimals,
+                });
+                return [q.seller, { result, error: null }] as const;
+            } catch (e) {
+                return [q.seller, { result: null, error: extractErrorMessage(e, "The quote failed.") }] as const;
+            }
+        })).then((entries) => { if (!canceled) setPlanQuotes({ key: quotesKey, bySeller: Object.fromEntries(entries) }); });
+        return () => { canceled = true; };
+        // The key carries every input the quotes read.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [quotesKey, publicClient]);
+    const currentQuotes = planQuotes && planQuotes.key === quotesKey ? planQuotes.bySeller : null;
+    // The rate a seller's prices convert at: identity when its quote basis IS
+    // the denomination; its own declared-pool quote otherwise; null while
+    // unquoted or not convertible.
+    const rateFor = (seller: string | undefined): VenueRate | null => {
+        const c = seller ? conversions.find((x) => hexEqual(x.seller, seller)) : undefined;
+        if (!c) return IDENTITY_RATE;
+        return currentQuotes?.[c.seller]?.result?.rate ?? null;
+    };
+    // A seller with something to price and no rate blocks the order.
+    const conversionBlocked = conversions.some((c) => c.basisTotal > 0n && !rateFor(c.seller));
+    const convertFor = (seller: string | undefined, amount: bigint) => {
+        const rate = rateFor(seller);
+        return rate ? inputForOutput(amount, rate) : amount;
+    };
+    // The lead's cart converts on the lead's pool; a manual pick on the
+    // picked seller's.
+    const toCurrency = (amount: bigint) => convertFor(memberCatalog?.address, amount);
+    const pickToCurrency = (amount: bigint) => convertFor(sellerSelection?.seller, amount);
+    // The catalog projections re-quoted into the process denomination, each
+    // at its OWN seller's rate — sub-order pricing and the commit walk read
+    // prices already converted, so shown = committed in ONE basis. Identity
+    // when no conversion applies.
+    const sellerRates = Object.fromEntries(
+        conversions.flatMap((c) => {
+            const rate = rateFor(c.seller);
+            return rate ? [[c.seller, rate] as const] : [];
+        }),
+    );
+    const sellerRatesKey = Object.entries(sellerRates).map(([s, r]) => `${s}:${r.num}/${r.den}`).join(",");
+    const pricedCatalogs = useMemo(() => {
+        if (!sellerRatesKey) return sellerCatalogs;
+        return sellerCatalogs.map((c) => {
+            const rate = sellerRates[c.address.toLowerCase()];
+            if (!rate) return c;
+            return {
+                ...c,
+                items: c.items.map((it) => ({
+                    ...it,
+                    price: formatToken(inputForOutput(parseToken(it.price || "0", tokenDecimals), rate), tokenDecimals),
+                })),
+            };
+        });
+        // The key carries every rate the projection reads.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [sellerCatalogs, sellerRatesKey, tokenDecimals]);
     // No post-place redirect: in the bilateral relay the buyer signs + shares,
     // then stays on the share panel; each order commits when its seller
     // counter-signs in their /orders list. The buyer is never the broadcaster here.
@@ -320,21 +458,11 @@ export function CheckoutView({ sellerAddress }: Props) {
         );
     }
 
-    // Filter cart to items from THIS merchant only — the buyer's line-item input,
-    // read-only here (edited on the browse page).
-    const cartItems = items.filter((it) => it.sellerId === sellerAddressLower);
     // Sub-orders the adopting seller's catalog leaves UNBOUND take the buyer's
     // checkout-time choice; bound sub-orders keep the catalog's designation
     // (seller-assigned). The fill mechanism is DERIVED from binding state +
     // composition — there is no coordination field.
-    const unboundSubOrders = (() => {
-        if (!pickedAssembly || pickedAssembly.assemblyTemplate.agreements.length <= 1) return [];
-        try {
-            return planSubOrderSellers(pickedAssembly).filter((p) => !p.seller);
-        } catch {
-            return [];
-        }
-    })();
+    const unboundSubOrders = subOrderPlan.filter((p) => !p.seller);
     // Any order that composes an on-network contract (the sixth noun) —
     // discovered by reading `block.design.composes` + `block.runtime.fields`
     // off the clause spec, naming no clause and no interface. Applies to ANY
@@ -391,23 +519,6 @@ export function CheckoutView({ sellerAddress }: Props) {
     // Plain call (not useMemo): this section sits below the page's early
     // returns, where hooks can't run — and the pre-extraction code
     // recomputed per render too. The win is the PURITY, in lib.
-    // Assembly-level fills (the "assembly" review group) apply to EVERY
-    // node: expand them under each template order id, designer values under
-    // buyer values, so the walk and the price preview see one merged map.
-    const assemblySections = pickedAssembly?.assemblyTemplate.assemblyClauses ?? {};
-    const assemblyFills = clauseFills["assembly"] ?? {};
-    const mergedAssemblyEntries = Object.fromEntries(
-        Object.keys(assemblySections).map((clauseId) => [
-            clauseId,
-            { ...assemblySections[clauseId], ...(assemblyFills[clauseId] ?? {}) },
-        ]),
-    );
-    const expandedClauseFills: typeof clauseFills = Object.fromEntries(
-        (pickedAssembly?.assemblyTemplate.agreements ?? []).map((o, i) => {
-            const nodeId = String(o.id ?? i);
-            return [nodeId, { ...mergedAssemblyEntries, ...(clauseFills[nodeId] ?? {}) }];
-        }),
-    );
     const kitBreakdown = deriveKitBreakdown({
         pickedAssembly,
         leadAddress: memberCatalog.address as `0x${string}`,
@@ -419,7 +530,7 @@ export function CheckoutView({ sellerAddress }: Props) {
         tokenDecimals,
         raceOutcome,
         sellerSelection,
-        toCurrency,
+        toCurrency: pickToCurrency,
     });
 
     // The buyer commits EVERY order in the plan (buyer == rootBuyer on each
@@ -427,6 +538,12 @@ export function CheckoutView({ sellerAddress }: Props) {
     // order's seller + an equal refundable bond. Aggregate over the WHOLE
     // plan — a root-only figure under-reports every multi-order checkout.
     const planTotal = kitBreakdown ? kitBreakdown.total : cartTotal;
+    // The plan with no per-unit rounding: each converted seller's quoted
+    // input, every other part as priced — what the conversion note compares.
+    const unroundedPlanTotal = allConversions.reduce(
+        (sum, c) => sum + (c.need.kind === "none" ? c.basisTotal : currentQuotes?.[c.seller]?.result?.amountIn ?? 0n),
+        0n,
+    ) + (raceOutcome && kitBreakdown ? parseToken(raceOutcome.selection.price, tokenDecimals) : 0n);
     const lockedTotal = planTotal > 0n ? calculateBonds(planTotal, planTotal).buyerBond : 0n;
     const hasInsufficientBalance = !!buyer && tokenBalance !== undefined && balance < lockedTotal;
     // Where the chosen funding token stands with Permit2 — the one derived
@@ -480,7 +597,7 @@ export function CheckoutView({ sellerAddress }: Props) {
                 node.id,
                 {
                     seller: sellerSelection.seller,
-                    price: formatToken(toCurrency(parseToken(sellerSelection.price, tokenDecimals)), tokenDecimals),
+                    price: formatToken(pickToCurrency(parseToken(sellerSelection.price, tokenDecimals)), tokenDecimals),
                     item: { id: sellerSelection.item.id, name: sellerSelection.item.name },
                 },
             ]))
@@ -684,7 +801,7 @@ export function CheckoutView({ sellerAddress }: Props) {
                 ) : (
                     <>
                         {/* Read-only line items — the buyer's selection, edited on browse. */}
-                        <CartLineList items={cartItems} tokenSymbol={tokenSymbol} emphasizePrice />
+                        <CartLineList items={cartItems} tokenSymbol={basisSymbol} emphasizePrice />
 
                         {/* THE PAYMENT TOKEN — the buyer's pick from the seller's
                             accepted array (the social layer). The pick IS the
@@ -717,18 +834,85 @@ export function CheckoutView({ sellerAddress }: Props) {
                                         </label>
                                     ))}
                                 </div>
-                                {conversionBlocked && (
-                                    <p className="text-xs text-error-fg" data-testid="payment-token-no-venue">
-                                        No conversion venue is configured — prices can&apos;t be quoted in this
-                                        token. Pick the list-price token to order.
-                                    </p>
-                                )}
                             </div>
                         )}
                         {utilityTokenPin && (
                             <p className="text-xs text-ink-muted border-t border-default pt-3" data-testid="payment-token-pinned">
                                 This assembly is denominated by design{tokenSymbol ? ` — every bond and payment moves in ${tokenSymbol}` : ""}.
                             </p>
+                        )}
+                        {/* The conversion, when the denomination is not a
+                            seller's list-price token: each such seller's part
+                            of the plan quoted on the pool THAT seller declared
+                            for it, and shown as the rate its part commits at.
+                            A seller with no declared pool, no venue, or a pool
+                            that cannot fill the amount each says so — naming
+                            the seller — and offers no conversion. */}
+                        {needsConversion && (
+                            <div className="border-t border-default pt-3 space-y-2 text-xs" data-testid="payment-token-conversion">
+                                {!swapFundingContracts && conversions.some((c) => c.need.kind === "declared") && (
+                                    <p className="text-error-fg" data-testid="payment-token-no-venue">
+                                        No conversion venue is configured — prices can&apos;t be quoted in this
+                                        token.{!utilityTokenPin && " Pick the list-price token to order."}
+                                    </p>
+                                )}
+                                {conversions.map((c) => {
+                                    const isLead = hexEqual(c.seller, memberCatalog.address);
+                                    const name = displayNameForAddress(sellerCatalogs, c.seller);
+                                    const cBasisSymbol = isLead
+                                        ? basisSymbol
+                                        : sellerCatalogs.find((x) => hexEqual(x.address, c.seller))?.acceptedTokens
+                                            ?.find((t) => !!c.quoteBasis && hexEqual(t.address, c.quoteBasis))?.symbol ?? "";
+                                    const quote = currentQuotes?.[c.seller];
+                                    return (
+                                        <div key={c.seller} className="space-y-1" data-testid={`payment-token-conversion-${c.seller}`}>
+                                            {c.need.kind === "undeclared" ? (
+                                                <p className="text-error-fg" data-testid="payment-token-no-pool">
+                                                    {name} declares no pool converting {tokenSymbol || "this token"} into{" "}
+                                                    {cBasisSymbol || "its list-price token"}, so its prices can&apos;t be quoted in{" "}
+                                                    {tokenSymbol || "it"}.{isLead && !utilityTokenPin && ` Pick ${basisSymbol || "the list-price token"} to order.`}
+                                                </p>
+                                            ) : c.need.kind !== "declared" || !swapFundingContracts || c.basisTotal === 0n ? null : quote?.error ? (
+                                                <p className="text-error-fg" data-testid="payment-token-quote-error">
+                                                    {name}&apos;s declared pool (fee tier {formatFeeTier(c.need.feeTier)}) can&apos;t
+                                                    quote its part of this order: {quote.error}
+                                                </p>
+                                            ) : quote?.result ? (
+                                                <>
+                                                    <p className="text-ink-muted" data-testid="payment-token-quote">
+                                                        {name}: quoted on its declared pool (fee tier{" "}
+                                                        {formatFeeTier(quote.result.feeTier)}):{" "}
+                                                        {formatToken(quote.result.basisTotal, quote.result.basisDecimals)}{" "}
+                                                        {cBasisSymbol} costs{" "}
+                                                        <span className="tabular-nums" data-testid="payment-token-quoted-input">
+                                                            {formatToken(quote.result.amountIn, tokenDecimals)}
+                                                        </span>{" "}
+                                                        {tokenSymbol}.
+                                                    </p>
+                                                    <p className="text-ink-muted" data-testid="payment-token-effective-rate">
+                                                        Effective rate: 1 {cBasisSymbol} = {formatToken(effectiveUnitCost(quote.result), tokenDecimals)}{" "}
+                                                        {tokenSymbol}.
+                                                    </p>
+                                                </>
+                                            ) : (
+                                                <p className="text-ink-muted">Quoting {name}&apos;s declared pool…</p>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                                {!conversionBlocked && (
+                                    <p className="text-ink-muted" data-testid="payment-token-committed">
+                                        The order commits{" "}
+                                        <span className="tabular-nums" data-testid="payment-token-committed-total">
+                                            {formatToken(planTotal, tokenDecimals)}
+                                        </span>{" "}
+                                        {tokenSymbol}
+                                        {planTotal !== unroundedPlanTotal
+                                            ? " — each unit price rounds up, so no seller is short of its price"
+                                            : ""}.
+                                    </p>
+                                )}
+                            </div>
                         )}
 
                         <div className="border-t border-default pt-3 space-y-1.5 text-sm">
@@ -869,12 +1053,15 @@ export function CheckoutView({ sellerAddress }: Props) {
                                             <p className="text-[11px] font-medium text-ink-muted">{group.label}</p>
                                         )}
                                         <ul className="text-xs text-ink-body space-y-0.5">
-                                            {group.clauses.map(({ clauseId, version, values, data, fillable }) => {
+                                            {group.clauses.map(({ clauseId, version, values, data, fillable, mandatory }) => {
                                                 const spec = getClauseSpec(clauseId, version);
                                                 const specFields = spec?.fields ?? [];
                                                 return (
                                                 <li key={clauseId} data-testid={`agreement-clause-${clauseId}`}>
                                                     {spec?.title ?? clauseId}
+                                                    {mandatory && (
+                                                        <span className="text-ink-muted text-xs" data-testid={`agreement-clause-${clauseId}-required`}> · required by the assembly</span>
+                                                    )}
                                                     {values && <span className="text-ink-primary"> — {values}</span>}
                                                     <CredentialVerifyButton data={data} />
                                                     {fillable && (
@@ -1044,7 +1231,7 @@ export function CheckoutView({ sellerAddress }: Props) {
 
                         {chainId !== DEVNET_CHAIN_ID && deploymentFp && (
                             <p className="text-xs text-ink-muted" data-testid="checkout-deployment-fingerprint">
-                                You can also check the addresses this order will touch before you send it: they fingerprint to <span className="font-mono break-all">sha256:{deploymentFp}</span>, which must match the canonical deployment record.{" "}
+                                You can also check the contract addresses this site was built with before you send it: they fingerprint to <span className="font-mono break-all">sha256:{deploymentFp}</span>, which must match the canonical deployment record.{" "}
                                 <a href="/docs/protocol/contracts/#canonical-deployments" className="underline text-ink-primary hover:text-ink-body">
                                     How &rarr;
                                 </a>

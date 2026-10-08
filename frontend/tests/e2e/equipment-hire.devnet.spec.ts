@@ -42,6 +42,7 @@ import {
     referenceAssemblySlugWithLiveCurrency,
     readLocalDeploymentConfig,
     seedRegisteredMember,
+    memberAcceptedTokens,
     memberProfileBindings,
     pinJSONToIPFS,
     assertPinnedInIpfs,
@@ -67,6 +68,9 @@ const BUYER = ANVIL_ACCOUNTS[0] as Hex;
 // anvil[22] — dedicated to this scenario (the allocation lives in
 // frontend/tests/anvilAccounts.ts's lockstep).
 const SELLER = privateKeyToAccount(ANVIL_KEYS[22] as Hex).address as Hex;
+// The pool the seller declares for the pin's token (MOCK) into its default
+// (MPMT) — the conversion the checkout quotes the pinned order on.
+const MOCK_POOL_FEE_TIER = 500;
 
 async function findEquipmentHireAssembly(tokenAddress: Hex): Promise<string> {
     // Identity, never a clause-shape heuristic (several single-order
@@ -82,7 +86,12 @@ async function findEquipmentHireAssembly(tokenAddress: Hex): Promise<string> {
 async function ensureEquipmentHireSeller(mockToken: Hex, permitToken: Hex): Promise<Hex> {
     const slug = await findEquipmentHireAssembly(mockToken);
     const bound = (await memberProfileBindings(SELLER)).some((b) => b.assemblySlug === slug);
-    if (!bound) {
+    // The pin's token is not this seller's default, so the seller must have
+    // declared the pool it converts through (a profile from before the
+    // declaration is re-pinned).
+    const declared = (await memberAcceptedTokens(SELLER)).some((t) =>
+        t.address?.toLowerCase() === mockToken.toLowerCase() && t.poolFeeTier === MOCK_POOL_FEE_TIER);
+    if (!bound || !declared) {
         const { uri: catalogURI } = await pinJSONToIPFS({
             subjectAddress: SELLER,
             version: '1.0.0',
@@ -108,7 +117,7 @@ async function ensureEquipmentHireSeller(mockToken: Hex, permitToken: Hex): Prom
                 // the OTHER token, so the pin is shown to override the
                 // seller's own default too, not just coincide with it.
                 acceptedTokens: [
-                    { address: mockToken, symbol: 'MOCK', chainId: 31337 },
+                    { address: mockToken, symbol: 'MOCK', chainId: 31337, poolFeeTier: MOCK_POOL_FEE_TIER },
                     { address: permitToken, symbol: 'MPMT', chainId: 31337 },
                 ],
                 defaultTokenAddress: permitToken,
@@ -185,6 +194,12 @@ test.describe('THE UTILITY-TOKEN REFERENCE — equipment hire, denominated by de
             page.getByTestId('payment-token-pinned'),
             'the "denominated by design" notice renders in the picker\'s place',
         ).toBeVisible({ timeout: 15000 });
+        // The pin is not the seller's default: the order's total is quoted
+        // on the pool the seller declared for the pin's token.
+        await expect(
+            page.getByTestId('payment-token-quote'),
+            'the pinned order is quoted on the seller\'s declared pool',
+        ).toBeVisible({ timeout: 30000 });
 
         // The equipment-hire reference's transaction particulars: pickup —
         // the renter collects, origin = destination.

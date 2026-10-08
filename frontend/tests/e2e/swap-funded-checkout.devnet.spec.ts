@@ -9,12 +9,15 @@
  * Swap-and-commit is the ON-RAMP into that denomination for EITHER party
  * short of it — funding is never the order's denomination.
  *
- * Three passes, each with value legs from the chain (the standing rule),
- * at the devnet venue's 1:1 rate (prices convert identically):
+ * Three passes, each with value legs from the chain (the standing rule):
  *
  *  1. THE PICK — buyer holds the accepted token (MPMT), picks it at checkout;
- *     the commit goes DIRECT to FigaroCore; every leg moves in MPMT; resolve
- *     nets the seller +payment in MPMT.
+ *     the seller's pinned profile declares the pool MPMT converts through,
+ *     and the checkout quotes the order's total exact-output on it at a
+ *     non-unit venue rate (3:7, restored after): the committed payment IS
+ *     that quote. The commit goes DIRECT to FigaroCore; every leg moves in
+ *     MPMT; resolve nets the seller +payment in MPMT.
+ *  Passes 2 and 3 run at the devnet venue's 1:1 rate.
  *  2. BUYER ON-RAMP — buyer picks MPMT but holds NONE (drained); the funding
  *     panel on-ramps from the default (MOCK) through the coordinator; the
  *     order still denominates, escrows, and resolves in MPMT.
@@ -26,10 +29,20 @@
  * MPMT token in acceptedTokens) and the devnet-authoring gate.
  */
 import { test, expect, gotoAsWallet } from './devnet-multi-test';
-import { createWalletClient, http, parseAbi, type Hex } from 'viem';
+import { createWalletClient, http, parseAbi, parseUnits, type Hex } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { calculateBonds } from '@figaro-protocol/sdk';
-import { authorizeFundingToken, localPublicClient, readLocalDeploymentConfig, LOCAL_ANVIL, RPC_URL } from './devnet-helpers';
+import {
+    authorizeFundingToken,
+    latestMemberProfileURI,
+    localPublicClient,
+    memberAcceptedTokens,
+    readLocalDeploymentConfig,
+    resolveIpfsURI,
+    LOCAL_ANVIL,
+    RPC_URL,
+} from './devnet-helpers';
+import { formatToken } from '@/lib/shared/utils';
 import { ANVIL_ACCOUNTS, ANVIL_KEYS } from '../anvilAccounts';
 import { CORE_ABI } from '@/lib/kernel/contracts';
 import type { Page } from '@playwright/test';
@@ -42,7 +55,15 @@ async function waitForConnected(page: Page) {
     );
 }
 
+const VENUE_ABI = parseAbi([
+    'function rateNumerator() view returns (uint256)',
+    'function rateDenominator() view returns (uint256)',
+    'function setRate(uint256 numerator, uint256 denominator)',
+]);
+
 const ERC20_ABI = parseAbi([
+    'function decimals() view returns (uint8)',
+    'function symbol() view returns (string)',
     'function balanceOf(address) view returns (uint256)',
     'function transfer(address, uint256) returns (bool)',
     'function mint(address, uint256)',
@@ -65,6 +86,7 @@ test.describe('THE PAYMENT TOKEN — the buyer picks the denomination; swap is t
     const defaultToken = config.tokenAddress as Hex;      // MOCK — the seller's default (unit of account)
     const pickedToken = config.permitTokenAddress as Hex; // MPMT — the accepted token under test
     const coordinator = config.witnessSwapAndCommitCoordinator as Hex;
+    const venue = config.swapRouter as Hex;
     const publicClient = localPublicClient();
     const balanceOf = (token: Hex, who: Hex) =>
         publicClient.readContract({ address: token, abi: ERC20_ABI, functionName: 'balanceOf', args: [who] }) as Promise<bigint>;
@@ -96,14 +118,41 @@ test.describe('THE PAYMENT TOKEN — the buyer picks the denomination; swap is t
         args: { buyer: BUYER }, fromBlock: 0n,
     });
 
+    /** Scenario pre-population (NOT the action under test): the devnet
+     *  venue's one linear rate (amountOut = amountIn·num/den). */
+    async function setVenueRate(num: bigint, den: bigint) {
+        const hash = await walletFor(BUYER_KEY).writeContract({
+            address: venue, abi: VENUE_ABI, functionName: 'setRate', args: [num, den],
+        });
+        await publicClient.waitForTransactionReceipt({ hash });
+    }
+
+    /** The seller's catalog price for one item, read out-of-band from its
+     *  pinned catalog (chain events → IPFS), in the quote basis's units. */
+    async function pinnedCatalogPrice(itemId: string): Promise<bigint> {
+        const profileURI = await latestMemberProfileURI(SELLER);
+        expect(profileURI, 'the seller has a pinned profile').toBeTruthy();
+        const profile = await (await fetch(resolveIpfsURI(profileURI!))).json() as { catalogURI?: string };
+        expect(profile.catalogURI, 'the seller has a pinned catalog').toBeTruthy();
+        const catalog = await (await fetch(resolveIpfsURI(profile.catalogURI!))).json() as {
+            items?: Array<{ id: string; price: string }>;
+        };
+        const item = catalog.items?.find((i) => i.id === itemId);
+        expect(item, `the pinned catalog lists ${itemId}`).toBeTruthy();
+        const decimals = await publicClient.readContract({ address: defaultToken, abi: ERC20_ABI, functionName: 'decimals' });
+        return parseUnits(item!.price, decimals);
+    }
+
     /** Buyer leg: browse → cart → checkout → PICK the payment token. Leaves
-     *  the page on the checkout with the pick applied. */
-    async function buyerPicksPayment(page: Page) {
+     *  the page on the checkout with the pick applied; returns the catalog
+     *  item id it put in the cart (quantity 1). */
+    async function buyerPicksPayment(page: Page): Promise<string> {
         await gotoAsWallet(page, BUYER, `/s/view?seller=${SELLER}&e2e=devnet`);
         await page.getByTestId('member-detail-view').waitFor({ timeout: 30000 });
         await waitForConnected(page);
         const addBtn = page.locator('[data-testid^="btn-add-"]').first();
         await addBtn.waitFor({ state: 'visible', timeout: 20000 });
+        const itemId = (await addBtn.getAttribute('data-testid'))!.slice('btn-add-'.length);
         await addBtn.click();
         await page.getByTestId('btn-review-order').click();
         await page.getByTestId('checkout-view').waitFor({ timeout: 20000 });
@@ -112,6 +161,7 @@ test.describe('THE PAYMENT TOKEN — the buyer picks the denomination; swap is t
         // denomination the commitment records.
         await page.getByTestId('payment-token-picker').waitFor({ state: 'visible', timeout: 30000 });
         await page.getByTestId('payment-token-MPMT').check();
+        return itemId;
     }
 
     /** Place the order and relay it over the channel. `expectSwap` asserts the
@@ -152,63 +202,107 @@ test.describe('THE PAYMENT TOKEN — the buyer picks the denomination; swap is t
         return { event, receipt, payment, ...bonds };
     }
 
-    test('the pick IS the committed denomination — direct commit, every leg in the picked token', async ({ page }) => {
+    test('the pick IS the committed denomination — quoted on the seller\'s declared pool, direct commit, every leg in the picked token', async ({ page }) => {
         page.on('dialog', (dialog) => { void dialog.accept().catch(() => {}); });
+        // The seller declared the pool MPMT converts through into its default
+        // — read from its pinned profile, never from the screen.
+        const declared = (await memberAcceptedTokens(SELLER))
+            .find((t) => t.address?.toLowerCase() === pickedToken.toLowerCase());
+        expect(declared?.poolFeeTier, 'the seller\'s pinned profile declares the pool MPMT converts through')
+            .toEqual(expect.any(Number));
         // The buyer holds plenty of the picked token — no on-ramp anywhere.
         await setPickedBalance(1_000n * 10n ** 18n);
-        const committedBefore = (await queryCommitted()).length;
-        const [buyerPickedBefore, sellerPickedBefore, corePickedBefore] = await Promise.all([
-            balanceOf(pickedToken, BUYER), balanceOf(pickedToken, SELLER), balanceOf(pickedToken, core),
+        const [rateNumBefore, rateDenBefore] = await Promise.all([
+            publicClient.readContract({ address: venue, abi: VENUE_ABI, functionName: 'rateNumerator' }),
+            publicClient.readContract({ address: venue, abi: VENUE_ABI, functionName: 'rateDenominator' }),
         ]);
+        // A non-unit rate, so the conversion is a real quote: 3 MOCK out per
+        // 7 MPMT in.
+        await setVenueRate(3n, 7n);
+        try {
+            const committedBefore = (await queryCommitted()).length;
+            const [buyerPickedBefore, sellerPickedBefore, corePickedBefore] = await Promise.all([
+                balanceOf(pickedToken, BUYER), balanceOf(pickedToken, SELLER), balanceOf(pickedToken, core),
+            ]);
 
-        await buyerPicksPayment(page);
-        await placeAndShare(page);
+            const itemId = await buyerPicksPayment(page);
+            // The cart echoes the seller's catalog prices, so each line names
+            // the token they are quoted in — the seller's default, read from
+            // the token contract — never the picked denomination.
+            const [basisSymbol, pickedSymbol] = await Promise.all([
+                publicClient.readContract({ address: defaultToken, abi: ERC20_ABI, functionName: 'symbol' }),
+                publicClient.readContract({ address: pickedToken, abi: ERC20_ABI, functionName: 'symbol' }),
+            ]);
+            const cartLine = page.getByTestId(`cart-line-${itemId}`);
+            await expect(cartLine, 'the cart line names its quote token').toContainText(` ${basisSymbol}`);
+            await expect(cartLine, 'the cart line never relabels the list price as the pick').not.toContainText(pickedSymbol);
+            // The panel quotes the order's total on the declared pool and states
+            // what the order commits.
+            await expect(page.getByTestId('payment-token-quote'), 'the declared-pool quote renders').toBeVisible({ timeout: 30000 });
+            const panelCommitted = (await page.getByTestId('payment-token-committed-total').innerText()).trim();
+            await placeAndShare(page);
 
-        // Seller accepts on /orders — their bond approval + pull are in the
-        // PICKED token (the commitment's currency), nothing else.
-        await gotoAsWallet(page, SELLER, '/orders?e2e=devnet');
-        await page.getByTestId('orders-list').waitFor({ timeout: 30000 });
-        await waitForConnected(page);
-        await page.getByTestId('order-your-turn-card').first().waitFor({ state: 'visible', timeout: 30000 });
-        await page.getByTestId('btn-accept-order').first().click();
-        await page.getByTestId('agreement-preview-modal').waitFor({ state: 'visible', timeout: 30000 });
-        await page.getByTestId('preview-confirm').click();
+            // Seller accepts on /orders — their bond approval + pull are in the
+            // PICKED token (the commitment's currency), nothing else.
+            await gotoAsWallet(page, SELLER, '/orders?e2e=devnet');
+            await page.getByTestId('orders-list').waitFor({ timeout: 30000 });
+            await waitForConnected(page);
+            await page.getByTestId('order-your-turn-card').first().waitFor({ state: 'visible', timeout: 30000 });
+            await page.getByTestId('btn-accept-order').first().click();
+            await page.getByTestId('agreement-preview-modal').waitFor({ state: 'visible', timeout: 30000 });
+            await page.getByTestId('preview-confirm').click();
 
-        const { event, receipt, payment, buyerBond, sellerBond } = await committedEvent(committedBefore);
-        expect(receipt.to?.toLowerCase(), 'no funding leg → the commit goes DIRECT to FigaroCore')
-            .toBe(core.toLowerCase());
+            const { event, receipt, payment, buyerBond, sellerBond } = await committedEvent(committedBefore);
+            expect(receipt.to?.toLowerCase(), 'no funding leg → the commit goes DIRECT to FigaroCore')
+                .toBe(core.toLowerCase());
 
-        // Value legs at commit — every one in the PICKED token.
-        const [buyerPickedAfter, sellerPickedAfter, corePickedAfter] = await Promise.all([
-            balanceOf(pickedToken, BUYER), balanceOf(pickedToken, SELLER), balanceOf(pickedToken, core),
-        ]);
-        expect(buyerPickedBefore - buyerPickedAfter, 'buyer bonded 2× in the picked token').toBe(buyerBond);
-        expect(sellerPickedBefore - sellerPickedAfter, 'seller bonded 2× in the picked token').toBe(sellerBond);
-        expect(corePickedAfter - corePickedBefore, 'escrow holds both bonds in the picked token').toBe(buyerBond + sellerBond);
+            // The committed payment IS the venue's exact-output quote of the
+            // order's total: the input that yields the catalog price in the
+            // quote basis (amountIn = ceil(out·den/num)) — the seller's price,
+            // read from its pinned catalog; the rate, read from the venue.
+            const basisPrice = await pinnedCatalogPrice(itemId);
+            const [rateNum, rateDen] = await Promise.all([
+                publicClient.readContract({ address: venue, abi: VENUE_ABI, functionName: 'rateNumerator' }),
+                publicClient.readContract({ address: venue, abi: VENUE_ABI, functionName: 'rateDenominator' }),
+            ]);
+            const quotedTotal = (basisPrice * rateDen + rateNum - 1n) / rateNum;
+            expect(payment, 'the committed payment equals the declared-pool quote of the total').toBe(quotedTotal);
+            expect(formatToken(payment, 18), 'the panel showed the amount that committed').toBe(panelCommitted);
 
-        // Resolve (buyer dominance) — the seller is PAID in the picked token:
-        // the circulation the accepted array exists for.
-        const processId = event.args.processId!;
-        const resolvedBefore = (await publicClient.getContractEvents({
-            address: core, abi: CORE_ABI, eventName: 'ProcessResolved', args: { buyer: BUYER }, fromBlock: 0n,
-        })).length;
-        await gotoAsWallet(page, BUYER, `/orders/view?process=${processId}&e2e=devnet`);
-        await page.getByTestId('order-timeline-view').waitFor({ timeout: 30000 });
-        await waitForConnected(page);
-        const resolveBtn = page.getByTestId('capability-execute-resolve-process');
-        await resolveBtn.waitFor({ state: 'visible', timeout: 30000 });
-        await expect(resolveBtn).toBeEnabled({ timeout: 30000 });
-        await resolveBtn.click();
-        await expect.poll(async () => (await publicClient.getContractEvents({
-            address: core, abi: CORE_ABI, eventName: 'ProcessResolved', args: { buyer: BUYER }, fromBlock: 0n,
-        })).length, { timeout: 60000, message: 'ProcessResolved lands on-chain' }).toBe(resolvedBefore + 1);
+            // Value legs at commit — every one in the PICKED token.
+            const [buyerPickedAfter, sellerPickedAfter, corePickedAfter] = await Promise.all([
+                balanceOf(pickedToken, BUYER), balanceOf(pickedToken, SELLER), balanceOf(pickedToken, core),
+            ]);
+            expect(buyerPickedBefore - buyerPickedAfter, 'buyer bonded 2× in the picked token').toBe(buyerBond);
+            expect(sellerPickedBefore - sellerPickedAfter, 'seller bonded 2× in the picked token').toBe(sellerBond);
+            expect(corePickedAfter - corePickedBefore, 'escrow holds both bonds in the picked token').toBe(buyerBond + sellerBond);
 
-        const [buyerPickedFinal, sellerPickedFinal, corePickedFinal] = await Promise.all([
-            balanceOf(pickedToken, BUYER), balanceOf(pickedToken, SELLER), balanceOf(pickedToken, core),
-        ]);
-        expect(sellerPickedFinal - sellerPickedBefore, 'seller NET RECEIVED the payment in the picked token').toBe(payment);
-        expect(buyerPickedBefore - buyerPickedFinal, 'buyer net spent exactly the payment in the picked token').toBe(payment);
-        expect(corePickedFinal, 'escrow returned to baseline').toBe(corePickedBefore);
+            // Resolve (buyer dominance) — the seller is PAID in the picked token:
+            // the circulation the accepted array exists for.
+            const processId = event.args.processId!;
+            const resolvedBefore = (await publicClient.getContractEvents({
+                address: core, abi: CORE_ABI, eventName: 'ProcessResolved', args: { buyer: BUYER }, fromBlock: 0n,
+            })).length;
+            await gotoAsWallet(page, BUYER, `/orders/view?process=${processId}&e2e=devnet`);
+            await page.getByTestId('order-timeline-view').waitFor({ timeout: 30000 });
+            await waitForConnected(page);
+            const resolveBtn = page.getByTestId('capability-execute-resolve-process');
+            await resolveBtn.waitFor({ state: 'visible', timeout: 30000 });
+            await expect(resolveBtn).toBeEnabled({ timeout: 30000 });
+            await resolveBtn.click();
+            await expect.poll(async () => (await publicClient.getContractEvents({
+                address: core, abi: CORE_ABI, eventName: 'ProcessResolved', args: { buyer: BUYER }, fromBlock: 0n,
+            })).length, { timeout: 60000, message: 'ProcessResolved lands on-chain' }).toBe(resolvedBefore + 1);
+
+            const [buyerPickedFinal, sellerPickedFinal, corePickedFinal] = await Promise.all([
+                balanceOf(pickedToken, BUYER), balanceOf(pickedToken, SELLER), balanceOf(pickedToken, core),
+            ]);
+            expect(sellerPickedFinal - sellerPickedBefore, 'seller NET RECEIVED the payment in the picked token').toBe(payment);
+            expect(buyerPickedBefore - buyerPickedFinal, 'buyer net spent exactly the payment in the picked token').toBe(payment);
+            expect(corePickedFinal, 'escrow returned to baseline').toBe(corePickedBefore);
+        } finally {
+            await setVenueRate(rateNumBefore, rateDenBefore);
+        }
     });
 
     test('buyer on-ramp — picked-token order funded from the default through the coordinator', async ({ page }) => {

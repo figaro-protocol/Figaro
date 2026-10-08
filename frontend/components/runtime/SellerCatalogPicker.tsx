@@ -67,6 +67,15 @@ export function SellerCatalogPicker({ tokenSymbol, onSelect }: Props) {
         [memberCatalog],
     );
     const selectedItem = catalogItems.find((i) => i.id === selectedItemId);
+    // A list price is quoted in the seller's own default token, never in the
+    // buyer's picked denomination: label it with that token's symbol.
+    const basisSymbol = useMemo(() => {
+        const basis = memberCatalog?.defaultTokenAddress;
+        const declared = basis
+            ? memberCatalog?.acceptedTokens?.find((t) => hexEqual(t.address, basis))?.symbol
+            : undefined;
+        return declared ?? tokenSymbol;
+    }, [memberCatalog, tokenSymbol]);
 
     // Report the completed selection up. `onSelect` is expected to be a
     // stable setter; the deps are primitives + a stable item ref.
@@ -119,7 +128,7 @@ export function SellerCatalogPicker({ tokenSymbol, onSelect }: Props) {
                             />
                             <span className="text-ink-primary">{item.name}</span>
                             <span className="text-ink-muted ml-auto tabular-nums">
-                                {`${item.price}${tokenSymbol ? ` ${tokenSymbol}` : ""}`}
+                                {`${item.price}${basisSymbol ? ` ${basisSymbol}` : ""}`}
                             </span>
                         </label>
                     ))}
