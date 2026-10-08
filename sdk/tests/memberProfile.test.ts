@@ -119,6 +119,21 @@ describe("member profile metadata parser", () => {
             expect(second.acceptedTokens?.[1]?.poolFeeTier).toBe(3000);
         });
 
+        it("accepted tokens without a default token are refused — the catalog is denominated in one of them", () => {
+            expect(() => parseMemberProfileDocument({
+                name: "Bob",
+                acceptedTokens: [{ address: USDC, symbol: "USDC" }],
+            })).toThrow(/defaultTokenAddress is required when acceptedTokens is set/);
+        });
+
+        it("a default token outside the accepted set is refused", () => {
+            expect(() => parseMemberProfileDocument({
+                name: "Bob",
+                acceptedTokens: [{ address: USDC, symbol: "USDC" }],
+                defaultTokenAddress: FLORIN,
+            })).toThrow(/must be one of acceptedTokens/);
+        });
+
         it("an undeclared pool stays undeclared — no default tier is coined", () => {
             const parsed = parseMemberProfileDocument({
                 name: "Bob",

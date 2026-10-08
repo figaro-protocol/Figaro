@@ -508,6 +508,17 @@ export function parseMemberProfileDocument(
 ): MemberProfileMetadata {
     const record = asRecord(value, sourceLabel);
 
+    const acceptedTokens = parseAcceptedTokens(record.acceptedTokens, `${sourceLabel}.acceptedTokens`);
+    const defaultTokenAddress = asOptionalAddress(record.defaultTokenAddress, `${sourceLabel}.defaultTokenAddress`);
+    // A catalog is denominated in its default token, which is one of the
+    // accepted tokens: accepted tokens without a default, or a default outside
+    // the accepted set, is not a profile this reader will hand on.
+    if (acceptedTokens && acceptedTokens.length > 0 && !defaultTokenAddress) {
+        throw new Error(`${sourceLabel}.defaultTokenAddress is required when acceptedTokens is set: the catalog is denominated in one of them.`);
+    }
+    if (defaultTokenAddress && !(acceptedTokens ?? []).some((t) => t.address.toLowerCase() === defaultTokenAddress.toLowerCase())) {
+        throw new Error(`${sourceLabel}.defaultTokenAddress must be one of acceptedTokens.`);
+    }
     return {
         subjectAddress: record.subjectAddress === undefined
             ? undefined
@@ -518,8 +529,8 @@ export function parseMemberProfileDocument(
         location: parseLocation(record.location, `${sourceLabel}.location`),
         branding: parseBrandingField(record.branding, `${sourceLabel}.branding`),
         assets: parseAssetsField(record.assets, `${sourceLabel}.assets`),
-        acceptedTokens: parseAcceptedTokens(record.acceptedTokens, `${sourceLabel}.acceptedTokens`),
-        defaultTokenAddress: asOptionalAddress(record.defaultTokenAddress, `${sourceLabel}.defaultTokenAddress`),
+        acceptedTokens,
+        defaultTokenAddress,
         profileClauseValues: parseProfileClauseValues(record.profileClauseValues, `${sourceLabel}.profileClauseValues`),
         assemblyBindings: parseAssemblyBindings(record.assemblyBindings, `${sourceLabel}.assemblyBindings`),
         buyerAssemblies: parseBuyerAssemblies(record.buyerAssemblies, `${sourceLabel}.buyerAssemblies`),

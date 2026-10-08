@@ -79,6 +79,7 @@ describe('discoveryService', () => {
                 },
             ],
             acceptedTokens: [{ address: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48', symbol: "FLORIN" }],
+            defaultTokenAddress: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
             assemblyBindings: anchoredBinding('0x70997970C51812dc3A010C7d01b50e0d17dc79C8'),
             version: '1.0.0',
         }));
@@ -106,6 +107,7 @@ describe('discoveryService', () => {
             acceptedTokens: [
                 { address: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48', symbol: 'USDC' },
             ],
+            defaultTokenAddress: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
             assemblyBindings: anchoredBinding('0xaabbccddaabbccddaabbccddaabbccddaabbccdd'),
             catalogURI: 'ipfs://Qmopcatakogue111111111111111111111111111111111',
         }));
