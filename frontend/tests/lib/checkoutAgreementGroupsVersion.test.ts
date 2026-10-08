@@ -2,7 +2,10 @@
  * deriveAgreementGroups reads each section's spec at the version the template
  * composed — never the highest version of the clause id the registry read
  * loaded. A stranger may register `figaro-consent` v99 marked mandatory; the
- * template's consent v1 section still stays in the buyer's checkout review.
+ * template's consent v1 section is still an ordinary, buyer-filled section.
+ * Every section the agreement carries is listed: a section composed at a
+ * mandatory version is listed too, marked `mandatory` and never fillable,
+ * since the buyer signs it.
  */
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -31,6 +34,8 @@ const groupsFor = (assemblyTemplate: Record<string, unknown>) =>
     });
 const reviewed = (groups: ReturnType<typeof groupsFor>, key: string) =>
     groups.find((g) => g.key === key)?.clauses.map((c) => c.clauseId) ?? [];
+const rowOf = (groups: ReturnType<typeof groupsFor>, key: string, clauseId: string) =>
+    groups.find((g) => g.key === key)?.clauses.find((c) => c.clauseId === clauseId);
 
 describe("deriveAgreementGroups — exact-version spec reads", () => {
     beforeAll(async () => {
@@ -51,27 +56,45 @@ describe("deriveAgreementGroups — exact-version spec reads", () => {
     it("keeps an agreement's consent v1 section in the review (absent clauseVersions = v1)", () => {
         const groups = groupsFor({ agreements: [{ id: "order-0", clauses: { [CONSENT]: DOCUMENTS } }] });
         expect(reviewed(groups, "order-0")).toEqual([CONSENT]);
+        expect(rowOf(groups, "order-0", CONSENT)?.mandatory).toBe(false);
     });
 
-    it("withholds the section when the template composed the mandatory v99", () => {
+    it("lists the section composed at the mandatory v99, marked mandatory and not fillable", () => {
         const groups = groupsFor({
             agreements: [{ id: "order-0", clauses: { [CONSENT]: DOCUMENTS }, clauseVersions: { [CONSENT]: 99 } }],
         });
-        expect(reviewed(groups, "order-0")).toEqual([]);
+        expect(reviewed(groups, "order-0")).toEqual([CONSENT]);
+        expect(rowOf(groups, "order-0", CONSENT)).toMatchObject({ version: 99, mandatory: true, fillable: false, data: DOCUMENTS });
+        expect(unfilledRequiredFills(groups, {})).toEqual([]);
     });
 
     it("keeps an assembly-scoped consent v1 section in the assembly terms", () => {
         const groups = groupsFor({ assemblyClauses: { [CONSENT]: DOCUMENTS }, agreements: [{ id: "order-0", clauses: {} }] });
         expect(reviewed(groups, "assembly")).toEqual([CONSENT]);
+        expect(rowOf(groups, "assembly", CONSENT)?.mandatory).toBe(false);
     });
 
-    it("withholds an assembly-scoped section composed at the mandatory v99", () => {
+    it("lists an assembly-scoped section composed at the mandatory v99, marked mandatory and not fillable", () => {
         const groups = groupsFor({
             assemblyClauses: { [CONSENT]: DOCUMENTS },
             assemblyClauseVersions: { [CONSENT]: 99 },
             agreements: [{ id: "order-0", clauses: {} }],
         });
-        expect(reviewed(groups, "assembly")).toEqual([]);
+        expect(reviewed(groups, "assembly")).toEqual([CONSENT]);
+        expect(rowOf(groups, "assembly", CONSENT)).toMatchObject({ version: 99, mandatory: true, fillable: false });
+    });
+
+    it("lists every section the agreement carries, in the template's order", () => {
+        const groups = groupsFor({
+            agreements: [{
+                id: "order-0",
+                clauses: { [CONSENT]: DOCUMENTS, "unloaded-term": {} },
+                clauseVersions: { [CONSENT]: 99 },
+            }],
+        });
+        // An unloaded spec is not mandatory: listed, read as an ordinary section.
+        expect(reviewed(groups, "order-0")).toEqual([CONSENT, "unloaded-term"]);
+        expect(groups[0].clauses.map((c) => c.mandatory)).toEqual([true, false]);
     });
 });
 

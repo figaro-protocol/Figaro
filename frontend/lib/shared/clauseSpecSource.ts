@@ -57,6 +57,14 @@ const NESTS_UNDER = new Map<string, string>();
  *  to its EXACT version — two live versions of one name never conflate. */
 const HASH_TO_ID = new Map<string, { clauseId: string; version: number }>();
 
+/** The registrations whose registrant reclaimed the stake (K4), keyed like the
+ *  spec cache — read from the same `ClauseRegistry` scan the drawer filters
+ *  its offer on (`RegisteredClauseEvent.stakeWithdrawn`) and replaced whole on
+ *  every read. The spec cache itself NEVER filters on it: committed agreements
+ *  keep resolving a withdrawn clause. Only `liveSpecSource().list()`, the set
+ *  a NEW template's mandatory fold draws from, leaves these out. */
+const STAKE_WITHDRAWN = new Set<string>();
+
 // ── Loading (chain → IPFS) ───────────────────────────────────────────────────
 
 /**
@@ -169,6 +177,17 @@ export function _resetClauseSpecCache_TESTING_ONLY(): void {
     SPEC_LOAD_ERRORS.clear();
     NESTS_UNDER.clear();
     HASH_TO_ID.clear();
+    STAKE_WITHDRAWN.clear();
+}
+
+/** Note each registration's live stake from a `ClauseRegistry` read. The
+ *  read is the whole registry, so the set is replaced, never merged: a
+ *  registration absent from it is not withdrawn. */
+export function noteClauseStakes(
+    rows: readonly { clauseId: string; version: number; stakeWithdrawn: boolean }[],
+): void {
+    STAKE_WITHDRAWN.clear();
+    for (const row of rows) if (row.stakeWithdrawn) STAKE_WITHDRAWN.add(specKey(row.clauseId, row.version));
 }
 
 // ── Sync API (resolves against the loaded cache) ─────────────────────────────
@@ -256,6 +275,25 @@ const SPEC_SOURCE: SpecSource = {
 /** The live-cache `SpecSource` every SDK projection call site passes. */
 export function specSource(): SpecSource {
     return SPEC_SOURCE;
+}
+
+/** The SpecSource a NEW composition is built from: `get` reads every loaded
+ *  spec, exactly as `specSource()` (a stated pick resolves wherever it is
+ *  bound), while `list` — the set `buildAssemblyTemplate`'s mandatory fold
+ *  draws from — holds only registrations whose stake is live, the same
+ *  surfacing rule the drawer offers clauses under. */
+const LIVE_SPEC_SOURCE: SpecSource = {
+    get: SPEC_SOURCE.get,
+    list() {
+        return Array.from(SPEC_CACHE.values())
+            .filter((spec) => !STAKE_WITHDRAWN.has(specKey(spec.clauseId, spec.version)))
+            .map(toProjectionView);
+    },
+};
+
+/** The live-stake `SpecSource` the template build passes. */
+export function liveSpecSource(): SpecSource {
+    return LIVE_SPEC_SOURCE;
 }
 
 /** The field name a clause nests under in the drawer, or null if top-level. */

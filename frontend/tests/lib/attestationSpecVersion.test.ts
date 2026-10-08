@@ -17,7 +17,7 @@ vi.mock("@/lib/kernel/signedCommitment", () => ({ restoreSignedProcessId: (c: Co
 
 const CLAUSE = "test-versioned-ladder";
 
-const V1 = {
+const SPEC_VERSION_1 = {
     clauseId: CLAUSE,
     version: 1,
     title: "Versioned ladder",
@@ -25,8 +25,8 @@ const V1 = {
     fields: [{ name: "eventType", type: "enum", values: ["packed", "shipped"], required: true }],
     stages: { "1": [{ name: "reading", type: "string", required: true, disposition: "public" }] },
 };
-const V2 = {
-    ...V1,
+const SPEC_VERSION_2 = {
+    ...SPEC_VERSION_1,
     version: 2,
     description: "A later registered version: a longer ladder and a private reading.",
     fields: [{ name: "eventType", type: "enum", values: ["prepared", "packed", "shipped"], required: true }],
@@ -34,9 +34,9 @@ const V2 = {
 };
 
 beforeAll(async () => {
-    setClauseSpecFetcher(async (uri) => (uri === "mem://v1" ? V1 : V2));
-    await loadClauseSpec(CLAUSE, 1, "mem://v1", canonicalContentHash(V1));
-    await loadClauseSpec(CLAUSE, 2, "mem://v2", canonicalContentHash(V2));
+    setClauseSpecFetcher(async (uri) => (uri === "mem://v1" ? SPEC_VERSION_1 : SPEC_VERSION_2));
+    await loadClauseSpec(CLAUSE, 1, "mem://v1", canonicalContentHash(SPEC_VERSION_1));
+    await loadClauseSpec(CLAUSE, 2, "mem://v2", canonicalContentHash(SPEC_VERSION_2));
 });
 
 function executors(submitAttestation: CapabilityExecutorDeps["submitAttestation"]) {

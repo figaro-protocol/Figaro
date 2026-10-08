@@ -725,19 +725,20 @@ export function buildAssemblyTemplate(args: {
     // every published assembly's terms below.
     //
     // The article is the spec's `block`, which its registrant writes, and
-    // every (clauseId, version) slot is open to anyone, so no choice of
-    // version resists a stranger's registration — the highest would hand
-    // every new template to the latest registration. The fold takes the LOWEST
-    // loaded version of an id the draft does not state, never overrides a
-    // version the draft states (below), and every folded clause is in the
-    // template, where a review shows it by id and version before anchoring.
+    // every (clauseId, version) slot is open to anyone — version 0 and every
+    // version above 1 included — so neither the lowest nor the highest loaded
+    // version resists a stranger's registration. The fold follows the rule
+    // every pick follows: an id the draft does not state folds at VERSION 1,
+    // and only a version-1 spec's own article marks its id mandatory. The
+    // fold never overrides a version the draft states (below), and every
+    // folded clause is in the template, where a review shows it by id and
+    // version before anchoring.
     const mandatory = new Map<string, ProjectionSpecView>();
     const assemblyMandatory = new Map<string, ProjectionSpecView>();
     for (const spec of specs.list()) {
-        if (!specIsMandatory(spec)) continue;
+        if (spec.version !== 1 || !specIsMandatory(spec)) continue;
         const target = specIsAssemblyScoped(spec) ? assemblyMandatory : mandatory;
-        const seen = target.get(spec.clauseId);
-        if (!seen || spec.version < seen.version) target.set(spec.clauseId, spec);
+        target.set(spec.clauseId, spec);
     }
     if (mandatory.size === 0) {
         // Without the chain→IPFS spec set the mandatory clauses cannot be

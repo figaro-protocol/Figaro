@@ -8,7 +8,9 @@
  * (`loadClauseSpec`). Once `loaded` is true, the synchronous reads in
  * `clauseSpecSource` (getClauseSpec / clauseEnumValues /
  * describeAttestation / groupClausesByArticle / clauseNestsUnder) resolve for every
- * registered clause.
+ * registered clause. The same read's stake fold is recorded beside the cache
+ * (`noteClauseStakes`) for `liveSpecSource`, the source a new template's
+ * mandatory fold reads.
  *
  * This is the clause analog of the assembly loader: spec-consuming surfaces
  * call this and gate their render on `loaded`, so nothing reads a half-warm
@@ -32,7 +34,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useAllRegisteredClauses } from "./useClauseRegistry";
-import { getClauseSpec, getClauseSpecLoadError, loadClauseSpec } from "@/lib/shared/clauseSpecSource";
+import { getClauseSpec, getClauseSpecLoadError, loadClauseSpec, noteClauseStakes } from "@/lib/shared/clauseSpecSource";
 import { contentRetryDelayMs } from "@/lib/shared/ipfsService";
 
 export interface ClauseSpecsState {
@@ -61,6 +63,10 @@ export function useClauseSpecs(): ClauseSpecsState {
 
     useEffect(() => {
         if (!events) return;
+        // The same read carries each registration's live stake; the cache
+        // loads every spec regardless, and the stake set lets a new template's
+        // mandatory fold leave the withdrawn ones out (`liveSpecSource`).
+        noteClauseStakes(events);
         let canceled = false;
         let timer: ReturnType<typeof setTimeout> | undefined;
         setSettled(false);

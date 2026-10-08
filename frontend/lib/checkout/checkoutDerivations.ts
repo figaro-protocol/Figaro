@@ -131,17 +131,23 @@ export interface AgreementGroup {
     key: string;
     label: string;
     /** `version` is the clause version the template composed for the section
-     *  (`templateClauseVersion`) — every spec read the row makes is keyed on it. */
-    clauses: Array<{ clauseId: string; version: number; values: string; data: Record<string, unknown>; fillable: boolean }>;
+     *  (`templateClauseVersion`) — every spec read the row makes is keyed on it.
+     *  `mandatory` marks a section the assembly folded in because its spec's
+     *  article is "mandatory" (commerce, topology, provenance, or anyone's
+     *  registration so marked): it is listed like every other section, since
+     *  the buyer signs it, and is never fillable — the checkout walk fills it. */
+    clauses: Array<{ clauseId: string; version: number; values: string; data: Record<string, unknown>; fillable: boolean; mandatory: boolean }>;
 }
 
 /**
  * The per-order agreement review rows: every order in the assembly — root +
  * sub-orders — surfaced for review, each clause rendering its COMPOSED
- * values, spec-driven. Mandatory clauses are protocol-composed and stay out
- * of the review; the profile fold and the mechanical-fill subtraction are
- * the SAME ones the order build applies, so the buyer reviews what will
- * actually commit. Every spec read is EXACT — the version the template
+ * values, spec-driven. Every section the agreement carries is listed, the
+ * mandatory ones (folded by the assembly, filled by the checkout walk) marked
+ * `mandatory` and never fillable: the spec's article is anyone's to write, so
+ * a section the buyer signs is never left off the list. The profile fold and
+ * the mechanical-fill subtraction are the SAME ones the order build applies,
+ * so the buyer reviews what will actually commit. Every spec read is EXACT — the version the template
  * composed for the section (`templateClauseVersion`), never whichever version
  * of the clause id the registry read loaded highest: a stranger's later
  * version of the same id declares nothing about this template's section.
@@ -179,20 +185,22 @@ export function deriveAgreementGroups(args: {
         key: "assembly",
         label: "Assembly terms (every agreement)",
         clauses: Object.entries(assemblySections)
-            .filter(([clauseId]) => !clauseIsMandatory(clauseId, assemblyVersion(clauseId)))
             .map(([clauseId, fields]) => {
             const version = assemblyVersion(clauseId);
             const specFields = getClauseSpec(clauseId, version)?.fields ?? [];
+            const mandatory = clauseIsMandatory(clauseId, version);
             return {
                 clauseId,
                 version,
                 values: clauseValueSummary(fields),
                 data: fields as Record<string, unknown>,
+                mandatory,
                 // Design fills are FIELD-level, not clause-level: a clause the
                 // designer tailored (a pinned geocoder, a consent document) can
                 // still carry transaction particulars the buyer fills here —
                 // it is fillable iff at least one field is NOT designer-owned.
-                fillable: specFields.some((f) => !clauseDesignFills(clauseId, version).includes(f.name))
+                fillable: !mandatory
+                    && specFields.some((f) => !clauseDesignFills(clauseId, version).includes(f.name))
                     && !clauseIsProcessLog(clauseId, version)
                     && clauseCatalogFills(clauseId, version).length === 0
                     && clauseProfileFills(clauseId, version).length === 0,
@@ -223,15 +231,30 @@ export function deriveAgreementGroups(args: {
         return {
             key: String(order.id ?? i),
             label: assigned ? nameOf(assigned) : "(to be assigned)",
-            clauses: Object.entries(previewClauses)
-                .map(([clauseId, fields]) => {
+            // The template's own section order; a mandatory section is listed
+            // with the values the template composed for it, never fillable.
+            clauses: Object.keys(order.clauses)
+                .map((clauseId) => {
                     const version = templateClauseVersion(order, clauseId);
+                    if (!(clauseId in previewClauses)) {
+                        const fields = order.clauses[clauseId] ?? {};
+                        return {
+                            clauseId,
+                            version,
+                            values: clauseValueSummary(fields),
+                            data: fields as Record<string, unknown>,
+                            mandatory: true,
+                            fillable: false,
+                        };
+                    }
+                    const fields = previewClauses[clauseId];
                     const specFields = getClauseSpec(clauseId, version)?.fields ?? [];
                     return {
                         clauseId,
                         version,
                         values: clauseValueSummary(fields),
                         data: fields as Record<string, unknown>,
+                        mandatory: false,
                         // A GENERAL clause's fields are transaction particulars
                         // the buyer fills here. Not fillable: designer-fills
                         // values (the designer's tailoring, from the template),

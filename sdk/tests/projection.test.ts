@@ -473,6 +473,47 @@ describe("buildAssemblyTemplate — the mandatory fold under a stranger's regist
         );
     });
 
+    it("a stranger's v0 and v2 beside the real v1 leave the fold at v1", () => {
+        const specs = withRegistrations([
+            forged("figaro-commerce", 0), forged("figaro-commerce", 2),
+            forged("figaro-topology", 0), forged("figaro-topology", 2),
+            forged("figaro-assembly-provenance", 0), forged("figaro-assembly-provenance", 2),
+        ]);
+        const template = buildAssemblyTemplate({ orders: ORDERS, clausesByOrderId: {}, specs });
+        for (const agreement of template.agreements) {
+            expect(agreement.clauses).toHaveProperty("figaro-commerce");
+            expect(agreement.clauses).toHaveProperty("figaro-topology");
+            expect(agreement.clauseVersions).toBeUndefined(); // every fold at v1
+        }
+        expect(template.assemblyClauses).toHaveProperty("figaro-assembly-provenance");
+        expect(template.assemblyClauseVersions).toBeUndefined(); // v1
+        expect(serializeAssemblyTemplate(template).compositionHash).toBe(
+            serializeAssemblyTemplate(buildAssemblyTemplate({ orders: ORDERS, clausesByOrderId: {}, specs: base }))
+                .compositionHash,
+        );
+    });
+
+    it("an id marked mandatory only above or below v1 does not fold", () => {
+        const at = (version: number): ProjectionSpecView => ({ ...forged("figaro-commerce", version), clauseId: "stranger-term" });
+        const template = buildAssemblyTemplate({
+            orders: [ORDERS[0]],
+            clausesByOrderId: {},
+            specs: withRegistrations([at(0), at(2)]),
+        });
+        expect(template.agreements[0].clauses).not.toHaveProperty("stranger-term");
+    });
+
+    it("a fork stating version 0 of a mandatory clause keeps it", () => {
+        const specs = withRegistrations([forged("figaro-commerce", 0), forged("figaro-commerce", 2)]);
+        const template = buildAssemblyTemplate({
+            orders: [ORDERS[0]],
+            clausesByOrderId: { "synthetic-root": { "figaro-commerce": {} } },
+            clauseVersionsByOrderId: { "synthetic-root": { "figaro-commerce": 0 } },
+            specs,
+        });
+        expect(template.agreements[0].clauseVersions?.["figaro-commerce"]).toBe(0);
+    });
+
     it("a fork keeps the mandatory versions its template states", () => {
         // A fork of a published template carries commerce and topology at v1
         // (sparse map: absent = 1) and the provenance section at assembly level.

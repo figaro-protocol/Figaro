@@ -15,13 +15,14 @@
  * the draft that can silently fall out of step with them.
  *
  * The walk itself is `buildAssemblyTemplate` (`@figaro-protocol/sdk`), fed by the
- * live-cache `specSource()` adapter. It VERIFIES scope placement and throws on
+ * live-cache `liveSpecSource()` adapter, whose fold set holds only the
+ * registrations whose stake is live (the drawer's surfacing rule). It VERIFIES scope placement and throws on
  * a cold spec cache — both are loud failures the callers surface, never
  * silently swallowed here.
  */
 
 import { buildAssemblyTemplate, serializeAssemblyTemplate } from "@figaro-protocol/sdk";
-import { clauseDesignFills, clauseIsMandatory, getClauseSpec, specSource } from "@/lib/shared/clauseSpecSource";
+import { clauseDesignFills, clauseIsMandatory, getClauseSpec, liveSpecSource } from "@/lib/shared/clauseSpecSource";
 import { isFilledValue } from "@/lib/checkout/checkoutDerivations";
 import {
     deriveAssemblySlug,
@@ -44,7 +45,7 @@ export function snapshotToAssemblyTemplate(snapshot: DesignSnapshot): AssemblyTe
         clauseVersionsByOrderId: snapshot.clauseVersionsByOrderId,
         assemblyClauses: snapshot.assemblyClauses,
         assemblyClauseVersions: snapshot.assemblyClauseVersions,
-        specs: specSource(),
+        specs: liveSpecSource(),
     });
 }
 
