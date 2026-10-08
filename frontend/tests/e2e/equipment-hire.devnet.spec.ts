@@ -64,8 +64,8 @@ async function waitForConnected(page: Page) {
 const ERC20_ABI = parseAbi(['function balanceOf(address) view returns (uint256)']);
 // anvil[0] — the fixture's default buyer.
 const BUYER = ANVIL_ACCOUNTS[0] as Hex;
-// anvil[22] — dedicated to this scenario (unused elsewhere: 22, 23, 24, 33
-// were the free indices as of this spec's authoring).
+// anvil[22] — dedicated to this scenario (the allocation lives in
+// frontend/tests/anvilAccounts.ts's lockstep).
 const SELLER = privateKeyToAccount(ANVIL_KEYS[22] as Hex).address as Hex;
 
 async function findEquipmentHireAssembly(tokenAddress: Hex): Promise<string> {

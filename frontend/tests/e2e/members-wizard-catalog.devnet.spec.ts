@@ -15,11 +15,11 @@
  *     published survives Review → publish — the pinned catalog and the seller
  *     page carry the edit, not the first publish's catalog.
  *
- * Wallet: anvil[33] — the one free index (see self-order.devnet.spec.ts). Each
- * test replaces the wallet's profile on entry (`seedRegisteredMember`), so the
- * wizard runs in update mode from a known baseline and a sibling self-seeder on
- * 33 self-heals. The wizard member is therefore already registered; the walk
- * ends in "Profile updated".
+ * Wallet: anvil[33] — this spec's own index (the allocation lives in
+ * frontend/tests/anvilAccounts.ts's lockstep). Each test replaces the wallet's
+ * profile on entry (`seedRegisteredMember`), so the wizard runs in update mode
+ * from a known baseline. The wizard member is therefore already registered; the
+ * walk ends in "Profile updated".
  *
  * Depends on populate-test-data (the pos reference anchored) and the Kubo
  * daemon. Iterate with `--no-deps` once the chain is anchored.

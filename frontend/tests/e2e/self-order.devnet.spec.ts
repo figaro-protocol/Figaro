@@ -10,9 +10,9 @@
  * ProcessResolved, the wallet's balance) are read out-of-band with fresh chain
  * queries, never from the screen that wrote them.
  *
- * Wallet: anvil[33] — the one free index (equipment-hire's header lists 22, 23,
- * 24, 33; 22-24 are since taken). Every run replaces its profile on entry
- * (`seedRegisteredMember`), so a sibling self-seeder on 33 self-heals.
+ * Wallet: anvil[38] — this spec's own index (the launch count is 39; the
+ * allocation lives in frontend/tests/anvilAccounts.ts's lockstep). Every run
+ * replaces its profile on entry (`seedRegisteredMember`).
  *
  * Depends on populate-test-data (the pos reference anchored) and the Kubo
  * daemon. Iterate with `--no-deps` once the chain is anchored.
@@ -43,7 +43,7 @@ const LOCAL_ANVIL = defineChain({
 const ERC20_ABI = parseAbi(['function balanceOf(address) view returns (uint256)']);
 
 /** One wallet in both slots: seller of its own listing and its own buyer. */
-const SELF = ANVIL_ACCOUNTS[33] as Hex;
+const SELF = ANVIL_ACCOUNTS[38] as Hex;
 
 test.describe('A wallet orders from its own listing (buyer == seller, devnet)', () => {
     test.setTimeout(240_000);
@@ -79,7 +79,7 @@ test.describe('A wallet orders from its own listing (buyer == seller, devnet)', 
             }],
         });
         await seedRegisteredMember({
-            walletKey: ANVIL_KEYS[33] as Hex,
+            walletKey: ANVIL_KEYS[38] as Hex,
             profile: {
                 name: 'Self Order Counter',
                 description: 'Seeded by self-order.devnet.spec.ts — orders from itself.',
@@ -99,7 +99,7 @@ test.describe('A wallet orders from its own listing (buyer == seller, devnet)', 
             timeout: 60_000, message: "the member's pinned profile carries the pos binding",
         }).toBe(true);
 
-        // Index 33 is past Deploy.s.sol's mint range (0..19): mint the bonds' float.
+        // Index 38 is past Deploy.s.sol's mint range (0..19): mint the bonds' float.
         {
             const minter = createWalletClient({ account: privateKeyToAccount(ANVIL_KEYS[0]), chain: LOCAL_ANVIL, transport: http(RPC_URL) });
             const h = await minter.writeContract({

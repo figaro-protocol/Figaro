@@ -51,10 +51,11 @@ export const ANVIL_ACCOUNTS = [
     '0x2f4f06d218E426344CFE1A83D53dAd806994D325',
     '0x1003ff39d25F2Ab16dBCc18EcE05a9B6154f65F4',
     '0x9eAF5590f2c84912A08de97FA28d0529361Deb9E',
+    '0x11e8F3eA3C6FcF12EcfF2722d75CEFC539c51a1C',
 ] as const;
 
 /**
- * Private keys for `ANVIL_ACCOUNTS[0..37]` — same default mnemonic,
+ * Private keys for `ANVIL_ACCOUNTS[0..38]` — same default mnemonic,
  * index-aligned (verified by derivation; the address list mirrors
  * `script/Deploy.s.sol`'s funded testAccounts exactly). The canonical
  * source for specs that sign as the buyer / a seller; never re-paste
@@ -99,4 +100,5 @@ export const ANVIL_KEYS = [
     '0x9644b39377553a920edc79a275f45fa5399cbcf030972f771d0bca8097f9aad3',
     '0xcaa7b4a2d30d1d565716199f068f69ba5df586cf32ce396744858924fdf827f0',
     '0xfc5a028670e1b6381ea876dd444d3faaee96cffae6db8d93ca6141130259247c',
+    '0x5b92c5fe82d4fabee0bc6d95b4b8a3f9680a0ed7801f631035528f32c9eb2ad5',
 ] as const;
