@@ -3,9 +3,9 @@
 Status: the open work between here and the public releases — the testnet line
 (live, rehearsing mainnet) and the Ethereum mainnet release. TODO tasks only:
 closed work is deleted in the session that closes it, and `git log` is the history.
-The external-audit handover — the scope in both languages, the audit commit,
-the change policy, the validation gate, accepted risks — is
-`docs/AUDITOR_HANDOVER.md`.
+The audit handover — the scope in both languages, the audit commit, the change
+policy, the validation gate, accepted risks — is `docs/AUDITOR_HANDOVER.md`, kept
+current with its tag for the day an external audit is affordable.
 
 ## Deployment Targets
 
@@ -17,20 +17,30 @@ Kleros courts are live on Ethereum mainnet.
 
 ## Current Verdict
 
-Public release is blocked on exactly one gate: the final external audit pass against
-the frozen surface (Task 2). Everything else below is deploy-day work or sequenced
+Public release is blocked on exactly one gate: the in-house security program's pass
+over the audit scope (Task 2); an external audit runs the day one is affordable, against
+the same handover and tag. Everything else below is deploy-day work or sequenced
 behind that gate.
 
 ## Open Tasks
 
 Task numbers are stable; missing numbers are closed tasks — `git log` has each.
 
-### Task 2: Run The Final External Audit Pass
+### Task 2: Pass The In-House Security Program Over The Audit Scope
 
-1. choose the auditor or audit process
-2. hand over the audit commit — the Solidity and the Rust in scope — and the active docs (`docs/AUDITOR_HANDOVER.md`)
-3. resolve findings or explicitly accept non-critical findings in writing
-4. state the final audit outcome in the release docs
+Three audit firms were approached and none is affordable at present, so the
+security work is the project's own, at every layer, with the handover and the
+audit tag kept current for the day an external audit is.
+
+1. every layer named with its tooling and its evidence — the Solidity (Foundry
+   invariants, Halmos, Certora, Echidna, Slither, Semgrep, mutation), the Rust
+   (the mirror, mutation, differential fuzz), the SDK and the signer, the
+   frontend and the ecosystem agents, the deployment and the estate — correct by
+   construction wherever the opportunity exists
+2. audit firms' open-source tooling applied where it fits this stack; the survey
+   of their tools and programs lands here, with what each costs
+3. findings resolved, or accepted in writing in the handover
+4. the outcome stated in the release docs, and the footer's audit line changed
 
 ### Task 3 (residue): state the mainnet γ-curve point
 

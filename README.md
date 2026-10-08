@@ -5,7 +5,7 @@
 Every trade is a contract, and between strangers the element that fails is
 consideration — promising value is easy; nothing makes delivering it credible.
 Figaro completes the contract. When a buyer and a seller commit to an order,
-each deposits a bond into one frozen contract: the buyer twice the payment, the
+each deposits a bond into one contract: the buyer twice the payment, the
 seller twice the cumulative value through its order. A bond is its owner's own
 deterrent — whatever a party could gain by walking away, it leaves more behind.
 Only the buyer resolves the process, and resolution pays every seller and
@@ -35,8 +35,8 @@ they published. `docs/VISION.md` says why; `docs/THEORY.md` derives it;
   signed; `FigaroBatchVerifier.sol` accepts a validity proof of many processes
   and resolves them in one transaction. Two interface files sit beside them:
   `IRoleResolver.sol`, which a seller's address implements to delegate
-  attestation, and `ISP1Verifier.sol`, the SP1 verifier gateway's ABI. Frozen
-  for the audit, with everything else in the audit's scope
+  attestation, and `ISP1Verifier.sol`, the SP1 verifier gateway's ABI. In the
+  audit's scope with everything else the handover lists
   (`docs/AUDITOR_HANDOVER.md` § "Scope").
 - **Protocol contracts** — `src/build/` and `src/app/`: the three registries
   (clauses, members, assemblies — permissionless, first-write-wins, under a

@@ -56,32 +56,6 @@ jobs:
               working-directory: ./docs-site
               run: npm audit --omit=dev --audit-level=critical
 
-    frozen-scope:
-        # The audit freeze in public: every pushed commit that changes the
-        # code of an audit-scope file (comments aside) must carry an
-        # `Audit-scope-change: <reason>` line — the maintainer's override,
-        # written where anyone can read it. The pre-commit gate is the same
-        # rule on the maintainer's machine.
-        name: audit freeze (frozen scope)
-        runs-on: ubuntu-latest
-        steps:
-            - name: Checkout code
-              uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-              with:
-                  fetch-depth: 0
-
-            - name: Every changed commit keeps the frozen scope, or says why
-              env:
-                  BEFORE: ${{ github.event.before }}
-                  BASE: ${{ github.event.pull_request.base.sha }}
-                  HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-              run: |
-                  from="${BASE:-$BEFORE}"
-                  if [ -z "$from" ] || ! git cat-file -e "$from^{commit}" 2>/dev/null; then
-                      from="$HEAD_SHA^"
-                  fi
-                  bash scripts/check-frozen-scope-commits.sh "$from" "$HEAD_SHA"
-
     cargo-audit:
         name: cargo audit (prover workspace)
         runs-on: ubuntu-latest

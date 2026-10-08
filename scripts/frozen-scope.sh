@@ -2,8 +2,8 @@
 #
 # frozen-scope.sh — what the audit freeze covers, and the code of a file with
 # its comments out: sourced by the maintainer's pre-commit gate
-# (scripts/lint-kernel-frozen.sh) and by the public CI check
-# (scripts/check-frozen-scope-commits.sh), so the two judge by one rule.
+# (the British-spelling exemption, the handover's scope statement), so every
+# reader judges by one rule.
 # Comments and NatSpec may change in a frozen file; code may not.
 
 # The scope, as docs/AUDITOR_HANDOVER.md § "Scope" lists it.

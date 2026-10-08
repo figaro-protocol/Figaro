@@ -1,7 +1,7 @@
 version: 2
 # POLICY: routine version-bump PRs are DISABLED
-# (open-pull-requests-limit: 0 on every ecosystem) — the audited surface is
-# frozen and dependency churn is noise. Dependabot SECURITY updates remain on
+# (open-pull-requests-limit: 0 on every ecosystem) — the audited surface moves
+# deliberately and dependency churn is noise. Dependabot SECURITY updates remain on
 # (repo setting, independent of these limits) and still open PRs when a used
 # dependency has an advisory. Triage of anything Dependabot opens is the
 # maintainer-agent's job. The groups/schedules below are kept so re-enabling

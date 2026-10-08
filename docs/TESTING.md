@@ -633,7 +633,7 @@ Per workflow, what it runs and when:
   SwapRouter02 — a failure fails, a skip fails), Forge Coverage (lcov
   artifact), Halmos symbolic proofs (Certora is excluded by design — it needs the maintainer-held
   CERTORAKEY, never stored), and Static Analysis — Slither 0.11.3 over the
-  frozen scope, gated to exactly the High and Medium results
+  audit scope, gated to exactly the High and Medium results
   `AUDITOR_HANDOVER.md` § "Static analysis" triages, and Semgrep's
   `p/smart-contracts` rules, failing on any WARNING or ERROR.
 - **`prover-ci`** — path-filtered. Three jobs: `test` on every push/PR —
@@ -680,10 +680,8 @@ Per workflow, what it runs and when:
   critical-only, since `/docs` is served from the wallet app's origin), and a
   `cargo audit` leg over
   `prover/Cargo.lock` (fails on any vulnerability advisory; unmaintained and
-  yanked notices are warnings), and the public audit freeze
-  (`scripts/check-frozen-scope-commits.sh`, sharing `scripts/frozen-scope.sh`
-  with the pre-commit gate): every pushed commit that changes the code of an
-  audit-scope file must carry an `Audit-scope-change: <reason>` line. The
+  yanked notices are warnings). `scripts/frozen-scope.sh` names the audit
+  scope for the guards that read it. The
   whole-tree guard battery and the Claude semantic open-world gate run
   maintainer-side, in pre-commit — they are private tooling and not part of
   the public CI tree.

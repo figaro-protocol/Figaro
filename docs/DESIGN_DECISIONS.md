@@ -155,9 +155,9 @@ seller's own risk, as the buyer's is. New commitments are not rescuable, for the
 same reason: each needs a fresh signature from the lost key.
 
 (`FigaroCore`'s NatSpec at `FigaroCore.sol:238-240` still says "use social
-recovery or multi-sig for the buyer role" — a stale comment on a frozen
-contract, contradicted by its own ECDSA-only verification; recorded for
-auditor handover, never edited.)
+recovery or multi-sig for the buyer role" — a stale comment,
+contradicted by its own ECDSA-only verification; recorded for the
+handover.)
 
 ---
 

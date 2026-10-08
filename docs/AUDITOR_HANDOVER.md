@@ -23,7 +23,7 @@ Lines are physical lines, comments and NatSpec included.
 
 ## Scope
 
-Scope and freeze are two separate statements. This section says what the audit
+Scope and the audit commit are two separate statements. This section says what the audit
 reviews. § "The audit commit" says at which commit. A component is in scope
 because this section lists it, and for no other reason.
 
@@ -170,11 +170,10 @@ whole scope, Solidity and Rust together.
 git rev-parse 'audit-2026-10b^{commit}'
 ```
 
-No code changes in a path in scope while the tag stands; comments and NatSpec
-may, in place, and § "Comment-only changes after the tag" lists each one. The
-tag is never moved: a change to the scope's code is a new tag — this one succeeded
-`audit-2026-10` when the last relay change below landed, and contains all
-eight.
+The tag is kept current: a change to the scope's code is followed, at the
+verified commit, by a new tag and this section's update; comments and NatSpec
+change in place and § "Comment-only changes after the tag" lists each one. This
+tag contains all eight changes below.
 
 ### Changes after the previous baseline
 
@@ -213,7 +212,7 @@ tagged. Known limitation 7 states what the state changes leave standing.
 | `src/core/attestation/IRoleResolver.sol:6-10` | the interface is the authorization a seller address grants for attestations on its orders; no contract in the repository implements it | it said mechanism contracts implement it |
 
 The code of both files, stripped of comments, is byte-identical to the tag
-(`scripts/lint-kernel-frozen.sh` holds it at every commit), and the line counts
+(`git diff audit-2026-10b -- src/core/attestation/` shows it), and the line counts
 are unchanged, so every `file:line` citation of them stands. NatSpec enters the
 compiler's metadata (`foundry.toml` sets no `bytecode_hash`), so a build at a
 later commit carries a different metadata hash in its bytecode suffix than a
@@ -227,8 +226,8 @@ git diff audit-2026-10b -- src/core/attestation/
 
 The kernel — `FigaroCore.sol` and `CommitmentTypes.sol` — last changed in
 CODE at `c7f85d0d` (2026-08-12). Since then the two files moved directory
-and comment lines moved in place; `scripts/lint-kernel-frozen.sh` holds
-their code byte-identical to the standing tag. The rename prints as two
+and comment lines moved in place; their code is byte-identical to the
+standing tag. The rename prints as two
 renames and `0 insertions(+), 0 deletions(-)`, and the later diff is
 comment-only:
 
@@ -286,17 +285,19 @@ deploys every contract once, from `DeployMainnet.s.sol`, and has no such seam.
 
 ### Change policy
 
-During the audit window nothing in scope changes. After it, a change to a path
-in scope, Solidity or Rust, is:
+A change to a path in scope, Solidity or Rust, is:
 
 1. Scoped to a specific finding or accepted-risk item
-2. Reviewed by the original auditor or a qualified substitute
+2. Reviewed independently of whoever wrote it — the in-house program's reviewer,
+   or the auditor when one is engaged
 3. Recorded in the backlog with finding reference and outcome
 4. Followed by the whole gate (§ "Validation commands"), the formal suites
    included — a signature change silently orphans any CVL spec that calls it,
    and the break is invisible until the gate runs
 5. For a change to the guest: followed by a rebuilt guest, a re-derived key,
    and a verifier deployed with it
+6. Followed, in the same sitting, by a new audit tag at the verified commit and
+   this document's § "The audit commit", line counts and evidence updated
 
 Changes to `test/`, `frontend/`, or `sdk/` do not require re-audit unless they
 expose a new on-chain attack surface.
@@ -513,7 +514,7 @@ design: a batch the mirror refuses has no proof.
 
 ### Known stale comments in the kernel
 
-The kernel is frozen, so its comments are too. None describes behaviour wrongly
+The Core's comments stand as written. None describes behaviour wrongly
 except the first, which `DESIGN_DECISIONS.md` #10 corrects.
 
 | Location | Says | Reality |
@@ -1020,7 +1021,7 @@ chain, and the ecosystem-agent tier. All findings ruled and fixed with regressio
 Standing rule: a change that exposes a NEW client-side trust-boundary surface (a
 new untrusted-content render path, a new signing path, a new coordination-channel
 message type) warrants a scoped re-review against the eight domains — not a
-re-freeze.
+re-tag.
 
 One part of the SDK is load-bearing for the audit's scope though outside it:
 `@figaro-protocol/sdk/clauses` is the reference the guest's clause engine is

@@ -140,7 +140,7 @@ jobs:
             - name: Run halmos proofs
               run: ./scripts/test-halmos.sh
 
-    # Static analysis over the frozen scope: Slither (pinned to the version the
+    # Static analysis over the audit scope: Slither (pinned to the version the
     # audit handover triaged) and Semgrep's smart-contract ruleset. The contracts
     # are built on the host with the same Foundry pin as every other job and the
     # Slither container reads out/build-info (ignore-compile), so the numbers
