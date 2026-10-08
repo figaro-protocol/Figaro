@@ -23,7 +23,7 @@ import type { SignerPolicy } from "./policy.js";
 import { appendAudit } from "./audit.js";
 import { SpendJournal } from "./window.js";
 import { assertOneDir, assertPrivateDir } from "./paths.js";
-import { parseRequest, wireStringify, type WireResponse } from "./wire.js";
+import { MAX_REQUEST_LINE_CHARS, parseRequest, wireStringify, type WireResponse } from "./wire.js";
 
 export interface SignerDaemonOptions {
     /** A policy that already passed `validatePolicy`. */
@@ -215,10 +215,30 @@ export function createSignerDaemon(opts: SignerDaemonOptions): SignerDaemon {
                 if (fs.existsSync(socketPath)) fs.unlinkSync(socketPath);
                 server = net.createServer((conn) => {
                     let buffer = "";
+                    let refused = false;
+                    /** A line past the bound: refuse it, drop what is held,
+                     *  and close the connection — nothing more is read on it. */
+                    const refuseOversize = () => {
+                        refused = true;
+                        buffer = "";
+                        conn.end(`${wireStringify({
+                            id: -1, ok: false,
+                            error: `request line exceeds ${MAX_REQUEST_LINE_CHARS} characters — connection closed`,
+                        })}\n`);
+                    };
+                    // A reply still in flight when the connection closed (the
+                    // refusal above, or a client gone) fails on this socket
+                    // alone; it never reaches the process that holds the key.
+                    conn.on("error", () => {
+                        refused = true;
+                        buffer = "";
+                    });
                     conn.on("data", (chunk) => {
+                        if (refused) return;
                         buffer += chunk.toString("utf-8");
                         let nl: number;
                         while ((nl = buffer.indexOf("\n")) >= 0) {
+                            if (nl > MAX_REQUEST_LINE_CHARS) return refuseOversize();
                             const line = buffer.slice(0, nl);
                             buffer = buffer.slice(nl + 1);
                             const req = parseRequest(line);
@@ -233,6 +253,7 @@ export function createSignerDaemon(opts: SignerDaemonOptions): SignerDaemon {
                                     error: e instanceof Error ? e.message : String(e),
                                 })}\n`));
                         }
+                        if (buffer.length > MAX_REQUEST_LINE_CHARS) refuseOversize();
                     });
                 });
                 server.on("error", reject);

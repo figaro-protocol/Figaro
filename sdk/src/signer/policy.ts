@@ -42,7 +42,8 @@ export interface SignerPolicy {
     verifyingContracts: Address[];
     /** Transaction targets: address → allowed 4-byte selectors (lowercased). */
     contracts: Record<Address, Hex[]>;
-    /** The denomination whose `approve` amounts are counted as risk. */
+    /** The denomination whose `approve` amounts are counted as risk. Its
+     *  entry in `contracts`, if any, may allowlist `approve` alone. */
     token: Address;
     ceilings: SignerCeilings;
     /** Egress allowlist, consumed by the sandbox wrapper (validated here so
@@ -55,6 +56,10 @@ export interface SignerPolicy {
 export type PolicyResult =
     | { ok: true; policy: SignerPolicy }
     | { ok: false; errors: string[] };
+
+/** `approve(address,uint256)` — the one selector whose calldata is risk, and
+ *  so the one selector a policy may allowlist on its denomination `token`. */
+export const APPROVE_SELECTOR: Hex = "0x095ea7b3";
 
 const SELECTOR_RE = /^0x[0-9a-fA-F]{8}$/;
 const DECIMAL_RE = /^[0-9]+$/;
@@ -134,6 +139,21 @@ export function validatePolicy(raw: unknown): PolicyResult {
         errors.push("token must be an address");
     } else {
         token = raw.token.toLowerCase() as Address;
+    }
+
+    // The gate prices the denomination's outflow by counting every `approve`
+    // at its amount, which bounds it only while value leaves the wallet by
+    // allowance alone. Any other selector on the token (`transfer`,
+    // `increaseAllowance`, `permit`) moves value the gate would count as
+    // zero, so a policy allowlisting one refuses to load.
+    if (token !== null && contracts[token] !== undefined) {
+        for (const s of contracts[token]) {
+            if (s !== APPROVE_SELECTOR) {
+                errors.push(
+                    `contracts[${token}]: selector ${s} on the denomination token is not one the gate can price — only approve (${APPROVE_SELECTOR}) is allowed`,
+                );
+            }
+        }
     }
 
     let ceilings: SignerCeilings | null = null;

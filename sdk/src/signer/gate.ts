@@ -6,11 +6,12 @@
  * window, which is what makes every refusal unit-testable.
  *
  * Risk accounting is deliberately closed-world over how value can LEAVE the
- * wallet: the denomination moves only through allowances (no `transfer`
- * selector is ever allowlisted), so counting every `approve` at its amount
- * bounds all token outflow; native ETH leaves as a payable call's `value`
- * and as the transaction's fee, counted together against the native ceiling
- * (absent = zero = every transaction refused: a fee is ETH). A transaction
+ * wallet: the denomination moves only through allowances (`validatePolicy`
+ * refuses any selector but `approve` on the token), so counting every
+ * `approve` at its amount bounds all token outflow; native ETH leaves as a
+ * payable call's `value` and as the transaction's fee, counted together
+ * against the native ceiling (absent = zero = every transaction refused: a
+ * fee is ETH). A transaction
  * is read field by field, and one carrying a field the gate does not
  * evaluate is refused. A typed-data signature's risk is the wallet's bonds
  * under the 2× bond math on a Commitment — both when it is buyer and seller;
@@ -19,7 +20,9 @@
 
 import type { Address, Hex } from "viem";
 import { calculateBonds } from "../bonds.js";
-import { parseAmount, type SignerPolicy } from "./policy.js";
+import { APPROVE_SELECTOR, parseAmount, type SignerPolicy } from "./policy.js";
+
+export { APPROVE_SELECTOR };
 
 /** What a request would add to the wallet's exposure. */
 export interface RiskDelta {
@@ -177,9 +180,6 @@ const EVALUATED_TX_TYPES = new Set(["legacy", "eip2930", "eip1559"]);
 const QUANTITY_TX_FIELDS = [
     "value", "gas", "maxFeePerGas", "maxPriorityFeePerGas", "gasPrice", "nonce", "chainId",
 ] as const;
-
-/** `approve(address,uint256)` — the one selector whose calldata is risk. */
-export const APPROVE_SELECTOR: Hex = "0x095ea7b3";
 
 /**
  * Decide a `signTransaction` request: target + selector must be allowlisted;

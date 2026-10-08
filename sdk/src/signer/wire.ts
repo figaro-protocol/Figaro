@@ -21,6 +21,13 @@ export type WireResponse =
     | { id: number; ok: true; result: Record<string, unknown> }
     | { id: number; ok: false; error: string };
 
+/** The longest request line the daemon reads, in characters. A line still
+ *  open past it is refused and its connection closed: the daemon holds an
+ *  unterminated line in memory, so without a bound one endless line from a
+ *  sandboxed client exhausts the process that holds the key. A typed-data or
+ *  transaction request is a few kilobytes; the bound leaves wide room. */
+export const MAX_REQUEST_LINE_CHARS = 1 << 20;
+
 /** Parse one request line. Returns null (never throws) on garbage — the
  *  daemon answers a parse failure with a correlated error when it can, and
  *  drops the line when it cannot. */

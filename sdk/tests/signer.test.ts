@@ -113,6 +113,24 @@ describe("policy validation", () => {
             expect(validatePolicy(broken).ok, JSON.stringify(broken)).toBe(false);
         }
     });
+
+    it("refuses a token selector the gate cannot price — approve alone moves the denomination", () => {
+        // transfer, increaseAllowance and permit each move the token at a
+        // risk the gate would count as zero.
+        for (const selector of ["0xa9059cbb", "0x39509351", "0xd505accf"]) {
+            const r = validatePolicy({
+                ...RAW_POLICY,
+                contracts: { ...RAW_POLICY.contracts, [TOKEN]: [APPROVE_SELECTOR, selector] },
+            });
+            expect(r.ok, selector).toBe(false);
+            if (!r.ok) expect(r.errors.join("; ")).toContain(`selector ${selector} on the denomination token`);
+        }
+        // The same selector on another contract is that contract's business.
+        expect(validatePolicy({
+            ...RAW_POLICY,
+            contracts: { ...RAW_POLICY.contracts, [OTHER]: ["0xa9059cbb"] },
+        }).ok).toBe(true);
+    });
 });
 
 // ── Domain refusal ──────────────────────────────────────────────────────────
@@ -735,5 +753,64 @@ describe("the signer's directory", () => {
     it.skipIf(process.platform === "win32")("refuses a directory another user owns", () => {
         // `/` belongs to root and is not group- or world-writable.
         expect(() => assertPrivateDir("/")).toThrow(/belongs to another user/);
+    });
+});
+
+// ── The request line bound ──────────────────────────────────────────────────
+
+describe("daemon bounds the request line", () => {
+    it("refuses a line past the bound, closes that connection, and keeps serving others", async () => {
+        const net = await import("node:net");
+        const { MAX_REQUEST_LINE_CHARS } = await import("../src/signer/wire.js");
+        const { strippingReviver } = await import("../src/safeJson.js");
+        const dir = fs.mkdtempSync(path.join(os.tmpdir(), "signer-line-"));
+        const socketPath = path.join(dir, "signer.sock");
+        const d = createSignerDaemon({
+            policy: policy(), privateKey: KEY, socketPath,
+            auditPath: path.join(dir, "audit.jsonl"),
+            journalPath: path.join(dir, "window.jsonl"),
+            simulate: async () => ({ reverted: false }),
+        });
+        await d.listen();
+        try {
+            // An endless line: written in chunks, never terminated.
+            const refusal = await new Promise<{ reply: string; closed: boolean }>((resolve, reject) => {
+                const conn = net.connect(socketPath);
+                let reply = "";
+                const chunk = "a".repeat(64 * 1024);
+                conn.on("connect", () => {
+                    const pump = () => {
+                        while (!conn.destroyed && conn.writable) {
+                            if (!conn.write(chunk)) return conn.once("drain", pump);
+                        }
+                    };
+                    pump();
+                });
+                conn.on("data", (c) => { reply += c.toString("utf-8"); });
+                conn.on("error", () => { /* the daemon closed mid-write */ });
+                const timer = setTimeout(() => reject(new Error("the daemon never closed the connection")), 10_000);
+                conn.on("close", () => { clearTimeout(timer); resolve({ reply, closed: true }); });
+            });
+            expect(refusal.closed).toBe(true);
+            const first = JSON.parse(refusal.reply.split("\n")[0]!, strippingReviver) as { ok: boolean; error: string };
+            expect(first.ok).toBe(false);
+            expect(first.error).toContain(`exceeds ${MAX_REQUEST_LINE_CHARS} characters`);
+
+            // The daemon still answers a well-formed request on a new connection.
+            const health = await new Promise<{ id: number; ok: boolean }>((resolve, reject) => {
+                const conn = net.connect(socketPath);
+                let buf = "";
+                conn.on("connect", () => conn.write(`${JSON.stringify({ id: 7, op: "health" })}\n`));
+                conn.on("data", (c) => {
+                    buf += c.toString("utf-8");
+                    const nl = buf.indexOf("\n");
+                    if (nl >= 0) { conn.end(); resolve(JSON.parse(buf.slice(0, nl), strippingReviver)); }
+                });
+                conn.on("error", reject);
+            });
+            expect(health).toMatchObject({ id: 7, ok: true });
+        } finally {
+            await d.close();
+        }
     });
 });
