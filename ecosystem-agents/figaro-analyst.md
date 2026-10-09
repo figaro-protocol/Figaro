@@ -67,7 +67,11 @@ and the process events themselves. A hardcoded venue list in an analyst is the s
 as a hardcoded clause list in a UI: it silently reports zero for every market that
 composed something else. Note one shape while you are there — the swap-and-commit
 coordinator deliberately emits **nothing of its own**; the composed pool's `Swap` events
-and the ERC-20 transfers ARE the trail, so you read the venue, not the coordinator.
+and the ERC-20 transfers ARE the trail, so you read the venue, not the coordinator. A
+commit transaction's receipt carries those transfers: `readFundingLegs`
+(`@figaro-protocol/sdk/derive`) reads them into one swap leg per party that funded its
+bond through the coordinator, given the order's parties, its denomination and the
+coordinator address from the deployment record.
 
 **Every answer states its truth boundary.** Not as a caveat at the end — as part of the
 claim. "Forty-one processes resolved in that denomination (protocol-enforced)" and "eleven
@@ -176,11 +180,15 @@ not happen.
 ```ts
 import {
   projectProcessGraph, projectResolutionGraph, extractOverlays, projectValueFlow,
+  readFundingLegs,
 } from "@figaro-protocol/sdk/derive";
 
 const process    = projectProcessGraph(core);        // boundary: protocol-enforced
 const resolution = projectResolutionGraph(core);     // boundary: protocol-enforced
 const overlays   = extractOverlays(recovered, specs);// one per clause family PRESENT
+const swapLegs   = (await Promise.all(core.orderCommitted.map(async (order) =>
+  readFundingLegs((await client.getTransactionReceipt({ hash: order.transactionHash })).logs,
+    order, addresses.witnessSwapAndCommitCoordinator)))).flat();
 const valueFlow  = projectValueFlow(resolution, swapLegs, pins);
 ```
 
@@ -189,10 +197,14 @@ you could not recover it — and a `SpecSource` you built from ClauseRegistry �
 same ~15 lines as `figaro-operator` § "Originating a process", step 1). An entry whose
 spec will not resolve, or whose bytes will not decode against it, degrades to
 **fingerprint-only**: the anchor stands, the substance is absent, and nothing is invented
-to fill the hole. `projectValueFlow` takes swap legs YOU parsed against the venue's own ABI
-and utility-token pins YOU read off the templates (`readUtilityTokenPin`); hand it none and
-it reports resolution edges only, which is the honest picture of a corpus with no venue
-events folded in.
+to fill the hole. `projectValueFlow` takes the swap legs `readFundingLegs` read from the
+commit receipts and utility-token pins YOU read off the templates (`readUtilityTokenPin`):
+each leg is an edge between two denominations, the value flowing from one token's
+ecosystem into another's. The runnable's graphs carry the legs: `GET /graphs` lists the
+value-flow graph's `nodes` and `edges` (the SDK's `ValueFlowNode` and `ValueFlowEdge`,
+amounts as decimal strings) beside `venueLegsFolded`, the count of legs read, and
+market-shape carries the same graph as `valueFlow` (the SDK's `ValueFlowGraph`). A corpus
+whose commits were all funded in their own denomination carries resolution edges only.
 
 **4. ANSWER — the query is a fold over the graphs.**
 

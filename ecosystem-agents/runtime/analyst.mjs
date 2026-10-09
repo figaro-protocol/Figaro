@@ -42,6 +42,7 @@ import {
     projectProcessGraph,
     projectResolutionGraph,
     projectValueFlow,
+    readFundingLegs,
     walletRecord,
     witnessContentCid,
 } from "@figaro-protocol/sdk/derive";
@@ -178,6 +179,53 @@ export function loadHeldAgreements(dir, events) {
     return { byHash, rejected, committedRoots: committed.size };
 }
 
+// ── Funding legs (the commit receipts) ──────────────────────────────────────
+
+/**
+ * The funding legs beside the commits: each commit transaction's receipt,
+ * read once per transaction hash, run through the SDK's `readFundingLegs` with
+ * the order's own parties and denomination and the deployment record's
+ * coordinator. The coordinator emits nothing of its own; the venue's ERC-20
+ * transfers in the receipt are the swap leg. `cache` (transaction hash →
+ * legs) carries the reads across resyncs. A receipt that cannot be read yields
+ * no legs for this pass and is counted, never fabricated.
+ */
+export async function readCommitFundingLegs({ client, orderCommitted, coordinator, cache = new Map() }) {
+    if (!coordinator) return { legs: [], unreadReceipts: 0 };
+    const ordersByTx = new Map();
+    for (const order of orderCommitted) {
+        if (!order.transactionHash) continue;
+        const tx = order.transactionHash.toLowerCase();
+        ordersByTx.set(tx, [...(ordersByTx.get(tx) ?? []), order]);
+    }
+    let unreadReceipts = 0;
+    const legs = [];
+    for (const [tx, orders] of ordersByTx) {
+        if (!cache.has(tx)) {
+            let receipt;
+            try {
+                receipt = await client.getTransactionReceipt({ hash: tx });
+            } catch {
+                unreadReceipts += 1;
+                continue;
+            }
+            const seen = new Set();
+            const txLegs = [];
+            for (const order of orders) {
+                for (const leg of readFundingLegs(receipt.logs, order, coordinator)) {
+                    const key = `${leg.payload.party.toLowerCase()}|${leg.payload.tokenIn.toLowerCase()}`;
+                    if (seen.has(key)) continue;
+                    seen.add(key);
+                    txLegs.push(leg);
+                }
+            }
+            cache.set(tx, txLegs);
+        }
+        legs.push(...cache.get(tx));
+    }
+    return { legs, unreadReceipts };
+}
+
 // ── Sync ────────────────────────────────────────────────────────────────────
 
 /**
@@ -223,6 +271,8 @@ export async function corroborateEndpoints({
  * from. `crosscheckRpcUrls` (extra endpoints beside `rpcUrl`) turns on
  * cross-endpoint corroboration; absent, the corroboration is absent — one
  * endpoint cannot be cross-checked, and that is silence, not a warning.
+ * `fundingLegsByTx` (a Map the caller keeps) carries commit-receipt reads
+ * across passes, so a resync reads only the new commits' receipts.
  */
 export async function syncCorpus({
     rpcUrl,
@@ -232,6 +282,7 @@ export async function syncCorpus({
     agreementsDir,
     recoverSubstance = true,
     crosscheckRpcUrls = [],
+    fundingLegsByTx = new Map(),
 }) {
     const record = typeof deploymentRecord === "string"
         ? JSON.parse(fs.readFileSync(deploymentRecord, "utf-8"))
@@ -318,11 +369,17 @@ export async function syncCorpus({
             // An unreachable or unparsable template contributes no pin — absence.
         }
     }
-    // Swap legs are a COMPOSED venue's own events, parsed by the caller against
-    // that venue's ABI and handed in; this pass composes none, so the value-flow
-    // graph carries resolution edges only. A venue is discovered from clause
-    // fields and the deployment record, never from a list here.
-    const valueFlow = projectValueFlow(resolution, [], pins);
+    // The swap legs beside the commits: the value flowing between
+    // denominations, read from the venue's own transfers in each commit
+    // receipt. The coordinator is the deployment record's; the venue is
+    // whichever address it handed the input token to.
+    const { legs: fundingLegs, unreadReceipts } = await readCommitFundingLegs({
+        client,
+        orderCommitted: core.orderCommitted,
+        coordinator: addresses.witnessSwapAndCommitCoordinator,
+        cache: fundingLegsByTx,
+    });
+    const valueFlow = projectValueFlow(resolution, fundingLegs, pins);
 
     return {
         chainId: record.chainId,
@@ -341,6 +398,8 @@ export async function syncCorpus({
         substanceRecovered,
         held,
         endpointAgreement,
+        fundingLegs,
+        unreadReceipts,
         graphs: { process, resolution, overlays, valueFlow },
     };
 }
@@ -414,10 +473,14 @@ export function graphInventory(corpus) {
                 graph: "value-flow",
                 truthBoundary: valueFlow.boundary,
                 denominations: valueFlow.nodes.length,
-                edges: valueFlow.edges.length,
-                // Composed venues are discovered from clause fields and the
-                // deployment record; this pass folded none in.
-                venueLegsFolded: valueFlow.edges.filter((e) => e.basis === "composition-derived").length,
+                // The swap legs folded from the commit receipts, aggregated
+                // per (venue, tokenIn, tokenOut): `ValueFlowEdge` as the SDK
+                // types it, amounts as decimal strings.
+                venueLegsFolded: valueFlow.edges
+                    .filter((e) => e.basis === "composition-derived")
+                    .reduce((n, e) => n + e.legCount, 0),
+                nodes: valueFlow.nodes.map((n) => jsonSafe(n)),
+                edges: valueFlow.edges.map((e) => jsonSafe(e)),
             },
         ],
     };
@@ -425,7 +488,9 @@ export function graphInventory(corpus) {
 
 /** Per-assembly market aggregates. Unattributed processes are REPORTED, not
  *  hidden: on a walletless read that number is usually the whole corpus, and
- *  saying so is the answer. */
+ *  saying so is the answer. Beside them, the value-flow graph: the
+ *  denominations the market moves in and the swap legs between them, as the
+ *  SDK's `ValueFlowGraph`. */
 export function marketShapeAnswer(corpus) {
     const shape = marketShape(corpus.graphs.process, assemblyAttribution(corpus), parentEdges(corpus));
     return {
@@ -433,6 +498,7 @@ export function marketShapeAnswer(corpus) {
         attribution: "held agreements only — a process with no held or purchased agreement is unattributed",
         unattributedProcessCount: shape.unattributedProcessCount,
         groups: [...shape.groups.values()].map((g) => jsonSafe(g)),
+        valueFlow: jsonSafe(corpus.graphs.valueFlow),
     };
 }
 

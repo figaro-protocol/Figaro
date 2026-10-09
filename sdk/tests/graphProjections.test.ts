@@ -36,6 +36,7 @@ function mkCommit(overrides: Partial<OrderCommittedEvent> = {}): OrderCommittedE
         salt: 1n,
         deadline: 999999999n,
         blockNumber: 1,
+        transactionHash: null,
         ...overrides,
     };
 }

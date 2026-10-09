@@ -18,7 +18,7 @@
  */
 
 import type { PublicClient } from "viem";
-import { cachedGetLogs } from "./eventCache";
+import { cachedGetLogs, cachedGetReceiptLogs } from "./eventCache";
 import { hexEqual } from "@/lib/shared/evm";
 import { CONTRACTS } from "./contracts";
 import {
@@ -140,6 +140,19 @@ export async function getOrderCommittedBySeller(client: PublicClient, chainId: n
     return all.filter((log) => {
         const orderHash = getStringArg(log, "orderHash");
         return orderHash ? matchHashes.has(orderHash) : false;
+    });
+}
+
+/** The logs of the transaction that emitted `log` — read once per
+ *  transaction hash and cached beside the event logs. A commit transaction's
+ *  receipt carries any funding legs (`readFundingLegs`,
+ *  `@figaro-protocol/sdk/derive`). */
+export async function getReceiptLogsOf(client: PublicClient, chainId: number, log: IndexedLog) {
+    const transactionHash = log.transactionHash as `0x${string}` | null | undefined;
+    if (!transactionHash) return null;
+    return cachedGetReceiptLogs(client, chainId, {
+        transactionHash,
+        blockHash: (log.blockHash as `0x${string}` | null | undefined) ?? null,
     });
 }
 

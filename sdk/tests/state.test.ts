@@ -39,6 +39,7 @@ function mkCommit(hash: Hex, processId: Hex, blockNumber: number): OrderCommitte
         salt: 1n,
         deadline: 999999999n,
         blockNumber,
+        transactionHash: null,
     };
 }
 

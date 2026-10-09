@@ -21,7 +21,9 @@
  * - Overlays: per-clause-family attestation streams (the open graph class),
  *   spec-decoded via the caller's SpecSource, fingerprint-only on absence
  * - Composition: venue-parameterized fifth-noun projections — the value-flow
- *   graph over resolution denominations + caller-parsed swap legs
+ *   graph over resolution denominations + swap legs
+ * - Funding legs: the swap legs one commit transaction carries, read from its
+ *   receipt's ERC-20 transfers (the coordinator emits nothing of its own)
  * - Queries: market-shape and wallet-record, thin folds over the graphs
  */
 
@@ -96,6 +98,11 @@ export type {
     ValueFlowEdge,
     ValueFlowGraph,
 } from "./composition.js";
+
+// ── Funding legs (a commit receipt's swap legs) ─────────────────────────────
+
+export { readFundingLegs } from "./fundingLegs.js";
+export type { FundingLeg, ReceiptLogInput } from "./fundingLegs.js";
 
 // ── Canonical graph queries ─────────────────────────────────────────────────
 

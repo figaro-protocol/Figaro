@@ -39,6 +39,7 @@ function committed(overrides: Partial<OrderCommittedEvent> = {}): OrderCommitted
         salt: 0n,
         deadline: 0n,
         blockNumber: 1,
+        transactionHash: null,
         ...overrides,
     };
 }

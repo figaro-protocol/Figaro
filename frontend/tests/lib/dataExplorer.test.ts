@@ -273,13 +273,13 @@ describe("value flow", () => {
         expect(rows[0].pinned).toBe(true);
     });
 
-    it("distinguishes no venue, an unreadable venue, and a read venue", () => {
+    it("distinguishes no venue, a venue no commit was funded through, and a read venue", () => {
         expect(venuePosture(null, [])).toEqual({ state: "no-venue" });
         expect(venuePostureNote({ state: "no-venue" })).toMatch(/absence of a reader/i);
 
         expect(venuePosture(TOKEN_A, [{ basis: "protocol-enforced", token: TOKEN_B, settledOrderCount: 1, settledVolume: 1n }]))
-            .toEqual({ state: "unreadable", venue: TOKEN_A });
-        expect(venuePostureNote({ state: "unreadable", venue: TOKEN_A })).toMatch(/unreadable rather than empty/i);
+            .toEqual({ state: "no-legs", venue: TOKEN_A });
+        expect(venuePostureNote({ state: "no-legs", venue: TOKEN_A })).toMatch(/no commit receipt this site read carries a funding leg/i);
 
         const read = venuePosture(TOKEN_A, [
             { basis: "composition-derived", venue: TOKEN_A, tokenIn: TOKEN_A, tokenOut: TOKEN_B, legCount: 2, volumeIn: 4n, volumeOut: 3n },

@@ -426,14 +426,15 @@ export function denominationRows(graph: ValueFlowGraph): DenominationRow[] {
 
 /**
  * Why this reader shows the corridors it shows — three DIFFERENT facts, kept
- * apart. A swap corridor is read from the composed venue's own event log; the
- * swap coordinator deliberately emits nothing of its own, so with no venue
- * composed there is nothing to read, and with a venue composed but no parser
- * for its log the corridors are UNREADABLE here rather than empty.
+ * apart. A swap leg is read from the venue's own ERC-20 transfers in a commit
+ * transaction's receipt (`readFundingLegs`); the swap coordinator emits
+ * nothing of its own. With no venue composed there is nothing to read; with a
+ * venue composed and no commit funded through it, the reader ran and found no
+ * leg; with legs read, each is an edge between two denominations.
  */
 export type VenuePosture =
     | { state: "no-venue" }
-    | { state: "unreadable"; venue: string }
+    | { state: "no-legs"; venue: string }
     | { state: "read"; venue: string; legCount: number };
 
 export function venuePosture(venue: string | null, edges: readonly ValueFlowEdge[]): VenuePosture {
@@ -447,7 +448,7 @@ export function venuePosture(venue: string | null, edges: readonly ValueFlowEdge
             legCount: legs.reduce((n, e) => n + e.legCount, 0),
         };
     }
-    return venue ? { state: "unreadable", venue } : { state: "no-venue" };
+    return venue ? { state: "no-legs", venue } : { state: "no-venue" };
 }
 
 /** The sentence a venue posture renders as — absence stated, never an empty
@@ -456,10 +457,10 @@ export function venuePostureNote(posture: VenuePosture): string {
     switch (posture.state) {
         case "no-venue":
             return "No swap venue is composed in this deployment record, so there are no corridors to read here. That is the absence of a reader, never the absence of trade.";
-        case "unreadable":
-            return `A swap venue is composed at ${posture.venue}, and the corridor trail is that venue's OWN event log — read against that venue's ABI, discovered from the deployment record and the clause fields that name it. No such reader is configured here, so corridors are unreadable rather than empty.`;
+        case "no-legs":
+            return `A swap venue is composed at ${posture.venue}. No commit receipt this site read carries a funding leg through it, so no value is shown moving between denominations.`;
         case "read":
-            return `${posture.legCount} swap leg${posture.legCount === 1 ? "" : "s"} read from the composed venue at ${posture.venue} — composition-derived: true per that contract's rules, outside FigaroCore's guarantees.`;
+            return `${posture.legCount} swap leg${posture.legCount === 1 ? "" : "s"} read from the venue's own transfers in the commit receipts, at ${posture.venue} — composition-derived: true per that contract's rules, outside FigaroCore's guarantees.`;
     }
 }
 

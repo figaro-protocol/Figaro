@@ -49,21 +49,26 @@ import {
     projectProcessGraph,
     projectResolutionGraph,
     projectValueFlow,
+    readFundingLegs,
     type MarketShape,
     type OverlayGraph,
     type ProcessGraph,
     type RecoveredAttestation,
     type ResolutionGraph,
+    type SwapLeg,
     type ValueFlowGraph,
+    type VenueEvent,
 } from "@figaro-protocol/sdk/derive";
 import {
     getAllOrderCommitted,
     getAllOrderResolved,
     getAllProcessResolved,
+    getReceiptLogsOf,
+    type IndexedLog,
 } from "@/lib/kernel/indexer";
 import { getAllAttestationRecords } from "@/lib/composition/indexer";
 import { fetchWitnessContent } from "@/lib/composition/witnessContent";
-import { getSwapRouter } from "@/lib/composition/contracts";
+import { getSwapRouter, getWitnessSwapAndCommitCoordinator } from "@/lib/composition/contracts";
 import { ERC20_ABI } from "@/lib/kernel/contracts";
 import { isBytes32Hex } from "@/lib/shared/evm";
 import { specSource } from "@/lib/shared/clauseSpecSource";
@@ -137,10 +142,71 @@ async function readCoreEvents(client: PublicClient, chainId: number) {
     ]);
     type SdkLogs = Parameters<typeof parseOrderCommittedLogs>[0];
     return {
-        orderCommitted: parseOrderCommittedLogs(committed as unknown as SdkLogs),
-        orderResolved: parseOrderResolvedLogs(resolved as unknown as SdkLogs),
-        processResolved: parseProcessResolvedLogs(processResolved as unknown as SdkLogs),
+        events: {
+            orderCommitted: parseOrderCommittedLogs(committed as unknown as SdkLogs),
+            orderResolved: parseOrderResolvedLogs(resolved as unknown as SdkLogs),
+            processResolved: parseProcessResolvedLogs(processResolved as unknown as SdkLogs),
+        },
+        committedLogs: committed,
     };
+}
+
+/** How many commit receipts one pass reads at a time. */
+const RECEIPT_READ_BATCH = 8;
+
+/**
+ * The funding legs beside the commits: every commit transaction's receipt,
+ * read once per transaction hash through the receipt cache, run through the
+ * SDK's `readFundingLegs` with the order's own parties and denomination and
+ * the deployment's coordinator. The coordinator emits nothing of its own; the
+ * venue's ERC-20 transfers in the receipt are the swap leg. A receipt that
+ * cannot be read yields no legs and a logged absence for this pass.
+ */
+async function readCommitFundingLegs(
+    client: PublicClient,
+    chainId: number,
+    committedLogs: readonly IndexedLog[],
+    orderCommitted: ReturnType<typeof parseOrderCommittedLogs>,
+): Promise<VenueEvent<SwapLeg>[]> {
+    const coordinator = getWitnessSwapAndCommitCoordinator();
+    if (!coordinator) return [];
+    const logByTx = new Map<string, IndexedLog>();
+    for (const log of committedLogs) {
+        if (log.transactionHash) logByTx.set(String(log.transactionHash).toLowerCase(), log);
+    }
+    const ordersByTx = new Map<string, typeof orderCommitted>();
+    for (const order of orderCommitted) {
+        if (!order.transactionHash) continue;
+        const tx = order.transactionHash.toLowerCase();
+        ordersByTx.set(tx, [...(ordersByTx.get(tx) ?? []), order]);
+    }
+    const legs: VenueEvent<SwapLeg>[] = [];
+    const seen = new Set<string>();
+    const txs = [...ordersByTx.keys()];
+    for (let i = 0; i < txs.length; i += RECEIPT_READ_BATCH) {
+        await Promise.all(txs.slice(i, i + RECEIPT_READ_BATCH).map(async (tx) => {
+            const log = logByTx.get(tx);
+            if (!log) return;
+            let receiptLogs: Awaited<ReturnType<typeof getReceiptLogsOf>>;
+            try {
+                receiptLogs = await getReceiptLogsOf(client, chainId, log);
+            } catch (err) {
+                console.warn(`[graphCorpus] the receipt of ${tx} is unreadable this pass; its funding legs are absent:`, err);
+                return;
+            }
+            if (!receiptLogs) return;
+            for (const order of ordersByTx.get(tx) ?? []) {
+                type ReceiptLogs = Parameters<typeof readFundingLegs>[0];
+                for (const leg of readFundingLegs(receiptLogs as unknown as ReceiptLogs, order, coordinator)) {
+                    const key = `${tx}|${leg.payload.party.toLowerCase()}|${leg.payload.tokenIn.toLowerCase()}`;
+                    if (seen.has(key)) continue;
+                    seen.add(key);
+                    legs.push(leg);
+                }
+            }
+        }));
+    }
+    return legs;
 }
 
 /**
@@ -206,10 +272,11 @@ async function readGraphCorpus(deps?: {
     const chainId = deps?.chainId ?? activeChain.id;
 
     // 1. FETCH — FigaroCore's log, and attestations from BOTH universes.
-    const [core, attestations] = await Promise.all([
+    const [{ events: core, committedLogs }, attestations] = await Promise.all([
         readCoreEvents(client, chainId),
         getAllAttestationRecords(client, chainId),
     ]);
+    const fundingLegs = await readCommitFundingLegs(client, chainId, committedLogs, core.orderCommitted);
 
     // 2. RECOVER — substance at the edge, newest first and capped.
     const ordered = [...attestations].sort((a, b) => b.blockNumber - a.blockNumber);
@@ -249,11 +316,9 @@ async function readGraphCorpus(deps?: {
             if (pin && !pins.includes(pin)) pins.push(pin);
         }
     }
-    // Swap legs are a COMPOSED venue's own events, parsed against that venue's
-    // ABI and handed in. This pass composes none, so the value-flow graph
-    // carries resolution edges only and the UI states that as absence rather
-    // than as "no corridors exist".
-    const valueFlow = projectValueFlow(resolution, [], pins);
+    // The swap legs beside the commits: the value flowing between
+    // denominations, read from the venue's own transfers.
+    const valueFlow = projectValueFlow(resolution, fundingLegs, pins);
 
     const byProcess = attributionFromOverlays(overlays);
     const market = marketShape(process, (processId: Hex) => byProcess.get(processId.toLowerCase()));

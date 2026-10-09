@@ -26,8 +26,9 @@ import {
 } from "@figaro-protocol/sdk/derive";
 import {
     corpusStatus, corroborateEndpoints, tradeStory, graphInventory, jsonSafe, loadHeldAgreements,
-    marketShapeAnswer, walletRecordAnswer,
+    marketShapeAnswer, readCommitFundingLegs, walletRecordAnswer,
 } from "../analyst.mjs";
+import { parseOrderCommittedLogs } from "@figaro-protocol/sdk";
 import {
     corsOrigins, analystTools, crosscheckRpcUrls, makeAnalystHandler, modelConfig, runPrompt,
 } from "../figaro-analyst.mjs";
@@ -618,4 +619,81 @@ test("LIVE: the model loop answers over the real API", {
     assert.equal(out.truncated, false);
     assert.ok(out.answer && out.answer.length > 0);
     assert.ok(out.trace.length > 0, "it reached for a tool rather than answering from nothing");
+});
+
+// ── The funding legs beside the commits ─────────────────────────────────────
+// The SDK's devnet receipt fixtures: a seller-funded swapAndCommit and a
+// plain commit. The receipt's own OrderCommitted names the parties.
+
+const RECEIPTS = JSON.parse(fs.readFileSync(
+    path.resolve(import.meta.dirname, "../../../sdk/tests/fixtures/funding-leg-receipts.json"), "utf-8",
+));
+
+function receiptClient(receipts, calls) {
+    return {
+        getTransactionReceipt: async ({ hash }) => {
+            calls.push(hash);
+            const hit = Object.values(receipts).find((r) => r.transactionHash.toLowerCase() === hash.toLowerCase());
+            if (!hit) throw new Error("receipt not found");
+            return hit;
+        },
+    };
+}
+
+test("the commit receipts feed the value-flow graph: a swap leg is an edge between two denominations on /graphs and market-shape", async () => {
+    const { sellerFunded, plainCommit } = RECEIPTS.receipts;
+    const orderCommitted = [
+        ...parseOrderCommittedLogs(plainCommit.logs),
+        ...parseOrderCommittedLogs(sellerFunded.logs),
+    ];
+    const calls = [];
+    const cache = new Map();
+    const client = receiptClient(RECEIPTS.receipts, calls);
+    const { legs, unreadReceipts } = await readCommitFundingLegs({
+        client, orderCommitted, coordinator: RECEIPTS.coordinator, cache,
+    });
+    assert.equal(unreadReceipts, 0);
+    assert.equal(legs.length, 1, "the plain commit carries none; the funded one carries one");
+    assert.equal(legs[0].venue.toLowerCase(), RECEIPTS.venue.toLowerCase());
+    assert.equal(legs[0].payload.party.toLowerCase(), orderCommitted[1].seller.toLowerCase());
+    assert.equal(legs[0].payload.amountOut, orderCommitted[1].cumulativeValue * 2n);
+
+    // A resync reads no receipt twice.
+    await readCommitFundingLegs({ client, orderCommitted, coordinator: RECEIPTS.coordinator, cache });
+    assert.equal(calls.length, 2);
+
+    const corpus = emptyCorpus();
+    const resolution = projectResolutionGraph({ ...corpus.core, orderCommitted });
+    corpus.graphs.valueFlow = projectValueFlow(resolution, legs, []);
+    const inv = graphInventory(corpus);
+    assert.equal(inv.composition[0].venueLegsFolded, 1);
+    const edge = inv.composition[0].edges.find((e) => e.basis === "composition-derived");
+    assert.deepEqual(edge, {
+        basis: "composition-derived",
+        venue: legs[0].venue,
+        tokenIn: legs[0].payload.tokenIn,
+        tokenOut: legs[0].payload.tokenOut,
+        legCount: 1,
+        volumeIn: legs[0].payload.amountIn.toString(),
+        volumeOut: legs[0].payload.amountOut.toString(),
+    });
+    const shape = marketShapeAnswer(corpus);
+    assert.deepEqual(shape.valueFlow.edges.find((e) => e.basis === "composition-derived"), edge);
+});
+
+test("an unreadable receipt yields no leg and is counted, never fabricated", async () => {
+    const orderCommitted = parseOrderCommittedLogs(RECEIPTS.receipts.sellerFunded.logs);
+    const { legs, unreadReceipts } = await readCommitFundingLegs({
+        client: receiptClient({}, []), orderCommitted, coordinator: RECEIPTS.coordinator,
+    });
+    assert.deepEqual(legs, []);
+    assert.equal(unreadReceipts, 1);
+});
+
+test("no coordinator in the deployment record: no receipt is read", async () => {
+    const calls = [];
+    const orderCommitted = parseOrderCommittedLogs(RECEIPTS.receipts.sellerFunded.logs);
+    const out = await readCommitFundingLegs({ client: receiptClient(RECEIPTS.receipts, calls), orderCommitted });
+    assert.deepEqual(out, { legs: [], unreadReceipts: 0 });
+    assert.equal(calls.length, 0);
 });

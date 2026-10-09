@@ -386,10 +386,11 @@ definition) and `RPGF_*` constant is a **root** export.
 | `projectAgentServices` | root | Read the agent service endpoints out of a profile document, tolerating partial ones. |
 | `projectProcessGraph` | `/derive` | The process graph, labeled protocol-enforced — `reconstruct()`'s topology as a first-class object. |
 | `projectResolutionGraph` | `/derive` | Per-order bonds locked and payouts at resolve, grouped into `FigaroCore`'s LINEAR per-process chains. |
-| `projectValueFlow` | `/derive` | Denomination nodes and flow edges; venue legs are caller-parsed, so no venue list is bundled. |
+| `projectValueFlow` | `/derive` | Denomination nodes and flow edges: resolutions per denomination, swap legs between denominations; no venue list is bundled. |
 | `proposeActions` | `/agent` | Every action a wallet may take on a process it is already in. |
 | `proposeInitiations` | `/agent` | Every process a wallet could START — one per live-staked assembly. |
 | `readChainTimestamp` | root | The chain's `block.timestamp`: the only clock a protocol deadline may be computed from. |
+| `readFundingLegs` | `/derive` | The swap legs one commit transaction carries, read from its receipt's ERC-20 transfers: one per party that funded its bond through the coordinator. |
 | `readUtilityTokenPin` | root | The designer's pinned denomination, read from a template's composed clauses. |
 | `reconstruct` | root | Rebuild the full process topology from parsed core events. |
 | `reconstructDiscovery` | root | Rebuild the live registry view; a member's current profile URI is EVENT-derived, not a getter. |
@@ -1335,7 +1336,7 @@ for a declaration; for an attestation, the buyer's decision to withhold resoluti
 import { fetchCoreEvents, fetchAttestationRecords } from "@figaro-protocol/sdk";
 import {
   projectProcessGraph, projectResolutionGraph, extractOverlays, projectValueFlow,
-  marketShape, walletRecord,
+  readFundingLegs, marketShape, walletRecord,
 } from "@figaro-protocol/sdk/derive";
 
 const core = await fetchCoreEvents(client, addresses, BigInt(record.deploymentBlock));
@@ -1351,9 +1352,17 @@ const resolution = projectResolutionGraph(core);   // boundary: "protocol-enforc
 const atts = await fetchAttestationRecords(client, addresses, BigInt(record.deploymentBlock));
 const overlays = extractOverlays(atts.map((event) => ({ event, content: null })), specs);
 
-// Composition: venue events are parsed by YOU against the venue's own ABI
-// (resolved from the deployment record or a clause field) — nothing bundles a
-// venue list, and a venue this code has never seen feeds the same shape.
+// Composition: the swap legs are the value flowing between denominations.
+// The coordinator emits nothing of its own; each commit transaction's receipt
+// carries the venue's ERC-20 transfers, and readFundingLegs decides each leg
+// from their topology — the party's token into the coordinator, the
+// denomination back to the party, the venue whichever address the coordinator
+// handed the input to. The coordinator's address is the deployment record's.
+const swapLegs = [];
+for (const order of core.orderCommitted) {
+  const receipt = await client.getTransactionReceipt({ hash: order.transactionHash });
+  swapLegs.push(...readFundingLegs(receipt.logs, order, record.witnessSwapAndCommitCoordinator));
+}
 const valueFlow = projectValueFlow(resolution, swapLegs, pins);
 
 // Queries are thin folds over the graphs. Assembly attribution is

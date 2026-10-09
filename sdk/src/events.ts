@@ -42,6 +42,7 @@ export function parseOrderCommittedLogs(logs: Log[]): OrderCommittedEvent[] {
                 salt: a.salt as bigint,
                 deadline: a.deadline as bigint,
                 blockNumber: Number(log.blockNumber ?? 0),
+                transactionHash: (log.transactionHash ?? null) as Hex | null,
             });
         } catch {
             // Skip non-matching logs

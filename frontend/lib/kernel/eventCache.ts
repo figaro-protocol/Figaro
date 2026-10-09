@@ -351,3 +351,101 @@ async function _fetchAndCache(
     return merged;
 }
 
+
+// ---------------------------------------------------------------------------
+// Transaction receipts — the logs of one transaction, keyed by its hash
+// ---------------------------------------------------------------------------
+
+/** A receipt's logs and the block that holds it. The block hash is the
+ *  freshness check: a devnet restarted from genesis replays the same
+ *  transaction hashes into new blocks, and a cached receipt whose block hash
+ *  differs from the one the caller holds is read again. */
+interface ReceiptEntry {
+    blockHash: Hex | null;
+    logs: CachedLog[];
+}
+
+const receiptMem = new Map<string, ReceiptEntry>();
+const receiptInflight = new Map<string, Promise<ReceiptEntry>>();
+
+function receiptKey(chainId: number, transactionHash: Hex): string {
+    return `${chainId}:receipt:${transactionHash.toLowerCase()}`;
+}
+
+async function idbReadReceipt(key: string): Promise<ReceiptEntry | null> {
+    try {
+        const db = await openDB();
+        return new Promise((resolve) => {
+            const tx = db.transaction(STORE, "readonly");
+            const req = tx.objectStore(STORE).get(key);
+            req.onsuccess = () => {
+                const val = req.result;
+                if (!val) {
+                    resolve(null);
+                    return;
+                }
+                try {
+                    resolve({ blockHash: (val.blockHash ?? null) as Hex | null, logs: JSON.parse(val.logs, reviver) });
+                } catch {
+                    resolve(null);
+                }
+            };
+            req.onerror = () => resolve(null);
+        });
+    } catch {
+        return null;
+    }
+}
+
+async function idbWriteReceipt(key: string, entry: ReceiptEntry): Promise<void> {
+    try {
+        const db = await openDB();
+        await new Promise<void>((resolve) => {
+            const tx = db.transaction(STORE, "readwrite");
+            tx.objectStore(STORE).put({ logs: JSON.stringify(entry.logs, replacer), blockHash: entry.blockHash }, key);
+            tx.oncomplete = () => resolve();
+            tx.onerror = () => resolve();
+        });
+    } catch {
+        // silent — cache miss is fine
+    }
+}
+
+/**
+ * The logs of one transaction's receipt, read once per transaction hash and
+ * cached in memory and IndexedDB beside the event logs. `blockHash` is the
+ * block the caller's own log names; a cached receipt from another block is
+ * read again. A receipt that cannot be read throws — the caller decides what
+ * its absence means.
+ */
+export async function cachedGetReceiptLogs(
+    client: PublicClient,
+    chainId: number,
+    params: { transactionHash: Hex; blockHash: Hex | null },
+): Promise<CachedLog[]> {
+    const key = receiptKey(chainId, params.transactionHash);
+    const fresh = (entry: ReceiptEntry | null | undefined): entry is ReceiptEntry =>
+        !!entry && (params.blockHash === null || entry.blockHash?.toLowerCase() === params.blockHash.toLowerCase());
+
+    const held = receiptMem.get(key);
+    if (fresh(held)) return held.logs;
+    const existing = receiptInflight.get(key);
+    if (existing) return (await existing).logs;
+
+    const promise = (async (): Promise<ReceiptEntry> => {
+        const stored = await idbReadReceipt(key);
+        if (fresh(stored)) return stored;
+        const receipt = await client.getTransactionReceipt({ hash: params.transactionHash });
+        const entry: ReceiptEntry = { blockHash: receipt.blockHash, logs: receipt.logs as unknown as CachedLog[] };
+        idbWriteReceipt(key, entry).catch(() => { });
+        return entry;
+    })();
+    receiptInflight.set(key, promise);
+    try {
+        const entry = await promise;
+        receiptMem.set(key, entry);
+        return entry.logs;
+    } finally {
+        receiptInflight.delete(key);
+    }
+}

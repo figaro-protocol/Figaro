@@ -242,7 +242,7 @@ export const CLAUSE_REGISTRY_ABI = parseAbi([
 ]);
 
 
-// ── ERC-20 ABI (standard + EIP-2612 permit) ────────────────────────────────
+// ── ERC-20 ABI (standard + EIP-2612 permit + the Transfer event) ──────────
 
 export const ERC20_ABI = parseAbi([
     "function balanceOf(address account) view returns (uint256)",
@@ -254,6 +254,7 @@ export const ERC20_ABI = parseAbi([
     "function nonces(address owner) view returns (uint256)",
     "function DOMAIN_SEPARATOR() view returns (bytes32)",
     "function permit(address owner, address spender, uint256 value, uint256 deadline, uint8 v, bytes32 r, bytes32 s) external",
+    "event Transfer(address indexed from, address indexed to, uint256 value)",
 ]);
 
 // ── MembersRegistry ABI ────────────────────────────────────────────────────

@@ -36,9 +36,11 @@
  *     gateway);
  *   - value flow: the denomination node carries the token
  *     contract's own symbol and the event-folded process/resolved-order
- *     counts; the composed-venue posture states ABSENCE OF A READER (the
- *     deployment records a venue; no corridor parser is configured) rather
- *     than an empty table;
+ *     counts; every swap leg the commit receipts carry (read out of band
+ *     through the SDK's `readFundingLegs`) is drawn as an edge between its
+ *     two denominations with the venue and the amounts, and with none the
+ *     posture states that absence rather than an empty table; the analyst's
+ *     `/graphs` and market-shape carry the same leg edges;
  *   - wallet record: the seeded buyer's summary and rows equal its
  *     out-of-band order set; a never-used wallet reads as an ANSWERED
  *     absence, not an error;
@@ -122,6 +124,15 @@ import {
     type ReconstructedOrder,
 } from '@figaro-protocol/sdk';
 import { decodeContentFromSpec, encodeContentFromSpec, parseClauseSpec, type ClauseSpec } from '@figaro-protocol/sdk/clauses';
+import {
+    projectResolutionGraph,
+    projectValueFlow,
+    readFundingLegs,
+    type SwapLeg,
+    type ValueFlowEdge,
+    type VenueEvent,
+} from '@figaro-protocol/sdk/derive';
+import { formatToken } from '@/lib/shared/utils';
 import { LOCAL_ANVIL, RPC_URL, localPublicClient, readLocalDeploymentConfig } from './devnet-helpers';
 import { ANVIL_KEYS } from '../anvilAccounts';
 import { CORE_ABI } from '@/lib/kernel/contracts';
@@ -156,6 +167,42 @@ const KECCAK_RAW_CID_PREFIX = 'f01551b20';
 const witnessCid = (contentRef: string) => KECCAK_RAW_CID_PREFIX + contentRef.slice(2).toLowerCase();
 
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+
+/** The swap legs beside every commit, read out of band the way a stranger
+ *  reads them: each commit transaction's receipt through the SDK's
+ *  `readFundingLegs` (the order's own parties and denomination, the
+ *  deployment record's coordinator), folded per (venue, tokenIn, tokenOut) by
+ *  `projectValueFlow`. Empty when the record composes no coordinator. */
+type CommittedEventLog = {
+    transactionHash: Hex | null;
+    args: { buyer?: Hex; seller?: Hex; currency?: Hex };
+};
+async function expectedLegEdges(
+    publicClient: ReturnType<typeof localPublicClient>,
+    swapCoordinator: Hex | undefined,
+    committed: readonly CommittedEventLog[],
+) {
+    if (!swapCoordinator) return [];
+    const legs: VenueEvent<SwapLeg>[] = [];
+    const seen = new Set<string>();
+    const receipts = new Map<string, Awaited<ReturnType<typeof publicClient.getTransactionReceipt>>>();
+    for (const e of committed) {
+        if (!e.transactionHash) continue;
+        const tx = e.transactionHash.toLowerCase();
+        if (!receipts.has(tx)) receipts.set(tx, await publicClient.getTransactionReceipt({ hash: e.transactionHash }));
+        const commitment = { buyer: e.args.buyer!, seller: e.args.seller!, currency: e.args.currency! };
+        for (const leg of readFundingLegs(receipts.get(tx)!.logs, commitment, swapCoordinator)) {
+            const key = `${tx}|${leg.payload.party.toLowerCase()}|${leg.payload.tokenIn.toLowerCase()}`;
+            if (seen.has(key)) continue;
+            seen.add(key);
+            legs.push(leg);
+        }
+    }
+    const empty = projectResolutionGraph({ orderCommitted: [], orderResolved: [], processResolved: [] });
+    return projectValueFlow(empty, legs).edges.filter(
+        (e): e is Extract<ValueFlowEdge, { basis: 'composition-derived' }> => e.basis === 'composition-derived',
+    );
+}
 
 // ── The out-of-band substance seam, shared by all three tests: pin / recover
 //    witness bytes the way any stranger derives them from the event alone. ──
@@ -605,11 +652,36 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
         await expect(denomination).toContainText(
             `${plural(tokenProcessCount, 'process', 'processes')} · ${plural(tokenSettledOrders, 'resolved order', 'resolved orders')}`,
         );
+        // The swap legs: every commit receipt read out of band through the
+        // SDK reader; each folded edge is drawn between its two
+        // denominations with the venue and the amounts.
+        const legEdges = await expectedLegEdges(
+            publicClient, config.witnessSwapAndCommitCoordinator as Hex | undefined, allCommitted,
+        );
         const venuePosture = page.getByTestId('venue-posture');
-        if (config.swapRouter) {
-            await expect(venuePosture, 'a composed venue with no corridor reader renders as labeled absence')
+        if (legEdges.length > 0) {
+            const legCount = legEdges.reduce((n, e) => n + e.legCount, 0);
+            await expect(venuePosture, 'the posture counts the legs read from the commit receipts')
+                .toContainText(`${plural(legCount, 'swap leg', 'swap legs')} read from the venue's own transfers`, { timeout: 60_000 });
+            for (const edge of legEdges) {
+                const row = page.getByTestId(`value-flow-leg-${edge.tokenIn.toLowerCase()}-${edge.tokenOut.toLowerCase()}`);
+                await expect(row, 'the leg is an edge between its two denominations').toBeVisible();
+                const [inSymbol, inDecimals, outSymbol, outDecimals] = await Promise.all([
+                    publicClient.readContract({ address: edge.tokenIn, abi: ERC20_ABI, functionName: 'symbol' }),
+                    publicClient.readContract({ address: edge.tokenIn, abi: ERC20_ABI, functionName: 'decimals' }),
+                    publicClient.readContract({ address: edge.tokenOut, abi: ERC20_ABI, functionName: 'symbol' }),
+                    publicClient.readContract({ address: edge.tokenOut, abi: ERC20_ABI, functionName: 'decimals' }),
+                ]);
+                await expect(row).toContainText(`${inSymbol} → ${outSymbol}`);
+                await expect(row).toContainText(plural(edge.legCount, 'leg', 'legs'));
+                await expect(row, 'the volume in, in the funding token').toContainText(`${formatToken(edge.volumeIn, inDecimals)} ${inSymbol} in`);
+                await expect(row, 'the volume out, in the denomination').toContainText(`${formatToken(edge.volumeOut, outDecimals)} ${outSymbol} out`);
+                await expect(row, 'the venue the coordinator handed the input to').toContainText(`venue ${edge.venue.slice(0, 6)}`);
+            }
+        } else if (config.swapRouter) {
+            await expect(venuePosture, 'a composed venue no commit was funded through renders as labeled absence')
                 .toContainText(`A swap venue is composed at ${config.swapRouter}`);
-            await expect(venuePosture).toContainText('corridors are unreadable rather than empty');
+            await expect(venuePosture).toContainText('No commit receipt this site read carries a funding leg');
         } else {
             await expect(venuePosture).toContainText('No swap venue is composed');
         }
@@ -829,10 +901,32 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
                 headers: { authorization: `Bearer ${bearerToken}` },
             })).json() as {
                 groups: unknown[]; unattributedProcessCount: number;
+                valueFlow: { edges: Array<Record<string, unknown>> };
             };
             expect(shape.groups, 'no held agreements ⇒ no attributed groups — never a guessed bin').toEqual([]);
             expect(shape.unattributedProcessCount, 'every process on this chain is reported, unattributed')
                 .toBe(new Set(allCommitted.map((e) => (e.args.processId as string).toLowerCase())).size);
+
+            // ── The swap legs on the wire: /graphs and market-shape carry the
+            //    value-flow graph's leg edges, equal to the out-of-band read
+            //    of every commit receipt (amounts as decimal strings). ──
+            const legEdges = (await expectedLegEdges(
+                publicClient, config.witnessSwapAndCommitCoordinator as Hex | undefined, allCommitted,
+            )).map((e) => ({ ...e, volumeIn: e.volumeIn.toString(), volumeOut: e.volumeOut.toString() }));
+            const graphs = await (await fetch(`${ANALYST_URL}/graphs`)).json() as {
+                composition: Array<{ venueLegsFolded: number; edges: Array<Record<string, unknown>> }>;
+            };
+            const wireLegs = (edges: Array<Record<string, unknown>>) => edges
+                .filter((e) => e.basis === 'composition-derived')
+                .map((e) => ({ ...e, venue: String(e.venue), tokenIn: String(e.tokenIn), tokenOut: String(e.tokenOut) }));
+            const normalize = (edges: Array<Record<string, unknown>>) => edges
+                .map((e) => ({ ...e, venue: String(e.venue).toLowerCase(), tokenIn: String(e.tokenIn).toLowerCase(), tokenOut: String(e.tokenOut).toLowerCase() }))
+                .sort((a, b) => `${a.venue}${a.tokenIn}${a.tokenOut}`.localeCompare(`${b.venue}${b.tokenIn}${b.tokenOut}`));
+            expect(normalize(wireLegs(graphs.composition[0].edges)), '/graphs carries every leg edge the receipts hold')
+                .toEqual(normalize(legEdges));
+            expect(graphs.composition[0].venueLegsFolded).toBe(legEdges.reduce((n, e) => n + e.legCount, 0));
+            expect(normalize(wireLegs(shape.valueFlow.edges)), 'market-shape carries the same leg edges')
+                .toEqual(normalize(legEdges));
 
             // ── THE UI HALF. The endpoint is configured through the REAL
             //    endpoints form — the honest path; never a storage preseed.

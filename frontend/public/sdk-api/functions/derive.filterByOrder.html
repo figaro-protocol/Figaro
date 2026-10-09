@@ -33,7 +33,9 @@ folds over already-fetched core events</li>
 <li>Overlays: per-clause-family attestation streams (the open graph class),
 spec-decoded via the caller's SpecSource, fingerprint-only on absence</li>
 <li>Composition: venue-parameterized fifth-noun projections — the value-flow
-graph over resolution denominations + caller-parsed swap legs</li>
+graph over resolution denominations + swap legs</li>
+<li>Funding legs: the swap legs one commit transaction carries, read from its
+receipt's ERC-20 transfers (the coordinator emits nothing of its own)</li>
 <li>Queries: market-shape and wallet-record, thin folds over the graphs</li>
 </ul>
 </div></section>

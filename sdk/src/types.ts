@@ -92,6 +92,9 @@ export interface OrderCommittedEvent {
     salt: bigint;
     deadline: bigint;
     blockNumber: number;
+    /** The commit transaction — its receipt carries any funding legs
+     *  (`readFundingLegs`, `@figaro-protocol/sdk/derive`). */
+    transactionHash: Hex | null;
 }
 
 export interface OrderResolvedEvent {

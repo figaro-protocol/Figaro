@@ -35,7 +35,7 @@
  * seller accepting both devnet tokens).
  */
 import { test, expect, gotoAsWallet } from './devnet-multi-test';
-import { createWalletClient, http, parseAbi, parseEventLogs, parseUnits, type Hex, type TransactionReceipt } from 'viem';
+import { createWalletClient, http, parseAbi, parseUnits, type Hex, type TransactionReceipt } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import {
     calculateBonds,
@@ -43,7 +43,7 @@ import {
     parseOrderResolvedLogs,
     parseProcessResolvedLogs,
 } from '@figaro-protocol/sdk';
-import { projectResolutionGraph, projectValueFlow, type SwapLeg, type VenueEvent } from '@figaro-protocol/sdk/derive';
+import { projectResolutionGraph, projectValueFlow, readFundingLegs, type SwapLeg, type VenueEvent } from '@figaro-protocol/sdk/derive';
 import {
     authorizeFundingToken,
     latestMemberProfileURI,
@@ -78,7 +78,6 @@ const ERC20_ABI = parseAbi([
     'function balanceOf(address) view returns (uint256)',
     'function transfer(address, uint256) returns (bool)',
     'function mint(address, uint256)',
-    'event Transfer(address indexed from, address indexed to, uint256 value)',
 ]);
 
 // anvil[3] — this scenario's dedicated buyer (anvil[0] stays the fixture
@@ -129,6 +128,7 @@ test.describe('THE PAYMENT TOKEN — the pick is the denomination; the invariant
         address: core, abi: CORE_ABI, eventName: 'OrderCommitted',
         args: { buyer: BUYER }, fromBlock: 0n,
     });
+    type CommittedLog = Awaited<ReturnType<typeof queryCommitted>>[number];
 
     /** Scenario pre-population (NOT the action under test): the devnet
      *  venue's one linear rate (amountOut = amountIn·num/den). */
@@ -256,10 +256,10 @@ test.describe('THE PAYMENT TOKEN — the pick is the denomination; the invariant
     }
 
     /** The value-flow graph read from the chain: FigaroCore's own events
-     *  folded into the resolution graph, and the venue's swap leg in one
-     *  commit transaction parsed from its ERC-20 transfers — the input the
-     *  venue took from the coordinator and the output it sent back. */
-    async function valueFlowWithLeg(receipt: TransactionReceipt) {
+     *  folded into the resolution graph, and the funding leg in one commit
+     *  transaction read from its receipt by the SDK's `readFundingLegs` —
+     *  `party` is the commitment's party whose bond the leg funded. */
+    async function valueFlowWithLeg(receipt: TransactionReceipt, event: CommittedLog, party: Hex) {
         const [committed, resolved, processResolved] = await Promise.all([
             publicClient.getContractEvents({ address: core, abi: CORE_ABI, eventName: 'OrderCommitted', fromBlock: 0n }),
             publicClient.getContractEvents({ address: core, abi: CORE_ABI, eventName: 'OrderResolved', fromBlock: 0n }),
@@ -271,25 +271,15 @@ test.describe('THE PAYMENT TOKEN — the pick is the denomination; the invariant
             orderResolved: parseOrderResolvedLogs(resolved as unknown as SdkLogs),
             processResolved: parseProcessResolvedLogs(processResolved as unknown as SdkLogs),
         });
-        const transfers = parseEventLogs({ abi: ERC20_ABI, eventName: 'Transfer', logs: receipt.logs });
-        const input = transfers.find((t) => t.args.from.toLowerCase() === coordinator.toLowerCase()
-            && t.args.to.toLowerCase() === venue.toLowerCase());
-        const output = transfers.find((t) => t.args.from.toLowerCase() === venue.toLowerCase()
-            && t.args.to.toLowerCase() === coordinator.toLowerCase());
-        expect(input, 'the venue took the funding token from the coordinator').toBeTruthy();
-        expect(output, 'the venue sent the denomination to the coordinator').toBeTruthy();
-        const leg: VenueEvent<SwapLeg> = {
-            venue,
-            blockNumber: Number(receipt.blockNumber),
-            transactionHash: receipt.transactionHash,
-            payload: {
-                tokenIn: input!.address,
-                tokenOut: output!.address,
-                amountIn: input!.args.value,
-                amountOut: output!.args.value,
-            },
-        };
-        return { graph: projectValueFlow(resolution, [leg], []), leg };
+        const legs = readFundingLegs(receipt.logs, {
+            buyer: event.args.buyer!, seller: event.args.seller!, currency: event.args.currency!,
+        }, coordinator);
+        expect(legs, 'one funding leg in the commit transaction').toHaveLength(1);
+        const [leg] = legs;
+        expect(leg.venue.toLowerCase(), 'the venue is the router the coordinator holds').toBe(venue.toLowerCase());
+        expect(leg.payload.party.toLowerCase(), 'the leg funded the party that swapped').toBe(party.toLowerCase());
+        expect(leg.transactionHash).toBe(receipt.transactionHash);
+        return { graph: projectValueFlow(resolution, legs, []), leg: leg as VenueEvent<SwapLeg> };
     }
 
     /** The swap leg is an edge between two denominations in the graph, and
@@ -394,7 +384,7 @@ test.describe('THE PAYMENT TOKEN — the pick is the denomination; the invariant
         expect(coordDefault, 'the coordinator retains no MOCK').toBe(0n);
 
         // The swap leg, read from the chain, is an edge MOCK → MPMT.
-        const { graph, leg } = await valueFlowWithLeg(receipt);
+        const { graph, leg } = await valueFlowWithLeg(receipt, event, BUYER);
         expect(leg.payload.amountOut, 'the leg yielded the buyer\'s bond').toBe(buyerBond);
         expect(leg.payload.amountIn, 'the leg spent what the buyer\'s MOCK balance lost')
             .toBe(buyerDefaultBefore - buyerDefaultAfter);
@@ -442,7 +432,7 @@ test.describe('THE PAYMENT TOKEN — the pick is the denomination; the invariant
         expect(sellerPickedAfter, 'the seller\'s MPMT is untouched at commit').toBe(sellerPickedBefore);
         expect(corePickedAfter - corePickedBefore, 'the Core holds both bonds in the denomination').toBe(buyerBond + sellerBond);
 
-        const { graph, leg } = await valueFlowWithLeg(receipt);
+        const { graph, leg } = await valueFlowWithLeg(receipt, event, SELLER);
         expect(leg.payload.amountOut, 'the leg yielded the seller\'s bond').toBe(sellerBond);
         expect(leg.payload.amountIn, 'the leg spent what the seller\'s MOCK balance lost')
             .toBe(sellerDefaultBefore - sellerDefaultAfter);

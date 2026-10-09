@@ -211,7 +211,12 @@ runtime encoded and the protocol never validated. **Protocol-derived** rows are
 anchored on chain, with the content behind the fingerprint living off it:
 referential integrity, never substantive accuracy. **Composition-derived** rows are
 read from a composed venue's own events — a swap pool, the multisender, a forum —
-true per that contract's rules and outside the Core's guarantees.
+true per that contract's rules and outside the Core's guarantees. The venues' swap legs
+beside the commits are the value flowing between denominations, read from the venue's
+own events: a commit transaction's receipt carries the ERC-20 transfers of each party
+that funded its bond through the coordinator (`readFundingLegs`,
+`@figaro-protocol/sdk/derive`), and the value-flow graph draws each as an edge between
+two denominations.
 
 **What stands behind a declaration or an attestation.** An institution-declared row is
 a declaration: content both parties signed into the agreement at commit, which the

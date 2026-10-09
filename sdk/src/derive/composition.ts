@@ -8,7 +8,8 @@
  * here imports or bundles a venue list, and a venue this code has never seen
  * feeds the same shape. (The swap coordinator deliberately emits nothing of
  * its own — the composed venue's events, e.g. a pool's Swap plus the ERC-20
- * transfers, ARE the trail.)
+ * transfers, ARE the trail; `readFundingLegs` reads a commit receipt's
+ * transfers into swap legs.)
  *
  * The worked instance is the value-flow graph: nodes are tokens (the
  * denominations the resolution graph observed, plus caller-supplied utility-
