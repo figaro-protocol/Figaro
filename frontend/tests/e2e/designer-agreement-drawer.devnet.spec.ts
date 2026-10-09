@@ -42,6 +42,7 @@
  */
 import { test, expect } from './devnet-multi-test';
 import type { Page } from '@playwright/test';
+import { composedClauseChip } from './probeAssembly';
 
 const GEO_CLAUSE_KEY = 'figaro-geolocation';
 const CONSENT_CLAUSE_KEY = 'figaro-consent';
@@ -272,9 +273,10 @@ test.describe('Designer AgreementDrawer (devnet)', () => {
         ).toHaveCount(0);
         const reviewChips = page.locator(`[data-testid="node-clauses-${orderId}"] span[title]`);
         await expect(reviewChips, 'the review states both composed terms on the same order').toHaveCount(2, { timeout: 20000 });
+        // Both terms are the populated version-1 registrations the drawer offered.
         for (const clauseId of [SCHEDULE_CLAUSE_KEY, ACCEPTANCE_CLAUSE_KEY]) {
             await expect(
-                page.locator(`[data-testid="node-clauses-${orderId}"] span[title="${clauseId}"]`),
+                composedClauseChip(page, clauseId, 1, orderId!),
                 `the review names ${clauseId} on the order that composed it`,
             ).toHaveCount(1);
         }

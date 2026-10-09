@@ -40,12 +40,18 @@ interface ProcessLogEntry {
 }
 
 /** One process clause's event timeline — the per-clause group the PDF
- *  renders as its own section. */
+ *  renders as its own section. One group per registration: two versions of
+ *  one name are two clauses. */
 interface ProcessLogGroup {
+    /** The on-chain clause hash the attestations carry —
+     *  keccak256(abi.encode(clauseId, version)). */
+    clauseHash: string;
     /** Readable clauseId of the process clause. */
     clauseId: string;
+    /** The registered version the clause hash names. */
+    version: number;
     /** Display title — the registered spec's title (the network-defined
-     *  label), falling back to the clauseId when the spec isn't cached. */
+     *  label). */
     title: string;
     /** The clause's events for this order, in input order (typically
      *  block order). */
@@ -66,25 +72,30 @@ export function extractProcessLogs(
 
     for (const att of attestations) {
         if (att.orderHash !== order.orderHash) continue;
-        // Attestation events carry the clauseId HASH; the spec reads key on the
-        // readable id, so resolve it first (falls back to the raw value when already
-        // readable or the spec isn't cached). Without this, every attestation is
-        // skipped and the process-log section renders empty.
-        const clauseId = clauseIdForHash(att.clauseId) ?? att.clauseId;
+        // Attestation events carry the clause HASH, which names one
+        // registration (clauseId, version); the spec reads key on that
+        // identity. A hash whose spec is not loaded resolves to nothing and
+        // is skipped until the cache warms.
+        const identity = clauseIdForHash(att.clauseId);
+        if (!identity) continue;
+        const { clauseId, version } = identity;
         // Two runtime-evidence shapes share this timeline: process-log LADDERS
         // (attestations article) and declared WITNESS stages (spec.stages[N] —
         // a temperature reading, measured grams, a detected band). Both are
         // spec-declared; neither is named here.
-        const isWitness = clauseWitnessStages(clauseId).some((w) => w.stage === att.stage);
-        if (!clauseIsProcessLog(clauseId) && !isWitness) continue;
-        let group = groups.get(clauseId);
+        const isWitness = clauseWitnessStages(clauseId, version).some((w) => w.stage === att.stage);
+        if (!clauseIsProcessLog(clauseId, version) && !isWitness) continue;
+        const clauseHash = att.clauseId.toLowerCase();
+        let group = groups.get(clauseHash);
         if (!group) {
             group = {
+                clauseHash,
                 clauseId,
-                title: getClauseSpec(clauseId)?.title ?? clauseId,
+                version,
+                title: getClauseSpec(clauseId, version)?.title ?? clauseId,
                 events: [],
             };
-            groups.set(clauseId, group);
+            groups.set(clauseHash, group);
         }
         group.events.push({
             clauseKey: clauseId,

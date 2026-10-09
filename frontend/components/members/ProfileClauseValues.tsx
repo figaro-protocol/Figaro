@@ -51,10 +51,10 @@ export function ProfileClauseValues({
                 Standing declarations (optional — master data the assemblies you bound
                 read from your profile at checkout)
             </p>
-            {profileClauses.map(({ clauseId }) => {
-                const spec = getClauseSpec(clauseId);
+            {profileClauses.map(({ clauseId, version }) => {
+                const spec = getClauseSpec(clauseId, version);
                 if (!spec) return null;
-                const authorable = clauseProfileFills(clauseId);
+                const authorable = clauseProfileFills(clauseId, version);
                 const fields = spec.fields.filter((f) => authorable.includes(f.name));
                 if (fields.length === 0) return null;
                 const data = values[clauseId] ?? {};
@@ -68,7 +68,7 @@ export function ProfileClauseValues({
                     onChange(nextMap);
                 };
                 return (
-                    <div key={clauseId} className="space-y-2" data-testid={`profile-clause-${clauseId}`}>
+                    <div key={`${clauseId}#${version}`} className="space-y-2" data-testid={`profile-clause-${clauseId}`}>
                         <p className="text-xs font-medium text-ink-body">{spec.title}</p>
                         {fields.map((field) => (
                             <FieldControl

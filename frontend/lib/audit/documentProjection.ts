@@ -85,7 +85,7 @@ export interface RenderedDocument {
 
 /** A committed section's data, found by a declared field — never by clause id. */
 function leafByField(agreement: Agreement | undefined, fieldName: string): Record<string, unknown> | undefined {
-    const section = agreement?.sections.find((s) => clauseDeclaresField(s.clause, fieldName));
+    const section = agreement?.sections.find((s) => clauseDeclaresField(s.clause, fieldName, s.version));
     return section?.data as Record<string, unknown> | undefined;
 }
 
@@ -125,11 +125,11 @@ function resolve(ref: ValueRef, order: Order, unit: Unit): string {
 function appliesTo(pred: Predicate, agreement: Agreement | undefined): boolean {
     if (!agreement) return false;
     if ("always" in pred) return true;
-    if ("hasLeafField" in pred) return agreement.sections.some((s) => clauseDeclaresField(s.clause, pred.hasLeafField));
+    if ("hasLeafField" in pred) return agreement.sections.some((s) => clauseDeclaresField(s.clause, pred.hasLeafField, s.version));
     // isCarriageLeg: topology declares parents AND a process-log ladder is composed.
     const parents = leafByField(agreement, "parentOrderHashes")?.parentOrderHashes;
     const hasParents = Array.isArray(parents) && parents.length > 0;
-    return hasParents && agreement.sections.some((s) => clauseIsProcessLog(s.clause));
+    return hasParents && agreement.sections.some((s) => clauseIsProcessLog(s.clause, s.version));
 }
 
 function render(template: DocumentTemplate, unit: Unit): RenderedDocument {

@@ -67,8 +67,8 @@ describe("useClauseSpecs — a spec the gateway has not served yet is re-read, n
         // First pass completed: `loaded` is true (the pass finished), the served
         // spec cached, the miss skipped — and its error reported.
         expect(result.current.loaded).toBe(true);
-        expect(getClauseSpec("figaro-old")).toBeDefined();
-        expect(getClauseSpec("figaro-fresh")).toBeUndefined();
+        expect(getClauseSpec("figaro-old", 1)).toBeDefined();
+        expect(getClauseSpec("figaro-fresh", 1)).toBeUndefined();
         expect(result.current.errors).toHaveLength(1);
         const versionAfterFirstPass = result.current.version;
         expect(reads.filter((u) => u === "ipfs://figaro-fresh")).toHaveLength(1);
@@ -78,7 +78,7 @@ describe("useClauseSpecs — a spec the gateway has not served yet is re-read, n
         await act(async () => { vi.advanceTimersByTime(contentRetryDelayMs(0)); });
         await flush();
 
-        expect(getClauseSpec("figaro-fresh")).toBeDefined();
+        expect(getClauseSpec("figaro-fresh", 1)).toBeDefined();
         expect(result.current.version).toBeGreaterThan(versionAfterFirstPass);
         expect(result.current.errors).toHaveLength(0);
         // The already-cached spec was NOT re-read: only the unresolved one was.
@@ -108,7 +108,7 @@ describe("useClauseSpecs — a spec the gateway has not served yet is re-read, n
         renderHook(() => useClauseSpecs());
         await flush();
         expect(reads).toBe(1);
-        expect(getClauseSpecLoadError("figaro-bad")).toMatch(/declares clauseId/);
+        expect(getClauseSpecLoadError("figaro-bad", 1)).toMatch(/declares clauseId/);
         await act(async () => { vi.advanceTimersByTime(10 * 60_000); });
         await flush();
         expect(reads).toBe(1);

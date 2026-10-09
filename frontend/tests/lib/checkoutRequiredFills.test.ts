@@ -108,7 +108,7 @@ describe("unfilledRequiredFills — the six-party import chain, nothing filled",
         expect(acceptance.map((m) => m.groupKey)).toEqual(["order-0", "order-1"]);
         expect(origin.map((m) => m.groupKey)).toEqual(["order-0", "order-2", "order-3", "order-5"]);
         // Named the way the buyer reads them, from the spec's own labels.
-        expect(acceptance[0].clauseTitle).toBe(getClauseSpec("figaro-acceptance-criteria")!.title);
+        expect(acceptance[0].clauseTitle).toBe(getClauseSpec("figaro-acceptance-criteria", 1)!.title);
         expect(origin[0].fieldLabel).toBe("Origin");
     });
 

@@ -1710,21 +1710,20 @@ function makeSpecSource(rawSpecsByKey: Map<string, unknown>): SpecSource {
     views.set(key, { ...parsed.spec, hints: parseProjectionHints(raw) });
   }
   return {
-    get: (clauseId, version) => {
-      if (version != null) return views.get(`${clauseId}@${version}`);
-      // no version → the highest loaded version of this clause
-      let best: ProjectionSpecView | undefined, bestV = -1;
-      for (const [k, v] of views) {
-        if (!k.startsWith(`${clauseId}@`)) continue;
-        const n = Number(k.slice(clauseId.length + 1));
-        if (n > bestV) { bestV = n; best = v; }
-      }
-      return best;
-    },
+    // A clause is (clauseId, version): every read names both.
+    get: (clauseId, version) => views.get(`${clauseId}@${version}`),
     list: () => [...views.values()],
   };
 }
 ```
+
+`get` takes the clause's name AND version — the on-chain identity
+`keccak256(abi.encode(clauseId, version))` the agreement's leaf carries — and
+nothing reads a clause by name alone. `list` is the set `buildAssemblyTemplate`
+folds the mandatory clauses from: pass the registrations whose stake is live
+(the surfacing rule), and the fold takes each name's one mandatory
+registration at its own version; where one name has several, it takes the
+version-1 registration, and a name with several and no version 1 does not fold.
 
 A spec that is not (yet) loaded returns `undefined` from `get`, and the
 projection degrades exactly as the registry-reading frontend does (no defaults
@@ -1757,9 +1756,8 @@ clause specs.
 import { buildOrderAgreement, assertAgreementSignable, sectionByField } from "@figaro-protocol/sdk";
 
 // clauses: clauseId → field values (design-time ∪ runtime fill); clauseVersions:
-// clauseId → the registered version composed (sparse; an absent entry is
-// version 1, never the highest loaded — every (clauseId, version) slot is open
-// to anyone, so a caller composing another version states it).
+// clauseId → the registered version composed, in the template's sparse
+// encoding (a version-1 entry is not written; every other version is stated).
 const { agreement, agreementHash } = buildOrderAgreement(
   buyer, seller, clauses, specs, clauseVersions,
 );

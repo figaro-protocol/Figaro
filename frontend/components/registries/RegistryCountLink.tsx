@@ -24,6 +24,7 @@ import { useAllRegisteredClauses } from "@/lib/protocol/useClauseRegistry";
 import { usePublishedAssemblies } from "@/lib/protocol/useAssemblyRegistry";
 import { useRegisteredMembers } from "@/lib/member/useRegisteredMembers";
 import type { RegistryFamily } from "@/lib/registries/explorer";
+import { isLiveRegistration } from "@/lib/shared/clauseSpecSource";
 
 const NOUN: Record<RegistryFamily, [string, string]> = {
     clauses: ["clause", "clauses"],
@@ -50,9 +51,9 @@ function useFamilyCount(family: RegistryFamily): number | null {
     const assemblies = usePublishedAssemblies(undefined);
     const members = useRegisteredMembers();
     return useMemo(() => {
-        if (family === "clauses") return clauses.data === null ? null : clauses.data.filter((c) => !c.stakeWithdrawn).length;
+        if (family === "clauses") return clauses.data === null ? null : clauses.data.filter(isLiveRegistration).length;
         if (family === "assemblies") return assemblies.data === null ? null : assemblies.data.length;
-        return members.data === null ? null : members.data.filter((m) => !m.stakeWithdrawn).length;
+        return members.data === null ? null : members.data.filter(isLiveRegistration).length;
     }, [family, clauses.data, assemblies.data, members.data]);
 }
 

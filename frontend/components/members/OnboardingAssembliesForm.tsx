@@ -8,7 +8,7 @@ import { isAddress } from "viem";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { ZERO_ADDRESS, hexEqual } from "@/lib/shared/evm";
-import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
+import { memberDocumentClauseSpec } from "@/lib/shared/clauseSpecSource";
 import { useMounted } from "@/hooks/useMounted";
 import { onboardingNextHref, onboardingPrevHref, useOnboardingState } from "@/lib/member/onboardingState";
 import type {
@@ -351,7 +351,7 @@ function CounterpartyClauseEditor({
     addresses: `0x${string}`[];
     onChange: (next: `0x${string}`[]) => void;
 }) {
-    const heading = getClauseSpec(clauseId)?.title ?? clauseId;
+    const heading = memberDocumentClauseSpec(clauseId)?.title ?? clauseId;
     // Local rows include in-progress (typed but not yet valid) entries.
     // Always pad with one trailing empty row so the user has somewhere
     // to add a new address.

@@ -41,7 +41,7 @@ import { hexEqual } from "@/lib/shared/evm";
 import { truncateHex } from "@/lib/shared/formatHex";
 import { FieldControl } from "@/components/runtime/FieldControl";
 import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
-import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
+import { getClauseSpec, memberDocumentClauseSpec } from "@/lib/shared/clauseSpecSource";
 import { useAssemblyChoices } from "@/lib/protocol/assemblyChoices";
 import {
     catalogClausesForBindings,
@@ -605,7 +605,7 @@ function ItemRow({ item, index, priceSymbol, unitSystem, catalogClauses, dataSol
                         <option value="">Not a data product</option>
                         {dataSoldOptions.map((rc) => {
                             const key = [rc.compositionHash, rc.clauseId, rc.posture].join("|");
-                            const title = getClauseSpec(rc.clauseId)?.title ?? rc.clauseId;
+                            const title = memberDocumentClauseSpec(rc.clauseId)?.title ?? rc.clauseId;
                             return (
                                 <option key={key} value={key}>
                                     {title} — as {rc.posture} ({truncateHex(rc.compositionHash, { head: 10, tail: 0 })})

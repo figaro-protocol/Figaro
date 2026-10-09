@@ -25,8 +25,8 @@ import type { ExtractedDocument } from "./types";
  *  (the network-defined SSoT), falling back to the raw clauseId while the
  *  spec is uncached. The label set is OPEN: any registered clause labels
  *  itself; no table in code. */
-function clauseTitle(clauseId: string): string {
-    return getClauseSpec(clauseId)?.title ?? clauseId;
+function clauseTitle(clauseId: string, version: number): string {
+    return getClauseSpec(clauseId, version)?.title ?? clauseId;
 }
 
 interface ContractClause {
@@ -90,7 +90,7 @@ function clauseFromSection(section: AgreementSection): ContractClause {
     // merkle inclusion proof (@figaro-protocol/sdk), not a redacted distribution form.
     return {
         clauseKey: section.clause,
-        title: clauseTitle(section.clause),
+        title: clauseTitle(section.clause, section.version),
         body: section.data,
         leafHash: computeSectionLeaf(section),
     };

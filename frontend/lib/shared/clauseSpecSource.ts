@@ -18,7 +18,7 @@ import { parseClauseSpec, type ClauseSpec, type FieldSpec, type EnumFieldSpec, t
 import type { ProjectionHints, ProjectionSpecView, SpecSource } from "@figaro-protocol/sdk";
 import { parseBlockBinding, type ClauseBlockBinding } from "@/lib/shared/clauseBlockBinding";
 import { canonicalContentHash } from "@/lib/shared/canonicalJson";
-import { anchorClauseSpec, computeClauseKey, deriveAnchored, type Anchored } from "@figaro-protocol/sdk";
+import { anchorClauseSpec, computeClauseKey, deriveAnchored, specIsMandatory, type Anchored } from "@figaro-protocol/sdk";
 import { DEFAULT_IPFS_SERVICE, fetchCappedContent } from "@/lib/shared/ipfsService";
 import { safeJsonFromResponse } from "@/lib/shared/safeJson";
 import { truncateHex } from "@/lib/shared/formatHex";
@@ -37,6 +37,7 @@ const specKey = (clauseId: string, version: number): string => `${clauseId}#${ve
  *  enters: the cache holds `Anchored` specs, so a load path that skips the
  *  check does not compile. */
 const SPEC_CACHE = new Map<string, Anchored<ClauseSpecWithBlock>>();
+/** Permanent load failures, keyed like the spec cache by (clauseId, version). */
 const SPEC_LOAD_ERRORS = new Map<string, string>();
 
 /** clauseId → the parent FIELD name it nests under in the drawer, read from the
@@ -57,13 +58,13 @@ const NESTS_UNDER = new Map<string, string>();
  *  to its EXACT version — two live versions of one name never conflate. */
 const HASH_TO_ID = new Map<string, { clauseId: string; version: number }>();
 
-/** The registrations whose registrant reclaimed the stake (K4), keyed like the
- *  spec cache — read from the same `ClauseRegistry` scan the drawer filters
- *  its offer on (`RegisteredClauseEvent.stakeWithdrawn`) and replaced whole on
- *  every read. The spec cache itself NEVER filters on it: committed agreements
- *  keep resolving a withdrawn clause. Only `liveSpecSource().list()`, the set
- *  a NEW template's mandatory fold draws from, leaves these out. */
-const STAKE_WITHDRAWN = new Set<string>();
+/** The registrations whose stake is live (`isLiveRegistration`), keyed like
+ *  the spec cache — read from the same `ClauseRegistry` scan the drawer
+ *  offers clauses from and replaced whole on every read. The spec cache
+ *  itself NEVER filters on it: a committed agreement keeps reading a
+ *  withdrawn clause's spec. Only `liveSpecSource().list()`, the set a NEW
+ *  template's mandatory fold draws from, holds just these. */
+const LIVE_STAKE = new Set<string>();
 
 // ── Loading (chain → IPFS) ───────────────────────────────────────────────────
 
@@ -125,7 +126,7 @@ export async function loadClauseSpec(
     const anchored = anchorClauseSpec(fetched, expectedContentHash);
     if (anchored === null) {
         const detail = `spec at ${uri} hashes to ${canonicalContentHash(fetched)}, chain anchors ${expectedContentHash}`;
-        SPEC_LOAD_ERRORS.set(clauseId, `integrity failure: ${detail}`);
+        SPEC_LOAD_ERRORS.set(specKey(clauseId, version), `integrity failure: ${detail}`);
         throw new Error(`Clause spec integrity failure: ${detail}`);
     }
     const spec = deriveAnchored(anchored, (raw) => specFromAnchoredDocument(raw, clauseId, version, uri));
@@ -140,17 +141,17 @@ function specFromAnchoredDocument(raw: unknown, clauseId: string, version: numbe
     const parsed = parseClauseSpec(raw);
     if (!parsed.ok) {
         const detail = parsed.errors.map((e) => `${e.path}: ${e.message}`).join("; ");
-        SPEC_LOAD_ERRORS.set(clauseId, `spec at ${uri} failed to parse: ${detail}`);
+        SPEC_LOAD_ERRORS.set(specKey(clauseId, version), `spec at ${uri} failed to parse: ${detail}`);
         throw new Error(`Clause spec at ${uri} failed to parse: ${detail}`);
     }
     if (parsed.spec.clauseId !== clauseId) {
         const detail = `spec at ${uri} declares clauseId "${parsed.spec.clauseId}", expected "${clauseId}"`;
-        SPEC_LOAD_ERRORS.set(clauseId, detail);
+        SPEC_LOAD_ERRORS.set(specKey(clauseId, version), detail);
         throw new Error(`Clause ${detail}`);
     }
     if (parsed.spec.version !== version) {
         const detail = `spec at ${uri} declares version ${parsed.spec.version}, expected ${version} (the registered version)`;
-        SPEC_LOAD_ERRORS.set(clauseId, detail);
+        SPEC_LOAD_ERRORS.set(specKey(clauseId, version), detail);
         throw new Error(`Clause ${detail}`);
     }
     // Parse the `block` presentation slice off the SAME spec JSON (the SDK parser
@@ -163,7 +164,7 @@ function specFromAnchoredDocument(raw: unknown, clauseId: string, version: numbe
         const parsedBlock = parseBlockBinding(rawBlock, "$.block", blockErrors);
         if (parsedBlock === null) {
             const detail = blockErrors.map((e) => `${e.path}: ${e.message}`).join("; ");
-            SPEC_LOAD_ERRORS.set(clauseId, `spec at ${uri} block binding failed to parse: ${detail}`);
+            SPEC_LOAD_ERRORS.set(specKey(clauseId, version), `spec at ${uri} block binding failed to parse: ${detail}`);
             throw new Error(`Clause spec at ${uri} block binding failed to parse: ${detail}`);
         }
         block = parsedBlock;
@@ -177,28 +178,43 @@ export function _resetClauseSpecCache_TESTING_ONLY(): void {
     SPEC_LOAD_ERRORS.clear();
     NESTS_UNDER.clear();
     HASH_TO_ID.clear();
-    STAKE_WITHDRAWN.clear();
+    LIVE_STAKE.clear();
+}
+
+/** THE live-stake rule (K4): a registration surfaces for NEW compositions
+ *  while its registrant has not reclaimed the stake. The drawer's offer, the
+ *  assembly-terms panel, the registry counts and `liveSpecSource` all read
+ *  this one predicate. */
+export function isLiveRegistration(row: { stakeWithdrawn: boolean }): boolean {
+    return !row.stakeWithdrawn;
 }
 
 /** Note each registration's live stake from a `ClauseRegistry` read. The
  *  read is the whole registry, so the set is replaced, never merged: a
- *  registration absent from it is not withdrawn. */
+ *  registration absent from it is not live. */
 export function noteClauseStakes(
     rows: readonly { clauseId: string; version: number; stakeWithdrawn: boolean }[],
 ): void {
-    STAKE_WITHDRAWN.clear();
-    for (const row of rows) if (row.stakeWithdrawn) STAKE_WITHDRAWN.add(specKey(row.clauseId, row.version));
+    LIVE_STAKE.clear();
+    for (const row of rows) if (isLiveRegistration(row)) LIVE_STAKE.add(specKey(row.clauseId, row.version));
 }
 
 // ── Sync API (resolves against the loaded cache) ─────────────────────────────
 
-/** Synchronous lookup — returns a cached spec, or `undefined` if not loaded.
- *  With `version` the lookup is exact (the full identity). Without it, the
- *  name resolves when unambiguous (one loaded version) and to the HIGHEST
- *  loaded version otherwise — a display convenience; semantic callers reading
- *  committed data pass the version that data carries. */
-export function getClauseSpec(clauseId: string, version?: number): ClauseSpecWithBlock | undefined {
-    if (version !== undefined) return SPEC_CACHE.get(specKey(clauseId, version));
+/** Synchronous lookup — returns the cached spec of one registration, or
+ *  `undefined` if not loaded. A clause's identity is (clauseId, version), the
+ *  on-chain key keccak256(abi.encode(clauseId, version)); every read names
+ *  both, the version the composition, agreement or order carries. */
+export function getClauseSpec(clauseId: string, version: number): ClauseSpecWithBlock | undefined {
+    return SPEC_CACHE.get(specKey(clauseId, version));
+}
+
+/** The spec a MEMBER DOCUMENT names. A member's profile (`profileFills`
+ *  values, the disclosure policy) and catalog (`clauseValues`, `dataSold`)
+ *  name a clause by its name alone and carry no version, so this read
+ *  resolves the name to its HIGHEST loaded registration. It serves those
+ *  documents only; every other read names (clauseId, version). */
+export function memberDocumentClauseSpec(clauseId: string): ClauseSpecWithBlock | undefined {
     let best: ClauseSpecWithBlock | undefined;
     for (const spec of SPEC_CACHE.values()) {
         if (spec.clauseId !== clauseId) continue;
@@ -207,13 +223,14 @@ export function getClauseSpec(clauseId: string, version?: number): ClauseSpecWit
     return best;
 }
 
-/** Resolve an on-chain clauseId HASH (keccak of name+version) back to its readable
- *  registry id, via the warmed cache. The inverse of `computeClauseKey`. Undefined
- *  until the spec is loaded. Attestation events carry the HASH, while the spec
- *  reads (`getClauseSpec` / `clauseIsProcessLog`) key on the readable id — callers
- *  holding a hash resolve it here first. */
-export function clauseIdForHash(clauseIdHashHex: string): string | undefined {
-    return HASH_TO_ID.get(clauseIdHashHex.toLowerCase())?.clauseId;
+/** Resolve an on-chain clause HASH (keccak256(abi.encode(clauseId, version)))
+ *  back to the registration it names, via the warmed cache. The inverse of
+ *  `computeClauseKey`. Undefined until the spec is loaded. Attestation events
+ *  carry the HASH, while the spec reads (`getClauseSpec` /
+ *  `clauseIsProcessLog`) key on (clauseId, version) — callers holding a hash
+ *  resolve it here first. */
+export function clauseIdForHash(clauseIdHashHex: string): { clauseId: string; version: number } | undefined {
+    return HASH_TO_ID.get(clauseIdHashHex.toLowerCase());
 }
 
 /** Resolve an on-chain clause hash to its EXACT loaded spec — hash → identity
@@ -225,16 +242,9 @@ export function clauseSpecForHash(clauseIdHashHex: string): ClauseSpecWithBlock 
     return id ? SPEC_CACHE.get(specKey(id.clauseId, id.version)) : undefined;
 }
 
-/** Returns the load error for a clauseId, if any. */
-export function getClauseSpecLoadError(clauseId: string): string | undefined {
-    return SPEC_LOAD_ERRORS.get(clauseId);
-}
-
-/** Returns all currently-loaded clause NAMES, deduped — two live versions of
- *  one clause contribute one name. Version-blind by design; callers that need
- *  the full identity list use `listKnownClauses`. */
-export function listKnownClauseIds(): readonly string[] {
-    return Array.from(new Set(Array.from(SPEC_CACHE.values(), (s) => s.clauseId)));
+/** Returns the permanent load error for one registration, if any. */
+export function getClauseSpecLoadError(clauseId: string, version: number): string | undefined {
+    return SPEC_LOAD_ERRORS.get(specKey(clauseId, version));
 }
 
 /** Every loaded spec identity, one entry per (clauseId, version). */
@@ -280,13 +290,14 @@ export function specSource(): SpecSource {
 /** The SpecSource a NEW composition is built from: `get` reads every loaded
  *  spec, exactly as `specSource()` (a stated pick resolves wherever it is
  *  bound), while `list` — the set `buildAssemblyTemplate`'s mandatory fold
- *  draws from — holds only registrations whose stake is live, the same
- *  surfacing rule the drawer offers clauses under. */
+ *  draws from — holds only registrations whose stake is live
+ *  (`isLiveRegistration`), the same surfacing rule the drawer offers clauses
+ *  under. */
 const LIVE_SPEC_SOURCE: SpecSource = {
     get: SPEC_SOURCE.get,
     list() {
         return Array.from(SPEC_CACHE.values())
-            .filter((spec) => !STAKE_WITHDRAWN.has(specKey(spec.clauseId, spec.version)))
+            .filter((spec) => LIVE_STAKE.has(specKey(spec.clauseId, spec.version)))
             .map(toProjectionView);
     },
 };
@@ -297,20 +308,21 @@ export function liveSpecSource(): SpecSource {
 }
 
 /** The field name a clause nests under in the drawer, or null if top-level. */
-export function clauseNestsUnder(clauseId: string, version?: number): string | null {
+export function clauseNestsUnder(clauseId: string, version: number): string | null {
     const spec = getClauseSpec(clauseId, version);
     return spec ? (NESTS_UNDER.get(specKey(spec.clauseId, spec.version)) ?? null) : null;
 }
 
 /** True if a clause is MANDATORY — on every order, composed by the build
- *  (commerce + topology), not a designer choice. Classified by its sole block
- *  article `mandatory` (one word for one concept — renamed from `structural`,
- *  which collided with the design/DAG sense); generic surfaces
- *  exclude mandatory clauses from selectable lists and fold them in
- *  automatically. ANY registered clause declaring `block.design.article:
- *  "mandatory"` participates — including one this codebase has never seen. */
-export function clauseIsMandatory(clauseId: string, version?: number): boolean {
-    return getClauseSpec(clauseId, version)?.block?.design.article === "mandatory";
+ *  (commerce + topology), not a designer choice. The SDK's `specIsMandatory`
+ *  is the one predicate (the template build's fold reads it too), applied to
+ *  the registration at `version`; generic surfaces exclude mandatory clauses
+ *  from selectable lists and fold them in automatically. ANY registered
+ *  clause declaring `block.design.article: "mandatory"` participates —
+ *  including one this codebase has never seen. */
+export function clauseIsMandatory(clauseId: string, version: number): boolean {
+    const spec = SPEC_SOURCE.get(clauseId, version);
+    return spec !== undefined && specIsMandatory(spec);
 }
 
 /** True if a clause is ASSEMBLY-SCOPED (`block.design.scope: "assembly"`) —
@@ -319,7 +331,7 @@ export function clauseIsMandatory(clauseId: string, version?: number): boolean {
  *  agreement at checkout so every party signs it. ANY registered clause
  *  declaring the scope participates — including one this codebase has never
  *  seen. False = agreement-scoped (the default): a per-order term. */
-export function clauseIsAssemblyScoped(clauseId: string, version?: number): boolean {
+export function clauseIsAssemblyScoped(clauseId: string, version: number): boolean {
     return getClauseSpec(clauseId, version)?.block?.design.scope === "assembly";
 }
 
@@ -332,7 +344,7 @@ export function clauseIsAssemblyScoped(clauseId: string, version?: number): bool
  *  particulars, filled by the buyer at checkout) — and while the spec is
  *  uncached. ANY registered clause declaring fills participates — including
  *  one this codebase has never seen. */
-export function clauseDesignFills(clauseId: string, version?: number): readonly string[] {
+export function clauseDesignFills(clauseId: string, version: number): readonly string[] {
     return getClauseSpec(clauseId, version)?.block?.design.fills ?? [];
 }
 
@@ -344,7 +356,7 @@ export function clauseDesignFills(clauseId: string, version?: number): readonly 
  *  clauses with no catalog-filled fields — and while the spec is
  *  uncached. ANY registered clause declaring fills participates — including
  *  one this codebase has never seen. */
-export function clauseCatalogFills(clauseId: string, version?: number): readonly string[] {
+export function clauseCatalogFills(clauseId: string, version: number): readonly string[] {
     return getClauseSpec(clauseId, version)?.block?.checkout.catalogueFills ?? [];
 }
 
@@ -365,7 +377,7 @@ export function listCatalogSourcedClauses(): readonly { clauseId: string; versio
  *  for clauses with no profile-filled fields — and while the spec is
  *  uncached. ANY registered clause declaring fills participates — including
  *  one this codebase has never seen. */
-export function clauseProfileFills(clauseId: string, version?: number): readonly string[] {
+export function clauseProfileFills(clauseId: string, version: number): readonly string[] {
     return getClauseSpec(clauseId, version)?.block?.checkout.profileFills ?? [];
 }
 
@@ -383,8 +395,8 @@ export function listProfileSourcedClauses(): readonly { clauseId: string; versio
  *  `figaro-arbitration-<provider>`) declares its own forum URL in its spec and
  *  surfaces here with zero code change. Undefined when the clause composes with
  *  no forum, or its spec isn't loaded. */
-export function composesForumUrl(clauseId: string): string | undefined {
-    return getClauseSpec(clauseId)?.block?.design.composes?.forumUrl;
+export function composesForumUrl(clauseId: string, version: number): string | undefined {
+    return getClauseSpec(clauseId, version)?.block?.design.composes?.forumUrl;
 }
 
 /** The STANDARD composition interface a clause binds to, from its
@@ -397,8 +409,8 @@ export function composesForumUrl(clauseId: string): string | undefined {
  *  @public pending consumer: the composes-seam reader; its next consumer is
  *  the first on-chain-invoke tenant to land a handler in
  *  `useCompositionActions`. No such tenant is live today. */
-export function composesInterface(clauseId: string): string | undefined {
-    return getClauseSpec(clauseId)?.block?.design.composes?.interface;
+export function composesInterface(clauseId: string, version: number): string | undefined {
+    return getClauseSpec(clauseId, version)?.block?.design.composes?.interface;
 }
 
 /** A PROCESS-LOG clause — a runtime TRANSFER ladder the responsible party
@@ -410,7 +422,7 @@ export function composesInterface(clauseId: string): string | undefined {
  *  enum too. `coordination`-article clauses declare WHICH scenario everyone
  *  runs; `attestations`-article clauses attest the transfers that run it. A
  *  never-seen process-log clause participates by declaring the article. */
-export function clauseIsProcessLog(clauseId: string, version?: number): boolean {
+export function clauseIsProcessLog(clauseId: string, version: number): boolean {
     return getClauseSpec(clauseId, version)?.block?.design.article === "attestations";
 }
 
@@ -418,7 +430,7 @@ export function clauseIsProcessLog(clauseId: string, version?: number): boolean 
  *  Field names — not clause ids — are the binding vocabulary generic surfaces
  *  look things up by: ANY registered clause carrying the field participates,
  *  including clauses this codebase has never seen. False while uncached. */
-export function clauseDeclaresField(clauseId: string, fieldName: string, version?: number): boolean {
+export function clauseDeclaresField(clauseId: string, fieldName: string, version: number): boolean {
     return getClauseSpec(clauseId, version)?.fields.some((f) => f.name === fieldName) === true;
 }
 
@@ -427,7 +439,7 @@ export function clauseDeclaresField(clauseId: string, fieldName: string, version
  *  Returns the field name + its ordered values, or null when the clause has no
  *  enum field. The generic runtime engine reads this to advance ANY
  *  runtime-attestable clause without naming it. */
-export function clauseLadderField(clauseId: string, version?: number): { name: string; values: readonly string[]; valueLabels?: Readonly<Record<string, string>> } | null {
+export function clauseLadderField(clauseId: string, version: number): { name: string; values: readonly string[]; valueLabels?: Readonly<Record<string, string>> } | null {
     for (const field of getClauseSpec(clauseId, version)?.fields ?? []) {
         if (field.type === "enum") return { name: field.name, values: field.values, valueLabels: field.valueLabels };
     }
@@ -443,7 +455,7 @@ export function clauseLadderField(clauseId: string, version?: number): { name: s
  *  declare none (and while the spec is uncached). */
 export function clauseWitnessStages(
     clauseId: string,
-    version?: number,
+    version: number,
 ): Array<{ stage: number; fields: readonly FieldSpec[] }> {
     const stages = getClauseSpec(clauseId, version)?.stages;
     if (!stages) return [];
@@ -481,16 +493,14 @@ export function labelEnumValue(field: { valueLabels?: Readonly<Record<string, st
 
 /** Display text for a runtime attestation, read STRAIGHT from the clause spec:
  *  the title and the (labeled) enum value at `stage`. Callers pass DATA (the
- *  event's clauseId hash + uint8 stage) — no surface names a clause. Falls back
- *  to the short hash + stage when the clause is unknown (not yet loaded). */
+ *  event's clause hash — keccak256(abi.encode(clauseId, version)), which
+ *  names one registration — + uint8 stage); no surface names a clause. Falls
+ *  back to the short hash + stage when the clause is unknown (not yet loaded). */
 export function describeAttestation(
     clauseIdHash: string,
     stage: number,
 ): { clauseTitle: string; eventLabel: string; eventCode: string } {
-    // Accept EITHER the on-chain hash (resolve via the cache to the EXACT
-    // version) or an already-readable id (use it directly — highest loaded) —
-    // process-log groups now carry the readable id.
-    const spec = clauseSpecForHash(clauseIdHash) ?? getClauseSpec(clauseIdHash);
+    const spec = clauseSpecForHash(clauseIdHash);
     if (!spec) return { clauseTitle: truncateHex(clauseIdHash, { head: 10, tail: 0 }), eventLabel: `stage ${stage}`, eventCode: `stage-${stage}` };
     // A DECLARED witness stage (spec.stages[stage]) is not a ladder ordinal —
     // labeling it through the committed enum would misread (e.g. a cold-chain
@@ -558,7 +568,7 @@ function renderFieldValues(field: FieldSpec, raw: unknown): string[] {
 
 /** Describe a composed clause from its spec + data — the one generic, identity-
  *  blind reader every display/analysis surface shares. */
-export function describeClause(clauseId: string, data: Record<string, unknown> | undefined, version?: number): ClauseDescription {
+export function describeClause(clauseId: string, data: Record<string, unknown> | undefined, version: number): ClauseDescription {
     const spec = getClauseSpec(clauseId, version);
     const d = data ?? {};
     if (!spec) {
@@ -587,7 +597,7 @@ export function describeWitness(
     clauseId: string,
     stage: number,
     data: Record<string, unknown> | undefined,
-    version?: number,
+    version: number,
 ): ClauseDescription {
     const spec = getClauseSpec(clauseId, version);
     const stageFields = spec?.stages?.[stage];
@@ -611,8 +621,8 @@ export function describeWitness(
 }
 
 /** Module-internal: `clauseEnumValues` below needs it. */
-function clauseFieldSpec(clauseId: string, fieldPath: string): FieldSpec | undefined {
-    let fields: readonly FieldSpec[] | undefined = getClauseSpec(clauseId)?.fields;
+function clauseFieldSpec(clauseId: string, version: number, fieldPath: string): FieldSpec | undefined {
+    let fields: readonly FieldSpec[] | undefined = getClauseSpec(clauseId, version)?.fields;
     const segments = fieldPath.split(".");
     for (let i = 0; i < segments.length; i++) {
         const field = fields?.find((f) => f.name === segments[i]);
@@ -630,8 +640,8 @@ function clauseFieldSpec(clauseId: string, fieldPath: string): FieldSpec | undef
  *  @public pending consumer: the Layer-6 spec-driven drawer controls (its
  *  prior consumers, the ALLOWED_* filters, were absorbed by the generic build
  *  walk); remove the tag when that lands. */
-export function clauseEnumValues(clauseId: string, fieldPath: string): readonly string[] {
-    const field = clauseFieldSpec(clauseId, fieldPath);
+export function clauseEnumValues(clauseId: string, version: number, fieldPath: string): readonly string[] {
+    const field = clauseFieldSpec(clauseId, version, fieldPath);
     if (field?.type === "enum") return field.values;
     if (field?.type === "array" && field.items.type === "enum") return field.items.values;
     return [];

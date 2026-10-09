@@ -25,7 +25,8 @@ import { useEffect, useMemo, useState } from "react";
 import type { Order } from "@/lib/kernel/store";
 import { useAllRegisteredClauses, type RegisteredClauseEvent } from "@/lib/protocol/useClauseRegistry";
 import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
-import { groupClausesByArticle, getClauseSpec, clauseNestsUnder, clauseIsMandatory, clauseIsAssemblyScoped, clauseDesignFills } from "@/lib/shared/clauseSpecSource";
+import { groupClausesByArticle, getClauseSpec, clauseNestsUnder, clauseIsMandatory, clauseIsAssemblyScoped, clauseDesignFills, isLiveRegistration } from "@/lib/shared/clauseSpecSource";
+import { templateClauseVersion } from "@/lib/shared/assemblyTemplate";
 import { truncateHex } from "@/lib/shared/formatHex";
 import { ClausesByArticle } from "@/components/runtime/ClausesByArticle";
 import { FieldControl } from "@/components/runtime/FieldControl";
@@ -54,7 +55,7 @@ interface Props {
      *  omitted, presence of the id alone checks the row. */
     selectedClauseVersions?: Record<string, number>;
     /** Toggle a clause on/off for the current order. */
-    onToggleClause?: (clauseId: string, next: boolean, version?: number) => void;
+    onToggleClause?: (clauseId: string, next: boolean, version: number) => void;
     /** Set one field named in a selected clause's `design.fills` (the only
      *  fields the drawer renders editors for). */
     onSetClauseField?: (clauseId: string, field: string, value: unknown) => void;
@@ -345,7 +346,7 @@ export function AgreementDrawer({
 interface ClauseRegistryPanelProps {
     selectedClauseValues?: Record<string, Record<string, unknown>>;
     selectedClauseVersions?: Record<string, number>;
-    onToggleClause?: (clauseId: string, next: boolean, version?: number) => void;
+    onToggleClause?: (clauseId: string, next: boolean, version: number) => void;
     onSetClauseField?: (clauseId: string, field: string, value: unknown) => void;
 }
 
@@ -370,7 +371,7 @@ function ClauseRegistryPanel({
     // unfiltered by design).
     const { data: allRegisteredClauses } = useAllRegisteredClauses();
     const registeredClauses = useMemo(
-        () => allRegisteredClauses?.filter((e) => !e.stakeWithdrawn) ?? null,
+        () => allRegisteredClauses?.filter(isLiveRegistration) ?? null,
         [allRegisteredClauses],
     );
     const { version: clauseSpecsVersion } = useClauseSpecs();
@@ -428,7 +429,7 @@ function ClauseRegistryPanel({
                                     sections={(registryGroups ?? []).map((g) => ({
                                         article: g.article,
                                         items: g.entries.filter(
-                                            (c) => !(c.clauseId && clauseNestsUnder(c.clauseId)),
+                                            (c) => !(c.clauseId && clauseNestsUnder(c.clauseId, c.version)),
                                         ),
                                     }))}
                                     rootTestId="drawer-registry-list"
@@ -466,15 +467,16 @@ function ClauseControl({
     registeredClauses: ReadonlyArray<RegisteredClauseEvent> | null | undefined;
     selectedClauseValues?: Record<string, Record<string, unknown>>;
     selectedClauseVersions?: Record<string, number>;
-    onToggleClause?: (clauseKey: string, next: boolean, version?: number) => void;
+    onToggleClause?: (clauseKey: string, next: boolean, version: number) => void;
     onSetClauseField?: (clauseKey: string, field: string, value: unknown) => void;
 }) {
     const clauseKey = clause.clauseId ?? clause.idHash;
-    // A clause is (id, version): with the composition's versions supplied, a
-    // registered row is checked only at the version the composition carries.
+    // A clause is (id, version): a registered row is checked only at the
+    // version the composition carries, read through the template's sparse
+    // encoding of the version map.
     const selected = selectedClauseValues
         ? clauseKey in selectedClauseValues
-            && (!selectedClauseVersions || (selectedClauseVersions[clauseKey] ?? 1) === clause.version)
+            && templateClauseVersion({ clauseVersions: selectedClauseVersions }, clauseKey) === clause.version
         : false;
     const values = selectedClauseValues?.[clauseKey] ?? {};
     const spec = clause.clauseId ? getClauseSpec(clause.clauseId, clause.version) : undefined;
@@ -518,7 +520,7 @@ function ClauseControl({
                         })
                         .map((field) => {
                             const nested = (registeredClauses ?? []).filter(
-                                (c) => c.clauseId != null && clauseNestsUnder(c.clauseId) === field.name,
+                                (c) => c.clauseId != null && clauseNestsUnder(c.clauseId, c.version) === field.name,
                             );
                             // Design time is STRUCTURAL: the
                             // designer edits ONLY the fields a clause names in

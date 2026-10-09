@@ -130,15 +130,15 @@ describe("design fills are the composition's identity — the disclosure regime"
 
     /** The regime tokens the SPEC admits — the enum the canvas control renders. */
     function regimeValues(): readonly string[] {
-        const field = getClauseSpec(CLAUSE)?.fields.find((f) => f.name === FIELD);
+        const field = getClauseSpec(CLAUSE, 1)?.fields.find((f) => f.name === FIELD);
         expect(field?.type, `${CLAUSE}.${FIELD} is an enum`).toBe("enum");
         return field?.type === "enum" ? field.values : [];
     }
 
     it("the clause declares the regime as a DESIGN fill, with labels for every value", () => {
-        expect(clauseDesignFills(CLAUSE), `${CLAUSE} names ${FIELD} in block.design.fills`)
+        expect(clauseDesignFills(CLAUSE, 1), `${CLAUSE} names ${FIELD} in block.design.fills`)
             .toContain(FIELD);
-        const field = getClauseSpec(CLAUSE)?.fields.find((f) => f.name === FIELD);
+        const field = getClauseSpec(CLAUSE, 1)?.fields.find((f) => f.name === FIELD);
         expect(field?.type).toBe("enum");
         if (field?.type !== "enum") return;
         expect(field.values.length, "the regime offers a choice").toBeGreaterThan(1);
@@ -211,9 +211,9 @@ describe("design fills are the composition's identity — the disclosure regime"
         // design fills are stripped by the build, so they cannot move identity.
         // figaro-geolocation left this fixture role when it gained its
         // designer-filled geocoder; figaro-dimweight declares no fills.
-        const fillless = getClauseSpec("figaro-dimweight");
+        const fillless = getClauseSpec("figaro-dimweight", 1);
         expect(fillless, "the fixture clause is loaded").toBeTruthy();
-        expect(clauseDesignFills("figaro-dimweight")).toHaveLength(0);
+        expect(clauseDesignFills("figaro-dimweight", 1)).toHaveLength(0);
         const session = startSyntheticSession();
         const root = createSyntheticRootOrder(session);
         const base: DesignSnapshot = {

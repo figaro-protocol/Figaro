@@ -526,23 +526,6 @@ export async function latestMemberProfileURI(member: `0x${string}`): Promise<str
         .at(-1)?.args.metadataURI as string | undefined;
 }
 
-/** A seller's live assembly bindings, read from its latest pinned profile
- *  (chain events → IPFS). Empty when unregistered or unresolvable. */
-export async function memberProfileBindings(
-    seller: `0x${string}`,
-): Promise<DiscoveredMember['assemblyBindings']> {
-    const uri = await latestMemberProfileURI(seller);
-    if (!uri) return [];
-    try {
-        const doc = await (await fetch(resolveIpfsURI(uri))).json() as {
-            assemblyBindings?: DiscoveredMember['assemblyBindings'];
-        };
-        return doc.assemblyBindings ?? [];
-    } catch {
-        return [];
-    }
-}
-
 /** A member's accepted tokens, read from its latest pinned profile (chain
  *  events → IPFS). Empty when unregistered or unresolvable. */
 export async function memberAcceptedTokens(
@@ -555,6 +538,22 @@ export async function memberAcceptedTokens(
             acceptedTokens?: Array<{ address?: string; symbol?: string; poolFeeTier?: number }>;
         };
         return doc.acceptedTokens ?? [];
+    } catch {
+        return [];
+    }
+}
+/** A seller's live assembly bindings, read from its latest pinned profile
+ *  (chain events → IPFS). Empty when unregistered or unresolvable. */
+export async function memberProfileBindings(
+    seller: `0x${string}`,
+): Promise<DiscoveredMember['assemblyBindings']> {
+    const uri = await latestMemberProfileURI(seller);
+    if (!uri) return [];
+    try {
+        const doc = await (await fetch(resolveIpfsURI(uri))).json() as {
+            assemblyBindings?: DiscoveredMember['assemblyBindings'];
+        };
+        return doc.assemblyBindings ?? [];
     } catch {
         return [];
     }
@@ -782,13 +781,20 @@ export async function waitForConnected(page: Page): Promise<void> {
  * (first-write-wins), the Review screen reads that binding at the edge, closes
  * publish, and its `review-already-anchored` notice names the anchored slug,
  * which the caller ADOPTS. Either way the slug is the network's answer, never
- * derived locally. The caller's page must be on the devnet wallet.
+ * derived locally. `onPublishScreen` runs on the publish screen before either
+ * branch — a caller's assertion on what is about to be anchored. The caller's
+ * page must be on the devnet wallet.
  */
-export async function publishOrAdoptReviewed(page: Page, handle: string): Promise<string> {
+export async function publishOrAdoptReviewed(
+    page: Page,
+    handle: string,
+    onPublishScreen?: () => Promise<void>,
+): Promise<string> {
     await page.goto(`/assemblies/designer/view?slug=${handle}&intent=publish&e2e=devnet`, { waitUntil: 'domcontentloaded' });
     const confirmBtn = page.getByTestId('review-confirm-publish');
-    await confirmBtn.waitFor({ state: 'visible', timeout: 15000 });
+    await confirmBtn.waitFor({ state: 'visible', timeout: 30000 });
     await waitForConnected(page);
+    await onPublishScreen?.();
     const reviewedHash = await page.getByTestId('designer-composition-hash').getAttribute('title') as `0x${string}`;
     expect(reviewedHash, 'the review screen states the composition it would anchor').toMatch(/^0x[0-9a-f]{64}$/i);
     const [, registeredAt] = await localPublicClient().readContract({
@@ -805,6 +811,9 @@ export async function publishOrAdoptReviewed(page: Page, handle: string): Promis
         expect(slug, 'the notice names the anchored content slug').toMatch(/^asm-/);
         return slug;
     }
+    // Enabled = wallet ready AND the clause-spec cache warmed (the button
+    // gates on the clause specs having loaded).
+    await expect(confirmBtn).toBeEnabled({ timeout: 30000 });
     await confirmBtn.click();
     await expect(page.getByTestId('assembly-publish-receipt')).toBeVisible({ timeout: 60000 });
     const slug = (await page.getByTestId('receipt-slug').textContent())?.trim() ?? '';

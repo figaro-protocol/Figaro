@@ -48,7 +48,6 @@ describe("deriveAgreementGroups — exact-version spec reads", () => {
     afterAll(() => _resetClauseSpecCache_TESTING_ONLY());
 
     it("two versions are loaded: v99 declares mandatory, v1 does not", () => {
-        expect(clauseIsMandatory(CONSENT)).toBe(true); // the version-blind read resolves v99
         expect(clauseIsMandatory(CONSENT, 1)).toBe(false);
         expect(clauseIsMandatory(CONSENT, 99)).toBe(true);
     });
@@ -120,8 +119,9 @@ describe("buyerAuthoredFields — the offered fields are the composed version's"
     });
     afterAll(() => _resetClauseSpecCache_TESTING_ONLY());
 
-    it("the version-blind read resolves v50; the exact reads stay apart", () => {
-        expect(getClauseSpec(CONSENT)?.version).toBe(50);
+    it("both versions are loaded; the exact reads stay apart", () => {
+        expect(getClauseSpec(CONSENT, 50)?.version).toBe(50);
+        expect(getClauseSpec(CONSENT, 1)?.version).toBe(1);
         expect(buyerAuthoredFields(CONSENT, 1)).toEqual([]);
         expect(buyerAuthoredFields(CONSENT, 50).map((f) => f.name)).toEqual(["documents", "witnessName"]);
     });

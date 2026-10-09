@@ -26,11 +26,12 @@ import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
  *  job (see the clause model); recourse reads that group, nothing narrower. */
 const RECOURSE_ARTICLE = "dispute-resolution";
 
-/** A dispute-resolution clause a process carries — the clauseId plus its
- *  committed data. Surfaced generically (rendered via `describeClause` at the
+/** A dispute-resolution clause a process carries — the clauseId and the
+ *  version the agreement committed, plus its committed data. Surfaced generically (rendered via `describeClause` at the
  *  edge); the reader never interprets the fields itself. */
 export interface RecourseClause {
     clauseId: string;
+    version: number;
     data: Record<string, unknown>;
 }
 
@@ -52,12 +53,12 @@ export function deriveProcessRecourse(
         const agreement = order.agreementHash ? agreements.get(order.agreementHash) : undefined;
         if (!agreement) continue;
         for (const section of agreement.sections) {
-            if (getClauseSpec(section.clause)?.block?.design.article !== RECOURSE_ARTICLE) continue;
+            if (getClauseSpec(section.clause, section.version)?.block?.design.article !== RECOURSE_ARTICLE) continue;
             const data = ((section as { data?: Record<string, unknown> }).data) ?? {};
-            const key = `${section.clause}:${JSON.stringify(data)}`;
+            const key = `${section.clause}#${section.version}:${JSON.stringify(data)}`;
             if (seen.has(key)) continue;
             seen.add(key);
-            out.push({ clauseId: section.clause, data });
+            out.push({ clauseId: section.clause, version: section.version, data });
         }
     }
     return out;

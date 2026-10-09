@@ -79,11 +79,13 @@ export type ProjectionSpecView = ClauseSpec & { hints?: ProjectionHints };
 
 /**
  * The consumer's window onto its loaded clause specs (ClauseRegistry → IPFS).
- * `get` with no version returns the highest loaded version; `list` returns
- * every loaded spec (one entry per clauseId+version).
+ * A clause's identity is (clauseId, version) — the on-chain key
+ * keccak256(abi.encode(clauseId, version)) — so `get` reads one registration
+ * by both and nothing reads a clause by name alone; `list` returns every
+ * spec the source surfaces (one entry per clauseId+version).
  */
 export interface SpecSource {
-    get(clauseId: string, version?: number): ProjectionSpecView | undefined;
+    get(clauseId: string, version: number): ProjectionSpecView | undefined;
     list(): readonly ProjectionSpecView[];
 }
 
@@ -315,7 +317,7 @@ function withSpecDefaults(
     specs: SpecSource,
     clause: string,
     data: Record<string, unknown>,
-    version?: number,
+    version: number,
 ): Record<string, unknown> {
     const spec = specs.get(clause, version);
     if (!spec || specIsProcessLog(spec)) return data;
@@ -467,7 +469,7 @@ export function validateCommitmentAgreement(
             });
             continue;
         }
-        const spec = specs.get(section.clause);
+        const spec = specs.get(section.clause, section.version);
         if (!spec) continue;
         // A runtime-lifecycle clause is an empty anchor at commit — its content
         // is attested later, so there is nothing to validate here.
@@ -585,7 +587,7 @@ export function sectionsByField(
     specs: SpecSource,
 ): AgreementSection[] {
     return agreement.sections.filter((s) => {
-        const spec = specs.get(s.clause);
+        const spec = specs.get(s.clause, s.version);
         return spec
             ? specDeclaresField(spec, fieldName)
             : Object.prototype.hasOwnProperty.call(s.data ?? {}, fieldName);
@@ -718,27 +720,35 @@ export function buildAssemblyTemplate(args: {
             );
         }
     }
-    // Dedupe by clauseId (list() is per-version): the fold wants each
-    // mandatory clause once. A MANDATORY clause folds AT THE LEVEL ITS SCOPE
-    // NAMES: agreement-scoped mandatory (commerce, topology) folds into every
-    // agreement; assembly-scoped mandatory (assembly-provenance) folds into
-    // every published assembly's terms below.
+    // The fold wants each mandatory clause once. A MANDATORY clause folds AT
+    // THE LEVEL ITS SCOPE NAMES: agreement-scoped mandatory (commerce,
+    // topology) folds into every agreement; assembly-scoped mandatory
+    // (assembly-provenance) folds into every published assembly's terms below.
     //
-    // The article is the spec's `block`, which its registrant writes, and
-    // every (clauseId, version) slot is open to anyone — version 0 and every
-    // version above 1 included — so neither the lowest nor the highest loaded
-    // version resists a stranger's registration. The fold follows the rule
-    // every pick follows: an id the draft does not state folds at VERSION 1,
-    // and only a version-1 spec's own article marks its id mandatory. The
-    // fold never overrides a version the draft states (below), and every
-    // folded clause is in the template, where a review shows it by id and
-    // version before anchoring.
+    // The fold draws from `specs.list()` — the registrations the caller
+    // surfaces, a live-stake source for a new composition — and takes, per
+    // name, the one registration whose spec marks it mandatory. When one
+    // name has more than one such registration, the fold takes the version-1
+    // registration, and a name none of whose mandatory registrations is
+    // version 1 does not fold. The fold never overrides a version the draft
+    // states (below), and every folded clause is in the template, where a
+    // review shows it by id and version before anchoring.
+    const mandatoryByName = new Map<string, ProjectionSpecView[]>();
+    for (const spec of specs.list()) {
+        if (!specIsMandatory(spec)) continue;
+        const registrations = mandatoryByName.get(spec.clauseId);
+        if (registrations) registrations.push(spec);
+        else mandatoryByName.set(spec.clauseId, [spec]);
+    }
     const mandatory = new Map<string, ProjectionSpecView>();
     const assemblyMandatory = new Map<string, ProjectionSpecView>();
-    for (const spec of specs.list()) {
-        if (spec.version !== 1 || !specIsMandatory(spec)) continue;
+    for (const [clauseId, registrations] of mandatoryByName) {
+        const spec = registrations.length === 1
+            ? registrations[0]
+            : registrations.find((r) => r.version === 1);
+        if (spec === undefined) continue;
         const target = specIsAssemblyScoped(spec) ? assemblyMandatory : mandatory;
-        target.set(spec.clauseId, spec);
+        target.set(clauseId, spec);
     }
     if (mandatory.size === 0) {
         // Without the chain→IPFS spec set the mandatory clauses cannot be

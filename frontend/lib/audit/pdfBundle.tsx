@@ -455,7 +455,7 @@ function ProcessLogsPage({ doc }: { doc: AuditBundle["processLogs"] }) {
             </Text>
 
             {doc.logs.map((group) => (
-                <View key={group.clauseId}>
+                <View key={group.clauseHash}>
                     <Text style={styles.h2}>{group.title} ({group.events.length})</Text>
                     <View style={styles.table}>
                         <View style={[styles.tableRow, styles.tableHeader]}>
@@ -465,7 +465,7 @@ function ProcessLogsPage({ doc }: { doc: AuditBundle["processLogs"] }) {
                             <Text style={[styles.tCell, { flex: 1 }]}>Block</Text>
                         </View>
                         {group.events.map((e, i) => (
-                            <View key={`${group.clauseId}-${e.contentRef}-${i}`} style={styles.tableRow}>
+                            <View key={`${group.clauseHash}-${e.contentRef}-${i}`} style={styles.tableRow}>
                                 <Text style={[styles.tCell, { flex: 0.8 }]}>{e.stage}</Text>
                                 <Text style={[styles.tCellMono, { flex: 3 }]}>{shortAddr(e.attester)}</Text>
                                 <Text style={[styles.tCellMono, { flex: 4 }]}>{shortHex(e.contentRef, 14, 8)}</Text>

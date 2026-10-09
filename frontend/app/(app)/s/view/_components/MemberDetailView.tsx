@@ -32,7 +32,7 @@ import { useTokenSymbol } from "@/hooks/useTokenSymbol";
 import { hexEqual, normalizeAddressParam } from "@/lib/shared/evm";
 import { truncateHex } from "@/lib/shared/formatHex";
 import { formatMass, formatVolume } from "@/lib/member/unitConversion";
-import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
+import { memberDocumentClauseSpec } from "@/lib/shared/clauseSpecSource";
 
 import type { CatalogItemMetadata } from "@/lib/member/memberCatalogMetadata";
 
@@ -223,7 +223,7 @@ export function MemberDetailView({ sellerAddress }: Props) {
                             <p className="text-xs font-semibold text-ink-muted">Data for sale</p>
                             <ul className="space-y-2 text-sm text-ink-body">
                                 {offered.map((entry) => {
-                                    const title = getClauseSpec(entry.clauseId)?.title ?? entry.clauseId;
+                                    const title = memberDocumentClauseSpec(entry.clauseId)?.title ?? entry.clauseId;
                                     const embargo = entry.calendar?.embargoDaysAfterResolution;
                                     return (
                                         <li
@@ -302,7 +302,7 @@ export function MemberDetailView({ sellerAddress }: Props) {
                                                                     className="text-[11px] text-ink-muted mb-2"
                                                                     data-testid={`catalog-item-data-sold-${catalogItem.id}`}
                                                                 >
-                                                                    Data for sale · {getClauseSpec(catalogItem.dataSold.clauseId)?.title ?? catalogItem.dataSold.clauseId} · as {catalogItem.dataSold.posture}
+                                                                    Data for sale · {memberDocumentClauseSpec(catalogItem.dataSold.clauseId)?.title ?? catalogItem.dataSold.clauseId} · as {catalogItem.dataSold.posture}
                                                                 </p>
                                                             )}
                                                             {(catalogItem.massGrams || catalogItem.volumeMl) && (

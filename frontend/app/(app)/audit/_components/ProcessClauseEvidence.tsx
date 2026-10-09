@@ -198,7 +198,7 @@ export function ProcessClauseEvidence({ processId }: { processId: string }) {
     // absent — the receipt row still renders the fingerprint; a party holding
     // the preimage proves the match off-chain.
     //
-    // Keyed by (clauseId, stage, contentRef) — NEVER the fingerprint alone:
+    // Keyed by (clause hash, stage, contentRef) — NEVER the fingerprint alone:
     // the same bytes decode differently under different field sets, and two
     // clauses can legitimately fingerprint identical bytes (a ladder event's
     // `(uint8 0, "")` is byte-identical to a witness's first-ordinal enum with
@@ -213,13 +213,15 @@ export function ProcessClauseEvidence({ processId }: { processId: string }) {
             for (const records of attestationsByOrder.values()) {
                 for (const att of records) {
                     if (!att.contentRef) continue;
-                    // The event carries the clauseId HASH; spec reads key on the
-                    // readable id — resolve through the cache first.
-                    const clauseId = clauseIdForHash(att.clauseId) ?? att.clauseId;
-                    if (!clauseWitnessStages(clauseId).some((w) => w.stage === att.stage)) continue;
-                    const witnessSpec = getClauseSpec(clauseId);
+                    // The event carries the clause HASH, which names one
+                    // registration; spec reads key on its (clauseId, version).
+                    const identity = clauseIdForHash(att.clauseId);
+                    if (!identity) continue;
+                    const { clauseId, version } = identity;
+                    if (!clauseWitnessStages(clauseId, version).some((w) => w.stage === att.stage)) continue;
+                    const witnessSpec = getClauseSpec(clauseId, version);
                     if (!witnessSpec) continue;
-                    const key = `${clauseId}:${att.stage}:${att.contentRef}`;
+                    const key = `${att.clauseId.toLowerCase()}:${att.stage}:${att.contentRef}`;
                     if (next.has(key)) continue;
                     next.set(key, {}); // claim the triple; overwritten on decode
                     let pending = contentByRef.get(att.contentRef);
@@ -320,17 +322,17 @@ export function ProcessClauseEvidence({ processId }: { processId: string }) {
                             )}
 
                             {processLogs.logs.map((group) => (
-                                <div key={`log-${group.clauseId}`} className="space-y-2">
+                                <div key={`log-${group.clauseHash}`} className="space-y-2">
                                     <h3 className="text-sm font-semibold text-ink-heading">{group.title}</h3>
                                     <ul className="space-y-1 text-sm">
                                         {group.events.map((event, i) => {
-                                            const decoded = witnessValues.get(`${group.clauseId}:${event.stage}:${event.contentRef}`);
-                                            const witness = decoded ? describeWitness(group.clauseId, event.stage, decoded) : null;
+                                            const decoded = witnessValues.get(`${group.clauseHash}:${event.stage}:${event.contentRef}`);
+                                            const witness = decoded ? describeWitness(group.clauseId, event.stage, decoded, group.version) : null;
                                             return (
-                                                <li key={`${group.clauseId}-${i}`} className="text-ink-body">
+                                                <li key={`${group.clauseHash}-${i}`} className="text-ink-body">
                                                     <div className="flex flex-wrap gap-x-3">
                                                         <span className="text-ink-heading">
-                                                            {describeAttestation(group.clauseId, event.stage).eventLabel}
+                                                            {describeAttestation(group.clauseHash, event.stage).eventLabel}
                                                         </span>
                                                         <span className="text-ink-muted font-mono text-xs break-all">
                                                             {event.attester}

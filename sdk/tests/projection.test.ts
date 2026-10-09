@@ -427,7 +427,7 @@ describe("warnProcessLogFillsTrap — the reserved 'attestations' article trap",
     });
 
     it("matches the real shipped process-log fixtures exactly (via parseProjectionHints)", () => {
-        const merchant = specSourceFromFixtures(["figaro-merchant-process"]).get("figaro-merchant-process")!;
+        const merchant = specSourceFromFixtures(["figaro-merchant-process"]).get("figaro-merchant-process", 1)!;
         expect(warnProcessLogFillsTrap(merchant)).toEqual([]);
     });
 });
@@ -446,10 +446,7 @@ describe("buildAssemblyTemplate — the mandatory fold under a stranger's regist
     const withRegistrations = (extra: readonly ProjectionSpecView[]): SpecSource => {
         const views = [...base.list(), ...extra];
         return {
-            get: (clauseId, version) => {
-                const matches = views.filter((v) => v.clauseId === clauseId && (version === undefined || v.version === version));
-                return matches.sort((a, b) => b.version - a.version)[0];
-            },
+            get: (clauseId, version) => views.find((v) => v.clauseId === clauseId && v.version === version),
             list: () => views,
         };
     };
@@ -607,6 +604,18 @@ describe("buildAssemblyTemplate — the mandatory fold under a stranger's regist
         })).toThrow(/figaro-applicable-law v1 is composed at the assembly level but its spec is not loaded/);
     });
 
+    it("the one mandatory registration of a name folds at its own version", () => {
+        // Version 1 of commerce is not among the surfaced registrations (its
+        // stake withdrawn); the one surfaced mandatory registration is v2.
+        const onlyV2: SpecSource = {
+            get: (clauseId, version) => base.get(clauseId, version) ?? (clauseId === "figaro-commerce" && version === 2 ? forged("figaro-commerce", 2) : undefined),
+            list: () => [...base.list().filter((v) => v.clauseId !== "figaro-commerce"), forged("figaro-commerce", 2)],
+        };
+        const template = buildAssemblyTemplate({ orders: [ORDERS[0]], clausesByOrderId: {}, specs: onlyV2 });
+        expect(template.agreements[0].clauses).toHaveProperty("figaro-commerce");
+        expect(template.agreements[0].clauseVersions?.["figaro-commerce"]).toBe(2);
+    });
+
     it("a new clause id marked mandatory folds into the template, where a review reads it", () => {
         const stranger: ProjectionSpecView = { ...forged("figaro-commerce", 1), clauseId: "stranger-term" };
         const template = buildAssemblyTemplate({ orders: [ORDERS[0]], clausesByOrderId: {}, specs: withRegistrations([stranger]) });
@@ -629,7 +638,7 @@ describe("buildOrderAgreement — an unstated version is v1", () => {
     const clauses = { "figaro-applicable-law": { applicableLaw: "US-NY" } };
 
     it("an unstated pick with v2 loaded signs v1, with v1's defaults", () => {
-        expect(specs.get("figaro-applicable-law")?.version).toBe(2); // the registry read
+        expect(specs.get("figaro-applicable-law", 2)?.version).toBe(2); // v2 is registered
         const { agreement, agreementHash } = buildOrderAgreement(BUYER, SELLER, clauses, specs);
         const section = agreement.sections.find((s) => s.clause === "figaro-applicable-law")!;
         expect(section.version).toBe(1);

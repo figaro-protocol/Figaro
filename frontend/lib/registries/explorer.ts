@@ -18,6 +18,7 @@ import { canonicalContentHash, canonicalize, templateCompositionHash } from "@fi
 import type { BreadcrumbItem } from "@/components/shared/Breadcrumb";
 import { safeJsonParse, strippingReviver } from "@/lib/shared/safeJson";
 import { pick, queryParam } from "@/lib/shared/urlQuery";
+import { isLiveRegistration } from "@/lib/shared/clauseSpecSource";
 
 export const REGISTRY_FAMILIES = ["clauses", "assemblies", "members"] as const;
 export type RegistryFamily = (typeof REGISTRY_FAMILIES)[number];
@@ -117,8 +118,8 @@ export interface ExplorerRow {
 
 function matchesQuery(row: ExplorerRow, state: ExplorerQuery): boolean {
     if (row.family !== state.family) return false;
-    if (state.stake === "live" && row.stakeWithdrawn) return false;
-    if (state.stake === "withdrawn" && !row.stakeWithdrawn) return false;
+    if (state.stake === "live" && !isLiveRegistration(row)) return false;
+    if (state.stake === "withdrawn" && isLiveRegistration(row)) return false;
     if (state.article && row.article !== state.article) return false;
     if (state.registeredBy && row.registeredBy.toLowerCase() !== state.registeredBy.toLowerCase()) return false;
     if (state.clause && !row.clauses.includes(state.clause)) return false;

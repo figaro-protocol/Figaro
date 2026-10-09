@@ -30,7 +30,7 @@ import {
     assemblyClauseDefaults,
 } from "@/lib/designer/draftToAssemblyTemplate";
 import { assemblyTemplateToDraft } from "@/lib/designer/assemblyTemplateToDraft";
-import { loadClauseSpec, setClauseSpecFetcher } from "@/lib/shared/clauseSpecSource";
+import { listKnownClauses, loadClauseSpec, noteClauseStakes, setClauseSpecFetcher } from "@/lib/shared/clauseSpecSource";
 import {
     createSyntheticRootOrder,
     createSyntheticSubOrder,
@@ -265,14 +265,14 @@ describe("unfilledAssemblyTerms", () => {
 // a default stays for the designer.
 describe("assemblyClauseDefaults", () => {
     it("seeds a required design fill from its declared default", () => {
-        const seeded = assemblyClauseDefaults("figaro-arbitration-kleros");
+        const seeded = assemblyClauseDefaults("figaro-arbitration-kleros", 1);
         expect(seeded.klerosCourt).toBe("general");
         expect(unfilledAssemblyTerms({ "figaro-arbitration-kleros": seeded })).toEqual([]);
     });
 
     it("leaves a fill with no default empty, and an unknown clause seeds nothing", () => {
-        expect(assemblyClauseDefaults("figaro-utility-token")).not.toHaveProperty("currency");
-        expect(assemblyClauseDefaults("figaro-never-seen")).toEqual({});
+        expect(assemblyClauseDefaults("figaro-utility-token", 1)).not.toHaveProperty("currency");
+        expect(assemblyClauseDefaults("figaro-never-seen", 1)).toEqual({});
     });
 });
 
@@ -294,6 +294,9 @@ describe("the mandatory fold — listed on the review, never displaced by a stra
         const uri = `stranger://${clauseId}/${version}`;
         setClauseSpecFetcher(async (u) => (u === uri ? document : JSON.parse(readFileSync(u, "utf8"))));
         await loadClauseSpec(clauseId, version, uri, canonicalContentHash(document));
+        // A stranger's registration stakes like any other: the registry read
+        // notes it live.
+        noteClauseStakes(listKnownClauses().map((c) => ({ ...c, stakeWithdrawn: false })));
     }
 
     beforeAll(async () => {
@@ -431,7 +434,45 @@ describe("assembly terms with no recorded version — read at v1", () => {
     });
 
     it("toggling a term on seeds v1's declared default, not v2's", () => {
-        expect(assemblyClauseDefaults("figaro-arbitration-kleros").klerosCourt).toBe("general");
+        expect(assemblyClauseDefaults("figaro-arbitration-kleros", 1).klerosCourt).toBe("general");
         expect(assemblyClauseDefaults("figaro-arbitration-kleros", 2).klerosCourt).toBe("english-language");
+    });
+});
+
+// The fold draws from the registrations whose stake is live. Runs LAST in this
+// file: it adds mandatory registrations to the module cache.
+describe("the mandatory fold — the registrations whose stake is live", () => {
+    let drawn: ReturnType<typeof drawCanvas>;
+    const CLAUSES_DIR = path.resolve(process.cwd(), "../clauses");
+    const commerce = JSON.parse(readFileSync(path.join(CLAUSES_DIR, "figaro-commerce.json"), "utf8")) as Record<string, unknown>;
+
+    /** Register a mandatory spec (the commerce spec under another id or
+     *  version) and note every loaded registration's stake as live. */
+    async function registerStranger(clauseId: string, version: number): Promise<void> {
+        const document = { ...commerce, clauseId, version, title: `${clauseId} v${version}` };
+        const uri = `stranger://${clauseId}/${version}`;
+        setClauseSpecFetcher(async (u) => (u === uri ? document : JSON.parse(readFileSync(u, "utf8"))));
+        await loadClauseSpec(clauseId, version, uri, canonicalContentHash(document));
+        noteClauseStakes(listKnownClauses().map((c) => ({ ...c, stakeWithdrawn: false })));
+    }
+
+    beforeAll(async () => {
+        await primeClauseSpecs([...ORDER_CLAUSES, ...ASSEMBLY_CLAUSES, ...MANDATORY, "figaro-assembly-provenance"]);
+        drawn = drawCanvas();
+    });
+
+    it("a mandatory registration whose stake is withdrawn does not fold", async () => {
+        await registerStranger("withdrawn-term", 1);
+        noteClauseStakes(listKnownClauses().map((c) => ({ ...c, stakeWithdrawn: c.clauseId === "withdrawn-term" })));
+        const review = projectSnapshotForReview(snapshotOf(drawn));
+        if (!review.ok) throw new Error(review.error);
+        expect(review.folded.some((f) => f.clauseId === "withdrawn-term")).toBe(false);
+    });
+
+    it("the one live mandatory registration of a name folds at its version", async () => {
+        await registerStranger("v2-term", 2);
+        const review = projectSnapshotForReview(snapshotOf(drawn));
+        if (!review.ok) throw new Error(review.error);
+        expect(review.folded).toContainEqual(expect.objectContaining({ clauseId: "v2-term", version: 2 }));
     });
 });

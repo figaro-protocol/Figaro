@@ -18,7 +18,7 @@ import {
     publishWitnessContent,
     unpinWitnessContent,
 } from "@/lib/composition/witnessContent";
-import { canonicalContentHash } from "@figaro-protocol/sdk";
+import { canonicalContentHash, computeClauseKey } from "@figaro-protocol/sdk";
 import { getClauseSpec, loadClauseSpec, setClauseSpecFetcher } from "@/lib/shared/clauseSpecSource";
 import { primeClauseSpecs } from "./primeClauseSpecs";
 
@@ -49,7 +49,7 @@ beforeAll(async () => {
 });
 
 function proximityContent(): Hex {
-    const spec = getClauseSpec("figaro-proximity-policy");
+    const spec = getClauseSpec("figaro-proximity-policy", 1);
     if (!spec) throw new Error("proximity spec not primed");
     return encodeContentFromSpec(
         spec,
@@ -63,7 +63,7 @@ describe("publishWitnessContent", () => {
         const content = proximityContent();
         const pinKeccakRawBlock = vi.fn().mockResolvedValue("f01551b20" + keccak256(content).slice(2));
         await publishWitnessContent({
-            clauseId: "figaro-proximity-policy",
+            clauseId: computeClauseKey("figaro-proximity-policy", 1),
             stage: 1,
             content,
             ipfs: { pinKeccakRawBlock },
@@ -82,7 +82,7 @@ describe("publishWitnessContent", () => {
         expect(witnessContentCidBase32(GOLDEN_REF)).toBe(GOLDEN_KUBO_KEY);
         expect(witnessContentCid(GOLDEN_REF)).toBe("f01551b20" + GOLDEN_REF.slice(2));
         await publishWitnessContent({
-            clauseId: "figaro-proximity-policy",
+            clauseId: computeClauseKey("figaro-proximity-policy", 1),
             stage: 1,
             content: toHex(GOLDEN_BYTES),
             ipfs: { pinKeccakRawBlock },
@@ -96,7 +96,7 @@ describe("publishWitnessContent", () => {
         const pinKeccakRawBlock = vi.fn().mockResolvedValue("bafybeisomethingelse");
         const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
         await publishWitnessContent({
-            clauseId: "figaro-proximity-policy",
+            clauseId: computeClauseKey("figaro-proximity-policy", 1),
             stage: 1,
             content: proximityContent(),
             ipfs: { pinKeccakRawBlock },
@@ -108,7 +108,7 @@ describe("publishWitnessContent", () => {
     it("withholds private-disposition content — the pin is never attempted", async () => {
         const pinKeccakRawBlock = vi.fn();
         await publishWitnessContent({
-            clauseId: "test-private-witness",
+            clauseId: computeClauseKey("test-private-witness", 1),
             stage: 1,
             content: "0x1234",
             ipfs: { pinKeccakRawBlock },
@@ -120,7 +120,7 @@ describe("publishWitnessContent", () => {
         const pinKeccakRawBlock = vi.fn();
         const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
         await publishWitnessContent({
-            clauseId: "never-loaded-clause",
+            clauseId: computeClauseKey("never-loaded-clause", 1),
             stage: 1,
             content: "0x1234",
             ipfs: { pinKeccakRawBlock },
@@ -134,7 +134,7 @@ describe("publishWitnessContent", () => {
         const pinKeccakRawBlock = vi.fn().mockRejectedValue(new Error("node down"));
         const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
         await expect(publishWitnessContent({
-            clauseId: "figaro-proximity-policy",
+            clauseId: computeClauseKey("figaro-proximity-policy", 1),
             stage: 1,
             content: proximityContent(),
             ipfs: { pinKeccakRawBlock },
@@ -186,12 +186,10 @@ describe("unpinWitnessContent", () => {
         expect(unpin).toHaveBeenCalledExactlyOnceWith("f01551b20" + GOLDEN_REF.slice(2));
     });
 
-    it("swallows an unpin failure (content stays pinned, erasure stays idempotent)", async () => {
-        const unpin = vi.fn().mockRejectedValue(new Error("node down"));
-        const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-        await expect(unpinWitnessContent(GOLDEN_REF, { unpin })).resolves.toBeUndefined();
-        expect(warn).toHaveBeenCalledOnce();
-        warn.mockRestore();
+    it("rejects a refused unpin with the service's answer (the content stays pinned)", async () => {
+        const refusal = new Error("403 Forbidden");
+        const unpin = vi.fn().mockRejectedValue(refusal);
+        await expect(unpinWitnessContent(GOLDEN_REF, { unpin })).rejects.toBe(refusal);
     });
 
     it("is a no-op on a malformed fingerprint", async () => {

@@ -151,7 +151,7 @@ describe("catalogClausesForBindings — the bindings decide which item fields ex
 describe("catalogFieldsOfClause — only the clause's own catalog fills", () => {
     it("returns the fields the clause assigns to the catalog, in spec order", async () => {
         await primeClauseSpecs(["figaro-freight-class"]);
-        expect(catalogFieldsOfClause("figaro-freight-class").map((f) => f.name))
+        expect(catalogFieldsOfClause("figaro-freight-class", 1).map((f) => f.name))
             .toEqual(["nmfcClass", "nmfcItem"]);
     });
 
@@ -159,10 +159,10 @@ describe("catalogFieldsOfClause — only the clause's own catalog fills", () => 
         await primeClauseSpecs(["figaro-commerce"]);
         // The commerce clause's fields are the buyer's checkout particulars —
         // none of them is the catalog's to author.
-        expect(catalogFieldsOfClause("figaro-commerce")).toEqual([]);
+        expect(catalogFieldsOfClause("figaro-commerce", 1)).toEqual([]);
     });
 
     it("is empty for an unloaded spec", () => {
-        expect(catalogFieldsOfClause("figaro-freight-class")).toEqual([]);
+        expect(catalogFieldsOfClause("figaro-freight-class", 1)).toEqual([]);
     });
 });

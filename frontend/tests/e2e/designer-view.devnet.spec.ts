@@ -23,7 +23,7 @@
  */
 import type { Hex } from 'viem';
 import { test, expect, ANVIL_ACCOUNTS } from './devnet-multi-test';
-import { publishProbeAssembly } from './probeAssembly';
+import { composedClauseChip, publishProbeAssembly } from './probeAssembly';
 import { discoverAnchoredAssemblies, localPublicClient, readLocalDeploymentConfig } from './devnet-helpers';
 import { ASSEMBLY_REGISTRY_ABI } from '@/lib/kernel/contracts';
 import { deriveAssemblySlug } from '@/lib/shared/assemblyTemplate';
@@ -38,7 +38,7 @@ test.describe('Assembly read-only inspector — /view?slug= (devnet)', () => {
         // Publish a per-run-unique assembly via the REAL canvas (the nonce lives
         // in the probe clause id, so the content-derived slug is fresh each run —
         // no snapshot/revert needed; devnet is a mainnet rehearsal).
-        const { slug, name, clauseId } = await publishProbeAssembly(page);
+        const { slug, name, clauseId, version } = await publishProbeAssembly(page);
 
         // ── The publish actually anchored, read back out-of-band ─────
         const anchored = (await discoverAnchoredAssemblies()).some((t) => t.slug === slug);
@@ -61,7 +61,7 @@ test.describe('Assembly read-only inspector — /view?slug= (devnet)', () => {
         // the designer composed, read out of the pinned template — an assembly
         // whose terms the inspector cannot state is one nobody can check.
         await expect(
-            page.locator(`[data-testid^="node-clauses-"] span[title="${clauseId}"]`),
+            composedClauseChip(page, clauseId, version),
             'the published node states the composed clause',
         ).toHaveCount(1, { timeout: 30000 });
         await expect(

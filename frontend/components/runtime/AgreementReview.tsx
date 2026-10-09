@@ -89,7 +89,7 @@ export function fullDumpSections(agreement: Agreement | null): AgreementSection[
  *  gets the same notice. */
 function consentSections(agreement: Agreement | null): AgreementSection[] {
     if (!agreement) return [];
-    return agreement.sections.filter((s) => getClauseSpec(s.clause)?.block?.design.article === "consent");
+    return agreement.sections.filter((s) => getClauseSpec(s.clause, s.version)?.block?.design.article === "consent");
 }
 
 /** A described value token, linkified when it is a fetchable locator so the
@@ -184,7 +184,7 @@ export function AgreementReview({ commitment, agreement }: Props) {
                         </p>
                         <ul className="space-y-1" data-testid="preview-consent-documents">
                             {consented.flatMap((section) =>
-                                describeClause(section.clause, section.data as Record<string, unknown>).fields.flatMap((field) =>
+                                describeClause(section.clause, section.data as Record<string, unknown>, section.version).fields.flatMap((field) =>
                                     field.values.map((line, i) => (
                                         <li key={`${section.clause}-${field.name}-${i}`} className="font-mono break-all text-ink-primary">
                                             {line.split(" · ").map((token, j) => (

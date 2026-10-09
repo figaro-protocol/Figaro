@@ -80,7 +80,7 @@ export function useClauseSpecs(): ClauseSpecsState {
                 setSettled(true);
                 setVersion((v) => v + 1);
                 const unresolved = batch.filter(
-                    (e) => getClauseSpec(e.clauseId, e.version) === undefined && getClauseSpecLoadError(e.clauseId) === undefined,
+                    (e) => getClauseSpec(e.clauseId, e.version) === undefined && getClauseSpecLoadError(e.clauseId, e.version) === undefined,
                 );
                 if (unresolved.length === 0) return;
                 timer = setTimeout(() => pass(unresolved, attempt + 1), contentRetryDelayMs(attempt));
@@ -95,7 +95,7 @@ export function useClauseSpecs(): ClauseSpecsState {
 
     return useMemo<ClauseSpecsState>(() => {
         const total = events?.length ?? null;
-        const loadedCount = (events ?? []).filter((e) => getClauseSpec(e.clauseId) !== undefined).length;
+        const loadedCount = (events ?? []).filter((e) => getClauseSpec(e.clauseId, e.version) !== undefined).length;
         // loaded = the registry read resolved AND the load pass finished (each
         // spec terminal). A FAILED registry read is never loaded. Resolved-empty
         // (a genuinely empty registry) completes immediately and counts as loaded:

@@ -62,8 +62,8 @@ function executors(submitAttestation: CapabilityExecutorDeps["submitAttestation"
 }
 
 describe("attestation under an older committed clause version", () => {
-    it("both versions are loaded, and the name alone resolves the newer one", () => {
-        expect(getClauseSpec(CLAUSE)?.version).toBe(2);
+    it("both versions are loaded, each read by name and version", () => {
+        expect(getClauseSpec(CLAUSE, 2)?.version).toBe(2);
         expect(getClauseSpec(CLAUSE, 1)?.version).toBe(1);
         expect(clauseSpecForHash(computeClauseKey(CLAUSE, 1))?.version).toBe(1);
     });

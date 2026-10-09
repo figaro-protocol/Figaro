@@ -130,7 +130,7 @@ export function templateFoldedClauses(template: AssemblyTemplate): FoldedClause[
         folded.set(key, entry);
     };
     for (const clauseId of Object.keys(template.assemblyClauses ?? {})) {
-        note(clauseId, template.assemblyClauseVersions?.[clauseId] ?? 1, "assembly");
+        note(clauseId, templateClauseVersion({ clauseVersions: template.assemblyClauseVersions }, clauseId), "assembly");
     }
     for (const agreement of template.agreements) {
         for (const clauseId of Object.keys(agreement.clauses)) {
@@ -244,10 +244,10 @@ export interface MissingAssemblyTerm {
  * from the first moment and the anchored template carries it explicitly.
  * A fill with no default (a utility token's currency) stays empty, and
  * `unfilledAssemblyTerms` names it until the designer fills it. Read at the
- * selected version, absent = 1 (the template's sparse rule) — never the
- * highest version of the id the registry read loaded.
+ * selected version — never another version of the id the registry read
+ * loaded.
  */
-export function assemblyClauseDefaults(clauseId: string, version = 1): Record<string, unknown> {
+export function assemblyClauseDefaults(clauseId: string, version: number): Record<string, unknown> {
     const spec = getClauseSpec(clauseId, version);
     if (!spec) return {};
     const fills = clauseDesignFills(clauseId, version);
@@ -264,8 +264,8 @@ export function unfilledAssemblyTerms(
 ): MissingAssemblyTerm[] {
     const missing: MissingAssemblyTerm[] = [];
     for (const [clauseId, values] of Object.entries(assemblyClauses)) {
-        // The version map is sparse: absent = 1, exactly as the template reads.
-        const version = versions?.[clauseId] ?? 1;
+        // The version map is the template's sparse encoding.
+        const version = templateClauseVersion({ clauseVersions: versions }, clauseId);
         const spec = getClauseSpec(clauseId, version);
         if (!spec) continue;
         const fills = clauseDesignFills(clauseId, version);

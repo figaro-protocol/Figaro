@@ -305,6 +305,10 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
         if (resolved.kind === "published") return resolved.assemblyTemplate.assemblyClauses ?? {};
         return review?.ok ? review.assemblyClauses : {};
     }, [resolved, review]);
+    const composedAssemblyClauseVersions = useMemo(() => {
+        if (resolved.kind === "published") return resolved.assemblyTemplate.assemblyClauseVersions;
+        return review?.ok ? review.template.assemblyClauseVersions : undefined;
+    }, [resolved, review]);
     // A required assembly term the template carries empty — the review says
     // which, and Confirm stays closed until the editor fills it.
     const missingTerms = useMemo(
@@ -803,6 +807,7 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                         )}
                         <AssemblyTermsPanel
                             values={composedAssemblyClauses}
+                            versions={composedAssemblyClauseVersions}
                             onToggleClause={() => { /* read-only */ }}
                             onSetClauseField={() => { /* read-only */ }}
                             readOnly

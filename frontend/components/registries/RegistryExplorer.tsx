@@ -19,7 +19,7 @@ import { useCallback, useMemo } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useAllRegisteredClauses } from "@/lib/protocol/useClauseRegistry";
 import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
-import { getClauseSpec, getClauseSpecLoadError } from "@/lib/shared/clauseSpecSource";
+import { getClauseSpec, getClauseSpecLoadError, isLiveRegistration } from "@/lib/shared/clauseSpecSource";
 import { useAssemblyChoices } from "@/lib/protocol/assemblyChoices";
 import { useRegisteredMembers } from "@/lib/member/useRegisteredMembers";
 import { AssemblyShapeLine } from "@/components/assemblies/AssemblyShapeLine";
@@ -76,7 +76,7 @@ export function RegistryExplorer() {
             const article = spec?.block?.design?.article ?? "";
             const name = spec?.title ?? e.clauseId;
             const description = spec?.description ?? "";
-            const content = spec ? "resolved" : getClauseSpecLoadError(e.clauseId) ? "unavailable" : "resolving";
+            const content = spec ? "resolved" : getClauseSpecLoadError(e.clauseId, e.version) ? "unavailable" : "resolving";
             out.push({
                 family: "clauses", key: `clause-${e.clauseId}`, id: e.clauseId, name, article, description, content,
                 registeredBy: e.registeredBy, blockNumber: e.blockNumber, stakeWithdrawn: e.stakeWithdrawn, clauses: [],
@@ -116,7 +116,7 @@ export function RegistryExplorer() {
         : state.family === "assemblies" ? assemblies === null : members === null;
     const familyFailed = state.family === "clauses" ? clausesFailed
         : state.family === "members" ? membersFailed : assembliesFailed;
-    const familyTotal = rows.filter((r) => r.family === state.family && !r.stakeWithdrawn).length;
+    const familyTotal = rows.filter((r) => r.family === state.family && isLiveRegistration(r)).length;
 
     return (
         <div className="space-y-8">

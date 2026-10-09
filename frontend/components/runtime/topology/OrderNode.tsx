@@ -5,6 +5,7 @@ import { Order, OrderState } from "@/lib/kernel/store";
 import { formatToken } from "@/lib/shared/utils";
 import { truncateHex } from "@/lib/shared/formatHex";
 import { describeClause } from "@/lib/shared/clauseSpecSource";
+import { templateClauseVersion } from "@/lib/shared/assemblyTemplate";
 import { colorTokens } from "@/lib/shared/designTokenValues";
 
 // ── Visual maps ─────────────────────────────────────────────────────────────
@@ -82,7 +83,8 @@ export const OrderNode = ({ data }: { data: OrderNodeData }) => {
     // a node self-describing without opening the drawer.
     const designerChips = data.designerMode && data.designerClauseValues
         ? Object.entries(data.designerClauseValues).map(([clauseId, vals]) => {
-            const version = data.designerClauseVersions ? data.designerClauseVersions[clauseId] ?? 1 : undefined;
+            // The composition's version map is the template's sparse encoding.
+            const version = templateClauseVersion({ clauseVersions: data.designerClauseVersions }, clauseId);
             const desc = describeClause(clauseId, vals as Record<string, unknown>, version);
             const salient = desc.fields[0]?.values;
             return { clauseId, version, label: salient && salient.length > 0 ? salient.join(" / ") : desc.title };
@@ -199,9 +201,9 @@ export const OrderNode = ({ data }: { data: OrderNodeData }) => {
                         {designerChips.map((c) => (
                             <span
                                 key={c.clauseId}
-                                title={c.version === undefined ? c.clauseId : `${c.clauseId} v${c.version}`}
+                                title={`${c.clauseId} v${c.version}`}
                                 className="px-1.5 py-0.5 rounded bg-subtle text-ink-body text-[10px] leading-tight"
-                                data-testid={c.version === undefined ? undefined : `node-clause-${data.orderHash}-${c.clauseId}-v${c.version}`}
+                                data-testid={`node-clause-${data.orderHash}-${c.clauseId}-v${c.version}`}
                             >
                                 {c.label}
                                 {c.version !== undefined && <span className="ml-1 font-mono text-ink-muted">v{c.version}</span>}

@@ -204,9 +204,9 @@ describe("fillProfileSections — member profile master data folded onto their l
 });
 
 describe("the profile fill and the mechanical field set read each section at its composed version", () => {
-    // Every (clauseId, version) slot is open to anyone; the registry read with
-    // no version returns the highest. A stranger's v2 must not widen what an
-    // order composed at v1 takes from a profile, or what it marks mechanical.
+    // Every (clauseId, version) slot is open to anyone. A stranger's v2 must
+    // not widen what an order composed at v1 takes from a profile, or what it
+    // marks mechanical.
     const credentialV1 = CREDENTIAL.get("figaro-credential", 1)!;
     const credentialV2: ProjectionSpecView = {
         ...credentialV1,
@@ -288,8 +288,7 @@ describe("fillDimweightSection — derived billed weight (divisor from the profi
 });
 
 describe("every spec-routed fill reads each section at its composed version", () => {
-    // Every (clauseId, version) slot is open to anyone, and a registry read
-    // with no version returns the highest loaded. Each case loads a
+    // Every (clauseId, version) slot is open to anyone. Each case loads a
     // stranger's v2 that declares the field a fill routes on, beside the v1
     // the composition states (absent = 1): the v1 composition stays untouched,
     // and only a composition that states v2 is routed through v2.

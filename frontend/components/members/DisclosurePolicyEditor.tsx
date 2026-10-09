@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { isAddress } from "viem";
 import { Card } from "@/components/ui/Card";
-import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
+import { memberDocumentClauseSpec } from "@/lib/shared/clauseSpecSource";
 import type { DisclosurePolicyEntry } from "@/lib/member/memberProfileMetadata";
 import type { AssemblyChoice } from "@/lib/protocol/assemblyChoices";
 import type { PartyRole } from "@/lib/kernel/walletProcessQueries";
@@ -111,7 +111,7 @@ export function DisclosurePolicyEditor({ choices, entries, onChange, postures = 
                         choice.clauses.map((clauseId) => (
                             <div key={clauseId} className="space-y-2 pt-2 border-t border-default">
                                 <span className="text-xs font-semibold text-ink-heading">
-                                    {getClauseSpec(clauseId)?.title ?? clauseId}
+                                    {memberDocumentClauseSpec(clauseId)?.title ?? clauseId}
                                 </span>
                                 {postures.map((posture) => (
                                     <PolicyLeafRow

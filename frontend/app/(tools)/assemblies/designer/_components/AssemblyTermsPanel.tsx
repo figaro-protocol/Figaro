@@ -27,19 +27,25 @@ import {
     clauseIsAssemblyScoped,
     clauseIsMandatory,
     getClauseSpec,
+    isLiveRegistration,
     listKnownClauses,
 } from "@/lib/shared/clauseSpecSource";
+import { templateClauseVersion } from "@/lib/shared/assemblyTemplate";
 import { FieldControl } from "@/components/runtime/FieldControl";
 
 export function AssemblyTermsPanel({
     values,
+    versions,
     onToggleClause,
     onSetClauseField,
     readOnly = false,
 }: {
     /** clauseId → composed values (design.fills only; `{}` = selected). */
     values: Record<string, Record<string, unknown>>;
-    onToggleClause: (clauseId: string, next: boolean, version?: number) => void;
+    /** clauseId → the version composed, in the template's sparse encoding
+     *  (`assemblyClauseVersions`). */
+    versions: Readonly<Record<string, number>> | undefined;
+    onToggleClause: (clauseId: string, next: boolean, version: number) => void;
     onSetClauseField: (clauseId: string, field: string, value: unknown) => void;
     readOnly?: boolean;
 }) {
@@ -51,7 +57,7 @@ export function AssemblyTermsPanel({
     // zero code change. Withdrawn stakes de-surface exactly as in the drawer.
     const assemblyClauses = useMemo(() => {
         const live = new Set(
-            (registered ?? []).filter((e) => !e.stakeWithdrawn).map((e) => `${e.clauseId}#${e.version}`),
+            (registered ?? []).filter(isLiveRegistration).map((e) => `${e.clauseId}#${e.version}`),
         );
         // Mandatory assembly-scoped clauses (assembly-provenance) fold in
         // automatically at publish — never a choice, so never offered here.
@@ -76,7 +82,9 @@ export function AssemblyTermsPanel({
             {assemblyClauses.map(({ clauseId, version }) => {
                 const spec = getClauseSpec(clauseId, version);
                 if (!spec) return null;
-                const selected = clauseId in values;
+                // A term is (id, version): checked only at the version composed.
+                const selected = clauseId in values
+                    && templateClauseVersion({ clauseVersions: versions }, clauseId) === version;
                 const fills = clauseDesignFills(clauseId, version);
                 return (
                     <div key={`${clauseId}#${version}`} className="space-y-1.5">

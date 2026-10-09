@@ -33,12 +33,13 @@ import {
     type CappedFetchOptions,
     type IpfsService,
 } from "@/lib/shared/ipfsService";
-import { clauseIdForHash, clauseSpecForHash, getClauseSpec } from "@/lib/shared/clauseSpecSource";
+import { clauseIdForHash, clauseSpecForHash } from "@/lib/shared/clauseSpecSource";
 import { isBytes32Hex, isEmptyHex } from "@/lib/shared/evm";
 
 export interface PublishWitnessContentParams {
-    /** The clause attested — the event's clauseId HASH or the readable id. */
-    clauseId: Hex | string;
+    /** The clause attested — the on-chain clause hash
+     *  keccak256(abi.encode(clauseId, version)), which names one registration. */
+    clauseId: Hex;
     /** Lifecycle stage the content was encoded at — drives the same
      *  `contentFieldsFor` selection the encoder applied. */
     stage: number;
@@ -56,10 +57,10 @@ export interface PublishWitnessContentParams {
 export async function publishWitnessContent(params: PublishWitnessContentParams): Promise<void> {
     const { stage, content } = params;
     if (isEmptyHex(content)) return; // nothing to learn from empty content
-    const clauseId = clauseIdForHash(params.clauseId) ?? params.clauseId;
-    // A hash names the exact (name, version) attested — resolve that spec;
-    // a readable id carries no version and falls back to the name lookup.
-    const spec = clauseSpecForHash(params.clauseId) ?? getClauseSpec(clauseId);
+    // The hash names the exact (name, version) attested — resolve that spec.
+    const identity = clauseIdForHash(params.clauseId);
+    const clauseId = identity ? `${identity.clauseId} v${identity.version}` : params.clauseId;
+    const spec = clauseSpecForHash(params.clauseId);
     if (!spec) {
         // FAIL-CLOSED: an unknown spec is withheld (the committed-pin rule).
         // Loud, because at attest time the spec was just used to encode — a
@@ -107,19 +108,16 @@ export async function fetchWitnessContent(
 }
 
 /**
- * Erase this node's copy of a published witness payload: best-effort unpin of
- * the CID derived from the fingerprint. Idempotent — unpinning an absent pin
- * is absence; failures are logged and swallowed (the same erasure symmetry as
- * the member profile and committed-agreement pins).
+ * Erase this node's copy of a published witness payload: unpin of the CID
+ * derived from the fingerprint. Idempotent — unpinning an absent pin is
+ * absence; a refused unpin rejects with the service's answer, so the erase
+ * control shows it (the same erasure symmetry as the member profile and
+ * committed-agreement pins).
  */
 export async function unpinWitnessContent(
     contentRef: Hex | string,
     ipfs: Pick<IpfsService, "unpin"> = DEFAULT_IPFS_SERVICE,
 ): Promise<void> {
     if (!isBytes32Hex(contentRef)) return;
-    try {
-        await ipfs.unpin(witnessContentCid(contentRef as Hex));
-    } catch (err) {
-        console.warn(`[witnessContent] unpin for ${contentRef} failed (content stays pinned):`, err);
-    }
+    await ipfs.unpin(witnessContentCid(contentRef as Hex));
 }

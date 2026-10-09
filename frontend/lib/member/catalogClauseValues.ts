@@ -14,6 +14,7 @@ import {
     clauseCatalogFills,
     getClauseSpec,
     listCatalogSourcedClauses,
+    memberDocumentClauseSpec,
 } from "@/lib/shared/clauseSpecSource";
 import type { CatalogItemMetadata } from "@/lib/member/memberCatalogMetadata";
 
@@ -26,7 +27,8 @@ export function validateCatalogClauseValues(item: CatalogItemMetadata): string[]
     if (!values) return [];
     const errors: string[] = [];
     for (const [clauseId, data] of Object.entries(values)) {
-        const spec = getClauseSpec(clauseId);
+        // The catalog document names the clause without a version.
+        const spec = memberDocumentClauseSpec(clauseId);
         if (!spec) continue; // spec not loaded — resolved-empty, not a failure
         const result = validateContent(data, spec);
         if (!result.ok) {
@@ -76,7 +78,7 @@ export function catalogClausesForBindings(
  */
 export function catalogFieldsOfClause(
     clauseId: string,
-    version?: number,
+    version: number,
 ): readonly FieldSpec[] {
     const spec = getClauseSpec(clauseId, version);
     if (!spec) return [];

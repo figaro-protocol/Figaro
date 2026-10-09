@@ -23,7 +23,7 @@ import {
 import { privateKeyToAccount } from 'viem/accounts';
 import type { Page } from '@playwright/test';
 import { expect } from './devnet-multi-test';
-import { readLocalDeploymentConfig, pinJSONToIPFS, localPublicClient } from './devnet-helpers';
+import { readLocalDeploymentConfig, pinJSONToIPFS, localPublicClient, publishOrAdoptReviewed } from './devnet-helpers';
 import { ANVIL_KEYS } from '../anvilAccounts';
 import { computeClauseKey, CLAUSE_REGISTRY_ABI } from '@figaro-protocol/sdk';
 import { canonicalContentHash } from '@/lib/shared/canonicalJson';
@@ -151,19 +151,22 @@ export async function registerProbeClause(
     await pub.waitForTransactionReceipt({ hash: await wallet.writeContract(request) });
 }
 
-/** Wait for ClientInit's devnet auto-connect (the "Connect Wallet" button goes). */
-async function waitForConnected(page: Page): Promise<void> {
-    await page.waitForFunction(
-        () => !Array.from(document.querySelectorAll('button')).some((b) => b.textContent?.trim() === 'Connect Wallet'),
-        null,
-        { timeout: 30000 },
-    );
-}
 
 export interface PublishedProbe {
     slug: string;
     name: string;
     clauseId: string;
+    /** The registered version the probe composed. */
+    version: number;
+}
+
+/** The canvas chip a node shows for a composed clause. A clause is named by
+ *  its name and version, and the chip's title states both
+ *  (`OrderNode`: `<clauseId> v<version>`). Scoped to one order's chips when
+ *  `orderId` is given, else to every node's. */
+export function composedClauseChip(page: Page, clauseId: string, version: number, orderId?: string) {
+    const scope = orderId === undefined ? '[data-testid^="node-clauses-"]' : `[data-testid="node-clauses-${orderId}"]`;
+    return page.locator(`${scope} span[title="${clauseId} v${version}"]`);
 }
 
 /**
@@ -212,25 +215,18 @@ export async function publishProbeAssembly(page: Page): Promise<PublishedProbe> 
         'no order reviews as termless when the drawer composed its terms',
     ).toHaveCount(0, { timeout: 30000 });
     await expect(
-        page.locator(`[data-testid^="node-clauses-"] span[title="${clauseId}"]`),
+        composedClauseChip(page, clauseId, PROBE_VERSION),
         'the review names the clause the drawer composed',
     ).toHaveCount(1, { timeout: 30000 });
 
-    await page.goto(`/assemblies/designer/view?slug=${handle}&intent=publish&e2e=devnet`, { waitUntil: 'domcontentloaded' });
-
-    const confirmBtn = page.getByTestId('review-confirm-publish');
-    await confirmBtn.waitFor({ state: 'visible', timeout: 30000 });
-    // And again on the reloaded review, immediately before confirming: what is
+    // And again on the publish screen, immediately before confirming: what is
     // about to be anchored is what is on screen.
-    await expect(
-        page.locator(`[data-testid^="node-clauses-"] span[title="${clauseId}"]`),
-        'the reviewed composition still names the composed clause at the moment of publish',
-    ).toHaveCount(1, { timeout: 30000 });
-    await waitForConnected(page);
-    await confirmBtn.click();
-    await page.getByTestId('assembly-publish-receipt').waitFor({ timeout: 60000 });
-    const slug = (await page.getByTestId('receipt-slug').textContent())?.trim();
-    expect(slug, 'receipt shows the content slug').toMatch(/^asm-/);
+    const slug = await publishOrAdoptReviewed(page, handle!, async () => {
+        await expect(
+            composedClauseChip(page, clauseId, PROBE_VERSION),
+            'the reviewed composition still names the composed clause at the moment of publish',
+        ).toHaveCount(1, { timeout: 30000 });
+    });
 
-    return { slug: slug as string, name, clauseId };
+    return { slug, name, clauseId, version: PROBE_VERSION };
 }

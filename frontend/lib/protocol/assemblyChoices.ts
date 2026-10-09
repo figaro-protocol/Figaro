@@ -15,7 +15,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { activeChain } from "@/lib/shared/wagmi";
 import { clauseIsProcessLog } from "@/lib/shared/clauseSpecSource";
 import type { Anchored } from "@figaro-protocol/sdk";
-import { templateParentOrderHashes, type AssemblyTemplate } from "@/lib/shared/assemblyTemplate";
+import { templateClauseVersion, templateParentOrderHashes, type AssemblyTemplate } from "@/lib/shared/assemblyTemplate";
 import { DEVNET_CHAIN_ID } from "@/lib/shared/chains";
 import { contentRetryDelayMs } from "@/lib/shared/ipfsService";
 import {
@@ -73,7 +73,7 @@ export function requiredCounterpartyClauses(template: AssemblyTemplate): string[
     for (const agreement of template.agreements) {
         if (templateParentOrderHashes(agreement).length === 0) continue; // root has no counterparty
         for (const clauseId of Object.keys(agreement.clauses)) {
-            if (clauseIsProcessLog(clauseId)) clauses.add(clauseId);
+            if (clauseIsProcessLog(clauseId, templateClauseVersion(agreement, clauseId))) clauses.add(clauseId);
         }
     }
     return Array.from(clauses).sort();

@@ -8,13 +8,15 @@
 import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { canonicalContentHash } from "@figaro-protocol/sdk";
-import { loadClauseSpec, setClauseSpecFetcher } from "@/lib/shared/clauseSpecSource";
+import { listKnownClauses, loadClauseSpec, noteClauseStakes, setClauseSpecFetcher } from "@/lib/shared/clauseSpecSource";
 
 // Vitest runs with cwd = frontend/ (the vitest config root).
 const EXAMPLES_DIR = path.resolve(process.cwd(), "../clauses");
 
 /** Load the named off-chain specs into the cache — or every example spec when
- *  called with no argument. Idempotent (loadClauseSpec caches). */
+ *  called with no argument — and note every loaded registration's stake as
+ *  live, as the registry read `useClauseSpecs` performs does for a
+ *  registration nobody withdrew. Idempotent (loadClauseSpec caches). */
 export async function primeClauseSpecs(clauseIds?: readonly string[]): Promise<void> {
     const ids = clauseIds
         ?? readdirSync(EXAMPLES_DIR)
@@ -26,4 +28,5 @@ export async function primeClauseSpecs(clauseIds?: readonly string[]): Promise<v
         const document = JSON.parse(readFileSync(file, "utf8")) as { version?: number };
         await loadClauseSpec(id, Number(document.version ?? 1), file, canonicalContentHash(document));
     }
+    noteClauseStakes(listKnownClauses().map((c) => ({ ...c, stakeWithdrawn: false })));
 }

@@ -55,7 +55,7 @@ import { AssemblyTermsPanel } from "./AssemblyTermsPanel";
 import { CompositionAssist } from "./CompositionAssist";
 import { CompositionIdentity } from "./CompositionIdentity";
 import { assemblyTemplateToDraft } from "@/lib/designer/assemblyTemplateToDraft";
-import type { AssemblyTemplate } from "@/lib/shared/assemblyTemplate";
+import { templateClauseVersion, type AssemblyTemplate } from "@/lib/shared/assemblyTemplate";
 import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
 import { maxCommitsLandableInOneBlock, maxOrdersResolvablePerProcess } from "@/lib/shared/chainGasCeilings";
 import { useChainId, usePublicClient } from "wagmi";
@@ -304,10 +304,10 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
 
     const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
 
-    const toggleClause = useCallback((orderId: string, clauseId: string, next: boolean, version?: number) => {
+    const toggleClause = useCallback((orderId: string, clauseId: string, next: boolean, version: number) => {
         // A pick at another version is another clause: its design fills start
         // empty, so a value declared by v1 never rides on a v2 composition.
-        const versionChanged = (clauseVersionsByOrderId[orderId]?.[clauseId] ?? 1) !== (version ?? 1);
+        const versionChanged = templateClauseVersion({ clauseVersions: clauseVersionsByOrderId[orderId] }, clauseId) !== version;
         setClausesByOrderId((prev) => {
             const order = { ...(prev[orderId] ?? {}) };
             if (next) {
@@ -321,7 +321,7 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
         // Sparse: only non-1 versions are recorded (mirrors the template).
         setClauseVersionsByOrderId((prev) => {
             const order = { ...(prev[orderId] ?? {}) };
-            if (next && version !== undefined && version !== 1) order[clauseId] = version;
+            if (next && version !== 1) order[clauseId] = version;
             else delete order[clauseId];
             return { ...prev, [orderId]: order };
         });
@@ -773,6 +773,7 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
                         the two surfaces partition the registry by scope. */}
                     <AssemblyTermsPanel
                         values={assemblyClauses}
+                        versions={assemblyClauseVersions}
                         onToggleClause={(clauseId, next, version) => {
                             setAssemblyClauses((prev) => {
                                 const out = { ...prev };
@@ -783,7 +784,7 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
                             });
                             setAssemblyClauseVersions((prev) => {
                                 const out = { ...prev };
-                                if (next && version !== undefined && version !== 1) out[clauseId] = version;
+                                if (next && version !== 1) out[clauseId] = version;
                                 else delete out[clauseId];
                                 return out;
                             });

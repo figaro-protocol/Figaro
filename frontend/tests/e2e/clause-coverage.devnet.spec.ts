@@ -515,7 +515,9 @@ test.describe('PER-CLAUSE COVERAGE — every protocol clause flows the generic p
             // registry by declared scope). Everything else keeps the per-order
             // drawer leg. Derived from the registered spec, never a hardcoded
             // clause list.
-            if (clauseIsAssemblyScoped(rung.clauseId)) {
+            // Each rung composes the populated registration of its clause —
+            // version 1, the row the drawer titles without a version suffix.
+            if (clauseIsAssemblyScoped(rung.clauseId, 1)) {
                 const checkbox = page.getByTestId(`assembly-terms-clause-${rung.clauseId}`);
                 await expect(
                     checkbox,
