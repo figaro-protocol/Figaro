@@ -2,13 +2,12 @@
 
 import { useCallback, useState } from "react";
 import type { ReactNode } from "react";
-import { DEFAULT_IPFS_SERVICE, type IpfsService } from "@/lib/shared/ipfsService";
 import { extractErrorMessage } from "@/lib/shared/errors";
 
 /**
  * The shared idle/erasing/done control behind every author-pins →
  * author-erases IPFS affordance (`AgreementPinErasure`, `WitnessPinErasure`):
- * best-effort unpin of this wallet's own copies, deliberate and never
+ * unpin of this wallet's own copies, deliberate and never
  * automatic. Content addressing means a counterparty node or a gateway may
  * still hold the value — each wrapper states that in its own `doneLabel`.
  * An unpin the node or pin service refuses is shown as refused, with the
@@ -26,29 +25,6 @@ export interface PinErasureControlProps {
     buttonLabel: string;
     erasingLabel: string;
     doneLabel: ReactNode;
-}
-
-/**
- * Adapt a best-effort erase (`unpinAgreement`, `unpinWitnessContent` — each
- * logs and swallows an unpin failure so automatic callers never throw) into an
- * `unpinOne` that rejects with the refusal: the erase runs through its own
- * `ipfs` injection seam, and the first refusal the service answered is
- * re-thrown once the erase has finished its own bookkeeping.
- */
-export function reportingUnpin(
-    erase: (hash: string, ipfs: Pick<IpfsService, "unpin">) => Promise<void>,
-    ipfs: Pick<IpfsService, "unpin"> = DEFAULT_IPFS_SERVICE,
-): (hash: string) => Promise<void> {
-    return async (hash) => {
-        let refusal: unknown = undefined;
-        await erase(hash, {
-            unpin: (cid) => ipfs.unpin(cid).catch((err: unknown) => {
-                refusal ??= err;
-                throw err;
-            }),
-        });
-        if (refusal !== undefined) throw refusal;
-    };
 }
 
 export function PinErasureControl({

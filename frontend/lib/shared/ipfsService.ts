@@ -7,6 +7,7 @@
 
 import { safeJsonFromResponse, safeJsonParse, type SafeJsonResponse } from "@/lib/shared/safeJson";
 import { readUserEndpoints } from "@/lib/shared/userEndpoints";
+import { readCappedBytes } from "@figaro-protocol/sdk";
 
 // Build-baked DEFAULTS only — a user's runtime endpoint override (their own
 // node: they pay, they erase) wins at call time via the accessors below.
@@ -148,17 +149,18 @@ function isCidPath(path: string): boolean {
 }
 
 /**
- * Resolve a content URI for use as an IMAGE `src`, IPFS-only. Identical to
+ * The gateway URL of content a member pinned — a member document (profile,
+ * catalog, metadata) or an image `src` — IPFS-only. Identical to
  * `resolveContentUri` EXCEPT a raw `http(s)://` locator returns `null` instead
- * of passing through. Permissionless member/catalog/branding data is
- * attacker-authorable, and a hotlinked `<img src="https://attacker/px.png">`
- * beacons every viewer's IP, User-Agent, and load timing to a host the attacker
- * picked — a tracking-pixel / deanonymization vector (frontend security audit,
- * finding 3). Routing images through IPFS sends every fetch to the
- * user's OWN gateway instead, so the attacker never chooses the host. Callers
- * render their fallback (initials / neutral placeholder) when this returns null.
+ * of passing through. Every such URI is chosen by a member through a
+ * permissionless registry, and a request to a host the member picked (a
+ * hotlinked `<img src="https://attacker/px.png">`, a fetched profile) sends
+ * every viewer's IP, User-Agent and load timing to that host — a tracking /
+ * deanonymization vector. Through IPFS the viewer's own gateway answers, so
+ * the member never chooses the host. Callers read null as absence (a
+ * document reads as absent; an image renders its fallback).
  */
-export function resolveImageUri(uri: string): string | null {
+export function resolveMemberDocumentUri(uri: string): string | null {
     if (!uri) return null;
     if (uri.startsWith("http://") || uri.startsWith("https://")) return null;
     return resolveContentUri(uri);
@@ -191,10 +193,12 @@ export function extractIpfsCid(uri: string): string | null {
  */
 export const MAX_IPFS_DOCUMENT_BYTES = 8 * 1024 * 1024;
 
-function documentTooLargeError(bytes: number, cap: number): Error {
+/** The refusal of a body over the cap; `declared` is the Content-Length the
+ *  host stated, named when it is what crossed the cap. */
+function documentTooLargeError(cap: number, declared: number): Error {
     return new Error(
         `IPFS document exceeds the maximum size of ${cap / (1024 * 1024)} MB` +
-            ` (saw ${(bytes / (1024 * 1024)).toFixed(1)} MB)`,
+            (Number.isFinite(declared) && declared > cap ? ` (saw ${(declared / (1024 * 1024)).toFixed(1)} MB)` : ""),
     );
 }
 
@@ -213,54 +217,17 @@ export interface CappedFetchOptions {
 }
 
 /**
- * Stream a response body, counting bytes off the reader and aborting the moment
- * the running total crosses `cap` — before the full body is buffered. The
- * Content-Length header is only a fast-reject hint upstream; this is the actual
- * enforcement, because a hostile gateway can lie about (or omit) the header.
+ * The body, read through the one capped read (`readCappedBytes`); a body over
+ * the cap aborts the request and is refused.
  */
 async function readBodyBytesCapped(res: Response, cap: number, controller: AbortController): Promise<Uint8Array> {
-    const reader = res.body?.getReader?.();
-    if (!reader) {
-        // No readable stream (e.g. a minimal test stub) — buffer, then enforce
-        // the cap on what came back. Not the primary path in a real browser/undici.
-        // arrayBuffer preferred: a text() round-trip corrupts binary bodies.
-        const bytes = res.arrayBuffer
-            ? new Uint8Array(await res.arrayBuffer())
-            : new TextEncoder().encode(await res.text());
-        if (bytes.byteLength > cap) throw documentTooLargeError(bytes.byteLength, cap);
-        return bytes;
+    const declared = Number(res.headers?.get?.("content-length"));
+    const bytes = await readCappedBytes(res, cap);
+    if (bytes === null) {
+        controller.abort();
+        throw documentTooLargeError(cap, declared);
     }
-
-    const chunks: Uint8Array[] = [];
-    let total = 0;
-    try {
-        for (;;) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            if (!value) continue;
-            total += value.byteLength;
-            if (total > cap) {
-                controller.abort();
-                await reader.cancel().catch(() => {});
-                throw documentTooLargeError(total, cap);
-            }
-            chunks.push(value);
-        }
-    } finally {
-        reader.releaseLock?.();
-    }
-
-    const joined = new Uint8Array(total);
-    let offset = 0;
-    for (const chunk of chunks) {
-        joined.set(chunk, offset);
-        offset += chunk.byteLength;
-    }
-    return joined;
-}
-
-async function readBodyCapped(res: Response, cap: number, controller: AbortController): Promise<string> {
-    return new TextDecoder().decode(await readBodyBytesCapped(res, cap, controller));
+    return bytes;
 }
 
 /**
@@ -321,14 +288,7 @@ async function fetchCappedContentOnce(
         return { ok: false, status: res.status, statusText: res.statusText, text: async () => "" };
     }
 
-    // Fast reject: a truthful Content-Length over the cap saves the download.
-    const declared = Number(res.headers?.get?.("content-length"));
-    if (Number.isFinite(declared) && declared > cap) {
-        controller.abort();
-        throw documentTooLargeError(declared, cap);
-    }
-
-    const body = await readBodyCapped(res, cap, controller);
+    const body = new TextDecoder().decode(await readBodyBytesCapped(res, cap, controller));
     return { ok: true, status: res.status, statusText: res.statusText, text: async () => body };
 }
 
@@ -354,12 +314,6 @@ async function fetchCappedBinaryOnce(
 
     if (!res.ok) {
         return { ok: false, status: res.status, statusText: res.statusText, bytes: null };
-    }
-
-    const declared = Number(res.headers?.get?.("content-length"));
-    if (Number.isFinite(declared) && declared > cap) {
-        controller.abort();
-        throw documentTooLargeError(declared, cap);
     }
 
     const bytes = await readBodyBytesCapped(res, cap, controller);

@@ -77,6 +77,7 @@ import {
     readLocalDeploymentConfig,
     memberProfileBindings,
     waitForConnected,
+    publishOrAdoptReviewed,
 } from './devnet-helpers';
 import { ANVIL_ACCOUNTS } from '../anvilAccounts';
 import { CORE_ABI } from '@/lib/kernel/contracts';
@@ -216,14 +217,7 @@ test.describe('KIT DIAMOND — a DAG join: one buyer, four orders, two parents o
             await page.waitForURL(/\/assemblies\/designer\/view\/?\?slug=asm-/, { timeout: 15000 });
             const handle = page.url().match(/[?&]slug=(asm-[a-z0-9-]+)/)?.[1];
             expect(handle, 'review navigated to a draft handle').toBeTruthy();
-            await page.goto(`/assemblies/designer/view?slug=${handle}&intent=publish&e2e=devnet`, { waitUntil: 'domcontentloaded' });
-            const confirmBtn = page.getByTestId('review-confirm-publish');
-            await confirmBtn.waitFor({ state: 'visible', timeout: 15000 });
-            await waitForConnected(page);
-            await confirmBtn.click();
-            await page.getByTestId('assembly-publish-receipt').waitFor({ timeout: 60000 });
-            const receiptSlug = (await page.getByTestId('receipt-slug').textContent())?.trim();
-            expect(receiptSlug, 'publish receipt shows the content slug').toMatch(/^asm-/);
+            const receiptSlug = await publishOrAdoptReviewed(page, handle!);
             kitSlug = await findDiamondAssembly();
             expect(kitSlug, 'the published diamond is discoverable by shape').toBe(receiptSlug);
         }

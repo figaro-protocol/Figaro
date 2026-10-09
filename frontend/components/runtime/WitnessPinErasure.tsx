@@ -1,10 +1,7 @@
 "use client";
 
 import { unpinWitnessContent } from "@/lib/composition/witnessContent";
-import { PinErasureControl, reportingUnpin } from "@/components/runtime/PinErasureControl";
-
-/** The erase, reporting a refused unpin instead of swallowing it. */
-const UNPIN_ONE = reportingUnpin(unpinWitnessContent);
+import { PinErasureControl } from "@/components/runtime/PinErasureControl";
 
 /**
  * Controller-erasure for a process's published witness-content pins.
@@ -27,7 +24,7 @@ export function WitnessPinErasure({ contentRefs }: { contentRefs: string[] }) {
         <PinErasureControl
             hashes={contentRefs}
             testidPrefix="witness-pin-erasure"
-            unpinOne={UNPIN_ONE}
+            unpinOne={unpinWitnessContent}
             buttonLabel="Unpin witness content from IPFS"
             erasingLabel="Unpinning…"
             doneLabel={

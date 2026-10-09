@@ -433,8 +433,8 @@ function WithdrawRow({
             setConfirming(false);
             // De-surfaced on-chain — complete the erasure locally NOW, at the
             // request, not at the later claim: the member has left, so nothing
-            // of theirs should stay published while the cooldown runs.
-            // Best-effort; never fails the request.
+            // of theirs should stay published while the cooldown runs. A
+            // refused unpin is shown; the request itself stands.
             await unpinSupersededProfileArtifacts({
                 ipfs: DEFAULT_IPFS_SERVICE,
                 priorProfileUri: metadataURI,

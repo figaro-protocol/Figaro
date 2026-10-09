@@ -39,16 +39,15 @@ describe("unpinAgreement", () => {
         expect(await fetchAgreement(agreementHash, undefined, { evidenceTransport: transport })).toBeNull();
     });
 
-    it("swallows a refused unpin and keeps the pointer, so a retry unpins the same CID", async () => {
+    it("rejects a refused unpin with the service's answer and keeps the pointer, so a retry unpins the same CID", async () => {
         const transport = seedTransport("QmRefusedBody");
         const { agreementHash } = await publishAgreement(AGREEMENT, { evidenceTransport: transport });
 
-        const refused = vi.fn().mockRejectedValue(new Error("node down"));
-        const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+        const refusal = new Error("403 Forbidden");
+        const refused = vi.fn().mockRejectedValue(refusal);
 
-        await expect(unpinAgreement(agreementHash, { unpin: refused })).resolves.toBeUndefined();
+        await expect(unpinAgreement(agreementHash, { unpin: refused })).rejects.toBe(refusal);
         expect(refused).toHaveBeenCalledExactlyOnceWith("QmRefusedBody");
-        warn.mockRestore();
 
         // The retry finds the pointer, unpins the same CID, then forgets it.
         const retry = vi.fn().mockResolvedValue(undefined);

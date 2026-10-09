@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
-import { PinErasureControl, reportingUnpin } from "@/components/runtime/PinErasureControl";
+import { PinErasureControl } from "@/components/runtime/PinErasureControl";
 
 /**
  * The erase control reports what the node or pin service did: copies it
@@ -46,31 +46,5 @@ describe("PinErasureControl", () => {
     it("renders nothing with no hashes", () => {
         const { container } = renderControl(vi.fn(), []);
         expect(container).toBeEmptyDOMElement();
-    });
-});
-
-describe("reportingUnpin", () => {
-    it("re-throws the refusal a swallowing erase absorbed, after the erase finishes", async () => {
-        const refusal = new Error("403 Forbidden");
-        const afterUnpin = vi.fn();
-        // A best-effort erase: logs and swallows, then does its own bookkeeping.
-        const erase = async (hash: string, ipfs: { unpin(cid: string): Promise<void> }) => {
-            try {
-                await ipfs.unpin(hash);
-            } catch {
-                /* swallowed */
-            }
-            afterUnpin();
-        };
-        const unpinOne = reportingUnpin(erase, { unpin: vi.fn().mockRejectedValue(refusal) });
-        await expect(unpinOne("QmA")).rejects.toBe(refusal);
-        expect(afterUnpin).toHaveBeenCalledOnce();
-    });
-
-    it("resolves when the service unpins", async () => {
-        const unpin = vi.fn().mockResolvedValue(undefined);
-        const erase = async (hash: string, ipfs: { unpin(cid: string): Promise<void> }) => { await ipfs.unpin(hash); };
-        await expect(reportingUnpin(erase, { unpin })("QmA")).resolves.toBeUndefined();
-        expect(unpin).toHaveBeenCalledWith("QmA");
     });
 });

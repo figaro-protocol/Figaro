@@ -7,7 +7,7 @@
  * `fallback` ReactNode is rendered in its place — typically an initials
  * block or a neutral placeholder.
  *
- * Images resolve IPFS-only (`resolveImageUri`): a raw http(s) locator from
+ * Images resolve IPFS-only (`resolveMemberDocumentUri`): a raw http(s) locator from
  * permissionless member/catalog data is a tracking-pixel / IP-deanonymization
  * vector, so it renders the fallback rather than hotlinking (finding 3).
  */
@@ -15,7 +15,7 @@
 
 import { useState } from "react";
 import type { ReactNode } from "react";
-import { resolveImageUri } from "@/lib/shared/ipfsService";
+import { resolveMemberDocumentUri } from "@/lib/shared/ipfsService";
 
 export function ContentImage({
     src,
@@ -41,7 +41,7 @@ export function ContentImage({
         }
         // IPFS-only: a raw http(s) locator resolves to null and renders the
         // fallback, never a hotlink to an attacker-chosen host (finding 3).
-        const resolved = resolveImageUri(src);
+        const resolved = resolveMemberDocumentUri(src);
         if (!resolved) return fallback !== undefined ? <>{fallback}</> : null;
         // eslint-disable-next-line @next/next/no-img-element -- This renderer intentionally supports arbitrary IPFS content URIs at runtime.
         return (

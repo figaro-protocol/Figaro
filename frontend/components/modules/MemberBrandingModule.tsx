@@ -7,7 +7,7 @@
 import { useEffect, useState } from "react";
 import { InitialsAvatar } from "@/components/shared/InitialsAvatar";
 import { useMemberBranding } from "@/lib/member/useMemberBranding";
-import { resolveImageUri } from "@/lib/shared/ipfsService";
+import { resolveMemberDocumentUri } from "@/lib/shared/ipfsService";
 
 /**
  * MemberLogo — renders the member's logo from IPFS/HTTP, with two
@@ -41,7 +41,7 @@ export function MemberLogo({
     // IPFS-only: a raw http(s) branding locator is attacker-authorable and
     // hotlinking it deanonymizes the viewer (finding 3). Non-IPFS logos resolve
     // to null and fall through to the initials / neutral placeholder below.
-    const logoSrc = branding?.logoURI ? resolveImageUri(branding.logoURI) : null;
+    const logoSrc = branding?.logoURI ? resolveMemberDocumentUri(branding.logoURI) : null;
     const [imageFailed, setImageFailed] = useState(false);
 
     useEffect(() => {

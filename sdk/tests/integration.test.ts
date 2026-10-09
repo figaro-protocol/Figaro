@@ -44,25 +44,11 @@ import {
     type OfferPolicy,
 } from "../src/agent/index.js";
 import type { FigaroAddresses } from "../src/types.js";
+import { ANVIL_URL, anvilReachable } from "./batchHarness.js";
 
 // ── Skip unless Anvil is reachable ──────────────────────────────────────────
 
-const ANVIL_URL = "http://127.0.0.1:8545";
 const SKIP = process.env.SKIP_ANVIL === "1";
-
-async function anvilReachable(): Promise<boolean> {
-    try {
-        const res = await fetch(ANVIL_URL, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ jsonrpc: "2.0", method: "eth_chainId", params: [], id: 1 }),
-            signal: AbortSignal.timeout(2000),
-        });
-        return res.ok;
-    } catch {
-        return false;
-    }
-}
 
 // ── Anvil pre-funded accounts ───────────────────────────────────────────────
 

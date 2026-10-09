@@ -4,7 +4,7 @@
  * The prior profile CID and every authored artifact the successor
  * no longer references are unpinned; artifacts the successor still
  * references survive; withdraw (no successor) erases everything;
- * unpin failures never throw.
+ * a refused unpin rejects, once every candidate has been tried.
  */
 import { describe, expect, it, vi } from "vitest";
 import { unpinSupersededProfileArtifacts } from "@/lib/member/profileErasure";
@@ -60,22 +60,33 @@ describe("unpinSupersededProfileArtifacts", () => {
         );
     });
 
-    it("skips non-IPFS references and never throws on unpin failure", async () => {
-        const unpin = vi.fn().mockRejectedValue(new Error("node down"));
-        const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    it("skips non-IPFS references", async () => {
+        const unpin = vi.fn().mockResolvedValue(undefined);
+        await unpinSupersededProfileArtifacts({
+            ipfs: { unpin },
+            priorProfileUri: "ipfs://QmPriorProfile",
+            priorProfile: profile({
+                branding: { logoURI: "https://example.com/logo.png" }, // http — not unpinnable
+            }),
+            nextProfile: profile({}),
+        });
+
+        expect(unpin).toHaveBeenCalledTimes(1); // only the profile CID
+        expect(unpin).toHaveBeenCalledWith("QmPriorProfile");
+    });
+
+    it("tries every candidate, then rejects with every refusal the service answered", async () => {
+        const unpin = vi.fn(async (cid: string) => {
+            if (cid !== "QmCatalog") throw new Error(`The pin service refused to unpin ${cid}: 403 Forbidden.`);
+        });
         await expect(
             unpinSupersededProfileArtifacts({
                 ipfs: { unpin },
                 priorProfileUri: "ipfs://QmPriorProfile",
-                priorProfile: profile({
-                    branding: { logoURI: "https://example.com/logo.png" }, // http — not unpinnable
-                }),
-                nextProfile: profile({}),
+                priorProfile: profile({ catalogURI: "ipfs://QmCatalog", branding: { logoURI: "ipfs://QmLogo" } }),
+                nextProfile: null,
             }),
-        ).resolves.toBeUndefined();
-
-        expect(unpin).toHaveBeenCalledTimes(1); // only the profile CID
-        expect(unpin).toHaveBeenCalledWith("QmPriorProfile");
-        warn.mockRestore();
+        ).rejects.toThrow(/refused to unpin QmPriorProfile: 403 Forbidden\. .*refused to unpin QmLogo: 403 Forbidden\./);
+        expect(new Set(unpin.mock.calls.map((c) => c[0]))).toEqual(new Set(["QmPriorProfile", "QmCatalog", "QmLogo"]));
     });
 });

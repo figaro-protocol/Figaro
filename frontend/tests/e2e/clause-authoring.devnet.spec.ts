@@ -56,7 +56,7 @@
 import { test, expect, gotoAsWallet } from './devnet-multi-test';
 import { createPublicClient, defineChain, http, parseAbi, type Hex } from 'viem';
 import { mnemonicToAccount } from 'viem/accounts';
-import { readLocalDeploymentConfig, waitForConnected } from './devnet-helpers';
+import { readLocalDeploymentConfig, publishOrAdoptReviewed, waitForConnected } from './devnet-helpers';
 import { makeProbeSpec } from './probeAssembly';
 import { calculateBonds, computeClauseKey, CLAUSE_REGISTRY_ABI } from '@figaro-protocol/sdk';
 import { CORE_ABI } from '@/lib/kernel/contracts';
@@ -218,14 +218,7 @@ test.describe('CLAUSE AUTHORING — register on /clauses/register, inventory rea
         await page.waitForURL(/\/assemblies\/designer\/view\/?\?slug=asm-/, { timeout: 15000 });
         const handle = page.url().match(/[?&]slug=(asm-[a-z0-9-]+)/)?.[1];
         expect(handle, 'review navigated to a draft handle').toBeTruthy();
-        await page.goto(`/assemblies/designer/view?slug=${handle}&intent=publish&e2e=devnet`, { waitUntil: 'domcontentloaded' });
-        const confirmBtn = page.getByTestId('review-confirm-publish');
-        await confirmBtn.waitFor({ state: 'visible', timeout: 30000 });
-        await waitForConnected(page);
-        await confirmBtn.click();
-        await page.getByTestId('assembly-publish-receipt').waitFor({ timeout: 60000 });
-        const slug = (await page.getByTestId('receipt-slug').textContent())?.trim();
-        expect(slug, 'publish receipt shows the content slug').toMatch(/^asm-/);
+        const slug = await publishOrAdoptReviewed(page, handle!);
 
         // ── BIND: onboard the dedicated member, unbind-all then bind THIS
         //    run's assembly (self-contained on the persisted devnet). ──

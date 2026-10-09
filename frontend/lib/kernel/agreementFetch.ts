@@ -120,12 +120,12 @@ export interface PublishedAgreement {
  * dispute evidence an off-chain forum receives, so it must outlive `resolveProcess`
  * — a party erases it deliberately, once the evidence is no longer needed.
  *
- * Best-effort and idempotent by design: content addressing means this erases
- * only THIS wallet's copy (a counterparty node or a gateway may still hold it);
- * an unpin failure is logged and swallowed, and the pointer is KEPT — it alone
- * names which CID to unpin, so a retry (the erasure control's) reaches the same
- * pin; unpinning an absent pin or forgetting an absent pointer is
- * absence, not an error.
+ * Idempotent by design: content addressing means this erases only THIS
+ * wallet's copy (a counterparty node or a gateway may still hold it); a
+ * refused unpin rejects with the service's answer and the pointer is KEPT —
+ * it alone names which CID to unpin, so a retry (the erasure control's)
+ * reaches the same pin; unpinning an absent pin or forgetting an absent
+ * pointer is absence, not an error.
  */
 export async function unpinAgreement(
     agreementHash: Hex | string,
@@ -133,14 +133,7 @@ export async function unpinAgreement(
 ): Promise<void> {
     const uri = loadAgreementUri(agreementHash);
     const cid = uri ? extractIpfsCid(uri) : null;
-    if (cid) {
-        try {
-            await ipfs.unpin(cid);
-        } catch (err) {
-            console.warn(`[agreementFetch] unpin ${cid} failed (content stays pinned; pointer kept for a retry):`, err);
-            return;
-        }
-    }
+    if (cid) await ipfs.unpin(cid);
     forgetAgreementUri(agreementHash);
 }
 

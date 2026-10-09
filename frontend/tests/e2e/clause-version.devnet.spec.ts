@@ -16,7 +16,7 @@ import { createPublicClient, defineChain, http, type Hex } from 'viem';
 import { ASSEMBLY_REGISTRY_ABI } from '@figaro-protocol/sdk';
 import { deriveAssemblySlug } from '@/lib/shared/assemblyTemplate';
 import { makeProbeSpec, registerProbeClause } from './probeAssembly';
-import { readLocalDeploymentConfig } from './devnet-helpers';
+import { readLocalDeploymentConfig, publishOrAdoptReviewed } from './devnet-helpers';
 
 const RPC_URL = 'http://127.0.0.1:8545';
 const LOCAL_ANVIL = defineChain({
@@ -68,21 +68,7 @@ test.describe('clause version axis (devnet)', () => {
         await page.getByTestId('designer-review').click();
         await page.waitForURL(/\/assemblies\/designer\/view\/?\?slug=asm-/, { timeout: 15000 });
         const handle = page.url().match(/[?&]slug=(asm-[a-z0-9-]+)/)?.[1];
-        await page.goto(`/assemblies/designer/view?slug=${handle}&intent=publish&e2e=devnet`, { waitUntil: 'domcontentloaded' });
-        const confirmBtn = page.getByTestId('review-confirm-publish');
-        await confirmBtn.waitFor({ state: 'visible', timeout: 30000 });
-        await page.waitForFunction(
-            () => !Array.from(document.querySelectorAll('button')).some((b) => b.textContent?.trim() === 'Connect Wallet'),
-            null,
-            { timeout: 30000 },
-        );
-        // Enabled = wallet ready AND the clause-spec cache warmed (the button
-        // gates on useClauseSpecs().loaded — the latent race this e2e found).
-        await expect(confirmBtn).toBeEnabled({ timeout: 30000 });
-        await confirmBtn.click();
-        await page.getByTestId('assembly-publish-receipt').waitFor({ timeout: 60000 });
-        const slug = (await page.getByTestId('receipt-slug').textContent())?.trim() as string;
-        expect(slug).toMatch(/^asm-/);
+        const slug = await publishOrAdoptReviewed(page, handle!);
 
         // Out-of-band: the anchored template records the v2 identity, and the
         // composition hash the chain keys on derives that slug.

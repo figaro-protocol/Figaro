@@ -2,7 +2,7 @@ import type { PublicClient } from 'viem';
 import { getActiveMembers } from '@/lib/protocol/membersRegistryIndexer';
 import type { MemberCatalog } from '@/lib/member/types';
 import { CONTRACTS } from "@/lib/kernel/contracts";
-import { fetchCappedContent, resolveContentUri, type CappedContentResponse } from "@/lib/shared/ipfsService";
+import { fetchCappedContent, resolveContentUri, resolveMemberDocumentUri, type CappedContentResponse } from "@/lib/shared/ipfsService";
 import type { MemberCatalogMetadata } from '@/lib/member/memberCatalogMetadata';
 import {
     MemberProfileMetadata,
@@ -10,7 +10,6 @@ import {
 } from '@/lib/member/memberProfileMetadata';
 import { tryParseCatalogItems } from '@/lib/member/memberProfileAdapter';
 import { safeJsonFromResponse } from '@/lib/shared/safeJson';
-import { resolveMemberDocumentUri } from '@/lib/member/uriFetcher';
 
 interface DiscoveryResult {
     catalogs: MemberCatalog[];

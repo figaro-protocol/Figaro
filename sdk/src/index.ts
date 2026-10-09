@@ -205,6 +205,8 @@ export type { Agreement, AgreementSection } from "./agreement.js";
 
 // Prototype-pollution defense for parsed envelopes
 export { strippingReviver } from "./safeJson.js";
+// The one size-capped read of a response body
+export { readCappedBytes } from "./cappedRead.js";
 export {
     type Anchored,
     anchorClauseSpec,

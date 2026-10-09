@@ -27,6 +27,8 @@ import {
     confirmAgreementPreviews,
     discoverAnchoredAssemblies,
     memberProfileBindings,
+    publishOrAdoptReviewed,
+    waitForConnected,
 } from './devnet-helpers';
 import { ANVIL_ACCOUNTS } from '../anvilAccounts';
 import type { Page } from '@playwright/test';
@@ -55,13 +57,6 @@ const RATE = '0.5';
 const EXPECTED_SUB_PAYMENT = parseEther(RATE) * BigInt(BILLED_HOURS);
 const EXPECTED_TOTAL = parseEther('1') + EXPECTED_SUB_PAYMENT; // fixed lead 1 + booked session
 
-async function waitForConnected(page: Page) {
-    await page.waitForFunction(
-        () => !Array.from(document.querySelectorAll('button')).some((b) => b.textContent?.trim() === 'Connect Wallet'),
-        null,
-        { timeout: 30000 },
-    );
-}
 
 /** This scenario's assembly, recognized on-chain by SHAPE: exactly two orders,
  *  the sub-order carrying the process ladder AND figaro-schedule (the schedule
@@ -185,15 +180,9 @@ test.describe('BOOKING-WINDOW PRICING — a contributor prices per started hour 
             await page.waitForURL(/\/assemblies\/designer\/view\/?\?slug=asm-/, { timeout: 15000 });
             const handle = page.url().match(/[?&]slug=(asm-[a-z0-9-]+)/)?.[1];
             expect(handle, 'review navigated to a draft handle').toBeTruthy();
-            await page.goto(`/assemblies/designer/view?slug=${handle}&intent=publish&e2e=devnet`, { waitUntil: 'domcontentloaded' });
-            const confirmBtn = page.getByTestId('review-confirm-publish');
-            await confirmBtn.waitFor({ state: 'visible', timeout: 15000 });
-            await waitForConnected(page);
-            await confirmBtn.click();
-            await page.getByTestId('assembly-publish-receipt').waitFor({ timeout: 60000 });
-
+            const published = await publishOrAdoptReviewed(page, handle!);
             slug = await findBookingAssembly();
-            expect(slug, 'the published booking assembly is discoverable by shape').toBeTruthy();
+            expect(slug, 'the published booking assembly is discoverable by shape').toBe(published);
         }
 
         // ── ONBOARD (idempotent): the lead (fixed price) binds + designates the

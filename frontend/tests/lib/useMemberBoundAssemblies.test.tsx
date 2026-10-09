@@ -1,6 +1,6 @@
 /**
  * useMemberBoundAssemblies — the member's profile is read IPFS-only, through
- * `uriFetcher`'s seam: an http(s) metadataURI reads as absent and no request
+ * `resolveMemberDocumentUri`: an http(s) metadataURI reads as absent and no request
  * leaves for the host the member chose; an ipfs:// one is read through the
  * viewer's gateway and its bindings matched against the registry.
  */

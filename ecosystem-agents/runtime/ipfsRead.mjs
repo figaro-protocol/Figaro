@@ -12,6 +12,8 @@
  * by whoever hands the bytes to a model.
  */
 
+import { readCappedBytes } from "@figaro-protocol/sdk";
+
 const DEFAULT_TIMEOUT_MS = 30_000;
 /** 8 MiB. A gateway can serve an arbitrarily large block; a reader that does
  *  not cap is a reader an attacker sizes. */
@@ -43,38 +45,6 @@ export function cidOf(uri) {
 }
 
 /**
- * Read a response body, stopping AT the cap: a declared length over it is
- * refused before a byte is read, and a stream that runs past it is canceled
- * the moment it does — never buffered whole and measured after. Returns
- * `null` when the body is over the cap.
- */
-async function readCapped(res, maxBytes) {
-    const declared = Number(res.headers.get("content-length"));
-    if (Number.isFinite(declared) && declared > maxBytes) {
-        await res.body?.cancel().catch(() => {});
-        return null;
-    }
-    if (!res.body) return new Uint8Array(0);
-    const reader = res.body.getReader();
-    const chunks = [];
-    let size = 0;
-    for (;;) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        size += value.byteLength;
-        if (size > maxBytes) {
-            await reader.cancel().catch(() => {});
-            return null;
-        }
-        chunks.push(value);
-    }
-    const out = new Uint8Array(size);
-    let offset = 0;
-    for (const c of chunks) { out.set(c, offset); offset += c.byteLength; }
-    return out;
-}
-
-/**
  * Fetch one CID's raw bytes. Returns `null` when a gateway ANSWERED but could
  * not resolve the address (see `UNRESOLVED`); throws when no gateway answered
  * at all, or every answer was a different kind of failure. The two are
@@ -90,7 +60,7 @@ export async function fetchIpfsBytes(cid, { gateways = ipfsGateways(), timeoutMs
             const res = await fetch(`${gateway}/ipfs/${cid}`, { signal: AbortSignal.timeout(timeoutMs) });
             if (UNRESOLVED.has(res.status)) { unresolved = true; continue; }
             if (!res.ok) { failures.push(`${gateway} answered ${res.status}`); continue; }
-            const bytes = await readCapped(res, maxBytes);
+            const bytes = await readCappedBytes(res, maxBytes);
             if (bytes === null) {
                 failures.push(`${gateway} served more than the ${maxBytes}-byte cap`);
                 continue;

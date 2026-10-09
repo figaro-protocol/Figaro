@@ -26,7 +26,7 @@ export interface ResolvedMemberBranding {
     branding: MemberBrandingMetadata;
     assets: MemberAssets;
     /** Raw logo LOCATOR (e.g. `ipfs://…`) — the render layer resolves it once
-     *  through `resolveImageUri` (ipfs→gateway, rejects raw http as an
+     *  through `resolveMemberDocumentUri` (ipfs→gateway, rejects raw http as an
      *  anti-tracking gate). NOT pre-resolved here: pre-resolving to a gateway
      *  http URL made the render gate reject legitimate ipfs logos. */
     logoURI?: string;

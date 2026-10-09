@@ -47,7 +47,7 @@ describe('memberBranding', () => {
 
             expect(result).not.toBeNull();
             expect(result!.branding.logoURI).toBe('ipfs://QmLogo1231111111111111111111111111111111111111');
-            expect(result!.logoURI).toBe('ipfs://QmLogo1231111111111111111111111111111111111111'); // raw locator; render layer resolves once via resolveImageUri
+            expect(result!.logoURI).toBe('ipfs://QmLogo1231111111111111111111111111111111111111'); // raw locator; render layer resolves once via resolveMemberDocumentUri
             expect(result!.name).toBe("Bob's Repair Shop");
         });
 

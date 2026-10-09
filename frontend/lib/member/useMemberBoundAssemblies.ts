@@ -10,8 +10,7 @@
  */
 
 import { useEffect, useState } from "react";
-import { fetchCappedContent } from "@/lib/shared/ipfsService";
-import { resolveMemberDocumentUri } from "@/lib/member/uriFetcher";
+import { fetchCappedContent, resolveMemberDocumentUri } from "@/lib/shared/ipfsService";
 import { safeJsonParse } from "@/lib/shared/safeJson";
 import type { Anchored } from "@figaro-protocol/sdk";
 import type { AssemblyTemplate } from "@/lib/shared/assemblyTemplate";

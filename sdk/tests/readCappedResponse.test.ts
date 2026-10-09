@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { readCappedResponseText, MAX_OFFER_RESPONSE_BYTES } from "../src/agent/httpChannel.js";
+import { readCappedBytes } from "../src/cappedRead.js";
 
 /**
  * Regression for the unbounded offer-endpoint read (frontend security audit
@@ -44,5 +45,32 @@ describe("readCappedResponseText", () => {
         const big = "x".repeat(10);
         const res = { headers: { get: () => null }, text: async () => big } as unknown as Response;
         await expect(readCappedResponseText(res, 5)).rejects.toThrow(/cap/);
+    });
+});
+
+describe("readCappedBytes — the one capped read the SDK, frontend and runtime share", () => {
+    it("returns the body's bytes exactly, binary included", async () => {
+        const raw = new Uint8Array([0, 255, 128, 7]);
+        expect(await readCappedBytes(new Response(raw), 4)).toEqual(raw);
+    });
+
+    it("returns null for a declared Content-Length over the cap, before reading", async () => {
+        const res = new Response("x".repeat(10), { headers: { "content-length": "10" } });
+        expect(await readCappedBytes(res, 5)).toBeNull();
+    });
+
+    it("returns null and cancels a stream that runs past the cap", async () => {
+        let canceled = false;
+        const stream = new ReadableStream<Uint8Array>({
+            pull(controller) { controller.enqueue(new Uint8Array(4)); },
+            cancel() { canceled = true; },
+        });
+        const res = { headers: { get: () => null }, body: stream } as unknown as Response;
+        expect(await readCappedBytes(res, 10)).toBeNull();
+        expect(canceled).toBe(true);
+    });
+
+    it("reads an empty body as zero bytes", async () => {
+        expect(await readCappedBytes(new Response(null), 5)).toEqual(new Uint8Array(0));
     });
 });

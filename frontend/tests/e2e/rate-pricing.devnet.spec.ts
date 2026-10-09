@@ -27,6 +27,8 @@ import {
     confirmAgreementPreviews,
     discoverAnchoredAssemblies,
     memberProfileBindings,
+    publishOrAdoptReviewed,
+    waitForConnected,
 } from './devnet-helpers';
 import { ANVIL_ACCOUNTS } from '../anvilAccounts';
 import { geohashCentroidDistanceKm } from '@figaro-protocol/sdk/derive';
@@ -57,13 +59,6 @@ const BILLED_KM = Math.max(1, Math.ceil(KM));
 const EXPECTED_SUB_PAYMENT = parseEther(RATE) * BigInt(BILLED_KM);
 const EXPECTED_TOTAL = parseEther('1') + EXPECTED_SUB_PAYMENT; // lead item 1 + hauled leg
 
-async function waitForConnected(page: Page) {
-    await page.waitForFunction(
-        () => !Array.from(document.querySelectorAll('button')).some((b) => b.textContent?.trim() === 'Connect Wallet'),
-        null,
-        { timeout: 30000 },
-    );
-}
 
 /** This scenario's assembly, recognized on-chain by SHAPE: exactly two
  *  orders, the sub-order carrying the process ladder AND geolocation with
@@ -199,15 +194,9 @@ test.describe('RATE PRICING — a contributor prices per started km of the commi
             await page.waitForURL(/\/assemblies\/designer\/view\/?\?slug=asm-/, { timeout: 15000 });
             const handle = page.url().match(/[?&]slug=(asm-[a-z0-9-]+)/)?.[1];
             expect(handle, 'review navigated to a draft handle').toBeTruthy();
-            await page.goto(`/assemblies/designer/view?slug=${handle}&intent=publish&e2e=devnet`, { waitUntil: 'domcontentloaded' });
-            const confirmBtn = page.getByTestId('review-confirm-publish');
-            await confirmBtn.waitFor({ state: 'visible', timeout: 15000 });
-            await waitForConnected(page);
-            await confirmBtn.click();
-            await page.getByTestId('assembly-publish-receipt').waitFor({ timeout: 60000 });
-
+            const published = await publishOrAdoptReviewed(page, handle!);
             slug = await findRateAssembly();
-            expect(slug, 'the published rate assembly is discoverable by shape').toBeTruthy();
+            expect(slug, 'the published rate assembly is discoverable by shape').toBe(published);
         }
 
         // ── ONBOARD (idempotent): the lead (fixed price) binds + designates

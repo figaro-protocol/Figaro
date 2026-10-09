@@ -8,12 +8,14 @@
  * served and becomes garbage-collectable. On withdraw nothing survives, so
  * everything the profile referenced is unpinned.
  *
- * Best-effort by design: a confirmed on-chain supersede/withdraw must never
- * fail on a node hiccup — failures are logged and swallowed; a re-run of the
- * same erasure is idempotent (unpinning an absent pin is absence).
+ * Every candidate is tried; a refused unpin is never swallowed — once all
+ * have been tried, the erasure rejects with every refusal the service
+ * answered, and the content it names stays pinned. A re-run of the same
+ * erasure is idempotent (unpinning an absent pin is absence).
  */
 import { extractIpfsCid, type IpfsService } from "@/lib/shared/ipfsService";
 import type { MemberProfileMetadata } from "@/lib/member/memberProfileMetadata";
+import { extractErrorMessage } from "@/lib/shared/errors";
 
 /** The URI-valued fields a profile document can reference on IPFS. */
 function referencedUris(profile: MemberProfileMetadata | null | undefined): string[] {
@@ -45,11 +47,13 @@ export async function unpinSupersededProfileArtifacts(params: {
         .filter((c): c is string => Boolean(c))
         .filter((cid) => !surviving.has(cid));
 
+    const refusals: string[] = [];
     for (const cid of new Set(candidates)) {
         try {
             await params.ipfs.unpin(cid);
         } catch (err) {
-            console.warn(`[profileErasure] unpin ${cid} failed (content stays pinned):`, err);
+            refusals.push(extractErrorMessage(err, `The unpin of ${cid} was refused.`));
         }
     }
+    if (refusals.length > 0) throw new Error(refusals.join(" "));
 }

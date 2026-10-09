@@ -19,7 +19,7 @@ import { getMembersRegistry } from "@/lib/kernel/contracts";
 import { MEMBERS_REGISTRY_ABI } from "@figaro-protocol/sdk";
 import { getMemberState } from "@/lib/protocol/membersRegistryIndexer";
 import { safeJsonFromResponse } from "@/lib/shared/safeJson";
-import { fetchCappedContent, resolveContentUri } from "@/lib/shared/ipfsService";
+import { fetchCappedContent, resolveMemberDocumentUri } from "@/lib/shared/ipfsService";
 import { useAsyncMemberResource } from "@/lib/member/useAsyncMemberResource";
 import {
     AgentServiceInfo,
@@ -316,11 +316,10 @@ const NO_AGENT_SERVICES: AgentServiceInfo = { services: {}, capabilities: [], re
 export function useAgentServices(address: `0x${string}` | undefined) {
     const { data, isLoading } = useAsyncMemberResource<AgentServiceInfo>(address, {
         fetcher: async (metadataURI) => {
-            // The on-chain metadataURI is an `ipfs://` URI; the browser
-            // cannot fetch that scheme directly — resolve it to the gateway
-            // URL first. `resolveContentUri` returns null for an
-            // unrecognized scheme, handled like a missing URI.
-            const url = resolveContentUri(metadataURI);
+            // The member-chosen metadataURI reads IPFS-only through the
+            // viewer's gateway: an http(s) locator or an unrecognized scheme
+            // resolves to null, handled like a missing URI.
+            const url = resolveMemberDocumentUri(metadataURI);
             if (!url) return NO_AGENT_SERVICES;
             try {
                 // Size-capped fetch (F4): the member-pinned metadata document

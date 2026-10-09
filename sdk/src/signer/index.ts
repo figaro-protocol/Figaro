@@ -10,12 +10,11 @@
  */
 
 export {
-    validatePolicy, parseAmount,
+    validatePolicy, parseAmount, APPROVE_SELECTOR,
     type SignerPolicy, type SignerCeilings, type PolicyResult,
 } from "./policy.js";
 export {
     evaluateTypedData, evaluateTransaction, evaluateSimulation,
-    APPROVE_SELECTOR,
     type GateDecision, type RiskDelta, type SpentWindow,
     type TypedDataRequest, type TransactionRequest, type SimulationOutcome,
 } from "./gate.js";

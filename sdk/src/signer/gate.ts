@@ -22,8 +22,6 @@ import type { Address, Hex } from "viem";
 import { calculateBonds } from "../bonds.js";
 import { APPROVE_SELECTOR, parseAmount, type SignerPolicy } from "./policy.js";
 
-export { APPROVE_SELECTOR };
-
 /** What a request would add to the wallet's exposure. */
 export interface RiskDelta {
     token: bigint;

@@ -41,6 +41,7 @@ scripts/audit-*.sh
 scripts/semantic-precommit-audit.sh
 scripts/verify-guards.sh
 .husky/pre-commit
+.husky/commit-msg
 .lintstagedrc.json
 
 # Environment variables

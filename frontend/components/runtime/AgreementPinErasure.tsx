@@ -1,10 +1,7 @@
 "use client";
 
 import { unpinAgreement } from "@/lib/kernel/agreementFetch";
-import { PinErasureControl, reportingUnpin } from "@/components/runtime/PinErasureControl";
-
-/** The erase, reporting a refused unpin instead of swallowing it. */
-const UNPIN_ONE = reportingUnpin(unpinAgreement);
+import { PinErasureControl } from "@/components/runtime/PinErasureControl";
 
 /**
  * Controller-erasure for a process's committed-agreement pins.
@@ -25,7 +22,7 @@ export function AgreementPinErasure({ agreementHashes }: { agreementHashes: stri
         <PinErasureControl
             hashes={agreementHashes}
             testidPrefix="agreement-pin-erasure"
-            unpinOne={UNPIN_ONE}
+            unpinOne={unpinAgreement}
             buttonLabel="Unpin agreement copies from IPFS"
             erasingLabel="Unpinning…"
             doneLabel={

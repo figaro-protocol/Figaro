@@ -142,13 +142,21 @@ export function useUpdateMemberProfile(
             throw e;
         }
 
-        // The supersede confirmed — erase what it replaced. Never throws.
-        await unpinSupersededProfileArtifacts({
-            ipfs: DEFAULT_IPFS_SERVICE,
-            priorProfileUri,
-            priorProfile: existingProfile,
-            nextProfile: merged,
-        });
+        // The supersede confirmed — erase what it replaced. A refused unpin
+        // is this save's error: the profile updated, the content it names
+        // stays pinned.
+        try {
+            await unpinSupersededProfileArtifacts({
+                ipfs: DEFAULT_IPFS_SERVICE,
+                priorProfileUri,
+                priorProfile: existingProfile,
+                nextProfile: merged,
+            });
+        } catch (err) {
+            const e = toError(err);
+            setPinError(e);
+            throw e;
+        }
     }
 
     const error = pinError ?? (writeError as Error | null) ?? null;

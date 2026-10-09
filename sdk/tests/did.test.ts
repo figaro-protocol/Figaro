@@ -406,10 +406,7 @@ describe("resolveDidWeb", () => {
     };
 
     it("resolves a valid DID Document", async () => {
-        const mockFetch = vi.fn().mockResolvedValue({
-            ok: true,
-            json: () => Promise.resolve(validDoc),
-        });
+        const mockFetch = vi.fn().mockResolvedValue(new Response(JSON.stringify(validDoc)));
 
         const result = await resolveDidWeb("did:web:example.com", mockFetch);
         expect(result.error).toBeNull();
@@ -422,10 +419,7 @@ describe("resolveDidWeb", () => {
 
     it("resolves DID with path", async () => {
         const pathDoc = { ...validDoc, id: "did:web:example.com:sellers:alice" };
-        const mockFetch = vi.fn().mockResolvedValue({
-            ok: true,
-            json: () => Promise.resolve(pathDoc),
-        });
+        const mockFetch = vi.fn().mockResolvedValue(new Response(JSON.stringify(pathDoc)));
 
         const result = await resolveDidWeb(
             "did:web:example.com:sellers:alice",
@@ -466,10 +460,7 @@ describe("resolveDidWeb", () => {
     });
 
     it("returns error on invalid JSON", async () => {
-        const mockFetch = vi.fn().mockResolvedValue({
-            ok: true,
-            json: () => Promise.reject(new Error("Unexpected token")),
-        });
+        const mockFetch = vi.fn().mockResolvedValue(new Response("{ not json"));
 
         const result = await resolveDidWeb("did:web:example.com", mockFetch);
         expect(result.document).toBeNull();
@@ -478,10 +469,7 @@ describe("resolveDidWeb", () => {
 
     it("returns error when document id does not match DID", async () => {
         const wrongIdDoc = { ...validDoc, id: "did:web:other.com" };
-        const mockFetch = vi.fn().mockResolvedValue({
-            ok: true,
-            json: () => Promise.resolve(wrongIdDoc),
-        });
+        const mockFetch = vi.fn().mockResolvedValue(new Response(JSON.stringify(wrongIdDoc)));
 
         const result = await resolveDidWeb("did:web:example.com", mockFetch);
         expect(result.document).toBeNull();
@@ -679,11 +667,7 @@ describe("resolveDidWeb — SSRF hardening", () => {
     });
 
     it("passes redirect: \"error\" so redirects are refused by fetch", async () => {
-        const mockFetch = vi.fn().mockResolvedValue({
-            ok: true,
-            headers: new Headers(),
-            json: () => Promise.resolve(validDoc),
-        });
+        const mockFetch = vi.fn().mockResolvedValue(new Response(JSON.stringify(validDoc)));
         await resolveDidWeb("did:web:example.com", mockFetch);
         expect(mockFetch).toHaveBeenCalledWith(
             "https://example.com/.well-known/did.json",
@@ -702,12 +686,9 @@ describe("resolveDidWeb — SSRF hardening", () => {
     });
 
     it("fast-rejects an oversize Content-Length", async () => {
-        const mockFetch = vi.fn().mockResolvedValue({
-            ok: true,
-            status: 200,
-            headers: new Headers({ "content-length": String((1 << 20) + 1) }),
-            json: () => Promise.resolve(validDoc),
-        });
+        const mockFetch = vi.fn().mockResolvedValue(
+            new Response(JSON.stringify(validDoc), { headers: { "content-length": String((1 << 20) + 1) } }),
+        );
         const result = await resolveDidWeb("did:web:example.com", mockFetch);
         expect(result.document).toBeNull();
         expect(result.error).toContain("size cap");

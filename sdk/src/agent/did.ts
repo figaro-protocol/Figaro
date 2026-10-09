@@ -15,6 +15,8 @@
  *   7. Check the document's `id` matches the DID.
  */
 
+import { readCappedBytes } from "../cappedRead.js";
+
 // ── W3C DID Document Types ──────────────────────────────────────────────────
 
 /** A single verification method within a DID Document. */
@@ -306,48 +308,6 @@ export function assertSafeResolutionUrl(url: string): URL {
     return parsed;
 }
 
-/** Read a response body as text, fast-rejecting on a declared oversize
- *  Content-Length and aborting a stream that exceeds the cap mid-read. Falls
- *  back to `text()`/`json()` for injected fetches with no streaming body. */
-async function readCappedText(response: Response): Promise<string> {
-    const declared = response.headers?.get?.("content-length");
-    if (declared && Number(declared) > MAX_DID_DOC_BYTES) {
-        throw new Error("DID Document exceeds size cap");
-    }
-    const body = response.body;
-    if (!body || typeof body.getReader !== "function") {
-        // Injected/mock fetch with no ReadableStream body.
-        if (typeof response.text === "function") return response.text();
-        return JSON.stringify(await response.json());
-    }
-    const reader = body.getReader();
-    const chunks: Uint8Array[] = [];
-    let total = 0;
-    try {
-        for (;;) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            if (value) {
-                total += value.byteLength;
-                if (total > MAX_DID_DOC_BYTES) {
-                    await reader.cancel();
-                    throw new Error("DID Document exceeds size cap");
-                }
-                chunks.push(value);
-            }
-        }
-    } finally {
-        reader.releaseLock?.();
-    }
-    const merged = new Uint8Array(total);
-    let offset = 0;
-    for (const c of chunks) {
-        merged.set(c, offset);
-        offset += c.byteLength;
-    }
-    return new TextDecoder().decode(merged);
-}
-
 // ── did:web Resolution ──────────────────────────────────────────────────────
 
 /**
@@ -401,14 +361,17 @@ export async function resolveDidWeb(
         };
     }
 
+    let bytes: Uint8Array | null;
+    try {
+        bytes = await readCappedBytes(response, MAX_DID_DOC_BYTES);
+    } catch {
+        return { document: null, error: "DID Document is not valid JSON" };
+    }
+    if (bytes === null) return { document: null, error: "DID Document exceeds size cap" };
     let body: unknown;
     try {
-        body = JSON.parse(await readCappedText(response));
-    } catch (e) {
-        const msg = e instanceof Error ? e.message : String(e);
-        if (msg.includes("size cap")) {
-            return { document: null, error: msg };
-        }
+        body = JSON.parse(new TextDecoder().decode(bytes));
+    } catch {
         return { document: null, error: "DID Document is not valid JSON" };
     }
 

@@ -40,6 +40,7 @@ import {
     readLocalDeploymentConfig,
     memberProfileBindings,
     waitForConnected,
+    publishOrAdoptReviewed,
 } from './devnet-helpers';
 import {
     C,
@@ -158,15 +159,9 @@ test.describe('TRADELENS SCENARIO — six bonded value-adders, authored on the c
             await page.waitForURL(/\/assemblies\/designer\/view\/?\?slug=asm-/, { timeout: 15000 });
             const handle = page.url().match(/[?&]slug=(asm-[a-z0-9-]+)/)?.[1];
             expect(handle, 'review navigated to a draft handle').toBeTruthy();
-            await page.goto(`/assemblies/designer/view?slug=${handle}&intent=publish&e2e=devnet`, { waitUntil: 'domcontentloaded' });
-            const confirmBtn = page.getByTestId('review-confirm-publish');
-            await confirmBtn.waitFor({ state: 'visible', timeout: 15000 });
-            await waitForConnected(page);
-            await confirmBtn.click();
-            await page.getByTestId('assembly-publish-receipt').waitFor({ timeout: 60000 });
-
+            const published = await publishOrAdoptReviewed(page, handle!);
             slug = await findTradelensAssembly();
-            expect(slug, 'the published Tradelens assembly is discoverable by shape').toBeTruthy();
+            expect(slug, 'the published Tradelens assembly is discoverable by shape').toBe(published);
         }
 
         // ── ONBOARD + BIND the six sellers (idempotent re-assert). ──

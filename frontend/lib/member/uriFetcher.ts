@@ -16,17 +16,15 @@
  * This module is the single source. Each fetcher is a short wrapper
  * that supplies a `parse` function and (optionally) a TTL.
  *
- * IPFS-only, as images are (`resolveImageUri`): every URI read here is
- * chosen by a member through a permissionless registry, and a raw http(s)
+ * IPFS-only (`resolveMemberDocumentUri`, `ipfsService`): every URI read here
+ * is chosen by a member through a permissionless registry, and a raw http(s)
  * locator would send every viewer's IP, User-Agent and timing to a host that
  * member picked. Through IPFS the viewer's own gateway answers. The write
  * path pins to IPFS and anchors `ipfs://` (`catalogPublisher`), so a profile
  * this frontend publishes always reads back; an http(s) URI reads as absent.
- * `resolveMemberDocumentUri` is that rule, exported for the member reads that
- * keep their own fetch (`discoveryService`, `useMemberBoundAssemblies`).
  */
 
-import { fetchCappedContent, resolveContentUri } from "@/lib/shared/ipfsService";
+import { fetchCappedContent, resolveMemberDocumentUri } from "@/lib/shared/ipfsService";
 import { safeJsonFromResponse } from "@/lib/shared/safeJson";
 
 export interface UriFetcherConfig<T> {
@@ -60,21 +58,6 @@ export interface UriFetcher<T> {
 interface CacheEntry<T> {
     value: T;
     ts: number;
-}
-
-/** A raw http(s) locator — a host the member chose. */
-function isHttpUri(uri: string): boolean {
-    return uri.startsWith("http://") || uri.startsWith("https://");
-}
-
-/**
- * The gateway URL a document a member pinned is read from, or null — an
- * http(s) locator reads as absent (the viewer's request never goes to a host
- * the member chose), as does any URI `resolveContentUri` refuses.
- */
-export function resolveMemberDocumentUri(uri: string): string | null {
-    if (!uri || isHttpUri(uri)) return null;
-    return resolveContentUri(uri);
 }
 
 /**

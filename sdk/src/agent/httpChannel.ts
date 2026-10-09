@@ -20,6 +20,7 @@ import type { Hex } from "../types.js";
 import type { CommitmentPayload, CoordinationChannel, OfferHandler } from "./coordination.js";
 import { serializeCommitmentPayload, deserializeCommitmentPayload, MAX_COMMITMENT_PAYLOAD_BYTES } from "./coordination.js";
 import { resolveDidWeb, didDocumentMatchesAddress, extractServiceEndpoints } from "./did.js";
+import { readCappedBytes } from "../cappedRead.js";
 
 /**
  * Byte ceiling on an offer-endpoint response. The endpoint is a counterparty's
@@ -33,48 +34,16 @@ import { resolveDidWeb, didDocumentMatchesAddress, extractServiceEndpoints } fro
 export const MAX_OFFER_RESPONSE_BYTES = 8 * 1024 * 1024;
 
 /**
- * Read a fetch `Response` body as text with a hard byte ceiling, streaming and
- * aborting mid-download once the cap is exceeded, and rejecting an over-declared
- * `Content-Length` up front. Falls back to a capped `res.text()` when the body
- * is not a readable stream (injected test doubles / non-stream environments).
+ * Read a fetch `Response` body as text with a hard byte ceiling
+ * (`readCappedBytes`), refusing a body over it.
  */
 export async function readCappedResponseText(
     res: Response,
     maxBytes: number = MAX_OFFER_RESPONSE_BYTES,
 ): Promise<string> {
-    const declared = res.headers?.get?.("content-length");
-    if (declared && Number(declared) > maxBytes) {
-        throw new Error(`offer response exceeds ${maxBytes}-byte cap (declared ${declared})`);
-    }
-    const body = res.body as ReadableStream<Uint8Array> | null | undefined;
-    if (!body || typeof body.getReader !== "function") {
-        const text = await res.text();
-        if (text.length > maxBytes) {
-            throw new Error(`offer response exceeds ${maxBytes}-byte cap`);
-        }
-        return text;
-    }
-    const reader = body.getReader();
-    const chunks: Uint8Array[] = [];
-    let total = 0;
-    for (;;) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        if (!value) continue;
-        total += value.byteLength;
-        if (total > maxBytes) {
-            await reader.cancel();
-            throw new Error(`offer response exceeds ${maxBytes}-byte cap`);
-        }
-        chunks.push(value);
-    }
-    const joined = new Uint8Array(total);
-    let offset = 0;
-    for (const chunk of chunks) {
-        joined.set(chunk, offset);
-        offset += chunk.byteLength;
-    }
-    return new TextDecoder().decode(joined);
+    const bytes = await readCappedBytes(res, maxBytes);
+    if (bytes === null) throw new Error(`offer response exceeds ${maxBytes}-byte cap`);
+    return new TextDecoder().decode(bytes);
 }
 
 // ── Endpoint resolution ───────────────────────────────────────────────────────

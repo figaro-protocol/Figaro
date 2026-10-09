@@ -42,7 +42,7 @@ import {
     createPublicClient, defineChain, http, parseAbi, type Hex,
 } from 'viem';
 import { privateKeyToAccount, mnemonicToAccount } from 'viem/accounts';
-import { readLocalDeploymentConfig, assertPinnedInIpfs } from './devnet-helpers';
+import { readLocalDeploymentConfig, assertPinnedInIpfs, publishOrAdoptReviewed, waitForConnected } from './devnet-helpers';
 import { makeProbeSpec, makeProbeWitnessSpec, registerProbeClause } from './probeAssembly';
 import { ANVIL_KEYS } from '../anvilAccounts';
 import { CORE_ABI } from '@/lib/kernel/contracts';
@@ -82,14 +82,6 @@ const BUYER = privateKeyToAccount(ANVIL_KEYS[0] as Hex).address; // anvil[0] —
 const seller = mnemonicToAccount(ANVIL_MNEMONIC, { addressIndex: 14 }); // anvil[14] — shared only with rate-pricing (both self-establish idempotently)
 const SELLER = seller.address;
 
-/** Wait for ClientInit's devnet auto-connect (the "Connect Wallet" button goes). */
-async function waitForConnected(page: Page) {
-    await page.waitForFunction(
-        () => !Array.from(document.querySelectorAll('button')).some((b) => b.textContent?.trim() === 'Connect Wallet'),
-        null,
-        { timeout: 30000 },
-    );
-}
 
 test.describe('PERMISSIONLESS CLAUSE — the definition of green (devnet)', () => {
     test.setTimeout(360_000);
@@ -173,14 +165,7 @@ test.describe('PERMISSIONLESS CLAUSE — the definition of green (devnet)', () =
         await page.waitForURL(/\/assemblies\/designer\/view\/?\?slug=asm-/, { timeout: 15000 });
         const handle = page.url().match(/[?&]slug=(asm-[a-z0-9-]+)/)?.[1];
         expect(handle, 'review navigated to a draft handle').toBeTruthy();
-        await page.goto(`/assemblies/designer/view?slug=${handle}&intent=publish&e2e=devnet`, { waitUntil: 'domcontentloaded' });
-        const confirmBtn = page.getByTestId('review-confirm-publish');
-        await confirmBtn.waitFor({ state: 'visible', timeout: 15000 });
-        await waitForConnected(page);
-        await confirmBtn.click();
-        await page.getByTestId('assembly-publish-receipt').waitFor({ timeout: 60000 });
-        const slug = (await page.getByTestId('receipt-slug').textContent())?.trim();
-        expect(slug, 'publish receipt shows the content slug').toMatch(/^asm-/);
+        const slug = await publishOrAdoptReviewed(page, handle!);
 
         // ── PUBLIC INVENTORY: the freshly-published assembly is discoverable on the
         //    public /registries explorer (on-chain AssemblyRegistered → standalone
