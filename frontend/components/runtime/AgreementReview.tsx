@@ -43,6 +43,7 @@ function formatPayment(payment: bigint, decimals: number): string {
 }
 
 export function commerceLineItems(agreement: Agreement | null): Array<{
+    itemId: string | undefined;
     name: string;
     quantity: string;
     unitPrice: string;
@@ -57,6 +58,7 @@ export function commerceLineItems(agreement: Agreement | null): Array<{
         const items = s.data?.lineItems;
         if (!Array.isArray(items)) return [];
         return items.map((item: Record<string, unknown>) => ({
+            itemId: typeof item.itemId === "string" ? item.itemId : undefined,
             name: typeof item.name === "string" ? item.name : "(unnamed item)",
             quantity: typeof item.quantity === "string" || typeof item.quantity === "number"
                 ? String(item.quantity)

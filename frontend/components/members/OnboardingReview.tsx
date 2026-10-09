@@ -21,7 +21,6 @@ import {
 import { type MemberProfileMetadata } from "@/lib/member/memberProfileMetadata";
 import { cooldownPhrase } from "@/lib/member/cooldownPhrase";
 import { usePublishMemberProfile } from "@/lib/member/usePublishMemberProfile";
-import { formatFeeTier } from "@/lib/composition/swapFunding";
 
 /**
  * Final step — review and publish.
@@ -327,9 +326,7 @@ export function OnboardingReview() {
                 </div>
                 {acceptedTokens.length > 0 ? (
                     <p className="text-sm text-ink-body">
-                        {acceptedTokens
-                            .map((t) => (t.poolFeeTier !== undefined ? `${t.symbol} (pool ${formatFeeTier(t.poolFeeTier)})` : t.symbol))
-                            .join(", ")}
+                        {acceptedTokens.map((t) => t.symbol).join(", ")}
                     </p>
                 ) : (
                     <p className="text-sm text-ink-faint">No tokens accepted.</p>

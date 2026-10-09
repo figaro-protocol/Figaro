@@ -192,7 +192,7 @@ export interface SeedMemberProfile {
     specialty?: string;
     catalogURI?: string;
     location?: { geohash?: string };
-    acceptedTokens?: Array<{ address: `0x${string}`; symbol: string; chainId: number; poolFeeTier?: number }>;
+    acceptedTokens?: Array<{ address: `0x${string}`; symbol: string; chainId: number }>;
     defaultTokenAddress?: `0x${string}`;
     /** The assemblies this seller adopts. The assembly-driven checkout only
      *  enables place-order for a seller whose profile binds a PUBLISHED
@@ -526,22 +526,6 @@ export async function latestMemberProfileURI(member: `0x${string}`): Promise<str
         .at(-1)?.args.metadataURI as string | undefined;
 }
 
-/** A member's accepted tokens, read from its latest pinned profile (chain
- *  events → IPFS). Empty when unregistered or unresolvable. */
-export async function memberAcceptedTokens(
-    member: `0x${string}`,
-): Promise<Array<{ address?: string; symbol?: string; poolFeeTier?: number }>> {
-    const uri = await latestMemberProfileURI(member);
-    if (!uri) return [];
-    try {
-        const doc = await (await fetch(resolveIpfsURI(uri))).json() as {
-            acceptedTokens?: Array<{ address?: string; symbol?: string; poolFeeTier?: number }>;
-        };
-        return doc.acceptedTokens ?? [];
-    } catch {
-        return [];
-    }
-}
 /** A seller's live assembly bindings, read from its latest pinned profile
  *  (chain events → IPFS). Empty when unregistered or unresolvable. */
 export async function memberProfileBindings(

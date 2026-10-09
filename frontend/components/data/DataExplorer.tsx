@@ -25,7 +25,7 @@
 import Link from "@/components/shared/Link";
 import { useCallback, useMemo } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { walletRecord } from "@figaro-protocol/sdk/derive";
+import { walletRecord, type ValueFlowEdge } from "@figaro-protocol/sdk/derive";
 import { Breadcrumb } from "@/components/shared/Breadcrumb";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
@@ -457,6 +457,12 @@ function OverlaysView({ corpus, state, onQuery }: { corpus: GraphCorpus; state: 
 function ValueFlowView({ corpus }: { corpus: GraphCorpus }) {
     const rows = useMemo(() => denominationRows(corpus.valueFlow), [corpus]);
     const posture = useMemo(() => venuePosture(corpus.venue, corpus.valueFlow.edges), [corpus]);
+    const legEdges = useMemo(
+        () => corpus.valueFlow.edges.filter(
+            (e): e is Extract<ValueFlowEdge, { basis: "composition-derived" }> => e.basis === "composition-derived",
+        ),
+        [corpus],
+    );
     return (
         <div className="space-y-5">
             <section className="space-y-3">
@@ -498,6 +504,30 @@ function ValueFlowView({ corpus }: { corpus: GraphCorpus }) {
                 <p className="text-sm text-ink-body leading-relaxed max-w-3xl" data-testid="venue-posture">
                     {venuePostureNote(posture)}
                 </p>
+                {/* Each swap leg is an edge between two denominations: value
+                    leaving one and entering the other, at the venue named. */}
+                {legEdges.length > 0 ? (
+                    <ul className="space-y-2">
+                        {legEdges.map((e) => {
+                            const symbolOf = (token: string) => corpus.tokenMeta.get(token.toLowerCase())?.symbol ?? truncateHex(token);
+                            return (
+                                <li
+                                    key={`${e.venue}-${e.tokenIn}-${e.tokenOut}`}
+                                    className="text-sm text-ink-body"
+                                    data-testid={`value-flow-leg-${e.tokenIn.toLowerCase()}-${e.tokenOut.toLowerCase()}`}
+                                >
+                                    <span className="text-ink-heading">{symbolOf(e.tokenIn)} → {symbolOf(e.tokenOut)}</span>
+                                    <span className="block text-xs text-ink-muted">
+                                        {e.legCount} leg{e.legCount === 1 ? "" : "s"} ·{" "}
+                                        <Amount value={e.volumeIn} token={e.tokenIn} corpus={corpus} /> in ·{" "}
+                                        <Amount value={e.volumeOut} token={e.tokenOut} corpus={corpus} /> out · venue{" "}
+                                        <code className="font-mono">{truncateHex(e.venue)}</code>
+                                    </span>
+                                </li>
+                            );
+                        })}
+                    </ul>
+                ) : null}
             </section>
         </div>
     );

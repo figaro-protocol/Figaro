@@ -72,19 +72,21 @@ export interface KitBreakdown {
 export function deriveKitBreakdown(args: {
     pickedAssembly: (PlanAssembly & { assemblyTemplate: { agreements: readonly unknown[] } }) | undefined;
     leadAddress: `0x${string}`;
-    sellerCatalogs: ListingCatalogs;
-    pricedCatalogs: PricingCatalogs;
+    sellerCatalogs: ListingCatalogs & PricingCatalogs;
     cartTotal: bigint;
     clauseFills: Record<string, Record<string, Record<string, unknown>>>;
     subOrderQuantities: Record<string, Parameters<typeof resolveSubOrderPricing>[0]["checkoutQuantity"]>;
+    /** The buyer's amount per unit, in the process denomination, for a bound
+     *  sub-order whose seller lists in another token — keyed by node id; the
+     *  commit walk reads the same map. Absent ⇒ the listed price stands. */
+    subOrderUnitPrices: Record<string, bigint>;
     tokenDecimals: number;
     /** A race winner's overlay for its node — its price is already in the
      *  process denomination. */
     raceOutcome: { nodeId: string; selection: CandidatePick } | null;
-    /** The buyer's manual pick for an unbound node. */
+    /** The buyer's manual pick for an unbound node, at the amount the buyer
+     *  signs for it. */
     sellerSelection: CandidatePick | null;
-    /** Venue conversion into the process denomination for manual picks. */
-    toCurrency: (amount: bigint) => bigint;
 }): KitBreakdown | null {
     const assembly = args.pickedAssembly;
     if (!assembly || assembly.assemblyTemplate.agreements.length <= 1) return null;
@@ -103,12 +105,18 @@ export function deriveKitBreakdown(args: {
                 // a rate source (order-geodistance) derives from clause
                 // content, and templates arrive value-free by construction.
                 // Same merge the commit walk performs, so shown = committed.
-                const pricing = resolveSubOrderPricing({
+                const listed = resolveSubOrderPricing({
                     node: { ...node, clauses: { ...node.clauses, ...args.clauseFills[node.id] } },
-                    seller, sellerCatalogs: args.pricedCatalogs, tokenDecimals: args.tokenDecimals,
+                    seller, sellerCatalogs: args.sellerCatalogs, tokenDecimals: args.tokenDecimals,
                     specs: specSource(),
                     checkoutQuantity: args.subOrderQuantities[node.id],
                 });
+                // The buyer's translated amount per unit replaces the listed
+                // one; the billed quantity stands.
+                const unitPrice = listed.item && !listed.issue ? args.subOrderUnitPrices[node.id] : undefined;
+                const pricing = unitPrice === undefined
+                    ? listed
+                    : { ...listed, unitPrice, payment: unitPrice * BigInt(listed.billedQuantity) };
                 return { name: nameOf(seller), payment: pricing.payment, nodeId: node.id, pricing };
             }
             // Unbound node: the buyer's checkout-time choice fills it — the
@@ -120,7 +128,7 @@ export function deriveKitBreakdown(args: {
                 return { name: nameOf(args.raceOutcome.selection.seller), payment: parseToken(args.raceOutcome.selection.price, args.tokenDecimals) };
             }
             return args.sellerSelection
-                ? { name: nameOf(args.sellerSelection.seller), payment: args.toCurrency(parseToken(args.sellerSelection.price, args.tokenDecimals)) }
+                ? { name: nameOf(args.sellerSelection.seller), payment: parseToken(args.sellerSelection.price, args.tokenDecimals) }
                 : { name: "(choose below)", payment: 0n };
         }),
     ];

@@ -44,15 +44,9 @@ import { CommitmentSharePanel } from "@/components/runtime/CommitmentSharePanel"
 import { SellerCatalogPicker, type SellerSelection } from "@/components/runtime/SellerCatalogPicker";
 import { useCompositionActions } from "@/lib/composition/useCompositionActions";
 import {
-    effectiveUnitCost,
-    formatFeeTier,
-    inputForOutput,
-    quotePlanConversion,
     resolveSwapFundingContracts,
-    sellerConversions,
-    type PlanConversion,
-    type SellerPlanPart,
-    type VenueRate,
+    translateListedPrice,
+    type ListedPriceTranslation,
 } from "@/lib/composition/swapFunding";
 import { SwapFundingPanel, fundingAuthorization, fundingBlocksTheAct } from "./SwapFundingPanel";
 import useTokenApproval from "@/hooks/useTokenApproval";
@@ -78,8 +72,18 @@ interface Props {
     sellerAddress: string;
 }
 
-/** No conversion: the denomination IS the quote basis. */
-const IDENTITY_RATE: VenueRate = { num: 1n, den: 1n };
+/** One price the plan lists — a cart line, a bound sub-order's catalog item,
+ *  the buyer's pick for an unbound sub-order — in the token its seller lists
+ *  in (`listedToken`, that seller's default; undefined when the seller
+ *  declares none). */
+interface ListedPrice {
+    key: string;
+    label: string;
+    seller: `0x${string}`;
+    listedToken: `0x${string}` | undefined;
+    listedPrice: string;
+    quantity: number;
+}
 
 /** One order's on-network composition (sixth noun): the composing clause, its
  *  standard interface, and the runtime `block.runtime.fields` the buyer fills. */
@@ -166,19 +170,20 @@ export function CheckoutView({ sellerAddress }: Props) {
     }, [sellerGeohash, sellerAddressText]);
     const [paymentPick, setPaymentPick] = useState<`0x${string}` | null>(null);
     const currency = utilityTokenPin ?? paymentPick ?? sellerDefault;
-    // Price conversion, unit of account → the process denomination: each
-    // seller's catalog prices are quoted in THAT seller's default; when the
-    // pick/pin differs, that seller's part of the plan is quoted exact-output
-    // on the pool THAT seller declared for the token in its profile (the
-    // party made whole names the pool), and its amounts convert at that
-    // quote's effective rate BEFORE display and commit. A seller with no
-    // declared pool for the token is not convertible; no venue configured is
-    // the same absence. The quotes run below, once every seller's part of the
-    // plan is known.
+    // A listed price whose seller lists in a token other than the
+    // denomination is translated by the buyer: a venue quote is offered as
+    // the translation, the buyer may change it, and the amount in the field
+    // is what the buyer signs (its bond is twice it) and the seller
+    // countersigns at /sign or declines. No rate is stored anywhere; the
+    // translation lives only in the signed amount.
     const swapFundingContracts = resolveSwapFundingContracts();
-    const [planQuotes, setPlanQuotes] = useState<
-        { key: string; bySeller: Record<string, { result: PlanConversion | null; error: string | null }> } | null
+    const [translationQuotes, setTranslationQuotes] = useState<
+        { key: string; byPrice: Record<string, { result: ListedPriceTranslation | null; error: string | null }> } | null
     >(null);
+    // The buyer's own amounts, per listed price, in the denomination — a
+    // decimal string as typed; absent = the venue quote stands.
+    const [translationEdits, setTranslationEdits] = useState<Record<string, string>>({});
+    useEffect(() => { setTranslationEdits({}); }, [currency]);
     // The lead's quote basis's symbol — the token its catalog (and so the
     // cart) is priced in: read from the token, else as the seller declared it.
     const { data: basisResolvedSymbol } = useTokenSymbol(sellerDefault ?? "");
@@ -306,15 +311,6 @@ export function CheckoutView({ sellerAddress }: Props) {
             return [nodeId, { ...mergedAssemblyEntries, ...(clauseFills[nodeId] ?? {}) }];
         }),
     );
-    // Every seller's part of the plan in ITS OWN quote basis — the SAME
-    // derivation the shown and committed figures use, with no conversion
-    // applied: the lead's cart, every bound contributor priced from its own
-    // catalog, a manual pick's price. A race winner's price is already in the
-    // process denomination, so its node stays out of every quoted amount.
-    const cartBasisTotal = cartItems.reduce(
-        (sum, item) => sum + parseToken(item.price || "0", tokenDecimals) * BigInt(item.quantity),
-        0n,
-    );
     const subOrderPlan = (() => {
         if (!pickedAssembly || pickedAssembly.assemblyTemplate.agreements.length <= 1) return [];
         try {
@@ -323,116 +319,123 @@ export function CheckoutView({ sellerAddress }: Props) {
             return [];
         }
     })();
-    const basisKit = memberCatalog
+    const defaultOf = (seller: string): `0x${string}` | undefined =>
+        sellerCatalogs.find((c) => hexEqual(c.address, seller))?.defaultTokenAddress as `0x${string}` | undefined;
+    // Every price the plan lists, as its seller lists it: the lead's cart
+    // lines, each bound contributor's catalog item (priced by the SAME
+    // derivation the commit walk makes), the buyer's pick for the unbound
+    // sub-orders. A race winner's price is already in the denomination, so
+    // its node lists nothing here.
+    const listedKit = memberCatalog
         ? deriveKitBreakdown({
             pickedAssembly,
             leadAddress: memberCatalog.address as `0x${string}`,
             sellerCatalogs,
-            pricedCatalogs: sellerCatalogs,
-            cartTotal: cartBasisTotal,
+            cartTotal: 0n,
             clauseFills: expandedClauseFills,
             subOrderQuantities,
+            subOrderUnitPrices: {},
             tokenDecimals,
             raceOutcome: null,
-            sellerSelection,
-            toCurrency: (amount) => amount,
+            sellerSelection: null,
         })
         : null;
-    const planParts: SellerPlanPart[] = memberCatalog
+    const listedPrices: ListedPrice[] = memberCatalog
         ? [
-            { seller: memberCatalog.address, basisAmount: cartBasisTotal },
-            ...subOrderPlan.flatMap(({ node, seller }): SellerPlanPart[] => {
-                if (seller) return [{ seller, basisAmount: basisKit?.rows.find((r) => r.nodeId === node.id)?.payment ?? 0n }];
-                if (raceOutcome && raceOutcome.nodeId === node.id) return [];
-                return sellerSelection
-                    ? [{ seller: sellerSelection.seller, basisAmount: parseToken(sellerSelection.price, tokenDecimals) }]
-                    : [];
+            ...cartItems.map((item): ListedPrice => ({
+                key: `line:${item.catalogItemId}`,
+                label: item.name,
+                seller: memberCatalog.address as `0x${string}`,
+                listedToken: sellerDefault,
+                listedPrice: item.price || "0",
+                quantity: item.quantity,
+            })),
+            ...subOrderPlan.flatMap(({ node, seller }): ListedPrice[] => {
+                if (!seller) return [];
+                const pricing = listedKit?.rows.find((r) => r.nodeId === node.id)?.pricing;
+                if (!pricing?.item || pricing.issue) return [];
+                return [{
+                    key: `node:${node.id}`,
+                    label: pricing.item.name,
+                    seller,
+                    listedToken: defaultOf(seller),
+                    listedPrice: pricing.item.price,
+                    quantity: pricing.billedQuantity,
+                }];
             }),
+            // The buyer's pick fills every unbound sub-order the race did
+            // not: one listed price, one amount.
+            ...(sellerSelection && subOrderPlan.some(({ node, seller }) => !seller && !(raceOutcome && raceOutcome.nodeId === node.id))
+                ? [{
+                    key: "pick",
+                    label: sellerSelection.item.name,
+                    seller: sellerSelection.seller,
+                    listedToken: defaultOf(sellerSelection.seller),
+                    listedPrice: sellerSelection.price,
+                    quantity: 1,
+                }]
+                : []),
         ]
         : [];
-    // Per seller: each converts on its OWN declared pool, never the lead's.
-    const allConversions = sellerConversions(sellerCatalogs, currency, planParts);
-    const conversions = allConversions.filter((c) => c.need.kind !== "none");
-    const needsConversion = conversions.length > 0;
-    // The sellers whose part is quoted: a declared pool and something to price.
-    const quotable = conversions.flatMap((c) =>
-        c.need.kind === "declared" && c.quoteBasis && c.basisTotal > 0n
-            ? [{ seller: c.seller, quoteBasis: c.quoteBasis, feeTier: c.need.feeTier, basisTotal: c.basisTotal }]
-            : []);
-    const quotesKey = quotable.length > 0 && decimalsReady && swapFundingContracts
-        ? `${currency}|${tokenDecimals}|${quotable.map((q) => `${q.seller}:${q.quoteBasis}:${q.feeTier}:${q.basisTotal}`).join(",")}`
+    // The prices listed in a token other than the denomination — the ones
+    // the buyer translates.
+    const translated = currency
+        ? listedPrices.filter((l) => !!l.listedToken && !hexEqual(l.listedToken, currency))
+        : [];
+    const translationKey = translated.length > 0 && swapFundingContracts && currency
+        ? `${currency}|${translated.map((l) => `${l.key}:${l.listedToken}:${l.listedPrice}`).join(",")}`
         : null;
     useEffect(() => {
-        if (!quotesKey || !publicClient || !swapFundingContracts || !currency) {
-            setPlanQuotes(null);
+        if (!translationKey || !publicClient || !swapFundingContracts || !currency) {
+            setTranslationQuotes(null);
             return;
         }
         let canceled = false;
-        setPlanQuotes({ key: quotesKey, bySeller: {} });
-        void Promise.all(quotable.map(async (q) => {
+        setTranslationQuotes({ key: translationKey, byPrice: {} });
+        void Promise.all(translated.map(async (l) => {
             try {
-                const result = await quotePlanConversion(publicClient, swapFundingContracts.router, {
-                    tokenIn: currency,
-                    tokenOut: q.quoteBasis,
-                    feeTier: q.feeTier,
-                    planBasis: q.basisTotal,
-                    tokenInDecimals: tokenDecimals,
+                const result = await translateListedPrice(publicClient, swapFundingContracts.router, {
+                    denomination: currency,
+                    listedToken: l.listedToken!,
+                    listedPrice: l.listedPrice,
                 });
-                return [q.seller, { result, error: null }] as const;
+                return [l.key, { result, error: null }] as const;
             } catch (e) {
-                return [q.seller, { result: null, error: extractErrorMessage(e, "The quote failed.") }] as const;
+                return [l.key, { result: null, error: extractErrorMessage(e, "The venue could not quote it.") }] as const;
             }
-        })).then((entries) => { if (!canceled) setPlanQuotes({ key: quotesKey, bySeller: Object.fromEntries(entries) }); });
+        })).then((entries) => { if (!canceled) setTranslationQuotes({ key: translationKey, byPrice: Object.fromEntries(entries) }); });
         return () => { canceled = true; };
         // The key carries every input the quotes read.
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [quotesKey, publicClient]);
-    const currentQuotes = planQuotes && planQuotes.key === quotesKey ? planQuotes.bySeller : null;
-    // The rate a seller's prices convert at: identity when its quote basis IS
-    // the denomination; its own declared-pool quote otherwise; null while
-    // unquoted or not convertible.
-    const rateFor = (seller: string | undefined): VenueRate | null => {
-        const c = seller ? conversions.find((x) => hexEqual(x.seller, seller)) : undefined;
-        if (!c) return IDENTITY_RATE;
-        return currentQuotes?.[c.seller]?.result?.rate ?? null;
+    }, [translationKey, publicClient]);
+    const currentTranslations = translationQuotes && translationQuotes.key === translationKey ? translationQuotes.byPrice : null;
+    // The buyer's amount for one translated price: what the buyer typed, else
+    // the venue quote; null while neither stands (the order is held).
+    const editedAmount = (key: string): bigint | null => {
+        const typed = translationEdits[key];
+        if (typed === undefined) return null;
+        try {
+            const amount = parseToken(typed.trim(), tokenDecimals);
+            return amount > 0n ? amount : null;
+        } catch {
+            return null;
+        }
     };
-    // A seller with something to price and no rate blocks the order.
-    const conversionBlocked = conversions.some((c) => c.basisTotal > 0n && !rateFor(c.seller));
-    const convertFor = (seller: string | undefined, amount: bigint) => {
-        const rate = rateFor(seller);
-        return rate ? inputForOutput(amount, rate) : amount;
-    };
-    // The lead's cart converts on the lead's pool; a manual pick on the
-    // picked seller's.
-    const toCurrency = (amount: bigint) => convertFor(memberCatalog?.address, amount);
-    const pickToCurrency = (amount: bigint) => convertFor(sellerSelection?.seller, amount);
-    // The catalog projections re-quoted into the process denomination, each
-    // at its OWN seller's rate — sub-order pricing and the commit walk read
-    // prices already converted, so shown = committed in ONE basis. Identity
-    // when no conversion applies.
-    const sellerRates = Object.fromEntries(
-        conversions.flatMap((c) => {
-            const rate = rateFor(c.seller);
-            return rate ? [[c.seller, rate] as const] : [];
+    const translatedAmount = (key: string): bigint | null =>
+        translationEdits[key] !== undefined ? editedAmount(key) : currentTranslations?.[key]?.result?.amount ?? null;
+    // One listed price as the amount per unit the buyer signs, in the
+    // denomination: listed in the denomination, it is the price itself.
+    const unitAmountFor = (key: string, listedPrice: string): bigint | null =>
+        translated.some((l) => l.key === key) ? translatedAmount(key) : parseToken(listedPrice || "0", tokenDecimals);
+    const translationHeld = translated.some((l) => translatedAmount(l.key) === null);
+    // The sub-orders whose amount per unit the buyer translated — the commit
+    // walk and the breakdown read the SAME map, so shown = committed.
+    const subOrderUnitPrices: Record<string, bigint> = Object.fromEntries(
+        translated.flatMap((l) => {
+            const amount = l.key.startsWith("node:") ? translatedAmount(l.key) : null;
+            return amount !== null ? [[l.key.slice("node:".length), amount] as const] : [];
         }),
     );
-    const sellerRatesKey = Object.entries(sellerRates).map(([s, r]) => `${s}:${r.num}/${r.den}`).join(",");
-    const pricedCatalogs = useMemo(() => {
-        if (!sellerRatesKey) return sellerCatalogs;
-        return sellerCatalogs.map((c) => {
-            const rate = sellerRates[c.address.toLowerCase()];
-            if (!rate) return c;
-            return {
-                ...c,
-                items: c.items.map((it) => ({
-                    ...it,
-                    price: formatToken(inputForOutput(parseToken(it.price || "0", tokenDecimals), rate), tokenDecimals),
-                })),
-            };
-        });
-        // The key carries every rate the projection reads.
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [sellerCatalogs, sellerRatesKey, tokenDecimals]);
     // No post-place redirect: in the bilateral relay the buyer signs + shares,
     // then stays on the share panel; each order commits when its seller
     // counter-signs in their /orders list. The buyer is never the broadcaster here.
@@ -498,7 +501,7 @@ export function CheckoutView({ sellerAddress }: Props) {
     const orderReady = !!pickedAssembly
         && !!currency
         && decimalsReady
-        && !conversionBlocked
+        && !translationHeld
         && (!buyerChoosesCounterparty || !!sellerSelection || !!raceOutcome)
         && compositionsReady;
     // The root order carries the design-time clauses the buyer is bonding to.
@@ -509,10 +512,17 @@ export function CheckoutView({ sellerAddress }: Props) {
         ? (pickedAssembly.assemblyTemplate.agreements.find((o) => templateParentOrderHashes(o).length === 0)
             ?? pickedAssembly.assemblyTemplate.agreements[0])
         : undefined;
+    const cartUnitAmount = (item: (typeof cartItems)[number]) =>
+        unitAmountFor(`line:${item.catalogItemId}`, item.price) ?? 0n;
     const cartTotal = cartItems.reduce(
-        (sum, item) => sum + toCurrency(parseToken(item.price || "0", tokenDecimals)) * BigInt(item.quantity),
+        (sum, item) => sum + cartUnitAmount(item) * BigInt(item.quantity),
         0n,
     );
+    // The buyer's pick for an unbound sub-order, at the amount the buyer
+    // signs for it (translated when its seller lists in another token).
+    const pickedSelection = sellerSelection
+        ? { ...sellerSelection, price: formatToken(unitAmountFor("pick", sellerSelection.price) ?? 0n, tokenDecimals) }
+        : null;
 
     // Multi-order price transparency — derived in lib/checkout/checkoutDerivations
     // from the SAME plans + fills the commit walks, memoized here.
@@ -523,14 +533,13 @@ export function CheckoutView({ sellerAddress }: Props) {
         pickedAssembly,
         leadAddress: memberCatalog.address as `0x${string}`,
         sellerCatalogs,
-        pricedCatalogs,
         cartTotal,
         clauseFills: expandedClauseFills,
         subOrderQuantities,
+        subOrderUnitPrices,
         tokenDecimals,
         raceOutcome,
-        sellerSelection,
-        toCurrency: pickToCurrency,
+        sellerSelection: pickedSelection,
     });
 
     // The buyer commits EVERY order in the plan (buyer == rootBuyer on each
@@ -538,12 +547,6 @@ export function CheckoutView({ sellerAddress }: Props) {
     // order's seller + an equal refundable bond. Aggregate over the WHOLE
     // plan — a root-only figure under-reports every multi-order checkout.
     const planTotal = kitBreakdown ? kitBreakdown.total : cartTotal;
-    // The plan with no per-unit rounding: each converted seller's quoted
-    // input, every other part as priced — what the conversion note compares.
-    const unroundedPlanTotal = allConversions.reduce(
-        (sum, c) => sum + (c.need.kind === "none" ? c.basisTotal : currentQuotes?.[c.seller]?.result?.amountIn ?? 0n),
-        0n,
-    ) + (raceOutcome && kitBreakdown ? parseToken(raceOutcome.selection.price, tokenDecimals) : 0n);
     const lockedTotal = planTotal > 0n ? calculateBonds(planTotal, planTotal).buyerBond : 0n;
     const hasInsufficientBalance = !!buyer && tokenBalance !== undefined && balance < lockedTotal;
     // Where the chosen funding token stands with Permit2 — the one derived
@@ -597,7 +600,7 @@ export function CheckoutView({ sellerAddress }: Props) {
                 node.id,
                 {
                     seller: sellerSelection.seller,
-                    price: formatToken(pickToCurrency(parseToken(sellerSelection.price, tokenDecimals)), tokenDecimals),
+                    price: pickedSelection!.price,
                     item: { id: sellerSelection.item.id, name: sellerSelection.item.name },
                 },
             ]))
@@ -617,10 +620,10 @@ export function CheckoutView({ sellerAddress }: Props) {
                 itemId: item.catalogItemId,
                 name: item.name,
                 quantity: item.quantity,
-                // Cart prices were snapshotted in the seller's default
-                // (the unit of account); the committed unit price is in
-                // the process denomination.
-                unitPrice: toCurrency(parseToken(item.price, tokenDecimals)).toString(),
+                // Cart prices were snapshotted in the seller's default;
+                // the committed unit price is the buyer's amount in the
+                // process denomination.
+                unitPrice: cartUnitAmount(item).toString(),
                 massGrams: item.massGrams,
                 volumeMl: item.volumeMl,
                 lengthMm: item.lengthMm,
@@ -629,7 +632,7 @@ export function CheckoutView({ sellerAddress }: Props) {
                 clauseValues: item.clauseValues,
             })),
             assembly: pickedAssembly,
-            sellerCatalogs: pricedCatalogs,
+            sellerCatalogs,
             tokenDecimals,
             subOrderSelections: Object.keys(selections).length > 0 ? selections : undefined,
             subOrderCompositions: orderCompositions.length > 0
@@ -639,6 +642,7 @@ export function CheckoutView({ sellerAddress }: Props) {
                 ]))
                 : undefined,
             subOrderQuantities,
+            subOrderUnitPrices: Object.keys(subOrderUnitPrices).length > 0 ? subOrderUnitPrices : undefined,
             clauseFills: expandedClauseFills,
         };
     };
@@ -806,10 +810,10 @@ export function CheckoutView({ sellerAddress }: Props) {
                         {/* THE PAYMENT TOKEN — the buyer's pick from the seller's
                             accepted array (the social layer). The pick IS the
                             process denomination: recorded in the commitment,
-                            bonded 2×, received by the seller. Quoted prices
-                            convert at the venue rate. A designer's denomination
-                            pin replaces the pick entirely; a single-entry array
-                            offers no choice. */}
+                            bonded 2×, received by the seller. A price listed in
+                            another token is translated below. A designer's
+                            denomination pin replaces the pick entirely; a
+                            single-entry array offers no choice. */}
                         {!utilityTokenPin && currency && (memberCatalog?.acceptedTokens?.length ?? 0) > 1 && (
                             <div className="border-t border-default pt-3 space-y-1" data-testid="payment-token-picker">
                                 <p className="text-xs font-semibold text-ink-muted">Pay in</p>
@@ -841,77 +845,76 @@ export function CheckoutView({ sellerAddress }: Props) {
                                 This assembly is denominated by design{tokenSymbol ? ` — every bond and payment moves in ${tokenSymbol}` : ""}.
                             </p>
                         )}
-                        {/* The conversion, when the denomination is not a
-                            seller's list-price token: each such seller's part
-                            of the plan quoted on the pool THAT seller declared
-                            for it, and shown as the rate its part commits at.
-                            A seller with no declared pool, no venue, or a pool
-                            that cannot fill the amount each says so — naming
-                            the seller — and offers no conversion. */}
-                        {needsConversion && (
-                            <div className="border-t border-default pt-3 space-y-2 text-xs" data-testid="payment-token-conversion">
-                                {!swapFundingContracts && conversions.some((c) => c.need.kind === "declared") && (
-                                    <p className="text-error-fg" data-testid="payment-token-no-venue">
-                                        No conversion venue is configured — prices can&apos;t be quoted in this
-                                        token.{!utilityTokenPin && " Pick the list-price token to order."}
-                                    </p>
-                                )}
-                                {conversions.map((c) => {
-                                    const isLead = hexEqual(c.seller, memberCatalog.address);
-                                    const name = displayNameForAddress(sellerCatalogs, c.seller);
-                                    const cBasisSymbol = isLead
-                                        ? basisSymbol
-                                        : sellerCatalogs.find((x) => hexEqual(x.address, c.seller))?.acceptedTokens
-                                            ?.find((t) => !!c.quoteBasis && hexEqual(t.address, c.quoteBasis))?.symbol ?? "";
-                                    const quote = currentQuotes?.[c.seller];
+                        {/* The translation, when a seller lists in a token
+                            other than the denomination: per listed price, the
+                            listed figure, the venue quote offered in the
+                            denomination with its source, and the field holding
+                            the amount the buyer signs — the quote until the
+                            buyer changes it. The seller countersigns that
+                            amount at /sign, beside its listed price, or
+                            declines. */}
+                        {translated.length > 0 && (
+                            <div className="border-t border-default pt-3 space-y-3 text-xs" data-testid="payment-translation">
+                                <p className="text-ink-muted">
+                                    Listed in another token; you pay in {tokenSymbol || "the denomination"}. Each
+                                    amount below is yours to sign — the venue&apos;s quote until you change it — and
+                                    the seller countersigns it or declines.
+                                </p>
+                                {translated.map((l) => {
+                                    const listedSymbol = sellerCatalogs.find((c) => hexEqual(c.address, l.seller))?.acceptedTokens
+                                        ?.find((t) => !!l.listedToken && hexEqual(t.address, l.listedToken))?.symbol ?? "";
+                                    const quote = currentTranslations?.[l.key];
+                                    const typed = translationEdits[l.key];
+                                    const shown = typed ?? (quote?.result ? formatToken(quote.result.amount, tokenDecimals) : "");
                                     return (
-                                        <div key={c.seller} className="space-y-1" data-testid={`payment-token-conversion-${c.seller}`}>
-                                            {c.need.kind === "undeclared" ? (
-                                                <p className="text-error-fg" data-testid="payment-token-no-pool">
-                                                    {name} declares no pool converting {tokenSymbol || "this token"} into{" "}
-                                                    {cBasisSymbol || "its list-price token"}, so its prices can&apos;t be quoted in{" "}
-                                                    {tokenSymbol || "it"}.{isLead && !utilityTokenPin && ` Pick ${basisSymbol || "the list-price token"} to order.`}
+                                        <div key={l.key} className="space-y-1" data-testid={`payment-translation-${l.key}`}>
+                                            <div className="flex items-center justify-between gap-2">
+                                                <span className="text-ink-body">
+                                                    {l.label}{l.quantity > 1 ? ` × ${l.quantity}` : ""} · {displayNameForAddress(sellerCatalogs, l.seller)} lists{" "}
+                                                    <span className="tabular-nums" data-testid={`payment-translation-listed-${l.key}`}>{l.listedPrice}</span>{" "}
+                                                    {listedSymbol}
+                                                </span>
+                                                <label className="flex items-center gap-1.5 text-ink-body">
+                                                    <input
+                                                        type="text"
+                                                        inputMode="decimal"
+                                                        value={shown}
+                                                        onChange={(e) => setTranslationEdits((prev) => ({ ...prev, [l.key]: e.target.value }))}
+                                                        className="w-28 rounded border border-default px-2 py-1 text-right text-sm tabular-nums"
+                                                        aria-label={`Amount you sign for ${l.label}, in ${tokenSymbol}`}
+                                                        data-testid={`payment-translation-amount-${l.key}`}
+                                                    />
+                                                    <span>{tokenSymbol}{l.quantity > 1 ? " each" : ""}</span>
+                                                </label>
+                                            </div>
+                                            {!swapFundingContracts ? (
+                                                <p className="text-ink-muted" data-testid={`payment-translation-source-${l.key}`}>
+                                                    No venue is configured to quote it; state the amount yourself.
                                                 </p>
-                                            ) : c.need.kind !== "declared" || !swapFundingContracts || c.basisTotal === 0n ? null : quote?.error ? (
-                                                <p className="text-error-fg" data-testid="payment-token-quote-error">
-                                                    {name}&apos;s declared pool (fee tier {formatFeeTier(c.need.feeTier)}) can&apos;t
-                                                    quote its part of this order: {quote.error}
+                                            ) : quote?.error ? (
+                                                <p className="text-error-fg" data-testid={`payment-translation-source-${l.key}`}>
+                                                    The venue could not quote it ({quote.error}); state the amount yourself.
                                                 </p>
                                             ) : quote?.result ? (
-                                                <>
-                                                    <p className="text-ink-muted" data-testid="payment-token-quote">
-                                                        {name}: quoted on its declared pool (fee tier{" "}
-                                                        {formatFeeTier(quote.result.feeTier)}):{" "}
-                                                        {formatToken(quote.result.basisTotal, quote.result.basisDecimals)}{" "}
-                                                        {cBasisSymbol} costs{" "}
-                                                        <span className="tabular-nums" data-testid="payment-token-quoted-input">
-                                                            {formatToken(quote.result.amountIn, tokenDecimals)}
-                                                        </span>{" "}
-                                                        {tokenSymbol}.
-                                                    </p>
-                                                    <p className="text-ink-muted" data-testid="payment-token-effective-rate">
-                                                        Effective rate: 1 {cBasisSymbol} = {formatToken(effectiveUnitCost(quote.result), tokenDecimals)}{" "}
-                                                        {tokenSymbol}.
-                                                    </p>
-                                                </>
+                                                <p className="text-ink-muted" data-testid={`payment-translation-source-${l.key}`}>
+                                                    Quote: {l.listedPrice} {listedSymbol} ={" "}
+                                                    <span className="tabular-nums" data-testid={`payment-translation-quote-${l.key}`}>
+                                                        {formatToken(quote.result.amount, tokenDecimals)}
+                                                    </span>{" "}
+                                                    {tokenSymbol}, from the {quote.result.source.venue} venue at{" "}
+                                                    <span className="font-mono">{truncateHex(quote.result.source.router)}</span>.
+                                                </p>
                                             ) : (
-                                                <p className="text-ink-muted">Quoting {name}&apos;s declared pool…</p>
+                                                <p className="text-ink-muted">Reading a quote…</p>
+                                            )}
+                                            {typed !== undefined && editedAmount(l.key) === null && (
+                                                <p className="text-error-fg" data-testid={`payment-translation-invalid-${l.key}`}>
+                                                    Enter an amount above zero in {tokenSymbol}.
+                                                </p>
                                             )}
                                         </div>
                                     );
                                 })}
-                                {!conversionBlocked && (
-                                    <p className="text-ink-muted" data-testid="payment-token-committed">
-                                        The order commits{" "}
-                                        <span className="tabular-nums" data-testid="payment-token-committed-total">
-                                            {formatToken(planTotal, tokenDecimals)}
-                                        </span>{" "}
-                                        {tokenSymbol}
-                                        {planTotal !== unroundedPlanTotal
-                                            ? " — each unit price rounds up, so no seller is short of its price"
-                                            : ""}.
-                                    </p>
-                                )}
                             </div>
                         )}
 

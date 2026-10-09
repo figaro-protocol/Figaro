@@ -113,8 +113,6 @@ close its own frame. Two rules follow:
    accepted tokens, `catalogURI`, agent `services`) is `MemberProfileMetadata` in
    `@figaro-protocol/sdk`; parse and validate it with `parseMemberProfileDocument` before pinning
    (see the SDK README's "Member Profile + Catalog Documents").
-   An accepted token's optional `poolFeeTier` declares the pool it converts through into
-   `defaultTokenAddress`; a buyer pays in a token without one only when it is the default.
 
 ## Originating a process — the executable recipe
 

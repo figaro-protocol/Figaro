@@ -82,7 +82,6 @@ function makeServices(): RuntimeServices {
             },
         } as unknown as RuntimeServices["handoffMessaging"],
         handoffPersistence: {} as RuntimeServices["handoffPersistence"],
-        tokenConversion: {} as RuntimeServices["tokenConversion"],
     };
 }
 

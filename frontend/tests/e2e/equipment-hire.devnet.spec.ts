@@ -21,8 +21,13 @@
  *              fresh devnet deploys a new token address every time)
  *   bind     → a fresh member registers (accepting BOTH devnet tokens, so
  *              the picker would normally render) and binds the reference
- *   commit   → the buyer checks out; no picker; the commitment currency is
- *              the pin, read back from the OrderCommitted event
+ *   commit   → the buyer checks out; no picker; the seller lists in its
+ *              default (MPMT), so the checkout translates the listed price
+ *              into the pin (MOCK) at the venue's quote and the buyer signs
+ *              that amount; the commitment currency is the pin and the
+ *              payment is the signed amount, read back from the
+ *              OrderCommitted event; the catalog's MPMT price on IPFS is
+ *              untouched
  *   evidence → the committed agreement (network SSoT, IPFS-pinned) carries
  *              the commerce leaf and the figaro-utility-token leaf with the
  *              SAME currency — the provenance pair
@@ -34,7 +39,7 @@
  * sellers), run before Playwright by test:e2e:devnet.
  */
 import { test, expect, gotoAsWallet, ANVIL_ACCOUNTS } from './devnet-multi-test';
-import { createWalletClient, http, parseAbi, parseEther, type Hex } from 'viem';
+import { createWalletClient, http, parseAbi, parseEther, parseUnits, type Hex } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { calculateBonds } from '@figaro-protocol/sdk';
 import {
@@ -42,11 +47,12 @@ import {
     referenceAssemblySlugWithLiveCurrency,
     readLocalDeploymentConfig,
     seedRegisteredMember,
-    memberAcceptedTokens,
     memberProfileBindings,
     pinJSONToIPFS,
     assertPinnedInIpfs,
     localPublicClient,
+    latestMemberProfileURI,
+    resolveIpfsURI,
     LOCAL_ANVIL,
     RPC_URL,
 } from './devnet-helpers';
@@ -62,15 +68,20 @@ async function waitForConnected(page: Page) {
     );
 }
 
-const ERC20_ABI = parseAbi(['function balanceOf(address) view returns (uint256)']);
+const ERC20_ABI = parseAbi([
+    'function balanceOf(address) view returns (uint256)',
+    'function decimals() view returns (uint8)',
+]);
+const VENUE_ABI = parseAbi([
+    'function rateNumerator() view returns (uint256)',
+    'function rateDenominator() view returns (uint256)',
+]);
+const ITEM_ID = 'camera-kit-day-rate';
 // anvil[0] — the fixture's default buyer.
 const BUYER = ANVIL_ACCOUNTS[0] as Hex;
 // anvil[22] — dedicated to this scenario (the allocation lives in
 // frontend/tests/anvilAccounts.ts's lockstep).
 const SELLER = privateKeyToAccount(ANVIL_KEYS[22] as Hex).address as Hex;
-// The pool the seller declares for the pin's token (MOCK) into its default
-// (MPMT) — the conversion the checkout quotes the pinned order on.
-const MOCK_POOL_FEE_TIER = 500;
 
 async function findEquipmentHireAssembly(tokenAddress: Hex): Promise<string> {
     // Identity, never a clause-shape heuristic (several single-order
@@ -86,18 +97,13 @@ async function findEquipmentHireAssembly(tokenAddress: Hex): Promise<string> {
 async function ensureEquipmentHireSeller(mockToken: Hex, permitToken: Hex): Promise<Hex> {
     const slug = await findEquipmentHireAssembly(mockToken);
     const bound = (await memberProfileBindings(SELLER)).some((b) => b.assemblySlug === slug);
-    // The pin's token is not this seller's default, so the seller must have
-    // declared the pool it converts through (a profile from before the
-    // declaration is re-pinned).
-    const declared = (await memberAcceptedTokens(SELLER)).some((t) =>
-        t.address?.toLowerCase() === mockToken.toLowerCase() && t.poolFeeTier === MOCK_POOL_FEE_TIER);
-    if (!bound || !declared) {
+    if (!bound) {
         const { uri: catalogURI } = await pinJSONToIPFS({
             subjectAddress: SELLER,
             version: '1.0.0',
             unitSystem: 'metric' as const,
             items: [{
-                id: 'camera-kit-day-rate',
+                id: ITEM_ID,
                 name: 'Camera kit — day rate',
                 description: 'A mirrorless camera kit, hired for the equipment-hire reference scenario.',
                 price: '1',
@@ -117,7 +123,7 @@ async function ensureEquipmentHireSeller(mockToken: Hex, permitToken: Hex): Prom
                 // the OTHER token, so the pin is shown to override the
                 // seller's own default too, not just coincide with it.
                 acceptedTokens: [
-                    { address: mockToken, symbol: 'MOCK', chainId: 31337, poolFeeTier: MOCK_POOL_FEE_TIER },
+                    { address: mockToken, symbol: 'MOCK', chainId: 31337 },
                     { address: permitToken, symbol: 'MPMT', chainId: 31337 },
                 ],
                 defaultTokenAddress: permitToken,
@@ -194,12 +200,17 @@ test.describe('THE UTILITY-TOKEN REFERENCE — equipment hire, denominated by de
             page.getByTestId('payment-token-pinned'),
             'the "denominated by design" notice renders in the picker\'s place',
         ).toBeVisible({ timeout: 15000 });
-        // The pin is not the seller's default: the order's total is quoted
-        // on the pool the seller declared for the pin's token.
+        // The pin is not the seller's default: the checkout translates the
+        // listed MPMT price into MOCK at the venue's quote, and the field
+        // holds the amount the buyer signs.
+        const translationKey = `line:${ITEM_ID}`;
         await expect(
-            page.getByTestId('payment-token-quote'),
-            'the pinned order is quoted on the seller\'s declared pool',
+            page.getByTestId(`payment-translation-quote-${translationKey}`),
+            'the listed price is translated into the pin at a venue quote',
         ).toBeVisible({ timeout: 30000 });
+        const signedAmount = (await page.getByTestId(`payment-translation-amount-${translationKey}`).inputValue()).trim();
+        expect(signedAmount, 'the field holds the quote until the buyer changes it')
+            .toBe((await page.getByTestId(`payment-translation-quote-${translationKey}`).innerText()).trim());
 
         // The equipment-hire reference's transaction particulars: pickup —
         // the renter collects, origin = destination.
@@ -239,6 +250,29 @@ test.describe('THE UTILITY-TOKEN REFERENCE — equipment hire, denominated by de
             (event.args.currency as string).toLowerCase(),
             'the OrderCommitted currency is the assembly\'s pinned token',
         ).toBe(mockToken.toLowerCase());
+
+        // ── (b2) THE PAYMENT is the amount the buyer signed: the venue's
+        //    quote of the listed price — listed in MPMT on the seller's
+        //    pinned catalog (IPFS), quoted exact-output at the venue's rate
+        //    (read from the venue) — and the catalog price is untouched. ──
+        const listedPrice = await (async () => {
+            const profileURI = await latestMemberProfileURI(SELLER_ADDR);
+            const profile = await (await fetch(resolveIpfsURI(profileURI!))).json() as { catalogURI?: string };
+            const catalog = await (await fetch(resolveIpfsURI(profile.catalogURI!))).json() as { items?: Array<{ id: string; price: string }> };
+            return catalog.items?.find((i) => i.id === ITEM_ID)?.price;
+        })();
+        expect(listedPrice, 'the catalog price stays in the seller\'s default on IPFS').toBe('1');
+        const [permitDecimals, mockDecimals, rateNum, rateDen] = await Promise.all([
+            publicClient.readContract({ address: permitToken, abi: ERC20_ABI, functionName: 'decimals' }),
+            publicClient.readContract({ address: mockToken, abi: ERC20_ABI, functionName: 'decimals' }),
+            publicClient.readContract({ address: config.swapRouter as Hex, abi: VENUE_ABI, functionName: 'rateNumerator' }),
+            publicClient.readContract({ address: config.swapRouter as Hex, abi: VENUE_ABI, functionName: 'rateDenominator' }),
+        ]);
+        const listedAmount = parseUnits(listedPrice!, permitDecimals);
+        expect(event.args.payment, 'the committed payment is the venue quote of the listed price')
+            .toBe((listedAmount * rateDen + rateNum - 1n) / rateNum);
+        expect(event.args.payment, 'the committed payment is the amount the buyer signed')
+            .toBe(parseUnits(signedAmount, mockDecimals));
 
         const processId = event.args.processId!;
 

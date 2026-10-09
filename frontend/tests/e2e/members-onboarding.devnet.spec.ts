@@ -65,11 +65,6 @@ const SELLER = {
     geohash: "9q8yyk8yu",
     product: { name: "Sourdough loaf", price: "1" },
 };
-// The pool this seller declares for the second devnet token (0.30%): the
-// pool a buyer paying in that token is quoted on. The devnet venue is one
-// linear rate at every tier; the declaration is what makes the token
-// convertible at all.
-const SELLER_PERMIT_POOL_FEE_TIER = 3000;
 
 async function waitForMembersReady(page: import("@playwright/test").Page) {
     // /members/manage redirects an UNREGISTERED wallet straight to the
@@ -118,15 +113,11 @@ async function onboardViaWizard(
     await page.locator("#profile-specialty").fill(SELLER.specialty);
     await page.locator("#profile-geohash").fill(SELLER.geohash);
     await page.getByRole("button", { name: /\+ MOCK$/ }).click();
-    // The second devnet token joins acceptedTokens — the set the buyer may
-    // swap INTO the default from (the swap-funded bond leg;
-    // swap-funded-checkout orders from this seller). Default stays MOCK.
+    // The second devnet token joins acceptedTokens — a denomination the
+    // buyer may pick, and a token either party may fund its bond from
+    // (swap-funded-checkout orders from this seller). Default stays MOCK.
     await page.getByRole("button", { name: /\+ MOCKP$/ }).click();
     await page.locator('input[name="defaultTokenAddress"]').first().check();
-    // The seller declares the pool the second token converts through into
-    // the default — without it a buyer cannot pay in that token at checkout.
-    const permitToken = (readLocalDeploymentConfig().permitTokenAddress ?? "").toLowerCase();
-    await page.getByTestId(`accepted-token-pool-${permitToken}`).selectOption(String(SELLER_PERMIT_POOL_FEE_TIER));
     await page.getByRole("button", { name: /^Next/ }).click();
     await expect(page).toHaveURL(/\/members\/assemblies/);
 
@@ -364,7 +355,7 @@ test.describe("member registration wizard (devnet)", () => {
             // Premise: exactly the single-order binding AND both devnet tokens
             // accepted (the permit token is the swap-funded leg's input set —
             // an older single-token profile gets repaired in update mode).
-            const acceptedTokens = (doc.acceptedTokens ?? []) as Array<{ address?: string; poolFeeTier?: number }>;
+            const acceptedTokens = (doc.acceptedTokens ?? []) as Array<{ address?: string }>;
             const permitToken = (config.permitTokenAddress ?? "").toLowerCase();
             // The buyer half is part of the premise now: at least one
             // subscription and one offered buyer-posture class. An older
@@ -375,8 +366,7 @@ test.describe("member registration wizard (devnet)", () => {
             const sellerOffered = policyEntries.some((e) => e.posture === "seller" && e.offered === true);
             conformant = bindings.length === 1 && bindings[0].assemblySlug === singleOrderSlug
                 && !!permitToken
-                && acceptedTokens.some((t) => t.address?.toLowerCase() === permitToken
-                    && t.poolFeeTier === SELLER_PERMIT_POOL_FEE_TIER)
+                && acceptedTokens.some((t) => t.address?.toLowerCase() === permitToken)
                 && buyerSubs.length >= 1 && buyerOffered && sellerOffered;
         }
         let promisedSellerPage: string | undefined;
@@ -403,16 +393,12 @@ test.describe("member registration wizard (devnet)", () => {
             expect(buyerEntry, "offered buyer-side data is in the pinned profile").toBeTruthy();
             const sellerEntry = policy.find((e) => e.posture === "seller" && e.offered === true);
             expect(sellerEntry, "offered seller-side data is in the pinned profile — both market sides declare").toBeTruthy();
-            const tokens = (doc.acceptedTokens ?? []) as Array<{ address?: string; poolFeeTier?: number }>;
+            const tokens = (doc.acceptedTokens ?? []) as Array<{ address?: string }>;
             const permitToken = (readLocalDeploymentConfig().permitTokenAddress ?? "").toLowerCase();
             expect(
-                tokens.find((t) => t.address?.toLowerCase() === permitToken)?.poolFeeTier,
-                "the pool the second token converts through is declared in the pinned profile",
-            ).toBe(SELLER_PERMIT_POOL_FEE_TIER);
-            expect(
-                tokens.find((t) => t.address?.toLowerCase() === doc.defaultTokenAddress?.toLowerCase())?.poolFeeTier,
-                "the quote basis itself converts through no pool",
-            ).toBeUndefined();
+                tokens.some((t) => t.address?.toLowerCase() === permitToken),
+                "the second accepted token is in the pinned profile",
+            ).toBe(true);
             expect(
                 buyerSubs.some((s) => s.compositionHash === buyerEntry!.compositionHash),
                 "the offered buyer class derives from a subscribed assembly",

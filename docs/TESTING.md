@@ -290,7 +290,7 @@ that empties a fixture fails before the push rather than in Frontend CI.
   `MemberTrackRecord`, `TokenAddressInput`, `TokenApprovalFlow`, …
 - **Lib tier** (`tests/lib/`) — pure-client unit tests: commitment
   preparation + stores, clause-spec source, discovery +
-  catalog pipeline, IPFS service, token conversion, geocode, and the rest —
+  catalog pipeline, IPFS service, geocode, and the rest —
   the directory listing is the census, never this prose.
 
 The hash- and wire-load-bearing choreography suites live with their code in

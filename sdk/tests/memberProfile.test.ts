@@ -99,27 +99,24 @@ describe("member profile metadata parser", () => {
         });
     });
 
-    describe("acceptedTokens[].poolFeeTier (the pool a token converts through)", () => {
+    describe("acceptedTokens and defaultTokenAddress", () => {
         const USDC = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
         const FLORIN = "0x70997970C51812dc3A010C7d01b50e0d17dc79C8";
 
-        it("round-trips a declared pool fee tier", () => {
-            const doc = {
+        it("a document whose accepted token carries poolFeeTier parses, and the field is dropped", () => {
+            const parsed = parseMemberProfileDocument({
                 name: "Bob",
                 acceptedTokens: [
                     { address: USDC, symbol: "USDC" },
                     { address: FLORIN, symbol: "FLORIN", poolFeeTier: 3000 },
                 ],
                 defaultTokenAddress: USDC,
-            };
-            const first = parseMemberProfileDocument(doc);
-            expect(first.acceptedTokens?.[1]?.poolFeeTier).toBe(3000);
-            const second = parseMemberProfileDocument(JSON.parse(JSON.stringify(first)));
-            expect(second).toEqual(first);
-            expect(second.acceptedTokens?.[1]?.poolFeeTier).toBe(3000);
+            });
+            expect(parsed.acceptedTokens?.[1]).toEqual({ address: FLORIN, symbol: "FLORIN" });
+            expect(parsed.acceptedTokens?.[1]).not.toHaveProperty("poolFeeTier");
         });
 
-        it("accepted tokens without a default token are refused — the catalog is denominated in one of them", () => {
+        it("accepted tokens without a default token are refused — the catalog is priced in one of them", () => {
             expect(() => parseMemberProfileDocument({
                 name: "Bob",
                 acceptedTokens: [{ address: USDC, symbol: "USDC" }],
@@ -132,25 +129,6 @@ describe("member profile metadata parser", () => {
                 acceptedTokens: [{ address: USDC, symbol: "USDC" }],
                 defaultTokenAddress: FLORIN,
             })).toThrow(/must be one of acceptedTokens/);
-        });
-
-        it("an undeclared pool stays undeclared — no default tier is coined", () => {
-            const parsed = parseMemberProfileDocument({
-                name: "Bob",
-                acceptedTokens: [{ address: USDC, symbol: "USDC" }, { address: FLORIN, symbol: "FLORIN" }],
-                defaultTokenAddress: USDC,
-            });
-            expect(parsed.acceptedTokens?.[1]?.poolFeeTier).toBeUndefined();
-            expect(parsed.acceptedTokens?.[0]?.poolFeeTier).toBeUndefined();
-        });
-
-        it("refuses a fee tier that names no pool", () => {
-            for (const bad of [0, -500, 1.5, 1_000_000, "3000"]) {
-                expect(() => parseMemberProfileDocument({
-                    name: "Bob",
-                    acceptedTokens: [{ address: FLORIN, symbol: "FLORIN", poolFeeTier: bad }],
-                })).toThrow(/acceptedTokens\[0\]\.poolFeeTier must be/);
-            }
         });
     });
 

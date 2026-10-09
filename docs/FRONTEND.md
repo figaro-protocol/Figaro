@@ -141,16 +141,16 @@ Tiered, bottom to top; each tier imports only what sits below it (enforced by th
 - **`composition/`** — third-party on-network contract composition (the sixth noun).
   Generic dispatch is `compositionTarget.ts` + `useCompositionActions.ts`, with
   per-contract hooks and readers beneath it.
-  - *Swap-funded bond legs:* `swapFunding.ts` — the venue quote/route plus
-    the party-agnostic witness-signed leg builder, the buyer's at checkout and the
-    seller's at accept; `sellerConversions` splits the plan per seller and
-    `quotePlanConversion` quotes each seller's part exact-output on the pool THAT
-    seller declared for the buyer's picked payment token
-    (`AcceptedTokenMetadata.poolFeeTier`; undeclared = not convertible, named per
-    seller) and `inputForOutput` converts each of its prices at that quote's rate; `useSwapAndCommitActions.ts` carries the
-    `swapAndCommit` broadcast either funded form routes through. Swap-and-commit is
-    the ON-RAMP into the process denomination, never the denomination itself —
-    `LEXICON.md` (**denomination**, **coordination token**, **utility token**) owns that model.
+  - *The funding leg:* `swapFunding.ts` — the venue quote/route plus the
+    party-agnostic witness-signed leg builder, the buyer's at checkout and the
+    seller's at accept: the party's own act of holding the denomination, never a
+    term of the order; no profile declares a pool for it. `translateListedPrice`
+    quotes a listed price in the buyer's picked denomination for the checkout to
+    show; the buyer may change the amount, and the amount in the pick is what the
+    buyer signs and the seller countersigns at `/sign` beside its listed price.
+    `useSwapAndCommitActions.ts` carries the `swapAndCommit` broadcast either
+    funded form routes through. `LEXICON.md` (**denomination**, **coordination
+    token**, **utility token**) owns the model.
   - *The attestation choke point:* `useAttestationCoordinatorActions.ts`, which
     every attest surface routes through; calldata carries fingerprints only.
   - *The witness-content seam behind it:* `witnessContent.ts` publishes a

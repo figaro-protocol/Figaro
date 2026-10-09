@@ -136,6 +136,11 @@ export interface AssemblyCheckoutParams {
      *  "checkout-quantity" rate source's input (hours, seats, …). Only
      *  read for a node whose contributor prices by such a rate. */
     subOrderQuantities?: Record<string, number>;
+    /** The buyer's amount per unit, in the process denomination, for a bound
+     *  sub-order whose seller lists its catalog item in another token, keyed
+     *  by template node id: it replaces the listed unit price, the billed
+     *  quantity stands, and the payment is their product. */
+    subOrderUnitPrices?: Record<string, bigint>;
     /** The buyer's checkout-time GENERAL-clause field fills, keyed by
      *  template node id → clauseId → field values. Design time is
      *  structural: a general clause arrives from the
@@ -355,9 +360,13 @@ function checkoutNodes(
                 `"${pricing.item?.name}" prices by rate but its quantity can't be resolved on this order — the quantity source ("${pricing.item?.rateQuantitySource}") found no value.`,
             );
         }
+        const translatedUnit = pricing?.item && !pricing.issue ? params.subOrderUnitPrices?.[planned.nodeId] : undefined;
+        const unitPrice = translatedUnit ?? pricing?.unitPrice ?? 0n;
         const subPayment = selection
             ? parseToken(selection.price, tokenDecimals)
-            : pricing!.payment;
+            : translatedUnit !== undefined
+                ? translatedUnit * BigInt(pricing!.billedQuantity)
+                : pricing!.payment;
         // The sub-order's commerce section states WHAT the payment buys: the
         // contributor's resolved catalog item (the same item the payment
         // was priced from), or the buyer's picked item on the unbound path.
@@ -372,7 +381,7 @@ function checkoutNodes(
                     itemId: pricing!.item.id,
                     name: pricing!.item.name,
                     quantity: pricing!.billedQuantity,
-                    unitPrice: pricing!.unitPrice.toString(),
+                    unitPrice: unitPrice.toString(),
                     massGrams: pricing!.item.massGrams,
                     volumeMl: pricing!.item.volumeMl,
                     lengthMm: pricing!.item.lengthMm,

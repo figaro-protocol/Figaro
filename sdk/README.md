@@ -701,7 +701,7 @@ const swapData = encodeFunctionData({
   args: [{
     tokenIn: inputToken,
     tokenOut: resolutionCurrency,
-    fee: 500,                  // the pool's fee tier — quote the tiers, take the cheapest
+    fee: 500,                  // the funding leg's own pool: probe the tiers for the bond amount
     recipient: coordinator,
     amountOut: bondAmount,
     amountInMaximum: maxInput,

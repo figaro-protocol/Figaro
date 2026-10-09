@@ -141,7 +141,6 @@ function createRuntimeServices(overrides: Partial<RuntimeServices> = {}): Runtim
         } as unknown as RuntimeServices["evidenceTransport"],
         handoffMessaging: {} as RuntimeServices["handoffMessaging"],
         handoffPersistence: {} as RuntimeServices["handoffPersistence"],
-        tokenConversion: {} as RuntimeServices["tokenConversion"],
         ...overrides,
     };
 }
@@ -231,7 +230,6 @@ describe("runtime service hook injection", () => {
             evidenceTransport,
             handoffMessaging: {} as RuntimeServices["handoffMessaging"],
             handoffPersistence: {} as RuntimeServices["handoffPersistence"],
-            tokenConversion: {} as RuntimeServices["tokenConversion"],
         } satisfies RuntimeServices;
 
         const wrapper = createWrapper(services);

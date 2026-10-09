@@ -33,7 +33,8 @@ import { ERC20_ABI } from "@/lib/kernel/contracts";
 import { useMemberProfile } from "@/lib/member/useMembersRegistry";
 import { fetchMemberProfile } from "@/lib/member/profileFetcher";
 import type { MemberProfileMetadata } from "@/lib/member/memberProfileMetadata";
-import { AgreementReview } from "@/components/runtime/AgreementReview";
+import { AgreementReview, commerceLineItems } from "@/components/runtime/AgreementReview";
+import { useRegisteredCatalogs } from "@/lib/member/useRegisteredCatalogs";
 import useTokenDecimals from "@/hooks/useTokenDecimals";
 import useProcessResolveCapacity from "@/hooks/useProcessResolveCapacity";
 import { formatToken, parseToken } from "@/lib/shared/utils";
@@ -317,6 +318,25 @@ function SignPageContent() {
         return validateCommitmentAgreement(parsed.agreement, commitment.agreementHash, specSource(), commitment);
     }, [parsed, commitment]);
 
+    // The seller's own listed prices beside the amounts it is asked to sign,
+    // when the denomination is not the token its catalog is priced in: the
+    // catalog read from IPFS (the same discovery read checkout prices from),
+    // each signed line item matched to its listed item by id. The seller
+    // signs the amount or declines; nothing here changes it.
+    const { catalogs: registeredCatalogs } = useRegisteredCatalogs();
+    const sellerCatalog = isSeller && commitment
+        ? registeredCatalogs.find((c) => hexEqual(c.address, commitment.seller)) ?? null
+        : null;
+    const listedToken = sellerCatalog?.defaultTokenAddress as `0x${string}` | undefined;
+    const listedInAnotherToken = !!listedToken && !!approvalCurrency && !hexEqual(listedToken, approvalCurrency);
+    const { data: listedSymbol } = useTokenSymbol(listedInAnotherToken ? listedToken : "");
+    const listedBeside = listedInAnotherToken && sellerCatalog
+        ? commerceLineItems(parsed?.agreement ?? null).map((line) => ({
+            ...line,
+            listedPrice: sellerCatalog.items.find((it) => it.id === line.itemId)?.price,
+        }))
+        : [];
+
     return (
         <div className="max-w-lg mx-auto px-4 py-12 space-y-6">
             <h1 className="text-2xl font-bold text-ink-primary">Counter-Sign Commitment</h1>
@@ -401,6 +421,35 @@ function SignPageContent() {
 
                     <AgreementReview commitment={commitment} agreement={parsed.agreement ?? null} />
 
+                    {listedInAnotherToken && (
+                        <div className="text-xs space-y-1.5 text-ink-body border-t border-default pt-3" data-testid="sign-listed-prices">
+                            <p className="text-ink-muted">
+                                Your catalog lists in {listedSymbol ?? "your default token"}; the buyer pays in{" "}
+                                {currencySymbol ?? "another token"} and asks you to sign these amounts. Sign them or decline.
+                            </p>
+                            {listedBeside.map((line, i) => (
+                                <div key={i} className="flex justify-between gap-2" data-testid={`sign-listed-price-${line.itemId ?? i}`}>
+                                    <span>{line.name} × {line.quantity}</span>
+                                    <span className="tabular-nums">
+                                        listed{" "}
+                                        <span data-testid={`sign-listed-price-listed-${line.itemId ?? i}`}>{line.listedPrice ?? "—"}</span>{" "}
+                                        {listedSymbol ?? ""} · signed{" "}
+                                        <span data-testid={`sign-listed-price-signed-${line.itemId ?? i}`}>
+                                            {/^\d+$/.test(line.unitPrice) ? formatToken(BigInt(line.unitPrice), tokenDecimals) : line.unitPrice}
+                                        </span>{" "}
+                                        {currencySymbol ?? ""} each
+                                    </span>
+                                </div>
+                            ))}
+                            <div className="flex justify-between font-medium">
+                                <span>Payment you sign</span>
+                                <span className="tabular-nums" data-testid="sign-listed-prices-payment">
+                                    {formatToken(commitment.payment, tokenDecimals)} {currencySymbol ?? ""}
+                                </span>
+                            </div>
+                        </div>
+                    )}
+
                     {/* This party's position — context the agreement itself doesn't carry */}
                     <div className="text-xs space-y-1.5 text-ink-body border-t border-default pt-3">
                         <div className="flex justify-between">
@@ -469,7 +518,7 @@ function SignPageContent() {
                         </div>
                     )}
 
-                    {/* SELLER on-ramp: fund the 2× bond from another of the
+                    {/* The seller's funding leg: fund the 2× bond from another of the
                         seller's own accepted tokens — the coordinator swaps it
                         into the process denomination in the same atomic
                         swapAndCommit. Optional and collapsed by default (the

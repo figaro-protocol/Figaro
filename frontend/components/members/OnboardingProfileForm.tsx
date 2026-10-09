@@ -33,8 +33,6 @@ import { geocodeAddress, type GeocodeFailureReason } from "@/lib/member/geocode"
 import { getDeviceLocation } from "@/lib/shared/deviceLocation";
 import { getCommonTokens, type CommonToken } from "@/lib/member/commonTokens";
 import { hexEqual } from "@/lib/shared/evm";
-import { UNISWAP_V3_FEE_TIERS } from "@figaro-protocol/sdk";
-import { formatFeeTier } from "@/lib/composition/swapFunding";
 
 /**
  * The identity step of the onboarding wizard. Collects the stable identity fields
@@ -55,10 +53,8 @@ interface FormState {
     geohashPrecision: 4 | 5 | 6;
     logoURI: string;
     /** Each row carries every field of the SDK's `AcceptedTokenMetadata`, so
-     *  an edit keeps what it does not show (`name`, `logoURI`). `poolFeeTier`
-     *  — the pool the token converts through into the default pricing token;
-     *  absent = not convertible. */
-    acceptedTokens: Array<{ address: string; symbol: string; name?: string; logoURI?: string; poolFeeTier?: number }>;
+     *  an edit keeps what it does not show (`name`, `logoURI`). */
+    acceptedTokens: Array<{ address: string; symbol: string; name?: string; logoURI?: string }>;
     defaultTokenAddress: string;
     /** PROFILE-filled clause values (the member's master data: dimweight's
      *  divisor, a declared credential id) — the generic profile-sourced
@@ -123,7 +119,6 @@ export function fromDraft(draft: OnboardingProfileDraft | undefined): FormState 
                 symbol: t.symbol,
                 name: t.name,
                 logoURI: t.logoURI,
-                poolFeeTier: t.poolFeeTier,
             }))
             : [{ address: "", symbol: "" }],
         defaultTokenAddress: draft.defaultTokenAddress ?? "",
@@ -146,11 +141,6 @@ export function toDraft(form: FormState): OnboardingProfileDraft {
             symbol: t.symbol.trim(),
             ...(t.name ? { name: t.name } : {}),
             ...(t.logoURI ? { logoURI: t.logoURI } : {}),
-            // The default pricing token IS the quote basis — it converts
-            // through nothing, so a pool declared on it is not carried.
-            ...(t.poolFeeTier !== undefined && !hexEqual(t.address, form.defaultTokenAddress)
-                ? { poolFeeTier: t.poolFeeTier }
-                : {}),
         });
     }
 
@@ -317,15 +307,6 @@ export function OnboardingProfileForm({
                         ? { address: value, symbol: "" }
                         : { ...t, symbol: value }
                     : t,
-            ),
-        }));
-    }
-
-    function setPoolFeeTier(address: string, poolFeeTier: number | undefined) {
-        setForm((prev) => ({
-            ...prev,
-            acceptedTokens: prev.acceptedTokens.map((t) =>
-                hexEqual(t.address, address) ? { ...t, poolFeeTier } : t,
             ),
         }));
     }
@@ -628,10 +609,11 @@ export function OnboardingProfileForm({
                     read your catalog.
                 </p>
                 <p className="text-sm text-ink-body">
-                    Operationally: buyers pay in your default pricing token,
-                    or in another token listed here that you declare a pool
-                    for below — the pool its price converts through. Add at
-                    least one token if you want to publish a catalog.
+                    Operationally: a buyer pays in any one of the tokens listed
+                    here. Your catalog is priced in your default pricing token
+                    only; when the buyer pays in another, its checkout states
+                    the amount in that token and you sign it or decline. Add
+                    at least one token if you want to publish a catalog.
                 </p>
 
                 {commonTokens.length > 0 && (
@@ -697,60 +679,27 @@ export function OnboardingProfileForm({
                         error={errors.defaultTokenAddress}
                     >
                         <p className="text-xs text-ink-faint mb-2">
-                            Your catalog is priced in this token. A buyer paying
-                            in another accepted token commits what the pool you
-                            declare beside that token quotes for the order&apos;s
-                            whole total, priced in this one. A token with no
-                            pool declared is not convertible: buyers pay in it
-                            only when it is this token.
+                            Your catalog is priced in this token, and only in
+                            this token.
                         </p>
-                        <div className="space-y-3">
-                            {validTokens.map((token) => {
-                                const isDefault = hexEqual(form.defaultTokenAddress, token.address);
-                                const tiers: number[] = [...UNISWAP_V3_FEE_TIERS];
-                                if (token.poolFeeTier !== undefined && !tiers.includes(token.poolFeeTier)) {
-                                    tiers.push(token.poolFeeTier);
-                                }
-                                const poolId = `accepted-token-pool-${token.address.toLowerCase()}`;
-                                return (
-                                    <div key={token.address} className="space-y-1">
-                                        <label className="flex items-center gap-3 cursor-pointer text-sm">
-                                            <input
-                                                type="radio"
-                                                name="defaultTokenAddress"
-                                                value={token.address}
-                                                checked={isDefault}
-                                                onChange={() => setField("defaultTokenAddress", token.address)}
-                                                aria-required="true"
-                                            />
-                                            <span className="font-semibold text-ink-heading">{token.symbol}</span>
-                                            <code className="text-xs text-ink-faint font-mono">{token.address}</code>
-                                        </label>
-                                        {!isDefault && (
-                                            <div className="flex items-center gap-2 pl-7">
-                                                <label htmlFor={poolId} className="text-xs text-ink-muted whitespace-nowrap">
-                                                    Converts through the pool at fee tier
-                                                </label>
-                                                <Select
-                                                    id={poolId}
-                                                    data-testid={poolId}
-                                                    className="max-w-xs"
-                                                    value={token.poolFeeTier === undefined ? "" : String(token.poolFeeTier)}
-                                                    onChange={(e) => setPoolFeeTier(
-                                                        token.address,
-                                                        e.target.value === "" ? undefined : Number(e.target.value),
-                                                    )}
-                                                >
-                                                    <option value="">No pool declared — not convertible</option>
-                                                    {tiers.map((tier) => (
-                                                        <option key={tier} value={String(tier)}>{formatFeeTier(tier)}</option>
-                                                    ))}
-                                                </Select>
-                                            </div>
-                                        )}
-                                    </div>
-                                );
-                            })}
+                        <div className="space-y-2">
+                            {validTokens.map((token) => (
+                                <label
+                                    key={token.address}
+                                    className="flex items-center gap-3 cursor-pointer text-sm"
+                                >
+                                    <input
+                                        type="radio"
+                                        name="defaultTokenAddress"
+                                        value={token.address}
+                                        checked={hexEqual(form.defaultTokenAddress, token.address)}
+                                        onChange={() => setField("defaultTokenAddress", token.address)}
+                                        aria-required="true"
+                                    />
+                                    <span className="font-semibold text-ink-heading">{token.symbol}</span>
+                                    <code className="text-xs text-ink-faint font-mono">{token.address}</code>
+                                </label>
+                            ))}
                         </div>
                     </FormField>
                 )}

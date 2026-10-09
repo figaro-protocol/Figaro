@@ -136,9 +136,10 @@ export interface CatalogItemMetadata {
  * volatile sales-context payload, so an item edit re-pins one small
  * JSON instead of the whole identity envelope.
  *
- * Pricing: the catalog is denominated in the profile's
- * `defaultTokenAddress`. Frontends convert to whatever accepted token
- * the buyer commits in via Uniswap quote at commit time.
+ * Pricing: the catalog is priced in the profile's `defaultTokenAddress`
+ * only. The buyer picks the process denomination from the profile's
+ * `acceptedTokens`; the amount in that pick is what the buyer and the
+ * seller sign.
  */
 export interface MemberCatalogMetadata {
     subjectAddress: `0x${string}`;

@@ -1,12 +1,13 @@
 /**
- * lib/composition/swapFunding.ts — build a swap-funded bond leg (buyer OR
- * seller) and quote the plan conversion the checkout prices at.
+ * lib/composition/swapFunding.ts — build the funding leg of a bond (buyer OR
+ * seller), and quote a listed price in the process denomination for the
+ * buyer to read.
  *
  * A party holds a token that is not the process denomination; the
  * WitnessSwapAndCommitCoordinator swaps it at commit time (the buyer's leg at
  * commit, the seller's leg at accept — the same atomic call) and FigaroCore
- * pulls the bond as always: swap-and-commit is the ON-RAMP into the process
- * denomination, never the order's denomination itself. This module quotes the
+ * pulls the bond as always: the funding leg is the party's own act, never a
+ * term of the order and never its denomination. This module quotes the
  * venue, builds the exact swap route, and produces the witness-signed
  * `SwapFundingLeg` that rides the `CommitmentPayload` to whoever broadcasts
  * (`@figaro-protocol/sdk` owns the leg type and the Permit2 witness typed data; the
@@ -18,7 +19,7 @@
  * SwapRouter02 as siblings, the venue DERIVED by probing the router). This
  * module owns what is venue-neutral: the quote → witness → leg choreography.
  */
-import { parseAbi, type PublicClient } from "viem";
+import { parseAbi, parseUnits, type PublicClient } from "viem";
 import {
     buildSwapWitnessTypedData,
     generateSalt,
@@ -30,7 +31,7 @@ import {
     getSwapRouter,
     getWitnessSwapAndCommitCoordinator,
 } from "@/lib/composition/contracts";
-import { capWithSlippage, detectSwapVenue } from "@/lib/composition/swapVenue";
+import { capWithSlippage, detectSwapVenue, type SwapVenue } from "@/lib/composition/swapVenue";
 
 const ERC20_DECIMALS_ABI = parseAbi(["function decimals() view returns (uint8)"]);
 
@@ -48,145 +49,35 @@ export function resolveSwapFundingContracts(): {
     return { coordinator, permit2, router };
 }
 
-/** A conversion rate (amountOut = amountIn·num/den). */
-export interface VenueRate {
-    num: bigint;
-    den: bigint;
+/** A listed price stated in the process denomination: the input of the
+ *  denomination the venue quotes for exactly the listed amount of the token
+ *  the seller lists in. It is a figure the buyer reads and may change; the
+ *  amount the parties sign is the buyer's, never this quote's. */
+export interface ListedPriceTranslation {
+    /** The listed amount, in the listed token's own units. */
+    listedAmount: bigint;
+    /** The denomination the venue quotes for it, in the denomination's units. */
+    amount: bigint;
+    /** Where the quote comes from. */
+    source: { venue: SwapVenue["kind"]; router: Hex };
 }
 
-/** What converting into the process denomination needs, read from the
- *  seller's own declaration: nothing (the denomination IS the quote basis),
- *  a pool the seller declared for that token, or — no pool declared — no
- *  conversion at all. The code never picks a pool for the seller. */
-export type ConversionNeed =
-    | { kind: "none" }
-    | { kind: "undeclared" }
-    | { kind: "declared"; feeTier: number };
-
-export function conversionNeed(
-    acceptedTokens: ReadonlyArray<{ address: string; poolFeeTier?: number }> | undefined,
-    currency: string | undefined,
-    quoteBasis: string | undefined,
-): ConversionNeed {
-    if (!currency || !quoteBasis || currency.toLowerCase() === quoteBasis.toLowerCase()) return { kind: "none" };
-    const entry = (acceptedTokens ?? []).find((t) => t.address.toLowerCase() === currency.toLowerCase());
-    return entry?.poolFeeTier === undefined ? { kind: "undeclared" } : { kind: "declared", feeTier: entry.poolFeeTier };
-}
-
-/** One seller's part of a plan, in that seller's OWN quote basis (its
- *  catalog's `defaultTokenAddress`): the lead's cart, a bound contributor's
- *  sub-order, a manual pick. */
-export interface SellerPlanPart {
-    seller: string;
-    basisAmount: bigint;
-}
-
-/** One seller's conversion into the process denomination: its quote basis,
- *  what its OWN declaration says converting into the denomination needs, and
- *  its whole part of the plan in that basis (the amount its pool is quoted
- *  for). */
-export interface SellerConversion {
-    seller: `0x${string}`;
-    quoteBasis: `0x${string}` | undefined;
-    need: ConversionNeed;
-    basisTotal: bigint;
-}
-
-/** Per seller, never per plan: each seller's prices convert through the pool
- *  THAT seller declared for the denomination, so a contributor's catalog is
- *  never converted on the lead's pool. One entry per distinct seller, in the
- *  order the parts first name it; a seller's parts sum into its total. A
- *  seller whose own accepted set declares no pool for the denomination is
- *  `undeclared` — not convertible — whatever any other seller declared. */
-export function sellerConversions(
-    catalogs: ReadonlyArray<{
-        address: string;
-        defaultTokenAddress?: string;
-        acceptedTokens?: ReadonlyArray<{ address: string; poolFeeTier?: number }>;
-    }>,
-    currency: string | undefined,
-    parts: ReadonlyArray<SellerPlanPart>,
-): SellerConversion[] {
-    const bySeller = new Map<string, SellerConversion>();
-    for (const part of parts) {
-        const key = part.seller.toLowerCase();
-        const known = bySeller.get(key);
-        if (known) {
-            known.basisTotal += part.basisAmount;
-            continue;
-        }
-        const catalog = catalogs.find((c) => c.address.toLowerCase() === key);
-        const quoteBasis = catalog?.defaultTokenAddress as `0x${string}` | undefined;
-        bySeller.set(key, {
-            seller: key as `0x${string}`,
-            quoteBasis,
-            need: conversionNeed(catalog?.acceptedTokens, currency, quoteBasis),
-            basisTotal: part.basisAmount,
-        });
-    }
-    return [...bySeller.values()];
-}
-
-/** The plan's total quoted on the seller's declared pool. `rate` converts any
- *  quote-basis figure parsed at the denomination's decimals (how the checkout
- *  parses catalog prices) into the denomination: `inputForOutput(planBasis,
- *  rate)` is exactly `amountIn`, so the plan's total converts to the quote
- *  itself and every part of it at the same effective rate. */
-export interface PlanConversion {
-    rate: VenueRate;
-    feeTier: number;
-    /** The plan's total in the quote basis, in the basis token's own units —
-     *  the exact output the quote is for. */
-    basisTotal: bigint;
-    basisDecimals: number;
-    /** Input of the denomination the declared pool needs to yield `basisTotal`. */
-    amountIn: bigint;
-}
-
-/** Quote the plan's ACTUAL total exact-output on the pool the seller declared
- *  for the denomination (`tokenIn`) into its quote basis (`tokenOut`).
- *  `planBasis` is the total as the checkout computes it — quote-basis prices
- *  parsed at `tokenInDecimals` — and is rescaled to the basis token's own
- *  decimals (rounded up, so the quote never falls short of the seller's
- *  price). Throws when the declared pool cannot quote the amount. */
-export async function quotePlanConversion(
+/** Quote one listed price in the denomination: `listedPrice` is the catalog's
+ *  human decimal in `listedToken` (the seller's default), parsed at that
+ *  token's own decimals; the venue quotes the `denomination` input that
+ *  yields exactly that amount. Throws when the venue cannot quote the pair. */
+export async function translateListedPrice(
     publicClient: PublicClient,
-    router: `0x${string}`,
-    args: { tokenIn: Hex; tokenOut: Hex; feeTier: number; planBasis: bigint; tokenInDecimals: number },
-): Promise<PlanConversion> {
-    if (args.planBasis <= 0n) throw new Error("Nothing to quote — the plan's total is zero.");
+    router: Hex,
+    args: { denomination: Hex; listedToken: Hex; listedPrice: string },
+): Promise<ListedPriceTranslation> {
     const venue = await detectSwapVenue(publicClient, router);
-    const basisDecimals = Number(await publicClient.readContract({ address: args.tokenOut, abi: ERC20_DECIMALS_ABI, functionName: "decimals" }));
-    const up = 10n ** BigInt(basisDecimals);
-    const down = 10n ** BigInt(args.tokenInDecimals);
-    const basisTotal = (args.planBasis * up + down - 1n) / down;
-    const { amountIn } = await venue.quote(args.tokenIn, args.tokenOut, basisTotal, args.feeTier);
-    if (amountIn === 0n) throw new Error("The declared pool quotes zero input — it cannot price this plan.");
-    return { rate: { num: args.planBasis, den: amountIn }, feeTier: args.feeTier, basisTotal, basisDecimals, amountIn };
+    const listedDecimals = Number(await publicClient.readContract({ address: args.listedToken, abi: ERC20_DECIMALS_ABI, functionName: "decimals" }));
+    const listedAmount = parseUnits(args.listedPrice || "0", listedDecimals);
+    if (listedAmount === 0n) return { listedAmount, amount: 0n, source: { venue: venue.kind, router } };
+    const { amountIn } = await venue.quote(args.denomination, args.listedToken, listedAmount);
+    return { listedAmount, amount: amountIn, source: { venue: venue.kind, router } };
 }
-
-/** The effective rate a plan conversion commits at: the denomination's base
- *  units one whole quote-basis unit costs (rounded down — a display figure;
- *  the committed amounts come from `rate`). */
-export function effectiveUnitCost(conversion: PlanConversion): bigint {
-    return (conversion.amountIn * 10n ** BigInt(conversion.basisDecimals)) / conversion.basisTotal;
-}
-
-/** A fee tier as a percentage (hundredths of a basis point → "0.30%"). */
-export function formatFeeTier(feeTier: number): string {
-    return `${(feeTier / 10_000).toFixed(2)}%`;
-}
-
-/** Input amount the venue needs to yield at least `amountOut` of the target
- *  token (amountOut = in·num/den ⇒ in = ceil(out·den/num)). This is ALSO the
- *  checkout's price conversion, default → picked payment token, at a
- *  `PlanConversion`'s rate: the converted price is the share of the plan's
- *  quoted input that swaps into the default-quoted amount, rounded up, so a
- *  seller quoting in their default is made whole in it. */
-export function inputForOutput(amountOut: bigint, rate: VenueRate): bigint {
-    return (amountOut * rate.den + rate.num - 1n) / rate.num;
-}
-
 
 export interface QuoteFundingLegArgs {
     publicClient: PublicClient;

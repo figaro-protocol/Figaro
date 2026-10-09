@@ -18,13 +18,14 @@ assembly bindings, and operational config all live on the seller
 profile (<code>MemberProfileMetadata</code>); the catalog carries only the
 volatile sales-context payload, so an item edit re-pins one small
 JSON instead of the whole identity envelope.</p>
-<p>Pricing: the catalog is denominated in the profile's
-<code>defaultTokenAddress</code>. Frontends convert to whatever accepted token
-the buyer commits in via Uniswap quote at commit time.</p>
+<p>Pricing: the catalog is priced in the profile's <code>defaultTokenAddress</code>
+only. The buyer picks the process denomination from the profile's
+<code>acceptedTokens</code>; the amount in that pick is what the buyer and the
+seller sign.</p>
 </div></section>
 <div class="tsd-signature"><span class="tsd-signature-keyword">interface</span> <span class="tsd-kind-interface">MemberCatalogMetadata</span> <span class="tsd-signature-symbol">{</span><br/>    <a class="tsd-kind-property" href="#items">items</a><span class="tsd-signature-symbol">:</span> <a href="index.CatalogItemMetadata.html" class="tsd-signature-type tsd-kind-interface">CatalogItemMetadata</a><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#subjectaddress">subjectAddress</a><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">`</span><span class="tsd-signature-type">0x</span><span class="tsd-signature-symbol">${</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">`</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#unitsystem">unitSystem</a><span class="tsd-signature-symbol">?:</span> <a href="../types/index.UnitSystem.html" class="tsd-signature-type tsd-kind-type-alias">UnitSystem</a><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#version">version</a><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">;</span><br/><span class="tsd-signature-symbol">}</span></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/memberCatalog.ts#L143">memberCatalog.ts:143</a></li></ul></aside>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/memberCatalog.ts#L144">memberCatalog.ts:144</a></li></ul></aside>
 <section class="tsd-panel-group tsd-index-group">
 <section class="tsd-panel tsd-index-panel">
 <details class="tsd-index-content tsd-accordion" open><summary class="tsd-accordion-summary tsd-index-summary"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>
@@ -44,12 +45,12 @@ the buyer commits in via Uniswap quote at commit time.</p>
 <h3 class="tsd-anchor-link" id="items"><span>items</span><a href="#items" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">items</span><span class="tsd-signature-symbol">:</span> <a href="index.CatalogItemMetadata.html" class="tsd-signature-type tsd-kind-interface">CatalogItemMetadata</a><span class="tsd-signature-symbol">[]</span></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/memberCatalog.ts#L145">memberCatalog.ts:145</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/memberCatalog.ts#L146">memberCatalog.ts:146</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="subjectaddress"><span>subject<wbr/>Address</span><a href="#subjectaddress" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">subjectAddress</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">`</span><span class="tsd-signature-type">0x</span><span class="tsd-signature-symbol">${</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">`</span></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/memberCatalog.ts#L144">memberCatalog.ts:144</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/memberCatalog.ts#L145">memberCatalog.ts:145</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="unitsystem"><code class="tsd-tag">Optional</code><span>unit<wbr/>System</span><a href="#unitsystem" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">unitSystem</span><span class="tsd-signature-symbol">?:</span> <a href="../types/index.UnitSystem.html" class="tsd-signature-type tsd-kind-type-alias">UnitSystem</a></div>
@@ -58,12 +59,12 @@ mass/volume on <code>CatalogItemMetadata</code> is always metric; this
 field is a UI preference only. Defaults to &quot;metric&quot; when unset.</p>
 </div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/memberCatalog.ts#L152">memberCatalog.ts:152</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/memberCatalog.ts#L153">memberCatalog.ts:153</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="version"><span>version</span><a href="#version" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">version</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/memberCatalog.ts#L146">memberCatalog.ts:146</a></li></ul></aside></section></section></details></div>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/memberCatalog.ts#L147">memberCatalog.ts:147</a></li></ul></aside></section></section></details></div>
 <div class="col-sidebar">
 <div class="page-menu">
 <div class="tsd-navigation settings">
