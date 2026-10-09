@@ -43,8 +43,18 @@ jobs:
             - name: Run forge build
               run: forge build --via-ir
 
+            # The suite runs at -vv. Tracing (-vvv) turns on forge's revert
+            # diagnostic, which hands a test the text "call to non-contract
+            # address" in place of an empty revert's data, and the expectation
+            # decoder panics on the empty expectation (forge 1.5.1). A failing
+            # run reruns its recorded failures at -vvv so their traces print,
+            # and the step stays red.
             - name: Run forge tests
-              run: forge test --via-ir -vvv
+              run: |
+                  forge test --via-ir -vv || {
+                      forge test --via-ir -vvv --rerun
+                      exit 1
+                  }
 
             - name: Run forge fmt check
               run: forge fmt --check
