@@ -9,7 +9,7 @@ project's own verification found, and the gate the audited tree passes.
 
 | | |
 |---|---|
-| Baseline commit | `a4a34e91` (§ "The baseline commit"); the audit is suspended and no tag stands |
+| Baseline commit | `e35dd161` (§ "The baseline commit"); the audit is suspended and no tag stands |
 | Languages in scope | Solidity (`src/`, three deploy scripts) and Rust (`prover/`, four crates) |
 | Solidity in scope | 13 contract files, 3,142 lines; 3 deploy scripts, 846 lines |
 | Rust in scope | 4 crates, 20 files, 7,394 lines under `src/` |
@@ -163,14 +163,14 @@ came from the program with that key. The other external dependencies are in
 
 ## The baseline commit
 
-**Every figure in this document was measured at commit `a4a34e91`**, the
+**Every figure in this document was measured at commit `e35dd161`**, the
 baseline, which covers the whole scope, Solidity and Rust together. The
 external audit is suspended (no firm is affordable), so no tag names a commit
 under audit; when an audit is engaged, a tag is placed at the commit it
 reviews and this section names it.
 
 ```bash
-git show --no-patch a4a34e91
+git show --no-patch e35dd161
 ```
 
 This document is kept current: a change to the scope's code is followed, at the
@@ -182,7 +182,7 @@ The baseline contains all nine changes below.
 ### Changes after the previous baseline
 
 Nine changes were made after the previous baseline of 2026-09-29
-(`2d9a2c55`); `a4a34e91` contains them all. Eight are to the relay
+(`2d9a2c55`); `e35dd161` contains them all. Eight are to the relay
 (`prover/sequencer/`), on the maintainer's override, each closing a defect the
 project's own review found; none touches a contract, a guest crate, a
 `Cargo.toml` or the lock. The ninth, on the maintainer's word, removes the
@@ -195,8 +195,8 @@ next guest build in SP1's image, whose key must equal `programVKey` in
 `deployments/11155111.json`. This prints them all:
 
 ```bash
-git diff 2d9a2c55 a4a34e91 -- prover/sequencer/
-git diff 2d9a2c55 a4a34e91 -- src/core/attestation/ prover/lib/src/types.rs
+git diff 2d9a2c55 e35dd161 -- prover/sequencer/
+git diff 2d9a2c55 e35dd161 -- src/core/attestation/ prover/lib/src/types.rs
 ```
 
 | Change | The defect it closes | Where | Held by |
@@ -236,7 +236,7 @@ comment-only:
 
 ```bash
 git diff -M --stat c7f85d0d 2d9a2c55 -- src/kernel/ src/core/kernel/
-git diff 2d9a2c55 a4a34e91 -- src/core/kernel/
+git diff 2d9a2c55 e35dd161 -- src/core/kernel/
 ```
 
 ### Toolchains
