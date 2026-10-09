@@ -6,30 +6,14 @@ import "src/core/kernel/FigaroCore.sol";
 import "src/core/kernel/CommitmentTypes.sol";
 import "src/core/attestation/AttestationCoordinator.sol";
 import "src/build/registries/ClauseRegistry.sol";
-import "src/core/attestation/IRoleResolver.sol";
 import "src/mocks/MockPermitToken.sol";
 import {AgreementTestHelper} from "test/helpers/AgreementTestHelper.sol";
-
-/// @dev The code a seller EOA installs on its own address under EIP-7702 to
-///      answer `isAuthorized`. Delegated code runs in the seller's storage, so
-///      the one caller it authorizes is an immutable, carried in the code.
-contract SingleCallerResolver is IRoleResolver {
-    address public immutable authorized;
-
-    constructor(address authorized_) {
-        authorized = authorized_;
-    }
-
-    function isAuthorized(bytes32, address caller) external view returns (bool) {
-        return caller == authorized;
-    }
-}
 
 /// @title AttestationCoordinatorTest
 /// @notice Tests for the rewritten zero-storage attestation coordinator.
 ///         Covers: seller/buyer attestation, unauthorized callers, cross-order
-///         attestation, resolver delegation, unknown order, contentRef emission,
-///         constructor zero address.
+///         attestation, the undispatched resolver selector, unknown order,
+///         contentRef emission, constructor zero address.
 contract AttestationCoordinatorTest is Test {
     using CommitmentTypes for CommitmentTypes.Commitment;
 
@@ -340,73 +324,27 @@ contract AttestationCoordinatorTest is Test {
     }
 
     // ═══════════════════════════════════════════════════════════════
-    // TEST 7: Resolver attestation (mock)
+    // TEST 7: Selector 0x3ef7b1fb is not dispatched
     // ═══════════════════════════════════════════════════════════════
 
-    function test_resolverAttestation() public {
+    /// @dev A party attests for itself. Selector `0x3ef7b1fb` (the former
+    ///      `attestViaResolver(Commitment,bytes32,uint8,bytes32,bytes32[],bytes32)`)
+    ///      is not dispatched against a committed order. The seller address is
+    ///      mocked to answer `isAuthorized` true, so a coordinator that still
+    ///      dispatched the selector would file the attestation and the call
+    ///      would succeed: only an undispatched selector fails it.
+    function test_attestViaResolver_selectorIsNotDispatched() public {
         (,, CommitmentTypes.Commitment memory c) = _commitRootSingle(50 ether, 1, LIFECYCLE_CLAUSE, "");
 
-        // Mock seller1 as a resolver that authorizes seller2
-        vm.mockCall(seller1, abi.encodeWithSelector(IRoleResolver.isAuthorized.selector), abi.encode(true));
-
+        vm.mockCall(
+            seller1, abi.encodeWithSelector(bytes4(keccak256("isAuthorized(bytes32,address)"))), abi.encode(true)
+        );
         vm.prank(seller2);
-        coordinator.attestViaResolver(c, LIFECYCLE_CLAUSE, 3, EMPTY, _emptyProof(), EMPTY);
-    }
-
-    // ═══════════════════════════════════════════════════════════════
-    // TEST 8: Resolver rejects unauthorized caller
-    // ═══════════════════════════════════════════════════════════════
-
-    function test_resolverAttestation_unauthorized_reverts() public {
-        (,, CommitmentTypes.Commitment memory c) = _commitRootSingle(50 ether, 1, LIFECYCLE_CLAUSE, "");
-
-        vm.mockCall(seller1, abi.encodeWithSelector(IRoleResolver.isAuthorized.selector), abi.encode(false));
-
-        vm.prank(seller2);
-        vm.expectRevert(AttestationCoordinator.NotAuthorized.selector);
-        coordinator.attestViaResolver(c, LIFECYCLE_CLAUSE, 3, EMPTY, _emptyProof(), EMPTY);
-    }
-
-    // ═══════════════════════════════════════════════════════════════
-    // TEST 8a: Resolver path with a plain-EOA seller reverts with empty data
-    // ═══════════════════════════════════════════════════════════════
-
-    /// @dev No mock stands in for the seller: seller1 is a plain EOA with no
-    ///      code, so the high-level `isAuthorized` call fails Solidity's
-    ///      extcodesize check and reverts with empty data, never `NotAuthorized`.
-    function test_resolverAttestation_plainEoaSeller_revertsEmpty() public {
-        (,, CommitmentTypes.Commitment memory c) = _commitRootSingle(50 ether, 1, LIFECYCLE_CLAUSE, "");
-        assertEq(seller1.code.length, 0, "seller1 has no code");
-
-        vm.prank(seller2);
-        vm.expectRevert(bytes(""));
-        coordinator.attestViaResolver(c, LIFECYCLE_CLAUSE, 3, EMPTY, _emptyProof(), EMPTY);
-    }
-
-    // ═══════════════════════════════════════════════════════════════
-    // TEST 8b: Resolver path with an EIP-7702 seller answering isAuthorized
-    // ═══════════════════════════════════════════════════════════════
-
-    /// @dev seller1 delegates its own address to `SingleCallerResolver` with its
-    ///      own key before it signs and commits, so the SAME address that signed
-    ///      the order by ECDSA answers `isAuthorized`. It authorizes seller2 only.
-    function test_resolverAttestation_eip7702Seller_authorizesCaller() public {
-        SingleCallerResolver impl = new SingleCallerResolver(seller2);
-        vm.signAndAttachDelegation(address(impl), SELLER1_KEY);
-        assertGt(seller1.code.length, 0, "seller1 carries delegated code");
-
-        (bytes32 processId, bytes32 orderHash, CommitmentTypes.Commitment memory c) =
-            _commitRootSingle(50 ether, 1, LIFECYCLE_CLAUSE, "");
-
-        vm.expectEmit(true, true, true, true, address(coordinator));
-        emit AttestationCoordinator.Attestation(orderHash, processId, seller2, LIFECYCLE_CLAUSE, 3, EMPTY);
-        vm.prank(seller2);
-        coordinator.attestViaResolver(c, LIFECYCLE_CLAUSE, 3, EMPTY, _emptyProof(), EMPTY);
-
-        // A caller the seller's code does not authorize is refused by the coordinator.
-        vm.prank(buyer);
-        vm.expectRevert(AttestationCoordinator.NotAuthorized.selector);
-        coordinator.attestViaResolver(c, LIFECYCLE_CLAUSE, 3, EMPTY, _emptyProof(), EMPTY);
+        (bool ok,) = address(coordinator)
+            .call(
+                abi.encodeWithSelector(bytes4(0x3ef7b1fb), c, LIFECYCLE_CLAUSE, uint8(3), EMPTY, _emptyProof(), EMPTY)
+            );
+        assertFalse(ok, "selector 0x3ef7b1fb is not dispatched");
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -525,28 +463,6 @@ contract AttestationCoordinatorTest is Test {
         vm.prank(buyer);
         vm.expectRevert(AttestationCoordinator.OrderResolved.selector);
         coordinator.attestAsBuyer(c, LIFECYCLE_CLAUSE, 10, EMPTY, _emptyProof(), EMPTY);
-    }
-
-    // ═══════════════════════════════════════════════════════════════
-    // TEST 15: Resolver attestation for unknown commitment reverts
-    // ═══════════════════════════════════════════════════════════════
-
-    function test_resolverAttestation_unknownCommitment_reverts() public {
-        CommitmentTypes.Commitment memory fake = CommitmentTypes.Commitment({
-            processId: bytes32(0),
-            buyer: buyer,
-            seller: seller1,
-            currency: address(token),
-            payment: 50 ether,
-            expectedCumulativeValue: 50 ether,
-            agreementHash: keccak256("fake-resolver"),
-            salt: 777,
-            deadline: block.timestamp + 1 hours
-        });
-
-        vm.prank(seller2);
-        vm.expectRevert(AttestationCoordinator.UnknownOrder.selector);
-        coordinator.attestViaResolver(fake, LIFECYCLE_CLAUSE, 3, EMPTY, _emptyProof(), EMPTY);
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -802,21 +718,6 @@ contract AttestationCoordinatorTest is Test {
         // Signed sectionData was "" — attesting with non-empty sectionData
         // recomputes a different leaf that won't open against the root.
         coordinator.attestAsBuyer(c, LIFECYCLE_CLAUSE, 1, keccak256("tampered"), _emptyProof(), EMPTY);
-    }
-
-    /// @dev Same merkle gate from the resolver path: an authorized resolver
-    ///      is bound to the signed agreement exactly as the parties are — a
-    ///      clause that is not a leaf of it cannot be attested under.
-    function test_attestViaResolver_revertsOnClauseNotInAgreement() public {
-        (,, CommitmentTypes.Commitment memory c) = _commitRootSingle(1 ether, 4, LIFECYCLE_CLAUSE, "");
-        vm.mockCall(seller1, abi.encodeWithSelector(IRoleResolver.isAuthorized.selector), abi.encode(true));
-        vm.prank(seller2);
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                AttestationCoordinator.InvalidInclusionProof.selector, c.agreementHash, UNUSED_CLAUSE
-            )
-        );
-        coordinator.attestViaResolver(c, UNUSED_CLAUSE, 1, EMPTY, _emptyProof(), EMPTY);
     }
 
     function test_contentRefIsKeccakOfContent() public {

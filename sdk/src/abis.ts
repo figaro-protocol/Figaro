@@ -104,12 +104,10 @@ export const EV_PROCESS_RESOLVED = parseAbiItem(
 // `core.DOMAIN_SEPARATOR` derives root processIds with no silent-drift risk.
 // Read-side role *display* is indexer-derived in the UI; write-side role
 // *verification* stays here — that is what makes the record evidence.
-// `attestViaResolver` (IRoleResolver) is the open composition path for a
-// seller whose own EIP-7702 code authorizes the caller.
 
 export const ATTESTATION_COORDINATOR_ABI = parseAbi([
     "function core() view returns (address)",
-    // All three paths take the full Commitment(s) so the coordinator can
+    // Both paths take the full Commitment(s) so the coordinator can
     // recover `agreementHash` without new FigaroCore state, and carry the section
     // FINGERPRINT `sectionHash` (`keccak256(sectionData)`) + merkle `proof` so
     // the clause is provably part of the signed agreement. The content
@@ -119,7 +117,6 @@ export const ATTESTATION_COORDINATOR_ABI = parseAbi([
     // clause-content validator. Matches the batched path's bytes32 convention.
     `function attestAsSeller(${COMMITMENT_TUPLE} role, ${COMMITMENT_TUPLE} target, bytes32 clauseId, uint8 stage, bytes32 sectionHash, bytes32[] proof, bytes32 contentRef) external`,
     `function attestAsBuyer(${COMMITMENT_TUPLE} target, bytes32 clauseId, uint8 stage, bytes32 sectionHash, bytes32[] proof, bytes32 contentRef) external`,
-    `function attestViaResolver(${COMMITMENT_TUPLE} target, bytes32 clauseId, uint8 stage, bytes32 sectionHash, bytes32[] proof, bytes32 contentRef) external`,
     "event Attestation(bytes32 indexed orderHash, bytes32 indexed processId, address indexed attester, bytes32 clauseId, uint8 stage, bytes32 contentRef)",
     "error InvalidInclusionProof(bytes32 agreementHash, bytes32 clauseId)",
     "error NotAuthorized()",

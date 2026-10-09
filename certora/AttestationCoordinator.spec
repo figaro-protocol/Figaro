@@ -15,8 +15,8 @@
 //      must equal `c.buyer`, which equals rootBuyer by commit invariant)
 //   B) Parametric rules: no AC call can modify FigaroCore state
 //
-// The seller path (attestAsSeller — takes role + target commitments) and the
-// resolver path (attestViaResolver) are covered by the Foundry suite in
+// The seller path (attestAsSeller — takes role + target commitments) is
+// covered by the Foundry suite in
 // test/core/attestation/AttestationCoordinatorTest.t.sol.
 //
 // Foundry-covered invariants NOT re-proven here:
@@ -33,11 +33,6 @@ methods {
     function core.orderStatus(bytes32) external returns (uint8) envfree;
     function core.orderProcessId(bytes32) external returns (bytes32) envfree;
     function core.processes(bytes32) external returns (address, address, uint256, uint256) envfree;
-
-    // IRoleResolver.isAuthorized — wildcard external call from attestViaResolver.
-    // NONDET havocs the return value: AC rules verify that no call path mutates
-    // FigaroCore state, which holds regardless of what isAuthorized returns.
-    function _.isAuthorized(bytes32, address) external => NONDET;
 }
 
 // ═══════════════════════════════════════════════════════════════════

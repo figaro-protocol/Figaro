@@ -48,11 +48,10 @@ AttestationCoordinator ──▶ FigaroCore ◀── WitnessSwapAndCommitCoordi
 ## `src/core/` — the Core
 
 The four contracts every trade runs on (`LEXICON.md` **Core**): `FigaroCore`,
-`CommitmentTypes`, `AttestationCoordinator` and `FigaroBatchVerifier`. Two
-interface files sit beside them, `IRoleResolver.sol` and `ISP1Verifier.sol`.
-An interface file is a function signature and holds no code: it names what a
-Core contract calls on an address outside the Core. All six files are in the
-audit's scope (`AUDITOR_HANDOVER.md` § "Scope").
+`CommitmentTypes`, `AttestationCoordinator` and `FigaroBatchVerifier`. One
+interface file sits beside them, `ISP1Verifier.sol`. An interface file is a
+function signature and holds no code: it names what a Core contract calls on
+an address outside the Core. All five files are in the audit's scope (`AUDITOR_HANDOVER.md` § "Scope").
 
 ### `src/core/kernel/` — `FigaroCore` and `CommitmentTypes`
 
@@ -84,12 +83,13 @@ be committed (`DeadlineExpired`) — a signature cannot be revoked, so it ages
 out; nothing expires after commit. `DESIGN_DECISIONS.md` §13 owns the
 reasoning.
 
-### `src/core/attestation/` — `AttestationCoordinator` and `IRoleResolver`
+### `src/core/attestation/` — `AttestationCoordinator`
 
 `AttestationCoordinator` has the coordinator shape (§ Coordinators).
 
 **`src/core/attestation/AttestationCoordinator.sol`** — Zero-storage
-attestation, merkle-only, bound to the signed `agreementHash`. Three modes:
+attestation, merkle-only, bound to the signed `agreementHash`. Two modes, and
+a party attests for itself:
 - `attestAsSeller(Commitment role, Commitment target, bytes32 clauseId, uint8
   stage, bytes32 sectionHash, bytes32[] proof, bytes32 contentRef)` — role and
   target commitments; the same commitment twice for same-order attestation,
@@ -97,11 +97,6 @@ attestation, merkle-only, bound to the signed `agreementHash`. Three modes:
 - `attestAsBuyer(Commitment target, bytes32 clauseId, uint8 stage, bytes32
   sectionHash, bytes32[] proof, bytes32 contentRef)` — caller must equal
   `target.buyer`.
-- `attestViaResolver(Commitment target, ...)` — caller authorized by
-  `IRoleResolver(target.seller).isAuthorized`. `FigaroCore`'s parties are ECDSA
-  externally owned accounts, so `target.seller` can expose `isAuthorized` only
-  through EIP-7702 delegation; without it the staticcall finds no code and the
-  path reverts. No production caller today.
 
 The call carries fingerprints, never preimages: `sectionHash =
 keccak256(sectionData)`, `contentRef = keccak256(content)`; a private section's
@@ -114,11 +109,6 @@ domain separation) against `target.agreementHash`, then emits
 committed `orderHash` via `core.orderStatus`. It validates no content shape;
 a clause not committed at signing cannot be attested (`InvalidInclusionProof`),
 and a never-seen clause is attestable with zero per-clause on-chain code.
-
-**`src/core/attestation/IRoleResolver.sol`** — `isAuthorized(orderHash,
-caller)`, the interface `attestViaResolver` reads. No contract in this tree
-implements it; a seller reaches the path only through EIP-7702 code on its own
-address.
 
 ### `src/core/verifier/` — `FigaroBatchVerifier` and `ISP1Verifier`
 

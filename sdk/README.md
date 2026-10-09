@@ -958,19 +958,14 @@ await attestAsSeller(
   walletClient, addresses.attestationCoordinator!,
   roleCommitment, targetCommitment, clauseId, /* stage */ 0, sectionHash, proof, contentRef,
 );
-// The coordinator has THREE attest entry points, all merkle-binding identically
+// The coordinator has TWO attest entry points, both merkle-binding identically
 // to the signed agreement — they differ only in how caller authority is proven:
 //   • attestAsSeller     — the order's seller attests (role + target commitments;
 //                          pass the same struct twice for same-order attestation).
 //   • attestAsBuyer      — the root buyer attests (target commitment only; the
 //                          commit invariant makes msg.sender == c.buyer the check).
-//   • attestViaResolver  — a caller the order's seller authorizes through
-//                          IRoleResolver.isAuthorized(orderHash, caller); the
-//                          seller is an ECDSA EOA, so it answers only through
-//                          EIP-7702 code it installed on its own address.
-// The SDK ships wrappers for the first two (attestAsSeller / attestAsBuyer, both
-// from @figaro-protocol/sdk/agent); attestViaResolver is in ATTESTATION_COORDINATOR_ABI —
-// call it directly (writeContract) when the seller's address carries EIP-7702 code implementing `IRoleResolver`.
+// A party attests for itself. The SDK wraps both (attestAsSeller / attestAsBuyer,
+// from @figaro-protocol/sdk/agent).
 
 // Autonomous origination — the two-party handshake over a coordination channel:
 // buyer instantiates a discovered assembly + signs; seller validates + counter-signs.

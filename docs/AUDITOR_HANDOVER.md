@@ -11,7 +11,7 @@ project's own verification found, and the gate the audited tree passes.
 |---|---|
 | Baseline commit | `a4a34e91` (§ "The baseline commit"); the audit is suspended and no tag stands |
 | Languages in scope | Solidity (`src/`, three deploy scripts) and Rust (`prover/`, four crates) |
-| Solidity in scope | 14 contract files, 3,184 lines; 3 deploy scripts, 852 lines |
+| Solidity in scope | 13 contract files, 3,142 lines; 3 deploy scripts, 846 lines |
 | Rust in scope | 4 crates, 20 files, 7,394 lines under `src/` |
 | Configuration in scope | `foundry.toml`, the `Cargo.toml` files and `Cargo.lock`, the Rust toolchain pin (§ "In scope — configuration") |
 | Trusted, not reviewed | SP1 (the zkVM, its crates, its on-chain verifier gateway), OpenZeppelin Contracts, Permit2, Uniswap SwapRouter02 |
@@ -54,15 +54,15 @@ The directory IS the tier map (`CONTRACTS.md` § header).
 | Directory / file | Contents | Lines |
 |---|---|---|
 | `src/core/kernel/` | `FigaroCore.sol`, `CommitmentTypes.sol` | 306, 53 |
-| `src/core/attestation/` | `AttestationCoordinator.sol`, `IRoleResolver.sol` | 235, 16 |
+| `src/core/attestation/` | `AttestationCoordinator.sol` | 209 |
 | `src/core/verifier/` | `FigaroBatchVerifier.sol`, `ISP1Verifier.sol` | 596, 15 |
 | `src/build/registries/` | `ClauseRegistry.sol`, `AssemblyRegistry.sol` | 211, 188 |
 | `src/build/rewards/` | `UsageCounter.sol`, `RpgfMinter.sol` | 770, 253 |
 | `src/build/florin/` | `FlorinToken.sol`, `IFlorinMinter.sol` | 83, 9 |
 | `src/app/` | `MembersRegistry.sol`, `WitnessSwapAndCommitCoordinator.sol` | 210, 239 |
-| `script/Deploy.s.sol` | Devnet deploy (defines the devnet surface) | 436 |
-| `script/DeployMainnet.s.sol` | Mainnet deploy (defines the audited mainnet surface; deploys the swap coordinator) | 356 |
-| `script/DeploySwapCoordinator.s.sol` | The swap coordinator alone onto a LIVE stack | 60 |
+| `script/Deploy.s.sol` | Devnet deploy (defines the devnet surface) | 435 |
+| `script/DeployMainnet.s.sol` | Mainnet deploy (defines the audited mainnet surface; deploys the swap coordinator) | 353 |
+| `script/DeploySwapCoordinator.s.sol` | The swap coordinator alone onto a LIVE stack | 58 |
 
 ### In scope — Rust
 
@@ -119,7 +119,7 @@ same, and short.
 ### Line counts
 
 This document counts physical lines, comments included. Without comments and
-blank lines the scope is 1,299 lines of contracts, 405 of deploy scripts and
+blank lines the scope is 1,279 lines of contracts, 405 of deploy scripts and
 5,147 of Rust. An audit platform that normalises each statement to one line
 counts lower still — about 5% lower for the Solidity and about 40% for the
 Rust, whose formatter spreads a statement over several lines.
@@ -177,18 +177,26 @@ This document is kept current: a change to the scope's code is followed, at the
 verified commit, by this section's update, the baseline moved to that commit
 and the line counts and evidence that changed re-measured; comments and NatSpec
 change in place and § "Comment-only changes after the baseline" lists each one.
-The baseline contains all eight changes below.
+The baseline contains all nine changes below.
 
 ### Changes after the previous baseline
 
-Eight changes were made to the relay (`prover/sequencer/`) after the previous
-baseline of 2026-09-29 (`2d9a2c55`), on the maintainer's override, each closing
-a defect the project's own review found; `a4a34e91` contains them all. None touches a contract, a guest
-crate, a `Cargo.toml` or the lock, so the guest's bytes and the verification
-key are unchanged across the two baselines. This prints them all:
+Nine changes were made after the previous baseline of 2026-09-29
+(`2d9a2c55`); `a4a34e91` contains them all. Eight are to the relay
+(`prover/sequencer/`), on the maintainer's override, each closing a defect the
+project's own review found; none touches a contract, a guest crate, a
+`Cargo.toml` or the lock. The ninth, on the maintainer's word, removes the
+coordinator's third entry point, `attestViaResolver`, and its interface,
+IRoleResolver.sol (deleted). In the guest it rewrites one comment within its own four
+lines of `prover/lib/src/types.rs`, so no line of the guest moves and no panic
+location the guest embeds changes; the guest's bytes and the verification key
+are expected unchanged across the two baselines. That is unverified until the
+next guest build in SP1's image, whose key must equal `programVKey` in
+`deployments/11155111.json`. This prints them all:
 
 ```bash
 git diff 2d9a2c55 a4a34e91 -- prover/sequencer/
+git diff 2d9a2c55 a4a34e91 -- src/core/attestation/ prover/lib/src/types.rs
 ```
 
 | Change | The defect it closes | Where | Held by |
@@ -202,28 +210,20 @@ git diff 2d9a2c55 a4a34e91 -- prover/sequencer/
 | An attestation's witness spec is checked against the registry before proving | The relay checked that the spec parsed; the verifier checks that its hash is `ClauseRegistry.contentHashOf` for the clause and reverts the whole batch otherwise. Anyone could copy a landed attestation with one byte of the spec changed and sink every batch at no cost. The relay now reads the anchor from the verifier's own registry and drops such an attestation alone. | `prover/sequencer/src/submitter.rs` (`attestation_spec`, `filter_anchored_attestations`) | `the_spec_an_attestation_carries_is_what_the_registry_check_reads`; the batch end-to-end test's attestation passes the check against the live registry |
 | The binary's own log lines are on by default | The relay's default log filter named the library's target (`figaro_sequencer`) and not the binary's (`sequencer`), so startup, every refusal to start (the signing key, the guest fingerprint) and every batch-loop line (a batch landed, an operation dropped or dead-lettered) were filtered out unless `RUST_LOG` named both: a relay that refused to start exited 2 and said nothing. | `prover/sequencer/src/main.rs` (the default filter) | `sdk/tests/batch-e2e.test.ts` reads the refusal line of the relay that holds no state |
 | A batch refused by a mid-flight revocation re-batches around the revoker | A party who revoked its allowance after the funding check and before `settleBatch` reverted the whole batch, and every operation in it was dead-lettered after minutes of proving — a repeatable way, priced only in gas, for one address to keep every operation it shared a batch with out of every batch. On a deterministic revert the relay now re-reads funding at the latest block: the named revoker's operations alone are dead-lettered (re-submittable once funded), the rest re-queue (a wallet whose re-read failed re-queues too, never logged as a revoker), and the next tick builds a fresh batch without the revoker — the refused batch itself is never re-sent, though its state stays held (its proof is public; a revoker who re-approves revives it). Repeated revocation from one address within an hour is logged as the adversarial signal. Known limitation 3 states what remains. | `prover/sequencer/src/main.rs` (the deterministic-revert arm), `prover/sequencer/src/submitter.rs` (`allocate_funding` names the failing party; `RevocationLog`) | `funding_is_allocated_across_a_wallets_commits_in_order` (the drop names the party), `revocation_log_counts_within_the_window_only`; `formal/RelayState.tla` — the `RebatchDropsRevoker` switch FALSE fails `SendsExcludeKnownRevoked`; `sdk/tests/batch-revoke-e2e.test.ts` runs the arm against a live Anvil and the real binary: a seller revokes after the funding check, the batch is refused, that seller's op alone is dead-lettered (`/status` names it) and the other lands in the next batch |
+| `attestViaResolver` and `IRoleResolver` are removed; a party attests for itself | The coordinator dispatched a third entry point: a caller for whom code at the order's seller address answered `IRoleResolver.isAuthorized` filed an attestation on that order under its own address. No contract implements the interface and no party needs the path: a seller's own EIP-7702 code files through `attestAsSeller` from the seller's address. The path invited readings that counted another caller's attestation for the seller. No attestation on Sepolia was filed through it. The batch path never carried it (`KernelOp` has only `AttestAsSeller` and `AttestAsBuyer`). | `src/core/attestation/AttestationCoordinator.sol`; the interface file beside it, IRoleResolver.sol (deleted), deleted; `prover/lib/src/types.rs` (a comment, in place); `certora/AttestationCoordinator.spec` (the `isAuthorized` summary deleted) | `test_attestViaResolver_selectorIsNotDispatched` in `test/core/attestation/AttestationCoordinatorTest.t.sol`: a low-level call carrying selector `0x3ef7b1fb` against a committed order does not succeed |
 
-All eight are liveness or operability defects of the relay: none let a batch
+The eight relay changes are liveness or operability defects: none let a batch
 move value the parties did not sign, and the proof and the verifier are as
-tagged. Known limitation 7 states what the state changes leave standing.
+tagged. The ninth removes an entry point and adds none: a party attests for
+itself, through `attestAsSeller` or `attestAsBuyer`. Known limitation 7 states what the state changes leave standing.
 
 ### Comment-only changes after the baseline
 
-| File | The comment now says | Why it changed |
-|---|---|---|
-| `src/core/attestation/AttestationCoordinator.sol:160-164` (`attestViaResolver`) | the section is seller-authorized attestations; the seller, an ECDSA EOA, answers `isAuthorized` only through EIP-7702 code it installed on itself, and what that code authorizes is the seller's own act, as a buyer's delegation is its own (`DESIGN_DECISIONS.md` #5) | it named the seller a "mechanism contract", which `FigaroCore`'s ECDSA-only parties cannot be |
-| `src/core/attestation/IRoleResolver.sol:6-10` | the interface is the authorization a seller address grants for attestations on its orders; no contract in the repository implements it | it said mechanism contracts implement it |
-
-The code of both files, stripped of comments, is byte-identical to the baseline
-(`git diff a4a34e91 -- src/core/attestation/` shows it), and the line counts
-are unchanged, so every `file:line` citation of them stands. NatSpec enters the
+None stands after the baseline. A comment or NatSpec line changed in place
+after it is listed here, with the line counts it moves. NatSpec enters the
 compiler's metadata (`foundry.toml` sets no `bytecode_hash`), so a build at a
 later commit carries a different metadata hash in its bytecode suffix than a
 build at the baseline; a review builds at the baseline.
-
-```bash
-git diff a4a34e91 -- src/core/attestation/
-```
 
 ### The kernel
 
@@ -281,7 +281,11 @@ batch verifier and usage counter are an earlier commit's: the verifier there
 pins the key of an earlier guest and predates two checks the baseline commit
 carries (the batch's clock, the public-values length). A Sepolia redeploy of
 the batch path is the verifier and the usage counter together, since each
-holds the other's address as an immutable. `RpgfMinter` on Sepolia stays bound
+holds the other's address as an immutable. The Sepolia coordinator is an
+earlier commit's too and keeps `attestViaResolver` (selector `0x3ef7b1fb`):
+no contract has an upgrade path. The tree's SDK no longer encodes that call,
+and the Sepolia signer policy (`deployments/signer-policy.11155111.json`) no
+longer lists the selector, so the policy signer does not sign it. `RpgfMinter` on Sepolia stays bound
 to the first counter: `FlorinToken.registerMinter` was renounced there with
 the cap fully allocated, so no second minter can be registered. Mainnet
 deploys every contract once, from `DeployMainnet.s.sol`, and has no such seam.
@@ -403,7 +407,7 @@ never reads `msg.sender`, and `resolveProcess` is gated by presence
 | Actor | Can | Cannot |
 |---|---|---|
 | Buyer | sign an order; call `resolveProcess` on its own process; sign the batch path's resolve authorization; attest on its own orders | resolve a process it did not open; resolve one order of a process |
-| Seller of record | sign an order; attest on its own orders, or delegate that to an `IRoleResolver` contract at the seller address (direct path only) | move any bond; resolve |
+| Seller of record | sign an order; attest on its own orders | move any bond; resolve |
 | Designer / registrant | register a clause or assembly under a stake; withdraw that stake (the binding stays); claim designer rewards on the keys it registered while its member stake is live | edit or remove a registration; earn on an unstaked key |
 | Member | register, update, request withdrawal, withdraw after the cooldown | act for another wallet |
 | Batch submitter (the relay or anyone) | call `settleBatch` with a valid proof over the current root | fabricate an operation, move a token the proof does not commit to, replay a proof (`SCALING_STRATEGY.md` § Trust analysis) |
@@ -613,7 +617,7 @@ unless a line says otherwise. Which invariant each layer carries is
 
 | Layer | Result |
 |---|---|
-| Foundry | 341 passed, 0 failed, 0 skipped |
+| Foundry (re-run after the ninth change, § "Changes after the previous baseline") | 337 passed, 0 failed, 0 skipped |
 | Fork tests (mainnet's Permit2, Sepolia's SwapRouter02) | 3 passed, 0 skipped |
 | Halmos | 32 of 32 properties proved |
 | Certora | 6 of 6 specs, every rule verified |
@@ -630,7 +634,7 @@ Certora reports:
 | Spec | Report |
 |---|---|
 | FigaroCore | https://prover.certora.com/output/9512759/45aab7c04aa74df2a394adacf737b0bb |
-| AttestationCoordinator | https://prover.certora.com/output/9512759/b029681770794669add40ece51cbbb91 |
+| AttestationCoordinator (re-run after the ninth change; every rule verified, every sanity check reached) | https://prover.certora.com/output/9512759/16c0d0189f08499da77794dd9f516325 |
 | TokenOpsVerification | https://prover.certora.com/output/9512759/b07ef08009c145bfa6c1f4ebbe7a39c1 |
 | FlorinToken | https://prover.certora.com/output/9512759/7e9a532568dd4249b99397a564fe8c4e |
 | BatchVerifierTokenOps | https://prover.certora.com/output/9512759/79f9b51977c74a9db3e38d479bd69692 |
@@ -645,7 +649,7 @@ over the eleven contracts in scope that hold code:
 
 | | Lines | Statements | Branches | Functions |
 |---|---|---|---|---|
-| In scope | 99.81% (530/531) | 99.44% (711/715) | 97.04% (131/135) | 100% (67/67) |
+| In scope (re-run after the ninth change) | 99.81% (527/528) | 99.44% (707/711) | 97.04% (131/135) | 100% (66/66) |
 | Lowest file: `FigaroCore.sol` | 98.57% | 97.78% | 90.48% | 100% |
 
 What is uncovered, line by line: `FigaroCore.sol:204`, the
@@ -663,13 +667,15 @@ Trail of Bits' `mewt` 4.0.0, high and medium severity mutations (statement
 removal, error replacement, condition forcing, negation removal,
 return-default), each contract against the test files that cover it, the
 gas-anchor tests excluded so a catch means behaviour. One run, one database,
-at the baseline commit:
+for every contract but `AttestationCoordinator.sol`, whose row is its own run
+after the ninth change (§ "Changes after the previous baseline"), against
+`test/core/attestation/` and `test/script/DeployWiringTest.t.sol`:
 
 | Contract | Mutants | Caught | Survived |
 |---|---|---|---|
 | `FigaroCore.sol` | 99 | 96 | 3 |
 | `CommitmentTypes.sol` | 3 | 3 | 0 |
-| `AttestationCoordinator.sol` | 60 | 60 | 0 |
+| `AttestationCoordinator.sol` | 51 | 51 | 0 |
 | `WitnessSwapAndCommitCoordinator.sol` | 56 | 56 | 0 |
 | `MembersRegistry.sol` | 63 | 63 | 0 |
 | `ClauseRegistry.sol` | 59 | 59 | 0 |
@@ -678,7 +684,7 @@ at the baseline commit:
 | `RpgfMinter.sol` | 104 | 102 | 2 |
 | `FlorinToken.sol` | 54 | 52 | 2 |
 | `FigaroBatchVerifier.sol` | 156 | 156 | 0 |
-| **All** | **921** | **913** | **8** |
+| **All** | **912** | **904** | **8** |
 
 No timeout, nothing skipped. Every High-severity mutant was caught.
 

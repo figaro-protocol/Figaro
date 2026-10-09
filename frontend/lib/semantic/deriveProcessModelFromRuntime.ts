@@ -39,33 +39,8 @@ interface RuntimeIndexes {
     /** Off-chain topology edges, both directions, keyed by order id. */
     childrenByOrder: Map<string, string[]>;
     parentsByOrder: Map<string, string[]>;
-    /** Every seller of an order in the process, lowercased — tells a
-     *  co-seller's cross-order attestation from a seller-authorized attester's. */
-    processSellers: Set<string>;
     /** Each order's 1-based position on the process chain, by id. */
     positionByOrder: Map<string, number>;
-}
-
-/** Whether an attestation on `order` stands for `party` of that order.
- *  AttestationCoordinator emits `msg.sender` as the attester on every path,
- *  so the party is derived from the order, never read off the event:
- *  - the buyer path requires the order's buyer as sender, so only an attester
- *    equal to the buyer stands for the buyer;
- *  - an attester equal to the order's seller stands for the seller (a
- *    self-order's one address stands for both);
- *  - a seller of ANOTHER order in the process attests cross-order through
- *    `attestAsSeller` and stands for its own order, not this one;
- *  - any other attester reached the order only through `attestViaResolver`,
- *    i.e. the order's seller authorized it, so it stands for that seller. */
-export function attestationStandsFor(
-    order: Pick<Order, "buyer" | "seller">,
-    attester: string,
-    party: PartyRole,
-    processSellers: Set<string>,
-): boolean {
-    if (party === "buyer") return hexEqual(attester, order.buyer);
-    if (hexEqual(attester, order.seller)) return true;
-    return !hexEqual(attester, order.buyer) && !processSellers.has(attester.toLowerCase());
 }
 
 function buildRuntimeIndexes(
@@ -94,8 +69,6 @@ function buildRuntimeIndexes(
         }
     }
 
-    const processSellers = new Set(processOrders.map((order) => order.seller.toLowerCase()));
-
     // Position on the process chain: the Core accepts each commit only at the
     // process's running cumulative value plus a non-zero payment, so the
     // cumulative value rises strictly in commit order and ranks the orders.
@@ -103,7 +76,7 @@ function buildRuntimeIndexes(
         left.cumulativeValue < right.cumulativeValue ? -1 : left.cumulativeValue > right.cumulativeValue ? 1 : 0);
     const positionByOrder = new Map(byChain.map((order, i) => [order.orderHash.toString(), i + 1]));
 
-    return { attestationsByOrder, childrenByOrder, parentsByOrder, processSellers, positionByOrder };
+    return { attestationsByOrder, childrenByOrder, parentsByOrder, positionByOrder };
 }
 
 function roleCapabilities(
@@ -150,7 +123,7 @@ function roleCapabilities(
                 if (party === "seller" ? !isSeller : !isBuyer) continue;
                 const mine = orderAttestations.filter(
                     (a) => hexEqual(a.clauseId, clauseIdHash)
-                        && attestationStandsFor(order, a.attester, party, indexes.processSellers),
+                        && hexEqual(a.attester, party === "seller" ? order.seller : order.buyer),
                 );
                 const seen = new Set(mine.map((a) => a.stage));
                 const stage = ladder.values.findIndex((_v, i) => !seen.has(i));
@@ -270,7 +243,7 @@ function roleCapabilities(
                 const clauseIdHash = computeClauseKey(clauseId, section.version).toLowerCase();
                 const already = orderAttestations.some(
                     (a) => hexEqual(a.clauseId, clauseIdHash) && a.stage === 0
-                        && attestationStandsFor(order, a.attester, party, indexes.processSellers),
+                        && hexEqual(a.attester, party === "seller" ? order.seller : order.buyer),
                 );
                 if (already) continue;
                 const title = getClauseSpec(clauseId, section.version)?.title ?? clauseId;

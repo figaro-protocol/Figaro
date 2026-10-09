@@ -118,11 +118,12 @@ export default function Attestations() {
                     <Link href="/data" className="text-ink-heading font-medium hover:underline">Evidence</Link>.
                 </p>
                 <p className="text-sm text-ink-body leading-relaxed mb-4">
-                    Who may file is the order&apos;s own parties. A seller is always a
-                    wallet that signs for itself; one whose wallet installs an EIP-7702
-                    delegation can name through it the agent authorized to attest on its
-                    behalf, and the coordinator checks that authority on-chain before
-                    accepting the record.
+                    Who may file is the order&apos;s own parties: a party attests for
+                    itself, and the coordinator checks on-chain that the wallet filing is
+                    the order&apos;s seller or its buyer before accepting the attestation.
+                    A seller whose wallet installs an EIP-7702 delegation files through
+                    that code from its own address, so the attestation is the
+                    seller&apos;s own act.
                 </p>
                 <p className="text-sm text-ink-body leading-relaxed">
                     That boundary is why dispute recourse sits at the edge of the

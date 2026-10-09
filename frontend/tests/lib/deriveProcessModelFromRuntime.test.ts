@@ -129,19 +129,6 @@ describe("re-assert committed sections — one card per party per order", () => 
         expect(reassertCards("0x3333333333333333333333333333333333333333")).toHaveLength(0);
     });
 
-    // AttestationCoordinator emits msg.sender as the attester: an attester the
-    // seller authorizes (attestViaResolver) is neither party's address, and
-    // the only path that lets it attest on this order is the seller's own.
-    it("a seller-authorized attester's re-assertion counts for the seller, not the buyer", () => {
-        const AUTHORIZED = "0x4444444444444444444444444444444444444444";
-        const sellerCards = reassertCards(SELLER, [reasserted(1, AUTHORIZED)]);
-        expect(sellerCards).toHaveLength(1);
-        expect(choiceClauseIds(sellerCards[0])).toEqual([sections[0].clause, sections[2].clause]);
-        const buyerCards = reassertCards(BUYER, [reasserted(1, AUTHORIZED)]);
-        expect(buyerCards).toHaveLength(1);
-        expect(choicesOf(buyerCards[0])).toHaveLength(K);
-    });
-
     it("a one-order process names its order on the card", () => {
         const [card] = reassertCards(BUYER);
         expect(card.orderLabel).toBe(`Order 1 of 1 · seller ${truncateHex(SELLER)}`);

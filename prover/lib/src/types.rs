@@ -156,10 +156,10 @@ pub enum KernelOp {
         buyer_sig: Signature,
         proof: AttestationContentProof,
     },
-    // `attestViaResolver` is deliberately absent: its authority check is
-    // a live `IRoleResolver.isAuthorized` contract call, which cannot
-    // run inside the proof. Resolver-mediated attestations stay on the
-    // direct path.
+    // These are the coordinator's two attestation modes, as on the
+    // direct path: a party attests for itself, and its signature here
+    // proves the caller the direct path reads from `msg.sender`. No
+    // other party files an attestation on an order.
 }
 
 // ── Usage accrual (the RPGF bridge) ───────────────────────────────

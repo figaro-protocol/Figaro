@@ -225,9 +225,7 @@ resolution, have their own reason to press. That reach has three edges. A buyer'
 attestation meets no such pressure, since the buyer resolves at will. A declaration is
 a term both parties agreed, so there is nothing to put right; what stands behind it is
 that both signed it. A member's profile is a declaration outside any process, backed by
-the member stake and the wallet's resolution history. On the resolver path the attester
-an event names is the caller the seller's own code authorized; the seller's bond stands
-behind it. After resolution, which no one can reverse, an attestation or a declaration
+the member stake and the wallet's resolution history. After resolution, which no one can reverse, an attestation or a declaration
 stays in the public data: its worth to whoever buys or analyses it, the evidence a forum
 or court reads, and the signer's resolution history. The SDK carries the two tails once
 (`TRUTH_BOUNDARY_GLOSS` in `sdk/src/derive/truth.ts`). What none of this reaches is

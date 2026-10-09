@@ -148,9 +148,7 @@ lands there is unreachable, and a buyer who waits for the seller's attestations
 before resolving waits in vain. What the lost key takes is the seller's voice while
 the process is open: its attestations. The same pre-installed EIP-7702
 delegation answers it. The delegated code can originate `attestAsSeller` from
-the seller's address, and it can authorize another caller through
-`attestViaResolver` (`IRoleResolver.isAuthorized`), whose events name that
-caller as the attester. What the code allows is the seller's own act and the
+the seller's address. What the code allows is the seller's own act and the
 seller's own risk, as the buyer's is. New commitments are not rescuable, for the
 same reason: each needs a fresh signature from the lost key.
 

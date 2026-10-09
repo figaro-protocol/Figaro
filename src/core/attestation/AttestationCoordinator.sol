@@ -2,7 +2,6 @@
 pragma solidity 0.8.26;
 
 import "src/core/kernel/CommitmentTypes.sol";
-import "./IRoleResolver.sol";
 import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 
 /// @notice Minimal FigaroCore surface the coordinator reads.
@@ -25,7 +24,7 @@ interface IFigaroCore {
 ///         struct; the coordinator recomputes the orderHash to verify
 ///         the order exists and extracts the role from the struct.
 ///
-/// @dev Three attestation modes — each caller supplies one or two `Commitment`
+/// @dev Two attestation modes — each caller supplies one or two `Commitment`
 ///      structs so the coordinator can (a) verify role authority, (b) read the
 ///      signed `agreementHash` without new FigaroCore state, and (c) verify the
 ///      attestation matches a clause in the signed contract.
@@ -38,9 +37,6 @@ interface IFigaroCore {
 ///                           (`c.buyer == processes[c.processId].rootBuyer` by
 ///                           commit invariant, so `msg.sender == c.buyer`
 ///                           authorizes the call).
-///      - attestViaResolver: caller supplies the target commitment only; the
-///                           seller address must authorize `msg.sender` via
-///                           `IRoleResolver`.
 ///
 /// @dev Agreement binding (mandatory):
 ///      Every `attest*` call carries an inclusion proof showing the attestation's
@@ -152,28 +148,6 @@ contract AttestationCoordinator {
     ) external {
         (bytes32 targetOrderHash, bytes32 targetProcessId) = _requireKnownCommitment(target);
         if (msg.sender != target.buyer) revert NotAuthorized();
-
-        _verifyInclusion(target.agreementHash, clauseId, sectionHash, proof);
-        emit Attestation(targetOrderHash, targetProcessId, msg.sender, clauseId, stage, contentRef);
-    }
-
-    // ── Seller-authorized attestations ───────────────────────────────
-
-    /// @notice Attest as a caller the target order's seller authorizes (`isAuthorized`).
-    /// @dev The seller is an ECDSA EOA, so it answers only through EIP-7702 code it
-    ///      installed on itself: the seller's own act, as a buyer's delegation is its own.
-    function attestViaResolver(
-        CommitmentTypes.Commitment calldata target,
-        bytes32 clauseId,
-        uint8 stage,
-        bytes32 sectionHash,
-        bytes32[] calldata proof,
-        bytes32 contentRef
-    ) external {
-        (bytes32 targetOrderHash, bytes32 targetProcessId) = _requireKnownCommitment(target);
-        if (!IRoleResolver(target.seller).isAuthorized(targetOrderHash, msg.sender)) {
-            revert NotAuthorized();
-        }
 
         _verifyInclusion(target.agreementHash, clauseId, sectionHash, proof);
         emit Attestation(targetOrderHash, targetProcessId, msg.sender, clauseId, stage, contentRef);

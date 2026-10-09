@@ -33,9 +33,8 @@ they published. `docs/VISION.md` says why; `docs/THEORY.md` derives it;
   signs; `CommitmentTypes.sol` defines the commitment and its EIP-712 hashing;
   `AttestationCoordinator.sol` binds what a party attests to the agreement it
   signed; `FigaroBatchVerifier.sol` accepts a validity proof of many processes
-  and resolves them in one transaction. Two interface files sit beside them:
-  `IRoleResolver.sol`, which a seller's address implements to delegate
-  attestation, and `ISP1Verifier.sol`, the SP1 verifier gateway's ABI. In the
+  and resolves them in one transaction. One interface file sits beside them:
+  `ISP1Verifier.sol`, the SP1 verifier gateway's ABI. In the
   audit's scope with everything else the handover lists
   (`docs/AUDITOR_HANDOVER.md` § "Scope").
 - **Protocol contracts** — `src/build/` and `src/app/`: the three registries
@@ -74,7 +73,7 @@ Start with `docs/README.md` for the document map.
 ```
 src/                        Solidity contracts (0.8.26, Foundry)
   core/kernel/              FigaroCore, CommitmentTypes
-  core/attestation/         AttestationCoordinator, IRoleResolver
+  core/attestation/         AttestationCoordinator
   core/verifier/            FigaroBatchVerifier, ISP1Verifier
   build/registries/         ClauseRegistry, AssemblyRegistry
   build/rewards/            UsageCounter, RpgfMinter
