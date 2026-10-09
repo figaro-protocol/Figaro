@@ -29,7 +29,7 @@ export default function Security() {
 
             <MarketingSection title="External audit" sectionId="audit">
                 <p className="text-base text-ink-body leading-relaxed">
-                    Audit in progress. The Solidity surface is frozen for it (amendments scoped to the freeze), and the results will be published on this page when they exist &mdash; findings, remediations, and the auditor&apos;s report, not a summary of them.
+                    Not audited. Use as-is. Where the external audit stands is stated once, in <a href="https://github.com/figaro-protocol/Figaro/blob/main/SECURITY.md#audit-status" className="text-ink-heading font-medium hover:underline">SECURITY.md</a>; the security work meanwhile is the project&apos;s own, at every layer of the stack. Results will be published on this page when they exist &mdash; findings, remediations, and the auditor&apos;s report, not a summary of them.
                 </p>
             </MarketingSection>
 

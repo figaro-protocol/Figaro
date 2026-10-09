@@ -38,7 +38,7 @@ content. (This is the instruction-system form of "derive, don't store.")
 | The DAO — what it is for, how it spends, who holds the treasury | `DAO.md` |
 | Batch-scaling design (BUILT — witness prover/verifier/sequencer beside the direct path) | `SCALING_STRATEGY.md` |
 | Open release tasks (testnet + mainnet) | `RELEASE_READINESS.md` |
-| External-audit handover (scope in both languages, the audit commit, validation gate, accepted risks) | `AUDITOR_HANDOVER.md` |
+| External-audit handover (scope in both languages, the baseline commit, validation gate, accepted risks) | `AUDITOR_HANDOVER.md` |
 | Why the flow-map gets built under a uniform reward, and what the stake does and does not do | `DATA_LAYER.md` |
 | Comparative-substrates analysis (firm/platform/court/bond as institutional axes: fiscal legibility, monetary neutrality, transparency-verifiability-privacy conjunction, discriminating alignment) | `/papers/coordination-substrates` (`frontend/app/(marketing)/papers/coordination-substrates/page.tsx`) |
 | Designer-reward contract surfaces (UsageCounter, RpgfMinter) | `CONTRACTS.md` |
@@ -77,8 +77,8 @@ list, the contract catalog with its inheritance/install/deployments/errors, and
 the verification stack with its counts all move to docs-site. Each marketing door
 keeps one screen — what a clause is, what an assembly is, how the code is secured
 — and links to docs-site for the rest. `/security` stays a one-screen marketing
-page at its predictable URL (status, brief, disclosure channel, "Audit in
-progress"), detail on docs-site. `/registries` and the other live-chain readers
+page at its predictable URL (status, brief, disclosure channel, the audit
+posture), detail on docs-site. `/registries` and the other live-chain readers
 are app pages. sdk/README stays the SDK manual, rendered into docs-site.
 
 ## Layer ownership — the instruction system
@@ -108,5 +108,5 @@ Each layer owns one thing; every other layer states it as a summary plus a point
 - **Composition and disclosure**: `DATA_LAYER.md` (the emissions clause + witness-stage disclosure channel is owned by `CLAUSES.md`, which also carries the two load-bearing disclosure rulings: reader-derived scope, offsets out of scope)
 - **Scaling**: `SCALING_STRATEGY.md` (carries the batch-sequencer architecture + sequencer trust model)
 - **Status and readiness**: `RELEASE_READINESS.md` (the open release tasks, TODO only — closed work is deleted; git is the log)
-- **Audit / verification**: `AUDITOR_HANDOVER.md` (scope in both languages, the audit commit, change policy, validation gate, accepted risks), `DESIGN_DECISIONS.md`, `VERIFICATION_MAP.md`
+- **Audit / verification**: `AUDITOR_HANDOVER.md` (scope in both languages, the baseline commit, change policy, validation gate, accepted risks), `DESIGN_DECISIONS.md`, `VERIFICATION_MAP.md`
 - **Research**: the paper corpus (the project's lineage is stated in the asymmetric-bonding paper's acknowledgment; naming in `FLORIN_TOKEN.md` § "Name")

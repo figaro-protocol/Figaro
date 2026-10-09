@@ -3,9 +3,9 @@
 Status: the open work between here and the public releases — the testnet line
 (live, rehearsing mainnet) and the Ethereum mainnet release. TODO tasks only:
 closed work is deleted in the session that closes it, and `git log` is the history.
-The audit handover — the scope in both languages, the audit commit, the change
+The audit handover — the scope in both languages, the baseline commit, the change
 policy, the validation gate, accepted risks — is `docs/AUDITOR_HANDOVER.md`, kept
-current with its tag for the day an external audit is affordable.
+current for the day an external audit is engaged.
 
 ## Deployment Targets
 
@@ -29,8 +29,8 @@ Task numbers are stable; missing numbers are closed tasks — `git log` has each
 ### Task 2: Pass The In-House Security Program Over The Audit Scope
 
 Three audit firms were approached and none is affordable at present, so the
-security work is the project's own, at every layer, with the handover and the
-audit tag kept current for the day an external audit is.
+security work is the project's own, at every layer, with the handover kept
+current for the day an external audit is engaged.
 
 1. every layer named with its tooling and its evidence — the Solidity (Foundry
    invariants, Halmos, Certora, Echidna, Slither, Semgrep, mutation), the Rust
@@ -197,12 +197,12 @@ Deploy-time checks to run against the mainnet deployment before it is treated as
 live. These are separate from the external-audit gate above. The ones the chain
 can answer are stated ahead in `deployments/1.expected.json` and read by
 `scripts/check-deployment.mjs` (run with `--artifacts` from a
-`forge build --via-ir` at the audit tag): it must report nothing that does not
+`forge build --via-ir` at the release commit): it must report nothing that does not
 hold before the record is published. Its `null`s — the deposits (Task 3), the
 cooldown, the wallets — are the decisions still owed. The broadcast itself runs
-from a clean checkout of the audit tag, so the wrapper compiles the audited
-tree; the check, at the same tag, is what binds the result to the audit (the
-code, the guest key, the gateway). The list below is the procedure around it:
+from a clean checkout of the release commit, so the wrapper compiles the tree
+the handover's baseline names; the check, at the same commit, is what binds the
+result to it (the code, the guest key, the gateway). The list below is the procedure around it:
 
 - Verify the `--rpc-url` target by hand immediately before every `--broadcast`.
   The Sepolia and mainnet wrappers read the chain id back and refuse any other

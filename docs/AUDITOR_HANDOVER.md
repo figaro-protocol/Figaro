@@ -1,7 +1,7 @@
 # External Audit Handover
 
-The handover package for the external audit: what is in scope, what is trusted,
-what is out of scope, the commit under audit and how to verify it, what the
+The handover package for an external audit: what is in scope, what is trusted,
+what is out of scope, the baseline commit and how to verify it, what the
 maintainer wants from the review, which behaviors are intentional, what the
 project's own verification found, and the gate the audited tree passes.
 
@@ -9,7 +9,7 @@ project's own verification found, and the gate the audited tree passes.
 
 | | |
 |---|---|
-| Commit under audit | the tag `audit-2026-10b` (§ "The audit commit") |
+| Baseline commit | `a4a34e91` (§ "The baseline commit"); the audit is suspended and no tag stands |
 | Languages in scope | Solidity (`src/`, three deploy scripts) and Rust (`prover/`, four crates) |
 | Solidity in scope | 14 contract files, 3,184 lines; 3 deploy scripts, 852 lines |
 | Rust in scope | 4 crates, 20 files, 7,394 lines under `src/` |
@@ -23,8 +23,8 @@ Lines are physical lines, comments and NatSpec included.
 
 ## Scope
 
-Scope and the audit commit are two separate statements. This section says what the audit
-reviews. § "The audit commit" says at which commit. A component is in scope
+Scope and the baseline commit are two separate statements. This section says what the audit
+reviews. § "The baseline commit" says at which commit. A component is in scope
 because this section lists it, and for no other reason.
 
 The audit covers two languages: the Solidity contracts in `src/`, and the Rust
@@ -161,31 +161,34 @@ came from the program with that key. The other external dependencies are in
   scripts; the mainnet surface is `DeployMainnet.s.sol`'s
 - `frontend/`, `sdk/` — reviewed separately (§ "Frontend + SDK audit posture")
 
-## The audit commit
+## The baseline commit
 
-**The commit under audit is the tag `audit-2026-10b`.** One commit covers the
-whole scope, Solidity and Rust together.
+**Every figure in this document was measured at commit `a4a34e91`**, the
+baseline, which covers the whole scope, Solidity and Rust together. The
+external audit is suspended (no firm is affordable), so no tag names a commit
+under audit; when an audit is engaged, a tag is placed at the commit it
+reviews and this section names it.
 
 ```bash
-git rev-parse 'audit-2026-10b^{commit}'
+git show --no-patch a4a34e91
 ```
 
-The tag is kept current: a change to the scope's code is followed, at the
-verified commit, by a new tag and this section's update; comments and NatSpec
-change in place and § "Comment-only changes after the tag" lists each one. This
-tag contains all eight changes below.
+This document is kept current: a change to the scope's code is followed, at the
+verified commit, by this section's update, the baseline moved to that commit
+and the line counts and evidence that changed re-measured; comments and NatSpec
+change in place and § "Comment-only changes after the baseline" lists each one.
+The baseline contains all eight changes below.
 
 ### Changes after the previous baseline
 
-Eight changes were made to the relay (`prover/sequencer/`) after
-`audit-2026-10`, on the maintainer's override, each closing a defect the
-project's own review found; `audit-2026-10b` contains them all, so the scope
-at this tag carries no post-tag change. None touches a contract, a guest
+Eight changes were made to the relay (`prover/sequencer/`) after the previous
+baseline of 2026-09-29 (`2d9a2c55`), on the maintainer's override, each closing
+a defect the project's own review found; `a4a34e91` contains them all. None touches a contract, a guest
 crate, a `Cargo.toml` or the lock, so the guest's bytes and the verification
-key are unchanged across the two tags. This prints them all:
+key are unchanged across the two baselines. This prints them all:
 
 ```bash
-git diff audit-2026-10 audit-2026-10b -- prover/sequencer/
+git diff 2d9a2c55 a4a34e91 -- prover/sequencer/
 ```
 
 | Change | The defect it closes | Where | Held by |
@@ -194,7 +197,7 @@ git diff audit-2026-10 audit-2026-10b -- prover/sequencer/
 | The relay keeps the state behind the verifier's root on disk and builds on no other | The state lived in memory, every start began from genesis, and a root that differed from the verifier's was a warning. After one landed batch a restarted relay proved batches that could only revert, and the state every open batch-path process needs for its resolve ended with the process. The state a batch produces is written before the batch is sent and held for as long as the batch can land (a refused batch's proof is public, and anyone can send it again while the verifier's root is its previous root); the relay reads `stateRoot()` at startup and before every batch, adopts a held state whose root it is, refuses to start when it reads the root and holds no state for it, and builds nothing while it holds none. A batch that landed without the relay reading its receipt is published under the transaction its `BatchSettled` log names. | `prover/sequencer/src/state.rs` (`StateStore`, `held_state_for`), `prover/sequencer/src/main.rs` (`step_to`, `adopt`, the batch loop), `prover/sequencer/src/submitter.rs` (`find_settle_tx`) | the `state_store_*` and `held_state_for_*` tests in `prover/sequencer/tests/sequencer.rs`; `sdk/tests/batch-e2e.test.ts` restarts the relay between its two batches and starts a relay holding no state, which must exit 2 |
 | The relay publishes its state (`GET /state`) | With the state on one relay's disk only, losing that disk left every open batch-path process with no one who could build its resolve. A party or a second relay now fetches the state into a new file and, once its `x-figaro-state-root` header is the verifier's `stateRoot`, starts on it as its `STATE_PATH`; the root is recomputed and checked against the verifier's, so a copy is checked, never trusted. The recipe never writes a served state over a state file unchecked: `formal/RelayState.tla` (`TakeoverChecksRoot`) shows a stale served state overwriting the only copy. | `prover/sequencer/src/api.rs` (`get_state`) | `api_state_route_serves_the_state_another_relay_starts_on`; `sdk/tests/batch-e2e.test.ts` starts a second relay on the first relay's `/state` and reads the verifier's root from it |
 | `MAX_BATCH_OPS` is applied | It was read and logged, never applied: a batch took the whole queue (up to 10,000 operations), past what one block holds and one proof finishes. A batch now takes at most `MAX_BATCH_OPS` operations, oldest first. | `prover/sequencer/src/mempool.rs` (`drain_up_to`), the batch loop | `mempool_drains_at_most_the_batch_cap_and_keeps_the_rest_queued` |
-| The batch's clock is the chain's | The batch timestamp was the host's clock. A host clock ahead of the chain made the verifier refuse every batch (`BatchTimestampOutOfRange`). It is now the latest block's timestamp, read before anything is drained. The verifier itself still accepts a timestamp up to `MAX_BATCH_STALENESS` (one hour) behind its block from any prover, so a commitment up to an hour past its deadline can be bonded on the batch path that the kernel would refuse; both parties signed it, and the verifier is as tagged (accepted risk 4). | `prover/sequencer/src/submitter.rs` (`read_chain_timestamp`), the batch loop | `sdk/tests/batch-e2e.test.ts` (the relay proves against the chain's clock on Anvil) |
+| The batch's clock is the chain's | The batch timestamp was the host's clock. A host clock ahead of the chain made the verifier refuse every batch (`BatchTimestampOutOfRange`). It is now the latest block's timestamp, read before anything is drained. The verifier itself still accepts a timestamp up to `MAX_BATCH_STALENESS` (one hour) behind its block from any prover, so a commitment up to an hour past its deadline can be bonded on the batch path that the kernel would refuse; both parties signed it, and the verifier is as at the baseline (accepted risk 4). | `prover/sequencer/src/submitter.rs` (`read_chain_timestamp`), the batch loop | `sdk/tests/batch-e2e.test.ts` (the relay proves against the chain's clock on Anvil) |
 | Funding is allocated per wallet | Each commit was checked against its wallet's balance alone, so several commits from one wallet each passed and `settleBatch` reverted when it pulled their sum, dead-lettering every operation in the batch after minutes of proving. A wallet's balance and allowance are now read once and allocated across the batch's commits in order. | `prover/sequencer/src/submitter.rs` (`allocate_funding`, `filter_funded_commits`) | `funding_is_allocated_across_a_wallets_commits_in_order` |
 | An attestation's witness spec is checked against the registry before proving | The relay checked that the spec parsed; the verifier checks that its hash is `ClauseRegistry.contentHashOf` for the clause and reverts the whole batch otherwise. Anyone could copy a landed attestation with one byte of the spec changed and sink every batch at no cost. The relay now reads the anchor from the verifier's own registry and drops such an attestation alone. | `prover/sequencer/src/submitter.rs` (`attestation_spec`, `filter_anchored_attestations`) | `the_spec_an_attestation_carries_is_what_the_registry_check_reads`; the batch end-to-end test's attestation passes the check against the live registry |
 | The binary's own log lines are on by default | The relay's default log filter named the library's target (`figaro_sequencer`) and not the binary's (`sequencer`), so startup, every refusal to start (the signing key, the guest fingerprint) and every batch-loop line (a batch landed, an operation dropped or dead-lettered) were filtered out unless `RUST_LOG` named both: a relay that refused to start exited 2 and said nothing. | `prover/sequencer/src/main.rs` (the default filter) | `sdk/tests/batch-e2e.test.ts` reads the refusal line of the relay that holds no state |
@@ -204,22 +207,22 @@ All eight are liveness or operability defects of the relay: none let a batch
 move value the parties did not sign, and the proof and the verifier are as
 tagged. Known limitation 7 states what the state changes leave standing.
 
-### Comment-only changes after the tag
+### Comment-only changes after the baseline
 
 | File | The comment now says | Why it changed |
 |---|---|---|
 | `src/core/attestation/AttestationCoordinator.sol:160-164` (`attestViaResolver`) | the section is seller-authorized attestations; the seller, an ECDSA EOA, answers `isAuthorized` only through EIP-7702 code it installed on itself, and what that code authorizes is the seller's own act, as a buyer's delegation is its own (`DESIGN_DECISIONS.md` #5) | it named the seller a "mechanism contract", which `FigaroCore`'s ECDSA-only parties cannot be |
 | `src/core/attestation/IRoleResolver.sol:6-10` | the interface is the authorization a seller address grants for attestations on its orders; no contract in the repository implements it | it said mechanism contracts implement it |
 
-The code of both files, stripped of comments, is byte-identical to the tag
-(`git diff audit-2026-10b -- src/core/attestation/` shows it), and the line counts
+The code of both files, stripped of comments, is byte-identical to the baseline
+(`git diff a4a34e91 -- src/core/attestation/` shows it), and the line counts
 are unchanged, so every `file:line` citation of them stands. NatSpec enters the
 compiler's metadata (`foundry.toml` sets no `bytecode_hash`), so a build at a
 later commit carries a different metadata hash in its bytecode suffix than a
-build at the tag; the review builds at the tag.
+build at the baseline; a review builds at the baseline.
 
 ```bash
-git diff audit-2026-10b -- src/core/attestation/
+git diff a4a34e91 -- src/core/attestation/
 ```
 
 ### The kernel
@@ -227,13 +230,13 @@ git diff audit-2026-10b -- src/core/attestation/
 The kernel — `FigaroCore.sol` and `CommitmentTypes.sol` — last changed in
 CODE at `c7f85d0d` (2026-08-12). Since then the two files moved directory
 and comment lines moved in place; their code is byte-identical to the
-standing tag. The rename prints as two
+baseline. The rename prints as two
 renames and `0 insertions(+), 0 deletions(-)`, and the later diff is
 comment-only:
 
 ```bash
-git diff -M --stat c7f85d0d audit-2026-10 -- src/kernel/ src/core/kernel/
-git diff audit-2026-10 audit-2026-10b -- src/core/kernel/
+git diff -M --stat c7f85d0d 2d9a2c55 -- src/kernel/ src/core/kernel/
+git diff 2d9a2c55 a4a34e91 -- src/core/kernel/
 ```
 
 ### Toolchains
@@ -263,7 +266,7 @@ new key, and a new key is a new verifier at a new address.
 
 The guest is built inside SP1's build image, by
 `scripts/prover-box/build-guest.sh`; the release is read from
-`prover/Cargo.lock`. Built twice on one host from the audit commit: the same
+`prover/Cargo.lock`. Built twice on one host from the baseline commit: the same
 bytes and the same key. The ELF does not reproduce across operating systems,
 so the image's build is the one that counts. The relay derives the key from
 the guest it embeds (`sequencer --vkey`) and refuses to start when the deployed
@@ -275,7 +278,7 @@ Nothing is deployed on mainnet.
 
 Sepolia carries a full stack, recorded in `deployments/11155111.json`. Its
 batch verifier and usage counter are an earlier commit's: the verifier there
-pins the key of an earlier guest and predates two checks the audit commit
+pins the key of an earlier guest and predates two checks the baseline commit
 carries (the batch's clock, the public-values length). A Sepolia redeploy of
 the batch path is the verifier and the usage counter together, since each
 holds the other's address as an immutable. `RpgfMinter` on Sepolia stays bound
@@ -296,8 +299,8 @@ A change to a path in scope, Solidity or Rust, is:
    and the break is invisible until the gate runs
 5. For a change to the guest: followed by a rebuilt guest, a re-derived key,
    and a verifier deployed with it
-6. Followed, in the same sitting, by a new audit tag at the verified commit and
-   this document's § "The audit commit", line counts and evidence updated
+6. Followed, in the same sitting, by this document's § "The baseline commit",
+   line counts and evidence updated at the verified commit
 
 Changes to `test/`, `frontend/`, or `sdk/` do not require re-audit unless they
 expose a new on-chain attack surface.
@@ -369,7 +372,7 @@ direct path would have refused.
 Between the first handover and this one the project built three differential
 fuzz streams, ran mutation testing over the Rust, and rehearsed a real proof.
 They found nine defects. None moved value wrongly; eight of the nine were two
-implementations of one rule disagreeing. All are fixed at the audit commit,
+implementations of one rule disagreeing. All are fixed at the baseline commit,
 each with the test that found it. They are listed because they show where this
 codebase breaks: at the seams.
 
@@ -560,7 +563,7 @@ Stated so the review does not spend hours finding them.
    does not aggregate them — can burn a co-batched operation's cap. The
    direct path stays open to a new process throughout.
 4. **The full devnet end-to-end suite runs by hand.** CI runs its spine. Run
-   once on a fresh devnet at `audit-2026-10`: 55 specs, 52 passed at the
+   once on a fresh devnet at the previous baseline (`2d9a2c55`): 55 specs, 52 passed at the
    first attempt, 3 passed at the second — a three-seller chain's accept and
    the two swap-funded on-ramps, whose first attempt on a fresh chain
    revert `ERC20InsufficientAllowance` before the allowance the page has
@@ -575,9 +578,9 @@ Stated so the review does not spend hours finding them.
    `settleBatch` receipts accumulate (three stand so far).
 6. **The incident procedure's redeploy leg is rehearsed on Sepolia; the full
    procedure is not.** The counter↔verifier pair was redeployed on live
-   Sepolia from a clean worktree at `audit-2026-10b` — fork rehearsal first,
+   Sepolia from a clean worktree at `a4a34e91` — fork rehearsal first,
    then the broadcast, the record update, and the deployment check with
-   via-IR artifacts at the tag. The run also exercised the procedure's
+   via-IR artifacts at that commit. The run also exercised the procedure's
    worth: the chain's post-fork gas repricing (~6.8× on these deploys)
    out-of-gassed the first two attempts at forge's default estimate, and
    the broadcast landed with the estimator multiplied past it. The
@@ -602,7 +605,7 @@ Current runtime posture decisions, not release blockers:
 
 ## Verification evidence
 
-Everything in this section was measured at the audit commit, on 2026-09-29,
+Everything in this section was measured at the baseline commit, on 2026-09-29,
 unless a line says otherwise. Which invariant each layer carries is
 `VERIFICATION_MAP.md`; the inventory of tests is `TESTING.md`.
 
@@ -615,7 +618,7 @@ unless a line says otherwise. Which invariant each layer carries is
 | Halmos | 32 of 32 properties proved |
 | Certora | 6 of 6 specs, every rule verified |
 | Echidna | every property held on both harnesses |
-| TLA+ | 4 models, 48 invariants, no error; `FigaroCore` explored 8,380,329 states. Added after the tag: `RelayState` (the relay's state lifecycle, 7 invariants + 1 action property), no error over 27,535 distinct states, each of its four defect switches caught |
+| TLA+ | 4 models, 48 invariants, no error; `FigaroCore` explored 8,380,329 states. Added after the previous baseline: `RelayState` (the relay's state lifecycle, 7 invariants + 1 action property), no error over 27,535 distinct states, each of its four defect switches caught |
 | Rust (`cargo test`, five crates) | 195 passed, 0 failed; 2 ignored by design, run by the fuzz script |
 | Differential fuzz | 4 rounds, no divergence: 1,600 kernel operations, 256 agreements, about 22,000 clause cases |
 | SDK (Vitest) | 813 passed; frontend (Vitest) 873 passed |
@@ -632,7 +635,7 @@ Certora reports:
 | FlorinToken | https://prover.certora.com/output/9512759/7e9a532568dd4249b99397a564fe8c4e |
 | BatchVerifierTokenOps | https://prover.certora.com/output/9512759/79f9b51977c74a9db3e38d479bd69692 |
 | RpgfMinter | https://prover.certora.com/output/9512759/cfdf957d26fd4b2393c8576d2c5ec372 |
-| BatchVerifierStateRoot (added after the tag, run 2026-10-05 against the verifier as tagged; the spec reads the contract through `certora/harness/FigaroBatchVerifierHarness.sol`, which adds only a decoding view; each rule mutation-checked, failing on its own mutation: https://prover.certora.com/output/9512759/9fb2a938b04847b8b44c83fee498631a) | https://prover.certora.com/output/9512759/69781170fd464b3596575f725896b9c0 |
+| BatchVerifierStateRoot (added after the previous baseline, run 2026-10-05 against the verifier as at the baseline; the spec reads the contract through `certora/harness/FigaroBatchVerifierHarness.sol`, which adds only a decoding view; each rule mutation-checked, failing on its own mutation: https://prover.certora.com/output/9512759/9fb2a938b04847b8b44c83fee498631a) | https://prover.certora.com/output/9512759/69781170fd464b3596575f725896b9c0 |
 
 ### Test coverage, Solidity
 
@@ -660,7 +663,7 @@ Trail of Bits' `mewt` 4.0.0, high and medium severity mutations (statement
 removal, error replacement, condition forcing, negation removal,
 return-default), each contract against the test files that cover it, the
 gas-anchor tests excluded so a catch means behaviour. One run, one database,
-at the audit commit:
+at the baseline commit:
 
 | Contract | Mutants | Caught | Survived |
 |---|---|---|---|
@@ -763,7 +766,7 @@ reaches the relay through `alloy-provider` and `sp1-prover`; neither it nor
 
 ### The real-proof rehearsal
 
-One batch lifecycle on a fork of Sepolia, run from the audit commit's guest and
+One batch lifecycle on a fork of Sepolia, run from the baseline commit's guest and
 relay: a fresh `UsageCounter` and `FigaroBatchVerifier` deployed on the fork
 with the key above, bound to Succinct's live Groth16 gateway; two Groth16
 proofs made on a 16-core host, about six minutes each; both accepted. Read
@@ -783,7 +786,7 @@ shape, answered from the tree. Each answer names its evidence.
 |---|---|---|---|
 | 1 | Actors, roles, and privileges documented | Yes | The kernel has no privileged role. The two that exist above it, the florin deployer until `renounceDeployerMint` and `FigaroBatchVerifier` as `UsageCounter`'s sole writer, are in `CONTRACTS.md`. |
 | 2 | External services, contracts, and oracles documented | Yes | § "Actors, privileges, and external dependencies" above: one table, with where each is bound and what it is trusted for. There is no oracle. |
-| 3 | Written and tested incident-response plan | Written; the redeploy leg rehearsed on Sepolia | `SECURITY.md` § "Incident response": nothing can be paused or upgraded, so the procedure is disclosure, advisory, redeployment at a new address, and propagation of the deployment file. The redeploy leg ran once on live Sepolia (the counter↔verifier pair, from a worktree at the audit tag, checked against the chain with tag artifacts — Known limitation 6); disclosure and advisory stay unrehearsed. |
+| 3 | Written and tested incident-response plan | Written; the redeploy leg rehearsed on Sepolia | `SECURITY.md` § "Incident response": nothing can be paused or upgraded, so the procedure is disclosure, advisory, redeployment at a new address, and propagation of the deployment file. The redeploy leg ran once on live Sepolia (the counter↔verifier pair, from a worktree at the baseline commit, checked against the chain with artifacts built there — Known limitation 6); disclosure and advisory stay unrehearsed. |
 | 4 | Best attack paths documented | Yes | `DESIGN_DECISIONS.md`, the public manual's sharp-edges page, § "Behaviors to surface" above. |
 | 5 | Identity verification and background checks on employees | Not applicable | One maintainer. |
 | 6 | A team member with security in their role | Yes | The maintainer. |

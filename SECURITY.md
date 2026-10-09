@@ -65,10 +65,12 @@ design disagreement, not a vulnerability; the doc explains the reasoning.
 
 ## Audit status
 
-Audit in progress: the commit under audit is the tag `audit-2026-10b` — the
-Solidity in `src/` and the Rust in `prover/` together — and it is being placed
-with an independent security firm (`docs/AUDITOR_HANDOVER.md` is the
-handover); findings and remediations are published when they exist. The
+Not audited. The external audit is suspended: three firms were approached and
+none is affordable. The security work is the project's own, at every layer of
+the stack (`docs/RELEASE_READINESS.md` Task 2), and `docs/AUDITOR_HANDOVER.md`
+is kept current, baseline `a4a34e91` — the Solidity in `src/` and the Rust in
+`prover/` together — for the day an audit is engaged; findings and remediations
+are published when they exist. The
 surface is verified internally across Foundry, Halmos, Certora, TLA+, Echidna
 and Lean 4, and the Rust against the Solidity by differential fuzz
 (`docs/VERIFICATION_MAP.md`, `docs/TESTING.md`). Each contract's

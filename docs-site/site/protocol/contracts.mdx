@@ -302,4 +302,4 @@ const addresses = addressesFromDeploymentRecord(record);   // never { ...record 
 
 Two keys are renamed (`figaroCore → core`, `tokenAddress → token`), five carry no SDK field (`florinToken`, `swapQuoter`, `permitTokenAddress`, `chainId`, `deploymentBlock`), and every other address key passes through under its own name. Only a missing `figaroCore` throws; every unknown key is ignored, never an error. Start every `getLogs` scan at the record's `deploymentBlock` — there are no getters to fall back on, so the event log is the read path, and scanning from block `0` on a public network is a great deal of range for nothing.
 
-Every contract in the audit scope is frozen while the audit tag stands; the scope and how to verify the freeze are in [`docs/AUDITOR_HANDOVER.md`](https://github.com/figaro-protocol/Figaro/blob/main/docs/AUDITOR_HANDOVER.md).
+The audit scope, its baseline commit and the change policy for a change inside it are in [`docs/AUDITOR_HANDOVER.md`](https://github.com/figaro-protocol/Figaro/blob/main/docs/AUDITOR_HANDOVER.md).

@@ -23,7 +23,7 @@
 // Checked, whatever the expectations: the RPC's chain is the record's; every
 // record address holds code; every contract-to-contract link the deploy wires
 // reads back as the record's addresses. With --artifacts <dir> (a build with
-// the deploy's settings: `forge build --via-ir`, at the audit tag for
+// the deploy's settings: `forge build --via-ir`, at the release commit for
 // mainnet), every contract's code must equal its compiled code, immutables
 // masked.
 //
@@ -205,7 +205,7 @@ async function main() {
             ok(`${key} holds code`);
         }
     }
-    if (!artifactsDir) bad("compiled code", "not compared — pass --artifacts <dir> (forge build --via-ir; at the audit tag for mainnet)");
+    if (!artifactsDir) bad("compiled code", "not compared — pass --artifacts <dir> (forge build --via-ir; at the release commit for mainnet)");
 
     console.log("\nThe links the deploy wires");
     const links = [
