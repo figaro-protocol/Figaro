@@ -29,7 +29,7 @@ import {
     marketShapeAnswer, walletRecordAnswer,
 } from "../analyst.mjs";
 import {
-    allowOrigins, analystTools, crosscheckRpcUrls, makeAnalystHandler, modelConfig, runPrompt,
+    corsOrigins, analystTools, crosscheckRpcUrls, makeAnalystHandler, modelConfig, runPrompt,
 } from "../figaro-analyst.mjs";
 
 // ── A fixture corpus ────────────────────────────────────────────────────────
@@ -452,7 +452,7 @@ test("the deterministic routes answer with their truth boundaries", async () => 
 
 test("the wire grants CORS only to the origins its host names — never the wildcard", async () => {
     const EXPLORER = "https://explorer.example";
-    const { base, close } = await serve(fixtureCorpus(), { enabled: false, reason: "test" }, { allowOrigins: [EXPLORER] });
+    const { base, close } = await serve(fixtureCorpus(), { enabled: false, reason: "test" }, { corsOrigins: [EXPLORER] });
     try {
         // A named origin reads, success and error alike.
         const status = await fetch(`${base}/status`, { headers: { origin: EXPLORER } });
@@ -477,8 +477,8 @@ test("the wire grants CORS only to the origins its host names — never the wild
         assert.equal(strangerPreflight.headers.get("access-control-allow-methods"), null);
     } finally { await close(); }
     // No origin is granted unless named.
-    assert.deepEqual(allowOrigins({}), []);
-    assert.deepEqual(allowOrigins({ FIGARO_ANALYST_ALLOW_ORIGINS: " https://a.example/ ,https://b.example" }), ["https://a.example", "https://b.example"]);
+    assert.deepEqual(corsOrigins({}), []);
+    assert.deepEqual(corsOrigins({ FIGARO_ANALYST_CORS_ORIGINS: " https://a.example/ ,https://b.example" }), ["https://a.example", "https://b.example"]);
 });
 
 test("/prompt and market-shape answer only the bearer of this run's token; /prompt runs are capped", async () => {

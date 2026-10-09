@@ -134,11 +134,10 @@ function TimelineEventCard({ event, index }: { event: TimelineEvent; index: numb
 function SummaryBar({ timeline }: { timeline: ProcessTimeline }) {
     const s = timeline.summary;
     return (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-6">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-6">
             {[
                 { label: "Orders", value: s.orderCount },
                 { label: "Resolved", value: s.resolvedCount },
-                { label: "Canceled", value: s.canceledCount },
                 { label: "Total Payment", value: s.totalPayment },
             ].map(({ label, value }) => (
                 <div key={label} className="bg-subtle rounded-lg p-2 text-center">

@@ -64,7 +64,6 @@ export interface ProcessTimeline {
     summary: {
         orderCount: number;
         resolvedCount: number;
-        canceledCount: number;
         totalPayment: string;
         totalSellerPayout: string;
         totalBuyerPayout: string;
@@ -124,7 +123,6 @@ export async function buildProcessTimeline(
     // Summary accumulators
     let orderCount = 0;
     let resolvedCount = 0;
-    let canceledCount = 0;
     let totalPayment = 0n;
     let totalSellerPayout = 0n;
     let totalBuyerPayout = 0n;
@@ -276,7 +274,6 @@ export async function buildProcessTimeline(
         summary: {
             orderCount,
             resolvedCount,
-            canceledCount,
             totalPayment: weiToDecimal(totalPayment),
             totalSellerPayout: weiToDecimal(totalSellerPayout),
             totalBuyerPayout: weiToDecimal(totalBuyerPayout),

@@ -21,6 +21,10 @@
  *      the signer decrypts, any `*keystore*.json` under the home directory,
  *      and every --deny-read; --allow-read opens one default. The signing
  *      key itself never was in reach (the policy signer holds it).
+ *      The RPC endpoints stay outside too: a provider URL carries its key
+ *      in its path, so the launcher hands RPC_URL and every
+ *      FIGARO_ANALYST_CROSSCHECK_RPC_URLS entry to the proxy, and the agent
+ *      reads each as one of the proxy's relay paths (egress-proxy.mjs).
  *
  * macOS: sandbox-exec with sandbox-macos.sb. Linux: run the same launcher
  * inside a container with equivalent mounts — the README's variant; this
@@ -33,7 +37,7 @@ import * as os from "node:os";
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
 import { resolveSignerPaths, validatePolicy } from "@figaro-protocol/sdk/signer";
-import { startEgressProxy } from "./egress-proxy.mjs";
+import { rpcRelayUrl, startEgressProxy } from "./egress-proxy.mjs";
 import { applyAllowReads, canonical, defaultDenyReads, renderProfile, scrubEnv } from "./sandboxProfile.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -124,14 +128,37 @@ for (const writable of [canonical(workspace), tmpDir, canonical("/tmp")]) {
 
 // ── Launch ─────────────────────────────────────────────────────────────────
 
-const proxy = await startEgressProxy({ policy, port: 0 });
+// The RPC endpoints are the proxy's, never the agent's: RPC_URL and the
+// comma-separated FIGARO_ANALYST_CROSSCHECK_RPC_URLS are taken out of the
+// environment here and handed to the proxy, which relays JSON-RPC to each;
+// the agent receives the relays' loopback addresses in their place. Every
+// endpoint's origin must be on the policy's egress allowlist.
+const { RPC_URL: rpcUrl, FIGARO_ANALYST_CROSSCHECK_RPC_URLS: crosscheckList, ...hostEnv } = process.env;
+const crosscheckUrls = (crosscheckList ?? "").split(",").map((u) => u.trim()).filter(Boolean);
+const rpcUpstreams = [...(rpcUrl ? [rpcUrl] : []), ...crosscheckUrls];
+let proxy;
+try {
+    proxy = await startEgressProxy({ policy, port: 0, rpcUpstreams });
+} catch (e) {
+    fail(e instanceof Error ? e.message : String(e));
+}
 console.error(`run-sandboxed: egress proxy on 127.0.0.1:${proxy.port} — allowed origins from ${policyPath}`);
+const relayed = {};
+if (rpcUrl) relayed.RPC_URL = rpcRelayUrl(proxy.port, 0);
+if (crosscheckUrls.length > 0) {
+    const first = rpcUrl ? 1 : 0;
+    relayed.FIGARO_ANALYST_CROSSCHECK_RPC_URLS = crosscheckUrls.map((_, i) => rpcRelayUrl(proxy.port, first + i)).join(",");
+}
+for (const [name, value] of Object.entries(relayed)) {
+    console.error(`run-sandboxed: ${name} stays outside the sandbox; the agent reads ${value}`);
+}
 
 // Environment: anything key-shaped is dropped — by name, or by a credential
 // inside a URL value (sandboxProfile.mjs § valueCarriesUrlCredential) — then
 // pointed at the proxy. NO_PROXY is emptied: the proxy's port is the only
 // loopback port open, so a bypass would only fail.
-const { env, scrubbed } = scrubEnv(process.env, {
+const { env, scrubbed } = scrubEnv(hostEnv, {
+    ...relayed,
     HTTP_PROXY: `http://127.0.0.1:${proxy.port}`,
     HTTPS_PROXY: `http://127.0.0.1:${proxy.port}`,
     NO_PROXY: "",

@@ -78,7 +78,11 @@ npx figaro-run-sandboxed --policy …/deployments/signer-policy.11155111.json \
 ```
 
 No signer socket: the analyst holds no key and signs nothing, so the policy's
-signing half is inert for it and the `egress` list is the half that binds. A
+signing half is inert for it and the `egress` list is the half that binds.
+`RPC_URL` (and each `FIGARO_ANALYST_CROSSCHECK_RPC_URLS` entry) may be a keyed
+provider URL: the launcher hands it to the egress proxy and the analyst reads
+the proxy's relay in its place, so the key never enters the sandbox; its
+origin must be on the policy's `egress` list. A
 purchase is a TRADE and goes through `figaro-operator` instead. Launched this
 way the analyst has no `POST /prompt`: the wrapper's scrub holds back
 `ANTHROPIC_API_KEY` with every other key-shaped variable, and `GET /status`
@@ -88,10 +92,10 @@ outside the wrapper with both variables set.
 `POST /prompt` and `GET /queries/market-shape` (attributed from the agreement
 bodies the wallet holds or bought) answer only `Authorization: Bearer <token>`.
 The analyst draws a fresh token at every start and writes it to
-`FIGARO_ANALYST_TOKEN_FILE` (default `analyst.token` in its working directory —
+`FIGARO_ANALYST_BEARER_FILE` (default `analyst.token` in its working directory —
 the workspace, under the wrapper), mode `0600`, naming the file on stderr and
 never printing the token. CORS reads are granted only to the origins in
-`FIGARO_ANALYST_ALLOW_ORIGINS` — none by default, never `*` — and
+`FIGARO_ANALYST_CORS_ORIGINS` — none by default, never `*` — and
 `FIGARO_ANALYST_MAX_PROMPTS` (default 1) caps the model loops in flight, `429`
 past it.
 
@@ -129,7 +133,14 @@ name (`KEY`, `SECRET`, `TOKEN`, `JWT`, `PASS`, `MNEMONIC`, `PRIVATE`, `AUTH`,
 with userinfo, a query parameter whose name matches that pattern, or a path
 segment shaped like a key (20 or more of `[A-Za-z0-9_-]`, holding a letter and
 a digit — `…/v2/<key>`). The launcher names what it held back on stderr, names
-only; a missed secret is a bug, so the rule is deliberately broad. The secret
+only; a missed secret is a bug, so the rule is deliberately broad. The RPC
+endpoints are the exception that still runs: `RPC_URL` and every
+`FIGARO_ANALYST_CROSSCHECK_RPC_URLS` entry are taken out of the environment
+before the scrub and handed to the egress proxy, which relays JSON-RPC POSTs on
+`http://127.0.0.1:<proxy port>/rpc/<n>` to the n-th endpoint; the agent
+receives those relay addresses under the same names. A provider key in the
+URL's path stays outside, and the launcher refuses an endpoint whose origin
+the policy's `egress` list does not name. The secret
 paths are unreadable BY DEFAULT: keystores (`~/.foundry/keystores`, the geth
 keystore directories, and any `*keystore*.json` under the home directory),
 credentials (`~/.ssh`, `~/.gnupg`, `~/.aws`, `~/.config/gh`, `~/.npmrc`, and
@@ -166,7 +177,8 @@ secret read, the default secret paths read through the launcher without being
 named, three `--deny-read` paths in one parent each read, a direct outbound
 connection, a loopback port other than the proxy's, an egress origin on the
 wrong port or scheme, key-shaped names and URL-embedded credentials in the
-environment, nine ways of changing the
+environment, a keyed RPC endpoint that stays outside while the analyst starts
+and syncs through the proxy's relay, nine ways of changing the
 signer's journal, audit log or socket (append, truncate, delete, replace,
 rewrite the audit log, delete the socket, move the directory, a hard link, a
 symlink), a signer directory the launcher must refuse, and a signal to an

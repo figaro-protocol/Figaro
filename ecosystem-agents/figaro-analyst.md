@@ -264,10 +264,10 @@ nothing but the five deterministic queries.
 **Two routes answer only the bearer of this run's token:** `POST /prompt` (it spends the
 host's model turns) and `GET /queries/market-shape` (it is attributed from the agreement
 bodies the wallet holds or bought). The analyst draws a fresh token at every start, writes it
-to `FIGARO_ANALYST_TOKEN_FILE` (default `analyst.token` in its working directory, mode
+to `FIGARO_ANALYST_BEARER_FILE` (default `analyst.token` in its working directory, mode
 `0600`), and names the file on stderr without printing the token; send it as
 `Authorization: Bearer <token>`. A browser page reads the wire only from an origin named in
-`FIGARO_ANALYST_ALLOW_ORIGINS` (comma-separated); no origin is granted by default, never
+`FIGARO_ANALYST_CORS_ORIGINS` (comma-separated); no origin is granted by default, never
 `*`. `FIGARO_ANALYST_MAX_PROMPTS` (default 1) caps the model loops in flight; past it, the
 answer is `429`.
 
@@ -286,7 +286,9 @@ npx figaro-run-sandboxed --policy …/deployments/signer-policy.11155111.json \
 ```
 
 The policy's **`egress` list is the half that binds a read-only analyst** — the RPC and the
-IPFS gateway, each matched by host and port. Its signing half
+IPFS gateway, each matched by host and port. A keyed provider URL in `RPC_URL` (or in
+`FIGARO_ANALYST_CROSSCHECK_RPC_URLS`) stays outside the sandbox: the wrapper's egress proxy
+holds it and the analyst reads the proxy's loopback relay in its place. Its signing half
 (contracts, selectors, ceilings) is inert here because this role emits no signature; leave
 it as the owner's file rather than forking a second one. Omit `IPFS_GATEWAY_URL` and the
 service syncs the resolution skeleton alone and says so in `GET /status` — a smaller honest

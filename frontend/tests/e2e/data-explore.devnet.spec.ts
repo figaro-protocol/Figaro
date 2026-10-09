@@ -708,8 +708,8 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
             IPFS_GATEWAY_URL: GATEWAY,
             IPFS_FALLBACK_GATEWAY_URL: GATEWAY,
             FIGARO_ANALYST_PORT: String(ANALYST_PORT),
-            FIGARO_ANALYST_TOKEN_FILE: tokenFile,
-            FIGARO_ANALYST_ALLOW_ORIGINS: siteOrigin,
+            FIGARO_ANALYST_BEARER_FILE: tokenFile,
+            FIGARO_ANALYST_CORS_ORIGINS: siteOrigin,
         };
         delete env.FIGARO_ANALYST_MAX_PROMPTS;
         delete env.ANTHROPIC_API_KEY;

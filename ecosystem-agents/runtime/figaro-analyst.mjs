@@ -19,23 +19,26 @@
  * answer: a resolved-empty corpus returns zeroes, never an error.
  *
  * [token] routes require `Authorization: Bearer <token>`, a token drawn fresh
- * at every start and written to FIGARO_ANALYST_TOKEN_FILE (default
+ * at every start and written to FIGARO_ANALYST_BEARER_FILE (default
  * `./analyst.token`, mode 0600 — under the sandbox wrapper, the workspace).
  * Market-shape is attributed from the agreement bodies this wallet HOLDS or
  * BOUGHT, and /prompt spends the host's model turns: neither answers a page
  * that merely knows the port. Cross-origin reads are granted only to the
- * origins in FIGARO_ANALYST_ALLOW_ORIGINS; no origin is granted by default.
+ * origins in FIGARO_ANALYST_CORS_ORIGINS; no origin is granted by default.
  *
  * Env:
- *   RPC_URL, DEPLOYMENT_RECORD           required
+ *   RPC_URL, DEPLOYMENT_RECORD           required; under the sandbox wrapper RPC_URL
+ *                                        is the egress proxy's relay, and the keyed
+ *                                        endpoint stays outside (egress-proxy.mjs)
  *   IPFS_GATEWAY_URL (+ _FALLBACK_)      substance recovery; absent = skeleton only
  *   FIGARO_AGREEMENTS_DIR                agreement bodies this operator HOLDS or BOUGHT
  *   FIGARO_ANALYST_FROM_BLOCK            scan start; defaults to the record's
  *                                        deploymentBlock. A narrower window is a
  *                                        SMALLER corpus, and /status says so.
  *   FIGARO_ANALYST_PORT                  default 8620
- *   FIGARO_ANALYST_TOKEN_FILE            where this run's bearer token is written
- *   FIGARO_ANALYST_ALLOW_ORIGINS         comma-separated origins granted CORS reads
+ *   FIGARO_ANALYST_BEARER_FILE           where this run's bearer token is written (a
+ *                                        path, named so the wrapper's scrub keeps it)
+ *   FIGARO_ANALYST_CORS_ORIGINS          comma-separated origins granted CORS reads
  *   FIGARO_ANALYST_MAX_PROMPTS           concurrent /prompt runs, default 1 (429 past it)
  *   FIGARO_ANALYST_RESYNC_SECS           default 0 (sync once at boot)
  *   FIGARO_ANALYST_CROSSCHECK_RPC_URLS   comma-separated EXTRA endpoints beside
@@ -44,6 +47,7 @@
  *                                        all endpoints and /status reports the
  *                                        agreement. Unset = no check, silently
  *                                        (one endpoint cannot corroborate).
+ *                                        Under the wrapper, relayed like RPC_URL.
  *   ANTHROPIC_API_KEY + ANTHROPIC_MODEL  BOTH required for /prompt to exist
  *   ANTHROPIC_API_URL                    default https://api.anthropic.com
  */
@@ -232,9 +236,9 @@ export async function runPrompt(question, tools, config, { maxTurns = 8, fetchIm
  *  a listed `Origin` and is absent for every other, so a page the host never
  *  named reads nothing. The bearer token, not CORS, is what keeps such a page
  *  from SPENDING (a text/plain POST needs no preflight). */
-function corsHeaders(req, allowOrigins) {
+function corsHeaders(req, corsOrigins) {
     const origin = req.headers.origin;
-    if (typeof origin !== "string" || !allowOrigins.includes(origin)) return { vary: "origin" };
+    if (typeof origin !== "string" || !corsOrigins.includes(origin)) return { vary: "origin" };
     return { "access-control-allow-origin": origin, vary: "origin" };
 }
 
@@ -265,8 +269,8 @@ export function newAnalystToken() {
 }
 
 /** The origins granted CORS reads: exact origins, comma-separated. */
-export function allowOrigins(env = process.env) {
-    return (env.FIGARO_ANALYST_ALLOW_ORIGINS ?? "")
+export function corsOrigins(env = process.env) {
+    return (env.FIGARO_ANALYST_CORS_ORIGINS ?? "")
         .split(",")
         .map((o) => o.trim().replace(/\/$/, ""))
         .filter(Boolean);
@@ -289,13 +293,13 @@ async function readBody(req, cap = 64 * 1024) {
  *
  * @param options.token         the bearer token the [token] routes require;
  *                              absent, a fresh one nobody holds (closed)
- * @param options.allowOrigins  origins granted CORS reads; default none
+ * @param options.corsOrigins   origins granted CORS reads; default none
  * @param options.maxPrompts    concurrent /prompt runs; past it, 429
  * @param options.runPromptImpl the model loop (tests stub the provider here)
  */
 export function makeAnalystHandler(getCorpus, config = modelConfig(), {
     token = newAnalystToken(),
-    allowOrigins: origins = [],
+    corsOrigins: origins = [],
     maxPrompts = 1,
     runPromptImpl = runPrompt,
 } = {}) {
@@ -459,13 +463,13 @@ async function main() {
     // The per-run bearer token: written to a file only its owner reads, and
     // named by path on stderr — never printed, so a captured log holds none.
     const token = newAnalystToken();
-    const tokenFile = path.resolve(process.env.FIGARO_ANALYST_TOKEN_FILE ?? "analyst.token");
+    const tokenFile = path.resolve(process.env.FIGARO_ANALYST_BEARER_FILE ?? "analyst.token");
     fs.writeFileSync(tokenFile, `${token}\n`, { mode: 0o600 });
     fs.chmodSync(tokenFile, 0o600);
-    const origins = allowOrigins();
+    const origins = corsOrigins();
     const maxPrompts = Math.max(1, Number(process.env.FIGARO_ANALYST_MAX_PROMPTS ?? 1) || 1);
 
-    const server = http.createServer(makeAnalystHandler(() => corpus, config, { token, allowOrigins: origins, maxPrompts }));
+    const server = http.createServer(makeAnalystHandler(() => corpus, config, { token, corsOrigins: origins, maxPrompts }));
     server.listen(port, "127.0.0.1", () => {
         console.error(`figaro-analyst: listening on 127.0.0.1:${port} — bearer token for /prompt and /queries/market-shape in ${tokenFile}; CORS reads granted to ${origins.length ? origins.join(", ") : "no origin"}`);
     });

@@ -433,7 +433,9 @@ histories, the cloud and git credential files; `--allow-read` opens one); the la
 scrubs anything key-shaped from the environment, URL-embedded credentials included;
 and because an OS sandbox cannot filter egress by hostname, a **policy-driven egress
 proxy started OUTSIDE the sandbox is the only way out**, forwarding solely to the
-policy's `egress` hosts. That is what makes the own-wallet-only / never-the-repo seam
+policy's `egress` hosts. The same proxy holds the agent's RPC endpoints: a provider URL
+carries its key in its path, so the launcher hands `RPC_URL` to the proxy, which relays
+JSON-RPC to it, and the agent reads the proxy's loopback relay under that name. That is what makes the own-wallet-only / never-the-repo seam
 a barrier rather than a promise.
 
 **The residuals, stated where they bind.** The Linux container variant is exercised in

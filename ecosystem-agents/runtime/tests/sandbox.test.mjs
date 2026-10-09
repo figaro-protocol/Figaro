@@ -14,7 +14,7 @@ import * as net from "node:net";
 import * as os from "node:os";
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
-import { allowedOrigins, originAllowed, startEgressProxy } from "../egress-proxy.mjs";
+import { egressOrigins, originAllowed, rpcRelayUrl, startEgressProxy } from "../egress-proxy.mjs";
 import {
     applyAllowReads, canonical, defaultDenyReads, renderProfile, scrubEnv, valueCarriesUrlCredential,
 } from "../sandboxProfile.mjs";
@@ -29,7 +29,7 @@ const POLICY = {
 // ── Egress proxy decisions ──────────────────────────────────────────────────
 
 test("the allowlist derives host, port and scheme from policy origins", () => {
-    const origins = allowedOrigins(POLICY);
+    const origins = egressOrigins(POLICY);
     assert.ok(originAllowed(origins, { host: "ipfs.io", port: 443 }));
     assert.ok(originAllowed(origins, { host: "ETHEREUM-SEPOLIA-RPC.PUBLICNODE.COM", port: 443 }));
     assert.ok(originAllowed(origins, { host: "127.0.0.1", port: 80, protocol: "http:" }));
@@ -42,7 +42,7 @@ test("the allowlist derives host, port and scheme from policy origins", () => {
     assert.ok(!originAllowed(origins, { host: "ipfs.io", port: 443, protocol: "http:" }));
     assert.ok(!originAllowed(origins, { host: "ipfs.io", port: 80, protocol: "http:" }));
     // An explicit port, and a bare host (TLS on 443 unless given).
-    const more = allowedOrigins({ egress: ["http://127.0.0.1:8545", "api.example", "grpc.example:5556"] });
+    const more = egressOrigins({ egress: ["http://127.0.0.1:8545", "api.example", "grpc.example:5556"] });
     assert.ok(originAllowed(more, { host: "127.0.0.1", port: 8545, protocol: "http:" }));
     assert.ok(originAllowed(more, { host: "api.example", port: 443 }));
     assert.ok(!originAllowed(more, { host: "api.example", port: 80 }));
@@ -110,6 +110,99 @@ test("absolute-URI forwarding refuses every scheme but http: cleanly, and checks
         await proxy.close();
         await new Promise((r) => echo.close(r));
     }
+});
+
+/** A JSON-RPC endpoint on loopback whose path carries a key, as a provider's
+ *  does: it answers only on the keyed path and keeps every path it saw. */
+const RPC_KEY = "AbCdEfGh1234567890ijklMN";
+async function keyedRpcStub() {
+    const seen = [];
+    const server = http.createServer((req, res) => {
+        let body = "";
+        req.on("data", (c) => (body += c));
+        req.on("end", () => {
+            seen.push(req.url);
+            if (req.url !== `/v3/${RPC_KEY}`) { res.writeHead(401).end(); return; }
+            const call = JSON.parse(body);
+            const answer = (one) => ({
+                jsonrpc: "2.0",
+                id: one.id,
+                ...({ eth_chainId: { result: "0xaa36a7" }, eth_blockNumber: { result: "0x1" }, eth_getLogs: { result: [] } }[one.method]
+                    ?? { error: { code: -32601, message: "method not found" } }),
+            });
+            const out = Array.isArray(call) ? call.map(answer) : answer(call);
+            res.writeHead(200, { "content-type": "application/json" }).end(JSON.stringify(out));
+        });
+    });
+    await new Promise((r) => server.listen(0, "127.0.0.1", r));
+    const origin = `http://127.0.0.1:${server.address().port}`;
+    return { seen, origin, keyedUrl: `${origin}/v3/${RPC_KEY}`, close: () => new Promise((r) => server.close(r)) };
+}
+
+/** The status a CONNECT through the proxy at `proxyPort` answers. */
+function connectStatus(proxyPort, host, port) {
+    return new Promise((resolve, reject) => {
+        const req = http.request({ host: "127.0.0.1", port: proxyPort, method: "CONNECT", path: `${host}:${port}` });
+        req.on("connect", (res, socket) => { socket.destroy(); resolve(res.statusCode); });
+        req.on("error", reject);
+        req.end();
+    });
+}
+
+test("the proxy relays JSON-RPC to the keyed endpoint it holds; the client never sees the key", async () => {
+    const stub = await keyedRpcStub();
+    const proxy = await startEgressProxy({
+        policy: { egress: [stub.origin], rpcUrl: "https://ipfs.io" }, port: 0, rpcUpstreams: [stub.keyedUrl],
+    });
+    const send = (path, method = "POST") => new Promise((resolve, reject) => {
+        const req = http.request({
+            host: "127.0.0.1", port: proxy.port, method, path, headers: { "content-type": "application/json" },
+        }, (res) => {
+            let body = "";
+            res.on("data", (c) => (body += c));
+            res.on("end", () => resolve({ status: res.statusCode, body }));
+        });
+        req.on("error", reject);
+        req.end(method === "POST" ? JSON.stringify({ jsonrpc: "2.0", id: 1, method: "eth_chainId", params: [] }) : undefined);
+    });
+    try {
+        // Origin-form, and the absolute form a proxied fetch sends for loopback.
+        for (const target of ["/rpc/0", rpcRelayUrl(proxy.port, 0)]) {
+            const res = await send(target);
+            assert.equal(res.status, 200, target);
+            assert.equal(JSON.parse(res.body).result, "0xaa36a7");
+            assert.ok(!res.body.includes(RPC_KEY));
+        }
+        assert.deepEqual(stub.seen, [`/v3/${RPC_KEY}`, `/v3/${RPC_KEY}`], "the relay reached the keyed path");
+        assert.equal((await send("/rpc/0", "GET")).status, 405, "the relay takes POSTs only");
+        assert.equal((await send("/rpc/1")).status, 404, "a relay path past the endpoints given");
+        // A proxied fetch tunnels to the proxy's own port to reach the relay.
+        assert.equal(await connectStatus(proxy.port, "127.0.0.1", proxy.port), 200);
+    } finally {
+        await proxy.close();
+    }
+
+    // No endpoint given: the relay path is absent, never a stub.
+    const bare = await startEgressProxy({ policy: { egress: [stub.origin], rpcUrl: "https://ipfs.io" }, port: 0 });
+    try {
+        const res = await new Promise((resolve, reject) => {
+            const req = http.request({ host: "127.0.0.1", port: bare.port, method: "POST", path: "/rpc/0" }, resolve);
+            req.on("error", reject);
+            req.end("{}");
+        });
+        assert.equal(res.statusCode, 404);
+        assert.equal(await connectStatus(bare.port, "127.0.0.1", bare.port), 403, "no relay, no tunnel to itself");
+    } finally {
+        await bare.close();
+    }
+
+    // An endpoint off the allowlist is refused at start, and the refusal
+    // names the origin, never the keyed path.
+    await assert.rejects(
+        startEgressProxy({ policy: { egress: [], rpcUrl: "https://ipfs.io" }, port: 0, rpcUpstreams: [stub.keyedUrl] }),
+        (e) => /not on the policy egress allowlist/.test(e.message) && !e.message.includes(RPC_KEY),
+    );
+    await stub.close();
 });
 
 // ── The launcher's pure decisions ───────────────────────────────────────────
@@ -342,7 +435,7 @@ test("the launcher scrubs key-shaped environment variables", { skip: !HAS_SANDBO
             env: {
                 ...process.env, PRIVATE_KEY: "0xdead", PINATA_DAO_JWT: "j", MY_PASSPHRASE: "p",
                 DB_PASSWORD: "hunter2", GH_AUTH: "ghauth", AWS_CREDENTIALS: "awscred", SITE_COOKIE: "cookie",
-                RPC_URL: "https://eth-sepolia.g.alchemy.com/v2/AbCdEfGh1234567890ijklMN",
+                PROVIDER_URL: "https://eth-sepolia.g.alchemy.com/v2/AbCdEfGh1234567890ijklMN",
                 DATABASE_URL: "postgres://user:pw0rd@db.example:5432/app",
                 PUBLIC_RPC: "https://ethereum-sepolia-rpc.publicnode.com",
             },
@@ -350,17 +443,136 @@ test("the launcher scrubs key-shaped environment variables", { skip: !HAS_SANDBO
         assert.equal(run.status, 0, run.stderr);
         const out = run.stdout;
         assert.ok(!out.includes("0xdead"), "PRIVATE_KEY leaked into the sandbox");
-        for (const leaked of ["PINATA_DAO_JWT", "MY_PASSPHRASE", "DB_PASSWORD", "GH_AUTH", "AWS_CREDENTIALS", "SITE_COOKIE", "RPC_URL", "DATABASE_URL"]) {
+        for (const leaked of ["PINATA_DAO_JWT", "MY_PASSPHRASE", "DB_PASSWORD", "GH_AUTH", "AWS_CREDENTIALS", "SITE_COOKIE", "PROVIDER_URL", "DATABASE_URL"]) {
             assert.ok(!new RegExp(`^${leaked}=`, "m").test(out), `${leaked} crossed into the sandbox`);
         }
         for (const value of ["hunter2", "AbCdEfGh1234567890ijklMN", "pw0rd"]) assert.ok(!out.includes(value));
         assert.match(out, /^PUBLIC_RPC=https:\/\/ethereum-sepolia-rpc\.publicnode\.com$/m, "a credential-free URL crosses");
         // The launcher names what it held back — names only, never values.
-        assert.match(run.stderr, /held back from the sandbox's environment: .*RPC_URL/);
+        assert.match(run.stderr, /held back from the sandbox's environment: .*PROVIDER_URL/);
         assert.ok(!run.stderr.includes("hunter2"));
         assert.match(out, /HTTPS_PROXY=http:\/\/127\.0\.0\.1:\d+/);
         assert.match(out, /FIGARO_SIGNER_SOCKET=/);
     } finally {
+        fs.rmSync(signerDir, { recursive: true, force: true });
+        fs.rmSync(workspace, { recursive: true, force: true });
+    }
+});
+
+test("the launcher keeps keyed RPC endpoints outside and hands the agent the proxy's relays", { skip: !HAS_SANDBOX_EXEC }, async () => {
+    const stub = await keyedRpcStub();
+    const workspace = fs.mkdtempSync(path.join(os.tmpdir(), "sbx-ws-"));
+    const policyFile = path.join(workspace, "policy.json");
+    fs.writeFileSync(policyFile, JSON.stringify({ ...SBX_POLICY, egress: [stub.origin] }));
+    const signerDir = fs.mkdtempSync(path.join(os.homedir(), ".sbx-signer-"));
+    // The agent reads RPC_URL and calls it from inside the sandbox, where the
+    // stub's own port is closed: an answer can only have come through the relay.
+    const probe = path.join(workspace, "probe.mjs");
+    fs.writeFileSync(probe, [
+        "const res = await fetch(process.env.RPC_URL, { method: 'POST', headers: { 'content-type': 'application/json' },",
+        "  body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_chainId', params: [] }) });",
+        "console.log(`RPC_URL=${process.env.RPC_URL}`);",
+        "console.log(`CHAIN=${(await res.json()).result}`);",
+    ].join("\n"));
+    const run = await new Promise((resolve) => {
+        const child = spawn("node", [
+            path.join(__dirname, "..", "run-sandboxed.mjs"),
+            "--policy", policyFile, "--workspace", workspace,
+            "--signer-socket", path.join(signerDir, "signer.sock"),
+            "--", "/bin/sh", "-c", `env; node ${probe}`,
+        ], { env: { ...process.env, RPC_URL: stub.keyedUrl, FIGARO_ANALYST_CROSSCHECK_RPC_URLS: `${stub.keyedUrl}, ${stub.keyedUrl}` } });
+        let stdout = "";
+        let stderr = "";
+        child.stdout.on("data", (c) => (stdout += c));
+        child.stderr.on("data", (c) => (stderr += c));
+        child.on("close", (status) => resolve({ status, stdout, stderr }));
+    });
+    try {
+        assert.equal(run.status, 0, run.stderr);
+        assert.ok(!run.stdout.includes(RPC_KEY), "the key crossed into the sandbox");
+        assert.ok(!run.stderr.includes(RPC_KEY), "the launcher printed the key");
+        assert.match(run.stdout, /^RPC_URL=http:\/\/127\.0\.0\.1:(\d+)\/rpc\/0$/m);
+        assert.match(run.stdout, /^FIGARO_ANALYST_CROSSCHECK_RPC_URLS=http:\/\/127\.0\.0\.1:\d+\/rpc\/1,http:\/\/127\.0\.0\.1:\d+\/rpc\/2$/m);
+        assert.match(run.stdout, /^CHAIN=0xaa36a7$/m, "the relay did not answer inside the sandbox");
+        assert.ok(stub.seen.includes(`/v3/${RPC_KEY}`), "the relay never reached the keyed path");
+    } finally {
+        await stub.close();
+        fs.rmSync(signerDir, { recursive: true, force: true });
+        fs.rmSync(workspace, { recursive: true, force: true });
+    }
+
+    // An RPC_URL whose origin the policy does not name is refused at launch.
+    const offList = fs.mkdtempSync(path.join(os.tmpdir(), "sbx-ws-"));
+    const offPolicy = path.join(offList, "policy.json");
+    fs.writeFileSync(offPolicy, JSON.stringify(SBX_POLICY));
+    const own = fs.mkdtempSync(path.join(os.homedir(), ".sbx-signer-"));
+    try {
+        const refused = spawnSync("node", [
+            path.join(__dirname, "..", "run-sandboxed.mjs"),
+            "--policy", offPolicy, "--workspace", offList, "--signer-socket", path.join(own, "signer.sock"),
+            "--", "/bin/sh", "-c", "true",
+        ], { encoding: "utf-8", env: { ...process.env, RPC_URL: `https://rpc.example/v3/${RPC_KEY}` } });
+        assert.notEqual(refused.status, 0);
+        assert.match(refused.stderr, /not on the policy egress allowlist/);
+        assert.ok(!refused.stderr.includes(RPC_KEY));
+    } finally {
+        fs.rmSync(own, { recursive: true, force: true });
+        fs.rmSync(offList, { recursive: true, force: true });
+    }
+});
+
+test("the analyst starts under the wrapper with keyed RPC endpoints, syncs through the relays, and serves", { skip: !HAS_SANDBOX_EXEC }, async () => {
+    const stub = await keyedRpcStub();
+    const workspace = fs.mkdtempSync(path.join(os.tmpdir(), "sbx-ws-"));
+    const policyFile = path.join(workspace, "policy.json");
+    fs.writeFileSync(policyFile, JSON.stringify({ ...SBX_POLICY, egress: [stub.origin] }));
+    const record = path.join(workspace, "deployment.json");
+    fs.writeFileSync(record, JSON.stringify({ figaroCore: "0x1111111111111111111111111111111111111111", deploymentBlock: 0 }));
+    const signerDir = fs.mkdtempSync(path.join(os.homedir(), ".sbx-signer-"));
+    const free = net.createServer();
+    await new Promise((r) => free.listen(0, "127.0.0.1", r));
+    const analystPort = free.address().port;
+    await new Promise((r) => free.close(r));
+
+    const env = {
+        ...process.env, RPC_URL: stub.keyedUrl, FIGARO_ANALYST_CROSSCHECK_RPC_URLS: stub.keyedUrl,
+        DEPLOYMENT_RECORD: record, FIGARO_ANALYST_PORT: String(analystPort),
+    };
+    for (const name of ["IPFS_GATEWAY_URL", "FIGARO_AGREEMENTS_DIR", "FIGARO_ANALYST_FROM_BLOCK", "FIGARO_ANALYST_BEARER_FILE"]) delete env[name];
+    // Detached: the launcher and the sandboxed analyst share one process
+    // group, ended together below.
+    const launcher = spawn("node", [
+        path.join(__dirname, "..", "run-sandboxed.mjs"),
+        "--policy", policyFile, "--workspace", workspace,
+        "--signer-socket", path.join(signerDir, "signer.sock"),
+        "--", process.execPath, path.join(__dirname, "..", "figaro-analyst.mjs"),
+    ], { env, detached: true });
+    let stderr = "";
+    const listening = new Promise((resolve, reject) => {
+        launcher.stderr.on("data", (c) => {
+            stderr += c;
+            if (/figaro-analyst: listening on/.test(stderr)) resolve();
+        });
+        launcher.on("exit", () => reject(new Error(`the analyst exited at start:\n${stderr}`)));
+    });
+    try {
+        await listening;
+        assert.ok(!stderr.includes(RPC_KEY), "the key was printed");
+        assert.doesNotMatch(stderr, /missing env RPC_URL/);
+        assert.ok(stub.seen.length > 0 && stub.seen.every((p) => p === `/v3/${RPC_KEY}`), "the sync did not go through the relays");
+        const status = await new Promise((resolve, reject) => {
+            http.get({ host: "127.0.0.1", port: analystPort, path: "/status" }, (res) => {
+                let body = "";
+                res.on("data", (c) => (body += c));
+                res.on("end", () => resolve({ code: res.statusCode, body }));
+            }).on("error", reject);
+        });
+        assert.equal(status.code, 200, status.body);
+        // The bearer token's file lands in the workspace, the default path.
+        assert.ok(fs.existsSync(path.join(workspace, "analyst.token")));
+    } finally {
+        try { process.kill(-launcher.pid, "SIGTERM"); } catch { /* already gone */ }
+        await stub.close();
         fs.rmSync(signerDir, { recursive: true, force: true });
         fs.rmSync(workspace, { recursive: true, force: true });
     }

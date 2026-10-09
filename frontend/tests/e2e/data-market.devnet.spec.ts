@@ -38,11 +38,13 @@
  * templateCompositionHash) and realized through the SDK's ONE template walk
  * (reconstructOrdersFromTemplate) — never a hand-coded composition.
  *
- * Wallets: DEDICATED anvil indices 36 (member A) and 37 (member B) — the
- * --accounts 38 bump exists for them. The RUNNING chain may predate the
- * bump, so the spec self-funds their ETH (a plain transfer from anvil[0])
- * and self-mints their MOCK bonds. Fresh salts per run keep re-runs
- * idempotent; nothing is snapshotted or reverted, no time warp.
+ * Wallets: DEDICATED anvil indices 36 (member A) and 37 (member B), inside
+ * the anvil account count (one number, owned by
+ * scripts/lint-anvil-accounts-lockstep.sh). A RUNNING chain may have been
+ * launched with fewer accounts funded, so the spec self-funds their ETH (a
+ * plain transfer from anvil[0]) and self-mints their MOCK bonds. Fresh
+ * salts per run keep re-runs idempotent; nothing is snapshotted or
+ * reverted, no time warp.
  *
  * Requires Anvil + ./scripts/deploy-local.sh + populate-test-data + Kubo.
  */
@@ -134,9 +136,10 @@ test.describe('DATA MARKET — dual-posture value legs over the anchored data as
         const walletB = createWalletClient({ account: memberB, chain: LOCAL_ANVIL, transport: http(RPC_URL) });
 
         // ── SEED (idempotent, before any baseline): the running anvil may
-        //    predate the --accounts 38 bump, so 36/37 can be UNFUNDED — a
-        //    plain ETH transfer from anvil[0] is how any new wallet arrives;
-        //    the open mock mint covers their bonds. ──
+        //    have been launched with fewer accounts than the count
+        //    scripts/lint-anvil-accounts-lockstep.sh holds, so 36/37 can be
+        //    UNFUNDED — a plain ETH transfer from anvil[0] is how any new
+        //    wallet arrives; the open mock mint covers their bonds. ──
         const funder = createWalletClient({
             account: privateKeyToAccount(ANVIL_KEYS[0] as Hex), chain: LOCAL_ANVIL, transport: http(RPC_URL),
         });

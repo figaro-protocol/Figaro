@@ -661,7 +661,7 @@ Per workflow, what it runs and when:
   (+coverage), the **mobile** Playwright project, production build.
 - **`devnet-e2e-ci`** — push/PR, path-filtered: the **bilateral spine**
   (`orders-accept`) end to end in the runner — Kubo (IPFS, CORS-configured),
-  Anvil (`--accounts 38`), a full `deploy-local.sh` stack,
+  Anvil (`--accounts` at the count `scripts/lint-anvil-accounts-lockstep.sh` holds), a full `deploy-local.sh` stack,
   `populate-test-data`, the `orders-accept` devnet spec against the production
   static export — then the FOUR origination proofs on the same stack
   (`verify-origination{,-http,-a2a,-chain}.devnet.mjs`), and last the
