@@ -68,7 +68,7 @@ design disagreement, not a vulnerability; the doc explains the reasoning.
 Not audited. The external audit is suspended: three firms were approached and
 none is affordable. The security work is the project's own, at every layer of
 the stack (`docs/RELEASE_READINESS.md` Task 2), and `docs/AUDITOR_HANDOVER.md`
-is kept current, baseline `a4a34e91` — the Solidity in `src/` and the Rust in
+is kept current, at the baseline commit its § "The baseline commit" names — the Solidity in `src/` and the Rust in
 `prover/` together — for the day an audit is engaged; findings and remediations
 are published when they exist. The
 surface is verified internally across Foundry, Halmos, Certora, TLA+, Echidna

@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 #
-# frozen-scope.sh — what the audit freeze covers, and the code of a file with
+# frozen-scope.sh — what the audit scope covers, and the code of a file with
 # its comments out: sourced by the maintainer's pre-commit gate
 # (the British-spelling exemption, the handover's scope statement), so every
 # reader judges by one rule.
-# Comments and NatSpec may change in a frozen file; code may not.
+# Comments and NatSpec are stripped so a scope file's code can be compared.
 
 # The scope, as docs/AUDITOR_HANDOVER.md § "Scope" lists it.
 in_scope() {
