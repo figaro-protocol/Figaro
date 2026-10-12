@@ -13,7 +13,7 @@ the review's is its own.
 | | |
 |---|---|
 | Repository | https://github.com/figaro-protocol/Figaro |
-| Baseline commit | `e35dd161` (§ "The baseline commit"); no tag names a commit under audit — one is placed when an audit is engaged |
+| Baseline commit | `f62b71cf` (§ "The baseline commit"); no tag names a commit under audit — one is placed when an audit is engaged |
 | Languages in scope | Solidity (`src/`, three deploy scripts) and Rust (`prover/`, four crates) |
 | Solidity in scope | 13 contract files, 3,142 lines; 3 deploy scripts, 846 lines |
 | Rust in scope | 4 crates, 20 files, 7,394 lines under `src/` |
@@ -31,7 +31,7 @@ blank lines the scope is 1,279 lines of contracts, 405 of deploy scripts and
 
 ```bash
 git clone --recurse-submodules https://github.com/figaro-protocol/Figaro.git
-cd Figaro && git checkout e35dd161d861acc77808b0f7d171931303a7a380
+cd Figaro && git checkout f62b71cfc320559a63f22b1a94f2e0080f23d4bc
 foundryup --version v1.5.1
 forge build --via-ir                 # the deployed pipeline; the default profile fails on stack depth
 cd prover && cargo build --locked    # Rust at the pin in rust-toolchain.toml; SP1's toolchain (sp1up) at the release Cargo.lock names
@@ -235,24 +235,40 @@ came from the program with that key. The other external dependencies are in
 
 ## The baseline commit
 
-**Every figure in this document was measured at commit
-`e35dd161d861acc77808b0f7d171931303a7a380`**, the baseline, which covers the
-whole scope, Solidity and Rust together — or at an earlier commit at which the
-file the figure measures was byte-identical to the baseline's. No external
-audit has been engaged, so no tag names a commit under audit; when one is
-engaged, a tag is placed at the commit it reviews and this section names it.
+**Every figure in this document stands for the code at commit
+`f62b71cfc320559a63f22b1a94f2e0080f23d4bc`**, the baseline, which covers the
+whole scope, Solidity and Rust together. A figure is measured at the baseline,
+or at a commit whose in-scope code equals the baseline's once comments and
+NatSpec are stripped — the comparison `scripts/frozen-scope.sh` makes — and a
+figure measured elsewhere names its commit. No external audit has been
+engaged, so no tag names a commit under audit; when one is engaged, a tag is
+placed at the commit it reviews and this section names it.
 
 ```bash
-git show --no-patch e35dd161
+git show --no-patch f62b71cf
 ```
 
-This document is kept current: a change to the scope's code is followed, at
+This prints every scope file whose code differs between two commits, and
+nothing when none does:
+
+```bash
+source scripts/frozen-scope.sh
+for f in $(git ls-files src script prover); do in_scope "$f" || continue
+  diff -q <(git show <A>:"$f" | strip_comments "$f") <(git show <B>:"$f" | strip_comments "$f") >/dev/null 2>&1 || echo "$f"
+done
+```
+
+This document is kept current. A change to the scope's code is followed, at
 the verified commit, by this section's update, the baseline moved to that
-commit and the line counts and evidence that changed re-measured. A comment or
-NatSpec line changes in place. NatSpec enters the compiler's metadata
-(`foundry.toml` sets no `bytecode_hash`), so a build at a later commit carries
-a different metadata hash in its bytecode suffix than a build at the baseline;
-a review builds at the baseline.
+commit, the line counts re-measured, and every layer of the gate re-run. A
+change that leaves the stripped code equal — a comment or NatSpec line,
+changed in place — moves the baseline and re-runs the gate's quick layers
+(§ "Validation commands"); the mutation runs and the Certora reports depend
+on code and tests alone, so they stand and name the commit they were measured
+at. NatSpec enters the compiler's metadata (`foundry.toml` sets no
+`bytecode_hash`), so a build at a later commit carries a different metadata
+hash in its bytecode suffix than a build at the baseline; a review builds at
+the baseline.
 
 ### The kernel
 
@@ -262,7 +278,7 @@ lines changed in place; their code is byte-identical to the baseline. The
 diff prints as two renames whose every hunk is a comment:
 
 ```bash
-git diff -M c7f85d0d e35dd161 -- src/kernel/ src/core/kernel/
+git diff -M c7f85d0d f62b71cf -- src/kernel/ src/core/kernel/
 ```
 
 ### Toolchains
@@ -330,13 +346,15 @@ A change to a path in scope, Solidity or Rust, is:
 2. Reviewed by someone other than its writer — the project's own reviewer,
    or the auditor when one is engaged
 3. Recorded with the finding it answers and its outcome
-4. Followed by the whole gate (§ "Validation commands"), the formal suites
-   included — a signature change silently orphans any CVL spec that calls it,
-   and the break is invisible until the gate runs
+4. Followed by the gate (§ "Validation commands"): every layer when the
+   stripped code moves, the formal suites included — a signature change
+   silently orphans any CVL spec that calls it, and the break is invisible
+   until the gate runs; the quick layers alone when it does not
 5. For a change to the guest: followed by a rebuilt guest, a re-derived key,
    and a verifier deployed with it
 6. Followed by this document's § "The baseline commit", line counts and
-   evidence updated at the verified commit
+   evidence updated at the verified commit; a figure that was not re-measured
+   keeps the commit it names
 
 Changes to `test/`, `frontend/`, or `sdk/` do not require re-audit unless they
 expose a new on-chain attack surface.
@@ -744,7 +762,8 @@ Stated so the review does not spend hours finding them.
 
 ## Verification evidence
 
-Every figure in this section was measured as § "The baseline commit" states.
+Every figure in this section was measured at the baseline (§ "The baseline
+commit" states the rule for a figure that names another commit).
 Which invariant each layer carries is `VERIFICATION_MAP.md`; the inventory of
 tests is `TESTING.md`.
 
@@ -752,28 +771,27 @@ tests is `TESTING.md`.
 
 | Layer | Result |
 |---|---|
-| Foundry | 337 passed, 0 failed, 0 skipped |
-| Fork tests (mainnet's Permit2, Sepolia's SwapRouter02) | 3 passed, 0 skipped |
+| Foundry, the three fork tests included (mainnet's Permit2, Sepolia's SwapRouter02) | 340 passed, 0 failed, 0 skipped |
 | Halmos | 32 of 32 properties proved |
-| Certora | 6 of 6 specs, every rule verified |
-| Echidna | every property held on both harnesses |
-| TLA+ | 5 models, 55 invariants, no error; `FigaroCore` explored 8,380,329 states; `RelayState` (the relay's state lifecycle, 7 invariants + 1 action property) 27,535 distinct states, each of its four defect switches caught when flipped FALSE |
-| Rust (`cargo test`, five crates) | 195 passed, 0 failed; 2 ignored by design, run by the fuzz script |
-| Differential fuzz | 4 rounds, no divergence: 1,600 kernel operations, 256 agreements, about 22,000 clause cases |
-| SDK (Vitest) | 813 passed |
+| Certora | 7 of 7 specs, every rule verified |
+| Echidna | 15 properties, every one held on both harnesses |
+| TLA+ | 5 models, 55 invariants, no error; `FigaroCore` 8,380,329 states generated, 6,087,113 distinct; `RelayState` (the relay's state lifecycle, 7 invariants + 1 action property) 10,837,227 generated, 1,959,944 distinct; the models' defect switches are their mutation checks (`TESTING.md` § TLA+) |
+| Rust (`cargo test`, five crates) | 213 passed, 0 failed; 2 ignored by design, run by the fuzz script |
+| Differential fuzz | one round at seed 1791814782, no divergence: 400 kernel operations (290 accepted, 110 rejected, 103 processes), the agreement vectors, 6,208 clause cases (1,719 encoded byte-for-byte, 3,225 rejected, 1,264 specs refused); CI runs four rounds on every push |
+| SDK (Vitest) | 922 passed |
 | Batch end-to-end (SDK → relay → verifier) | passed |
 
-Certora reports:
+Certora reports, each "No errors found by Prover" at the baseline:
 
 | Spec | Report |
 |---|---|
-| FigaroCore | https://prover.certora.com/output/9512759/45aab7c04aa74df2a394adacf737b0bb |
-| AttestationCoordinator (every rule verified, every sanity check reached) | https://prover.certora.com/output/9512759/16c0d0189f08499da77794dd9f516325 |
-| TokenOpsVerification | https://prover.certora.com/output/9512759/b07ef08009c145bfa6c1f4ebbe7a39c1 |
-| FlorinToken | https://prover.certora.com/output/9512759/7e9a532568dd4249b99397a564fe8c4e |
-| BatchVerifierTokenOps | https://prover.certora.com/output/9512759/79f9b51977c74a9db3e38d479bd69692 |
-| RpgfMinter | https://prover.certora.com/output/9512759/cfdf957d26fd4b2393c8576d2c5ec372 |
-| BatchVerifierStateRoot (the spec reads the contract through `certora/harness/FigaroBatchVerifierHarness.sol`, which adds only a decoding view; each rule mutation-checked, failing on its own mutation: https://prover.certora.com/output/9512759/9fb2a938b04847b8b44c83fee498631a) | https://prover.certora.com/output/9512759/69781170fd464b3596575f725896b9c0 |
+| FigaroCore | https://prover.certora.com/output/9512759/483a8186ffa14389b25a97628d213f51 |
+| AttestationCoordinator | https://prover.certora.com/output/9512759/885572b62a1846799587ecf0341b3973 |
+| TokenOpsVerification | https://prover.certora.com/output/9512759/d0a5627a8f194a93a98c3fd9e1a0df0d |
+| FlorinToken | https://prover.certora.com/output/9512759/8377c510209e41db9b362c011f2f6b92 |
+| BatchVerifierTokenOps | https://prover.certora.com/output/9512759/33955d86828e46c7b6321eaf7f993fd9 |
+| BatchVerifierStateRoot (the spec reads the contract through `certora/harness/FigaroBatchVerifierHarness.sol`, which adds only a decoding view; each rule mutation-checked against the same contract code, failing on its own mutation: https://prover.certora.com/output/9512759/9fb2a938b04847b8b44c83fee498631a) | https://prover.certora.com/output/9512759/f7825c60f72d4506b2d99ffa13329ad8 |
+| RpgfMinter | https://prover.certora.com/output/9512759/7d4d6e182d1e419e8fbcfba884186c22 |
 
 ### Test coverage, Solidity
 
@@ -799,10 +817,24 @@ scripts and tests and is not the scope's figure.
 
 Trail of Bits' `mewt` 4.0.0, high and medium severity mutations (statement
 removal, error replacement, condition forcing, negation removal,
-return-default), each contract against the test files that cover it, the
-gas-anchor tests excluded so a catch means behaviour. One run, one database,
-for every contract but `AttestationCoordinator.sol`, whose row is its own run
-against `test/core/attestation/` and `test/script/DeployWiringTest.t.sol`:
+return-default), one run and one database per contract, each against the
+test files that cover it, the gas-anchor tests excluded so a catch means
+behaviour. The test command for each run is
+`forge test --no-match-test test_Gas_ --match-path '<paths>'` with:
+
+| Contract | Test paths |
+|---|---|
+| `FigaroCore.sol` | `test/core/kernel/*.t.sol`, `test/ReentrancyAdversarialTest.t.sol` |
+| `CommitmentTypes.sol` | `test/core/kernel/*.t.sol` |
+| `AttestationCoordinator.sol` | `test/core/attestation/*.t.sol`, `test/script/DeployWiringTest.t.sol` |
+| `FigaroBatchVerifier.sol` | `test/core/verifier/*.t.sol`, `test/ReentrancyAdversarialTest.t.sol`, `test/build/rewards/*.t.sol` |
+| `ClauseRegistry.sol`, `AssemblyRegistry.sol` | `test/build/registries/*.t.sol`, `test/build/rewards/*.t.sol` |
+| `UsageCounter.sol` | `test/build/rewards/*.t.sol`, `test/core/verifier/*.t.sol` |
+| `RpgfMinter.sol` | `test/build/rewards/*.t.sol` |
+| `FlorinToken.sol` | `test/build/florin/*.t.sol`, `test/build/rewards/*.t.sol` |
+| `MembersRegistry.sol` | `test/app/MembersRegistryTest.t.sol`, `test/build/rewards/*.t.sol` |
+| `WitnessSwapAndCommitCoordinator.sol` | `test/app/WitnessSwapAndCommitCoordinator*.t.sol`, `test/script/DeployWiringTest.t.sol` |
+
 
 | Contract | Mutants | Caught | Survived |
 |---|---|---|---|
