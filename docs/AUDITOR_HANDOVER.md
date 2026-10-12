@@ -9,7 +9,7 @@ project's own verification found, and the gate the audited tree passes.
 
 | | |
 |---|---|
-| Baseline commit | `e35dd161` (§ "The baseline commit"); the audit is suspended and no tag stands |
+| Baseline commit | `e35dd161` (§ "The baseline commit"); no tag names a commit under audit — one is placed when an audit is engaged |
 | Languages in scope | Solidity (`src/`, three deploy scripts) and Rust (`prover/`, four crates) |
 | Solidity in scope | 13 contract files, 3,142 lines; 3 deploy scripts, 846 lines |
 | Rust in scope | 4 crates, 20 files, 7,394 lines under `src/` |
@@ -164,10 +164,11 @@ came from the program with that key. The other external dependencies are in
 ## The baseline commit
 
 **Every figure in this document was measured at commit `e35dd161`**, the
-baseline, which covers the whole scope, Solidity and Rust together. The
-external audit is suspended (no firm is affordable), so no tag names a commit
-under audit; when an audit is engaged, a tag is placed at the commit it
-reviews and this section names it.
+baseline, which covers the whole scope, Solidity and Rust together — or at an
+earlier commit at which the file the figure measures was byte-identical to the
+baseline's. No external audit has been engaged, so no tag names a commit under
+audit; when one is engaged, a tag is placed at the commit it reviews and this
+section names it.
 
 ```bash
 git show --no-patch e35dd161
@@ -175,68 +176,21 @@ git show --no-patch e35dd161
 
 This document is kept current: a change to the scope's code is followed, at the
 verified commit, by this section's update, the baseline moved to that commit
-and the line counts and evidence that changed re-measured; comments and NatSpec
-change in place and § "Comment-only changes after the baseline" lists each one.
-The baseline contains all nine changes below.
-
-### Changes after the previous baseline
-
-Nine changes were made after the previous baseline of 2026-09-29
-(`2d9a2c55`); `e35dd161` contains them all. Eight are to the relay
-(`prover/sequencer/`), on the maintainer's override, each closing a defect the
-project's own review found; none touches a contract, a guest crate, a
-`Cargo.toml` or the lock. The ninth, on the maintainer's word, removes the
-coordinator's third entry point, `attestViaResolver`, and its interface,
-IRoleResolver.sol (deleted). In the guest it rewrites one comment within its own four
-lines of `prover/lib/src/types.rs`, so no line of the guest moves and no panic
-location the guest embeds changes; the guest's bytes and the verification key
-are expected unchanged across the two baselines. That is unverified until the
-next guest build in SP1's image, whose key must equal `programVKey` in
-`deployments/11155111.json`. This prints them all:
-
-```bash
-git diff 2d9a2c55 e35dd161 -- prover/sequencer/
-git diff 2d9a2c55 e35dd161 -- src/core/attestation/ prover/lib/src/types.rs
-```
-
-| Change | The defect it closes | Where | Held by |
-|---|---|---|---|
-| A submission's dedup identity covers every input the proof or the verifier judges and admission cannot | A resolve was deduplicated by process id alone, and admission accepts a resolve signed by any key (the root buyer is state). A stranger's resolve for an open process therefore made the buyer's own a duplicate; batch formation refused the stranger's, and the buyer's was never queued. Repeated every tick, it kept the resolve out of every batch at no cost. The same held for the buyer's signature replayed over an incomplete order list, for a seller attestation replayed under another role order, and for an attestation copied with other witness spec bytes. | `prover/sequencer/src/mempool.rs` (`op_key`) | `mempool_resolve_signed_by_a_stranger_does_not_take_the_buyers_slot`, `mempool_resolve_with_another_order_list_does_not_take_the_slot`, `mempool_seller_attest_under_another_role_does_not_take_the_slot`, `mempool_attest_with_other_spec_bytes_does_not_take_the_slot`, `mempool_duplicate_resolve_is_idempotent` |
-| The relay keeps the state behind the verifier's root on disk and builds on no other | The state lived in memory, every start began from genesis, and a root that differed from the verifier's was a warning. After one landed batch a restarted relay proved batches that could only revert, and the state every open batch-path process needs for its resolve ended with the process. The state a batch produces is written before the batch is sent and held for as long as the batch can land (a refused batch's proof is public, and anyone can send it again while the verifier's root is its previous root); the relay reads `stateRoot()` at startup and before every batch, adopts a held state whose root it is, refuses to start when it reads the root and holds no state for it, and builds nothing while it holds none. A batch that landed without the relay reading its receipt is published under the transaction its `BatchSettled` log names. | `prover/sequencer/src/state.rs` (`StateStore`, `held_state_for`), `prover/sequencer/src/main.rs` (`step_to`, `adopt`, the batch loop), `prover/sequencer/src/submitter.rs` (`find_settle_tx`) | the `state_store_*` and `held_state_for_*` tests in `prover/sequencer/tests/sequencer.rs`; `sdk/tests/batch-e2e.test.ts` restarts the relay between its two batches and starts a relay holding no state, which must exit 2 |
-| The relay publishes its state (`GET /state`) | With the state on one relay's disk only, losing that disk left every open batch-path process with no one who could build its resolve. A party or a second relay now fetches the state into a new file and, once its `x-figaro-state-root` header is the verifier's `stateRoot`, starts on it as its `STATE_PATH`; the root is recomputed and checked against the verifier's, so a copy is checked, never trusted. The recipe never writes a served state over a state file unchecked: `formal/RelayState.tla` (`TakeoverChecksRoot`) shows a stale served state overwriting the only copy. | `prover/sequencer/src/api.rs` (`get_state`) | `api_state_route_serves_the_state_another_relay_starts_on`; `sdk/tests/batch-e2e.test.ts` starts a second relay on the first relay's `/state` and reads the verifier's root from it |
-| `MAX_BATCH_OPS` is applied | It was read and logged, never applied: a batch took the whole queue (up to 10,000 operations), past what one block holds and one proof finishes. A batch now takes at most `MAX_BATCH_OPS` operations, oldest first. | `prover/sequencer/src/mempool.rs` (`drain_up_to`), the batch loop | `mempool_drains_at_most_the_batch_cap_and_keeps_the_rest_queued` |
-| The batch's clock is the chain's | The batch timestamp was the host's clock. A host clock ahead of the chain made the verifier refuse every batch (`BatchTimestampOutOfRange`). It is now the latest block's timestamp, read before anything is drained. The verifier itself still accepts a timestamp up to `MAX_BATCH_STALENESS` (one hour) behind its block from any prover, so a commitment up to an hour past its deadline can be bonded on the batch path that the kernel would refuse; both parties signed it, and the verifier is as at the baseline (accepted risk 4). | `prover/sequencer/src/submitter.rs` (`read_chain_timestamp`), the batch loop | `sdk/tests/batch-e2e.test.ts` (the relay proves against the chain's clock on Anvil) |
-| Funding is allocated per wallet | Each commit was checked against its wallet's balance alone, so several commits from one wallet each passed and `settleBatch` reverted when it pulled their sum, dead-lettering every operation in the batch after minutes of proving. A wallet's balance and allowance are now read once and allocated across the batch's commits in order. | `prover/sequencer/src/submitter.rs` (`allocate_funding`, `filter_funded_commits`) | `funding_is_allocated_across_a_wallets_commits_in_order` |
-| An attestation's witness spec is checked against the registry before proving | The relay checked that the spec parsed; the verifier checks that its hash is `ClauseRegistry.contentHashOf` for the clause and reverts the whole batch otherwise. Anyone could copy a landed attestation with one byte of the spec changed and sink every batch at no cost. The relay now reads the anchor from the verifier's own registry and drops such an attestation alone. | `prover/sequencer/src/submitter.rs` (`attestation_spec`, `filter_anchored_attestations`) | `the_spec_an_attestation_carries_is_what_the_registry_check_reads`; the batch end-to-end test's attestation passes the check against the live registry |
-| The binary's own log lines are on by default | The relay's default log filter named the library's target (`figaro_sequencer`) and not the binary's (`sequencer`), so startup, every refusal to start (the signing key, the guest fingerprint) and every batch-loop line (a batch landed, an operation dropped or dead-lettered) were filtered out unless `RUST_LOG` named both: a relay that refused to start exited 2 and said nothing. | `prover/sequencer/src/main.rs` (the default filter) | `sdk/tests/batch-e2e.test.ts` reads the refusal line of the relay that holds no state |
-| A batch refused by a mid-flight revocation re-batches around the revoker | A party who revoked its allowance after the funding check and before `settleBatch` reverted the whole batch, and every operation in it was dead-lettered after minutes of proving — a repeatable way, priced only in gas, for one address to keep every operation it shared a batch with out of every batch. On a deterministic revert the relay now re-reads funding at the latest block: the named revoker's operations alone are dead-lettered (re-submittable once funded), the rest re-queue (a wallet whose re-read failed re-queues too, never logged as a revoker), and the next tick builds a fresh batch without the revoker — the refused batch itself is never re-sent, though its state stays held (its proof is public; a revoker who re-approves revives it). Repeated revocation from one address within an hour is logged as the adversarial signal. Known limitation 3 states what remains. | `prover/sequencer/src/main.rs` (the deterministic-revert arm), `prover/sequencer/src/submitter.rs` (`allocate_funding` names the failing party; `RevocationLog`) | `funding_is_allocated_across_a_wallets_commits_in_order` (the drop names the party), `revocation_log_counts_within_the_window_only`; `formal/RelayState.tla` — the `RebatchDropsRevoker` switch FALSE fails `SendsExcludeKnownRevoked`; `sdk/tests/batch-revoke-e2e.test.ts` runs the arm against a live Anvil and the real binary: a seller revokes after the funding check, the batch is refused, that seller's op alone is dead-lettered (`/status` names it) and the other lands in the next batch |
-| `attestViaResolver` and `IRoleResolver` are removed; a party attests for itself | The coordinator dispatched a third entry point: a caller for whom code at the order's seller address answered `IRoleResolver.isAuthorized` filed an attestation on that order under its own address. No contract implements the interface and no party needs the path: a seller's own EIP-7702 code files through `attestAsSeller` from the seller's address. The path invited readings that counted another caller's attestation for the seller. No attestation on Sepolia was filed through it. The batch path never carried it (`KernelOp` has only `AttestAsSeller` and `AttestAsBuyer`). | `src/core/attestation/AttestationCoordinator.sol`; the interface file beside it, IRoleResolver.sol (deleted), deleted; `prover/lib/src/types.rs` (a comment, in place); `certora/AttestationCoordinator.spec` (the `isAuthorized` summary deleted) | `test_attestViaResolver_selectorIsNotDispatched` in `test/core/attestation/AttestationCoordinatorTest.t.sol`: a low-level call carrying selector `0x3ef7b1fb` against a committed order does not succeed |
-
-The eight relay changes are liveness or operability defects: none let a batch
-move value the parties did not sign, and the proof and the verifier are as
-tagged. The ninth removes an entry point and adds none: a party attests for
-itself, through `attestAsSeller` or `attestAsBuyer`. Known limitation 7 states what the state changes leave standing.
-
-### Comment-only changes after the baseline
-
-None stands after the baseline. A comment or NatSpec line changed in place
-after it is listed here, with the line counts it moves. NatSpec enters the
-compiler's metadata (`foundry.toml` sets no `bytecode_hash`), so a build at a
-later commit carries a different metadata hash in its bytecode suffix than a
-build at the baseline; a review builds at the baseline.
+and the line counts and evidence that changed re-measured. A comment or NatSpec
+line changes in place. NatSpec enters the compiler's metadata (`foundry.toml`
+sets no `bytecode_hash`), so a build at a later commit carries a different
+metadata hash in its bytecode suffix than a build at the baseline; a review
+builds at the baseline.
 
 ### The kernel
 
 The kernel — `FigaroCore.sol` and `CommitmentTypes.sol` — last changed in
-CODE at `c7f85d0d` (2026-08-12). Since then the two files moved directory
-and comment lines moved in place; their code is byte-identical to the
-baseline. The rename prints as two
-renames and `0 insertions(+), 0 deletions(-)`, and the later diff is
-comment-only:
+CODE at `c7f85d0d`. Since then the two files moved directory and comment
+lines changed in place; their code is byte-identical to the baseline. The
+diff prints as two renames whose every hunk is a comment:
 
 ```bash
-git diff -M --stat c7f85d0d 2d9a2c55 -- src/kernel/ src/core/kernel/
-git diff 2d9a2c55 e35dd161 -- src/core/kernel/
+git diff -M c7f85d0d e35dd161 -- src/kernel/ src/core/kernel/
 ```
 
 ### Toolchains
@@ -266,8 +220,11 @@ new key, and a new key is a new verifier at a new address.
 
 The guest is built inside SP1's build image, by
 `scripts/prover-box/build-guest.sh`; the release is read from
-`prover/Cargo.lock`. Built twice on one host from the baseline commit: the same
-bytes and the same key. The ELF does not reproduce across operating systems,
+`prover/Cargo.lock`. Built twice on one host: the same bytes and the same key.
+The guest at the baseline differs from the guest that produced this key only
+in comments that move no line (`git diff --numstat` is symmetric file by
+file), so its bytes and key are expected equal; the next build in the image
+confirms it against this table. The ELF does not reproduce across operating systems,
 so the image's build is the one that counts. The relay derives the key from
 the guest it embeds (`sequencer --vkey`) and refuses to start when the deployed
 `programVKey()` differs.
@@ -373,12 +330,11 @@ direct path would have refused.
 
 ## What the project's own verification found
 
-Between the first handover and this one the project built three differential
-fuzz streams, ran mutation testing over the Rust, and rehearsed a real proof.
-They found nine defects. None moved value wrongly; eight of the nine were two
-implementations of one rule disagreeing. All are fixed at the baseline commit,
-each with the test that found it. They are listed because they show where this
-codebase breaks: at the seams.
+The project's three differential fuzz streams, its mutation testing over the
+Rust, and its real-proof rehearsal found nine defects. None moved value
+wrongly; eight of the nine were two implementations of one rule disagreeing.
+All are fixed at the baseline commit, each with the test that found it. They
+are listed because they show where this codebase breaks: at the seams.
 
 | # | Seam | Defect | Found by |
 |---|---|---|---|
@@ -392,11 +348,11 @@ codebase breaks: at the seams.
 | 8 | SDK clause engine ↔ Rust clause engine | An integer written `5.0` or `5e0` refused by the guest, read as 5 by the SDK | The same test |
 | 9 | Relay ↔ its readers | The relay published a batch's transaction hash under a name its readers did not read; every batch read as unanchored | The real-proof rehearsal |
 
-Two changes to `FigaroBatchVerifier` came the same way. The guest checked every
-commitment deadline against a timestamp the prover chose and the verifier
-never saw; the timestamp is now the ninth public-values word, bounded on chain
-(`MAX_BATCH_STALENESS`). And public values of any length but nine words are
-now refused by name (`PublicValuesLengthMismatch`) before the proof is read.
+Two of `FigaroBatchVerifier`'s checks came the same way: the batch timestamp is
+the ninth public-values word, bounded on chain (`MAX_BATCH_STALENESS`), so the
+guest's deadline checks run against a timestamp the verifier sees; and public
+values of any length but nine words are refused by name
+(`PublicValuesLengthMismatch`) before the proof is read.
 
 ## Actors, privileges, and external dependencies
 
@@ -454,8 +410,8 @@ read it first.
   operations are dead-lettered and re-submittable; a process open on the batch
   path resolves on the batch path only. The relay reads each party's balance and
   allowance before it submits (`prover/sequencer/src/submitter.rs`), and a batch
-  a mid-flight revocation reverts is re-run without the revoker
-  (§ "Changes after the previous baseline").
+  a mid-flight revocation reverts is re-run without the revoker (Known
+  limitation 3).
 - The kernel recovers ECDSA signers (`ECDSA.recover` in `commit()`), so a
   smart-contract wallet (multisig) cannot be a kernel party directly; it transacts
   through an EOA it controls (the off-protocol auxiliary pattern). The buyer-key-loss
@@ -479,6 +435,61 @@ read it first.
   exhibits the nested-quantifier shape, or an input over 4,096 UTF-16 units, is
   treated as satisfied by both engines — the safe direction for a check whose
   binding form is the merkle commitment.
+- The coordinator has two entry points, `attestAsSeller` and `attestAsBuyer`:
+  a party attests for itself, from its own address; a seller's own EIP-7702
+  code files through `attestAsSeller`. No caller files for another address.
+  `test_attestViaResolver_selectorIsNotDispatched`
+  (`test/core/attestation/AttestationCoordinatorTest.t.sol`) holds that a
+  low-level call carrying selector `0x3ef7b1fb` against a committed order does
+  not succeed; the batch path's `KernelOp` carries only the two. The Sepolia
+  coordinator predates this (§ "What is deployed").
+
+**The relay**, each behaviour with the test that holds it
+(`prover/sequencer/tests/sequencer.rs` unless named otherwise):
+
+- A submission's identity in the mempool covers every input the proof or the
+  verifier judges and admission does not: the signer, the order list, the role
+  order and the witness spec bytes. A stranger's resolve for an open process,
+  a buyer's signature replayed over another order list, a seller attestation
+  under another role order, or an attestation copied with other spec bytes
+  cannot take the party's own slot (`mempool.rs`, `op_key`; the five
+  `mempool_*` slot tests).
+- A batch takes at most `MAX_BATCH_OPS` operations, oldest first
+  (`mempool.rs`, `drain_up_to`;
+  `mempool_drains_at_most_the_batch_cap_and_keeps_the_rest_queued`).
+- The batch's timestamp is the latest block's, read before anything is drained
+  (`submitter.rs`, `read_chain_timestamp`; `sdk/tests/batch-e2e.test.ts`
+  proves against Anvil's clock). The verifier's one-hour staleness bound is
+  accepted risk 4.
+- A wallet's balance and allowance are read once and allocated across the
+  batch's commits in order, so several commits from one wallet cannot pass
+  singly and revert `settleBatch` as a sum (`submitter.rs`,
+  `allocate_funding`, `filter_funded_commits`;
+  `funding_is_allocated_across_a_wallets_commits_in_order`).
+- An attestation's witness spec is checked against
+  `ClauseRegistry.contentHashOf`, read from the verifier's own registry,
+  before proving; one that fails is dropped alone, since the verifier would
+  revert the whole batch on it (`submitter.rs`, `attestation_spec`,
+  `filter_anchored_attestations`;
+  `the_spec_an_attestation_carries_is_what_the_registry_check_reads`).
+- The state behind the verifier's root is written to disk before the batch is
+  sent and held for as long as the batch can land; the relay reads
+  `stateRoot()` at startup and before every batch, adopts a held state whose
+  root it is, refuses to start (exit 2) when it reads a root and holds no state
+  for it, and builds nothing while it holds none. A batch that landed without
+  the relay reading its receipt is published under the transaction its
+  `BatchSettled` log names (`state.rs`, `StateStore`, `held_state_for`;
+  `main.rs`, `step_to`, `adopt`; `submitter.rs`, `find_settle_tx`; the
+  `state_store_*` and `held_state_for_*` tests; `sdk/tests/batch-e2e.test.ts`
+  restarts the relay between its two batches and starts one holding no state,
+  which must exit 2). `GET /state` serves the state under an
+  `x-figaro-state-root` header, so a party or a second relay fetches a copy,
+  recomputes its root against the verifier's, and starts on it
+  (`api.rs`, `get_state`;
+  `api_state_route_serves_the_state_another_relay_starts_on`). A served state
+  is never written over a state file unchecked: `formal/RelayState.tla`
+  (`TakeoverChecksRoot`) shows a stale served state overwriting the only copy.
+  Known limitation 7 states what remains.
 
 ### Conventions and measured complexity
 
@@ -528,7 +539,7 @@ except the first, which `DESIGN_DECISIONS.md` #10 corrects.
 |---|---|---|
 | `FigaroCore.sol:124-129` | rebasing tokens are rejected by the balance check | the check sees only the delta inside its own transfer call (`DESIGN_DECISIONS.md` #10) |
 | `FigaroCore.sol:238-240` | use social recovery or a multisig for the buyer role | the kernel recovers ECDSA signers; a multisig transacts through an EOA it controls (§ "Behaviors to surface" above) |
-| `FigaroCore.sol:287` | "see audit L-4" | a label from a pre-freeze AI-assisted review; that report is not in the tree and the numbering carries no weight — the external auditor forms independent findings |
+| `FigaroCore.sol:287` | "see audit L-4" | a label from an earlier internal review whose report is not in the tree; the numbering carries no weight |
 
 ## Accepted risks
 
@@ -554,20 +565,27 @@ Stated so the review does not spend hours finding them.
    (`figaro-kernel`, `figaro-clause`), where a defect costs a wrong resolution.
    The relay has its 79 integration tests, 13 unit tests and the batch
    end-to-end test.
-3. **Narrowed at this tag** (§ "Changes after the previous baseline", last row). The
-   relay re-batches around a revoker it can name: a party who revokes its
-   allowance after the funding check and before `settleBatch` reverts that
-   batch once; the relay re-reads funding at the latest block, dead-letters
-   the named revoker's operations alone, re-queues the rest, and the next
-   batch is built without it. Two gas-priced ways to sink a shared batch
-   remain: a party who re-approves (or moves its balance back) before the
+3. **A mid-flight revocation sinks a shared batch once.** A party who revokes
+   its allowance after the funding check and before `settleBatch` reverts that
+   batch; the relay re-reads funding at the latest block, dead-letters the
+   named revoker's operations alone (re-submittable once funded), re-queues
+   the rest, and the next batch is built without it. The refused batch is
+   never re-sent, though its state stays held: its proof is public, and a
+   revoker who re-approves revives it. Repeated revocation from one address
+   within an hour is logged as the adversarial signal (`main.rs`, the
+   deterministic-revert arm; `submitter.rs`, `allocate_funding` names the
+   failing party, `RevocationLog`; `revocation_log_counts_within_the_window_only`;
+   `formal/RelayState.tla`, whose `RebatchDropsRevoker` switch FALSE fails
+   `SendsExcludeKnownRevoked`; `sdk/tests/batch-revoke-e2e.test.ts` runs the
+   arm against a live Anvil and the real binary). Two gas-priced ways to sink
+   a shared batch remain: a party who re-approves (or moves its balance back) before the
    re-read is not named, and the whole batch dead-letters re-submittable,
    as before; and each refusal costs the innocent operations one of their
    three re-queues, so distinct revoking addresses — the per-address signal
    does not aggregate them — can burn a co-batched operation's cap. The
    direct path stays open to a new process throughout.
 4. **The full devnet end-to-end suite runs by hand.** CI runs its spine. Run
-   once on a fresh devnet at the previous baseline (`2d9a2c55`): 55 specs, 52 passed at the
+   once on a fresh devnet at `2d9a2c55`: 55 specs, 52 passed at the
    first attempt, 3 passed at the second — a three-seller chain's accept and
    the two swap-funded on-ramps, whose first attempt on a fresh chain
    revert `ERC20InsufficientAllowance` before the allowance the page has
@@ -584,11 +602,9 @@ Stated so the review does not spend hours finding them.
    procedure is not.** The counter↔verifier pair was redeployed on live
    Sepolia from a clean worktree at `a4a34e91` — fork rehearsal first,
    then the broadcast, the record update, and the deployment check with
-   via-IR artifacts at that commit. The run also exercised the procedure's
-   worth: the chain's post-fork gas repricing (~6.8× on these deploys)
-   out-of-gassed the first two attempts at forge's default estimate, and
-   the broadcast landed with the estimator multiplied past it. The
-   disclosure and advisory legs remain unrehearsed.
+   via-IR artifacts at that commit. The chain's post-fork gas repricing
+   (~6.8× on these deploys) needs forge's gas estimator multiplied past its
+   default. The disclosure and advisory legs remain unrehearsed.
 7. **The state behind the verifier's root lives off chain.** The verifier
    stores a root. The state it commits to is held by the relay that built the
    last batch (`STATE_PATH`) and published by it (`GET /state`), so a party
@@ -609,20 +625,20 @@ Current runtime posture decisions, not release blockers:
 
 ## Verification evidence
 
-Everything in this section was measured at the baseline commit, on 2026-09-29,
-unless a line says otherwise. Which invariant each layer carries is
-`VERIFICATION_MAP.md`; the inventory of tests is `TESTING.md`.
+Every figure in this section was measured as § "The baseline commit" states.
+Which invariant each layer carries is `VERIFICATION_MAP.md`; the inventory of
+tests is `TESTING.md`.
 
 ### The gate
 
 | Layer | Result |
 |---|---|
-| Foundry (re-run after the ninth change, § "Changes after the previous baseline") | 337 passed, 0 failed, 0 skipped |
+| Foundry | 337 passed, 0 failed, 0 skipped |
 | Fork tests (mainnet's Permit2, Sepolia's SwapRouter02) | 3 passed, 0 skipped |
 | Halmos | 32 of 32 properties proved |
 | Certora | 6 of 6 specs, every rule verified |
 | Echidna | every property held on both harnesses |
-| TLA+ | 4 models, 48 invariants, no error; `FigaroCore` explored 8,380,329 states. Added after the previous baseline: `RelayState` (the relay's state lifecycle, 7 invariants + 1 action property), no error over 27,535 distinct states, each of its four defect switches caught |
+| TLA+ | 5 models, 55 invariants, no error; `FigaroCore` explored 8,380,329 states; `RelayState` (the relay's state lifecycle, 7 invariants + 1 action property) 27,535 distinct states, each of its four defect switches caught when flipped FALSE |
 | Rust (`cargo test`, five crates) | 195 passed, 0 failed; 2 ignored by design, run by the fuzz script |
 | Differential fuzz | 4 rounds, no divergence: 1,600 kernel operations, 256 agreements, about 22,000 clause cases |
 | SDK (Vitest) | 813 passed; frontend (Vitest) 873 passed |
@@ -634,12 +650,12 @@ Certora reports:
 | Spec | Report |
 |---|---|
 | FigaroCore | https://prover.certora.com/output/9512759/45aab7c04aa74df2a394adacf737b0bb |
-| AttestationCoordinator (re-run after the ninth change; every rule verified, every sanity check reached) | https://prover.certora.com/output/9512759/16c0d0189f08499da77794dd9f516325 |
+| AttestationCoordinator (every rule verified, every sanity check reached) | https://prover.certora.com/output/9512759/16c0d0189f08499da77794dd9f516325 |
 | TokenOpsVerification | https://prover.certora.com/output/9512759/b07ef08009c145bfa6c1f4ebbe7a39c1 |
 | FlorinToken | https://prover.certora.com/output/9512759/7e9a532568dd4249b99397a564fe8c4e |
 | BatchVerifierTokenOps | https://prover.certora.com/output/9512759/79f9b51977c74a9db3e38d479bd69692 |
 | RpgfMinter | https://prover.certora.com/output/9512759/cfdf957d26fd4b2393c8576d2c5ec372 |
-| BatchVerifierStateRoot (added after the previous baseline, run 2026-10-05 against the verifier as at the baseline; the spec reads the contract through `certora/harness/FigaroBatchVerifierHarness.sol`, which adds only a decoding view; each rule mutation-checked, failing on its own mutation: https://prover.certora.com/output/9512759/9fb2a938b04847b8b44c83fee498631a) | https://prover.certora.com/output/9512759/69781170fd464b3596575f725896b9c0 |
+| BatchVerifierStateRoot (the spec reads the contract through `certora/harness/FigaroBatchVerifierHarness.sol`, which adds only a decoding view; each rule mutation-checked, failing on its own mutation: https://prover.certora.com/output/9512759/9fb2a938b04847b8b44c83fee498631a) | https://prover.certora.com/output/9512759/69781170fd464b3596575f725896b9c0 |
 
 ### Test coverage, Solidity
 
@@ -649,7 +665,7 @@ over the eleven contracts in scope that hold code:
 
 | | Lines | Statements | Branches | Functions |
 |---|---|---|---|---|
-| In scope (re-run after the ninth change) | 99.81% (527/528) | 99.44% (707/711) | 97.04% (131/135) | 100% (66/66) |
+| In scope | 99.81% (527/528) | 99.44% (707/711) | 97.04% (131/135) | 100% (66/66) |
 | Lowest file: `FigaroCore.sol` | 98.57% | 97.78% | 90.48% | 100% |
 
 What is uncovered, line by line: `FigaroCore.sol:204`, the
@@ -668,8 +684,7 @@ removal, error replacement, condition forcing, negation removal,
 return-default), each contract against the test files that cover it, the
 gas-anchor tests excluded so a catch means behaviour. One run, one database,
 for every contract but `AttestationCoordinator.sol`, whose row is its own run
-after the ninth change (§ "Changes after the previous baseline"), against
-`test/core/attestation/` and `test/script/DeployWiringTest.t.sol`:
+against `test/core/attestation/` and `test/script/DeployWiringTest.t.sol`:
 
 | Contract | Mutants | Caught | Survived |
 |---|---|---|---|
@@ -792,7 +807,7 @@ shape, answered from the tree. Each answer names its evidence.
 |---|---|---|---|
 | 1 | Actors, roles, and privileges documented | Yes | The kernel has no privileged role. The two that exist above it, the florin deployer until `renounceDeployerMint` and `FigaroBatchVerifier` as `UsageCounter`'s sole writer, are in `CONTRACTS.md`. |
 | 2 | External services, contracts, and oracles documented | Yes | § "Actors, privileges, and external dependencies" above: one table, with where each is bound and what it is trusted for. There is no oracle. |
-| 3 | Written and tested incident-response plan | Written; the redeploy leg rehearsed on Sepolia | `SECURITY.md` § "Incident response": nothing can be paused or upgraded, so the procedure is disclosure, advisory, redeployment at a new address, and propagation of the deployment file. The redeploy leg ran once on live Sepolia (the counter↔verifier pair, from a worktree at the baseline commit, checked against the chain with artifacts built there — Known limitation 6); disclosure and advisory stay unrehearsed. |
+| 3 | Written and tested incident-response plan | Written; the redeploy leg rehearsed on Sepolia | `SECURITY.md` § "Incident response": nothing can be paused or upgraded, so the procedure is disclosure, advisory, redeployment at a new address, and propagation of the deployment file. The redeploy leg ran once on live Sepolia (the counter↔verifier pair; Known limitation 6); disclosure and advisory stay unrehearsed. |
 | 4 | Best attack paths documented | Yes | `DESIGN_DECISIONS.md`, the public manual's sharp-edges page, § "Behaviors to surface" above. |
 | 5 | Identity verification and background checks on employees | Not applicable | One maintainer. |
 | 6 | A team member with security in their role | Yes | The maintainer. |
@@ -800,7 +815,7 @@ shape, answered from the tree. Each answer names its evidence.
 | 8 | Key management requiring multiple humans and physical steps | Largely dissolved | No admin key survives deployment. The one standing key is the DAO treasury multisig, upstream of the protocol. |
 | 9 | Key invariants defined and tested on every commit | Yes | Pre-commit compiles the Solidity tree (`forge build`); the Foundry suite, Halmos, Slither and Semgrep run in CI on every push that changes the Solidity tree, and Clippy, Semgrep and the differential fuzz on every push that changes the prover; Certora, TLA+, Echidna and the Lean 4 equilibrium proof run in the gate. `VERIFICATION_MAP.md` maps each invariant to its test. |
 | 10 | Best automated tools for discovering security issues | Yes | Certora, Halmos, Echidna, Mythril (`scripts/mythril-docker.sh`), Slither, Semgrep, `mewt`, `cargo-mutants`, Clippy, `cargo audit` (§ "Verification evidence" above). |
-| 11 | External audits and a vulnerability-disclosure or bug-bounty programme | In progress | The first external audit is being arranged; this document is its handover. Disclosure channel and the florin-denominated bounty schedule, paid from the DAO treasury at mainnet, are in `SECURITY.md`. |
+| 11 | External audits and a vulnerability-disclosure or bug-bounty programme | Not yet | No external audit has been engaged; this document is the handover for one. Disclosure channel and the florin-denominated bounty schedule, paid from the DAO treasury at mainnet, are in `SECURITY.md`. |
 | 12 | Avenues for abusing users considered and mitigated | Yes | Buyer key loss, bad-faith withholding, and prompt injection against operator agents are documented; the policy signer (`@figaro-protocol/sdk/signer`) is the mitigation for the last. |
 
 ### Trail of Bits' code-maturity categories
@@ -809,8 +824,7 @@ Rated with Trail of Bits' published assessor (Building Secure Contracts,
 code-maturity evaluation v0.1.0) on its four-step scale, from the tree alone;
 the categories that rate a process rather than code are rated on what the tree
 shows. The rubric is threshold-based: a category holds a tier only when every
-criterion of that tier is met, so Auditing stays Moderate until the incident
-plan has been rehearsed.
+criterion of that tier is met.
 
 | Category | Rating | What holds it there |
 |---|---|---|
@@ -853,179 +867,46 @@ plan has been rehearsed.
 
 ## Validation commands — the verification gate
 
-Use these commands as the release gate. Expected output means successful completion with exit code `0` and the stated pass criteria. This gate asserts pass/fail; the harness inventory (suite, file, property, and rule counts) is `TESTING.md`.
+The gate is every row below at exit code 0 with the stated result. The
+commands, their prerequisites and the environment they run in are
+`LOCAL_DEV.md` § "Commands"; the harness inventory (suite, file, property and
+rule counts) is `TESTING.md`. The gate RUNS the three fork tests (the
+coordinator against mainnet's Permit2 and Sepolia's SwapRouter02), so the
+first row needs `MAINNET_RPC_URL` and `SEPOLIA_RPC_URL`, which a public node
+serves; without them those tests skip, which is a dev convenience, not a
+release posture, and CI's `fork` job fails on a skip.
 
-### Contracts
+| Command | Expected |
+|---|---|
+| `MAINNET_RPC_URL=<rpc> SEPOLIA_RPC_URL=<rpc> forge test --via-ir` | 0 failed, 0 skipped |
+| `./scripts/test-halmos.sh` | `✅ All 32 Halmos properties proved (7 FigaroCore + 7 MembersRegistry + 6 UsageCounter + 6 ClauseRegistry + 6 AssemblyRegistry).` |
+| `CERTORAKEY=<key> CERTORA_WAIT=1 ./scripts/test-certora.sh` | all 6 specs green (FigaroCore, AttestationCoordinator, TokenOpsVerification, FlorinToken, BatchVerifierTokenOps, RpgfMinter). `CERTORA_WAIT=1` blocks until the cloud's verdict; without it the script only dispatches. `Failed on rule_not_vacuous` alone is the vacuity heuristic, not a rule failure; the results table is the authority. The script first checks `certora/token-ops.inventory` against every token-moving call site and refuses to run on a stale line |
+| `./scripts/test-echidna.sh` | every property holds on both harnesses (kernel + FlorinToken) |
+| `./scripts/test-tla.sh` | all five models verify every invariant, TLC exit 0. `ResolutionUniverses.cfg` ships both named assumptions TRUE; flipping either to FALSE is a deliberate experiment that is EXPECTED to fail, not a gate regression |
+| `(cd formal/lean && lake build)` | the equilibrium proof builds with no error (`TESTING.md` § "Lean 4") |
+| `cd prover && cargo test --locked` | 0 failed; two tests ignored by design (they read a fuzz stream; the next row runs them). Needs Rust at the pin in `prover/rust-toolchain.toml` and the SP1 toolchain at the release `prover/Cargo.lock` names (`sp1up --version`); without SP1, `cargo test --locked -p figaro-clause -p figaro-kernel` runs the guest's two crates |
+| `./scripts/test-cross-impl-fuzz.sh [seed]` | `✅ The implementations agree on every operation, agreement and clause case`; a fresh seed without the argument, the same seed to reproduce. Needs Foundry, Rust and the SDK's dependencies (`npm ci --workspace sdk`) |
+| `scripts/prover-box/provision.sh` once on a fresh Ubuntu x86_64 host, then `scripts/prover-box/build-guest.sh` | the ELF's SHA-256 and `SP1_PROGRAM_VKEY`, equal to § "The guest and its verification key" |
+| `cd sdk && npx vitest run` | no failing suite. `sdk/tests/batch-e2e.test.ts` needs a running Anvil and the relay's release binary and skips without them; `prover-ci`'s `sp1` job runs it with its skip turned into a failure |
+| `cd frontend && npm run type-check` | no TypeScript error |
+| `cd frontend && npm run build` | the Next.js production build completes |
+| `cd frontend && npx vitest run` | no failing suite |
+| `cd frontend && npm run test:e2e:devnet` | the Anvil deployment verification passes first; the Playwright devnet project exits with no failing spec (the census is derived, `npx playwright test --list`, never a stored count) |
 
-```bash
-MAINNET_RPC_URL=<mainnet rpc> SEPOLIA_RPC_URL=<sepolia rpc> forge test --via-ir
-```
-
-Expected output:
-
-- 0 failed
-- 0 skipped — the release gate RUNS the three fork tests (the coordinator
-  against mainnet's Permit2 and Sepolia's SwapRouter02); without the two
-  variables those tests skip, which is a dev convenience, not a release
-  posture. A public node serves both; CI's `fork` job uses one and fails on a
-  skip.
-
-### Halmos Symbolic Proofs
-
-```bash
-./scripts/test-halmos.sh
-```
-
-Prereqs (one-time): `brew install z3 && pipx install halmos`.
-
-Expected output: `✅ All 32 Halmos properties proved (7 FigaroCore + 7 MembersRegistry + 6 UsageCounter + 6 ClauseRegistry + 6 AssemblyRegistry).` (exit code 0)
-
-### Certora Formal Verification
-
-```bash
-export CERTORAKEY=<key>
-CERTORA_WAIT=1 ./scripts/test-certora.sh
-```
-
-Expected output: all 6 specs green (FigaroCore, AttestationCoordinator,
-TokenOpsVerification, FlorinToken, BatchVerifierTokenOps, RpgfMinter).
-`CERTORA_WAIT=1` blocks until the cloud's verdict; without it the script only
-dispatches. `Failed on rule_not_vacuous` alone is the vacuity heuristic, not a
-rule failure — the results table is the authority. The script first checks
-`certora/token-ops.inventory` against every token-moving call site and refuses
-to run on a stale line.
-
-### Echidna Fuzzing
-
-```bash
-./scripts/test-echidna.sh
-```
-
-Prereqs: `brew install echidna`.
-
-Expected output: all properties hold on both harnesses (kernel + FlorinToken), exit code 0.
-
-### TLA+ Model Checking
-
-```bash
-./scripts/test-tla.sh
-```
-
-Prereqs: Java 11+, `tla2tools.jar` in `formal/` (script header has the `curl`).
-
-Expected output: all four models verify every invariant, TLC exit code 0.
-(`ResolutionUniverses.cfg` ships both named assumptions TRUE; flipping either
-to FALSE is a deliberate experiment that is EXPECTED to fail — not a gate
-regression.)
-
-### Rust
-
-```bash
-cd prover && cargo test --locked
-```
-
-Prereqs: Rust at the pin in `prover/rust-toolchain.toml`, and the SP1
-toolchain at the release `prover/Cargo.lock` names (`sp1up --version`); three
-of the five crates build the guest. Without SP1,
-`cargo test --locked -p figaro-clause -p figaro-kernel` runs the guest's two
-crates.
-
-Expected output: 0 failed. Two tests are ignored by design: they read a fuzz
-stream, and the next command runs them.
-
-### Differential fuzz
-
-```bash
-./scripts/test-cross-impl-fuzz.sh            # a fresh seed
-./scripts/test-cross-impl-fuzz.sh <seed>     # reproduce
-```
-
-Prereqs: Foundry, Rust, and the SDK's dependencies (`npm ci --workspace sdk`).
-
-Expected output: `✅ The implementations agree on every operation, agreement
-and clause case`, exit code 0.
-
-### The guest and its key
-
-```bash
-scripts/prover-box/provision.sh      # once, on a fresh Ubuntu x86_64 host
-scripts/prover-box/build-guest.sh
-```
-
-Expected output: the ELF's SHA-256 and `SP1_PROGRAM_VKEY`, equal to
-§ "The guest and its verification key".
-
-### SDK Tests
-
-```bash
-cd sdk && npx vitest run
-```
-
-Expected output: Vitest exits cleanly with no failing suites. The batch
-end-to-end test (`sdk/tests/batch-e2e.test.ts`) needs a running Anvil and the
-relay's release binary and skips without them; `prover-ci`'s `sp1` job runs it
-with its skip turned into a failure.
-
-### Frontend Type Check
-
-```bash
-cd frontend && npm run type-check
-```
-
-Expected output:
-
-- TypeScript completes with no errors
-
-### Frontend Production Build
-
-```bash
-cd frontend && npm run build
-```
-
-Expected output:
-
-- Next.js production build completes successfully
-- no hard build failures
-
-### Frontend Unit And Integration Tests
-
-```bash
-cd frontend && npx vitest run
-```
-
-Expected output:
-
-- Vitest exits cleanly with no failing suites
-
-### Frontend Browser Validation
-
-Devnet posture:
-
-```bash
-cd frontend && npm run test:e2e:devnet
-```
-
-Expected output:
-
-- Anvil deployment verification passes first
-- Playwright devnet project exits cleanly with no failing specs (the census is
-  derived — `npx playwright test --list` — never a stored count)
-
-High-value browser checks that must remain covered:
-
-1. `/evidence-display` works under iframe-style embedding rules
-2. handoff geolocation works under production-style headers
-3. delivery-attestation geolocation works under production-style headers
+Browser checks the devnet project keeps covered: `/evidence-display` under
+iframe-style embedding rules; handoff geolocation and delivery-attestation
+geolocation under production-style headers.
 
 ## Frontend + SDK audit posture
 
-The FE/SDK security audit — the contract audit's sibling: open-world places the
-trust boundary in the client, a static export that renders permissionless,
-attacker-authored network state and is the what-you-see-is-what-you-sign surface —
-completed 2026-07-22 across eight domains: signing integrity, dispatch-race/RFQ
-market formation, untrusted-content rendering, IPFS content-integrity, the
-ECDH/XMTP coordination channel, client-side key material, app hardening + supply
-chain, and the ecosystem-agent tier. All findings ruled and fixed with regressions.
+`frontend/` and `sdk/` are the contract audit's sibling, reviewed separately:
+open-world places the trust boundary in the client, a static export that
+renders permissionless, attacker-authored network state and is the
+what-you-see-is-what-you-sign surface. The review's eight domains are signing
+integrity, dispatch-race/RFQ market formation, untrusted-content rendering,
+IPFS content-integrity, the ECDH/XMTP coordination channel, client-side key
+material, app hardening + supply chain, and the ecosystem-agent tier. No
+finding stands open; each ruled finding has its regression test.
 
 Standing rule: a change that exposes a NEW client-side trust-boundary surface (a
 new untrusted-content render path, a new signing path, a new coordination-channel
