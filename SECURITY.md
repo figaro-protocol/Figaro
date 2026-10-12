@@ -23,8 +23,8 @@ Either way, include:
 - the impact — what an attacker gains, and whose bonds, stakes, tokens or state are at risk;
 - a proof-of-concept or reproduction steps, if you have them.
 
-You will get an acknowledgment. There is no fixed response SLA — this is a
-small project — but every report is read.
+You will get an acknowledgment. There is no fixed response SLA, but every
+report is read.
 
 ## Scope
 
@@ -65,13 +65,12 @@ design disagreement, not a vulnerability; the doc explains the reasoning.
 
 ## Audit status
 
-Not audited. The external audit is suspended: three firms were approached and
-none is affordable. The security work is the project's own, at every layer of
-the stack (`docs/RELEASE_READINESS.md` Task 2), and `docs/AUDITOR_HANDOVER.md`
-is kept current, at the baseline commit its § "The baseline commit" names — the Solidity in `src/` and the Rust in
-`prover/` together — for the day an audit is engaged; findings and remediations
-are published when they exist. The
-surface is verified internally across Foundry, Halmos, Certora, TLA+, Echidna
+Not audited. No external audit has been engaged. The security work is the
+project's own, at every layer of the stack (`docs/RELEASE_READINESS.md`
+Task 2), and `docs/AUDITOR_HANDOVER.md` is kept current, at the baseline
+commit its § "The baseline commit" names — the Solidity in `src/` and the
+Rust in `prover/` together — for the day an audit is engaged; findings and
+remediations are published when they exist. The surface is verified internally across Foundry, Halmos, Certora, TLA+, Echidna
 and Lean 4, and the Rust against the Solidity by differential fuzz
 (`docs/VERIFICATION_MAP.md`, `docs/TESTING.md`). Each contract's
 `@custom:audit-status` NatSpec is part of the source under audit and moves
