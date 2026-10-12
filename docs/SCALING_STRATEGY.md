@@ -621,4 +621,4 @@ outcome of a compromised or stopped sequencer is delayed batch resolution
 while the state behind the on-chain root survives: a sequencer started on
 that state resumes. That state is held by the relay that built the last
 batch; a relay that loses or withholds it leaves the processes open on the
-batch path with no resolve (`AUDITOR_HANDOVER.md` Known limitation 7).
+batch path with no resolve (`AUDITOR_HANDOVER.md` Known limitation 6).

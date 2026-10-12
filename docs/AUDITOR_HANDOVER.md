@@ -1,14 +1,18 @@
 # External Audit Handover
 
-The handover package for an external audit: what is in scope, what is trusted,
-what is out of scope, the baseline commit and how to verify it, what the
-maintainer wants from the review, which behaviors are intentional, what the
-project's own verification found, and the gate the audited tree passes.
+The handover package for an external audit of Figaro's on-chain surface and
+the proof apparatus beside it: what the system is, what is in scope and at
+which commit, how to build it and run its gate, which properties the review is
+asked to break, which behaviors are intentional, what the project's own
+verification found, and the evidence the baseline passes. The project wrote
+this document; where it states a judgment, the judgment is the project's, and
+the review's is its own.
 
 ## At a glance
 
 | | |
 |---|---|
+| Repository | https://github.com/figaro-protocol/Figaro |
 | Baseline commit | `e35dd161` (§ "The baseline commit"); no tag names a commit under audit — one is placed when an audit is engaged |
 | Languages in scope | Solidity (`src/`, three deploy scripts) and Rust (`prover/`, four crates) |
 | Solidity in scope | 13 contract files, 3,142 lines; 3 deploy scripts, 846 lines |
@@ -19,13 +23,87 @@ project's own verification found, and the gate the audited tree passes.
 | Deployed | Sepolia only, at an earlier commit (§ "What is deployed"); nothing on mainnet |
 | Upgrade path | none: no admin, no proxy, no pause, in any contract |
 
-Lines are physical lines, comments and NatSpec included.
+Lines are physical lines, comments and NatSpec included. Without comments and
+blank lines the scope is 1,279 lines of contracts, 405 of deploy scripts and
+5,147 of Rust.
+
+## Repository and build
+
+```bash
+git clone --recurse-submodules https://github.com/figaro-protocol/Figaro.git
+cd Figaro && git checkout e35dd161d861acc77808b0f7d171931303a7a380
+foundryup --version v1.5.1
+forge build --via-ir                 # the deployed pipeline; the default profile fails on stack depth
+cd prover && cargo build --locked    # Rust at the pin in rust-toolchain.toml; SP1's toolchain (sp1up) at the release Cargo.lock names
+```
+
+Without the SP1 toolchain, `cargo build --locked -p figaro-clause -p figaro-kernel`
+builds the guest's two crates; the relay and the program embed the guest and
+need it. The guest's own bytes, and the verification key derived from them,
+come from a build inside SP1's image (§ "The guest and its verification key").
+
+## The system
+
+Figaro is a bonded-commitment protocol: two parties who have never met trade
+under a contract whose performance and resolution are each party's best reply,
+with no arbitrator, no timeout and no administrator. The nouns below are the
+ones this document uses; `docs/LEXICON.md` defines every other.
+
+- A **process** is one buyer's run of a trade: its **orders**, resolved
+  together. An order is one buyer–seller commitment, an EIP-712 struct
+  (`CommitmentTypes.Commitment`) that both parties sign off-chain and anyone
+  may submit.
+- The **buyer** (`rootBuyer`, the same wallet in every order of a process)
+  pays, and is the only party who can resolve. A **seller** adds value in one
+  order and is paid at resolution; the **seller of record** is the seller the
+  commitment names.
+- **Payment** P_i is what order i transfers from the buyer to its seller.
+  **Cumulative value** G_i (`expectedCumulativeValue`) is the total payment
+  through order i; each later order must extend the process's accumulator by
+  exactly its own payment.
+- A **bond** is what `commit` pulls into `FigaroCore`, in the process's one
+  ERC-20: the buyer 2·P_i, the seller 2·G_i. **Resolution** is one call by the
+  buyer over every active order, and transfers to each seller 2·G_i + P_i and
+  to the buyer P_i per order: every payment transfers and every bond is
+  refunded, atomically. Nothing else moves a bond.
+- A **clause** is one reusable term of an agreement, registered once in
+  `ClauseRegistry` under a **spec** (a JSON document whose content hash and
+  URI the chain holds). An **agreement** is the clauses composed for one
+  order, every field filled; its merkle root is what the commitment carries.
+  An **assembly** is agreements composed into a reusable design, registered
+  in `AssemblyRegistry`. A **designer** is the wallet that registers a clause
+  or an assembly, under a registration stake.
+- An **attestation** is a signed statement a party makes about an open order,
+  bound by merkle proof to a section of the agreement: on the direct path
+  through `AttestationCoordinator`, on the batch path inside the proof. A
+  **witness spec** is the clause spec supplied to the proof as input; the
+  verifier checks its hash against the registry's.
+- A **member** is a wallet registered in `MembersRegistry` under a member
+  stake with a withdrawal cooldown. A resolved order counts toward designer
+  rewards only when its seller of record is a live-staked member.
+- **Designer rewards.** `UsageCounter` scores each clause and assembly by use
+  alone — c distinct processes, d distinct staked sellers, score
+  `icbrt(c·d²)` — per annual period; `RpgfMinter` mints the period's budget
+  of **florins** (the protocol's ERC-20, `FlorinToken`, one billion cap) pro
+  rata to the designers of record.
+- **Two resolution paths.** The **direct path** is `FigaroCore`: `commit` and
+  `resolveProcess`. The **batch path** resolves many processes under one SP1
+  proof. The **guest** (the proof program: the **mirror** of `FigaroCore`'s
+  rules and the clause engine) runs inside the zkVM over a stream of signed
+  operations and commits public values. The **relay** (the sequencer)
+  collects operations, proves, and calls `settleBatch` on the **verifier**
+  (`FigaroBatchVerifier`), which checks the proof, the bindings and the
+  **state root** (the root of the off-chain state the next batch builds on),
+  then moves the tokens and writes accrual into `UsageCounter`. `settleBatch`
+  is permissionless. A process opened on one path resolves on that path.
+- `WitnessSwapAndCommitCoordinator` funds a commit through a Permit2 witness
+  transfer and a Uniswap swap in the same transaction, then calls
+  `FigaroCore.commit`.
 
 ## Scope
 
-Scope and the baseline commit are two separate statements. This section says what the audit
-reviews. § "The baseline commit" says at which commit. A component is in scope
-because this section lists it, and for no other reason.
+This section says what the audit reviews; § "The baseline commit" says at
+which commit.
 
 The audit covers two languages: the Solidity contracts in `src/`, and the Rust
 workspace in `prover/` that the batch path runs on. **Both are in scope.**
@@ -34,8 +112,9 @@ workspace in `prover/` that the batch path runs on. **Both are in scope.**
 
 The protocol resolves a process on one of two paths. The direct path is the
 kernel, `FigaroCore`: two calls, `commit` and `resolveProcess`. The batch path
-resolves many processes under one proof. The batch path has four parts, and
-the names used for them vary, so each is given here once with its path:
+resolves many processes under one proof. The batch path has four parts; each
+is named here once, with the other names the code and the documents use for
+it:
 
 | Part | Also called | Where | Language | Status |
 |---|---|---|---|---|
@@ -48,8 +127,6 @@ No Rust code verifies a proof on chain. "The Rust verifier" names the proof
 program: the Rust that decides what a valid proof proves.
 
 ### In scope — Solidity
-
-The directory IS the tier map (`CONTRACTS.md` § header).
 
 | Directory / file | Contents | Lines |
 |---|---|---|
@@ -89,7 +166,7 @@ proof is checked on chain, so the relay cannot forge; the direct path stays
 open to every new process (`SCALING_STRATEGY.md` § Trust analysis). A process
 opened on the batch path resolves on the batch path, through a batch built on
 the state behind the verifier's root, which the relay that built the last
-batch holds (Known limitation 7).
+batch holds (Known limitation 6).
 It holds one key, `SEQUENCER_PRIVATE_KEY`, which signs the `settleBatch`
 transaction and pays its gas; the key grants no protocol privilege. What the
 relay publishes is how a stranger checks that a batch happened; nothing it
@@ -115,14 +192,6 @@ same, and short.
 | `prover/rust-toolchain.toml` | The Rust release the guest and the relay are built with |
 | `prover/clause/Cargo.toml`, `prover/lib/Cargo.toml` | The guest's direct dependencies and their features: `serde_json`'s `float_roundtrip`, without which a number written with a fraction is read inexactly |
 | `prover/program/Cargo.toml`, `prover/sequencer/Cargo.toml`, `prover/sequencer/build.rs` | The guest's and the relay's dependencies; the build step that compiles the guest the relay embeds |
-
-### Line counts
-
-This document counts physical lines, comments included. Without comments and
-blank lines the scope is 1,279 lines of contracts, 405 of deploy scripts and
-5,147 of Rust. An audit platform that normalises each statement to one line
-counts lower still — about 5% lower for the Solidity and about 40% for the
-Rust, whose formatter spreads a statement over several lines.
 
 ### Trusted dependency — SP1
 
@@ -159,28 +228,31 @@ came from the program with that key. The other external dependencies are in
   the guest's end-to-end test and is never deployed
 - `script/DeploySepolia.s.sol`, `script/MintTokens.s.sol` — testnet and devnet
   scripts; the mainnet surface is `DeployMainnet.s.sol`'s
-- `frontend/`, `sdk/` — reviewed separately (§ "Frontend + SDK audit posture")
+- `frontend/`, `sdk/` — the client, reviewed separately. One part of the SDK
+  is load-bearing for this scope though outside it: `@figaro-protocol/sdk/clauses`
+  is the reference the guest's clause engine is locked to, and a reviewer of
+  `prover/clause/` reads the two side by side.
 
 ## The baseline commit
 
-**Every figure in this document was measured at commit `e35dd161`**, the
-baseline, which covers the whole scope, Solidity and Rust together — or at an
-earlier commit at which the file the figure measures was byte-identical to the
-baseline's. No external audit has been engaged, so no tag names a commit under
-audit; when one is engaged, a tag is placed at the commit it reviews and this
-section names it.
+**Every figure in this document was measured at commit
+`e35dd161d861acc77808b0f7d171931303a7a380`**, the baseline, which covers the
+whole scope, Solidity and Rust together — or at an earlier commit at which the
+file the figure measures was byte-identical to the baseline's. No external
+audit has been engaged, so no tag names a commit under audit; when one is
+engaged, a tag is placed at the commit it reviews and this section names it.
 
 ```bash
 git show --no-patch e35dd161
 ```
 
-This document is kept current: a change to the scope's code is followed, at the
-verified commit, by this section's update, the baseline moved to that commit
-and the line counts and evidence that changed re-measured. A comment or NatSpec
-line changes in place. NatSpec enters the compiler's metadata (`foundry.toml`
-sets no `bytecode_hash`), so a build at a later commit carries a different
-metadata hash in its bytecode suffix than a build at the baseline; a review
-builds at the baseline.
+This document is kept current: a change to the scope's code is followed, at
+the verified commit, by this section's update, the baseline moved to that
+commit and the line counts and evidence that changed re-measured. A comment or
+NatSpec line changes in place. NatSpec enters the compiler's metadata
+(`foundry.toml` sets no `bytecode_hash`), so a build at a later commit carries
+a different metadata hash in its bytecode suffix than a build at the baseline;
+a review builds at the baseline.
 
 ### The kernel
 
@@ -252,107 +324,19 @@ deploys every contract once, from `DeployMainnet.s.sol`, and has no such seam.
 A change to a path in scope, Solidity or Rust, is:
 
 1. Scoped to a specific finding or accepted-risk item
-2. Reviewed independently of whoever wrote it — the in-house program's reviewer,
+2. Reviewed by someone other than its writer — the project's own reviewer,
    or the auditor when one is engaged
-3. Recorded in the backlog with finding reference and outcome
+3. Recorded with the finding it answers and its outcome
 4. Followed by the whole gate (§ "Validation commands"), the formal suites
    included — a signature change silently orphans any CVL spec that calls it,
    and the break is invisible until the gate runs
 5. For a change to the guest: followed by a rebuilt guest, a re-derived key,
    and a verifier deployed with it
-6. Followed, in the same sitting, by this document's § "The baseline commit",
-   line counts and evidence updated at the verified commit
+6. Followed by this document's § "The baseline commit", line counts and
+   evidence updated at the verified commit
 
 Changes to `test/`, `frontend/`, or `sdk/` do not require re-audit unless they
 expose a new on-chain attack surface.
-
-## Review goals
-
-What the maintainer wants from the review, so hours go where the doubt is.
-
-**Worst case.** Locked bonds lost or moved through a defect rather than through
-the documented by-design cases: a resolution by anyone but the buyer, a bond
-that leaves the kernel other than at resolution, or a batch resolution the
-direct path would have refused.
-
-**Areas of concern, in order.**
-
-1. Any path by which the payoff table the equilibrium rests on can be altered:
-   signature or domain-separator replay, accumulator manipulation, reentrancy
-   through the token, an order that resolves a process it does not belong to.
-   The kernel is about 200 SLOC and carries five verification layers; the
-   doubt is in what composes with it, not in it.
-2. The batch path's seam between languages. `FigaroBatchVerifier.settleBatch`
-   is the largest function in scope, and the guest decides what it moves: a
-   forged or mis-bound proof accepted by the verifier, a clause-hash binding
-   that diverges from the registry, public values the guest commits that the
-   kernel would have refused, and the one privileged writer (the verifier into
-   `UsageCounter`) doing more than accrue. Every defect the project found
-   itself before this handover sat on a seam between two implementations of
-   one rule (§ "What the project's own verification found").
-3. The reward and stake economics: reward inflation or Sybil accrual through
-   `UsageCounter` and `RpgfMinter`; stake accounting in the registries'
-   withdrawal paths.
-4. Token-boundary behaviour: the Permit2 witness digest and SwapRouter02 call in
-   `WitnessSwapAndCommitCoordinator`, and non-standard ERC-20s beyond the
-   fee-on-transfer rejection.
-5. The clause engine: a spec or a content the guest reads differently from
-   the SDK's engine (`@figaro-protocol/sdk/clauses`), and the witness gates the mirror
-   enforces — spec-identity substitution, content-hash mismatch, inclusion
-   failure, attest-after-resolve — agreeing with `AttestationCoordinator` and
-   the kernel.
-6. The relay: liveness under a hostile client — the door, the cap, the
-   re-queue — the handling of its one key, and what it publishes.
-
-**Questions for the auditor.**
-
-1. Is there any sequence of `commit` calls, on one process or across processes,
-   that makes `resolveProcess` pay a seller more than `2·G_i + P_i` or refund the
-   buyer other than `P_i` per order?
-2. Can a valid SP1 proof over a stale or foreign state be replayed against the
-   verifier, given the `prevRoot`, `chainId`, `verifyingContract` and
-   `blockTimestamp` checks?
-3. Can the try/catch around `applyBatchAccrual` be made to swallow anything other
-   than an accrual-gate revert?
-4. Is the `icbrt(c·d²)` score manipulable at a cost below the registration stake
-   plus the member stake it requires?
-5. Does the Permit2 witness in `swapAndCommit` bind every field a signer would
-   want bound, so a relayer cannot substitute a route?
-6. Can any operation stream make the guest commit public values `settleBatch`
-   accepts that `FigaroCore` would have refused for the same signatures?
-7. Does the state root bind everything the next batch depends on, so that no
-   prover can carry state across batches that the root does not cover?
-8. Is the batch path's resolve authorization — a bare
-   `ResolveProcess(processId)` signature, no nonce and no deadline
-   (`DESIGN_DECISIONS.md` #22) — replayable to any effect?
-9. Can one client stall the relay, or exhaust its re-queue, at a cost below its
-   own rate-limit budget?
-
-## What the project's own verification found
-
-The project's three differential fuzz streams, its mutation testing over the
-Rust, and its real-proof rehearsal found nine defects. None moved value
-wrongly; eight of the nine were two implementations of one rule disagreeing.
-All are fixed at the baseline commit, each with the test that found it. They
-are listed because they show where this codebase breaks: at the seams.
-
-| # | Seam | Defect | Found by |
-|---|---|---|---|
-| 1 | Kernel ↔ Rust mirror | The mirror accepted a signature whose recovery id is written 0 or 1; `ECDSA.recover` hands it to `ecrecover` as written and the kernel rejects it | Kernel fuzz stream |
-| 2 | SDK clause engine ↔ Rust clause engine | An integer past ±(2^53 − 1): one JSON text, read as two integers | Clause fuzz stream |
-| 3 | Validator ↔ encoder, both engines | A `bigint` past 2^256 − 1 validated and could not be encoded | Clause fuzz stream |
-| 4 | Validator ↔ encoder, both engines | A signed `bigint` validated and could not be encoded | Clause fuzz stream |
-| 5 | JavaScript regex ↔ Rust regex | A field's `pattern` run by two libraries that read lookaround, inline flags, Unicode classes and set operations differently | Engine vectors |
-| 6 | SDK spec parser ↔ Rust spec parser | A spec `version` of `1e21` parsed by one and refused by the other | Engine vectors |
-| 7 | JSON text ↔ Rust number | `9007199254740991.0` read as `…990` by the Rust JSON parser's default mode | A test written for a surviving mutant |
-| 8 | SDK clause engine ↔ Rust clause engine | An integer written `5.0` or `5e0` refused by the guest, read as 5 by the SDK | The same test |
-| 9 | Relay ↔ its readers | The relay published a batch's transaction hash under a name its readers did not read; every batch read as unanchored | The real-proof rehearsal |
-
-Two of `FigaroBatchVerifier`'s checks came the same way: the batch timestamp is
-the ninth public-values word, bounded on chain (`MAX_BATCH_STALENESS`), so the
-guest's deadline checks run against a timestamp the verifier sees; and public
-values of any length but nine words are refused by name
-(`PublicValuesLengthMismatch`) before the proof is read.
 
 ## Actors, privileges, and external dependencies
 
@@ -385,6 +369,173 @@ never reads `msg.sender`, and `resolveProcess` is gated by presence
 | Arbitration forums | composed at the edge (`CONTRACTS.md` § coordinators) | nothing on-chain; a forum rules on open data and cannot call resolve |
 
 No oracle, no bridge, no upgrade proxy, no pause anywhere.
+
+### Parameters
+
+The constants and constructor arguments the mainnet deploy fixes
+(`script/DeployMainnet.s.sol`); every one is immutable once deployed.
+
+| Parameter | Value | Where |
+|---|---|---|
+| Bond multiple | 2× payment (buyer), 2× cumulative value (seller) | `FigaroCore.sol:208-209` |
+| `MAX_BATCH_STALENESS` | 1 hour: the batch timestamp may trail the block by this much (accepted risk 4) | `FigaroBatchVerifier.sol:98` |
+| `PUBLIC_VALUES_LENGTH` | 288 bytes, nine words; any other length is refused by name | `FigaroBatchVerifier.sol:103` |
+| `MAX_BATCH_OPS` | the relay's batch cap, 100 by default; an operator's environment variable | `prover/sequencer/src/main.rs:121` |
+| Re-queue bound | an operation re-queued after a transient submission failure is re-queued at most three times, then dead-lettered | `prover/sequencer/README.md` |
+| Clause and assembly registration stake | 0.05 ETH per registration, no cooldown, withdrawable once; the binding stays | `DeployMainnet.s.sol:157`, `:164` |
+| Member stake | 0.05 ETH, 28-day withdrawal cooldown | `DeployMainnet.s.sol:197` |
+| Minimum-support floor | 3 distinct staked sellers before a clause or assembly scores | `DeployMainnet.s.sol:269` |
+| Reward periods | nine annual periods from `RPGF_GENESIS` | `DeployMainnet.s.sol:246-248` |
+| Period budgets | 45M, 45M, 60M, 60M, 60M, 82.5M, 82.5M, 82.5M, 82.5M florins: 600M, the `RpgfMinter` cap | `DeployMainnet.s.sol:291-299` |
+| Florin supply | 1B cap; at genesis 70M to the founders' wallet, 30M to the supporters' wallet, 300M to the DAO treasury, and the 600M minter registered; the deployer's minting renounced in the same broadcast | `FlorinToken.sol:26`, `DeployMainnet.s.sol:63-66` |
+
+### Entry points
+
+Every external state-changing function in scope and who may call it. View
+and pure functions are omitted.
+
+| Contract | Function | Who may call |
+|---|---|---|
+| `FigaroCore` | `commit` | anyone carrying both parties' signatures; the bonds are pulled from the signers, the gas is the caller's |
+| `FigaroCore` | `resolveProcess` | the process's `rootBuyer`, over every active order |
+| `AttestationCoordinator` | `attestAsSeller` | the seller named in a committed order of the same process (`msg.sender == role.seller`) |
+| `AttestationCoordinator` | `attestAsBuyer` | the order's buyer (`msg.sender == target.buyer`) |
+| `FigaroBatchVerifier` | `settleBatch` | anyone, with a valid proof over the current state root |
+| `ClauseRegistry` | `registerClause` | anyone, with the registration stake; first write wins |
+| `ClauseRegistry` | `withdrawDeposit` | the registrant |
+| `ClauseRegistry` | `setMechanismClause` | any contract; emits an event, writes nothing |
+| `AssemblyRegistry` | `registerAssembly` | anyone, with the registration stake; first write wins |
+| `AssemblyRegistry` | `withdrawDeposit` | the registrant |
+| `UsageCounter` | `recordClauseUsage`, `recordAssemblyUsage` | anyone, with a merkle proof over a resolved direct-path order |
+| `UsageCounter` | `applyBatchAccrual` | `FigaroBatchVerifier` only, immutable |
+| `RpgfMinter` | `claim` | the designer of record of every key it passes, once per closed period |
+| `FlorinToken` | `registerMinter` | the deployer, until `renounceDeployerMint` |
+| `FlorinToken` | `mint` | a registered minter, within its cap; the deployer's own registration ends at the renounce |
+| `FlorinToken` | `renounceDeployerMint` | the deployer; one-way |
+| `MembersRegistry` | `register` | anyone, with the member stake |
+| `MembersRegistry` | `updateProfile`, `requestWithdrawal`, `withdraw` | the member itself |
+| `WitnessSwapAndCommitCoordinator` | `swapAndCommit` | anyone carrying both parties' commitment signatures and their Permit2 witness signatures |
+
+## Invariants
+
+The properties the review is asked to break, by the identifiers
+`docs/VERIFICATION_MAP.md` uses to map each one to its code, tests and formal
+layer.
+
+| Id | Property |
+|---|---|
+| K-1 | The buyer's bond is twice the payment; the seller's is twice the cumulative value |
+| K-2 | Only the root buyer can call `resolveProcess` |
+| K-3 | A process resolves every active order together, or not at all |
+| K-4 | No timeout and no administrative exit from an active process |
+| K-5 | A process's cumulative value only increases, by exactly each order's payment |
+| K-6 | Resolution is a direct ERC-20 transfer; the kernel keeps no internal ledger |
+| K-7 | A process is bound to one token at its root order |
+| K-8 | Both parties' EIP-712 signatures are verified on every commit |
+| K-9 | An order's hash is content-addressed: `keccak256(processId ‖ structHash)` |
+| A-7 | A fee-on-transfer token is rejected at the pull |
+| A-8 | The kernel holds exactly the bonds of its committed orders |
+| A-9 | Resolution moves exactly the payment from buyer to seller and returns both bonds whole |
+| A-10 | Every committed order is bound to its process once, at commit |
+| E-1 | Only the role-holder named in a committed order attests on it |
+| E-2 | A registered clause or assembly is never overwritten |
+| E-6 | The florin's supply never exceeds one billion |
+| E-7 | Batch-resolved trade counts toward designer rewards once; the two paths share no state |
+| E-9 | Every persistent effect of `settleBatch` is bound by a public value the proof commits to |
+
+## Review goals
+
+Where the project asks the review to spend its hours, in the order of the
+doubt it holds.
+
+**Worst case.** Locked bonds lost or moved through a defect rather than through
+the documented by-design cases: a resolution by anyone but the buyer, a bond
+that leaves the kernel other than at resolution, or a batch resolution the
+direct path would have refused.
+
+**Areas of concern, in order.**
+
+1. Any path by which the payoff table the equilibrium rests on can be altered:
+   signature or domain-separator replay, accumulator manipulation, reentrancy
+   through the token, an order that resolves a process it does not belong to.
+   The kernel is about 200 SLOC; its verification layers are listed in
+   § "Verification evidence". The items below are what composes with it.
+2. The batch path's seam between languages. `FigaroBatchVerifier.settleBatch`
+   is the largest function in scope, and the guest decides what it moves: a
+   forged or mis-bound proof accepted by the verifier, a clause-hash binding
+   that diverges from the registry, public values the guest commits that the
+   kernel would have refused, the one privileged writer (the verifier into
+   `UsageCounter`) doing more than accrue, and the off-chain state the root
+   commits to (Known limitation 6). Every defect the project found itself sat
+   on a seam between two implementations of one rule (§ "What the project's
+   own verification found").
+3. The reward and stake economics: reward inflation or Sybil accrual through
+   `UsageCounter` and `RpgfMinter`; stake accounting in the registries'
+   withdrawal paths.
+4. Token-boundary behaviour: the Permit2 witness digest and SwapRouter02 call in
+   `WitnessSwapAndCommitCoordinator`, and non-standard ERC-20s beyond the
+   fee-on-transfer rejection.
+5. The clause engine: a spec or a content the guest reads differently from
+   the SDK's engine (`@figaro-protocol/sdk/clauses`), and the witness gates the
+   mirror enforces — spec-identity substitution, content-hash mismatch,
+   inclusion failure, attest-after-resolve — agreeing with
+   `AttestationCoordinator` and the kernel.
+6. The relay: liveness under a hostile client — admission (the balance and
+   allowance read before an operation is queued), the batch cap and the
+   re-queue bound (§ "Parameters") — the handling of its one key, and what it
+   publishes.
+
+**Questions for the auditor.**
+
+1. Is there any sequence of `commit` calls, on one process or across processes,
+   that makes `resolveProcess` pay a seller more than 2·G_i + P_i or refund the
+   buyer other than P_i per order?
+2. Can a valid SP1 proof over a stale or foreign state be replayed against the
+   verifier, given the `prevRoot`, `chainId`, `verifyingContract` and
+   `blockTimestamp` checks?
+3. Can the try/catch around `applyBatchAccrual` be made to swallow anything other
+   than an accrual-gate revert?
+4. Is the `icbrt(c·d²)` score manipulable at a cost below the registration stake
+   plus the member stake it requires?
+5. Does the Permit2 witness in `swapAndCommit` bind every field a signer would
+   want bound, so a relayer cannot substitute a route?
+6. Can any operation stream make the guest commit public values `settleBatch`
+   accepts that `FigaroCore` would have refused for the same signatures?
+7. Does the state root bind everything the next batch depends on, so that no
+   prover can carry state across batches that the root does not cover?
+8. Is the batch path's resolve authorization — a bare
+   `ResolveProcess(processId)` signature, no nonce and no deadline
+   (`DESIGN_DECISIONS.md` #22) — replayable to any effect?
+9. Can one client stall the relay, or exhaust its re-queue, at a cost below its
+   own rate-limit budget?
+
+## What the project's own verification found
+
+The project's three differential fuzz streams, its mutation testing over the
+Rust, and its real-proof rehearsal found nine defects. None is in the
+kernel: eight are two implementations of one rule disagreeing, corrected to
+the reference implementation named in the row, and one is a publication the
+relay's readers did not read. All are fixed at the baseline commit, each with
+the test that found it. They are listed because they show where this codebase
+breaks: at the seams.
+
+| # | Seam | Defect | Found by |
+|---|---|---|---|
+| 1 | Kernel ↔ Rust mirror | The mirror accepted a signature whose recovery id is written 0 or 1; `ECDSA.recover` hands it to `ecrecover` as written and the kernel rejects it | Kernel fuzz stream |
+| 2 | SDK clause engine ↔ Rust clause engine | An integer past ±(2^53 − 1): one JSON text, read as two integers | Clause fuzz stream |
+| 3 | Validator ↔ encoder, both engines | A `bigint` past 2^256 − 1 validated and could not be encoded | Clause fuzz stream |
+| 4 | Validator ↔ encoder, both engines | A signed `bigint` validated and could not be encoded | Clause fuzz stream |
+| 5 | JavaScript regex ↔ Rust regex | A field's `pattern` run by two libraries that read lookaround, inline flags, Unicode classes and set operations differently | Engine vectors |
+| 6 | SDK spec parser ↔ Rust spec parser | A spec `version` of `1e21` parsed by one and refused by the other | Engine vectors |
+| 7 | JSON text ↔ Rust number | `9007199254740991.0` read as `…990` by the Rust JSON parser's default mode | A test written for a surviving mutant |
+| 8 | SDK clause engine ↔ Rust clause engine | An integer written `5.0` or `5e0` refused by the guest, read as 5 by the SDK | The same test |
+| 9 | Relay ↔ its readers | The relay published a batch's transaction hash under a name its readers did not read; every batch read as unanchored | The real-proof rehearsal |
+
+Two of `FigaroBatchVerifier`'s checks came the same way: the batch timestamp is
+the ninth public-values word, bounded on chain (`MAX_BATCH_STALENESS`), so the
+guest's deadline checks run against a timestamp the verifier sees; and public
+values of any length but nine words are refused by name
+(`PublicValuesLengthMismatch`) before the proof is read.
 
 ## Behaviors to surface
 
@@ -489,20 +640,9 @@ read it first.
   `api_state_route_serves_the_state_another_relay_starts_on`). A served state
   is never written over a state file unchecked: `formal/RelayState.tla`
   (`TakeoverChecksRoot`) shows a stale served state overwriting the only copy.
-  Known limitation 7 states what remains.
+  Known limitation 6 states what remains.
 
-### Conventions and measured complexity
-
-**Naming, as practised across the Solidity in scope.** Contracts and structs
-PascalCase; external and public functions camelCase; every internal and private
-function carries a leading underscore (the one exception is the library
-function `CommitmentTypes.hashStruct`, named for the EIP-712 operation it
-performs); immutables camelCase, constants UPPER_SNAKE (`COMMITMENT_TYPEHASH`,
-`MAX_SUPPLY`, `CUBE_MAX`); custom errors are PascalCase statements of the
-condition (`OrderNotCommitted`, `SellerNotStaked`); events are PascalCase
-past-tense facts (`OrderResolved`, `MemberWithdrawalRequested`) except
-`Attestation`, which names the attestation itself. `forge fmt` is the formatter
-and runs in CI.
+### Measured complexity
 
 **Cyclomatic complexity** (Slither `function-summary`):
 
@@ -547,7 +687,7 @@ Current design realities accepted by the protocol surface, not accidental defect
 
 1. buyer key loss is terminal for an active process because the kernel has no timeout or admin recovery path
 2. very large processes are gas-bounded, so institution design should compose across processes instead of pushing single-process fanout toward the ceiling
-3. fee-on-transfer tokens are unsupported by design and are rejected explicitly by the kernel; rebasing tokens are unsupported and NOT detected (`_pullExact` sees only the delta inside its own transfer call — `DESIGN_DECISIONS.md` #10 states the consequence and corrects the kernel's NatSpec, which is frozen); a token with an issuer blocklist holds any process a blocked party sits in until the issuer relents, since resolution is atomic (`WeirdTokenTest`; the same entry)
+3. fee-on-transfer tokens are unsupported by design and are rejected explicitly by the kernel; rebasing tokens are unsupported and NOT detected (`_pullExact` sees only the delta inside its own transfer call — `DESIGN_DECISIONS.md` #10 states the consequence and corrects the kernel's NatSpec); a token with an issuer blocklist holds any process a blocked party sits in until the issuer relents, since resolution is atomic (`WeirdTokenTest`; the same entry)
 4. a commitment can be bonded on the batch path up to one hour after its deadline: `settleBatch` accepts a batch timestamp up to `MAX_BATCH_STALENESS` (one hour, `FigaroBatchVerifier.sol:98`, checked at `:299`) behind its block, from any prover, and the guest checks deadlines against that timestamp; the kernel refuses an expired commitment at once. Both parties signed the commitment and both fund its bonds, so nothing moves that they did not agree to; a party that needs a hard cut-off signs a deadline one hour earlier. Closing it is a verifier change, so a new key and a new deployment
 
 ## Known limitations
@@ -584,28 +724,21 @@ Stated so the review does not spend hours finding them.
    three re-queues, so distinct revoking addresses — the per-address signal
    does not aggregate them — can burn a co-batched operation's cap. The
    direct path stays open to a new process throughout.
-4. **The full devnet end-to-end suite runs by hand.** CI runs its spine. Run
-   once on a fresh devnet at `2d9a2c55`: 55 specs, 52 passed at the
-   first attempt, 3 passed at the second — a three-seller chain's accept and
-   the two swap-funded on-ramps, whose first attempt on a fresh chain
-   revert `ERC20InsufficientAllowance` before the allowance the page has
-   just set is read back. A timing fault in the tests, not in the contracts;
-   none failed.
-5. **The batch path's per-position gas figure is pre-fork.** The direct
+4. **The batch path's per-position gas figure is pre-fork.** The direct
    path's per-order constants are measured on live post-fork Sepolia
    receipts against the deployed kernel (resolve ~73,000 + ~29,800·N;
    sub-order commit 382,032, root 793,549 — `sdk/src/gasCeilings.ts` carries
    the provenance); the batch verifier's ~26.5k/position and its ~1,130-position
    ceiling are still pre-fork figures, re-derived when enough post-fork
    `settleBatch` receipts accumulate (three stand so far).
-6. **The incident procedure's redeploy leg is rehearsed on Sepolia; the full
+5. **The incident procedure's redeploy leg is rehearsed on Sepolia; the full
    procedure is not.** The counter↔verifier pair was redeployed on live
    Sepolia from a clean worktree at `a4a34e91` — fork rehearsal first,
    then the broadcast, the record update, and the deployment check with
    via-IR artifacts at that commit. The chain's post-fork gas repricing
    (~6.8× on these deploys) needs forge's gas estimator multiplied past its
    default. The disclosure and advisory legs remain unrehearsed.
-7. **The state behind the verifier's root lives off chain.** The verifier
+6. **The state behind the verifier's root lives off chain.** The verifier
    stores a root. The state it commits to is held by the relay that built the
    last batch (`STATE_PATH`) and published by it (`GET /state`), so a party
    or a second relay can keep a copy and start on it once the copy's root is
@@ -616,12 +749,6 @@ Stated so the review does not spend hours finding them.
    and publishes nothing — those processes have no one who can build their
    resolve, and their bonds stay in the verifier. A relay that does not hold
    the state refuses to start and builds nothing.
-
-## Accepted runtime posture
-
-Current runtime posture decisions, not release blockers:
-
-1. geolocation remains allowed for same-origin runtime surfaces instead of being narrowed to a brittle route allowlist, because handoff and delivery-attestation modules are runtime-composable across multiple live pages
 
 ## Verification evidence
 
@@ -641,9 +768,8 @@ tests is `TESTING.md`.
 | TLA+ | 5 models, 55 invariants, no error; `FigaroCore` explored 8,380,329 states; `RelayState` (the relay's state lifecycle, 7 invariants + 1 action property) 27,535 distinct states, each of its four defect switches caught when flipped FALSE |
 | Rust (`cargo test`, five crates) | 195 passed, 0 failed; 2 ignored by design, run by the fuzz script |
 | Differential fuzz | 4 rounds, no divergence: 1,600 kernel operations, 256 agreements, about 22,000 clause cases |
-| SDK (Vitest) | 813 passed; frontend (Vitest) 873 passed |
+| SDK (Vitest) | 813 passed |
 | Batch end-to-end (SDK → relay → verifier) | passed |
-| Devnet end-to-end (Playwright, 55 specs) | 52 passed, 3 passed on retry (§ "Known limitations") |
 
 Certora reports:
 
@@ -796,63 +922,12 @@ from the chain afterwards: the bonds pulled at commit (4 units for a payment of
 resolution, the verifier holding nothing, the state root advanced twice from
 the genesis root, the usage counted on the counter's own storage.
 
-## External evaluation frameworks — where the surface stands
-
-The published checklists an auditor or a reviewer applies to a protocol of this
-shape, answered from the tree. Each answer names its evidence.
-
-### The Rekt Test (Trail of Bits)
-
-| # | Question | Answer | Evidence |
-|---|---|---|---|
-| 1 | Actors, roles, and privileges documented | Yes | The kernel has no privileged role. The two that exist above it, the florin deployer until `renounceDeployerMint` and `FigaroBatchVerifier` as `UsageCounter`'s sole writer, are in `CONTRACTS.md`. |
-| 2 | External services, contracts, and oracles documented | Yes | § "Actors, privileges, and external dependencies" above: one table, with where each is bound and what it is trusted for. There is no oracle. |
-| 3 | Written and tested incident-response plan | Written; the redeploy leg rehearsed on Sepolia | `SECURITY.md` § "Incident response": nothing can be paused or upgraded, so the procedure is disclosure, advisory, redeployment at a new address, and propagation of the deployment file. The redeploy leg ran once on live Sepolia (the counter↔verifier pair; Known limitation 6); disclosure and advisory stay unrehearsed. |
-| 4 | Best attack paths documented | Yes | `DESIGN_DECISIONS.md`, the public manual's sharp-edges page, § "Behaviors to surface" above. |
-| 5 | Identity verification and background checks on employees | Not applicable | One maintainer. |
-| 6 | A team member with security in their role | Yes | The maintainer. |
-| 7 | Hardware security keys for production systems | Not in the tree | Operational, outside the repo. |
-| 8 | Key management requiring multiple humans and physical steps | Largely dissolved | No admin key survives deployment. The one standing key is the DAO treasury multisig, upstream of the protocol. |
-| 9 | Key invariants defined and tested on every commit | Yes | Pre-commit compiles the Solidity tree (`forge build`); the Foundry suite, Halmos, Slither and Semgrep run in CI on every push that changes the Solidity tree, and Clippy, Semgrep and the differential fuzz on every push that changes the prover; Certora, TLA+, Echidna and the Lean 4 equilibrium proof run in the gate. `VERIFICATION_MAP.md` maps each invariant to its test. |
-| 10 | Best automated tools for discovering security issues | Yes | Certora, Halmos, Echidna, Mythril (`scripts/mythril-docker.sh`), Slither, Semgrep, `mewt`, `cargo-mutants`, Clippy, `cargo audit` (§ "Verification evidence" above). |
-| 11 | External audits and a vulnerability-disclosure or bug-bounty programme | Not yet | No external audit has been engaged; this document is the handover for one. Disclosure channel and the florin-denominated bounty schedule, paid from the DAO treasury at mainnet, are in `SECURITY.md`. |
-| 12 | Avenues for abusing users considered and mitigated | Yes | Buyer key loss, bad-faith withholding, and prompt injection against operator agents are documented; the policy signer (`@figaro-protocol/sdk/signer`) is the mitigation for the last. |
-
-### Trail of Bits' code-maturity categories
-
-Rated with Trail of Bits' published assessor (Building Secure Contracts,
-code-maturity evaluation v0.1.0) on its four-step scale, from the tree alone;
-the categories that rate a process rather than code are rated on what the tree
-shows. The rubric is threshold-based: a category holds a tier only when every
-criterion of that tier is met.
-
-| Category | Rating | What holds it there |
-|---|---|---|
-| Arithmetic | Satisfactory | Checked math throughout, in both languages; one two-line `unchecked` block on `uint64` counters (`UsageCounter.sol:667-670`) carries no inline bound argument. |
-| Auditing | Satisfactory | Events cover every state change (`renounceDeployerMint` excepted, documented). The watcher runs in CI, the incident procedure is written, and its redeploy leg is rehearsed on live Sepolia (`SECURITY.md` § Monitoring, § Incident response; Known limitation 6). |
-| Access controls | Satisfactory | Two privileged relations, both immutable, documented, tested (§ "Actors"). |
-| Complexity management | Satisfactory | The functions at or above the rubric's threshold of 11 are `commit` and `settleBatch` (§ "Conventions and measured complexity"), each justified there and in NatSpec; the naming convention is written; the only duplication is the documented mirrors, locked by vectors and fuzz. |
-| Decentralization | Strong | No admin, pause, upgrade, or proxy; every parameter immutable; the direct path always open to a new process beside the batch path; the state behind the batch path's root is published by the relay that holds it (`GET /state`), so any party or a second relay can keep a copy and take over (Known limitation 7 states what remains); immutability proved in CVL. |
-| Documentation | Satisfactory | Glossary, invariant map, design-decision catalogue, review goals, dense NatSpec; the stale comment referents listed under § "Known stale comments in the kernel". |
-| Transaction ordering | Satisfactory | Route substitution closed by the Permit2 witness; registry front-running and reward capture accepted and priced; no oracle. |
-| Low-level manipulation | Satisfactory | Assembly confined to four hash packers, mirrored by `abi.encodePacked` tests, differentially fuzzed against those mirrors, and pinned by Rust cross-language vectors. |
-| Testing and verification | Satisfactory | Coverage above; every reachable revert branch in the Solidity has a test that asserts its error; mutation testing over every contract in scope and over the guest; three differential fuzz streams in CI. |
-
-### The L2BEAT risk categories, applied to the batch path
-
-| Risk | Posture | Evidence |
-|---|---|---|
-| State validation | Validity proof | `FigaroBatchVerifier.settleBatch` verifies an SP1 proof and checks every witness-spec binding against the live `ClauseRegistry`. |
-| Data availability | Off-chain by design | The chain holds hashes; the parties hold the preimages. `DATA_LAYER.md` owns the seam. |
-| Exit window | Immutable | No admin, no upgrade path, no pause, in every contract. A changed program is a new verifier under a new address. |
-| Proposer failure | Direct path open to a new process; a batch-path process needs the state | The kernel needs no relay, and any new process can open on `FigaroCore`. A process opened on the batch path resolves only through a batch built on the state behind the verifier's root, which the relay publishes so another can take over (Known limitation 7). |
-| Sequencer failure | Same | A batch-resolved process never acquires kernel status (`FigaroBatchVerifier.sol` NatSpec on designer rewards); the two resolution paths are disjoint, and `UsageCounter` bridges only the accrual. |
-
 ## Reading list
 
 | Document | Purpose |
 |---|---|
-| `docs/DESIGN_DECISIONS.md` | The catalogued intentional patterns that look like vulnerabilities (read first; count them there, never quote a stored number) |
+| `docs/LEXICON.md` | Every noun this document uses, defined once |
+| `docs/DESIGN_DECISIONS.md` | The catalogued intentional patterns that look like vulnerabilities; read first |
 | `docs/VERIFICATION_MAP.md` | Every invariant → code → test → formal layer |
 | `docs/CONTRACTS.md` | Every contract's surface, and what the protocol has no contract for |
 | `docs/CLAUSES.md` | The clause spec format, the generic engine, the portable pattern core |
@@ -873,8 +948,7 @@ commands, their prerequisites and the environment they run in are
 rule counts) is `TESTING.md`. The gate RUNS the three fork tests (the
 coordinator against mainnet's Permit2 and Sepolia's SwapRouter02), so the
 first row needs `MAINNET_RPC_URL` and `SEPOLIA_RPC_URL`, which a public node
-serves; without them those tests skip, which is a dev convenience, not a
-release posture, and CI's `fork` job fails on a skip.
+serves; without them those tests skip, and CI's `fork` job fails on a skip.
 
 | Command | Expected |
 |---|---|
@@ -888,31 +962,3 @@ release posture, and CI's `fork` job fails on a skip.
 | `./scripts/test-cross-impl-fuzz.sh [seed]` | `✅ The implementations agree on every operation, agreement and clause case`; a fresh seed without the argument, the same seed to reproduce. Needs Foundry, Rust and the SDK's dependencies (`npm ci --workspace sdk`) |
 | `scripts/prover-box/provision.sh` once on a fresh Ubuntu x86_64 host, then `scripts/prover-box/build-guest.sh` | the ELF's SHA-256 and `SP1_PROGRAM_VKEY`, equal to § "The guest and its verification key" |
 | `cd sdk && npx vitest run` | no failing suite. `sdk/tests/batch-e2e.test.ts` needs a running Anvil and the relay's release binary and skips without them; `prover-ci`'s `sp1` job runs it with its skip turned into a failure |
-| `cd frontend && npm run type-check` | no TypeScript error |
-| `cd frontend && npm run build` | the Next.js production build completes |
-| `cd frontend && npx vitest run` | no failing suite |
-| `cd frontend && npm run test:e2e:devnet` | the Anvil deployment verification passes first; the Playwright devnet project exits with no failing spec (the census is derived, `npx playwright test --list`, never a stored count) |
-
-Browser checks the devnet project keeps covered: `/evidence-display` under
-iframe-style embedding rules; handoff geolocation and delivery-attestation
-geolocation under production-style headers.
-
-## Frontend + SDK audit posture
-
-`frontend/` and `sdk/` are the contract audit's sibling, reviewed separately:
-open-world places the trust boundary in the client, a static export that
-renders permissionless, attacker-authored network state and is the
-what-you-see-is-what-you-sign surface. The review's eight domains are signing
-integrity, dispatch-race/RFQ market formation, untrusted-content rendering,
-IPFS content-integrity, the ECDH/XMTP coordination channel, client-side key
-material, app hardening + supply chain, and the ecosystem-agent tier. No
-finding stands open; each ruled finding has its regression test.
-
-Standing rule: a change that exposes a NEW client-side trust-boundary surface (a
-new untrusted-content render path, a new signing path, a new coordination-channel
-message type) warrants a scoped re-review against the eight domains — not a
-re-tag.
-
-One part of the SDK is load-bearing for the audit's scope though outside it:
-`@figaro-protocol/sdk/clauses` is the reference the guest's clause engine is
-locked to. A reviewer of `prover/clause/` reads the two side by side.
