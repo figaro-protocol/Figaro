@@ -152,11 +152,6 @@ the seller's address. What the code allows is the seller's own act and the
 seller's own risk, as the buyer's is. New commitments are not rescuable, for the
 same reason: each needs a fresh signature from the lost key.
 
-(`FigaroCore`'s NatSpec at `FigaroCore.sol:238-240` still says "use social
-recovery or multi-sig for the buyer role" — a stale comment,
-contradicted by its own ECDSA-only verification; recorded for the
-handover.)
-
 ---
 
 ## 6. `prevrandao` is not used as a salt — by design
@@ -281,8 +276,7 @@ the exact committed amount is locked. If the received amount differs from the
 committed amount, the bond math is broken. Rejecting fee-on-transfer is the
 correct behavior, and detecting a rebase would need state `FigaroCore` does not
 keep. Wrapped, non-rebasing variants (e.g., wstETH instead of stETH) must be
-used; `FigaroCore`'s NatSpec above `_pullExact` states the rebasing case more
-strongly than the check enforces, and this entry is the correction. `RELEASE_READINESS.md` carries the deployment precondition.
+used; `FigaroCore`'s NatSpec above `_pullExact` states the same. `RELEASE_READINESS.md` carries the deployment precondition.
 
 **The same holds for a token with an issuer blocklist.** Resolution is atomic:
 if the currency refuses a transfer to one party, the whole process stays open

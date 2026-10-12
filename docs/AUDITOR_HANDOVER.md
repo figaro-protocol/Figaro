@@ -292,11 +292,13 @@ new key, and a new key is a new verifier at a new address.
 
 The guest is built inside SP1's build image, by
 `scripts/prover-box/build-guest.sh`; the release is read from
-`prover/Cargo.lock`. Built twice on one host: the same bytes and the same key.
-The guest at the baseline differs from the guest that produced this key only
-in comments that move no line (`git diff --numstat` is symmetric file by
-file), so its bytes and key are expected equal; the next build in the image
-confirms it against this table. The ELF does not reproduce across operating systems,
+`prover/Cargo.lock`. The build of record is the `Sequencer Release` workflow's
+docker build at tag `v0.2.0` (commit `8eaf1c56`, run 37504308141), which
+printed this hash and this key and checked the key against the Sepolia
+record. The guest at the baseline differs from that commit's guest in four
+comment lines of `prover/lib/src/types.rs`, replaced in place; an in-place
+comment edit does not change the ELF (measured: the same hash before and
+after one), so the baseline's guest is that build's. The ELF does not reproduce across operating systems,
 so the image's build is the one that counts. The relay derives the key from
 the guest it embeds (`sequencer --vkey`) and refuses to start when the deployed
 `programVKey()` differs.
@@ -306,13 +308,14 @@ the guest it embeds (`sequencer --vkey`) and refuses to start when the deployed
 Nothing is deployed on mainnet.
 
 Sepolia carries a full stack, recorded in `deployments/11155111.json`. Its
-batch verifier and usage counter are an earlier commit's: the verifier there
-pins the key of an earlier guest and predates two checks the baseline commit
-carries (the batch's clock, the public-values length). A Sepolia redeploy of
-the batch path is the verifier and the usage counter together, since each
-holds the other's address as an immutable. The Sepolia coordinator is an
-earlier commit's too and keeps `attestViaResolver` (selector `0x3ef7b1fb`):
-no contract has an upgrade path. The tree's SDK no longer encodes that call,
+batch verifier and usage counter were deployed as a pair at `a4a34e91`; the
+verifier carries the baseline's checks (`MAX_BATCH_STALENESS` 3600,
+`PUBLIC_VALUES_LENGTH` 288, read from the chain) and pins the canonical
+guest's key (§ "The guest and its verification key"). A redeploy of the batch
+path is the two together, since each holds the other's address as an
+immutable. The other contracts are an earlier commit's; the coordinator keeps
+`attestViaResolver` (selector `0x3ef7b1fb`, present in its bytecode): no
+contract has an upgrade path. The tree's SDK no longer encodes that call,
 and the Sepolia signer policy (`deployments/signer-policy.11155111.json`) no
 longer lists the selector, so the policy signer does not sign it. `RpgfMinter` on Sepolia stays bound
 to the first counter: `FlorinToken.registerMinter` was renounced there with
@@ -565,9 +568,8 @@ read it first.
   limitation 3).
 - The kernel recovers ECDSA signers (`ECDSA.recover` in `commit()`), so a
   smart-contract wallet (multisig) cannot be a kernel party directly; it transacts
-  through an EOA it controls (the off-protocol auxiliary pattern). The buyer-key-loss
-  comment at `FigaroCore.sol:238-240` recommends social recovery or multisig for the
-  buyer role — upstream of the kernel, consistent with the same pattern.
+  through an EOA it controls, and the custody of that key is its own
+  (`FigaroCore.sol:238-240`).
 - A signature is accepted in one form: `s` in the lower half of the curve order,
   `v` written 27 or 28. The kernel takes this from OpenZeppelin's `ECDSA`; the
   mirror enforces the same two rules itself.
@@ -670,24 +672,13 @@ refusal is a returned `KernelError` and arithmetic is checked. The guest's
 entry point (`prover/program/src/main.rs`) ends the program on that error, by
 design: a batch the mirror refuses has no proof.
 
-### Known stale comments in the kernel
-
-The Core's comments stand as written. None describes behaviour wrongly
-except the first, which `DESIGN_DECISIONS.md` #10 corrects.
-
-| Location | Says | Reality |
-|---|---|---|
-| `FigaroCore.sol:124-129` | rebasing tokens are rejected by the balance check | the check sees only the delta inside its own transfer call (`DESIGN_DECISIONS.md` #10) |
-| `FigaroCore.sol:238-240` | use social recovery or a multisig for the buyer role | the kernel recovers ECDSA signers; a multisig transacts through an EOA it controls (§ "Behaviors to surface" above) |
-| `FigaroCore.sol:287` | "see audit L-4" | a label from an earlier internal review whose report is not in the tree; the numbering carries no weight |
-
 ## Accepted risks
 
 Current design realities accepted by the protocol surface, not accidental defects:
 
 1. buyer key loss is terminal for an active process because the kernel has no timeout or admin recovery path
 2. very large processes are gas-bounded, so institution design should compose across processes instead of pushing single-process fanout toward the ceiling
-3. fee-on-transfer tokens are unsupported by design and are rejected explicitly by the kernel; rebasing tokens are unsupported and NOT detected (`_pullExact` sees only the delta inside its own transfer call — `DESIGN_DECISIONS.md` #10 states the consequence and corrects the kernel's NatSpec); a token with an issuer blocklist holds any process a blocked party sits in until the issuer relents, since resolution is atomic (`WeirdTokenTest`; the same entry)
+3. fee-on-transfer tokens are unsupported by design and are rejected explicitly by the kernel; rebasing tokens are unsupported and NOT detected (`_pullExact` sees only the delta inside its own transfer call — `DESIGN_DECISIONS.md` #10 states the consequence); a token with an issuer blocklist holds any process a blocked party sits in until the issuer relents, since resolution is atomic (`WeirdTokenTest`; the same entry)
 4. a commitment can be bonded on the batch path up to one hour after its deadline: `settleBatch` accepts a batch timestamp up to `MAX_BATCH_STALENESS` (one hour, `FigaroBatchVerifier.sol:98`, checked at `:299`) behind its block, from any prover, and the guest checks deadlines against that timestamp; the kernel refuses an expired commitment at once. Both parties signed the commitment and both fund its bonds, so nothing moves that they did not agree to; a party that needs a hard cut-off signs a deadline one hour earlier. Closing it is a verifier change, so a new key and a new deployment
 
 ## Known limitations
