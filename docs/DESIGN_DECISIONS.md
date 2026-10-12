@@ -267,9 +267,10 @@ concern (e.g. rate × geohash distance).
 around the one `transferFrom` call. Any token that delivers less than requested
 (fee-on-transfer) reverts at commit. A rebasing token passes the check — the
 balance moves at the token's rebase events, not inside the transfer — so
-`FigaroCore` does not detect it: a downward rebase between commit and resolve leaves
-the contract short and `resolveProcess` reverts on the transfer out; an upward
-rebase strands the surplus in the contract, since nothing sweeps it.
+`FigaroCore` does not detect it: a downward rebase leaves the Core's pooled balance in that token short,
+and the resolve that runs it dry — possibly a process committed after the
+rebase — reverts on the transfer out; an upward rebase strands the surplus in
+the contract, since nothing sweeps it.
 
 **Why it looks correct and IS correct**: The MAD bonding model requires that
 the exact committed amount is locked. If the received amount differs from the

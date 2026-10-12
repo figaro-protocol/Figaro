@@ -123,10 +123,10 @@ contract FigaroCore is EIP712, ReentrancyGuard {
     ///
     ///      Rebasing tokens are not detected: the balance moves at the token's
     ///      rebase events, not inside this transfer, so the equality holds. A
-    ///      downward rebase between commit and resolve leaves the contract short
-    ///      and `resolveProcess` reverts on the transfer out; an upward rebase
-    ///      strands the surplus, since nothing sweeps it. The token is the
-    ///      buyer's choice; a non-rebasing wrapper carries the bond as committed.
+    ///      downward rebase leaves the Core's pooled balance in that token
+    ///      short, and the resolve that runs it dry reverts on the transfer
+    ///      out; an upward rebase strands the surplus, since nothing sweeps it.
+    ///      The token is the parties' choice; a non-rebasing wrapper keeps the bond.
     function _pullExact(IERC20 token, address from, uint256 amount) internal {
         uint256 before = token.balanceOf(address(this));
         token.safeTransferFrom(from, address(this), amount);
@@ -237,7 +237,7 @@ contract FigaroCore is EIP712, ReentrancyGuard {
     ///
     ///         If the root buyer's key is permanently lost, bonds in
     ///         this process cannot be resolved through the contract. The
-    ///         buyer is a recovered ECDSA signer; its key's custody is its own.
+    ///         buyer is a recovered ECDSA signer; whoever holds its key resolves.
     ///
     ///         GAS CEILING: Each order costs ~30k gas to resolve
     ///         (struct hash, cold SLOAD, two ERC-20 transfers, SSTORE,
@@ -284,7 +284,7 @@ contract FigaroCore is EIP712, ReentrancyGuard {
                 revert OrderNotCommitted(orderHash);
             }
 
-            // Overflow guard for the payout below; unreachable, a prior commit's bond overflows first
+            // Overflow guard for the payout below; unreachable while the token keeps the Core's balance, which holds at least 4x this value
             if (c.expectedCumulativeValue > type(uint256).max / 3) {
                 revert("CumulativeValueOverflow");
             }

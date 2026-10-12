@@ -550,9 +550,10 @@ read it first.
   `deployerMintRenounced`; the renounce is a one-way latch, not an event source).
 - `FlorinToken.registerMinter` treats `cap == 0` as the "not a minter" sentinel — a
   minter registered with a zero cap is indistinguishable from an unregistered one.
-- The kernel has an unreachable `expectedCumulativeValue ∈ (max/3, max/2]` window (bond
-  math would overflow above it; it cannot be reached because a prior order's bond would
-  have reverted first). The mirror reports the same window as `Overflow`.
+- The kernel has an unreachable `expectedCumulativeValue ∈ (max/3, max/2]` window (above max/2 the seller's
+  bond overflows at commit; the window itself cannot be reached while the
+  token keeps the Core's balance, since the process's bonds already in it total
+  at least four times the value). The mirror reports the same window as `Overflow`.
 - Token authority is a class, not one case. A token that reverts transfers to a
   party's address bricks `resolveProcess` for the whole process — the seller at
   `FigaroCore.sol:294`, the buyer at `:295`; a token that blocklists or freezes
@@ -568,7 +569,7 @@ read it first.
   limitation 3).
 - The kernel recovers ECDSA signers (`ECDSA.recover` in `commit()`), so a
   smart-contract wallet (multisig) cannot be a kernel party directly; it transacts
-  through an EOA it controls, and the custody of that key is its own
+  through an EOA it controls, and whoever holds that key acts for it
   (`FigaroCore.sol:238-240`).
 - A signature is accepted in one form: `s` in the lower half of the curve order,
   `v` written 27 or 28. The kernel takes this from OpenZeppelin's `ECDSA`; the
@@ -825,7 +826,7 @@ The eight survivors, each read against the source:
 | Contract, line | Mutation | Why no test can tell |
 |---|---|---|
 | `FigaroCore.sol:204`, two mutants | Remove or disable the `DuplicateCommitment` guard | Every replay is refused earlier: a repeated root by `ProcessAlreadyExists`, a repeated extension by `CumulativeValueMismatch`, since the accumulator has moved. `FigaroCoreRevertBranchTest` pins each preempting error |
-| `FigaroCore.sol:288` | Disable the `CumulativeValueOverflow` guard | An order with such a value cannot be committed: its bond, twice the value, overflows at `commit` |
+| `FigaroCore.sol:288` | Disable the `CumulativeValueOverflow` guard | An order with such a value cannot be committed while the token keeps the Core's balance: the process's bonds already in it total at least four times the value (§ "Behaviors to surface") |
 | `UsageCounter.sol:664` | Write the seller-seen flag unconditionally | When the seller was seen before the flag is already true; the breadth count two lines below keeps its own condition |
 | `RpgfMinter.sol:228`, two mutants | Remove or disable `if (score == 0) return (0, 0)` | The next line computes `amount × 0 / total`, which is 0; the return only saves the arithmetic |
 | `FlorinToken.sol:72`, two mutants | Remove or disable the `MAX_SUPPLY` check in `mint` | Tokens are created in `mint` alone, each minter is held to its cap on the line above, and `registerMinter` refuses a cap that would take the sum of caps past `MAX_SUPPLY` |
