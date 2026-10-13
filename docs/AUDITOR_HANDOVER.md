@@ -15,17 +15,18 @@ the review's is its own.
 | Repository | https://github.com/figaro-protocol/Figaro |
 | Baseline commit | `02852356` (§ "The baseline commit"); no tag names a commit under audit — one is placed when an audit is engaged |
 | Languages in scope | Solidity (`src/`, three deploy scripts) and Rust (`prover/`, four crates) |
-| Solidity in scope | 13 contract files, 3,142 lines; 3 deploy scripts, 846 lines |
-| Rust in scope | 4 crates, 20 files, 8,421 lines under `src/` |
+| Solidity in scope | 13 contract files, 1,279 lines of code (3,142 physical); 3 deploy scripts, 405 lines of code (846 physical) |
+| Rust in scope | 4 crates, 20 files under `src/`, 5,836 lines of code (8,083 physical) net of their inline test modules |
 | Configuration in scope | `foundry.toml`, the `Cargo.toml` files and `Cargo.lock`, the Rust toolchain pin (§ "In scope — configuration") |
 | Trusted, not reviewed | SP1 (the zkVM, its crates, its on-chain verifier gateway), OpenZeppelin Contracts, Permit2, Uniswap SwapRouter02 |
 | Out of scope | mocks, fuzz harnesses, tests and formal specs, the proving harness crate, the Sepolia deploy script, `frontend/`, `sdk/` |
 | Deployed | Sepolia only, at an earlier commit (§ "What is deployed"); nothing on mainnet |
 | Upgrade path | none: no admin, no proxy, no pause, in any contract |
 
-Lines are physical lines, comments and NatSpec included. Without comments and
-blank lines the scope is 1,279 lines of contracts, 405 of deploy scripts and
-6,110 of Rust.
+Lines of code are counted with comments, NatSpec and blank lines removed —
+the count an estimate is priced on; physical lines count every line of the
+file. The Rust files carry `#[cfg(test)]` modules, out of scope like every
+test, and the Rust figures leave them out (343 physical lines, 287 of code).
 
 ## Repository and build
 
