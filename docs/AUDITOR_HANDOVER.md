@@ -13,10 +13,10 @@ the review's is its own.
 | | |
 |---|---|
 | Repository | https://github.com/figaro-protocol/Figaro |
-| Baseline commit | `02852356` (§ "The baseline commit"); no tag names a commit under audit — one is placed when an audit is engaged |
+| Baseline commit | `9ae053e4` (§ "The baseline commit"); no tag names a commit under audit — one is placed when an audit is engaged |
 | Languages in scope | Solidity (`src/`, three deploy scripts) and Rust (`prover/`, four crates) |
 | Solidity in scope | 13 contract files, 1,279 lines of code (3,142 physical); 3 deploy scripts, 405 lines of code (846 physical) |
-| Rust in scope | 4 crates, 20 files under `src/`, 5,836 lines of code (8,083 physical) net of their inline test modules |
+| Rust in scope | 4 crates, 21 files under `src/`, 6,261 lines of code (8,695 physical) net of their inline test modules |
 | Configuration in scope | `foundry.toml`, the `Cargo.toml` files and `Cargo.lock`, the Rust toolchain pin (§ "In scope — configuration") |
 | Trusted, not reviewed | SP1 (the zkVM, its crates, its on-chain verifier gateway), OpenZeppelin Contracts, Permit2, Uniswap SwapRouter02 |
 | Out of scope | mocks, fuzz harnesses, tests and formal specs, the proving harness crate, the Sepolia deploy script, `frontend/`, `sdk/` |
@@ -26,13 +26,13 @@ the review's is its own.
 Lines of code are counted with comments, NatSpec and blank lines removed —
 the count an estimate is priced on; physical lines count every line of the
 file. The Rust files carry `#[cfg(test)]` modules, out of scope like every
-test, and the Rust figures leave them out (343 physical lines, 287 of code).
+test, and the Rust figures leave them out (390 physical lines, 334 of code).
 
 ## Repository and build
 
 ```bash
 git clone --recurse-submodules https://github.com/figaro-protocol/Figaro.git
-cd Figaro && git checkout 02852356dbd490ecd44f0317e51a01cd282989bb
+cd Figaro && git checkout 9ae053e413251dd16643fc876c07f88916204081
 foundryup --version v1.5.1
 forge build --via-ir                 # the deployed pipeline; the default profile fails on stack depth
 cd prover && cargo build --locked    # Rust at the pin in rust-toolchain.toml; SP1's toolchain (sp1up) at the release Cargo.lock names
@@ -237,7 +237,7 @@ came from the program with that key. The other external dependencies are in
 ## The baseline commit
 
 **Every figure in this document stands for the code at commit
-`02852356dbd490ecd44f0317e51a01cd282989bb`**, the baseline, which covers the
+`9ae053e413251dd16643fc876c07f88916204081`**, the baseline, which covers the
 whole scope, Solidity and Rust together. A figure is measured at the baseline,
 or at a commit whose in-scope code equals the baseline's once comments and
 NatSpec are stripped — the comparison `scripts/frozen-scope.sh` makes — and a
@@ -246,12 +246,15 @@ engaged, so no tag names a commit under audit; when one is engaged, a tag is
 placed at the commit it reviews and this section names it.
 
 ```bash
-git show --no-patch 02852356
+git show --no-patch 9ae053e4
 ```
 
-The baseline differs from `f62b71cf` in the relay — `prover/sequencer/src/`
-`state.rs`, `main.rs` and `api.rs`, the takeover from another relay's served
-state (§ "Behaviours") — and in `prover/Cargo.lock`, where one crate outside
+The baseline differs from `f62b71cf` in the relay — under
+`prover/sequencer/src/`: `state.rs`, `main.rs` and `api.rs` for the takeover
+from another relay's served state, and `gas.rs`, `assembler.rs`,
+`mempool.rs`, `prover.rs`, `submitter.rs`, `lib.rs`, `archive.rs` and
+`main.rs` for the batch planned to fit one settle (§ "Behaviours") — and in
+`prover/Cargo.lock`, where one crate outside
 the guest's graph, `quinn-proto`, moved from 0.11.17 to 0.11.18 for three
 RustSec advisories, with one advisory set aside in `prover/.cargo/audit.toml`
 (§ "Static analysis"). The Solidity and the deploy scripts are equal between
@@ -294,7 +297,7 @@ lines changed in place; their code is byte-identical to the baseline. The
 diff prints as two renames whose every hunk is a comment:
 
 ```bash
-git diff -M c7f85d0d 02852356 -- src/kernel/ src/core/kernel/
+git diff -M c7f85d0d 9ae053e4 -- src/kernel/ src/core/kernel/
 ```
 
 ### Toolchains
@@ -419,7 +422,8 @@ The constants and constructor arguments the mainnet deploy fixes
 | Bond multiple | 2× payment (buyer), 2× cumulative value (seller) | `FigaroCore.sol:208-209` |
 | `MAX_BATCH_STALENESS` | 1 hour: the batch timestamp may trail the block by this much (accepted risk 4) | `FigaroBatchVerifier.sol:98` |
 | `PUBLIC_VALUES_LENGTH` | 288 bytes, nine words; any other length is refused by name | `FigaroBatchVerifier.sol:103` |
-| `MAX_BATCH_OPS` | the relay's batch cap, 100 by default; an operator's environment variable | `prover/sequencer/src/main.rs:121` |
+| `MAX_BATCH_OPS` | the relay's bound on what the prover finishes in one sitting, 100 operations by default; an operator's environment variable | `prover/sequencer/src/main.rs:121` |
+| The batch's gas budget | 95 percent of the latest block's gas limit, read at every tick, under the chain's cap on one transaction (`SETTLE_GAS_CAP`, EIP-7825's 2^24 by default, the bound a batch-path process is admitted under; below a one-order settle's 590,096, or at or past 95 percent of the block limit read at startup, the relay refuses to start); the settle's cost is planned per item from ceilings measured on the pre-fork EVM with a stated allowance (at least twice the cold measurement for every item that writes state, at least half again for events and registry reads) and the proof's verification read from live receipts | `prover/sequencer/src/gas.rs`; `test/core/verifier/BatchGasCeilingTest.t.sol` |
 | Re-queue bound | an operation re-queued after a transient submission failure is re-queued at most three times, then dead-lettered | `prover/sequencer/README.md` |
 | Clause and assembly registration stake | 0.05 ETH per registration, no cooldown, withdrawable once; the binding stays | `DeployMainnet.s.sol:157`, `:164` |
 | Member stake | 0.05 ETH, 28-day withdrawal cooldown | `DeployMainnet.s.sol:197` |
@@ -646,7 +650,38 @@ read it first.
   `mempool_*` slot tests).
 - A batch takes at most `MAX_BATCH_OPS` operations, oldest first
   (`mempool.rs`, `drain_up_to`;
-  `mempool_drains_at_most_the_batch_cap_and_keeps_the_rest_queued`).
+  `mempool_drains_at_most_the_batch_cap_and_keeps_the_rest_queued`), and its
+  settle is planned to fit the latest block: what a batch costs the chain is
+  what it publishes — positions, attestation events, spec bindings, accruals,
+  the proof's verification, the call's fixed execution and its calldata —
+  estimated from the batch's own execution with per-item ceilings measured in
+  `test/core/verifier/BatchGasCeilingTest.t.sol` and held equal in `gas.rs`,
+  against 95 percent of the block's gas limit read at every tick, under the
+  chain's cap on one transaction (a tick on which the block cannot be read
+  plans under the cap alone); the operations after the kept prefix of the
+  execution order go back to the front of the mempool untried when the settle
+  would not fit, and the usage claims are filtered against the kept operations
+  and cut the same way, a tick whose claims were cut giving the next tick's
+  claims the first half of the budget. A batch-path process is kept within
+  what one settle can resolve under the cap, a bound stable across ticks: a
+  commit that would grow it past that is dropped at batch formation and
+  dead-lettered with the reason, and what was filtered into an order behind
+  it is filtered again
+  (`gas::max_orders_in_one_settle`,
+  `assembler::filter_commits_within_resolve_capacity`;
+  `a_commit_that_would_grow_a_process_past_one_settle_is_dropped_at_formation`),
+  and an operation that fits no settle under the cap on its own is
+  dead-lettered with the gas it was planned at, the operations filtered into
+  an order behind it filtered again without it, while one that fits the cap
+  but not a tick's budget waits (`gas.rs`, `trim_ops_to_budget`,
+  `trim_claims_to_budget`, `settle_gas_estimate`; `main.rs`; `mempool.rs`,
+  `give_back`;
+  `trim_ops_to_budget_keeps_the_longest_fitting_prefix_and_gives_the_rest_back`,
+  `an_operation_that_fits_no_batch_is_returned_unfit_and_nothing_is_planned_behind_it`,
+  `trim_claims_to_budget_cuts_the_claims_and_leaves_the_operations`,
+  `the_canonical_batch_is_planned_from_its_own_execution_and_fits_a_block`,
+  `mempool_gives_back_operations_at_the_front_untried`,
+  `mempool_gives_back_no_copy_of_an_operation_resubmitted_meanwhile`).
 - The batch's timestamp is the latest block's, read before anything is drained
   (`submitter.rs`, `read_chain_timestamp`; `sdk/tests/batch-e2e.test.ts`
   proves against Anvil's clock). The verifier's one-hour staleness bound is
@@ -802,13 +837,13 @@ tests is `TESTING.md`.
 
 | Layer | Result |
 |---|---|
-| Foundry, the three fork tests included (mainnet's Permit2, Sepolia's SwapRouter02) | 340 passed, 0 failed, 0 skipped |
+| Foundry, the three fork tests included (mainnet's Permit2, Sepolia's SwapRouter02) | 381 passed, 0 failed, 0 skipped (forge's count, the batch gas-ceiling suite's inherited harness tests among them; 347 test functions) |
 | Halmos | 32 of 32 properties proved |
 | Certora | 7 of 7 specs, every rule verified |
 | Echidna | 15 properties, every one held on both harnesses |
 | TLA+ | 5 models, 55 invariants, no error; `FigaroCore` 8,380,329 states generated, 6,087,113 distinct; `RelayState` (the relay's state lifecycle, 7 invariants + 1 action property) 10,837,227 generated, 1,959,944 distinct; the models' defect switches are their mutation checks (`TESTING.md` § TLA+) |
-| Rust (`cargo test`, five crates) | 221 passed, 0 failed; 2 ignored by design, run by the fuzz script |
-| Differential fuzz | one round at seed 1791910508, no divergence: 400 kernel operations (288 accepted, 112 rejected, 102 processes), the agreement vectors, 6,336 clause cases (1,737 encoded byte-for-byte, 3,351 rejected, 1,248 specs refused); CI runs four rounds on every push |
+| Rust (`cargo test`, five crates) | 233 passed, 0 failed; 2 ignored by design, run by the fuzz script |
+| Differential fuzz | one round at seed 1791920265, no divergence: 400 kernel operations (284 accepted, 116 rejected, 86 processes), the agreement vectors, 6,464 clause cases (1,903 encoded byte-for-byte, 3,489 rejected, 1,072 specs refused); CI runs four rounds on every push |
 | SDK (Vitest) | 922 passed |
 | Batch end-to-end (SDK → relay → verifier) | passed |
 
