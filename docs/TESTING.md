@@ -680,7 +680,9 @@ Per workflow, what it runs and when:
   critical-only, since `/docs` is served from the wallet app's origin), and a
   `cargo audit` leg over
   `prover/Cargo.lock` (fails on any vulnerability advisory; unmaintained and
-  yanked notices are warnings). `scripts/frozen-scope.sh` names the audit
+  yanked notices are warnings; an advisory no release of the crate's dependents
+  can take the fix for is set aside by id in `prover/.cargo/audit.toml`, each
+  with its path and the reason). `scripts/frozen-scope.sh` names the audit
   scope for the guards that read it. The
   whole-tree guard battery and the Claude semantic open-world gate run
   maintainer-side, in pre-commit — they are private tooling and not part of

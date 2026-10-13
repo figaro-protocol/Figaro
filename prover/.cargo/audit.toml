@@ -1,0 +1,16 @@
+# cargo-audit's configuration for the prover workspace: read from this
+# directory by `cargo audit` locally and in CI (guards-ci.yml runs it from
+# prover/). An advisory is listed here only when no release of the crate's
+# dependents takes the fixed version; the entry names the path and the reason,
+# and docs/AUDITOR_HANDOVER.md § "Static analysis" carries the same sentence.
+
+[advisories]
+ignore = [
+    # ruzstd 0.8.3, a decompression bomb in zstd input (fixed at 0.9.1). The
+    # crate reaches the relay and the proving harness through object 0.37.3,
+    # backtrace and sp1-recursion-compiler, where it reads the compressed debug
+    # sections of the host's own executable; every object release to date
+    # requires ruzstd ^0.8, and sp1-core-executor pins object ^0.37.3. The
+    # guest does not compile it (`cargo tree -p figaro-prover` has no ruzstd).
+    "RUSTSEC-2026-0344",
+]
