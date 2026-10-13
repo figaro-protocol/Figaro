@@ -80,6 +80,21 @@ impl FailureLog {
     }
 }
 
+/// Record every operation dropped at `stage` (batch formation, say), each
+/// with its reason, so a drop counts on `/status` whatever its path. Returns
+/// how many were recorded.
+pub async fn record_dropped(
+    failures: &FailureLog,
+    dropped: &[(crate::mempool::PendingOp, String)],
+    stage: &str,
+) -> u64 {
+    for (op, reason) in dropped {
+        tracing::warn!(id = op.id, %reason, "Dropped at {stage}");
+        failures.record(1, format!("dropped at {stage}: {reason}")).await;
+    }
+    dropped.len() as u64
+}
+
 /// HTTP-boundary limits.
 #[derive(Clone, Copy, Debug)]
 pub struct ApiConfig {

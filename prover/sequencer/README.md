@@ -248,10 +248,17 @@ All errors are structured JSON: `{ "error": "<reason>" }`.
   `{ "state_root", "pending_ops", "pending_usage_claims", "batches_settled",
   "dead_lettered_ops", "last_settle_error",
   "archive": { "first_batch", "last_batch", "retained_batches", "max_batches" } }`.
-  `dead_lettered_ops` counts ops dropped without resolving — a GROWING figure
-  during a wait means the wait is over, whatever `batches_settled` says; poll
-  it beside the resolve count. `last_settle_error` carries the most recent
-  reason verbatim (null while clean).
+  `dead_lettered_ops` counts, for the whole relay, the ops dropped without
+  resolving, whatever the path — one that did not apply against the drain it
+  was taken in, one short of funds or whose funding could not be read,
+  unanchored or past the resolve capacity, one that fits no settle, a batch
+  that failed to prove or to plan, a batch the chain refused — every one
+  re-submittable, and `last_settle_error` carries the most recent failure's
+  reason verbatim, whatever its path (null while clean). Neither says whose
+  operation died: anyone may submit an operation that fails at formation, so
+  the counter grows without the reader's own having moved. A client follows
+  its own order on `/orders/:order_hash` and its process on
+  `/processes/:process_id`, and the root on `/status`.
   Read `archive` BEFORE replaying: a cursor older than `first_batch` means this
   relay has already dropped the gap.
 

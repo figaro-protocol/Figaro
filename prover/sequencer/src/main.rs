@@ -561,9 +561,12 @@ async fn batch_loop(
             &prev_state,
             pending,
         );
-        for (p, reason) in &poison {
-            warn!(id = p.id, %reason, "Dropped poison op — would abort the batch");
-        }
+        // An op that applies against no order of THIS drain — its dependency
+        // may sit past the drain's cut, or it may never apply — is dropped,
+        // re-submittable, and a recorded failure like every other drop, so it
+        // counts on /status.
+        let poison_count = poison.len();
+        api::record_dropped(&failures, &poison, "batch formation").await;
 
         // Funding at batch formation, against the latest block: a commit
         // whose bonds fail to pull would revert the whole settle. Dropped
@@ -580,6 +583,24 @@ async fn batch_loop(
             warn!(id = p.id, %reason, "Dropped attestation at batch formation");
             failures.record(1, reason.clone()).await;
         }
+        // What was filtered into an order behind a dropped commit or
+        // attestation is filtered again without it: left in the batch, it
+        // would fail the kernel at planning and cost the whole tick's batch.
+        if !unfunded.is_empty() || !unanchored.is_empty() {
+            let (again, built_on_them) = assembler::filter_applicable_ops(
+                chain_id,
+                verifying_contract,
+                timestamp,
+                &prev_state,
+                std::mem::take(&mut valid),
+            );
+            for (p, reason) in &built_on_them {
+                let why = format!("built on an operation dropped at batch formation: {reason}");
+                error!(id = p.id, %why, "Dead-lettered");
+                failures.record(1, why).await;
+            }
+            valid = again;
+        }
         if valid.is_empty() && usage_claims.is_empty() {
             continue;
         }
@@ -591,7 +612,7 @@ async fn batch_loop(
         info!(
             ops = op_count,
             usage_claims = usage_claims.len(),
-            dropped = poison.len(),
+            dropped = poison_count,
             "Assembling batch"
         );
 

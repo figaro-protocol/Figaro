@@ -19,7 +19,7 @@ use figaro_prove_test::{
     build_canonical_batch_input, load_spec_json, make_signing_key, sign_commitment, sign_digest,
     BUYER_KEY, CHAIN_ID, CORE, SELLER1_KEY,
 };
-use figaro_sequencer::api::{self, ApiConfig, AppState};
+use figaro_sequencer::api::{self, record_dropped, ApiConfig, AppState, FailureLog};
 use figaro_sequencer::archive::{self, Archive, ArchiveConfig, BatchRecord};
 use figaro_sequencer::assembler::{self, AssemblerConfig, UsageContext};
 use figaro_sequencer::gas::{self, SettleItems};
@@ -2595,4 +2595,28 @@ async fn mempool_gives_back_no_copy_of_an_operation_resubmitted_meanwhile() {
     let next = mp.drain_up_to(10).await;
     assert_eq!(next.iter().map(|p| p.id).collect::<Vec<_>>(), vec![third_id, fourth_id]);
     assert_ne!(resubmitted.id, third_id);
+}
+
+// ── An operation dropped at batch formation is a recorded failure ─────
+//
+// Every drop in the batch loop counts on `/status`'s failure surface with
+// its reason; the formation filter's poison list — an operation that would
+// abort the batch in any order — is no exception.
+
+#[tokio::test]
+async fn an_operation_dropped_at_batch_formation_is_recorded_with_its_reason() {
+    let failures = FailureLog::default();
+    let ops = canonical_ops();
+    let dropped = vec![
+        (PendingOp { id: 7, key: B256::with_last_byte(7), op: ops[0].clone() }, "OrderAlreadyExists".to_string()),
+        (PendingOp { id: 8, key: B256::with_last_byte(8), op: ops[1].clone() }, "UnknownOrder".to_string()),
+    ];
+    let recorded = record_dropped(&failures, &dropped, "batch formation").await;
+    assert_eq!(recorded, 2);
+    let (count, last) = failures.snapshot().await;
+    assert_eq!(count, 2, "each dropped operation counts once");
+    assert_eq!(last.as_deref(), Some("dropped at batch formation: UnknownOrder"), "the last drop's reason stands");
+    // Nothing dropped records nothing.
+    assert_eq!(record_dropped(&failures, &[], "batch formation").await, 0);
+    assert_eq!(failures.snapshot().await.0, 2);
 }
