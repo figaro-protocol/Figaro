@@ -13,10 +13,10 @@ the review's is its own.
 | | |
 |---|---|
 | Repository | https://github.com/figaro-protocol/Figaro |
-| Baseline commit | `00465c75` (§ "The baseline commit"); no tag names a commit under audit — one is placed when an audit is engaged |
+| Baseline commit | `02852356` (§ "The baseline commit"); no tag names a commit under audit — one is placed when an audit is engaged |
 | Languages in scope | Solidity (`src/`, three deploy scripts) and Rust (`prover/`, four crates) |
 | Solidity in scope | 13 contract files, 3,142 lines; 3 deploy scripts, 846 lines |
-| Rust in scope | 4 crates, 20 files, 7,394 lines under `src/` |
+| Rust in scope | 4 crates, 20 files, 8,421 lines under `src/` |
 | Configuration in scope | `foundry.toml`, the `Cargo.toml` files and `Cargo.lock`, the Rust toolchain pin (§ "In scope — configuration") |
 | Trusted, not reviewed | SP1 (the zkVM, its crates, its on-chain verifier gateway), OpenZeppelin Contracts, Permit2, Uniswap SwapRouter02 |
 | Out of scope | mocks, fuzz harnesses, tests and formal specs, the proving harness crate, the Sepolia deploy script, `frontend/`, `sdk/` |
@@ -25,13 +25,13 @@ the review's is its own.
 
 Lines are physical lines, comments and NatSpec included. Without comments and
 blank lines the scope is 1,279 lines of contracts, 405 of deploy scripts and
-5,147 of Rust.
+6,110 of Rust.
 
 ## Repository and build
 
 ```bash
 git clone --recurse-submodules https://github.com/figaro-protocol/Figaro.git
-cd Figaro && git checkout 00465c7512e97138fb5814f395767c49dac5b88f
+cd Figaro && git checkout 02852356dbd490ecd44f0317e51a01cd282989bb
 foundryup --version v1.5.1
 forge build --via-ir                 # the deployed pipeline; the default profile fails on stack depth
 cd prover && cargo build --locked    # Rust at the pin in rust-toolchain.toml; SP1's toolchain (sp1up) at the release Cargo.lock names
@@ -236,7 +236,7 @@ came from the program with that key. The other external dependencies are in
 ## The baseline commit
 
 **Every figure in this document stands for the code at commit
-`00465c7512e97138fb5814f395767c49dac5b88f`**, the baseline, which covers the
+`02852356dbd490ecd44f0317e51a01cd282989bb`**, the baseline, which covers the
 whole scope, Solidity and Rust together. A figure is measured at the baseline,
 or at a commit whose in-scope code equals the baseline's once comments and
 NatSpec are stripped — the comparison `scripts/frozen-scope.sh` makes — and a
@@ -245,16 +245,19 @@ engaged, so no tag names a commit under audit; when one is engaged, a tag is
 placed at the commit it reviews and this section names it.
 
 ```bash
-git show --no-patch 00465c75
+git show --no-patch 02852356
 ```
 
-The baseline differs from `f62b71cf` in `prover/Cargo.lock` alone: one crate
-outside the guest's graph, `quinn-proto`, moved from 0.11.17 to 0.11.18 for
-three RustSec advisories, and `prover/.cargo/audit.toml` sets one advisory
-aside (§ "Static analysis"). The Solidity, the deploy scripts and the Rust
-sources are equal between the two commits, so the Solidity rows, the Certora
-reports and the mutation runs stand at `f62b71cf`, named where they appear;
-the Rust rows were re-run at the baseline.
+The baseline differs from `f62b71cf` in the relay — `prover/sequencer/src/`
+`state.rs`, `main.rs` and `api.rs`, the takeover from another relay's served
+state (§ "Behaviours") — and in `prover/Cargo.lock`, where one crate outside
+the guest's graph, `quinn-proto`, moved from 0.11.17 to 0.11.18 for three
+RustSec advisories, with one advisory set aside in `prover/.cargo/audit.toml`
+(§ "Static analysis"). The Solidity and the deploy scripts are equal between
+the two commits, so the Solidity rows and the Certora reports stand at
+`f62b71cf`, named where they appear; the guest's two crates are equal too, so
+the Rust mutation run stands with them; the Rust rows were re-run at the
+baseline.
 
 This prints every scope file whose code differs between two commits, and
 nothing when none does:
@@ -290,7 +293,7 @@ lines changed in place; their code is byte-identical to the baseline. The
 diff prints as two renames whose every hunk is a comment:
 
 ```bash
-git diff -M c7f85d0d 00465c75 -- src/kernel/ src/core/kernel/
+git diff -M c7f85d0d 02852356 -- src/kernel/ src/core/kernel/
 ```
 
 ### Toolchains
@@ -669,13 +672,24 @@ read it first.
   `state_store_*` and `held_state_for_*` tests; `sdk/tests/batch-e2e.test.ts`
   restarts the relay between its two batches and starts one holding no state,
   which must exit 2). `GET /state` serves the state under an
-  `x-figaro-state-root` header, so a party or a second relay fetches a copy,
-  recomputes its root against the verifier's, and starts on it
-  (`api.rs`, `get_state`;
-  `api_state_route_serves_the_state_another_relay_starts_on`). A served state
-  is never written over a state file unchecked: `formal/RelayState.tla`
-  (`TakeoverChecksRoot`) shows a stale served state overwriting the only copy.
-  Known limitation 6 states what remains.
+  `x-figaro-state-root` header (`api.rs`, `get_state`;
+  `api_state_route_serves_the_state_another_relay_starts_on`). A relay
+  started with `STATE_FROM=<another relay's base URL>` fetches that state
+  itself, recomputes its root from the body, and writes it over its kept file
+  only when the root is the verifier's and the kept file does not already
+  hold it; a served state behind any other root, or whose header names a root
+  other than the body's, is a refusal to start (exit 2) that writes nothing
+  (`state.rs`, `takeover`, `take_over_from_served`, `fetch_served_state`;
+  `main.rs`; the `takeover_*` tests,
+  `adopting_a_served_state_keeps_only_the_journal_entries_built_on_it`,
+  `a_relay_takes_over_from_another_relays_state_route_through_its_own_fetch`
+  and `fetching_a_served_state_refuses_every_malformed_peer`). A relay that
+  already holds the state behind the verifier's root — in its kept file, or
+  in its journal as a batch of its own that landed — writes nothing and runs
+  on what it holds, so the landed batch's record is still published.
+  `formal/RelayState.tla` (`TakeoverChecksRoot`) is the property: with the
+  check off, a stale served state overwrites the only copy. Known limitation
+  6 states what remains.
 
 ### Measured complexity
 
@@ -765,8 +779,8 @@ Stated so the review does not spend hours finding them.
 6. **The state behind the verifier's root lives off chain.** The verifier
    stores a root. The state it commits to is held by the relay that built the
    last batch (`STATE_PATH`) and published by it (`GET /state`), so a party
-   or a second relay can keep a copy and start on it once the copy's root is
-   checked against the verifier's; nothing in this
+   can keep a copy and a second relay can start on it (`STATE_FROM`), the
+   relay itself refusing any copy whose root is not the verifier's; nothing in this
    repository rebuilds it from the chain or from the publication archive. A
    process opened on the batch path resolves only through a batch built on
    that state, so if every copy is lost — or another submitter lands a batch
@@ -792,8 +806,8 @@ tests is `TESTING.md`.
 | Certora | 7 of 7 specs, every rule verified |
 | Echidna | 15 properties, every one held on both harnesses |
 | TLA+ | 5 models, 55 invariants, no error; `FigaroCore` 8,380,329 states generated, 6,087,113 distinct; `RelayState` (the relay's state lifecycle, 7 invariants + 1 action property) 10,837,227 generated, 1,959,944 distinct; the models' defect switches are their mutation checks (`TESTING.md` § TLA+) |
-| Rust (`cargo test`, five crates) | 213 passed, 0 failed; 2 ignored by design, run by the fuzz script |
-| Differential fuzz | one round at seed 1791814782, no divergence: 400 kernel operations (290 accepted, 110 rejected, 103 processes), the agreement vectors, 6,208 clause cases (1,719 encoded byte-for-byte, 3,225 rejected, 1,264 specs refused); CI runs four rounds on every push |
+| Rust (`cargo test`, five crates) | 221 passed, 0 failed; 2 ignored by design, run by the fuzz script |
+| Differential fuzz | one round at seed 1791910508, no divergence: 400 kernel operations (288 accepted, 112 rejected, 102 processes), the agreement vectors, 6,336 clause cases (1,737 encoded byte-for-byte, 3,351 rejected, 1,248 specs refused); CI runs four rounds on every push |
 | SDK (Vitest) | 922 passed |
 | Batch end-to-end (SDK → relay → verifier) | passed |
 
