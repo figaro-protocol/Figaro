@@ -13,10 +13,10 @@ the review's is its own.
 | | |
 |---|---|
 | Repository | https://github.com/figaro-protocol/Figaro |
-| Baseline commit | `9ae053e4` (§ "The baseline commit"); no tag names a commit under audit — one is placed when an audit is engaged |
+| Baseline commit | `cf6ba4ab` (§ "The baseline commit"); no tag names a commit under audit — one is placed when an audit is engaged |
 | Languages in scope | Solidity (`src/`, three deploy scripts) and Rust (`prover/`, four crates) |
 | Solidity in scope | 13 contract files, 1,279 lines of code (3,142 physical); 3 deploy scripts, 405 lines of code (846 physical) |
-| Rust in scope | 4 crates, 21 files under `src/`, 6,261 lines of code (8,695 physical) net of their inline test modules |
+| Rust in scope | 4 crates, 21 files under `src/`, 6,286 lines of code (8,731 physical) net of their inline test modules |
 | Configuration in scope | `foundry.toml`, the `Cargo.toml` files and `Cargo.lock`, the Rust toolchain pin (§ "In scope — configuration") |
 | Trusted, not reviewed | SP1 (the zkVM, its crates, its on-chain verifier gateway), OpenZeppelin Contracts, Permit2, Uniswap SwapRouter02 |
 | Out of scope | mocks, fuzz harnesses, tests and formal specs, the proving harness crate, the Sepolia deploy script, `frontend/`, `sdk/` |
@@ -32,7 +32,7 @@ test, and the Rust figures leave them out (390 physical lines, 334 of code).
 
 ```bash
 git clone --recurse-submodules https://github.com/figaro-protocol/Figaro.git
-cd Figaro && git checkout 9ae053e413251dd16643fc876c07f88916204081
+cd Figaro && git checkout cf6ba4abf7e91864d7d9b79700154b6eaf975d45
 foundryup --version v1.5.1
 forge build --via-ir                 # the deployed pipeline; the default profile fails on stack depth
 cd prover && cargo build --locked    # Rust at the pin in rust-toolchain.toml; SP1's toolchain (sp1up) at the release Cargo.lock names
@@ -237,7 +237,7 @@ came from the program with that key. The other external dependencies are in
 ## The baseline commit
 
 **Every figure in this document stands for the code at commit
-`9ae053e413251dd16643fc876c07f88916204081`**, the baseline, which covers the
+`cf6ba4abf7e91864d7d9b79700154b6eaf975d45`**, the baseline, which covers the
 whole scope, Solidity and Rust together. A figure is measured at the baseline,
 or at a commit whose in-scope code equals the baseline's once comments and
 NatSpec are stripped — the comparison `scripts/frozen-scope.sh` makes — and a
@@ -246,14 +246,15 @@ engaged, so no tag names a commit under audit; when one is engaged, a tag is
 placed at the commit it reviews and this section names it.
 
 ```bash
-git show --no-patch 9ae053e4
+git show --no-patch cf6ba4ab
 ```
 
 The baseline differs from `f62b71cf` in the relay — under
 `prover/sequencer/src/`: `state.rs`, `main.rs` and `api.rs` for the takeover
 from another relay's served state, and `gas.rs`, `assembler.rs`,
 `mempool.rs`, `prover.rs`, `submitter.rs`, `lib.rs`, `archive.rs` and
-`main.rs` for the batch planned to fit one settle (§ "Behaviours") — and in
+`main.rs` for the batch planned to fit one settle, and `api.rs` and
+`main.rs` for the drop recorded at batch formation (§ "Behaviours") — and in
 `prover/Cargo.lock`, where one crate outside
 the guest's graph, `quinn-proto`, moved from 0.11.17 to 0.11.18 for three
 RustSec advisories, with one advisory set aside in `prover/.cargo/audit.toml`
@@ -297,7 +298,7 @@ lines changed in place; their code is byte-identical to the baseline. The
 diff prints as two renames whose every hunk is a comment:
 
 ```bash
-git diff -M c7f85d0d 9ae053e4 -- src/kernel/ src/core/kernel/
+git diff -M c7f85d0d cf6ba4ab -- src/kernel/ src/core/kernel/
 ```
 
 ### Toolchains
@@ -682,6 +683,18 @@ read it first.
   `the_canonical_batch_is_planned_from_its_own_execution_and_fits_a_block`,
   `mempool_gives_back_operations_at_the_front_untried`,
   `mempool_gives_back_no_copy_of_an_operation_resubmitted_meanwhile`).
+- Every operation dropped at batch formation — one that applies against no
+  order of the drain it was taken in (its dependency may sit past the drain's
+  cut; Known limitation 7), short of funds or with funding the node could not
+  read, unanchored, past the resolve capacity, or built on a dropped one — is
+  a recorded failure with its reason on `GET /status`, re-submittable, like a
+  batch that failed to prove or to plan (`api.rs`, `record_dropped`,
+  `FailureLog`;
+  `an_operation_dropped_at_batch_formation_is_recorded_with_its_reason`). The
+  counter and the reason are the relay's, never one client's: the README
+  sends a client to its order and its process on the publication routes, and
+  to the root. What was filtered into an order behind a dropped commit or
+  attestation is filtered again without it, as after a capacity drop.
 - The batch's timestamp is the latest block's, read before anything is drained
   (`submitter.rs`, `read_chain_timestamp`; `sdk/tests/batch-e2e.test.ts`
   proves against Anvil's clock). The verifier's one-hour staleness bound is
@@ -823,6 +836,15 @@ Stated so the review does not spend hours finding them.
    and publishes nothing — those processes have no one who can build their
    resolve, and their bonds stay in the verifier. A relay that does not hold
    the state refuses to start and builds nothing.
+7. **A drop at batch formation is final for that submission.** An operation
+   that applies against no order of the drain it was taken in is dropped,
+   though its dependency may sit past the drain's cut, in a later position of
+   the queue; a commit whose balance or allowance the node could not read is
+   dropped the same way. Each is recorded with its reason and is
+   re-submittable, and nothing in this repository defers it to a later drain
+   or re-queues it on a read failure: a bounded recovery — a bound in time
+   rather than in attempts, dependents moved with the operation, no extra
+   draining for an operation anyone may submit free — is not built.
 
 ## Verification evidence
 
@@ -842,8 +864,8 @@ tests is `TESTING.md`.
 | Certora | 7 of 7 specs, every rule verified |
 | Echidna | 15 properties, every one held on both harnesses |
 | TLA+ | 5 models, 55 invariants, no error; `FigaroCore` 8,380,329 states generated, 6,087,113 distinct; `RelayState` (the relay's state lifecycle, 7 invariants + 1 action property) 10,837,227 generated, 1,959,944 distinct; the models' defect switches are their mutation checks (`TESTING.md` § TLA+) |
-| Rust (`cargo test`, five crates) | 233 passed, 0 failed; 2 ignored by design, run by the fuzz script |
-| Differential fuzz | one round at seed 1791920265, no divergence: 400 kernel operations (284 accepted, 116 rejected, 86 processes), the agreement vectors, 6,464 clause cases (1,903 encoded byte-for-byte, 3,489 rejected, 1,072 specs refused); CI runs four rounds on every push |
+| Rust (`cargo test`, five crates) | 234 passed, 0 failed; 2 ignored by design, run by the fuzz script |
+| Differential fuzz | one round at seed 1791923560, no divergence: 400 kernel operations (298 accepted, 102 rejected, 94 processes), the agreement vectors, 6,352 clause cases (1,850 encoded byte-for-byte, 3,318 rejected, 1,184 specs refused); CI runs four rounds on every push |
 | SDK (Vitest) | 922 passed |
 | Batch end-to-end (SDK → relay → verifier) | passed |
 
