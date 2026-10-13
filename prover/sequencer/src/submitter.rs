@@ -5,7 +5,7 @@ use std::time::{Duration, Instant};
 use alloy::network::EthereumWallet;
 /// On-chain submitter — sends `settleBatch` transactions to the
 /// FigaroBatchVerifier contract via alloy.
-use alloy::primitives::{Address, Bytes};
+use alloy::primitives::{Address, Bytes, B256};
 use alloy::providers::{Provider, ProviderBuilder};
 use alloy::rpc::types::Filter;
 use alloy::signers::local::PrivateKeySigner;
@@ -14,7 +14,7 @@ use alloy::sol_types::SolEvent;
 use tracing::info;
 
 use alloy::primitives::U256;
-use figaro_kernel::types::{Commitment, KernelOp, UsageClaim, UsageClaimKind};
+use figaro_kernel::types::{BatchEvents, Commitment, KernelOp, NetPosition, UsageClaim, UsageClaimKind};
 
 use crate::mempool::PendingOp;
 use crate::prover::ProveResult;
@@ -652,67 +652,8 @@ pub async fn submit_batch(
                 .map_err(|e| transient(format!("invalid rpc url: {e}")))?,
         );
 
-    // Convert mirror types to contract call types
-    let positions: Vec<IFigaroBatchVerifier::NetPositionCall> = result
-        .positions
-        .iter()
-        .map(|p| IFigaroBatchVerifier::NetPositionCall {
-            token: p.token,
-            user: p.user,
-            deposit: p.deposit,
-            payout: p.payout,
-        })
-        .collect();
-
-    let attestations: Vec<IFigaroBatchVerifier::AttestationDataCall> = result
-        .events
-        .attestations
-        .iter()
-        .map(|a| IFigaroBatchVerifier::AttestationDataCall {
-            orderHash: a.order_hash,
-            processId: a.process_id,
-            attester: a.attester,
-            clauseId: a.clause_id,
-            stage: a.stage,
-            contentRef: a.content_ref,
-        })
-        .collect();
-
-    // The (clause key → witness-spec hash) bindings the proof committed —
-    // the verifier checks each against ClauseRegistry.contentHashOf.
-    let spec_bindings: Vec<IFigaroBatchVerifier::SpecBindingCall> = result
-        .events
-        .spec_bindings
-        .iter()
-        .map(|b| IFigaroBatchVerifier::SpecBindingCall {
-            clauseId: b.clause_id,
-            specHash: b.spec_hash,
-        })
-        .collect();
-
-    let events_call = IFigaroBatchVerifier::BatchEventDataCall {
-        attestations,
-        specBindings: spec_bindings,
-    };
-
-    // The RPGF accrual the proof committed. Empty arrays are normal and
-    // resolve fine — the counter treats an empty accrual as a no-op, which
-    // is what lets trade keep resolving after the reward's last period ends.
-    let usage_call = IFigaroBatchVerifier::BatchUsageDataCall {
-        period: result.events.usage_period,
-        provenanceClause: result.provenance_clause,
-        accruals: result
-            .events
-            .usage_accruals
-            .iter()
-            .map(|a| IFigaroBatchVerifier::BatchAccrualCall {
-                clauseOrAssembly: a.clause_or_assembly,
-                c: a.c,
-                d: a.d,
-            })
-            .collect(),
-        sellers: result.events.usage_sellers.clone(),
-    };
+    let (positions, events_call, usage_call) =
+        settle_call_args(&result.positions, &result.events, result.provenance_clause);
 
     let contract = IFigaroBatchVerifier::new(config.verifier_address, &provider);
 
@@ -813,6 +754,110 @@ pub async fn find_settle_tx(
         to = from - 1;
     }
     Ok(None)
+}
+
+/// The mirror's positions and events as the verifier's call types: the
+/// send and the gas estimate encode the same arguments.
+pub fn settle_call_args(
+    positions: &[NetPosition],
+    events: &BatchEvents,
+    provenance_clause: B256,
+) -> (
+    Vec<IFigaroBatchVerifier::NetPositionCall>,
+    IFigaroBatchVerifier::BatchEventDataCall,
+    IFigaroBatchVerifier::BatchUsageDataCall,
+) {
+    let positions = positions
+        .iter()
+        .map(|p| IFigaroBatchVerifier::NetPositionCall {
+            token: p.token,
+            user: p.user,
+            deposit: p.deposit,
+            payout: p.payout,
+        })
+        .collect();
+    let attestations = events
+        .attestations
+        .iter()
+        .map(|a| IFigaroBatchVerifier::AttestationDataCall {
+            orderHash: a.order_hash,
+            processId: a.process_id,
+            attester: a.attester,
+            clauseId: a.clause_id,
+            stage: a.stage,
+            contentRef: a.content_ref,
+        })
+        .collect();
+    // The (clause key → witness-spec hash) bindings the proof committed —
+    // the verifier checks each against ClauseRegistry.contentHashOf.
+    let spec_bindings = events
+        .spec_bindings
+        .iter()
+        .map(|b| IFigaroBatchVerifier::SpecBindingCall {
+            clauseId: b.clause_id,
+            specHash: b.spec_hash,
+        })
+        .collect();
+    let events_call = IFigaroBatchVerifier::BatchEventDataCall {
+        attestations,
+        specBindings: spec_bindings,
+    };
+    // The RPGF accrual the proof committed. Empty arrays are normal and
+    // resolve fine — the counter treats an empty accrual as a no-op, which
+    // is what lets trade keep resolving after the reward's last period ends.
+    let usage_call = IFigaroBatchVerifier::BatchUsageDataCall {
+        period: events.usage_period,
+        provenanceClause: provenance_clause,
+        accruals: events
+            .usage_accruals
+            .iter()
+            .map(|a| IFigaroBatchVerifier::BatchAccrualCall {
+                clauseOrAssembly: a.clause_or_assembly,
+                c: a.c,
+                d: a.d,
+            })
+            .collect(),
+        sellers: events.usage_sellers.clone(),
+    };
+    (positions, events_call, usage_call)
+}
+
+/// The calldata a settle of these positions and events would carry, with
+/// `proof_len` bytes standing for the proof and `public_values` as the
+/// guest commits them: what the gas estimate charges per byte.
+pub fn settle_calldata(
+    positions: &[NetPosition],
+    events: &BatchEvents,
+    provenance_clause: B256,
+    public_values: &[u8],
+    proof_len: usize,
+) -> Vec<u8> {
+    use alloy::sol_types::SolCall;
+    let (positions, events, usage) = settle_call_args(positions, events, provenance_clause);
+    IFigaroBatchVerifier::settleBatchCall {
+        proof: Bytes::from(vec![0xffu8; proof_len]),
+        publicValues: Bytes::copy_from_slice(public_values),
+        positions,
+        events,
+        usage,
+    }
+    .abi_encode()
+}
+
+/// The latest block's gas limit: what a batch's settle must fit, with the
+/// headroom `gas::settle_gas_budget` keeps.
+pub async fn read_block_gas_limit(rpc_url: &str) -> Result<u64, String> {
+    let provider = ProviderBuilder::new().connect_http(
+        rpc_url
+            .parse()
+            .map_err(|e| format!("invalid rpc url: {e}"))?,
+    );
+    let block = provider
+        .get_block_by_number(alloy::eips::BlockNumberOrTag::Latest)
+        .await
+        .map_err(|e| format!("latest block read failed: {e}"))?
+        .ok_or_else(|| "the node returned no latest block".to_string())?;
+    Ok(block.header.gas_limit)
 }
 
 /// Read the current on-chain state root.

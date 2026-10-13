@@ -22,6 +22,8 @@ use figaro_prove_test::{
 use figaro_sequencer::api::{self, ApiConfig, AppState};
 use figaro_sequencer::archive::{self, Archive, ArchiveConfig, BatchRecord};
 use figaro_sequencer::assembler::{self, AssemblerConfig, UsageContext};
+use figaro_sequencer::gas::{self, SettleItems};
+use figaro_sequencer::submitter::settle_calldata;
 use figaro_sequencer::mempool::{Mempool, PendingOp, SubmitError};
 use figaro_sequencer::state::{
     fetch_served_state, fetch_served_state_within, held_state_for, take_over_from_served, takeover, Held,
@@ -2405,4 +2407,192 @@ async fn fetching_a_served_state_refuses_every_malformed_peer() {
     // A peer that is not there.
     let err = fetch_served_state("http://127.0.0.1:9").await.unwrap_err();
     assert!(err.starts_with("GET http://127.0.0.1:9/state"), "{err}");
+}
+
+// ── The batch's cost on chain bounds it ───────────────────────────────
+//
+// What a batch costs the chain is what it publishes, planned from its own
+// execution against the latest block's gas limit under the chain's cap on
+// one transaction (`gas.rs`); the operations after the kept prefix go back
+// to the mempool untried when the settle would not fit, an operation that
+// fits no batch is set aside, and the claims are cut the same way.
+
+fn ops_bytes(ops: &[KernelOp]) -> Vec<u8> {
+    serde_json::to_vec(ops).unwrap()
+}
+
+#[test]
+fn trim_ops_to_budget_keeps_the_longest_fitting_prefix_and_gives_the_rest_back() {
+    let input = build_canonical_batch_input();
+    assert_eq!(input.operations.len(), 4);
+    let claims_were = input.usage_claims.clone();
+    // A planned cost of ten per operation: three fit a budget of thirty.
+    let planned = gas::trim_ops_to_budget(input.clone(), 1_000, 30, 30, |b| Ok(b.operations.len() as u64 * 10)).unwrap();
+    assert_eq!(ops_bytes(&planned.batch.operations), ops_bytes(&input.operations[..3]), "the first three are kept");
+    assert_eq!(ops_bytes(&planned.given_back), ops_bytes(&input.operations[3..]), "the last goes back, in order");
+    assert!(planned.unfit.is_none());
+    assert_eq!(serde_json::to_vec(&planned.batch.usage_claims).unwrap(), serde_json::to_vec(&claims_were).unwrap(), "the claims are left for the caller");
+    // Everything fits: one execution, nothing goes back.
+    let mut probes = 0;
+    let planned = gas::trim_ops_to_budget(input.clone(), 1_000, 40, 40, |b| { probes += 1; Ok(b.operations.len() as u64 * 10) }).unwrap();
+    assert_eq!(planned.batch.operations.len(), 4);
+    assert!(planned.given_back.is_empty());
+    assert_eq!(probes, 2, "the first alone, then the whole");
+    // The estimate's failure is the caller's.
+    assert!(gas::trim_ops_to_budget(input, 1_000, 30, 30, |_| Err("no".to_string())).is_err());
+}
+
+#[test]
+fn an_operation_that_fits_no_batch_is_returned_unfit_and_nothing_is_planned_behind_it() {
+    let input = build_canonical_batch_input();
+    // The first operation alone costs more than the budget. Without this,
+    // it would stand at the front of the queue and empty every batch after
+    // it; the rest go back for the caller to filter without it, since the
+    // order they were filtered into may have built on it.
+    let first = ops_bytes(&input.operations[..1]);
+    let mut probes = 0;
+    let planned = gas::trim_ops_to_budget(input.clone(), 25, 25, 25, |b| {
+        probes += 1;
+        Ok(1_000 * b.operations.len() as u64)
+    })
+    .unwrap();
+    let (unfit, planned_gas) = planned.unfit.expect("the first is unfit");
+    assert_eq!(planned_gas, 1_000, "with the gas it was planned at");
+    assert_eq!(ops_bytes(std::slice::from_ref(&unfit)), first);
+    assert!(planned.batch.operations.is_empty(), "nothing is planned behind it");
+    assert_eq!(ops_bytes(&planned.given_back), ops_bytes(&input.operations[1..]), "the rest, in order");
+    assert_eq!(probes, 1, "one probe: the first alone");
+    // The same operation under a cap it fits but a tick's budget it does
+    // not: it is not unfit, nothing is kept, and everything waits.
+    let planned = gas::trim_ops_to_budget(input.clone(), 5_000, 25, 25, |b| Ok(1_000 * b.operations.len() as u64)).unwrap();
+    assert!(planned.unfit.is_none());
+    assert!(planned.batch.operations.is_empty());
+    assert_eq!(planned.given_back.len(), 4);
+    // On a tick that owes the claims their turn, the operations' share is
+    // half the budget: an operation that fits the whole budget but not the
+    // share is kept alone rather than holding the queue.
+    let planned = gas::trim_ops_to_budget(input, 5_000, 1_500, 750, |b| Ok(1_000 * b.operations.len() as u64)).unwrap();
+    assert!(planned.unfit.is_none());
+    assert_eq!(planned.batch.operations.len(), 1, "the first alone, under the whole budget");
+    assert_eq!(planned.given_back.len(), 3);
+}
+
+#[test]
+fn a_commit_that_would_grow_a_process_past_one_settle_is_dropped_at_formation() {
+    // The mirror holds a process of two orders; three commits grow it, a
+    // resolve closes it, and a commit after the resolve starts it over.
+    let base = build_canonical_batch_input();
+    let KernelOp::Commit { commitment: c, .. } = &base.operations[0] else { panic!("the first op is a commit") };
+    let process = c.process_id;
+    let mut prev = empty_snapshot();
+    prev.processes.push((process, ProcessState { root_buyer: c.buyer, currency: c.currency, cumulative_value: c.payment, active_order_count: 2 }));
+    let commit = |salt: u64| commit_from(c, salt, 1);
+    let resolve = PendingOp {
+        id: 99,
+        key: B256::with_last_byte(99),
+        op: KernelOp::Resolve { process_id: process, commitments: vec![], buyer_sig: Signature { r: B256::ZERO, s: B256::ZERO, v: 27 } },
+    };
+    let ops = vec![commit(1), commit(2), commit(3), resolve, commit(4)];
+    let (kept, dropped) = assembler::filter_commits_within_resolve_capacity(&prev, ops, 4);
+    // Two held plus the first two commits reach four, the cap; the third
+    // would make five and is dropped; the resolve closes the process; the
+    // commit after it is the first of a new count.
+    assert_eq!(kept.iter().map(|p| p.id).collect::<Vec<_>>(), vec![1, 2, 99, 4]);
+    assert_eq!(dropped.len(), 1);
+    assert_eq!(dropped[0].0.id, 3);
+    assert!(dropped[0].1.contains("would grow the process to 5 orders, past the 4"), "{}", dropped[0].1);
+    // A cap of zero keeps no commit at all; the resolve still passes.
+    let (kept, dropped) = assembler::filter_commits_within_resolve_capacity(&prev, vec![commit(1), ], 0);
+    assert!(kept.is_empty());
+    assert_eq!(dropped.len(), 1);
+}
+
+#[test]
+fn trim_claims_to_budget_cuts_the_claims_and_leaves_the_operations() {
+    let mut input = build_canonical_batch_input();
+    let claim = input.usage_claims[0].clone();
+    input.usage_claims = vec![claim.clone(), claim.clone(), claim];
+    // Ten per claim over a fixed fifty for the operations: one claim fits sixty-five.
+    let (batch, given_back) =
+        gas::trim_claims_to_budget(input.clone(), 65, |b| Ok(50 + b.usage_claims.len() as u64 * 10)).unwrap();
+    assert_eq!(batch.operations.len(), 4, "the operations are not touched");
+    assert_eq!(batch.usage_claims.len(), 1);
+    assert_eq!(given_back.len(), 2);
+    // Nothing fits beyond the operations: every claim goes back.
+    let (batch, given_back) =
+        gas::trim_claims_to_budget(input, 55, |b| Ok(50 + b.usage_claims.len() as u64 * 10)).unwrap();
+    assert!(batch.usage_claims.is_empty());
+    assert_eq!(given_back.len(), 3);
+}
+
+#[test]
+fn the_canonical_batch_is_planned_from_its_own_execution_and_fits_a_block() {
+    let input = build_canonical_batch_input();
+    let (pv, positions, events, _) = apply_batch_with_state(&input).unwrap();
+    let items = SettleItems::of(&positions, &events);
+    assert!(items.positions >= 2, "a commit and a resolve net at least two positions");
+    assert_eq!(items.attestations, 2, "the two attestations are re-emitted");
+    assert_eq!(items.accruals, input.usage_claims.len(), "a claim is an accrual");
+    assert!(items.usage_sellers >= 1, "the accrual names its seller");
+    let calldata = settle_calldata(&positions, &events, input.provenance_clause, &pv.abi_encode(), 356);
+    // The calldata is the settle call: its selector, the proof placeholder
+    // and the public values, then the items.
+    assert!(calldata.len() > 4 + 356 + pv.abi_encode().len());
+    let planned = gas::settle_gas_estimate(&calldata, items);
+    assert!(planned > gas::SETTLE_PROOF_VERIFY_GAS + gas::SETTLE_FIXED_EXEC_GAS + gas::calldata_gas(&calldata));
+    assert!(planned < gas::settle_gas_budget(30_000_000, gas::DEFAULT_SETTLE_GAS_CAP), "the canonical batch fits one transaction under the cap");
+    // The same batch with the proof's bytes absent (the mock verifier) plans
+    // for fewer calldata bytes and nothing else.
+    let without_proof = settle_calldata(&positions, &events, input.provenance_clause, &pv.abi_encode(), 0);
+    assert_eq!(
+        planned - gas::settle_gas_estimate(&without_proof, items),
+        gas::calldata_gas(&calldata) - gas::calldata_gas(&without_proof)
+    );
+}
+
+#[tokio::test]
+async fn mempool_gives_back_operations_at_the_front_untried() {
+    let mp = mempool();
+    let ops = canonical_ops();
+    let mut ids = Vec::new();
+    for op in &ops {
+        ids.push(mp.submit(op.clone()).await.unwrap().id);
+    }
+    let drained = mp.drain_up_to(4).await;
+    assert_eq!(drained.len(), 4);
+    // The batch was cut to two: the last two go back, untried.
+    let mut drained = drained;
+    let given_back = drained.split_off(2);
+    mp.give_back(given_back).await;
+    assert_eq!(mp.len().await, 2);
+    // Given back, they are deduplicated again and come out in their order
+    // ahead of anything submitted since.
+    assert!(mp.submit(ops[2].clone()).await.unwrap().duplicate);
+    assert!(!mp.submit(ops[0].clone()).await.unwrap().duplicate);
+    let next = mp.drain_up_to(10).await;
+    assert_eq!(next.iter().map(|p| p.id).collect::<Vec<_>>(), vec![ids[2], ids[3], next[2].id]);
+}
+
+#[tokio::test]
+async fn mempool_gives_back_no_copy_of_an_operation_resubmitted_meanwhile() {
+    let mp = mempool();
+    let ops = canonical_ops();
+    for op in &ops {
+        mp.submit(op.clone()).await.unwrap();
+    }
+    let drained = mp.drain_up_to(4).await;
+    // While the batch was planned, the third operation was submitted again
+    // under a new id: the drain had freed its key.
+    let resubmitted = mp.submit(ops[2].clone()).await.unwrap();
+    assert!(!resubmitted.duplicate);
+    let mut drained = drained;
+    let given_back = drained.split_off(2);
+    let (third_id, fourth_id) = (given_back[0].id, given_back[1].id);
+    mp.give_back(given_back).await;
+    // One copy of it is queued: the one given back, at the front in the
+    // order the fourth was filtered into behind it; the resubmitted copy is
+    // gone, and its key is held by the one that stands.
+    let next = mp.drain_up_to(10).await;
+    assert_eq!(next.iter().map(|p| p.id).collect::<Vec<_>>(), vec![third_id, fourth_id]);
+    assert_ne!(resubmitted.id, third_id);
 }

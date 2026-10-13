@@ -26,6 +26,12 @@ pub struct UsageContext {
 pub struct AssemblerConfig {
     /// Maximum number of operations per batch.
     pub max_ops: usize,
+    /// The chain's cap on one transaction's gas: the settle's budget never
+    /// plans past it (`gas::settle_gas_budget`).
+    pub settle_gas_cap: u64,
+    /// Whether the cap was read against the chain's block gas limit at
+    /// startup; when not, the first tick that reads the block checks it.
+    pub settle_gas_cap_checked: bool,
     /// Batch interval in seconds (time trigger).
     pub interval_secs: u64,
 }
@@ -34,6 +40,8 @@ impl Default for AssemblerConfig {
     fn default() -> Self {
         Self {
             max_ops: 100,
+            settle_gas_cap: crate::gas::DEFAULT_SETTLE_GAS_CAP,
+            settle_gas_cap_checked: true,
             interval_secs: 10,
         }
     }
@@ -133,6 +141,46 @@ pub fn filter_applicable_ops(
         .collect();
 
     (valid, poison)
+}
+
+/// Drop the commits that would grow a batch-path process past what one
+/// settle can resolve (`gas::max_orders_in_one_settle`): a process past it
+/// has no resolve any relay on the chain can settle, so its bonds would
+/// stay where they are. Counted in the batch's order from the mirror's
+/// process states; a resolve closes its process. Returns the ops kept and
+/// each dropped op with its reason.
+pub fn filter_commits_within_resolve_capacity(
+    prev_state: &KernelStateSnapshot,
+    ops: Vec<PendingOp>,
+    max_orders: usize,
+) -> (Vec<PendingOp>, Vec<(PendingOp, String)>) {
+    let mut active: std::collections::BTreeMap<B256, u64> =
+        prev_state.processes.iter().map(|(id, p)| (*id, p.active_order_count)).collect();
+    let mut kept = Vec::new();
+    let mut dropped = Vec::new();
+    for op in ops {
+        match &op.op {
+            KernelOp::Commit { commitment, .. } => {
+                let count = active.get(&commitment.process_id).copied().unwrap_or(0) + 1;
+                if count as usize > max_orders {
+                    dropped.push((
+                        op,
+                        format!(
+                            "would grow the process to {count} orders, past the {max_orders} one settle can resolve under the chain's cap; its resolve would fit no batch and its bonds would stay where they are"
+                        ),
+                    ));
+                    continue;
+                }
+                active.insert(commitment.process_id, count);
+            }
+            KernelOp::Resolve { process_id, .. } => {
+                active.insert(*process_id, 0);
+            }
+            _ => {}
+        }
+        kept.push(op);
+    }
+    (kept, dropped)
 }
 
 /// Trial-apply usage claims against the batch's POST-OP state, partitioning

@@ -95,6 +95,21 @@ pub enum ProofMode {
     Plonk,
 }
 
+/// The calldata a real proof occupies in `settleBatch`, by form: what the
+/// gas estimate charges per byte before the proof exists. A Groth16 proof's
+/// bytes are 356 on every batch settled on Sepolia; a PLONK proof is larger,
+/// and its figure is a ceiling. With no real prover selected the mock
+/// verifier takes no proof bytes.
+pub fn proof_calldata_len() -> usize {
+    if !real_prover_selected() {
+        return 0;
+    }
+    match proof_mode() {
+        Ok(ProofMode::Plonk) => 1_536,
+        _ => 356,
+    }
+}
+
 pub fn proof_mode() -> Result<ProofMode, String> {
     match std::env::var("SP1_PROOF_MODE") {
         Err(_) => Ok(ProofMode::Groth16),

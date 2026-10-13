@@ -20,7 +20,10 @@ use tracing::{error, info, warn};
 use figaro_sequencer::api::{self, AppState, FailureLog};
 use figaro_sequencer::archive::{self, Archive, ArchiveConfig, BatchRecord};
 use figaro_sequencer::assembler::{self, AssemblerConfig};
+use figaro_sequencer::gas;
+use figaro_kernel::kernel::apply_batch_with_state;
 use figaro_kernel::state::KernelState;
+use figaro_kernel::types::BatchInput;
 use figaro_sequencer::mempool::{Mempool, PendingOp};
 use figaro_sequencer::prover;
 use figaro_sequencer::state::{self, Held, NextState, StateMirror, StateStore};
@@ -121,6 +124,19 @@ async fn main() {
     let max_ops: usize = env_or("MAX_BATCH_OPS", "100")
         .parse()
         .expect("invalid MAX_BATCH_OPS");
+    // The chain's cap on one transaction's gas (EIP-7825's 2^24 by default);
+    // a chain without it is told so here. The block's limit is read live.
+    let settle_gas_cap: u64 = env_or("SETTLE_GAS_CAP", &gas::DEFAULT_SETTLE_GAS_CAP.to_string())
+        .parse()
+        .expect("invalid SETTLE_GAS_CAP");
+    if settle_gas_cap < gas::MIN_SETTLE_GAS_CAP {
+        error!(
+            %settle_gas_cap,
+            least = gas::MIN_SETTLE_GAS_CAP,
+            "refusing to start: SETTLE_GAS_CAP is below what a settle of one position costs; every operation would be unfit"
+        );
+        std::process::exit(2);
+    }
     // Public-endpoint bounds: queue caps + per-request body cap.
     let mempool_max_ops: usize = env_or("MEMPOOL_MAX_OPS", "10000")
         .parse()
@@ -156,7 +172,7 @@ async fn main() {
         "STATE_PATH",
         &format!("sequencer-state-{chain_id}-{verifier_addr:#x}.json"),
     );
-    info!(%rpc_url, %chain_id, ?verifier_addr, ?verifying_contract, %listen_addr, %batch_interval, %max_ops, %mempool_max_ops, %mempool_max_usage, %max_body_bytes, %archive_path, %archive_max_batches, %state_path, "Starting Figaro sequencer");
+    info!(%rpc_url, %chain_id, ?verifier_addr, ?verifying_contract, %listen_addr, %batch_interval, %max_ops, %settle_gas_cap, %mempool_max_ops, %mempool_max_usage, %max_body_bytes, %archive_path, %archive_max_batches, %state_path, "Starting Figaro sequencer");
 
     // ── Initialize components ─────────────────────────────────────
     let mempool = Mempool::with_caps(
@@ -219,6 +235,33 @@ async fn main() {
             }
         }
     }
+
+    // The cap is the bound a batch-path process is admitted under and the
+    // bound an operation is judged unfit by, while a tick plans under the
+    // block's limit with headroom: a cap at or past that headroom would
+    // admit a process whose resolve no tick could settle and never
+    // dead-letter it, so the relay refuses such a cap at startup. A chain
+    // whose limit later falls below the cap holds such a batch until the
+    // limit returns.
+    let settle_gas_cap_checked = match submitter::read_block_gas_limit(&rpc_url).await {
+        Ok(block_gas_limit) if settle_gas_cap > gas::settle_gas_budget(block_gas_limit, u64::MAX) => {
+            error!(
+                %settle_gas_cap,
+                %block_gas_limit,
+                most = gas::settle_gas_budget(block_gas_limit, u64::MAX),
+                "refusing to start: SETTLE_GAS_CAP is not below 95 percent of the chain's block gas limit"
+            );
+            std::process::exit(2);
+        }
+        Ok(block_gas_limit) => {
+            info!(%settle_gas_cap, %block_gas_limit, "The settle cap sits under the chain's block gas limit with headroom");
+            true
+        }
+        Err(e) => {
+            warn!(%e, "Could not read the block gas limit at startup; the cap is checked against it on the first tick that reads the block");
+            false
+        }
+    };
 
     // The verifier holds a root; a bond committed on the batch path is
     // refunded only by a batch built on the state behind it. This relay
@@ -327,6 +370,8 @@ async fn main() {
 
     let assembler_config = AssemblerConfig {
         max_ops,
+        settle_gas_cap,
+        settle_gas_cap_checked,
         interval_secs: batch_interval,
     };
 
@@ -418,6 +463,11 @@ async fn batch_loop(
     let dry_run = submitter_config.verifier_address == Address::ZERO;
     // The verifier root this relay last found it holds no state for.
     let mut out_of_step: Option<B256> = None;
+    // The claims were cut to what the operations left last tick: this tick
+    // the operations plan on half the budget, so the claims get their turn.
+    let mut claims_starved = false;
+    // The cap against the block's limit, when startup could not read it.
+    let mut cap_checked = config.settle_gas_cap_checked;
     // Refusals caused by a revoked approval, counted per address for the
     // adversarial signal (exclusion itself needs no state — funding is
     // re-read from the chain at every batch formation).
@@ -525,7 +575,7 @@ async fn batch_loop(
         }
         // An attestation whose witness spec is not the registry's anchored
         // one reverts the whole batch on chain: dropped here, alone.
-        let (valid, unanchored) = submitter::filter_anchored_attestations(funding.as_ref(), valid).await;
+        let (mut valid, unanchored) = submitter::filter_anchored_attestations(funding.as_ref(), valid).await;
         for (p, reason) in &unanchored {
             warn!(id = p.id, %reason, "Dropped attestation at batch formation");
             failures.record(1, reason.clone()).await;
@@ -570,23 +620,91 @@ async fn batch_loop(
             }
         };
 
-        let ops: Vec<_> = valid.iter().map(|p| p.op.clone()).collect();
+        // The batch's settle has to fit one block, under the chain's cap on
+        // one transaction: what it costs the chain is what it publishes
+        // (`gas.rs`), planned from the batch's own execution — the
+        // positions, events, accruals and sellers it would settle, the
+        // calldata it would carry — against the budget. The limit is the
+        // latest block's, read every tick; a tick on which it cannot be read
+        // plans under the cap alone. MAX_BATCH_OPS stays the operator's bound
+        // on what the prover finishes in one sitting; this is the chain's.
+        let budget = match submitter::read_block_gas_limit(&submitter_config.rpc_url).await {
+            Ok(block_gas_limit) => {
+                if !cap_checked {
+                    if config.settle_gas_cap > gas::settle_gas_budget(block_gas_limit, u64::MAX) {
+                        error!(
+                            cap = config.settle_gas_cap,
+                            %block_gas_limit,
+                            "refusing to run: SETTLE_GAS_CAP is not below 95 percent of the chain's block gas limit"
+                        );
+                        std::process::exit(2);
+                    }
+                    cap_checked = true;
+                }
+                gas::settle_gas_budget(block_gas_limit, config.settle_gas_cap)
+            }
+            Err(e) => {
+                warn!(%e, cap = config.settle_gas_cap, "Could not read the block gas limit; this tick plans under the transaction cap alone");
+                gas::settle_gas_budget(u64::MAX, config.settle_gas_cap)
+            }
+        };
+        let proof_len = prover::proof_calldata_len();
+        let mut estimate = |input: &BatchInput| {
+            let (pv, positions, events, _) = apply_batch_with_state(input)
+                .map_err(|e| format!("kernel execution failed: {e}"))?;
+            let calldata = submitter::settle_calldata(
+                &positions,
+                &events,
+                input.provenance_clause,
+                &pv.abi_encode(),
+                proof_len,
+            );
+            Ok(gas::settle_gas_estimate(&calldata, gas::SettleItems::of(&positions, &events)))
+        };
 
-        // Stateful filter for usage claims — the twin of the op filter above.
-        // The guest credits claims against the batch's POST-OP state and aborts
-        // the WHOLE proof on any that fail (order not resolved, bad inclusion
-        // proof, already-counted). A poison claim there dead-letters the batch
-        // and discards every co-batched trade; claims are publicly submittable,
-        // so this is a gas-free DoS surface. Trial-apply each claim and drop the
-        // poison before proving. (The registry/stake pre-filter above covers the
-        // disjoint set of gates the guest cannot see.)
+        // A commit that would grow a batch-path process past what one settle
+        // can resolve under the chain's cap is dropped here: such a process
+        // has no resolve any relay on the chain can settle, and its bonds
+        // would stay where they are. The bound is the cap's, stable across
+        // ticks — a process outlives the tick it was admitted on — never the
+        // tick's budget. Dead-lettered, re-submittable once the process has
+        // resolved. What was filtered into an order behind a dropped commit
+        // is filtered again without it.
+        let cap_budget = gas::settle_gas_budget(u64::MAX, config.settle_gas_cap);
+        let max_orders = gas::max_orders_in_one_settle(cap_budget);
+        let (mut valid, outgrown) = assembler::filter_commits_within_resolve_capacity(&prev_state, valid, max_orders);
+        for (p, reason) in &outgrown {
+            warn!(id = p.id, %reason, "Dropped commit at batch formation");
+            failures.record(1, reason.clone()).await;
+        }
+        if !outgrown.is_empty() {
+            let (again, built_on_them) = assembler::filter_applicable_ops(
+                chain_id,
+                verifying_contract,
+                timestamp,
+                &prev_state,
+                std::mem::take(&mut valid),
+            );
+            for (p, reason) in &built_on_them {
+                let why = format!("built on a commit that would grow its process past what one settle can resolve: {reason}");
+                error!(id = p.id, %why, "Dead-lettered");
+                failures.record(1, why).await;
+            }
+            valid = again;
+        }
+
+        // The claims against every operation drained: a claim that credits
+        // no order the batch resolves, in any order, is poison and is dropped
+        // (the guest would abort the whole proof on it). A claim stranded by
+        // the cut below is another matter, and waits.
+        let all_ops: Vec<_> = valid.iter().map(|p| p.op.clone()).collect();
         if !usage.claims.is_empty() {
             let (kept, dropped) = assembler::filter_applicable_claims(
                 chain_id,
                 verifying_contract,
                 timestamp,
                 &prev_state,
-                &ops,
+                &all_ops,
                 usage.period,
                 usage.provenance_clause,
                 std::mem::take(&mut usage.claims),
@@ -596,21 +714,124 @@ async fn batch_loop(
             }
             usage.claims = kept;
         }
-
-        // After BOTH filters an all-poison tick can leave nothing to resolve
-        // (every op held, every claim dropped). Never assemble an empty batch.
-        if ops.is_empty() && usage.claims.is_empty() {
+        if valid.is_empty() && usage.claims.is_empty() {
             continue;
         }
 
-        let batch = assembler::assemble_batch(
-            chain_id,
-            verifying_contract,
-            timestamp,
-            ops,
-            prev_state,
-            usage,
-        );
+        // First the operations: the longest prefix of the execution order
+        // whose settle fits this tick's budget. An operation that fits no
+        // settle under the chain's cap on its own is dead-lettered with the
+        // gas it was planned at, and the rest are filtered again without it —
+        // the order they were filtered into may have built on it — before
+        // the plan goes on; one that fits the cap but not this tick's budget
+        // waits. The operations after the kept prefix go back to the front
+        // of the mempool untried.
+        let ops_budget = if claims_starved && !usage.claims.is_empty() { budget / 2 } else { budget };
+        let batch = loop {
+            let ops: Vec<_> = valid.iter().map(|p| p.op.clone()).collect();
+            let batch = assembler::assemble_batch(
+                chain_id,
+                verifying_contract,
+                timestamp,
+                ops,
+                prev_state.clone(),
+                usage.clone(),
+            );
+            let planned = match gas::trim_ops_to_budget(batch, cap_budget, budget, ops_budget, &mut estimate) {
+                Ok(planned) => planned,
+                Err(e) => {
+                    let n = valid.len();
+                    error!(%e, ops = n, "Batch failed to execute while being planned — dead-lettered");
+                    failures.record(n as u64, format!("planning failed: {e}")).await;
+                    valid.clear();
+                    break None;
+                }
+            };
+            if let Some((_, planned_gas)) = planned.unfit {
+                let unfit = valid.remove(0);
+                let why = format!(
+                    "fits no settle under the chain's cap on its own: planned at {planned_gas} gas against the cap's {cap_budget}; a resolve this large means the process outgrew what one settle carries"
+                );
+                error!(id = unfit.id, %why, "Dead-lettered");
+                failures.record(1, why).await;
+                let (again, built_on_it) = assembler::filter_applicable_ops(
+                    chain_id,
+                    verifying_contract,
+                    timestamp,
+                    &prev_state,
+                    std::mem::take(&mut valid),
+                );
+                for (p, reason) in &built_on_it {
+                    let why = format!("built on an operation that fits no batch: {reason}");
+                    error!(id = p.id, %why, "Dead-lettered");
+                    failures.record(1, why).await;
+                }
+                valid = again;
+                if valid.is_empty() {
+                    break None;
+                }
+                continue;
+            }
+            let returned = valid.split_off(valid.len() - planned.given_back.len());
+            if !returned.is_empty() {
+                info!(
+                    kept = planned.batch.operations.len(),
+                    given_back = returned.len(),
+                    %budget,
+                    "Batch cut to the block's gas budget; the operations after the kept prefix wait for the next tick"
+                );
+                mempool.give_back(returned).await;
+            }
+            break Some(planned.batch);
+        };
+        let Some(mut batch) = batch else {
+            // No operation is left to prove. The claims were admitted against
+            // operations that are gone: they wait for the next tick.
+            if !usage.claims.is_empty() {
+                mempool.requeue_usage(std::mem::take(&mut usage.claims)).await;
+            }
+            continue;
+        };
+
+        // Then the claims, filtered again against the operations kept — a
+        // claim credits an order the batch resolves — the stranded ones set
+        // aside for the tick their order lands in, and cut to the budget the
+        // same way; the claims cut wait too, and take the next tick's turn.
+        if batch.operations.len() != all_ops.len() && !batch.usage_claims.is_empty() {
+            let (kept_claims, stranded) = assembler::filter_applicable_claims(
+                chain_id,
+                verifying_contract,
+                timestamp,
+                &batch.prev_state,
+                &batch.operations,
+                batch.usage_period,
+                batch.provenance_clause,
+                std::mem::take(&mut batch.usage_claims),
+            );
+            if !stranded.is_empty() {
+                info!(claims = stranded.len(), "Usage claims set aside with the operations they credit; they wait for the next tick");
+                mempool.requeue_usage(stranded.into_iter().map(|(claim, _)| claim).collect()).await;
+            }
+            batch.usage_claims = kept_claims;
+        }
+        let (batch, claims_given_back) = match gas::trim_claims_to_budget(batch, budget, &mut estimate) {
+            Ok(cut) => cut,
+            Err(e) => {
+                let n = valid.len();
+                error!(%e, ops = n, "Batch failed to execute while its claims were planned — dead-lettered");
+                failures.record(n as u64, format!("planning failed: {e}")).await;
+                continue;
+            }
+        };
+        claims_starved = !claims_given_back.is_empty();
+        if claims_starved {
+            info!(claims = claims_given_back.len(), %budget, "Usage claims cut to the block's gas budget; the rest wait for the next tick, and take its first half");
+            mempool.requeue_usage(claims_given_back).await;
+        }
+        if batch.operations.is_empty() && batch.usage_claims.is_empty() {
+            continue;
+        }
+        let op_count = batch.operations.len();
 
         // Prove
         let result = match prover::prove_batch(&batch).await {

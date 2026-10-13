@@ -342,6 +342,26 @@ impl Mempool {
         self.inner.lock().await.pending_usage.len()
     }
 
+    /// Give operations back to the front of the mempool, in their order,
+    /// untried: a batch cut to the block's gas budget returns the operations
+    /// it did not take, and they wait for the next tick as if never drained.
+    /// No attempt is counted — nothing was sent.
+    /// An operation resubmitted meanwhile (the drain had freed its key) is
+    /// dropped from where it was queued: the copy given back stands at the
+    /// front, in the order the operations behind it were filtered into. The
+    /// resubmission's id then names nothing; the operation lands under the
+    /// id it was first given, and a submitter follows it by its key.
+    pub async fn give_back(&self, ops: Vec<PendingOp>) {
+        let mut inner = self.inner.lock().await;
+        for op in ops.into_iter().rev() {
+            if inner.index.contains_key(&op.key) {
+                inner.pending.retain(|queued| queued.key != op.key);
+            }
+            inner.index.insert(op.key, op.id);
+            inner.pending.push_front(op);
+        }
+    }
+
     /// Re-queue operations at the front of the mempool after a transient
     /// submission failure. Preserves original ordering. Cap-exempt: these
     /// were already acknowledged. An op re-queued more than `max_requeues`

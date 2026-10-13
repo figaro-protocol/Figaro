@@ -40,7 +40,8 @@ pub const DEFAULT_MAX_BATCHES: usize = 10_000;
 pub const DEFAULT_PAGE_LIMIT: usize = 10;
 /// Hard ceiling on page size. A batch record carries every commitment
 /// struct and signature it resolved, so a page is bounded in records, and
-/// each record is bounded by `MAX_BATCH_OPS`.
+/// each record is bounded by `MAX_BATCH_OPS` and the block's gas budget
+/// (`gas.rs`).
 pub const MAX_PAGE_LIMIT: usize = 50;
 
 // ── Records — one per FigaroCore event family ─────────────────────────

@@ -235,7 +235,9 @@ survives a restart with its root, a batch's state is held across a crash
 before its receipt and for as long as the batch can land, a held root is not
 replaced, a damaged state file or journal is refused, a verifier root the
 relay does not hold finds nothing, and `GET /state` serves a state another
-relay opens with the same root; a batch takes at most `MAX_BATCH_OPS`; a
+relay opens with the same root; a batch takes at most `MAX_BATCH_OPS` and its
+settle is planned to fit the block from the batch's own execution (`gas.rs`,
+the newest operations given back when it would not); a
 wallet's funds are allocated across a batch's commits; an attestation's
 spec hash is the registry check's input; assembler fixpoint filtering incl. the resolve-closes-the-evidence-window
 property and the three crafted streams — a bond committed twice, in one batch

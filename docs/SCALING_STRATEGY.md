@@ -216,7 +216,7 @@ For 100 orders, the direct path costs ~25.7M gas across 100+ transactions.
 | SP1 proof verification | ~300k | fixed cost, amortized across all operations |
 | Hash verification (O(n)) | ~2k/position | pre-allocated memory, linear scaling |
 | Net token transfer | ~24k/position | one `safeTransfer` per net position |
-| **Total per position** | **~26.5k** | in a single transaction |
+| **Total per position** | **~26k measured; 60k as the relay plans it** | in a single transaction; the plan's allowance over the pre-fork measurement is stated in `test/core/verifier/BatchGasCeilingTest.t.sol` |
 
 For 100 `FigaroCore` operations producing ~30 net positions (after netting), the
 batch path costs ~1.1M gas in one transaction.
@@ -229,33 +229,34 @@ path but one net position on the batch path. Netting is the batch path's
 structural advantage.
 
 **Why it is not "half of FigaroCore."** A naive comparison of the batch
-verifier's ~1,130-position ceiling (a pre-fork figure, re-derived by the
-batch-cap measurement task) against `resolveProcess`'s ~950-order
-ceiling is misleading: the 950 figure measures only the resolve step — the
+verifier's ceiling (about 260 positions under the 2^24 transaction cap, about
+930 at a 60M block without it, as the relay plans a batch from its own
+execution — `prover/sequencer/src/gas.rs`) against `resolveProcess`'s
+~950-order ceiling is misleading: the 950 figure measures only the resolve step — the
 cheapest part of the direct lifecycle. The ~382k-gas sub-order `commit()`
 calls that precede those resolutions consume ~363M gas across 950 separate
 transactions. The batch path eliminates all of that: every commit, resolution,
 and attestation runs off-chain inside the prover, and only the net effects
 land on-chain.
 
-**Ceilings at a 30M gas limit:**
+**Ceilings at a 30M gas limit** (the batch row gives the capped and the larger-block figures too):
 
 | Path | Ceiling | Unit | Per-unit gas |
 |---|---|---|---|
 | Direct `commit()` | ~74 orders | per block | ~382k/order (sub) |
 | Direct `resolveProcess()` | ~950 orders | single call | ~30k/order (all-in) |
-| Batch `settleBatch()` | ~1,130 positions (pre-fork figure) | single call | ~26.5k/position (pre-fork) |
+| Batch `settleBatch()` | about 260 positions under the 2^24 transaction cap (EIP-7825, mainnet); without the cap about 460 at 30M, 930 at 60M and 3,000 at Sepolia's 200M, as the relay plans it from the batch's own execution (`prover/sequencer/src/gas.rs`); a batch-path process is kept within one settle's resolve | single call | 60k/position planned; ~26k measured cold on the pre-fork EVM |
 
 The correct comparison is total lifecycle cost: ~167k gas per order (direct)
-against ~26.5k per net position (batch) — roughly **6× cheaper** per resolved
-order, with further improvement from netting.
+against about 26k measured per net position (batch; 60k as planned) — roughly
+**6× cheaper** per resolved order on the measured cost, about 2.8× on the
+planned ceiling, with further improvement from netting.
 
 **Implementation note — O(n) hashing required.** The hash-verification
 functions that check auxiliary-data parity between the proof and the calldata
 must use pre-allocated memory with fixed-stride writes (assembly). A naive
 `bytes.concat` loop produces O(n²) memory allocation, which collapses the
-ceiling from ~1,130 to ~250 positions and negates the batch path's gas
-advantage entirely.
+ceiling several-fold and negates the batch path's gas advantage entirely.
 
 ### Resolved design decisions
 

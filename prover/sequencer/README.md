@@ -185,7 +185,8 @@ floors): Groth16 wrap ~14 GB RAM, PLONK wrap ~60 GB; both wrap through the
 | `SEQUENCER_PRIVATE_KEY` | none — required | Resolution tx signer (pays gas; no protocol privilege); the relay refuses to start without it |
 | `LISTEN_ADDR` | `0.0.0.0:3001` | HTTP listen address |
 | `BATCH_INTERVAL_SECS` | `10` | Batch assembly tick |
-| `MAX_BATCH_OPS` | `100` | Most operations one batch takes, oldest first; the rest wait for the next tick |
+| `MAX_BATCH_OPS` | `100` | Most operations one batch takes, oldest first — the operator's bound on what the prover finishes in one sitting; the rest wait for the next tick. The chain's bound is derived, never set (see The batch's bound) |
+| `SETTLE_GAS_CAP` | `16777216` | The chain's cap on one transaction's gas (EIP-7825's 2^24, which mainnet enforces); a chain without it is told so here (Sepolia carries larger transactions), set below 95 percent of its block limit. It is the bound a batch-path process is admitted under, stable across ticks, and the tick's budget never plans past it; a value below a settle of a one-order process (590,096), or at or past 95 percent of the block limit read at startup, is a refusal to start |
 | `MEMPOOL_MAX_OPS` | `10000` | Pending-op queue cap |
 | `MEMPOOL_MAX_USAGE_CLAIMS` | `10000` | Pending usage-claim queue cap |
 | `MAX_BODY_BYTES` | `1048576` | Per-request HTTP body cap |
@@ -429,6 +430,54 @@ An operation re-queued after a transient submission failure (the chain never
 evaluated the batch) is re-queued at most three times; past that it is
 dead-lettered — surfaced on `/status` with the reason, re-submittable — so a
 batch that never lands is not re-proved forever.
+
+## The batch's bound
+
+A batch has to fit one block and be proved in one sitting. The second bound
+is the operator's, `MAX_BATCH_OPS`. The first is the chain's and is derived:
+what a batch costs the chain is what it publishes — the net positions
+`settleBatch` transfers, the attestation events it re-emits, the spec
+bindings it anchors, the usage accruals it writes — plus the proof's
+verification, the call's fixed execution and the calldata it carries, never
+the number of operations proved. Before proving, the relay executes the
+assembled batch on its mirror, counts those items, encodes the calldata they
+would ride in, and plans the settle at per-item ceilings
+(`src/gas.rs`, measured in `test/core/verifier/BatchGasCeilingTest.t.sol` on
+the pre-fork EVM with a stated allowance, the proof's verification read from
+live receipts) against 95 percent of the latest block's gas limit, read at
+every tick, under the chain's cap on one transaction (`SETTLE_GAS_CAP`).
+Over the budget, the operations after the kept prefix of the
+execution order go back to the front of the mempool untried and wait for
+the next tick. The usage claims are then filtered against the operations
+kept — a claim credits an order the batch resolves — and cut to the budget
+the same way; claims set aside wait too, and a tick whose claims were cut
+gives the next tick's claims the first half of the budget, so a deep
+operation queue never starves them. A batch-path process is kept within
+what one settle can resolve: a commit that would grow a process past that
+(`gas::max_orders_in_one_settle`, one position an order and one for the
+buyer — about 260 orders under the default cap) is dropped at batch
+formation and dead-lettered with the reason, since such a process would
+have no resolve any relay on the chain could settle and its bonds would
+stay where they are. An operation that fits no settle under the cap on its own is
+dead-lettered with the gas it was planned at, and the operations filtered
+into an order behind it are filtered again without it; one that fits the
+cap but not a tick's budget waits, though one that fits the tick's whole
+budget is kept alone on a tick whose operations plan on half. The cap, not
+a tick's budget, is the bound for both, since a process outlives the tick
+it was admitted on: on a chain without the cap the operator sets
+`SETTLE_GAS_CAP` below 95 percent of the chain's block limit — a cap at or
+past that is a refusal to run, read against the block at startup or, when
+startup could not read it, on the first tick that does — and
+a limit that later falls below the cap holds such a batch until it
+returns. A tick whose block cannot be read plans under the cap alone. The budget is the
+chain's own: under the default cap a batch plans on about 260 positions; a
+chain without the cap gives about 930 at a 60M block and about 3,000 at
+Sepolia's 200M, and a rise in the limit flows through at the next tick
+with nothing set, while a fork that reprices the items is met by
+re-measuring them. The position constant assumes a plain ERC-20: a token
+whose transfer costs more is the parties' choice, and a batch it over-runs
+fails at the send like any transient failure — re-proved, then
+dead-lettered with every operation batched beside it, each re-submittable.
 
 ## Publication bounds
 
