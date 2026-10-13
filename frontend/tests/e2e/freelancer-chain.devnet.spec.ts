@@ -31,10 +31,12 @@
  *             translates contributor-1's listed price into it from the
  *             venue's quote; the buyer signs all three orders.
  *   accepts   each seller countersigns at /sign in walk order; contributor-1
- *             reads its own listed price beside the amount it signs, and
- *             chooses to fund its bond from MPMT through the coordinator; the
- *             lead and contributor-2, listed in the denomination, see no
- *             translation.
+ *             reads its own listed price beside the amount it signs, holds
+ *             NONE of the denomination, and funds its bond from MPMT through
+ *             the coordinator — the funding panel opens on its own, the bond
+ *             authorization is offered at a zero balance once the funding
+ *             token is chosen, and the countersign renders; the lead and
+ *             contributor-2, listed in the denomination, see no translation.
  *   chain     every OrderCommitted carries its signed payment in MOCK, the
  *             cumulative value grows by each, the bonds are 2× payment and
  *             2× cumulative value; contributor-1's catalog price on IPFS is
@@ -76,6 +78,7 @@ const ANVIL_MNEMONIC = 'test test test test test test test test test test test j
 const CONTENT_CLAUSE = 'figaro-content-handoff';
 const ERC20_ABI = parseAbi([
     'function balanceOf(address) view returns (uint256)',
+    'function transfer(address, uint256) returns (bool)',
     'function mint(address to, uint256 amount) external',
 ]);
 const VENUE_ABI = parseAbi([
@@ -428,13 +431,24 @@ test.describe('FREELANCE VALUE CHAIN — three bonded deliverables over the encr
         expect(listedBefore.defaultToken.toLowerCase(), 'contributor-1 lists in MPMT').toBe(otherToken.toLowerCase());
         expect(listedBefore.catalogURI).toBe(catalogs.get(c1.address.toLowerCase()));
 
-        // ── FUND (scenario pre-population, not the act under test): every
-        //    party holds MOCK; contributor-1 also holds MPMT, the token it
-        //    lists in, and funds its bond from it through the venue. ──
-        for (const [erc20, who] of [[mockToken, BUYER], [mockToken, lead.address], [mockToken, c2.address], [mockToken, c1.address], [otherToken, c1.address]] as const) {
+        // ── FUND (scenario pre-population, not the act under test): the
+        //    buyer, the lead and contributor-2 hold MOCK; contributor-1 holds
+        //    MPMT, the token it lists in, and NONE of the denomination — its
+        //    whole bond comes through the venue. The devnet persists, so what
+        //    earlier runs left in its wallet is moved out first. ──
+        for (const [erc20, who] of [[mockToken, BUYER], [mockToken, lead.address], [mockToken, c2.address], [otherToken, c1.address]] as const) {
             const h = await minter.writeContract({ address: erc20, abi: ERC20_ABI, functionName: 'mint', args: [who, parseUnits('1000', 18)] });
             await publicClient.waitForTransactionReceipt({ hash: h });
         }
+        const c1Held = await balanceOf(mockToken, c1.address);
+        if (c1Held > 0n) {
+            const c1Wallet = createWalletClient({
+                account: mnemonicToAccount(ANVIL_MNEMONIC, { addressIndex: c1.index }), chain: LOCAL_ANVIL, transport: http(RPC_URL),
+            });
+            const h = await c1Wallet.writeContract({ address: mockToken, abi: ERC20_ABI, functionName: 'transfer', args: [BUYER, c1Held] });
+            await publicClient.waitForTransactionReceipt({ hash: h });
+        }
+        expect(await balanceOf(mockToken, c1.address), 'contributor-1 holds none of the denomination before it countersigns').toBe(0n);
 
         // A non-unit venue rate (3 out per 7 in), restored after.
         const [rateNumBefore, rateDenBefore] = await Promise.all([
@@ -497,7 +511,7 @@ test.describe('FREELANCE VALUE CHAIN — three bonded deliverables over the encr
             await expect(page.getByTestId('commitment-xmtp-status')).toBeVisible({ timeout: 30000 });
 
             // ── ACCEPTS at /sign in walk order. ──
-            const signAs = async (s: ChainSeller, expectListed: { listed: string; signed: string } | null, funded: boolean) => {
+            const signAs = async (s: ChainSeller, expectListed: { listed: string; signed: string } | null, funded: boolean, bondAtLink = 0n) => {
                 const before = (await queryCommitted()).length;
                 await gotoAsWallet(page, s.address, '/sign?e2e=devnet');
                 await waitForConnected(page);
@@ -513,18 +527,35 @@ test.describe('FREELANCE VALUE CHAIN — three bonded deliverables over the encr
                     await expect(page.getByTestId('sign-listed-prices'), `${s.label} lists in the denomination: nothing is translated`)
                         .toHaveCount(0);
                 }
+                const counterSign = page.getByTestId('btn-counter-sign');
+                const approveBond = page.getByRole('button', { name: /Authorize Payment/ });
                 if (funded) {
-                    // The seller's choice: the panel is collapsed while the
-                    // bond is covered in the denomination; the toggle opens it
-                    // and the bond is funded from MPMT.
-                    await expect(page.getByTestId('seller-funding-toggle')).toHaveText(/Fund bond from another token/, { timeout: 30000 });
-                    await page.getByTestId('seller-funding-toggle').click();
+                    // A seller short of the denomination (a CHAIN FACT read
+                    // here, never the screen's word) has no other way through:
+                    // the panel opens on its own, and until a funding token is
+                    // chosen the bond authorization reads the balance as short
+                    // and offers nothing — no counter-sign, no authorize step.
+                    const short = (await balanceOf(mockToken, s.address)) < bondAtLink;
+                    if (short) {
+                        await expect(page.getByTestId('seller-funding-toggle'), 'the balance read auto-opened the funding panel (short of the bond)')
+                            .toHaveText(/Bond from the order's token instead/, { timeout: 30000 });
+                        await expect(page.getByText(/Insufficient balance/), 'the bond authorization reads the balance as short until a funding token is chosen')
+                            .toBeVisible({ timeout: 30000 });
+                        await expect(counterSign).toHaveCount(0);
+                        await expect(approveBond).toHaveCount(0);
+                    } else {
+                        // The seller's choice: the panel is collapsed while the
+                        // bond is covered in the denomination; the toggle opens it.
+                        await expect(page.getByTestId('seller-funding-toggle')).toHaveText(/Fund bond from another token/, { timeout: 30000 });
+                        await page.getByTestId('seller-funding-toggle').click();
+                    }
                     await page.getByTestId('swap-funding-panel').waitFor({ state: 'visible', timeout: 30000 });
                     await page.getByTestId(`funding-token-option-${otherToken.toLowerCase()}`).click();
                     await authorizeFundingToken(page);
                 }
-                const counterSign = page.getByTestId('btn-counter-sign');
-                const approveBond = page.getByRole('button', { name: /Authorize Payment/ });
+                // With the funding token chosen the bond is supplied at commit,
+                // so the authorization is offered whatever the balance; it
+                // auto-completes when a prior run's allowance survives.
                 await expect(counterSign.or(approveBond), 'either the authorize step or the counter-sign renders')
                     .toBeVisible({ timeout: 60000 });
                 if (await approveBond.isVisible()) await approveBond.click();
@@ -546,7 +577,8 @@ test.describe('FREELANCE VALUE CHAIN — three bonded deliverables over the encr
                 return { event, receipt };
             };
             const leadCommit = await signAs(lead, null, false);
-            const c1Commit = await signAs(c1, { listed: listedBefore.item.price, signed: formatToken(translated, 18) }, true);
+            const c1Commit = await signAs(c1, { listed: listedBefore.item.price, signed: formatToken(translated, 18) }, true,
+                calculateBonds(leadPayment + translated, translated).sellerBond);
             const c2Commit = await signAs(c2, null, false);
             expect((await queryCommitted()).length, 'exactly three orders committed').toBe(committedBefore + 3);
 

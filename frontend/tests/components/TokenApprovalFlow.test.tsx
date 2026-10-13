@@ -127,6 +127,48 @@ describe("TokenApprovalFlow", () => {
         expect(screen.getByText(/Available: 0.5/i)).toBeInTheDocument();
     });
 
+    // A bond funded at commit — the coordinator's swap delivers the
+    // denomination in the same transaction FigaroCore pulls it — needs the
+    // allowance, never the balance: the party approves at zero and the leg
+    // supplies what the pull takes.
+    it("offers the authorize step at a short balance when the bond is funded at commit", () => {
+        mocks.balance = 0n;
+        mocks.allowance = 0n;
+        mocks.needsApproval.mockReturnValue(true);
+
+        render(
+            <TokenApprovalFlow
+                tokenAddress={"0x2222222222222222222222222222222222222222"}
+                requiredAmount={100n}
+                onApprovalComplete={mocks.onApprovalComplete}
+                fundedAtCommit
+            />,
+        );
+
+        expect(screen.queryByText(/Insufficient balance/i)).not.toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Authorize Payment" })).toBeInTheDocument();
+    });
+
+    it("completes at a short balance when the bond is funded at commit and the allowance covers it", async () => {
+        mocks.balance = 0n;
+        mocks.allowance = 250n;
+        mocks.needsApproval.mockReturnValue(false);
+
+        render(
+            <TokenApprovalFlow
+                tokenAddress={"0x2222222222222222222222222222222222222222"}
+                requiredAmount={100n}
+                onApprovalComplete={mocks.onApprovalComplete}
+                fundedAtCommit
+            />,
+        );
+
+        await waitFor(() => {
+            expect(mocks.onApprovalComplete).toHaveBeenCalledTimes(1);
+        });
+        expect(screen.queryByText(/Insufficient balance/i)).not.toBeInTheDocument();
+    });
+
     it("surfaces short approval errors from the shared failure helper", async () => {
         const user = userEvent.setup();
         mocks.balance = 5000n;

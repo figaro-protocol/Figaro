@@ -508,12 +508,18 @@ function SignPageContent() {
                         <div className="space-y-2">
                             <h3 className="text-xs font-semibold text-ink-body">Payment Authorization</h3>
                             <p className="text-xs text-ink-muted">
-                                Authorize the deposit for this order before signing.
+                                {sellerShortOfDenomination && sellerFundingCandidates.length > 0 && !sellerFundingToken
+                                    ? "Your balance is short of the bond. Pick a funding token below: the swap supplies the bond when you submit, and the authorization here is what the Core pulls it with."
+                                    : "Authorize the deposit for this order before signing."}
                             </p>
+                            {/* A chosen funding leg supplies the bond at commit, so the
+                                balance is no gate for the authorization (the buyer's
+                                checkout reads the same rule). */}
                             <TokenApprovalFlow
                                 tokenAddress={approvalCurrency}
                                 requiredAmount={myBondAmount}
                                 onApprovalComplete={() => setApprovalDone(true)}
+                                fundedAtCommit={sellerFundingToken !== null}
                             />
                         </div>
                     )}

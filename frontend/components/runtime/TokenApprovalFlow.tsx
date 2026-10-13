@@ -17,6 +17,10 @@ interface TokenApprovalProps {
     requiredAmount: bigint;
     onApprovalComplete: () => void;
     onCancel?: () => void;
+    /** The bond arrives at commit from a funding leg (the coordinator's swap
+     *  delivers the denomination in the transaction FigaroCore pulls it), so
+     *  the balance is no gate: the allowance is what the pull needs. */
+    fundedAtCommit?: boolean;
 }
 
 export function TokenApprovalFlow({
@@ -24,6 +28,7 @@ export function TokenApprovalFlow({
     requiredAmount,
     onApprovalComplete,
     onCancel,
+    fundedAtCommit = false,
 }: TokenApprovalProps) {
     const { address } = useAccount();
     const { decimals } = useTokenDecimals(tokenAddress);
@@ -53,7 +58,7 @@ export function TokenApprovalFlow({
     const balance = (tokenBalance as bigint | undefined) ?? 0n;
     const currentAllowance = allowance ?? 0n;
     const isChecking = !!address && (tokenBalance === undefined || allowance === undefined);
-    const hasInsufficientBalance = !isChecking && balance < requiredAmount;
+    const hasInsufficientBalance = !isChecking && !fundedAtCommit && balance < requiredAmount;
     const approved = !!address && !isChecking && !hasInsufficientBalance && !needsApproval(requiredAmount);
     const isApproving = isApprovePending || isApproveConfirming;
 
