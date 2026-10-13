@@ -173,7 +173,7 @@ async fn main() {
                 std::process::exit(2);
             }
         };
-    let state_mirror = match kept_state {
+    let mut state_mirror = match kept_state {
         Some(snapshot) => StateMirror::from_snapshot(snapshot),
         None => StateMirror::genesis(),
     };
@@ -227,9 +227,71 @@ async fn main() {
     // another guest does. A verifier that cannot be read is not a verdict
     // (it may not be deployed yet); the batch loop asks again before every
     // batch.
+    //
+    // A relay started on another relay's `GET /state` (`STATE_FROM`, its
+    // base URL) fetches that state here, under the one root read, recomputes
+    // its root, and writes it over the kept file only when the root is the
+    // verifier's and this relay does not already hold the state behind it —
+    // in the kept file, or in the journal as a batch of its own that landed
+    // (`state::takeover`; `formal/RelayState.tla`, `TakeoverChecksRoot`).
+    // Holding it, the relay starts on its own and writes nothing. A served
+    // state behind any other root, or whose header names a root other than
+    // the body's, is a refusal to start that writes nothing: a stale relay
+    // serves a stale state, and the file it would replace may be the only
+    // copy. The write follows the read, so the verifier can move between
+    // the two: the root is read again after an adoption, and the check
+    // below then refuses to start on the adopted state, which is behind.
+    // Nothing is lost: the file it replaced was behind too (a kept file
+    // holds a root the verifier has held, and roots never repeat), and a
+    // second start with STATE_FROM adopts the current one.
+    let state_from = env_or("STATE_FROM", "");
+    if !state_from.is_empty() && verifier_addr == Address::ZERO {
+        error!(%state_from, "refusing to start: STATE_FROM needs BATCH_VERIFIER_ADDRESS — a served state is adopted only against the verifier's root");
+        std::process::exit(2);
+    }
     if verifier_addr != Address::ZERO {
         match submitter::read_state_root(&rpc_url, verifier_addr).await {
             Ok(root) => {
+                let mut root = root;
+                if !state_from.is_empty() {
+                    let (served, header_root) = match state::fetch_served_state(&state_from).await {
+                        Ok(fetched) => fetched,
+                        Err(reason) => {
+                            error!(%reason, %state_from, "refusing to start: the served state could not be fetched; nothing was written");
+                            std::process::exit(2);
+                        }
+                    };
+                    match state::take_over_from_served(&state_store, &state_mirror, root, served, header_root).await {
+                        Ok((mirror, state::Takeover::Adopt)) => {
+                            info!(served_root = ?mirror.state_root().await, %state_from, %state_path, "Adopted the served state behind the verifier's root");
+                            state_mirror = mirror;
+                            // The verifier may have moved while the state was
+                            // fetched: the check below reads the root as it is now.
+                            root = match submitter::read_state_root(&rpc_url, verifier_addr).await {
+                                Ok(root) => root,
+                                Err(e) => {
+                                    error!(%e, %state_from, "refusing to start: the verifier's root could not be read again after the adoption");
+                                    std::process::exit(2);
+                                }
+                            };
+                        }
+                        Ok((_, _)) => {
+                            info!(?root, %state_from, "This relay already holds the state behind the verifier's root; the served state is not written");
+                        }
+                        Err(state::TakeoverRefused::Decided(state::Takeover::HeaderDisagrees { header, computed })) => {
+                            error!(?header, ?computed, %state_from, "refusing to start: the served state's header names a root other than the one its body computes to; nothing was written");
+                            std::process::exit(2);
+                        }
+                        Err(state::TakeoverRefused::Decided(decision)) => {
+                            error!(?decision, verifier_root = ?root, %state_from, %state_path, "refusing to start: the served state is not the one behind the verifier's root; nothing was written");
+                            std::process::exit(2);
+                        }
+                        Err(state::TakeoverRefused::NotWritten(e)) => {
+                            error!(%e, %state_path, "refusing to start: the served state could not be written as the kept state; the kept file is as it was");
+                            std::process::exit(2);
+                        }
+                    }
+                }
                 if step_to(root, &rpc_url, verifier_addr, &state_mirror, &state_store, &archive, &batch_count).await {
                     info!(?root, "This relay holds the state behind the verifier's root");
                 } else {
@@ -238,10 +300,14 @@ async fn main() {
                         local_root = ?state_mirror.state_root().await,
                         held_next = ?state_store.next_roots().await,
                         %state_path,
-                        "refusing to start: this relay does not hold the state behind the verifier's root — start it on the state file (STATE_PATH) of the relay that built the verifier's last batch"
+                        "refusing to start: this relay does not hold the state behind the verifier's root — start it on the state file (STATE_PATH) of the relay that built the verifier's last batch, or on that relay's served state (STATE_FROM=<its base URL>)"
                     );
                     std::process::exit(2);
                 }
+            }
+            Err(e) if !state_from.is_empty() => {
+                error!(%e, %state_from, "refusing to start: the verifier's root could not be read, so a served state cannot be checked; nothing was written");
+                std::process::exit(2);
             }
             Err(e) => {
                 warn!(%e, "Could not read on-chain state root (verifier may not be deployed yet)");

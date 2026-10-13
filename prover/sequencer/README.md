@@ -196,6 +196,7 @@ floors): Groth16 wrap ~14 GB RAM, PLONK wrap ~60 GB; both wrap through the
 | `ARCHIVE_MAX_BATCHES` | `10000` | Retained resolved batches (see Publication bounds) |
 | `RUST_LOG` | `figaro_sequencer=info,sequencer=info` | Log filter. Two targets: the library's modules log as `figaro_sequencer`, the binary's own lines (startup, every refusal to start, the batch loop) as `sequencer` — name both |
 | `STATE_PATH` | `sequencer-state-<chain id>-<verifier>.json` | The relay's state, the preimage of the verifier's root (see The state behind the root); empty = in-memory only |
+| `STATE_FROM` | unset | Another relay's base URL: at startup this relay fetches its `GET /state`, recomputes the root, and adopts it into `STATE_PATH` only when that root is the verifier's and this relay does not already hold the state behind it (kept file or journal); holding it, it starts on its own and writes nothing; any other served state is a refusal to start that writes nothing (see The state behind the root) |
 
 ## HTTP API
 
@@ -231,13 +232,14 @@ All errors are structured JSON: `{ "error": "<reason>" }`.
 
 - `GET /state` — the state behind this relay's root (`KernelStateSnapshot`,
   the kept-state file's own format; the root is in the `x-figaro-state-root`
-  header). It gives another relay the state to start on: save it to a new
-  file, and make that file a relay's `STATE_PATH` only when the header's root
-  is the verifier's `stateRoot` (`cast call <verifier> "stateRoot()"`). A
-  relay refuses to start on a state whose root is not the verifier's, but a
-  state file written over is lost, and it may have been the only copy.
-  Nothing in it is private — it is derived from the signed operations the
-  publication routes serve.
+  header). It gives another relay the state to start on: that relay is
+  started with `STATE_FROM=<this relay's base URL>` and fetches it itself,
+  recomputes the root from the body, and adopts the state into its
+  `STATE_PATH` only when the root is the verifier's `stateRoot` and its kept
+  file does not already hold that root; a served state behind any other root,
+  or whose header names a root other than the body's, is a refusal to start
+  and writes nothing. Nothing in it is private — it is derived from the
+  signed operations the publication routes serve.
 - `GET /health` — liveness + bounded counts:
   `{ "status": "ok", "pending_ops", "pending_usage_claims", "batches_settled" }`.
 - `GET /status` — the above plus the sequencer's local `state_root` mirror,
@@ -355,12 +357,19 @@ The relay builds only on a held state whose root is the verifier's. It reads
 
 A relay that holds no state for a verifier past genesis therefore never
 proves a batch that can only revert. The relay publishes its state
-(`GET /state`), so a party or a second relay can hold a copy and start on it:
-save it to a new file, check its `x-figaro-state-root` against the
-verifier's `stateRoot`, and only then make it a `STATE_PATH` and start — the
-relay checks the copy's root against the verifier's again. Never write a
-served state over a state file whose root has not been checked: a stale
-relay serves a stale state, and the file it replaces may be the only copy. Back up the state file and its journal after every
+(`GET /state`), so a party can hold a copy and a second relay can start on
+it: started with `STATE_FROM=<the serving relay's base URL>`, it fetches the
+state, recomputes the root, and writes it over its own `STATE_PATH` only
+when that root is the verifier's `stateRoot` and the kept file does not
+already hold it — a stale relay serves a stale state, and the file it would
+replace may be the only copy, so a served state behind any other root is a
+refusal to start that writes nothing (`formal/RelayState.tla`,
+`TakeoverChecksRoot`); a served state over 1 GiB is refused unread. The
+journal beside the kept file stays, trimmed to the batches built on the
+adopted root. A second relay beside the first takes its own `STATE_PATH`: the
+default is relative to the working directory and names only the chain and
+the verifier, so two relays started from one directory with the default
+would share one file. Back up the state file and its journal after every
 batch that lands, or keep a copy of `/state`: losing every copy leaves the
 open batch-path processes without anyone who can build their resolve. A state file or a journal that is there and does not
 parse is a refusal to start, never a silent start from less than this host

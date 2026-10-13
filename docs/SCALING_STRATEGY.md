@@ -545,7 +545,8 @@ transactions, never to a council making discretionary decisions.
 ### State synchronization
 
 The sequencer starts from its kept state (`STATE_PATH`; genesis on a first
-run), reads the verifier's on-chain `stateRoot` at startup and before every
+run; with `STATE_FROM`, another relay's served state, adopted only when its
+recomputed root is the verifier's), reads the verifier's on-chain `stateRoot` at startup and before every
 batch, and builds only when it holds a state with that root; it advances its
 mirror only after a `settleBatch` of its own has landed. Direct `FigaroCore`
 transactions never touch this state — the two paths share none — so nothing

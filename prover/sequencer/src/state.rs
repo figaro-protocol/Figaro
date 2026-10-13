@@ -246,6 +246,160 @@ impl StateStoreInner {
     }
 }
 
+// ── A relay started on another relay's `GET /state` ───────────────
+//
+// `formal/RelayState.tla`, `Takeover` (`TakeoverChecksRoot`): a stopped
+// relay adopts a served state only when its root is the verifier's, and a
+// kept file that holds the verifier's root is never written over — a stale
+// relay serves a stale state, and the file it would replace may be the
+// only copy of the state behind the verifier's root.
+
+/// What a relay does with the state another relay serves, read against
+/// the verifier's root. `served_root` is recomputed from the served body;
+/// `header_root` is what the serving relay's `x-figaro-state-root` header
+/// claims, a claim and never the decision; `holds_verifier_state` says
+/// whether this relay already holds the state behind the verifier's root,
+/// in its kept file or in its journal ([`held_state_for`]).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Takeover {
+    /// The served state is the one behind the verifier's root and this
+    /// relay does not hold it: the served state becomes the kept state.
+    Adopt,
+    /// This relay already holds the state behind the verifier's root — in
+    /// the kept file, or in the journal as a batch of its own that landed,
+    /// whose record is still to be published: nothing is written, whatever
+    /// was served, and the relay starts on what it holds.
+    KeptStands,
+    /// The header names a root other than the body's: the serving relay is
+    /// not one to start on. Nothing is written.
+    HeaderDisagrees { header: B256, computed: B256 },
+    /// The served root is not the verifier's. Nothing is written.
+    Refused { served: B256, verifier: B256 },
+}
+
+/// The decision, from whether this relay holds the verifier's state, the
+/// served header's root (if any), the served body's recomputed root, and
+/// the verifier's.
+pub fn takeover(
+    holds_verifier_state: bool,
+    header_root: Option<B256>,
+    served_root: B256,
+    verifier_root: B256,
+) -> Takeover {
+    if holds_verifier_state {
+        return Takeover::KeptStands;
+    }
+    if let Some(header) = header_root {
+        if header != served_root {
+            return Takeover::HeaderDisagrees { header, computed: served_root };
+        }
+    }
+    if served_root != verifier_root {
+        return Takeover::Refused { served: served_root, verifier: verifier_root };
+    }
+    Takeover::Adopt
+}
+
+/// Why a relay started on a served state must not start. Nothing was
+/// written in any case.
+#[derive(Debug)]
+pub enum TakeoverRefused {
+    /// The decision ([`Takeover::HeaderDisagrees`] or [`Takeover::Refused`]).
+    Decided(Takeover),
+    /// The served state was adopted but could not be written as the kept
+    /// state: the kept file is as it was.
+    NotWritten(std::io::Error),
+}
+
+/// The takeover step the relay runs at startup, under one read of the
+/// verifier's root: decide ([`takeover`]) from what this relay holds
+/// ([`held_state_for`]) and the served state, write the served state as the
+/// kept state only on [`Takeover::Adopt`], and return the mirror the relay
+/// runs on — the adopted state, or the one it held — with the decision.
+pub async fn take_over_from_served(
+    store: &StateStore,
+    mirror: &StateMirror,
+    verifier_root: B256,
+    served: KernelStateSnapshot,
+    header_root: Option<B256>,
+) -> Result<(StateMirror, Takeover), TakeoverRefused> {
+    let served_mirror = StateMirror::from_snapshot(served.clone());
+    let served_root = served_mirror.state_root().await;
+    let holds = held_state_for(mirror, store, verifier_root).await.is_some();
+    match takeover(holds, header_root, served_root, verifier_root) {
+        Takeover::Adopt => {
+            store
+                .keep(served_root, &served)
+                .await
+                .map_err(TakeoverRefused::NotWritten)?;
+            Ok((served_mirror, Takeover::Adopt))
+        }
+        Takeover::KeptStands => Ok((mirror.clone(), Takeover::KeptStands)),
+        refused => Err(TakeoverRefused::Decided(refused)),
+    }
+}
+
+/// The most a served state may be: a peer that serves more is refused, the
+/// body read no further than the limit.
+pub const MAX_SERVED_STATE_BYTES: usize = 1 << 30;
+
+/// The state another relay serves at `<base_url>/state`, and the root its
+/// header claims. The body is the kept-state file's format; its root is
+/// recomputed by the caller (`StateMirror::from_snapshot`). A header that
+/// is there and does not read as a root is an error, like a body that does
+/// not parse: a peer that serves either is not one to start on.
+pub async fn fetch_served_state(
+    base_url: &str,
+) -> Result<(KernelStateSnapshot, Option<B256>), String> {
+    fetch_served_state_within(base_url, MAX_SERVED_STATE_BYTES).await
+}
+
+/// [`fetch_served_state`] under a given size limit.
+pub async fn fetch_served_state_within(
+    base_url: &str,
+    max_bytes: usize,
+) -> Result<(KernelStateSnapshot, Option<B256>), String> {
+    use alloy::transports::http::reqwest;
+    let url = format!("{}/state", base_url.trim_end_matches('/'));
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(60))
+        .build()
+        .map_err(|e| format!("GET {url}: {e}"))?;
+    let response = client.get(&url).send().await.map_err(|e| format!("GET {url}: {e}"))?;
+    if !response.status().is_success() {
+        return Err(format!("GET {url}: HTTP {}", response.status()));
+    }
+    let header = response
+        .headers()
+        .get("x-figaro-state-root")
+        .map(|v| {
+            v.to_str()
+                .map_err(|e| format!("GET {url}: the x-figaro-state-root header is not text: {e}"))
+                .and_then(|v| {
+                    v.parse::<B256>().map_err(|e| {
+                        format!("GET {url}: the x-figaro-state-root header does not parse: {e}")
+                    })
+                })
+        })
+        .transpose()?;
+    if let Some(length) = response.content_length() {
+        if length > max_bytes as u64 {
+            return Err(format!("GET {url}: the served state is {length} bytes, over the {max_bytes}-byte limit"));
+        }
+    }
+    let mut response = response;
+    let mut body: Vec<u8> = Vec::new();
+    while let Some(chunk) = response.chunk().await.map_err(|e| format!("GET {url}: {e}"))? {
+        if body.len() + chunk.len() > max_bytes {
+            return Err(format!("GET {url}: the served state exceeds the {max_bytes}-byte limit"));
+        }
+        body.extend_from_slice(&chunk);
+    }
+    let snapshot = serde_json::from_slice::<KernelStateSnapshot>(&body)
+        .map_err(|e| format!("GET {url}: the served state does not parse: {e}"))?;
+    Ok((snapshot, header))
+}
+
 /// Which held state has the verifier's root.
 #[derive(Clone, Debug)]
 pub enum Held {

@@ -397,14 +397,16 @@ async fn status(State(state): State<AppState>) -> impl IntoResponse {
 }
 
 /// `GET /state` — the state behind this relay's root: the kept-state file's
-/// own format (`KernelStateSnapshot`), so saved to a file it gives another
-/// relay the state to start on. Nothing in it is private: it is derived from
-/// the signed operations the publication routes serve. It is checked, never
-/// trusted — a relay started on it recomputes the root and refuses to start
-/// when it is not the verifier's. Saved over an existing state file, it
-/// replaces that file whatever root it carries: the `x-figaro-state-root`
-/// header is read against the verifier's `stateRoot` first, since a stale
-/// relay serves a stale state and the file it replaces may be the only copy.
+/// own format (`KernelStateSnapshot`), so it gives another relay the state
+/// to start on (`STATE_FROM=<this relay's base URL>`). Nothing in it is
+/// private: it is derived from the signed operations the publication routes
+/// serve. It is checked, never trusted — the relay started on it recomputes
+/// the root from the body and adopts the state only when that root is the
+/// verifier's and it does not already hold the state behind it
+/// (`state::takeover`); the `x-figaro-state-root` header is what this relay
+/// claims, and a header that disagrees with the body is a refusal. A stale
+/// relay serves a stale state, and the file it would replace may be the
+/// only copy, so the served state is never written unchecked.
 async fn get_state(State(state): State<AppState>) -> impl IntoResponse {
     let snapshot = state.state_mirror.snapshot().await;
     let root = state.state_mirror.state_root().await;

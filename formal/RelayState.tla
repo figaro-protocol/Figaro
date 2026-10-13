@@ -312,9 +312,12 @@ Crash(r) ==
     /\ UNCHANGED <<vRoot, hist, published, nextId, revoked, kept, journal>>
 
 \* A stopped relay is started on another's `GET /state`: the served state
-\* (that relay's mirror) is written over its kept file; its journal stays.
-\* Checked, the overwrite happens only when the served root (the
-\* `x-figaro-state-root` header) is the verifier's.
+\* (that relay's mirror) is written over its kept file; its journal stays
+\* (the relay trims it to the states built on the adopted root, the only
+\* ones that can still land). Checked, the overwrite happens only when the
+\* served root (recomputed from the served state; the `x-figaro-state-root`
+\* header is what the serving relay claims) is the verifier's, and never
+\* when the relay already holds the state behind it.
 Takeover(r, s) ==
     /\ r # s
     /\ ~alive[r] /\ alive[s]
