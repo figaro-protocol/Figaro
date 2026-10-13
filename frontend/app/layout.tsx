@@ -1,23 +1,30 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, Noto_Sans_JP, JetBrains_Mono } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 import { ErrorBoundary } from "@/components/shared/ErrorBoundary";
 
 
-const inter = Inter({
-    subsets: ["latin"],
+// The three faces are self-hosted from app/fonts (the latin variable slices,
+// each beside its OFL text), so a build fetches nothing: a Google-served font
+// is fetched at build time, one file per unicode-range slice, and one timeout
+// among those requests fails the export.
+const inter = localFont({
+    src: [{ path: "./fonts/Inter-latin.woff2", weight: "100 900", style: "normal" }],
     variable: "--font-inter",
     display: "swap",
 });
 
-const notoSansJP = Noto_Sans_JP({
-    subsets: ["latin"],
+const notoSansJP = localFont({
+    src: [{ path: "./fonts/NotoSansJP-latin.woff2", weight: "100 900", style: "normal" }],
     variable: "--font-noto-sans-jp",
     display: "swap",
 });
 
-const jetbrainsMono = JetBrains_Mono({
-    subsets: ["latin"],
+const jetbrainsMono = localFont({
+    src: [
+        { path: "./fonts/JetBrainsMono-latin.woff2", weight: "100 800", style: "normal" },
+        { path: "./fonts/JetBrainsMono-latin-italic.woff2", weight: "100 800", style: "italic" },
+    ],
     variable: "--font-jetbrains-mono",
     display: "swap",
 });

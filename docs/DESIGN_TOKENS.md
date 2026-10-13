@@ -108,7 +108,7 @@ Intent: `success` muted moss green, `warning` muted ocher, `error` muted terraco
 
 ### Font stack
 
-Three Google fonts loaded via `next/font/google` in `app/layout.tsx`, exposed as CSS variables on `<html>`:
+Three faces self-hosted from `frontend/app/fonts` (the latin variable slices, each beside its OFL text) via `next/font/local` in `app/layout.tsx`, exposed as CSS variables on `<html>`; a build fetches no font:
 
 | Variable                   | Font          |
 |----------------------------|---------------|

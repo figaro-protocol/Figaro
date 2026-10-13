@@ -53,9 +53,9 @@ const config: Config = {
                 tile: '0.75rem',   // shared by .muji-links a, button, input
             },
             // Per docs/DESIGN_TOKENS.md §2 (Typography tokens — Font stack).
-            // Fonts are loaded via `next/font/google` in `app/layout.tsx` and
-            // exposed as CSS variables so the Tailwind stacks resolve to the
-            // actually-fetched files at runtime. The default `sans` and `mono`
+            // Fonts are self-hosted from `app/fonts` via `next/font/local` in
+            // `app/layout.tsx` and exposed as CSS variables so the Tailwind
+            // stacks resolve to the shipped files at runtime. The default `sans` and `mono`
             // keys are also overridden so any `font-sans` / `font-mono`
             // consumer (including body inheritance) picks up the MUJI stack.
             fontFamily: {
