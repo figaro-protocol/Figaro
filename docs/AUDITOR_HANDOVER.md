@@ -13,7 +13,7 @@ the review's is its own.
 | | |
 |---|---|
 | Repository | https://github.com/figaro-protocol/Figaro |
-| Baseline commit | `f62b71cf` (§ "The baseline commit"); no tag names a commit under audit — one is placed when an audit is engaged |
+| Baseline commit | `00465c75` (§ "The baseline commit"); no tag names a commit under audit — one is placed when an audit is engaged |
 | Languages in scope | Solidity (`src/`, three deploy scripts) and Rust (`prover/`, four crates) |
 | Solidity in scope | 13 contract files, 3,142 lines; 3 deploy scripts, 846 lines |
 | Rust in scope | 4 crates, 20 files, 7,394 lines under `src/` |
@@ -31,7 +31,7 @@ blank lines the scope is 1,279 lines of contracts, 405 of deploy scripts and
 
 ```bash
 git clone --recurse-submodules https://github.com/figaro-protocol/Figaro.git
-cd Figaro && git checkout f62b71cfc320559a63f22b1a94f2e0080f23d4bc
+cd Figaro && git checkout 00465c7512e97138fb5814f395767c49dac5b88f
 foundryup --version v1.5.1
 forge build --via-ir                 # the deployed pipeline; the default profile fails on stack depth
 cd prover && cargo build --locked    # Rust at the pin in rust-toolchain.toml; SP1's toolchain (sp1up) at the release Cargo.lock names
@@ -236,7 +236,7 @@ came from the program with that key. The other external dependencies are in
 ## The baseline commit
 
 **Every figure in this document stands for the code at commit
-`f62b71cfc320559a63f22b1a94f2e0080f23d4bc`**, the baseline, which covers the
+`00465c7512e97138fb5814f395767c49dac5b88f`**, the baseline, which covers the
 whole scope, Solidity and Rust together. A figure is measured at the baseline,
 or at a commit whose in-scope code equals the baseline's once comments and
 NatSpec are stripped — the comparison `scripts/frozen-scope.sh` makes — and a
@@ -245,8 +245,16 @@ engaged, so no tag names a commit under audit; when one is engaged, a tag is
 placed at the commit it reviews and this section names it.
 
 ```bash
-git show --no-patch f62b71cf
+git show --no-patch 00465c75
 ```
+
+The baseline differs from `f62b71cf` in `prover/Cargo.lock` alone: one crate
+outside the guest's graph, `quinn-proto`, moved from 0.11.17 to 0.11.18 for
+three RustSec advisories, and `prover/.cargo/audit.toml` sets one advisory
+aside (§ "Static analysis"). The Solidity, the deploy scripts and the Rust
+sources are equal between the two commits, so the Solidity rows, the Certora
+reports and the mutation runs stand at `f62b71cf`, named where they appear;
+the Rust rows were re-run at the baseline.
 
 This prints every scope file whose code differs between two commits, and
 nothing when none does:
@@ -265,7 +273,11 @@ change that leaves the stripped code equal — a comment or NatSpec line,
 changed in place — moves the baseline and re-runs the gate's quick layers
 (§ "Validation commands"); the mutation runs and the Certora reports depend
 on code and tests alone, so they stand and name the commit they were measured
-at. NatSpec enters the compiler's metadata (`foundry.toml` sets no
+at. A change confined to `prover/Cargo.lock` in a crate outside the guest's
+graph (`cargo tree -p figaro-prover --locked` lists the same crates before
+and after) moves the baseline and re-runs the Rust rows; the Solidity rows
+and the Rust mutation run read none of it, so they stand and name their
+commit. NatSpec enters the compiler's metadata (`foundry.toml` sets no
 `bytecode_hash`), so a build at a later commit carries a different metadata
 hash in its bytecode suffix than a build at the baseline; a review builds at
 the baseline.
@@ -278,7 +290,7 @@ lines changed in place; their code is byte-identical to the baseline. The
 diff prints as two renames whose every hunk is a comment:
 
 ```bash
-git diff -M c7f85d0d f62b71cf -- src/kernel/ src/core/kernel/
+git diff -M c7f85d0d 00465c75 -- src/kernel/ src/core/kernel/
 ```
 
 ### Toolchains
@@ -314,7 +326,9 @@ printed this hash and this key and checked the key against the Sepolia
 record. The guest at the baseline differs from that commit's guest in four
 comment lines of `prover/lib/src/types.rs`, replaced in place; an in-place
 comment edit does not change the ELF (measured: the same hash before and
-after one), so the baseline's guest is that build's. The ELF does not reproduce across operating systems,
+after one), and `prover/Cargo.lock` at the baseline moves one crate outside
+the guest's graph (`cargo tree -p figaro-prover --locked` lists the same 189
+crates at both), so the baseline's guest is that build's. The ELF does not reproduce across operating systems,
 so the image's build is the one that counts. The relay derives the key from
 the guest it embeds (`sequencer --vkey`) and refuses to start when the deployed
 `programVKey()` differs.
@@ -762,8 +776,10 @@ Stated so the review does not spend hours finding them.
 
 ## Verification evidence
 
-Every figure in this section was measured at the baseline (§ "The baseline
-commit" states the rule for a figure that names another commit).
+Every figure in this section was measured at the baseline, or at `f62b71cf`
+where the row's inputs are equal between the two commits (§ "The baseline
+commit" states which rows those are and the rule for a figure that names
+another commit).
 Which invariant each layer carries is `VERIFICATION_MAP.md`; the inventory of
 tests is `TESTING.md`.
 
@@ -781,7 +797,7 @@ tests is `TESTING.md`.
 | SDK (Vitest) | 922 passed |
 | Batch end-to-end (SDK → relay → verifier) | passed |
 
-Certora reports, each "No errors found by Prover" at the baseline:
+Certora reports, each "No errors found by Prover" at `f62b71cf`:
 
 | Spec | Report |
 |---|---|
@@ -929,11 +945,18 @@ and suspicious groups denied, over all four crates in scope — clean; Semgrep
 with the `p/rust` ruleset, failing on any WARNING or ERROR — two INFO results,
 both in the relay (it reads its arguments; it names a temporary directory);
 `cargo audit` over `prover/Cargo.lock` (`.github/workflows/guards-ci.yml`) — no advisory that
-fails the run, and 13 warnings: nine transitive crates marked unmaintained,
-and unsoundness notices on `lru` and `chacha20`. Of these, one is compiled
-into the guest: `bincode`, unmaintained, through SP1's input encoding. `lru`
-reaches the relay through `alloy-provider` and `sp1-prover`; neither it nor
-`chacha20` is in the guest's graph.
+fails the run, one set aside by id in `prover/.cargo/audit.toml`, and 13
+warnings: nine transitive crates marked unmaintained, and unsoundness notices
+on `lru` and `chacha20`. The advisory set aside is RUSTSEC-2026-0344, a
+decompression bomb in `ruzstd` 0.8.3, fixed at 0.9.1: the crate reaches the
+relay and the proving harness through `object` 0.37.3, `backtrace` and
+`sp1-recursion-compiler`, where it reads the compressed debug sections of the
+host's own executable; every `object` release to date requires `ruzstd` ^0.8
+and `sp1-core-executor` pins `object` ^0.37.3, so no lockfile update takes the
+fix. Of the crates named, one is compiled into the guest: `bincode`,
+unmaintained, through SP1's input encoding. `lru` reaches the relay through
+`alloy-provider` and `sp1-prover`; neither it, `chacha20` nor `ruzstd` is in
+the guest's graph.
 
 ### The real-proof rehearsal
 
