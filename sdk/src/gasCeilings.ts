@@ -92,6 +92,18 @@ const COMMIT_GAS_PER_ORDER = 383_000n;
 const RESOLVE_FIXED_OVERHEAD = 73_000n;
 
 /**
+ * The chain's cap on one transaction's gas: EIP-7825's 2^24, which mainnet
+ * enforces on a transaction's whole gas since Fusaka, and which Glamsterdam
+ * keeps on its execution gas. `resolveProcess` is one transaction, so no
+ * process may need more than this to resolve, whatever the block holds.
+ * A chain without the cap passes its own figure.
+ *
+ * Linted against the matching `TRANSACTION_GAS_CAP` constant in the
+ * Foundry test.
+ */
+export const TRANSACTION_GAS_CAP = 16_777_216n;
+
+/**
  * Headroom factor (×100, integer) applied to ceiling computations. 95
  * means "consume at most 95% of the block's gas budget", leaving 5% for
  * block-by-block gas-limit variance, gas-price oscillation, and any
@@ -104,11 +116,17 @@ const GAS_HEADROOM_PCT = 95n;
 // ── Pure forms (no chain access — just arithmetic) ───────────────────
 
 /**
- * Largest N such that `resolveProcess` over N orders fits in a block
- * with the given gas limit, after safety headroom.
+ * Largest N such that `resolveProcess` over N orders fits in one
+ * transaction: a block with the given gas limit, after safety headroom, and
+ * the chain's cap on one transaction, whichever is smaller. Under the
+ * default cap that is 556 orders on any block of 18M or more.
  */
-export function maxOrdersResolvableForGasLimit(gasLimit: bigint): number {
-    const budget = (gasLimit * GAS_HEADROOM_PCT) / 100n;
+export function maxOrdersResolvableForGasLimit(
+    gasLimit: bigint,
+    transactionGasCap: bigint = TRANSACTION_GAS_CAP,
+): number {
+    const blockBudget = (gasLimit * GAS_HEADROOM_PCT) / 100n;
+    const budget = blockBudget < transactionGasCap ? blockBudget : transactionGasCap;
     if (budget <= RESOLVE_FIXED_OVERHEAD) return 0;
     return Number((budget - RESOLVE_FIXED_OVERHEAD) / RESOLVE_GAS_PER_ORDER);
 }

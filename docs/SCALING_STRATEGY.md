@@ -1,7 +1,7 @@
 # Scaling Strategy
 
 Two resolution paths, one set of rules — `FigaroCore`'s. The direct path — `FigaroCore`'s atomic
-`resolveProcess`, per-process ceiling ~950 orders at the 30M gas limit, ~6,330 at Glamsterdam's 200M (the ceiling scales with the block gas limit; the SDK reads it live) — is
+`resolveProcess`, per-process ceiling about 550 orders under the chain's cap on one transaction's gas (EIP-7825's 2^24, which mainnet enforces; the block's budget where that is smaller — about 950 at a 30M block on a chain without the cap; the SDK reads the limit live and takes the cap) — is
 the always-available floor. The batch path is the throughput tier beside it: a
 Rust mirror of `FigaroCore` plus a generic clause engine (`prover/lib`,
 `prover/clause`) executes many `FigaroCore` transitions off-chain, an SP1 guest
@@ -45,7 +45,7 @@ cheaper execution — the batch path below.
 
 **Depth**: single-process order count bounded by gas. `resolveProcess`
 iterates every commitment in the process (~30k gas per order, all-in, measured
-on live post-fork receipts), so at a 30M gas limit the ceiling is ~950 orders; practical assemblies stay well
+on live post-fork receipts) in one transaction, so under the chain's cap on one transaction's gas the ceiling is about 550 orders (about 950 at a 30M block on a chain without the cap); practical assemblies stay well
 below it (50–100). Depth is already solved by multi-process composition — an
 order in process A roots process B, each process linear and within the
 ceiling. This is an existing `FigaroCore` property, not a scaling layer to build.
@@ -232,7 +232,7 @@ structural advantage.
 verifier's ceiling (about 260 positions under the 2^24 transaction cap, about
 930 at a 60M block without it, as the relay plans a batch from its own
 execution — `prover/sequencer/src/gas.rs`) against `resolveProcess`'s
-~950-order ceiling is misleading: the 950 figure measures only the resolve step — the
+ceiling (about 550 orders under the transaction cap, about 950 at a 30M block without it) is misleading: that figure measures only the resolve step — the
 cheapest part of the direct lifecycle. The ~382k-gas sub-order `commit()`
 calls that precede those resolutions consume ~363M gas across 950 separate
 transactions. The batch path eliminates all of that: every commit, resolution,
@@ -244,7 +244,7 @@ land on-chain.
 | Path | Ceiling | Unit | Per-unit gas |
 |---|---|---|---|
 | Direct `commit()` | ~74 orders | per block | ~382k/order (sub) |
-| Direct `resolveProcess()` | ~950 orders | single call | ~30k/order (all-in) |
+| Direct `resolveProcess()` | about 550 orders under the 2^24 transaction cap; ~950 at 30M without it | single call | ~30k/order (all-in) |
 | Batch `settleBatch()` | about 260 positions under the 2^24 transaction cap (EIP-7825, mainnet); without the cap about 460 at 30M, 930 at 60M and 3,000 at Sepolia's 200M, as the relay plans it from the batch's own execution (`prover/sequencer/src/gas.rs`); a batch-path process is kept within one settle's resolve | single call | 60k/position planned; ~26k measured cold on the pre-fork EVM |
 
 The correct comparison is total lifecycle cost: ~167k gas per order (direct)

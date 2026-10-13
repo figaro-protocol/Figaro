@@ -30,7 +30,8 @@ function runtimeSource(sourceLabel: string, referenceId?: string) {
 
 /** Pre-indexed runtime state, built ONCE per process derivation so the
  *  per-order capability loop stays O(orders + attestations). FigaroCore's
- *  resolve ceiling (~950 orders / 30M gas) must flow through this deriver
+ *  resolve ceiling (about 550 orders under the chain's cap on one
+ *  transaction's gas) must flow through this deriver
  *  without quadratic blowup — per-order scans of the full attestation array
  *  are the O(N²) shape this bundle exists to prevent. */
 interface RuntimeIndexes {

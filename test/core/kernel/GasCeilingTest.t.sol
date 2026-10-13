@@ -41,6 +41,10 @@ contract GasCeilingTest is Test {
     uint256 internal constant RESOLVE_GAS_PER_ORDER = 30_000;
     uint256 internal constant COMMIT_GAS_PER_ORDER = 383_000;
     uint256 internal constant RESOLVE_FIXED_OVERHEAD = 73_000;
+    // The chain's cap on one transaction's gas (EIP-7825's 2^24): a
+    // resolve is one transaction, so the ceiling is this or the block's
+    // budget, whichever is smaller — 556 orders under the cap.
+    uint256 internal constant TRANSACTION_GAS_CAP = 16_777_216;
 
     function setUp() public {
         buyer = vm.addr(BUYER_KEY);
