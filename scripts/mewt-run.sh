@@ -8,6 +8,8 @@
 set -euo pipefail
 target="${1:?target .sol}"; log="${2:-/tmp/mewt-$(basename "$target" .sol).console}"
 root="$(cd "$(dirname "$0")/.." && pwd)"; lock="$root/.mewt.lock"
+# Which layers this change re-runs (handover § "The baseline commit"), said before the run.
+( cd "$root" && source scripts/frozen-scope.sh && gate_layers ) || true
 [[ -e "$lock" ]] && { echo "a mewt run already holds $lock ($(cat "$lock")); wait for it or remove the lock"; exit 1; }
 echo "$target since $(date -u +%FT%TZ)" > "$lock"
 ( cd "$root" && mewt run "$target" > "$log" 2>&1; rm -f "$lock" ) &

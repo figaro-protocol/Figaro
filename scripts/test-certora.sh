@@ -44,6 +44,15 @@
 
 set -e
 
+# The repo's .env carries an empty `CERTORAKEY=` on purpose (the key is supplied
+# inline at run time, never stored). A shell that sources .env after the env
+# file holding the key blanks it; say so while the key is still inherited.
+env_file="$(cd "$(dirname "$0")/.." && pwd)/.env"
+if [ -n "${CERTORAKEY:-}" ] && [ -f "$env_file" ] && grep -qE '^[[:space:]]*(export[[:space:]]+)?CERTORAKEY=[[:space:]]*$' "$env_file"; then
+    echo "⚠️  $env_file holds an empty CERTORAKEY= while this shell inherits a key:"
+    echo "   sourcing .env in this shell blanks the key; source the env file that holds it alone."
+fi
+
 if ! command -v certoraRun >/dev/null 2>&1; then
     echo "❌ certoraRun not found on PATH."
     echo "   Install: pip install certora-cli   (or: pipx install certora-cli)"
@@ -56,6 +65,11 @@ if [ -z "${CERTORAKEY:-}" ]; then
     echo "   Then: export CERTORAKEY=<key>"
     exit 127
 fi
+
+# Which layers this change re-runs (handover § "The baseline commit"): a change
+# whose stripped code is equal to the baseline's needs the quick layers only.
+( cd "$(dirname "$0")/.." && source scripts/frozen-scope.sh && gate_layers ) || true
+echo ""
 
 echo "🔎 Using: $(command -v certoraRun)"
 certoraRun --version 2>&1 | head -1
