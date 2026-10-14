@@ -117,11 +117,15 @@ upgrade for the operator's key, rehearsed on a testnet before adoption.
 design. It carries no projected yield, no break-even model, and no income
 forecast, and none should ever be added.
 
-The DAO Safe is designer of record of the two *scoring* mandatory clauses —
-`figaro-commerce` and `figaro-topology` — plus any clause donated to it.
-Donation is registration: registering a clause key under the Safe,
-permissionlessly and irreversibly, first-write-wins. Competing under one's own
-wallet is equally welcome.
+The DAO Safe is designer of record of the two *scoring* mandatory clauses,
+`figaro-commerce` and `figaro-topology`, and of every mandatory clause it develops
+and registers after them. That assignment is the DAO's incentive. A mandatory
+clause is composed into every agreement, so the treasury that developed it is
+rewarded, on the uniform meter, each time any trade resolves. The treasury
+spends on development, marketing and clauses by judgment, and developing
+mandatory clauses for the community is one of those uses. Nothing is
+donated to the DAO but florins: a clause registered by another wallet is that
+wallet's, and competing under one's own wallet is equally welcome.
 
 Every resolved process composes the mandatory clauses, so their usage accrues
 to the DAO exactly the way any designer's clauses accrue: **the commons is

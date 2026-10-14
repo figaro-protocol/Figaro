@@ -28,11 +28,14 @@ Two things follow that people expect to be otherwise.
 every order, and they are scored for their designer of record like any other
 clause. "Mandatory" is a registration-layer convention about what a runtime
 composes; nothing on chain privileges them, and nothing on chain exempts them.
+They are the DAO's because the DAO develops them: a clause every agreement
+carries is substrate the commons itself must build, and assigning it to the
+treasury aligns the treasury's interest with every trade (`docs/DAO.md`
+§ "Its income").
 
 **Registering is the whole of the claim.** First-write-wins: whoever
 registers a clause key under their wallet is its designer of record, and the
-binding is irreversible. Donating a clause to another wallet means registering
-it under that wallet. Competing with a better clause under one's own wallet is
+binding is irreversible. Competing with a better clause under one's own wallet is
 equally permissionless and equally welcome.
 
 ---

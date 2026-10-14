@@ -211,16 +211,16 @@ squatting and spam. The clause names are public, human-readable strings, so
 a squatter can register a well-known name (or the next version of one)
 before its designer does — nothing about the id is secret.
 
-**Why it is correct**: Nothing that resolves trusts the registry's binding.
-Integrity routes through `agreementHash` and `contentHash`, never through
-the registry: an agreement merkle-commits the clause CONTENT under the hash
-both parties sign, and every consumer of a registry entry fetches the spec
-from `contentURI` and verifies its bytes against the anchored `contentHash`
-before trusting a field. A squatted or garbage entry can therefore pollute
-DISCOVERY only — it cannot alter, impersonate, or invalidate any commitment,
-attestation, or resolution. The stake prices that pollution
-in stake × time-surfaced, and the permanent binding means a squatter buys
-one dead `(name, version)` slot, not the name: honest designers register the next version.
+**Why it is correct**: The layers are hard boundaries in a permissionless
+system. Anyone may use the Core alone, the Core with the registries and the
+reward, or all three under a frontend of their own. This frontend de-surfaces
+a withdrawn clause for new compositions because that is how it chose to read
+the registry; another frontend may keep surfacing it and its users may keep
+composing it, so the registry clears nothing on any frontend's account. The
+same permanence is what every committed agreement and the batch verifier read:
+integrity routes through `agreementHash` and `contentHash`, never through the
+registry, so a squatted or garbage entry can pollute discovery only, and the
+stake prices that. A squatter buys one dead `(name, version)` slot, not the name.
 
 Clause governance — which clauses are authoritative — is a convention-layer
 concern resolved off-chain, consistent with the event-sourced architecture.

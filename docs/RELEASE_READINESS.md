@@ -172,7 +172,8 @@ deploy environment before the export is uploaded.
 
 The rule: the DAO treasury vault is the designer of record for
 the **mandatory clauses only** (`figaro-commerce`, `figaro-topology`,
-`figaro-assembly-provenance`) plus any clause a stranger donates under it; every
+`figaro-assembly-provenance`) and, after genesis, any mandatory clause it develops and
+registers; every
 other reference clause and every reference assembly is registered by the founder's
 wallet, from the founder's own balance; each member profile is registered by its
 own wallet — the founder direct as a buyer-side member, the DAO under its
