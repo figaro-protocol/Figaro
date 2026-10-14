@@ -521,6 +521,50 @@ test("/prompt and market-shape answer only the bearer of this run's token; /prom
     } finally { release(); await close(); }
 });
 
+test("/status and trade-story name held and rejected agreements only to the bearer; the rest stays open", async () => {
+    // One held agreement on the fixture's process, one rejected file: what an
+    // operator holds is the owner's, the corpus around it is anyone's.
+    const corpus = fixtureCorpus();
+    corpus.held = {
+        byHash: new Map([[`0x${"ee".repeat(32)}`, { agreement: {}, order: { processId: PROCESS } }]]),
+        rejected: [{ file: "private-deal.json", reason: "not JSON" }],
+        committedRoots: 1,
+    };
+    const { base, close } = await serve(corpus, { enabled: false, reason: "test" });
+    try {
+        // Open: the liveness read answers anyone, without the owner's holdings.
+        const openRes = await fetch(`${base}/status`);
+        assert.equal(openRes.status, 200);
+        const openText = await openRes.text();
+        const open = JSON.parse(openText);
+        assert.equal(open.orderCommitted, 2, "the sync progress stays open");
+        assert.equal(open.syncedToBlock, "99");
+        assert.ok(!("heldAgreements" in open), "the held count answered without a token");
+        assert.ok(!("rejectedAgreements" in open), "rejected file names answered without a token");
+        assert.ok(!openText.includes("private-deal.json"));
+
+        const openStoryText = await (await fetch(`${base}/queries/trade-story?process=${PROCESS}`)).text();
+        const openStory = JSON.parse(openStoryText);
+        assert.equal(openStory.found, true, "the story itself stays open");
+        assert.ok(!("heldAgreements" in openStory), "the held count answered without a token");
+        assert.ok(!/verified against/.test(openStoryText) && !/none held/.test(openStoryText),
+            "the story's wording betrayed whether a body is held");
+        assert.match(openStory.agreementBodies, /party-private/);
+
+        // A wrong token is no token.
+        const wrong = await (await fetch(`${base}/status`, { headers: { authorization: `Bearer ${"u".repeat(64)}` } })).json();
+        assert.ok(!("rejectedAgreements" in wrong));
+
+        // The bearer: the owner's holdings, in full.
+        const own = await (await fetch(`${base}/status`, { headers: AUTH })).json();
+        assert.equal(own.heldAgreements, 1);
+        assert.deepEqual(own.rejectedAgreements, [{ file: "private-deal.json", reason: "not JSON" }]);
+        const ownStory = await (await fetch(`${base}/queries/trade-story?process=${PROCESS}`, { headers: AUTH })).json();
+        assert.equal(ownStory.heldAgreements, 1);
+        assert.equal(ownStory.agreementBodies, "verified against the on-chain agreementHash");
+    } finally { await close(); }
+});
+
 test("a handler built without a token is closed, not open", async () => {
     const config = { enabled: true, apiKey: "k", model: "m", apiUrl: "https://stub" };
     const server = http.createServer(makeAnalystHandler(() => fixtureCorpus(), config, {

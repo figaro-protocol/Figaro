@@ -825,7 +825,9 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
             }
 
             // ── /status: the corpus is exactly the chain's own record. ──
-            const status = await (await fetch(`${ANALYST_URL}/status`)).json() as AnalystStatusWire;
+            const status = await (await fetch(`${ANALYST_URL}/status`, {
+                headers: { authorization: `Bearer ${bearerToken}` },
+            })).json() as AnalystStatusWire;
             expect(status.chainId, 'the corpus is this chain').toBe(LOCAL_ANVIL.id);
             expect(status.orderCommitted, 'commit count equals the event fold').toBe(allCommitted.length);
             expect(status.orderResolved).toBe(allResolved.length);
@@ -835,6 +837,9 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
             expect(status.attestationsByUniverse?.batch, 'the batch universe is the verifier\'s address').toBe(batchAtt.length);
             expect(status.substanceRecovered, 'recovered substance equals the gateway fold').toBe(recoveredFold);
             expect(status.heldAgreements, 'a walletless analyst holds no agreement bodies').toBe(0);
+            const openStatus = await (await fetch(`${ANALYST_URL}/status`)).json() as AnalystStatusWire;
+            expect(openStatus.syncedToBlock, 'the liveness read answers without the token').toBe(status.syncedToBlock);
+            expect(openStatus.heldAgreements, 'the held count answers only the bearer').toBeUndefined();
             const maxEventBlock = [...allCommitted, ...directAtt, ...batchAtt]
                 .reduce((m, e) => (e.blockNumber! > m ? e.blockNumber! : m), 0n);
             expect(BigInt(status.syncedToBlock ?? '0') >= maxEventBlock, 'the sync reached the newest event').toBe(true);
@@ -866,7 +871,9 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
             expect(recProcess, 'the asked-about process is in the record').toBeTruthy();
             expect(recProcess!.resolved).toBe(resolvedProcessIds.has(pid));
 
-            const story = await (await fetch(`${ANALYST_URL}/queries/trade-story?process=${latest.args.processId}`)).json() as {
+            const story = await (await fetch(`${ANALYST_URL}/queries/trade-story?process=${latest.args.processId}`, {
+                headers: { authorization: `Bearer ${bearerToken}` },
+            })).json() as {
                 found: boolean;
                 resolution: { resolved: boolean; orders: Array<{ orderHash: string; payment: string; lockedBuyerBond: string; lockedSellerBond: string }> };
                 overlays: Array<{ universe: string; clauseKey: string }>;
@@ -894,6 +901,12 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
             }
             expect(story.heldAgreements).toBe(0);
             expect(story.agreementBodies, 'the body is party-private and the story says so').toContain('party-private');
+            const openStory = await (await fetch(`${ANALYST_URL}/queries/trade-story?process=${latest.args.processId}`)).json() as {
+                found: boolean; heldAgreements?: number; agreementBodies: string;
+            };
+            expect(openStory.found, 'the story answers without the token').toBe(true);
+            expect(openStory.heldAgreements, 'the held count answers only the bearer').toBeUndefined();
+            expect(openStory.agreementBodies).toContain('party-private');
 
             const unauthorizedShape = await fetch(`${ANALYST_URL}/queries/market-shape`);
             expect(unauthorizedShape.status, 'market shape answers no caller without the bearer token').toBe(401);

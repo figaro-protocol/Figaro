@@ -86,6 +86,7 @@ export interface AnalystStatus {
     orderCommitted?: number;
     attestations?: number;
     substanceRecovered?: number;
+    /** Present only to the bearer of the analyst's token: the wallet's holdings. */
     heldAgreements?: number;
     /** Present or absent, never guessed: the model loop exists only when its
      *  host configured BOTH an API key and a model id. */

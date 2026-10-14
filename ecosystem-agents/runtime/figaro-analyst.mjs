@@ -8,11 +8,11 @@
  * sequencer writes resolutions, the analyst reads events, and they share a
  * chain, not an interface.
  *
- *   GET  /status                        what this corpus is, and how far it synced
+ *   GET  /status                        what this corpus is, and how far it synced  [holdings: token]
  *   GET  /graphs                        the projected graphs + their truth boundaries
  *   GET  /queries/market-shape          per-assembly aggregates          [token]
  *   GET  /queries/wallet-record?wallet= one wallet's public trading record
- *   GET  /queries/trade-story?process=   one process, narrated from the data
+ *   GET  /queries/trade-story?process=   one process, narrated from the data        [holdings: token]
  *   POST /prompt   {"question": "…"}    the model loop — 404 when unconfigured [token]
  *
  * Every body names the truth boundary of what it reports. Absence is an
@@ -23,7 +23,10 @@
  * `./analyst.token`, mode 0600 — under the sandbox wrapper, the workspace).
  * Market-shape is attributed from the agreement bodies this wallet HOLDS or
  * BOUGHT, and /prompt spends the host's model turns: neither answers a page
- * that merely knows the port. Cross-origin reads are granted only to the
+ * that merely knows the port. [holdings: token] routes answer anyone, but the
+ * holdings in them — /status's held count and rejected agreement file names,
+ * trade-story's held count — answer only the bearer: without it those fields
+ * are absent, and trade-story's prose does not say whether a body is held. Cross-origin reads are granted only to the
  * origins in FIGARO_ANALYST_CORS_ORIGINS; no origin is granted by default.
  *
  * Env:
@@ -263,6 +266,17 @@ export function bearerMatches(req, token) {
     return given.length === want.length && timingSafeEqual(given, want);
 }
 
+/** The owner's holdings stripped from an open answer: which agreement bodies
+ *  this wallet holds, and which files it was handed and refused, answer only
+ *  the bearer. What remains — the chain's own record and the sync progress —
+ *  answers anyone. The story's prose says only what is true without the count. */
+export function withoutHoldings(body) {
+    const { heldAgreements, rejectedAgreements, agreementBodies, ...open } = body;
+    return agreementBodies === undefined
+        ? open
+        : { ...open, agreementBodies: "party-private — what this analyst holds answers only the bearer of its token" };
+}
+
 /** A fresh per-run bearer token. */
 export function newAnalystToken() {
     return randomBytes(32).toString("hex");
@@ -333,8 +347,10 @@ export function makeAnalystHandler(getCorpus, config = modelConfig(), {
 
         try {
             if (req.method === "GET" && url.pathname === "/status") {
+                // Open: the liveness read. The holdings in it: the token's.
+                const status = corpusStatus(corpus);
                 return send(res, 200, {
-                    ...corpusStatus(corpus),
+                    ...(bearerMatches(req, token) ? status : withoutHoldings(status)),
                     prompt: config.enabled
                         ? { available: true, model: config.model }
                         : { available: false, reason: config.reason },
@@ -365,7 +381,8 @@ export function makeAnalystHandler(getCorpus, config = modelConfig(), {
                 if (!processId || !/^0x[0-9a-fA-F]{64}$/.test(processId)) {
                     return send(res, 400, { error: "process= must be a 0x-prefixed bytes32" });
                 }
-                return send(res, 200, tradeStory(corpus, processId));
+                const story = tradeStory(corpus, processId);
+                return send(res, 200, bearerMatches(req, token) ? story : withoutHoldings(story));
             }
             if (url.pathname === "/prompt") {
                 // No model configured ⇒ the endpoint is ABSENT, not a stub that
@@ -471,7 +488,7 @@ async function main() {
 
     const server = http.createServer(makeAnalystHandler(() => corpus, config, { token, corsOrigins: origins, maxPrompts }));
     server.listen(port, "127.0.0.1", () => {
-        console.error(`figaro-analyst: listening on 127.0.0.1:${port} — bearer token for /prompt and /queries/market-shape in ${tokenFile}; CORS reads granted to ${origins.length ? origins.join(", ") : "no origin"}`);
+        console.error(`figaro-analyst: listening on 127.0.0.1:${port} — bearer token for /prompt, /queries/market-shape and the holdings on /status and trade-story in ${tokenFile}; CORS reads granted to ${origins.length ? origins.join(", ") : "no origin"}`);
     });
 }
 

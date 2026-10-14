@@ -251,11 +251,11 @@ configured:
 
 | Route | Answers |
 |---|---|
-| `GET /status` | what this corpus holds, and the block range it synced |
+| `GET /status` | what this corpus holds, and the block range it synced — the held count and rejected file names to the **bearer token** only |
 | `GET /graphs` | every projected graph with its truth boundary — a census, not a menu |
 | `GET /queries/market-shape` | per-assembly aggregates, plus the unattributed count — **bearer token** |
 | `GET /queries/wallet-record?wallet=` | one wallet's public record |
-| `GET /queries/trade-story?process=` | one process, narrated, overlays framed |
+| `GET /queries/trade-story?process=` | one process, narrated, overlays framed — the held count to the **bearer token** only |
 | `POST /prompt` | the model loop — **404 when unconfigured**, **bearer token** when configured |
 
 The prompt endpoint requires BOTH `ANTHROPIC_API_KEY` and `ANTHROPIC_MODEL`. The model id
@@ -278,7 +278,11 @@ host's model turns) and `GET /queries/market-shape` (it is attributed from the a
 bodies the wallet holds or bought). The analyst draws a fresh token at every start, writes it
 to `FIGARO_ANALYST_BEARER_FILE` (default `analyst.token` in its working directory, mode
 `0600`), and names the file on stderr without printing the token; send it as
-`Authorization: Bearer <token>`. A browser page reads the wire only from an origin named in
+`Authorization: Bearer <token>`. Two open routes carry the wallet's holdings to the same
+bearer only: `GET /status` answers anyone with the sync progress, and adds the held-agreement
+count and the rejected file names when the token matches; `GET /queries/trade-story` answers
+anyone with the process, and adds its held-agreement count when the token matches. Without
+the token those fields are absent. A browser page reads the wire only from an origin named in
 `FIGARO_ANALYST_CORS_ORIGINS` (comma-separated); no origin is granted by default, never
 `*`. `FIGARO_ANALYST_MAX_PROMPTS` (default 1) caps the model loops in flight; past it, the
 answer is `429`.
@@ -310,7 +314,7 @@ window is a SMALLER CORPUS, and every answer reports the range it was drawn from
 **`FIGARO_AGREEMENTS_DIR` is where bought and owned substance enters.** Point it at a
 directory of agreement documents the wallet holds — its own, or ones a purchase delivered —
 and each one is admitted only if its recomputed root IS a committed `agreementHash` on this
-chain. A document that fails is REJECTED and named in `GET /status`, whoever handed it over.
+chain. A document that fails is REJECTED and named in `GET /status` to the bearer of the token, whoever handed it over.
 Admitted documents are what unlocks assembly attribution and real chain shapes in
 market-shape; without them the query honestly reports every process as unattributed.
 

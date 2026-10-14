@@ -91,6 +91,9 @@ outside the wrapper with both variables set.
 
 `POST /prompt` and `GET /queries/market-shape` (attributed from the agreement
 bodies the wallet holds or bought) answer only `Authorization: Bearer <token>`.
+`GET /status` and `GET /queries/trade-story` answer anyone, and carry the
+wallet's holdings — the held-agreement count, and on `/status` the rejected
+agreement file names — only to the same bearer.
 The analyst draws a fresh token at every start and writes it to
 `FIGARO_ANALYST_BEARER_FILE` (default `analyst.token` in its working directory —
 the workspace, under the wrapper), mode `0600`, naming the file on stderr and
