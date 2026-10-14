@@ -42,6 +42,7 @@ import {
     parseProcessResolvedLogs,
     readUtilityTokenPin,
     type Address,
+    type SpecSource,
 } from "@figaro-protocol/sdk";
 import {
     extractOverlays,
@@ -125,11 +126,31 @@ export interface GraphCorpus {
 /** A published assembly in the minimal shape this read needs: its registered
  *  identity and name, plus every composed clause set the designer composed
  *  (the assembly-scoped set, where a denomination pin composes once, and each
- *  agreement's own set). */
+ *  agreement's own set), each beside the template's own sparse
+ *  `clauseVersions` for it (absent = version 1; for the assembly-scoped set,
+ *  the template's `assemblyClauseVersions`). */
 interface CorpusTemplate {
     compositionHash: `0x${string}`;
     name: string;
-    clauseSets: readonly Record<string, Record<string, unknown>>[];
+    clauseSets: readonly {
+        clauses: Record<string, Record<string, unknown>>;
+        clauseVersions?: Readonly<Record<string, number>>;
+    }[];
+}
+
+/** The designer's utility-token pins across the loaded templates, each
+ *  distinct address once — a designer's registered fact, never a bundled
+ *  token list. Every clause is read at the version the template composed for
+ *  it (`readUtilityTokenPin` over the set's own `clauseVersions`). */
+export function readTemplateUtilityTokenPins(templates: readonly CorpusTemplate[], specs: SpecSource): Address[] {
+    const pins: Address[] = [];
+    for (const template of templates) {
+        for (const { clauses, clauseVersions } of template.clauseSets) {
+            const pin = readUtilityTokenPin(clauses, specs, clauseVersions);
+            if (pin && !pins.includes(pin)) pins.push(pin);
+        }
+    }
+    return pins;
 }
 
 /** Read FigaroCore's own log through the existing cache and shape it into the
@@ -309,13 +330,7 @@ async function readGraphCorpus(deps?: {
 
     // Utility-token pins are a designer's registered fact, read off the
     // templates the page loaded — never a bundled token list.
-    const pins: Address[] = [];
-    for (const template of deps?.templates ?? []) {
-        for (const clauses of template.clauseSets) {
-            const pin = readUtilityTokenPin(clauses, specs);
-            if (pin && !pins.includes(pin)) pins.push(pin);
-        }
-    }
+    const pins = readTemplateUtilityTokenPins(deps?.templates ?? [], specs);
     // The swap legs beside the commits: the value flowing between
     // denominations, read from the venue's own transfers.
     const valueFlow = projectValueFlow(resolution, fundingLegs, pins);
@@ -375,8 +390,16 @@ export function useGraphCorpus(): { corpus: GraphCorpus | null; isLoading: boole
                         // Assembly-scoped clauses compose ONCE for the whole
                         // design — a denomination pin lives here, not in an
                         // agreement — so both sets are read.
-                        ...(a.assemblyTemplate?.assemblyClauses ? [a.assemblyTemplate.assemblyClauses] : []),
-                        ...(a.assemblyTemplate?.agreements ?? []).map((agreement) => agreement.clauses),
+                        ...(a.assemblyTemplate?.assemblyClauses
+                            ? [{
+                                clauses: a.assemblyTemplate.assemblyClauses,
+                                clauseVersions: a.assemblyTemplate.assemblyClauseVersions,
+                            }]
+                            : []),
+                        ...(a.assemblyTemplate?.agreements ?? []).map((agreement) => ({
+                            clauses: agreement.clauses,
+                            clauseVersions: agreement.clauseVersions,
+                        })),
                     ],
                 })),
         [assemblies],

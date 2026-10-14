@@ -258,6 +258,52 @@ export function assemblyClauseDefaults(clauseId: string, version: number): Recor
     return out;
 }
 
+/**
+ * One toggle of a registered clause row at a version, on the canvas's
+ * composition of one scope — the assembly terms (`assemblyClauses` +
+ * `assemblyClauseVersions`) or one order's terms (`clausesByOrderId[id]` +
+ * `clauseVersionsByOrderId[id]`). Both scopes call this; the rule is one.
+ *
+ * - Unchecking removes the clause and its version.
+ * - A fresh pick starts from `freshFills` (an assembly term seeds its
+ *   declared defaults; an order's pick starts empty).
+ * - A pick at another version than the one composed keeps the fills the new
+ *   version's spec still names in `block.design.fills` and drops the rest:
+ *   the designer does not retype what the new spec still asks for, and no
+ *   value rides on a spec that has no fill for it (it would strip silently
+ *   at publish). A version whose spec is not loaded carries nothing.
+ * - Re-checking the version composed leaves its fills untouched.
+ *
+ * `versions` is the template's sparse encoding (only non-1 recorded).
+ */
+export function toggleClauseAtVersion(
+    values: Readonly<Record<string, Record<string, unknown>>>,
+    versions: Readonly<Record<string, number>>,
+    clauseId: string,
+    next: boolean,
+    version: number,
+    freshFills: Record<string, unknown>,
+): { values: Record<string, Record<string, unknown>>; versions: Record<string, number> } {
+    const outValues = { ...values };
+    const outVersions = { ...versions };
+    if (!next) {
+        delete outValues[clauseId];
+        delete outVersions[clauseId];
+        return { values: outValues, versions: outVersions };
+    }
+    const prior = values[clauseId];
+    if (prior === undefined) {
+        outValues[clauseId] = freshFills;
+    } else if (templateClauseVersion({ clauseVersions: versions }, clauseId) !== version) {
+        // A version switch starts the clause over from the scope's seed: a value
+        // declared by one version never rides on another's composition.
+        outValues[clauseId] = freshFills;
+    }
+    if (version !== 1) outVersions[clauseId] = version;
+    else delete outVersions[clauseId];
+    return { values: outValues, versions: outVersions };
+}
+
 export function unfilledAssemblyTerms(
     assemblyClauses: Readonly<Record<string, Record<string, unknown>>>,
     versions?: Readonly<Record<string, number>>,

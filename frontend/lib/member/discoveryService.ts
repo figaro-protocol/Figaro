@@ -2,7 +2,7 @@ import type { PublicClient } from 'viem';
 import { getActiveMembers } from '@/lib/protocol/membersRegistryIndexer';
 import type { MemberCatalog } from '@/lib/member/types';
 import { CONTRACTS } from "@/lib/kernel/contracts";
-import { fetchCappedContent, resolveContentUri, resolveMemberDocumentUri, type CappedContentResponse } from "@/lib/shared/ipfsService";
+import { fetchCappedContent, resolveMemberDocumentUri, type CappedContentResponse } from "@/lib/shared/ipfsService";
 import type { MemberCatalogMetadata } from '@/lib/member/memberCatalogMetadata';
 import {
     MemberProfileMetadata,
@@ -30,9 +30,10 @@ function profileToCatalog(
         description: profile.description ?? '',
         specialty: profile.specialty ?? '',
         // Absence is absence — a logo only when the member declared a resolvable
-        // one (scheme-checked by resolveContentUri, the single owner of the
-        // allowlist); the UI renders a neutral placeholder otherwise.
-        image: profile.branding?.logoURI && resolveContentUri(profile.branding.logoURI)
+        // one (IPFS-only, checked by resolveMemberDocumentUri like every member
+        // read; an http(s) logo is a server the reader cannot verify, so it
+        // reads as absent); the UI renders a neutral placeholder otherwise.
+        image: profile.branding?.logoURI && resolveMemberDocumentUri(profile.branding.logoURI)
             ? profile.branding.logoURI
             : undefined,
         geohash: profile.location?.geohash,

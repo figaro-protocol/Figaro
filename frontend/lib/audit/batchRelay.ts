@@ -195,6 +195,10 @@ export interface VerifiedBatchOrder {
     order: Order | null;
     /** Where the fact was published — the reader's handle for anchoring it. */
     batch: SequencerBatchRef | null;
+    /** The batch that resolved the process — its own resolution transaction, which
+     *  differs from `batch`'s when the order committed in an earlier batch.
+     *  Null while the process is open. */
+    resolutionBatch: SequencerBatchRef | null;
     /** Recomputed from the signed struct, not copied from the relay. */
     payouts: { sellerPayout: bigint; buyerPayout: bigint } | null;
 }
@@ -312,6 +316,7 @@ export async function verifyBatchOrder(
             failures: [],
             order: null,
             batch: view.resolution?.batch ?? null,
+            resolutionBatch: view.resolution?.batch ?? null,
             payouts: null,
         };
     }
@@ -429,6 +434,7 @@ function finish(
             )
             : null,
         batch,
+        resolutionBatch,
         payouts,
     };
 }

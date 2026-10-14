@@ -229,4 +229,34 @@ describe('discoveryService', () => {
 
         expect(result.catalogs).toHaveLength(0);
     });
+
+    describe('member logo is read IPFS-only', () => {
+        const WALLET = '0x70997970C51812dc3A010C7d01b50e0d17dc79C8';
+        async function catalogWithLogo(logoURI: string) {
+            getActiveMembersMock.mockResolvedValueOnce([
+                { address: WALLET.toLowerCase(), role: 1, metadataURI: 'ipfs://Qmmerchanta11111111111111111111111111111111111' },
+            ]);
+            fetchDocumentMock.mockResolvedValueOnce(makeJsonResponse({
+                subjectAddress: WALLET,
+                name: 'Logo Merchant',
+                branding: { logoURI },
+                assemblyBindings: anchoredBinding(WALLET),
+                version: '1.0.0',
+            }));
+            const result = await discoveryService.listCatalogs({} as never, 31337, ANCHORED);
+            return result.catalogs[0];
+        }
+
+        it('reads an http(s) logo as absence', async () => {
+            const catalog = await catalogWithLogo('https://example.com/logo.png');
+            expect(catalog.name).toBe('Logo Merchant');
+            expect(catalog.image).toBeUndefined();
+        });
+
+        it('keeps an ipfs:// logo', async () => {
+            const uri = 'ipfs://Qmaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+            const catalog = await catalogWithLogo(uri);
+            expect(catalog.image).toBe(uri);
+        });
+    });
 });

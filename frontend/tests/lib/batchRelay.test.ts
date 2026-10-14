@@ -322,6 +322,26 @@ describe("verifyBatchOrder — what each check rejects", () => {
         expect(result.order?.state).toBe(0);
     });
 
+    it("an order committed in batch A and resolved in batch B carries B's transaction as its resolution batch", async () => {
+        const TX_A = `0x${"aa".repeat(32)}` as Hex;
+        const TX_B = `0x${"bb".repeat(32)}` as Hex;
+        const view = honestView();
+        view.commit = { ...view.commit!, batch: { ...batchRef, batch: 1, resolution_tx: TX_A } };
+        view.resolution = {
+            ...view.resolution!,
+            batch: { ...batchRef, batch: 2, new_state_root: `0x${"33".repeat(32)}` as Hex, resolution_tx: TX_B },
+        };
+        const result = await verifyBatchOrder(view, ctx());
+        expect(result.verdict).toBe("verified");
+        expect(result.batch?.resolution_tx).toBe(TX_A);
+        expect(result.resolutionBatch?.resolution_tx).toBe(TX_B);
+    });
+
+    it("an OPEN order has no resolution batch", async () => {
+        const result = await verifyBatchOrder(honestView({ resolution: null }), ctx());
+        expect(result.resolutionBatch).toBeNull();
+    });
+
     it("state-root-anchor: rejects a record whose batch is not on chain", async () => {
         const unanchored: StateRootAnchorCheck = async () => ({
             id: "state-root-anchor",

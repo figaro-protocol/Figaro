@@ -24,7 +24,7 @@
  * applies the seed in a mount effect — localStorage is client-only.
  */
 
-import { assemblyClauseDefaults } from "@/lib/designer/draftToAssemblyTemplate";
+import { assemblyClauseDefaults, toggleClauseAtVersion } from "@/lib/designer/draftToAssemblyTemplate";
 import Link from "@/components/shared/Link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -55,7 +55,7 @@ import { AssemblyTermsPanel } from "./AssemblyTermsPanel";
 import { CompositionAssist } from "./CompositionAssist";
 import { CompositionIdentity } from "./CompositionIdentity";
 import { assemblyTemplateToDraft } from "@/lib/designer/assemblyTemplateToDraft";
-import { templateClauseVersion, type AssemblyTemplate } from "@/lib/shared/assemblyTemplate";
+import type { AssemblyTemplate } from "@/lib/shared/assemblyTemplate";
 import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
 import { maxCommitsLandableInOneBlock, maxOrdersResolvablePerProcess } from "@/lib/shared/chainGasCeilings";
 import { useChainId, usePublicClient } from "wagmi";
@@ -306,27 +306,20 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
     const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
 
     const toggleClause = useCallback((orderId: string, clauseId: string, next: boolean, version: number) => {
-        // A pick at another version is another clause: its design fills start
-        // empty, so a value declared by v1 never rides on a v2 composition.
-        const versionChanged = templateClauseVersion({ clauseVersions: clauseVersionsByOrderId[orderId] }, clauseId) !== version;
-        setClausesByOrderId((prev) => {
-            const order = { ...(prev[orderId] ?? {}) };
-            if (next) {
-                if (!(clauseId in order) || versionChanged) order[clauseId] = {};
-            } else {
-                delete order[clauseId];
-            }
-            return { ...prev, [orderId]: order };
-        });
-        // The picked registry row's version — part of the clause's identity.
-        // Sparse: only non-1 versions are recorded (mirrors the template).
-        setClauseVersionsByOrderId((prev) => {
-            const order = { ...(prev[orderId] ?? {}) };
-            if (next && version !== 1) order[clauseId] = version;
-            else delete order[clauseId];
-            return { ...prev, [orderId]: order };
-        });
-    }, [clauseVersionsByOrderId]);
+        // The same toggle as the assembly terms: a pick at another version
+        // keeps only the fills that version's spec declares. An order's fresh
+        // pick starts empty.
+        const out = toggleClauseAtVersion(
+            clausesByOrderId[orderId] ?? {},
+            clauseVersionsByOrderId[orderId] ?? {},
+            clauseId,
+            next,
+            version,
+            {},
+        );
+        setClausesByOrderId((prev) => ({ ...prev, [orderId]: out.values }));
+        setClauseVersionsByOrderId((prev) => ({ ...prev, [orderId]: out.versions }));
+    }, [clausesByOrderId, clauseVersionsByOrderId]);
 
     const setClauseField = useCallback(
         (orderId: string, clauseId: string, field: string, value: unknown) => {
@@ -776,19 +769,18 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
                         values={assemblyClauses}
                         versions={assemblyClauseVersions}
                         onToggleClause={(clauseId, next, version) => {
-                            setAssemblyClauses((prev) => {
-                                const out = { ...prev };
-                                // A fresh selection starts from the spec's declared defaults.
-                                if (next) out[clauseId] = out[clauseId] ?? assemblyClauseDefaults(clauseId, version);
-                                else delete out[clauseId];
-                                return out;
-                            });
-                            setAssemblyClauseVersions((prev) => {
-                                const out = { ...prev };
-                                if (next && version !== 1) out[clauseId] = version;
-                                else delete out[clauseId];
-                                return out;
-                            });
+                            // The same toggle as an order's terms; a fresh
+                            // assembly term starts from the spec's declared defaults.
+                            const out = toggleClauseAtVersion(
+                                assemblyClauses,
+                                assemblyClauseVersions,
+                                clauseId,
+                                next,
+                                version,
+                                assemblyClauseDefaults(clauseId, version),
+                            );
+                            setAssemblyClauses(out.values);
+                            setAssemblyClauseVersions(out.versions);
                         }}
                         onSetClauseField={(clauseId, field, value) => {
                             setAssemblyClauses((prev) => ({

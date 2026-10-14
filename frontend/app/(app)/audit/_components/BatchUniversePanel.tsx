@@ -201,9 +201,14 @@ export function BatchUniversePanel({ batch }: { batch: VerifiedBatchProcess | nu
                                     {o.batch && (
                                         <p className="text-[11px] text-ink-muted break-all">
                                             state root {o.batch.new_state_root}
-                                            {o.batch.resolution_tx
-                                                ? <> · resolved in {o.batch.resolution_tx}</>
-                                                : <> · no resolution transaction (dry run)</>}
+                                            {o.verdict !== "unretained" && (o.batch.resolution_tx
+                                                ? <> · committed in {o.batch.resolution_tx}</>
+                                                : <> · no commit transaction (dry run)</>)}
+                                            {o.resolutionBatch && (
+                                                o.resolutionBatch.resolution_tx
+                                                    ? <> · resolved in {o.resolutionBatch.resolution_tx}</>
+                                                    : <> · no resolution transaction (dry run)</>
+                                            )}
                                         </p>
                                     )}
                                 </div>
