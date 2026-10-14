@@ -142,14 +142,14 @@ that an end-to-end run can cross a period boundary in a single session.
 line it draws is **terms versus meter**.
 
 Commerce and topology are contract *terms* the parties agree to. A runtime that
-composes them is making an offer, and mandatory term levies are disciplined by
-ordinary competition: a runtime that piles on levy clauses loses its users.
-That also answers how many such lines the commons may hold — as many as survive
-that competition.
+composes them is making an offer, and the set of terms a runtime folds into
+every template is disciplined by ordinary competition: a runtime that folds in
+terms its users do not want loses them. That also answers how many such
+clauses the commons may hold — as many as survive that competition.
 
 The provenance leaf is not a term anyone agreed to. It is the reward system's
 own attribution plumbing, structurally singular, with no competing runtime to
-exit to. A levy on it would be the meter charging for reading itself. It
+exit to. Rewarding it would reward the meter for its own reading. It
 meters; it never earns. Its designers accrue through the assembly leg instead,
 so scoring it would double-pay every assembly trade.
 

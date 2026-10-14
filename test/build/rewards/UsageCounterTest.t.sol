@@ -444,9 +444,9 @@ contract UsageCounterTest is Test {
 
     function test_mandatoryClausesEarnForTheirAuthor() public {
         // figaro-commerce and figaro-topology ride on EVERY order, so scoring
-        // them levies every resolved process for their author-of-record — the
-        // DAO treasury under the ruled genesis registration: the
-        // commons taxing its own unavoidable usage into the commons pot.
+        // them rewards their designer of record on every resolved process — the
+        // DAO treasury under the ruled genesis registration, rewarded from
+        // the reserve for what every trade carries.
         bytes32 commerceKey = keccak256(abi.encode("figaro-commerce", uint64(1)));
 
         CommitmentTypes.Commitment memory c = _settledOrder(commerceKey, buyer, BUYER_KEY, seller1, SELLER1_KEY, 1);

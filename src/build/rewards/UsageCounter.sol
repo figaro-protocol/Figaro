@@ -154,8 +154,8 @@ contract UsageCounter {
     ///         which an assembly's designer is credited — so scoring it would pay
     ///         one adoption twice (once to the designer via `recordAssemblyUsage`,
     ///         again to the leaf's author). The mandatory clauses ride every
-    ///         order, so scoring them levies every resolved process for their
-    ///         author-of-record — the commons treasury under the genesis
+    ///         order, so scoring them rewards their designer of record on every
+    ///         resolved process — the commons treasury under the genesis
     ///         registration, a usage-indexed endowment of the commons.
     ///         This is deploy-frozen: WHICH clauses and assemblies the reward
     ///         ignores is a reward decision, not something a

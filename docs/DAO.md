@@ -111,7 +111,7 @@ upgrade for the operator's key, rehearsed on a testnet before adoption.
 
 ---
 
-## Its income — the levy
+## Its income — designer rewards on the clauses it holds
 
 **The 300M is a grant; the DAO's LIVING is earned.** What follows states the
 design. It carries no projected yield, no break-even model, and no income
@@ -124,13 +124,13 @@ permissionlessly and irreversibly, first-write-wins. Competing under one's own
 wallet is equally welcome.
 
 Every resolved process composes the mandatory clauses, so their usage accrues
-to the DAO exactly the way any designer's clauses accrue: **the commons taxing
-its own unavoidable usage into the commons pot.** The protocol takes nothing
-from a trade, and the levy claims no privileged weight: it rides the same
-uniform meter as every other clause. "Mandatory" is a
+to the DAO exactly the way any designer's clauses accrue: **the commons is
+rewarded, from the reserve, for the use of what every trade carries.** The
+protocol takes nothing from a trade, and the DAO's registrations claim no
+privileged weight: they ride the same uniform meter as every other clause. "Mandatory" is a
 registration-layer convention; nothing on chain privileges it.
 
-The one thing the levy may not reach is the meter itself: `figaro-assembly-provenance`
+The one thing the DAO's reward may not reach is the meter itself: `figaro-assembly-provenance`
 meters and never earns. `docs/DESIGNER_REWARDS.md` § "The boundary — the meter
 earns nothing" owns that line.
 
@@ -143,13 +143,13 @@ mandatory clauses dominate the period's score and the endowment income is large
 automatic: no parameter, no vote, no one to lobby.
 
 **Beyond the sunset.** The designer-reward budgets end after the nine periods.
-What continues to fund the commons afterwards is the accumulated levy income
-plus whatever remains of the 300M — an endowment, not an annuity.
+What continues to fund the commons afterwards is the designer rewards it
+accumulated plus whatever remains of the 300M — an endowment, not an annuity.
 
 **Alignment is the interest structure, not a spending rule.** DAO discretion is
 unrestricted: public goods and private goods both, by the three paths above.
-What aligns the DAO with the network is where its income originates — the levy
-pays only when the network is used, so the DAO's interest IS network usage. No
+What aligns the DAO with the network is where its income originates — the
+reward accrues only when the network is used, so the DAO's interest IS network usage. No
 spending covenant could add to that, and none exists. Each act is judgment, case
 by case — the meter that pays by measured activity belongs to the
 designer-rewards tier, never to the treasury.
@@ -165,7 +165,7 @@ order carries earn".
 community: donations sustain it if the community wants it sustained; otherwise
 it dies.
 
-There is no self-perpetuation right — no switch to flip, no levy it can raise,
+There is no self-perpetuation right — no switch to flip, no charge it can raise,
 and no protocol lever reachable by a DAO vote. The Core-governance boundary
 above is absolute, and a body that cannot reach the protocol cannot vote itself
 an income from it.

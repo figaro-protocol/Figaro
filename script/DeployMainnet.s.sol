@@ -248,10 +248,10 @@ contract DeployMainnet is Script {
             periods[i] = genesis + uint64((i + 1) * 365 days);
         }
 
-        // The mandatory clauses EARN: commerce and topology ride
-        // on every order, so scoring them levies every resolved process for their
-        // author-of-record — the DAO treasury under the genesis registration, the
-        // commons taxing its own unavoidable usage into the commons pot. Only the
+        // The mandatory clauses EARN: commerce and topology ride on every
+        // order, so scoring them rewards their designer of record on every
+        // resolved process — the DAO treasury under the genesis registration,
+        // rewarded from the reserve for what every trade carries. Only the
         // assembly-provenance clause stays excluded: it is attribution plumbing
         // (see UsageCounter.excludedClauseOrAssembly) — scoring it would double-pay
         // every assembly trade, whose designers accrue via recordAssemblyUsage.
