@@ -110,6 +110,25 @@ Nouns and their definitions. One name per thing.
 
 **wallet** — A signing key and the balance it controls. The only identity the protocol knows.
 
+## The two seams
+
+Every noun above sits on one side of two seams, and a sentence that moves a noun across either one is wrong.
+
+**The layers.** Core, protocol, runtime (`CLAUDE.md` § "Three-Tier Naming"). Each layer is usable without the ones above it: a wallet may call the Core alone; a builder may use the Core with the registries and the designer rewards; this interface is one runtime among any number, and a clause this interface de-surfaces may still be surfaced and composed through another. Nothing in a lower layer reads, clears or depends on a higher one.
+
+**Design time and runtime.** Design time is the designer's: the clause, the agreement as composed, the assembly, the registries and the stake. Checkout is the buyer's: the assembly is instantiated, the real parties and amounts fill its agreements, and each agreement's merkle root is computed. Runtime is the process's: the order, the commitment, the process, the attestation, the resolution, the refund. A design holds no values and a process holds no design: an assembly is published once and instantiated any number of times, and a process is the runtime instance of an assembly, never the assembly itself.
+
+| Noun | Layer | Time |
+|---|---|---|
+| clause | protocol | design |
+| agreement | protocol | design as composed; checkout when filled |
+| assembly | protocol | design |
+| stake | protocol | design |
+| checkout | runtime | checkout |
+| order, commitment | Core | checkout to runtime |
+| process, attestation, resolution, refund | Core | runtime |
+| designer rewards, period | protocol | runtime, counted at resolution |
+
 ## Voice
 
 The register every public page is measured against. The lexicon above gives the nouns; this gives the sentence.
