@@ -16,7 +16,7 @@ the review's is its own.
 | Baseline commit | `cf6ba4ab` (§ "The baseline commit"); no tag names a commit under audit — one is placed when an audit is engaged |
 | Languages in scope | Solidity (`src/`, three deploy scripts) and Rust (`prover/`, four crates) |
 | Solidity in scope | 13 contract files, 1,279 lines of code (3,142 physical); 3 deploy scripts, 405 lines of code (846 physical) |
-| Rust in scope | 4 crates, 21 files under `src/`, 6,286 lines of code (8,731 physical) net of their inline test modules |
+| Rust in scope | 4 crates, 21 files under `src/`, 6,286 lines of code (8,725 physical) net of their inline test modules |
 | Configuration in scope | `foundry.toml`, the `Cargo.toml` files and `Cargo.lock`, the Rust toolchain pin (§ "In scope — configuration") |
 | Trusted, not reviewed | SP1 (the zkVM, its crates, its on-chain verifier gateway), OpenZeppelin Contracts, Permit2, Uniswap SwapRouter02 |
 | Out of scope | mocks, fuzz harnesses, tests and formal specs, the proving harness crate, the Sepolia deploy script, `frontend/`, `sdk/` |
@@ -26,7 +26,7 @@ the review's is its own.
 Lines of code are counted with comments, NatSpec and blank lines removed —
 the count an estimate is priced on; physical lines count every line of the
 file. The Rust files carry `#[cfg(test)]` modules, out of scope like every
-test, and the Rust figures leave them out (390 physical lines, 334 of code).
+test, and the Rust figures leave them out (396 physical lines, 334 of code).
 
 ## Repository and build
 
