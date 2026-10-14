@@ -33,7 +33,7 @@ contract FigaroBatchVerifierTest is Test {
     MembersRegistry members;
     FigaroCore core;
 
-    bytes32 constant PROV_KEY = keccak256(abi.encode("figaro-assembly-provenance", uint64(1)));
+    bytes32 constant PROVENANCE_LEAF = keccak256("figaro-agreement-provenance");
     uint64 constant PERIOD_END = 1_000_000;
 
     bytes32 constant VKEY = bytes32(uint256(0xF16A20));
@@ -62,20 +62,10 @@ contract FigaroBatchVerifierTest is Test {
         // rather than a deployment.
         uint64[] memory periods = new uint64[](1);
         periods[0] = PERIOD_END;
-        bytes32[] memory excluded = new bytes32[](1);
-        excluded[0] = PROV_KEY; // the deploy shape: only attribution plumbing is excluded
         MockClauseOrAssemblyStake stakeGate = new MockClauseOrAssemblyStake();
         address predicted = vm.computeCreateAddress(address(this), vm.getNonce(address(this)) + 1);
         counter = new UsageCounter(
-            address(core),
-            address(members),
-            address(stakeGate),
-            address(stakeGate),
-            predicted,
-            PROV_KEY,
-            excluded,
-            1,
-            periods
+            address(core), address(members), address(stakeGate), address(stakeGate), predicted, 1, periods
         );
         verifier = new FigaroBatchVerifier(address(sp1), VKEY, address(registry), address(counter), GENESIS);
         assertEq(address(verifier), predicted, "verifier address prediction");
@@ -133,7 +123,7 @@ contract FigaroBatchVerifierTest is Test {
     ///      slip in the hand-rolled version (a wrong offset, a missing length
     ///      prefix) shows up as a mismatch instead of being mirrored.
     function _hashUsage(FigaroBatchVerifier.BatchUsageData memory u) internal pure returns (bytes32) {
-        bytes memory packed = abi.encodePacked(u.period, u.provenanceClause, uint64(u.accruals.length));
+        bytes memory packed = abi.encodePacked(u.period, u.provenanceLeaf, uint64(u.accruals.length));
         for (uint256 i = 0; i < u.accruals.length; i++) {
             packed = bytes.concat(
                 packed, abi.encodePacked(u.accruals[i].clauseOrAssembly, u.accruals[i].c, u.accruals[i].d)
@@ -162,7 +152,7 @@ contract FigaroBatchVerifierTest is Test {
         returns (FigaroBatchVerifier.BatchUsageData memory u)
     {
         u.period = counter.currentPeriod();
-        u.provenanceClause = PROV_KEY;
+        u.provenanceLeaf = PROVENANCE_LEAF;
         u.accruals = new IUsageCounter.BatchAccrual[](1);
         u.accruals[0] = IUsageCounter.BatchAccrual(clauseOrAssembly, c, d);
         u.sellers = new address[](1);
@@ -897,7 +887,7 @@ contract FigaroBatchVerifierTest is Test {
     function test_usageHash_matchesTheRustVector() public {
         FigaroBatchVerifier.BatchUsageData memory u;
         u.period = 3;
-        u.provenanceClause = keccak256("prov");
+        u.provenanceLeaf = keccak256("prov");
         u.accruals = new IUsageCounter.BatchAccrual[](2);
         // The two seed strings are OPAQUE FIXTURE BYTES, not a name for the
         // concept: they are keccak preimages the Rust vector was generated from
@@ -1053,7 +1043,7 @@ contract FigaroBatchVerifierTest is Test {
         uint256 nSell
     ) internal pure returns (FigaroBatchVerifier.BatchUsageData memory u) {
         u.period = period;
-        u.provenanceClause = _word(seed, "provenance", 0);
+        u.provenanceLeaf = _word(seed, "provenance", 0);
         u.accruals = new IUsageCounter.BatchAccrual[](nAcc);
         for (uint256 i = 0; i < nAcc; i++) {
             u.accruals[i] = i == 0

@@ -30,12 +30,10 @@ import {
     profileValuesFor,
     fillCommerceSection,
     fillDerivedSections,
-    fillProvenanceSection,
     generateSalt,
     planSubOrderSellers,
     reconstructOrdersFromTemplate,
     resolveSubOrderPricing,
-    templateCompositionHash,
     templateParentOrderHashes,
     type AssemblyCheckoutLineItem,
     type PlannedTemplateOrder,
@@ -316,17 +314,14 @@ function checkoutNodes(
             // denomination terms. `currency` is the ONE process currency (the
             // FigaroCore enforces single-denomination, FigaroCore
             // CurrencyMismatch), never a per-order input.
-            const filled = fillProvenanceSection(
-                fillCommerceSection(
-                    fillDerivedSections(
-                        { ...node.clauses, ...(params.clauseFills?.[planned.nodeId] ?? {}) },
-                        lineItems, specs,
-                        profileValuesFor(leadSellerAddress, sellerCatalogs),
-                        planned.clauseVersions,
-                    ),
-                    payment, currency, specs, lineItems, planned.clauseVersions,
+            const filled = fillCommerceSection(
+                fillDerivedSections(
+                    { ...node.clauses, ...(params.clauseFills?.[planned.nodeId] ?? {}) },
+                    lineItems, specs,
+                    profileValuesFor(leadSellerAddress, sellerCatalogs),
+                    planned.clauseVersions,
                 ),
-                templateCompositionHash(template), specs, planned.clauseVersions,
+                payment, currency, specs, lineItems, planned.clauseVersions,
             );
             return {
                 seller: leadSellerAddress,
@@ -396,17 +391,14 @@ function checkoutNodes(
         // composing none (e.g. a service leg) → G7 absence. The topology
         // section is the WALK's to complete (template-local parent ids →
         // real order hashes), so it is never in the overrides.
-        const filled = fillProvenanceSection(
-            fillCommerceSection(
-                fillDerivedSections(
-                    { ...nodeClauses },
-                    subLineItems ?? [], specs,
-                    profileValuesFor(subSeller, sellerCatalogs),
-                    planned.clauseVersions,
-                ),
-                subPayment, currency, specs, subLineItems, planned.clauseVersions,
+        const filled = fillCommerceSection(
+            fillDerivedSections(
+                { ...nodeClauses },
+                subLineItems ?? [], specs,
+                profileValuesFor(subSeller, sellerCatalogs),
+                planned.clauseVersions,
             ),
-            templateCompositionHash(template), specs, planned.clauseVersions,
+            subPayment, currency, specs, subLineItems, planned.clauseVersions,
         );
         return {
             seller: subSeller,

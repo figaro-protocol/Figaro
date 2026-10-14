@@ -20,7 +20,7 @@ vi.mock("@/lib/protocol/useAssemblyRegistry", () => ({
 import { useAssemblyChoices } from "@/lib/protocol/assemblyChoices";
 
 const EVENT = {
-    slug: "asm-33ce205ea77e79e8",
+    slug: "asm-9ffb1eb79755a9ab",
     registeredBy: "0xA",
     compositionHash: "0x1",
     contentURI: "ipfs://tmpl",
@@ -79,13 +79,13 @@ describe("useAssemblyChoices — the designer's words reach the reader", () => {
 
     it("shows the slug when the template has no name", async () => {
         const choice = await choiceFor({ summary: "Six bonded parties move a container.", agreements: [] });
-        expect(choice.name).toBe("asm-33ce205ea77e79e8");
+        expect(choice.name).toBe("asm-9ffb1eb79755a9ab");
         expect(choice.summary).toBe("Six bonded parties move a container.");
     });
 
     it("shows the slug and no summary while the template is unresolved", async () => {
         const choice = await choiceFor(null);
-        expect(choice.name).toBe("asm-33ce205ea77e79e8");
+        expect(choice.name).toBe("asm-9ffb1eb79755a9ab");
         expect(choice.summary).toBeNull();
     });
 });

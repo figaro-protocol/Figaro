@@ -171,8 +171,8 @@ deploy environment before the export is uploaded.
 ### Task 13: Genesis Registration Ownership — the mainnet gate
 
 The rule: the DAO treasury vault is the designer of record for
-the **mandatory clauses only** (`figaro-commerce`, `figaro-topology`,
-`figaro-assembly-provenance`) and, after genesis, any mandatory clause it develops and
+the **mandatory clauses only** (`figaro-commerce`, `figaro-topology`) and,
+after genesis, any mandatory clause it develops and
 registers; every
 other reference clause and every reference assembly is registered by the founder's
 wallet, from the founder's own balance; each member profile is registered by its
@@ -186,7 +186,7 @@ Before mainnet genesis seeding:
 
 1. The seeding run is a WRITTEN registration plan — each id with its registrar —
    that the maintainer reviews BEFORE the first broadcast; the vault-registrar mode
-   is invoked with `SEED_CLAUSES` naming exactly the mandatory three, and every
+   is invoked with `SEED_CLAUSES` naming exactly the mandatory two, and every
    other run uses the founder's Ledger as direct registrar.
 2. Rehearse the plan on an Anvil fork with the real devices before mainnet.
 3. Keep `CONTRACTS.md` § "Designer rewards", `DESIGNER_REWARDS.md`, and `DAO.md` in

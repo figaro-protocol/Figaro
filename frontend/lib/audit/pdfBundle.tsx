@@ -626,7 +626,9 @@ function HashAppendixPage({ appendix }: { appendix: AuditBundle["hashAppendix"] 
             <Text style={styles.note}>
                 Reader recomputes each hash from the cited content / location and
                 verifies against chain. agreementHash = merkle root over section
-                leaves. Each section leaf = computeSectionLeaf(section). Each
+                leaves and the provenance leaf. Each section leaf =
+                computeSectionLeaf(section); the provenance leaf =
+                computeProvenanceLeaf(provenance). Each
                 attestation contentRef = keccak256(content) where content sits
                 in the transaction calldata.
             </Text>

@@ -52,12 +52,6 @@ export interface InstantiateParams {
      *  buyer supplies its terms (typically the commerce clause's
      *  `{ currency, payment, lineItems }`). Keyed by clauseId; the SDK names none. */
     overrides?: Record<string, Record<string, unknown>>;
-    /** The clause-spec source. With it, the provenance section fills
-     *  MECHANICALLY with the template's own composition hash (the same fill
-     *  checkout performs; spec-routed by the declared `compositionHash`
-     *  field). Without it, the folded section still appears but its required
-     *  fill is the caller's — the sign gate is the net. */
-    specs?: SpecSource;
 }
 
 /**
@@ -70,25 +64,26 @@ export function instantiateRootAgreement(template: AssemblyTemplate, params: Ins
     if (!root) throw new Error("assembly template has no agreements to instantiate");
     // THE ASSEMBLY-SCOPE FOLD, exactly as the walk performs
     // it: the template's assembly-scoped sections — terms of the composition
-    // itself (a denomination pin, the provenance record) — fold into the root
+    // itself (a denomination pin, a dispute forum) — fold into the root
     // clause bag, so the agreement carries them and every party signs them.
     // Skipping the fold was the audit-confirmed parity hole: the pin escaped
-    // the sign gate and the provenance never entered the agreement.
+    // the sign gate.
     const assemblyClauses = template.assemblyClauses ?? {};
     const folded = { ...assemblyClauses, ...root.clauses };
     const assemblyVersions = Object.fromEntries(
         Object.keys(assemblyClauses).map((c) => [c, template.assemblyClauseVersions?.[c] ?? 1]),
     );
     const node = { clauseVersions: { ...assemblyVersions, ...(root.clauseVersions ?? {}) } };
-    // Overrides merge BEFORE the mechanical provenance fill, so a contradicting
-    // caller-supplied compositionHash throws instead of slipping past the fill.
     const merged = mergeOverrides(folded, params.overrides);
-    const filled = params.specs
-        ? fillWalkProvenance(merged, templateCompositionHash(template), params.specs, root.id ?? "root", node.clauseVersions)
-        : merged;
     // The one clause-bag → Agreement builder (root and multi-order alike)
-    // lives with the template walk: ../reconstructOrders.js.
-    return templateAgreementFromClauses(filled, node, params.buyer, params.seller);
+    // lives with the template walk: ../reconstructOrders.js. The agreement
+    // names the design it instantiates in its provenance leaf, the same fill
+    // the walk performs on every order.
+    return fillWalkProvenance(
+        templateAgreementFromClauses(merged, node, params.buyer, params.seller),
+        templateCompositionHash(template),
+        root.id ?? "root",
+    );
 }
 
 // ── Buyer side: build + sign the offer ────────────────────────────────────────
@@ -123,7 +118,7 @@ export async function buildBuyerOffer(wallet: WalletClient, params: BuildOfferPa
     if (!account) throw new Error("buildBuyerOffer: wallet has no account");
     const buyer = account.address;
     const agreement = instantiateRootAgreement(params.template, {
-        buyer, seller: params.seller, overrides: params.overrides, specs: params.specs,
+        buyer, seller: params.seller, overrides: params.overrides,
     });
     const agreementHash = computeAgreementHash(agreement);
     const domain = buildDomain(params.chainId, params.core);

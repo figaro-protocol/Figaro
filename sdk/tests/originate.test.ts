@@ -268,14 +268,13 @@ describe("InProcessChannel", () => {
 
 describe("the assembly-scope fold at root instantiation (audit hole (a), closed)", () => {
     const FOLD_SPECS = specSourceFromFixtures([
-        "figaro-commerce", "figaro-topology", "figaro-utility-token", "figaro-assembly-provenance",
+        "figaro-commerce", "figaro-topology", "figaro-utility-token",
     ]);
     const PIN = CURRENCY;
     const OTHER = "0xdddddddddddddddddddddddddddddddddddddddd" as Address;
     const pinned: AssemblyTemplate = {
         assemblyClauses: {
             "figaro-utility-token": { currency: PIN },
-            "figaro-assembly-provenance": {},
         },
         agreements: [{ id: "order-0", clauses: { "figaro-commerce": {}, "figaro-topology": { parentOrderHashes: [] } } }],
     };
@@ -284,24 +283,16 @@ describe("the assembly-scope fold at root instantiation (audit hole (a), closed)
         const a = instantiateRootAgreement(pinned, { buyer: BUYER.address, seller: SELLER.address, overrides });
         const ids = a.sections.map((s) => s.clause);
         expect(ids).toEqual(expect.arrayContaining([
-            "figaro-utility-token", "figaro-assembly-provenance", "figaro-commerce", "figaro-topology",
+            "figaro-utility-token", "figaro-commerce", "figaro-topology",
         ]));
         expect(a.sections.find((s) => s.clause === "figaro-utility-token")?.data.currency).toBe(PIN);
     });
 
-    it("with specs, the provenance section fills MECHANICALLY with the template's own composition hash", () => {
-        const a = instantiateRootAgreement(pinned, {
-            buyer: BUYER.address, seller: SELLER.address, overrides, specs: FOLD_SPECS,
-        });
-        expect(a.sections.find((s) => s.clause === "figaro-assembly-provenance")?.data.compositionHash)
-            .toBe(templateCompositionHash(pinned));
-    });
-
-    it("a contradicting provenance override THROWS — a different composition claim is a forgery", () => {
-        expect(() => instantiateRootAgreement(pinned, {
-            buyer: BUYER.address, seller: SELLER.address, specs: FOLD_SPECS,
-            overrides: { ...overrides, "figaro-assembly-provenance": { compositionHash: `0x${"ab".repeat(32)}` } },
-        })).toThrow(/contradicts this template's own composition hash/);
+    it("the instantiated agreement carries the template's own composition hash as agreement.provenance", () => {
+        const a = instantiateRootAgreement(pinned, { buyer: BUYER.address, seller: SELLER.address, overrides });
+        expect(a.provenance).toBe(templateCompositionHash(pinned));
+        // The provenance leaf is the format's, not a clause: no section carries it.
+        expect(a.sections.some((s) => "compositionHash" in (s.data ?? {}))).toBe(false);
     });
 
     it("the folded pin now REACHES the sign gate: a pin contradicting the struct refuses to sign", async () => {
@@ -313,13 +304,14 @@ describe("the assembly-scope fold at root instantiation (audit hole (a), closed)
             template: mismatched, seller: SELLER.address, currency: CURRENCY, payment: 1000n,
             chainId: CHAIN, core: CORE, deadline: 1_900_000_000n, overrides, specs: FOLD_SPECS,
         })).rejects.toThrow(/denominated by design/);
-        // And the MATCHING pin signs clean — the fold + fill + gate agree.
+        // And the MATCHING pin signs clean — the fold + fill + gate agree, and
+        // the signed root commits the provenance leaf.
         const offer = await buildBuyerOffer(buyerW, {
             template: pinned, seller: SELLER.address, currency: CURRENCY, payment: 1000n,
             chainId: CHAIN, core: CORE, deadline: 1_900_000_000n, overrides, specs: FOLD_SPECS,
         });
         expect(offer.buyerSig).toBeDefined();
-        expect(offer.agreement.sections.find((s) => s.clause === "figaro-assembly-provenance")?.data.compositionHash)
-            .toBe(templateCompositionHash(pinned));
+        expect(offer.agreement.provenance).toBe(templateCompositionHash(pinned));
+        expect(offer.commitment.agreementHash).toBe(computeAgreementHash(offer.agreement));
     });
 });

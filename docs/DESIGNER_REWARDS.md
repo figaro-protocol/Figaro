@@ -72,8 +72,8 @@ and the clause or assembly was merkle-committed in the signed `agreementHash`.
 Anyone may call it; the proof is what is trusted, never the caller. Trade
 resolved in a proved batch is counted by the batch's own proof and written by
 the verifier alone, with the counter checking the open period, each seller's
-live stake, and the excluded set itself (`CONTRACTS.md` § "Usage accounting"
-owns the two routes). Nothing is posted, bonded, challenged, or adjudicated,
+live stake, and each clause's or assembly's live registration itself
+(`CONTRACTS.md` § "Usage accounting" owns the two routes). Nothing is posted, bonded, challenged, or adjudicated,
 and there is no recurring cost to anyone.
 
 The timing is forced, not chosen. **The chain cannot look backwards** — the
@@ -141,8 +141,13 @@ that an end-to-end run can cross a period boundary in a single session.
 
 ## The boundary — the meter earns nothing
 
-`figaro-assembly-provenance` is the one entry on the exclusion list, and the
-line it draws is **terms versus meter**.
+The meter is the agreement format's reserved provenance leaf, the link from a
+process to the assembly it instantiated (`CLAUSES.md` § "Every clause is a
+merkle leaf"). It is no registration: its key,
+`keccak256("figaro-agreement-provenance")`, is a constant of the format that
+no clause key meets, and `UsageCounter` refuses that key by comparison with
+the constant on both paths, whatever a registry holds at it. No other key is
+refused by list. The line it draws is **terms versus meter**.
 
 Commerce and topology are contract *terms* the parties agree to. A runtime that
 composes them is making an offer, and the set of terms a runtime folds into
@@ -152,13 +157,9 @@ clauses the commons may hold — as many as survive that competition.
 
 The provenance leaf is not a term anyone agreed to. It is the reward system's
 own attribution plumbing, structurally singular, with no competing runtime to
-exit to. Rewarding it would reward the meter for its own reading. It
-meters; it never earns. Its designers accrue through the assembly leg instead,
-so scoring it would double-pay every assembly trade.
-
-The exclusion set is a constructor argument, never a fixed list — read
-`excludedClauseOrAssembly(key)` off the deployment being called before
-concluding a leg was refused.
+exit to. It meters; it never earns. The assembly's designer accrues through
+the assembly leg, which proves that leaf, and every registered clause —
+commerce and topology among them — earns under the uniform rule.
 
 ---
 

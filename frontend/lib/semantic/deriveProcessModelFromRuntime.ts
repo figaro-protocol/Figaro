@@ -5,7 +5,7 @@ import { deriveOrderTopology } from "@/lib/semantic/processTopology";
 import type { PartyRole, ProcessSummary } from "@/lib/kernel/walletProcessQueries";
 import type { RuntimeAttestation } from "@/lib/composition/indexer";
 import { clauseIsProcessLog, clauseLadderField, clauseWitnessStages, getClauseSpec, labelEnumValue, specSource } from "@/lib/shared/clauseSpecSource";
-import { computeClauseKey } from "@figaro-protocol/sdk";
+import { PROVENANCE_LEAF_KEY, computeClauseKey } from "@figaro-protocol/sdk";
 import { ZERO_BYTES32, hexEqual } from "@/lib/shared/evm";
 import { truncateHex } from "@/lib/shared/formatHex";
 import {
@@ -221,9 +221,8 @@ function roleCapabilities(
         // GENERIC re-assert: any OTHER committed section can be affirmed
         // on-chain as an attestation whose content IS the committed
         // sectionData (the coordinator's omit-content default) — the act that
-        // turns committed content into a timestamped runtime event (the
-        // designer-credit provenance attestation is one instance; geo and
-        // modality are others — no clause is named here). Offered to BOTH
+        // turns committed content into a timestamped runtime event (geo and
+        // modality are instances — no clause is named here). Offered to BOTH
         // parties, once each per section (a repeat adds nothing: same bytes,
         // same contentRef). Process-log ladders advance instead — their
         // lifecycle IS their attestation — and a clause declaring witness
@@ -270,6 +269,36 @@ function roleCapabilities(
                     riskLabel: "standard",
                     source: runtimeSource(`${party} re-asserts ${clauseId}`, capId),
                 });
+            }
+            // The agreement FORMAT's provenance leaf — the link from this
+            // order to the assembly it instantiated — is the buyer's to
+            // attest, beside the sections, keyed by the reserved key (a
+            // format rule, never a clause name).
+            if (party === "buyer" && agreement.provenance !== undefined) {
+                const already = orderAttestations.some(
+                    (a) => hexEqual(a.clauseId, PROVENANCE_LEAF_KEY) && a.stage === 0 && hexEqual(a.attester, order.buyer),
+                );
+                if (!already) {
+                    const capId = `${order.processId}:${orderIdStr}:provenance-leaf-buyer-reassert`;
+                    choices.push({
+                        id: capId,
+                        label: "Assembly provenance",
+                        actionKind: "reassert-provenance-leaf",
+                        action: {
+                            executionType: "transaction",
+                            kind: "attest-provenance-leaf",
+                            orderHash: orderIdStr,
+                            compositionHash: agreement.provenance,
+                            party: "buyer",
+                        },
+                        mechanismId: "attestation-coordinator",
+                        scopeType: "order",
+                        scopeId: orderIdStr,
+                        preconditions: ["buyer-of-active-order"],
+                        riskLabel: "standard",
+                        source: runtimeSource("buyer re-asserts the agreement's provenance leaf", capId),
+                    });
+                }
             }
             if (choices.length === 0) continue;
             const cardId = `${order.processId}:${orderIdStr}:${party}-reassert-committed-sections`;

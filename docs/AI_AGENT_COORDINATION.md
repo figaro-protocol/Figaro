@@ -218,8 +218,9 @@ assembly. A clearing price is not a network object: whoever wants one computes i
 over the orders they chose to treat as comparable, and the protocol neither
 publishes that comparison nor endorses it.
 
-**Provenance rides committed leaves.** `figaro-assembly-provenance`'s
-`compositionHash` names which registered assembly a process instantiated — the same
+**Provenance rides committed leaves.** The agreement format's reserved
+provenance leaf carries the `compositionHash` that names which registered
+assembly a process instantiated — the same
 value the once-per-process assembly credit is claimed from, and it counts only while
 that composition holds a live `AssemblyRegistry` binding — and `figaro-topology`'s
 `parentOrderHashes` carries the edges the Core does not store. Both are merkle

@@ -161,7 +161,6 @@ catalog values, not template fields.
 {
   "name": "<slug>", "summary": "<short>", "description": "<one sentence>",
   "assemblyClauses": {
-    "figaro-assembly-provenance": {},
     "figaro-utility-token": { "currency": "0x<erc20>" }
   },
   "agreements": [
@@ -186,6 +185,13 @@ catalog values, not template fields.
 `assemblyClauses` is omitted entirely when nothing assembly-scoped is composed, and
 `assemblyClauseVersions` / a per-agreement `clauseVersions` appear only for clauses composed
 at a version other than 1 — absent maps and empty maps are the same template.
+
+No clause is composed for the link back to your assembly. Every agreement instantiated from
+the template carries its `compositionHash` as `agreement.provenance` — the agreement
+format's reserved provenance leaf (key `PROVENANCE_LEAF_KEY`,
+`keccak256("figaro-agreement-provenance")`), written by the instantiation, never by the
+template — and `UsageCounter.recordAssemblyUsage` proves that leaf at resolution to credit
+you as the assembly's designer while your `AssemblyRegistry` binding is live.
 
 Track any NEW clauses separately (Step 2 / Step 6 output) — the template composes only
 clauses that already exist on the registry; it carries no "clauses-to-author" list.

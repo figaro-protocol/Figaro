@@ -140,11 +140,12 @@ The two paths share no state: a batch-resolved process never acquires `FigaroCor
 status (`core.orderStatus` stays 0 for it), so every reader folds both
 streams. The usage accrual is the one thing that crosses: the guest proves each
 clause's or assembly's cumulative `(c, d)`, an eighth public value
-(`usageAccrualHash`) commits the period, the provenance clause key, the
+(`usageAccrualHash`) commits the period, the provenance leaf key, the
 accruals and the distinct sellers behind them (both array lengths in the
 preimage), and `settleBatch` re-derives that hash from calldata before
 forwarding. What the proof cannot see — the open period, each seller's live
-stake, the excluded set — is checked in the counter. A batch that credits no
+stake, each clause's or assembly's live registration — is checked in the
+counter. A batch that credits no
 usage passes empty arrays; that call is a no-op, which lets trade keep
 resolving after the reward's last period closes.
 
@@ -206,6 +207,9 @@ cannot look backwards — the Core calls no registry and contracts cannot read
 events — so the fact is recorded when it occurs, and nothing is posted,
 bonded, challenged, or adjudicated afterward.
 
+Constructor `(core, members, clauses, assemblies, batchVerifier, minSellers,
+periodEnd)`, every argument fixed at deploy; no setter exists.
+
 Two permissionless functions and one proof-gated writer:
 - `recordClauseUsage(order, clauseOrAssembly, sectionHash, proof)` — proves
   the order is RESOLVED (`core.orderStatus == 2`) and that the clause was
@@ -216,19 +220,26 @@ Two permissionless functions and one proof-gated writer:
   has resolved. Recording is opt-in and gas-paid by whoever benefits.
 - `recordAssemblyUsage(order, compositionHash, proof)` — credits an assembly.
   Agreement leaves are keyed by clause, so a `compositionHash` is never a leaf
-  key; what is a leaf is `figaro-assembly-provenance`, whose committed content
-  is exactly the compositionHash. The contract derives that section hash from
-  `compositionHash` and proves that one leaf; a wrong hash derives a leaf that
-  is not in the tree. The provenance clause key is fixed at deploy. Without
-  that clause in the agreement, no process can credit its designer.
-- `applyBatchAccrual(period, provenanceClause, accruals, sellers)` — callable
+  key; what is a leaf is the agreement format's reserved provenance leaf,
+  whose committed content is exactly `{"compositionHash":"0x<lowercase>"}`.
+  The contract derives that section hash from `compositionHash` and proves
+  that one leaf; a wrong hash derives a leaf that is not in the tree. The
+  leaf's key is the public constant `provenanceLeaf =
+  keccak256("figaro-agreement-provenance")`, a plain-string preimage that no
+  clause key `keccak256(abi.encode(name, uint64))` meets. An agreement that
+  names no assembly carries no provenance leaf, and no process under it
+  credits an assembly designer.
+- `applyBatchAccrual(period, claimedProvenanceLeaf, accruals, sellers)` — callable
   only by `batchVerifier` (immutable). A proof-gated writer, not an admin: the
   caller has no discretion, only numbers an immutable vkey committed
   (`DESIGN_DECISIONS.md` §16). The write overwrites the clause's or
   assembly's cumulative `(c, d)` for the period, so the batch path keeps no
   per-process storage; counts are asserted non-decreasing
-  (`AccrualWentBackwards`). The open period (`PeriodMismatch`), each seller's
-  live stake, and the excluded set are checked here. An empty accrual returns
+  (`AccrualWentBackwards`). The open period (`PeriodMismatch`), the proved
+  leaf key against `provenanceLeaf` (`ProvenanceLeafMismatch`), and each
+  seller's live stake (`SellerNotStaked`) are checked here; a clause or
+  assembly without a live registration is skipped, never reverted, so the
+  batch's resolution stands. An empty accrual returns
   before `currentPeriod()` is consulted, so the reward's end never blocks the
   batch path.
 
@@ -245,13 +256,15 @@ formula and its rationale are stated normatively in `sdk/src/rpgf/formula.json`.
   sellers have carried it; counting is never refused below the floor, and the
   score appears whole when it is crossed. The floor lives in `_score`, so both
   paths inherit it identically and per path.
-- **One exclusion:** `excludedClauseOrAssembly` holds exactly
-  `figaro-assembly-provenance`; `recordClauseUsage` on it reverts
-  `ClauseOrAssemblyExcluded` — scoring the credit-carrying leaf would pay every
-  assembly-composed process twice. The two order-mandatory clauses
-  (`figaro-commerce`, `figaro-topology`) earn under the uniform rule for their
-  designer of record — the DAO treasury, which registers exactly the mandatory
-  clauses at genesis.
+- **The provenance leaf earns nothing:** the counter refuses its key by
+  comparison with the constant on both paths, whatever a registry holds at
+  that key (a registry takes any `bytes32`) — `_accrue` reverts
+  `ProvenanceLeafIsNotARegistration` on the direct path, and
+  `applyBatchAccrual` skips the key before the registration gate. Every
+  registered clause earns under the uniform
+  rule, the two order-mandatory clauses (`figaro-commerce`, `figaro-topology`)
+  among them, for their designer of record — the DAO treasury, which
+  registers exactly the mandatory clauses at genesis.
 - **Periods, not checkpoints:** a period's counts are final once it ends;
   `totalScoreIn(period)` is maintained as an O(1) delta on every recording. The
   contract knows nothing about budgets or who pays.

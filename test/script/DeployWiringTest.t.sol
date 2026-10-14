@@ -147,7 +147,7 @@ contract SwapRouterShape {
 contract DeployWiringTest is Test {
     /// Anvil account 0 — the devnet deployer, and a stand-in here.
     uint256 internal constant DEPLOYER_KEY = 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80;
-    bytes32 internal constant PROV_KEY = keccak256(abi.encode("figaro-assembly-provenance", uint64(1)));
+    bytes32 internal constant PROVENANCE_LEAF = keccak256("figaro-agreement-provenance");
 
     /// The genesis root both scripts derive: one keccak256("") per state map
     /// of the mirror plus the usage leg over three zero-length sections.
@@ -203,8 +203,7 @@ contract DeployWiringTest is Test {
         assertEq(address(uc.members()), address(d.members()), "counter -> members");
         assertEq(address(uc.clauses()), address(d.clauses()), "counter -> clauses");
         assertEq(address(uc.assemblies()), address(d.assemblies()), "counter -> assemblies");
-        assertEq(uc.provenanceClause(), PROV_KEY, "provenance clause");
-        assertTrue(uc.excludedClauseOrAssembly(PROV_KEY), "only the provenance clause is excluded");
+        assertEq(uc.provenanceLeaf(), PROVENANCE_LEAF, "the agreement format's provenance leaf");
         assertEq(uc.periodCount(), 9, "nine periods");
         assertEq(uc.minSellers(), 3, "the minimum-support floor");
     }
@@ -277,8 +276,7 @@ contract DeployWiringTest is Test {
         assertEq(address(uc.members()), d.members(), "counter -> members");
         assertEq(address(uc.clauses()), d.clauses(), "counter -> clauses");
         assertEq(address(uc.assemblies()), d.assemblies(), "counter -> assemblies");
-        assertEq(uc.provenanceClause(), PROV_KEY, "provenance clause");
-        assertTrue(uc.excludedClauseOrAssembly(PROV_KEY), "only the provenance clause is excluded");
+        assertEq(uc.provenanceLeaf(), PROVENANCE_LEAF, "the agreement format's provenance leaf");
         assertEq(uc.periodCount(), 9, "nine annual periods");
         assertEq(uc.minSellers(), 3, "the minimum-support floor");
         assertEq(uc.currentPeriod(), 0, "the schedule starts at genesis");
@@ -329,8 +327,7 @@ contract DeployWiringTest is Test {
         assertEq(address(uc.members()), address(members), "counter -> the EXISTING members registry");
         assertEq(address(uc.clauses()), address(clauses), "counter -> the EXISTING clause registry");
         assertEq(address(uc.assemblies()), address(assemblies), "counter -> the EXISTING assembly registry");
-        assertEq(uc.provenanceClause(), PROV_KEY, "provenance clause");
-        assertTrue(uc.excludedClauseOrAssembly(PROV_KEY), "only the provenance clause is excluded");
+        assertEq(uc.provenanceLeaf(), PROVENANCE_LEAF, "the agreement format's provenance leaf");
         assertEq(uc.periodCount(), 9, "nine annual periods");
         assertEq(uc.minSellers(), 3, "the minimum-support floor");
         assertEq(uc.currentPeriod(), 0, "the schedule starts at genesis");

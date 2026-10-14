@@ -40,6 +40,7 @@ import type { ResolutionUniverse, UniverseAttestationEvent } from "../events.js"
 import type { SpecSource, ProjectionSpecView } from "../projection.js";
 import { decodeContentFromSpec } from "../clauses/index.js";
 import { computeClauseKey } from "../discovery.js";
+import { PROVENANCE_LEAF_KEY, decodeProvenanceContent } from "../agreement.js";
 
 // ── Input: an attestation with caller-recovered content ─────────────────────
 
@@ -82,6 +83,11 @@ export interface OverlayGraph {
      *  for routing by declared field and format. `null` = unresolved family:
      *  entries stay fingerprint-only. */
     spec: ProjectionSpecView | null;
+    /** True when the key is the agreement format's reserved provenance leaf
+     *  (`PROVENANCE_LEAF_KEY`) — compared to the format constant, never to a
+     *  clause name. Its entries decode to `{ compositionHash }`, the
+     *  registered assembly the attested process instantiated, with no spec. */
+    provenanceLeaf: boolean;
     /** Entries in block order. */
     entries: OverlayEntry[];
 }
@@ -110,17 +116,24 @@ export function extractOverlays(
     for (const { event, content } of records) {
         let graph = graphs.get(event.clauseId);
         if (!graph) {
+            const provenanceLeaf = event.clauseId.toLowerCase() === PROVENANCE_LEAF_KEY.toLowerCase();
             graph = {
                 boundary: "protocol-derived",
                 clauseKey: event.clauseId,
-                spec: specByKey.get(event.clauseId) ?? null,
+                spec: provenanceLeaf ? null : (specByKey.get(event.clauseId) ?? null),
+                provenanceLeaf,
                 entries: [],
             };
             graphs.set(event.clauseId, graph);
         }
 
         let decoded: Record<string, unknown> | null = null;
-        if (graph.spec && content !== null) {
+        if (graph.provenanceLeaf && content !== null) {
+            // The format's own leaf: its bytes are reproducible from the hash
+            // they name, so they decode without a spec or not at all.
+            const compositionHash = decodeProvenanceContent(content);
+            decoded = compositionHash ? { compositionHash } : null;
+        } else if (graph.spec && content !== null) {
             try {
                 decoded = decodeContentFromSpec(graph.spec, content, { stage: event.stage });
             } catch {

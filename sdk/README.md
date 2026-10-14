@@ -177,22 +177,20 @@ await executeAction(walletClient, publicClient, addresses, resolve);
 // AND RECORD THE USAGE — at resolution, not later. The designer-rewards path pays the designers of record from recordings the BUYER's side writes when the
 // process resolves; a deferred record is permanently deniable (a seller can
 // unstake, a period can close — docs/DESIGN_DECISIONS.md §21). One call, the
-// headless twin of what the frontend does at the same moment. The mandatory
-// clauses EARN — commerce and topology are scored for their author of record
-// like any other. The call reads excludedClauseOrAssembly(key) off the
-// deployment you are calling and never sends a record the counter excludes
-// (at the reference genesis, the figaro-assembly-provenance leg alone:
-// attribution plumbing, whose designer accrues through recordAssemblyUsage
-// instead); `report.excluded` names what it left out. Read the report, not
-// the absence of an exception:
+// headless twin of what the frontend does at the same moment. Every committed
+// clause EARNS — commerce and topology are scored for their author of record
+// like any other — and the assembly's designer accrues through
+// recordAssemblyUsage from the agreement's provenance leaf (the composition
+// hash the agreement names; the call reads the counter's provenanceLeaf() and
+// proves that leaf). Read the report, not the absence of an exception:
 import { instantiateRootAgreement, recordProcessUsage } from "@figaro-protocol/sdk/agent";
-// The agreement is REBUILT, never stored: step 4's template + the same overrides and
-// specs re-instantiate it identically, and its merkle root IS the committed
+// The agreement is REBUILT, never stored: step 4's template + the same overrides
+// re-instantiate it identically, and its merkle root IS the committed
 // `agreementHash` the counter opens each section's proof against. Note the return
 // shape: this is the bare Agreement — when you need its hash, compute it with
 // `computeAgreementHash(agreement)` (root export); only `buildOrderAgreement`
 // returns the `{ agreement, agreementHash }` pair.
-const agreement = instantiateRootAgreement(template, { buyer, seller: resolve.commitments[0].seller, overrides, specs });
+const agreement = instantiateRootAgreement(template, { buyer, seller: resolve.commitments[0].seller, overrides });
 const report = await recordProcessUsage(walletClient, publicClient, addresses.usageCounter!, [  // optional on the record type; present on every shipped record
   { commitment: resolve.commitments[0], agreement }, // the agreement each order carries
 ]);
@@ -302,12 +300,14 @@ definition) and `RPGF_*` constant is a **root** export.
 | `anchorTemplate` | root | A fetched template as `Anchored<AssemblyTemplate>` when its composition hashes to `AssemblyRegistry`'s `compositionHash`; null otherwise. |
 | `assertAgreementSignable` | root | The ONE pre-signature thrower: every section conforms to its spec, and the terms equal the struct. |
 | `assertApprovalCoversBond` | root | Throws when an approval is short of the full per-order bond `FigaroCore` will pull. |
+| `attestAsBuyer` | `/agent` | Submit a root-buyer attestation for one leaf of a committed order — a clause section, or the provenance leaf. |
 | `attestAsSeller` | `/agent` | Submit a seller attestation for one clause section of a committed order. |
 | `buildChainOffers` | `/agent` | Buyer-sign a whole chain's offers, in commit order, through the one template walk. |
 | `buildCommitment` | root | Build the `Commitment` struct and the EIP-712 typed data to sign. |
 | `buildDomain` | root | The EIP-712 domain for a chain id + `FigaroCore` address. |
 | `buildOrderAgreement` | root | Build one order's agreement document and its merkle tree from its clause map. |
 | `buildQuoteRequest` | `/agent` | Build an UNSIGNED RFQ draft, priced at the buyer's ceiling. |
+| `buildProvenanceInclusionProof` | root | Merkle proof that the agreement's provenance leaf sits under a signed `agreementHash`. |
 | `buildSectionInclusionProof` | root | Merkle proof that one clause section sits under a signed `agreementHash`. |
 | `buildSwapWitnessTypedData` | root | Permit2 witness typed data for the swap-and-commit funding leg. |
 | `buildUsageClaims` | root | Turn a batch-resolved order plus its agreement into the usage claims a sequencer proves. |
@@ -320,7 +320,7 @@ definition) and `RPGF_*` constant is a **root** export.
 | `canonicalize` | root | THE canonical-JSON convention: sorted keys at every depth, array order kept, no whitespace. |
 | `checkEndpointLogAgreement` | root | Agreement over the event sets N endpoints returned for one pinned range — pure, caller-fetched. |
 | `commit` | `/agent` | Submit `FigaroCore.commit` with both signatures; any holder of the payload may broadcast. |
-| `computeAgreementHash` | root | The agreement's merkle root over its sorted section leaves. |
+| `computeAgreementHash` | root | The agreement's merkle root over its sorted section leaves and its provenance leaf. |
 | `computeClauseKey` | root | `keccak256(abi.encode(clauseId, version))` — the registry key, and the attest calls' `clauseId`. |
 | `computeDeadline` | root | A deadline from CHAIN time; pair with `readChainTimestamp` — there is no wall-clock fallback. |
 | `computeRpgfAllocations` | root | Off-chain mirror of the 600M pro-rata split for a closed accrual period. |
@@ -355,7 +355,6 @@ definition) and `RPGF_*` constant is a **root** export.
 | `fillDerivedSections` | root | Run every logistics fill the order composes — cargo, class, profile, then dimweight. |
 | `fillDimweightSection` | root | Billed weight = max(gross mass, volumetric) onto the dimweight leaf. DERIVED, never hand-filled. |
 | `fillProfileSections` | root | Fold the seller's profile-filled clause values onto their leaves. |
-| `fillProvenanceSection` | root | Write the template's own `compositionHash` into the provenance leaf. |
 | `filterByClause` | `/derive` | Narrow attestation events to one clause. |
 | `generateOrderKeypair` | `/handoff` | A fresh ephemeral secp256k1 keypair for a single order's handoff. |
 | `geohashesMatch` | `/derive` | Do two geohashes agree at a given precision? Default 6 characters. |
@@ -395,7 +394,9 @@ definition) and `RPGF_*` constant is a **root** export.
 | `reconstruct` | root | Rebuild the full process topology from parsed core events. |
 | `reconstructDiscovery` | root | Rebuild the live registry view; a member's current profile URI is EVENT-derived, not a getter. |
 | `reconstructOrdersFromTemplate` | root | THE template→orders walk: root signs `processId = 0`, children carry real parent order hashes. |
-| `recordProcessUsage` | `/agent` | File direct-path usage at resolution: one leg per distinct key the counter does not exclude (`excluded` names the rest); a sent leg that reverts lands in `failures`, never thrown. |
+| `provenanceContentRef` | root | The provenance leaf's fingerprint for a composition hash — its section hash, and the `contentRef` its attestation carries. |
+| `provenanceLeafAttestation` | root | The provenance leaf's attestation inputs — reserved key, fingerprint, proof, content ref — for `attestAsBuyer`. |
+| `recordProcessUsage` | `/agent` | File direct-path usage at resolution: one leg per distinct clause key plus the assembly leg from the provenance leaf; a sent leg that reverts lands in `failures`, never thrown. |
 | `registerRateQuantitySource` | root | Register a resolver for a catalog's rate-quantity source (a composition tenant, no core edit). |
 | `requestCounterSignatures` | `/agent` | Fan out race drafts, verify each reply by exact struct match, rank cheapest first. |
 | `requestQuotes` | `/agent` | Fan out RFQ requests, verify each reply by reconstruction, rank cheapest first. |
@@ -809,7 +810,8 @@ in any token you hold, for receipts from either path.
 
 **Resolution is UI-independent; presentation at the signing moment is not.** The
 `FigaroCore` verifies both EIP-712 signatures itself over a struct whose
-`agreementHash` is the merkle ROOT of the agreement's sections — so what was
+`agreementHash` is the merkle ROOT of the agreement's sections and its
+provenance leaf — so what was
 agreed is fixed by arithmetic once committed, and no origin can restate it. But
 the wallet prompt shows 32 bytes, and the readable document sits beside it on
 some page: a compromised origin can display document `D` while the struct binds
@@ -826,6 +828,8 @@ for (const section of shown.sections) {
   console.log(section.clause, sectionDataHash(section),   // what this hash covers
                               computeSectionLeaf(section));
 }
+// The assembly the agreement names, when it names one — its own leaf, not a section.
+if (shown.provenance) console.log("provenance", shown.provenance);
 if (computeAgreementHash(shown).toLowerCase() !==
     typedData.message.agreementHash.toLowerCase()) {
   throw new Error("MISMATCH — the page showed one document and asked the " +
@@ -929,7 +933,7 @@ import { attestAsSeller } from "@figaro-protocol/sdk/agent";
 import { parseClauseSpec, encodeContentFromSpec } from "@figaro-protocol/sdk/clauses";
 import { keccak256 } from "viem";
 
-const section = agreement.sections[0]; // e.g. { clause: "figaro-assembly-provenance", version, data }
+const section = agreement.sections[0]; // e.g. { clause: "figaro-commerce", version, data }
 
 // 1. Inclusion proof — buildSectionInclusionProof takes the RAW section name.
 const { proof } = buildSectionInclusionProof(agreement, section.clause);
@@ -968,6 +972,18 @@ await attestAsSeller(
 // A party attests for itself. The SDK wraps both (attestAsSeller / attestAsBuyer,
 // from @figaro-protocol/sdk/agent).
 
+// The provenance leaf is the agreement format's, not a clause: it has no spec,
+// and its bytes are reproduced from the composition hash it names. While the
+// process is open the buyer attests it, and that attestation is what links the
+// process to its assembly in the public data:
+import { provenanceLeafAttestation } from "@figaro-protocol/sdk";
+import { attestAsBuyer } from "@figaro-protocol/sdk/agent";
+const p = provenanceLeafAttestation(agreement); // throws if the agreement names no assembly
+await attestAsBuyer(
+  walletClient, addresses.attestationCoordinator!,
+  targetCommitment, p.clauseId, p.stage, p.sectionHash, p.proof, p.contentRef,
+);
+
 // Autonomous origination — the two-party handshake over a coordination channel:
 // buyer instantiates a discovered assembly + signs; seller validates + counter-signs.
 import { originateProcess, makeSellerOfferHandler, InProcessChannel } from "@figaro-protocol/sdk/agent";
@@ -986,7 +1002,7 @@ channel.register(sellerAddr, makeSellerOfferHandler(sellerWallet, publicClient, 
 const tx = await originateProcess(buyerWallet, publicClient, addresses, {
     channel, template, buyer, seller, currency, payment, chainId, core, overrides,
     deadline, // CHAIN time: computeDeadline(await readChainTimestamp(publicClient))
-    specs,    // same gate before the buyer signs + the mechanical provenance fill
+    specs,    // same gate before the buyer signs
 });
 
 // TRANSPORTS — `CoordinationChannel` is ONE method (`sendOffer`), and the SDK
@@ -1351,6 +1367,11 @@ const resolution = projectResolutionGraph(core);   // boundary: "protocol-enforc
 // FINGERPRINT-ONLY rather than fabricating a value.
 const atts = await fetchAttestationRecords(client, addresses, BigInt(record.deploymentBlock));
 const overlays = extractOverlays(atts.map((event) => ({ event, content: null })), specs);
+// One overlay is the agreement format's own: `provenanceLeaf: true` marks the
+// buyer's attestations of the provenance leaf (key `PROVENANCE_LEAF_KEY`). It
+// has no spec; an entry whose bytes you supply decodes to `{ compositionHash }`,
+// and with no bytes the contentRef alone matches a registered assembly —
+// provenanceContentRef(compositionHash) === entry.contentRef.
 
 // Composition: the swap legs are the value flowing between denominations.
 // The coordinator emits nothing of its own; each commit transaction's receipt
@@ -1853,10 +1874,23 @@ const orders = await reconstructOrdersFromTemplate(template, {
 });
 ```
 
+Every realized order carries `agreement.provenance` — the template's own
+`templateCompositionHash`, the agreement format's reserved provenance leaf
+(`PROVENANCE_LEAF_KEY`, the keccak256 of `"figaro-agreement-provenance"`; its
+committed bytes are `{"compositionHash":"0x<lowercase hex>"}`). It is a leaf of
+the agreement, never a clause section: no spec declares it, and the walk
+writes it on every order, with or without `specs`. An agreement already
+naming a different hash is refused before hashing. The leaf is what
+`UsageCounter.recordAssemblyUsage` reproduces and proves to credit the
+assembly's designer, and what the buyer attests while the process is open
+(`provenanceLeafAttestation`).
+
 For a single non-templated order, use `buildOrderAgreement` (above) directly and
 feed its `agreementHash` into `buildCommitment` as in the `@figaro-protocol/sdk` entry
-point. The empty agreement hashes to `bytes32(0)`; there is no separate "root"
-object — the `agreementHash` IS the merkle root over the section leaves.
+point; it names no assembly, so it carries no provenance leaf. The empty
+agreement hashes to `bytes32(0)`; there is no separate "root" object — the
+`agreementHash` IS the merkle root over the section leaves and the provenance
+leaf.
 
 ## Checkout Planning
 
@@ -1919,8 +1953,8 @@ sub-order — looks like this:
 ```ts
 import {
   reconstructOrdersFromTemplate, fillCommerceSection, fillClassSections,
-  fillProfileSections, fillProvenanceSection, profileValuesFor,
-  templateCompositionHash, type AssemblyCheckoutLineItem, type PlannedTemplateOrder,
+  fillProfileSections, profileValuesFor,
+  type AssemblyCheckoutLineItem, type PlannedTemplateOrder,
 } from "@figaro-protocol/sdk";
 
 // Hardcoded here for brevity. Building `lineItems` from a fetched
@@ -1942,16 +1976,14 @@ await reconstructOrdersFromTemplate(template, {
     // `template.assemblyClauses` into every node's bag before you ever see
     // it — start the fills from `planned.clauses`, never from a fresh
     // `{ ...node.clauses }` you build off a raw `template.agreements[i]` lookup.
-    const filled = fillProvenanceSection(
-      fillProfileSections(
-        fillClassSections(
-          fillCommerceSection(planned.clauses, payment, currency, specs, lineItems, planned.clauseVersions),
-          lineItems, specs, planned.clauseVersions,
-        ),
-        profileValuesFor(seller, memberCatalogs), specs, planned.clauseVersions,
+    const filled = fillProfileSections(
+      fillClassSections(
+        fillCommerceSection(planned.clauses, payment, currency, specs, lineItems, planned.clauseVersions),
+        lineItems, specs, planned.clauseVersions,
       ),
-      templateCompositionHash(template), specs, planned.clauseVersions,
+      profileValuesFor(seller, memberCatalogs), specs, planned.clauseVersions,
     );
+    // The provenance leaf is no fill: the walk writes agreement.provenance itself.
     return { seller, payment, overrides: filled };
   },
   onOrder: async (order) => { /* sign, pin, share — see "the ONE walk" above */ },
@@ -1971,17 +2003,14 @@ hand before running any fill:
 ```ts
 const rawNode = template.agreements.find((a) => a.id === planned.nodeId)!;
 const clauses = { ...template.assemblyClauses, ...rawNode.clauses }; // ← the pre-merge
-const filled = fillProvenanceSection(clauses, templateCompositionHash(template), specs, planned.clauseVersions);
+const filled = fillProfileSections(clauses, profileValuesFor(seller, memberCatalogs), specs, planned.clauseVersions);
 ```
 
-Skip the pre-merge and `fillProvenanceSection` (which writes the mandatory,
-assembly-scoped `figaro-assembly-provenance` clause — `docs/CLAUSES.md`) finds
-no clause in `rawNode.clauses` declaring `compositionHash` and silently
-no-ops. The section is still PRESENT in the signed agreement either way — the
-fold inside `reconstructOrdersFromTemplate` guarantees that — but it arrives
-**empty** (`{}`) instead of carrying the hash that makes the process
-creditable to its assembly's designer of record
-(`UsageCounter.recordAssemblyUsage`).
+Skip the pre-merge and every fill finds no assembly-scoped clause in
+`rawNode.clauses` and silently no-ops for it. The section is still PRESENT in
+the signed agreement either way — the fold inside
+`reconstructOrdersFromTemplate` guarantees that — but it arrives without the
+values the fill writes.
 
 ## Member Profile + Catalog Documents
 

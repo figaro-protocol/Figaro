@@ -208,8 +208,8 @@ function MarketView({ corpus, state, onQuery }: { corpus: GraphCorpus; state: Da
             {corpus.market.unattributedProcessCount > 0 ? (
                 <p className="text-xs text-ink-muted leading-relaxed max-w-3xl" data-testid="market-unattributed">
                     A process is attributed to an assembly when its buyer attested the
-                    provenance the parties composed &mdash; that attestation is public, and its
-                    payload resolves from its own fingerprint. Where no such attestation is
+                    provenance its agreement carries &mdash; that attestation is public, and its
+                    fingerprint names the assembly. Where no such attestation is
                     recoverable here, the process is counted and left unattributed: the
                     resolution skeleton is public, the body that says <em>which</em> composition
                     produced it stays party-private until someone discloses or sells it.
@@ -437,8 +437,8 @@ function OverlaysView({ corpus, state, onQuery }: { corpus: GraphCorpus; state: 
                                 ) : (
                                     <>
                                         {r.decodedCount} of {r.entryCount} payload
-                                        {r.entryCount === 1 ? "" : "s"} recovered and decoded against the
-                                        registered spec. What a decoded field says is the attester&apos;s
+                                        {r.entryCount === 1 ? "" : "s"} recovered and decoded against{" "}
+                                        {r.provenanceLeaf ? "the agreement format" : "the registered spec"}. What a decoded field says is the attester&apos;s
                                         declaration; the data proves it sat under that agreement&apos;s root.
                                         What keeps it accurate is in the layer&apos;s boundary note above.
                                     </>

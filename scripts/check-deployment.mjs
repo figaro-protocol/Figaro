@@ -91,11 +91,10 @@ const ABI = parseAbi([
     "function router() view returns (address)",
     "function florin() view returns (address)",
     "function counter() view returns (address)",
-    "function provenanceClause() view returns (bytes32)",
+    "function provenanceLeaf() view returns (bytes32)",
     "function minSellers() view returns (uint64)",
     "function periodCount() view returns (uint256)",
     "function periodAmount(uint256) view returns (uint256)",
-    "function excludedClauseOrAssembly(bytes32) view returns (bool)",
     "function registrationDeposit() view returns (uint256)",
     "function withdrawalCooldown() view returns (uint256)",
     "function deployerMintRenounced() view returns (bool)",
@@ -110,11 +109,6 @@ const read = (address, functionName, args = []) =>
 /** ClauseRegistry's key for a clause id and version (sdk `computeClauseKey`). */
 const clauseKey = (id, version) =>
     keccak256(encodeAbiParameters([{ type: "string" }, { type: "uint64" }], [id, BigInt(version)]));
-/** "figaro-commerce@1" → its registry key. */
-const keyOf = (ref) => {
-    const [id, version] = ref.split("@");
-    return clauseKey(id, version ?? 1);
-};
 
 // ── Compiled code ──────────────────────────────────────────────────────────
 
@@ -261,13 +255,9 @@ async function main() {
     await expectValue("usageCounter.minSellers()", u.minSellers, String(await read(record.usageCounter, "minSellers")));
     const periods = await read(record.usageCounter, "periodCount");
     await expectValue("usageCounter.periodCount()", u.periodCount, String(periods));
-    await expectValue("usageCounter.provenanceClause()", u.provenanceClause === undefined ? null : keyOf(u.provenanceClause), await read(record.usageCounter, "provenanceClause"));
-    for (const ref of u.excluded ?? []) {
-        await expectValue(`usageCounter excludes ${ref}`, true, await read(record.usageCounter, "excludedClauseOrAssembly", [keyOf(ref)]));
-    }
-    for (const ref of u.notExcluded ?? []) {
-        await expectValue(`usageCounter scores ${ref}`, false, await read(record.usageCounter, "excludedClauseOrAssembly", [keyOf(ref)]));
-    }
+    // The agreement format's reserved provenance leaf: a constant of the
+    // counter, keccak256("figaro-agreement-provenance") — never a clause key.
+    await expectValue("usageCounter.provenanceLeaf()", u.provenanceLeaf, await read(record.usageCounter, "provenanceLeaf"));
     const minterPeriods = await read(record.rpgfMinter, "periodCount");
     let sum = 0n;
     for (let i = 0n; i < minterPeriods; i++) sum += await read(record.rpgfMinter, "periodAmount", [i]);

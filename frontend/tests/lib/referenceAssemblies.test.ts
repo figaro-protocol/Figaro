@@ -24,8 +24,8 @@ const registeredClauseIds = new Set(
     readdirSync(CLAUSES_DIR).filter((f) => f.endsWith(".json")).map((f) => f.replace(/\.json$/u, "")),
 );
 // Mandatory folds at the level its scope names:
-// agreement-scoped mandatory on every ORDER; assembly-scoped mandatory
-// (assembly-provenance) once in the template's assemblyClauses.
+// agreement-scoped mandatory on every ORDER; an assembly-scoped mandatory
+// clause, when the registry holds one, once in the template's assemblyClauses.
 const mandatorySpecs = readdirSync(CLAUSES_DIR)
     .filter((f) => f.endsWith(".json"))
     .map((f) => JSON.parse(readFileSync(path.join(CLAUSES_DIR, f), "utf8")) as { clauseId: string; block?: { design?: { article?: string; scope?: string } } })

@@ -13,18 +13,17 @@
  * `fetchClaimContext`) and sends them right after — count usage when it
  * happens.
  *
- * A write can meet three reverts: `AlreadyCounted` (the key was counted for
- * this process already), `ClauseOrAssemblyExcluded` (the counter's excluded
- * set) and `SellerNotStaked` (the live-stake gate). The plan leaves out the
- * excluded keys and repeats no key; each planned write is then SIMULATED here
- * first and sent only if the simulation passes, so none of the three is ever
- * sent — the wallet signs only writes the counter accepts. Anyone can redo a
- * missed one.
+ * A write can meet the counter's reverts — `AlreadyCounted` (the key was
+ * counted for this process already) and `SellerNotStaked` (the live-stake
+ * gate) among them. The plan repeats no key; each planned write is then
+ * SIMULATED here first and sent only if the simulation passes, so no revert
+ * is ever sent — the wallet signs only writes the counter accepts. Anyone can
+ * redo a missed one.
  */
 
 import { useAccount, usePublicClient, useWriteContract } from "wagmi";
 import type { PublicClient } from "viem";
-import { USAGE_COUNTER_ABI, fetchUsageClaimContext, type Agreement, type Commitment, type UsageClaimContext } from "@figaro-protocol/sdk";
+import { USAGE_COUNTER_ABI, fetchUsageClaimContext, type Commitment, type UsageClaimContext } from "@figaro-protocol/sdk";
 import { getUsageCounter } from "@/lib/kernel/contracts";
 import { activeChain } from "@/lib/shared/chains";
 
@@ -48,10 +47,10 @@ export function useUsageRecorder() {
         return publicClient;
     };
 
-    /** The counter's facts about one agreement — its excluded keys and its
-     *  provenance clause — read from the deployment being called. */
-    const fetchClaimContext = (agreement: Agreement): Promise<UsageClaimContext> =>
-        fetchUsageClaimContext(requireClient() as unknown as PublicClient, requireCounter(), agreement);
+    /** The counter's fact — its provenance leaf key — read once from the
+     *  deployment being called; it serves every order of the process. */
+    const fetchClaimContext = (): Promise<UsageClaimContext> =>
+        fetchUsageClaimContext(requireClient() as unknown as PublicClient, requireCounter());
 
     const clauseUsageCall = (order: Commitment, clauseOrAssembly: Hex, sectionHash: Hex, proof: readonly Hex[]) => ({
         address: requireCounter(),

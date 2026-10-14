@@ -18,7 +18,7 @@ import { parseClauseSpec, type ClauseSpec, type FieldSpec, type EnumFieldSpec, t
 import type { ProjectionHints, ProjectionSpecView, SpecSource } from "@figaro-protocol/sdk";
 import { parseBlockBinding, type ClauseBlockBinding } from "@/lib/shared/clauseBlockBinding";
 import { canonicalContentHash } from "@/lib/shared/canonicalJson";
-import { anchorClauseSpec, computeClauseKey, deriveAnchored, specIsMandatory, type Anchored } from "@figaro-protocol/sdk";
+import { PROVENANCE_LEAF_KEY, anchorClauseSpec, computeClauseKey, deriveAnchored, specIsMandatory, type Anchored } from "@figaro-protocol/sdk";
 import { DEFAULT_IPFS_SERVICE, fetchCappedContent } from "@/lib/shared/ipfsService";
 import { safeJsonFromResponse } from "@/lib/shared/safeJson";
 import { truncateHex } from "@/lib/shared/formatHex";
@@ -228,7 +228,8 @@ export function memberDocumentClauseSpec(clauseId: string): ClauseSpecWithBlock 
  *  `computeClauseKey`. Undefined until the spec is loaded. Attestation events
  *  carry the HASH, while the spec reads (`getClauseSpec` /
  *  `clauseIsProcessLog`) key on (clauseId, version) — callers holding a hash
- *  resolve it here first. */
+ *  resolve it here first. The agreement format's provenance leaf
+ *  (`PROVENANCE_LEAF_KEY`) is no clause and resolves to nothing here. */
 export function clauseIdForHash(clauseIdHashHex: string): { clauseId: string; version: number } | undefined {
     return HASH_TO_ID.get(clauseIdHashHex.toLowerCase());
 }
@@ -495,11 +496,18 @@ export function labelEnumValue(field: { valueLabels?: Readonly<Record<string, st
  *  the title and the (labeled) enum value at `stage`. Callers pass DATA (the
  *  event's clause hash — keccak256(abi.encode(clauseId, version)), which
  *  names one registration — + uint8 stage); no surface names a clause. Falls
- *  back to the short hash + stage when the clause is unknown (not yet loaded). */
+ *  back to the short hash + stage when the clause is unknown (not yet loaded).
+ *  The agreement format's provenance leaf is described as such. */
 export function describeAttestation(
     clauseIdHash: string,
     stage: number,
 ): { clauseTitle: string; eventLabel: string; eventCode: string } {
+    // The agreement FORMAT's reserved leaf — the link from the order to the
+    // assembly it instantiated — is told by comparing to the format constant,
+    // never by a clause name; it has no spec.
+    if (clauseIdHash.toLowerCase() === PROVENANCE_LEAF_KEY.toLowerCase()) {
+        return { clauseTitle: "Assembly provenance", eventLabel: "provenance attested", eventCode: "provenance-leaf" };
+    }
     const spec = clauseSpecForHash(clauseIdHash);
     if (!spec) return { clauseTitle: truncateHex(clauseIdHash, { head: 10, tail: 0 }), eventLabel: `stage ${stage}`, eventCode: `stage-${stage}` };
     // A DECLARED witness stage (spec.stages[stage]) is not a ladder ordinal —

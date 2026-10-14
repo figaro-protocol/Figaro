@@ -19,21 +19,21 @@
 <div class="tsd-comment tsd-typography"><p>Build every usage claim a resolved batch order supports.</p>
 <p>PURE — takes the chain facts as input so it can be tested and reasoned about
 without a client. <code>fetchUsageClaimContext</code> gets them.</p>
-<p>TWO INDEPENDENT LEGS, and the independence is the whole point:</p>
+<p>TWO INDEPENDENT LEGS:</p>
 <ul>
-<li>the CLAUSE leg emits one claim per agreement section, minus the excluded
-ones. Dropping them is mandatory, not an optimization: an excluded
-clause or assembly reverts <code>applyBatchAccrual</code> and takes the ENTIRE BATCH with it,
-including every other party's resolution.</li>
-<li>the ASSEMBLY leg credits the assembly's DESIGNER, and it must survive the
-clause leg dropping things. <code>figaro-assembly-provenance</code> is itself
-excluded — it rides every assembly-composed process, so scoring it would
-pay its author for the protocol's floor — which means the section that
-carries the compositionHash is exactly the one the clause leg discards.
-Sequencing the assembly credit behind the clause credit is how the
-designer half of the 600M recorded nothing on the direct path for months
-(since fixed). Here the two legs never touch.</li>
+<li>the CLAUSE leg emits one claim per agreement section — every committed
+clause earns, the mandatory ones included.</li>
+<li>the ASSEMBLY leg credits the assembly's DESIGNER from the agreement's
+provenance leaf (<code>Agreement.provenance</code>, the composition hash of the
+assembly the agreement instantiated), proved with
+<code>buildProvenanceInclusionProof</code>. It is the agreement format's leaf, not
+a section, so the clause leg never sees it. An agreement naming no
+assembly has no assembly leg.</li>
 </ul>
+<p>Throws when the counter's provenance leaf is not the agreement format's —
+every assembly claim against that counter would revert — and when the
+agreement's leaves do not build (a provenance that is not a bytes32), since
+no leg of such an agreement can be proved.</p>
 </div>
 <div class="tsd-parameters">
 <h4 class="tsd-parameters-title">Parameters</h4>

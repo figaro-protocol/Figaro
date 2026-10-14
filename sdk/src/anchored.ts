@@ -25,6 +25,7 @@
 import { keccak256, type Hex } from "viem";
 import { canonicalContentHash, computeAgreementHash, type Agreement } from "./agreement.js";
 import { templateCompositionHash, type AssemblyTemplate } from "./assembly.js";
+import { isBytes32Hex } from "./types.js";
 
 declare const ANCHORED: unique symbol;
 
@@ -32,9 +33,10 @@ declare const ANCHORED: unique symbol;
  *  by the `anchor*` functions here, or derived from one by `deriveAnchored`.
  *
  *  It vouches for what the digest covers, and no more. `Anchored<Agreement>`
- *  covers the `sections` alone: `computeAgreementHash` is the merkle root over
- *  the section leaves, so the top-level `buyer` and `seller` (and the format
- *  tag `version`) are NOT under the hash. Whoever served the document could
+ *  covers the `sections` and the `provenance`: `computeAgreementHash` is the
+ *  merkle root over the section leaves and the reserved provenance leaf, so
+ *  the top-level `buyer` and `seller` (and the format tag `version`) are NOT
+ *  under the hash. Whoever served the document could
  *  have written any addresses there; a reader checks them against the
  *  commitment's own `buyer` and `seller` before relying on them. */
 export type Anchored<T> = T & { readonly [ANCHORED]: true };
@@ -64,12 +66,15 @@ export function anchorTemplate(raw: unknown, compositionHash: Hex | string): Anc
 }
 
 /** An agreement, verified against the commitment's `agreementHash`: the
- *  merkle root over its section leaves is the hash. A document whose sections
- *  do not hash (malformed, duplicated clause keys) is not the agreement. The
+ *  merkle root over its section leaves and its provenance leaf is the hash. A
+ *  document whose leaves do not hash (malformed, duplicated clause keys, a
+ *  `provenance` that is not a 32-byte hex hash) is not the agreement. The
  *  top-level `buyer` and `seller` are outside the hash and pass unchecked
  *  here — check them against the commitment. */
 export function anchorAgreement(raw: unknown, agreementHash: Hex | string): Anchored<Agreement> | null {
     if (raw === null || typeof raw !== "object" || !Array.isArray((raw as { sections?: unknown }).sections)) return null;
+    const provenance = (raw as { provenance?: unknown }).provenance;
+    if (provenance !== undefined && !isBytes32Hex(provenance)) return null;
     let recomputed: Hex;
     try {
         recomputed = computeAgreementHash(raw as Agreement);

@@ -204,48 +204,15 @@ export function readUtilityTokenPin(
     return isAddressHex(value) ? value : undefined;
 }
 
-/**
- * Write the template's own composition identity into the provenance section,
- * found by its declared `compositionHash` field (never by clause id; a no-op
- * when the assembly composes no provenance clause). MECHANICAL, not authored:
- * the value is derived from the loaded template itself
- * (`templateCompositionHash`), so it cannot be a designer value — the hash
- * cannot appear inside the composition it hashes. Committed under
- * agreementHash, a buyer attestation of this section becomes the on-chain
- * event linking the process to its registered assembly.
- *
- * No contradiction guard here, deliberately: this fill is an override
- * PRODUCER — its output joins `ReconstructNodeSpec.overrides` and every
- * committed leaf then passes the walk's guarded `fillWalkProvenance`
- * (`reconstructOrders.ts`), which throws on a mismatch. The template value is
- * authoritative-empty by construction (above), so the only value this fill
- * could overwrite is the walk's own guard input. Each section's spec is read
- * at its composed version (`clauseVersions`, sparse — absent = 1).
- */
-export function fillProvenanceSection(
-    clauses: ClauseFields,
-    compositionHash: `0x${string}`,
-    specs: SpecSource,
-    clauseVersions?: Readonly<Record<string, number>>,
-): ClauseFields {
-    const provenanceClauseId = composedClauseDeclaring(clauses, "compositionHash", specs, clauseVersions);
-    if (!provenanceClauseId) return clauses;
-    return {
-        ...clauses,
-        [provenanceClauseId]: {
-            ...clauses[provenanceClauseId],
-            compositionHash,
-        },
-    };
-}
-
 /** The field names this module's fills write MECHANICALLY — derived or
  *  rewritten by the checkout walk regardless of any buyer input: the
- *  commercial terms (`fillCommerceSection`), the provenance anchor
- *  (`fillProvenanceSection`), the topology rewrite (`writeTopologySection`),
- *  and the dimweight derivation (`fillDimweightSection`). ONE list, owned
- *  beside the fills it describes. */
-const MECHANICAL_FILL_FIELDS = ["currency", "payment", "lineItems", "compositionHash", "parentOrderHashes", "billedMassGrams"] as const;
+ *  commercial terms (`fillCommerceSection`), the topology rewrite
+ *  (`writeTopologySection`), and the dimweight derivation
+ *  (`fillDimweightSection`). ONE list, owned beside the fills it describes.
+ *  The instantiated assembly's composition hash is no field here: it is the
+ *  agreement format's provenance leaf (`Agreement.provenance`), which the
+ *  template walk writes, never a clause. */
+const MECHANICAL_FILL_FIELDS = ["currency", "payment", "lineItems", "parentOrderHashes", "billedMassGrams"] as const;
 
 /**
  * The field names the checkout walk fills mechanically for THIS composed

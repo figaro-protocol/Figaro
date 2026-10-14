@@ -78,6 +78,19 @@ export interface SubmitClauseAttestationCapabilityAction {
     party: PartyRole;
 }
 
+/** The buyer's attestation of the agreement FORMAT's provenance leaf — the
+ *  reserved key (`PROVENANCE_LEAF_KEY`), not a clause: its section data is
+ *  `provenanceSectionBytes(compositionHash)` and its content reference their
+ *  hash. Filed while the process is open, like every attestation. */
+export interface AttestProvenanceLeafCapabilityAction {
+    executionType: "transaction";
+    kind: "attest-provenance-leaf";
+    orderHash: string;
+    /** The agreement's `provenance` — the composition hash of the registered
+     *  assembly the order instantiated. */
+    compositionHash: `0x${string}`;
+    party: "buyer";
+}
 
 /** A capability that opens a chooser of complete capabilities, each executed
  *  on its own by its own submit — the card is never executed itself. One
@@ -101,6 +114,7 @@ export type CapabilityActionDescriptor =
     | UpdateMemberProfileCapabilityAction
     | WithdrawSellerDepositCapabilityAction
     | SubmitClauseAttestationCapabilityAction
+    | AttestProvenanceLeafCapabilityAction
     | ChooseCapabilityAction
     | PrototypeCapabilityAction;
 

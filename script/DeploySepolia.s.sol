@@ -181,19 +181,12 @@ contract DeploySepolia is Script {
             periods[i] = genesis + uint64((i + 1)) * PERIOD;
         }
 
-        // The mandatory clauses EARN; only the
-        // assembly-provenance clause stays excluded (attribution plumbing).
-        bytes32[] memory excluded = new bytes32[](1);
-        excluded[0] = keccak256(abi.encode("figaro-assembly-provenance", uint64(1)));
-
         UsageCounter usageCounter = new UsageCounter(
             _core,
             _members,
             _clauses,
             _assemblies,
             batchVerifier_,
-            keccak256(abi.encode("figaro-assembly-provenance", uint64(1))),
-            excluded,
             3, // minimum-support floor
             periods
         );

@@ -11,7 +11,7 @@ import type { AssemblyChoice } from "@/lib/protocol/assemblyChoices";
  */
 
 const CHOICE: AssemblyChoice = {
-    slug: "asm-33ce205ea77e79e8",
+    slug: "asm-9ffb1eb79755a9ab",
     registeredBy: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
     compositionHash: `0x${"ab".repeat(32)}` as `0x${string}`,
     contentURI: "ipfs://QmTemplate",

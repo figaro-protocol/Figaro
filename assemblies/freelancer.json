@@ -16,9 +16,6 @@
             "answer": "Nothing moves for either side. The client's own bond, twice the price, stays locked with yours. Deliver, attest what you delivered, and put any shortfall right before resolution; a client who walks away pays for it too."
         }
     ],
-    "assemblyClauses": {
-        "figaro-assembly-provenance": {}
-    },
     "agreements": [
         {
             "id": "order-0",

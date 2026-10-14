@@ -14,7 +14,6 @@ import {
     fillDerivedSections,
     fillDimweightSection,
     fillProfileSections,
-    fillProvenanceSection,
     getRateQuantityResolver,
     mechanicallyFilledFieldNames,
     readUtilityTokenPin,
@@ -23,6 +22,7 @@ import {
     type AssemblyCheckoutLineItem,
 } from "../src/checkoutPlan.js";
 import { fillWalkProvenance } from "../src/reconstructOrders.js";
+import type { Agreement } from "../src/agreement.js";
 import type { ProjectionSpecView } from "../src/projection.js";
 import { specSourceFromFixtures, specSourceWithRegistrations } from "./specFixtures.js";
 
@@ -238,12 +238,23 @@ describe("the profile fill and the mechanical field set read each section at its
         const geoV2: ProjectionSpecView = {
             ...geoV1,
             version: 2,
-            fields: [...geoV1.fields, { ...geoV1.fields[0], name: "compositionHash" }],
+            fields: [...geoV1.fields, { ...geoV1.fields[0], name: "billedMassGrams" }, { ...geoV1.fields[0], name: "compositionHash" }],
         };
         const specs = specSourceWithRegistrations(specSourceFromFixtures(["figaro-geolocation"]), [geoV2]);
         const clauses = { "figaro-geolocation": {} };
-        expect(mechanicallyFilledFieldNames(clauses, specs).has("compositionHash")).toBe(false);
-        expect(mechanicallyFilledFieldNames(clauses, specs, { "figaro-geolocation": 2 }).has("compositionHash")).toBe(true);
+        expect(mechanicallyFilledFieldNames(clauses, specs).has("billedMassGrams")).toBe(false);
+        expect(mechanicallyFilledFieldNames(clauses, specs, { "figaro-geolocation": 2 }).has("billedMassGrams")).toBe(true);
+    });
+
+    it("compositionHash is no mechanical fill: the provenance leaf is the agreement format's, never a clause field", () => {
+        const geoV1 = specSourceFromFixtures(["figaro-geolocation"]).get("figaro-geolocation", 1)!;
+        const geoV2: ProjectionSpecView = {
+            ...geoV1,
+            version: 2,
+            fields: [...geoV1.fields, { ...geoV1.fields[0], name: "compositionHash" }],
+        };
+        const specs = specSourceWithRegistrations(specSourceFromFixtures(["figaro-geolocation"]), [geoV2]);
+        expect(mechanicallyFilledFieldNames({ "figaro-geolocation": {} }, specs, { "figaro-geolocation": 2 }).has("compositionHash")).toBe(false);
     });
 });
 
@@ -348,13 +359,15 @@ describe("every spec-routed fill reads each section at its composed version", ()
         expect(readUtilityTokenPin(clauses, specs, AT_V2)).toBe(TOKEN);
     });
 
-    it("fillProvenanceSection and the walk's guarded fillWalkProvenance", () => {
-        const specs = v2Of(specSourceFromFixtures([GEO]), GEO, ["compositionHash"]);
-        const clauses = { [GEO]: {} };
-        expect(fillProvenanceSection(clauses, HASH, specs)).toEqual(clauses);
-        expect(fillProvenanceSection(clauses, HASH, specs, AT_V2)[GEO]).toEqual({ compositionHash: HASH });
-        expect(fillWalkProvenance(clauses, HASH, specs, "n")).toEqual(clauses);
-        expect(fillWalkProvenance(clauses, HASH, specs, "n", AT_V2)[GEO]).toEqual({ compositionHash: HASH });
+    it("the walk's guarded fillWalkProvenance writes agreement.provenance, never a section, at any composed version", () => {
+        const agreement: Agreement = { version: "a1", buyer: "0x01", seller: "0x02", sections: [{ clause: GEO, version: 2, data: {} }] };
+        const filled = fillWalkProvenance(agreement, HASH, "n");
+        expect(filled.provenance).toBe(HASH);
+        expect(filled.sections).toEqual(agreement.sections);
+        // An identical claim passes (case-insensitive); a different one is a forgery.
+        expect(fillWalkProvenance({ ...agreement, provenance: HASH.toUpperCase().replace("0X", "0x") as `0x${string}` }, HASH, "n").provenance).toBe(HASH);
+        expect(() => fillWalkProvenance({ ...agreement, provenance: `0x${"cd".repeat(32)}` }, HASH, "n"))
+            .toThrow(/refusing to claim a different provenance/);
     });
 
     it("writeTopologySection", () => {

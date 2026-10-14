@@ -332,8 +332,9 @@ export const FLORIN_TOKEN_ABI = parseAbi([
 // the same leaf shape `computeSectionLeaf` builds. It carries only the section
 // FINGERPRINT `sectionHash` (`keccak256` of the committed bytes), never the
 // preimage, so a `private` section's plaintext never touches public calldata.
-// `recordAssemblyUsage` takes no section at all — the provenance content is
-// fully determined by `compositionHash`, so the contract derives it. Accrual
+// `recordAssemblyUsage` takes no section at all — the content of the agreement
+// format's reserved provenance leaf (`provenanceLeaf`) is fully determined by
+// `compositionHash`, so the contract derives it. Accrual
 // buckets into fixed periods; a period's counts are final once `periodClosed`.
 //
 // BATCH-RESOLVED trade never touches FigaroCore, so it can never travel that
@@ -353,8 +354,7 @@ export const USAGE_COUNTER_ABI = parseAbi([
     "function core() view returns (address)",
     "function members() view returns (address)",
     "function batchVerifier() view returns (address)",
-    "function provenanceClause() view returns (bytes32)",
-    "function excludedClauseOrAssembly(bytes32 clauseOrAssembly) view returns (bool)",
+    "function provenanceLeaf() view returns (bytes32)",
     "function periodEnd(uint256) view returns (uint64)",
     "function periodCount() view returns (uint256)",
     "function currentPeriod() view returns (uint8)",
@@ -386,11 +386,11 @@ export const USAGE_COUNTER_ABI = parseAbi([
     "error AlreadyCounted()",
     "error InvalidInclusionProof()",
     "error SellerNotStaked(address seller)",
-    "error ClauseOrAssemblyExcluded(bytes32 clauseOrAssembly)",
     "error ClauseOrAssemblyNotRegistered(bytes32 clauseOrAssembly)",
     "error NotBatchVerifier()",
     "error PeriodMismatch(uint8 open, uint8 claimed)",
-    "error ProvenanceClauseMismatch(bytes32 expected, bytes32 claimed)",
+    "error ProvenanceLeafMismatch(bytes32 expected, bytes32 claimed)",
+    "error ProvenanceLeafIsNotARegistration(bytes32 key)",
     "error AccrualWentBackwards(bytes32 clauseOrAssembly)",
 ]);
 
@@ -443,7 +443,7 @@ export const RPGF_MINTER_ABI = parseAbi([
 
 export const BATCH_VERIFIER_ABI = parseAbi([
     // ── Batch resolution ────────────────────────────────────────────
-    "function settleBatch(bytes proof, bytes publicValues, (address token, address user, uint256 deposit, uint256 payout)[] positions, ((bytes32 orderHash, bytes32 processId, address attester, bytes32 clauseId, uint8 stage, bytes32 contentRef)[] attestations, (bytes32 clauseId, bytes32 specHash)[] specBindings) events, (uint8 period, bytes32 provenanceClause, (bytes32 clauseOrAssembly, uint64 c, uint64 d)[] accruals, address[] sellers) usage) external",
+    "function settleBatch(bytes proof, bytes publicValues, (address token, address user, uint256 deposit, uint256 payout)[] positions, ((bytes32 orderHash, bytes32 processId, address attester, bytes32 clauseId, uint8 stage, bytes32 contentRef)[] attestations, (bytes32 clauseId, bytes32 specHash)[] specBindings) events, (uint8 period, bytes32 provenanceLeaf, (bytes32 clauseOrAssembly, uint64 c, uint64 d)[] accruals, address[] sellers) usage) external",
 
     // ── Views ────────────────────────────────────────────────────────
     "function stateRoot() view returns (bytes32)",

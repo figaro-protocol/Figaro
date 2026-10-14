@@ -112,6 +112,7 @@ describe("DataExplorer — absence is stated, never fabricated", () => {
                         boundary: "protocol-derived",
                         clauseKey: KEY as `0x${string}`,
                         spec: null,
+                        provenanceLeaf: false,
                         entries: [
                             {
                                 orderHash: `0x${"11".repeat(32)}`,

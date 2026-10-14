@@ -14,7 +14,13 @@ import { keccak256 } from "viem";
 import { computeClauseKey } from "@figaro-protocol/sdk";
 import { hexEqual } from "@/lib/shared/evm";
 import { truncateHex } from "@/lib/shared/formatHex";
-import { buildSectionInclusionProof, sectionDataHash, type Commitment } from "@figaro-protocol/sdk";
+import {
+    PROVENANCE_LEAF_KEY,
+    buildSectionInclusionProof,
+    provenanceLeafAttestation,
+    sectionDataHash,
+    type Commitment,
+} from "@figaro-protocol/sdk";
 import { publishWitnessContent } from "@/lib/composition/witnessContent";
 import type { PartyRole } from "@/lib/kernel/walletProcessQueries";
 
@@ -107,6 +113,17 @@ export function useAttestationCoordinatorActions() {
                 + `cannot generate inclusion proof`;
             setError(message);
             throw new Error(message);
+        }
+        // The agreement FORMAT's provenance leaf is keyed by the reserved key,
+        // never a clause: its fingerprint and proof are the format's own.
+        if (hexEqual(clauseId, PROVENANCE_LEAF_KEY)) {
+            if (agreement.provenance === undefined) {
+                const message = `The signed agreement names no assembly — no provenance leaf to attest`;
+                setError(message);
+                throw new Error(message);
+            }
+            const { sectionHash, proof } = provenanceLeafAttestation(agreement);
+            return { sectionHash, proof };
         }
         // The clauseId here is a runtime value (the clause being attested), not a
         // hardcoded literal — find its section by matching the on-chain id.

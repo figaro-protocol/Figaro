@@ -20,10 +20,10 @@ pub struct ProveResult {
     pub public_values_bytes: Vec<u8>,
     /// Post-batch mirror state for advancing the state mirror.
     pub post_state: KernelState,
-    /// The provenance clause key the batch proved assembly claims
+    /// The provenance leaf's key the batch proved assembly claims
     /// against. Echoed from the input because it is calldata the
     /// verifier hash-checks, not something the guest returns.
-    pub provenance_clause: alloy_primitives::B256,
+    pub provenance_leaf: alloy_primitives::B256,
 }
 
 /// Prove a batch.
@@ -74,7 +74,7 @@ pub async fn prove_batch(batch: &BatchInput) -> Result<ProveResult, String> {
         proof_bytes,
         public_values_bytes,
         post_state,
-        provenance_clause: batch.provenance_clause,
+        provenance_leaf: batch.provenance_leaf,
     })
 }
 

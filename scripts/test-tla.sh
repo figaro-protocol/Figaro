@@ -33,12 +33,12 @@
 #
 #   4. Composed resolution universes — via formal/ResolutionUniverses.tla
 #      + formal/ResolutionUniverses.cfg (1 buyer, 2 sellers, 2 processes,
-#       1 sub-order, payments 1-2, 2 clauses one EXCLUDED, 2 periods).
+#       1 sub-order, payments 1-2, 2 clauses, 2 periods).
 #      The CROSS-CONTRACT model: FigaroCore + FigaroBatchVerifier +
 #      UsageCounter + the off-chain guest mirror, under arbitrary
 #      interleavings — the only harness that can see the two-resolution-
 #      universes crease (Foundry/Halmos/Certora are all per-contract).
-#      Verifies 21 safety invariants exhaustively: no double payout across
+#      Verifies 20 safety invariants exhaustively: no double payout across
 #      the universes; token conservation + exact per-pool escrow; usage-
 #      score composition (scoreOf == direct + batch, the bridge write
 #      REPLACES never adds); FigaroCore blindness (settleBatch writes no
@@ -142,7 +142,7 @@ java -cp "../$TLA2TOOLS" tlc2.TLC \
     "$@"
 
 echo ""
-echo "▶ Pass 4/5 — Composed resolution universes (21 invariants)"
+echo "▶ Pass 4/5 — Composed resolution universes (20 invariants)"
 echo ""
 java -cp "../$TLA2TOOLS" tlc2.TLC \
     -config ResolutionUniverses.cfg \

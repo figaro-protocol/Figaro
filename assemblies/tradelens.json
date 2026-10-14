@@ -5,8 +5,7 @@
         },
         "figaro-arbitration-kleros": {
             "klerosCourt": "general"
-        },
-        "figaro-assembly-provenance": {}
+        }
     },
     "agreements": [
         {

@@ -44,7 +44,6 @@ const SPECS = specSourceFromFixtures([
     "figaro-commerce",
     "figaro-topology",
     "figaro-applicable-law",
-    "figaro-assembly-provenance",
     "figaro-geolocation",
     "figaro-merchant-process",
     "figaro-utility-token",
@@ -65,6 +64,17 @@ describe("assertAgreementSignable — the shared sign gate", () => {
             "figaro-applicable-law": { applicableLaw: "US-NY" },
         }, SPECS);
         expect(() => assertAgreementSignable(agreement, agreementHash, SPECS, STRUCT)).not.toThrow();
+    });
+
+    it("signs the provenance leaf under the root and refuses a provenance that is not a 32-byte hash", () => {
+        const { agreement } = buildOrderAgreement(BUYER, SELLER, { "figaro-commerce": commerceData() }, SPECS);
+        const named = { ...agreement, provenance: `0x${"5e".repeat(32)}` as const };
+        expect(() => assertAgreementSignable(named, computeAgreementHash(named), SPECS, STRUCT)).not.toThrow();
+        // The root without the provenance leaf is not this agreement's.
+        expect(() => assertAgreementSignable(named, computeAgreementHash(agreement), SPECS, STRUCT)).toThrow(/merkle/);
+        const malformed = { ...agreement, provenance: "0x5e" as `0x${string}` };
+        expect(() => assertAgreementSignable(malformed, computeAgreementHash(agreement), SPECS, STRUCT))
+            .toThrow(/32-byte/);
     });
 
     it("throws on a section violating its clause spec, naming clause + path", () => {
@@ -437,7 +447,13 @@ describe("buildAssemblyTemplate — the mandatory fold under a stranger's regist
     // registered it, and every (clauseId, version) slot is open to anyone. A
     // registration marking a new version of a mandatory clause mandatory must not
     // displace the version a design states or the one the fold already took.
-    const base = specSourceFromFixtures(["figaro-commerce", "figaro-topology", "figaro-assembly-provenance"]);
+    // An assembly-scoped clause whose registration marks it mandatory — the
+    // generic assembly-level fold, named by no code path.
+    const FLOOR = "stranger-assembly-floor";
+    const law = specSourceFromFixtures(["figaro-applicable-law"]).get("figaro-applicable-law", 1)!;
+    const floor: ProjectionSpecView = { ...law, clauseId: FLOOR, hints: { ...law.hints, article: "mandatory", designFills: [] } };
+    const fixtures = specSourceFromFixtures(["figaro-commerce", "figaro-topology"]);
+    const base = specSourceWithRegistrations(fixtures, [floor]);
     const forged = (clauseId: string, version: number): ProjectionSpecView => {
         const real = base.get(clauseId, 1);
         if (!real) throw new Error(`fixture ${clauseId} missing`);
@@ -456,13 +472,13 @@ describe("buildAssemblyTemplate — the mandatory fold under a stranger's regist
     ];
 
     it("a higher version marked mandatory does not replace the version a new design folds", () => {
-        const specs = withRegistrations([forged("figaro-commerce", 99), forged("figaro-assembly-provenance", 99)]);
+        const specs = withRegistrations([forged("figaro-commerce", 99), forged(FLOOR, 99)]);
         const template = buildAssemblyTemplate({ orders: ORDERS, clausesByOrderId: {}, specs });
         for (const agreement of template.agreements) {
             expect(agreement.clauses).toHaveProperty("figaro-commerce");
             expect(agreement.clauseVersions?.["figaro-commerce"]).toBeUndefined(); // v1
         }
-        expect(template.assemblyClauseVersions?.["figaro-assembly-provenance"]).toBeUndefined(); // v1
+        expect(template.assemblyClauseVersions?.[FLOOR]).toBeUndefined(); // v1
         // The same template as before the registration: the composition hash holds.
         expect(serializeAssemblyTemplate(template).compositionHash).toBe(
             serializeAssemblyTemplate(buildAssemblyTemplate({ orders: ORDERS, clausesByOrderId: {}, specs: base }))
@@ -474,7 +490,7 @@ describe("buildAssemblyTemplate — the mandatory fold under a stranger's regist
         const specs = withRegistrations([
             forged("figaro-commerce", 0), forged("figaro-commerce", 2),
             forged("figaro-topology", 0), forged("figaro-topology", 2),
-            forged("figaro-assembly-provenance", 0), forged("figaro-assembly-provenance", 2),
+            forged(FLOOR, 0), forged(FLOOR, 2),
         ]);
         const template = buildAssemblyTemplate({ orders: ORDERS, clausesByOrderId: {}, specs });
         for (const agreement of template.agreements) {
@@ -482,7 +498,7 @@ describe("buildAssemblyTemplate — the mandatory fold under a stranger's regist
             expect(agreement.clauses).toHaveProperty("figaro-topology");
             expect(agreement.clauseVersions).toBeUndefined(); // every fold at v1
         }
-        expect(template.assemblyClauses).toHaveProperty("figaro-assembly-provenance");
+        expect(template.assemblyClauses).toHaveProperty(FLOOR);
         expect(template.assemblyClauseVersions).toBeUndefined(); // v1
         expect(serializeAssemblyTemplate(template).compositionHash).toBe(
             serializeAssemblyTemplate(buildAssemblyTemplate({ orders: ORDERS, clausesByOrderId: {}, specs: base }))
@@ -513,19 +529,19 @@ describe("buildAssemblyTemplate — the mandatory fold under a stranger's regist
 
     it("a fork keeps the mandatory versions its template states", () => {
         // A fork of a published template carries commerce and topology at v1
-        // (sparse map: absent = 1) and the provenance section at assembly level.
+        // (sparse map: absent = 1) and the assembly-level mandatory clause.
         const fork = {
             orders: ORDERS,
             clausesByOrderId: {
                 "synthetic-root": { "figaro-commerce": {}, "figaro-topology": { parentOrderHashes: [] } },
                 "synthetic-child": { "figaro-commerce": {}, "figaro-topology": { parentOrderHashes: ["order-0"] } },
             },
-            assemblyClauses: { "figaro-assembly-provenance": {} },
+            assemblyClauses: { [FLOOR]: {} },
         };
         const before = buildAssemblyTemplate({ ...fork, specs: base });
         const after = buildAssemblyTemplate({
             ...fork,
-            specs: withRegistrations([forged("figaro-commerce", 99), forged("figaro-topology", 99), forged("figaro-assembly-provenance", 99)]),
+            specs: withRegistrations([forged("figaro-commerce", 99), forged("figaro-topology", 99), forged(FLOOR, 99)]),
         });
         expect(after).toEqual(before);
         for (const agreement of after.agreements) expect(agreement.clauseVersions).toBeUndefined();
@@ -585,7 +601,7 @@ describe("buildAssemblyTemplate — the mandatory fold under a stranger's regist
             specs: withRegistrations([v1, v2]),
         });
         expect(template.assemblyClauses?.["figaro-applicable-law"]).toEqual({ applicableLaw: "US-NY" });
-        expect(template.assemblyClauseVersions).toBeUndefined(); // provenance and the law at v1
+        expect(template.assemblyClauseVersions).toBeUndefined(); // the law at v1
     });
 
     it("a pick with no recorded version whose v1 is not loaded is a build error, never the version loaded", () => {

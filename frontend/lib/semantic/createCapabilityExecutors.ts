@@ -14,7 +14,14 @@
  * copy; this factory only decides WHEN to ask.
  */
 import { type Hex } from "viem";
-import { computeClauseKey, type Agreement, type Commitment, type UsageClaimContext } from "@figaro-protocol/sdk";
+import {
+    PROVENANCE_LEAF_KEY,
+    computeClauseKey,
+    provenanceSectionBytes,
+    type Agreement,
+    type Commitment,
+    type UsageClaimContext,
+} from "@figaro-protocol/sdk";
 import { encodeContentFromSpec, validateContent } from "@figaro-protocol/sdk/clauses";
 import { OrderState, type Order } from "@/lib/kernel/store";
 import { restoreSignedProcessId } from "@/lib/kernel/signedCommitment";
@@ -22,7 +29,7 @@ import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
 import { DEVNET_CHAIN_ID } from "@/lib/shared/chains";
 import { verifyTxSuccess } from "@/lib/shared/verifyTxSuccess";
 import { planUsageRecords, type PlannedUsageWrite, type UsagePlanEntry } from "@/lib/semantic/planUsageRecords";
-import type { SubmitClauseAttestationCapabilityAction } from "@/lib/semantic/models";
+import type { AttestProvenanceLeafCapabilityAction, SubmitClauseAttestationCapabilityAction } from "@/lib/semantic/models";
 
 /** The attestation submitter's argument shape (both parties share it). */
 interface AttestationSubmitArgs {
@@ -46,7 +53,7 @@ export interface CapabilityExecutorDeps {
      *  Planned before the resolve from the counter's own facts, sent after it
      *  — count usage when it happens. Each write is simulated first and sent
      *  only if the simulation passes. */
-    fetchUsageClaimContext: (agreement: Agreement) => Promise<UsageClaimContext>;
+    fetchUsageClaimContext: () => Promise<UsageClaimContext>;
     simulateClauseUsage: (order: Commitment, clauseOrAssembly: Hex, sectionHash: Hex, proof: readonly Hex[]) => Promise<void>;
     simulateAssemblyUsage: (order: Commitment, compositionHash: Hex, proof: readonly Hex[]) => Promise<void>;
     recordClauseUsage: (order: Commitment, clauseOrAssembly: Hex, sectionHash: Hex, proof: readonly Hex[]) => Promise<Hex | undefined>;
@@ -98,8 +105,9 @@ export function createCapabilityExecutors(deps: CapabilityExecutorDeps) {
         // ── USAGE RECORDING, PLANNED BEFORE THE BUYER IS ASKED: the buyer's
         // app holds every agreement and proof at the moment of resolve, so it
         // plans the usage writes first (`planUsageRecords` — one per distinct
-        // key across the process, never an excluded key, the assembly write
-        // independent) and the confirm says how many the wallet signs after.
+        // key across the process: every clause section, and the assembly from
+        // each agreement's provenance leaf) and the confirm says how many the
+        // wallet signs after.
         // Under the e2e mock there is no chain: nothing is planned or sent.
         const plan = deps.isE2EMock ? [] : await planProcessUsage(activeOrders, commitments);
         if (!deps.confirmResolve(plan.length)) return undefined;
@@ -143,13 +151,20 @@ export function createCapabilityExecutors(deps: CapabilityExecutorDeps) {
         return resolveTx;
     };
 
-    /** Read the counter's facts per hydrated agreement, then plan. A missing
-     *  agreement or an unreadable counter stays loud (silent success is the
-     *  enemy): that order's clauses and assembly go uncounted. */
+    /** Read the counter's fact once, then plan every hydrated agreement. A
+     *  missing agreement or an unreadable counter stays loud (silent success
+     *  is the enemy): the orders it costs go uncounted. */
     const planProcessUsage = async (
         activeOrders: readonly Order[],
         commitments: readonly Commitment[],
     ): Promise<PlannedUsageWrite[]> => {
+        let context: UsageClaimContext;
+        try {
+            context = await deps.fetchUsageClaimContext();
+        } catch (error) {
+            console.error(`[usage-recording] the UsageCounter's provenance leaf did not read — skipping every clause and assembly of this process: ${error instanceof Error ? error.message : String(error)}`);
+            return [];
+        }
         const entries: UsagePlanEntry[] = [];
         for (let i = 0; i < activeOrders.length; i++) {
             const { orderHash, agreementHash } = activeOrders[i];
@@ -158,12 +173,7 @@ export function createCapabilityExecutors(deps: CapabilityExecutorDeps) {
                 console.error(`[usage-recording] no hydrated agreement for order ${orderHash} (hash ${agreementHash}) — skipping its clauses and assemblies`);
                 continue;
             }
-            try {
-                const context = await deps.fetchUsageClaimContext(agreement);
-                entries.push({ orderHash, commitment: commitments[i], agreement, context });
-            } catch (error) {
-                console.error(`[usage-recording] the UsageCounter's facts for order ${orderHash} did not read — skipping its clauses and assemblies: ${error instanceof Error ? error.message : String(error)}`);
-            }
+            entries.push({ orderHash, commitment: commitments[i], agreement, context });
         }
         const { writes, problems } = planUsageRecords(entries);
         for (const problem of problems) console.error(`[usage-recording] ${problem}`);
@@ -225,6 +235,20 @@ export function createCapabilityExecutors(deps: CapabilityExecutorDeps) {
         return deps.submitAttestation(action.party, args);
     };
 
+    // The agreement FORMAT's provenance leaf, attested by the buyer while the
+    // process is open: the reserved key where a clause key goes, stage 0, and
+    // the leaf's own bytes as the content — their hash is the leaf's section
+    // hash, so the content reference equals it and the bytes publish at it.
+    // No spec: the bytes are the format's, reproducible from the hash.
+    const attestProvenanceLeaf = async (action: AttestProvenanceLeafCapabilityAction) =>
+        deps.submitAttestation("buyer", {
+            orderHash: action.orderHash as Hex,
+            clauseId: PROVENANCE_LEAF_KEY,
+            stage: 0,
+            content: provenanceSectionBytes(action.compositionHash),
+            failureMessage: "provenance attestation failed",
+        });
+
     /** The callback bag `executeTransactionCapabilityAction` dispatches on. */
     const executorCallbacks = {
         waitForTransactionConfirmation,
@@ -237,6 +261,7 @@ export function createCapabilityExecutors(deps: CapabilityExecutorDeps) {
             return deps.withdrawMemberDeposit();
         },
         submitClauseAttestation,
+        attestProvenanceLeaf,
     };
 
     return { waitForTransactionConfirmation, resolveActiveProcess, executorCallbacks };

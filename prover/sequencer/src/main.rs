@@ -308,8 +308,8 @@ async fn main() {
                         Ok((mirror, state::Takeover::Adopt)) => {
                             info!(served_root = ?mirror.state_root().await, %state_from, %state_path, "Adopted the served state behind the verifier's root");
                             state_mirror = mirror;
-                            // The verifier may have moved while the state was
-                            // fetched: the check below reads the root as it is now.
+                            // The verifier can move while the state is
+                            // fetched: the check below reads the current root.
                             root = match submitter::read_state_root(&rpc_url, verifier_addr).await {
                                 Ok(root) => root,
                                 Err(e) => {
@@ -532,7 +532,7 @@ async fn batch_loop(
         let usage_claims = mempool.drain_usage().await;
 
         // Pre-filter usage claims against live chain state so a poison claim
-        // (excluded/unregistered clause or assembly, or an unstaked seller) never
+        // (a clause or assembly with no live registration, or an unstaked seller) never
         // enters a proof and cannot cost the rest of the batch its accrual. The
         // counter's
         // own gates and the verifier's try/catch remain the on-chain backstop
@@ -616,7 +616,7 @@ async fn batch_loop(
             "Assembling batch"
         );
 
-        // The period and provenance clause are CHAIN facts — asked of the
+        // The period and provenance leaf's key are CHAIN facts — asked of the
         // counter, never derived from the sequencer's clock. If there is no
         // counter, or accrual has closed, the batch resolves crediting nothing.
         let mut usage = match submitter::read_usage_context(
@@ -625,10 +625,10 @@ async fn batch_loop(
         )
         .await
         {
-            Some((period, provenance_clause)) => assembler::UsageContext {
+            Some((period, provenance_leaf)) => assembler::UsageContext {
                 claims: usage_claims,
                 period,
-                provenance_clause,
+                provenance_leaf,
             },
             None => {
                 if !usage_claims.is_empty() {
@@ -676,7 +676,7 @@ async fn batch_loop(
             let calldata = submitter::settle_calldata(
                 &positions,
                 &events,
-                input.provenance_clause,
+                input.provenance_leaf,
                 &pv.abi_encode(),
                 proof_len,
             );
@@ -727,7 +727,7 @@ async fn batch_loop(
                 &prev_state,
                 &all_ops,
                 usage.period,
-                usage.provenance_clause,
+                usage.provenance_leaf,
                 std::mem::take(&mut usage.claims),
             );
             for (claim, reason) in &dropped {
@@ -826,7 +826,7 @@ async fn batch_loop(
                 &batch.prev_state,
                 &batch.operations,
                 batch.usage_period,
-                batch.provenance_clause,
+                batch.provenance_leaf,
                 std::mem::take(&mut batch.usage_claims),
             );
             if !stranded.is_empty() {

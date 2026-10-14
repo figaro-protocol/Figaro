@@ -372,22 +372,12 @@ contract Deploy is Script {
             periods[i] = uint64(block.timestamp + (i + 1) * 30 minutes);
         }
 
-        // The mandatory clauses EARN (mirrors DeployMainnet): scoring commerce
-        // and topology rewards their designer of record on every resolved
-        // process. Only assembly-provenance stays excluded — attribution
-        // plumbing; scoring it would double-pay every assembly trade. (Assembly
-        // designers accrue via recordAssemblyUsage, which credits the compositionHash.)
-        bytes32[] memory excluded = new bytes32[](1);
-        excluded[0] = keccak256(abi.encode("figaro-assembly-provenance", uint64(1)));
-
         UsageCounter counter = new UsageCounter(
             core,
             members, // seller-side live-stake gate: usage counts only for live-staked sellers
             clauseRegistry, // registration-side gate: a clause earns only while its deposit is live
             assemblyRegistry, // registration-side gate: an assembly earns only while its deposit is live
             batchVerifier_, // proof-gated writer of the batch-path accrual
-            keccak256(abi.encode("figaro-assembly-provenance", uint64(1))), // proves the assembly leg
-            excluded,
             3, // minimum-support floor: mainnet value, rehearsed on devnet
             periods
         );

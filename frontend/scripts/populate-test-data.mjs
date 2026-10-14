@@ -92,9 +92,8 @@ function mandatoryClauseFold(parents = []) {
     for (const file of fs.readdirSync(CLAUSES_DIR).filter((f) => f.endsWith('.json')).sort()) {
         const spec = JSON.parse(fs.readFileSync(path.join(CLAUSES_DIR, file), 'utf8'));
         if (spec.block?.design?.article !== 'mandatory') continue;
-        // Mandatory folds at the level its scope names:
-        // assembly-scoped mandatory (assembly-provenance) is a template-level
-        // fold, not a per-agreement one.
+        // Mandatory folds at the level its scope names: an assembly-scoped
+        // mandatory clause is a template-level fold, not a per-agreement one.
         if (spec.block?.design?.scope === 'assembly') continue;
         const data = {};
         for (const field of spec.fields ?? []) {
@@ -118,13 +117,6 @@ function seedTemplateBlank() {
         name: 'Devnet seed',
         summary: 'Pre-populated bindable assembly for the e2e suite.',
         description: 'A blank single-agreement composition (mandatory clauses only), anchored by populate-test-data so sellers can bind before any spec runs.',
-        // Provenance is MANDATORY AT ASSEMBLY SCOPE: the
-        // assembly-scope fold carries it into every agreement, checkout fills
-        // the template's own compositionHash mechanically, and the designer
-        // credit can land. A seed without it denies every run that binds it
-        // the RPGF assembly leg — which is how the first-commit walkthrough
-        // resolved with assemblyRecorded:false for weeks.
-        assemblyClauses: { 'figaro-assembly-provenance': {} },
         agreements: [{ id: 'order-0', clauses: mandatoryClauseFold() }],
     };
 }
@@ -140,11 +132,6 @@ function seedTemplateChain() {
         name: 'Devnet delivery chain',
         summary: 'Three-order value-added chain: merchant, courier, supplier.',
         description: 'A delivery chain for the multi-order e2e: the buyer sees the full decomposition at checkout, each contributor is bond-secured, and the single resolve pays every party.',
-        // The provenance declaration lives at ASSEMBLY SCOPE — the fold carries it into EVERY agreement, checkout
-        // fills the template's own compositionHash mechanically (the hash
-        // cannot appear inside the composition it hashes), and the buyer's
-        // record of it at resolve is the RPGF designer-credit event.
-        assemblyClauses: { 'figaro-assembly-provenance': {} },
         agreements: [
             {
                 id: 'order-0',

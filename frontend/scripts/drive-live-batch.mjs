@@ -19,7 +19,7 @@
  * allowance already suffices):
  *   1. Preflight — chain id vs record, sequencer mirror vs on-chain state
  *      root, canonical spec bytes vs the ClauseRegistry anchor, seller's
- *      members stake, balances, exclusion — name every gap and stop before
+ *      members stake, balances — name every gap and stop before
  *      spending.
  *   2. Approve bonds to FigaroBatchVerifier (buyer 2×payment, seller
  *      2×cumulativeValue).
@@ -188,14 +188,13 @@ try {
     process.exit(1);
 }
 
-const [stateRoot, batchCount, anchored, deposit, sellerRegistered, excluded,
+const [stateRoot, batchCount, anchored, deposit, sellerRegistered,
     currentPeriod, minSellers, tokenDecimals, tokenSymbol] = await Promise.all([
     read(verifier, BATCH_VERIFIER_ABI, 'stateRoot'),
     read(verifier, BATCH_VERIFIER_ABI, 'batchCount'),
     read(record.clauseRegistry, CONTENT_HASH_ABI, 'contentHashOf', [clauseKey]),
     read(record.clauseRegistry, CLAUSE_REGISTRY_ABI, 'depositOf', [clauseKey]),
     read(record.membersRegistry, MEMBERS_REGISTRY_ABI, 'registered', [sellerAccount.address]),
-    read(record.usageCounter, USAGE_COUNTER_ABI, 'excludedClauseOrAssembly', [clauseKey]),
     read(record.usageCounter, USAGE_COUNTER_ABI, 'currentPeriod'),
     read(record.usageCounter, USAGE_COUNTER_ABI, 'minSellers'),
     read(TOKEN, ERC20_ABI, 'decimals'),
@@ -212,7 +211,6 @@ if (deposit[1] === true || deposit[0] === '0x00000000000000000000000000000000000
 if (!sellerRegistered) {
     gaps.push(`seller ${sellerAccount.address} holds no live MembersRegistry stake — the usage claim will not credit`);
 }
-if (excluded) gaps.push(`${WITNESS_CLAUSE} is on the counter's exclusion list`);
 if (status.state_root !== stateRoot) {
     gaps.push(`sequencer state-root mirror ${status.state_root} != on-chain ${stateRoot} — the relay does not hold the state behind the verifier's root (its STATE_PATH file)`);
 }

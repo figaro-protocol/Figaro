@@ -219,20 +219,21 @@ Counts how much real trade a clause or assembly carried, on chain, at the moment
 
 ```solidity
 function recordClauseUsage(CommitmentTypes.Commitment calldata order, bytes32 clauseOrAssembly,
-    bytes32 sectionHash, bytes32[] calldata proof) external;                     // :439
+    bytes32 sectionHash, bytes32[] calldata proof) external;                     // :421
 function recordAssemblyUsage(CommitmentTypes.Commitment calldata order, bytes32 compositionHash,
-    bytes32[] calldata proof) external;                                          // :480
-function applyBatchAccrual(uint8 period, bytes32 claimedProvenance,
-    BatchAccrual[] calldata accruals, address[] calldata sellers) external;      // :552  (batchVerifier only)
-function scoreOf(bytes32 clauseOrAssembly, uint8 period) external view returns (uint256);  // :417
-function currentPeriod() external view returns (uint8);                          // :398
-function periodClosed(uint8 period) external view returns (bool);                // :408
-function periodCount() external view returns (uint256);                          // :393
+    bytes32[] calldata proof) external;                                          // :462
+function applyBatchAccrual(uint8 period, bytes32 claimedProvenanceLeaf,
+    BatchAccrual[] calldata accruals, address[] calldata sellers) external;      // :534  (batchVerifier only)
+function provenanceLeaf() external view returns (bytes32);                       // :155  (constant)
+function scoreOf(bytes32 clauseOrAssembly, uint8 period) external view returns (uint256);  // :399
+function currentPeriod() external view returns (uint8);                          // :380
+function periodClosed(uint8 period) external view returns (bool);                // :390
+function periodCount() external view returns (uint256);                          // :375
 ```
 
-`recordClauseUsage` proves from state the chain already holds that the order is RESOLVED (`orderStatus == 2`) and that the clause was merkle-committed in the signed `agreementHash` — the same leaf shape the coordinator checks, with the status gate inverted. Anyone may call; the proof is trusted, never the caller. Per clause or assembly per period it keeps `c` (distinct resolved processes), `d` (distinct live-staked sellers of record), and `score = icbrt(c·d²·1e18)` when `d ≥ minSellers`, else zero. Uniform — no tag, category, or weight. Usage counts only for a live-staked seller of record; a process counts once ever. Read `scoreOf`, which sums both paths' scores — `accrualOf` alone under-reports any key whose trade moved to batches.
+`recordClauseUsage` proves from state the chain already holds that the order is RESOLVED (`orderStatus == 2`) and that the clause was merkle-committed in the signed `agreementHash` — the same leaf shape the coordinator checks, with the status gate inverted. `recordAssemblyUsage` takes no section hash: it rebuilds the agreement's provenance leaf from the `compositionHash` it is given — key `provenanceLeaf()` = `keccak256("figaro-agreement-provenance")`, bytes `{"compositionHash":"0x<64 lowercase hex>"}` — proves it against `agreementHash`, and requires a live `AssemblyRegistry` binding (`:462-490`; the leaf is on [Clauses and agreements](/protocol/clauses/)). Every committed clause key earns, the mandatory ones included; the reserved key is registered nowhere, so a clause claim naming it fails the liveness gate like any unregistered key. Anyone may call; the proof is trusted, never the caller. Per clause or assembly per period it keeps `c` (distinct resolved processes), `d` (distinct live-staked sellers of record), and `score = icbrt(c·d²·1e18)` when `d ≥ minSellers`, else zero. Uniform — no tag, category, or weight. Usage counts only for a live-staked seller of record; a process counts once ever. Read `scoreOf`, which sums both paths' scores — `accrualOf` alone under-reports any key whose trade moved to batches.
 
-**Runtime errors** (`:318-329`): `ClauseOrAssemblyNotRegistered(clauseOrAssembly)`, `AccrualClosed` (`currentPeriod()` reverts once the last period ends — the revert is the answer), `UnknownOrder`, `OrderNotResolved`, `AlreadyCounted`, `InvalidInclusionProof`, `ClauseOrAssemblyExcluded(clauseOrAssembly)` (the one excluded key is `figaro-assembly-provenance` — scoring the credit-carrying leaf would double-pay), `SellerNotStaked(seller)`, `NotBatchVerifier`, `PeriodMismatch(open, claimed)`, `ProvenanceClauseMismatch(expected, claimed)`, `AccrualWentBackwards(clauseOrAssembly)`. **Events:** `UsageRecorded` (adds), `BatchUsageRecorded` (cumulative, replaces) — indexers fold them differently.
+**Runtime errors** (`:309-319`): `ClauseOrAssemblyNotRegistered(clauseOrAssembly)` (on the batch path an un-live key is skipped, never reverted, so the batch's resolution still lands — `:573`), `AccrualClosed` (`currentPeriod()` reverts once the last period ends — the revert is the answer), `UnknownOrder`, `OrderNotResolved`, `AlreadyCounted`, `InvalidInclusionProof`, `SellerNotStaked(seller)`, `NotBatchVerifier`, `PeriodMismatch(open, claimed)`, `ProvenanceLeafMismatch(expected, claimed)` (the batch's claimed provenance leaf key is not `provenanceLeaf()`), `AccrualWentBackwards(clauseOrAssembly)`. **Events:** `UsageRecorded` (adds), `BatchUsageRecorded` (cumulative, replaces) — indexers fold them differently.
 
 ## FlorinToken — the unit
 

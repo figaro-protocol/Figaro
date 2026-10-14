@@ -114,7 +114,6 @@ CONSTANTS
   Buyers,                    \* non-empty finite set of buyer addresses
   Sellers,                   \* non-empty finite set of seller addresses
   Artifacts,                 \* clause idHashes / assembly compositionHashes
-  ExcludedArtifacts,         \* UsageCounter.excludedArtifact (deploy-frozen)
   InitialBalance,            \* starting token balance per participant
   MaxPayment,                \* 1..MaxPayment are valid payments
   MaxProcesses,              \* upper bound on process identities
@@ -136,7 +135,7 @@ ClosedPeriod  == NumPeriods
 TotalSupply   == Cardinality(Participants) * InitialBalance
 
 ASSUME Buyers # {} /\ Sellers # {}
-ASSUME Artifacts # {} /\ ExcludedArtifacts \subseteq Artifacts
+ASSUME Artifacts # {}
 ASSUME InitialBalance > 0 /\ MaxPayment > 0
 ASSUME MaxProcesses > 0 /\ MaxSubOrders >= 0
 ASSUME NumPeriods > 0 /\ MinSellers > 0
@@ -466,7 +465,7 @@ SettleBatch ==
       inBatch == { e.art : e \in penUse }
       \* the chain's own gates: open period + accrual still open
       gateOK  == ( pp = period /\ period < ClosedPeriod )
-      writeSet == IF gateOK THEN inBatch \ ExcludedArtifacts ELSE {}
+      writeSet == IF gateOK THEN inBatch ELSE {}
       delta   == SumFn(writeSet,
                    [a \in Artifacts |-> Score(nc[a], nd[a]) - batchAcc[a][pp].score])
   IN /\ batchOpen
@@ -515,7 +514,6 @@ SettleBatch ==
 \* this — that is the crease, and it is why the bridge exists.
 RecordUsage(a, o) ==
   /\ period < ClosedPeriod
-  /\ a \notin ExcludedArtifacts               \* reverts ArtifactExcluded
   /\ kStatus[o] = "Resolved"                  \* reverts OrderNotResolved
   /\ kRec[o].pid \notin counted[a]            \* reverts AlreadyCounted
   /\ LET s     == kRec[o].seller
@@ -667,11 +665,6 @@ FloorAppliedPerPath ==
     /\ accrual[a][q].d < MinSellers => accrual[a][q].score = 0
     /\ batchAcc[a][q].d < MinSellers => batchAcc[a][q].score = 0
 
-ExcludedNeverScores ==
-  \A a \in ExcludedArtifacts, q \in Periods:
-    accrual[a][q].c = 0 /\ batchAcc[a][q].c = 0 /\ ScoreOf(a, q) = 0
-
-
 \* ── 4. FigaroCore blindness is faithful ──────────────────────────
 \* Batch resolution changes NO FigaroCore orderStatus. kResolvedGhost is written
 \* only by KResolve, so equality with FigaroCore's own RESOLVED set is exactly
@@ -712,7 +705,7 @@ AccrualNeverOverPays == BatchWriteReplacesNeverAdds
 \* So the accrual is not "recovered by the next batch" for those processes —
 \* it is permanently forgone.
 AccrualNotLost ==
-  \A a \in Artifacts \ ExcludedArtifacts, q \in Periods:
+  \A a \in Artifacts, q \in Periods:
     /\ batchAcc[a][q].c = gUsage[a][q].c
     /\ batchAcc[a][q].d = gUsage[a][q].d
 

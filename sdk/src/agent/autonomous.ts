@@ -22,7 +22,7 @@ import { restoreSignedProcessId } from "../commitments.js";
 import type { Agreement } from "../agreement.js";
 import { computeClauseKey } from "../discovery.js";
 import { buildUsageClaims, fetchUsageClaimContext } from "../rpgf/index.js";
-import { type Hex, type Address, type FigaroAddresses, type Commitment, isBytes32Hex } from "../types.js";
+import type { Hex, Address, FigaroAddresses, Commitment } from "../types.js";
 import type { ProposedAction, ResolveProcessAction } from "./proposer.js";
 
 // ── Transaction result ──────────────────────────────────────────────────────
@@ -111,20 +111,16 @@ export interface UsageRecordingEntry {
 }
 
 export interface UsageRecordingReport {
-    /** Clause legs sent: one per DISTINCT clause key the process carries that
-     *  the counter does not exclude (the assembly leg is counted by flag). */
+    /** Clause legs sent: one per DISTINCT clause key the process carries
+     *  (the assembly leg is counted by flag). */
     attempted: number;
     /** Clause legs that landed. */
     recorded: number;
     /** Whether the once-per-process assembly (designer) credit landed. */
     assemblyRecorded: boolean;
-    /** Clause keys the counter excludes (`excludedClauseOrAssembly`, read off
-     *  the deployment being called). They are never sent: a record of one is
-     *  certain to revert. At the reference genesis the set is the provenance
-     *  clause alone; `figaro-commerce` and `figaro-topology` earn. */
-    excluded: Hex[];
     /** Per-leg failures: a closed accrual, a seller whose stake is not
-     *  live, a key another caller recorded first. */
+     *  live, a key another caller recorded first, an agreement whose leaves
+     *  do not build. */
     failures: string[];
 }
 
@@ -138,15 +134,14 @@ export interface UsageRecordingReport {
  *
  * The legs are PLANNED before anything is sent, with the same two helpers the
  * batch path uses (`fetchUsageClaimContext` + `buildUsageClaims`): every
- * committed section the counter does not exclude gets a CLAUSE leg
- * (`UsageCounter.recordClauseUsage` — only the section FINGERPRINT reaches
- * calldata, never plaintext, so private sections stay off-chain), and the
- * provenance section's `compositionHash` gets the INDEPENDENT ASSEMBLY leg
- * (`recordAssemblyUsage` — content derived on-chain from the hash). A key is
- * counted once per process, so a key two orders carry is sent once. An
- * excluded key is never sent — its record is certain to revert, and the
- * caller would pay gas for nothing; the report names what was left out.
- * Tolerate-the-revert per leg that IS sent; the report says what landed.
+ * committed section gets a CLAUSE leg (`UsageCounter.recordClauseUsage` —
+ * only the section FINGERPRINT reaches calldata, never plaintext, so private
+ * sections stay off-chain), and the agreement's provenance leaf
+ * (`Agreement.provenance`, the composition hash of the assembly it
+ * instantiated) gets the INDEPENDENT ASSEMBLY leg (`recordAssemblyUsage` —
+ * the counter reproduces the leaf from the hash). A key is counted once per
+ * process, so a key two orders carry is sent once. Tolerate-the-revert per
+ * leg; the report says what landed.
  */
 export async function recordProcessUsage(
     walletClient: WalletClient,
@@ -158,11 +153,12 @@ export async function recordProcessUsage(
     if (!account) throw new Error("recordProcessUsage: wallet has no account");
     // The counter names its own FigaroCore; the signed-processId restoration needs
     // FigaroCore's EIP-712 domain, so both derive from the composition itself.
-    const [chainId, core] = await Promise.all([
+    const [chainId, core, context] = await Promise.all([
         publicClient.getChainId(),
         publicClient.readContract({ address: usageCounter, abi: USAGE_COUNTER_ABI, functionName: "core" }) as Promise<Address>,
+        fetchUsageClaimContext(publicClient, usageCounter),
     ]);
-    const report: UsageRecordingReport = { attempted: 0, recorded: 0, assemblyRecorded: false, excluded: [], failures: [] };
+    const report: UsageRecordingReport = { attempted: 0, recorded: 0, assemblyRecorded: false, failures: [] };
     const send = async (functionName: "recordClauseUsage" | "recordAssemblyUsage", args: readonly unknown[]) => {
         const hash = await walletClient.writeContract({
             chain: walletClient.chain ?? null, account, address: usageCounter,
@@ -178,28 +174,26 @@ export async function recordProcessUsage(
     // Once ever per (key, process): `processCounted` in the counter. Every
     // entry here belongs to the one process just resolved.
     const sent = new Set<string>();
-    const excluded = new Set<string>();
     for (const { commitment: given, agreement } of entries) {
         // The counter re-hashes the SIGNED struct to find the order — a root
         // signed processId 0, so a derived-id commitment (the proposer's
         // event-reconstructed shape) must be restored exactly as the resolve
         // path restores it, or every leg reverts UnknownOrder.
         const commitment = restoreSignedProcessId(given, chainId, core);
-        const context = await fetchUsageClaimContext(publicClient, usageCounter, agreement);
-        for (const key of context.excludedClausesOrAssemblies) excluded.add(key.toLowerCase());
         const clauseOf = new Map(agreement.sections.map((s) => [computeClauseKey(s.clause, s.version).toLowerCase(), s.clause]));
-        // A compositionHash that is present and malformed means the designer
-        // credit silently dies; say so.
-        for (const section of agreement.sections) {
-            const composition = (section.data as Record<string, unknown> | undefined)?.compositionHash;
-            if (composition !== undefined && !isBytes32Hex(composition)) {
-                report.failures.push(`${section.clause}: compositionHash present but malformed: ${JSON.stringify(composition)}`);
-            }
+        // An agreement whose leaves do not build (a malformed provenance) has
+        // no provable leg at all; say so and go on to the next order.
+        let claims: ReturnType<typeof buildUsageClaims>;
+        try {
+            claims = buildUsageClaims(commitment, agreement, context);
+        } catch (error) {
+            report.failures.push(`agreement: ${error instanceof Error ? error.message : String(error)}`);
+            continue;
         }
-        for (const claim of buildUsageClaims(commitment, agreement, context)) {
+        for (const claim of claims) {
             const key = claim.clause_or_assembly.toLowerCase();
             if (claim.kind === "Assembly") {
-                if (report.assemblyRecorded || sent.has(key) || !isBytes32Hex(claim.clause_or_assembly)) continue;
+                if (report.assemblyRecorded || sent.has(key)) continue;
                 sent.add(key);
                 try {
                     await send("recordAssemblyUsage", [commitment, claim.clause_or_assembly, claim.inclusion_proof]);
@@ -220,7 +214,6 @@ export async function recordProcessUsage(
             }
         }
     }
-    report.excluded = [...excluded] as Hex[];
     return report;
 }
 

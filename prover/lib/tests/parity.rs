@@ -246,7 +246,7 @@ fn test_full_batch_commit_and_state() {
         prev_state: empty_snapshot(),
         usage_claims: vec![],
         usage_period: 0,
-        provenance_clause: B256::ZERO,
+        provenance_leaf: B256::ZERO,
     };
 
     let (pv, positions, _events) = apply_batch(&input).unwrap();
@@ -314,7 +314,7 @@ fn test_full_batch_commit_resolve_payouts() {
         prev_state: empty_snapshot(),
         usage_claims: vec![],
         usage_period: 0,
-        provenance_clause: B256::ZERO,
+        provenance_leaf: B256::ZERO,
     };
 
     let (_pv, positions, _events) = apply_batch(&input).unwrap();
@@ -475,7 +475,7 @@ fn run_attest_batch(
         prev_state: empty_snapshot(),
         usage_claims: vec![],
         usage_period: 0,
-        provenance_clause: B256::ZERO,
+        provenance_leaf: B256::ZERO,
     };
     apply_batch(&input)
 }
@@ -702,7 +702,7 @@ fn attest_wrong_inclusion_proof_fails() {
         prev_state: empty_snapshot(),
         usage_claims: vec![],
         usage_period: 0,
-        provenance_clause: B256::ZERO,
+        provenance_leaf: B256::ZERO,
     };
 
     match apply_batch(&input) {
@@ -755,7 +755,7 @@ fn attest_on_resolved_order_fails() {
         prev_state: empty_snapshot(),
         usage_claims: vec![],
         usage_period: 0,
-        provenance_clause: B256::ZERO,
+        provenance_leaf: B256::ZERO,
     };
 
     match apply_batch(&input) {
@@ -818,7 +818,7 @@ fn attest_cross_order_same_process_passes() {
         prev_state: empty_snapshot(),
         usage_claims: vec![],
         usage_period: 0,
-        provenance_clause: B256::ZERO,
+        provenance_leaf: B256::ZERO,
     };
 
     let (_pv, _positions, events) = apply_batch(&input).unwrap();
@@ -844,7 +844,7 @@ fn commit_at(timestamp: u64) -> Result<(PublicValues, Vec<NetPosition>, BatchEve
         prev_state: empty_snapshot(),
         usage_claims: vec![],
         usage_period: 0,
-        provenance_clause: B256::ZERO,
+        provenance_leaf: B256::ZERO,
     };
     apply_batch(&input)
 }
@@ -876,7 +876,7 @@ fn an_attestation_on_an_order_nobody_committed_is_an_unknown_order() {
         prev_state: empty_snapshot(),
         usage_claims: vec![],
         usage_period: 0,
-        provenance_clause: B256::ZERO,
+        provenance_leaf: B256::ZERO,
     };
     match apply_batch(&input) {
         Err(KernelError::UnknownOrder) => {}
@@ -997,7 +997,7 @@ fn a_bond_accumulation_overflow_is_rejected_not_a_panic() {
         prev_state: empty_snapshot(),
         usage_claims: vec![],
         usage_period: 0,
-        provenance_clause: B256::ZERO,
+        provenance_leaf: B256::ZERO,
     };
     let result = apply_batch(&input);
     assert!(

@@ -11,7 +11,8 @@ import {
     planTemplateOrders,
     reconstructOrdersFromTemplate,
 } from "../src/reconstructOrders.js";
-import type { AssemblyTemplate } from "../src/assembly.js";
+import { templateCompositionHash, type AssemblyTemplate } from "../src/assembly.js";
+import { computeAgreementHash, buildProvenanceInclusionProof, verifyInclusionProof } from "../src/agreement.js";
 import type { ProjectionSpecView } from "../src/projection.js";
 import { specSourceFromFixtures, specSourceWithRegistrations } from "./specFixtures.js";
 
@@ -110,6 +111,31 @@ describe("reconstructOrdersFromTemplate — realization", () => {
         for (const order of orders) {
             const commerceSection = order.agreement.sections.find((s) => s.clause === "figaro-commerce");
             expect(commerceSection?.data.currency).toBe(order.commitment.currency);
+        }
+    });
+
+    it("every realized order carries the template's own composition hash as agreement.provenance, under its signed root", async () => {
+        for (const specs of [SPECS, undefined]) {
+            const orders = await reconstructOrdersFromTemplate(template, {
+                buyer: BUYER,
+                currency: CURRENCY,
+                chainId: 31337,
+                core: CORE,
+                specs,
+                nodes: (p) =>
+                    p.nodeId === "merchant"
+                        ? { seller: SELLER_A, payment: 100n, overrides: specs ? undefined : { "figaro-commerce": { currency: CURRENCY } } }
+                        : { seller: SELLER_B, payment: 40n, overrides: specs ? undefined : { "figaro-commerce": { currency: CURRENCY } } },
+                salt: () => 1n,
+                deadline: 1770000000n,
+            });
+            for (const order of orders) {
+                expect(order.agreement.provenance).toBe(templateCompositionHash(template));
+                expect(order.agreementHash).toBe(computeAgreementHash(order.agreement));
+                expect(order.commitment.agreementHash).toBe(order.agreementHash);
+                const { leaf, proof } = buildProvenanceInclusionProof(order.agreement);
+                expect(verifyInclusionProof(order.agreementHash, leaf, proof)).toBe(true);
+            }
         }
     });
 

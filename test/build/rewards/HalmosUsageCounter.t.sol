@@ -39,23 +39,9 @@ contract UsageCounterHarness is UsageCounter {
         address _clauses,
         address _assemblies,
         address _batchVerifier,
-        bytes32 _provenanceClause,
-        bytes32[] memory _excluded,
         uint64 _minSellers,
         uint64[] memory _periodEnd
-    )
-        UsageCounter(
-            _core,
-            _members,
-            _clauses,
-            _assemblies,
-            _batchVerifier,
-            _provenanceClause,
-            _excluded,
-            _minSellers,
-            _periodEnd
-        )
-    {}
+    ) UsageCounter(_core, _members, _clauses, _assemblies, _batchVerifier, _minSellers, _periodEnd) {}
 
     function accrue(bytes32 clauseOrAssembly, uint8 period, bytes32 processId, address seller) external {
         _accrue(clauseOrAssembly, period, processId, seller);
@@ -139,7 +125,7 @@ contract UsageCounterHarness is UsageCounter {
 ///         done in"). Both are deliberately isolated out via the permissive
 ///         mocks above so this file proves only the arithmetic layered on top.
 contract HalmosUsageCounter is Test {
-    bytes32 internal constant PROV = keccak256("prov");
+    bytes32 internal constant PROVENANCE_LEAF = keccak256("figaro-agreement-provenance");
     uint64 internal constant P0_END = 1_000_000;
     uint64 internal constant P1_END = 2_000_000;
 
@@ -166,8 +152,6 @@ contract HalmosUsageCounter is Test {
             address(new MockClauseOrAssemblyStake()), // clause-side clauseOrAssembly gate — live by default
             address(new MockClauseOrAssemblyStake()), // assembly-side clauseOrAssembly gate — live by default
             address(this), // batchVerifier — this contract IS the caller below
-            PROV,
-            new bytes32[](0), // no exclusions — isolate from that gate
             1, // minSellers = 1 — floor disabled, isolate from that gate
             periods
         );
@@ -250,7 +234,7 @@ contract HalmosUsageCounter is Test {
 
         UsageCounter.BatchAccrual[] memory first = new UsageCounter.BatchAccrual[](1);
         first[0] = UsageCounter.BatchAccrual(clauseOrAssembly, 2, 2);
-        counter.applyBatchAccrual(0, PROV, first, sellers);
+        counter.applyBatchAccrual(0, PROVENANCE_LEAF, first, sellers);
 
         (uint64 c1, uint64 d1,) = counter.batchAccrualOf(clauseOrAssembly, 0);
         assertEq(c1, 2);
@@ -264,7 +248,7 @@ contract HalmosUsageCounter is Test {
 
         UsageCounter.BatchAccrual[] memory second = new UsageCounter.BatchAccrual[](1);
         second[0] = UsageCounter.BatchAccrual(clauseOrAssembly, c2Target, d2Target);
-        counter.applyBatchAccrual(0, PROV, second, sellers);
+        counter.applyBatchAccrual(0, PROVENANCE_LEAF, second, sellers);
 
         (uint64 c2, uint64 d2, uint256 score2) = counter.batchAccrualOf(clauseOrAssembly, 0);
 
@@ -305,7 +289,7 @@ contract HalmosUsageCounter is Test {
             sellers[0] = seller;
             UsageCounter.BatchAccrual[] memory accr = new UsageCounter.BatchAccrual[](1);
             accr[0] = UsageCounter.BatchAccrual(clauseOrAssembly, 3, 2);
-            counter.applyBatchAccrual(0, PROV, accr, sellers);
+            counter.applyBatchAccrual(0, PROVENANCE_LEAF, accr, sellers);
         }
 
         (,, uint256 directScore) = counter.accrualOf(clauseOrAssembly, 0);
@@ -360,14 +344,14 @@ contract HalmosUsageCounter is Test {
 
         // Claiming period 1 while period 0 is open must revert.
         (bool wrongOk,) =
-            address(counter).call(abi.encodeCall(UsageCounter.applyBatchAccrual, (1, PROV, accr, sellers)));
+            address(counter).call(abi.encodeCall(UsageCounter.applyBatchAccrual, (1, PROVENANCE_LEAF, accr, sellers)));
         assertFalse(wrongOk, "a batch cannot land in a period the chain has not opened");
 
         (,, uint256 otherBefore) = counter.batchAccrualOf(clauseOrAssembly, 1);
         assertEq(otherBefore, 0, "the rejected write touched nothing");
 
         // The correct period succeeds...
-        counter.applyBatchAccrual(0, PROV, accr, sellers);
+        counter.applyBatchAccrual(0, PROVENANCE_LEAF, accr, sellers);
 
         // ...and period 1's slot for the SAME clause or assembly is untouched.
         (,, uint256 otherAfter) = counter.batchAccrualOf(clauseOrAssembly, 1);
@@ -445,7 +429,7 @@ contract HalmosUsageCounter is Test {
             sellers[0] = seller;
             UsageCounter.BatchAccrual[] memory accr = new UsageCounter.BatchAccrual[](1);
             accr[0] = UsageCounter.BatchAccrual(clauseOrAssemblyA, 3, 2);
-            counter.applyBatchAccrual(0, PROV, accr, sellers);
+            counter.applyBatchAccrual(0, PROVENANCE_LEAF, accr, sellers);
             (,, scoreDelta) = counter.batchAccrualOf(clauseOrAssemblyA, 0); // from zero, so delta == score
         } else {
             counter.accrue(clauseOrAssemblyA, 0, processId, seller);

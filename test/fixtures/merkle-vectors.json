@@ -1,9 +1,9 @@
 {
-    "agreementCount": 2,
+    "agreementCount": 3,
     "agreements": [
         {
             "label": "three-sections",
-            "agreementHash": "0xc392d43716fa600fdcc5e52d87b7935cfb246c8b5d76961abd558d50434dabd0",
+            "agreementHash": "0xa4938052c86adf4d94688208eed7b598bff4c5b09acd4289d3511eab9ebf7240",
             "sectionCount": 3,
             "sections": [
                 {
@@ -12,14 +12,14 @@
                     "sectionData": "{\"modality\":\"delivery\"}",
                     "leaf": "0x8fc2dbb8825e453a9be2595f9037f6ef1e7dae3c8779f2a5b03647286c8dc31d",
                     "proof": [
-                        "0xb7547a65c4344626eb1c18136676e521c7f2dd713353eb8a8119aaadc6507379"
+                        "0x6dab1ef79ae4ac05eab2c72fab9cf598b67892cdc08d0b140f36a336f1b11cad"
                     ]
                 },
                 {
-                    "clause": "figaro-provenance",
+                    "clause": "figaro-geolocation",
                     "version": 1,
-                    "sectionData": "{\"hops\":2,\"origin\":\"kitchen-7\"}",
-                    "leaf": "0x0a052bf9013a5d3c1ec24eda62568ca243d4568241ab3cbcb7799027636558df",
+                    "sectionData": "{\"hops\":2,\"origin\":\"site-7\"}",
+                    "leaf": "0x839b8d4172ae75e83507d8435282bf598a11b6fb5a3ca792e1d94b870830bc4a",
                     "proof": [
                         "0x6879dd7993969b0b8b3a74392e5245b6af73277698ed24a578eee18d8603dfa8",
                         "0x8fc2dbb8825e453a9be2595f9037f6ef1e7dae3c8779f2a5b03647286c8dc31d"
@@ -31,7 +31,7 @@
                     "sectionData": "{\"law\":\"ch\"}",
                     "leaf": "0x6879dd7993969b0b8b3a74392e5245b6af73277698ed24a578eee18d8603dfa8",
                     "proof": [
-                        "0x0a052bf9013a5d3c1ec24eda62568ca243d4568241ab3cbcb7799027636558df",
+                        "0x839b8d4172ae75e83507d8435282bf598a11b6fb5a3ca792e1d94b870830bc4a",
                         "0x8fc2dbb8825e453a9be2595f9037f6ef1e7dae3c8779f2a5b03647286c8dc31d"
                     ]
                 }
@@ -48,6 +48,42 @@
                     "sectionData": "{\"modality\":\"pickup\"}",
                     "leaf": "0xeb220d75c46467df3e53c2157e41334eddf14f9060c36e66c79d2cb7ba66aa30",
                     "proof": []
+                }
+            ]
+        },
+        {
+            "label": "two-sections-and-a-design",
+            "agreementHash": "0xbf5c6a664c41bfdd95af985ec843235fcba0a02abc0f7eaf6ff4b7ed425d8407",
+            "sectionCount": 2,
+            "provenance": {
+                "leafKey": "0x26dc18a2251a8f4629ada6df88b7c98553e011c08682d28ce5bb51a441227dc6",
+                "compositionHash": "0x9b3c1d2e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c",
+                "sectionData": "{\"compositionHash\":\"0x9b3c1d2e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c\"}",
+                "leaf": "0x8d786d1590506df2f4c39210e8e62bd4d2567d69fbfecefb4435a42311689f57",
+                "proof": [
+                    "0x5ed356c023d8c67537cb631ba0910b619f383392e811ee800d2d85a43c62c413"
+                ]
+            },
+            "sections": [
+                {
+                    "clause": "figaro-commerce",
+                    "version": 1,
+                    "sectionData": "{\"currency\":\"0x0000000000000000000000000000000000000000\",\"payment\":\"7\"}",
+                    "leaf": "0x61111beb6f9494099be694f0d63595e8ff78e61ee1344ce7d9d3c6af5ed9f23e",
+                    "proof": [
+                        "0x038adc5e1ccf4bddb1f55d6a3fd2ccaa2849de5295cf58eee8cb86feb692eadd",
+                        "0x8d786d1590506df2f4c39210e8e62bd4d2567d69fbfecefb4435a42311689f57"
+                    ]
+                },
+                {
+                    "clause": "figaro-topology",
+                    "version": 1,
+                    "sectionData": "{\"parentOrderHashes\":[]}",
+                    "leaf": "0x038adc5e1ccf4bddb1f55d6a3fd2ccaa2849de5295cf58eee8cb86feb692eadd",
+                    "proof": [
+                        "0x61111beb6f9494099be694f0d63595e8ff78e61ee1344ce7d9d3c6af5ed9f23e",
+                        "0x8d786d1590506df2f4c39210e8e62bd4d2567d69fbfecefb4435a42311689f57"
+                    ]
                 }
             ]
         }

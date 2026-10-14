@@ -29,6 +29,25 @@ across them is the binding, not redundancy, and the sign gate's job is to
 assert leaf == struct. `payment` has both homes — the commerce leaf and the
 struct field — and so does the denomination.
 
+Beside the clause leaves, the agreement format carries one reserved leaf: the
+**provenance leaf**, the link from a process to the assembly it instantiated.
+Its key is `keccak256("figaro-agreement-provenance")`
+(`0x26dc18a2251a8f4629ada6df88b7c98553e011c08682d28ce5bb51a441227dc6`), its
+committed content is exactly `{"compositionHash":"0x<64 lowercase hex>"}`,
+and its leaf follows the section convention,
+`keccak256(keccak256(key ‖ keccak256(content)))`. The key's preimage is a
+plain string, so it never meets a clause key `keccak256(abi.encode(name,
+uint64 version))`; no spec describes the leaf and `ClauseRegistry` holds
+nothing under it. Checkout fills the agreement's `provenance` from the
+assembly's own `compositionHash`; an agreement that names no assembly carries
+no provenance leaf. The SDK owns the format (`PROVENANCE_LEAF_KEY`,
+`provenanceSectionBytes`, `computeProvenanceLeaf`, `agreementLeaves`,
+`buildProvenanceInclusionProof`, `provenanceLeafAttestation` in
+`sdk/src/agreement.ts`); `UsageCounter.provenanceLeaf` and the guest's
+`PROVENANCE_LEAF_KEY` hold the same constant, and the guest verifies an
+attestation of the leaf by inclusion with the bytes reproduced, consulting no
+spec.
+
 ## The SDK's validation
 
 `@figaro-protocol/sdk/clauses` exposes one generic engine; `sdk/README.md` is
@@ -176,8 +195,9 @@ section a clause reads under. Classification reads the article, never the
 field shape:
 
 - **`mandatory`** — committed content on every order (`figaro-commerce`,
-  `figaro-topology`), never a designer choice; the assembly build folds
-  mandatory clauses in generically.
+  `figaro-topology`, both at agreement scope), never a designer choice; the
+  assembly build folds mandatory clauses in generically. No mandatory clause
+  is at assembly scope.
 - **`attestations`** — runtime transfer ladders the responsible party advances
   (`figaro-merchant-process`, `figaro-courier-process`; a supply chain runs the
   same structure at length). These are coordination attestations between
@@ -206,13 +226,11 @@ Two structural notes that no single spec can carry:
   runtime as evidence that one seller performed after another. Indexers and
   interfaces read a process's topology from the signed agreement, never from
   `FigaroCore`, which stores no parent or child.
-- `figaro-assembly-provenance` is the leaf whose committed content is the
-  assembly's `compositionHash`. The assembly build folds it into every
-  published assembly; checkout fills it from the loaded assembly's own
-  identity; `UsageCounter.recordAssemblyUsage` proves that one leaf, which is
-  how a process credits its assembly's designer. It is the one entry in
-  `UsageCounter.excludedClauseOrAssembly`, so the credit-carrying leaf itself
-  earns nothing twice.
+- A process credits its assembly's designer through the agreement format's
+  provenance leaf (§ "Every clause is a merkle leaf"), never through a clause:
+  `UsageCounter.recordAssemblyUsage` proves that one leaf. The leaf earns
+  nothing itself: the counter refuses its key by comparison with the
+  constant on both paths, whatever a registry holds at that key.
 
 ## When something deserves a clause — payload vs anchor
 

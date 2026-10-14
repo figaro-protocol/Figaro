@@ -1,5 +1,6 @@
 import type { Hex } from "viem";
 import type {
+    AttestProvenanceLeafCapabilityAction,
     CapabilityActionDescriptor,
     CapabilityExecutionInput,
     SubmitClauseAttestationCapabilityAction,
@@ -24,6 +25,8 @@ export interface TransactionCapabilityExecutors {
         action: SubmitClauseAttestationCapabilityAction,
         values?: Record<string, unknown>,
     ) => TransactionExecutionResult;
+    /** The buyer's attestation of the agreement format's provenance leaf. */
+    attestProvenanceLeaf?: (action: AttestProvenanceLeafCapabilityAction) => TransactionExecutionResult;
 }
 
 function assertNever(_value: never): never {
@@ -88,6 +91,12 @@ export async function executeTransactionCapabilityAction(
                 executors.submitClauseAttestation,
                 "Clause attestation execution is unavailable.",
             )(action, input?.kind === "submit-clause-attestation" ? input.values : undefined);
+            break;
+        case "attest-provenance-leaf":
+            txHash = await ensureExecutor(
+                executors.attestProvenanceLeaf,
+                "Provenance attestation execution is unavailable.",
+            )(action);
             break;
         default:
             return assertNever(action);

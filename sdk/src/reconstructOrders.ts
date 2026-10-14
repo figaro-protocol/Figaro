@@ -221,9 +221,9 @@ export async function reconstructOrdersFromTemplate(
     const realHash = new Map<string, Hex>();
     let rootProcessId: Hex | null = null;
     let cumulative = 0n;
-    // Lazily computed only when a spec identifies a provenance clause — the
-    // template's OWN composition hash, filled mechanically (see fillWalkProvenance).
-    let walkCompositionHash: `0x${string}` | undefined;
+    // The template's OWN composition hash — every realized order carries it
+    // as the agreement's provenance leaf (see fillWalkProvenance).
+    const compositionHash = templateCompositionHash(template);
     const out: ReconstructedOrder[] = [];
 
     for (const node of planned) {
@@ -238,36 +238,29 @@ export async function reconstructOrdersFromTemplate(
         // nodes (root's empty parents pass through unchanged). Matched by
         // FIELD NAME on every clause carrying `parentOrderHashes`.
         const clauses = withRealParents(node.clauses, realHash);
-        const { agreement, agreementHash } = params.specs
+        const built = params.specs
             ? buildOrderAgreement(
                   params.buyer,
                   spec.seller,
-                  fillWalkProvenance(
-                      fillWalkCurrency(
-                          mergeOverrides(clauses, spec.overrides),
-                          params.currency,
-                          params.specs,
-                          node.nodeId,
-                          node.clauseVersions,
-                      ),
-                      walkCompositionHash ?? (walkCompositionHash = templateCompositionHash(template)),
+                  fillWalkCurrency(
+                      mergeOverrides(clauses, spec.overrides),
+                      params.currency,
                       params.specs,
                       node.nodeId,
                       node.clauseVersions,
                   ),
                   params.specs,
                   node.clauseVersions,
-              )
-            : (() => {
-                  const a = templateAgreementFromClauses(
-                      clauses,
-                      { clauseVersions: sparseVersions(node.clauseVersions) },
-                      params.buyer,
-                      spec.seller,
-                      spec.overrides,
-                  );
-                  return { agreement: a, agreementHash: computeAgreementHash(a) };
-              })();
+              ).agreement
+            : templateAgreementFromClauses(
+                  clauses,
+                  { clauseVersions: sparseVersions(node.clauseVersions) },
+                  params.buyer,
+                  spec.seller,
+                  spec.overrides,
+              );
+        const agreement = fillWalkProvenance(built, compositionHash, node.nodeId);
+        const agreementHash = computeAgreementHash(agreement);
 
         const { commitment, typedData } = buildCommitment(
             {
@@ -388,29 +381,27 @@ function fillWalkCurrency(
     });
 }
 
-/** Write the instantiated template's OWN composition hash into the provenance
- *  section BEFORE hashing — the mechanical fill the checkout performs
- *  (docs/CLAUSES.md: the hash cannot appear inside the composition it hashes,
- *  so it fills at instantiation, never at design). The provenance section is
- *  the composed clause declaring `compositionHash` as plain content
- *  (`fillProvenanceSection` in checkoutPlan routes the same way). A
- *  CONTRADICTING override throws — an agreement claiming to instantiate a
+/** Write the instantiated template's OWN composition hash into the agreement's
+ *  provenance leaf (`Agreement.provenance`) BEFORE hashing — the agreement
+ *  format's own field, never a clause section; the hash cannot appear inside
+ *  the composition it hashes, so it fills at instantiation, never at design.
+ *  An agreement already naming the SAME hash passes (case-insensitive); one
+ *  naming a DIFFERENT hash throws — an agreement claiming to instantiate a
  *  different composition than the one that built it is a forgery to surface,
- *  not a value to reconcile. Each section's spec is read at its composed
- *  version (`clauseVersions`, sparse — absent = 1). */
+ *  not a value to reconcile. */
 export function fillWalkProvenance(
-    clauses: Record<string, Record<string, unknown>>,
-    compositionHash: `0x${string}`,
-    specs: SpecSource,
+    agreement: Agreement,
+    compositionHash: Hex,
     nodeId: string,
-    clauseVersions?: Readonly<Record<string, number>>,
-): Record<string, Record<string, unknown>> {
-    return fillWalkField(clauses, "compositionHash", compositionHash, specs, nodeId, clauseVersions, {
-        predicate: (spec) => specDeclaresContentField(spec, "compositionHash"),
-        contradiction: (existing) =>
-            `override names compositionHash ${existing}, which contradicts this template's ` +
+): Agreement {
+    const existing = agreement.provenance;
+    if (existing !== undefined && existing.toLowerCase() !== compositionHash.toLowerCase()) {
+        throw new Error(
+            `node "${nodeId}": the agreement names provenance ${existing}, which contradicts this template's ` +
             `own composition hash ${compositionHash} — refusing to claim a different provenance`,
-    });
+        );
+    }
+    return { ...agreement, provenance: compositionHash };
 }
 
 /** The one clause-bag ∪ overrides merge (per-clause shallow spread) — shared

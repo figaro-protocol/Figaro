@@ -141,7 +141,7 @@ export interface AgreementGroup {
     /** `version` is the clause version the template composed for the section
      *  (`templateClauseVersion`) — every spec read the row makes is keyed on it.
      *  `mandatory` marks a section the assembly folded in because its spec's
-     *  article is "mandatory" (commerce, topology, provenance, or anyone's
+     *  article is "mandatory" (commerce, topology, or anyone's
      *  registration so marked): it is listed like every other section, since
      *  the buyer signs it, and is never fillable — the checkout walk fills it. */
     clauses: Array<{ clauseId: string; version: number; values: string; data: Record<string, unknown>; fillable: boolean; mandatory: boolean }>;
@@ -230,8 +230,8 @@ export function deriveAgreementGroups(args: {
             specSource(),
             order.clauseVersions,
         );
-        // Fields the checkout walk fills MECHANICALLY (the provenance
-        // anchor, the topology rewrite, …) — a buyer input the walk
+        // Fields the checkout walk fills MECHANICALLY (the topology
+        // rewrite, …) — a buyer input the walk
         // would overwrite is a false affordance, so a clause whose
         // declared fields are ALL mechanical is not fillable. Derived
         // from the planner's own fill set, never a clause id.

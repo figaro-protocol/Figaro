@@ -101,7 +101,8 @@ export interface SequencerCommitment {
 /**
  * A claim that one RESOLVED BATCH order used one clause or assembly — the wire form of the
  * Rust guest's `UsageClaim`. Build these with `buildUsageClaims` (rpgf), which
- * knows which clauses or assemblies the counter excludes; never hand-roll one.
+ * proves each clause from its section and the assembly from the agreement's
+ * provenance leaf; never hand-roll one.
  *
  * Nothing here is trusted. The guest re-proves that the order resolved and that
  * the clause or assembly was in the signed agreement; the counter then applies the
@@ -492,9 +493,7 @@ export class SequencerClient {
      * the batch's POST-state, so a claim for an order the same batch resolves
      * is still credited by that batch.
      *
-     * Build claims with `buildUsageClaims` — never hand-roll one, and never
-     * include a clause or assembly the counter excludes: `applyBatchAccrual` reverts on
-     * it and takes the whole batch, every other party's resolution included.
+     * Build claims with `buildUsageClaims` — never hand-roll one.
      */
     async submitUsageClaim(claim: SequencerUsageClaim): Promise<{ pending: number }> {
         const res = await this._fetch(`${this.url}/submit-usage`, {

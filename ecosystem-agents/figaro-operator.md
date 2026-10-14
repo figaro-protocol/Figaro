@@ -211,10 +211,19 @@ the gate stops objecting.
 
 Two of them are not yours to write. The **denomination** — the `currency` leaf — is a TERM
 that the commitment struct MIRRORS: write the same address into both, or the gate refuses.
-And the assembly's **`compositionHash`** fills MECHANICALLY once `specs` is passed — the same
-spec-routed fill checkout performs, found by the declared `compositionHash` field. Do not
-hand-write provenance: a value contradicting the template you instantiated is a claim to a
-different assembly, and the SDK throws on it.
+And the assembly's **`compositionHash`** is written by the instantiation itself, with or
+without `specs`: `instantiateRootAgreement` and the template walk set `agreement.provenance`
+to `templateCompositionHash(template)` on every order — the agreement format's reserved
+provenance leaf (key `PROVENANCE_LEAF_KEY`, `keccak256("figaro-agreement-provenance")`;
+bytes `{"compositionHash":"0x<lowercase hex>"}`), a leaf of the agreement and never a clause
+section. Do not hand-write provenance: an agreement naming a different hash than the
+template you instantiated is a claim to a different assembly, and the SDK throws on it.
+While the process is OPEN you may attest that leaf as the buyer —
+`attestAsBuyer(walletClient, coordinator, target, p.clauseId, p.stage, p.sectionHash,
+p.proof, p.contentRef)` with `p = provenanceLeafAttestation(agreement)` — which makes the
+process-to-assembly link public: a reader matches the attestation's `contentRef` against
+`provenanceContentRef(compositionHash)` for a registered assembly. The coordinator refuses
+every attestation once the order is resolved (`OrderResolved`).
 
 **5. Resolve — and count the usage in the same breath.** Only the buyer can end a process,
 and resolution is atomic and terminal. After `executeAction` dispatches the
@@ -234,19 +243,16 @@ Usage is counted **at resolution or it is permanently deniable** (`docs/DESIGN_D
 agent that resolves without this credits no clause designer and no assembly designer, and
 the 600M reward's uniformity across actors is exactly this call. Only the section FINGERPRINT
 reaches calldata, so a private section's plaintext never becomes public. Read the report,
-not the absence of an exception. **The mandatory clauses EARN**: commerce and topology ride
-on every order and are scored for their designer of record like any other. The reference
-deployments exclude exactly ONE key — `figaro-assembly-provenance`, which is attribution
-plumbing (scoring it would double-reward every assembly trade, whose designer accrues through
-the assembly leg below) — and `recordProcessUsage` never sends it: it reads
-`excludedClauseOrAssembly(key)` off the deployment you are calling and lists what it left out
-in `report.excluded`, so on a healthy assembly run `failures` is empty. The set is a
-constructor argument, never a fixed list: read `report.excluded` before you tell the owner
-which legs were filed. The once-per-process assembly credit
-is an INDEPENDENT leg (`assemblyRecorded`): it is claimed from the first section carrying a
-well-formed `compositionHash` and requires that composition to hold a live registry binding,
-so an agreement with no provenance section credits no designer at all. Report the report,
-never "it reverted, so it failed".
+not the absence of an exception. **Every clause EARNS**, the mandatory ones included:
+commerce and topology ride on every order and are scored for their designer of record like
+any other, and `recordProcessUsage` sends one clause leg per distinct clause key the
+process carries (`attempted` / `recorded`). The once-per-process assembly credit is an
+INDEPENDENT leg (`assemblyRecorded`): `recordAssemblyUsage` is called with the agreement's
+`provenance` and the provenance leaf's inclusion proof, the counter rebuilds the leaf under
+its `provenanceLeaf()` key and proves it, and it requires that composition to hold a live
+`AssemblyRegistry` binding — so an agreement with no `provenance` credits no designer at
+all. A leg that reverts lands in `report.failures` with its reason, nothing thrown. Report
+the report, never "it reverted, so it failed".
 
 ## Trading the wallet's data — an ordinary bonded order
 

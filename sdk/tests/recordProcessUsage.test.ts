@@ -1,18 +1,17 @@
 /**
- * recordProcessUsage — the headless at-resolution usage recording. The legs
- * are planned from the deployment's own excluded set, so a record the counter
- * is certain to refuse is never sent, and a key is sent once per process.
+ * recordProcessUsage — the headless at-resolution usage recording. Every
+ * committed section earns a clause leg, the agreement's provenance leaf
+ * earns the assembly leg, and a key is sent once per process.
  */
 import { describe, it, expect } from "vitest";
 import { encodePacked, keccak256, type Address, type Hex, type PublicClient, type WalletClient } from "viem";
 import { recordProcessUsage } from "../src/agent/index.js";
 import { computeClauseKey } from "../src/discovery.js";
-import type { Agreement } from "../src/agreement.js";
+import { PROVENANCE_LEAF_KEY, type Agreement } from "../src/agreement.js";
 import type { Commitment } from "../src/types.js";
 
 const COUNTER = "0x00000000000000000000000000000000000c0de5" as Address;
 const CORE = "0x0000000000000000000000000000000000c0ffee" as Address;
-const PROVENANCE = computeClauseKey("figaro-assembly-provenance", 1);
 const COMMERCE = computeClauseKey("figaro-commerce", 1);
 const MODALITIES = computeClauseKey("figaro-modalities", 1);
 const COMPOSITION = keccak256(encodePacked(["string"], ["an-assembly"]));
@@ -31,30 +30,30 @@ function order(salt: bigint): Commitment {
     };
 }
 
-function agreement(): Agreement {
+function agreement(provenance: Hex = COMPOSITION): Agreement {
     const o = order(1n);
     return {
         version: "a1", buyer: o.buyer, seller: o.seller,
         sections: [
             { clause: "figaro-modalities", version: 1, data: { modality: "pickup" } },
             { clause: "figaro-commerce", version: 1, data: { payment: "100", currency: o.currency, lineItems: [] } },
-            { clause: "figaro-assembly-provenance", version: 1, data: { compositionHash: COMPOSITION } },
         ],
+        provenance,
     };
 }
 
 interface Sent { functionName: string; key: Hex }
 
-/** Stub clients: the counter excludes the provenance clause and nothing else. */
+/** Stub clients: the counter answers its FigaroCore and its provenance leaf,
+ *  and nothing else. */
 function clients(opts: { failOn?: Hex } = {}) {
     const sent: Sent[] = [];
     const publicClient = {
         getChainId: async () => 31337,
         readContract: async ({ functionName, args }: { functionName: string; args?: readonly unknown[] }) => {
             if (functionName === "core") return CORE;
-            if (functionName === "provenanceClause") return PROVENANCE;
-            if (functionName === "excludedClauseOrAssembly") return (args![0] as string).toLowerCase() === PROVENANCE.toLowerCase();
-            throw new Error(`unexpected read ${functionName}`);
+            if (functionName === "provenanceLeaf") return PROVENANCE_LEAF_KEY;
+            throw new Error(`unexpected read ${functionName}(${(args ?? []).join(",")})`);
         },
         waitForTransactionReceipt: async () => ({ status: "success" }),
     } as unknown as PublicClient;
@@ -72,15 +71,28 @@ function clients(opts: { failOn?: Hex } = {}) {
 }
 
 describe("recordProcessUsage", () => {
-    it("never sends an excluded clause's record, and names what it left out", async () => {
+    it("sends every section's clause leg and the assembly leg from the agreement's provenance leaf", async () => {
         const { publicClient, walletClient, sent } = clients();
         const report = await recordProcessUsage(walletClient, publicClient, COUNTER, [{ commitment: order(1n), agreement: agreement() }]);
 
         expect(sent.filter((s) => s.functionName === "recordClauseUsage").map((s) => s.key.toLowerCase()).sort())
             .toEqual([COMMERCE.toLowerCase(), MODALITIES.toLowerCase()].sort());
-        expect(sent.some((s) => s.key.toLowerCase() === PROVENANCE.toLowerCase()), "the provenance clause's own record is never sent").toBe(false);
+        expect(sent.some((s) => s.key.toLowerCase() === PROVENANCE_LEAF_KEY.toLowerCase()), "the reserved leaf key is never a clause leg").toBe(false);
         expect(sent.filter((s) => s.functionName === "recordAssemblyUsage").map((s) => s.key)).toEqual([COMPOSITION]);
-        expect(report).toEqual({ attempted: 2, recorded: 2, assemblyRecorded: true, excluded: [PROVENANCE.toLowerCase()], failures: [] });
+        expect(report).toEqual({ attempted: 2, recorded: 2, assemblyRecorded: true, failures: [] });
+    });
+
+    it("an agreement whose provenance is malformed has no provable leg: nothing is sent and the report says so", async () => {
+        const { publicClient, walletClient, sent } = clients();
+        const report = await recordProcessUsage(walletClient, publicClient, COUNTER, [
+            { commitment: order(1n), agreement: agreement("0x12" as Hex) },
+        ]);
+
+        expect(sent).toHaveLength(0);
+        expect(report.assemblyRecorded).toBe(false);
+        expect(report.recorded).toBe(0);
+        expect(report.failures).toHaveLength(1);
+        expect(report.failures[0]).toMatch(/^agreement: .*0x12/);
     });
 
     it("sends a key two orders carry once: the counter counts it once per process", async () => {

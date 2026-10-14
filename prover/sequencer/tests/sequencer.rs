@@ -600,7 +600,7 @@ fn claim_filter_quarantines_a_poison_claim_without_dropping_the_valid_one() {
         &empty_snapshot(),
         &input.operations,
         input.usage_period,
-        input.provenance_clause,
+        input.provenance_leaf,
         vec![valid, poison],
     );
     assert_eq!(kept.len(), 1, "the valid claim survives: {dropped:?}");
@@ -628,7 +628,7 @@ fn claim_filter_drops_an_intra_batch_duplicate() {
         &empty_snapshot(),
         &input.operations,
         input.usage_period,
-        input.provenance_clause,
+        input.provenance_leaf,
         vec![claim.clone(), claim],
     );
     assert_eq!(kept.len(), 1, "the process is counted once: {dropped:?}");
@@ -959,7 +959,7 @@ async fn a_claims_only_batch_is_a_valid_state_transition() {
         UsageContext {
             claims: input.usage_claims.clone(),
             period: input.usage_period,
-            provenance_clause: input.provenance_clause,
+            provenance_leaf: input.provenance_leaf,
         },
     );
     let (pv, positions, events, _) =
@@ -2534,7 +2534,7 @@ fn the_canonical_batch_is_planned_from_its_own_execution_and_fits_a_block() {
     assert_eq!(items.attestations, 2, "the two attestations are re-emitted");
     assert_eq!(items.accruals, input.usage_claims.len(), "a claim is an accrual");
     assert!(items.usage_sellers >= 1, "the accrual names its seller");
-    let calldata = settle_calldata(&positions, &events, input.provenance_clause, &pv.abi_encode(), 356);
+    let calldata = settle_calldata(&positions, &events, input.provenance_leaf, &pv.abi_encode(), 356);
     // The calldata is the settle call: its selector, the proof placeholder
     // and the public values, then the items.
     assert!(calldata.len() > 4 + 356 + pv.abi_encode().len());
@@ -2543,7 +2543,7 @@ fn the_canonical_batch_is_planned_from_its_own_execution_and_fits_a_block() {
     assert!(planned < gas::settle_gas_budget(30_000_000, gas::DEFAULT_SETTLE_GAS_CAP), "the canonical batch fits one transaction under the cap");
     // The same batch with the proof's bytes absent (the mock verifier) plans
     // for fewer calldata bytes and nothing else.
-    let without_proof = settle_calldata(&positions, &events, input.provenance_clause, &pv.abi_encode(), 0);
+    let without_proof = settle_calldata(&positions, &events, input.provenance_leaf, &pv.abi_encode(), 0);
     assert_eq!(
         planned - gas::settle_gas_estimate(&without_proof, items),
         gas::calldata_gas(&calldata) - gas::calldata_gas(&without_proof)

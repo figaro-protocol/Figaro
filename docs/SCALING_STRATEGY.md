@@ -479,7 +479,8 @@ invariant — but they avoid wasting prover compute on batches that would fail.
 **3. Batch assembly.** Operations are drained into a `BatchInput` on a
 trigger — every N seconds, or at M operations, whichever comes first —
 together with the sequencer's local state snapshot, the usage claims for
-batch-resolved orders, the period, and the provenance clause key. The local
+batch-resolved orders, the period, and the provenance leaf key the relay
+reads from `UsageCounter.provenanceLeaf()`. The local
 state is the sequencer's mirror of the batch path's state, maintained
 by replaying its own landed batches.
 

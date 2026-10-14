@@ -76,6 +76,12 @@ pub enum ContentKind {
 ///      against the TARGET commitment's signed `agreement_hash`,
 ///      mirroring the coordinator's mandatory `_verifyInclusion`.
 ///
+/// The one key the gates do not run for is the agreement format's
+/// reserved provenance leaf (`kernel::PROVENANCE_LEAF_KEY`): it is not a
+/// clause, so S and C give way to the format's own rule — `section_data`
+/// is the reproduction of the compositionHash it carries, `content_ref` is
+/// its keccak — and I runs as for any leaf; no spec binding is committed.
+///
 /// JSON crosses the SP1 stdin boundary as pre-serialized `String`s —
 /// bincode (non-self-describing) cannot carry `serde_json::Value`, and
 /// no field here may use `skip_serializing_if` (either desyncs the
@@ -174,8 +180,9 @@ pub enum UsageClaimKind {
     /// committed bytes are supplied as a FINGERPRINT — the preimage
     /// never enters the batch, exactly as on the direct path.
     Clause { section_hash: B256 },
-    /// Assembly usage. The leaf key is the PROVENANCE clause (never the
-    /// assembly — a compositionHash is not a leaf key), and the section
+    /// Assembly usage. The leaf key is the reserved PROVENANCE leaf's key,
+    /// a constant of the agreement format (never the assembly — a
+    /// compositionHash is not a leaf key — and never a clause), and the section
     /// bytes are REPRODUCED from the assembly rather than supplied:
     /// `{"compositionHash":"0x…"}`. A wrong compositionHash derives a
     /// leaf that is simply not in the tree.
@@ -271,12 +278,18 @@ pub struct BatchInput {
     /// resolved just after is rejected and must be re-proven: loud, and
     /// far better than silently paying the wrong tranche.
     pub usage_period: u8,
-    /// `figaro-assembly-provenance`'s clause key, the leaf key an
-    /// assembly claim proves against. COMMITTED in the usage hash and
-    /// checked on-chain against `UsageCounter.provenanceClause`, so a
-    /// prover cannot nominate some other clause whose 32-byte section
-    /// happens to equal an assembly's hash.
-    pub provenance_clause: B256,
+    /// The reserved provenance leaf's key, a constant of the agreement
+    /// format (`keccak256("figaro-agreement-provenance")`) mirrored by
+    /// `UsageCounter.provenanceLeaf()`; the guest takes it as witness and
+    /// the chain checks it. It is the leaf key an assembly claim proves
+    /// against, COMMITTED in the usage hash, so a prover cannot nominate
+    /// some clause whose section happens to equal the provenance bytes.
+    /// The attestation path does not read it: an attestation of the
+    /// provenance leaf is recognised by the guest's own constant
+    /// (`kernel::PROVENANCE_LEAF_KEY`), because the chain's check of this
+    /// witness sits inside the verifier's accrual try/catch and cannot
+    /// refuse a batch's attestations.
+    pub provenance_leaf: B256,
 }
 
 /// Public values committed by the SP1 program.
@@ -299,11 +312,12 @@ pub struct PublicValues {
     /// `ClauseRegistry.contentHashOf` before accepting the batch.
     pub spec_bindings_hash: B256,
     /// Hash of the batch's RPGF usage accrual — the period, the
-    /// provenance-clause key, the per-clause-or-assembly cumulative `(c, d)`,
+    /// provenance leaf's key, the per-clause-or-assembly cumulative `(c, d)`,
     /// and the distinct sellers the accrual rests on. The on-chain verifier
     /// re-derives it from calldata, anchors every seller against
-    /// `MembersRegistry.registered` and every clause or assembly against
-    /// `UsageCounter.excludedClauseOrAssembly`, then writes the accrual.
+    /// `MembersRegistry.registered` and every clause or assembly against its
+    /// live registration in `ClauseRegistry` or `AssemblyRegistry`, then
+    /// writes the accrual.
     pub usage_accrual_hash: B256,
     /// The clock the guest checked every commitment deadline against
     /// (`input.block_timestamp`). It is COMMITTED here so the on-chain verifier
@@ -491,6 +505,15 @@ pub enum KernelError {
     /// compositionHash that does not match the committed provenance
     /// section.
     UsageInvalidInclusionProof,
+    /// An attestation of the reserved provenance leaf whose bytes are not
+    /// `{"compositionHash":"0x<64 lowercase hex>"}` reproduced from the
+    /// compositionHash they carry.
+    ProvenanceLeafNotCanonical,
+    /// A usage claim keyed on the reserved provenance leaf. The key is a
+    /// constant of the agreement format, never a clause or an assembly, so
+    /// no claim is credited under it — the guest's mirror of
+    /// `UsageCounter.ProvenanceLeafIsNotARegistration`.
+    ProvenanceLeafIsNotARegistration,
 }
 
 impl core::fmt::Display for KernelError {

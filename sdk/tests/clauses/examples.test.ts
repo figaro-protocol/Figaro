@@ -1,12 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { encodeAbiParameters } from "viem";
 import { parseClauseSpec } from "../../src/clauses/spec.js";
 import { encodeContentFromSpec, decodeContentFromSpec } from "../../src/clauses/encode.js";
 import dataLicenseSpecRaw from "../../../clauses/figaro-data-license.json" with { type: "json" };
 import dataTermsSpecRaw from "../../../clauses/figaro-data-terms.json" with { type: "json" };
 import chainOfCustodySpecRaw from "../../../clauses/figaro-chain-of-custody.json" with { type: "json" };
 import acceptanceCriteriaSpecRaw from "../../../clauses/figaro-acceptance-criteria.json" with { type: "json" };
-import assemblyProvenanceSpecRaw from "../../../clauses/figaro-assembly-provenance.json" with { type: "json" };
 import modalitiesSpecRaw from "../../../clauses/figaro-modalities.json" with { type: "json" };
 import { validateContent } from "../../src/clauses/validate.js";
 import topologySpecRaw from "../../../clauses/figaro-topology.json" with { type: "json" };
@@ -690,28 +688,6 @@ describe("example clause specs — parse + validate sample content", () => {
         const parsed = parseClauseSpec(handoffSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         expect(validateContent({ handoff: ["teleport"] }, parsed.spec).ok).toBe(false);
-    });
-
-    // ── figaro-assembly-provenance ──
-
-    it("figaro-assembly-provenance spec parses cleanly", () => {
-        expect(parseClauseSpec(assemblyProvenanceSpecRaw).ok).toBe(true);
-    });
-
-    it("figaro-assembly-provenance accepts a compositionHash and rejects malformed ones", () => {
-        const parsed = parseClauseSpec(assemblyProvenanceSpecRaw);
-        if (!parsed.ok) throw new Error("spec failed to parse");
-        expect(validateContent({ compositionHash: "0x" + "ab".repeat(32) }, parsed.spec).ok).toBe(true);
-        expect(validateContent({ compositionHash: "not-hex" }, parsed.spec).ok).toBe(false);
-        expect(validateContent({}, parsed.spec).ok).toBe(false);
-    });
-
-    it("figaro-assembly-provenance encodes as abi.encode(bytes32) under the generic encoder", () => {
-        const parsed = parseClauseSpec(assemblyProvenanceSpecRaw);
-        if (!parsed.ok) throw new Error("spec failed to parse");
-        const compositionHash = ("0x" + "cd".repeat(32)) as `0x${string}`;
-        const encoded = encodeContentFromSpec(parsed.spec, { compositionHash });
-        expect(encoded).toBe(encodeAbiParameters([{ type: "bytes32" }], [compositionHash]));
     });
 
     // ── figaro-schedule ──

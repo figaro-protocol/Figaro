@@ -11,11 +11,12 @@
  * sign → both bonds lock → commit → three attestations → resolve. The three
  * attestations set up BOTH substance postures in one run:
  *
- *   - PROVENANCE (buyer): content = the committed section's ABI encoding,
- *     PUBLISHED — pinned to Kubo as a raw block multihashed keccak-256, so
- *     the on-chain `contentRef` IS the content address. This is what makes
- *     the process ATTRIBUTABLE: the market-shape layer keys on the decoded
- *     `compositionHash` field (declared by spec, never by clause name).
+ *   - PROVENANCE (buyer): the agreement format's provenance leaf, under its
+ *     reserved key (`PROVENANCE_LEAF_KEY`, never a clause); content = the
+ *     leaf's own bytes, PUBLISHED — pinned to Kubo as a raw block multihashed
+ *     keccak-256, so the on-chain `contentRef` IS the content address. This
+ *     is what makes the process ATTRIBUTABLE: the market-shape layer keys on
+ *     the composition hash those bytes decode to, with no spec.
  *   - GEOLOCATION (seller): content published the same way — the geo clause
  *     family draws a DECODED overlay row.
  *   - DATA-TERMS (seller): content NOT published — the anchors are real, the
@@ -113,10 +114,14 @@ import {
     ASSEMBLY_REGISTRY_ABI,
     ATTESTATION_COORDINATOR_ABI,
     CLAUSE_REGISTRY_ABI,
+    PROVENANCE_LEAF_KEY,
     buildSectionInclusionProof,
     calculateBonds,
     computeClauseKey,
+    decodeProvenanceContent,
     generateSalt,
+    provenanceLeafAttestation,
+    provenanceSectionBytes,
     reconstructOrdersFromTemplate,
     sectionDataHash,
     templateCompositionHash,
@@ -155,7 +160,6 @@ const CLIENT_KEY = keccak256(stringToHex('data-explore.devnet.spec.ts:client'));
 // The clauses this scenario attests (seed-time authoring inputs — the
 // ASSERTIONS never name them: expected overlay keys are computed out-of-band
 // with computeClauseKey over the registered specs).
-const PROVENANCE = 'figaro-assembly-provenance';
 const GEO = 'figaro-geolocation';
 const DATA_TERMS = 'figaro-data-terms';
 const CREDENTIAL = 'figaro-credential';
@@ -314,10 +318,8 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
             if (!parsed.ok) throw new Error(`the registered ${clauseId} spec failed to parse`);
             return parsed.spec;
         };
-        const provSpec = await registeredSpec(PROVENANCE);
         const geoSpec = await registeredSpec(GEO);
         const termsSpec = await registeredSpec(DATA_TERMS);
-        const provKey = computeClauseKey(provSpec.clauseId, provSpec.version);
         const geoKey = computeClauseKey(geoSpec.clauseId, geoSpec.version);
         const termsKey = computeClauseKey(termsSpec.clauseId, termsSpec.version);
 
@@ -348,9 +350,6 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
                         credentialId: 'RPC-107-0077',
                     },
                     [DATA_TERMS]: { buyerDisclosure: 'permit' },
-                    // Mechanical at checkout: the adopted assembly's own
-                    // verified identity (fillProvenanceSection's write).
-                    [PROVENANCE]: { compositionHash: aerial!.compositionHash },
                 },
             }),
             salt: () => generateSalt(),
@@ -358,6 +357,9 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
         });
         expect(orders, 'the aerial-survey reference is a single-order composition').toHaveLength(1);
         const order: ReconstructedOrder = orders[0];
+        // Mechanical at checkout: the walk sets the agreement's provenance
+        // leaf to the adopted assembly's own verified identity.
+        expect(order.agreement.provenance, 'the agreement names the adopted assembly').toBe(aerial!.compositionHash);
 
         const buyerSig = await clientWallet.signTypedData(order.typedData);
         const sellerSig = await surveyorWallet.signTypedData(order.typedData);
@@ -434,9 +436,28 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
             ).toBe(true);
             return { clauseKey, contentRef, content };
         };
-        // The buyer's provenance attestation — the public attribution link.
-        const provAttested = await attestSection({ verb: 'attestAsBuyer', wallet: clientWallet, spec: provSpec, publish: true });
-        expect(provAttested.clauseKey, 'the committed provenance section keys as the registered spec').toBe(provKey);
+        // The buyer's provenance attestation — the public attribution link:
+        // the agreement format's leaf under its reserved key, its own bytes
+        // published at their fingerprint, filed while the process is open.
+        const prov = provenanceLeafAttestation(order.agreement);
+        const provBytes = provenanceSectionBytes(aerial!.compositionHash);
+        expect(keccak256(provBytes), "the leaf's content reference is its bytes' hash").toBe(prov.contentRef);
+        await pinWitnessBytes(provBytes);
+        expect(await fetchWitnessBytes(prov.contentRef), 'the published provenance resolves from its own fingerprint')
+            .toBe(provBytes);
+        await receipt(await clientWallet.writeContract({
+            address: coordinator, abi: ATTESTATION_COORDINATOR_ABI, functionName: 'attestAsBuyer',
+            args: [order.commitment, prov.clauseId, prov.stage, prov.sectionHash, prov.proof, prov.contentRef],
+        }));
+        expect(
+            (await publicClient.getContractEvents({
+                address: coordinator, abi: ATTESTATION_COORDINATOR_ABI, eventName: 'Attestation',
+                args: { processId }, fromBlock: commitReceipt.blockNumber,
+            })).some((log) =>
+                (log.args.clauseId as string).toLowerCase() === PROVENANCE_LEAF_KEY.toLowerCase()
+                && (log.args.contentRef as string).toLowerCase() === prov.contentRef.toLowerCase()),
+            'the provenance leaf attestation landed under the reserved key',
+        ).toBe(true);
         // The seller's geo attestation — published: the decoded overlay leg.
         const geoAttested = await attestSection({ verb: 'attestAsSeller', wallet: surveyorWallet, spec: geoSpec, publish: true });
         expect(geoAttested.clauseKey).toBe(geoKey);
@@ -475,15 +496,15 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
         const resolvedProcessIds = new Set(allProcessResolved.map((e) => (e.args.processId as string).toLowerCase()));
         const onChainClauseKeys = new Set(allAttestations.map((e) => (e.args.clauseId as string).toLowerCase()));
 
-        // Attribution: recover + decode every provenance-family payload.
+        // Attribution: recover + decode every provenance-leaf payload.
         const attributionByProcess = new Map<string, string>();
         for (const ev of allAttestations) {
-            if ((ev.args.clauseId as string).toLowerCase() !== provKey.toLowerCase()) continue;
+            if ((ev.args.clauseId as string).toLowerCase() !== PROVENANCE_LEAF_KEY.toLowerCase()) continue;
             const bytes = await fetchWitnessBytes(ev.args.contentRef as string);
             if (!bytes) continue;
-            const decoded = decodeContentFromSpec(provSpec, bytes, { stage: Number(ev.args.stage) }) as { compositionHash?: string };
-            if (typeof decoded.compositionHash === 'string' && /^0x[0-9a-fA-F]{64}$/.test(decoded.compositionHash)) {
-                attributionByProcess.set((ev.args.processId as string).toLowerCase(), decoded.compositionHash.toLowerCase());
+            const compositionHash = decodeProvenanceContent(bytes as Hex);
+            if (compositionHash) {
+                attributionByProcess.set((ev.args.processId as string).toLowerCase(), compositionHash.toLowerCase());
             }
         }
         const marketKey = aerial!.compositionHash.toLowerCase();
@@ -1001,7 +1022,7 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
                 },
                 {
                     name: 'usage', type: 'tuple', components: [
-                        { name: 'period', type: 'uint8' }, { name: 'provenanceClause', type: 'bytes32' },
+                        { name: 'period', type: 'uint8' }, { name: 'provenanceLeaf', type: 'bytes32' },
                         {
                             name: 'accruals', type: 'tuple[]', components: [
                                 { name: 'clauseOrAssembly', type: 'bytes32' }, { name: 'c', type: 'uint64' }, { name: 'd', type: 'uint64' },
@@ -1138,7 +1159,7 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
             args: [
                 '0x', publicValues, [],
                 { attestations: [attestation], specBindings: [{ clauseId: geoKey, specHash }] },
-                { period: 0, provenanceClause: zeroHash, accruals: [], sellers: [] },
+                { period: 0, provenanceLeaf: zeroHash, accruals: [], sellers: [] },
             ],
         }));
         expect(settleReceipt.status, 'the batch resolved — every packed hash matched byte-for-byte').toBe('success');

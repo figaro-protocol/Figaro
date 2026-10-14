@@ -48,4 +48,16 @@ describe("executeTransactionCapabilityAction", () => {
 
         expect(submitClauseAttestation).toHaveBeenCalledWith(action, values);
     });
+    it("dispatches the buyer's provenance leaf attestation to its own executor", async () => {
+        const attestProvenanceLeaf = vi.fn(async () => undefined);
+        const action = {
+            executionType: "transaction" as const,
+            kind: "attest-provenance-leaf" as const,
+            orderHash: "an-order",
+            compositionHash: `0x${"9a".repeat(32)}` as const,
+            party: "buyer" as const,
+        };
+        await executeTransactionCapabilityAction(action, { attestProvenanceLeaf });
+        expect(attestProvenanceLeaf).toHaveBeenCalledWith(action);
+    });
 });

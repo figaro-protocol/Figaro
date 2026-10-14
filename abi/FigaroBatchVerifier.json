@@ -208,7 +208,7 @@
             "internalType": "uint8"
           },
           {
-            "name": "provenanceClause",
+            "name": "provenanceLeaf",
             "type": "bytes32",
             "internalType": "bytes32"
           },

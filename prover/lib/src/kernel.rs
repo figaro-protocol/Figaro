@@ -1,4 +1,4 @@
-use alloy_primitives::{Address, B256, U256, keccak256};
+use alloy_primitives::{Address, B256, U256, b256, keccak256};
 use std::collections::{BTreeMap, BTreeSet};
 
 use crate::eip712::{
@@ -338,8 +338,65 @@ fn require_known_active_commitment(
 
 // ── In-proof clause gates (figaro-clause engine) ──────────────────
 
+/// The key of the agreement format's reserved PROVENANCE leaf,
+/// `keccak256("figaro-agreement-provenance")` — the leaf that links an
+/// agreement to the assembly it instantiates. It is a constant of the
+/// agreement format, never a clause key: no spec describes it and
+/// `ClauseRegistry` holds nothing under it. Every leaf of an agreement is
+/// `keccak256(keccak256(key ‖ keccak256(sectionData)))` (`docs/CLAUSES.md`
+/// § "Every clause is a merkle leaf"); this one's sectionData is
+/// `{"compositionHash":"0x<64 lowercase hex>"}`. `UsageCounter.provenanceLeaf`
+/// holds the same constant on chain.
+pub const PROVENANCE_LEAF_KEY: B256 =
+    b256!("26dc18a2251a8f4629ada6df88b7c98553e011c08682d28ce5bb51a441227dc6");
+
+/// The agreement format's rule for an attestation of the reserved
+/// provenance leaf. The leaf's content is fixed by the format, so the
+/// guest REPRODUCES it rather than validating it against a spec: the
+/// committed bytes must be exactly `provenance_section_bytes` of the
+/// compositionHash they carry, `content_ref` must be their keccak (as a
+/// section's sectionHash), and the leaf over them must open against the
+/// signed `agreement_hash`. `spec_json`, `content_json` and `content_kind`
+/// are not consulted, and no spec binding is emitted: there is no registry
+/// entry to anchor.
+fn validate_provenance_attestation(
+    proof: &AttestationContentProof,
+    content_ref: &B256,
+    agreement_hash: &B256,
+) -> Result<(), KernelError> {
+    const PREFIX: &[u8] = b"{\"compositionHash\":\"0x";
+    let bytes = proof.section_data.as_bytes();
+    if bytes.len() != PREFIX.len() + 64 + 2 || !bytes.starts_with(PREFIX) {
+        return Err(KernelError::ProvenanceLeafNotCanonical);
+    }
+    let digits = &bytes[PREFIX.len()..PREFIX.len() + 64];
+    let composition_hash = alloy_primitives::hex::decode(digits)
+        .ok()
+        .map(|raw| B256::from_slice(&raw))
+        .ok_or(KernelError::ProvenanceLeafNotCanonical)?;
+    if provenance_section_bytes(&composition_hash) != bytes {
+        return Err(KernelError::ProvenanceLeafNotCanonical);
+    }
+
+    let section_hash = keccak256(bytes);
+    if section_hash != *content_ref {
+        return Err(KernelError::ContentHashMismatch);
+    }
+
+    let mut leaf_preimage = [0u8; 64];
+    leaf_preimage[..32].copy_from_slice(PROVENANCE_LEAF_KEY.as_slice());
+    leaf_preimage[32..].copy_from_slice(section_hash.as_slice());
+    let leaf = keccak256(keccak256(leaf_preimage));
+    if !crate::merkle::verify_inclusion(&proof.inclusion_proof, *agreement_hash, leaf) {
+        return Err(KernelError::InvalidInclusionProof);
+    }
+    Ok(())
+}
+
 /// Run the witness gates for one attestation and return the spec binding
-/// the batch commits for on-chain verification.
+/// the batch commits for on-chain verification — or `None` for the
+/// reserved provenance leaf, which the agreement format's own rule
+/// (`validate_provenance_attestation`) verifies with no spec.
 ///
 ///   Gate S — spec identity: `spec_json` parses as a `ClauseSpec` whose
 ///     `keccak256(abi.encode(clauseId, version))` equals the op's
@@ -371,7 +428,14 @@ pub fn validate_attestation_content(
     clause_id: &B256,
     stage: u8,
     agreement_hash: &B256,
-) -> Result<SpecBinding, KernelError> {
+) -> Result<Option<SpecBinding>, KernelError> {
+    // The reserved provenance leaf is a fact of the agreement format, not
+    // a clause: its key is the format's constant, never a registered id.
+    if *clause_id == PROVENANCE_LEAF_KEY {
+        validate_provenance_attestation(proof, content_ref, agreement_hash)?;
+        return Ok(None);
+    }
+
     // ── Gate S: witness spec parses + its identity matches the op ──
     let spec_value: serde_json::Value = serde_json::from_str(&proof.spec_json)
         .map_err(|e| KernelError::ClauseSpecParseFailed(format!("spec not valid JSON: {e}")))?;
@@ -458,7 +522,7 @@ pub fn validate_attestation_content(
         return Err(KernelError::InvalidInclusionProof);
     }
 
-    Ok(binding)
+    Ok(Some(binding))
 }
 
 // ── attestAsSeller ────────────────────────────────────────────────
@@ -505,7 +569,7 @@ fn apply_attest_as_seller(
     // the clause being declared lives in the target's signed contract.
     let binding =
         validate_attestation_content(proof, content_ref, clause_id, stage, &target.agreement_hash)?;
-    bindings.insert(binding);
+    bindings.extend(binding);
 
     events.push(AttestationEventData {
         order_hash: target_order_hash,
@@ -560,7 +624,7 @@ fn apply_attest_as_buyer(
     // ── Witness gates ──
     let binding =
         validate_attestation_content(proof, content_ref, clause_id, stage, &target.agreement_hash)?;
-    bindings.insert(binding);
+    bindings.extend(binding);
 
     events.push(AttestationEventData {
         order_hash: target_order_hash,
@@ -607,7 +671,7 @@ pub fn compute_spec_bindings_hash(bindings: &[SpecBinding]) -> B256 {
 /// byte by `FigaroBatchVerifier._hashUsage`:
 ///
 /// ```text
-/// period(1) ++ provenanceClause(32)
+/// period(1) ++ provenanceLeaf(32)
 ///   ++ len(accruals)(8) ++ [clauseOrAssembly(32) ++ c(8) ++ d(8)]*
 ///   ++ len(sellers)(8)  ++ [seller(20)]*
 /// ```
@@ -619,13 +683,13 @@ pub fn compute_spec_bindings_hash(bindings: &[SpecBinding]) -> B256 {
 /// whose sellers were never stake-checked.
 pub fn compute_usage_accrual_hash(
     period: u8,
-    provenance_clause: &B256,
+    provenance_leaf: &B256,
     accruals: &[UsageAccrual],
     sellers: &[Address],
 ) -> B256 {
     let mut data = Vec::with_capacity(49 + accruals.len() * 48 + sellers.len() * 20);
     data.push(period);
-    data.extend_from_slice(provenance_clause.as_slice());
+    data.extend_from_slice(provenance_leaf.as_slice());
     data.extend_from_slice(&(accruals.len() as u64).to_be_bytes());
     for a in accruals {
         data.extend_from_slice(a.clause_or_assembly.as_slice());
@@ -639,12 +703,12 @@ pub fn compute_usage_accrual_hash(
     keccak256(&data)
 }
 
-/// The canonical-JSON bytes of an assembly-provenance section,
+/// The canonical-JSON bytes of the reserved provenance leaf's section,
 /// reproduced from the compositionHash alone — the Rust twin of
 /// `UsageCounter._toLowerHexString`'s use in `recordAssemblyUsage`.
 /// Reproduction, never parsing: a wrong compositionHash derives a leaf
 /// that is simply not in the tree.
-fn provenance_section_bytes(composition_hash: &B256) -> Vec<u8> {
+pub fn provenance_section_bytes(composition_hash: &B256) -> Vec<u8> {
     const HEX: &[u8; 16] = b"0123456789abcdef";
     let mut out = Vec::with_capacity(87);
     out.extend_from_slice(b"{\"compositionHash\":\"0x");
@@ -666,7 +730,7 @@ fn provenance_section_bytes(composition_hash: &B256) -> Vec<u8> {
 ///
 /// Two facts the guest CANNOT prove are declared and anchored on-chain
 /// instead: whether each seller holds a live MembersRegistry stake, and
-/// whether a clause or assembly is excluded from scoring. Both are live chain
+/// whether a clause or assembly holds a live registration. Both are live chain
 /// state; the verifier checks them before writing, in the shape
 /// `_checkSpecBindings` already established.
 ///
@@ -677,12 +741,21 @@ fn apply_usage_claims(
     domain: &B256,
     claims: &[UsageClaim],
     period: u8,
-    provenance_clause: &B256,
+    provenance_leaf: &B256,
 ) -> Result<(Vec<UsageAccrual>, Vec<Address>), KernelError> {
     let mut touched: BTreeSet<B256> = BTreeSet::new();
     let mut sellers: BTreeSet<Address> = BTreeSet::new();
 
     for claim in claims {
+        // 0. The reserved provenance leaf's key is a constant of the
+        //    agreement format, never a registration: it names no clause and
+        //    no assembly, so nothing is credited under it, whatever kind the
+        //    claim declares or whatever a registry holds at that bytes32.
+        //    The counter refuses it by the same constant on both paths.
+        if claim.clause_or_assembly == PROVENANCE_LEAF_KEY {
+            return Err(KernelError::ProvenanceLeafIsNotARegistration);
+        }
+
         let (order_hash, process_id) = derive_commitment_ids(domain, &claim.order);
 
         // 1. RESOLVED, not merely known. Usage is what a finished process
@@ -698,7 +771,7 @@ fn apply_usage_claims(
         let (leaf_key, section_hash) = match &claim.kind {
             UsageClaimKind::Clause { section_hash } => (claim.clause_or_assembly, *section_hash),
             UsageClaimKind::Assembly => (
-                *provenance_clause,
+                *provenance_leaf,
                 keccak256(provenance_section_bytes(&claim.clause_or_assembly)),
             ),
         };
@@ -884,7 +957,7 @@ fn apply_batch_inner(
         &domain,
         &input.usage_claims,
         input.usage_period,
-        &input.provenance_clause,
+        &input.provenance_leaf,
     )?;
 
     let new_root = state.compute_root();
@@ -895,7 +968,7 @@ fn apply_batch_inner(
     let bindings_hash = compute_spec_bindings_hash(&bindings);
     let usage_hash = compute_usage_accrual_hash(
         input.usage_period,
-        &input.provenance_clause,
+        &input.provenance_leaf,
         &usage_accruals,
         &usage_sellers,
     );

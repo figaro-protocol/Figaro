@@ -205,19 +205,19 @@ describe("deriveAssemblyWithdrawGate", () => {
     });
 
     it("THE ASSEMBLY-SCOPE FOLD: a template with assemblyClauses matches the FOLDED committed shape (the K4 regression)", () => {
-        // Real templates always carry assembly-scoped clauses (the mandatory
-        // provenance anchor at minimum), and planTemplateOrders folds them
-        // into EVERY node — so committed sections always include them. The
+        // A template composing assembly-scoped clauses (applicable law, a
+        // denomination pin) has planTemplateOrders fold them into EVERY node —
+        // so committed sections always include them. The
         // fingerprint must apply the same fold or it can never match a real
         // process, silently disabling the stake-lock for every assembly
         // author (the bug found by assembly-withdraw.devnet.spec.ts).
         const pinned: AssemblyTemplate = {
             ...template(),
-            assemblyClauses: { "figaro-assembly-provenance": {}, "figaro-utility-token": {} },
+            assemblyClauses: { "figaro-applicable-law": {}, "figaro-utility-token": {} },
         };
         const folded: InFlightAgreement[] = [
-            { processId: PROC_A, agreement: agreementWith(["figaro-assembly-provenance", "figaro-utility-token", "figaro-commerce", "figaro-topology"]) },
-            { processId: PROC_A, agreement: agreementWith(["figaro-assembly-provenance", "figaro-utility-token", "figaro-commerce", "figaro-topology", "figaro-courier-process"]) },
+            { processId: PROC_A, agreement: agreementWith(["figaro-applicable-law", "figaro-utility-token", "figaro-commerce", "figaro-topology"]) },
+            { processId: PROC_A, agreement: agreementWith(["figaro-applicable-law", "figaro-utility-token", "figaro-commerce", "figaro-topology", "figaro-courier-process"]) },
         ];
         expect(deriveAssemblyWithdrawGate(pinned, folded)).toEqual({
             canWithdraw: false,
@@ -229,7 +229,7 @@ describe("deriveAssemblyWithdrawGate", () => {
     it("the fold is exact: committed sections MISSING the assembly-scoped clauses do not match a pinned template", () => {
         const pinned: AssemblyTemplate = {
             ...template(),
-            assemblyClauses: { "figaro-assembly-provenance": {} },
+            assemblyClauses: { "figaro-applicable-law": {} },
         };
         const unfolded: InFlightAgreement[] = [
             { processId: PROC_A, agreement: agreementWith(["figaro-commerce", "figaro-topology"]) },

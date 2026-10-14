@@ -82,7 +82,7 @@ describe("projectSnapshotForReview — the review reads the bytes publish sends"
     let composed: DesignSnapshot;
 
     beforeAll(async () => {
-        await primeClauseSpecs([...ORDER_CLAUSES, ...ASSEMBLY_CLAUSES, ...MANDATORY, "figaro-assembly-provenance"]);
+        await primeClauseSpecs([...ORDER_CLAUSES, ...ASSEMBLY_CLAUSES, ...MANDATORY]);
         drawn = drawCanvas();
         composed = snapshotOf(drawn, {
             // What ticking a checkbox in the order drawer leaves behind: the
@@ -202,7 +202,7 @@ describe("projectSnapshotForReview — malformed and empty compositions", () => 
     let drawn: ReturnType<typeof drawCanvas>;
 
     beforeAll(async () => {
-        await primeClauseSpecs([...ORDER_CLAUSES, ...ASSEMBLY_CLAUSES, ...MANDATORY, "figaro-assembly-provenance"]);
+        await primeClauseSpecs([...ORDER_CLAUSES, ...ASSEMBLY_CLAUSES, ...MANDATORY]);
         drawn = drawCanvas();
     });
 
@@ -256,7 +256,7 @@ describe("unfilledAssemblyTerms", () => {
     });
 
     it("ignores a term with no required design fill, and an unknown clause", () => {
-        expect(unfilledAssemblyTerms({ "figaro-assembly-provenance": {}, "figaro-never-seen": {} })).toEqual([]);
+        expect(unfilledAssemblyTerms({ "figaro-commerce": {}, "figaro-never-seen": {} })).toEqual([]);
     });
 });
 
@@ -300,7 +300,7 @@ describe("the mandatory fold — listed on the review, never displaced by a stra
     }
 
     beforeAll(async () => {
-        await primeClauseSpecs([...ORDER_CLAUSES, ...ASSEMBLY_CLAUSES, ...MANDATORY, "figaro-assembly-provenance"]);
+        await primeClauseSpecs([...ORDER_CLAUSES, ...ASSEMBLY_CLAUSES, ...MANDATORY]);
         drawn = drawCanvas();
     });
 
@@ -309,7 +309,6 @@ describe("the mandatory fold — listed on the review, never displaced by a stra
         if (!review.ok) throw new Error(review.error);
         const listed = review.folded.map((f) => `${f.clauseId}#${f.version}:${f.carriedBy.join(",")}`).sort();
         expect(listed).toEqual([
-            "figaro-assembly-provenance#1:assembly",
             "figaro-commerce#1:order-0,order-1",
             "figaro-topology#1:order-0,order-1",
         ]);
@@ -360,7 +359,7 @@ describe("a pick with no recorded version — v1, never the highest loaded", () 
     const schedule = JSON.parse(readFileSync(path.join(CLAUSES_DIR, "figaro-schedule.json"), "utf8")) as Record<string, unknown>;
 
     beforeAll(async () => {
-        await primeClauseSpecs([...ORDER_CLAUSES, ...ASSEMBLY_CLAUSES, ...MANDATORY, "figaro-assembly-provenance"]);
+        await primeClauseSpecs([...ORDER_CLAUSES, ...ASSEMBLY_CLAUSES, ...MANDATORY]);
         drawn = drawCanvas();
     });
 
@@ -457,7 +456,7 @@ describe("the mandatory fold — the registrations whose stake is live", () => {
     }
 
     beforeAll(async () => {
-        await primeClauseSpecs([...ORDER_CLAUSES, ...ASSEMBLY_CLAUSES, ...MANDATORY, "figaro-assembly-provenance"]);
+        await primeClauseSpecs([...ORDER_CLAUSES, ...ASSEMBLY_CLAUSES, ...MANDATORY]);
         drawn = drawCanvas();
     });
 

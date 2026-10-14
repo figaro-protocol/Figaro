@@ -21,7 +21,7 @@ import type { Address, Hex, PublicClient } from "viem";
 import { decodeEventLog } from "viem";
 import { USAGE_COUNTER_ABI } from "../abis.js";
 import type { Agreement } from "../agreement.js";
-import { buildSectionInclusionProof, sectionDataHash } from "../agreement.js";
+import { PROVENANCE_LEAF_KEY, buildProvenanceInclusionProof, buildSectionInclusionProof, sectionDataHash } from "../agreement.js";
 import { computeClauseKey } from "../discovery.js";
 import { fetchLogsChunked } from "../events.js";
 import type { SequencerUsageClaim } from "../agent/sequencer.js";
@@ -351,12 +351,11 @@ export async function fetchBatchUsageRecords(
 
 /** What the pure builder needs from chain. Fetch with `fetchUsageClaimContext`. */
 export interface UsageClaimContext {
-    /** `UsageCounter.provenanceClause()` — the leaf key an assembly claim
-     *  proves against. Read from chain, never hardcoded: it is a deploy-time
-     *  choice of the counter, not a constant of the protocol. */
-    provenanceClause: Hex;
-    /** Clause-or-assembly keys the counter refuses (`excludedClauseOrAssembly`). */
-    excludedClausesOrAssemblies: readonly Hex[];
+    /** `UsageCounter.provenanceLeaf()` — the reserved leaf key the counter
+     *  reproduces an assembly claim under. The agreement format fixes it
+     *  (`PROVENANCE_LEAF_KEY`); it is read from the deployment being called
+     *  so a counter that disagrees is refused before anything is sent. */
+    provenanceLeaf: Hex;
 }
 
 /**
@@ -365,100 +364,71 @@ export interface UsageClaimContext {
  * PURE — takes the chain facts as input so it can be tested and reasoned about
  * without a client. `fetchUsageClaimContext` gets them.
  *
- * TWO INDEPENDENT LEGS, and the independence is the whole point:
+ * TWO INDEPENDENT LEGS:
  *
- *  - the CLAUSE leg emits one claim per agreement section, minus the excluded
- *    ones. Dropping them is mandatory, not an optimization: an excluded
- *    clause or assembly reverts `applyBatchAccrual` and takes the ENTIRE BATCH with it,
- *    including every other party's resolution.
- *  - the ASSEMBLY leg credits the assembly's DESIGNER, and it must survive the
- *    clause leg dropping things. `figaro-assembly-provenance` is itself
- *    excluded — it rides every assembly-composed process, so scoring it would
- *    pay its author for the protocol's floor — which means the section that
- *    carries the compositionHash is exactly the one the clause leg discards.
- *    Sequencing the assembly credit behind the clause credit is how the
- *    designer half of the 600M recorded nothing on the direct path for months
- *    (since fixed). Here the two legs never touch.
+ *  - the CLAUSE leg emits one claim per agreement section — every committed
+ *    clause earns, the mandatory ones included.
+ *  - the ASSEMBLY leg credits the assembly's DESIGNER from the agreement's
+ *    provenance leaf (`Agreement.provenance`, the composition hash of the
+ *    assembly the agreement instantiated), proved with
+ *    `buildProvenanceInclusionProof`. It is the agreement format's leaf, not
+ *    a section, so the clause leg never sees it. An agreement naming no
+ *    assembly has no assembly leg.
+ *
+ * Throws when the counter's provenance leaf is not the agreement format's —
+ * every assembly claim against that counter would revert — and when the
+ * agreement's leaves do not build (a provenance that is not a bytes32), since
+ * no leg of such an agreement can be proved.
  */
 export function buildUsageClaims(
     order: Commitment,
     agreement: Agreement,
     context: UsageClaimContext,
 ): SequencerUsageClaim[] {
-    const excluded = new Set(context.excludedClausesOrAssemblies.map((a) => a.toLowerCase()));
+    if (context.provenanceLeaf.toLowerCase() !== PROVENANCE_LEAF_KEY.toLowerCase()) {
+        throw new Error(
+            `the counter's provenance leaf ${context.provenanceLeaf} is not the agreement format's ` +
+            `${PROVENANCE_LEAF_KEY}: every assembly claim against it would revert`,
+        );
+    }
     const wireOrder = toSequencerCommitment(order);
     const claims: SequencerUsageClaim[] = [];
 
     // ── Clause leg ──
     for (const section of agreement.sections) {
-        const clauseOrAssembly = computeClauseKey(section.clause, section.version);
-        if (excluded.has(clauseOrAssembly.toLowerCase())) continue;
         claims.push({
             order: wireOrder,
-            clause_or_assembly: clauseOrAssembly,
+            clause_or_assembly: computeClauseKey(section.clause, section.version),
             kind: { Clause: { section_hash: sectionDataHash(section) } },
             inclusion_proof: buildSectionInclusionProof(agreement, section.clause).proof,
         });
     }
 
-    // ── Assembly leg — INDEPENDENT of the loop above ──
-    const provenance = agreement.sections.find(
-        (s) => computeClauseKey(s.clause, s.version).toLowerCase() === context.provenanceClause.toLowerCase(),
-    );
-    if (provenance) {
-        const compositionHash = provenance.data?.compositionHash;
-        if (typeof compositionHash === "string" && compositionHash.startsWith("0x")) {
-            claims.push({
-                order: wireOrder,
-                clause_or_assembly: compositionHash as Hex,
-                kind: "Assembly",
-                inclusion_proof: buildSectionInclusionProof(agreement, provenance.clause).proof,
-            });
-        }
-        // A content-WITHHELD provenance section carries only `dataHash`, so the
-        // compositionHash cannot be recovered and the designer cannot be
-        // credited from this agreement alone. Silently skipped rather than
-        // thrown: the clause claims are still valid and the batch should still
-        // resolve. (Provenance is public by construction today, so this is a
-        // guard against a future disposition change, not a live case.)
+    // ── Assembly leg — the agreement's provenance leaf ──
+    if (agreement.provenance !== undefined) {
+        claims.push({
+            order: wireOrder,
+            clause_or_assembly: agreement.provenance,
+            kind: "Assembly",
+            inclusion_proof: buildProvenanceInclusionProof(agreement).proof,
+        });
     }
 
     return claims;
 }
 
 /**
- * Read the two chain facts `buildUsageClaims` needs.
- *
- * `excludedClauseOrAssembly` is a mapping with no enumeration, so exclusion can only be
- * TESTED per candidate — this asks about exactly the clauses or assemblies the agreement
- * could claim, which is the complete set that matters.
+ * Read the chain fact `buildUsageClaims` needs: the counter's provenance leaf.
+ * One read per counter serves every order resolved against it.
  */
 export async function fetchUsageClaimContext(
     client: PublicClient,
     usageCounter: Address,
-    agreement: Agreement,
 ): Promise<UsageClaimContext> {
-    const candidates = agreement.sections.map((s) => computeClauseKey(s.clause, s.version));
-
-    const [provenanceClause, ...flags] = await Promise.all([
-        client.readContract({
-            address: usageCounter,
-            abi: USAGE_COUNTER_ABI,
-            functionName: "provenanceClause",
-        }) as Promise<Hex>,
-        ...candidates.map(
-            (clauseOrAssembly) =>
-                client.readContract({
-                    address: usageCounter,
-                    abi: USAGE_COUNTER_ABI,
-                    functionName: "excludedClauseOrAssembly",
-                    args: [clauseOrAssembly],
-                }) as Promise<boolean>,
-        ),
-    ]);
-
-    return {
-        provenanceClause,
-        excludedClausesOrAssemblies: candidates.filter((_, i) => flags[i]),
-    };
+    const provenanceLeaf = (await client.readContract({
+        address: usageCounter,
+        abi: USAGE_COUNTER_ABI,
+        functionName: "provenanceLeaf",
+    })) as Hex;
+    return { provenanceLeaf };
 }

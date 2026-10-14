@@ -248,3 +248,9 @@ than blending them, so nobody mistakes a declaration for a guarantee. `/data/exp
 is the built example: one layer at a time, each with its boundary named, and the
 layers themselves a census of what the corpus actually contains — never a menu the
 frontend knows in advance.
+
+The corpus links a process to the assembly it instantiated through one
+attestation: the buyer attests the agreement format's reserved provenance leaf
+(`CLAUSES.md` § "Every clause is a merkle leaf") while the process is open, and
+that attestation names the composition hash. A process without it is counted
+as unattributed.

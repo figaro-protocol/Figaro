@@ -221,8 +221,12 @@ const rec   = walletRecord(process, wallet);
   you pass a `processId → assembly key` function, and a process you cannot key is counted
   as unattributed rather than binned under a guess. On a walletless read that number is
   usually the whole corpus — agreement bodies are party-private, so which assembly produced
-  a process is not public until somebody discloses or sells it. **Say the number.** It is
-  the most honest sentence in the answer.
+  a process is not public until somebody discloses or sells it. One disclosure is the
+  agreement format's own: a buyer may attest the agreement's provenance leaf while the
+  process is open, and those attestations form the overlay whose `provenanceLeaf` is
+  `true` — no spec; each entry's `processId` is attributable to the registered assembly
+  whose `provenanceContentRef(compositionHash)` equals its `contentRef`. **Say the
+  number.** It is the most honest sentence in the answer.
 - **Wallet-record** — one wallet's public history: the processes it resolves as root buyer
   and the orders it holds either side of. A wallet with no history returns empty arrays;
   that is the answer, not an error.

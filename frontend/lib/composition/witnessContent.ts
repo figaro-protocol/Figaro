@@ -15,6 +15,8 @@
  * encoder/decoder use) is public-disposition. An unknown spec or any
  * `private` field withholds — a private value's plaintext never lands on
  * public IPFS; its holder proves the fingerprint match off-chain instead.
+ * The agreement format's provenance leaf (`PROVENANCE_LEAF_KEY`) has no spec:
+ * its bytes pin as-is when they are the format's own, and not at all otherwise.
  *
  * Erasure mirrors `profileErasure`/`unpinAgreement` (wallet pins → wallet
  * erases): best-effort unpin of the derived CID, idempotent, never throwing —
@@ -23,7 +25,7 @@
  * payload.
  */
 import { bytesToHex, hexToBytes, keccak256, type Hex } from "viem";
-import { anchorAttestationContent, type Anchored } from "@figaro-protocol/sdk";
+import { PROVENANCE_LEAF_KEY, anchorAttestationContent, decodeProvenanceContent, type Anchored } from "@figaro-protocol/sdk";
 import { contentFieldsFor } from "@figaro-protocol/sdk/clauses";
 import { witnessContentCid, witnessContentCidBase32 } from "@figaro-protocol/sdk/derive";
 import {
@@ -57,6 +59,18 @@ export interface PublishWitnessContentParams {
 export async function publishWitnessContent(params: PublishWitnessContentParams): Promise<void> {
     const { stage, content } = params;
     if (isEmptyHex(content)) return; // nothing to learn from empty content
+    if (params.clauseId.toLowerCase() === PROVENANCE_LEAF_KEY.toLowerCase()) {
+        // The agreement FORMAT's provenance leaf has no spec: its bytes are
+        // the format's own (`{"compositionHash":…}`, reproducible from a
+        // registered — public — composition hash), so they pin as-is when
+        // `decodeProvenanceContent` reads them, and not at all otherwise.
+        if (decodeProvenanceContent(content) === null) {
+            console.warn(`[witnessContent] content under the provenance leaf is not the format's bytes — withheld`);
+            return;
+        }
+        await pinContent(content, params.ipfs, "the provenance leaf", stage);
+        return;
+    }
     // The hash names the exact (name, version) attested — resolve that spec.
     const identity = clauseIdForHash(params.clauseId);
     const clauseId = identity ? `${identity.clauseId} v${identity.version}` : params.clauseId;
@@ -70,8 +84,19 @@ export async function publishWitnessContent(params: PublishWitnessContentParams)
     }
     const fields = contentFieldsFor(spec, { stage });
     if (fields.some((f) => f.disposition === "private")) return; // by design, silently
+    await pinContent(content, params.ipfs, clauseId, stage);
+}
+
+/** Pin the bytes as a keccak raw block at their fingerprint. Best-effort:
+ *  failures are logged loudly and swallowed. */
+async function pinContent(
+    content: Hex,
+    ipfsOverride: Pick<IpfsService, "pinKeccakRawBlock"> | undefined,
+    label: string,
+    stage: number,
+): Promise<void> {
     try {
-        const ipfs = params.ipfs ?? DEFAULT_IPFS_SERVICE;
+        const ipfs = ipfsOverride ?? DEFAULT_IPFS_SERVICE;
         const contentRef = keccak256(content);
         const cid = await ipfs.pinKeccakRawBlock(hexToBytes(content));
         if (cid !== witnessContentCidBase32(contentRef) && cid !== witnessContentCid(contentRef)) {
@@ -80,7 +105,7 @@ export async function publishWitnessContent(params: PublishWitnessContentParams)
             console.warn(`[witnessContent] pinned CID ${cid} does not match fingerprint ${contentRef} — readers will not resolve this content`);
         }
     } catch (err) {
-        console.warn(`[witnessContent] publish for ${clauseId} stage ${stage} failed (fingerprint stays verifiable):`, err);
+        console.warn(`[witnessContent] publish for ${label} stage ${stage} failed (fingerprint stays verifiable):`, err);
     }
 }
 

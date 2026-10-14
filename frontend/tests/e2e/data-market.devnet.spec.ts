@@ -90,7 +90,6 @@ const DATA_TERMS = 'figaro-data-terms';
 const DATA_LICENSE = 'figaro-data-license';
 const CONTENT_HANDOFF = 'figaro-content-handoff';
 const CREDENTIAL = 'figaro-credential';
-const PROVENANCE = 'figaro-assembly-provenance';
 
 // The access credential the stream seller delivers — TEST INPUT (what a
 // data seller would hand off): a small token document whose BYTES the
@@ -251,19 +250,17 @@ test.describe('DATA MARKET — dual-posture value legs over the anchored data as
                 nodes: () => ({
                     seller: opts.seller.address,
                     payment: opts.payment,
-                    overrides: {
-                        ...opts.overrides,
-                        // The provenance anchor is MECHANICAL, never authored:
-                        // the checkout walk writes the adopted assembly's own
-                        // verified compositionHash (fillProvenanceSection).
-                        [PROVENANCE]: { compositionHash: opts.adopted.compositionHash },
-                    },
+                    overrides: opts.overrides,
                 }),
                 salt: () => generateSalt(),
                 deadline: chainNow + 3600n,
             });
             expect(orders, `${opts.label}: the reference is a single-order composition`).toHaveLength(1);
             const order: ReconstructedOrder = orders[0];
+            // The provenance leaf is MECHANICAL, never authored: the walk sets
+            // the agreement's provenance to the adopted assembly's own hash.
+            expect(order.agreement.provenance, `${opts.label}: the agreement names the adopted assembly`)
+                .toBe(opts.adopted.compositionHash);
 
             const buyerSig = await opts.buyerWallet.signTypedData(order.typedData);
             const sellerSig = await opts.sellerWallet.signTypedData(order.typedData);

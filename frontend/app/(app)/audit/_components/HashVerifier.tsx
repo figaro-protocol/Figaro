@@ -28,6 +28,7 @@
 import { useState, useMemo } from "react";
 import {
     computeAgreementHash,
+    computeProvenanceLeaf,
     computeSectionLeaf,
     type Agreement,
     type AgreementSection,
@@ -249,7 +250,7 @@ function SectionMode() {
 // ── Mode C — Hash search ───────────────────────────────────────────────────
 
 interface HashHit {
-    kind: "agreementHash" | "section-leaf" | "orderHash" | "processId";
+    kind: "agreementHash" | "section-leaf" | "provenance-leaf" | "orderHash" | "processId";
     label: string;
     location: string;
 }
@@ -303,6 +304,15 @@ function SearchMode() {
                             location: `Merkle leaf under agreementHash ${order.agreementHash} (order ${order.orderHash})`,
                         });
                     }
+                }
+                // The agreement format's provenance leaf — a leaf of the same
+                // tree, under the reserved key, never a clause section.
+                if (agreement.provenance !== undefined && hexEqual(computeProvenanceLeaf(agreement.provenance), target)) {
+                    found.push({
+                        kind: "provenance-leaf",
+                        label: `Provenance leaf — assembly ${agreement.provenance}`,
+                        location: `Merkle leaf under agreementHash ${order.agreementHash} (order ${order.orderHash})`,
+                    });
                 }
             }
         }

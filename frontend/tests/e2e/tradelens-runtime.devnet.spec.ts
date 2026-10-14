@@ -29,7 +29,7 @@
  *   audit     the new clauses' evidence surfaces in the audit bundle.
  */
 import { test, expect, gotoAsWallet } from './devnet-multi-test';
-import { ATTESTATION_COORDINATOR_ABI, USAGE_COUNTER_ABI, calculateBonds } from '@figaro-protocol/sdk';
+import { ATTESTATION_COORDINATOR_ABI, PROVENANCE_LEAF_KEY, USAGE_COUNTER_ABI, calculateBonds } from '@figaro-protocol/sdk';
 import { mnemonicToAccount } from 'viem/accounts';
 import { createPublicClient, createWalletClient, http, parseAbi, parseUnits, type Hex } from 'viem';
 import type { Page } from '@playwright/test';
@@ -310,7 +310,7 @@ test.describe('TRADELENS RUNTIME — six sellers bond, the container story attes
         //    clause's or assembly's use on the UsageCounter — one UsageRecorded per
         //    DISTINCT clause or assembly in the process (a key two orders carry
         //    is planned once), INCLUDING the assembly's compositionHash via the
-        //    mechanically-folded provenance section. Verified out-of-band
+        //    agreement's provenance leaf, which the checkout walk sets. Verified out-of-band
         //    from the chain, never from the UI. ──
         const usageCounter = config.usageCounter as Hex;
         expect(usageCounter, 'UsageCounter address is deployed + recorded').toBeTruthy();
@@ -321,7 +321,7 @@ test.describe('TRADELENS RUNTIME — six sellers bond, the container story attes
         await expect.poll(async () => (await usageEvents()).length, {
             timeout: 120000, message: 'the resolve capability records the process clauses and assemblies on the UsageCounter',
         }).toBeGreaterThanOrEqual(15);
-        // The provenance section carries the adopted assembly's own
+        // The provenance leaf carries the adopted assembly's own
         // compositionHash, so the ASSEMBLY itself must be among the
         // recorded clauses and assemblies — the assembly-designer credit leg.
         const adopted = (await discoverAnchoredAssemblies()).find((t) => t.slug === slug);
@@ -333,7 +333,7 @@ test.describe('TRADELENS RUNTIME — six sellers bond, the container story attes
         ).toContain(adopted!.compositionHash!.toLowerCase());
 
         // ── NO USAGE WRITE SENT THAT WAS SURE TO REVERT: the writes are
-        //    planned (one per distinct key, never an excluded key) and each is
+        //    planned (one per distinct key) and each is
         //    simulated before it is sent. Read out of band: every transaction
         //    the buyer sent to the UsageCounter from the resolve block on. ──
         await expect.poll(() => usageSummary, {
@@ -362,10 +362,10 @@ test.describe('TRADELENS RUNTIME — six sellers bond, the container story attes
         const recordedEvents = await usageEvents();
         for (const event of recordedEvents) {
             const key = event.args.clauseOrAssembly as Hex;
-            const excluded = await publicClient.readContract({
-                address: usageCounter, abi: USAGE_COUNTER_ABI, functionName: 'excludedClauseOrAssembly', args: [key],
-            }) as boolean;
-            expect(excluded, `the recorded key ${key} is not one the counter excludes`).toBe(false);
+            // The reserved leaf key is the agreement format's, never a clause:
+            // the assembly is recorded under its compositionHash, not under it.
+            expect(key.toLowerCase(), `the recorded key ${key} is not the provenance leaf's reserved key`)
+                .not.toBe(PROVENANCE_LEAF_KEY.toLowerCase());
         }
         expect(
             buyerUsageTxs.length,

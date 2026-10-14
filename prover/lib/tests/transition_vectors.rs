@@ -180,7 +180,7 @@ fn the_mirror_replays_every_frozen_kernel_transition() {
             prev_state: empty_snapshot(),
             usage_claims: vec![],
             usage_period: 0,
-            provenance_clause: B256::ZERO,
+            provenance_leaf: B256::ZERO,
         };
         let (_pv, positions, _events, state) =
             apply_batch_with_state(&input).unwrap_or_else(|e| panic!("{name}: {e:?}"));

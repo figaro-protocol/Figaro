@@ -1,6 +1,6 @@
 import { beforeAll, describe, it, expect } from "vitest";
 import type { Agreement } from "@figaro-protocol/sdk";
-import { canonicalContentHash, computeClauseKey } from "@figaro-protocol/sdk";
+import { PROVENANCE_LEAF_KEY, canonicalContentHash, computeClauseKey } from "@figaro-protocol/sdk";
 import { loadClauseSpec, setClauseSpecFetcher } from "@/lib/shared/clauseSpecSource";
 import { deriveProcessModelFromRuntime } from "@/lib/semantic/deriveProcessModelFromRuntime";
 import { OrderState, type Order } from "@/lib/kernel/store";
@@ -132,6 +132,58 @@ describe("re-assert committed sections — one card per party per order", () => 
     it("a one-order process names its order on the card", () => {
         const [card] = reassertCards(BUYER);
         expect(card.orderLabel).toBe(`Order 1 of 1 · seller ${truncateHex(SELLER)}`);
+    });
+});
+
+// The agreement format's provenance leaf: the buyer attests it while the
+// process is open, beside the committed sections, from its own choice. It is
+// the format's leaf, never a clause section: it is keyed by the reserved key.
+describe("re-assert committed sections — the provenance leaf", () => {
+    const COMPOSITION = `0x${"9a".repeat(32)}` as `0x${string}`;
+    const withProvenance: Agreement = { ...agreement, provenance: COMPOSITION };
+    const cardsWith = (address: string, attestations: RuntimeAttestation[] = [], state = OrderState.Active) =>
+        deriveProcessModelFromRuntime(
+            summary,
+            [{ ...order, state }],
+            new Map([[AGREEMENT_HASH, withProvenance]]),
+            address,
+            undefined,
+            attestations,
+        ).orders.flatMap((o) => o.capabilities).filter((c) => c.actionKind === "reassert-committed-sections");
+    const provenanceChoices = (cards: CapabilityModel[]) =>
+        cards.flatMap(choicesOf).filter((c) => c.actionKind === "reassert-provenance-leaf");
+
+    it("the buyer's card carries the provenance leaf as one more choice", () => {
+        const cards = cardsWith(BUYER);
+        expect(cards).toHaveLength(1);
+        expect(choicesOf(cards[0])).toHaveLength(K + 1);
+        const [choice] = provenanceChoices(cards);
+        expect(choice.action).toEqual({
+            executionType: "transaction",
+            kind: "attest-provenance-leaf",
+            orderHash: ORDER_HASH,
+            compositionHash: COMPOSITION,
+            party: "buyer",
+        });
+    });
+
+    it("the seller's card never carries it", () => {
+        const cards = cardsWith(SELLER);
+        expect(choicesOf(cards[0])).toHaveLength(K);
+        expect(provenanceChoices(cards)).toHaveLength(0);
+    });
+
+    it("the buyer's own attestation of the reserved key removes it", () => {
+        const filed: RuntimeAttestation = { clauseId: PROVENANCE_LEAF_KEY, orderHash: ORDER_HASH, stage: 0, attester: BUYER, blockNumber: 2 };
+        expect(provenanceChoices(cardsWith(BUYER, [filed]))).toHaveLength(0);
+    });
+
+    it("a resolved order offers nothing — the attestation is filed while the process is open", () => {
+        expect(cardsWith(BUYER, [], OrderState.Resolved)).toHaveLength(0);
+    });
+
+    it("an agreement naming no assembly offers no provenance choice", () => {
+        expect(provenanceChoices(reassertCards(BUYER))).toHaveLength(0);
     });
 });
 

@@ -5,14 +5,14 @@ import type { AssemblyTemplate } from "../src/assembly.js";
 describe("templateComposedClauseIds", () => {
     it("unions the assembly-scoped sections with every agreement's clauses, sorted and de-duplicated", () => {
         const template: AssemblyTemplate = {
-            assemblyClauses: { "figaro-assembly-provenance": {} },
+            assemblyClauses: { "figaro-applicable-law": {} },
             agreements: [
                 { id: "order-0", clauses: { "figaro-topology": {}, "figaro-commerce": {} } },
                 { id: "order-1", clauses: { "figaro-commerce": {}, "figaro-handoff": {} } },
             ],
         };
         expect(templateComposedClauseIds(template)).toEqual([
-            "figaro-assembly-provenance",
+            "figaro-applicable-law",
             "figaro-commerce",
             "figaro-handoff",
             "figaro-topology",

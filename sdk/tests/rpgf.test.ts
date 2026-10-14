@@ -16,7 +16,9 @@ import {
     fetchBatchUsageRecords,
 } from "../src/rpgf/index.js";
 import {
+    PROVENANCE_LEAF_KEY,
     computeAgreementHash,
+    computeProvenanceLeaf,
     computeSectionLeaf,
     sectionDataHash,
     verifyInclusionProof,
@@ -455,9 +457,9 @@ describe("computeRpgfAllocations", () => {
 // ── Usage claims (the batch path's input) ────────────────────────────
 
 describe("buildUsageClaims", () => {
-    const PROVENANCE = computeClauseKey("figaro-assembly-provenance", 1);
-    const COMMERCE = computeClauseKey("figaro-commerce", 1);
     const COMPOSITION = keccak256(encodePacked(["string"], ["an-assembly"]));
+    /** What `UsageCounter.provenanceLeaf()` answers: the format's reserved key. */
+    const CONTEXT = { provenanceLeaf: PROVENANCE_LEAF_KEY };
 
     const order: Commitment = {
         processId: `0x${"0".repeat(64)}` as Hex,
@@ -471,8 +473,8 @@ describe("buildUsageClaims", () => {
         deadline: 2n,
     };
 
-    function agreementWith(sections: Agreement["sections"]): Agreement {
-        return { version: "a1", buyer: order.buyer, seller: order.seller, sections };
+    function agreementWith(sections: Agreement["sections"], provenance?: Hex): Agreement {
+        return { version: "a1", buyer: order.buyer, seller: order.seller, sections, ...(provenance ? { provenance } : {}) };
     }
 
     const modalities = { clause: "figaro-modalities", version: 1, data: { modality: "pickup" } };
@@ -481,18 +483,10 @@ describe("buildUsageClaims", () => {
         version: 1,
         data: { payment: "100", currency: order.currency, lineItems: [] },
     };
-    const provenance = {
-        clause: "figaro-assembly-provenance",
-        version: 1,
-        data: { compositionHash: COMPOSITION },
-    };
 
     it("claims every section, and carries the section FINGERPRINT not the preimage", () => {
         const agreement = agreementWith([modalities, commerce]);
-        const claims = buildUsageClaims(order, agreement, {
-            provenanceClause: PROVENANCE,
-            excludedClausesOrAssemblies: [],
-        });
+        const claims = buildUsageClaims(order, agreement, CONTEXT);
 
         expect(claims).toHaveLength(2);
         const modalityClaim = claims.find(
@@ -506,87 +500,51 @@ describe("buildUsageClaims", () => {
         expect(modalityClaim.order.agreement_hash).toBe(order.agreementHash);
     });
 
-    // Not an optimization. `applyBatchAccrual` reverts `ClauseOrAssemblyExcluded` and
-    // takes the ENTIRE batch with it — every other party's resolution included.
-    it("drops excluded clauses or assemblies, because one would revert the whole batch", () => {
-        const claims = buildUsageClaims(order, agreementWith([modalities, commerce]), {
-            provenanceClause: PROVENANCE,
-            excludedClausesOrAssemblies: [COMMERCE],
-        });
+    // The designer's credit rides the agreement format's provenance leaf, not
+    // a section: every section still earns its clause leg, and the assembly
+    // leg credits the compositionHash — never the reserved leaf key.
+    it("credits the DESIGNER from agreement.provenance beside every clause leg", () => {
+        const claims = buildUsageClaims(order, agreementWith([modalities, commerce], COMPOSITION), CONTEXT);
 
-        expect(claims.map((c) => c.clause_or_assembly)).toEqual([computeClauseKey("figaro-modalities", 1)]);
-    });
-
-    it("is case-insensitive about the excluded set", () => {
-        const claims = buildUsageClaims(order, agreementWith([commerce]), {
-            provenanceClause: PROVENANCE,
-            excludedClausesOrAssemblies: [COMMERCE.toUpperCase() as Hex],
-        });
-        expect(claims).toHaveLength(0);
-    });
-
-    // THE REGRESSION THAT COST THE DESIGNER HALF OF THE 600M. The provenance
-    // clause is itself excluded — it rides every assembly-composed process — so
-    // the section carrying the compositionHash is exactly the one the clause leg
-    // discards. The assembly claim must survive that.
-    it("still credits the DESIGNER when the provenance clause is excluded", () => {
-        const claims = buildUsageClaims(
-            order,
-            agreementWith([modalities, commerce, provenance]),
-            { provenanceClause: PROVENANCE, excludedClausesOrAssemblies: [COMMERCE, PROVENANCE] },
-        );
-
+        expect(claims.filter((c) => c.kind !== "Assembly")).toHaveLength(2);
         const assembly = claims.find((c) => c.kind === "Assembly");
-        expect(assembly, "the assembly leg must not be coupled to the clause leg").toBeDefined();
+        expect(assembly).toBeDefined();
         expect(assembly!.clause_or_assembly).toBe(COMPOSITION);
-        // And it credits the compositionHash — never the provenance clause key.
-        expect(claims.map((c) => c.clause_or_assembly)).not.toContain(PROVENANCE);
+        expect(claims.map((c) => c.clause_or_assembly)).not.toContain(PROVENANCE_LEAF_KEY);
     });
 
-    it("emits no assembly claim when the process ran under no assembly", () => {
-        const claims = buildUsageClaims(order, agreementWith([modalities]), {
-            provenanceClause: PROVENANCE,
-            excludedClausesOrAssemblies: [],
-        });
+    it("emits no assembly claim when the agreement names no assembly", () => {
+        const claims = buildUsageClaims(order, agreementWith([modalities]), CONTEXT);
         expect(claims.some((c) => c.kind === "Assembly")).toBe(false);
     });
 
-    // A content-withheld provenance section carries only `dataHash`, so the
-    // compositionHash cannot be recovered. Skip the designer credit; do NOT
-    // throw — the clause claims are still valid and the batch must still resolve.
-    it("skips the assembly leg when provenance content is withheld, without failing the rest", () => {
-        const withheld = {
-            clause: "figaro-assembly-provenance",
-            version: 1,
-            dataHash: sectionDataHash(provenance),
-        };
-        const claims = buildUsageClaims(order, agreementWith([modalities, withheld]), {
-            provenanceClause: PROVENANCE,
-            excludedClausesOrAssemblies: [PROVENANCE],
-        });
-
-        expect(claims.some((c) => c.kind === "Assembly")).toBe(false);
-        expect(claims).toHaveLength(1);
-        expect(claims[0].clause_or_assembly).toBe(computeClauseKey("figaro-modalities", 1));
+    // A counter reproducing a different leaf would revert every assembly
+    // claim and, on the batch path, the whole batch with it.
+    it("refuses a counter whose provenance leaf is not the agreement format's", () => {
+        expect(() => buildUsageClaims(order, agreementWith([modalities], COMPOSITION), {
+            provenanceLeaf: computeClauseKey("figaro-modalities", 1),
+        })).toThrow(/provenance leaf/);
+        // Case does not matter.
+        expect(buildUsageClaims(order, agreementWith([modalities], COMPOSITION), {
+            provenanceLeaf: PROVENANCE_LEAF_KEY.toUpperCase().replace("0X", "0x") as Hex,
+        }).some((c) => c.kind === "Assembly")).toBe(true);
     });
 
     it("produces inclusion proofs that verify against the signed agreement hash", () => {
-        const agreement = agreementWith([modalities, commerce, provenance]);
+        const agreement = agreementWith([modalities, commerce], COMPOSITION);
         const root = computeAgreementHash(agreement);
-        const claims = buildUsageClaims(order, agreement, {
-            provenanceClause: PROVENANCE,
-            excludedClausesOrAssemblies: [],
-        });
+        const claims = buildUsageClaims(order, agreement, CONTEXT);
 
+        expect(claims).toHaveLength(3);
         for (const claim of claims) {
-            const section =
+            const leaf =
                 claim.kind === "Assembly"
-                    ? provenance
-                    : agreement.sections.find(
+                    ? computeProvenanceLeaf(COMPOSITION)
+                    : computeSectionLeaf(agreement.sections.find(
                           (s) => computeClauseKey(s.clause, s.version) === claim.clause_or_assembly,
-                      )!;
+                      )!);
             expect(
-                verifyInclusionProof(root, computeSectionLeaf(section), claim.inclusion_proof),
+                verifyInclusionProof(root, leaf, claim.inclusion_proof),
                 `proof for ${claim.clause_or_assembly}`,
             ).toBe(true);
         }

@@ -134,15 +134,6 @@ fn consent_documents_tuple_array() {
 // ── bytes32-hex / address-hex formats ────────────────────────────────
 
 #[test]
-fn assembly_provenance_bytes32() {
-    assert_encode(
-        "figaro-assembly-provenance",
-        json!({ "compositionHash": format!("0x{}", "cd".repeat(32)) }),
-        &format!("0x{}", "cd".repeat(32)),
-    );
-}
-
-#[test]
 fn utility_token_address() {
     assert_encode(
         "figaro-utility-token",

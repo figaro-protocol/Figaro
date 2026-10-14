@@ -81,6 +81,18 @@ describe("anchorAgreement", () => {
         expect(anchorAgreement({ sections: "none" }, OTHER)).toBeNull();
         expect(anchorAgreement(null, OTHER)).toBeNull();
     });
+    it("accepts the provenance leaf as a 32-byte hash under the hash, and refuses anything else there", () => {
+        const named = { ...agreement, provenance: `0x${"22".repeat(32)}` as const };
+        const root = computeAgreementHash(named);
+        expect(anchorAgreement(named, root)).toBe(named);
+        // Dropping or changing the provenance changes the root.
+        expect(anchorAgreement(agreement, root)).toBeNull();
+        expect(anchorAgreement({ ...named, provenance: OTHER }, root)).toBeNull();
+        // A provenance that is not a 32-byte hex string is not the agreement format.
+        for (const bad of ["0x1234", "22".repeat(32), 7, null, { compositionHash: named.provenance }]) {
+            expect(anchorAgreement({ ...named, provenance: bad }, root)).toBeNull();
+        }
+    });
 });
 
 describe("anchorAttestationContent", () => {

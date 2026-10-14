@@ -20,9 +20,7 @@
     "usageCounter": {
         "minSellers": "3",
         "periodCount": "9",
-        "provenanceClause": "figaro-assembly-provenance@1",
-        "excluded": ["figaro-assembly-provenance@1"],
-        "notExcluded": ["figaro-commerce@1", "figaro-topology@1"]
+        "provenanceLeaf": "0x26dc18a2251a8f4629ada6df88b7c98553e011c08682d28ce5bb51a441227dc6"
     },
     "rpgfMinter": { "periodAmountSum": "600000000000000000000000000" },
     "florin": {
@@ -39,8 +37,7 @@
         "default": "founder",
         "byClause": {
             "figaro-commerce": "daoVault",
-            "figaro-topology": "daoVault",
-            "figaro-assembly-provenance": "daoVault"
+            "figaro-topology": "daoVault"
         }
     }
 }

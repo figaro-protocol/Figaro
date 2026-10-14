@@ -408,19 +408,19 @@ export async function syncCorpus({
 
 /**
  * Assembly attribution from the agreements the operator actually holds: the
- * provenance section's `compositionHash`, found by DECLARED FIELD. A process
- * with no held agreement is `undefined` — counted as unattributed, never
- * binned under a fabricated key. That is the honest public picture: the
- * resolution skeleton is public, the body that says WHICH assembly produced it
- * is party-private until someone discloses or sells it.
+ * agreement's provenance leaf (`agreement.provenance`, the composition hash of
+ * the assembly it instantiated) — the agreement format's own field, never a
+ * clause section. A process with no held agreement is `undefined` — counted
+ * as unattributed, never binned under a fabricated key. That is the honest
+ * public picture: the resolution skeleton is public, the body that says WHICH
+ * assembly produced it is party-private until someone discloses or sells it.
  */
 function assemblyAttribution(corpus) {
     const byProcess = new Map();
     for (const { agreement, order } of corpus.held.byHash.values()) {
-        const section = sectionByField(agreement, "compositionHash", corpus.specs);
-        const key = section?.data?.compositionHash;
-        // A composition hash is a bytes32; anything else in that field is a
-        // party's free text, attributes nothing, and never reaches the wire.
+        const key = agreement.provenance;
+        // A composition hash is a bytes32; anything else there is a party's
+        // free text, attributes nothing, and never reaches the wire.
         if (typeof key === "string" && BYTES32.test(key)) byProcess.set(order.processId.toLowerCase(), key);
     }
     return (processId) => byProcess.get(processId.toLowerCase());
@@ -463,6 +463,10 @@ export function graphInventory(corpus) {
             // the registry; an unresolved family is named by its on-chain key
             // and nothing else. Its registrant chose it: framed.
             clauseId: framedClauseId(g),
+            // The agreement format's reserved leaf (the buyer's attestation of
+            // the assembly the process instantiated), recognised by the SDK
+            // against the format constant — never by a clause name.
+            provenanceLeaf: g.provenanceLeaf === true,
             specResolved: g.spec !== null,
             entries: g.entries.length,
             decodedEntries: g.entries.filter((e) => e.decoded !== null).length,
@@ -560,6 +564,7 @@ export function tradeStory(corpus, processId) {
                 truthBoundary: graph.boundary,
                 clauseKey: graph.clauseKey,
                 clauseId: framedClauseId(graph),
+                provenanceLeaf: graph.provenanceLeaf === true,
                 orderHash: entry.orderHash,
                 attester: entry.attester,
                 stage: entry.stage,

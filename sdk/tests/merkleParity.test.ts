@@ -16,8 +16,11 @@
  * `prover/lib/tests/merkle_parity.rs` does the same through the guest's
  * verifier. The EIP-712 lock (`eip712Parity.test.ts`) is the sibling.
  *
- * Two agreements: three sections (an odd leaf count, so one node is promoted
- * unpaired) and one section (an empty proof, leaf == root).
+ * Three agreements: three sections (an odd leaf count, so one node is promoted
+ * unpaired), one section (an empty proof, leaf == root), and two sections plus
+ * the reserved provenance leaf (the agreement format's own leaf, keyed by
+ * `PROVENANCE_LEAF_KEY` and reproduced from the composition hash — what both
+ * consumers rebuild for an assembly claim).
  *
  *   1. Regenerate the fixture on `HARVEST_MERKLE_VECTORS=1`.
  *   2. On `AGREEMENT_FUZZ_SEED=<n>`, write GENERATED agreements in the
@@ -31,9 +34,12 @@ import path from "node:path";
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import {
+    PROVENANCE_LEAF_KEY,
+    buildProvenanceInclusionProof,
     buildSectionInclusionProof,
     canonicalize,
     computeAgreementHash,
+    provenanceSectionBytes,
     type Agreement,
 } from "../src/agreement.js";
 import { agreementArb } from "./propertyArbs.js";
@@ -47,7 +53,7 @@ const THREE: Agreement = {
     seller: "0xAd29D7a8aD3639F97798c768202F27C1dE81DC55",
     sections: [
         { clause: "figaro-modalities", version: 1, data: { modality: "delivery" } },
-        { clause: "figaro-provenance", version: 1, data: { hops: 2, origin: "kitchen-7" } },
+        { clause: "figaro-geolocation", version: 1, data: { hops: 2, origin: "site-7" } },
         { clause: "figaro-applicable-law", version: 1, data: { law: "ch" } },
     ],
 };
@@ -58,12 +64,36 @@ const ONE: Agreement = {
     seller: "0xAd29D7a8aD3639F97798c768202F27C1dE81DC55",
     sections: [{ clause: "figaro-modalities", version: 1, data: { modality: "pickup" } }],
 };
+/** Two sections and the design they were instantiated from. */
+const WITH_DESIGN: Agreement = {
+    version: "a1",
+    buyer: "0x0376AAc07Ad725E01357B1725B5ceC61aE10473c",
+    seller: "0xAd29D7a8aD3639F97798c768202F27C1dE81DC55",
+    sections: [
+        { clause: "figaro-commerce", version: 1, data: { currency: "0x0000000000000000000000000000000000000000", payment: "7" } },
+        { clause: "figaro-topology", version: 1, data: { parentOrderHashes: [] } },
+    ],
+    provenance: "0x9b3c1d2e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c",
+};
 
 function vectorFor(label: string, agreement: Agreement) {
+    const provenance = agreement.provenance === undefined ? undefined : (() => {
+        const { leaf, proof } = buildProvenanceInclusionProof(agreement);
+        return {
+            // The reserved key and the bytes the leaf hashes: both consumers
+            // rebuild the leaf from these two, exactly as for a section.
+            leafKey: PROVENANCE_LEAF_KEY,
+            compositionHash: agreement.provenance,
+            sectionData: Buffer.from(provenanceSectionBytes(agreement.provenance).slice(2), "hex").toString("utf8"),
+            leaf,
+            proof,
+        };
+    })();
     return {
         label,
         agreementHash: computeAgreementHash(agreement),
         sectionCount: agreement.sections.length,
+        ...(provenance ? { provenance } : {}),
         sections: agreement.sections.map((section) => {
             const { leaf, proof } = buildSectionInclusionProof(agreement, section.clause);
             return {
@@ -81,8 +111,8 @@ function vectorFor(label: string, agreement: Agreement) {
 
 function build() {
     return {
-        agreementCount: 2,
-        agreements: [vectorFor("three-sections", THREE), vectorFor("one-section", ONE)],
+        agreementCount: 3,
+        agreements: [vectorFor("three-sections", THREE), vectorFor("one-section", ONE), vectorFor("two-sections-and-a-design", WITH_DESIGN)],
     };
 }
 

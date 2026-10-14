@@ -25,7 +25,7 @@ interface IUsageCounter {
 
     function applyBatchAccrual(
         uint8 period,
-        bytes32 claimedProvenance,
+        bytes32 claimedProvenanceLeaf,
         BatchAccrual[] calldata accruals,
         address[] calldata sellers
     ) external;
@@ -64,7 +64,7 @@ interface IUsageCounter {
 ///         this contract carries the accrual across: the guest proves
 ///         each clause or assembly's cumulative `(c, d)`, and one write
 ///         per clause or assembly per batch lands it. The gates the proof
-///         cannot see (open period, the seller of record's live member stake, exclusions) are the
+///         cannot see (open period, the seller of record's live member stake, registration) are the
 ///         counter's own and are checked there, not here.
 ///
 ///         Public values (ABI-encoded, 9 × 32-byte words):
@@ -150,9 +150,9 @@ contract FigaroBatchVerifier is ReentrancyGuard {
         ///      whether this is the open one — the sequencer's clock has
         ///      no authority here.
         uint8 period;
-        /// @dev The provenance clause key the guest proved assembly
+        /// @dev The provenance leaf key the guest proved assembly
         ///      claims against; the counter matches it to its own.
-        bytes32 provenanceClause;
+        bytes32 provenanceLeaf;
         /// @dev Per-clause-or-assembly CUMULATIVE (c, d) after this batch,
         ///      sorted by clause-or-assembly key in the prover.
         IUsageCounter.BatchAccrual[] accruals;
@@ -171,7 +171,7 @@ contract FigaroBatchVerifier is ReentrancyGuard {
     ///         dropped because `UsageCounter.applyBatchAccrual` reverted — a
     ///         seller unstaked between prove and submit (`SellerNotStaked`), the
     ///         open period advanced across a boundary (`PeriodMismatch`), or the
-    ///         proven provenance clause did not match. Resolution is decoupled
+    ///         proven provenance leaf did not match. Resolution is decoupled
     ///         from the reward on purpose: a reward-tier gate must never unwind
     ///         another party's trade. The dropped accrual is recovered by the
     ///         next batch that touches the same clauses and assemblies (the
@@ -325,7 +325,7 @@ contract FigaroBatchVerifier is ReentrancyGuard {
 
         // ── 7. Carry the RPGF accrual across the resolution crease ─
         //    The numbers are the proof's; the reward's own gates (open
-        //    period, the seller of record's live member stake, registration, exclusions)
+        //    period, the seller of record's live member stake, registration)
         //    are the counter's and are enforced there. A batch with no usage
         //    claims passes empty arrays and the call is a no-op — which is
         //    what keeps trade resolving after accrual closes.
@@ -335,8 +335,8 @@ contract FigaroBatchVerifier is ReentrancyGuard {
         //    submit (`SellerNotStaked`), a period boundary crossed in flight
         //    (`PeriodMismatch`), a provenance mismatch — can NEVER unwind the
         //    token resolution executed in step 5. A reward-tier gate must not
-        //    block another party's trade. The counter already skips excluded
-        //    and unregistered keys internally (it does not revert on
+        //    block another party's trade. The counter already skips
+        //    unregistered keys internally (it does not revert on
         //    those); this catch covers the whole-batch reverts that remain.
         //    On failure the accrual is dropped wholesale — recovered by the
         //    next batch's cumulative overwrite, or forgone (conservative
@@ -352,7 +352,7 @@ contract FigaroBatchVerifier is ReentrancyGuard {
         //    the counter can only ever accept THIS verifier. `NotBatchVerifier`
         //    is therefore unreachable at runtime; every revert that reaches this
         //    catch is a genuine accrual-gate skip, surfaced via the event.
-        try usageCounter.applyBatchAccrual(usage.period, usage.provenanceClause, usage.accruals, usage.sellers) {
+        try usageCounter.applyBatchAccrual(usage.period, usage.provenanceLeaf, usage.accruals, usage.sellers) {
         // accrual applied
         }
         catch (bytes memory reason) {
@@ -457,7 +457,7 @@ contract FigaroBatchVerifier is ReentrancyGuard {
         return keccak256(packed);
     }
 
-    /// @dev Pack: period(1) ++ provenanceClause(32)
+    /// @dev Pack: period(1) ++ provenanceLeaf(32)
     ///            ++ len(accruals)(8) ++ [clauseOrAssembly(32) ++ c(8) ++ d(8)]*
     ///            ++ len(sellers)(8)  ++ [seller(20)]*
     ///      matching the Rust `compute_usage_accrual_hash`.
@@ -483,7 +483,7 @@ contract FigaroBatchVerifier is ReentrancyGuard {
         bytes memory packed = new bytes(span + 32);
 
         uint8 period = usage.period;
-        bytes32 provenance = usage.provenanceClause;
+        bytes32 provenance = usage.provenanceLeaf;
         assembly {
             let dst := add(packed, 32)
             mstore8(dst, period)

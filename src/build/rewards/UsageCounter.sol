@@ -133,35 +133,26 @@ contract UsageCounter {
     ///         whenever the program changes.
     address public immutable batchVerifier;
 
-    /// @notice The clause key whose committed section names the assembly a
-    ///         process ran under — `figaro-assembly-provenance`'s
-    ///         `keccak256(abi.encode(clauseId, version))`.
-    /// @dev    Why this is needed at all: an agreement's merkle leaves are keyed
-    ///         by CLAUSE key (`agreement.ts`), so a compositionHash is never
-    ///         itself a leaf key and an assembly can never be proved the way a
-    ///         clause is. It is proved INDIRECTLY — the provenance clause is a
-    ///         leaf, and its section content IS the compositionHash. Fixing the
-    ///         clause key here rather than taking it per call is what stops a
-    ///         caller passing some other clause whose 32-byte section happens to
-    ///         equal an assembly's hash.
-    bytes32 public immutable provenanceClause;
-
-    /// @notice Clauses and assemblies that earn nothing, set once at deploy and
-    ///         never written again — at the reference genesis, exactly
-    ///         `figaro-assembly-provenance` (the two
-    ///         order-mandatory clauses EARN).
-    /// @dev    The provenance clause is scoring infrastructure — the leaf through
-    ///         which an assembly's designer is credited — so scoring it would pay
-    ///         one adoption twice (once to the designer via `recordAssemblyUsage`,
-    ///         again to the leaf's author). The mandatory clauses ride every
-    ///         order, so scoring them rewards their designer of record on every
-    ///         resolved process — the commons treasury under the genesis
-    ///         registration, a usage-indexed endowment of the commons.
-    ///         This is deploy-frozen: WHICH clauses and assemblies the reward
-    ///         ignores is a reward decision, not something a
-    ///         registering wallet declares about itself — a self-declared exclusion would
-    ///         simply never be declared.
-    mapping(bytes32 => bool) public excludedClauseOrAssembly;
+    /// @notice The key of the agreement format's reserved PROVENANCE leaf —
+    ///         the leaf whose committed section names the assembly a process
+    ///         instantiated. `keccak256("figaro-agreement-provenance")`.
+    /// @dev    The link from a resolved process to its assembly is a fact of the
+    ///         agreement FORMAT, never a clause: the key is a constant derived
+    ///         from the format's own label, it is registered nowhere and earns
+    ///         nothing. Its preimage is a plain string, while a registered
+    ///         clause key is `keccak256(abi.encode(name, uint64 version))`, so
+    ///         the two shapes never meet — no clause registration can land on
+    ///         this key, and the clause-or-assembly stake gate refuses it on
+    ///         both paths. The leaf's section bytes are exactly
+    ///         `{"compositionHash":"0x<64 lowercase hex>"}`, reproduced here
+    ///         from the assembly claimed (`recordAssemblyUsage`). A
+    ///         compositionHash is never itself a leaf key, so an assembly is
+    ///         proved through this leaf; fixing the key as a constant rather
+    ///         than taking it per call is what stops a caller passing some
+    ///         clause whose section happens to name an assembly's hash. The
+    ///         mandatory clauses ride every order and earn like any other
+    ///         clause: scoring them rewards their designer of record.
+    bytes32 public constant provenanceLeaf = keccak256("figaro-agreement-provenance");
 
     /// @notice The minimum-support floor: a clause or
     ///         assembly scores
@@ -321,11 +312,14 @@ contract UsageCounter {
     error OrderNotResolved();
     error AlreadyCounted();
     error InvalidInclusionProof();
-    error ClauseOrAssemblyExcluded(bytes32 clauseOrAssembly);
     error SellerNotStaked(address seller);
     error NotBatchVerifier();
     error PeriodMismatch(uint8 open, uint8 claimed);
-    error ProvenanceClauseMismatch(bytes32 expected, bytes32 claimed);
+    error ProvenanceLeafMismatch(bytes32 expected, bytes32 claimed);
+    /// @notice The reserved provenance leaf key was claimed as a clause or an
+    ///         assembly. It is a constant of the agreement format and never a
+    ///         registration, whatever a registry holds at that key.
+    error ProvenanceLeafIsNotARegistration(bytes32 key);
     error AccrualWentBackwards(bytes32 clauseOrAssembly);
 
     // ── Constructor ─────────────────────────────────────────────────
@@ -342,8 +336,6 @@ contract UsageCounter {
     ///                    deploy this contract FIRST. Immutable, so a wrong
     ///                    prediction is caught by the deploy script's own
     ///                    assertion, never silently tolerated.
-    /// @param _provenanceClause  `figaro-assembly-provenance`'s clause key.
-    /// @param _excluded    Clauses and assemblies that earn nothing — attribution plumbing (the assembly-provenance clause).
     /// @param _minSellers  The minimum-support floor: distinct staked sellers an
     ///                     clause or assembly needs in a period before it scores. ≥ 1
     ///                     (1 disables the floor; mainnet uses 3).
@@ -354,8 +346,6 @@ contract UsageCounter {
         address _clauses,
         address _assemblies,
         address _batchVerifier,
-        bytes32 _provenanceClause,
-        bytes32[] memory _excluded,
         uint64 _minSellers,
         uint64[] memory _periodEnd
     ) {
@@ -379,11 +369,7 @@ contract UsageCounter {
         clauses = IClauseStake(_clauses);
         assemblies = IAssemblyStake(_assemblies);
         batchVerifier = _batchVerifier;
-        provenanceClause = _provenanceClause;
         minSellers = _minSellers;
-        for (uint256 i = 0; i < _excluded.length; ++i) {
-            excludedClauseOrAssembly[_excluded[i]] = true;
-        }
         periodEnd = _periodEnd;
     }
 
@@ -466,10 +452,10 @@ contract UsageCounter {
     }
 
     /// @notice Record one resolved process's use of an ASSEMBLY. Same guarantees
-    ///         as `recordClauseUsage`, proved one step differently: an agreement's
-    ///         leaves are keyed by CLAUSE, so a compositionHash is never a leaf
-    ///         key. What IS a leaf is the provenance clause, whose committed
-    ///         section content is exactly the compositionHash — so proving that
+    ///         as `recordClauseUsage`, proved one step differently: a
+    ///         compositionHash is never a leaf key. What IS a leaf is the
+    ///         agreement format's reserved provenance leaf, whose committed
+    ///         section names exactly the compositionHash — so proving that
     ///         leaf and matching its content proves the process ran under this
     ///         assembly, with no new trust and no change to `agreementHash`.
     ///
@@ -491,13 +477,13 @@ contract UsageCounter {
         // the committed bytes are reproducible verbatim from the claimed hash:
         //   {"compositionHash":"0x<64 lowercase hex>"}
         // Reproduction, never parsing — the section FINGERPRINT is derived here,
-        // never supplied. This collapses the old two-step check (inclusion +
+        // never supplied. One check does both (inclusion +
         // content-match) into one: a wrong `compositionHash` derives a section
-        // hash whose leaf is simply not in the tree. The leaf is the PROVENANCE
-        // clause, fixed at deploy, so no other clause can stand in for it.
+        // hash whose leaf is simply not in the tree. The leaf is keyed by the
+        // format's constant `provenanceLeaf`, so no clause can stand in for it.
         bytes memory expected = abi.encodePacked('{"compositionHash":"', _toLowerHexString(compositionHash), '"}');
         bytes32 sectionHash = keccak256(expected);
-        bytes32 leaf = keccak256(bytes.concat(keccak256(abi.encodePacked(provenanceClause, sectionHash))));
+        bytes32 leaf = keccak256(bytes.concat(keccak256(abi.encodePacked(provenanceLeaf, sectionHash))));
         if (!MerkleProof.verify(proof, order.agreementHash, leaf)) revert InvalidInclusionProof();
 
         // CLAUSE-OR-ASSEMBLY-SIDE STAKE GATE, assembly form — the composition must hold a
@@ -536,7 +522,7 @@ contract UsageCounter {
     ///         three are live chain state this contract owns:
     ///           1. which period is open,
     ///           2. which sellers hold a live MembersRegistry stake,
-    ///           3. which clauses and assemblies are excluded from scoring.
+    ///           3. which clauses and assemblies hold a live registration.
     ///         The verifier deliberately checks none of them: it owns the
     ///         proof, this contract owns the reward's gates.
     ///
@@ -545,13 +531,13 @@ contract UsageCounter {
     ///                          sequencer's clock. A batch proven before a
     ///                          boundary and submitted after it is rejected and
     ///                          must be re-proven for the new period.
-    /// @param claimedProvenance The provenance clause key the guest proved
-    ///                          assembly claims against.
+    /// @param claimedProvenanceLeaf The provenance leaf key the guest proved
+    ///                          assembly claims against; must be `provenanceLeaf`.
     /// @param accruals          Per-clause-or-assembly cumulative `(c, d)`.
     /// @param sellers           Distinct sellers of record behind them.
     function applyBatchAccrual(
         uint8 period,
-        bytes32 claimedProvenance,
+        bytes32 claimedProvenanceLeaf,
         BatchAccrual[] calldata accruals,
         address[] calldata sellers
     ) external {
@@ -565,8 +551,8 @@ contract UsageCounter {
 
         uint8 open = currentPeriod();
         if (period != open) revert PeriodMismatch(open, period);
-        if (claimedProvenance != provenanceClause) {
-            revert ProvenanceClauseMismatch(provenanceClause, claimedProvenance);
+        if (claimedProvenanceLeaf != provenanceLeaf) {
+            revert ProvenanceLeafMismatch(provenanceLeaf, claimedProvenanceLeaf);
         }
 
         // SELLER-SIDE GATE, batch form. The direct path checks one seller per
@@ -581,14 +567,18 @@ contract UsageCounter {
             BatchAccrual calldata a = accruals[i];
             // SKIP, never revert — this call runs inside `settleBatch`, so a
             // revert here would take down the whole batch's TOKEN resolution (a
-            // reward-tier gate blocking the resolution tier). An excluded or
-            // un-live clause or assembly simply earns nothing: don't write it, don't touch
-            // the total, move on. The guest counts without knowing exclusion or
-            // registration (both are live chain state it cannot see), so the
-            // reward's own gates are applied HERE, and applying them as skips is
-            // what keeps trade resolving. (Direct path reverts instead — it is a
-            // standalone tx with nothing else to unwind.)
-            if (excludedClauseOrAssembly[a.clauseOrAssembly]) continue;
+            // reward-tier gate blocking the resolution tier). An un-live clause
+            // or assembly simply earns nothing: don't write it, don't touch
+            // the total, move on. The guest counts without knowing registration
+            // (live chain state it cannot see), so the reward's own gate is
+            // applied HERE, and applying it as a skip is what keeps trade
+            // resolving. (Direct path reverts instead — it is a standalone tx
+            // with nothing else to unwind.)
+            // The reserved provenance leaf is a constant of the agreement format,
+            // never a registration: its leaf opens under every agreement that
+            // names an assembly, so a claim keyed on it is skipped whatever a
+            // registry holds at that key (a registry takes any bytes32).
+            if (a.clauseOrAssembly == provenanceLeaf) continue;
             if (!_clauseLive(a.clauseOrAssembly) && !_assemblyLive(a.clauseOrAssembly)) continue;
 
             Accrual storage stored = batchAccrualOf[a.clauseOrAssembly][period];
@@ -628,10 +618,10 @@ contract UsageCounter {
     ///      feeds `c`; the first from each staked seller in the period also
     ///      feeds `d`.
     function _accrue(bytes32 clauseOrAssembly, uint8 period, bytes32 processId, address seller) internal {
-        // An excluded clause or assembly — at genesis, the provenance clause
-        // alone — is scoring infrastructure; counting it would double-pay the
-        // adoption it exists to attribute.
-        if (excludedClauseOrAssembly[clauseOrAssembly]) revert ClauseOrAssemblyExcluded(clauseOrAssembly);
+        // The reserved provenance leaf never accrues: it is the agreement
+        // format's own, never a registration, and no registry entry at that key
+        // makes it one.
+        if (clauseOrAssembly == provenanceLeaf) revert ProvenanceLeafIsNotARegistration(clauseOrAssembly);
         // SELLER-SIDE GATE: usage counts only if the process's seller-of-record
         // holds a LIVE MembersRegistry stake, read at RECORD time. This gate is
         // RETROACTIVE, not merely prospective: requesting withdrawal de-surfaces

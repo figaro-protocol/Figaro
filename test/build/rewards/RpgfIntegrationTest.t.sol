@@ -41,7 +41,7 @@ contract RpgfIntegrationTest is Test {
     string constant GEO_ID = "figaro-geolocation";
     bytes32 constant GEO_KEY = keccak256(abi.encode("figaro-geolocation", uint64(1)));
     bytes32 constant ASM = keccak256("reference-assembly");
-    bytes32 constant PROV_KEY = keccak256(abi.encode("figaro-assembly-provenance", uint64(1)));
+    bytes32 constant PROVENANCE_LEAF = keccak256("figaro-agreement-provenance");
     bytes constant SECTION = hex"5eed";
 
     uint64 constant P0_END = 1_000_000;
@@ -79,15 +79,7 @@ contract RpgfIntegrationTest is Test {
         periods[1] = P0_END * 2;
         periods[2] = P0_END * 3;
         counter = new UsageCounter(
-            address(core),
-            address(members),
-            address(clauses),
-            address(assemblies),
-            batchVerifier,
-            PROV_KEY,
-            _excluded(),
-            1,
-            periods
+            address(core), address(members), address(clauses), address(assemblies), batchVerifier, 1, periods
         );
 
         uint256[] memory amounts = new uint256[](3);
@@ -105,14 +97,6 @@ contract RpgfIntegrationTest is Test {
         token.approve(address(core), type(uint256).max);
 
         vm.warp(P0_END - 1000);
-    }
-
-    /// @dev The one clause excluded from scoring on every deployment:
-    ///      assembly-provenance — attribution plumbing (the mandatory clauses
-    ///      EARN).
-    function _excluded() internal pure returns (bytes32[] memory e) {
-        e = new bytes32[](1);
-        e[0] = keccak256(abi.encode("figaro-assembly-provenance", uint64(1)));
     }
 
     function _sign(CommitmentTypes.Commitment memory c, uint256 key) internal view returns (bytes memory) {
@@ -167,7 +151,7 @@ contract RpgfIntegrationTest is Test {
             currency: address(token),
             payment: 100 ether,
             expectedCumulativeValue: 100 ether,
-            agreementHash: AgreementTestHelper.singleSectionRoot(PROV_KEY, sectionData),
+            agreementHash: AgreementTestHelper.singleSectionRoot(PROVENANCE_LEAF, sectionData),
             salt: salt,
             deadline: block.timestamp + 1 hours
         });
@@ -258,7 +242,7 @@ contract RpgfIntegrationTest is Test {
     }
 
     function test_assemblyCannotBeCreditedWithoutItsProvenanceSection() public {
-        // An agreement that never committed the provenance clause cannot credit
+        // An agreement that never committed the provenance leaf cannot credit
         // an assembly — there is no leaf to open. This is the path that looked
         // like it worked when the clause or assembly key was passed directly.
         CommitmentTypes.Commitment memory p = _settle(GEO_KEY, 1);

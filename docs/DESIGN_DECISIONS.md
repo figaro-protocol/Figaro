@@ -552,7 +552,7 @@ vkey, and a named caller is how a vkey's authority reaches storage.
 
 **What the counter still enforces itself**, because the proof cannot see live
 chain state: the open period, each seller's live `MembersRegistry` stake, and
-the set of excluded clauses and assemblies. The verifier deliberately checks none of these — it
+each clause's or assembly's live registration. The verifier deliberately checks none of these — it
 owns the proof, the counter owns the reward's gates.
 
 **Blast radius if the vkey were wrong**: a bad program could inflate
@@ -639,16 +639,17 @@ skips (see §20).
 
 ## 20. The rewards accrual never blocks batch resolution — a reverting reward gate does not unwind trade
 
-**Looks wrong because:** `applyBatchAccrual` `continue`s past excluded/unregistered clauses or assemblies
-instead of reverting, and `settleBatch` wraps the whole accrual call in try/catch, emitting
+**Looks wrong because:** `applyBatchAccrual` `continue`s past the reserved provenance leaf and past clauses or assemblies without a live
+registration instead of reverting, and `settleBatch` wraps the whole accrual call in try/catch, emitting
 `BatchAccrualSkipped` and resolving the batch anyway. A reward write that can be silently dropped looks
 like lost or manipulable accrual.
 
 **Is correct because:** the accrual
 is a REWARD-tier write inside a RESOLUTION-tier transaction. A reward gate that
 reverts resolution lets one party block every co-batched trader's already-reconciled payouts — a free,
-unauthenticated griefing vector (a poison claim naming the excluded `figaro-assembly-provenance`,
-which rides every assembly-composed agreement; or a seller who unstakes between prove and submit). Tier separation is
+unauthenticated griefing vector (a poison claim naming a key with no live registration, or naming
+the agreement format's reserved provenance leaf, which rides every agreement that names its
+assembly; or a seller who unstakes between prove and submit). Tier separation is
 the doctrine: resolution must never be hostage to the reward. A dropped batch's accrual is
 recovered by the next batch that touches the same clauses or assemblies (the counter's write is a
 cumulative overwrite) or forgone — conservative under-pay, never over-pay, the same posture as
@@ -748,7 +749,7 @@ keys are revoked.
 | 13 | `deadline` alongside `salt` | Core-critical | Redundant / auction residue | Salt is identity, deadline is expiry of the unconsummated signature window; no-cancel `FigaroCore` needs signatures to age out |
 | 14 | Committed `lineItems.name` / `cargo.marks` are public | privacy/evidence | Wallet-linkable purchase content leaks | Mechanism needs line items beyond the endpoints (invoices, disputes, price checks); mitigation is compositional (discreet catalog naming, coded marks) + wallet pseudonymity |
 | 15 | `MembersRegistry` withdrawal cooldown holds ETH on a timer | registry/stake | Looks like stuck funds + a Core-forbidden time lock | PROTOCOL tier, not the Core — no bond or commitment involved; without it one stake is recycled across identities and prices nothing; bounded, immutable, and unconditionally claimable after `releaseAt` |
-| 16 | `applyBatchAccrual` has one privileged caller | reward-path | A named writer on the reward path is the shape of an admin backdoor | Discretion, not permission, is the test: the caller may only relay numbers an immutable vkey committed; the counter still enforces period, seller stake and exclusions itself |
+| 16 | `applyBatchAccrual` has one privileged caller | reward-path | A named writer on the reward path is the shape of an admin backdoor | Discretion, not permission, is the test: the caller may only relay numbers an immutable vkey committed; the counter still enforces period, seller stake and live registration itself |
 | 17 | Recorded usage can score zero (`minSellers` floor) | reward-path | Real resolved trade with `score = 0` reads like lost accrual | Below 3 staked sellers sits what one actor fabricates alone; sub-floor accrual defers within the period (full score springs at the third seller) and expires when the period closes; per-path because the paths' seller sets cannot be unioned |
 | 18 | No per-recording charge or burn | reward-path | Fabricating `c` costs only gas | `c^(1/3)` already crushes volume farming; breadth is deposit-priced; an ETH burn destroys value needlessly and a DAO-routed charge inserts an institution + usage-coupled revenue into an identity-free mechanism |
 | 19 | Usage needs a live clause-or-assembly registration stake | reward-path | A proven, resolved use that scores nothing reads like lost accrual | The clause-or-assembly key is otherwise a free-choice merkle leaf; without the gate a self-dealt process inflates the shared denominator at gas cost; closes the FREE dilution, leaves the accepted stake-priced replication lever |

@@ -1,6 +1,6 @@
 {
   "name": "Figaro DAO",
-  "description": "The commons' treasury, met through its operator account — an EOA carrying an EIP-7702 delegation to governance-controlled code; the multisig vault authorises upstream and funds per procurement. Author-of-record of the mandatory clauses (figaro-commerce, figaro-topology, figaro-assembly-provenance) and of any clause donated to the commons. Identity now; the buyer side (procurement through bonded processes) and the seller side (merchandise, co-produced data) follow on this same profile.",
+  "description": "The commons' treasury, met through its operator account — an EOA carrying an EIP-7702 delegation to governance-controlled code; the multisig vault authorises upstream and funds per procurement. Designer of record of the mandatory clauses (figaro-commerce, figaro-topology) and of any clause donated to the commons. Identity now; the buyer side (procurement through bonded processes) and the seller side (merchandise, co-produced data) follow on this same profile.",
   "specialty": "commons treasury — retroactive public-goods funding",
   "acceptedTokens": [
     {

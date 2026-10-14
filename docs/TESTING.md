@@ -121,7 +121,7 @@ Companion: `certora/token-ops.inventory` — declarative inventory of every ERC2
 `src/echidna/EchidnaToken.sol` is not a harness — it is the minimal ERC-20 the `FigaroCore`
 harness fuzzes against (`EchidnaFuzzer.sol` imports it); it declares no `echidna_` properties.
 
-## TLA+ (`formal/`) — 55 invariants across 5 models (FigaroCore 9 + FlorinToken 8 + WitnessSwapAndCommitCoordinator 10 + ResolutionUniverses 21 + RelayState 7)
+## TLA+ (`formal/`) — 54 invariants across 5 models (FigaroCore 9 + FlorinToken 8 + WitnessSwapAndCommitCoordinator 10 + ResolutionUniverses 20 + RelayState 7)
 
 FigaroCore (`MC.tla` + `MC.cfg`): `TokenConservation`, `ContractSolvency`,
 `WalletNonNegative`, `CumulativeIntegrity`, `ActiveCountCorrect`,
@@ -149,11 +149,10 @@ ResolutionUniverses (`ResolutionUniverses.tla` + `.cfg`): the
 CROSS-CONTRACT model — FigaroCore + FigaroBatchVerifier + UsageCounter + the
 off-chain guest mirror under arbitrary interleavings; the only harness that can
 see where the two paths meet (every other layer is per-contract).
-21 invariants: no double payout across the universes, token conservation +
+20 invariants: no double payout across the universes, token conservation +
 exact per-pool deposits, usage-score composition (`scoreOf == direct + batch`,
 the bridge write REPLACES never adds), `FigaroCore` blindness (`settleBatch` writes
-no `FigaroCore` `orderStatus`) — 7,455,943 states / 2,632,247 distinct, depth 15,
-~3 min. Mutation-checked: 5 mutations + 7 non-vacuity witnesses, each caught.
+no `FigaroCore` `orderStatus`) — 10,030,087 states, ~9.5 min. Mutation-checked: 5 mutations + 7 non-vacuity witnesses, each caught.
 Two NAMED assumptions ride as `.cfg` constants: `AssumeDomainSeparation`
 (contract-enforced — EIP-712 `verifyingContract` disjointness carries
 no-double-payout) and `AssumeAccrualGatesAligned` (NOT contract-enforced — a
@@ -218,7 +217,9 @@ the witness-gate suite: spec-identity substitution, content-hash mismatch,
 inclusion failure, attest-after-resolve; the usage bridge in
 `prover/lib/tests/usage.rs` — same-batch credit against the post-state, cross-batch
 replay rejection (the reason the counted set rides the state root), breadth
-vs depth, the assembly leg via provenance reproduction, and the
+vs depth, the assembly leg via provenance reproduction, the reserved
+provenance leaf attestable without a spec (and refused on an uncommitted
+composition, a foreign contentRef or non-canonical bytes), and the
 usage-hash vector asserted verbatim on the Solidity side; bincode roundtrips
 fence the SP1 stdin landmines), `figaro-prover` (the SP1 guest program itself,
 exercised through the next crate), `figaro-prove-test` (SP1 mock-executor guest tests — the guest's committed
@@ -553,7 +554,7 @@ correct throughout):
 
 | what was broken | what it looked like | the assertion that caught it |
 |---|---|---|
-| `recordAssemblyUsage` unreachable — sequenced after a call that always reverts for excluded clauses or assemblies, so the **assembly-designer half of the 600M counted nothing, on every deployment** | clause designers accrued normally; the reward looked fine | `compositionHash` ∈ the `UsageRecorded` clauses and assemblies, read from chain |
+| `recordAssemblyUsage` unreachable — sequenced after a call that always reverts, so the **assembly-designer half of the 600M counted nothing, on every deployment** | clause designers accrued normally; the reward looked fine | `compositionHash` ∈ the `UsageRecorded` clauses and assemblies, read from chain |
 | the audit's witness decode read calldata for a preimage WS2 had removed; the throw landed in a swallowed `catch` | the page rendered, just with zero evidence rows | witness receipts `toHaveCount(3)` |
 | the claim button compared `Date.now()` to a **block** timestamp | button simply disabled; no error anywhere | drive the claim, assert the ETH moves |
 | `UsageCounter` itself | — | *correct throughout; that is the point* |

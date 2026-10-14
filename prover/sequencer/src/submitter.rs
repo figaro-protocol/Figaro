@@ -413,7 +413,7 @@ sol! {
 
         struct BatchUsageDataCall {
             uint8 period;
-            bytes32 provenanceClause;
+            bytes32 provenanceLeaf;
             BatchAccrualCall[] accruals;
             address[] sellers;
         }
@@ -445,8 +445,7 @@ sol! {
     #[sol(rpc)]
     interface IUsageCounter {
         function currentPeriod() external view returns (uint8);
-        function provenanceClause() external view returns (bytes32);
-        function excludedClauseOrAssembly(bytes32 clauseOrAssembly) external view returns (bool);
+        function provenanceLeaf() external view returns (bytes32);
     }
 }
 
@@ -500,7 +499,7 @@ pub struct SubmitterConfig {
     pub private_key: String,
 }
 
-/// Read the accrual period and provenance clause a batch must commit to.
+/// Read the accrual period and provenance leaf's key a batch must commit to.
 ///
 /// Returns `None` when there is no counter configured, or when accrual has
 /// CLOSED (`currentPeriod()` reverts `AccrualClosed` after the last period).
@@ -516,18 +515,18 @@ pub async fn read_usage_context(
     let provider = ProviderBuilder::new().connect_http(rpc_url.parse().ok()?);
     let contract = IUsageCounter::new(usage_counter, &provider);
     let period = contract.currentPeriod().call().await.ok()?;
-    let provenance = contract.provenanceClause().call().await.ok()?;
+    let provenance = contract.provenanceLeaf().call().await.ok()?;
     Some((period, provenance))
 }
 
 /// Drop usage claims the `UsageCounter` would reject at resolution, BEFORE they
 /// enter a proof.
 ///
-/// The counter now SKIPS excluded/unregistered clauses and assemblies (they
-/// never revert), and the verifier CATCHES a `SellerNotStaked` revert — but a
+/// The counter SKIPS a clause or assembly with no live registration (it never
+/// reverts), and the verifier CATCHES a `SellerNotStaked` revert — but a
 /// caught revert drops the WHOLE batch's accrual, not just the offending claim.
-/// Filtering here keeps one poison claim (an excluded/unregistered clause or
-/// assembly) or one unstaked seller from costing every other claim in the
+/// Filtering here keeps one poison claim (a key with no live registration in
+/// its registry) or one unstaked seller from costing every other claim in the
 /// batch its accrual. The residual
 /// — a seller who unstakes AFTER this read but before submission — is exactly
 /// what the verifier's try/catch absorbs; this only shrinks how often that
@@ -548,9 +547,26 @@ pub async fn filter_usage_claims(
     config: &SubmitterConfig,
     claims: Vec<UsageClaim>,
 ) -> (Vec<UsageClaim>, Vec<(UsageClaim, String)>) {
+    // The agreement format's reserved provenance leaf is never a
+    // registration: the guest refuses a claim keyed on it (either kind), so
+    // one such claim would cost the whole batch its proof. A constant
+    // comparison, no chain read — it runs whether or not a counter is set.
+    let (reserved, claims): (Vec<UsageClaim>, Vec<UsageClaim>) = claims
+        .into_iter()
+        .partition(|c| c.clause_or_assembly == figaro_kernel::kernel::PROVENANCE_LEAF_KEY);
+    let mut dropped: Vec<(UsageClaim, String)> = reserved
+        .into_iter()
+        .map(|c| {
+            (
+                c,
+                "keyed on the reserved provenance leaf, which is not a registration".to_string(),
+            )
+        })
+        .collect();
+
     let disabled = config.usage_counter_address == Address::ZERO;
     if disabled || claims.is_empty() {
-        return (claims, Vec::new());
+        return (claims, dropped);
     }
 
     let provider = match config
@@ -560,35 +576,19 @@ pub async fn filter_usage_claims(
         .map(|u| ProviderBuilder::new().connect_http(u))
     {
         Some(p) => p,
-        None => return (claims, Vec::new()), // unparsable RPC — leave to the on-chain backstop
+        None => return (claims, dropped), // unparsable RPC — leave to the on-chain backstop
     };
-    let counter = IUsageCounter::new(config.usage_counter_address, &provider);
     let clauses = IClauseRegistry::new(config.clause_registry_address, &provider);
     let assemblies = IAssemblyRegistry::new(config.assembly_registry_address, &provider);
     let members = IMembersRegistry::new(config.members_registry_address, &provider);
 
     let mut valid = Vec::with_capacity(claims.len());
-    let mut dropped = Vec::new();
 
     // Per-claim classification. `Ok(())` = would be accrued on-chain; any read
     // error drops the claim conservatively (re-submittable), never proven on
     // unverified state.
     for claim in claims {
         let reason: Result<(), String> = async {
-            // Excluded clauses and assemblies earn nothing (protocol floor); the
-            // counter skips them.
-            match counter
-                .excludedClauseOrAssembly(claim.clause_or_assembly)
-                .call()
-                .await
-            {
-                Ok(true) => {
-                    return Err("clause or assembly is excluded from scoring".to_string())
-                }
-                Ok(_) => {}
-                Err(e) => return Err(format!("excludedClauseOrAssembly read failed: {e}")),
-            }
-
             // Registration-side stake gate: a LIVE registration deposit in the
             // key's own registry (clause OR assembly, matching the kind).
             let live = match claim.kind {
@@ -653,7 +653,7 @@ pub async fn submit_batch(
         );
 
     let (positions, events_call, usage_call) =
-        settle_call_args(&result.positions, &result.events, result.provenance_clause);
+        settle_call_args(&result.positions, &result.events, result.provenance_leaf);
 
     let contract = IFigaroBatchVerifier::new(config.verifier_address, &provider);
 
@@ -761,7 +761,7 @@ pub async fn find_settle_tx(
 pub fn settle_call_args(
     positions: &[NetPosition],
     events: &BatchEvents,
-    provenance_clause: B256,
+    provenance_leaf: B256,
 ) -> (
     Vec<IFigaroBatchVerifier::NetPositionCall>,
     IFigaroBatchVerifier::BatchEventDataCall,
@@ -807,7 +807,7 @@ pub fn settle_call_args(
     // is what lets trade keep resolving after the reward's last period ends.
     let usage_call = IFigaroBatchVerifier::BatchUsageDataCall {
         period: events.usage_period,
-        provenanceClause: provenance_clause,
+        provenanceLeaf: provenance_leaf,
         accruals: events
             .usage_accruals
             .iter()
@@ -828,12 +828,12 @@ pub fn settle_call_args(
 pub fn settle_calldata(
     positions: &[NetPosition],
     events: &BatchEvents,
-    provenance_clause: B256,
+    provenance_leaf: B256,
     public_values: &[u8],
     proof_len: usize,
 ) -> Vec<u8> {
     use alloy::sol_types::SolCall;
-    let (positions, events, usage) = settle_call_args(positions, events, provenance_clause);
+    let (positions, events, usage) = settle_call_args(positions, events, provenance_leaf);
     IFigaroBatchVerifier::settleBatchCall {
         proof: Bytes::from(vec![0xffu8; proof_len]),
         publicValues: Bytes::copy_from_slice(public_values),
@@ -1091,6 +1091,23 @@ mod tests {
         assert!(
             dropped.is_empty(),
             "nothing dropped when the filter is disabled"
+        );
+    }
+
+    // A claim keyed on the agreement format's reserved provenance leaf is
+    // dropped before any chain read — the guest refuses it, so it would cost
+    // the whole batch its proof. Pure: the rpc here is unreachable.
+    #[tokio::test]
+    async fn drops_a_claim_keyed_on_the_provenance_leaf_without_touching_the_chain() {
+        let config = dummy_config(Address::ZERO, Address::ZERO, Address::ZERO);
+        let mut reserved = dummy_claim();
+        reserved.clause_or_assembly = figaro_kernel::kernel::PROVENANCE_LEAF_KEY;
+        let (valid, dropped) = filter_usage_claims(&config, vec![reserved, dummy_claim()]).await;
+        assert_eq!(valid.len(), 1, "the ordinary claim passes through");
+        assert_eq!(dropped.len(), 1, "the reserved-key claim is dropped");
+        assert_eq!(
+            dropped[0].0.clause_or_assembly,
+            figaro_kernel::kernel::PROVENANCE_LEAF_KEY
         );
     }
 

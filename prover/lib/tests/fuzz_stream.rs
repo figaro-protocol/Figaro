@@ -225,7 +225,7 @@ fn the_mirror_answers_every_operation_as_the_kernel_did() {
             prev_state: state.to_snapshot(),
             usage_claims: vec![],
             usage_period: 0,
-            provenance_clause: B256::ZERO,
+            provenance_leaf: B256::ZERO,
         };
 
         match (apply_batch_with_state(&input), outcome) {

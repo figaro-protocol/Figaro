@@ -9,6 +9,15 @@
 //! `clause_id_hash(clause, version)`, section hash over the canonical bytes,
 //! `keccak256(keccak256(key ‖ sectionHash))`.
 //!
+//! An agreement that instantiates an assembly carries the reserved
+//! provenance leaf (the vector's optional `provenance` entry): its key is a
+//! constant of the agreement format, `keccak256("figaro-agreement-provenance")`,
+//! never a clause key, and its bytes are `{"compositionHash":"0x…"}`, which
+//! the guest reproduces from the compositionHash for an assembly claim
+//! (`kernel::provenance_section_bytes`). This file rebuilds that leaf from
+//! `leafKey` and the bytes, checks the guest reproduces the SDK's bytes, and
+//! opens the frozen proof against `agreementHash`.
+//!
 //! `MERKLE_VECTORS` names another file in the same format: the differential
 //! fuzz (`scripts/test-cross-impl-fuzz.sh`) points it at the agreements the
 //! SDK generated from a seed.
@@ -16,7 +25,7 @@ use std::str::FromStr;
 
 use alloy_primitives::{keccak256, B256};
 
-use figaro_kernel::kernel::clause_id_hash;
+use figaro_kernel::kernel::{clause_id_hash, provenance_section_bytes};
 use figaro_kernel::merkle::verify_inclusion;
 
 fn generated() -> bool {
@@ -40,7 +49,10 @@ fn b256(v: &serde_json::Value) -> B256 {
 }
 
 fn leaf(clause: &str, version: u64, section_data: &str) -> B256 {
-    let key = clause_id_hash(clause, version);
+    leaf_under(clause_id_hash(clause, version), section_data)
+}
+
+fn leaf_under(key: B256, section_data: &str) -> B256 {
     let section_hash = keccak256(section_data.as_bytes());
     let mut preimage = [0u8; 64];
     preimage[..32].copy_from_slice(key.as_slice());
@@ -63,6 +75,9 @@ fn every_frozen_proof_opens_against_the_rebuilt_leaf() {
             sections.len() as u64,
             agreement["sectionCount"].as_u64().unwrap()
         );
+        if let Some(provenance) = agreement.get("provenance") {
+            opens_the_provenance_leaf(provenance, root);
+        }
         for section in sections {
             let rebuilt = leaf(
                 section["clause"].as_str().unwrap(),
@@ -92,6 +107,65 @@ fn every_frozen_proof_opens_against_the_rebuilt_leaf() {
             );
         }
     }
+}
+
+/// The reserved provenance leaf: the key is the agreement format's
+/// constant, the bytes are what the guest reproduces from the
+/// compositionHash, and the frozen proof opens against the agreement root.
+fn opens_the_provenance_leaf(provenance: &serde_json::Value, root: B256) {
+    let key = b256(&provenance["leafKey"]);
+    assert_eq!(
+        key,
+        keccak256(b"figaro-agreement-provenance"),
+        "the provenance leaf's key is the agreement format's constant"
+    );
+    let section_data = provenance["sectionData"].as_str().unwrap();
+    let composition = b256(&provenance["compositionHash"]);
+    assert_eq!(
+        provenance_section_bytes(&composition),
+        section_data.as_bytes(),
+        "the guest reproduces the SDK's provenance bytes from the compositionHash"
+    );
+    let rebuilt = leaf_under(key, section_data);
+    assert_eq!(
+        rebuilt,
+        b256(&provenance["leaf"]),
+        "the rebuilt provenance leaf is the SDK's"
+    );
+    let proof: Vec<B256> = provenance["proof"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(b256)
+        .collect();
+    assert!(
+        verify_inclusion(&proof, root, rebuilt),
+        "the frozen provenance proof opens"
+    );
+    let mut tampered = rebuilt;
+    tampered.0[31] ^= 1;
+    assert!(
+        !verify_inclusion(&proof, root, tampered),
+        "a tampered provenance leaf does not open"
+    );
+}
+
+#[test]
+fn the_fixture_carries_a_provenance_leaf() {
+    if generated() {
+        return; // the pinned case is the fixture's
+    }
+    let fx = fixture();
+    let carriers = fx["agreements"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|a| a.get("provenance").is_some())
+        .count();
+    assert!(
+        carriers >= 1,
+        "the lock covers the reserved provenance leaf"
+    );
 }
 
 #[test]

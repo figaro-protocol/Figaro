@@ -20,9 +20,6 @@
             "answer": "Nothing moves. Their bond, twice the price, stays locked with yours. They keep the item and are out of pocket by the price; you are out the item and your bond. Hand over after they commit, and resolve before they leave; the assembly is built for the two steps to happen at the counter."
         }
     ],
-    "assemblyClauses": {
-        "figaro-assembly-provenance": {}
-    },
     "agreements": [
         {
             "id": "order-0",

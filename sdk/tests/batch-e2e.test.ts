@@ -542,11 +542,7 @@ describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
         // agreement than the one on chain.
         expect(computeAgreementHash(agreement)).toBe(sectionLeaf);
 
-        const claimContext = await fetchUsageClaimContext(
-            publicClient,
-            usageCounterAddress,
-            agreement,
-        );
+        const claimContext = await fetchUsageClaimContext(publicClient, usageCounterAddress);
         const claims = buildUsageClaims(commitment, agreement, claimContext);
         expect(claims).toHaveLength(1);
         expect(claims[0].clause_or_assembly).toBe(clauseKey);

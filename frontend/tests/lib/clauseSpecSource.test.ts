@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { anchorClauseSpec, canonicalContentHash, type Anchored } from "@figaro-protocol/sdk";
+import { PROVENANCE_LEAF_KEY, anchorClauseSpec, canonicalContentHash, type Anchored } from "@figaro-protocol/sdk";
 import {
     getClauseSpec,
     getClauseSpecLoadError,
@@ -17,6 +17,9 @@ import {
     isLiveRegistration,
     clauseIsMandatory,
     memberDocumentClauseSpec,
+    clauseIdForHash,
+    clauseSpecForHash,
+    describeAttestation,
     _resetClauseSpecCache_TESTING_ONLY,
 } from "@/lib/shared/clauseSpecSource";
 import { primeClauseSpecs } from "./primeClauseSpecs";
@@ -270,5 +273,21 @@ describe("clauseIsMandatory — the SDK predicate at the stated version", () => 
         await loadClauseSpec("mand-v", 2, "ipfs://fake-v2", canonicalContentHash(v2));
         expect(clauseIsMandatory("mand-v", 1)).toBe(false);
         expect(clauseIsMandatory("mand-v", 2)).toBe(true);
+    });
+});
+
+describe("the agreement format's provenance leaf — the reserved key, never a clause", () => {
+    it("resolves to no clause identity and no spec", () => {
+        expect(clauseIdForHash(PROVENANCE_LEAF_KEY)).toBeUndefined();
+        expect(clauseSpecForHash(PROVENANCE_LEAF_KEY)).toBeUndefined();
+    });
+
+    it("is described as the agreement's provenance leaf, by the format constant", () => {
+        expect(describeAttestation(PROVENANCE_LEAF_KEY, 0)).toEqual({
+            clauseTitle: "Assembly provenance",
+            eventLabel: "provenance attested",
+            eventCode: "provenance-leaf",
+        });
+        expect(describeAttestation(PROVENANCE_LEAF_KEY.toUpperCase().replace("0X", "0x"), 0).eventCode).toBe("provenance-leaf");
     });
 });

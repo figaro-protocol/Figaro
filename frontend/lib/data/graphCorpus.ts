@@ -27,11 +27,12 @@
  *   fingerprint alone; a withheld, private, erased or unserved payload
  *   resolves to nothing and its entry stays fingerprint-only.
  *
- *   assembly attribution rides a DECLARED FIELD, never a clause name. A
- *   process is attributed when some attested overlay decodes a
- *   `compositionHash` — the provenance section the buyer attests. No such
- *   attestation, no attribution: the process is counted as unattributed and
- *   said to be.
+ *   assembly attribution rides the agreement FORMAT's provenance leaf, never
+ *   a clause name. A process is attributed when its buyer attested the
+ *   reserved leaf (`PROVENANCE_LEAF_KEY`) and the attestation names a
+ *   composition hash — its recovered bytes decode to one, or its fingerprint
+ *   is a loaded assembly's `provenanceContentRef`. No such attestation, no
+ *   attribution: the process is counted as unattributed and said to be.
  */
 
 import { useEffect, useMemo, useState } from "react";
@@ -40,6 +41,7 @@ import {
     parseOrderCommittedLogs,
     parseOrderResolvedLogs,
     parseProcessResolvedLogs,
+    provenanceContentRef,
     readUtilityTokenPin,
     type Address,
     type SpecSource,
@@ -231,24 +233,36 @@ async function readCommitFundingLegs(
 }
 
 /**
- * Assembly attribution from the OVERLAYS, by declared field.
+ * Assembly attribution from the OVERLAYS, by the agreement format's
+ * provenance leaf.
  *
- * The buyer's attestation of the provenance section is the on-chain link
- * between a process and the registered assembly that shaped it, and its
- * payload is publicly recoverable — so a walletless reader can attribute a
- * process without holding anyone's agreement body. The field is found by the
- * spec DECLARING it (`compositionHash`), never by clause id: a provenance
- * clause this codebase has never seen attributes the same way.
+ * The buyer's attestation of the reserved leaf is the on-chain link between a
+ * process and the registered assembly that shaped it — a walletless reader
+ * attributes a process without holding anyone's agreement body. The graph is
+ * the one the SDK marks `provenanceLeaf` (the format constant, never a clause
+ * name or a spec field). An entry attributes by its decoded
+ * `{ compositionHash }` when its bytes recovered, else by its fingerprint
+ * matching `provenanceContentRef` of a composition hash the page loaded —
+ * the bytes are reproducible from the hash, so the match is exact.
  */
-function attributionFromOverlays(overlays: readonly OverlayGraph[]): Map<string, string> {
+export function attributionFromOverlays(
+    overlays: readonly OverlayGraph[],
+    compositionHashes: readonly Hex[],
+): Map<string, string> {
+    const hashByContentRef = new Map<string, string>();
+    for (const compositionHash of compositionHashes) {
+        if (!isBytes32Hex(compositionHash)) continue;
+        hashByContentRef.set(provenanceContentRef(compositionHash).toLowerCase(), compositionHash.toLowerCase());
+    }
     const byProcess = new Map<string, string>();
     for (const graph of overlays) {
-        if (!graph.spec?.fields.some((f) => f.name === "compositionHash")) continue;
+        if (!graph.provenanceLeaf) continue;
         for (const entry of graph.entries) {
             const value = entry.decoded?.["compositionHash"];
-            if (isBytes32Hex(value)) {
-                byProcess.set(entry.processId.toLowerCase(), value.toLowerCase());
-            }
+            const attributed = isBytes32Hex(value)
+                ? value.toLowerCase()
+                : hashByContentRef.get(entry.contentRef.toLowerCase());
+            if (attributed) byProcess.set(entry.processId.toLowerCase(), attributed);
         }
     }
     return byProcess;
@@ -335,7 +349,7 @@ async function readGraphCorpus(deps?: {
     // denominations, read from the venue's own transfers.
     const valueFlow = projectValueFlow(resolution, fundingLegs, pins);
 
-    const byProcess = attributionFromOverlays(overlays);
+    const byProcess = attributionFromOverlays(overlays, (deps?.templates ?? []).map((t) => t.compositionHash));
     const market = marketShape(process, (processId: Hex) => byProcess.get(processId.toLowerCase()));
 
     const tokenMeta = await readTokenMeta(client, valueFlow.nodes.map((n) => n.token));

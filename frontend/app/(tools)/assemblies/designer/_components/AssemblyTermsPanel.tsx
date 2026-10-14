@@ -59,8 +59,9 @@ export function AssemblyTermsPanel({
         const live = new Set(
             (registered ?? []).filter(isLiveRegistration).map((e) => `${e.clauseId}#${e.version}`),
         );
-        // Mandatory assembly-scoped clauses (assembly-provenance) fold in
-        // automatically at publish — never a choice, so never offered here.
+        // A mandatory assembly-scoped clause, when the registry holds one,
+        // folds in automatically at publish — never a choice, so never
+        // offered here.
         return listKnownClauses().filter(
             (c) => live.has(`${c.clauseId}#${c.version}`)
                 && clauseIsAssemblyScoped(c.clauseId, c.version)

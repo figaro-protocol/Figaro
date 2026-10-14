@@ -135,8 +135,10 @@ protocol takes nothing from a trade, and the DAO's registrations claim no
 privileged weight: they ride the same uniform meter as every other clause. "Mandatory" is a
 registration-layer convention; nothing on chain privileges it.
 
-The one thing the DAO's reward may not reach is the meter itself: `figaro-assembly-provenance`
-meters and never earns. `docs/DESIGNER_REWARDS.md` § "The boundary — the meter
+The one thing the DAO's reward may not reach is the meter itself: the
+agreement format's reserved provenance leaf is no clause, and the counter
+refuses its key by comparison with the format's constant, so it meters
+without earning. `docs/DESIGNER_REWARDS.md` § "The boundary — the meter
 earns nothing" owns that line.
 
 **Countercyclical by construction.** Each period's budget divides pro rata over

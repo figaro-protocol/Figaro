@@ -241,8 +241,6 @@ contract HalmosMembersRegistry is Test {
             address(new MockClauseOrAssemblyStake()),
             address(new MockClauseOrAssemblyStake()),
             verifier,
-            keccak256("prov"),
-            new bytes32[](0),
             1,
             periods
         );
@@ -258,7 +256,11 @@ contract HalmosMembersRegistry is Test {
         sellers[0] = ALICE;
 
         (bool admitted,) = address(counter)
-            .call(abi.encodeCall(UsageCounter.applyBatchAccrual, (0, keccak256("prov"), accruals, sellers)));
+            .call(
+                abi.encodeCall(
+                    UsageCounter.applyBatchAccrual, (0, keccak256("figaro-agreement-provenance"), accruals, sellers)
+                )
+            );
 
         // THE LINKAGE, in both directions: the counter admits usage if and
         // only if the registry still reports a live stake.

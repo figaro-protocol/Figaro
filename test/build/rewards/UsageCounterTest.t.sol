@@ -5,6 +5,8 @@ import "forge-std/Test.sol";
 import {FigaroCore} from "src/core/kernel/FigaroCore.sol";
 import {CommitmentTypes} from "src/core/kernel/CommitmentTypes.sol";
 import {MembersRegistry} from "src/app/MembersRegistry.sol";
+import {ClauseRegistry} from "src/build/registries/ClauseRegistry.sol";
+import {AssemblyRegistry} from "src/build/registries/AssemblyRegistry.sol";
 import {UsageCounter} from "src/build/rewards/UsageCounter.sol";
 import {MockERC20} from "src/mocks/MockERC20.sol";
 import {AgreementTestHelper} from "test/helpers/AgreementTestHelper.sol";
@@ -43,7 +45,9 @@ contract UsageCounterTest is Test {
 
     bytes32 constant ASM_KEY = keccak256("an-assembly");
 
-    bytes32 constant PROV_KEY = keccak256(abi.encode("figaro-assembly-provenance", uint64(1)));
+    /// @dev The agreement format's reserved provenance leaf key — a plain-string
+    ///      preimage, never the `abi.encode(name, version)` shape of a clause key.
+    bytes32 constant PROVENANCE_LEAF = keccak256("figaro-agreement-provenance");
     bytes constant SECTION = hex"c0ffee";
 
     uint64 constant P0_END = 1_000_000;
@@ -90,15 +94,7 @@ contract UsageCounterTest is Test {
         // properties are proved in the "Minimum-support floor" section below on
         // a counter deployed at the mainnet value of 3.
         counter = new UsageCounter(
-            address(core),
-            address(members),
-            address(stake),
-            address(stake),
-            batchVerifier,
-            PROV_KEY,
-            _excluded(),
-            1,
-            periods
+            address(core), address(members), address(stake), address(stake), batchVerifier, 1, periods
         );
 
         address[5] memory ppl = [buyer, buyer2, seller1, seller2, seller3];
@@ -110,14 +106,6 @@ contract UsageCounterTest is Test {
 
         // Start inside period 0.
         vm.warp(P0_END - 1000);
-    }
-
-    /// @dev The one clause excluded from scoring on every deployment:
-    ///      assembly-provenance — attribution plumbing, not an earnable term
-    ///      (the mandatory clauses EARN).
-    function _excluded() internal pure returns (bytes32[] memory e) {
-        e = new bytes32[](1);
-        e[0] = keccak256(abi.encode("figaro-assembly-provenance", uint64(1)));
     }
 
     // ── Helpers ─────────────────────────────────────────────────────
@@ -185,11 +173,11 @@ contract UsageCounterTest is Test {
         counter.recordClauseUsage(c, clauseOrAssembly, keccak256(SECTION), new bytes32[](0));
     }
 
-    /// @dev A resolved one-order process whose agreement carries the PROVENANCE
-    ///      section for `compositionHash` — the only leaf an assembly is ever
-    ///      provable through, since agreement leaves are keyed by clause and a
-    ///      compositionHash is never a leaf key. The section commits as the
-    ///      canonical-JSON bytes the counter reproduces from the claimed hash.
+    /// @dev A resolved one-order process whose agreement carries the format's
+    ///      reserved PROVENANCE leaf for `compositionHash` — the only leaf an
+    ///      assembly is ever provable through, since a compositionHash is never
+    ///      itself a leaf key. The section commits as the canonical-JSON bytes
+    ///      the counter reproduces from the claimed hash.
     function _settledUnderAssembly(bytes32 compositionHash, uint256 salt)
         internal
         returns (CommitmentTypes.Commitment memory c)
@@ -202,7 +190,7 @@ contract UsageCounterTest is Test {
             currency: address(token),
             payment: 100 ether,
             expectedCumulativeValue: 100 ether,
-            agreementHash: AgreementTestHelper.singleSectionRoot(PROV_KEY, sectionData),
+            agreementHash: AgreementTestHelper.singleSectionRoot(PROVENANCE_LEAF, sectionData),
             salt: salt,
             deadline: block.timestamp + 1 hours
         });
@@ -330,44 +318,6 @@ contract UsageCounterTest is Test {
         counter.recordAssemblyUsage(c, ASM_KEY, new bytes32[](0));
     }
 
-    function test_revertsWhenClauseIsExcluded() public {
-        // The direct path's twin of the batch path's silent skip: an excluded
-        // clause — at genesis, the provenance clause — is attribution plumbing,
-        // and counting it would double-pay the adoption it exists to attribute.
-        // A standalone record has nothing else to unwind, so it reverts. The
-        // clause is live and its leaf opens; exclusion alone stops the count.
-        CommitmentTypes.Commitment memory c = _settledOrder(PROV_KEY, buyer, BUYER_KEY, seller1, SELLER1_KEY, 1);
-        vm.expectRevert(abi.encodeWithSelector(UsageCounter.ClauseOrAssemblyExcluded.selector, PROV_KEY));
-        _record(c, PROV_KEY);
-    }
-
-    function test_revertsWhenAssemblyIsExcluded() public {
-        // Same gate, assembly form: the exclusion set is deploy-frozen and may
-        // name a composition as well as a clause. This counter excludes
-        // ASM_KEY alongside the provenance clause.
-        bytes32[] memory excluded = new bytes32[](2);
-        excluded[0] = PROV_KEY;
-        excluded[1] = ASM_KEY;
-        uint64[] memory periods = new uint64[](2);
-        periods[0] = P0_END;
-        periods[1] = P1_END;
-        UsageCounter excluding = new UsageCounter(
-            address(core),
-            address(members),
-            address(stake),
-            address(stake),
-            batchVerifier,
-            PROV_KEY,
-            excluded,
-            1,
-            periods
-        );
-
-        CommitmentTypes.Commitment memory c = _settledUnderAssembly(ASM_KEY, 1);
-        vm.expectRevert(abi.encodeWithSelector(UsageCounter.ClauseOrAssemblyExcluded.selector, ASM_KEY));
-        excluding.recordAssemblyUsage(c, ASM_KEY, new bytes32[](0));
-    }
-
     // ── Counting properties ─────────────────────────────────────────
 
     function test_sameProcessCountsOnce() public {
@@ -440,13 +390,67 @@ contract UsageCounterTest is Test {
         assertEq(repeatScore, _score(8, 1));
     }
 
-    // ── Exclusions ──────────────────────────────────────────────────
+    // ── The provenance leaf and the mandatory clauses ───────────────
+
+    function test_provenanceLeafIsAConstantOfTheFormat() public view {
+        // The link from a resolved process to the assembly it instantiated is
+        // a fact of the agreement format: one reserved leaf, keyed by a
+        // constant derived from its label. Never a clause key, never a
+        // constructor argument.
+        assertEq(counter.provenanceLeaf(), keccak256("figaro-agreement-provenance"));
+        assertEq(counter.provenanceLeaf(), 0x26dc18a2251a8f4629ada6df88b7c98553e011c08682d28ce5bb51a441227dc6);
+    }
+
+    /// The reserved leaf earns nothing as a clause: its key is a plain-string
+    /// preimage, a registered clause key is `keccak256(abi.encode(name,
+    /// version))`, so no registration ever lands on it. Recorded against REAL
+    /// registries, the leaf opens (the agreement does commit it) and the
+    /// stake gate refuses it, because the key is registered nowhere.
+    function test_theProvenanceLeafCannotBeClaimedAsAClause() public {
+        uint64[] memory periods = new uint64[](2);
+        periods[0] = P0_END;
+        periods[1] = P1_END;
+        AssemblyRegistry assemblies_ = new AssemblyRegistry(0);
+        UsageCounter real = new UsageCounter(
+            address(core),
+            address(members),
+            address(new ClauseRegistry(0)),
+            address(assemblies_),
+            batchVerifier,
+            1,
+            periods
+        );
+
+        CommitmentTypes.Commitment memory c = _settledUnderAssembly(ASM_KEY, 1);
+        bytes memory sectionData = abi.encodePacked('{"compositionHash":"', vm.toString(ASM_KEY), '"}');
+        vm.expectRevert(abi.encodeWithSelector(UsageCounter.ClauseOrAssemblyNotRegistered.selector, PROVENANCE_LEAF));
+        real.recordClauseUsage(c, PROVENANCE_LEAF, keccak256(sectionData), new bytes32[](0));
+
+        // A registry takes any bytes32, so a stranger can register an ASSEMBLY
+        // at the reserved key for one stake. That makes the key "live" to the
+        // registration gate — and still it never accrues: the direct path
+        // reverts and the batch path skips, because the key is the agreement
+        // format's own, never a registration.
+        assemblies_.registerAssembly(PROVENANCE_LEAF, "ipfs://a-stranger-squats-the-reserved-key");
+        CommitmentTypes.Commitment memory d = _settledUnderAssembly(PROVENANCE_LEAF, 2);
+        vm.expectRevert(abi.encodeWithSelector(UsageCounter.ProvenanceLeafIsNotARegistration.selector, PROVENANCE_LEAF));
+        real.recordAssemblyUsage(d, PROVENANCE_LEAF, new bytes32[](0));
+
+        // The batch path's twin: an accrual naming the reserved key is skipped,
+        // never written, and the period total stays put — with the squatted
+        // assembly registration live.
+        vm.prank(batchVerifier);
+        real.applyBatchAccrual(0, PROVENANCE_LEAF, _accrual(PROVENANCE_LEAF, 9, 9), _sellers(seller1));
+        (uint64 bc,, uint256 score) = real.batchAccrualOf(PROVENANCE_LEAF, 0);
+        assertEq(bc, 0, "the reserved key is never written");
+        assertEq(score, 0, "the reserved key never scores");
+        assertEq(real.totalScoreIn(0), 0, "total unchanged");
+    }
 
     function test_mandatoryClausesEarnForTheirAuthor() public {
-        // figaro-commerce and figaro-topology ride on EVERY order, so scoring
-        // them rewards their designer of record on every resolved process — the
-        // DAO treasury under the ruled genesis registration, rewarded from
-        // the reserve for what every trade carries.
+        // figaro-commerce and figaro-topology ride on EVERY order and earn like
+        // any other clause: scoring them rewards their designer of record on
+        // every resolved process.
         bytes32 commerceKey = keccak256(abi.encode("figaro-commerce", uint64(1)));
 
         CommitmentTypes.Commitment memory c = _settledOrder(commerceKey, buyer, BUYER_KEY, seller1, SELLER1_KEY, 1);
@@ -456,16 +460,6 @@ contract UsageCounterTest is Test {
         assertEq(cCount, 1);
         assertGt(counter.totalScoreIn(0), 0);
         assertEq(score, counter.totalScoreIn(0));
-    }
-
-    function test_exclusionIsDeployFrozenNotSelfDeclared() public view {
-        // A registering wallet cannot opt their own clause out or in — the set is fixed
-        // at deploy, because a self-declared exclusion would never be declared.
-        assertFalse(counter.excludedClauseOrAssembly(keccak256(abi.encode("figaro-commerce", uint64(1)))));
-        assertFalse(counter.excludedClauseOrAssembly(keccak256(abi.encode("figaro-topology", uint64(1)))));
-        assertTrue(counter.excludedClauseOrAssembly(PROV_KEY));
-        assertFalse(counter.excludedClauseOrAssembly(CARGO_KEY));
-        assertFalse(counter.excludedClauseOrAssembly(GEO_KEY));
     }
 
     // ── Uniform scoring (no tag / category / weight) ─────────────────
@@ -678,15 +672,7 @@ contract UsageCounterTest is Test {
         periods[0] = P0_END;
         periods[1] = P1_END;
         floored = new UsageCounter(
-            address(core),
-            address(members),
-            address(stake),
-            address(stake),
-            batchVerifier,
-            PROV_KEY,
-            _excluded(),
-            3,
-            periods
+            address(core), address(members), address(stake), address(stake), batchVerifier, 3, periods
         );
     }
 
@@ -722,12 +708,12 @@ contract UsageCounterTest is Test {
     function test_floor_batchPathHonorsIt() public {
         UsageCounter floored = _flooredCounter();
         vm.startPrank(batchVerifier);
-        floored.applyBatchAccrual(0, PROV_KEY, _accrual(CARGO_KEY, 4, 2), _sellers(seller1));
+        floored.applyBatchAccrual(0, PROVENANCE_LEAF, _accrual(CARGO_KEY, 4, 2), _sellers(seller1));
         (,, uint256 below) = floored.batchAccrualOf(CARGO_KEY, 0);
         assertEq(below, 0, "the floor is _score's, so the batch path inherits it");
         assertEq(floored.totalScoreIn(0), 0);
 
-        floored.applyBatchAccrual(0, PROV_KEY, _accrual(CARGO_KEY, 6, 3), _sellers(seller1));
+        floored.applyBatchAccrual(0, PROVENANCE_LEAF, _accrual(CARGO_KEY, 6, 3), _sellers(seller1));
         vm.stopPrank();
         (,, uint256 above) = floored.batchAccrualOf(CARGO_KEY, 0);
         assertEq(above, _score(6, 3));
@@ -745,7 +731,7 @@ contract UsageCounterTest is Test {
         _recordOn(floored, _settledOrder(CARGO_KEY, buyer, BUYER_KEY, seller1, SELLER1_KEY, 1), CARGO_KEY);
         _recordOn(floored, _settledOrder(CARGO_KEY, buyer, BUYER_KEY, seller2, SELLER2_KEY, 2), CARGO_KEY);
         vm.prank(batchVerifier);
-        floored.applyBatchAccrual(0, PROV_KEY, _accrual(CARGO_KEY, 2, 2), _sellers(seller1));
+        floored.applyBatchAccrual(0, PROVENANCE_LEAF, _accrual(CARGO_KEY, 2, 2), _sellers(seller1));
 
         // 2 direct + 2 batch is four units of d in total, but neither path
         // reached 3 on its own — so nothing scores.
@@ -764,25 +750,15 @@ contract UsageCounterTest is Test {
         uint64[] memory p = new uint64[](1);
         p[0] = P0_END;
         vm.expectRevert(UsageCounter.ZeroAddress.selector);
-        new UsageCounter(
-            address(0), address(members), address(stake), address(stake), batchVerifier, PROV_KEY, _excluded(), 1, p
-        );
+        new UsageCounter(address(0), address(members), address(stake), address(stake), batchVerifier, 1, p);
         vm.expectRevert(UsageCounter.ZeroAddress.selector);
-        new UsageCounter(
-            address(core), address(0), address(stake), address(stake), batchVerifier, PROV_KEY, _excluded(), 1, p
-        );
+        new UsageCounter(address(core), address(0), address(stake), address(stake), batchVerifier, 1, p);
         vm.expectRevert(UsageCounter.ZeroAddress.selector);
-        new UsageCounter(
-            address(core), address(members), address(0), address(stake), batchVerifier, PROV_KEY, _excluded(), 1, p
-        );
+        new UsageCounter(address(core), address(members), address(0), address(stake), batchVerifier, 1, p);
         vm.expectRevert(UsageCounter.ZeroAddress.selector);
-        new UsageCounter(
-            address(core), address(members), address(stake), address(0), batchVerifier, PROV_KEY, _excluded(), 1, p
-        );
+        new UsageCounter(address(core), address(members), address(stake), address(0), batchVerifier, 1, p);
         vm.expectRevert(UsageCounter.ZeroAddress.selector);
-        new UsageCounter(
-            address(core), address(members), address(stake), address(stake), address(0), PROV_KEY, _excluded(), 1, p
-        );
+        new UsageCounter(address(core), address(members), address(stake), address(stake), address(0), 1, p);
     }
 
     function test_constructor_rejectsTooManyPeriods() public {
@@ -791,23 +767,13 @@ contract UsageCounterTest is Test {
             p[i] = uint64(P0_END + i);
         }
         vm.expectRevert(UsageCounter.TooManyPeriods.selector);
-        new UsageCounter(
-            address(core), address(members), address(stake), address(stake), batchVerifier, PROV_KEY, _excluded(), 1, p
-        );
+        new UsageCounter(address(core), address(members), address(stake), address(stake), batchVerifier, 1, p);
     }
 
     function test_constructor_rejectsEmptyPeriods() public {
         vm.expectRevert(UsageCounter.EmptyPeriods.selector);
         new UsageCounter(
-            address(core),
-            address(members),
-            address(stake),
-            address(stake),
-            batchVerifier,
-            PROV_KEY,
-            _excluded(),
-            1,
-            new uint64[](0)
+            address(core), address(members), address(stake), address(stake), batchVerifier, 1, new uint64[](0)
         );
     }
 
@@ -816,9 +782,7 @@ contract UsageCounterTest is Test {
         p[0] = P1_END;
         p[1] = P0_END;
         vm.expectRevert(UsageCounter.PeriodsNotAscending.selector);
-        new UsageCounter(
-            address(core), address(members), address(stake), address(stake), batchVerifier, PROV_KEY, _excluded(), 1, p
-        );
+        new UsageCounter(address(core), address(members), address(stake), address(stake), batchVerifier, 1, p);
     }
 
     function test_constructor_rejectsZeroMinSellers() public {
@@ -827,9 +791,7 @@ contract UsageCounterTest is Test {
         uint64[] memory p = new uint64[](1);
         p[0] = P0_END;
         vm.expectRevert(UsageCounter.ZeroMinSellers.selector);
-        new UsageCounter(
-            address(core), address(members), address(stake), address(stake), batchVerifier, PROV_KEY, _excluded(), 0, p
-        );
+        new UsageCounter(address(core), address(members), address(stake), address(stake), batchVerifier, 0, p);
     }
 
     // ── The batch bridge: proof-gated accrual ───────────────────────
@@ -837,7 +799,7 @@ contract UsageCounterTest is Test {
     // A batch-resolved process never acquires FigaroCore status, so none of this
     // can travel the direct path. What the counter still owns, and enforces
     // here, is the reward's own gates: who may write, which period is open,
-    // which sellers are staked, which clauses and assemblies are excluded.
+    // which sellers are staked, which clauses and assemblies are live.
 
     function _accrual(bytes32 clauseOrAssembly, uint64 c, uint64 d)
         internal
@@ -855,7 +817,7 @@ contract UsageCounterTest is Test {
 
     function test_batchAccrualIsWrittenAndScored() public {
         vm.prank(batchVerifier);
-        counter.applyBatchAccrual(0, PROV_KEY, _accrual(CARGO_KEY, 4, 2), _sellers(seller1));
+        counter.applyBatchAccrual(0, PROVENANCE_LEAF, _accrual(CARGO_KEY, 4, 2), _sellers(seller1));
 
         (uint64 c, uint64 d, uint256 score) = counter.batchAccrualOf(CARGO_KEY, 0);
         assertEq(c, 4);
@@ -870,12 +832,12 @@ contract UsageCounterTest is Test {
 
     function test_onlyTheBatchVerifierCanWriteBatchAccrual() public {
         vm.expectRevert(UsageCounter.NotBatchVerifier.selector);
-        counter.applyBatchAccrual(0, PROV_KEY, _accrual(CARGO_KEY, 1, 1), _sellers(seller1));
+        counter.applyBatchAccrual(0, PROVENANCE_LEAF, _accrual(CARGO_KEY, 1, 1), _sellers(seller1));
 
         // Not even a live-staked seller writing for their own trade.
         vm.prank(seller1);
         vm.expectRevert(UsageCounter.NotBatchVerifier.selector);
-        counter.applyBatchAccrual(0, PROV_KEY, _accrual(CARGO_KEY, 1, 1), _sellers(seller1));
+        counter.applyBatchAccrual(0, PROVENANCE_LEAF, _accrual(CARGO_KEY, 1, 1), _sellers(seller1));
     }
 
     /// THE MERGE RULE — `scoreOf` sums the two paths' SCORES, never their
@@ -887,7 +849,7 @@ contract UsageCounterTest is Test {
         _record(c, CARGO_KEY); // direct: c=1, d=1
 
         vm.prank(batchVerifier);
-        counter.applyBatchAccrual(0, PROV_KEY, _accrual(CARGO_KEY, 1, 1), _sellers(seller1)); // batch: c=1, d=1
+        counter.applyBatchAccrual(0, PROVENANCE_LEAF, _accrual(CARGO_KEY, 1, 1), _sellers(seller1)); // batch: c=1, d=1
 
         assertEq(counter.scoreOf(CARGO_KEY, 0), _score(1, 1) * 2, "scores add");
         assertEq(counter.totalScoreIn(0), counter.scoreOf(CARGO_KEY, 0), "the total tracks the sum");
@@ -910,7 +872,7 @@ contract UsageCounterTest is Test {
     function test_batchAccrualRequiresTheOpenPeriod() public {
         vm.prank(batchVerifier);
         vm.expectRevert(abi.encodeWithSelector(UsageCounter.PeriodMismatch.selector, 0, 1));
-        counter.applyBatchAccrual(1, PROV_KEY, _accrual(CARGO_KEY, 1, 1), _sellers(seller1));
+        counter.applyBatchAccrual(1, PROVENANCE_LEAF, _accrual(CARGO_KEY, 1, 1), _sellers(seller1));
     }
 
     function test_batchAccrualRequiresALiveSellerStake() public {
@@ -919,23 +881,7 @@ contract UsageCounterTest is Test {
 
         vm.prank(batchVerifier);
         vm.expectRevert(abi.encodeWithSelector(UsageCounter.SellerNotStaked.selector, seller1));
-        counter.applyBatchAccrual(0, PROV_KEY, _accrual(CARGO_KEY, 1, 1), _sellers(seller1));
-    }
-
-    function test_batchAccrualSkipsAnExcludedClauseOrAssembly() public {
-        // SKIP, never revert: this runs inside settleBatch, so a revert would
-        // take down the whole batch's token resolution. An excluded clause or assembly
-        // simply earns nothing — not written, total untouched, trade resolves.
-        // PROV_KEY doubles as the excluded exemplar — the deploy shape
-        // excludes only the attribution-plumbing provenance clause.
-        uint256 totalBefore = counter.totalScoreIn(0);
-        vm.prank(batchVerifier);
-        counter.applyBatchAccrual(0, PROV_KEY, _accrual(PROV_KEY, 9, 9), _sellers(seller1));
-        (uint64 c, uint64 d, uint256 score) = counter.batchAccrualOf(PROV_KEY, 0);
-        assertEq(c, 0, "excluded clause or assembly not written");
-        assertEq(d, 0, "excluded clause or assembly not written");
-        assertEq(score, 0, "excluded clause or assembly not scored");
-        assertEq(counter.totalScoreIn(0), totalBefore, "total unchanged");
+        counter.applyBatchAccrual(0, PROVENANCE_LEAF, _accrual(CARGO_KEY, 1, 1), _sellers(seller1));
     }
 
     function test_batchAccrualSkipsAnUnregisteredClauseOrAssembly() public {
@@ -944,17 +890,18 @@ contract UsageCounterTest is Test {
         stake.kill(CARGO_KEY);
         uint256 totalBefore = counter.totalScoreIn(0);
         vm.prank(batchVerifier);
-        counter.applyBatchAccrual(0, PROV_KEY, _accrual(CARGO_KEY, 9, 9), _sellers(seller1));
+        counter.applyBatchAccrual(0, PROVENANCE_LEAF, _accrual(CARGO_KEY, 9, 9), _sellers(seller1));
         (uint64 c,, uint256 score) = counter.batchAccrualOf(CARGO_KEY, 0);
         assertEq(c, 0, "unregistered clause or assembly not written");
         assertEq(score, 0, "unregistered clause or assembly not scored");
         assertEq(counter.totalScoreIn(0), totalBefore, "total unchanged");
     }
 
-    function test_batchAccrualRejectsAForeignProvenanceClause() public {
-        bytes32 impostor = keccak256(abi.encode("not-provenance", uint64(1)));
+    function test_batchAccrualRejectsAForeignProvenanceLeaf() public {
+        // A clause key cannot stand in for the format's reserved leaf.
+        bytes32 impostor = keccak256(abi.encode("figaro-commerce", uint64(1)));
         vm.prank(batchVerifier);
-        vm.expectRevert(abi.encodeWithSelector(UsageCounter.ProvenanceClauseMismatch.selector, PROV_KEY, impostor));
+        vm.expectRevert(abi.encodeWithSelector(UsageCounter.ProvenanceLeafMismatch.selector, PROVENANCE_LEAF, impostor));
         counter.applyBatchAccrual(0, impostor, _accrual(CARGO_KEY, 1, 1), _sellers(seller1));
     }
 
@@ -964,9 +911,9 @@ contract UsageCounterTest is Test {
     /// total, everyone else's share).
     function test_batchAccrualCannotGoBackwards() public {
         vm.startPrank(batchVerifier);
-        counter.applyBatchAccrual(0, PROV_KEY, _accrual(CARGO_KEY, 5, 3), _sellers(seller1));
+        counter.applyBatchAccrual(0, PROVENANCE_LEAF, _accrual(CARGO_KEY, 5, 3), _sellers(seller1));
         vm.expectRevert(abi.encodeWithSelector(UsageCounter.AccrualWentBackwards.selector, CARGO_KEY));
-        counter.applyBatchAccrual(0, PROV_KEY, _accrual(CARGO_KEY, 4, 3), _sellers(seller1));
+        counter.applyBatchAccrual(0, PROVENANCE_LEAF, _accrual(CARGO_KEY, 4, 3), _sellers(seller1));
         vm.stopPrank();
     }
 
@@ -975,8 +922,8 @@ contract UsageCounterTest is Test {
     /// period total moves by the DELTA of the scores, never by the new score.
     function test_batchAccrualOverwritesRatherThanAccumulates() public {
         vm.startPrank(batchVerifier);
-        counter.applyBatchAccrual(0, PROV_KEY, _accrual(CARGO_KEY, 5, 3), _sellers(seller1));
-        counter.applyBatchAccrual(0, PROV_KEY, _accrual(CARGO_KEY, 6, 4), _sellers(seller1));
+        counter.applyBatchAccrual(0, PROVENANCE_LEAF, _accrual(CARGO_KEY, 5, 3), _sellers(seller1));
+        counter.applyBatchAccrual(0, PROVENANCE_LEAF, _accrual(CARGO_KEY, 6, 4), _sellers(seller1));
         vm.stopPrank();
 
         (uint64 c, uint64 d, uint256 score) = counter.batchAccrualOf(CARGO_KEY, 0);
@@ -1006,6 +953,6 @@ contract UsageCounterTest is Test {
         vm.warp(P1_END + 1);
         vm.prank(batchVerifier);
         vm.expectRevert(UsageCounter.AccrualClosed.selector);
-        counter.applyBatchAccrual(1, PROV_KEY, _accrual(CARGO_KEY, 1, 1), _sellers(seller1));
+        counter.applyBatchAccrual(1, PROVENANCE_LEAF, _accrual(CARGO_KEY, 1, 1), _sellers(seller1));
     }
 }

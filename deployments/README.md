@@ -75,7 +75,7 @@ Beside each record, `<chainId>.expected.json` states what the chain must read
 after the deploy and the genesis registration, and is written BEFORE them: the
 audited guest key and the SP1 gateway the batch verifier pins, every
 parameter the contracts fix forever (registration deposits, the cooldown, the
-reward schedule, the excluded clause), the florin genesis, and who registers
+reward schedule, the provenance leaf key), the florin genesis, and who registers
 each clause (the genesis registration plan). `scripts/check-deployment.mjs`
 reads a chain against it — and against the contracts as compiled, with
 `--artifacts` from a `forge build --via-ir` at the audit tag — and fails on

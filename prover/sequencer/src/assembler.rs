@@ -6,11 +6,11 @@ use figaro_kernel::types::{BatchInput, KernelOp, KernelStateSnapshot, UsageClaim
 use crate::mempool::PendingOp;
 
 /// The RPGF context a batch resolves under — the claims to credit, the
-/// period they land in, and the provenance clause key assembly claims
+/// period they land in, and the provenance leaf's key assembly claims
 /// prove against.
 ///
 /// PERIOD AND PROVENANCE ARE CHAIN FACTS, read from `UsageCounter`
-/// (`currentPeriod()`, `provenanceClause()`), never guessed from a local
+/// (`currentPeriod()`, `provenanceLeaf()`), never guessed from a local
 /// clock: the counter re-checks both at resolution and rejects the batch
 /// on a mismatch. A batch assembled just before a period boundary and
 /// resolved just after it must be re-proven for the new period.
@@ -18,7 +18,7 @@ use crate::mempool::PendingOp;
 pub struct UsageContext {
     pub claims: Vec<UsageClaim>,
     pub period: u8,
-    pub provenance_clause: B256,
+    pub provenance_leaf: B256,
 }
 
 /// Configuration for batch assembly triggers.
@@ -64,7 +64,7 @@ pub fn assemble_batch(
         prev_state,
         usage_claims: usage.claims,
         usage_period: usage.period,
-        provenance_clause: usage.provenance_clause,
+        provenance_leaf: usage.provenance_leaf,
     }
 }
 
@@ -218,7 +218,7 @@ pub fn filter_applicable_claims(
     prev_state: &KernelStateSnapshot,
     valid_ops: &[KernelOp],
     usage_period: u8,
-    provenance_clause: B256,
+    provenance_leaf: B256,
     claims: Vec<UsageClaim>,
 ) -> (Vec<UsageClaim>, Vec<(UsageClaim, String)>) {
     if claims.is_empty() {
@@ -236,7 +236,7 @@ pub fn filter_applicable_claims(
         prev_state: prev_state.clone(),
         usage_claims: vec![],
         usage_period,
-        provenance_clause,
+        provenance_leaf,
     };
     let mut state = match figaro_kernel::kernel::apply_batch_with_state(&seed) {
         Ok((_, _, _, post)) => post.to_snapshot(),
@@ -260,7 +260,7 @@ pub fn filter_applicable_claims(
             prev_state: state.clone(),
             usage_claims: vec![claim.clone()],
             usage_period,
-            provenance_clause,
+            provenance_leaf,
         };
         match figaro_kernel::kernel::apply_batch_with_state(&trial) {
             Ok((_, _, _, post)) => {
@@ -293,7 +293,7 @@ fn trial_apply(
         prev_state: state.clone(),
         usage_claims: vec![],
         usage_period: 0,
-        provenance_clause: B256::ZERO,
+        provenance_leaf: B256::ZERO,
     };
     figaro_kernel::kernel::apply_batch_with_state(&trial)
         .map(|(_, _, _, post)| post.to_snapshot())

@@ -7,7 +7,9 @@
  * Verification path:
  *
  *   1. Each agreement section's `body` (in the contract document) hashes
- *      to its `leafHash` via `computeSectionLeaf(section)`.
+ *      to its `leafHash` via `computeSectionLeaf(section)`; the agreement's
+ *      `provenance`, when it names its assembly, hashes to the format's
+ *      reserved leaf via `computeProvenanceLeaf(provenance)`.
  *   2. The leaves combine into the merkle root = `agreementHash`.
  *   3. The `agreementHash` matches the `agreementHash` field on the
  *      `OrderCommitted` event emitted at `transactionHash` for the order.
@@ -20,7 +22,7 @@
  * each step independently.
  */
 
-import { type Agreement, computeSectionLeaf } from "@figaro-protocol/sdk";
+import { type Agreement, computeProvenanceLeaf, computeSectionLeaf } from "@figaro-protocol/sdk";
 import type { Order } from "@/lib/kernel/store";
 import type { AttestationRecord } from "@/lib/composition/indexer";
 import type { ExtractedDocument } from "./types";
@@ -29,6 +31,7 @@ import { truncateHex } from "@/lib/shared/formatHex";
 type HashAnchorKind =
     | "agreement-root"
     | "agreement-section-leaf"
+    | "agreement-provenance-leaf"
     | "attestation-content-ref"
     | "transaction-hash"
     | "order-hash"
@@ -79,7 +82,7 @@ export function buildHashAppendix(
         kind: "agreement-root",
         label: "Agreement merkle root",
         hash: order.agreementHash ?? "0x",
-        sourceLocation: "OrderCommitted.agreementHash (matches keccak256 of canonical agreement JSON, computed as merkle root over section leaves)",
+        sourceLocation: "OrderCommitted.agreementHash (matches keccak256 of canonical agreement JSON, computed as merkle root over section leaves and the provenance leaf)",
     });
 
     // 3. Each agreement section's leaf — every section is cleartext (the IPFS
@@ -90,6 +93,18 @@ export function buildHashAppendix(
             label: `Section leaf — ${section.clause}`,
             hash: computeSectionLeaf(section),
             sourceLocation: `Merkle leaf under agreementHash root. Reader recomputes via computeSectionLeaf({clause: "${section.clause}", data}) and verifies inclusion in the agreementHash tree.`,
+        });
+    }
+
+    // 3b. The agreement FORMAT's provenance leaf — the composition hash of the
+    //     assembly the order instantiated, under the reserved key. A leaf of
+    //     the same tree: without it the listed leaves do not rebuild the root.
+    if (agreement.provenance !== undefined) {
+        anchors.push({
+            kind: "agreement-provenance-leaf",
+            label: "Provenance leaf — the assembly this order instantiated",
+            hash: computeProvenanceLeaf(agreement.provenance),
+            sourceLocation: `Merkle leaf under agreementHash root. Reader recomputes via computeProvenanceLeaf("${agreement.provenance}") and verifies inclusion in the agreementHash tree.`,
         });
     }
 

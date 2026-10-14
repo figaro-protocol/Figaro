@@ -15,9 +15,10 @@
 <div class="tsd-comment tsd-typography"><p>A document whose digest was recomputed and matched the chain's. Made only
 by the <code>anchor*</code> functions here, or derived from one by <code>deriveAnchored</code>.</p>
 <p>It vouches for what the digest covers, and no more. <code>Anchored&lt;Agreement&gt;</code>
-covers the <code>sections</code> alone: <code>computeAgreementHash</code> is the merkle root over
-the section leaves, so the top-level <code>buyer</code> and <code>seller</code> (and the format
-tag <code>version</code>) are NOT under the hash. Whoever served the document could
+covers the <code>sections</code> and the <code>provenance</code>: <code>computeAgreementHash</code> is the
+merkle root over the section leaves and the reserved provenance leaf, so
+the top-level <code>buyer</code> and <code>seller</code> (and the format tag <code>version</code>) are NOT
+under the hash. Whoever served the document could
 have written any addresses there; a reader checks them against the
 commitment's own <code>buyer</code> and <code>seller</code> before relying on them.</p>
 </div>
@@ -26,7 +27,7 @@ commitment's own <code>buyer</code> and <code>seller</code> before relying on th
 <ul class="tsd-type-parameter-list">
 <li><span id="t"><span class="tsd-kind-type-parameter">T</span></span></li></ul></section><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/anchored.ts#L40">anchored.ts:40</a></li></ul></aside></div>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/anchored.ts#L42">anchored.ts:42</a></li></ul></aside></div>
 <div class="col-sidebar">
 <div class="page-menu">
 <div class="tsd-navigation settings">

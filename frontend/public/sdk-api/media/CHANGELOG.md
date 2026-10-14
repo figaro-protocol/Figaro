@@ -14,6 +14,19 @@ release lives under **Unreleased**.
 
 ### Changed
 
+- **SDK: an agreement names the assembly it instantiates through one reserved leaf
+  of its merkle tree, never through a clause.** `Agreement.provenance` carries the
+  composition hash; `PROVENANCE_LEAF_KEY` (`keccak256("figaro-agreement-provenance")`),
+  `provenanceSectionBytes`, `computeProvenanceLeaf`, `agreementLeaves`,
+  `buildProvenanceInclusionProof`, `provenanceContentRef`, `decodeProvenanceContent` and
+  `provenanceLeafAttestation` are exported; the walk sets `provenance` on every realized
+  order. `fillProvenanceSection` is gone, `fetchUsageClaimContext(client, usageCounter)`
+  returns `{ provenanceLeaf }` and reads no exclusion set (the counter has none), and
+  `buildUsageClaims` emits the assembly claim from `agreement.provenance`.
+  `OverlayGraph.provenanceLeaf` marks the overlay of the buyer's provenance attestations,
+  decoded against the format rather than a spec. The clause `figaro-assembly-provenance`
+  no longer exists; the mandatory clauses are `figaro-commerce` and `figaro-topology`.
+
 - **SDK: the truth-boundary glosses say what stands behind a declaration and an attestation.**
   `TRUTH_BOUNDARY_GLOSS["institution-declared"]` ends with what stands behind a
   declaration (both parties signed it into the agreement at commit; it stays in the

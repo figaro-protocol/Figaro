@@ -154,7 +154,7 @@ contract BatchGasCeilingTest is FigaroBatchVerifierTest {
     /// @dev `n` accruals of `n` DISTINCT keys the counter accepts and writes.
     function _accruals(uint256 n, uint256 seed) internal view returns (FigaroBatchVerifier.BatchUsageData memory u) {
         u.period = counter.currentPeriod();
-        u.provenanceClause = PROV_KEY;
+        u.provenanceLeaf = PROVENANCE_LEAF;
         u.accruals = new IUsageCounter.BatchAccrual[](n);
         for (uint256 i = 0; i < n; i++) {
             u.accruals[i] =
@@ -168,7 +168,7 @@ contract BatchGasCeilingTest is FigaroBatchVerifierTest {
     ///      into the members registry.
     function _sellers(uint256 n, uint256 seed) internal returns (FigaroBatchVerifier.BatchUsageData memory u) {
         u.period = counter.currentPeriod();
-        u.provenanceClause = PROV_KEY;
+        u.provenanceLeaf = PROVENANCE_LEAF;
         u.accruals = new IUsageCounter.BatchAccrual[](1);
         u.accruals[0] = IUsageCounter.BatchAccrual(keccak256(abi.encode("sellers-key", seed)), 1, 1);
         u.sellers = new address[](n);

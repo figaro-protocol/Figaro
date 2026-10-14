@@ -8,6 +8,7 @@ import { computeClauseKey } from "../src/discovery.js";
 import type { SpecSource, ProjectionSpecView } from "../src/projection.js";
 import type { UniverseAttestationEvent } from "../src/events.js";
 import type { Hex, Address } from "../src/types.js";
+import { PROVENANCE_LEAF_KEY, provenanceSectionBytes, provenanceContentRef } from "../src/agreement.js";
 
 const ATTESTER = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" as Address;
 const PID = "0x0000000000000000000000000000000000000000000000000000000000000001" as Hex;
@@ -174,5 +175,35 @@ describe("extractOverlays", () => {
         expect(first.entries.map((e) => e.blockNumber)).toEqual([20, 30]);
         expect(first.entries[0].universe).toBe("batch");
         expect(graphs.find((g) => g.clauseKey === otherKey)!.entries).toHaveLength(1);
+    });
+});
+
+describe("extractOverlays — the agreement's provenance leaf", () => {
+    const COMPOSITION = `0x${"3c".repeat(32)}` as Hex;
+
+    it("recognizes the reserved key by the format constant and decodes its bytes to the composition hash, with no spec", () => {
+        const [graph] = extractOverlays(
+            [{ event: mkEvent(PROVENANCE_LEAF_KEY, { contentRef: provenanceContentRef(COMPOSITION) }), content: provenanceSectionBytes(COMPOSITION) }],
+            specSourceOf([]),
+        );
+        expect(graph.provenanceLeaf).toBe(true);
+        expect(graph.spec).toBeNull();
+        expect(graph.entries[0].decoded).toEqual({ compositionHash: COMPOSITION });
+    });
+
+    it("unrecovered or foreign bytes stay fingerprint-only", () => {
+        const [graph] = extractOverlays(
+            [
+                { event: mkEvent(PROVENANCE_LEAF_KEY), content: null },
+                { event: mkEvent(PROVENANCE_LEAF_KEY), content: "0x7b7d" as Hex },
+            ],
+            specSourceOf([]),
+        );
+        expect(graph.entries.map((e) => e.decoded)).toEqual([null, null]);
+    });
+
+    it("every other family is no provenance leaf", () => {
+        const [graph] = extractOverlays([{ event: mkEvent(computeClauseKey("acme-orbital-telemetry", 1)), content: null }], specSourceOf([]));
+        expect(graph.provenanceLeaf).toBe(false);
     });
 });

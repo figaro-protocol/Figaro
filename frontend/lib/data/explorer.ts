@@ -318,9 +318,15 @@ export interface OverlayRow {
     /** The readable id, only when the family's spec resolved from the
      *  registry. Null = unresolved family: the key is all it has. */
     clauseId: string | null;
-    /** The spec's own title when resolved, else the truncated key. */
+    /** The spec's own title when resolved, the agreement format's name for
+     *  its provenance leaf, else the truncated key. */
     title: string;
+    /** True when the family decodes: its spec resolved, or it is the
+     *  agreement format's provenance leaf, which needs no spec. */
     specResolved: boolean;
+    /** True for the agreement format's reserved provenance leaf — the SDK's
+     *  `OverlayGraph.provenanceLeaf`, compared to the format constant. */
+    provenanceLeaf: boolean;
     entryCount: number;
     decodedCount: number;
     processCount: number;
@@ -349,8 +355,9 @@ export function overlayRows(graphs: readonly OverlayGraph[]): OverlayRow[] {
         return {
             clauseKey: g.clauseKey,
             clauseId,
-            title: g.spec?.title ?? truncateHex(g.clauseKey, { head: 10, tail: 0 }),
-            specResolved: g.spec !== null,
+            title: g.spec?.title ?? (g.provenanceLeaf ? "Assembly provenance" : truncateHex(g.clauseKey, { head: 10, tail: 0 })),
+            specResolved: g.spec !== null || g.provenanceLeaf,
+            provenanceLeaf: g.provenanceLeaf,
             entryCount: g.entries.length,
             decodedCount,
             processCount: processes.size,
@@ -359,7 +366,7 @@ export function overlayRows(graphs: readonly OverlayGraph[]): OverlayRow[] {
             firstBlock: blocks.length > 0 ? Math.min(...blocks) : null,
             lastBlock: blocks.length > 0 ? Math.max(...blocks) : null,
             posture: decodedCount > 0 ? "decoded" : "fingerprint-only",
-            text: [g.clauseKey, clauseId ?? "", g.spec?.title ?? "", g.spec?.description ?? ""].join(" "),
+            text: [g.clauseKey, clauseId ?? "", g.spec?.title ?? (g.provenanceLeaf ? "Assembly provenance" : ""), g.spec?.description ?? ""].join(" "),
         };
     });
     return rows.sort((a, b) => b.entryCount - a.entryCount || a.title.localeCompare(b.title));

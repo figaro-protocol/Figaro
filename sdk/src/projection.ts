@@ -722,8 +722,8 @@ export function buildAssemblyTemplate(args: {
     }
     // The fold wants each mandatory clause once. A MANDATORY clause folds AT
     // THE LEVEL ITS SCOPE NAMES: agreement-scoped mandatory (commerce,
-    // topology) folds into every agreement; assembly-scoped mandatory
-    // (assembly-provenance) folds into every published assembly's terms below.
+    // topology) folds into every agreement; an assembly-scoped mandatory
+    // clause folds into every published assembly's terms below.
     //
     // The fold draws from `specs.list()` — the registrations the caller
     // surfaces, a live-stake source for a new composition — and takes, per
@@ -766,10 +766,8 @@ export function buildAssemblyTemplate(args: {
     const idToLocal = new Map(orders.map((o, i) => [o.orderHash, `order-${i}`]));
     // Assembly-scoped sections keep the same value-free rule as agreements:
     // only design.fills values survive into the template. Assembly-scoped
-    // MANDATORY clauses fold in automatically first (empty sections — the
-    // provenance hash cannot appear inside the composition it hashes; the
-    // checkout fills it mechanically); the designer's own composition merges
-    // over them.
+    // MANDATORY clauses fold in automatically first (empty sections, filled
+    // at checkout); the designer's own composition merges over them.
     const assemblySelection: Record<string, Record<string, unknown>> = {};
     const assemblyVersions: Record<string, number> = {};
     for (const spec of assemblyMandatory.values()) {

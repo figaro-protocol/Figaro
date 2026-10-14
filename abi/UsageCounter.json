@@ -28,16 +28,6 @@
         "internalType": "address"
       },
       {
-        "name": "_provenanceClause",
-        "type": "bytes32",
-        "internalType": "bytes32"
-      },
-      {
-        "name": "_excluded",
-        "type": "bytes32[]",
-        "internalType": "bytes32[]"
-      },
-      {
         "name": "_minSellers",
         "type": "uint64",
         "internalType": "uint64"
@@ -94,7 +84,7 @@
         "internalType": "uint8"
       },
       {
-        "name": "claimedProvenance",
+        "name": "claimedProvenanceLeaf",
         "type": "bytes32",
         "internalType": "bytes32"
       },
@@ -230,25 +220,6 @@
   },
   {
     "type": "function",
-    "name": "excludedClauseOrAssembly",
-    "inputs": [
-      {
-        "name": "",
-        "type": "bytes32",
-        "internalType": "bytes32"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "",
-        "type": "bool",
-        "internalType": "bool"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
     "name": "icbrt",
     "inputs": [
       {
@@ -369,7 +340,7 @@
   },
   {
     "type": "function",
-    "name": "provenanceClause",
+    "name": "provenanceLeaf",
     "inputs": [],
     "outputs": [
       {
@@ -706,17 +677,6 @@
   },
   {
     "type": "error",
-    "name": "ClauseOrAssemblyExcluded",
-    "inputs": [
-      {
-        "name": "clauseOrAssembly",
-        "type": "bytes32",
-        "internalType": "bytes32"
-      }
-    ]
-  },
-  {
-    "type": "error",
     "name": "ClauseOrAssemblyNotRegistered",
     "inputs": [
       {
@@ -769,7 +729,18 @@
   },
   {
     "type": "error",
-    "name": "ProvenanceClauseMismatch",
+    "name": "ProvenanceLeafIsNotARegistration",
+    "inputs": [
+      {
+        "name": "key",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "ProvenanceLeafMismatch",
     "inputs": [
       {
         "name": "expected",

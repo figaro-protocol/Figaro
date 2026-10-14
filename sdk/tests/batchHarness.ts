@@ -11,7 +11,6 @@
 
 import { expect } from "vitest";
 import {
-    encodeAbiParameters,
     encodePacked,
     getContractAddress,
     keccak256,
@@ -233,7 +232,7 @@ export async function deployBatchStack(
 
     const usageCounterHash = await deployerWallet.deployContract({
         abi: parseAbi([
-            "constructor(address _core, address _members, address _clauses, address _assemblies, address _batchVerifier, bytes32 _provenanceClause, bytes32[] _excluded, uint64 _minSellers, uint64[] _periodEnd)",
+            "constructor(address _core, address _members, address _clauses, address _assemblies, address _batchVerifier, uint64 _minSellers, uint64[] _periodEnd)",
         ]),
         bytecode: loadBytecode("UsageCounter.sol/UsageCounter.json"),
         args: [
@@ -242,11 +241,6 @@ export async function deployBatchStack(
             clauseRegistryAddress,
             assemblyRegistryAddress,
             predictedVerifier,
-            keccak256(encodeAbiParameters(
-                [{ type: "string" }, { type: "uint64" }],
-                ["figaro-assembly-provenance", 1n],
-            )),
-            [],
             // minSellers = 1: this fixture drives ONE seller end to end and
             // proves the bridge's plumbing; the floor's own behavior is
             // proven in UsageCounterTest's floor section and driven at the
@@ -361,10 +355,10 @@ export function startSequencer(
             CHAIN_ID: "31337",
             BATCH_VERIFIER_ADDRESS: relay.batchVerifierAddress,
             // The RPGF counter the sequencer reads the open period and the
-            // provenance clause from.
+            // provenance leaf from.
             USAGE_COUNTER_ADDRESS: relay.usageCounterAddress,
             // The registry addresses the usage-claim PRE-FILTER eth-calls
-            // (excluded / live-deposit / live-stake gates). Left unset they
+            // (live-deposit / live-stake gates). Left unset they
             // default to address(0), every read fails, and each claim is
             // dropped "conservatively" — the batch resolves with EMPTY accruals
             // and the counter credits nothing, silently (056365a6).

@@ -16,7 +16,7 @@ import type {
     ValueFlowGraph,
     WalletRecord,
 } from "@figaro-protocol/sdk/derive";
-import { OrderState } from "@figaro-protocol/sdk";
+import { OrderState, PROVENANCE_LEAF_KEY } from "@figaro-protocol/sdk";
 import {
     BOUNDARY_GLOSS,
     GRAPH_LAYERS,
@@ -172,6 +172,7 @@ describe("overlayRows — the open graph class", () => {
         boundary: "protocol-derived",
         clauseKey: KEY_A,
         spec: null,
+        provenanceLeaf: false,
         entries: [entry()],
         ...over,
     });
@@ -210,6 +211,17 @@ describe("overlayRows — the open graph class", () => {
         expect(row.universes).toEqual(["direct", "batch"]);
         expect(row.firstBlock).toBe(5);
         expect(row.lastBlock).toBe(9);
+        expect(row.posture).toBe("decoded");
+    });
+
+    it("the agreement format's provenance leaf is a row named as such, decodable with no spec", () => {
+        const [row] = overlayRows([
+            graph({ clauseKey: PROVENANCE_LEAF_KEY, provenanceLeaf: true, entries: [entry({ decoded: { compositionHash: KEY_B } })] }),
+        ]);
+        expect(row.provenanceLeaf).toBe(true);
+        expect(row.clauseId).toBeNull();
+        expect(row.specResolved).toBe(true);
+        expect(row.title).toBe("Assembly provenance");
         expect(row.posture).toBe("decoded");
     });
 

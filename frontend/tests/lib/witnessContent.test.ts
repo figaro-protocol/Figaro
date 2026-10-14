@@ -18,7 +18,7 @@ import {
     publishWitnessContent,
     unpinWitnessContent,
 } from "@/lib/composition/witnessContent";
-import { canonicalContentHash, computeClauseKey } from "@figaro-protocol/sdk";
+import { PROVENANCE_LEAF_KEY, canonicalContentHash, computeClauseKey, provenanceSectionBytes } from "@figaro-protocol/sdk";
 import { getClauseSpec, loadClauseSpec, setClauseSpecFetcher } from "@/lib/shared/clauseSpecSource";
 import { primeClauseSpecs } from "./primeClauseSpecs";
 
@@ -139,6 +139,29 @@ describe("publishWitnessContent", () => {
             content: proximityContent(),
             ipfs: { pinKeccakRawBlock },
         })).resolves.toBeUndefined();
+        expect(warn).toHaveBeenCalledOnce();
+        warn.mockRestore();
+    });
+});
+
+describe("publishWitnessContent — the agreement format's provenance leaf", () => {
+    const COMPOSITION = `0x${"9a".repeat(32)}` as Hex;
+
+    it("pins the format's own bytes as-is, with no spec", async () => {
+        const content = provenanceSectionBytes(COMPOSITION);
+        const pinKeccakRawBlock = vi.fn().mockResolvedValue("f01551b20" + keccak256(content).slice(2));
+        const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+        await publishWitnessContent({ clauseId: PROVENANCE_LEAF_KEY, stage: 0, content, ipfs: { pinKeccakRawBlock } });
+        expect(pinKeccakRawBlock).toHaveBeenCalledExactlyOnceWith(hexToBytes(content));
+        expect(warn).not.toHaveBeenCalled();
+        warn.mockRestore();
+    });
+
+    it("pins nothing under the reserved key that is not the format's bytes", async () => {
+        const pinKeccakRawBlock = vi.fn();
+        const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+        await publishWitnessContent({ clauseId: PROVENANCE_LEAF_KEY, stage: 0, content: "0x1234", ipfs: { pinKeccakRawBlock } });
+        expect(pinKeccakRawBlock).not.toHaveBeenCalled();
         expect(warn).toHaveBeenCalledOnce();
         warn.mockRestore();
     });
