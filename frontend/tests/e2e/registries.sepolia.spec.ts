@@ -8,8 +8,11 @@
  * never an identity standing in for content the gateway has not served).
  * Runs against Sepolia with E2E_CHAIN=sepolia (the sepolia project) and
  * against the devnet without it (the same spec, the local node), so the
- * check itself is rehearsed before it is trusted on the public network.
- * Free to run any time — a nudge lands, this says whether the site shows it.
+ * check itself is rehearsed before it is trusted on the public network. The
+ * devnet CI lane runs it on the bare genesis `scripts/deploy-local.sh` leaves
+ * (clauses, the reference assemblies' agreements, the reference assemblies;
+ * no member), before any test population. Free to run any time — a nudge
+ * lands, this says whether the site shows it.
  */
 import { test, expect } from '@playwright/test';
 import { createPublicClient, http } from 'viem';
@@ -39,7 +42,8 @@ test.describe('PUBLIC REGISTRIES — the explorer shows exactly what the chain h
         expect(clauseKeys.size, 'the registry holds clauses').toBeGreaterThan(0);
         expect(agreementKeys.size, 'the registry holds agreements').toBeGreaterThan(0);
         expect(slugs.size, 'the registry holds assemblies').toBeGreaterThan(0);
-        expect(members.size, 'the registry holds members').toBeGreaterThan(0);
+        // The public network's genesis registers the founder's and the DAO's profiles; a bare devnet genesis registers none.
+        if (E2E_CHAIN === 'sepolia') expect(members.size, 'the registry holds members').toBeGreaterThan(0);
 
         // ── Clauses: the row set is the chain's; every spec resolved; every heading a real article ──
         await page.goto('/registries?family=clauses');
@@ -86,8 +90,12 @@ test.describe('PUBLIC REGISTRIES — the explorer shows exactly what the chain h
             expect(name, `${slug} is named from its template, not by its slug`).not.toBe(slug);
         }
 
-        // ── Members: every registered wallet, each profile resolved ──
+        // ── Members: every registered wallet, each profile resolved. The count
+        //    line renders only once the registry read has finished, so it holds
+        //    the explorer to the chain's set even where that set is empty (the
+        //    devnet genesis registers no member). ──
         await page.goto('/registries?family=members');
+        await expect(page.getByTestId('registry-count')).toContainText(`${members.size} of ${members.size} members`, { timeout: 60_000 });
         const memberRows = page.locator('li[data-testid^="member-row-"]');
         await expect.poll(async () => (await memberRows.evaluateAll((els) => els.map((e) => (e.getAttribute('data-testid') ?? '').replace(/^member-row-/, '')))).sort(), { timeout: 60_000 })
             .toEqual([...members].sort());

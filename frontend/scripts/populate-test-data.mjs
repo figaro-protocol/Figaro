@@ -49,7 +49,7 @@ const REGISTRATION_DEPOSIT = 1_000_000_000_000_000n; // 0.001 ETH
 // Each seller BINDS the reference assembly its specialty names (`binds` is the
 // file in assemblies/), so the world a visitor meets on /discover keeps the
 // promise the directory makes: a member surfaces only with an anchored
-// binding, and populate anchors the references first. DEVNET ONLY — on a
+// binding, and the deploy anchors the references first. DEVNET ONLY — on a
 // public chain a seller binds through the real flow. A courier designation
 // (`courierIndex`) names anvil[8] as the delivery counterparty on the
 // local-commerce composition; undesignated sellers leave the courier to the
@@ -190,13 +190,18 @@ async function main() {
 
     // ── 1b. Seed assemblies (idempotent) ────────────────────────────────────
     //  The REFERENCE assemblies (`assemblies/*.json` — the user-onboarding
-    //  set, the sibling of `clauses/`) anchor first: each is a canonical
-    //  AssemblyTemplate whose compositionHash is content-derived, so
-    //  re-anchoring is a no-op and an e2e that authors the same composition
-    //  collapses onto the same on-chain binding. Their affixed documents
-    //  (`assemblies/documents/*`) pin beforehand so every in-template
-    //  ipfs:// reference resolves. The two inline templates below are
-    //  devnet TEST SCAFFOLDING, not references.
+    //  set, the sibling of `clauses/`) are the deploy's genesis
+    //  (`scripts/deploy-local.sh` registers them through populate-clauses,
+    //  with this same token), so the call below finds each one's agreements
+    //  and template already bound and skips them: compositionHash and every
+    //  agreement key are content-derived, the registries' `bindings` read is
+    //  the already-registered test, and first write wins whoever the
+    //  registrar. It still anchors them on a registry that lacks them. Their
+    //  affixed documents (`assemblies/documents/*`) pin beforehand so every
+    //  in-template ipfs:// reference resolves. The two inline templates are
+    //  devnet TEST SCAFFOLDING, not references; specs recognize them by shape
+    //  (`discoverSeedAssemblies` in tests/e2e/devnet-helpers.ts), never by
+    //  registration order — the references are anchored before them.
     console.log('\nAssemblies:');
     const anchorArgs = { publicClient, walletClient: registrarClient, account: registrar, registry: assemblyRegistry, agreementRegistry, ipfsApiUrl };
     const documentsDir = path.join(ASSEMBLIES_DIR, 'documents');
@@ -206,13 +211,6 @@ async function main() {
             console.log(`  · document ${file} — pinned ipfs://${cid}`);
         }
     }
-    // The inline TEST-SCAFFOLDING seeds anchor FIRST so the blank stays the
-    // EARLIEST anchored single-order assembly — specs that discover "the
-    // single-order seed" by `agreements.length === 1` (members-onboarding,
-    // sign-countersign, checkout-assembly-choice, …) must resolve the blank,
-    // not a single-order REFERENCE (pos/freelancer). The references anchor
-    // after and are discovered by their OWN specific shapes, so order doesn't
-    // affect them. (Refs-first would shadow the blank.)
     await anchorBuiltAssembly({ ...anchorArgs, built: seedBlank() });
     await anchorBuiltAssembly({ ...anchorArgs, built: seedChain() });
     await populateReferenceAssemblies({ ...anchorArgs, tokenAddress: mockErc20 });

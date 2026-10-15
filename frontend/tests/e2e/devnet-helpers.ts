@@ -861,6 +861,29 @@ export function deliveryClauseKeys(): Record<keyof typeof DELIVERY_CLAUSE_NAMES,
     ) as Record<keyof typeof DELIVERY_CLAUSE_NAMES, Hex>;
 }
 
+/** The two assemblies `frontend/scripts/populate-test-data.mjs` seeds, recognized
+ *  by SHAPE among the anchored ones — never by slug, name or registration order
+ *  (the deploy anchors the reference assemblies before the seeds):
+ *  - `blank` — the one-order composition with the fewest clauses: nothing beyond
+ *    what every agreement folds (the earliest such, on a tie);
+ *  - `chain` — three orders, a sub-order carrying the courier process clause. */
+export async function discoverSeedAssemblies(): Promise<{
+    anchored: DiscoveredAssembly[]; blank?: DiscoveredAssembly; chain?: DiscoveredAssembly;
+}> {
+    await primeRegisteredClauseSpecs();
+    const { courier } = deliveryClauseKeys();
+    const anchored = await discoverAnchoredAssemblies();
+    const clauseCount = (a: DiscoveredAssembly) => Object.keys(a.agreements[0].clauses ?? {}).length;
+    const blank = anchored
+        .filter((a) => a.agreements.length === 1)
+        .reduce<DiscoveredAssembly | undefined>((min, a) => (!min || clauseCount(a) < clauseCount(min) ? a : min), undefined);
+    const chain = anchored.find(
+        (a) => a.agreements.length === 3
+            && a.agreements.some((o) => Object.keys(o.clauses ?? {}).includes(courier)),
+    );
+    return { anchored, blank, chain };
+}
+
 /** The Playwright-pinned device location the geolocation clause's device
  *  affordance reads at authoring time, and the typed destination cell. */
 export const DELIVERY_DEVICE = { lat: 37.7749, lon: -122.4194, destination: '9q8yyk' } as const;

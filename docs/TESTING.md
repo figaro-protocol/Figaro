@@ -467,7 +467,8 @@ three hash checks and stops at the spec-binding anchor.
 
 `npm run test:e2e:devnet` (preflight → populate-test-data (clauses + two inline
 test-scaffolding templates + every reference assembly from `assemblies/*.json` +
-sellers; seeding is pre-population, never a test) → run) and
+sellers; seeding is pre-population, never a test; the clauses and reference
+assemblies are already the deploy's genesis, so it skips them) → run) and
 `npm run test:e2e:mobile`.
 Config: `playwright.config.ts`. Playwright is e2e-only.
 
@@ -554,7 +555,12 @@ select only the other projects, and `E2E_CHAIN=sepolia`, pass through silently.
   through the site's gateway chain; each agreement's pinned document re-keys to
   its registry key (`agreementKeyOf`) and its row names that key and its
   designer of record (pass `NEXT_PUBLIC_IPFS_GATEWAY_URL` + `NEXT_PUBLIC_IPFS_FALLBACK_GATEWAY_URL`
-  as the deploy bakes them). Free to run after every nudge. The project's third spec,
+  as the deploy bakes them). Free to run after every nudge. The `devnet-e2e-ci`
+  lane runs this spec on every trigger against the bare devnet genesis
+  (`deploy-local.sh`: clauses, the reference assemblies' agreements, the
+  reference assemblies; no member) before any test population — the same
+  assertions on both chains; members are held by the count line, which holds an
+  empty set too. The project's third spec,
   `swap-funded-order.sepolia.spec.ts` — the on-ramp: a buyer holding none of the
   denomination pays for their bond from another token the seller accepts, through
   `WitnessSwapAndCommitCoordinator` and the chain's real venue (Sepolia: Uniswap
@@ -737,6 +743,9 @@ Per workflow, what it runs and when:
 - **`devnet-e2e-ci`** — push/PR, path-filtered: the **bilateral spine**
   (`orders-accept`) end to end in the runner — Kubo (IPFS, CORS-configured),
   Anvil (`--accounts` at the count `scripts/lint-anvil-accounts-lockstep.sh` holds), a full `deploy-local.sh` stack,
+  the walletless `registries.sepolia.spec.ts` (the `sepolia` project without
+  `E2E_CHAIN`) on that bare genesis — all four registry families, row set ==
+  chain, every row resolved — then
   `populate-test-data`, the `orders-accept` devnet spec against the production
   static export — then the FOUR origination proofs on the same stack
   (`verify-origination{,-http,-a2a,-chain}.devnet.mjs`), and last the

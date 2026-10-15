@@ -40,7 +40,7 @@ import { clampPublicGeohash } from "../../lib/shared/geohash";
 import { expect, type Page } from "@playwright/test";
 import { test, gotoAsWallet } from "./devnet-multi-test";
 import { createPublicClient, defineChain, http, type Hex } from "viem";
-import { assertPinnedInIpfs, discoverAnchoredAssemblies, discoverMembers, readLocalDeploymentConfig, type DiscoveredAssembly } from "./devnet-helpers";
+import { assertPinnedInIpfs, discoverAnchoredAssemblies, discoverMembers, discoverSeedAssemblies, readLocalDeploymentConfig, type DiscoveredAssembly } from "./devnet-helpers";
 import { ASSEMBLY_REGISTRY_ABI, MEMBERS_REGISTRY_ABI } from '@figaro-protocol/sdk';
 import { deriveAssemblySlug } from '@/lib/shared/assemblyTemplate';
 // The one place the seller-page route is written — the spec follows the same
@@ -319,11 +319,10 @@ test.describe("member registration wizard (devnet)", () => {
         const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
 
         // The single-order seed assembly, discovered from the live registry by
-        // SHAPE (never a hardcoded slug): the earliest anchored one-order
-        // template. This wallet's scenario premise is the bilateral flow —
-        // exactly this one binding.
-        const singleOrderAssembly = (await discoverAnchoredAssemblies())
-            .find((a) => a.agreements.length === 1);
+        // SHAPE (never a hardcoded slug): the blank one-order composition.
+        // This wallet's scenario premise is the bilateral flow — exactly this
+        // one binding.
+        const singleOrderAssembly = (await discoverSeedAssemblies()).blank;
         expect(singleOrderAssembly, 'a single-order assembly is anchored (run populate-test-data)').toBeTruthy();
         const singleOrderSlug = singleOrderAssembly?.slug;
 

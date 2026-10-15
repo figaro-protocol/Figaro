@@ -61,7 +61,7 @@ import { mnemonicToAccount } from 'viem/accounts';
 import {
     authorizeFundingToken,
     confirmAgreementPreviews,
-    discoverAnchoredAssemblies,
+    discoverSeedAssemblies,
     latestMemberProfileURI,
     readLocalDeploymentConfig,
     memberProfileBindings,
@@ -148,17 +148,11 @@ test.describe('VALUE-ADDED CHAIN — one buyer binds three sellers; one resolve 
             publicClient.readContract({ address: permitToken, abi: ERC20_ABI, functionName: 'balanceOf', args: [who] }) as Promise<bigint>;
 
         // ── DISCOVER from chain + IPFS (never a roster): resolve every anchored
-        //    assembly's template and pick the two by SHAPE — the multi-order
-        //    chain (a sub-order carrying the courier process clause) and the
-        //    earliest single-order assembly (the seed; anchored before any
-        //    probe run could add another). ──
-        const templates = await discoverAnchoredAssemblies();
-        const chain = templates.find(
-            (t) => t.agreements.length === 3
-                && t.agreements.some((o) => Object.keys(o.clauses ?? {}).includes(COURIER_CLAUSE)),
-        );
+        //    assembly's template and pick the two seeds by SHAPE — the
+        //    multi-order chain (a sub-order carrying the courier process
+        //    clause) and the blank single-order composition. ──
+        const { chain, blank: single } = await discoverSeedAssemblies();
         expect(chain, 'the seeded three-order chain assembly is anchored (run populate-test-data)').toBeTruthy();
-        const single = templates.find((t) => t.agreements.length === 1);
         expect(single, 'a single-order assembly is anchored (the seed)').toBeTruthy();
         const chainSlug = chain!.slug;
         const singleSlug = single!.slug;

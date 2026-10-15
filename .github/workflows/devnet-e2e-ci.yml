@@ -4,6 +4,9 @@ name: Devnet E2E CI
 # highest-catch layer, run against a REAL stack in the runner: Anvil + a
 # deployed protocol + Kubo (IPFS) + the production static export.
 #
+# Every trigger first runs the walletless four-family registries spec on the
+# bare genesis the deploy leaves, before any test population.
+#
 # Scope on push and pull request: the `orders-accept` spec (the bilateral
 # spine), then the four origination proofs (in-process / HTTP socket / A2A /
 # multi-order chain) against the same live stack, then the watcher's test.
@@ -37,6 +40,7 @@ on:
             - "sdk/**"
             - "frontend/**"
             - "clauses/**"
+            - "assemblies/**"
             # The deploy, and what must hold after it (it runs the check).
             - "scripts/deploy-local.sh"
             - "scripts/check-deployment.mjs"
@@ -52,6 +56,7 @@ on:
             - "sdk/**"
             - "frontend/**"
             - "clauses/**"
+            - "assemblies/**"
             - "scripts/deploy-local.sh"
             - "scripts/check-deployment.mjs"
             - "deployments/*.expected.json"
@@ -147,8 +152,21 @@ jobs:
                   NEXT_PUBLIC_ENABLE_TEST_HELPERS=true
                   EOF
 
-            - name: Deploy protocol stack (+ pin clauses)
+            - name: Deploy protocol stack (+ clauses, agreements, reference assemblies)
               run: bash scripts/deploy-local.sh
+
+            # ── The four registry families, on the bare genesis ──────────
+            # The walletless registries spec (the `sepolia` project; without
+            # E2E_CHAIN it reads the devnet) before any test population: the
+            # explorer shows exactly the clauses, agreements, assemblies and
+            # members the chain holds, every row's pinned content resolved —
+            # the same assertions the Sepolia smoke runs on the public chain.
+            - name: Run the four-family registries smoke on the genesis
+              run: |
+                  cd frontend
+                  npx playwright test --project=sepolia registries.sepolia --workers=1
+              env:
+                  CI: true
 
             # ── The bilateral spine, end to end ──────────────────────────
             # verify-devnet-deployment (preflight) + populate-test-data (seed,

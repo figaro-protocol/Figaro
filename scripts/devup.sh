@@ -6,6 +6,7 @@
 #   1. IPFS (Kubo, Docker)   — agreement / branding pinning
 #   2. Anvil (:8545)         — the chain
 #   3. Figaro protocol stack — scripts/deploy-local.sh   (skipped if already deployed)
+#   4. Clauses, agreements, reference assemblies — only when step 3 was skipped
 #
 # Does NOT start a dev server: Playwright's `devnet` project starts its own on
 # :3100, and a `npm run dev` on :3000 is yours to manage.
@@ -78,14 +79,23 @@ else
     DEPLOY_SKIPPED=0
 fi
 
-# ── 4. Clauses — pin specs to IPFS + anchor on ClauseRegistry ────────────────
-# deploy-local.sh now populates clauses itself (the single clause-population path,
-# same script prod/testnet/mainnet use). This step is therefore only needed when the
-# deploy above was SKIPPED (already-deployed path) — it self-heals a registry whose
-# clauses went missing. Idempotent: a clause already on the registry is skipped.
+# ── 4. Clauses, agreements, reference assemblies — pin + anchor ─────────────
+# deploy-local.sh populates them itself (the single population path, same script
+# prod/testnet/mainnet use). This step is therefore only needed when the deploy
+# above was SKIPPED (already-deployed path) — it self-heals registries whose
+# clauses, agreements or reference assemblies went missing, with the same env the
+# deploy passes: the registries and the MockERC20 (substituted for the reference
+# assemblies' ZERO_ADDRESS currency sentinel), read from frontend/.env.local.
+# Idempotent: a key a registry already binds is skipped.
 if [[ "${DEPLOY_SKIPPED:-0}" == "1" ]]; then
-    note "Clauses (pin → IPFS, anchor → ClauseRegistry)"
-    (cd frontend && node scripts/populate-clauses.mjs)
+    note "Clauses, agreements, reference assemblies (pin → IPFS, anchor → the registries)"
+    env_local() { sed -n "s/^$1=//p" "$REPO_ROOT/frontend/.env.local" | tail -n 1; }
+    (cd frontend && \
+        NEXT_PUBLIC_CLAUSE_REGISTRY="$(env_local NEXT_PUBLIC_CLAUSE_REGISTRY)" \
+        NEXT_PUBLIC_AGREEMENT_REGISTRY="$(env_local NEXT_PUBLIC_AGREEMENT_REGISTRY)" \
+        NEXT_PUBLIC_ASSEMBLY_REGISTRY="$(env_local NEXT_PUBLIC_ASSEMBLY_REGISTRY)" \
+        ASSEMBLY_TOKEN_ADDRESS="$(env_local NEXT_PUBLIC_TOKEN_ADDRESS)" \
+        node scripts/populate-clauses.mjs)
 fi
 
 note "devnet ready"

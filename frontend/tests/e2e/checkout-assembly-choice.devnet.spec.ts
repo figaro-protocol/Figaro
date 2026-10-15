@@ -26,7 +26,7 @@
 import { test, expect, gotoAsWallet } from './devnet-multi-test';
 import { createPublicClient, defineChain, http, parseAbi, type Hex } from 'viem';
 import { calculateBonds, MEMBERS_REGISTRY_ABI } from '@figaro-protocol/sdk';
-import { discoverAnchoredAssemblies, readLocalDeploymentConfig, waitForConnected } from './devnet-helpers';
+import { discoverSeedAssemblies, readLocalDeploymentConfig, waitForConnected } from './devnet-helpers';
 import { CORE_ABI } from '@/lib/kernel/contracts';
 import type { Page } from '@playwright/test';
 
@@ -136,10 +136,10 @@ test.describe('checkout assembly choice — two bindings force the buyer to pick
             publicClient.readContract({ address: token, abi: ERC20_ABI, functionName: 'balanceOf', args: [who] }) as Promise<bigint>;
 
         // The two bindings, adopted from the live registry by SHAPE: the
-        // earliest single-order template + the earliest multi-order chain.
-        const anchored = await discoverAnchoredAssemblies();
-        const singleOrderSlug = anchored.find((a) => a.agreements.length === 1)?.slug;
-        const multiOrderSlug = anchored.find((a) => a.agreements.length > 1)?.slug;
+        // seeded single-order blank + the seeded multi-order chain.
+        const seeds = await discoverSeedAssemblies();
+        const singleOrderSlug = seeds.blank?.slug;
+        const multiOrderSlug = seeds.chain?.slug;
         expect(singleOrderSlug, 'a single-order assembly is anchored (run populate-test-data)').toBeTruthy();
         expect(multiOrderSlug, 'a multi-order assembly is anchored (run populate-test-data)').toBeTruthy();
         const targetSlugs = [singleOrderSlug!, multiOrderSlug!];

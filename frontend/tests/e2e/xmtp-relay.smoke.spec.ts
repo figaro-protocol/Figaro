@@ -56,7 +56,7 @@ import {
     LOCAL_ANVIL,
     RPC_URL,
     confirmAgreementPreviews,
-    discoverAnchoredAssemblies,
+    discoverSeedAssemblies,
     pinJSONToIPFS,
     readLocalDeploymentConfig,
     seedRegisteredMember,
@@ -130,12 +130,12 @@ test.describe('REAL XMTP RELAY — buyer signs, relays over the hosted dev netwo
         await Promise.all([fundWithEth(BUYER), fundWithEth(SELLER)]);
 
         // ── ONBOARD the smoke seller from chain state (no roster): bind the
-        //    SIMPLEST anchored assembly (fewest orders — the seeded blank
-        //    single-agreement composition when present). Node-side with the
-        //    seller's own key; idempotent (re-runs route to updateProfile). ──
-        const assemblies = await discoverAnchoredAssemblies();
-        expect(assemblies.length, 'an anchored assembly exists — run the devnet suite or populate-test-data.mjs first').toBeGreaterThan(0);
-        const assembly = assemblies.reduce((min, a) => (a.agreements.length < min.agreements.length ? a : min));
+        //    seeded blank single-agreement composition, recognized by shape.
+        //    Node-side with the seller's own key; idempotent (re-runs route
+        //    to updateProfile). ──
+        const { blank } = await discoverSeedAssemblies();
+        expect(blank, 'the seeded blank assembly is anchored — run the devnet suite or populate-test-data.mjs first').toBeTruthy();
+        const assembly = blank!;
         const orderCount = assembly.agreements.length;
         const token = readLocalDeploymentConfig().tokenAddress;
         expect(token, 'NEXT_PUBLIC_TOKEN_ADDRESS resolves — run ./deploy-local.sh').toBeTruthy();

@@ -253,9 +253,19 @@ echo "   Deployment: $CORE_DEPLOYMENT"
 # figaro-topology, required by EVERY order) pinned + anchored. Without it the
 # frontend's useClauseSpecs() never loads and the designer/checkout surfaces crash
 # with "clause specs not loaded: no structural clauses in the cache".
+# The same invocation registers the reference assemblies, as the Sepolia
+# genesis does: each assembly's distinct composed agreements on
+# AgreementRegistry, then the assembly on AssemblyRegistry, with the devnet's
+# MockERC20 substituted for the checked-in ZERO_ADDRESS currency sentinel
+# (the token populate-test-data.mjs and the e2e specs substitute too).
 echo ""
-echo "📎 Populating clauses (pin → IPFS, anchor → ClauseRegistry)..."
-(cd "$REPO_ROOT/frontend" && node scripts/populate-clauses.mjs)
+echo "📎 Populating clauses, agreements and reference assemblies (pin → IPFS, anchor → ClauseRegistry, AgreementRegistry, AssemblyRegistry)..."
+(cd "$REPO_ROOT/frontend" && \
+    NEXT_PUBLIC_CLAUSE_REGISTRY="$CLAUSE_ADDR" \
+    NEXT_PUBLIC_AGREEMENT_REGISTRY="$AGREEMENT_ADDR" \
+    NEXT_PUBLIC_ASSEMBLY_REGISTRY="$ASSEMBLY_ADDR" \
+    ASSEMBLY_TOKEN_ADDRESS="$TOKEN_ADDR" \
+    node scripts/populate-clauses.mjs)
 
 # ── What must hold, checked against the chain ────────────────────────────────
 # deployments/31337.expected.json states, ahead of the deploy, what the stack
