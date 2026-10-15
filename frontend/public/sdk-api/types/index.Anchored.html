@@ -14,7 +14,9 @@
 <div class="tsd-signature"><span class="tsd-kind-type-alias">Anchored</span><span class="tsd-signature-symbol">:</span> <a class="tsd-signature-type tsd-kind-type-parameter" href="#t">T</a> <span class="tsd-signature-symbol">&amp;</span> <span class="tsd-signature-symbol">{</span> <span class="tsd-kind-property">&quot;[ANCHORED]&quot;</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">true</span> <span class="tsd-signature-symbol">}</span></div>
 <div class="tsd-comment tsd-typography"><p>A document whose digest was recomputed and matched the chain's. Made only
 by the <code>anchor*</code> functions here, or derived from one by <code>deriveAnchored</code>.</p>
-<p>It vouches for what the digest covers, and no more. <code>Anchored&lt;Agreement&gt;</code>
+<p>It vouches for what the digest covers, and no more. <code>Anchored&lt;ComposedAgreement&gt;</code>
+and <code>Anchored&lt;AssemblyTemplate&gt;</code> cover their composition, never the
+editorial prose beside it. <code>Anchored&lt;Agreement&gt;</code>
 covers the <code>sections</code> and the <code>provenance</code>: <code>computeAgreementHash</code> is the
 merkle root over the section leaves and the reserved provenance leaf, so
 the top-level <code>buyer</code> and <code>seller</code> (and the format tag <code>version</code>) are NOT
@@ -27,7 +29,7 @@ commitment's own <code>buyer</code> and <code>seller</code> before relying on th
 <ul class="tsd-type-parameter-list">
 <li><span id="t"><span class="tsd-kind-type-parameter">T</span></span></li></ul></section><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/anchored.ts#L43">anchored.ts:43</a></li></ul></aside></div>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/anchored.ts#L53">anchored.ts:53</a></li></ul></aside></div>
 <div class="col-sidebar">
 <div class="page-menu">
 <div class="tsd-navigation settings">

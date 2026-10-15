@@ -15,13 +15,13 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { activeChain } from "@/lib/shared/wagmi";
 import { clauseIsProcessLog, getClauseSpec } from "@/lib/shared/clauseSpecSource";
 import { truncateHex } from "@/lib/shared/formatHex";
-import type { Anchored } from "@figaro-protocol/sdk";
-import { templateParentOrderHashes, type AssemblyTemplate } from "@/lib/shared/assemblyTemplate";
+import { slotClauses, templateComposedClauseKeys, type HydratedAssembly } from "@figaro-protocol/sdk";
+import { templateParentOrderHashes } from "@/lib/shared/assemblyTemplate";
 import { DEVNET_CHAIN_ID } from "@/lib/shared/chains";
 import { contentRetryDelayMs } from "@/lib/shared/ipfsService";
 import {
     usePublishedAssemblies,
-    fetchAssemblyTemplate,
+    fetchHydratedAssembly,
 } from "@/lib/protocol/useAssemblyRegistry";
 
 /**
@@ -42,16 +42,6 @@ function chainIdToNetworkTarget(chainId: number): string {
     }
 }
 
-/** Walk the assemblyTemplate's agreements and collect the unique set of
- *  clauses anchored across all of them. Sorted alphabetically for stable
- *  display order. */
-function collectAssemblyClauses(template: AssemblyTemplate): string[] {
-    const set = new Set<string>();
-    for (const agreement of template.agreements) {
-        for (const clauseKey of Object.keys(agreement.clauses)) set.add(clauseKey);
-    }
-    return Array.from(set).sort();
-}
 
 /** Process clauses the seller may bind counterparty wallets to when they
  *  adopt this assembly. Emitted for every non-root order that carries a
@@ -69,11 +59,11 @@ function collectAssemblyClauses(template: AssemblyTemplate): string[] {
  *
  *  Root order is excluded — the rootBuyer is the connected wallet at
  *  checkout, not designated by the seller's profile. */
-export function requiredCounterpartyClauses(template: AssemblyTemplate): string[] {
+export function requiredCounterpartyClauses(hydrated: HydratedAssembly): string[] {
     const clauses = new Set<string>();
-    for (const agreement of template.agreements) {
-        if (templateParentOrderHashes(agreement).length === 0) continue; // root has no counterparty
-        for (const clauseKey of Object.keys(agreement.clauses)) {
+    for (const slot of hydrated.template.agreements) {
+        if (templateParentOrderHashes(slot).length === 0) continue; // root has no counterparty
+        for (const clauseKey of Object.keys(slotClauses(hydrated, slot))) {
             if (clauseIsProcessLog(clauseKey)) clauses.add(clauseKey);
         }
     }
@@ -91,15 +81,17 @@ export function formatAssemblyClauseList(clauses: readonly string[]): string {
 }
 
 /**
- * A published assembly enriched with assemblyTemplate-derived fields, suitable
+ * A published assembly enriched with template-derived fields, suitable
  * for surfacing to a user as a selectable / inspectable choice.
  *
- * Template fetch is lazy per-row; `state` tracks the lifecycle. While
+ * The read is lazy per-row: the template, then every order slot's registered
+ * agreement (`fetchHydratedAssembly`); `state` tracks the lifecycle. While
  * `state === "loading"`, `name` falls back to `slug` so the UI can
  * render the row immediately. When `state === "loaded"`, all
- * assemblyTemplate-derived fields are populated.
+ * template-derived fields are populated. An assembly whose template or any
+ * order slot's agreement is absent stays in `"error"` — not offered.
  */
-/** Per-assembly assemblyTemplate fetch state: requested, succeeded, or failed. */
+/** Per-assembly read state: requested, succeeded, or failed. */
 type AssemblyTemplateFetchState = "loading" | "loaded" | "error";
 
 export interface AssemblyChoice {
@@ -110,7 +102,7 @@ export interface AssemblyChoice {
     blockNumber: bigint;
     networkTargets: readonly string[];
     state: AssemblyTemplateFetchState;
-    /** Display name from the assemblyTemplate; falls back to `slug` until loaded. */
+    /** Display name from the template; falls back to `slug` until loaded. */
     name: string;
     /** The designer's own one-liner for what this assembly is for, from the
      *  pinned template's editorial prose (`summary`, or `description` when the
@@ -122,10 +114,11 @@ export interface AssemblyChoice {
     agreementCount: number | null;
     /** Available when state === "loaded". Sorted, deduped clause keys. */
     clauses: readonly string[] | null;
-    /** The full assembly template when state === "loaded". Avoids re-fetching
-     *  from consumers that need it (e.g. fork). Read from the registry and
-     *  verified against `compositionHash`. */
-    assemblyTemplate: Anchored<AssemblyTemplate> | null;
+    /** The hydrated assembly when state === "loaded": the template verified
+     *  against `compositionHash` and every order slot's registered agreement
+     *  verified against its key. Avoids re-fetching from consumers that need
+     *  it (e.g. fork). */
+    hydratedAssembly: HydratedAssembly | null;
     /** True when the registering wallet has withdrawn the stake — present only
      *  on reads that opted in to withdrawn rows (or wallet-scoped reads). */
     stakeWithdrawn: boolean;
@@ -133,10 +126,10 @@ export interface AssemblyChoice {
 
 /**
  * Lists every published assembly (optionally filtered to one registering wallet)
- * enriched with assemblyTemplate data — name, order count, clause set.
+ * enriched with template data — name, order count, clause set.
  *
  * Composes `usePublishedAssemblies` (event log) with a lazy per-row
- * assemblyTemplate fetch. Both `PublishedList` (designer index) and the
+ * hydrated read. Both `PublishedList` (designer index) and the
  * member-profile assembly picker consume this — keeping one fetch
  * strategy and one enriched shape means they can't drift apart.
  */
@@ -150,8 +143,8 @@ export function useAssemblyChoices(
     // wallet's chain, which is irrelevant for a read against a fixed chain
     // — and undefined on the marketing tier where no provider is mounted.
     const chainId = activeChain.id;
-    const [assemblyTemplateState, setAssemblyTemplateState] = useState<
-        Map<string, { state: AssemblyTemplateFetchState; assemblyTemplate: Anchored<AssemblyTemplate> | null }>
+    const [hydratedState, setHydratedState] = useState<
+        Map<string, { state: AssemblyTemplateFetchState; hydratedAssembly: HydratedAssembly | null }>
     >(new Map());
     /** Hashes whose fetch has already been kicked off. A ref (not state)
      *  because we want to guard against double-fetch without retriggering
@@ -167,28 +160,28 @@ export function useAssemblyChoices(
         /** Fetch one template; on a miss, re-read on `contentRetryDelayMs`'s
          *  schedule (a public gateway finds a fresh pin minutes after the
          *  anchor — the row shows its slug until then, then names itself
-         *  without a reload). `fetchAssemblyTemplate` reports a mismatched
+         *  without a reload). `fetchHydratedAssembly` reports a mismatched
          *  pin exactly like an unreachable one (absence, by its contract), so
          *  absence is re-checked the same way. */
         const read = (event: (typeof events)[number], attempt: number) => {
-            fetchAssemblyTemplate(event.contentURI, event.compositionHash).then(
-                (assemblyTemplate) => {
-                    setAssemblyTemplateState((prev) => {
+            fetchHydratedAssembly(event.contentURI, event.compositionHash).then(
+                (hydratedAssembly) => {
+                    setHydratedState((prev) => {
                         const next = new Map(prev);
                         next.set(
                             event.compositionHash,
-                            assemblyTemplate
-                                ? { state: "loaded", assemblyTemplate }
-                                : { state: "error", assemblyTemplate: null },
+                            hydratedAssembly
+                                ? { state: "loaded", hydratedAssembly }
+                                : { state: "error", hydratedAssembly: null },
                         );
                         return next;
                     });
-                    if (!assemblyTemplate) schedule(event, attempt);
+                    if (!hydratedAssembly) schedule(event, attempt);
                 },
                 () => {
-                    setAssemblyTemplateState((prev) => {
+                    setHydratedState((prev) => {
                         const next = new Map(prev);
-                        next.set(event.compositionHash, { state: "error", assemblyTemplate: null });
+                        next.set(event.compositionHash, { state: "error", hydratedAssembly: null });
                         return next;
                     });
                     schedule(event, attempt);
@@ -205,9 +198,9 @@ export function useAssemblyChoices(
         for (const event of events) {
             if (inFlightRef.current.has(event.compositionHash)) continue;
             inFlightRef.current.add(event.compositionHash);
-            setAssemblyTemplateState((prev) => {
+            setHydratedState((prev) => {
                 const next = new Map(prev);
-                next.set(event.compositionHash, { state: "loading", assemblyTemplate: null });
+                next.set(event.compositionHash, { state: "loading", hydratedAssembly: null });
                 return next;
             });
             read(event, 0);
@@ -223,7 +216,7 @@ export function useAssemblyChoices(
     }, []);
 
     // Memoize the derived array so its reference is stable across renders
-    // when none of its inputs (events, assemblyTemplateState, chainId) have changed.
+    // when none of its inputs (events, hydratedState, chainId) have changed.
     // Without this, the .map allocates a fresh array on every render, which
     // breaks every downstream useEffect that depends on `choices` — most
     // notably the OnboardingAssembliesForm's autosave effect, which would
@@ -233,9 +226,10 @@ export function useAssemblyChoices(
         if (!events) return null;
         const networkTarget = chainIdToNetworkTarget(chainId);
         return events.map((event) => {
-            const entry = assemblyTemplateState.get(event.compositionHash);
+            const entry = hydratedState.get(event.compositionHash);
             const state = entry?.state ?? "loading";
-            const assemblyTemplate = entry?.assemblyTemplate ?? null;
+            const hydratedAssembly = entry?.hydratedAssembly ?? null;
+            const template = hydratedAssembly?.template ?? null;
             return {
                 slug: event.slug,
                 registeredBy: event.registeredBy,
@@ -247,13 +241,13 @@ export function useAssemblyChoices(
                 state,
                 // The editorial name from the pinned template once it loads;
                 // the content-derived slug is the fallback (and the identity).
-                name: assemblyTemplate?.name ?? event.slug,
-                summary: assemblyTemplate?.summary ?? assemblyTemplate?.description ?? null,
-                agreementCount: assemblyTemplate ? assemblyTemplate.agreements.length : null,
-                clauses: assemblyTemplate ? collectAssemblyClauses(assemblyTemplate) : null,
-                assemblyTemplate,
+                name: template?.name ?? event.slug,
+                summary: template?.summary ?? template?.description ?? null,
+                agreementCount: template ? template.agreements.length : null,
+                clauses: hydratedAssembly ? templateComposedClauseKeys(hydratedAssembly.template, hydratedAssembly.agreements) : null,
+                hydratedAssembly,
             };
         });
-    }, [events, assemblyTemplateState, chainId]);
+    }, [events, hydratedState, chainId]);
     return { data, isLoading, failed, refetch };
 }

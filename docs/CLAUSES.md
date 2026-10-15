@@ -32,10 +32,11 @@ assert leaf == struct. `payment` has both homes — the commerce leaf and the
 struct field — and so does the denomination.
 
 Beside the clause leaves, the agreement format carries one reserved leaf: the
-**provenance leaf**, the link from a process to the assembly it instantiated.
-Its key is `keccak256("figaro-agreement-provenance")`
+**provenance leaf**, the link from an order to the registered agreement and the
+assembly it instantiated. Its key is `keccak256("figaro-agreement-provenance")`
 (`0x26dc18a2251a8f4629ada6df88b7c98553e011c08682d28ce5bb51a441227dc6`), its
-committed content is exactly `{"compositionHash":"0x<64 lowercase hex>"}`,
+committed content is exactly the canonical JSON
+`{"agreementKey":"0x<64 lowercase hex>","compositionHash":"0x<64 lowercase hex>"}`,
 and its leaf follows the section convention,
 `keccak256(keccak256(key ‖ keccak256(content)))`, the same convention as a
 clause section, whose leaf key is the clause key. The provenance key is a
@@ -43,17 +44,97 @@ constant of the format, distinct from every clause key under keccak256's
 second-preimage resistance: no spec describes the leaf, it is registered
 nowhere, and it is refused at accrual whatever a registry holds at it — the
 direct path reverts (`UsageCounter._accrue`,
-`ProvenanceLeafIsNotARegistration`), the guest refuses a batch claim keyed on
+`ReservedKeyIsNotARegistration`), the guest refuses a batch claim keyed on
 it (`apply_usage_claims` in `prover/lib/src/kernel.rs`), and the counter's
-batch path skips it (`applyBatchAccrual`). Checkout fills the agreement's `provenance` from the
-assembly's own `compositionHash`; an agreement that names no assembly carries
-no provenance leaf. The SDK owns the format (`PROVENANCE_LEAF_KEY`,
+batch path skips it (`applyBatchAccrual`). Checkout writes the leaf from the
+order slot the order instantiates — the order slot's `agreementKey` and the assembly's
+`compositionHash`; an agreement that names no assembly carries no provenance
+leaf. The SDK owns the format (`PROVENANCE_LEAF_KEY`,
 `provenanceSectionBytes`, `computeProvenanceLeaf`, `agreementLeaves`,
 `buildProvenanceInclusionProof`, `provenanceLeafAttestation` in
 `sdk/src/agreement.ts`); `UsageCounter.provenanceLeaf` and the guest's
 `PROVENANCE_LEAF_KEY` hold the same constant, and the guest verifies an
 attestation of the leaf by inclusion with the bytes reproduced, consulting no
-spec.
+spec. `decodeProvenanceContent(bytes)` returns `{ agreementKey,
+compositionHash }` or `null`.
+
+## The registered agreement and the assembly — units above the clause
+
+Three design-time objects, three registries, parallel: a clause is its spec
+(`ClauseRegistry`), a registered agreement is a composed agreement — the
+clauses composed for one order slot (`AgreementRegistry`), and an assembly is
+a sequence of order slots holding registered agreements plus the assembly-scoped terms
+(`AssemblyRegistry`). Assemblies use agreements, agreements use clauses, and
+neither knows what uses it; every arrow is off-chain, in the pinned documents.
+`AssemblyRegistry` checks nothing about an order slot's agreement, and each kind of
+designer reward is gated by its own registry alone.
+
+**The composed agreement.** The reusable unit a designer composes an assembly
+from. Its document, `ComposedAgreement`, is `{ name?, summary?, description?,
+clauses }`, where `clauses` maps each clause key to the designer's fills —
+value-free, and the topology clause composed with `{}`, because who follows
+whom belongs to the order slot; one registered agreement can therefore sit in
+any order slot of any assembly. Its key is `agreementKey = canonicalContentHash({
+clauses })` (`agreementKeyOf(doc)` in the SDK); the editorial fields are
+excluded from it. The designer pins the document and registers the key with
+`AgreementRegistry.registerAgreement(agreementKey, contentURI)` under a stake.
+The design-time `agreementKey` is never the runtime `agreementHash`: the first
+names the value-free composition, the second is the merkle root of one filled
+order.
+
+**Hydration.** A reader fetches the document from the binding's `contentURI`,
+parses it, and requires `agreementKeyOf(doc)` to equal the registered key
+(`anchorComposedAgreement(raw, agreementKey)`, as `anchorTemplate` recomputes
+an assembly's root). The check is on the key, not the raw bytes, because the
+editorial fields sit outside the key. A failed fetch, a failed parse or a
+mismatch is absence: the order slot, and so the assembly, is not offered, and
+nothing falls back to a bundled or inline copy. Bindings are never cleared,
+so a withdrawn stake leaves the agreement hydratable — an assembly composed
+from it keeps working — while the drawer offers only live agreements for a new
+composition, and the agreement earns only while its stake is live.
+
+**The assembly.** The template document is `{ name?, summary?, description?,
+faq?, assemblyClauses?, agreements: [{ id: "order-<i>", agreementKey,
+clauses }] }`. Each entry of `agreements` is an order slot (`TemplateSlot`):
+a position that holds one registered agreement and the fills that belong to
+the position — the topology clause's `{ "parentOrderHashes": ["order-<j>",
+…] }`, naming the order slots it follows. The topology stays a clause: at design
+time in the assembly's order slot, at runtime in the signed agreement. The
+assembly's key, `compositionHash`, is the merkle root built with the section
+convention above over one leaf per order slot `i` (0-based, template order) — key
+the order slot's `agreementKey`, content the canonical JSON `{"clauses":{…},"slot":i}`
+(object keys sorted, arrays in template order) — and, when any
+assembly-scoped clauses are composed, one assembly terms leaf, key
+`ASSEMBLY_TERMS_LEAF_KEY = keccak256("figaro-assembly-terms")`, content the
+canonical JSON of `assemblyClauses`. A one-leaf tree's root is its leaf.
+Order slots are ordered, so one registered agreement may hold two. The
+editorial fields are excluded from the root. Membership of an agreement in an
+assembly is a membership proof: the sorted-pair proof of its order slot leaf under
+`compositionHash` (`buildSlotInclusionProof(template, i)`, with
+`slotSectionBytes(slot, i)` giving the content and `slotContentHash` its
+hash). The SDK owns the format (`templateCompositionHash`, `TemplateSlot`,
+`ASSEMBLY_TERMS_LEAF_KEY` in `sdk/src/assembly.ts`).
+
+**Two reserved keys.** `PROVENANCE_LEAF_KEY` and `ASSEMBLY_TERMS_LEAF_KEY` are
+constants of the format, never a registration and never an `agreementKey`:
+`AgreementRegistry.registerAgreement` refuses either
+(`ReservedKeyIsNotARegistration`), the counter refuses both at accrual on
+every kind and skips both on the batch path, `recordAssemblyUsage` refuses an
+`agreementKey` equal to either, and the guest and the relay refuse both the
+same way.
+
+**The fold — at composition only.** When a designer composes a new agreement,
+every mandatory spec the live-stake source lists folds into it, so a
+registered agreement carries the mandatory clauses when it is registered.
+Composing an assembly refuses an order slot whose registered agreement lacks a
+live mandatory spec at its scope; the designer composes a new agreement for
+that order slot instead. Checkout fills values and writes the topology; it never
+adds or drops a clause. Each order's agreement is the order slot's hydrated
+registered agreement with the order slot's own fills merged over it (the order slot's fill
+wins for the keys it names) and the assembly-scoped clauses beside it; the
+values are filled, the topology labels are mapped to order hashes, the
+provenance leaf is written from the order slot, and the merkle root of the result is
+the order's `agreementHash`.
 
 ## The SDK's validation
 
@@ -213,8 +294,8 @@ section a clause reads under. Classification reads the article, never the
 field shape:
 
 - **`mandatory`** — committed content on every order (`figaro-commerce`,
-  `figaro-topology`, both at agreement scope), never a designer choice; the
-  assembly build folds mandatory clauses in generically. No mandatory clause
+  `figaro-topology`, both at agreement scope), never a designer choice; they
+  fold in generically (§ "The registered agreement and the assembly"). No mandatory clause
   is at assembly scope.
 - **`attestations`** — runtime transfer ladders the responsible party advances
   (`figaro-merchant-process`, `figaro-courier-process`; a supply chain runs the
@@ -244,9 +325,11 @@ Two structural notes that no single spec can carry:
   runtime as evidence that one seller performed after another. Indexers and
   interfaces read a process's topology from the signed agreement, never from
   `FigaroCore`, which stores no parent or child.
-- A process credits its assembly's designer through the agreement format's
-  provenance leaf (§ "Every clause is a merkle leaf"), never through a clause:
-  `UsageCounter.recordAssemblyUsage` proves that one leaf. The leaf earns
+- A process credits its registered agreement's and its assembly's designers
+  through the agreement format's provenance leaf (§ "Every clause is a merkle
+  leaf"), never through a clause: `UsageCounter.recordAgreementUsage` proves
+  that one leaf, and `recordAssemblyUsage` proves it and the agreement's
+  membership proof under `compositionHash`. The leaf earns
   nothing itself: it is refused at accrual by comparison with the constant,
   whatever a registry holds at that key (above).
 

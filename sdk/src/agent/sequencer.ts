@@ -99,24 +99,34 @@ export interface SequencerCommitment {
 }
 
 /**
- * A claim that one RESOLVED BATCH order used one clause or assembly — the wire form of the
- * Rust guest's `UsageClaim`. Build these with `buildUsageClaims` (rpgf), which
- * proves each clause from its section and the assembly from the agreement's
- * provenance leaf; never hand-roll one.
+ * A claim that one RESOLVED BATCH order used one clause, registered agreement
+ * or assembly — the wire form of the Rust guest's `UsageClaim`. Build these
+ * with `buildUsageClaims` (rpgf), which proves each clause from its section,
+ * the agreement from the agreement's provenance leaf, and the assembly from
+ * the same leaf plus the order slot's membership proof; never hand-roll one.
  *
  * Nothing here is trusted. The guest re-proves that the order resolved and that
  * the clause or assembly was in the signed agreement; the counter then applies the
  * reward's own gates on chain. A claim is a REQUEST to be counted, never an
  * assertion that counts.
  */
+export type SequencerUsageClaimKind =
+    | { Clause: { section_hash: Hex } }
+    | { Agreement: { composition_hash: Hex } }
+    | { Assembly: { agreement_key: Hex; slot_content_hash: Hex; membership_proof: Hex[] } };
+
 export interface SequencerUsageClaim {
     order: SequencerCommitment;
-    /** Clause key or assembly compositionHash. Field name mirrors the Rust
+    /** Clause key (kind `Clause`), agreement key (kind `Agreement`) or
+     *  assembly compositionHash (kind `Assembly`). Field name mirrors the Rust
      *  guest's `UsageClaim.clause_or_assembly` (prover/lib/src/types.rs) — a
      *  wire-protocol identity; any change must land in lockstep with the Rust side. */
     clause_or_assembly: Hex;
-    /** serde's externally-tagged encoding of the Rust `UsageClaimKind`. */
-    kind: { Clause: { section_hash: Hex } } | "Assembly";
+    /** serde's externally-tagged encoding of the Rust `UsageClaimKind`;
+     *  codes 0 / 2 / 1 (`usageClaimKindCode`). */
+    kind: SequencerUsageClaimKind;
+    /** Sorted-pair proof against the order's `agreement_hash`: of the section
+     *  leaf (Clause) or of the provenance leaf (Agreement, Assembly). */
     inclusion_proof: Hex[];
 }
 

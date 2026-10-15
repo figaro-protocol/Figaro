@@ -84,8 +84,9 @@ export interface OverlayGraph {
     spec: ProjectionSpecView | null;
     /** True when the key is the agreement format's reserved provenance leaf
      *  (`PROVENANCE_LEAF_KEY`) — compared to the format constant, never to a
-     *  clause name. Its entries decode to `{ compositionHash }`, the
-     *  registered assembly the attested process instantiated, with no spec. */
+     *  clause name. Its entries decode to `{ agreementKey, compositionHash }`,
+     *  the registered agreement and assembly the attested order
+     *  instantiated, with no spec. */
     provenanceLeaf: boolean;
     /** Entries in block order. */
     entries: OverlayEntry[];
@@ -125,8 +126,8 @@ export function extractOverlays(
         if (graph.provenanceLeaf && content !== null) {
             // The format's own leaf: its bytes are reproducible from the hash
             // they name, so they decode without a spec or not at all.
-            const compositionHash = decodeProvenanceContent(content);
-            decoded = compositionHash ? { compositionHash } : null;
+            const provenance = decodeProvenanceContent(content);
+            decoded = provenance ? { ...provenance } : null;
         } else if (graph.spec && content !== null) {
             try {
                 decoded = decodeContentFromSpec(graph.spec, content, { stage: event.stage });

@@ -22,7 +22,9 @@ import { dirname, resolve } from "node:path";
 import {
     FigaroContext, originateProcess, makeSellerOfferHandler, InProcessChannel,
 } from "@figaro-protocol/sdk/agent";
-import { computeDeadline, readChainTimestamp, parseProjectionHints } from "@figaro-protocol/sdk";
+import {
+    anchorTemplate, computeDeadline, hydrateAssembly, parseProjectionHints, readChainTimestamp, slotClauses,
+} from "@figaro-protocol/sdk";
 import { parseClauseSpec } from "@figaro-protocol/sdk/clauses";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -35,6 +37,7 @@ const GATEWAY = "http://127.0.0.1:8080/ipfs/";
 const addresses = {
     core: env.NEXT_PUBLIC_FIGARO_CORE, clauseRegistry: env.NEXT_PUBLIC_CLAUSE_REGISTRY,
     membersRegistry: env.NEXT_PUBLIC_MEMBERS_REGISTRY, assemblyRegistry: env.NEXT_PUBLIC_ASSEMBLY_REGISTRY,
+    agreementRegistry: env.NEXT_PUBLIC_AGREEMENT_REGISTRY,
 };
 const TOKEN = env.NEXT_PUBLIC_TOKEN_ADDRESS;
 const BUYER = privateKeyToAccount("0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"); // anvil[0]
@@ -67,24 +70,36 @@ for (const c of ctx.getClauses()) {
     const raw = await tryHydrate(c.contentURI);
     if (!raw) continue;
     const parsed = parseClauseSpec(raw);
-    if (parsed.ok) specViews.push({ ...parsed.spec, hints: parseProjectionHints(raw) });
+    if (parsed.ok) specViews.push({ ...parsed.spec, clauseKey: c.clauseKey, hints: parseProjectionHints(raw) });
 }
 const specs = {
-    get: (clauseId, version) => specViews.find((v) => v.clauseId === clauseId && (version === undefined || v.version === version)),
+    get: (clauseKey) => specViews.find((v) => v.clauseKey.toLowerCase() === clauseKey.toLowerCase()),
     list: () => specViews,
 };
 
+// An assembly is offered only when its template hashes to its composition
+// hash and every order slot's registered agreement hydrates and verifies
+// against its key — read from the binding whatever its stake.
+const hydrate = async (a) => {
+    const t = anchorTemplate(await tryHydrate(a.contentURI), a.compositionHash);
+    if (!t) return null;
+    return hydrateAssembly(t, async (key) => {
+        const binding = ctx.getAgreementBinding(key);
+        return binding ? tryHydrate(binding.contentURI) : null;
+    });
+};
+
 // Pick a single-order assembly by hydrating templates — no hardcoded id; skip un-hydratable ones.
-let chosen = null, template = null;
+let chosen = null, assembly = null;
 for (const a of ctx.getAssemblies()) {
-    const t = await tryHydrate(a.contentURI);
-    if (t && Array.isArray(t.agreements) && t.agreements.length === 1) { chosen = a; template = t; break; }
+    const h = await hydrate(a);
+    if (h && h.template.agreements.length === 1) { chosen = a; assembly = h; break; }
 }
 check("discovered a single-order seed assembly", !!chosen);
 if (!chosen) process.exit(1);
 
 // Commerce clause by declared field (lineItems) — open-world, no clause name.
-const commerceClauseId = Object.keys(template.agreements[0].clauses)
+const commerceClauseId = Object.keys(slotClauses(assembly, assembly.template.agreements[0]))
     .find((cid) => (specs.get(cid)?.fields ?? []).some((f) => f.name === "lineItems")) ?? null;
 check("located the commerce clause by its declared field", !!commerceClauseId);
 
@@ -98,7 +113,7 @@ channel.register(SELLER.address, makeSellerOfferHandler(sellerW, pub, addresses,
 
 // ── Buyer LOOP: originate against the discovered assembly + seller ────────────
 const result = await originateProcess(buyerW, pub, addresses, {
-    channel, template, seller: SELLER.address, currency: TOKEN, payment: PAYMENT, chainId, core: addresses.core, deadline,
+    channel, assembly, seller: SELLER.address, currency: TOKEN, payment: PAYMENT, chainId, core: addresses.core, deadline,
     specs, // the merkle-leaf seam before the buyer signs
     overrides: { [commerceClauseId]: { currency: TOKEN, payment: PAYMENT.toString(), lineItems: [{ itemId: "sku-1", name: "Autonomous order", quantity: 1, unitPrice: PAYMENT.toString() }] } },
 });

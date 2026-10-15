@@ -121,9 +121,22 @@ echo "📝 Running forge script (deployment block $DEPLOYMENT_BLOCK)..."
 # deploy-local.sh's identical rationale (nonce-tracking race under
 # pipelined broadcast). --verify: always on for mainnet, using the
 # foundry.toml [etherscan] "mainnet" entry.
+# The output is printed whether forge succeeds or fails: under `set -e` a
+# failing forge would otherwise exit this script with its output unseen.
+# FORGE_GAS_MULTIPLIER (percent) widens forge's gas limits: forge sizes each
+# transaction from its own local simulation, and a live chain whose fork
+# charges more for the same creation runs the transaction out of gas at
+# forge's default 130 — a failed creation that still costs its gas.
+# FORGE_SKIP_SIMULATION=1 goes further: forge skips its own simulation and
+# takes the node's eth_estimateGas for every transaction, so a chain whose
+# rules forge's EVM does not model (Sepolia under Glamsterdam charges about
+# seven times forge's figure for a creation) sizes its own transactions;
+# pair it with a small multiplier so the largest creation stays under the
+# per-transaction gas cap.
 FORGE_OUT=$(forge script script/DeployMainnet.s.sol:DeployMainnet \
     --rpc-url "$RPC_URL" \
-    --broadcast --slow --via-ir --verify 2>&1)
+    --broadcast --slow --via-ir --verify \
+    ${FORGE_GAS_MULTIPLIER:+--gas-estimate-multiplier "$FORGE_GAS_MULTIPLIER"} ${FORGE_SKIP_SIMULATION:+--skip-simulation} 2>&1) || { echo "$FORGE_OUT"; echo "❌ forge script failed — see its output above"; exit 1; }
 echo "$FORGE_OUT"
 
 # ── Parse addresses from the script's NEXT_PUBLIC_* summary block ──────────
@@ -131,6 +144,7 @@ CORE_ADDR=$(echo "$FORGE_OUT"            | grep 'NEXT_PUBLIC_FIGARO_CORE='      
 ATTESTATION_ADDR=$(echo "$FORGE_OUT"     | grep 'NEXT_PUBLIC_ATTESTATION_COORDINATOR=' | grep -oE '0x[0-9a-fA-F]+')
 CLAUSE_ADDR=$(echo "$FORGE_OUT"          | grep 'NEXT_PUBLIC_CLAUSE_REGISTRY='         | grep -oE '0x[0-9a-fA-F]+')
 ASSEMBLY_ADDR=$(echo "$FORGE_OUT"        | grep 'NEXT_PUBLIC_ASSEMBLY_REGISTRY='       | grep -oE '0x[0-9a-fA-F]+')
+AGREEMENT_ADDR=$(echo "$FORGE_OUT"       | grep 'NEXT_PUBLIC_AGREEMENT_REGISTRY='      | grep -oE '0x[0-9a-fA-F]+')
 MEMBERS_ADDR=$(echo "$FORGE_OUT"         | grep 'NEXT_PUBLIC_MEMBERS_REGISTRY='        | grep -oE '0x[0-9a-fA-F]+')
 FLORIN_TOKEN_ADDR=$(echo "$FORGE_OUT"    | grep 'NEXT_PUBLIC_FLORIN_TOKEN_ADDRESS='    | grep -oE '0x[0-9a-fA-F]+')
 USAGE_COUNTER_ADDR=$(echo "$FORGE_OUT"   | grep 'NEXT_PUBLIC_USAGE_COUNTER='           | grep -oE '0x[0-9a-fA-F]+')
@@ -176,6 +190,7 @@ expect_eq "usageCounter.core()"            "$(read_call "$USAGE_COUNTER_ADDR" 'c
 expect_eq "usageCounter.members()"         "$(read_call "$USAGE_COUNTER_ADDR" 'members()(address)')"         "$MEMBERS_ADDR"
 expect_eq "usageCounter.clauses()"         "$(read_call "$USAGE_COUNTER_ADDR" 'clauses()(address)')"         "$CLAUSE_ADDR"
 expect_eq "usageCounter.assemblies()"      "$(read_call "$USAGE_COUNTER_ADDR" 'assemblies()(address)')"      "$ASSEMBLY_ADDR"
+expect_eq "usageCounter.agreements()"      "$(read_call "$USAGE_COUNTER_ADDR" 'agreements()(address)')"      "$AGREEMENT_ADDR"
 expect_eq "attestation.core()"             "$(read_call "$ATTESTATION_ADDR" 'core()(address)')"              "$CORE_ADDR"
 expect_eq "swapCoordinator.figaroCore()"   "$(read_call "$SWAP_COORD_ADDR" 'figaroCore()(address)')"         "$CORE_ADDR"
 expect_eq "swapCoordinator.permit2()"      "$(read_call "$SWAP_COORD_ADDR" 'permit2()(address)')"            "$PERMIT2"
@@ -184,6 +199,7 @@ expect_eq "rpgfMinter.florin()"            "$(read_call "$RPGF_MINTER_ADDR" 'flo
 expect_eq "rpgfMinter.counter()"           "$(read_call "$RPGF_MINTER_ADDR" 'counter()(address)')"           "$USAGE_COUNTER_ADDR"
 expect_eq "rpgfMinter.clauses()"           "$(read_call "$RPGF_MINTER_ADDR" 'clauses()(address)')"           "$CLAUSE_ADDR"
 expect_eq "rpgfMinter.assemblies()"        "$(read_call "$RPGF_MINTER_ADDR" 'assemblies()(address)')"        "$ASSEMBLY_ADDR"
+expect_eq "rpgfMinter.agreements()"        "$(read_call "$RPGF_MINTER_ADDR" 'agreements()(address)')"        "$AGREEMENT_ADDR"
 expect_eq "florin.deployerMintRenounced()" "$(read_call "$FLORIN_TOKEN_ADDR" 'deployerMintRenounced()(bool)')" "true"
 expect_eq "florin.balanceOf(founder)"      "$(read_call "$FLORIN_TOKEN_ADDR" 'balanceOf(address)(uint256)' "$FOUNDER_WALLET" | awk '{print $1}')"    "70000000000000000000000000"
 expect_eq "florin.balanceOf(supporters)"   "$(read_call "$FLORIN_TOKEN_ADDR" 'balanceOf(address)(uint256)' "$SUPPORTERS_WALLET" | awk '{print $1}')" "30000000000000000000000000"
@@ -194,7 +210,7 @@ if [ "$WIRING_FAIL" != "0" ]; then
   echo "❌ The deployed wiring does not match what this script was given. The"
   echo "   broadcast above has happened; these are the addresses it produced:"
   echo "   core=$CORE_ADDR attestation=$ATTESTATION_ADDR clauses=$CLAUSE_ADDR"
-  echo "   assemblies=$ASSEMBLY_ADDR members=$MEMBERS_ADDR florin=$FLORIN_TOKEN_ADDR"
+  echo "   assemblies=$ASSEMBLY_ADDR agreements=$AGREEMENT_ADDR members=$MEMBERS_ADDR florin=$FLORIN_TOKEN_ADDR"
   echo "   usageCounter=$USAGE_COUNTER_ADDR rpgfMinter=$RPGF_MINTER_ADDR"
   echo "   batchVerifier=$BATCH_VERIFIER_ADDR swapCoordinator=$SWAP_COORD_ADDR"
   echo "   No record is written; a stack with a wrong immutable is redeployed, never recorded."
@@ -218,6 +234,7 @@ cat > "$DEPLOY_DIR/${ACTUAL_CHAIN_ID}.json" <<EOF
   "clauseRegistry": "$CLAUSE_ADDR",
   "membersRegistry": "$MEMBERS_ADDR",
   "assemblyRegistry": "$ASSEMBLY_ADDR",
+  "agreementRegistry": "$AGREEMENT_ADDR",
   "florinToken": "$FLORIN_TOKEN_ADDR",
   "usageCounter": "$USAGE_COUNTER_ADDR",
   "rpgfMinter": "$RPGF_MINTER_ADDR",
@@ -239,6 +256,7 @@ echo "   AttestationCoordinator  = $ATTESTATION_ADDR"
 echo "   ClauseRegistry          = $CLAUSE_ADDR"
 echo "   MembersRegistry         = $MEMBERS_ADDR"
 echo "   AssemblyRegistry        = $ASSEMBLY_ADDR"
+echo "   AgreementRegistry       = $AGREEMENT_ADDR"
 echo "   FlorinToken             = $FLORIN_TOKEN_ADDR"
 echo "   UsageCounter            = $USAGE_COUNTER_ADDR"
 echo "   RpgfMinter              = $RPGF_MINTER_ADDR"

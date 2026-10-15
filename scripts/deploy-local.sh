@@ -64,7 +64,7 @@ echo "📝 Running forge script..."
 # hanging the whole deploy. Slightly slower; far more reliable.
 FORGE_OUT=$(forge script script/Deploy.s.sol:Deploy \
     --rpc-url "$RPC_URL" \
-    --broadcast --slow --via-ir $VERIFY_FLAG 2>&1)
+    --broadcast --slow --via-ir $VERIFY_FLAG 2>&1) || { echo "$FORGE_OUT"; echo "❌ forge script failed — see its output above"; exit 1; }
 echo "$FORGE_OUT"
 
 # ── Parse addresses from console.log output (macOS-safe: no grep -P) ────────────
@@ -78,6 +78,7 @@ SWAP_ROUTER_ADDR=$(echo "$FORGE_OUT" | grep 'MockSwapVenue deployed at:'     | g
 CLAUSE_ADDR=$(echo "$FORGE_OUT"      | grep 'ClauseRegistry deployed at:'         | grep -oE '0x[0-9a-fA-F]+')
 MEMBERS_ADDR=$(echo "$FORGE_OUT"    | grep 'MembersRegistry deployed at:'      | grep -oE '0x[0-9a-fA-F]+')
 ASSEMBLY_ADDR=$(echo "$FORGE_OUT"    | grep 'AssemblyRegistry deployed at:'       | grep -oE '0x[0-9a-fA-F]+')
+AGREEMENT_ADDR=$(echo "$FORGE_OUT"   | grep 'AgreementRegistry deployed at:'      | grep -oE '0x[0-9a-fA-F]+')
 FLORIN_TOKEN_ADDR=$(echo "$FORGE_OUT"   | grep 'FlorinToken deployed at:'               | grep -oE '0x[0-9a-fA-F]+')
 RPGF_MINTER_ADDR=$(echo "$FORGE_OUT" | grep 'RpgfMinter deployed at:'             | grep -oE '0x[0-9a-fA-F]+')
 USAGE_COUNTER_ADDR=$(echo "$FORGE_OUT" | grep 'UsageCounter deployed at:'           | grep -oE '0x[0-9a-fA-F]+')
@@ -154,6 +155,7 @@ update_env "$CORE_ENV" "NEXT_PUBLIC_SWAP_ROUTER"                "$SWAP_ROUTER_AD
 update_env "$CORE_ENV" "NEXT_PUBLIC_CLAUSE_REGISTRY"           "$CLAUSE_ADDR"
 update_env "$CORE_ENV" "NEXT_PUBLIC_MEMBERS_REGISTRY"         "$MEMBERS_ADDR"
 update_env "$CORE_ENV" "NEXT_PUBLIC_ASSEMBLY_REGISTRY"         "$ASSEMBLY_ADDR"
+update_env "$CORE_ENV" "NEXT_PUBLIC_AGREEMENT_REGISTRY"        "$AGREEMENT_ADDR"
 update_env "$CORE_ENV" "NEXT_PUBLIC_FLORIN_TOKEN_ADDRESS"         "$FLORIN_TOKEN_ADDR"
 update_env "$CORE_ENV" "NEXT_PUBLIC_USAGE_COUNTER"             "$USAGE_COUNTER_ADDR"
 update_env "$CORE_ENV" "NEXT_PUBLIC_RPGF_MINTER"               "$RPGF_MINTER_ADDR"
@@ -192,6 +194,7 @@ cat > "$CORE_DEPLOYMENT" <<EOF
   "clauseRegistry": "$CLAUSE_ADDR",
   "membersRegistry": "$MEMBERS_ADDR",
   "assemblyRegistry": "$ASSEMBLY_ADDR",
+  "agreementRegistry": "$AGREEMENT_ADDR",
   "florinToken": "$FLORIN_TOKEN_ADDR",
   "usageCounter": "$USAGE_COUNTER_ADDR",
   "rpgfMinter": "$RPGF_MINTER_ADDR",
@@ -233,6 +236,7 @@ echo "   NEXT_PUBLIC_SWAP_ROUTER=$SWAP_ROUTER_ADDR"
 echo "   NEXT_PUBLIC_CLAUSE_REGISTRY=$CLAUSE_ADDR"
 echo "   NEXT_PUBLIC_MEMBERS_REGISTRY=$MEMBERS_ADDR"
 echo "   NEXT_PUBLIC_ASSEMBLY_REGISTRY=$ASSEMBLY_ADDR"
+echo "   NEXT_PUBLIC_AGREEMENT_REGISTRY=$AGREEMENT_ADDR"
 echo "   NEXT_PUBLIC_FLORIN_TOKEN_ADDRESS=$FLORIN_TOKEN_ADDR"
 echo "   NEXT_PUBLIC_USAGE_COUNTER=$USAGE_COUNTER_ADDR"
 echo "   NEXT_PUBLIC_RPGF_MINTER=$RPGF_MINTER_ADDR"

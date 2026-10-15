@@ -15,8 +15,13 @@
  * At checkout every assembly-scoped section folds into EVERY agreement, so
  * every party signs it — stated in the panel copy for the designer.
  *
+ * Read-only surfaces (the review and `/view`) also pass the composition: its
+ * root and, per order slot, the registered agreement it binds — rendered
+ * above the terms, since the root is the hash over both.
+ *
  * Testids: `assembly-terms-panel`, `assembly-terms-clause-<clauseKey>`,
- * `assembly-terms-field-<clauseKey>-<field>`.
+ * `assembly-terms-field-<clauseKey>-<field>`, `assembly-composition`,
+ * `assembly-composition-root`, `assembly-composition-slot-<index>`.
  */
 
 import { useMemo } from "react";
@@ -31,18 +36,52 @@ import {
     listKnownClauses,
 } from "@/lib/shared/clauseSpecSource";
 import { FieldControl } from "@/components/runtime/FieldControl";
+import { truncateHex } from "@/lib/shared/formatHex";
+
+/** The composition root and each order slot's agreement key. */
+function CompositionSlots({ composition }: { composition: { compositionHash: `0x${string}`; agreementKeys: readonly `0x${string}`[] } }) {
+    return (
+        <section data-testid="assembly-composition" className="border border-default rounded bg-paper p-3 space-y-2">
+            <p className="text-xs font-semibold text-ink-body">Composition</p>
+            <p className="text-xs text-ink-muted leading-relaxed">
+                The root is the AssemblyRegistry key: the merkle root over the order slots, each
+                binding one registered agreement by its AgreementRegistry key, and the assembly terms.
+            </p>
+            <p className="font-mono text-[10px] text-ink-body break-all" data-testid="assembly-composition-root" title={composition.compositionHash}>
+                {composition.compositionHash}
+            </p>
+            <ul className="space-y-0.5">
+                {composition.agreementKeys.map((agreementKey, index) => (
+                    <li
+                        key={`${index}-${agreementKey}`}
+                        className="text-[11px] text-ink-body"
+                        data-testid={`assembly-composition-slot-${index}`}
+                        data-agreement-key={agreementKey}
+                    >
+                        Order {index + 1}:{" "}
+                        <span className="font-mono" title={agreementKey}>{truncateHex(agreementKey, { head: 10, tail: 6 })}</span>
+                    </li>
+                ))}
+            </ul>
+        </section>
+    );
+}
 
 export function AssemblyTermsPanel({
     values,
     onToggleClause,
     onSetClauseField,
     readOnly = false,
+    composition,
 }: {
     /** clause key → composed values (design.fills only; `{}` = selected). */
     values: Record<string, Record<string, unknown>>;
     onToggleClause: (clauseKey: string, next: boolean) => void;
     onSetClauseField: (clauseKey: string, field: string, value: unknown) => void;
     readOnly?: boolean;
+    /** The composition root and each order slot's agreement key, in
+     *  template order — shown by the read-only surfaces. */
+    composition?: { compositionHash: `0x${string}`; agreementKeys: readonly `0x${string}`[] };
 }) {
     const { data: registered } = useAllRegisteredClauses();
     const { version: specsVersion } = useClauseSpecs();
@@ -65,9 +104,12 @@ export function AssemblyTermsPanel({
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [registered, specsVersion]);
 
-    if (assemblyClauses.length === 0) return null;
+    const slots = composition ? <CompositionSlots composition={composition} /> : null;
+    if (assemblyClauses.length === 0) return slots;
 
     return (
+        <>
+        {slots}
         <section data-testid="assembly-terms-panel" className="border border-default rounded bg-paper p-3 space-y-2">
             <p className="text-xs font-semibold text-ink-body">Assembly terms</p>
             <p className="text-xs text-ink-muted leading-relaxed">
@@ -113,5 +155,6 @@ export function AssemblyTermsPanel({
                 );
             })}
         </section>
+        </>
     );
 }

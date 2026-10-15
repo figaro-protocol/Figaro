@@ -14,12 +14,12 @@
  *   - Persisting the new draft to localStorage.
  *
  * What the helper does NOT own (caller's responsibility):
- *   - Fetching the assemblyTemplate (callers may already have it — e.g. the
- *     view page already loaded the assemblyTemplate to render the canvas).
+ *   - Reading the hydrated assembly (callers already have it — e.g. the
+ *     view page already read it to render the canvas).
  *   - Loading-state UI (the two callers shape their `forking` state
  *     differently — slug-keyed vs boolean).
  *   - Router navigation (router lives in component scope).
- *   - Error handling around the assemblyTemplate fetch.
+ *   - Error handling around the hydrated read.
  *
  * Returns the final slug (caller navigates to
  * `/assemblies/designer/edit?slug=${finalSlug}`).
@@ -30,14 +30,14 @@ import {
     uniqueDraftSlug,
 } from "./syntheticDesignStore";
 import { assemblyTemplateToDraft } from "./assemblyTemplateToDraft";
-import type { AssemblyTemplate } from "@/lib/shared/assemblyTemplate";
+import type { HydratedAssembly } from "@figaro-protocol/sdk";
 
 export function forkPublishedAssembly(
     sourceSlug: string,
-    template: AssemblyTemplate,
+    hydrated: HydratedAssembly,
 ): { finalSlug: string } {
     const finalSlug = uniqueDraftSlug(`${sourceSlug}-fork`);
-    const draft = assemblyTemplateToDraft(template, { slug: finalSlug });
+    const draft = assemblyTemplateToDraft(hydrated, { slug: finalSlug });
     saveNamedDraft(draft);
     return { finalSlug };
 }

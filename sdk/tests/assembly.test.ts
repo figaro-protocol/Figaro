@@ -1,29 +1,184 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
-import { resolveAuthoredClauseKeys, templateComposedClauseKeys, templateCompositionHash } from "../src/assembly.js";
+import { keccak256, toHex, type Hex } from "viem";
+import {
+    ASSEMBLY_TERMS_LEAF_KEY,
+    agreementKeyOf,
+    assertNotReservedKey,
+    buildSlotInclusionProof,
+    resolveAuthoredClauseKeys,
+    slotClauses,
+    slotSectionBytes,
+    templateComposedClauseKeys,
+    templateCompositionHash,
+    templateLeaves,
+    templateParentOrderHashes,
+} from "../src/assembly.js";
 import type { AssemblyTemplate } from "../src/assembly.js";
+import { PROVENANCE_LEAF_KEY, canonicalize, computeSectionLeaf, verifyInclusionProof } from "../src/agreement.js";
+import { slotsFromAuthoredAgreements } from "../src/projection.js";
+import { hydrateAuthored } from "./hydrate.js";
 import { keyOf, rawSpecOf, specSourceOf, viewOf } from "./specFixtures.js";
 
 describe("templateComposedClauseKeys", () => {
-    it("unions the assembly-scoped sections with every agreement's clauses, sorted and de-duplicated", () => {
-        const template: AssemblyTemplate = {
+    it("unions the assembly-scoped sections with every order slot's clauses, sorted and de-duplicated", () => {
+        const { template, agreements } = hydrateAuthored({
             assemblyClauses: { [keyOf("figaro-applicable-law")]: {} },
             agreements: [
                 { id: "order-0", clauses: { [keyOf("figaro-topology")]: {}, [keyOf("figaro-commerce")]: {} } },
                 { id: "order-1", clauses: { [keyOf("figaro-commerce")]: {}, [keyOf("figaro-handoff")]: {} } },
             ],
-        };
-        expect(templateComposedClauseKeys(template)).toEqual(
+        });
+        expect(templateComposedClauseKeys(template, agreements)).toEqual(
             ["figaro-applicable-law", "figaro-commerce", "figaro-handoff", "figaro-topology"].map(keyOf).sort(),
         );
     });
 
-    it("tolerates a template without assembly-scoped sections", () => {
-        const template: AssemblyTemplate = {
+    it("tolerates a template without assembly-scoped sections, and refuses an order slot it cannot read", () => {
+        const { template, agreements } = hydrateAuthored({
             agreements: [{ id: "order-0", clauses: { [keyOf("figaro-commerce")]: {} } }],
+        });
+        expect(templateComposedClauseKeys(template, agreements)).toEqual([keyOf("figaro-commerce")]);
+        expect(() => templateComposedClauseKeys(template, {})).toThrow(/not hydrated/);
+    });
+});
+
+describe("the registered agreement key", () => {
+    const composed = { clauses: { [keyOf("figaro-commerce")]: {}, [keyOf("figaro-topology")]: {} } };
+
+    it("is the canonical hash of the { clauses } subset, editorial prose excluded", () => {
+        expect(agreementKeyOf(composed)).toBe(keccak256(toHex(canonicalize({ clauses: composed.clauses }))));
+        expect(agreementKeyOf({ ...composed, name: "A", summary: "B", description: "C" })).toBe(agreementKeyOf(composed));
+    });
+
+    it("moves with any clause or value", () => {
+        expect(agreementKeyOf({ clauses: { ...composed.clauses, [keyOf("figaro-handoff")]: {} } })).not.toBe(agreementKeyOf(composed));
+        expect(agreementKeyOf({ clauses: { ...composed.clauses, [keyOf("figaro-commerce")]: { x: 1 } } })).not.toBe(agreementKeyOf(composed));
+    });
+});
+
+describe("the composition tree", () => {
+    const A = `0x${"aa".repeat(32)}` as Hex;
+    const B = `0x${"bb".repeat(32)}` as Hex;
+    const TOPO = keyOf("figaro-topology");
+
+    it("an order slot's bytes are canonical {clauses, slot}", () => {
+        const bytes = slotSectionBytes({ clauses: { [TOPO]: { parentOrderHashes: ["order-0"] } } }, 1);
+        expect(Buffer.from(bytes.slice(2), "hex").toString("utf8"))
+            .toBe(`{"clauses":{"${TOPO}":{"parentOrderHashes":["order-0"]}},"slot":1}`);
+        expect(() => slotSectionBytes({ clauses: {} }, -1)).toThrow(/non-negative/);
+    });
+
+    it("a one-slot assembly's root is its order slot's leaf; terms add a leaf", () => {
+        const one: AssemblyTemplate = { agreements: [{ id: "order-0", agreementKey: A, clauses: {} }] };
+        const { leaf, proof, slotContentHash } = buildSlotInclusionProof(one, 0);
+        expect(proof).toEqual([]);
+        expect(templateCompositionHash(one)).toBe(leaf);
+        expect(slotContentHash).toBe(keccak256(slotSectionBytes({ clauses: {} }, 0)));
+        expect(leaf).toBe(computeSectionLeaf({ clause: A, dataHash: slotContentHash }));
+        const termed = { ...one, assemblyClauses: { [keyOf("figaro-applicable-law")]: { law: "x" } } };
+        expect(templateLeaves(termed)).toHaveLength(2);
+        expect(templateLeaves(termed)).toContain(
+            computeSectionLeaf({ clause: ASSEMBLY_TERMS_LEAF_KEY, data: termed.assemblyClauses }),
+        );
+        expect(templateCompositionHash(termed)).not.toBe(templateCompositionHash(one));
+        // Empty terms are no leaf.
+        expect(templateCompositionHash({ ...one, assemblyClauses: {} })).toBe(templateCompositionHash(one));
+    });
+
+    it("the same agreement in two order slots is two leaves; editorial prose never moves the root", () => {
+        const two: AssemblyTemplate = {
+            agreements: [
+                { id: "order-0", agreementKey: A, clauses: { [TOPO]: { parentOrderHashes: [] } } },
+                { id: "order-1", agreementKey: A, clauses: { [TOPO]: { parentOrderHashes: ["order-0"] } } },
+            ],
         };
-        expect(templateComposedClauseKeys(template)).toEqual([keyOf("figaro-commerce")]);
+        expect(new Set(templateLeaves(two)).size).toBe(2);
+        expect(templateCompositionHash({ ...two, name: "x", faq: [{ question: "q", answer: "a" }] })).toBe(templateCompositionHash(two));
+        for (const i of [0, 1]) {
+            const { leaf, proof } = buildSlotInclusionProof(two, i);
+            expect(verifyInclusionProof(templateCompositionHash(two), leaf, proof)).toBe(true);
+        }
+        expect(() => buildSlotInclusionProof(two, 2)).toThrow(/not in the template/);
+    });
+
+    it("a membership proof under a different root does not verify", () => {
+        const t1: AssemblyTemplate = { agreements: [{ id: "order-0", agreementKey: A, clauses: {} }, { id: "order-1", agreementKey: B, clauses: {} }] };
+        const t2: AssemblyTemplate = { agreements: [{ id: "order-0", agreementKey: B, clauses: {} }, { id: "order-1", agreementKey: A, clauses: {} }] };
+        const { leaf, proof } = buildSlotInclusionProof(t1, 0);
+        expect(verifyInclusionProof(templateCompositionHash(t2), leaf, proof)).toBe(false);
+    });
+
+    it("refuses the two reserved format keys as an order slot's agreement key", () => {
+        for (const reserved of [PROVENANCE_LEAF_KEY, ASSEMBLY_TERMS_LEAF_KEY]) {
+            const t: AssemblyTemplate = { agreements: [{ id: "order-0", agreementKey: reserved, clauses: {} }] };
+            expect(() => templateCompositionHash(t)).toThrow(/reserved format key/);
+            expect(() => assertNotReservedKey(reserved)).toThrow(/reserved format key/);
+        }
+        expect(ASSEMBLY_TERMS_LEAF_KEY).toBe(keccak256(toHex("figaro-assembly-terms")));
+    });
+});
+
+describe("an order slot's clauses at checkout", () => {
+    const TOPO = keyOf("figaro-topology");
+    const COMMERCE = keyOf("figaro-commerce");
+    const hydrated = hydrateAuthored({
+        agreements: [
+            { id: "order-0", clauses: { [COMMERCE]: {}, [TOPO]: { parentOrderHashes: [] } } },
+            { id: "order-1", clauses: { [COMMERCE]: {}, [TOPO]: { parentOrderHashes: ["order-0"] } } },
+        ],
+    });
+
+    it("one registered agreement serves both order slots; each order slot's fill merges over it", () => {
+        const [s0, s1] = hydrated.template.agreements;
+        expect(s0.agreementKey).toBe(s1.agreementKey);
+        expect(slotClauses(hydrated, s1)).toEqual({ [COMMERCE]: {}, [TOPO]: { parentOrderHashes: ["order-0"] } });
+        expect(templateParentOrderHashes(s1)).toEqual(["order-0"]);
+        expect(templateParentOrderHashes(s0)).toEqual([]);
+    });
+
+    it("refuses an order slot fill naming a clause its agreement does not compose", () => {
+        const slot = { ...hydrated.template.agreements[0], clauses: { [keyOf("figaro-handoff")]: { x: 1 } } };
+        expect(() => slotClauses(hydrated, slot)).toThrow(/does not compose/);
+    });
+});
+
+describe("slotsFromAuthoredAgreements (seed-time derivation)", () => {
+    const names = ["figaro-commerce", "figaro-topology", "figaro-applicable-law", "figaro-handoff"];
+    const specs = specSourceOf(names.map((n) => viewOf(rawSpecOf(n))));
+
+    it("lifts the topology parents into the order slot, composes topology {}, folds the mandatory clauses, de-duplicates", () => {
+        const { template, agreements } = slotsFromAuthoredAgreements({
+            name: "editorial",
+            assemblyClauses: { "figaro-applicable-law": { applicableLaw: "ch" } },
+            agreements: [
+                { id: "order-0", clauses: { "figaro-commerce": {}, "figaro-topology": { parentOrderHashes: [] } } },
+                { id: "order-1", clauses: { "figaro-topology": { parentOrderHashes: ["order-0"] } } },
+            ],
+        }, specs);
+        expect(template.name).toBe("editorial");
+        expect(template.assemblyClauses).toEqual({ [keyOf("figaro-applicable-law")]: { applicableLaw: "ch" } });
+        // order-1 omitted commerce; the fold adds it, so both order slots bind one agreement.
+        expect(Object.keys(agreements)).toHaveLength(1);
+        const [key] = Object.keys(agreements) as Hex[];
+        expect(agreements[key].clauses).toEqual({ [keyOf("figaro-commerce")]: {}, [keyOf("figaro-topology")]: {} });
+        expect(template.agreements.map((s) => s.agreementKey)).toEqual([key, key]);
+        expect(template.agreements[1].clauses).toEqual({ [keyOf("figaro-topology")]: { parentOrderHashes: ["order-0"] } });
+        expect(agreementKeyOf(agreements[key])).toBe(key);
+    });
+
+    it("derives every reference assembly in assemblies/ against clauses/", () => {
+        const clausesDir = path.resolve(__dirname, "../../clauses");
+        const all = specSourceOf(readdirSync(clausesDir).filter((f) => f.endsWith(".json"))
+            .map((f) => viewOf(JSON.parse(readFileSync(path.join(clausesDir, f), "utf8")))));
+        const dir = path.resolve(__dirname, "../../assemblies");
+        for (const file of readdirSync(dir).filter((f) => f.endsWith(".json"))) {
+            const { template, agreements } = slotsFromAuthoredAgreements(JSON.parse(readFileSync(path.join(dir, file), "utf8")), all);
+            for (const key of templateComposedClauseKeys(template, agreements)) expect(all.get(key), `${file} ${key}`).toBeDefined();
+            expect(templateCompositionHash(template)).toMatch(/^0x[0-9a-f]{64}$/);
+            for (const slot of template.agreements) expect(agreements[slot.agreementKey], `${file} ${slot.id}`).toBeDefined();
+        }
     });
 });
 
@@ -37,7 +192,9 @@ describe("resolveAuthoredClauseKeys (seed-time authoring resolver)", () => {
             assemblyClauses: { "figaro-applicable-law": { law: "x" } },
             agreements: [{ id: "order-0", clauses: { "figaro-commerce": {}, "figaro-topology": { parentOrderHashes: [] } } }],
         };
-        const resolved = resolveAuthoredClauseKeys(authored, specs) as unknown as AssemblyTemplate;
+        const resolved = resolveAuthoredClauseKeys(authored, specs) as unknown as {
+            name: string; assemblyClauses: unknown; agreements: { clauses: Record<string, unknown> }[];
+        };
         expect(resolved.name).toBe("editorial");
         expect(resolved.assemblyClauses).toEqual({ [keyOf("figaro-applicable-law")]: { law: "x" } });
         expect(resolved.agreements[0].clauses).toEqual({
@@ -75,7 +232,7 @@ describe("resolveAuthoredClauseKeys (seed-time authoring resolver)", () => {
         const doc = { agreements: [{ id: "order-0", clauses: { "figaro-commerce": {} } }] };
         expect(() => resolveAuthoredClauseKeys(doc, twoCommerce)).toThrow(/names 2 loaded clause specs/);
         const pinned = { agreements: [{ id: "order-0", clauses: { [`figaro-commerce@${v2.version}`]: {} } }] };
-        const resolved = resolveAuthoredClauseKeys(pinned, twoCommerce) as unknown as AssemblyTemplate;
+        const resolved = resolveAuthoredClauseKeys(pinned, twoCommerce) as unknown as { agreements: { clauses: Record<string, unknown> }[] };
         expect(Object.keys(resolved.agreements[0].clauses)).toEqual([viewOf(v2).clauseKey]);
     });
 
@@ -86,15 +243,18 @@ describe("resolveAuthoredClauseKeys (seed-time authoring resolver)", () => {
             .toThrow(/version map/);
     });
 
-    it("resolves every reference assembly in assemblies/ against clauses/ and re-hashes it", () => {
+    it("resolves every reference assembly in assemblies/ against clauses/", () => {
         const clausesDir = path.resolve(__dirname, "../../clauses");
         const all = specSourceOf(readdirSync(clausesDir).filter((f) => f.endsWith(".json"))
             .map((f) => viewOf(JSON.parse(readFileSync(path.join(clausesDir, f), "utf8")))));
         const dir = path.resolve(__dirname, "../../assemblies");
         for (const file of readdirSync(dir).filter((f) => f.endsWith(".json"))) {
-            const resolved = resolveAuthoredClauseKeys(JSON.parse(readFileSync(path.join(dir, file), "utf8")), all) as AssemblyTemplate;
-            for (const key of templateComposedClauseKeys(resolved)) expect(all.get(key), `${file} ${key}`).toBeDefined();
-            expect(templateCompositionHash(resolved)).toMatch(/^0x[0-9a-f]{64}$/);
+            const resolved = resolveAuthoredClauseKeys(JSON.parse(readFileSync(path.join(dir, file), "utf8")), all) as {
+                agreements: { clauses: Record<string, unknown> }[];
+            };
+            for (const agreement of resolved.agreements) {
+                for (const key of Object.keys(agreement.clauses)) expect(all.get(key as Hex), `${file} ${key}`).toBeDefined();
+            }
         }
     });
 });

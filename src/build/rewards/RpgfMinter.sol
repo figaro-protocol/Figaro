@@ -14,14 +14,22 @@ interface IUsageCounter {
     function scoreOf(uint8 kind, bytes32 clauseOrAssembly, uint8 period) external view returns (uint256);
 }
 
-/// @notice Author of record for a clause — `ClauseRegistry.depositOf`.
+/// @notice Designer of record for a clause — `ClauseRegistry.depositOf`.
 interface IClauseAuthor {
     function depositOf(bytes32 clauseKey) external view returns (address registeredBy, bool withdrawn);
 }
 
-/// @notice Author of record for an assembly — `AssemblyRegistry.bindings`.
+/// @notice Designer of record for an assembly — `AssemblyRegistry.bindings`.
 interface IAssemblyAuthor {
     function bindings(bytes32 compositionHash)
+        external
+        view
+        returns (address registeredBy, uint64 registeredAt, bool depositWithdrawn, string memory contentURI);
+}
+
+/// @notice Designer of record for a registered agreement — `AgreementRegistry.bindings`.
+interface IAgreementAuthor {
+    function bindings(bytes32 agreementKey)
         external
         view
         returns (address registeredBy, uint64 registeredAt, bool depositWithdrawn, string memory contentURI);
@@ -31,8 +39,9 @@ interface IAssemblyAuthor {
 /// @custom:security-contact figarosecurity@gmail.com
 /// @custom:audit-status UNAUDITED — This contract has not been reviewed by an independent security auditor.
 ///
-/// @notice Pays clause authors and assembly designers for the trade their work
-///         actually carried, one claim per accrual period. The reference
+/// @notice Pays the designers of record of clauses, registered agreements and
+///         assemblies for the trade their work actually carried, one claim per
+///         accrual period. The reference
 ///         schedule: nine ANNUAL periods whose budgets
 ///         group into three RISING tranches — 15% of the reserve over years
 ///         1–2, 30% over years 3–5, 55% over years 6–9, each tranche split
@@ -40,7 +49,7 @@ interface IAssemblyAuthor {
 ///         pay on the most-measured evidence: the early network is the
 ///         thinnest, most manipulable denominator, and early evidence-poor
 ///         funding is the DAO treasury's job, not this mechanism's. Annual,
-///         because a professional author cannot price a multi-year lag in an
+///         because a professional designer cannot price a multi-year lag in an
 ///         unpriced token — and shorter periods also shrink the deposit
 ///         recycling window. The grouping is deploy-script data; this
 ///         contract knows only periods and their budgets.
@@ -48,7 +57,7 @@ interface IAssemblyAuthor {
 ///         There is NOTHING TO POST, NOTHING TO BOND, AND NOTHING TO DISPUTE.
 ///         Usage is counted on chain as it happens by `UsageCounter`, so a
 ///         tranche is arithmetic over numbers that are already final: a wallet's
-///         share is its clauses' and assemblies' score in that period over the
+///         share is its clauses', agreements' and assemblies' score in that period over the
 ///         period's total.
 ///         The previous design reconstructed usage after the fact, which
 ///         required someone to POST the answer, a BOND to make posting costly, a
@@ -64,9 +73,9 @@ interface IAssemblyAuthor {
 ///         a number no later record can change. No checkpoints, no history walk.
 ///
 /// @dev    UNIFORM PRO RATA — no per-wallet cap. A wallet's share is its
-///         clauses' and assemblies' score over the period's total, paid
+///         clauses', agreements' and assemblies' score over the period's total, paid
 ///         straight. Sybil
-///         resistance is the two-sided LIVE ETH STAKE (author eligibility here,
+///         resistance is the two-sided LIVE ETH STAKE (designer eligibility here,
 ///         seller-gated usage in `UsageCounter`), not a cap: breadth counts
 ///         distinct staked sellers, so every unit of the score's dominant term
 ///         costs one base-currency stake, and the 600M is a FIXED pool a
@@ -87,6 +96,7 @@ contract RpgfMinter {
     IUsageCounter public immutable counter;
     IClauseAuthor public immutable clauses;
     IAssemblyAuthor public immutable assemblies;
+    IAgreementAuthor public immutable agreements;
 
     /// @notice The kind of a clause entry — `UsageCounter.KIND_CLAUSE`; its key
     ///         is a `ClauseRegistry` clause key.
@@ -94,12 +104,16 @@ contract RpgfMinter {
     /// @notice The kind of an assembly entry — `UsageCounter.KIND_ASSEMBLY`; its
     ///         key is an `AssemblyRegistry` compositionHash.
     uint8 public constant KIND_ASSEMBLY = 1;
+    /// @notice The kind of an agreement entry — `UsageCounter.KIND_AGREEMENT`;
+    ///         its key is an `AgreementRegistry` agreementKey.
+    uint8 public constant KIND_AGREEMENT = 2;
 
     /// @notice One entry of a claim: the family a key belongs to and the key.
     /// @dev    The kind decides which registry names the designer of record and
-    ///         which of the counter's slots the score is read from. Each
-    ///         registry takes any bytes32, so the same bytes can stand in both;
-    ///         the kind keeps a stake in one family from earning the other's.
+    ///         which of the counter's accruals the score is read from. Each
+    ///         registry takes any bytes32, so the same bytes can stand in all
+    ///         three; the kind keeps a stake in one family from earning
+    ///         another's.
     struct ClauseOrAssemblyKey {
         uint8 kind;
         bytes32 key;
@@ -115,7 +129,7 @@ contract RpgfMinter {
     mapping(uint8 => uint256) public minted;
 
     /// @notice period → wallet → claimed. One claim per wallet per period; a
-    ///         wallet passes all of its clauses and assemblies in that single
+    ///         wallet passes all of its clauses, agreements and assemblies in that single
     ///         call.
     mapping(uint8 => mapping(address => bool)) public claimed;
 
@@ -141,11 +155,22 @@ contract RpgfMinter {
 
     /// @param _florin      FlorinToken, via the minter interface it registers under.
     /// @param _counter     UsageCounter — the accrual this pays from.
-    /// @param _clauses     ClauseRegistry — clause author of record.
-    /// @param _assemblies  AssemblyRegistry — assembly author of record.
+    /// @param _clauses     ClauseRegistry — clause designer of record.
+    /// @param _assemblies  AssemblyRegistry — assembly designer of record.
+    /// @param _agreements  AgreementRegistry — registered agreement designer of record.
     /// @param _amounts     Per-period florin budgets, one per counter period.
-    constructor(address _florin, address _counter, address _clauses, address _assemblies, uint256[] memory _amounts) {
-        if (_florin == address(0) || _counter == address(0) || _clauses == address(0) || _assemblies == address(0)) {
+    constructor(
+        address _florin,
+        address _counter,
+        address _clauses,
+        address _assemblies,
+        address _agreements,
+        uint256[] memory _amounts
+    ) {
+        if (
+            _florin == address(0) || _counter == address(0) || _clauses == address(0) || _assemblies == address(0)
+                || _agreements == address(0)
+        ) {
             revert ZeroAddress();
         }
         uint256 periods = IUsageCounter(_counter).periodCount();
@@ -154,6 +179,7 @@ contract RpgfMinter {
         counter = IUsageCounter(_counter);
         clauses = IClauseAuthor(_clauses);
         assemblies = IAssemblyAuthor(_assemblies);
+        agreements = IAgreementAuthor(_agreements);
         periodAmount = _amounts;
     }
 
@@ -181,11 +207,12 @@ contract RpgfMinter {
     // ── Claim ───────────────────────────────────────────────────────
 
     /// @notice Mint your share of a closed period. Once per wallet per period;
-    ///         pass every clause and assembly you authored in one call.
+    ///         pass every clause, agreement and assembly you are designer of record for in one call.
     /// @param periodId  The accrual period being claimed.
     /// @param clausesOrAssemblies (kind, key) pairs — clause keys under
     ///                  `KIND_CLAUSE`, assembly compositionHashes under
-    ///                  `KIND_ASSEMBLY` — the caller is designer of record for.
+    ///                  `KIND_ASSEMBLY`, agreementKeys under `KIND_AGREEMENT` —
+    ///                  the caller is designer of record for.
     ///                  Each is verified against the one registry its kind
     ///                  names — the caller's list is a lookup key, never a claim
     ///                  of ownership.
@@ -211,18 +238,18 @@ contract RpgfMinter {
 
     // ── Internals ───────────────────────────────────────────────────
 
-    /// @dev Sum the caller's clauses' and assemblies' scores for the period and
+    /// @dev Sum the caller's clauses', agreements' and assemblies' scores for the period and
     ///      take the pro-rata share of its budget. UNIFORM pro rata: no cap.
     ///      The reward tracks real usage directly, and the fixed 600M pool is one
     ///      a farmer DILUTES, never inflates.
     ///
     ///      THE LIST MUST BE DUPLICATE-FREE in (kind, key), and that is enforced here rather
     ///      than assumed. A loop that summed each entry as given
-    ///      and then CLAMPED `score` to `total` would let an author of record for any
-    ///      clause or assembly with a non-zero score repeat it until the
+    ///      and then CLAMPED `score` to `total` would let a designer of record for any
+    ///      clause, agreement or assembly with a non-zero score repeat it until the
     ///      sum reached the period total and mint the ENTIRE tranche, leaving
     ///      every other
-    ///      author to revert on `PeriodBudgetExceeded`. A clamp would make
+    ///      designer to revert on `PeriodBudgetExceeded`. A clamp would make
     ///      it maximal: it silently rounds a malformed claim UP to the whole
     ///      pool instead of letting the budget backstop reject it. Neither is here
     ///      — duplicates revert, and with a distinct list `score <= total` holds
@@ -255,18 +282,18 @@ contract RpgfMinter {
 
     /// @dev Designer of record with a LIVE stake — the wallet the registry the
     ///      KIND names as its `registeredBy`, only while its registration
-    ///      deposit is un-withdrawn. The other registry is never read: the
-    ///      families are parallel, neither knows the other exists, and a stake
-    ///      in one at the same bytes is no designer's claim on the other.
+    ///      stake is un-withdrawn. No other registry is ever read: the
+    ///      families are parallel, none knows another exists, and a stake in
+    ///      one at the same bytes is no designer's claim on another.
     ///
-    ///      The `!withdrawn` requirement is the AUTHOR-SIDE half of the two-sided
+    ///      The `!withdrawn` requirement is the DESIGNER-SIDE half of the two-sided
     ///      live-ETH-stake gate (its seller-side half lives in `UsageCounter`):
-    ///      you earn RPGF only while your clause's or assembly's stake stays
+    ///      you earn designer rewards only while your clause's, agreement's or assembly's stake stays
     ///      live. Withdraw and you de-surface AND forfeit future reward — the
     ///      stake is aligned
     ///      upside (more trade → more base-currency demand → ETH appreciates for
     ///      every registry staker), not a cost, so keeping it live is the honest
-    ///      author's default.
+    ///      designer's default.
     function _isAuthor(uint8 kind, bytes32 clauseOrAssembly, address account) internal view returns (bool) {
         if (kind == KIND_CLAUSE) {
             (address registeredBy, bool withdrawn) = clauses.depositOf(clauseOrAssembly);
@@ -275,6 +302,10 @@ contract RpgfMinter {
         if (kind == KIND_ASSEMBLY) {
             (address assemblyRegisteredBy,, bool depositWithdrawn,) = assemblies.bindings(clauseOrAssembly);
             return assemblyRegisteredBy != address(0) && assemblyRegisteredBy == account && !depositWithdrawn;
+        }
+        if (kind == KIND_AGREEMENT) {
+            (address agreementRegisteredBy,, bool agreementWithdrawn,) = agreements.bindings(clauseOrAssembly);
+            return agreementRegisteredBy != address(0) && agreementRegisteredBy == account && !agreementWithdrawn;
         }
         revert UnknownKind(kind);
     }

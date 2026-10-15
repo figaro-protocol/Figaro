@@ -31,7 +31,7 @@ import type { OnboardingStepChromeProps } from "@/components/members/OnboardingS
  * assemblies they participate in. Each selected assembly becomes an
  * `AssemblyBindingRecord` on `state.assemblies`.
  *
- * Per-binding counterparty editing: assemblies whose assemblyTemplate contains
+ * Per-binding counterparty editing: assemblies whose hydrated template contains
  * a non-root order with a per-role process clause (e.g. a courier
  * sub-order carrying a counterparty-process clause) require the member
  * to designate at least one wallet for that role. The picker surfaces an
@@ -247,8 +247,8 @@ export function OnboardingAssembliesForm({
                 {choices.map((choice) => {
                     const isSelected = selected.has(choice.slug);
                     const requiredClauses =
-                        choice.state === "loaded" && choice.assemblyTemplate
-                            ? requiredCounterpartyClauses(choice.assemblyTemplate)
+                        choice.state === "loaded" && choice.hydratedAssembly
+                            ? requiredCounterpartyClauses(choice.hydratedAssembly)
                             : [];
                     const counterparties = counterpartiesBySlug.get(choice.slug) ?? [];
                     return (

@@ -174,15 +174,19 @@ describe("extractOverlays", () => {
 
 describe("extractOverlays — the agreement's provenance leaf", () => {
     const COMPOSITION = `0x${"3c".repeat(32)}` as Hex;
+    const AGREEMENT = `0x${"4d".repeat(32)}` as Hex;
 
-    it("recognizes the reserved key by the format constant and decodes its bytes to the composition hash, with no spec", () => {
+    it("recognizes the reserved key by the format constant and decodes its bytes to both keys, with no spec", () => {
         const [graph] = extractOverlays(
-            [{ event: mkEvent(PROVENANCE_LEAF_KEY, { contentRef: provenanceContentRef(COMPOSITION) }), content: provenanceSectionBytes(COMPOSITION) }],
+            [{
+                event: mkEvent(PROVENANCE_LEAF_KEY, { contentRef: provenanceContentRef(AGREEMENT, COMPOSITION) }),
+                content: provenanceSectionBytes(AGREEMENT, COMPOSITION),
+            }],
             specSourceOf([]),
         );
         expect(graph.provenanceLeaf).toBe(true);
         expect(graph.spec).toBeNull();
-        expect(graph.entries[0].decoded).toEqual({ compositionHash: COMPOSITION });
+        expect(graph.entries[0].decoded).toEqual({ agreementKey: AGREEMENT, compositionHash: COMPOSITION });
     });
 
     it("unrecovered or foreign bytes stay fingerprint-only", () => {

@@ -12,6 +12,7 @@ import {
     planSubOrderSellers,
     profileValuesFor,
     resolveSubOrderPricing,
+    slotClauses,
     type SubOrderPricing,
 } from "@figaro-protocol/sdk";
 import { displayNameForAddress } from "@/lib/member/memberListing";
@@ -70,7 +71,7 @@ export interface KitBreakdown {
  * single-order assembly (no breakdown to show).
  */
 export function deriveKitBreakdown(args: {
-    pickedAssembly: (PlanAssembly & { assemblyTemplate: { agreements: readonly unknown[] } }) | undefined;
+    pickedAssembly: PlanAssembly | undefined;
     leadAddress: `0x${string}`;
     sellerCatalogs: ListingCatalogs & PricingCatalogs;
     cartTotal: bigint;
@@ -89,7 +90,7 @@ export function deriveKitBreakdown(args: {
     sellerSelection: CandidatePick | null;
 }): KitBreakdown | null {
     const assembly = args.pickedAssembly;
-    if (!assembly || assembly.assemblyTemplate.agreements.length <= 1) return null;
+    if (!assembly || assembly.hydratedAssembly.template.agreements.length <= 1) return null;
     const nameOf = (addr: `0x${string}`) => displayNameForAddress(args.sellerCatalogs, addr);
     let plan: ReturnType<typeof planSubOrderSellers>;
     try {
@@ -106,25 +107,25 @@ export function deriveKitBreakdown(args: {
                 // content, and templates arrive value-free by construction.
                 // Same merge the commit walk performs, so shown = committed.
                 const listed = resolveSubOrderPricing({
-                    node: { ...node, clauses: { ...node.clauses, ...args.clauseFills[node.id] } },
+                    node: { clauses: { ...node.clauses, ...args.clauseFills[node.nodeId] } },
                     seller, sellerCatalogs: args.sellerCatalogs, tokenDecimals: args.tokenDecimals,
                     specs: specSource(),
-                    checkoutQuantity: args.subOrderQuantities[node.id],
+                    checkoutQuantity: args.subOrderQuantities[node.nodeId],
                 });
                 // The buyer's translated amount per unit replaces the listed
                 // one; the billed quantity stands.
-                const unitPrice = listed.item && !listed.issue ? args.subOrderUnitPrices[node.id] : undefined;
+                const unitPrice = listed.item && !listed.issue ? args.subOrderUnitPrices[node.nodeId] : undefined;
                 const pricing = unitPrice === undefined
                     ? listed
                     : { ...listed, unitPrice, payment: unitPrice * BigInt(listed.billedQuantity) };
-                return { name: nameOf(seller), payment: pricing.payment, nodeId: node.id, pricing };
+                return { name: nameOf(seller), payment: pricing.payment, nodeId: node.nodeId, pricing };
             }
             // Unbound node: the buyer's checkout-time choice fills it — the
             // shown figure is the SAME selection the commit will use. A
             // race winner overlays the manual pick for its node (matching
             // the commit mapping's overlay order); its price is already in
             // the process denomination.
-            if (args.raceOutcome && args.raceOutcome.nodeId === node.id) {
+            if (args.raceOutcome && args.raceOutcome.nodeId === node.nodeId) {
                 return { name: nameOf(args.raceOutcome.selection.seller), payment: parseToken(args.raceOutcome.selection.price, args.tokenDecimals) };
             }
             return args.sellerSelection
@@ -160,31 +161,26 @@ export interface AgreementGroup {
  * section.
  */
 export function deriveAgreementGroups(args: {
-    pickedAssembly: (PlanAssembly & {
-        assemblyTemplate: {
-            agreements: Array<{ id?: string | number; clauses: Record<string, Record<string, unknown>> }>;
-        };
-    }) | undefined;
+    pickedAssembly: PlanAssembly | undefined;
     leadAddress: `0x${string}`;
     sellerCatalogs: ListingCatalogs & Parameters<typeof profileValuesFor>[1];
 }): AgreementGroup[] {
     const { pickedAssembly, leadAddress, sellerCatalogs } = args;
     if (!pickedAssembly) return [];
-    const orders = pickedAssembly.assemblyTemplate.agreements;
+    const hydrated = pickedAssembly.hydratedAssembly;
+    const orders = hydrated.template.agreements;
     const nameOf = (addr: `0x${string}`) => displayNameForAddress(sellerCatalogs, addr);
     let plan: ReturnType<typeof planSubOrderSellers> = [];
     if (orders.length > 1) {
         try { plan = planSubOrderSellers(pickedAssembly); } catch { plan = []; }
     }
-    const sellerOf = new Map(plan.map(({ node, seller }) => [node.id, seller]));
+    const sellerOf = new Map(plan.map(({ node, seller }) => [node.nodeId, seller]));
     // ASSEMBLY TERMS first — the template's assembly-scoped sections (a
     // denomination pin, a dispute forum), reviewed and buyer-filled ONCE;
     // the checkout walk folds them into every agreement, so every party
     // signs them. Same fillable rules as per-order clauses; keyed by the
     // reserved group key "assembly" (never a template order id).
-    const { assemblyClauses: assemblySections = {} } = pickedAssembly.assemblyTemplate as {
-        assemblyClauses?: Record<string, Record<string, unknown>>;
-    };
+    const assemblySections: Record<string, Record<string, unknown>> = hydrated.template.assemblyClauses ?? {};
     const assemblyGroup: AgreementGroup[] = Object.keys(assemblySections).length === 0 ? [] : [{
         key: "assembly",
         label: "Assembly terms (every agreement)",
@@ -209,8 +205,11 @@ export function deriveAgreementGroups(args: {
             };
         }),
     }];
-    return [...assemblyGroup, ...orders.map((order, i) => {
-        const isRoot = templateParentOrderHashes(order).length === 0;
+    return [...assemblyGroup, ...orders.map((slot, i) => {
+        // The order slot's clauses: its registered agreement's, with the
+        // order slot's own fills (the topology parents) merged over them.
+        const order = { id: slot.id, clauses: slotClauses(hydrated, slot) };
+        const isRoot = templateParentOrderHashes(slot).length === 0;
         const assigned = isRoot ? leadAddress : sellerOf.get(String(order.id));
         // Fold the assigned seller's PROFILE master data (dimweight's
         // divisor, a declared credential id) onto the preview leaves —

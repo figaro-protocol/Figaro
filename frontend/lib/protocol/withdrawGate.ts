@@ -3,10 +3,13 @@
 /**
  * withdrawGate — the ADVISORY, off-chain half of the K4 commits==resolves gate.
  *
- * A clause's or an assembly's designer must not reclaim their registration
- * stake while trades COMPOSED FROM that clause or assembly are still in
- * flight. The whole join lives in `@figaro-protocol/sdk/derive` (`deriveInFlightOrders`
- * + `deriveClauseWithdrawGate` / `deriveAssemblyWithdrawGate`) — this hook does
+ * A clause's, an assembly's or a registered agreement's designer of record
+ * must not reclaim their registration stake while trades COMPOSED FROM it are
+ * still in flight. The whole join lives in `@figaro-protocol/sdk/derive`
+ * (`deriveInFlightOrders` + `deriveClauseWithdrawGate` /
+ * `deriveAssemblyWithdrawGate` / `deriveAgreementWithdrawGate`, the last two
+ * attributing an order by its verified agreement's decoded provenance
+ * `{ agreementKey, compositionHash }`) — this hook does
  * ONLY the I/O the SDK deliberately does not: read FigaroCore event log from
  * the chain, then fetch each in-flight order's pinned agreement from IPFS. It
  * never re-derives the count.
@@ -35,10 +38,10 @@ import {
     deriveInFlightOrders,
     deriveClauseWithdrawGate,
     deriveAssemblyWithdrawGate,
+    deriveAgreementWithdrawGate,
     type InFlightAgreement,
     type WithdrawGate,
 } from "@figaro-protocol/sdk/derive";
-import { templateCompositionHash, type AssemblyTemplate } from "@/lib/shared/assemblyTemplate";
 import { publicClient } from "@/lib/shared/wagmi";
 import { CONTRACTS } from "@/lib/kernel/contracts";
 import { fetchAgreement } from "@/lib/kernel/agreementFetch";
@@ -46,7 +49,8 @@ import { isValidAddress } from "@/lib/shared/evm";
 
 export type WithdrawClauseOrAssembly =
     | { kind: "clause"; clauseKey: `0x${string}` }
-    | { kind: "assembly"; template: AssemblyTemplate };
+    | { kind: "assembly"; compositionHash: `0x${string}` }
+    | { kind: "agreement"; agreementKey: `0x${string}` };
 
 /** Read every in-flight order off-chain, then resolve each to its committed
  *  agreement (best-effort — an un-witnessed order has no URI and resolves to
@@ -91,9 +95,11 @@ export function useWithdrawGate(clauseOrAssembly: WithdrawClauseOrAssembly | nul
     // when the target changes (an assembly is identified by its composition hash).
     const clauseOrAssemblyKey = useMemo(() => {
         if (!clauseOrAssembly) return null;
-        return clauseOrAssembly.kind === "clause"
-            ? `clause:${clauseOrAssembly.clauseKey}`
-            : `assembly:${templateCompositionHash(clauseOrAssembly.template)}`;
+        switch (clauseOrAssembly.kind) {
+            case "clause": return `clause:${clauseOrAssembly.clauseKey}`;
+            case "assembly": return `assembly:${clauseOrAssembly.compositionHash}`;
+            case "agreement": return `agreement:${clauseOrAssembly.agreementKey}`;
+        }
     }, [clauseOrAssembly]);
 
     useEffect(() => {
@@ -112,7 +118,9 @@ export function useWithdrawGate(clauseOrAssembly: WithdrawClauseOrAssembly | nul
                 setGate(
                     clauseOrAssembly.kind === "clause"
                         ? deriveClauseWithdrawGate(clauseOrAssembly.clauseKey, agreements)
-                        : deriveAssemblyWithdrawGate(clauseOrAssembly.template, agreements),
+                        : clauseOrAssembly.kind === "assembly"
+                            ? deriveAssemblyWithdrawGate(clauseOrAssembly.compositionHash, agreements)
+                            : deriveAgreementWithdrawGate(clauseOrAssembly.agreementKey, agreements),
                 );
                 setIsLoading(false);
             })
@@ -140,9 +148,9 @@ export function useWithdrawGate(clauseOrAssembly: WithdrawClauseOrAssembly | nul
  *  means the gate could not be computed (loading / chain-read failure) — the
  *  chain state is genuinely unknown, so also "not safe to reclaim". */
 export function withdrawBlockedReason(gate: WithdrawGate | null): string | null {
-    if (gate === null) return "Checking for in-flight trades composed from this clause or assembly…";
+    if (gate === null) return "Checking for in-flight trades composed from this registration…";
     if (gate.canWithdraw) return null;
-    return `Cannot reclaim the stake yet: ${gate.inFlightCount} in-flight trade${gate.inFlightCount === 1 ? "" : "s"} still compose${gate.inFlightCount === 1 ? "s" : ""} this clause or assembly. The stake frees once every composed trade has resolved.`;
+    return `Cannot reclaim the stake yet: ${gate.inFlightCount} in-flight trade${gate.inFlightCount === 1 ? "" : "s"} still compose${gate.inFlightCount === 1 ? "s" : ""} this registration. The stake frees once every composed trade has resolved.`;
 }
 
 /** Informational caveat when unverifiable in-flight trades exist, or null.

@@ -242,7 +242,7 @@ export default function VerifiedResolutionKernelPaper() {
                         Nothing above asks to be believed on the authority of the party that ran it. The specifications, the models, and the harness configurations are published with the implementation, each carrying its own invariant list and its own bounds; so are the inventory of instruments with their pinned versions and the outputs of the last full run of each. Those are anchored together against one fixed source snapshot, so that a reader with the same classes of tooling re-runs the checks against the surface the reported results were produced from rather than against a moving one, and reads the run for themselves rather than reading this paper&rsquo;s account of it. That is also why the versions, the snapshot, and the run outputs appear nowhere in these pages: each of them changes, and a fact that changes is worth more where it is maintained &mdash; the protocol&rsquo;s security page (Figaro Protocol, <em>Security</em>) and the documents it points at &mdash; than fixed in a finished text. What belongs here is the shape of the claim: which class of check establishes which property, over what range, and what it does not reach.
                     </PaperRun>
                     <PaperRun title="The second resolution path.">
-                        Beside the direct path the system carries a proof-batched one: a batch verifier that admits a validity proof of off-chain execution by a guest mirror of the contract&rsquo;s state machine, reconciles net token positions per participant and denomination, re-emits the attestations, and advances its own state root. The two paths share no resolution state, and neither calls the other or writes the other&rsquo;s. An order resolved through the batch verifier never acquires a contract order status at all, which means the contract-state properties of Section 5.1 are silent about it &mdash; not satisfied and not violated, simply not about that path. Exactly one quantity is common to both: a usage accrual, which each path writes into the same counter of clause and assembly usage &mdash; the batch path as proved numbers &mdash; a surface that resolves nothing and holds no bond. This is the honest statement of what the Section 5 claims cover, and it is why the coverage sentence above is stated at all.
+                        Beside the direct path the system carries a proof-batched one: a batch verifier that admits a validity proof of off-chain execution by a guest mirror of the contract&rsquo;s state machine, reconciles net token positions per participant and denomination, re-emits the attestations, and advances its own state root. The two paths share no resolution state, and neither calls the other or writes the other&rsquo;s. An order resolved through the batch verifier never acquires a contract order status at all, which means the contract-state properties of Section 5.1 are silent about it &mdash; not satisfied and not violated, simply not about that path. Exactly one quantity is common to both: a usage accrual, which each path writes into the same counter of clause, agreement and assembly usage &mdash; the batch path as proved numbers &mdash; a surface that resolves nothing and holds no bond. This is the honest statement of what the Section 5 claims cover, and it is why the coverage sentence above is stated at all.
                     </PaperRun>
                     <ResolutionPathsFigure
                         idPrefix="verified-resolution-kernel-resolution-paths"
@@ -269,7 +269,7 @@ export default function VerifiedResolutionKernelPaper() {
                         sectionLabels={{ inputs: "Inputs", events: "Events emitted", state: "State" }}
                         neverWrittenNote="a contract order status — never acquired"
                         bridgeLabel="The usage counter"
-                        bridgeSublabel="clause and assembly usage"
+                        bridgeSublabel="clause, agreement and assembly usage"
                         crossingLabel="a usage accrual"
                         crossingSublabel="the one quantity common to both"
                         figureTitle="The two resolution paths, and the one surface common to both"
@@ -286,7 +286,7 @@ export default function VerifiedResolutionKernelPaper() {
                             "on that path. The two panels share no resolution state, and neither " +
                             "calls the other or writes the other's. One arrow crosses between " +
                             "them, carrying a usage accrual — the one quantity common to both — " +
-                            "into the counter of clause and assembly usage, a surface that " +
+                            "into the counter of clause, agreement and assembly usage, a surface that " +
                             "resolves nothing and holds no bond."
                         }
                         caption={

@@ -13,13 +13,14 @@
 <h1>Variable USAGE_KIND_CLAUSE<code class="tsd-tag">Const</code></h1></div>
 <div class="tsd-signature"><span class="tsd-kind-variable">USAGE_KIND_CLAUSE</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">0</span><span class="tsd-signature-symbol"> = ...</span></div>
 <div class="tsd-comment tsd-typography"><p>The family a usage key belongs to — the reward's own accounting keeps the
-two apart. A registry accepts any bytes32, so nothing in a key's bytes
-says whether it names a clause or an assembly; every accrual, count and
-claim is keyed by <code>(kind, key)</code>, and the minter reads only the registry
-the kind names. Mirrors the counter's <code>uint8 kind</code>.</p>
+families apart. A registry accepts any bytes32, so nothing in a key's
+bytes says whether it names a clause, an assembly or a registered
+agreement; every accrual, count and claim is keyed by <code>(kind, key)</code>, and
+the minter reads only the registry the kind names. Mirrors the counter's
+<code>uint8 kind</code>.</p>
 </div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/rpgf/index.ts#L90">rpgf/index.ts:90</a></li></ul></aside></div>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/rpgf/index.ts#L98">rpgf/index.ts:98</a></li></ul></aside></div>
 <div class="col-sidebar">
 <div class="page-menu">
 <div class="tsd-navigation settings">

@@ -3,13 +3,13 @@ import { createServer, type Server } from "node:http";
 import { privateKeyToAccount } from "viem/accounts";
 import { createWalletClient, http, verifyTypedData } from "viem";
 import { buildBuyerOffer, counterSignOffer } from "../src/agent/originate.js";
-import type { AssemblyTemplate } from "../src/agent/originate.js";
 import { HttpChannel, makeHttpOfferResponder, didWebEndpointResolver } from "../src/agent/httpChannel.js";
 import type { OfferHandler, CommitmentPayload } from "../src/agent/coordination.js";
 import { serializeCommitmentPayload } from "../src/agent/coordination.js";
 import { COMMITMENT_TYPES, buildDomain } from "../src/commitments.js";
 import type { DIDDocument } from "../src/agent/did.js";
 import { keyOf } from "./specFixtures.js";
+import { hydrateAuthored } from "./hydrate.js";
 
 // ── Fixtures (no chain — signing is local; the socket is real) ────────────────
 
@@ -23,16 +23,16 @@ const SELLER = privateKeyToAccount("0x59c6995e998f97a5a0044966f0945389dc9e86dae8
 const buyerW = createWalletClient({ account: BUYER, transport: http("http://127.0.0.1:0") });
 const sellerW = createWalletClient({ account: SELLER, transport: http("http://127.0.0.1:0") });
 
-const template: AssemblyTemplate = {
+const template = hydrateAuthored({
     agreements: [{
         id: "root",
         clauses: { [keyOf("figaro-commerce")]: { currency: CURRENCY, payment: PAYMENT.toString(), lineItems: [] } },
     }],
-};
+});
 
 async function buildOffer(): Promise<CommitmentPayload> {
     return buildBuyerOffer(buyerW, {
-        template, buyer: BUYER.address, seller: SELLER.address,
+        assembly: template, buyer: BUYER.address, seller: SELLER.address,
         currency: CURRENCY, payment: PAYMENT, chainId: CHAIN_ID, core: CORE, salt: 1n, deadline: 0n,
     });
 }

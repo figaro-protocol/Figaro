@@ -27,7 +27,7 @@ vi.mock("@/lib/member/useMembersRegistry", () => ({
 }));
 vi.mock("@/lib/protocol/useAssemblyRegistry", () => ({
     useAllPublishedAssemblies: () => reads.published,
-    fetchAssemblyTemplate: async () => ({ name: "Anchored", agreements: [] }),
+    fetchHydratedAssembly: async () => ({ template: { name: "Anchored", agreements: [] }, agreements: {} }),
 }));
 vi.mock("@/lib/shared/ipfsService", async (importOriginal) => ({
     ...(await importOriginal<typeof import("@/lib/shared/ipfsService")>()),

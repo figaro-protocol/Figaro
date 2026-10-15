@@ -23,10 +23,11 @@ import "../src/core/verifier/FigaroBatchVerifier.sol";
 import {WitnessSwapAndCommitCoordinator} from "../src/app/WitnessSwapAndCommitCoordinator.sol";
 import {MockDisperse} from "../src/mocks/MockDisperse.sol";
 import "../src/build/registries/AssemblyRegistry.sol";
+import "../src/build/registries/AgreementRegistry.sol";
 
 /// @title Deploy — Full protocol stack to local Anvil
 /// @notice Deploys: FigaroCore, AttestationCoordinator, ClauseRegistry,
-///         AssemblyRegistry, MembersRegistry, WitnessSwapAndCommitCoordinator
+///         AssemblyRegistry, AgreementRegistry, MembersRegistry, WitnessSwapAndCommitCoordinator
 ///         (+ MockWitnessPermit2 / MockSwapVenue as its devnet Permit2 and
 ///         swap venue), FlorinToken, MockERC20, MockPermitToken.
 ///         Clauses are populated post-deploy (populate-clauses.mjs). Mints test
@@ -137,6 +138,15 @@ contract Deploy is Script {
         _assemblies = new AssemblyRegistry(0.001 ether);
         console.log("AssemblyRegistry deployed at:", address(_assemblies));
 
+        // ── AgreementRegistry ───────────────────────────────────────
+        // Permissionless first-write-wins anchor for registered agreements:
+        // the clauses composed for one order slot, a reusable unit any
+        // assembly binds. Its own family beside ClauseRegistry and
+        // AssemblyRegistry, with the same reclaimable stake and the same
+        // devnet value.
+        _agreements = new AgreementRegistry(0.001 ether);
+        console.log("AgreementRegistry deployed at:", address(_agreements));
+
         // ── MembersRegistry ────────────────────────────────────────
         // Deposit chosen for devnet ergonomics: 0.001 ETH so test wallets
         // can register without faucet drama.
@@ -176,7 +186,7 @@ contract Deploy is Script {
         // the clause key IS the spec hash, so settleBatch requires each
         // proof's binding to carry one word twice and the key registered.
         // Note: FigaroBatchVerifier is NOT a florin minter and never will be.
-        _deployUsageAndVerifier(address(_clauses), address(_assemblies), address(_core), address(_members), deployer);
+        _deployUsageAndVerifier(address(_core), address(_members), deployer);
 
         // ── florin token + RPGF minter ─────────────────────────────────
         _florin = new FlorinToken();
@@ -187,7 +197,7 @@ contract Deploy is Script {
         // the 600M distribution registers here, before any other genesis step.
         // Nothing is posted, bonded, or challenged: UsageCounter records verified
         // usage as it happens and the minter pays pro rata from a closed period.
-        _deployRpgfMinter(_florin, _clauses, _assemblies);
+        _deployRpgfMinter(_florin);
 
         _deployTreasuryGenesis(_florin, deployer);
 
@@ -241,6 +251,7 @@ contract Deploy is Script {
         console.log("  NEXT_PUBLIC_CLAUSE_REGISTRY=", address(_clauses));
         console.log("  NEXT_PUBLIC_MEMBERS_REGISTRY=", address(_members));
         console.log("  NEXT_PUBLIC_ASSEMBLY_REGISTRY=", address(_assemblies));
+        console.log("  NEXT_PUBLIC_AGREEMENT_REGISTRY=", address(_agreements));
         console.log("  NEXT_PUBLIC_FLORIN_TOKEN_ADDRESS=", address(_florin));
         console.log("  NEXT_PUBLIC_BATCH_VERIFIER=", _batchVerifier);
     }
@@ -254,6 +265,7 @@ contract Deploy is Script {
     WitnessSwapAndCommitCoordinator internal _swapCoordinator;
     ClauseRegistry internal _clauses;
     AssemblyRegistry internal _assemblies;
+    AgreementRegistry internal _agreements;
     MembersRegistry internal _members;
     FlorinToken internal _florin;
     address internal _batchVerifier;
@@ -268,13 +280,8 @@ contract Deploy is Script {
     ///      guess fails the deploy instead of silently producing a counter no
     ///      verifier can write to, which would look healthy right up until the
     ///      first batch resolved.
-    function _deployUsageAndVerifier(
-        address clauseRegistry,
-        address assemblyRegistry,
-        address core,
-        address members,
-        address deployer
-    ) internal {
+    function _deployUsageAndVerifier(address core, address members, address deployer) internal {
+        address clauseRegistry = address(_clauses);
         MockSP1Verifier mockSp1 = new MockSP1Verifier();
         console.log("MockSP1Verifier deployed at:", address(mockSp1));
 
@@ -282,7 +289,7 @@ contract Deploy is Script {
         // then the verifier.
         address predictedVerifier = vm.computeCreateAddress(deployer, vm.getNonce(deployer) + 1);
 
-        _deployUsageCounter(core, members, clauseRegistry, assemblyRegistry, predictedVerifier);
+        _deployUsageCounter(core, members, predictedVerifier);
 
         // Genesis root is DERIVED — one keccak256("") per mirror state map
         // (processes, orderStatus, orderProcessId) plus the usage leg, which
@@ -337,13 +344,7 @@ contract Deploy is Script {
     ///      Deployed ahead of the RPGF minter and beside the batch verifier,
     ///      because the two reference each other — see
     ///      `_deployUsageAndVerifier`.
-    function _deployUsageCounter(
-        address core,
-        address members,
-        address clauseRegistry,
-        address assemblyRegistry,
-        address batchVerifier_
-    ) internal {
+    function _deployUsageCounter(address core, address members, address batchVerifier_) internal {
         // Accrual periods and per-period RPGF budgets are ONE schedule (the
         // minter validates its budget array against `periodCount()` at
         // deploy). The reference shape is NINE ANNUAL
@@ -375,8 +376,9 @@ contract Deploy is Script {
         UsageCounter counter = new UsageCounter(
             core,
             members, // seller-side live-stake gate: usage counts only for live-staked sellers
-            clauseRegistry, // registration-side gate: a clause earns only while its deposit is live
-            assemblyRegistry, // registration-side gate: an assembly earns only while its deposit is live
+            address(_clauses), // registration-side gate: a clause earns only while its stake is live
+            address(_assemblies), // registration-side gate: an assembly earns only while its stake is live
+            address(_agreements), // registration-side gate: an agreement earns only while its stake is live
             batchVerifier_, // proof-gated writer of the batch-path accrual
             3, // minimum-support floor: mainnet value, rehearsed on devnet
             periods
@@ -387,7 +389,7 @@ contract Deploy is Script {
     }
 
     /// @dev Own frame: keeps run()'s stack shallow (via_ir=false by design).
-    function _deployRpgfMinter(FlorinToken florin, ClauseRegistry clauses, AssemblyRegistry assemblies) internal {
+    function _deployRpgfMinter(FlorinToken florin) internal {
         // The per-period budgets must sum to the registered minter cap. The
         // FlorinToken cap is the outer backstop (a claim over it reverts
         // MinterCapExceeded), but an over-committed schedule would turn late-
@@ -399,8 +401,9 @@ contract Deploy is Script {
             rpgfSum += rpgfAmounts[i];
         }
         require(rpgfSum == 600_000_000 ether, "RPGF period budgets must sum to the minter cap");
-        RpgfMinter rpgfMinter =
-            new RpgfMinter(address(florin), _usageCounter, address(clauses), address(assemblies), rpgfAmounts);
+        RpgfMinter rpgfMinter = new RpgfMinter(
+            address(florin), _usageCounter, address(_clauses), address(_assemblies), address(_agreements), rpgfAmounts
+        );
         console.log("RpgfMinter deployed at:", address(rpgfMinter));
         florin.registerMinter(address(rpgfMinter), 600_000_000 ether);
     }

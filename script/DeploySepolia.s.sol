@@ -13,6 +13,7 @@ import "../src/build/florin/FlorinToken.sol";
 import {RpgfMinter} from "../src/build/rewards/RpgfMinter.sol";
 import {UsageCounter} from "../src/build/rewards/UsageCounter.sol";
 import {AssemblyRegistry} from "../src/build/registries/AssemblyRegistry.sol";
+import {AgreementRegistry} from "../src/build/registries/AgreementRegistry.sol";
 import "../src/core/verifier/FigaroBatchVerifier.sol";
 import "../src/mocks/MockTreasuryMultisig.sol";
 
@@ -59,6 +60,7 @@ contract DeploySepolia is Script {
     address internal _members;
     address internal _florin;
     address internal _assemblies;
+    address internal _agreements;
     address internal _usageCounter;
     address internal _rpgfMinter;
     address internal _batchVerifier;
@@ -146,6 +148,13 @@ contract DeploySepolia is Script {
         _assemblies = address(assemblies);
         console.log("AssemblyRegistry:       ", _assemblies);
 
+        // AgreementRegistry — the registered agreements' anchor, parallel to
+        // ClauseRegistry and AssemblyRegistry. RpgfMinter reads it for the
+        // agreement's designer of record. Same stake, same reasoning as above.
+        AgreementRegistry agreements = new AgreementRegistry(0.05 ether);
+        _agreements = address(agreements);
+        console.log("AgreementRegistry:      ", _agreements);
+
         // Member stake and cooldown at the mainnet values.
         MembersRegistry members = new MembersRegistry(0.05 ether, MEMBER_COOLDOWN);
         _members = address(members);
@@ -186,6 +195,7 @@ contract DeploySepolia is Script {
             _members,
             _clauses,
             _assemblies,
+            _agreements,
             batchVerifier_,
             3, // minimum-support floor
             periods
@@ -218,7 +228,8 @@ contract DeploySepolia is Script {
             amountsSum += amounts[i];
         }
         require(amountsSum == RPGF_ALLOC, "RPGF period budgets must sum to the allocation");
-        RpgfMinter rpgfMinter = new RpgfMinter(address(florin), _usageCounter, _clauses, _assemblies, amounts);
+        RpgfMinter rpgfMinter =
+            new RpgfMinter(address(florin), _usageCounter, _clauses, _assemblies, _agreements, amounts);
         _rpgfMinter = address(rpgfMinter);
         console.log("RpgfMinter:             ", _rpgfMinter);
         florin.registerMinter(_rpgfMinter, RPGF_ALLOC);
@@ -258,6 +269,7 @@ contract DeploySepolia is Script {
         console.log("  NEXT_PUBLIC_PERMIT2=", vm.envAddress("PERMIT2"));
         console.log("  NEXT_PUBLIC_CLAUSE_REGISTRY=          ", _clauses);
         console.log("  NEXT_PUBLIC_ASSEMBLY_REGISTRY=        ", _assemblies);
+        console.log("  NEXT_PUBLIC_AGREEMENT_REGISTRY=       ", _agreements);
         console.log("  NEXT_PUBLIC_MEMBERS_REGISTRY=       ", _members);
         console.log("  NEXT_PUBLIC_FLORIN_TOKEN_ADDRESS=        ", _florin);
         console.log("  NEXT_PUBLIC_USAGE_COUNTER=            ", _usageCounter);

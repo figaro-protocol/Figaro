@@ -4,7 +4,8 @@
  *
  * Member-domain composition: reads the member's profile (MembersRegistry →
  * IPFS), intersects the profile's `assemblyBindings[].assemblySlug` with the
- * published assembly events, and fetches each matched assemblyTemplate. The
+ * published assembly events, and reads each matched assembly hydrated — the
+ * template and every order slot's registered agreement, each verified. The
  * on-chain reads come from `@/lib/protocol/useAssemblyRegistry` (a legal
  * downward arrow); the member-profile parsing stays intra-seller.
  */
@@ -12,8 +13,7 @@
 import { useEffect, useState } from "react";
 import { fetchCappedContent, resolveMemberDocumentUri } from "@/lib/shared/ipfsService";
 import { safeJsonParse } from "@/lib/shared/safeJson";
-import type { Anchored } from "@figaro-protocol/sdk";
-import type { AssemblyTemplate } from "@/lib/shared/assemblyTemplate";
+import type { HydratedAssembly } from "@figaro-protocol/sdk";
 import { useMemberProfile } from "@/lib/member/useMembersRegistry";
 import {
     tryParseMemberProfileDocument,
@@ -21,16 +21,17 @@ import {
 } from "@/lib/member/memberProfileMetadata";
 import {
     useAllPublishedAssemblies,
-    fetchAssemblyTemplate,
+    fetchHydratedAssembly,
 } from "@/lib/protocol/useAssemblyRegistry";
 
-/** A member's on-chain bound assembly, assemblyTemplate resolved. */
+/** A member's on-chain bound assembly, hydrated. */
 export interface BoundAssembly {
     slug: string;
     /** Display name from the assembly template; falls back to the slug. */
     name: string;
-    /** Read from the registry and verified against its composition hash. */
-    assemblyTemplate: Anchored<AssemblyTemplate>;
+    /** The template verified against its composition hash, beside every
+     *  order slot's registered agreement verified against its key. */
+    hydratedAssembly: HydratedAssembly;
     /** The member's designated counterparty wallets for this assembly,
      *  keyed by sub-order process clause (the runtime ladder clause the
      *  sub-order carries). Sourced from the member profile's
@@ -40,11 +41,11 @@ export interface BoundAssembly {
 }
 
 export interface MemberBoundAssemblies {
-    /** The member's on-chain bound assemblies, assemblyTemplates resolved —
+    /** The member's on-chain bound assemblies, hydrated —
      *  the buyer-facing choice set at checkout. Each bound assembly is
      *  one option the member offers; the buyer picks one. */
     assemblies: BoundAssembly[];
-    /** True while either the member-profile or the assemblyTemplate fetches are in flight. */
+    /** True while either the member-profile or the assembly reads are in flight. */
     isLoading: boolean;
     /** True when at least one of the member's bindings matched a published assembly. */
     hasOnChainBinding: boolean;
@@ -54,7 +55,7 @@ export interface MemberBoundAssemblies {
  * Resolves a member's on-chain bound assemblies into the buyer-facing
  * choice set. Reads the member's profile (MembersRegistry →
  * IPFS), intersects the profile's `assemblyBindings[].assemblySlug` with
- * the published assembly events, and fetches each matched assemblyTemplate.
+ * the published assembly events, and reads each matched assembly hydrated.
  *
  * When `hasOnChainBinding` is true, `assemblies` is the authoritative
  * buyer-facing choice set — the buyer picks one assembly at checkout —
@@ -120,16 +121,16 @@ export function useMemberBoundAssemblies(
                     return;
                 }
 
-                const assemblyTemplates = await Promise.all(
-                    matchedEvents.map((e) => fetchAssemblyTemplate(e.contentURI, e.compositionHash)),
+                const hydratedAssemblies = await Promise.all(
+                    matchedEvents.map((e) => fetchHydratedAssembly(e.contentURI, e.compositionHash)),
                 );
                 if (canceled) return;
 
-                // matchedEvents and assemblyTemplates are index-aligned (Promise.all
+                // matchedEvents and hydratedAssemblies are index-aligned (Promise.all
                 // over a .map preserves order). Pair them into BoundAssembly,
-                // dropping any assemblyTemplate that failed to fetch.
+                // dropping any assembly whose template or agreements are absent.
                 const assemblies: BoundAssembly[] = [];
-                assemblyTemplates.forEach((m, i) => {
+                hydratedAssemblies.forEach((m, i) => {
                     if (!m) return;
                     const slug = matchedEvents[i].slug;
                     const binding = (profile.assemblyBindings ?? []).find(
@@ -138,7 +139,7 @@ export function useMemberBoundAssemblies(
                     assemblies.push({
                         slug,
                         name: slug,
-                        assemblyTemplate: m,
+                        hydratedAssembly: m,
                         counterpartyBindings: binding?.counterpartyBindings ?? [],
                     });
                 });

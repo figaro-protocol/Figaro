@@ -21,12 +21,12 @@ contract MockAlwaysMember {
 }
 
 /// @notice Test-only subclass exposing `_accrue` directly.
-/// @dev    `recordClauseUsage` / `recordAssemblyUsage` reach `_accrue` only
+/// @dev    `recordClauseUsage` / `recordAgreementUsage` / `recordAssemblyUsage` reach `_accrue` only
 ///         after a signed EIP-712 order (2 ECDSA recoveries) and a merkle
 ///         inclusion proof — both unreachable to Halmos symbolically (see
 ///         `reference_halmos_operations`: "a property needing signed EIP-712
 ///         input is out of reach symbolically"). `_accrue` is the exact
-///         internal function BOTH public entry points call once their own
+///         internal function EVERY public entry point calls once its own
 ///         checks pass, so exercising it directly proves the shared direct-path
 ///         arithmetic without re-proving the proof/signature gates (covered
 ///         concretely by `UsageCounterTest`) or the stake linkage (covered
@@ -38,10 +38,11 @@ contract UsageCounterHarness is UsageCounter {
         address _members,
         address _clauses,
         address _assemblies,
+        address _agreements,
         address _batchVerifier,
         uint64 _minSellers,
         uint64[] memory _periodEnd
-    ) UsageCounter(_core, _members, _clauses, _assemblies, _batchVerifier, _minSellers, _periodEnd) {}
+    ) UsageCounter(_core, _members, _clauses, _assemblies, _agreements, _batchVerifier, _minSellers, _periodEnd) {}
 
     function accrue(bytes32 clauseOrAssembly, uint8 period, bytes32 processId, address seller) external {
         _accrue(KIND_CLAUSE, clauseOrAssembly, period, processId, seller);
@@ -63,7 +64,7 @@ contract UsageCounterHarness is UsageCounter {
 ///         proof-gated batch) combine the way `scoreOf` claims, whether a
 ///         period boundary is respected exactly, and whether one clause or assembly's
 ///         bookkeeping can leak into another's, or one kind's into the
-///         other's at the same key. Six properties, symbolically,
+///         another's at the same key. Six properties, symbolically,
 ///         for ALL inputs in their domain — not the paths a concrete Foundry
 ///         test happened to walk:
 ///
@@ -104,12 +105,13 @@ contract UsageCounterHarness is UsageCounter {
 ///                                             unchanged, and the shared
 ///                                             `totalScoreIn` moves by EXACTLY
 ///                                             A's own score delta.
-///           6  kind isolation              — a record under the assembly
-///              (check_theKindsNeverShareASlot) kind, direct or batch, leaves
-///                                             every clause-kind slot at the
-///                                             same key empty, and the same
-///                                             process still counts once under
-///                                             the clause kind.
+///           6  kind isolation              — a use counted under any one of
+///              (check_theKindsNeverShareASlot) the three kinds, direct or
+///                                             batch, leaves every other kind's
+///                                             accrual at the same key empty,
+///                                             and the same process still
+///                                             counts once under the other
+///                                             kind.
 ///
 ///         Halmos convention: `check_` prefix, not `test_`.
 ///
@@ -137,11 +139,11 @@ contract UsageCounterHarness is UsageCounter {
 ///         mocks above so this file proves only the arithmetic layered on top.
 contract HalmosUsageCounter is Test {
     /// @dev The arithmetic below is proved on the clause kind; the kinds share
-    ///      every line of it, and `check_theKindsNeverShareASlot` proves the
-    ///      two never touch each other's slots.
+    ///      every line of it, and `check_theKindsNeverShareASlot` proves no two
+    ///      of the three ever touch each other's accruals.
     uint8 internal constant KIND_CLAUSE = 0;
-    uint8 internal constant KIND_ASSEMBLY = 1;
     bytes32 internal constant PROVENANCE_LEAF = keccak256("figaro-agreement-provenance");
+    bytes32 internal constant ASSEMBLY_TERMS_LEAF = keccak256("figaro-assembly-terms");
     uint64 internal constant P0_END = 1_000_000;
     uint64 internal constant P1_END = 2_000_000;
 
@@ -167,6 +169,7 @@ contract HalmosUsageCounter is Test {
             address(new MockAlwaysMember()), // seller-side gate — isolated, see header
             address(new MockClauseOrAssemblyStake()), // clause-side clauseOrAssembly gate — live by default
             address(new MockClauseOrAssemblyStake()), // assembly-side clauseOrAssembly gate — live by default
+            address(new MockClauseOrAssemblyStake()), // agreement-side clauseOrAssembly gate — live by default
             address(this), // batchVerifier — this contract IS the caller below
             1, // minSellers = 1 — floor disabled, isolate from that gate
             periods
@@ -242,9 +245,9 @@ contract HalmosUsageCounter is Test {
     /// is invisible to `scoreOf`, to any indexer, and to `UsageCounterTest`'s
     /// own concrete fixtures unless they happen to probe this exact sequence.
     function check_batchAccrualReplacesNeverAdds(bytes32 clauseOrAssembly, address seller, bool grow) public {
-        // The reserved provenance leaf is skipped on the batch path by design
-        // (`check_theKindsNeverShareASlot` and UsageCounterTest cover it).
-        vm.assume(clauseOrAssembly != PROVENANCE_LEAF);
+        // The two reserved keys are skipped on the batch path by design
+        // (UsageCounterTest covers it).
+        vm.assume(clauseOrAssembly != PROVENANCE_LEAF && clauseOrAssembly != ASSEMBLY_TERMS_LEAF);
         UsageCounterHarness counter = _deploy();
         vm.warp(P0_END - 1000); // deterministic: period 0 is open
 
@@ -460,13 +463,22 @@ contract HalmosUsageCounter is Test {
 
     // ── 6. The kinds never share a slot ──────────────────────────────
 
-    /// A record under the ASSEMBLY kind — direct or batch — leaves every
-    /// CLAUSE-kind slot at the same key untouched: no count, no score, no
+    /// A use counted under one kind — direct or batch — leaves every other
+    /// kind's accrual at the same key untouched: no count, no score, no
     /// counted process. The same process then still counts once under the
-    /// clause kind. This is what keeps a stake in one family at an assembly's
-    /// bytes from earning the assembly's accrual.
-    function check_theKindsNeverShareASlot(bytes32 key, bytes32 processId, address seller, bool viaBatch) public {
-        vm.assume(key != PROVENANCE_LEAF);
+    /// other kind. Both kinds are symbolic over the three, so every ordered
+    /// pair is proved. This is what keeps a stake in one family at another
+    /// family's bytes from earning that family's accrual.
+    function check_theKindsNeverShareASlot(
+        uint8 countedKind,
+        uint8 otherKind,
+        bytes32 key,
+        bytes32 processId,
+        address seller,
+        bool viaBatch
+    ) public {
+        vm.assume(countedKind < 3 && otherKind < 3 && countedKind != otherKind);
+        vm.assume(key != PROVENANCE_LEAF && key != ASSEMBLY_TERMS_LEAF);
         vm.warp(P0_END - 1000);
         UsageCounterHarness counter = _deploy();
 
@@ -474,27 +486,25 @@ contract HalmosUsageCounter is Test {
             address[] memory sellers = new address[](1);
             sellers[0] = seller;
             UsageCounter.BatchAccrual[] memory accr = new UsageCounter.BatchAccrual[](1);
-            accr[0] = UsageCounter.BatchAccrual(key, KIND_ASSEMBLY, 3, 2);
+            accr[0] = UsageCounter.BatchAccrual(key, countedKind, 3, 2);
             counter.applyBatchAccrual(0, PROVENANCE_LEAF, accr, sellers);
         } else {
-            counter.accrueAs(KIND_ASSEMBLY, key, 0, processId, seller);
+            counter.accrueAs(countedKind, key, 0, processId, seller);
         }
 
-        (uint64 c, uint64 d, uint256 score) = counter.accrualOf(KIND_CLAUSE, key, 0);
-        (uint64 bc, uint64 bd, uint256 bscore) = counter.batchAccrualOf(KIND_CLAUSE, key, 0);
-        assertEq(c, 0, "no clause-kind count");
-        assertEq(d, 0, "no clause-kind breadth");
-        assertEq(score, 0, "no clause-kind score");
-        assertEq(bc, 0, "no clause-kind batch count");
-        assertEq(bd, 0, "no clause-kind batch breadth");
-        assertEq(bscore, 0, "no clause-kind batch score");
-        assertEq(counter.scoreOf(KIND_CLAUSE, key, 0), 0, "the clause kind scores nothing of it");
-        assertFalse(
-            counter.processCounted(KIND_CLAUSE, key, processId), "the process is not counted for the clause kind"
-        );
+        (uint64 c, uint64 d, uint256 score) = counter.accrualOf(otherKind, key, 0);
+        (uint64 bc, uint64 bd, uint256 bscore) = counter.batchAccrualOf(otherKind, key, 0);
+        assertEq(c, 0, "no count under the other kind");
+        assertEq(d, 0, "no breadth under the other kind");
+        assertEq(score, 0, "no score under the other kind");
+        assertEq(bc, 0, "no batch count under the other kind");
+        assertEq(bd, 0, "no batch breadth under the other kind");
+        assertEq(bscore, 0, "no batch score under the other kind");
+        assertEq(counter.scoreOf(otherKind, key, 0), 0, "the other kind scores nothing of it");
+        assertFalse(counter.processCounted(otherKind, key, processId), "the process is not counted for the other kind");
 
-        counter.accrueAs(KIND_CLAUSE, key, 0, processId, seller);
-        (c,,) = counter.accrualOf(KIND_CLAUSE, key, 0);
-        assertEq(c, 1, "and the clause kind counts it on its own");
+        counter.accrueAs(otherKind, key, 0, processId, seller);
+        (c,,) = counter.accrualOf(otherKind, key, 0);
+        assertEq(c, 1, "and the other kind counts it on its own");
     }
 }

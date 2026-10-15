@@ -12,7 +12,8 @@ registers it from its owner's wallet — every member from its own balance
 - `founder.json` — the founder as a BUYER-side member (a
   profile holds both postures; every buyer is a seller of its data): buyer
   assembly subscriptions (`buyerAssemblies`, keyed by content-derived
-  compositionHash — stable across redeploys) and buyer-posture
+  compositionHash — the composition root over the assembly's order slots,
+  stable across redeploys; the profile names no agreement key) and buyer-posture
   `disclosurePolicy` entries. The seller side lands later on the same profile.
 - `dao.json` — the DAO's identity, registered under its EIP-7702 OPERATOR EOA,
   never the vault address (`DAO.md` § "Who holds the treasury").

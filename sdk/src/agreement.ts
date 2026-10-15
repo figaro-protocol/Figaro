@@ -63,15 +63,25 @@ export interface Agreement {
     buyer: `0x${string}`;
     seller: `0x${string}`;
     sections: AgreementSection[];
-    /** The `compositionHash` of the registered assembly this agreement was
-     *  instantiated from — the design-time identity, carried by the agreement
-     *  FORMAT as one reserved leaf (`PROVENANCE_LEAF_KEY`), never by a clause.
-     *  Checkout fills it from the template's own hash; a design cannot carry
-     *  it, since the hash cannot appear inside the composition it hashes.
-     *  Every process instantiates an assembly, so a signed agreement carries
-     *  it; an agreement built without a design (a test fixture, a bare pair)
-     *  leaves it absent and has no provenance leaf. */
-    provenance?: Hex;
+    /** Where this agreement came from at design time: the registered
+     *  agreement (`agreementKey`, the `AgreementRegistry` key) the order's
+     *  slot binds, and the registered assembly (`compositionHash`, the
+     *  `AssemblyRegistry` key) the slot sits in. Carried by the agreement
+     *  FORMAT as one reserved leaf (`PROVENANCE_LEAF_KEY`), never by a
+     *  clause. Checkout writes it from the slot the order instantiates; a
+     *  design cannot carry it, since neither hash can appear inside the
+     *  composition it hashes. Every process instantiates an assembly, so a
+     *  signed agreement carries it; an agreement built without a design (a
+     *  test fixture, a bare pair) leaves it absent and has no provenance
+     *  leaf. */
+    provenance?: AgreementProvenance;
+}
+
+/** The two design-time keys the provenance leaf names: the registered
+ *  agreement and the registered assembly an order instantiates. */
+export interface AgreementProvenance {
+    agreementKey: Hex;
+    compositionHash: Hex;
 }
 
 // ── The provenance leaf — the agreement format's own, not a clause ──────────
@@ -83,36 +93,47 @@ export const PROVENANCE_LEAF_LABEL = "figaro-agreement-provenance";
 
 /** The reserved leaf key, fixed by the agreement format and mirrored in
  *  `UsageCounter.provenanceLeaf()` and the guest: the one leaf whose content
- *  is reproduced from the assembly claimed rather than read from a spec. */
+ *  is reproduced from the agreement and assembly claimed rather than read
+ *  from a spec. */
 export const PROVENANCE_LEAF_KEY: Hex = keccak256(toHex(PROVENANCE_LEAF_LABEL));
 
-/** The provenance leaf's committed bytes — canonical JSON of the one field,
- *  `{"compositionHash":"0x<64 lowercase hex>"}` — exactly what the counter
- *  reproduces from the claimed hash (`UsageCounter.recordAssemblyUsage`). */
-export function provenanceSectionBytes(compositionHash: Hex): Hex {
-    if (!/^0x[0-9a-fA-F]{64}$/.test(compositionHash)) {
-        throw new Error(`provenance is not a 32-byte hex hash: ${compositionHash}`);
+const BYTES32_RE = /^0x[0-9a-fA-F]{64}$/;
+
+/** The provenance leaf's committed bytes — canonical JSON of the two keys,
+ *  `{"agreementKey":"0x<64 lowercase hex>","compositionHash":"0x<64 lowercase hex>"}` —
+ *  exactly what the counter reproduces from the claimed keys
+ *  (`UsageCounter.recordAgreementUsage` / `recordAssemblyUsage`) and the
+ *  guest reproduces for a batch claim. */
+export function provenanceSectionBytes(agreementKey: Hex, compositionHash: Hex): Hex {
+    if (!BYTES32_RE.test(agreementKey)) {
+        throw new Error(`provenance agreementKey is not a 32-byte hex hash: ${agreementKey}`);
     }
-    return toHex(new TextEncoder().encode(canonicalize({ compositionHash: compositionHash.toLowerCase() })));
+    if (!BYTES32_RE.test(compositionHash)) {
+        throw new Error(`provenance compositionHash is not a 32-byte hex hash: ${compositionHash}`);
+    }
+    return toHex(new TextEncoder().encode(canonicalize({
+        agreementKey: agreementKey.toLowerCase(),
+        compositionHash: compositionHash.toLowerCase(),
+    })));
 }
 
 /** The provenance leaf: the section-leaf convention over the reserved key. */
-export function computeProvenanceLeaf(compositionHash: Hex): Hex {
-    return keccak256(keccak256(concat([PROVENANCE_LEAF_KEY, provenanceContentRef(compositionHash)])));
+export function computeProvenanceLeaf(agreementKey: Hex, compositionHash: Hex): Hex {
+    return keccak256(keccak256(concat([PROVENANCE_LEAF_KEY, provenanceContentRef(agreementKey, compositionHash)])));
 }
 
-/** The provenance leaf's fingerprint — `keccak256(provenanceSectionBytes(hash))`:
+/** The provenance leaf's fingerprint — `keccak256(provenanceSectionBytes(…))`:
  *  the leaf's section hash, and the `contentRef` of an attestation that
- *  re-asserts it. A reader links a provenance attestation to its assembly by
- *  computing this for a registered composition hash and comparing. */
-export function provenanceContentRef(compositionHash: Hex): Hex {
-    return keccak256(provenanceSectionBytes(compositionHash));
+ *  re-asserts it. A reader links a provenance attestation to its agreement
+ *  and assembly by computing this for a registered pair and comparing. */
+export function provenanceContentRef(agreementKey: Hex, compositionHash: Hex): Hex {
+    return keccak256(provenanceSectionBytes(agreementKey, compositionHash));
 }
 
-/** The composition hash a provenance leaf's bytes name, or null when the bytes
- *  are not the format's own (`provenanceSectionBytes` of a 32-byte hash,
+/** The two keys a provenance leaf's bytes name, or null when the bytes are
+ *  not the format's own (`provenanceSectionBytes` of two 32-byte hashes,
  *  byte for byte). The leaf has no clause spec; this is its one decoder. */
-export function decodeProvenanceContent(content: Hex): Hex | null {
+export function decodeProvenanceContent(content: Hex): AgreementProvenance | null {
     if (!/^0x([0-9a-fA-F]{2})*$/.test(content)) return null;
     let text: string;
     try {
@@ -123,10 +144,13 @@ export function decodeProvenanceContent(content: Hex): Hex | null {
     } catch {
         return null;
     }
-    const match = /^\{"compositionHash":"(0x[0-9a-f]{64})"\}$/.exec(text);
+    const match = /^\{"agreementKey":"(0x[0-9a-f]{64})","compositionHash":"(0x[0-9a-f]{64})"\}$/.exec(text);
     if (!match) return null;
-    const compositionHash = match[1] as Hex;
-    return provenanceSectionBytes(compositionHash).toLowerCase() === content.toLowerCase() ? compositionHash : null;
+    const agreementKey = match[1] as Hex;
+    const compositionHash = match[2] as Hex;
+    return provenanceSectionBytes(agreementKey, compositionHash).toLowerCase() === content.toLowerCase()
+        ? { agreementKey, compositionHash }
+        : null;
 }
 
 // ── Canonical serialization ─────────────────────────────────────────────────
@@ -146,8 +170,8 @@ function sortedReplacer(_key: string, value: unknown): unknown {
 /**
  * Deterministic JSON serialization: sorted object keys at every depth,
  * preserved array order, no whitespace. THE one canonical-JSON convention —
- * agreement sections and assembly compositions (`AssemblyRegistry.compositionHash`)
- * hash this form, and it is the byte form the reference tooling PINS a clause
+ * agreement sections, agreement documents (`agreementKeyOf`) and the
+ * assembly's slot and terms leaves hash this form, and it is the byte form the reference tooling PINS a clause
  * spec in, so the clause key (`computeClauseKey`, keccak256 of the pinned
  * bytes) is the hash of this form. A clause reader hashes the bytes it
  * fetched (`anchorClauseSpec`), never a re-canonicalization: a spec pinned in
@@ -159,8 +183,8 @@ export function canonicalize(value: unknown): string {
 }
 
 /** keccak256 over the canonical serialization — a clause spec's key when it
- *  is pinned in this form (`computeClauseKey`), and the digest the assembly
- *  registry anchors (`compositionHash`, over the composition subset). */
+ *  is pinned in this form (`computeClauseKey`), and a registered agreement's
+ *  key (`agreementKeyOf`, over the `{ clauses }` subset). */
 export function canonicalContentHash(value: unknown): Hex {
     return keccak256(toHex(canonicalize(value)));
 }
@@ -245,7 +269,17 @@ function hashPair(a: Hex, b: Hex): Hex {
         : keccak256(concat([b, a]));
 }
 
-function buildMerkleRoot(leaves: readonly Hex[]): Hex {
+/** The leaves of a tree in the order it is built: lexicographic on the
+ *  lowercased hex, the order every root and proof here assumes. */
+export function sortLeaves(leaves: readonly Hex[]): Hex[] {
+    return [...leaves].sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
+}
+
+/** The sorted-pair merkle root over leaves already in `sortLeaves` order —
+ *  the one tree builder: an agreement's root (`computeAgreementHash`) and an
+ *  assembly's (`templateCompositionHash`) are both this function. A one-leaf
+ *  tree's root is its leaf; an empty tree's is bytes32(0). */
+export function buildMerkleRoot(leaves: readonly Hex[]): Hex {
     if (leaves.length === 0) return ZERO_BYTES32;
     let layer: Hex[] = [...leaves];
     while (layer.length > 1) {
@@ -279,9 +313,10 @@ export function agreementLeaves(agreement: Agreement): Hex[] {
         throw new Error(`Duplicate clause keys in agreement: ${[...new Set(dupes)].join(", ")}`);
     }
     const leaves = agreement.sections.map(computeSectionLeaf);
-    if (agreement.provenance !== undefined) leaves.push(computeProvenanceLeaf(agreement.provenance));
-    leaves.sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
-    return leaves;
+    if (agreement.provenance !== undefined) {
+        leaves.push(computeProvenanceLeaf(agreement.provenance.agreementKey, agreement.provenance.compositionHash));
+    }
+    return sortLeaves(leaves);
 }
 
 /**
@@ -306,14 +341,16 @@ export function buildSectionInclusionProof(
 
 /**
  * Build the inclusion proof of the reserved provenance leaf — what
- * `UsageCounter.recordAssemblyUsage` and the batch path's assembly claim
- * verify against the signed root. Throws if the agreement names no design.
+ * `UsageCounter.recordAgreementUsage` / `recordAssemblyUsage` and the batch
+ * path's agreement and assembly claims verify against the signed root.
+ * Throws if the agreement names no design.
  */
 export function buildProvenanceInclusionProof(agreement: Agreement): { leaf: Hex; proof: Hex[] } {
     if (agreement.provenance === undefined) {
         throw new Error("Agreement names no assembly: no provenance leaf to prove");
     }
-    return buildLeafInclusionProof(agreementLeaves(agreement), computeProvenanceLeaf(agreement.provenance));
+    const { agreementKey, compositionHash } = agreement.provenance;
+    return buildLeafInclusionProof(agreementLeaves(agreement), computeProvenanceLeaf(agreementKey, compositionHash));
 }
 
 /**
@@ -323,7 +360,7 @@ export function buildProvenanceInclusionProof(agreement: Agreement): { leaf: Hex
  * the leaf's fingerprint as both `sectionHash` and `contentRef` (the
  * attestation re-asserts the committed leaf), its inclusion proof, and stage
  * 0. The buyer files it while the process is open, as every attestation is; the data corpus links the process
- * to its assembly through that attestation. Throws if the agreement names no
+ * to its registered agreement and assembly through that attestation. Throws if the agreement names no
  * design.
  */
 export function provenanceLeafAttestation(agreement: Agreement): {
@@ -334,11 +371,14 @@ export function provenanceLeafAttestation(agreement: Agreement): {
     contentRef: Hex;
 } {
     const { proof } = buildProvenanceInclusionProof(agreement);
-    const sectionHash = provenanceContentRef(agreement.provenance as Hex);
+    const { agreementKey, compositionHash } = agreement.provenance as AgreementProvenance;
+    const sectionHash = provenanceContentRef(agreementKey, compositionHash);
     return { clauseId: PROVENANCE_LEAF_KEY, stage: 0, sectionHash, proof, contentRef: sectionHash };
 }
 
-function buildLeafInclusionProof(sortedLeaves: readonly Hex[], targetLeaf: Hex): { leaf: Hex; proof: Hex[] } {
+/** The sorted-pair inclusion proof of `targetLeaf` among leaves already in
+ *  `sortLeaves` order — the one proof builder, beside `buildMerkleRoot`. */
+export function buildLeafInclusionProof(sortedLeaves: readonly Hex[], targetLeaf: Hex): { leaf: Hex; proof: Hex[] } {
     let idx = sortedLeaves.findIndex((l) => l.toLowerCase() === targetLeaf.toLowerCase());
     if (idx < 0) throw new Error("Internal error: leaf not in sorted tree");
     const proof: Hex[] = [];

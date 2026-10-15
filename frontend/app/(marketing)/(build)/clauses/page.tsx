@@ -63,7 +63,7 @@ export default function Clauses() {
                     <strong>The shape has a name: a clause spec is a <a href="https://iang.org/papers/ricardian_contract.html" target="_blank" rel="noopener noreferrer" className="underline">Ricardian contract</a></strong> &mdash; Grigg&apos;s single document that people read, programs parse, and a hash over its own content identifies: <code>block</code> is the half people read, <code>fields</code> the half programs parse, and the clause key, the hash of the pinned document that <code>ClauseRegistry</code> registers, is both its identity and its integrity anchor. What Figaro does not take from that lineage is the issuer and the legal backstop &mdash; a clause&apos;s designer is not a party to the trades that use it, and what makes those trades hold is the bonding equilibrium rather than anything the document says; clause design as a discipline is treated on <Link href="/composition" className="underline">Composition</Link>.
                 </p>
                 <p className="text-sm text-ink-body leading-relaxed mb-4">
-                    Three different hashes are computed over what you write, and mixing them up is the single most expensive authoring mistake &mdash; registration is permanent and first-write-wins. The <strong>clause key</strong> is the hash of the whole pinned document, and it is the registry key. The <strong><code>agreementHash</code></strong> is what a buyer and a seller actually sign, and the <strong><code>compositionHash</code></strong> is what a designer&apos;s assembly is. Here is exactly which part of your spec reaches which:
+                    Four different hashes are computed over what you write, and mixing them up is the single most expensive authoring mistake &mdash; registration is permanent and first-write-wins. The <strong>clause key</strong> is the hash of the whole pinned document, and it is the registry key. The <strong><code>agreementKey</code></strong> is what a registered agreement is &mdash; clauses composed once for one order, with the designer&apos;s fills, for any assembly to reuse. The <strong><code>agreementHash</code></strong> is what a buyer and a seller actually sign, and the <strong><code>compositionHash</code></strong> is what a designer&apos;s assembly is: a merkle root over the registered agreements it holds. Here is exactly which part of your spec reaches which:
                 </p>
                 <div className="overflow-x-auto -mx-6 px-6">
                     <table className="w-full text-sm">
@@ -82,8 +82,8 @@ export default function Clauses() {
                             </tr>
                             <tr>
                                 <td className="py-2 pr-4"><code>block.design.article: &quot;mandatory&quot;</code></td>
-                                <td className="py-2 pr-4"><strong><code>compositionHash</code></strong> + <strong><code>agreementHash</code></strong></td>
-                                <td className="py-2">Auto-folds your clause into <em>every</em> template agreement, whether or not a designer chose it. This is how the two mandatory clauses &mdash; <code>figaro-commerce</code> and <code>figaro-topology</code> &mdash; ride along. Which assembly a process instantiates is carried by the agreement itself, as one reserved leaf of its merkle tree, and by no clause.</td>
+                                <td className="py-2 pr-4"><strong><code>agreementKey</code></strong> + <strong><code>agreementHash</code></strong></td>
+                                <td className="py-2">Auto-folds your clause into <em>every</em> newly composed agreement, whether or not a designer chose it. This is how the two mandatory clauses &mdash; <code>figaro-commerce</code> and <code>figaro-topology</code> &mdash; ride along. Which registered agreement and which assembly an order instantiates is carried by the agreement itself, as one reserved leaf of its merkle tree, and by no clause.</td>
                             </tr>
                             <tr>
                                 <td className="py-2 pr-4"><code>block.design.article: &quot;attestations&quot;</code></td>
@@ -97,8 +97,8 @@ export default function Clauses() {
                             </tr>
                             <tr>
                                 <td className="py-2 pr-4"><code>block.design.fills</code></td>
-                                <td className="py-2 pr-4"><strong><code>compositionHash</code></strong></td>
-                                <td className="py-2">Names the fields whose <em>designer-authored</em> values survive into the published template &mdash; the tailoring. Name nothing here and the template carries <code>{"{}"}</code> for your clause: the fields become transaction particulars, filled at checkout.</td>
+                                <td className="py-2 pr-4"><strong><code>agreementKey</code></strong></td>
+                                <td className="py-2">Names the fields whose <em>design-time</em> values survive into the registered agreement &mdash; the tailoring. Name nothing here and the agreement carries <code>{"{}"}</code> for your clause: the fields become transaction particulars, filled at checkout.</td>
                             </tr>
                             <tr>
                                 <td className="py-2 pr-4"><code>block.checkout.catalogueFills</code> · <code>block.checkout.profileFills</code></td>

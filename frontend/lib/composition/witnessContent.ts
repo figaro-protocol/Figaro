@@ -61,8 +61,9 @@ export async function publishWitnessContent(params: PublishWitnessContentParams)
     if (isEmptyHex(content)) return; // nothing to learn from empty content
     if (params.clauseId.toLowerCase() === PROVENANCE_LEAF_KEY.toLowerCase()) {
         // The agreement FORMAT's provenance leaf has no spec: its bytes are
-        // the format's own (`{"compositionHash":…}`, reproducible from a
-        // registered — public — composition hash), so they pin as-is when
+        // the format's own (`{"agreementKey":…,"compositionHash":…}`,
+        // reproducible from a registered — public — agreement key and
+        // composition root), so they pin as-is when
         // `decodeProvenanceContent` reads them, and not at all otherwise.
         if (decodeProvenanceContent(content) === null) {
             console.warn(`[witnessContent] content under the provenance leaf is not the format's bytes — withheld`);

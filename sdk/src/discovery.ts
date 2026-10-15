@@ -3,8 +3,8 @@
  *
  * The cold-start half of an agent's state. Where `state.ts`/`Topology`
  * reconstructs the processes an agent is ALREADY in, this module reconstructs
- * what EXISTS on the network — the three registry families a fresh-key agent
- * has never seen: clauses, members, assemblies.
+ * what EXISTS on the network — the registry families a fresh-key agent has
+ * never seen: clauses, members, agreements, assemblies.
  *
  * It is a PARALLEL family, deliberately not folded into `Topology`: the
  * registries have no on-chain edges among themselves or to FigaroCore
@@ -13,9 +13,11 @@
  * getters) so the two read the same way without knowing about each other.
  *
  * Surfacing derives from the LIVE stake (the registries' staked-intent model):
- * an entry whose deposit has been withdrawn is de-surfaced. The three
- * families withdraw differently, and the reducer honors each:
- *   - clauses/assemblies — binding permanent, withdraw terminal ⇒ set-difference.
+ * an entry whose stake has been withdrawn is de-surfaced. The families
+ * withdraw differently, and the reducer honors each:
+ *   - clauses/agreements/assemblies — binding permanent, withdraw terminal ⇒
+ *     set-difference (a withdrawn agreement stays readable by key, so an
+ *     assembly composed from it keeps hydrating: `getAgreementBinding`).
  *   - members — requesting withdrawal clears the guard and allows re-registration
  *     ⇒ the live state is order-dependent; the most-recent lifecycle event per
  *     address wins. De-surfacing is the REQUEST, not the later ETH release.
@@ -29,6 +31,7 @@ import {
     CLAUSE_REGISTRY_ABI,
     MEMBERS_REGISTRY_ABI,
     ASSEMBLY_REGISTRY_ABI,
+    AGREEMENT_REGISTRY_ABI,
 } from "./abis.js";
 import { fetchLogsChunked } from "./events.js";
 import type {
@@ -41,9 +44,12 @@ import type {
     MemberWithdrawnEvent,
     AssemblyRegisteredEvent,
     AssemblyWithdrawnEvent,
+    AgreementRegisteredEvent,
+    AgreementWithdrawnEvent,
     RegisteredClause,
     RegisteredMember,
     RegisteredAssembly,
+    RegisteredAgreement,
 } from "./types.js";
 import { canonicalContentHash } from "./agreement.js";
 
@@ -177,6 +183,42 @@ export function parseAssemblyRegistryLogs(logs: Log[]): AssemblyRegistryEvents {
     return { registered, withdrawn };
 }
 
+export interface AgreementRegistryEvents {
+    registered: AgreementRegisteredEvent[];
+    withdrawn: AgreementWithdrawnEvent[];
+}
+
+export function parseAgreementRegistryLogs(logs: Log[]): AgreementRegistryEvents {
+    const registered: AgreementRegisteredEvent[] = [];
+    const withdrawn: AgreementWithdrawnEvent[] = [];
+    for (const log of logs) {
+        try {
+            const decoded = decodeEventLog({ abi: AGREEMENT_REGISTRY_ABI, data: log.data, topics: log.topics });
+            const a = decoded.args as Record<string, unknown>;
+            if (decoded.eventName === "AgreementRegistered") {
+                registered.push({
+                    agreementKey: a.agreementKey as Hex,
+                    registeredBy: a.registeredBy as Address,
+                    contentURI: a.contentURI as string,
+                    blockNumber: Number(log.blockNumber ?? 0),
+                    logIndex: Number(log.logIndex ?? 0),
+                    transactionHash: (log.transactionHash ?? null) as Hex | null,
+                });
+            } else if (decoded.eventName === "DepositWithdrawn") {
+                withdrawn.push({
+                    agreementKey: a.agreementKey as Hex,
+                    registeredBy: a.registeredBy as Address,
+                    blockNumber: Number(log.blockNumber ?? 0),
+                    logIndex: Number(log.logIndex ?? 0),
+                });
+            }
+        } catch {
+            // Skip non-matching logs
+        }
+    }
+    return { registered, withdrawn };
+}
+
 // ── Bulk fetch ───────────────────────────────────────────────────────────────
 
 export interface DiscoveryEvents {
@@ -186,6 +228,8 @@ export interface DiscoveryEvents {
     memberWithdrawn: MemberWithdrawnEvent[];
     assemblyRegistered: AssemblyRegisteredEvent[];
     assemblyWithdrawn: AssemblyWithdrawnEvent[];
+    agreementRegistered: AgreementRegisteredEvent[];
+    agreementWithdrawn: AgreementWithdrawnEvent[];
 }
 
 
@@ -204,7 +248,7 @@ export async function fetchDiscoveryEvents(
     toBlock: bigint | "latest" = "latest",
     chunkSize?: bigint,
 ): Promise<DiscoveryEvents> {
-    const [clause, seller, assembly] = await Promise.all([
+    const [clause, seller, assembly, agreement] = await Promise.all([
         addresses.clauseRegistry
             ? fetchLogsChunked(client, { address: addresses.clauseRegistry, fromBlock, toBlock, chunkSize }).then(parseClauseRegistryLogs)
             : Promise.resolve({ registered: [], withdrawn: [] } as ClauseRegistryEvents),
@@ -214,6 +258,9 @@ export async function fetchDiscoveryEvents(
         addresses.assemblyRegistry
             ? fetchLogsChunked(client, { address: addresses.assemblyRegistry, fromBlock, toBlock, chunkSize }).then(parseAssemblyRegistryLogs)
             : Promise.resolve({ registered: [], withdrawn: [] } as AssemblyRegistryEvents),
+        addresses.agreementRegistry
+            ? fetchLogsChunked(client, { address: addresses.agreementRegistry, fromBlock, toBlock, chunkSize }).then(parseAgreementRegistryLogs)
+            : Promise.resolve({ registered: [], withdrawn: [] } as AgreementRegistryEvents),
     ]);
 
     return {
@@ -223,6 +270,8 @@ export async function fetchDiscoveryEvents(
         memberWithdrawn: seller.withdrawn,
         assemblyRegistered: assembly.registered,
         assemblyWithdrawn: assembly.withdrawn,
+        agreementRegistered: agreement.registered,
+        agreementWithdrawn: agreement.withdrawn,
     };
 }
 
@@ -249,6 +298,10 @@ interface ClauseEntry {
     clause: RegisteredClause;
 }
 
+interface AgreementEntry {
+    agreement: RegisteredAgreement;
+}
+
 interface AssemblyEntry {
     assembly: RegisteredAssembly;
     withdrawn: boolean;
@@ -270,12 +323,14 @@ interface MemberEntry {
 export class DiscoveryGraph {
     private readonly clauses = new Map<string, ClauseEntry>(); // key: lowercased clause key
     private readonly assemblies = new Map<Hex, AssemblyEntry>(); // key: compositionHash
+    private readonly agreements = new Map<string, AgreementEntry>(); // key: lowercased agreement key
     private readonly members = new Map<string, MemberEntry>(); // key: lowercased address
 
     /** Apply a batch of registry events (e.g. from fetchDiscoveryEvents). */
     applyEvents(events: DiscoveryEvents): void {
         this.applyClauseEvents(events.clauseRegistered, events.clauseWithdrawn);
         this.applyAssemblyEvents(events.assemblyRegistered, events.assemblyWithdrawn);
+        this.applyAgreementEvents(events.agreementRegistered ?? [], events.agreementWithdrawn ?? []);
         this.applyMemberEvents(events.memberRegistered, events.memberWithdrawn);
     }
 
@@ -289,6 +344,27 @@ export class DiscoveryGraph {
     /** All live-staked assemblies. */
     getAssemblies(): RegisteredAssembly[] {
         return [...this.assemblies.values()].filter((e) => !e.withdrawn).map((e) => e.assembly);
+    }
+
+    /** All live-staked registered agreements — what a drawer offers for a
+     *  new composition. */
+    getAgreements(): RegisteredAgreement[] {
+        return [...this.agreements.values()].filter((e) => !e.agreement.stakeWithdrawn).map((e) => e.agreement);
+    }
+
+    /** A single registered agreement by key; undefined if unknown or
+     *  de-surfaced. */
+    getAgreement(agreementKey: Hex): RegisteredAgreement | undefined {
+        const e = this.agreements.get(agreementKey.toLowerCase());
+        return e && !e.agreement.stakeWithdrawn ? e.agreement : undefined;
+    }
+
+    /** A registered agreement's binding by key WHATEVER its stake — the
+     *  binding is never cleared, so hydration of an assembly composed from a
+     *  withdrawn agreement reads its `contentURI` here; `stakeWithdrawn` says
+     *  whether it is still offered. Undefined only if never registered. */
+    getAgreementBinding(agreementKey: Hex): RegisteredAgreement | undefined {
+        return this.agreements.get(agreementKey.toLowerCase())?.agreement;
     }
 
     /** All live-staked members. */
@@ -357,6 +433,28 @@ export class DiscoveryGraph {
         for (const w of withdrawn) {
             const entry = this.assemblies.get(w.compositionHash);
             if (entry) entry.withdrawn = true; // withdraw is terminal for a composition
+        }
+    }
+
+    private applyAgreementEvents(registered: AgreementRegisteredEvent[], withdrawn: AgreementWithdrawnEvent[]): void {
+        for (const e of registered) {
+            const key = e.agreementKey.toLowerCase();
+            // agreementKey is first-write-wins and permanent — first-seen wins.
+            if (!this.agreements.has(key)) {
+                this.agreements.set(key, {
+                    agreement: {
+                        agreementKey: e.agreementKey,
+                        contentURI: e.contentURI,
+                        registeredBy: e.registeredBy,
+                        registeredAt: e.blockNumber,
+                        stakeWithdrawn: false,
+                    },
+                });
+            }
+        }
+        for (const w of withdrawn) {
+            const entry = this.agreements.get(w.agreementKey.toLowerCase());
+            if (entry) entry.agreement = { ...entry.agreement, stakeWithdrawn: true }; // withdraw is terminal for an agreement key
         }
     }
 

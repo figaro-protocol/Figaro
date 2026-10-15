@@ -240,6 +240,7 @@ contract HalmosMembersRegistry is Test {
             address(members),
             address(new MockClauseOrAssemblyStake()),
             address(new MockClauseOrAssemblyStake()),
+            address(new MockClauseOrAssemblyStake()),
             verifier,
             1,
             periods

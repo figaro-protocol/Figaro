@@ -7,7 +7,6 @@ import {
     validateOffer,
     counterSignOffer,
     offerToExecutionInputs,
-    type AssemblyTemplate,
     type OfferPolicy,
 } from "../src/agent/originate.js";
 import { InProcessChannel } from "../src/agent/coordination.js";
@@ -15,6 +14,7 @@ import { computeAgreementHash } from "../src/agreement.js";
 import { templateCompositionHash } from "../src/assembly.js";
 import type { Address } from "../src/types.js";
 import { keyOf, specSourceFromFixtures } from "./specFixtures.js";
+import { hydrateAuthored } from "./hydrate.js";
 
 const SPECS = specSourceFromFixtures(["figaro-commerce", "figaro-topology"]);
 
@@ -28,13 +28,13 @@ const CHAIN = 31337;
 const buyerW = createWalletClient({ account: BUYER, transport: http("http://localhost:0") });
 const sellerW = createWalletClient({ account: SELLER, transport: http("http://localhost:0") });
 
-const template: AssemblyTemplate = {
+const template = hydrateAuthored({
     agreements: [{ id: "order-0", clauses: { [keyOf("figaro-commerce")]: {}, [keyOf("figaro-topology")]: { parentOrderHashes: [] } } }],
-};
+});
 const overrides = { [keyOf("figaro-commerce")]: { currency: CURRENCY, payment: "1000", lineItems: [{ itemId: "x", name: "Item", quantity: 1, unitPrice: "1000" }] } };
 
 function offerParams() {
-    return { template, seller: SELLER.address, currency: CURRENCY, payment: 1000n, chainId: CHAIN, core: CORE, deadline: 1_900_000_000n, overrides };
+    return { assembly: template, seller: SELLER.address, currency: CURRENCY, payment: 1000n, chainId: CHAIN, core: CORE, deadline: 1_900_000_000n, overrides };
 }
 
 // A conforming operator policy for the root offer above (payment 1000, CURRENCY).
@@ -51,12 +51,12 @@ describe("instantiateRootAgreement", () => {
     });
 
     it("picks the root agreement (no non-empty parentOrderHashes) from a multi-agreement template", () => {
-        const multi: AssemblyTemplate = {
+        const multi = hydrateAuthored({
             agreements: [
                 { id: "order-1", clauses: { [keyOf("figaro-topology")]: { parentOrderHashes: ["0xabc"] } } },
                 { id: "order-0", clauses: { [keyOf("figaro-commerce")]: {}, [keyOf("figaro-topology")]: { parentOrderHashes: [] } } },
             ],
-        };
+        });
         const a = instantiateRootAgreement(multi, { buyer: BUYER.address, seller: SELLER.address });
         expect(a.sections.some((s) => s.clause === keyOf("figaro-commerce"))).toBe(true);
     });
@@ -260,12 +260,12 @@ describe("the assembly-scope fold at root instantiation (audit hole (a), closed)
     ]);
     const PIN = CURRENCY;
     const OTHER = "0xdddddddddddddddddddddddddddddddddddddddd" as Address;
-    const pinned: AssemblyTemplate = {
+    const pinned = hydrateAuthored({
         assemblyClauses: {
             [keyOf("figaro-utility-token")]: { currency: PIN },
         },
         agreements: [{ id: "order-0", clauses: { [keyOf("figaro-commerce")]: {}, [keyOf("figaro-topology")]: { parentOrderHashes: [] } } }],
-    };
+    });
 
     it("instantiateRootAgreement folds assemblyClauses into the root agreement", () => {
         const a = instantiateRootAgreement(pinned, { buyer: BUYER.address, seller: SELLER.address, overrides });
@@ -278,28 +278,34 @@ describe("the assembly-scope fold at root instantiation (audit hole (a), closed)
 
     it("the instantiated agreement carries the template's own composition hash as agreement.provenance", () => {
         const a = instantiateRootAgreement(pinned, { buyer: BUYER.address, seller: SELLER.address, overrides });
-        expect(a.provenance).toBe(templateCompositionHash(pinned));
+        expect(a.provenance).toEqual({
+            agreementKey: pinned.template.agreements[0].agreementKey,
+            compositionHash: templateCompositionHash(pinned.template),
+        });
         // The provenance leaf is the format's, not a clause: no section carries it.
         expect(a.sections.some((s) => "compositionHash" in (s.data ?? {}))).toBe(false);
     });
 
     it("the folded pin now REACHES the sign gate: a pin contradicting the struct refuses to sign", async () => {
-        const mismatched: AssemblyTemplate = {
+        const mismatched = {
             ...pinned,
-            assemblyClauses: { ...pinned.assemblyClauses, [keyOf("figaro-utility-token")]: { currency: OTHER } },
+            template: {
+                ...pinned.template,
+                assemblyClauses: { ...pinned.template.assemblyClauses, [keyOf("figaro-utility-token")]: { currency: OTHER } },
+            },
         };
         await expect(buildBuyerOffer(buyerW, {
-            template: mismatched, seller: SELLER.address, currency: CURRENCY, payment: 1000n,
+            assembly: mismatched, seller: SELLER.address, currency: CURRENCY, payment: 1000n,
             chainId: CHAIN, core: CORE, deadline: 1_900_000_000n, overrides, specs: FOLD_SPECS,
         })).rejects.toThrow(/denominated by design/);
         // And the MATCHING pin signs clean — the fold + fill + gate agree, and
         // the signed root commits the provenance leaf.
         const offer = await buildBuyerOffer(buyerW, {
-            template: pinned, seller: SELLER.address, currency: CURRENCY, payment: 1000n,
+            assembly: pinned, seller: SELLER.address, currency: CURRENCY, payment: 1000n,
             chainId: CHAIN, core: CORE, deadline: 1_900_000_000n, overrides, specs: FOLD_SPECS,
         });
         expect(offer.buyerSig).toBeDefined();
-        expect(offer.agreement.provenance).toBe(templateCompositionHash(pinned));
+        expect(offer.agreement.provenance?.compositionHash).toBe(templateCompositionHash(pinned.template));
         expect(offer.commitment.agreementHash).toBe(computeAgreementHash(offer.agreement));
     });
 });

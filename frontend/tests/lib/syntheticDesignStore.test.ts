@@ -16,7 +16,7 @@
  * (`draftToAssemblyTemplate` — the one walk publish uses).
  */
 import { beforeEach, describe, expect, it } from "vitest";
-import { serializeAssemblyTemplate } from "@figaro-protocol/sdk";
+import { agreementKeyOf, serializeAssemblyTemplate } from "@figaro-protocol/sdk";
 import {
     loadNamedDraft,
     saveNamedDraft,
@@ -153,12 +153,16 @@ describe("design fills are the composition's identity — the disclosure regime"
 
     it("the composed regime survives into the template JSON — a design fill is NOT stripped", () => {
         for (const regime of regimeValues()) {
-            const template = snapshotToAssemblyTemplate(draft({ [FIELD]: regime }));
-            const composed = template.agreements[0].clauses[CLAUSE] as Record<string, unknown>;
+            const { template, agreements } = snapshotToAssemblyTemplate(draft({ [FIELD]: regime }));
+            // The value sits in the agreement the order slot binds, and so in
+            // its key — the template carries that key.
+            const agreementKey = template.agreements[0].agreementKey;
+            const composed = agreements[agreementKey].clauses[CLAUSE as `0x${string}`] as Record<string, unknown>;
             expect(composed, `${regime} is composed onto the agreement`).toEqual({ [FIELD]: regime });
+            expect(agreementKeyOf(agreements[agreementKey])).toBe(agreementKey);
             // And it is in the CANONICAL bytes, not just the in-memory object.
             const { json } = serializeAssemblyTemplate(template);
-            expect(JSON.parse(json).agreements[0].clauses[CLAUSE]).toEqual({ [FIELD]: regime });
+            expect(JSON.parse(json).agreements[0].agreementKey).toBe(agreementKey);
         }
     });
 

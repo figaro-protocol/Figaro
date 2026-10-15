@@ -485,6 +485,16 @@ sol! {
 
 sol! {
     #[sol(rpc)]
+    interface IAgreementRegistry {
+        function bindings(bytes32 agreementKey)
+            external
+            view
+            returns (address registeredBy, uint64 registeredAt, bool depositWithdrawn, string contentURI);
+    }
+}
+
+sol! {
+    #[sol(rpc)]
     interface IMembersRegistry {
         function registered(address member) external view returns (bool);
     }
@@ -499,12 +509,14 @@ pub struct SubmitterConfig {
     /// sequencer then resolves trade without crediting it, which is exactly
     /// what a deployment with no counter should do.
     pub usage_counter_address: Address,
-    /// The three registries the usage-claim pre-filter reads. Any left
-    /// `Address::ZERO` (e.g. all three, on a deployment with no reward)
-    /// disables the pre-filter — every claim passes through and the counter's
-    /// own gates plus the verifier's try/catch remain the backstop.
+    /// The four registries the usage-claim pre-filter reads, one per claim
+    /// kind plus the members' — clause, assembly, agreement, members. With
+    /// no counter configured the pre-filter passes every claim through; with
+    /// one configured, a read against a registry left `Address::ZERO` fails
+    /// and drops the claim (see `filter_usage_claims`).
     pub clause_registry_address: Address,
     pub assembly_registry_address: Address,
+    pub agreement_registry_address: Address,
     pub members_registry_address: Address,
     pub private_key: String,
 }
@@ -557,19 +569,20 @@ pub async fn filter_usage_claims(
     config: &SubmitterConfig,
     claims: Vec<UsageClaim>,
 ) -> (Vec<UsageClaim>, Vec<(UsageClaim, String)>) {
-    // The agreement format's reserved provenance leaf is never a
-    // registration: the guest refuses a claim keyed on it (either kind), so
-    // one such claim would cost the whole batch its proof. A constant
-    // comparison, no chain read — it runs whether or not a counter is set.
-    let (reserved, claims): (Vec<UsageClaim>, Vec<UsageClaim>) = claims
-        .into_iter()
-        .partition(|c| c.clause_or_assembly == figaro_kernel::kernel::PROVENANCE_LEAF_KEY);
+    // The format's two reserved keys (the provenance leaf's and the
+    // assembly terms leaf's) are never registrations: the guest refuses a
+    // claim keyed on either (any kind), and an assembly claim whose order
+    // slot names either as its agreementKey, so one such claim would cost
+    // the whole batch its proof. A constant comparison, no chain read — it
+    // runs whether or not a counter is set.
+    let (reserved, claims): (Vec<UsageClaim>, Vec<UsageClaim>) =
+        claims.into_iter().partition(names_a_reserved_key);
     let mut dropped: Vec<(UsageClaim, String)> = reserved
         .into_iter()
         .map(|c| {
             (
                 c,
-                "keyed on the reserved provenance leaf, which is not a registration".to_string(),
+                "names a reserved key of the format, which is not a registration".to_string(),
             )
         })
         .collect();
@@ -590,6 +603,7 @@ pub async fn filter_usage_claims(
     };
     let clauses = IClauseRegistry::new(config.clause_registry_address, &provider);
     let assemblies = IAssemblyRegistry::new(config.assembly_registry_address, &provider);
+    let agreements = IAgreementRegistry::new(config.agreement_registry_address, &provider);
     let members = IMembersRegistry::new(config.members_registry_address, &provider);
 
     let mut valid = Vec::with_capacity(claims.len());
@@ -599,8 +613,8 @@ pub async fn filter_usage_claims(
     // unverified state.
     for claim in claims {
         let reason: Result<(), String> = async {
-            // Registration-side stake gate: a LIVE registration deposit in the
-            // key's own registry (clause OR assembly, matching the kind).
+            // Registration-side stake gate: a live registration stake in the
+            // key's own registry (clause, agreement or assembly, matching the kind).
             let live = match claim.kind {
                 UsageClaimKind::Clause { .. } => {
                     match clauses.depositOf(claim.clause_or_assembly).call().await {
@@ -608,7 +622,7 @@ pub async fn filter_usage_claims(
                         Err(e) => return Err(format!("clause depositOf read failed: {e}")),
                     }
                 }
-                UsageClaimKind::Assembly => {
+                UsageClaimKind::Assembly { .. } => {
                     match assemblies.bindings(claim.clause_or_assembly).call().await {
                         Ok(b) => {
                             b.registeredBy != Address::ZERO && b.registeredAt != 0 && !b.depositWithdrawn
@@ -616,9 +630,17 @@ pub async fn filter_usage_claims(
                         Err(e) => return Err(format!("assembly bindings read failed: {e}")),
                     }
                 }
+                UsageClaimKind::Agreement { .. } => {
+                    match agreements.bindings(claim.clause_or_assembly).call().await {
+                        Ok(b) => {
+                            b.registeredBy != Address::ZERO && b.registeredAt != 0 && !b.depositWithdrawn
+                        }
+                        Err(e) => return Err(format!("agreement bindings read failed: {e}")),
+                    }
+                }
             };
             if !live {
-                return Err("clause or assembly has no live registration deposit".to_string());
+                return Err("the claim's key has no live registration stake in its registry".to_string());
             }
 
             // Seller-side stake gate: the order's seller of record must be live-staked.
@@ -636,6 +658,15 @@ pub async fn filter_usage_claims(
         }
     }
     (valid, dropped)
+}
+
+/// Whether a claim names one of the format's reserved keys where the guest
+/// refuses it: as the claim's key, of any kind, or as an assembly claim's
+/// order-slot agreementKey.
+fn names_a_reserved_key(claim: &UsageClaim) -> bool {
+    use figaro_kernel::kernel::is_reserved_key;
+    is_reserved_key(&claim.clause_or_assembly)
+        || matches!(&claim.kind, UsageClaimKind::Assembly { agreement_key, .. } if is_reserved_key(agreement_key))
 }
 
 /// Submit a proved batch to the on-chain FigaroBatchVerifier.
@@ -1064,6 +1095,7 @@ mod tests {
             usage_counter_address: Address::ZERO,
             clause_registry_address: clause,
             assembly_registry_address: assembly,
+            agreement_registry_address: Address::ZERO,
             members_registry_address: members,
             private_key: String::new(),
         }
@@ -1134,5 +1166,158 @@ mod tests {
         let (valid, dropped) = filter_usage_claims(&config, Vec::new()).await;
         assert!(valid.is_empty());
         assert!(dropped.is_empty());
+    }
+
+    // ── The agreement kind's pre-filter, against a chain double ──────
+
+    const COUNTER: Address = Address::repeat_byte(0xC0);
+    const CLAUSES: Address = Address::repeat_byte(0xC1);
+    const ASSEMBLIES: Address = Address::repeat_byte(0xC2);
+    const AGREEMENTS: Address = Address::repeat_byte(0xC3);
+    const MEMBERS: Address = Address::repeat_byte(0xC4);
+
+    /// A JSON-RPC double answering `eth_call` for the registries the
+    /// pre-filter reads: `bindings(key)` is live for the (registry, key)
+    /// pairs in `live`, every member is staked, and anything else is an
+    /// unregistered binding. Returns the URL it serves on.
+    async fn registries_double(live: Vec<(Address, B256)>) -> String {
+        use alloy::sol_types::{SolCall, SolValue};
+        use axum::{routing::post, Json, Router};
+
+        let live = std::sync::Arc::new(live);
+        let app = Router::new().route(
+            "/",
+            post(move |Json(req): Json<serde_json::Value>| {
+                let live = live.clone();
+                async move {
+                    let answer = |req: &serde_json::Value| -> serde_json::Value {
+                        let id = req["id"].clone();
+                        let result = match req["method"].as_str().unwrap_or("") {
+                            "eth_chainId" => serde_json::json!("0x7a69"),
+                            "eth_blockNumber" => serde_json::json!("0x1"),
+                            "eth_call" => {
+                                let tx = &req["params"][0];
+                                let to: Address = tx["to"].as_str().unwrap().parse().unwrap();
+                                let input = tx["input"].as_str().or(tx["data"].as_str()).unwrap();
+                                let input = alloy::primitives::hex::decode(input).unwrap();
+                                let out: Vec<u8> = if input[..4] == IMembersRegistry::registeredCall::SELECTOR {
+                                    true.abi_encode()
+                                } else if input[..4] == IAgreementRegistry::bindingsCall::SELECTOR {
+                                    let key = B256::from_slice(&input[4..36]);
+                                    let registered = live.contains(&(to, key));
+                                    let by = if registered { Address::repeat_byte(0xDE) } else { Address::ZERO };
+                                    let at: u64 = if registered { 1 } else { 0 };
+                                    let uri = if registered { "ipfs://doc".to_string() } else { String::new() };
+                                    (by, at, false, uri).abi_encode_params()
+                                } else {
+                                    panic!("unexpected call to {to}");
+                                };
+                                serde_json::json!(format!("0x{}", alloy::primitives::hex::encode(out)))
+                            }
+                            other => panic!("unexpected method {other}"),
+                        };
+                        serde_json::json!({"jsonrpc": "2.0", "id": id, "result": result})
+                    };
+                    let body = match &req {
+                        serde_json::Value::Array(batch) => {
+                            serde_json::Value::Array(batch.iter().map(answer).collect())
+                        }
+                        single => answer(single),
+                    };
+                    Json(body)
+                }
+            }),
+        );
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
+        format!("http://{addr}")
+    }
+
+    fn live_config(rpc_url: String) -> SubmitterConfig {
+        SubmitterConfig {
+            rpc_url,
+            verifier_address: Address::ZERO,
+            usage_counter_address: COUNTER,
+            clause_registry_address: CLAUSES,
+            assembly_registry_address: ASSEMBLIES,
+            agreement_registry_address: AGREEMENTS,
+            members_registry_address: MEMBERS,
+            private_key: String::new(),
+        }
+    }
+
+    fn agreement_claim(key: B256) -> UsageClaim {
+        let mut claim = dummy_claim();
+        claim.clause_or_assembly = key;
+        claim.kind = UsageClaimKind::Agreement {
+            composition_hash: B256::repeat_byte(0xA5),
+        };
+        claim
+    }
+
+    // A kind-2 claim reads `AgreementRegistry.bindings`: a registered
+    // agreement passes, an unregistered one is dropped — and a key that only
+    // the ASSEMBLY registry holds is still dropped, so the read goes to the
+    // agreement registry and nowhere else.
+    #[tokio::test]
+    async fn an_agreement_claim_is_filtered_by_the_agreement_registry() {
+        let registered = B256::repeat_byte(0x21);
+        let unregistered = B256::repeat_byte(0x22);
+        let assembly_only = B256::repeat_byte(0x23);
+        let url = registries_double(vec![
+            (AGREEMENTS, registered),
+            (ASSEMBLIES, assembly_only),
+        ])
+        .await;
+        let config = live_config(url);
+
+        let (valid, dropped) = filter_usage_claims(
+            &config,
+            vec![
+                agreement_claim(registered),
+                agreement_claim(unregistered),
+                agreement_claim(assembly_only),
+            ],
+        )
+        .await;
+
+        assert_eq!(valid.len(), 1, "only the registered agreement passes");
+        assert_eq!(valid[0].clause_or_assembly, registered);
+        let mut refused: Vec<B256> = dropped.iter().map(|(c, _)| c.clause_or_assembly).collect();
+        refused.sort();
+        assert_eq!(refused, vec![unregistered, assembly_only]);
+        for (_, why) in &dropped {
+            assert!(why.contains("no live registration"), "{why}");
+        }
+    }
+
+    // The format's two reserved keys are dropped before any chain read,
+    // whether a claim is keyed on one or an assembly claim's order slot
+    // names one as its agreementKey (the terms leaf is not an order slot).
+    // Pure: the rpc here is unreachable.
+    #[tokio::test]
+    async fn drops_claims_naming_either_reserved_key_without_touching_the_chain() {
+        use figaro_kernel::kernel::{ASSEMBLY_TERMS_LEAF_KEY, PROVENANCE_LEAF_KEY};
+        let config = dummy_config(Address::ZERO, Address::ZERO, Address::ZERO);
+        let slot_naming = |agreement_key: B256| {
+            let mut claim = dummy_claim();
+            claim.kind = UsageClaimKind::Assembly {
+                agreement_key,
+                slot_content_hash: B256::repeat_byte(0x5C),
+                membership_proof: vec![],
+            };
+            claim
+        };
+        let claims = vec![
+            agreement_claim(ASSEMBLY_TERMS_LEAF_KEY),
+            agreement_claim(PROVENANCE_LEAF_KEY),
+            slot_naming(ASSEMBLY_TERMS_LEAF_KEY),
+            slot_naming(PROVENANCE_LEAF_KEY),
+            dummy_claim(),
+        ];
+        let (valid, dropped) = filter_usage_claims(&config, claims).await;
+        assert_eq!(valid.len(), 1, "the ordinary claim passes through");
+        assert_eq!(dropped.len(), 4, "every claim naming a reserved key is dropped");
     }
 }

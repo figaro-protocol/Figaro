@@ -109,7 +109,7 @@ export interface BatchStack {
     batchVerifierAddress: Address;
     usageCounterAddress: Address;
     membersAddress: Address;
-    registries: { clauses: Address; assemblies: Address; members: Address };
+    registries: { clauses: Address; assemblies: Address; agreements: Address; members: Address };
 }
 
 type Wallet = WalletClient<Transport, Chain, Account>;
@@ -213,11 +213,12 @@ export async function deployBatchStack(
         await publicClient.waitForTransactionReceipt({ hash: membersHash })
     ).contractAddress!;
 
-    // The counter gates accrual on LIVE clause-or-assembly registration (the 08-01
-    // audit fix), so it takes both clause-or-assembly registries. The clause under
-    // test is already anchored in clauseRegistryAddress above; assemblies
-    // play no part in this fixture, so an empty zero-deposit registry
-    // satisfies the constructor's nonzero check.
+    // The counter gates accrual on LIVE registration of each kind's own
+    // registry, so it takes the clause, assembly and agreement registries.
+    // The clause under test is already anchored in clauseRegistryAddress
+    // above; assemblies and agreements play no part in this fixture, so an
+    // empty zero-deposit registry of each satisfies the constructor's
+    // nonzero check.
     const assemblyRegistryHash = await deployerWallet.deployContract({
         abi: parseAbi(["constructor(uint256 _registrationDeposit)"]),
         bytecode: loadBytecode("AssemblyRegistry.sol/AssemblyRegistry.json"),
@@ -225,6 +226,14 @@ export async function deployBatchStack(
     });
     const assemblyRegistryAddress = (
         await publicClient.waitForTransactionReceipt({ hash: assemblyRegistryHash })
+    ).contractAddress!;
+    const agreementRegistryHash = await deployerWallet.deployContract({
+        abi: parseAbi(["constructor(uint256 _registrationDeposit)"]),
+        bytecode: loadBytecode("AgreementRegistry.sol/AgreementRegistry.json"),
+        args: [0n],
+    });
+    const agreementRegistryAddress = (
+        await publicClient.waitForTransactionReceipt({ hash: agreementRegistryHash })
     ).contractAddress!;
 
     const deployerNonce = await publicClient.getTransactionCount({
@@ -237,7 +246,7 @@ export async function deployBatchStack(
 
     const usageCounterHash = await deployerWallet.deployContract({
         abi: parseAbi([
-            "constructor(address _core, address _members, address _clauses, address _assemblies, address _batchVerifier, uint64 _minSellers, uint64[] _periodEnd)",
+            "constructor(address _core, address _members, address _clauses, address _assemblies, address _agreements, address _batchVerifier, uint64 _minSellers, uint64[] _periodEnd)",
         ]),
         bytecode: loadBytecode("UsageCounter.sol/UsageCounter.json"),
         args: [
@@ -245,6 +254,7 @@ export async function deployBatchStack(
             membersAddress,
             clauseRegistryAddress,
             assemblyRegistryAddress,
+            agreementRegistryAddress,
             predictedVerifier,
             // minSellers = 1: this fixture drives ONE seller end to end and
             // proves the bridge's plumbing; the floor's own behavior is
@@ -303,6 +313,7 @@ export async function deployBatchStack(
         registries: {
             clauses: clauseRegistryAddress,
             assemblies: assemblyRegistryAddress,
+            agreements: agreementRegistryAddress,
             members: membersAddress,
         },
     };
@@ -339,7 +350,7 @@ function embeddedVkey(): Hex {
 export interface RelayConfig {
     batchVerifierAddress: Address;
     usageCounterAddress: Address;
-    registries: { clauses: Address; assemblies: Address; members: Address };
+    registries: { clauses: Address; assemblies: Address; agreements: Address; members: Address };
     /** The relay's signing key (it sends settleBatch). */
     privateKey: Hex;
     port: number;
@@ -369,6 +380,7 @@ export function startSequencer(
             // and the counter credits nothing, silently (056365a6).
             CLAUSE_REGISTRY_ADDRESS: relay.registries.clauses,
             ASSEMBLY_REGISTRY_ADDRESS: relay.registries.assemblies,
+            AGREEMENT_REGISTRY_ADDRESS: relay.registries.agreements,
             MEMBERS_REGISTRY_ADDRESS: relay.registries.members,
             // FigaroCore uses this as the EIP-712 verifyingContract.
             // For the batch path, it must be the batch verifier address.

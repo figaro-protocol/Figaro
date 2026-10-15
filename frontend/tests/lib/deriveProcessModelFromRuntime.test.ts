@@ -140,7 +140,8 @@ describe("re-assert committed sections — one card per party per order", () => 
 // the format's leaf, never a clause section: it is keyed by the reserved key.
 describe("re-assert committed sections — the provenance leaf", () => {
     const COMPOSITION = `0x${"9a".repeat(32)}` as `0x${string}`;
-    const withProvenance: Agreement = { ...agreement, provenance: COMPOSITION };
+    const AGREEMENT_KEY = `0x${"8b".repeat(32)}` as `0x${string}`;
+    const withProvenance: Agreement = { ...agreement, provenance: { agreementKey: AGREEMENT_KEY, compositionHash: COMPOSITION } };
     const cardsWith = (address: string, attestations: RuntimeAttestation[] = [], state = OrderState.Active) =>
         deriveProcessModelFromRuntime(
             summary,
@@ -162,6 +163,7 @@ describe("re-assert committed sections — the provenance leaf", () => {
             executionType: "transaction",
             kind: "attest-provenance-leaf",
             orderHash: ORDER_HASH,
+            agreementKey: AGREEMENT_KEY,
             compositionHash: COMPOSITION,
             party: "buyer",
         });

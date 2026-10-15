@@ -31,7 +31,8 @@
  *   a clause name. A process is attributed when its buyer attested the
  *   reserved leaf (`PROVENANCE_LEAF_KEY`) and the attestation names a
  *   composition hash — its recovered bytes decode to one, or its fingerprint
- *   is a loaded assembly's `provenanceContentRef`. No such attestation, no
+ *   is the `provenanceContentRef` of a loaded assembly's order slot (its
+ *   agreement key and its composition root). No such attestation, no
  *   attribution: the process is counted as unattributed and said to be.
  */
 
@@ -42,6 +43,7 @@ import {
     parseOrderResolvedLogs,
     parseProcessResolvedLogs,
     provenanceContentRef,
+    slotClauses,
     readUtilityTokenPin,
     type Address,
     type SpecSource,
@@ -131,6 +133,8 @@ export interface GraphCorpus {
  *  agreement's own set), each keyed by clause key. */
 interface CorpusTemplate {
     compositionHash: `0x${string}`;
+    /** The registered agreement each order slot binds, in template order. */
+    agreementKeys: readonly `0x${string}`[];
     name: string;
     clauseSets: readonly {
         clauses: Record<string, Record<string, unknown>>;
@@ -237,18 +241,26 @@ async function readCommitFundingLegs(
  * attributes a process without holding anyone's agreement body. The graph is
  * the one the SDK marks `provenanceLeaf` (the format constant, never a clause
  * name or a spec field). An entry attributes by its decoded
- * `{ compositionHash }` when its bytes recovered, else by its fingerprint
- * matching `provenanceContentRef` of a composition hash the page loaded —
- * the bytes are reproducible from the hash, so the match is exact.
+ * `{ agreementKey, compositionHash }` when its bytes recovered, else by its
+ * fingerprint matching `provenanceContentRef` of an (agreement key,
+ * composition root) pair the page loaded — an order slot of a loaded
+ * assembly; the bytes are reproducible from the two keys, so the match is
+ * exact.
  */
 export function attributionFromOverlays(
     overlays: readonly OverlayGraph[],
-    compositionHashes: readonly Hex[],
+    assemblies: readonly { compositionHash: Hex; agreementKeys: readonly Hex[] }[],
 ): Map<string, string> {
     const hashByContentRef = new Map<string, string>();
-    for (const compositionHash of compositionHashes) {
+    for (const { compositionHash, agreementKeys } of assemblies) {
         if (!isBytes32Hex(compositionHash)) continue;
-        hashByContentRef.set(provenanceContentRef(compositionHash).toLowerCase(), compositionHash.toLowerCase());
+        for (const agreementKey of agreementKeys) {
+            if (!isBytes32Hex(agreementKey)) continue;
+            hashByContentRef.set(
+                provenanceContentRef(agreementKey, compositionHash).toLowerCase(),
+                compositionHash.toLowerCase(),
+            );
+        }
     }
     const byProcess = new Map<string, string>();
     for (const graph of overlays) {
@@ -345,7 +357,7 @@ async function readGraphCorpus(deps?: {
     // denominations, read from the venue's own transfers.
     const valueFlow = projectValueFlow(resolution, fundingLegs, pins);
 
-    const byProcess = attributionFromOverlays(overlays, (deps?.templates ?? []).map((t) => t.compositionHash));
+    const byProcess = attributionFromOverlays(overlays, deps?.templates ?? []);
     const market = marketShape(process, (processId: Hex) => byProcess.get(processId.toLowerCase()));
 
     const tokenMeta = await readTokenMeta(client, valueFlow.nodes.map((n) => n.token));
@@ -392,19 +404,20 @@ export function useGraphCorpus(): { corpus: GraphCorpus | null; isLoading: boole
     const templates = useMemo<CorpusTemplate[]>(
         () =>
             (assemblies ?? [])
-                .filter((a) => a.assemblyTemplate !== null)
-                .map((a) => ({
+                .flatMap((a) => (a.hydratedAssembly === null ? [] : [{ a, hydrated: a.hydratedAssembly }]))
+                .map(({ a, hydrated }) => ({
                     compositionHash: a.compositionHash,
+                    agreementKeys: hydrated.template.agreements.map((slot) => slot.agreementKey),
                     name: a.name,
                     clauseSets: [
                         // Assembly-scoped clauses compose ONCE for the whole
                         // design — a denomination pin lives here, not in an
                         // agreement — so both sets are read.
-                        ...(a.assemblyTemplate?.assemblyClauses
-                            ? [{ clauses: a.assemblyTemplate.assemblyClauses }]
+                        ...(hydrated.template.assemblyClauses
+                            ? [{ clauses: hydrated.template.assemblyClauses }]
                             : []),
-                        ...(a.assemblyTemplate?.agreements ?? []).map((agreement) => ({
-                            clauses: agreement.clauses,
+                        ...hydrated.template.agreements.map((slot) => ({
+                            clauses: slotClauses(hydrated, slot),
                         })),
                     ],
                 })),

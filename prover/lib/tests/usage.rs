@@ -1,10 +1,10 @@
-/// The RPGF usage bridge, guest side.
+/// The designer-reward usage bridge, guest side.
 ///
 /// The counter's direct path requires `FigaroCore.orderStatus == RESOLVED`,
 /// which a batch-resolved process never acquires — the two resolution
 /// universes are disjoint. These tests cover what the guest must prove so
 /// batched trade can be credited anyway: that the order really resolved, that
-/// the clause or assembly really was in the signed agreement, and that no
+/// the clause, agreement or assembly really was in the signed agreement, and that no
 /// trade is counted twice ACROSS batches, not merely within one.
 ///
 /// The last point is why the counted set rides the state root: a process
@@ -15,7 +15,8 @@ use k256::ecdsa::SigningKey;
 
 use figaro_kernel::eip712::*;
 use figaro_kernel::kernel::{
-    apply_batch_with_state, compute_usage_accrual_hash, derive_commitment_ids, PROVENANCE_LEAF_KEY,
+    apply_batch_with_state, compute_usage_accrual_hash, derive_commitment_ids,
+    ASSEMBLY_TERMS_LEAF_KEY, PROVENANCE_LEAF_KEY,
 };
 use figaro_kernel::types::*;
 
@@ -86,13 +87,61 @@ fn single_section_root(leaf_key: &B256, section_hash: &B256) -> B256 {
     keccak256(keccak256(preimage))
 }
 
-/// The provenance section's canonical JSON, reproduced from the hash —
+/// The provenance section's canonical JSON, reproduced from both keys —
 /// mirroring `UsageCounter._toLowerHexString` and the guest's own
 /// reproduction. Written independently here so a change to either side
 /// shows up as a failure rather than agreeing with itself.
-fn provenance_section_hash(composition: &B256) -> B256 {
-    let hex: String = composition.iter().map(|b| format!("{b:02x}")).collect();
-    keccak256(format!("{{\"compositionHash\":\"0x{hex}\"}}").as_bytes())
+fn provenance_section_hash(agreement_key: &B256, composition: &B256) -> B256 {
+    keccak256(provenance_bytes(agreement_key, composition).as_bytes())
+}
+
+/// The provenance section's bytes:
+/// `{"agreementKey":"0x…","compositionHash":"0x…"}`, lowercase hex, the
+/// keys in that order.
+fn provenance_bytes(agreement_key: &B256, composition: &B256) -> String {
+    let hex = |w: &B256| -> String { w.iter().map(|b| format!("{b:02x}")).collect() };
+    format!(
+        "{{\"agreementKey\":\"0x{}\",\"compositionHash\":\"0x{}\"}}",
+        hex(agreement_key),
+        hex(composition)
+    )
+}
+
+/// `keccak256` of the two words, smaller first — the sorted-pair node.
+fn sorted_pair(a: B256, b: B256) -> B256 {
+    let (lo, hi) = if a <= b { (a, b) } else { (b, a) };
+    let mut pair = [0u8; 64];
+    pair[..32].copy_from_slice(lo.as_slice());
+    pair[32..].copy_from_slice(hi.as_slice());
+    keccak256(pair)
+}
+
+/// The canonical bytes of an order slot, `{"clauses":{…},"slot":i}` — the
+/// order slot's own clause fills (here the topology clause's parents, when
+/// it follows another order slot) and its index. The guest never parses
+/// them; it takes their hash.
+fn slot_content_hash(slot: u64, follows: Option<&str>) -> B256 {
+    let clauses = match follows {
+        Some(label) => format!(
+            "{{\"{TOPOLOGY_KEY}\":{{\"parentOrderHashes\":[\"{label}\"]}}}}"
+        ),
+        None => "{}".to_string(),
+    };
+    keccak256(format!("{{\"clauses\":{clauses},\"slot\":{slot}}}").as_bytes())
+}
+
+/// A synthetic topology clause key for the order slots' fills.
+const TOPOLOGY_KEY: &str = "0xd7555453daf821f5fdf852d3c1cb7d88d6cd741dbdfb631c3406114bbf2d91bc";
+
+/// A two-order-slot assembly root: order slot 0 holds `agreement_key`, order
+/// slot 1 another agreement following it. Returns the root, order slot 0's
+/// content hash and its membership proof (order slot 1's leaf).
+fn two_slot_assembly(agreement_key: &B256) -> (B256, B256, Vec<B256>) {
+    let slot0 = slot_content_hash(0, None);
+    let slot1 = slot_content_hash(1, Some("order-0"));
+    let leaf0 = single_section_root(agreement_key, &slot0);
+    let leaf1 = single_section_root(&keccak256(b"the-following-agreement"), &slot1);
+    (sorted_pair(leaf0, leaf1), slot0, vec![leaf1])
 }
 
 /// One commit + one resolve for `(buyer, seller)`, with an agreement whose
@@ -404,26 +453,132 @@ fn distinct_sellers_raise_breadth() {
     assert_eq!(events.usage_sellers.len(), 2, "both sellers to stake-check");
 }
 
-// ── The assembly leg ──────────────────────────────────────────────
+// ── The agreement leg ─────────────────────────────────────────────
 
-/// An assembly is credited INDIRECTLY: a compositionHash is never a leaf key,
-/// so the guest proves the reserved PROVENANCE leaf and reproduces its section
-/// bytes from the claimed compositionHash. A wrong hash derives a leaf that is
-/// simply not in the tree.
+/// An agreement is credited through the reserved PROVENANCE leaf: its key
+/// is never a leaf key, so the guest reproduces the provenance bytes from
+/// the claimed agreementKey and the compositionHash the claim carries.
 #[test]
-fn credits_an_assembly_through_the_provenance_leaf() {
+fn credits_an_agreement_through_the_provenance_leaf() {
     let buyer = make_signing_key(BUYER_KEY);
     let seller = make_signing_key(SELLER1_KEY);
+    let agreement = keccak256(b"an-agreement");
     let composition = keccak256(b"a-composition");
-    let section = provenance_section_hash(&composition);
+    let section = provenance_section_hash(&agreement, &composition);
 
     let (order, ops) = settled_order(&buyer, &seller, &provenance_key(), &section, 1);
     let claim = UsageClaim {
-        order: order.clone(),
-        clause_or_assembly: composition,
-        kind: UsageClaimKind::Assembly,
+        order,
+        clause_or_assembly: agreement,
+        kind: UsageClaimKind::Agreement {
+            composition_hash: composition,
+        },
         inclusion_proof: vec![],
     };
+
+    let (_, _, events, _) =
+        apply_batch_with_state(&batch(ops, vec![claim], empty_snapshot())).expect("batch applies");
+
+    assert_eq!(
+        events.usage_accruals,
+        vec![UsageAccrual {
+            clause_or_assembly: agreement,
+            kind: USAGE_KIND_AGREEMENT,
+            c: 1,
+            d: 1
+        }],
+        "the agreementKey is credited under kind 2 — never the provenance leaf's key"
+    );
+}
+
+/// The provenance bytes are reproduced from BOTH keys, so a claim naming an
+/// agreementKey the order never committed derives a leaf not in the tree.
+#[test]
+fn rejects_an_agreement_claim_with_the_wrong_agreement_key() {
+    let buyer = make_signing_key(BUYER_KEY);
+    let seller = make_signing_key(SELLER1_KEY);
+    let composition = keccak256(b"a-composition");
+    let section = provenance_section_hash(&keccak256(b"an-agreement"), &composition);
+
+    let (order, ops) = settled_order(&buyer, &seller, &provenance_key(), &section, 1);
+    let claim = UsageClaim {
+        order,
+        clause_or_assembly: keccak256(b"another-agreement"),
+        kind: UsageClaimKind::Agreement {
+            composition_hash: composition,
+        },
+        inclusion_proof: vec![],
+    };
+
+    match apply_batch_with_state(&batch(ops, vec![claim], empty_snapshot())).map(|_| ()) {
+        Err(KernelError::UsageInvalidInclusionProof) => {}
+        other => panic!("expected UsageInvalidInclusionProof, got {other:?}"),
+    }
+}
+
+/// The compositionHash half of the bytes binds as tightly: the right
+/// agreementKey under another assembly opens nothing.
+#[test]
+fn rejects_an_agreement_claim_with_the_wrong_composition_hash() {
+    let buyer = make_signing_key(BUYER_KEY);
+    let seller = make_signing_key(SELLER1_KEY);
+    let agreement = keccak256(b"an-agreement");
+    let section = provenance_section_hash(&agreement, &keccak256(b"a-composition"));
+
+    let (order, ops) = settled_order(&buyer, &seller, &provenance_key(), &section, 1);
+    let claim = UsageClaim {
+        order,
+        clause_or_assembly: agreement,
+        kind: UsageClaimKind::Agreement {
+            composition_hash: keccak256(b"a-different-composition"),
+        },
+        inclusion_proof: vec![],
+    };
+
+    match apply_batch_with_state(&batch(ops, vec![claim], empty_snapshot())).map(|_| ()) {
+        Err(KernelError::UsageInvalidInclusionProof) => {}
+        other => panic!("expected UsageInvalidInclusionProof, got {other:?}"),
+    }
+}
+
+// ── The assembly leg ──────────────────────────────────────────────
+
+/// An assembly claim for the order's agreement in order slot 0 of a
+/// two-order-slot assembly: the provenance leaf over both keys, then order
+/// slot 0's leaf under
+/// the compositionHash.
+fn assembly_claim(
+    order: &Commitment,
+    composition: B256,
+    agreement: B256,
+    slot: B256,
+    membership_proof: Vec<B256>,
+) -> UsageClaim {
+    UsageClaim {
+        order: order.clone(),
+        clause_or_assembly: composition,
+        kind: UsageClaimKind::Assembly {
+            agreement_key: agreement,
+            slot_content_hash: slot,
+            membership_proof,
+        },
+        inclusion_proof: vec![],
+    }
+}
+
+/// An assembly is credited INDIRECTLY: a compositionHash is never a leaf key
+/// of an agreement, so the guest proves the reserved PROVENANCE leaf from
+/// both keys, then proves the agreement is an order slot of the assembly's root.
+#[test]
+fn credits_an_assembly_through_the_provenance_leaf_and_its_slot() {
+    let buyer = make_signing_key(BUYER_KEY);
+    let seller = make_signing_key(SELLER1_KEY);
+    let agreement = keccak256(b"an-agreement");
+    let (composition, slot, membership) = two_slot_assembly(&agreement);
+    let section = provenance_section_hash(&agreement, &composition);
+
+    let (order, ops) = settled_order(&buyer, &seller, &provenance_key(), &section, 1);
+    let claim = assembly_claim(&order, composition, agreement, slot, membership);
 
     let (_, _, events, _) =
         apply_batch_with_state(&batch(ops, vec![claim], empty_snapshot())).expect("batch applies");
@@ -433,30 +588,140 @@ fn credits_an_assembly_through_the_provenance_leaf() {
         events.usage_accruals[0].clause_or_assembly, composition,
         "the DESIGNER is credited — the compositionHash, never the provenance leaf's key"
     );
+    assert_eq!(events.usage_accruals[0].kind, USAGE_KIND_ASSEMBLY);
     assert_eq!(events.usage_accruals[0].c, 1);
 }
 
 /// The provenance section is reproduced, not parsed, so a compositionHash
-/// that was never committed cannot open the leaf.
+/// that was never committed cannot open the leaf — even with a membership
+/// proof that is valid under the claimed root.
 #[test]
 fn rejects_an_assembly_claim_for_an_uncommitted_composition() {
     let buyer = make_signing_key(BUYER_KEY);
     let seller = make_signing_key(SELLER1_KEY);
-    let committed = keccak256(b"a-composition");
-    let section = provenance_section_hash(&committed);
+    let agreement = keccak256(b"an-agreement");
+    let section = provenance_section_hash(&agreement, &keccak256(b"a-composition"));
+    let (claimed, slot, membership) = two_slot_assembly(&agreement);
 
     let (order, ops) = settled_order(&buyer, &seller, &provenance_key(), &section, 1);
-    let claim = UsageClaim {
-        order,
-        clause_or_assembly: keccak256(b"a-different-composition"),
-        kind: UsageClaimKind::Assembly,
-        inclusion_proof: vec![],
-    };
+    let claim = assembly_claim(&order, claimed, agreement, slot, membership);
 
     match apply_batch_with_state(&batch(ops, vec![claim], empty_snapshot())).map(|_| ()) {
         Err(KernelError::UsageInvalidInclusionProof) => {}
         other => panic!("expected UsageInvalidInclusionProof, got {other:?}"),
     }
+}
+
+/// The agreementKey in the provenance bytes is the order's own: a claim that
+/// names another agreement of the same assembly — a real order slot, its
+/// membership proof valid — opens no provenance leaf.
+#[test]
+fn rejects_an_assembly_claim_naming_another_slot_s_agreement() {
+    let buyer = make_signing_key(BUYER_KEY);
+    let seller = make_signing_key(SELLER1_KEY);
+    let agreement = keccak256(b"an-agreement");
+    let (composition, slot0, membership0) = two_slot_assembly(&agreement);
+    let section = provenance_section_hash(&agreement, &composition);
+    let (order, ops) = settled_order(&buyer, &seller, &provenance_key(), &section, 1);
+
+    // Order slot 1 of the same root, proved by order slot 0's leaf.
+    let other = keccak256(b"the-following-agreement");
+    let slot1 = slot_content_hash(1, Some("order-0"));
+    let leaf0 = single_section_root(&agreement, &slot0);
+    assert_eq!(membership0.len(), 1);
+    let claim = assembly_claim(&order, composition, other, slot1, vec![leaf0]);
+
+    match apply_batch_with_state(&batch(ops, vec![claim], empty_snapshot())).map(|_| ()) {
+        Err(KernelError::UsageInvalidInclusionProof) => {}
+        other => panic!("expected UsageInvalidInclusionProof, got {other:?}"),
+    }
+}
+
+/// The membership proof is verified under the CLAIMED compositionHash: a
+/// proof that opens the order slot under some other assembly's root refuses the
+/// claim exactly as a failed inclusion proof does, though the provenance
+/// leaf itself opens.
+#[test]
+fn rejects_an_assembly_claim_whose_membership_proof_is_under_another_root() {
+    let buyer = make_signing_key(BUYER_KEY);
+    let seller = make_signing_key(SELLER1_KEY);
+    let agreement = keccak256(b"an-agreement");
+    let (composition, slot, _) = two_slot_assembly(&agreement);
+    let section = provenance_section_hash(&agreement, &composition);
+    let (order, ops) = settled_order(&buyer, &seller, &provenance_key(), &section, 1);
+
+    // Another assembly holding the same agreement in its order slot 0,
+    // beside a different follower: its proof opens the order slot under ITS
+    // root only.
+    let elsewhere = single_section_root(&keccak256(b"some-other-agreement"), &slot_content_hash(1, Some("order-0")));
+    let claim = assembly_claim(&order, composition, agreement, slot, vec![elsewhere]);
+
+    match apply_batch_with_state(&batch(ops, vec![claim], empty_snapshot())).map(|_| ()) {
+        Err(KernelError::UsageInvalidInclusionProof) => {}
+        other => panic!("expected UsageInvalidInclusionProof, got {other:?}"),
+    }
+}
+
+/// The order slot's content is bound too: the right agreement with another
+/// order slot's bytes is not a leaf of the root.
+#[test]
+fn rejects_an_assembly_claim_with_the_wrong_slot_content() {
+    let buyer = make_signing_key(BUYER_KEY);
+    let seller = make_signing_key(SELLER1_KEY);
+    let agreement = keccak256(b"an-agreement");
+    let (composition, _, membership) = two_slot_assembly(&agreement);
+    let section = provenance_section_hash(&agreement, &composition);
+    let (order, ops) = settled_order(&buyer, &seller, &provenance_key(), &section, 1);
+
+    let claim = assembly_claim(
+        &order,
+        composition,
+        agreement,
+        slot_content_hash(3, None),
+        membership,
+    );
+
+    match apply_batch_with_state(&batch(ops, vec![claim], empty_snapshot())).map(|_| ()) {
+        Err(KernelError::UsageInvalidInclusionProof) => {}
+        other => panic!("expected UsageInvalidInclusionProof, got {other:?}"),
+    }
+}
+
+/// One order, one provenance leaf, two credits: the agreement under kind 2
+/// and the assembly under kind 1, each its own accrual.
+#[test]
+fn one_provenance_leaf_credits_the_agreement_and_the_assembly_apart() {
+    let buyer = make_signing_key(BUYER_KEY);
+    let seller = make_signing_key(SELLER1_KEY);
+    let agreement = keccak256(b"an-agreement");
+    let (composition, slot, membership) = two_slot_assembly(&agreement);
+    let section = provenance_section_hash(&agreement, &composition);
+    let (order, ops) = settled_order(&buyer, &seller, &provenance_key(), &section, 1);
+
+    let claims = vec![
+        UsageClaim {
+            order: order.clone(),
+            clause_or_assembly: agreement,
+            kind: UsageClaimKind::Agreement {
+                composition_hash: composition,
+            },
+            inclusion_proof: vec![],
+        },
+        assembly_claim(&order, composition, agreement, slot, membership),
+    ];
+
+    let (_, _, events, post) =
+        apply_batch_with_state(&batch(ops, claims, empty_snapshot())).expect("batch applies");
+    let mut kinds: Vec<(B256, u8)> = events
+        .usage_accruals
+        .iter()
+        .map(|a| (a.clause_or_assembly, a.kind))
+        .collect();
+    kinds.sort();
+    let mut expected = vec![(agreement, USAGE_KIND_AGREEMENT), (composition, USAGE_KIND_ASSEMBLY)];
+    expected.sort();
+    assert_eq!(kinds, expected);
+    assert_eq!(post.usage_counted.len(), 2, "counted once per (kind, key)");
 }
 
 // ── The hash the verifier re-derives ──────────────────────────────
@@ -504,6 +769,13 @@ fn the_usage_hash_covers_the_period_and_the_provenance_key() {
         base,
         compute_usage_accrual_hash(0, &provenance_key(), &other_kind, &sellers),
         "the kind is covered"
+    );
+    let mut agreement_kind = accruals.clone();
+    agreement_kind[0].kind = USAGE_KIND_AGREEMENT;
+    assert_ne!(
+        compute_usage_accrual_hash(0, &provenance_key(), &other_kind, &sellers),
+        compute_usage_accrual_hash(0, &provenance_key(), &agreement_kind, &sellers),
+        "the agreement kind is its own byte"
     );
 
     assert_ne!(
@@ -604,20 +876,18 @@ fn the_one_accrual_usage_hash_is_its_written_preimage() {
 fn a_clause_and_an_assembly_on_the_same_key_accrue_apart() {
     let buyer = make_signing_key(BUYER_KEY);
     let seller = make_signing_key(SELLER1_KEY);
-    let shared = keccak256(b"one-bytes32-in-both-registries");
     let section = keccak256(b"section-bytes");
 
+    // A one-order-slot assembly: its root is the order slot's leaf, proved by an
+    // empty membership proof. The same word is also taken as a clause key.
+    let agreement = keccak256(b"an-agreement");
+    let slot = slot_content_hash(0, None);
+    let shared = single_section_root(&agreement, &slot);
+
     let clause_leaf = single_section_root(&shared, &section);
-    let provenance_leaf = single_section_root(&provenance_key(), &provenance_section_hash(&shared));
-    let (lo, hi) = if clause_leaf <= provenance_leaf {
-        (clause_leaf, provenance_leaf)
-    } else {
-        (provenance_leaf, clause_leaf)
-    };
-    let mut pair = [0u8; 64];
-    pair[..32].copy_from_slice(lo.as_slice());
-    pair[32..].copy_from_slice(hi.as_slice());
-    let root = keccak256(pair);
+    let provenance_leaf =
+        single_section_root(&provenance_key(), &provenance_section_hash(&agreement, &shared));
+    let root = sorted_pair(clause_leaf, provenance_leaf);
 
     let (order, ops) = settled_order_under(&buyer, &seller, root, 1);
     let claims = vec![
@@ -632,7 +902,11 @@ fn a_clause_and_an_assembly_on_the_same_key_accrue_apart() {
         UsageClaim {
             order: order.clone(),
             clause_or_assembly: shared,
-            kind: UsageClaimKind::Assembly,
+            kind: UsageClaimKind::Assembly {
+                agreement_key: agreement,
+                slot_content_hash: slot,
+                membership_proof: vec![],
+            },
             inclusion_proof: vec![clause_leaf],
         },
     ];
@@ -713,15 +987,14 @@ fn crediting_usage_advances_the_state_root() {
 
 /// A buyer attestation of the reserved provenance leaf on an OPEN process:
 /// the order is committed (not resolved) under an agreement whose lone
-/// leaf is the provenance leaf over `section_data`.
+/// leaf is the provenance leaf over the bytes hashing to `committed`.
 fn provenance_attestation(
-    composition: &B256,
+    committed: B256,
     section_data: &str,
     content_ref: B256,
 ) -> (BatchInput, B256) {
     let buyer = make_signing_key(BUYER_KEY);
     let seller = make_signing_key(SELLER1_KEY);
-    let committed = provenance_section_hash(composition);
     let (order, mut ops) = settled_order(&buyer, &seller, &provenance_key(), &committed, 7);
     ops.truncate(1); // commit only: attestation is evidence within an open process
 
@@ -755,47 +1028,43 @@ fn the_guest_s_provenance_leaf_key_is_the_format_s_constant() {
     assert_eq!(PROVENANCE_LEAF_KEY, provenance_key());
 }
 
-fn provenance_bytes(composition: &B256) -> String {
-    let hex: String = composition.iter().map(|b| format!("{b:02x}")).collect();
-    format!("{{\"compositionHash\":\"0x{hex}\"}}")
-}
-
 /// The reserved provenance leaf is attestable on the batch path: the guest
 /// verifies its inclusion under the signed agreement with the bytes
-/// reproduced from the compositionHash they carry, consults no spec, and
-/// commits NO spec binding (there is no registry entry to anchor).
+/// reproduced from the two keys they carry, consults no spec, and commits
+/// NO spec binding (there is no registry entry to anchor).
 #[test]
 fn the_provenance_leaf_is_attestable_without_a_spec() {
-    let composition = keccak256(b"a-composition");
-    let bytes = provenance_bytes(&composition);
-    let (input, process_id) =
-        provenance_attestation(&composition, &bytes, keccak256(bytes.as_bytes()));
+    let bytes = provenance_bytes(&keccak256(b"an-agreement"), &keccak256(b"a-composition"));
+    let hash = keccak256(bytes.as_bytes());
+    let (input, process_id) = provenance_attestation(hash, &bytes, hash);
 
     let (_, _, events, _) = apply_batch_with_state(&input).expect("provenance attestation applies");
     assert_eq!(events.attestations.len(), 1);
     assert_eq!(events.attestations[0].clause_id, provenance_key());
     assert_eq!(events.attestations[0].process_id, process_id);
-    assert_eq!(
-        events.attestations[0].content_ref,
-        keccak256(bytes.as_bytes())
-    );
+    assert_eq!(events.attestations[0].content_ref, hash);
     assert!(
         events.spec_bindings.is_empty(),
         "the provenance leaf is a fact of the agreement format; nothing anchors it in ClauseRegistry"
     );
 }
 
-/// Bytes that name a composition the agreement never committed derive a
-/// leaf that is not in the tree.
+/// Bytes that name a composition, or an agreement, the order never
+/// committed derive a leaf that is not in the tree.
 #[test]
-fn a_provenance_attestation_of_an_uncommitted_composition_is_refused() {
-    let committed = keccak256(b"a-composition");
-    let other = provenance_bytes(&keccak256(b"a-different-composition"));
-    let (input, _) = provenance_attestation(&committed, &other, keccak256(other.as_bytes()));
-
-    match apply_batch_with_state(&input).map(|_| ()) {
-        Err(KernelError::InvalidInclusionProof) => {}
-        other => panic!("expected InvalidInclusionProof, got {other:?}"),
+fn a_provenance_attestation_of_an_uncommitted_key_is_refused() {
+    let agreement = keccak256(b"an-agreement");
+    let composition = keccak256(b"a-composition");
+    let committed = provenance_section_hash(&agreement, &composition);
+    for other in [
+        provenance_bytes(&agreement, &keccak256(b"a-different-composition")),
+        provenance_bytes(&keccak256(b"another-agreement"), &composition),
+    ] {
+        let (input, _) = provenance_attestation(committed, &other, keccak256(other.as_bytes()));
+        match apply_batch_with_state(&input).map(|_| ()) {
+            Err(KernelError::InvalidInclusionProof) => {}
+            other => panic!("expected InvalidInclusionProof, got {other:?}"),
+        }
     }
 }
 
@@ -803,9 +1072,9 @@ fn a_provenance_attestation_of_an_uncommitted_composition_is_refused() {
 /// exactly as a section's sectionHash.
 #[test]
 fn a_provenance_attestation_whose_content_ref_is_not_the_bytes_is_refused() {
-    let composition = keccak256(b"a-composition");
-    let bytes = provenance_bytes(&composition);
-    let (input, _) = provenance_attestation(&composition, &bytes, keccak256(b"something else"));
+    let bytes = provenance_bytes(&keccak256(b"an-agreement"), &keccak256(b"a-composition"));
+    let hash = keccak256(bytes.as_bytes());
+    let (input, _) = provenance_attestation(hash, &bytes, keccak256(b"something else"));
 
     match apply_batch_with_state(&input).map(|_| ()) {
         Err(KernelError::ContentHashMismatch) => {}
@@ -814,51 +1083,56 @@ fn a_provenance_attestation_whose_content_ref_is_not_the_bytes_is_refused() {
 }
 
 /// Bytes under the reserved key that are not the reproduction of their own
-/// compositionHash (here, upper-case hex) are refused even when the signed
-/// agreement carries exactly those bytes: the leaf's content is a rule of
-/// the agreement format, reproduced, never parsed loosely.
+/// two keys are refused even when the signed agreement carries exactly
+/// those bytes: the leaf's content is a rule of the agreement format,
+/// reproduced, never parsed loosely. Upper-case hex, the keys swapped, and
+/// the one-key form naming the compositionHash alone are each refused.
 #[test]
 fn non_canonical_provenance_bytes_are_refused() {
+    let agreement = keccak256(b"an-agreement");
     let composition = keccak256(b"a-composition");
-    let upper = provenance_bytes(&composition)
-        .replace("compositionHash\":\"0x", "@")
-        .to_uppercase();
-    let upper = upper.replace('@', "compositionHash\":\"0x");
-    // Commit an agreement whose provenance leaf is over the upper-case bytes.
-    let buyer = make_signing_key(BUYER_KEY);
-    let seller = make_signing_key(SELLER1_KEY);
-    let committed = keccak256(upper.as_bytes());
-    let (order, mut ops) = settled_order(&buyer, &seller, &provenance_key(), &committed, 9);
-    ops.truncate(1);
-    let domain = domain_separator(CHAIN_ID, CORE);
-    let (order_hash, process_id) = derive_commitment_ids(&domain, &order);
-    let content_ref = keccak256(upper.as_bytes());
-    let digest = typed_data_hash(
-        &domain,
-        &attest_buyer_struct_hash(&process_id, &order_hash, &provenance_key(), 0, &content_ref),
-    );
-    ops.push(KernelOp::AttestAsBuyer {
-        target: order,
-        clause_id: provenance_key(),
-        stage: 0,
-        content_ref,
-        buyer_sig: sign_digest(&buyer, &digest),
-        proof: AttestationContentProof {
-            spec_json: String::new(),
-            content_json: String::new(),
-            section_data: upper,
-            inclusion_proof: vec![],
-            content_kind: ContentKind::ReAssert,
-        },
-    });
-
-    match apply_batch_with_state(&batch(ops, vec![], empty_snapshot())).map(|_| ()) {
-        Err(KernelError::ProvenanceLeafNotCanonical) => {}
-        other => panic!("expected ProvenanceLeafNotCanonical, got {other:?}"),
+    let hex = |w: &B256| -> String { w.iter().map(|b| format!("{b:02x}")).collect() };
+    let upper = |w: &B256| -> String { w.iter().map(|b| format!("{b:02X}")).collect() };
+    for bytes in [
+        format!(
+            "{{\"agreementKey\":\"0x{}\",\"compositionHash\":\"0x{}\"}}",
+            upper(&agreement),
+            upper(&composition)
+        ),
+        format!(
+            "{{\"compositionHash\":\"0x{}\",\"agreementKey\":\"0x{}\"}}",
+            hex(&composition),
+            hex(&agreement)
+        ),
+        format!("{{\"compositionHash\":\"0x{}\"}}", hex(&composition)),
+    ] {
+        let hash = keccak256(bytes.as_bytes());
+        let (input, _) = provenance_attestation(hash, &bytes, hash);
+        match apply_batch_with_state(&input).map(|_| ()) {
+            Err(KernelError::ProvenanceLeafNotCanonical) => {}
+            other => panic!("expected ProvenanceLeafNotCanonical for {bytes}, got {other:?}"),
+        }
     }
 }
 
-// ── The reserved key is never a registration ──────────────────────
+// ── The reserved keys are never registrations ─────────────────────
+
+/// The assembly terms leaf's key, derived here independently of the guest.
+fn terms_key() -> B256 {
+    keccak256(b"figaro-assembly-terms")
+}
+
+fn expect_reserved(input: BatchInput, key: B256) {
+    match apply_batch_with_state(&input).map(|_| ()) {
+        Err(KernelError::ReservedKeyIsNotARegistration(k)) => assert_eq!(k, key),
+        other => panic!("expected ReservedKeyIsNotARegistration, got {other:?}"),
+    }
+}
+
+#[test]
+fn the_guest_s_terms_leaf_key_is_the_format_s_constant() {
+    assert_eq!(ASSEMBLY_TERMS_LEAF_KEY, terms_key());
+}
 
 /// A Clause claim keyed on the reserved provenance leaf opens under every
 /// agreement that names an assembly — the leaf is there — so the guest
@@ -867,33 +1141,75 @@ fn non_canonical_provenance_bytes_are_refused() {
 fn a_clause_claim_keyed_on_the_provenance_leaf_is_refused() {
     let buyer = make_signing_key(BUYER_KEY);
     let seller = make_signing_key(SELLER1_KEY);
-    let section = provenance_section_hash(&keccak256(b"a-composition"));
+    let section = provenance_section_hash(&keccak256(b"an-agreement"), &keccak256(b"a-composition"));
     let (order, ops) = settled_order(&buyer, &seller, &provenance_key(), &section, 1);
     let claim = clause_claim(&order, PROVENANCE_LEAF_KEY, section);
+    expect_reserved(batch(ops, vec![claim], empty_snapshot()), PROVENANCE_LEAF_KEY);
+}
 
-    match apply_batch_with_state(&batch(ops, vec![claim], empty_snapshot())).map(|_| ()) {
-        Err(KernelError::ProvenanceLeafIsNotARegistration) => {}
-        other => panic!("expected ProvenanceLeafIsNotARegistration, got {other:?}"),
+/// Every kind refuses both reserved keys as its claim key, even when the
+/// agreement carries the matching provenance leaf.
+#[test]
+fn every_kind_keyed_on_a_reserved_key_is_refused() {
+    let buyer = make_signing_key(BUYER_KEY);
+    let seller = make_signing_key(SELLER1_KEY);
+    for (salt, reserved) in [(1u64, PROVENANCE_LEAF_KEY), (2, terms_key())] {
+        let agreement_section = provenance_section_hash(&reserved, &keccak256(b"a-composition"));
+        let (order, ops) =
+            settled_order(&buyer, &seller, &provenance_key(), &agreement_section, salt);
+        let claim = UsageClaim {
+            order,
+            clause_or_assembly: reserved,
+            kind: UsageClaimKind::Agreement {
+                composition_hash: keccak256(b"a-composition"),
+            },
+            inclusion_proof: vec![],
+        };
+        expect_reserved(batch(ops, vec![claim], empty_snapshot()), reserved);
+
+        let assembly_section = provenance_section_hash(&keccak256(b"an-agreement"), &reserved);
+        let (order, ops) =
+            settled_order(&buyer, &seller, &provenance_key(), &assembly_section, salt + 10);
+        let claim = assembly_claim(
+            &order,
+            reserved,
+            keccak256(b"an-agreement"),
+            slot_content_hash(0, None),
+            vec![],
+        );
+        expect_reserved(batch(ops, vec![claim], empty_snapshot()), reserved);
+
+        let (order, ops) = settled_order(&buyer, &seller, &reserved, &keccak256(b"s"), salt + 20);
+        let claim = clause_claim(&order, reserved, keccak256(b"s"));
+        expect_reserved(batch(ops, vec![claim], empty_snapshot()), reserved);
     }
 }
 
-/// The same holds for an Assembly claim naming the reserved key as its
-/// compositionHash, even when the agreement carries that very leaf.
+/// The terms leaf is a leaf of the assembly root, so a membership proof of
+/// it opens under the compositionHash — the guest refuses it as an order
+/// slot by its key, before any proof is read.
 #[test]
-fn an_assembly_claim_keyed_on_the_provenance_leaf_is_refused() {
+fn an_assembly_claim_passing_the_terms_leaf_as_an_order_slot_is_refused() {
     let buyer = make_signing_key(BUYER_KEY);
     let seller = make_signing_key(SELLER1_KEY);
-    let section = provenance_section_hash(&PROVENANCE_LEAF_KEY);
-    let (order, ops) = settled_order(&buyer, &seller, &provenance_key(), &section, 1);
-    let claim = UsageClaim {
-        order,
-        clause_or_assembly: PROVENANCE_LEAF_KEY,
-        kind: UsageClaimKind::Assembly,
-        inclusion_proof: vec![],
-    };
 
-    match apply_batch_with_state(&batch(ops, vec![claim], empty_snapshot())).map(|_| ()) {
-        Err(KernelError::ProvenanceLeafIsNotARegistration) => {}
-        other => panic!("expected ProvenanceLeafIsNotARegistration, got {other:?}"),
-    }
+    // A root over one order slot and the terms leaf.
+    let agreement = keccak256(b"an-agreement");
+    let slot = slot_content_hash(0, None);
+    let terms_bytes = keccak256(b"{\"0x01\":{\"law\":\"ch\"}}");
+    let slot_leaf = single_section_root(&agreement, &slot);
+    let terms_leaf = single_section_root(&terms_key(), &terms_bytes);
+    let composition = sorted_pair(slot_leaf, terms_leaf);
+
+    // The order's provenance names the terms key as its agreement.
+    let section = provenance_section_hash(&terms_key(), &composition);
+    let (order, ops) = settled_order(&buyer, &seller, &provenance_key(), &section, 1);
+    let claim = assembly_claim(&order, composition, terms_key(), terms_bytes, vec![slot_leaf]);
+    expect_reserved(batch(ops, vec![claim], empty_snapshot()), terms_key());
+
+    // And the provenance key as an order slot's agreementKey is refused too.
+    let section = provenance_section_hash(&PROVENANCE_LEAF_KEY, &composition);
+    let (order, ops) = settled_order(&buyer, &seller, &provenance_key(), &section, 2);
+    let claim = assembly_claim(&order, composition, PROVENANCE_LEAF_KEY, slot, vec![terms_leaf]);
+    expect_reserved(batch(ops, vec![claim], empty_snapshot()), PROVENANCE_LEAF_KEY);
 }

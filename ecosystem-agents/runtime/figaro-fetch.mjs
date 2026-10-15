@@ -7,6 +7,7 @@
  * mistake for instructions. Errors are terse and never echo fetched bytes.
  *
  *   figaro-fetch clause <clauseKey>              spec via ClauseRegistry → IPFS
+ *   figaro-fetch agreement <agreementKey>        registered agreement via AgreementRegistry → IPFS
  *   figaro-fetch assembly <compositionHash>      template via AssemblyRegistry → IPFS
  *   figaro-fetch profile <address>               profile via MembersRegistry → IPFS
  *   figaro-fetch ipfs <cid>                      raw content by CID
@@ -26,7 +27,7 @@ import {
 import { frame } from "./dataChannel.mjs";
 import { cidOf, fetchIpfsText } from "./ipfsRead.mjs";
 import { fetchWitnessContent } from "./witnessContent.mjs";
-import { fetchAnchoredClauseSpec, fetchAnchoredTemplate } from "./anchoredContent.mjs";
+import { fetchAnchoredClauseSpec, fetchAnchoredComposedAgreement, fetchAnchoredTemplate } from "./anchoredContent.mjs";
 
 function fail(message) {
     console.error(`figaro-fetch: ${message}`);
@@ -40,7 +41,7 @@ function requireEnv(name) {
 }
 
 const [, , mode, ...args] = process.argv;
-if (!mode) fail("usage: figaro-fetch <clause|assembly|profile|ipfs|witness> <ref>");
+if (!mode) fail("usage: figaro-fetch <clause|agreement|assembly|profile|ipfs|witness> <ref>");
 
 async function fetchIpfs(cid) {
     let text;
@@ -61,6 +62,7 @@ async function discovery() {
         clauseRegistry: record.clauseRegistry,
         membersRegistry: record.membersRegistry,
         assemblyRegistry: record.assemblyRegistry,
+        agreementRegistry: record.agreementRegistry,
     }, fromBlock);
     return reconstructDiscovery(events);
 }
@@ -103,6 +105,23 @@ async function main() {
         if (hit.absent) fail(`clause ${clauseKey}: no anchored spec at ${clause.contentURI} — ${hit.absent} (absence, not the registry's content)`);
         console.log(frame({
             source: "clause-registry", refKind: "cid", ref: cidOf(clause.contentURI), content: hit.text,
+        }));
+        return;
+    }
+
+    if (mode === "agreement") {
+        const agreementKey = args[0] ?? fail("usage: figaro-fetch agreement <agreementKey>");
+        if (!/^0x[0-9a-fA-F]{64}$/.test(agreementKey)) fail(`a registered agreement is read by its 32-byte key: ${agreementKey}`);
+        const graph = await discovery();
+        // The binding whatever its stake: a binding is never cleared, so an
+        // assembly composed from a withdrawn agreement still reads it.
+        const agreement = graph.getAgreementBinding(agreementKey);
+        if (!agreement) fail(`agreement ${agreementKey} is not registered`);
+        // Verified against its key before it is printed.
+        const hit = await fetchAnchoredComposedAgreement(agreement);
+        if (hit.absent) fail(`agreement ${agreementKey}: no anchored document at ${agreement.contentURI} — ${hit.absent} (absence, not the registry's content)`);
+        console.log(frame({
+            source: "agreement-registry", refKind: "cid", ref: cidOf(agreement.contentURI), content: hit.text,
         }));
         return;
     }

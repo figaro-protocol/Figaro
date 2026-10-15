@@ -93,7 +93,7 @@ is a choice, not an exploit.
 ## 4. No admin, no escape hatch — by design
 
 **Pattern**: FigaroCore, AttestationCoordinator, ClauseRegistry,
-MembersRegistry, and AssemblyRegistry have no admin, no
+MembersRegistry, AgreementRegistry, and AssemblyRegistry have no admin, no
 pause function, no upgrade path, and no admin recovery. FlorinToken has a one-shot
 deployer who registers minter contracts then renounces (`deployerMintRenounced`)
 — a bounded privileged actor, documented separately in `CONTRACTS.md`.
@@ -242,9 +242,12 @@ ecosystem actually composes it, which the squatter cannot force, and the stake s
 registration pins the spec to the designer's OWN node and registers in one atomic UI
 action, so nothing is publicly observable before the register tx hits the mempool.
 The residual — a mempool front-run of that tx — is the accepted,
-stake-priced cost; neither registry has a guessable id to claim in advance,
-since a clause key and an assembly's `compositionHash` are both derived from
-content. Revisit only if reward-capture griefing is
+stake-priced cost; no registry has a guessable id to claim in advance,
+since a clause key, an `agreementKey` and an assembly's `compositionHash` are all derived from
+content. The same holds on `AgreementRegistry` and `AssemblyRegistry`: anyone can
+compute a pinned agreement's key or an assembly's root from the document, so a
+front-runner can become designer of record there too, at the same stake and
+under the same usage-only reward, and both contracts accept it as stated. Revisit only if reward-capture griefing is
 observed in the wild; the fallback is commit-reveal on `AssemblyRegistry` alone.
 
 ---
@@ -519,7 +522,7 @@ The ETH is not stuck, on any reading:
   member is never held on a surface they asked to leave, so discovery removal and
   erasure of the published declaration are unaffected.
 
-**Scope**: `MembersRegistry` only. `ClauseRegistry` and `AssemblyRegistry` deliberately
+**Scope**: `MembersRegistry` only. `ClauseRegistry`, `AgreementRegistry` and `AssemblyRegistry` deliberately
 have no cooldown and need none — their withdrawal is one-shot per key and the key's
 binding is permanent, so there is nothing to recycle.
 
@@ -546,7 +549,7 @@ same trade (the guest's counted set rides the batch state root, so idempotence
 holds across batches), and cannot be repointed — `batchVerifier` is
 `immutable` and no setter exists. What it can do is exactly what the direct
 path lets *anyone* do permissionlessly: present proof that resolved trade used
-a clause or assembly.
+a clause, a registered agreement or an assembly.
 
 The distinction that matters is **discretion, not permission**. An admin
 function is one whose outcome depends on who calls it. This one's outcome
@@ -558,11 +561,11 @@ vkey, and a named caller is how a vkey's authority reaches storage.
 
 **What the counter still enforces itself**, because the proof cannot see live
 chain state: the open period, each seller's live `MembersRegistry` stake, and
-each clause's or assembly's live registration. The verifier deliberately checks none of these — it
+each clause's, agreement's or assembly's live registration in its own kind's registry. The verifier deliberately checks none of these — it
 owns the proof, the counter owns the reward's gates.
 
 **Blast radius if the vkey were wrong**: a bad program could inflate
-batch-path accrual for clauses or assemblies of its choosing, diluting every honest
+batch-path accrual for clauses, agreements or assemblies of its choosing, diluting every honest
 designer's pro-rata share of a period's budget. It could not mint, could not touch
 direct-path accrual, could not reach bonds or resolution, and could not
 withdraw anything — `RpgfMinter` still rewards only designers of record with a live stake. The mitigation is the same one the whole batch path already rests on:
@@ -628,11 +631,11 @@ is the residual anti-Sybil bite, and in the positive-sum frame that residual is 
 leak, not a hole. Do not "fix" it by adding a protocol-side cost — both variants above
 are declined and the door is closed on the family.
 
-## 19. Usage accrual requires the clause or assembly to hold a live registration stake — an unregistered leaf key scores nothing
+## 19. Usage accrual requires the clause, agreement or assembly to hold a live registration stake — an unregistered key scores nothing
 
 **Looks wrong because:** `recordClauseUsage` proves a real, resolved order committed the
 clause or assembly and its seller is staked — yet still reverts `ClauseOrAssemblyNotRegistered` (direct path)
-or silently skips it (batch path) unless the clause or assembly ALSO holds a live stake in its own registry. A resolved, proven use that earns nothing reads like lost accrual.
+or silently skips it (batch path) unless the clause or assembly ALSO holds a live stake in its own registry; the agreement leg is gated the same way by `AgreementRegistry`. A resolved, proven use that earns nothing reads like lost accrual.
 
 **Is correct because:** the clause-or-assembly key is otherwise just a
 merkle-leaf key a self-written agreement chooses freely, so without this gate a self-dealt
@@ -645,7 +648,7 @@ skips (see §20).
 
 ## 20. The rewards accrual never blocks batch resolution — a reverting reward gate does not unwind trade
 
-**Looks wrong because:** `applyBatchAccrual` `continue`s past the reserved provenance leaf and past clauses or assemblies without a live
+**Looks wrong because:** `applyBatchAccrual` `continue`s past the two reserved keys and past clauses, agreements or assemblies without a live
 registration instead of reverting, and `settleBatch` wraps the whole accrual call in try/catch, emitting
 `BatchAccrualSkipped` and resolving the batch anyway. A reward write that can be silently dropped looks
 like lost or manipulable accrual.
@@ -739,28 +742,32 @@ keys are revoked.
 ## 24. The reward keys every accrual by (kind, key) — the registries have no edge between them
 
 **Pattern**: `UsageCounter` keys every accrual, count, counted process and
-score by `(kind, key)`, kind `KIND_CLAUSE = 0` or `KIND_ASSEMBLY = 1`
-(`accrualOf[kind][key][period]`, `batchAccrualOf`, `processCounted`,
-`scoreOf(kind, key, period)`). `recordClauseUsage` counts under the clause
-kind and checks `ClauseRegistry` only; `recordAssemblyUsage` counts under the
-assembly kind and checks `AssemblyRegistry` only; `applyBatchAccrual` gates
-each `BatchAccrual{clauseOrAssembly, kind, c, d}` by its own kind's registry
-and skips an unknown kind. `RpgfMinter.claim(period, (kind, key)[])` reads
+score by `(kind, key)`, kind `KIND_CLAUSE = 0`, `KIND_ASSEMBLY = 1` or
+`KIND_AGREEMENT = 2` (`accrualOf[kind][key][period]`, `batchAccrualOf`,
+`processCounted`, `scoreOf(kind, key, period)`). `recordClauseUsage` counts
+under the clause kind and checks `ClauseRegistry` only;
+`recordAgreementUsage` counts under the agreement kind and checks
+`AgreementRegistry` only; `recordAssemblyUsage` counts under the assembly kind
+and checks `AssemblyRegistry` only — it proves the order slot's membership
+under `compositionHash` but never asks whether that order slot's agreement is
+registered; `applyBatchAccrual` gates each `BatchAccrual{clauseOrAssembly,
+kind, c, d}` by its own kind's registry and skips an unknown kind. `RpgfMinter.claim(period, (kind, key)[])` reads
 the counter's slot for each kind, and `_isAuthor(kind, key, account)` reads
-the one registry the kind names, reverting `UnknownKind` on any other.
+the one registry the kind names, reverting `UnknownKind` on a kind above 2.
 `FigaroBatchVerifier._hashUsage` packs `key(32) ‖ kind(1) ‖ c(8) ‖ d(8)` per
 accrual, so the proof commits the kind.
 
 **Why it looks wrong**: The registry families are parallel and carry no
 edge between them (CLAUDE.md § "Separation of Concerns"), so a discriminator
 that names which registry a key belongs to looks like the reward reaching
-across the boundary — and both registries already key by content, so the
-bytes look like they should suffice.
+across the boundary — and all three hash-keyed registries already key by
+content, so the bytes look like they should suffice.
 
-**Why it is correct**: Each registry takes any `bytes32`, so a stranger can
-register an existing assembly's `compositionHash` as a clause key. Nothing on
-chain tells a clause key from an assembly key by its bytes, and neither
-registry knows the other exists, so the separation cannot live in a registry;
+**Why it is correct**: Each registry takes any `bytes32` but its own reserved
+keys, so a stranger can register an existing assembly's `compositionHash` as a
+clause key or an agreement key. Nothing on chain tells a clause key, an
+`agreementKey` and a `compositionHash` apart by their bytes, and no registry
+knows another exists, so the separation cannot live in a registry;
 it lives in the reward's own accounting. With one keyspace, the stranger's
 clause registration at the assembly's bytes would make them a designer of record
 for the assembly's accrual. With the kind, a stake in one family
@@ -768,18 +775,92 @@ earns only what accrues under that family: the stranger's clause-kind slot at
 that key holds only what processes committing a clause leaf under that key
 accrue, priced by the seller stake and the floor like any squatted key
 (§ 8, § 17). The registries still reference nothing; the counter and the
-minter each read both, and the kind says which one
-answers for a given key. The reserved provenance leaf is refused at accrual
-whatever either registry holds at it: the direct path reverts
-(`ProvenanceLeafIsNotARegistration`), the guest refuses a batch claim keyed
-on it, and the counter's batch path skips it.
+minter each read all three, and the kind names the one that answers for a
+given key — never a second one: no kind's gate consults another kind's
+registry. The two reserved keys of the agreement format, the provenance leaf
+and the assembly terms leaf, are refused at accrual on every kind whatever a
+registry holds at them: the direct path reverts
+(`ReservedKeyIsNotARegistration`), the guest
+refuses a batch claim keyed on either, the counter's batch path skips both,
+and `AgreementRegistry` refuses both as registrations.
 
 **Tests**: `test_aStrangerWhoStakesAnAssemblysKeyAsAClauseTakesNothingOfIt`
 (`test/build/rewards/RpgfIntegrationTest.t.sol`) — the stranger claims
 nothing under the clause kind and is refused under the assembly kind, and the
 assembly's registrant takes the accrual; `check_theKindsNeverShareASlot`
-(`test/build/rewards/HalmosUsageCounter.t.sol`) — an assembly-kind accrual on
-either path leaves every clause-kind slot at the same key untouched.
+(`test/build/rewards/HalmosUsageCounter.t.sol`) — an accrual under one kind on
+either path leaves every other kind's accrual at the same key untouched — the
+three kinds, symbolically; `test_theThreeKindsNeverShareACount`
+(`test/build/rewards/UsageCounterTest.t.sol`) and
+`test_theThreeKindsPayOnlyTheirOwnDesignerOfRecord`
+(`test/build/rewards/RpgfMinterTest.t.sol`) — no kind's count or claim is
+read from another kind's registry.
+
+## 25. The assembly root is a merkle tree over registered agreement keys — membership is proved, never looked up
+
+**Pattern**: An assembly's `compositionHash` is a merkle root built with the
+agreement format's leaf convention over one leaf per order slot — key the
+order slot's `agreementKey`, content the canonical `{"clauses":{…},"slot":i}`
+— plus, when any are composed, the assembly terms leaf
+(`keccak256("figaro-assembly-terms")`). `AssemblyRegistry` stores the root and
+a URI and checks nothing about the agreements inside it; `AgreementRegistry`
+knows no assembly. The counter's assembly leg takes the order slot's
+`agreementKey`, its `slotContentHash` and a membership proof, and proves the
+slot leaf under `compositionHash` after proving the order's provenance leaf
+under `agreementHash`.
+
+**Why it looks wrong**: An assembly that composes registered agreements reads
+like it should hold an on-chain list of them, and the assembly registry like
+it should refuse an assembly naming an unregistered agreement. A proof
+supplied by the caller reads like trust handed to the caller.
+
+**Why it is correct**: A list stored in `AssemblyRegistry`, or a lookup into
+`AgreementRegistry` at assembly registration, is an edge between two
+registry families, and the families are parallel (CLAUDE.md § "Separation of
+Concerns"): assemblies use agreements, agreements use clauses, and neither
+knows what uses it. The root carries the membership instead: a slot leaf
+either hashes up to the registered `compositionHash` or it does not, so the
+caller can supply nothing the root did not already commit, and a wrong
+`agreementKey` or slot content derives a leaf that is not in the tree. An
+assembly that names an agreement nobody registered is published like any
+other content; the agreement leg simply never counts it (the kind's own gate,
+§ 19, § 24), and readers that cannot hydrate an order slot do not offer the
+assembly. The reserved assembly terms key is refused as an order slot's
+`agreementKey`, so the terms leaf can never be proved as a member.
+
+**Tests**: the SDK, the counter and the guest each rebuild the order slot
+leaves, the terms leaf, the root and the membership proofs of
+`test/fixtures/assembly-vectors.json` (the parity legs, `TESTING.md` §
+"Assembly parity"); in `test/build/rewards/UsageCounterTest.t.sol`,
+`test_aSlotLeafUnderADifferentCompositionHashFails` and
+`test_aSlotLeafWithAnotherSlotsBytesFails` refuse a membership proof that the
+root did not commit, and `test_theTermsLeafNeverPassesAsAnOrderSlot` refuses
+the reserved terms key as an order slot's `agreementKey`; the guest's twins
+are in `prover/lib/tests/usage.rs`.
+
+## 26. An assembly's order slots are ordered — one registered agreement may hold two order slots
+
+**Pattern**: The order slots of an assembly are a sequence, and each slot leaf
+carries its 0-based index in its content (`"slot":i`). Two order slots may
+name the same `agreementKey`; their leaves differ by index and by the order
+slot's own fills.
+
+**Why it looks wrong**: A set of agreement keys is the smaller structure and
+needs no index; a repeated key in a merkle tree looks like a duplicate leaf an
+indexer would double-count.
+
+**Why it is correct**: A design repeats its terms: two couriers on one
+process, or two sellers adding value under the same terms, are two orders under one
+registered agreement, and a set root cannot express that. The index makes each
+leaf distinct, so the root commits the multiplicity, and the topology — which
+order slots each one follows — is a fill of the order slot, inside the leaf,
+never a field of the registered agreement. Usage still counts once per
+process per (kind, key) (`CONTRACTS.md` § "Usage accounting", idempotence),
+so a repeated agreement earns for the process, not per order slot.
+
+**Tests**: the third vector assembly in `test/fixtures/assembly-vectors.json`
+holds one `agreementKey` in two of its three order slots, and every parity leg
+rebuilds its distinct leaves and its root.
 
 ---
 
@@ -805,9 +886,11 @@ either path leaves every clause-kind slot at the same key untouched.
 | 16 | `applyBatchAccrual` has one privileged caller | reward-path | A named writer on the reward path is the shape of an admin backdoor | Discretion, not permission, is the test: the caller may only relay numbers an immutable vkey committed; the counter still enforces period, seller stake and live registration itself |
 | 17 | Recorded usage can score zero (`minSellers` floor) | reward-path | Real resolved trade with `score = 0` reads like lost accrual | Below 3 staked sellers sits what one actor fabricates alone; sub-floor accrual defers within the period (full score springs at the third seller) and expires when the period closes; per-path because the paths' seller sets cannot be unioned |
 | 18 | No per-recording charge or burn | reward-path | Fabricating `c` costs only gas | `c^(1/3)` already crushes volume farming; breadth is deposit-priced; an ETH burn destroys value needlessly and a DAO-routed charge inserts an institution + usage-coupled revenue into an identity-free mechanism |
-| 19 | Usage needs a live clause-or-assembly registration stake | reward-path | A proven, resolved use that scores nothing reads like lost accrual | The clause-or-assembly key is otherwise a free-choice merkle leaf; without the gate a self-dealt process inflates the shared denominator at gas cost; closes the FREE dilution, leaves the accepted stake-priced replication lever |
+| 19 | Usage needs a live clause, agreement or assembly registration stake | reward-path | A proven, resolved use that scores nothing reads like lost accrual | The clause-or-assembly key is otherwise a free-choice merkle leaf; without the gate a self-dealt process inflates the shared denominator at gas cost; closes the FREE dilution, leaves the accepted stake-priced replication lever |
 | 20 | Rewards accrual never reverts resolution (skip + try/catch) | reward-path | A silently-droppable reward write looks like lost/manipulable accrual | A reward-tier gate must not unwind resolution-tier trade; a dropped batch is recovered by the next cumulative overwrite or forgone (conservative under-pay); sequencer pre-filters so the catch fires only on the stake-race |
 | 21 | Member-stake gate on the seller of record is retroactive | reward-path | A withdrawal makes resolved-but-unrecorded trades unrecordable — looks like a grief hole | Chain can't see resolve time (`FigaroCore` stores none), so the gate is record-time only; record-at-resolution closes the normal window; residual grief is self-limiting (griefer forfeits own eligibility through period end) |
 | 22 | Batch resolve: nonce-less, deadline-less `ResolveProcess` signature | batch-path | The canonical EIP-712 replay shape | Resolution is terminal and single-shot — the guest's root-chained state rejects a second resolve; the domain pins chain + verifier so the signature travels nowhere; the message authorizes one time-invariant transition, leaving nothing for a nonce to price |
 | 23 | Pinata pin key in the public site bundle | site/pinning | A credential in a public bundle reads as a leaked secret | The testnet key is pin-only (dashboard-confirmed: unpin, list, data and every V3 resource inactive) and disposable; every registry read is digest-checked against the on-chain anchor, so a hostile pin never verifies; testnet only — per-party pinning at mainnet, the keys revoked at the account split |
-| 24 | Reward keyed by (kind, key) | reward-path | A family discriminator looks like the reward crossing the registries' boundary | Each registry takes any bytes32 and nothing tells the families apart by bytes; without the kind a stranger staking an assembly's hash as a clause would take its reward; the kind keeps a stake in one family from earning the other's |
+| 24 | Reward keyed by (kind, key), three kinds | reward-path | A family discriminator looks like the reward crossing the registries' boundary | Each registry takes any bytes32 and nothing tells the families apart by bytes; without the kind a stranger staking an assembly's hash as a clause or an agreement would take its reward; the kind keeps a stake in one family from earning another's, and no kind's gate reads another kind's registry |
+| 25 | The assembly root is a merkle tree over registered agreement keys | registry/reward-path | No stored list of an assembly's agreements; a caller-supplied proof | A stored list or a cross-registry lookup is an edge between parallel families; the root commits membership, so a proof either reaches the registered root or fails |
+| 26 | Ordered order slots; one agreement may hold two | registry | A repeated key looks like a duplicate leaf | Designs repeat terms; the index makes each leaf distinct and the root commits the multiplicity; usage counts once per process per (kind, key) |

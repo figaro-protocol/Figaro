@@ -14,23 +14,21 @@
 <section class="tsd-panel">
 <ul class="tsd-signatures">
 <li class="">
-<div class="tsd-signature tsd-anchor-link" id="templateparentorderhashes"><span class="tsd-kind-call-signature">templateParentOrderHashes</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">agreement</span><span class="tsd-signature-symbol">:</span> <a href="../interfaces/index.TemplateAgreement.html" class="tsd-signature-type tsd-kind-interface">TemplateAgreement</a><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">[]</span><a href="#templateparentorderhashes" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-signature tsd-anchor-link" id="templateparentorderhashes"><span class="tsd-kind-call-signature">templateParentOrderHashes</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">slot</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">Pick</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/index.TemplateSlot.html" class="tsd-signature-type tsd-kind-interface">TemplateSlot</a><span class="tsd-signature-symbol">,</span> <span class="tsd-signature-type">&quot;clauses&quot;</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">[]</span><a href="#templateparentorderhashes" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
 <div class="tsd-description">
-<div class="tsd-comment tsd-typography"><p>Read a template agreement's parent ids — the data of its topology clause.
-The topology is a clause like any other; this is the one accessor for it.
-The entry is found by its DATA KEY (<code>parentOrderHashes</code> — named for what
-the committed clause holds at runtime: the parent orders' FigaroCore order
-hashes; at design time the values are sibling <code>order-&lt;i&gt;</code> labels), so
-reading needs no spec cache and tolerates any registry-defined topology
-clause.</p>
+<div class="tsd-comment tsd-typography"><p>An order slot's parent ids — the data of its topology fill. The entry is
+found by its DATA KEY (<code>parentOrderHashes</code> — named for what the committed
+clause holds at runtime: the parent orders' FigaroCore order hashes; at
+design time the values are sibling <code>order-&lt;i&gt;</code> labels), so reading needs
+no spec cache and tolerates any registry-defined topology clause.</p>
 </div>
 <div class="tsd-parameters">
 <h4 class="tsd-parameters-title">Parameters</h4>
 <ul class="tsd-parameter-list">
-<li><span><span class="tsd-kind-parameter">agreement</span>: <a href="../interfaces/index.TemplateAgreement.html" class="tsd-signature-type tsd-kind-interface">TemplateAgreement</a></span></li></ul></div>
+<li><span><span class="tsd-kind-parameter">slot</span>: <span class="tsd-signature-type">Pick</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/index.TemplateSlot.html" class="tsd-signature-type tsd-kind-interface">TemplateSlot</a><span class="tsd-signature-symbol">,</span> <span class="tsd-signature-type">&quot;clauses&quot;</span><span class="tsd-signature-symbol">&gt;</span></span></li></ul></div>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">[]</span></h4><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/assembly.ts#L79">assembly.ts:79</a></li></ul></aside></div></li></ul></section></div>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/assembly.ts#L157">assembly.ts:157</a></li></ul></aside></div></li></ul></section></div>
 <div class="col-sidebar">
 <div class="page-menu">
 <div class="tsd-navigation settings">

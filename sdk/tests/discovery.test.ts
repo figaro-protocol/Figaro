@@ -7,6 +7,7 @@ import {
     parseClauseRegistryLogs,
     parseMembersRegistryLogs,
     parseAssemblyRegistryLogs,
+    parseAgreementRegistryLogs,
     fetchDiscoveryEvents,
     type DiscoveryEvents,
 } from "../src/discovery.js";
@@ -29,6 +30,8 @@ function mkEvents(overrides: Partial<DiscoveryEvents> = {}): DiscoveryEvents {
         memberWithdrawn: [],
         assemblyRegistered: [],
         assemblyWithdrawn: [],
+        agreementRegistered: [],
+        agreementWithdrawn: [],
         ...overrides,
     };
 }
@@ -96,6 +99,39 @@ describe("DiscoveryGraph — assemblies", () => {
         expect(live[0].compositionHash).toBe(COMP_2);
         expect(g.getAssembly(COMP_1)).toBeUndefined();
         expect(g.getAssembly(COMP_2)?.contentURI).toBe("ipfs://a2");
+    });
+});
+
+describe("DiscoveryGraph — registered agreements", () => {
+    const AGR_1 = ("0x" + "e1".repeat(32)) as Hex;
+    const AGR_2 = ("0x" + "e2".repeat(32)) as Hex;
+
+    it("surfaces live agreements, de-surfaces on withdraw, and keeps the binding readable whatever the stake", () => {
+        const g = reconstructDiscovery(mkEvents({
+            agreementRegistered: [
+                { agreementKey: AGR_1, registeredBy: ASM_REGISTERED_BY, contentURI: "ipfs://g1", blockNumber: 3, logIndex: 0, transactionHash: null },
+                { agreementKey: AGR_2, registeredBy: ASM_REGISTERED_BY, contentURI: "ipfs://g2", blockNumber: 4, logIndex: 1, transactionHash: null },
+            ],
+            agreementWithdrawn: [{ agreementKey: AGR_1, registeredBy: ASM_REGISTERED_BY, blockNumber: 9, logIndex: 0 }],
+        }));
+        expect(g.getAgreements()).toEqual([{
+            agreementKey: AGR_2, contentURI: "ipfs://g2", registeredBy: ASM_REGISTERED_BY, registeredAt: 4, stakeWithdrawn: false,
+        }]);
+        expect(g.getAgreement(AGR_1)).toBeUndefined();
+        expect(g.getAgreement(AGR_2.toUpperCase().replace("0X", "0x") as Hex)?.contentURI).toBe("ipfs://g2");
+        // A withdrawn agreement's binding stays readable for hydration.
+        expect(g.getAgreementBinding(AGR_1)).toMatchObject({ contentURI: "ipfs://g1", stakeWithdrawn: true });
+        expect(g.getAgreementBinding(("0x" + "e3".repeat(32)) as Hex)).toBeUndefined();
+    });
+
+    it("first-seen wins for a key", () => {
+        const g = reconstructDiscovery(mkEvents({
+            agreementRegistered: [
+                { agreementKey: AGR_1, registeredBy: ASM_REGISTERED_BY, contentURI: "ipfs://first", blockNumber: 1, logIndex: 0, transactionHash: null },
+                { agreementKey: AGR_1, registeredBy: MEMBER_A, contentURI: "ipfs://second", blockNumber: 2, logIndex: 0, transactionHash: null },
+            ],
+        }));
+        expect(g.getAgreements().map((a) => a.contentURI)).toEqual(["ipfs://first"]);
     });
 });
 
@@ -217,6 +253,22 @@ describe("registry log parsers (decode round-trip — no chain)", () => {
         expect(parsed.withdrawn[0].compositionHash).toBe(COMP_1);
     });
 
+    it("parses AgreementRegistered + DepositWithdrawn keyed by agreementKey", () => {
+        const AGR = ("0x" + "e1".repeat(32)) as Hex;
+        const reg = mkLog("AgreementRegistered(bytes32,address,string)", [AGR, addrTopic(ASM_REGISTERED_BY)],
+            [{ type: "string" }], ["ipfs://g"], 5n, 2);
+        const wd = mkLog("DepositWithdrawn(bytes32,address,uint256)", [AGR, addrTopic(ASM_REGISTERED_BY)],
+            [{ type: "uint256" }], [10n], 6n, 0);
+        const parsed = parseAgreementRegistryLogs([reg, wd]);
+        expect(parsed.registered[0]).toMatchObject({ agreementKey: AGR, contentURI: "ipfs://g", blockNumber: 5, logIndex: 2 });
+        expect(parsed.registered[0].registeredBy.toLowerCase()).toBe(ASM_REGISTERED_BY);
+        expect(parsed.withdrawn[0].agreementKey).toBe(AGR);
+        // A clause registry's event is not an agreement registration.
+        const clause = mkLog("ClauseRegistered(bytes32,string,address)", [KEY_1, addrTopic(CLAUSE_REGISTERED_BY)],
+            [{ type: "string" }], ["ipfs://c"], 1n, 0);
+        expect(parseAgreementRegistryLogs([clause]).registered).toHaveLength(0);
+    });
+
     it("end-to-end: decoded logs fold to the correct live view", () => {
         const regLog = mkLog("AssemblyRegistered(bytes32,address,string)", [COMP_2, addrTopic(ASM_REGISTERED_BY)],
             [{ type: "string" }], ["ipfs://live"], 1n, 0);
@@ -224,6 +276,7 @@ describe("registry log parsers (decode round-trip — no chain)", () => {
         const g = reconstructDiscovery({
             clauseRegistered: [], clauseWithdrawn: [], memberRegistered: [], memberWithdrawn: [],
             assemblyRegistered: registered, assemblyWithdrawn: withdrawn,
+            agreementRegistered: [], agreementWithdrawn: [],
         });
         expect(g.getAssemblies()).toHaveLength(1);
         expect(g.getAssembly(COMP_2)?.contentURI).toBe("ipfs://live");
@@ -236,6 +289,7 @@ describe("DiscoveryGraph — empty", () => {
         expect(g.getClauses()).toEqual([]);
         expect(g.getMembers()).toEqual([]);
         expect(g.getAssemblies()).toEqual([]);
+        expect(g.getAgreements()).toEqual([]);
     });
 });
 
@@ -253,13 +307,15 @@ describe("fetchDiscoveryEvents — chunked getLogs", () => {
         clauseRegistry: "0x0000000000000000000000000000000000c1a05e" as Address,
         membersRegistry: "0x0000000000000000000000000000000000dead01" as Address,
         assemblyRegistry: "0x0000000000000000000000000000000000a55e60" as Address,
+        agreementRegistry: "0x0000000000000000000000000000000000a62ee0" as Address,
     };
 
     it("threads a custom chunkSize through to every configured registry's getLogs calls", async () => {
         const client = mockClient();
         await fetchDiscoveryEvents(client, addresses, 0n, 25n, 10n);
-        // Three registries × three 10-block chunks over [0,25] = 9 calls.
-        expect(client.getLogs).toHaveBeenCalledTimes(9);
+        // Four registries × three 10-block chunks over [0,25] = 12 calls.
+        expect(client.getLogs).toHaveBeenCalledTimes(12);
+        expect(client.getLogs).toHaveBeenCalledWith({ address: addresses.agreementRegistry, fromBlock: 0n, toBlock: 9n });
         expect(client.getLogs).toHaveBeenCalledWith({
             address: addresses.clauseRegistry,
             fromBlock: 20n,
@@ -270,6 +326,6 @@ describe("fetchDiscoveryEvents — chunked getLogs", () => {
     it("defaults to DEFAULT_LOG_CHUNK_SIZE, issuing one call per registry on a devnet-sized range", async () => {
         const client = mockClient();
         await fetchDiscoveryEvents(client, addresses, 0n, 100n);
-        expect(client.getLogs).toHaveBeenCalledTimes(3);
+        expect(client.getLogs).toHaveBeenCalledTimes(4);
     });
 });

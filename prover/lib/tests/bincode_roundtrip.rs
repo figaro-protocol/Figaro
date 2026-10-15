@@ -224,3 +224,67 @@ fn bincode_roundtrip_public_values_and_events() {
     let bytes = bincode::serialize(&events).expect("serialize");
     let _decoded: BatchEvents = bincode::deserialize(&bytes).expect("deserialize");
 }
+
+/// Every usage-claim kind crosses SP1 stdin: the enum's variant tag and the
+/// assembly claim's variable-length membership proof must survive bincode,
+/// field for field.
+#[test]
+fn bincode_roundtrip_every_usage_claim_kind() {
+    let claim = |kind: UsageClaimKind| UsageClaim {
+        order: dummy_commitment(),
+        clause_or_assembly: B256::repeat_byte(0x0d),
+        kind,
+        inclusion_proof: vec![B256::repeat_byte(0x0e)],
+    };
+    let input = BatchInput {
+        chain_id: 31337,
+        verifying_contract: BUYER,
+        block_timestamp: 1000,
+        operations: vec![],
+        prev_state: empty_snapshot(),
+        usage_claims: vec![
+            claim(UsageClaimKind::Clause {
+                section_hash: B256::repeat_byte(0x01),
+            }),
+            claim(UsageClaimKind::Agreement {
+                composition_hash: B256::repeat_byte(0x02),
+            }),
+            claim(UsageClaimKind::Assembly {
+                agreement_key: B256::repeat_byte(0x03),
+                slot_content_hash: B256::repeat_byte(0x04),
+                membership_proof: vec![B256::repeat_byte(0x05), B256::repeat_byte(0x06)],
+            }),
+        ],
+        usage_period: 2,
+        provenance_leaf: keccak256(b"figaro-agreement-provenance"),
+    };
+    let bytes = bincode::serialize(&input).expect("serialize");
+    let decoded: BatchInput = bincode::deserialize(&bytes).expect("deserialize");
+    assert_eq!(decoded.usage_period, 2);
+    let codes: Vec<u8> = decoded.usage_claims.iter().map(|c| c.kind.code()).collect();
+    assert_eq!(
+        codes,
+        vec![USAGE_KIND_CLAUSE, USAGE_KIND_AGREEMENT, USAGE_KIND_ASSEMBLY]
+    );
+    match &decoded.usage_claims[1].kind {
+        UsageClaimKind::Agreement { composition_hash } => {
+            assert_eq!(*composition_hash, B256::repeat_byte(0x02))
+        }
+        other => panic!("expected Agreement, got {other:?}"),
+    }
+    match &decoded.usage_claims[2].kind {
+        UsageClaimKind::Assembly {
+            agreement_key,
+            slot_content_hash,
+            membership_proof,
+        } => {
+            assert_eq!(*agreement_key, B256::repeat_byte(0x03));
+            assert_eq!(*slot_content_hash, B256::repeat_byte(0x04));
+            assert_eq!(
+                membership_proof,
+                &vec![B256::repeat_byte(0x05), B256::repeat_byte(0x06)]
+            );
+        }
+        other => panic!("expected Assembly, got {other:?}"),
+    }
+}

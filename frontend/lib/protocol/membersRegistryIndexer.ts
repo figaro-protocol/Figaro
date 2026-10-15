@@ -72,7 +72,7 @@ async function fetchAllMemberEvents(client: PublicClient, chainId: number): Prom
 }
 
 /** The SDK's latest-lifecycle-event-wins liveness fold over the members
- *  family (the other two registry families contribute nothing here — each
+ *  family (the other registry families contribute nothing here — each
  *  family has its own reader). */
 function foldMembers(events: MembersRegistryEvents): DiscoveryGraph {
     return reconstructDiscovery({
@@ -82,6 +82,8 @@ function foldMembers(events: MembersRegistryEvents): DiscoveryGraph {
         memberWithdrawn: events.withdrawn,
         assemblyRegistered: [],
         assemblyWithdrawn: [],
+        agreementRegistered: [],
+        agreementWithdrawn: [],
     });
 }
 

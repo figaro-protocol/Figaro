@@ -136,17 +136,19 @@ Every resolved process composes the mandatory clauses, so their usage accrues
 to the DAO exactly the way any designer's clauses accrue: **the commons is
 rewarded, from the reserve, for the use of what every trade carries.** The
 protocol takes nothing from a trade, and the DAO's registrations claim no
-privileged weight: they ride the same uniform meter as every other clause. "Mandatory" is a
+privileged weight: they ride the same uniform meter as every other clause. A
+registered agreement that composes them earns under the agreement kind for its
+own designer of record, beside them; nothing is excluded. "Mandatory" is a
 registration-layer convention; nothing on chain privileges it.
 
 The one thing the DAO's reward may not reach is the meter itself: the
 agreement format's reserved provenance leaf is no clause, and the counter
-refuses its key by comparison with the format's constant, so it meters
-without earning. `docs/DESIGNER_REWARDS.md` § "The boundary — the meter
+refuses its key, and the assembly terms leaf's, by comparison with the
+format's constants, so it meters without earning. `docs/DESIGNER_REWARDS.md` § "The boundary — the meter
 earns nothing" owns that line.
 
 **Countercyclical by construction.** Each period's budget divides pro rata over
-every clause and assembly that scored. Where third-party design thrives, the
+every clause, registered agreement and assembly that scored. Where third-party design thrives, the
 mandatory clauses' share is automatically diluted — and little DAO funding is
 needed, because the ecosystem is flourishing. Where little else emerged, the
 mandatory clauses dominate the period's score and the endowment income is large

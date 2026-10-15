@@ -40,12 +40,12 @@ import {
     requestQuotes,
     makeSellerQuoteHandler,
     InProcessChannel,
-    type AssemblyTemplate,
     type OfferPolicy,
 } from "../src/agent/index.js";
 import type { FigaroAddresses } from "../src/types.js";
 import { ANVIL_URL, anvilReachable } from "./batchHarness.js";
 import { keyOf } from "./specFixtures.js";
+import { hydrateAuthored } from "./hydrate.js";
 
 // ── Skip unless Anvil is reachable ──────────────────────────────────────────
 
@@ -290,15 +290,15 @@ describe.skipIf(SKIP)("SDK Integration (Anvil)", () => {
         // ── 1. The buyer drafts one quote request per candidate at their
         //       ceiling; the priced fields name the buyer's OWN clause. ──
         const chainNow = (await publicClient.getBlock({ blockTag: "latest" })).timestamp;
-        const template: AssemblyTemplate = {
+        const template = hydrateAuthored({
             agreements: [{ id: "order-0", clauses: { [keyOf("figaro-commerce")]: {}, [keyOf("figaro-topology")]: { parentOrderHashes: [] } } }],
-        };
+        });
         const pricedFields = [
             { clause: keyOf("figaro-commerce"), path: "payment" },
             { clause: keyOf("figaro-commerce"), path: "lineItems.0.unitPrice" },
         ];
         const requestFor = (candidate: Address) => buildQuoteRequest({
-            template, buyer: buyerAccount.address, seller: candidate, currency: tokenAddress,
+            assembly: template, buyer: buyerAccount.address, seller: candidate, currency: tokenAddress,
             ceiling: CEILING, chainId: 31337, core: coreAddress, pricedFields,
             deadline: chainNow + 3600n,
             overrides: {

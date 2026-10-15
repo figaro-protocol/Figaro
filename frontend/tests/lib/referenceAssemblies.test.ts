@@ -1,22 +1,22 @@
 /**
  * referenceAssemblies.test.ts — conformance for the user-onboarding set
  * (`assemblies/*.json`, the sibling of `clauses/`). Each reference assembly
- * is a canonical AssemblyTemplate the populate path anchors at deploy: it
- * is AUTHORED by clause name and resolved to clause keys over `clauses/` at
- * seed time (`resolveAuthoredClauseKeys`); resolved, it
- * must parse, hash, resolve its topology, compose only clauses that exist,
- * carry the mandatory clauses on every order, and carry the editorial
+ * is AUTHORED by clause name and derived at seed time into its order slots
+ * (`slotsFromAuthoredAgreements` over `clauses/`: names resolved to keys,
+ * parents lifted into each order slot, the mandatory clauses folded, each
+ * order slot's agreement keyed); derived, it must parse, hash, resolve its
+ * topology, compose only clauses that exist, carry the mandatory clauses on
+ * every order, and carry the editorial
  * identity a stranger reads first. Affixed documents must reproduce their
  * committed keccak from the shipped bytes.
  */
 import { readdirSync, readFileSync, existsSync } from "node:fs";
 import path from "node:path";
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 import { keccak256 } from "viem";
-import { planTemplateOrders, templateCompositionHash } from "@figaro-protocol/sdk";
+import { canonicalize, planTemplateOrders, slotClauses, templateCompositionHash, type HydratedAssembly } from "@figaro-protocol/sdk";
 import { parseAssemblyTemplateJson } from "@/lib/designer/assemblyTemplateToDraft";
-import type { AssemblyTemplate } from "@/lib/shared/assemblyTemplate";
-import { authoredSpecSet, resolveAuthored } from "./primeClauseSpecs";
+import { authoredSpecSet, hydrateAuthored, primeClauseSpecs } from "./primeClauseSpecs";
 
 const ASSEMBLIES_DIR = path.resolve(process.cwd(), "../assemblies");
 const DOCUMENTS_DIR = path.join(ASSEMBLIES_DIR, "documents");
@@ -38,6 +38,8 @@ const assemblyMandatoryClauseKeys = mandatorySpecs
 const consentKey = authored.find((a) => a.clauseId === "figaro-consent")?.clauseKey;
 
 describe("reference assemblies — the onboarding set", () => {
+    beforeAll(async () => { await primeClauseSpecs(); });
+
     it("the set exists and carries at least the four ruled scenarios", () => {
         expect(referenceFiles.length).toBeGreaterThanOrEqual(4);
         for (const name of ["pos.json", "local-commerce.json", "freelancer.json", "tradelens.json"]) {
@@ -48,23 +50,26 @@ describe("reference assemblies — the onboarding set", () => {
     for (const file of referenceFiles) {
         describe(file, () => {
             const authoredRaw = readFileSync(path.join(ASSEMBLIES_DIR, file), "utf8");
-            // The seeding's resolution: names → keys over clauses/.
-            const raw = JSON.stringify(resolveAuthored(JSON.parse(authoredRaw) as object));
+            // The seeding's derivation: names → keys over clauses/, order slots keyed.
+            const hydrated = (): HydratedAssembly => hydrateAuthored(JSON.parse(authoredRaw) as object);
 
             it("parses as a sound AssemblyTemplate and its composition hashes", () => {
-                const parsed = parseAssemblyTemplateJson(raw);
+                const { template, agreements } = hydrated();
+                const parsed = parseAssemblyTemplateJson(canonicalize({ template, agreements }));
                 expect(parsed.ok, !parsed.ok ? (parsed as { error: string }).error : "").toBe(true);
-                expect(templateCompositionHash(JSON.parse(raw) as AssemblyTemplate)).toMatch(/^0x[0-9a-f]{64}$/);
+                expect(templateCompositionHash(template)).toMatch(/^0x[0-9a-f]{64}$/);
             });
 
             it("resolves its topology in commit order", () => {
-                const template = JSON.parse(raw) as AssemblyTemplate;
-                expect(planTemplateOrders(template).length).toBe(template.agreements.length);
+                const assembly = hydrated();
+                expect(planTemplateOrders(assembly).length).toBe(assembly.template.agreements.length);
             });
 
             it("composes only clauses that exist, mandatory clauses on every order", () => {
-                const template = JSON.parse(raw) as AssemblyTemplate;
-                for (const order of template.agreements) {
+                const assembly = hydrated();
+                const template = assembly.template;
+                for (const slot of template.agreements) {
+                    const order = { id: slot.id, clauses: slotClauses(assembly, slot) };
                     for (const clauseKey of Object.keys(order.clauses)) {
                         expect(registeredClauseKeys.has(clauseKey), `${order.id} composes unknown clause ${clauseKey}`).toBe(true);
                     }
@@ -81,16 +86,17 @@ describe("reference assemblies — the onboarding set", () => {
             });
 
             it("carries the editorial identity a stranger reads first", () => {
-                const template = JSON.parse(raw) as { name?: string; summary?: string; description?: string };
+                const template = hydrated().template as { name?: string; summary?: string; description?: string };
                 for (const field of ["name", "summary", "description"] as const) {
                     expect((template[field] ?? "").trim().length, `${field} is onboarding prose, not blank`).toBeGreaterThan(0);
                 }
             });
 
             it("every affixed document reproduces its committed hash from the shipped bytes", () => {
-                const template = JSON.parse(raw) as AssemblyTemplate;
-                for (const order of template.agreements) {
-                    const documents = (consentKey ? order.clauses[consentKey] : undefined) as { documents?: Array<{ documentHash?: string; documentUri?: string }> } | undefined;
+                const assembly = hydrated();
+                for (const slot of assembly.template.agreements) {
+                    const order = { clauses: slotClauses(assembly, slot) };
+                    const documents = (consentKey ? order.clauses[consentKey as `0x${string}`] : undefined) as { documents?: Array<{ documentHash?: string; documentUri?: string }> } | undefined;
                     const consented = documents?.documents ?? [];
                     for (const doc of consented) {
                         // The affixed bytes ship beside the set so the pin —

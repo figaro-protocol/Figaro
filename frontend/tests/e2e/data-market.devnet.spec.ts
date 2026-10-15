@@ -52,7 +52,6 @@ import { test, expect } from './devnet-multi-test';
 import { concat, createWalletClient, http, keccak256, parseAbi, parseEther, type Hex } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import {
-    ASSEMBLY_REGISTRY_ABI,
     ATTESTATION_COORDINATOR_ABI,
     MEMBERS_REGISTRY_ABI,
     buildSectionInclusionProof,
@@ -62,12 +61,11 @@ import {
     sectionDataHash,
     templateCompositionHash,
     verifyInclusionProof,
-    type AssemblyTemplate,
     type ReconstructedOrder,
 } from '@figaro-protocol/sdk';
 import { encodeContentFromSpec } from '@figaro-protocol/sdk/clauses';
 import { getClauseSpec } from '@/lib/shared/clauseSpecSource';
-import { LOCAL_ANVIL, RPC_URL, localPublicClient, pinJSONToIPFS, readLocalDeploymentConfig, keyOf, primeRegisteredClauseSpecs } from './devnet-helpers';
+import { LOCAL_ANVIL, RPC_URL, discoverAnchoredAssemblies, localPublicClient, pinJSONToIPFS, readLocalDeploymentConfig, keyOf, primeRegisteredClauseSpecs, type DiscoveredAssembly } from './devnet-helpers';
 import { ANVIL_KEYS } from '../anvilAccounts';
 import { CORE_ABI } from '@/lib/kernel/contracts';
 
@@ -109,13 +107,10 @@ const CREDENTIAL_BYTES = Buffer.from(JSON.stringify({
 }));
 const CREDENTIAL_HASH = keccak256(new Uint8Array(CREDENTIAL_BYTES));
 
-/** One anchored assembly with its FULL pinned template (discovery keeps the
- *  whole doc — `reconstructOrdersFromTemplate` needs assemblyClauses too,
- *  which the shared shape-only discovery drops). */
-interface AnchoredTemplate {
-    compositionHash: Hex;
-    template: AssemblyTemplate;
-}
+/** One anchored assembly, hydrated: the template (assemblyClauses included,
+ *  which `reconstructOrdersFromTemplate` needs) and every order slot's
+ *  registered agreement, each verified. */
+type AnchoredTemplate = DiscoveredAssembly;
 
 test.describe('DATA MARKET — dual-posture value legs over the anchored data assemblies (devnet)', () => {
     test.setTimeout(300_000);
@@ -193,33 +188,20 @@ test.describe('DATA MARKET — dual-posture value legs over the anchored data as
         }
 
         // ── ADOPT from chain + IPFS: every anchored template resolved in
-        //    full, integrity re-hashed, then selected by SHAPE — never a
-        //    hardcoded slug, never a composition authored in the spec. ──
-        const anchored: AnchoredTemplate[] = [];
-        for (const ev of await publicClient.getContractEvents({
-            address: assemblyRegistry, abi: ASSEMBLY_REGISTRY_ABI, eventName: 'AssemblyRegistered', fromBlock: 0n,
-        })) {
-            const { compositionHash, contentURI } = ev.args as { compositionHash?: Hex; contentURI?: string };
-            if (!compositionHash || !contentURI) continue;
-            try {
-                const cid = contentURI.replace(/^ipfs:\/\//, '');
-                const doc = await (await fetch(`${ipfsApi}/api/v0/cat?arg=${cid}`, { method: 'POST' })).json() as AssemblyTemplate;
-                if (!Array.isArray(doc.agreements) || doc.agreements.length === 0) continue;
-                anchored.push({ compositionHash, template: doc });
-            } catch {
-                continue; // unresolvable/garbage URI — mainnet-realistic tolerance
-            }
-        }
-        const singleOrderWith = (t: AssemblyTemplate, clauseKey: Hex) =>
-            t.agreements.length === 1 && clauseKey in (t.agreements[0].clauses ?? {});
+        //    full — each order slot's agreement read by key from
+        //    AgreementRegistry and verified — then selected by SHAPE — never
+        //    a hardcoded slug, never a composition authored in the spec. ──
+        const anchored: AnchoredTemplate[] = await discoverAnchoredAssemblies();
+        const singleOrderWith = (a: AnchoredTemplate, clauseKey: Hex) =>
+            a.agreements.length === 1 && clauseKey in a.agreements[0].clauses;
         const aerialSurvey = anchored.find((a) =>
-            singleOrderWith(a.template, CREDENTIAL)
-            && (a.template.agreements[0].clauses[DATA_TERMS] as { disclosure?: string } | undefined)?.disclosure === 'each-own');
+            singleOrderWith(a, CREDENTIAL)
+            && (a.agreements[0].clauses[DATA_TERMS] as { disclosure?: string } | undefined)?.disclosure === 'each-own');
         const aerialOpen = anchored.find((a) =>
-            singleOrderWith(a.template, CREDENTIAL)
-            && (a.template.agreements[0].clauses[DATA_TERMS] as { disclosure?: string } | undefined)?.disclosure === 'open');
+            singleOrderWith(a, CREDENTIAL)
+            && (a.agreements[0].clauses[DATA_TERMS] as { disclosure?: string } | undefined)?.disclosure === 'open');
         const dataStream = anchored.find((a) =>
-            singleOrderWith(a.template, DATA_LICENSE) && CONTENT_HANDOFF in a.template.agreements[0].clauses);
+            singleOrderWith(a, DATA_LICENSE) && CONTENT_HANDOFF in a.agreements[0].clauses);
         expect(aerialSurvey, 'the aerial-survey reference (disclosure each-own) is anchored').toBeTruthy();
         expect(aerialOpen, 'the open-record sibling (disclosure open) is anchored').toBeTruthy();
         expect(dataStream, 'the data-stream-subscription reference is anchored').toBeTruthy();
@@ -227,7 +209,7 @@ test.describe('DATA MARKET — dual-posture value legs over the anchored data as
         // mismatch FAILS instead of being skipped as unresolvable): the
         // adopted documents re-hash to their anchored identities.
         for (const adopted of [aerialSurvey!, aerialOpen!, dataStream!]) {
-            expect(templateCompositionHash(adopted.template), 'the pinned template re-hashes to its anchored identity')
+            expect(templateCompositionHash(adopted.hydrated.template), 'the pinned template re-hashes to its anchored identity')
                 .toBe(adopted.compositionHash);
         }
         expect(
@@ -250,7 +232,7 @@ test.describe('DATA MARKET — dual-posture value legs over the anchored data as
             label: string;
         }) => {
             const chainNow = (await publicClient.getBlock({ blockTag: 'latest' })).timestamp;
-            const orders = await reconstructOrdersFromTemplate(opts.adopted.template, {
+            const orders = await reconstructOrdersFromTemplate(opts.adopted.hydrated, {
                 buyer: opts.buyer.address,
                 currency: token,
                 chainId,
@@ -266,9 +248,10 @@ test.describe('DATA MARKET — dual-posture value legs over the anchored data as
             expect(orders, `${opts.label}: the reference is a single-order composition`).toHaveLength(1);
             const order: ReconstructedOrder = orders[0];
             // The provenance leaf is MECHANICAL, never authored: the walk sets
-            // the agreement's provenance to the adopted assembly's own hash.
-            expect(order.agreement.provenance, `${opts.label}: the agreement names the adopted assembly`)
-                .toBe(opts.adopted.compositionHash);
+            // the agreement's provenance to its order slot's agreement key and
+            // the adopted assembly's own root.
+            expect(order.agreement.provenance, `${opts.label}: the agreement names its registered agreement and the adopted assembly`)
+                .toEqual({ agreementKey: opts.adopted.agreements[0].agreementKey, compositionHash: opts.adopted.compositionHash });
 
             const buyerSig = await opts.buyerWallet.signTypedData(order.typedData);
             const sellerSig = await opts.sellerWallet.signTypedData(order.typedData);

@@ -22,6 +22,13 @@ import { decodeEventLog } from "viem";
 import { USAGE_COUNTER_ABI } from "../abis.js";
 import type { Agreement } from "../agreement.js";
 import { PROVENANCE_LEAF_KEY, buildProvenanceInclusionProof, buildSectionInclusionProof, sectionDataHash } from "../agreement.js";
+import {
+    ASSEMBLY_TERMS_LEAF_KEY,
+    assertNotReservedKey,
+    buildSlotInclusionProof,
+    templateCompositionHash,
+    type AssemblyTemplate,
+} from "../assembly.js";
 import { fetchLogsChunked } from "../events.js";
 import type { SequencerUsageClaim } from "../agent/sequencer.js";
 import { toSequencerCommitment } from "../agent/sequencer.js";
@@ -83,21 +90,24 @@ export function usageScore(c: bigint, d: bigint, minSellers: bigint = RPGF_MIN_S
 // ── The two families (kind, key) ─────────────────────────────────────
 
 /** The family a usage key belongs to — the reward's own accounting keeps the
- *  two apart. A registry accepts any bytes32, so nothing in a key's bytes
- *  says whether it names a clause or an assembly; every accrual, count and
- *  claim is keyed by `(kind, key)`, and the minter reads only the registry
- *  the kind names. Mirrors the counter's `uint8 kind`. */
+ *  families apart. A registry accepts any bytes32, so nothing in a key's
+ *  bytes says whether it names a clause, an assembly or a registered
+ *  agreement; every accrual, count and claim is keyed by `(kind, key)`, and
+ *  the minter reads only the registry the kind names. Mirrors the counter's
+ *  `uint8 kind`. */
 export const USAGE_KIND_CLAUSE = 0 as const;
 export const USAGE_KIND_ASSEMBLY = 1 as const;
-export type UsageKind = typeof USAGE_KIND_CLAUSE | typeof USAGE_KIND_ASSEMBLY;
+export const USAGE_KIND_AGREEMENT = 2 as const;
+export type UsageKind = typeof USAGE_KIND_CLAUSE | typeof USAGE_KIND_ASSEMBLY | typeof USAGE_KIND_AGREEMENT;
 
 /** One `(kind, key)` pair — the unit the counter accrues and the minter's
  *  claim names; the shape of `RpgfMinter.ClauseOrAssemblyKey`, so a list of
  *  these is `claim`'s argument as it stands. */
 export interface UsageKey {
     kind: UsageKind;
-    /** A clause key (`kind` = clause) or an assembly composition hash
-     *  (`kind` = assembly). */
+    /** A clause key (`kind` = clause), an assembly composition hash
+     *  (`kind` = assembly) or a registered agreement key (`kind` =
+     *  agreement). */
     key: Hex;
 }
 
@@ -109,8 +119,8 @@ export function usageKeyId(kind: UsageKind, clauseOrAssembly: Hex): string {
 
 function asUsageKind(value: unknown): UsageKind {
     const kind = Number(value);
-    if (kind !== USAGE_KIND_CLAUSE && kind !== USAGE_KIND_ASSEMBLY) {
-        throw new Error(`usage kind ${String(value)} is neither clause (0) nor assembly (1)`);
+    if (kind !== USAGE_KIND_CLAUSE && kind !== USAGE_KIND_ASSEMBLY && kind !== USAGE_KIND_AGREEMENT) {
+        throw new Error(`usage kind ${String(value)} is none of clause (0), assembly (1), agreement (2)`);
     }
     return kind;
 }
@@ -124,7 +134,7 @@ export interface UsageRecord {
     blockNumber: bigint;
     logIndex: number;
     kind: UsageKind;
-    /** Clause key or assembly compositionHash, by `kind`. */
+    /** Clause key, assembly compositionHash or agreement key, by `kind`. */
     clauseOrAssembly: Hex;
     period: number;
     processId: Hex;
@@ -406,43 +416,66 @@ export async function fetchBatchUsageRecords(
 /** What the pure builder needs from chain. Fetch with `fetchUsageClaimContext`. */
 export interface UsageClaimContext {
     /** `UsageCounter.provenanceLeaf()` — the reserved leaf key the counter
-     *  reproduces an assembly claim under. The agreement format fixes it
-     *  (`PROVENANCE_LEAF_KEY`); it is read from the deployment being called
-     *  so a counter that disagrees is refused before anything is sent. */
+     *  reproduces an agreement or assembly claim under. The agreement format
+     *  fixes it (`PROVENANCE_LEAF_KEY`); it is read from the deployment being
+     *  called so a counter that disagrees is refused before anything is
+     *  sent. */
     provenanceLeaf: Hex;
+    /** `UsageCounter.assemblyTermsLeaf()` — the composition tree's reserved
+     *  terms key (`ASSEMBLY_TERMS_LEAF_KEY`), checked the same way. */
+    assemblyTermsLeaf: Hex;
 }
 
 /**
- * Build every usage claim a resolved batch order supports.
+ * Build every usage claim a resolved order supports.
  *
  * PURE — takes the chain facts as input so it can be tested and reasoned about
  * without a client. `fetchUsageClaimContext` gets them.
  *
- * TWO INDEPENDENT LEGS:
+ * THREE INDEPENDENT LEGS:
  *
  *  - the CLAUSE leg emits one claim per agreement section — every committed
  *    clause earns, the mandatory ones included.
- *  - the ASSEMBLY leg credits the assembly's DESIGNER from the agreement's
- *    provenance leaf (`Agreement.provenance`, the composition hash of the
- *    assembly the agreement instantiated), proved with
- *    `buildProvenanceInclusionProof`. It is the agreement format's leaf, not
- *    a section, so the clause leg never sees it. An agreement naming no
- *    assembly has no assembly leg.
+ *  - the AGREEMENT leg credits the registered agreement's designer from the
+ *    agreement's provenance leaf (`Agreement.provenance`), proved with
+ *    `buildProvenanceInclusionProof`: kind `{ Agreement: { composition_hash } }`
+ *    keyed by the agreement key.
+ *  - the ASSEMBLY leg credits the assembly's designer from the same leaf
+ *    plus the order slot's membership proof under the composition hash
+ *    (`buildSlotInclusionProof` over `template`, the instantiated template):
+ *    kind `{ Assembly: { agreement_key, slot_content_hash, membership_proof } }`
+ *    keyed by the composition hash. The order slot proved is the first whose
+ *    `agreementKey` is the provenance's (every such order slot proves the
+ *    same membership).
  *
- * Throws when the counter's provenance leaf is not the agreement format's —
- * every assembly claim against that counter would revert — and when the
- * agreement's leaves do not build (a provenance that is not a bytes32), since
- * no leg of such an agreement can be proved.
+ * The provenance leaf is the agreement format's, not a section, so the
+ * clause leg never sees it. An agreement naming no provenance has neither
+ * of the last two legs.
+ *
+ * Throws when the counter's reserved keys are not the format's (every
+ * agreement and assembly claim against it would revert); when the agreement
+ * names a provenance but no `template` is given, the template does not hash
+ * to the provenance's composition hash, or no order slot binds its agreement
+ * key; when the provenance's agreement key is a reserved key; and when the
+ * agreement's leaves do not build — no leg of such an agreement can be
+ * proved.
  */
 export function buildUsageClaims(
     order: Commitment,
     agreement: Agreement,
     context: UsageClaimContext,
+    template?: AssemblyTemplate,
 ): SequencerUsageClaim[] {
     if (context.provenanceLeaf.toLowerCase() !== PROVENANCE_LEAF_KEY.toLowerCase()) {
         throw new Error(
             `the counter's provenance leaf ${context.provenanceLeaf} is not the agreement format's ` +
-            `${PROVENANCE_LEAF_KEY}: every assembly claim against it would revert`,
+            `${PROVENANCE_LEAF_KEY}: every agreement and assembly claim against it would revert`,
+        );
+    }
+    if (context.assemblyTermsLeaf.toLowerCase() !== ASSEMBLY_TERMS_LEAF_KEY.toLowerCase()) {
+        throw new Error(
+            `the counter's assembly-terms leaf ${context.assemblyTermsLeaf} is not the composition format's ` +
+            `${ASSEMBLY_TERMS_LEAF_KEY}: every assembly claim against it would revert`,
         );
     }
     const wireOrder = toSequencerCommitment(order);
@@ -458,31 +491,65 @@ export function buildUsageClaims(
         });
     }
 
-    // ── Assembly leg — the agreement's provenance leaf ──
+    // ── Agreement and assembly legs — the agreement's provenance leaf ──
     if (agreement.provenance !== undefined) {
+        const { agreementKey, compositionHash } = agreement.provenance;
+        assertNotReservedKey(agreementKey, "provenance agreementKey");
+        if (!template) {
+            throw new Error("the agreement names a provenance: its instantiated template is needed for the assembly leg's membership proof");
+        }
+        if (templateCompositionHash(template).toLowerCase() !== compositionHash.toLowerCase()) {
+            throw new Error(`the template given does not hash to the provenance's composition hash ${compositionHash}`);
+        }
+        const slotIndex = template.agreements.findIndex((slot) => slot.agreementKey.toLowerCase() === agreementKey.toLowerCase());
+        if (slotIndex < 0) {
+            throw new Error(`no order slot of ${compositionHash} binds the provenance's agreement ${agreementKey}`);
+        }
+        const leafProof = buildProvenanceInclusionProof(agreement).proof;
         claims.push({
             order: wireOrder,
-            clause_or_assembly: agreement.provenance,
-            kind: "Assembly",
-            inclusion_proof: buildProvenanceInclusionProof(agreement).proof,
+            clause_or_assembly: agreementKey,
+            kind: { Agreement: { composition_hash: compositionHash } },
+            inclusion_proof: leafProof,
+        });
+        const membership = buildSlotInclusionProof(template, slotIndex);
+        claims.push({
+            order: wireOrder,
+            clause_or_assembly: compositionHash,
+            kind: {
+                Assembly: {
+                    agreement_key: agreementKey,
+                    slot_content_hash: membership.slotContentHash,
+                    membership_proof: membership.proof,
+                },
+            },
+            inclusion_proof: leafProof,
         });
     }
 
     return claims;
 }
 
+/** The family a wire claim credits — `USAGE_KIND_CLAUSE`,
+ *  `USAGE_KIND_ASSEMBLY` or `USAGE_KIND_AGREEMENT` — mirroring the guest's
+ *  `UsageClaimKind::code()`. */
+export function usageClaimKindCode(claim: Pick<SequencerUsageClaim, "kind">): UsageKind {
+    if ("Clause" in claim.kind) return USAGE_KIND_CLAUSE;
+    if ("Agreement" in claim.kind) return USAGE_KIND_AGREEMENT;
+    return USAGE_KIND_ASSEMBLY;
+}
+
 /**
- * Read the chain fact `buildUsageClaims` needs: the counter's provenance leaf.
- * One read per counter serves every order resolved against it.
+ * Read the chain facts `buildUsageClaims` needs: the counter's two reserved
+ * keys. One read per counter serves every order resolved against it.
  */
 export async function fetchUsageClaimContext(
     client: PublicClient,
     usageCounter: Address,
 ): Promise<UsageClaimContext> {
-    const provenanceLeaf = (await client.readContract({
-        address: usageCounter,
-        abi: USAGE_COUNTER_ABI,
-        functionName: "provenanceLeaf",
-    })) as Hex;
-    return { provenanceLeaf };
+    const [provenanceLeaf, assemblyTermsLeaf] = await Promise.all([
+        client.readContract({ address: usageCounter, abi: USAGE_COUNTER_ABI, functionName: "provenanceLeaf" }) as Promise<Hex>,
+        client.readContract({ address: usageCounter, abi: USAGE_COUNTER_ABI, functionName: "assemblyTermsLeaf" }) as Promise<Hex>,
+    ]);
+    return { provenanceLeaf, assemblyTermsLeaf };
 }

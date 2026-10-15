@@ -15,7 +15,7 @@ import path from "node:path";
 import type { Abi, AbiParameter } from "viem";
 import {
     CORE_ABI, ATTESTATION_COORDINATOR_ABI, CLAUSE_REGISTRY_ABI, MEMBERS_REGISTRY_ABI,
-    ASSEMBLY_REGISTRY_ABI, FLORIN_TOKEN_ABI, USAGE_COUNTER_ABI, RPGF_MINTER_ABI, BATCH_VERIFIER_ABI,
+    ASSEMBLY_REGISTRY_ABI, AGREEMENT_REGISTRY_ABI, FLORIN_TOKEN_ABI, USAGE_COUNTER_ABI, RPGF_MINTER_ABI, BATCH_VERIFIER_ABI,
 } from "../src/abis.js";
 
 const ROOT = path.resolve(__dirname, "..", "..");
@@ -61,6 +61,7 @@ const PAIRS: [string, Abi, string, (() => Abi)?][] = [
     ["CLAUSE_REGISTRY_ABI", CLAUSE_REGISTRY_ABI, "ClauseRegistry"],
     ["MEMBERS_REGISTRY_ABI", MEMBERS_REGISTRY_ABI, "MembersRegistry"],
     ["ASSEMBLY_REGISTRY_ABI", ASSEMBLY_REGISTRY_ABI, "AssemblyRegistry"],
+    ["AGREEMENT_REGISTRY_ABI", AGREEMENT_REGISTRY_ABI, "AgreementRegistry"],
     ["FLORIN_TOKEN_ABI", FLORIN_TOKEN_ABI, "FlorinToken"],
     ["USAGE_COUNTER_ABI", USAGE_COUNTER_ABI, "UsageCounter"],
     ["RPGF_MINTER_ABI", RPGF_MINTER_ABI, "RpgfMinter"],

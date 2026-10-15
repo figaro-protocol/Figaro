@@ -322,21 +322,38 @@ fn require_known_active_commitment(
 
 /// The key of the agreement format's reserved PROVENANCE leaf,
 /// `keccak256("figaro-agreement-provenance")` — the leaf that links an
-/// agreement to the assembly it instantiates. It is a constant of the
-/// agreement format, never a clause key: no spec describes it and
-/// `ClauseRegistry` holds nothing under it. Every leaf of an agreement is
+/// order's agreement to the registered agreement and the assembly order slot it
+/// instantiates. It is a constant of the agreement format, never a clause,
+/// agreement or assembly key: no spec describes it and no registry
+/// credits anything under it. Every leaf of an agreement is
 /// `keccak256(keccak256(key ‖ keccak256(sectionData)))` (`docs/CLAUSES.md`
 /// § "Every clause is a merkle leaf"); this one's sectionData is
-/// `{"compositionHash":"0x<64 lowercase hex>"}`. `UsageCounter.provenanceLeaf`
-/// holds the same constant on chain.
+/// `{"agreementKey":"0x<64 lowercase hex>","compositionHash":"0x<64 lowercase hex>"}`.
+/// `UsageCounter.provenanceLeaf` holds the same constant on chain.
 pub const PROVENANCE_LEAF_KEY: B256 =
     b256!("26dc18a2251a8f4629ada6df88b7c98553e011c08682d28ce5bb51a441227dc6");
+
+/// The key of an assembly root's terms leaf,
+/// `keccak256("figaro-assembly-terms")` — the leaf over the assembly-scoped
+/// clauses, beside one leaf per order slot. A constant of the format, never
+/// a registration and never an agreementKey, so the terms leaf can never
+/// pass as an order slot. `UsageCounter.assemblyTermsLeaf` holds the same
+/// constant on chain.
+pub const ASSEMBLY_TERMS_LEAF_KEY: B256 =
+    b256!("efe0eaa5bce6c7b996059fedd6d0e4827f99c474563f43ff55e6e593e5915860");
+
+/// Whether `key` is one of the format's two reserved leaf keys, refused
+/// wherever a key is taken: as a usage claim's key of any kind, and as the
+/// agreementKey of an assembly claim's order slot.
+pub fn is_reserved_key(key: &B256) -> bool {
+    *key == PROVENANCE_LEAF_KEY || *key == ASSEMBLY_TERMS_LEAF_KEY
+}
 
 /// The agreement format's rule for an attestation of the reserved
 /// provenance leaf. The leaf's content is fixed by the format, so the
 /// guest REPRODUCES it rather than validating it against a spec: the
 /// committed bytes must be exactly `provenance_section_bytes` of the
-/// compositionHash they carry, `content_ref` must be their keccak (as a
+/// agreementKey and compositionHash they carry, `content_ref` must be their keccak (as a
 /// section's sectionHash), and the leaf over them must open against the
 /// signed `agreement_hash`. `spec_json`, `content_json` and `content_kind`
 /// are not consulted, and no spec binding is emitted: there is no registry
@@ -346,17 +363,23 @@ fn validate_provenance_attestation(
     content_ref: &B256,
     agreement_hash: &B256,
 ) -> Result<(), KernelError> {
-    const PREFIX: &[u8] = b"{\"compositionHash\":\"0x";
     let bytes = proof.section_data.as_bytes();
-    if bytes.len() != PREFIX.len() + 64 + 2 || !bytes.starts_with(PREFIX) {
+    if bytes.len() != PROVENANCE_SECTION_LEN
+        || !bytes.starts_with(PROVENANCE_AGREEMENT_PREFIX)
+    {
         return Err(KernelError::ProvenanceLeafNotCanonical);
     }
-    let digits = &bytes[PREFIX.len()..PREFIX.len() + 64];
-    let composition_hash = alloy_primitives::hex::decode(digits)
-        .ok()
-        .map(|raw| B256::from_slice(&raw))
-        .ok_or(KernelError::ProvenanceLeafNotCanonical)?;
-    if provenance_section_bytes(&composition_hash) != bytes {
+    let first = PROVENANCE_AGREEMENT_PREFIX.len();
+    let second = first + 64 + PROVENANCE_COMPOSITION_INFIX.len();
+    let word = |at: usize| {
+        alloy_primitives::hex::decode(&bytes[at..at + 64])
+            .ok()
+            .map(|raw| B256::from_slice(&raw))
+            .ok_or(KernelError::ProvenanceLeafNotCanonical)
+    };
+    let agreement_key = word(first)?;
+    let composition_hash = word(second)?;
+    if provenance_section_bytes(&agreement_key, &composition_hash) != bytes {
         return Err(KernelError::ProvenanceLeafNotCanonical);
     }
 
@@ -365,10 +388,7 @@ fn validate_provenance_attestation(
         return Err(KernelError::ContentHashMismatch);
     }
 
-    let mut leaf_preimage = [0u8; 64];
-    leaf_preimage[..32].copy_from_slice(PROVENANCE_LEAF_KEY.as_slice());
-    leaf_preimage[32..].copy_from_slice(section_hash.as_slice());
-    let leaf = keccak256(keccak256(leaf_preimage));
+    let leaf = format_leaf(&PROVENANCE_LEAF_KEY, &section_hash);
     if !crate::merkle::verify_inclusion(&proof.inclusion_proof, *agreement_hash, leaf) {
         return Err(KernelError::InvalidInclusionProof);
     }
@@ -499,10 +519,7 @@ pub fn validate_attestation_content(
     // double-hashed for leaf/node domain separation, mirroring
     // AttestationCoordinator._verifyInclusion (mandatory, every mode).
     let section_data_hash = keccak256(proof.section_data.as_bytes());
-    let mut leaf_preimage = [0u8; 64];
-    leaf_preimage[..32].copy_from_slice(clause_id.as_slice());
-    leaf_preimage[32..].copy_from_slice(section_data_hash.as_slice());
-    let leaf = keccak256(keccak256(leaf_preimage));
+    let leaf = format_leaf(clause_id, &section_data_hash);
     if !crate::merkle::verify_inclusion(&proof.inclusion_proof, *agreement_hash, leaf) {
         return Err(KernelError::InvalidInclusionProof);
     }
@@ -689,39 +706,72 @@ pub fn compute_usage_accrual_hash(
     keccak256(&data)
 }
 
+/// The provenance section's bytes before the agreementKey's hex digits.
+const PROVENANCE_AGREEMENT_PREFIX: &[u8] = b"{\"agreementKey\":\"0x";
+/// The bytes between the agreementKey's digits and the compositionHash's.
+const PROVENANCE_COMPOSITION_INFIX: &[u8] = b"\",\"compositionHash\":\"0x";
+/// The bytes after the compositionHash's digits.
+const PROVENANCE_SUFFIX: &[u8] = b"\"}";
+/// The provenance section's one length: two 64-digit words and the frame.
+const PROVENANCE_SECTION_LEN: usize = PROVENANCE_AGREEMENT_PREFIX.len()
+    + 64
+    + PROVENANCE_COMPOSITION_INFIX.len()
+    + 64
+    + PROVENANCE_SUFFIX.len();
+
 /// The canonical-JSON bytes of the reserved provenance leaf's section,
-/// reproduced from the compositionHash alone — the Rust twin of
-/// `UsageCounter._toLowerHexString`'s use in `recordAssemblyUsage`.
-/// Reproduction, never parsing: a wrong compositionHash derives a leaf
-/// that is simply not in the tree.
-pub fn provenance_section_bytes(composition_hash: &B256) -> Vec<u8> {
+/// `{"agreementKey":"0x…","compositionHash":"0x…"}` with lowercase hex and
+/// the keys in that order, reproduced from the two keys alone — the Rust
+/// twin of `UsageCounter._toLowerHexString`'s use in `recordAgreementUsage`
+/// and `recordAssemblyUsage`. Reproduction, never parsing: a wrong key on
+/// either side derives a leaf that is simply not in the tree.
+pub fn provenance_section_bytes(agreement_key: &B256, composition_hash: &B256) -> Vec<u8> {
     const HEX: &[u8; 16] = b"0123456789abcdef";
-    let mut out = Vec::with_capacity(87);
-    out.extend_from_slice(b"{\"compositionHash\":\"0x");
-    for byte in composition_hash.as_slice() {
-        out.push(HEX[(byte >> 4) as usize]);
-        out.push(HEX[(byte & 0x0f) as usize]);
-    }
-    out.extend_from_slice(b"\"}");
+    let mut out = Vec::with_capacity(PROVENANCE_SECTION_LEN);
+    let push_word = |out: &mut Vec<u8>, word: &B256| {
+        for byte in word.as_slice() {
+            out.push(HEX[(byte >> 4) as usize]);
+            out.push(HEX[(byte & 0x0f) as usize]);
+        }
+    };
+    out.extend_from_slice(PROVENANCE_AGREEMENT_PREFIX);
+    push_word(&mut out, agreement_key);
+    out.extend_from_slice(PROVENANCE_COMPOSITION_INFIX);
+    push_word(&mut out, composition_hash);
+    out.extend_from_slice(PROVENANCE_SUFFIX);
     out
 }
 
-/// Credit RPGF usage for orders the BATCH path has resolved.
+/// A leaf of the agreement format, `keccak256(keccak256(key ‖ content_hash))`
+/// — the one convention for a section of an agreement and for an order slot of an
+/// assembly's root.
+fn format_leaf(key: &B256, content_hash: &B256) -> B256 {
+    let mut preimage = [0u8; 64];
+    preimage[..32].copy_from_slice(key.as_slice());
+    preimage[32..].copy_from_slice(content_hash.as_slice());
+    keccak256(keccak256(preimage))
+}
+
+/// Credit designer-reward usage for orders the BATCH path has resolved.
 ///
-/// Every claim is proved, never trusted — the same two facts
-/// `UsageCounter.recordClauseUsage` proves on the direct path:
-///   1. the order is real and RESOLVED in this batch's post-state, and
-///   2. the clause or assembly was committed in the agreement both parties
-///      signed (merkle inclusion against `agreement_hash`).
+/// Every claim is proved, never trusted — the same facts the counter's
+/// `recordClauseUsage`, `recordAgreementUsage` and `recordAssemblyUsage`
+/// prove on the direct path:
+///   1. the order is real and RESOLVED in this batch's post-state,
+///   2. the clause, or the provenance leaf naming the agreement and the
+///      assembly, was committed in the agreement both parties signed
+///      (merkle inclusion against `agreement_hash`), and
+///   3. for an assembly, the order-slot leaf of the named agreement is a leaf of
+///      the compositionHash (merkle membership against the assembly root).
 ///
 /// Two facts the guest CANNOT prove are declared and anchored on-chain
 /// instead: whether each seller holds a live MembersRegistry stake, and
-/// whether a clause or assembly holds a live registration. Both are live chain
-/// state; the verifier checks them before writing, in the shape
-/// `_checkSpecBindings` already established.
+/// whether a clause, agreement or assembly holds a live registration. Both
+/// are live chain state; the verifier checks them before writing, in the
+/// shape `_checkSpecBindings` already established.
 ///
-/// Returns the CUMULATIVE `(c, d)` of every clause or assembly touched, and
-/// the distinct sellers behind them.
+/// Returns the CUMULATIVE `(c, d)` of every (kind, key) touched, and the
+/// distinct sellers behind them.
 fn apply_usage_claims(
     state: &mut KernelState,
     domain: &B256,
@@ -729,19 +779,26 @@ fn apply_usage_claims(
     period: u8,
     provenance_leaf: &B256,
 ) -> Result<(Vec<UsageAccrual>, Vec<Address>), KernelError> {
-    // (key, kind): a clause claim and an assembly claim on the same bytes32
-    // are two accruals, never one.
+    // (key, kind): claims of two kinds on the same bytes32 are two
+    // accruals, never one.
     let mut touched: BTreeSet<(B256, u8)> = BTreeSet::new();
     let mut sellers: BTreeSet<Address> = BTreeSet::new();
 
     for claim in claims {
-        // 0. The reserved provenance leaf's key is a constant of the
-        //    agreement format, never a registration: it names no clause and
-        //    no assembly, so nothing is credited under it, whatever kind the
-        //    claim declares or whatever a registry holds at that bytes32.
-        //    The counter refuses it by the same constant on both paths.
-        if claim.clause_or_assembly == PROVENANCE_LEAF_KEY {
-            return Err(KernelError::ProvenanceLeafIsNotARegistration);
+        // 0. The reserved keys (the provenance leaf's and the assembly
+        //    terms leaf's) are constants of the format, never registrations:
+        //    they name no clause, no agreement and no assembly, so nothing is
+        //    credited under them, whatever kind the claim declares or
+        //    whatever a registry holds at that bytes32. Nor is either ever
+        //    the agreementKey of an order slot — the terms leaf is not an
+        //    order slot. The counter refuses both by the same constants.
+        if is_reserved_key(&claim.clause_or_assembly) {
+            return Err(KernelError::ReservedKeyIsNotARegistration(claim.clause_or_assembly));
+        }
+        if let UsageClaimKind::Assembly { agreement_key, .. } = &claim.kind {
+            if is_reserved_key(agreement_key) {
+                return Err(KernelError::ReservedKeyIsNotARegistration(*agreement_key));
+            }
         }
 
         let (order_hash, process_id) = derive_commitment_ids(domain, &claim.order);
@@ -753,27 +810,46 @@ fn apply_usage_claims(
             return Err(KernelError::UsageOrderNotResolved(order_hash));
         }
 
-        // 2. The clause or assembly was committed in the signed agreement. A
-        //    clause proves its own leaf; an assembly proves the
-        //    PROVENANCE leaf whose section content IS the
-        //    compositionHash.
+        // 2. The key was committed in the signed agreement. A clause
+        //    proves its own leaf; an agreement and an assembly prove the
+        //    PROVENANCE leaf, whose section content is reproduced from the
+        //    agreementKey and the compositionHash together.
         let (leaf_key, section_hash) = match &claim.kind {
             UsageClaimKind::Clause { section_hash } => (claim.clause_or_assembly, *section_hash),
-            UsageClaimKind::Assembly => (
+            UsageClaimKind::Agreement { composition_hash } => (
                 *provenance_leaf,
-                keccak256(provenance_section_bytes(&claim.clause_or_assembly)),
+                keccak256(provenance_section_bytes(&claim.clause_or_assembly, composition_hash)),
+            ),
+            UsageClaimKind::Assembly { agreement_key, .. } => (
+                *provenance_leaf,
+                keccak256(provenance_section_bytes(agreement_key, &claim.clause_or_assembly)),
             ),
         };
-        let mut leaf_preimage = [0u8; 64];
-        leaf_preimage[..32].copy_from_slice(leaf_key.as_slice());
-        leaf_preimage[32..].copy_from_slice(section_hash.as_slice());
-        let leaf = keccak256(keccak256(leaf_preimage));
         if !crate::merkle::verify_inclusion(
             &claim.inclusion_proof,
             claim.order.agreement_hash,
-            leaf,
+            format_leaf(&leaf_key, &section_hash),
         ) {
             return Err(KernelError::UsageInvalidInclusionProof);
+        }
+
+        // 2b. An assembly also proves the agreement is one of its order
+        //     slots: the order-slot leaf opens under the compositionHash with the same
+        //     sorted-pair verifier. A failed membership proof refuses the
+        //     claim as a failed inclusion proof does.
+        if let UsageClaimKind::Assembly {
+            agreement_key,
+            slot_content_hash,
+            membership_proof,
+        } = &claim.kind
+        {
+            if !crate::merkle::verify_inclusion(
+                membership_proof,
+                claim.clause_or_assembly,
+                format_leaf(agreement_key, slot_content_hash),
+            ) {
+                return Err(KernelError::UsageInvalidInclusionProof);
+            }
         }
 
         // 3. Once ever, whatever the period — the counted set rides the

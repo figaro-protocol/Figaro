@@ -190,7 +190,7 @@ describe("StoredDocument — the pinned document, verbatim", () => {
         const template = {
             name: "Equipment hire",
             summary: "Editorial wording, outside the anchor.",
-            agreements: [{ id: "order-0", clauses: { "figaro-commerce": { payment: "1" } } }],
+            agreements: [{ id: "order-0", agreementKey: `0x${"a1".repeat(32)}`, clauses: {} }],
         };
         const hash = templateCompositionHash(template as Parameters<typeof templateCompositionHash>[0]);
         fetchCappedContentMock.mockResolvedValue(served(JSON.stringify(template, null, 2)));

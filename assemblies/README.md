@@ -1,11 +1,20 @@
 # Reference assemblies — the onboarding set
 
-Each file here is a canonical `AssemblyTemplate` — a real-world composition a
-newcomer can recognize, fork, and bind to on day one. They pre-populate the
-`AssemblyRegistry` at deploy (the populate path pins and anchors them; identity
-is the content-derived `compositionHash`, first-write-wins, so re-anchoring is
-a no-op and independently authoring the same composition collapses onto the
-same on-chain binding). This directory is `clauses/`' sibling: clauses are the
+Each file here is a real-world composition a newcomer can recognize, fork, and
+bind to on day one, written in the readable shape: `agreements[].clauses` per
+order, keyed by clause name (`name@version`), with the topology clause carrying
+its parents as `order-<j>` labels. The files keep that shape; the populate path
+derives the registered shape from it at deploy (`slotsFromAuthoredAgreements`
+in the SDK): it resolves each name to its clause key, lifts the topology's
+parents into the order slot's own fill (the agreement composes the topology
+clause as `{}`), folds the live mandatory clauses, keys each composed agreement
+(`agreementKey`), pins and registers each DISTINCT agreement once on
+`AgreementRegistry` (one stake each; a key already registered is skipped), then
+builds the template — one order slot per order, naming its `agreementKey` — and
+registers it on `AssemblyRegistry`. Identity is content-derived on both
+registries (the `agreementKey`; the `compositionHash`, a merkle root over the
+order slots), first-write-wins, so re-anchoring is a no-op and independently
+composing the same design collapses onto the same on-chain bindings. This directory is `clauses/`' sibling: clauses are the
 vocabulary, these are worked sentences.
 
 **This is a user-onboarding surface, distinct from the e2e scenario machinery**
@@ -28,8 +37,9 @@ asserted from chain:
 
 `documents/` ships the raw bytes of every document a template affixes (consent
 anchors commit the document's keccak256 and `ipfs://` locator INSIDE the
-composition — the bytes must pin byte-identical on any network for the
-composition hash to reproduce; the populate path pins them first).
+composed agreement — the bytes must pin byte-identical on any network for the
+`agreementKey`, and so the composition hash, to reproduce; the populate path
+pins them first).
 
 A reference that composes `figaro-utility-token` (`equipment-hire.json`) is the
 one exception to "re-anchoring is a no-op over the checked-in bytes": the

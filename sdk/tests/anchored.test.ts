@@ -10,22 +10,26 @@ import {
     anchorAgreement,
     anchorAttestationContent,
     anchorClauseSpec,
+    anchorComposedAgreement,
     anchorTemplate,
     deriveAnchored,
+    hydrateAssembly,
 } from "../src/anchored.js";
-import { canonicalContentHash, canonicalize, computeAgreementHash, type Agreement } from "../src/agreement.js";
+import { PROVENANCE_LEAF_KEY, canonicalContentHash, canonicalize, computeAgreementHash, type Agreement } from "../src/agreement.js";
 import { computeClauseKey } from "../src/discovery.js";
-import { templateCompositionHash, type AssemblyTemplate } from "../src/assembly.js";
+import { ASSEMBLY_TERMS_LEAF_KEY, agreementKeyOf, templateCompositionHash, type AssemblyTemplate } from "../src/assembly.js";
 import { keyOf } from "./specFixtures.js";
 
 const OTHER = `0x${"11".repeat(32)}` as const;
 
 const spec = { clauseId: "test-anchor", version: 1, title: "T", description: "D", fields: [] };
 
-const template = {
+const composed = { name: "Editorial", clauses: { [keyOf("figaro-commerce")]: {}, [keyOf("figaro-topology")]: {} } };
+
+const template: AssemblyTemplate = {
     name: "Editorial",
-    agreements: [{ id: "root", clauses: { [keyOf("figaro-commerce")]: {} } }],
-} as unknown as AssemblyTemplate;
+    agreements: [{ id: "order-0", agreementKey: agreementKeyOf(composed), clauses: { [keyOf("figaro-topology")]: { parentOrderHashes: [] } } }],
+};
 
 const agreement: Agreement = {
     version: "a1",
@@ -74,13 +78,73 @@ describe("anchorTemplate", () => {
         expect(anchorTemplate(renamed, hash)).toBe(renamed);
     });
     it("refuses a changed composition", () => {
-        const changed = { ...template, agreements: [{ id: "root", clauses: {} }] };
+        const changed = { ...template, agreements: [{ ...template.agreements[0], clauses: {} }] };
         expect(anchorTemplate(changed, templateCompositionHash(template))).toBeNull();
+    });
+    it("refuses an order slot whose key is malformed or reserved", () => {
+        for (const agreementKey of ["0x1234", PROVENANCE_LEAF_KEY, ASSEMBLY_TERMS_LEAF_KEY]) {
+            expect(anchorTemplate({ agreements: [{ id: "order-0", agreementKey, clauses: {} }] }, OTHER)).toBeNull();
+        }
     });
     it("refuses a document that is not a template", () => {
         expect(anchorTemplate({ name: "no agreements" }, OTHER)).toBeNull();
         expect(anchorTemplate("text", OTHER)).toBeNull();
         expect(anchorTemplate(null, OTHER)).toBeNull();
+    });
+});
+
+describe("anchorComposedAgreement", () => {
+    const key = agreementKeyOf(composed);
+
+    it("returns the document whose { clauses } subset hashes to the key — parsed, bytes, or text", () => {
+        expect(anchorComposedAgreement(composed, key)).toBe(composed);
+        expect(anchorComposedAgreement(JSON.stringify(composed), key)).toEqual(composed);
+        expect(anchorComposedAgreement(toBytes(JSON.stringify(composed, null, 2)), key)).toEqual(composed);
+        // Editorial prose is outside the key.
+        expect(anchorComposedAgreement({ ...composed, name: "Renamed" }, key)).toEqual({ ...composed, name: "Renamed" });
+    });
+    it("refuses a document whose bytes do not hash to its key", () => {
+        const changed = { clauses: { ...composed.clauses, [keyOf("figaro-handoff")]: {} } };
+        expect(anchorComposedAgreement(changed, key)).toBeNull();
+        expect(anchorComposedAgreement(JSON.stringify(changed), key)).toBeNull();
+        expect(anchorComposedAgreement(composed, OTHER)).toBeNull();
+    });
+    it("refuses what is not a composed agreement, and a reserved key", () => {
+        for (const bad of [null, "not json", { name: "no clauses" }, { clauses: [] }, [composed]]) {
+            expect(anchorComposedAgreement(bad, key)).toBeNull();
+        }
+        expect(anchorComposedAgreement(composed, "0x1234")).toBeNull();
+        expect(anchorComposedAgreement(composed, PROVENANCE_LEAF_KEY)).toBeNull();
+        expect(anchorComposedAgreement(composed, ASSEMBLY_TERMS_LEAF_KEY)).toBeNull();
+    });
+    it("strips prototype-pollution keys from what it parses", () => {
+        const hostile = `{"__proto__":{"polluted":true},"clauses":${JSON.stringify(composed.clauses)}}`;
+        expect(anchorComposedAgreement(hostile, key)).toEqual({ clauses: composed.clauses });
+        expect(({} as Record<string, unknown>).polluted).toBeUndefined();
+    });
+});
+
+describe("hydrateAssembly", () => {
+    const key = agreementKeyOf(composed);
+    const two: AssemblyTemplate = {
+        agreements: [
+            template.agreements[0],
+            { id: "order-1", agreementKey: key, clauses: { [keyOf("figaro-topology")]: { parentOrderHashes: ["order-0"] } } },
+        ],
+    };
+
+    it("reads each distinct order slot's agreement once and verifies it against its key", async () => {
+        const reads: string[] = [];
+        const hydrated = await hydrateAssembly(two, async (k) => { reads.push(k); return JSON.stringify(composed); });
+        expect(reads).toEqual([key]);
+        expect(hydrated?.template).toBe(two);
+        expect(hydrated?.agreements[key.toLowerCase() as `0x${string}`]).toEqual(composed);
+    });
+
+    it("is absence when any order slot's document is unread, throws, or does not hash to its key", async () => {
+        expect(await hydrateAssembly(two, async () => null)).toBeNull();
+        expect(await hydrateAssembly(two, async () => { throw new Error("gateway down"); })).toBeNull();
+        expect(await hydrateAssembly(two, async () => ({ clauses: { [keyOf("figaro-handoff")]: {} } }))).toBeNull();
     });
 });
 
@@ -98,15 +162,17 @@ describe("anchorAgreement", () => {
         expect(anchorAgreement({ sections: "none" }, OTHER)).toBeNull();
         expect(anchorAgreement(null, OTHER)).toBeNull();
     });
-    it("accepts the provenance leaf as a 32-byte hash under the hash, and refuses anything else there", () => {
-        const named = { ...agreement, provenance: `0x${"22".repeat(32)}` as const };
+    it("accepts the provenance leaf as two 32-byte keys under the hash, and refuses anything else there", () => {
+        const P = { agreementKey: `0x${"33".repeat(32)}`, compositionHash: `0x${"22".repeat(32)}` } as const;
+        const named = { ...agreement, provenance: P };
         const root = computeAgreementHash(named);
         expect(anchorAgreement(named, root)).toBe(named);
-        // Dropping or changing the provenance changes the root.
+        // Dropping or changing either key changes the root.
         expect(anchorAgreement(agreement, root)).toBeNull();
-        expect(anchorAgreement({ ...named, provenance: OTHER }, root)).toBeNull();
-        // A provenance that is not a 32-byte hex string is not the agreement format.
-        for (const bad of ["0x1234", "22".repeat(32), 7, null, { compositionHash: named.provenance }]) {
+        expect(anchorAgreement({ ...named, provenance: { ...P, compositionHash: OTHER } }, root)).toBeNull();
+        expect(anchorAgreement({ ...named, provenance: { ...P, agreementKey: OTHER } }, root)).toBeNull();
+        // A provenance that is not two 32-byte hex keys is not the agreement format.
+        for (const bad of [P.compositionHash, "0x1234", 7, null, { compositionHash: P.compositionHash }, { ...P, agreementKey: "0x12" }]) {
             expect(anchorAgreement({ ...named, provenance: bad }, root)).toBeNull();
         }
     });

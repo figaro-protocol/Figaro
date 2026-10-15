@@ -35,6 +35,7 @@ import { createPublicClient, http } from "viem";
 import {
     CLAUSE_REGISTRY_ABI,
     ASSEMBLY_REGISTRY_ABI,
+    AGREEMENT_REGISTRY_ABI,
     MEMBERS_REGISTRY_ABI,
 } from "@figaro-protocol/sdk";
 
@@ -137,6 +138,9 @@ if (process.env.ESTATE_SKIP_PINS !== "1") {
         ["clause", record.clauseRegistry,
             eventItem(CLAUSE_REGISTRY_ABI, "ClauseRegistered"),
             (l) => l.args.contentURI],
+        ["agreement", record.agreementRegistry,
+            eventItem(AGREEMENT_REGISTRY_ABI, "AgreementRegistered"),
+            (l) => l.args.contentURI],
         ["assembly", record.assemblyRegistry,
             eventItem(ASSEMBLY_REGISTRY_ABI, "AssemblyRegistered"),
             (l) => l.args.contentURI],
@@ -149,6 +153,10 @@ if (process.env.ESTATE_SKIP_PINS !== "1") {
     ];
     let pinCount = 0;
     for (const [kind, address, event, pick] of sources) {
+        // A record without this family's registry has none of its pins to
+        // scan — never a log query without an address (that reads every
+        // contract's logs).
+        if (!address) { console.log(`[estate] ${kind} — no registry in the record, skipped`); continue; }
         const uris = (await collect(address, event, pick)).filter(Boolean);
         if (uris.length === 0 && kind === "clause") {
             // publicnode's silent-empty failure mode: clauses can never be zero

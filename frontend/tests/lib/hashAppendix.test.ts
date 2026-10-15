@@ -1,7 +1,8 @@
 /**
  * hashAppendix.test.ts — the appendix lists every leaf under the agreement
  * root, so a reader rebuilds the root from the listed leaves alone: the
- * clause sections and, when the agreement names its assembly, the agreement
+ * clause sections and, when the agreement names its provenance (its
+ * registered agreement and its assembly's composition root), the agreement
  * format's provenance leaf.
  */
 import { describe, expect, it } from "vitest";
@@ -12,6 +13,7 @@ import { OrderState, type Order } from "@/lib/kernel/store";
 const BUYER = "0x1111111111111111111111111111111111111111";
 const SELLER = "0x2222222222222222222222222222222222222222";
 const COMPOSITION = `0x${"9a".repeat(32)}` as `0x${string}`;
+const AGREEMENT_KEY = `0x${"8b".repeat(32)}` as `0x${string}`;
 
 function orderFor(agreement: Agreement): Order {
     return {
@@ -37,10 +39,10 @@ const leavesOf = (agreement: Agreement) =>
 
 describe("buildHashAppendix — every leaf under the root", () => {
     it("lists the provenance leaf beside the sections — the listed leaves are the tree's leaves", () => {
-        const agreement: Agreement = { ...base, provenance: COMPOSITION };
+        const agreement: Agreement = { ...base, provenance: { agreementKey: AGREEMENT_KEY, compositionHash: COMPOSITION } };
         const leaves = leavesOf(agreement);
         expect(leaves.filter((a) => a.kind === "agreement-provenance-leaf").map((a) => a.hash))
-            .toEqual([computeProvenanceLeaf(COMPOSITION)]);
+            .toEqual([computeProvenanceLeaf(AGREEMENT_KEY, COMPOSITION)]);
         const sorted = leaves.map((a) => a.hash.toLowerCase()).sort();
         expect(sorted).toEqual(agreementLeaves(agreement).map((l) => l.toLowerCase()).sort());
     });

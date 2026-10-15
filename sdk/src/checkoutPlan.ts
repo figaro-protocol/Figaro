@@ -26,8 +26,8 @@ import {
     type ProjectionSpecView,
     type SpecSource,
 } from "./projection.js";
-import { templateParentOrderHashes, type AssemblyTemplate, type TemplateAgreement } from "./assembly.js";
-import { topologicalOrder } from "./topology.js";
+import { slotClauses, templateParentOrderHashes, type HydratedAssembly, type TemplateSlot } from "./assembly.js";
+import { planTemplateOrders, type PlannedTemplateOrder } from "./reconstructOrders.js";
 import { isAddressHex, type Hex } from "./types.js";
 import type { CounterpartyBinding } from "./memberProfile.js";
 import type { CatalogItemMetadata } from "./memberCatalog.js";
@@ -435,10 +435,11 @@ export function profileValuesFor(
 
 // ── Sub-order seller plan (the per-clause binding cursor) ──────────────────
 
-/** The binding slice of a bound assembly — the template plus the adopting
- *  seller's counterparty bindings (any richer projection passes structurally). */
+/** The binding slice of a bound assembly — the hydrated assembly (template
+ *  plus each order slot's registered agreement) and the adopting seller's
+ *  counterparty bindings (any richer projection passes structurally). */
 export interface BoundAssemblyPlanInput {
-    assemblyTemplate: AssemblyTemplate;
+    hydratedAssembly: HydratedAssembly;
     counterpartyBindings: readonly CounterpartyBinding[];
 }
 
@@ -454,24 +455,21 @@ export interface BoundAssemblyPlanInput {
  */
 export function planSubOrderSellers(
     assembly: BoundAssemblyPlanInput,
-): Array<{ node: TemplateAgreement; seller: `0x${string}` | null }> {
-    const { assemblyTemplate } = assembly;
-    const byId = new Map(assemblyTemplate.agreements.map((o) => [o.id, o]));
+): Array<{ node: PlannedTemplateOrder; seller: `0x${string}` | null }> {
+    const { template } = assembly.hydratedAssembly;
     const rootId =
-        assemblyTemplate.agreements.find((o) => templateParentOrderHashes(o).length === 0)?.id ??
-        assemblyTemplate.agreements[0]?.id;
-    // Topological order (throws on a cyclic topology — the guard the checkout relies on),
-    // then the sub-orders are everything but the root, in commit order.
-    const ordered: TemplateAgreement[] = topologicalOrder(
-        assemblyTemplate.agreements.map((o) => o.id),
-        (id) => templateParentOrderHashes(byId.get(id) as TemplateAgreement),
-        "throw",
-    )
-        .filter((id) => id !== rootId)
-        .map((id) => byId.get(id) as TemplateAgreement);
+        template.agreements.find((o) => templateParentOrderHashes(o).length === 0)?.id ??
+        template.agreements[0]?.id;
+    // Commit order (throws on a cyclic topology — the guard the checkout
+    // relies on), then the sub-orders are everything but the root.
+    const ordered = planTemplateOrders(assembly.hydratedAssembly).filter((node) => node.nodeId !== rootId);
+    const byId = new Map(template.agreements.map((slot) => [slot.id, slot]));
     const cursor = new Map<string, number>();
     return ordered.map((node) => {
-        const nodeClauses = Object.keys(node.clauses).map((k) => k.toLowerCase());
+        // The order slot's own clauses — its registered agreement's — never
+        // the assembly-scoped terms every order carries.
+        const slot = byId.get(node.nodeId) as TemplateSlot;
+        const nodeClauses = Object.keys(slotClauses(assembly.hydratedAssembly, slot)).map((k) => k.toLowerCase());
         const binding = assembly.counterpartyBindings.find((cb) => nodeClauses.includes(cb.clauseKey.toLowerCase()));
         if (!binding || binding.addresses.length === 0) return { node, seller: null };
         const bindingKey = binding.clauseKey.toLowerCase();
@@ -525,7 +523,7 @@ export interface SubOrderPricing {
  * commerce clause's `payment ≥ 1` would reject it during off-chain validation regardless).
  */
 export function resolveSubOrderPricing(args: {
-    node: TemplateAgreement;
+    node: Pick<PlannedTemplateOrder, "clauses">;
     seller: `0x${string}`;
     sellerCatalogs: readonly PricingCatalog[];
     tokenDecimals: number;

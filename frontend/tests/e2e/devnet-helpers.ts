@@ -17,14 +17,25 @@ import {
 } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import {
+    AGREEMENT_REGISTRY_ABI,
     ASSEMBLY_REGISTRY_ABI,
     CLAUSE_REGISTRY_ABI,
+    anchorTemplate,
     canonicalize,
     computeClauseKey,
-    resolveAuthoredClauseKeys,
+    hydrateAssembly,
+    parseProjectionHints,
+    slotClauses,
+    slotsFromAuthoredAgreements,
     templateCompositionHash,
+    type AssemblyTemplate,
+    type BuiltAssemblyTemplate,
     type Hex,
+    type HydratedAssembly,
+    type ProjectionSpecView,
+    type SpecSource,
 } from '@figaro-protocol/sdk';
+import { parseClauseSpec } from '@figaro-protocol/sdk/clauses';
 import { encodeGeohash } from '@figaro-protocol/sdk/derive';
 import { deriveAssemblySlug } from '@/lib/shared/assemblyTemplate';
 import { ZERO_ADDRESS } from '@/lib/shared/evm';
@@ -108,6 +119,7 @@ type DeploymentConfig = {
     clauseRegistrationHelper?: `0x${string}`;
     membersRegistry?: `0x${string}`;
     assemblyRegistry?: `0x${string}`;
+    agreementRegistry?: `0x${string}`;
     florinToken?: `0x${string}`;
     usageCounter?: `0x${string}`;
     rpgfMinter?: `0x${string}`;
@@ -153,6 +165,7 @@ export function readLocalDeploymentConfig(): DeploymentConfig {
             if (key === 'NEXT_PUBLIC_CLAUSE_REGISTRATION_HELPER') config.clauseRegistrationHelper = value;
             if (key === 'NEXT_PUBLIC_MEMBERS_REGISTRY') config.membersRegistry = value;
             if (key === 'NEXT_PUBLIC_ASSEMBLY_REGISTRY') config.assemblyRegistry = value;
+            if (key === 'NEXT_PUBLIC_AGREEMENT_REGISTRY') config.agreementRegistry = value;
             if (key === 'NEXT_PUBLIC_FLORIN_TOKEN_ADDRESS') config.florinToken = value;
             if (key === 'NEXT_PUBLIC_USAGE_COUNTER') config.usageCounter = value;
             if (key === 'NEXT_PUBLIC_RPGF_MINTER') config.rpgfMinter = value;
@@ -170,6 +183,7 @@ export function readLocalDeploymentConfig(): DeploymentConfig {
         config.clauseRegistrationHelper = config.clauseRegistrationHelper ?? (contents as any).clauseRegistrationHelper;
         config.membersRegistry = config.membersRegistry ?? contents.membersRegistry;
         config.assemblyRegistry = config.assemblyRegistry ?? (contents as any).assemblyRegistry;
+        config.agreementRegistry = config.agreementRegistry ?? (contents as any).agreementRegistry;
         config.batchVerifier = config.batchVerifier ?? (contents as any).batchVerifier;
     }
 
@@ -601,13 +615,20 @@ export async function confirmAgreementPreviews(
         .toBe(expectedOrders);
 }
 
-/** An anchored assembly with its template's agreement list resolved — enough
- *  for a spec to select an assembly by SHAPE (agreement count, clause ids)
- *  instead of a hardcoded slug. */
+/** An anchored assembly HYDRATED — its template verified against its
+ *  composition root, every order slot's registered agreement read from
+ *  `AgreementRegistry` by key and verified against it — with each order
+ *  slot's clauses resolved (its agreement's, its own fills merged over
+ *  them): enough for a spec to select an assembly by SHAPE (order count,
+ *  clause keys) instead of a hardcoded slug. */
 export interface DiscoveredAssembly {
     slug: string;
     compositionHash: `0x${string}`;
-    agreements: Array<{ id?: string; clauses?: Record<string, unknown> }>;
+    /** Per order slot, in template order: its id, the agreement key it binds,
+     *  and the clauses it instantiates. */
+    agreements: Array<{ id: string; agreementKey: Hex; clauses: Record<string, Record<string, unknown>> }>;
+    /** The template and the agreements beside it, as checkout reads them. */
+    hydrated: HydratedAssembly;
     /** The designer's editorial prose from the pinned template — what a
      *  reading surface must show instead of the bare slug. Absent when the
      *  designer wrote none. */
@@ -615,25 +636,27 @@ export interface DiscoveredAssembly {
     summary?: string;
 }
 
-/** The specs an AUTHORED source document (`assemblies/*.json`,
- *  `members/*.json`) names its clauses against: every `clauses/*.json` file,
- *  each keyed by `computeClauseKey` over the RAW file — the same set the
- *  seeding loads (`populate-clauses.mjs` `loadAuthoredSpecs`). */
-function authoredClauseSpecSet(): { list(): { clauseKey: Hex; clauseId: string; version: number }[] } {
+/** The specs in `clauses/` as the seeding's `SpecSource` — each parsed view
+ *  beside the key its raw file hashes to (`populate-clauses.mjs`
+ *  `loadAuthoredSpecs`). */
+function authoredSpecSource(): SpecSource {
     const dir = path.resolve(__dirname, '../../../clauses');
-    const specs = fs.readdirSync(dir).filter((f) => f.endsWith('.json')).sort().map((file) => {
-        const spec = JSON.parse(fs.readFileSync(path.join(dir, file), 'utf8')) as { clauseId: string; version: number };
-        return { clauseKey: computeClauseKey(spec), clauseId: spec.clauseId, version: spec.version };
+    const views: ProjectionSpecView[] = fs.readdirSync(dir).filter((f) => f.endsWith('.json')).sort().map((file) => {
+        const raw = JSON.parse(fs.readFileSync(path.join(dir, file), 'utf8'));
+        const parsed = parseClauseSpec(raw);
+        if (!parsed.ok) throw new Error(`clauses/${file} does not parse`);
+        return { ...parsed.spec, clauseKey: computeClauseKey(raw), hints: parseProjectionHints(raw) };
     });
-    return { list: () => specs };
+    const byKey = new Map(views.map((v) => [v.clauseKey.toLowerCase(), v]));
+    return { get: (k) => byKey.get(k.toLowerCase()), list: () => views };
 }
 
-/** An authored source document (a path under the repo root, e.g.
- *  `assemblies/x.json` or `members/y.json`), its clause names resolved to keys
- *  exactly as the seeding resolves them before publishing. */
-function readResolvedAuthored<T extends object = Record<string, unknown>>(repoRelativePath: string): T {
-    const doc = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../../..', repoRelativePath), 'utf8')) as T;
-    return resolveAuthoredClauseKeys(doc, authoredClauseSpecSet());
+/** A reference assembly (`assemblies/<name>`) derived exactly as the seeding
+ *  derives it before registering: order slots keyed, each distinct agreement
+ *  beside the template (`slotsFromAuthoredAgreements`). */
+export function referenceAssemblyBuilt(name: string): BuiltAssemblyTemplate {
+    const doc = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../../../assemblies', name), 'utf8')) as object;
+    return slotsFromAuthoredAgreements(doc, authoredSpecSource());
 }
 
 /** Substitute the live token into every assembly-scoped section whose
@@ -660,7 +683,7 @@ function fillSentinelCurrency<T extends { assemblyClauses?: Record<string, Recor
  *  name it by identity, never select it with a clause-shape heuristic.
  *  `name` is the file in `assemblies/`. */
 export function referenceAssemblySlug(name: string): string {
-    return deriveAssemblySlug(templateCompositionHash(readResolvedAuthored(`assemblies/${name}`)));
+    return deriveAssemblySlug(templateCompositionHash(referenceAssemblyBuilt(name).template));
 }
 
 /** Identity of a reference whose checked-in copy carries the ZERO_ADDRESS
@@ -671,14 +694,36 @@ export function referenceAssemblySlug(name: string): string {
  *  template — the raw file's hash never matches what's anchored. `name` is the
  *  file in `assemblies/`. */
 export function referenceAssemblySlugWithLiveCurrency(name: string, tokenAddress: `0x${string}`): string {
-    const template = fillSentinelCurrency(readResolvedAuthored<{ assemblyClauses?: Record<string, Record<string, unknown>> }>(`assemblies/${name}`), tokenAddress);
-    return deriveAssemblySlug(templateCompositionHash(template as Parameters<typeof templateCompositionHash>[0]));
+    const template = fillSentinelCurrency(referenceAssemblyBuilt(name).template, tokenAddress);
+    return deriveAssemblySlug(templateCompositionHash(template));
+}
+
+/** A registered agreement's binding, read BY KEY from `AgreementRegistry`
+ *  out of band — the chain fact a spec asserts. Null when unbound. */
+export async function readAgreementBinding(agreementKey: Hex): Promise<{ registeredBy: `0x${string}`; stakeWithdrawn: boolean; contentURI: string } | null> {
+    const registry = (process.env.NEXT_PUBLIC_AGREEMENT_REGISTRY ?? readLocalDeploymentConfig().agreementRegistry ?? '') as `0x${string}`;
+    const [registeredBy, registeredAt, stakeWithdrawn, contentURI] = await localPublicClient().readContract({
+        address: registry, abi: AGREEMENT_REGISTRY_ABI, functionName: 'bindings', args: [agreementKey],
+    }) as readonly [`0x${string}`, bigint, boolean, string];
+    return registeredAt > 0n ? { registeredBy, stakeWithdrawn, contentURI } : null;
+}
+
+/** Hydrate a template out of band: each order slot's agreement read by key
+ *  from `AgreementRegistry` (whatever its stake) and fetched from IPFS — the
+ *  SDK verifies each against its key. Null when any is absent. */
+async function hydrateFromChain(template: AssemblyTemplate): Promise<HydratedAssembly | null> {
+    return hydrateAssembly(template, async (agreementKey) => {
+        const binding = await readAgreementBinding(agreementKey);
+        if (!binding) return null;
+        return new Uint8Array(await fetchPinnedBytes(binding.contentURI));
+    });
 }
 
 /** Every anchored assembly, discovered from chain → IPFS (AssemblyRegistered
- *  events + template docs), in anchoring order. Mainnet-realistic tolerance:
- *  a template that fails to fetch or parse is skipped — anyone can anchor a
- *  garbage URI; consumers must tolerate it. */
+ *  events + template docs, each order slot's agreement from AgreementRegistry
+ *  → IPFS), in anchoring order. Mainnet-realistic tolerance: a template or an
+ *  agreement that fails to fetch, parse or verify is skipped — anyone can
+ *  anchor a garbage URI; consumers must tolerate it. */
 export async function discoverAnchoredAssemblies(): Promise<DiscoveredAssembly[]> {
     const publicClient = localPublicClient();
     const config = readLocalDeploymentConfig();
@@ -692,19 +737,19 @@ export async function discoverAnchoredAssemblies(): Promise<DiscoveredAssembly[]
         const { compositionHash, contentURI } = ev.args as { compositionHash?: `0x${string}`; contentURI?: string };
         if (!compositionHash || !contentURI) continue;
         try {
-            const doc = await (await fetch(resolveIpfsURI(contentURI))).json() as {
-                agreements?: DiscoveredAssembly['agreements'];
-                name?: string;
-                summary?: string;
-                description?: string;
-            };
-            if (Array.isArray(doc.agreements) && doc.agreements.length > 0) {
-                out.push({
-                    slug: deriveAssemblySlug(compositionHash), compositionHash, agreements: doc.agreements,
-                    name: doc.name,
-                    summary: doc.summary ?? doc.description,
-                });
-            }
+            const template = anchorTemplate(await (await fetch(resolveIpfsURI(contentURI))).json(), compositionHash);
+            if (!template || template.agreements.length === 0) continue;
+            const hydrated = await hydrateFromChain(template);
+            if (!hydrated) continue;
+            out.push({
+                slug: deriveAssemblySlug(compositionHash), compositionHash,
+                agreements: template.agreements.map((slot) => ({
+                    id: slot.id, agreementKey: slot.agreementKey, clauses: slotClauses(hydrated, slot),
+                })),
+                hydrated,
+                name: template.name,
+                summary: template.summary ?? template.description,
+            });
         } catch {
             continue; // unresolvable / non-JSON template — not discoverable
         }

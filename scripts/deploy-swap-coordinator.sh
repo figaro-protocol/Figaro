@@ -54,8 +54,12 @@ echo "   router behaves like SwapRouter02: factory()=$FACTORY WETH9()=$WETH9"
 echo "   deployer = $(cast wallet address --private-key "$PRIVATE_KEY")"
 
 VERIFY_FLAG="--verify"; [ "${SKIP_VERIFY:-}" = "1" ] && VERIFY_FLAG=""
+# The output is printed whether forge succeeds or fails, and FORGE_GAS_MULTIPLIER
+# (percent) widens forge's gas limits for a live chain whose fork charges more
+# than forge's own simulation — the same two rules as the stack wrappers.
 FORGE_OUT=$(forge script script/DeploySwapCoordinator.s.sol:DeploySwapCoordinator \
-    --rpc-url "$RPC_URL" --broadcast --slow --via-ir $VERIFY_FLAG 2>&1)
+    --rpc-url "$RPC_URL" --broadcast --slow --via-ir $VERIFY_FLAG \
+    ${FORGE_GAS_MULTIPLIER:+--gas-estimate-multiplier "$FORGE_GAS_MULTIPLIER"} ${FORGE_SKIP_SIMULATION:+--skip-simulation} 2>&1) || { echo "$FORGE_OUT"; echo "❌ forge script failed — see its output above"; exit 1; }
 echo "$FORGE_OUT"
 COORD=$(echo "$FORGE_OUT" | grep 'NEXT_PUBLIC_WITNESS_SWAP_AND_COMMIT_COORDINATOR=' | grep -oE '0x[0-9a-fA-F]{40}' | head -1)
 if [ -z "$COORD" ]; then

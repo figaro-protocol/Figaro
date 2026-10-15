@@ -6,6 +6,7 @@ import {FigaroCore} from "src/core/kernel/FigaroCore.sol";
 import {CommitmentTypes} from "src/core/kernel/CommitmentTypes.sol";
 import {ClauseRegistry} from "src/build/registries/ClauseRegistry.sol";
 import {AssemblyRegistry} from "src/build/registries/AssemblyRegistry.sol";
+import {AgreementRegistry} from "src/build/registries/AgreementRegistry.sol";
 import {MembersRegistry} from "src/app/MembersRegistry.sol";
 import {UsageCounter} from "src/build/rewards/UsageCounter.sol";
 import {RpgfMinter} from "src/build/rewards/RpgfMinter.sol";
@@ -25,6 +26,7 @@ contract RpgfIntegrationTest is Test {
     FigaroCore core;
     ClauseRegistry clauses;
     AssemblyRegistry assemblies;
+    AgreementRegistry agreements;
     MembersRegistry members;
     UsageCounter counter;
     RpgfMinter minter;
@@ -37,11 +39,17 @@ contract RpgfIntegrationTest is Test {
     address seller;
     address author = address(0xA47403);
     address designer = address(0xDE519);
+    address agreementDesigner = address(0xA62EE);
 
     // The clause key is keccak256 of the spec's pinned bytes.
     bytes32 constant GEO_KEY = keccak256('{"clauseId":"figaro-geolocation","version":1}');
-    bytes32 constant ASM = keccak256("reference-assembly");
+    /// @dev The registered agreement the reference assembly's one order slot
+    ///      instantiates.
+    bytes32 constant AGR = keccak256("reference-agreement");
     bytes32 constant PROVENANCE_LEAF = keccak256("figaro-agreement-provenance");
+    /// @dev The reference assembly's compositionHash: the root of a one-leaf
+    ///      tree, which is its order slot's leaf (set in setUp).
+    bytes32 ASM;
     bytes constant SECTION = hex"5eed";
 
     uint64 constant P0_END = 1_000_000;
@@ -62,6 +70,8 @@ contract RpgfIntegrationTest is Test {
         token = new MockERC20("Test", "TST");
         clauses = new ClauseRegistry(0);
         assemblies = new AssemblyRegistry(0);
+        agreements = new AgreementRegistry(0);
+        ASM = AgreementTestHelper.leafFor(AGR, AgreementTestHelper.slotSection(0, "{}"));
         members = new MembersRegistry(0, 0);
         florin = new FlorinToken();
 
@@ -69,6 +79,8 @@ contract RpgfIntegrationTest is Test {
         clauses.registerClause(GEO_KEY, "ipfs://geo");
         vm.prank(designer);
         assemblies.registerAssembly(ASM, "ipfs://asm");
+        vm.prank(agreementDesigner);
+        agreements.registerAgreement(AGR, "ipfs://agr");
         // The seller-side live-stake gate: the seller-of-record must be staked
         // for its resolved trades to count toward the reward.
         vm.prank(seller);
@@ -79,14 +91,23 @@ contract RpgfIntegrationTest is Test {
         periods[1] = P0_END * 2;
         periods[2] = P0_END * 3;
         counter = new UsageCounter(
-            address(core), address(members), address(clauses), address(assemblies), batchVerifier, 1, periods
+            address(core),
+            address(members),
+            address(clauses),
+            address(assemblies),
+            address(agreements),
+            batchVerifier,
+            1,
+            periods
         );
 
         uint256[] memory amounts = new uint256[](3);
         amounts[0] = T0;
         amounts[1] = T1;
         amounts[2] = T2;
-        minter = new RpgfMinter(address(florin), address(counter), address(clauses), address(assemblies), amounts);
+        minter = new RpgfMinter(
+            address(florin), address(counter), address(clauses), address(assemblies), address(agreements), amounts
+        );
         florin.registerMinter(address(minter), 600_000_000 ether);
 
         token.mint(buyer, 1_000_000 ether);
@@ -134,16 +155,17 @@ contract RpgfIntegrationTest is Test {
         core.resolveProcess(processId, all);
     }
 
-    /// @dev A resolved process whose agreement carries the PROVENANCE section —
-    ///      the only way an assembly is ever provable, because agreement leaves
-    ///      are keyed by clause and a compositionHash is never a leaf key.
+    /// @dev A resolved process whose agreement carries the PROVENANCE section
+    ///      naming the reference agreement and `compositionHash` — the only way
+    ///      an agreement or an assembly is ever provable, because agreement
+    ///      leaves are keyed by clause and neither key is ever a leaf key.
     function _settleUnderAssembly(bytes32 compositionHash, uint256 salt)
         internal
         returns (CommitmentTypes.Commitment memory c, bytes memory sectionData)
     {
         // Sections commit as CANONICAL JSON bytes — the same convention the
         // runtime's agreements use (the merkle leaf hashes exactly these).
-        sectionData = _provJson(compositionHash);
+        sectionData = AgreementTestHelper.provenanceSection(AGR, compositionHash);
         c = CommitmentTypes.Commitment({
             processId: bytes32(0),
             buyer: buyer,
@@ -164,6 +186,20 @@ contract RpgfIntegrationTest is Test {
 
     uint8 constant KIND_CLAUSE = 0;
     uint8 constant KIND_ASSEMBLY = 1;
+    uint8 constant KIND_AGREEMENT = 2;
+
+    /// @dev Credit `compositionHash` for an order instantiating the reference
+    ///      assembly's one order slot (a one-leaf tree: the proof is empty).
+    function _recordAssembly(CommitmentTypes.Commitment memory p, bytes32 compositionHash) internal {
+        counter.recordAssemblyUsage(
+            p,
+            compositionHash,
+            AGR,
+            keccak256(AgreementTestHelper.slotSection(0, "{}")),
+            new bytes32[](0),
+            new bytes32[](0)
+        );
+    }
 
     function _clause(bytes32 k) internal pure returns (RpgfMinter.ClauseOrAssemblyKey[] memory a) {
         a = new RpgfMinter.ClauseOrAssemblyKey[](1);
@@ -182,7 +218,7 @@ contract RpgfIntegrationTest is Test {
         CommitmentTypes.Commitment memory p1 = _settle(GEO_KEY, 1);
         counter.recordClauseUsage(p1, GEO_KEY, keccak256(SECTION), new bytes32[](0));
         (CommitmentTypes.Commitment memory p2,) = _settleUnderAssembly(ASM, 2);
-        counter.recordAssemblyUsage(p2, ASM, new bytes32[](0));
+        _recordAssembly(p2, ASM);
 
         // Nothing is claimable while the period can still move.
         vm.prank(author);
@@ -244,18 +280,13 @@ contract RpgfIntegrationTest is Test {
         assertEq(florin.balanceOf(author) - afterFirst, T1);
     }
 
-    /// @dev The provenance section's canonical-JSON bytes for a composition.
-    function _provJson(bytes32 compositionHash) internal pure returns (bytes memory) {
-        return abi.encodePacked('{"compositionHash":"', vm.toString(compositionHash), '"}');
-    }
-
     function test_assemblyCannotBeCreditedWithoutItsProvenanceSection() public {
         // An agreement that never committed the provenance leaf cannot credit
         // an assembly — there is no leaf to open. This is the path that looked
         // like it worked when the clause or assembly key was passed directly.
         CommitmentTypes.Commitment memory p = _settle(GEO_KEY, 1);
         vm.expectRevert(UsageCounter.InvalidInclusionProof.selector);
-        counter.recordAssemblyUsage(p, ASM, new bytes32[](0));
+        _recordAssembly(p, ASM);
     }
 
     function test_provenanceSectionMustNameTheAssemblyClaimed() public {
@@ -265,7 +296,7 @@ contract RpgfIntegrationTest is Test {
         // simply not in the tree — the old ProvenanceMismatch content-check now
         // collapses into the one inclusion gate (a stronger, structural check).
         vm.expectRevert(UsageCounter.InvalidInclusionProof.selector);
-        counter.recordAssemblyUsage(p, keccak256("other-assembly"), new bytes32[](0));
+        _recordAssembly(p, keccak256("other-assembly"));
     }
 
     function test_nonAuthorCannotClaimSomeoneElsesClauseOrAssembly() public {
@@ -288,7 +319,7 @@ contract RpgfIntegrationTest is Test {
         clauses.registerClause(ASM, "ipfs://a-stranger-stakes-an-assembly-key-as-a-clause");
 
         (CommitmentTypes.Commitment memory p,) = _settleUnderAssembly(ASM, 1);
-        counter.recordAssemblyUsage(p, ASM, new bytes32[](0));
+        _recordAssembly(p, ASM);
         vm.warp(P0_END + 1);
 
         vm.prank(stranger);
@@ -303,5 +334,34 @@ contract RpgfIntegrationTest is Test {
         minter.claim(0, _assembly(ASM));
         assertEq(florin.balanceOf(designer), T0, "the assembly's registrant takes the assembly's accrual");
         assertEq(florin.balanceOf(stranger), 0, "the stranger takes nothing of it");
+    }
+
+    /// The agreement kind end to end: one resolved order credits its
+    /// registered agreement and its assembly, each under its own kind, and
+    /// each designer of record is paid from its own score while its stake is
+    /// live.
+    function test_aRegisteredAgreementsDesignerIsPaidForItsUse() public {
+        (CommitmentTypes.Commitment memory p,) = _settleUnderAssembly(ASM, 1);
+        counter.recordAgreementUsage(p, AGR, ASM, new bytes32[](0));
+        _recordAssembly(p, ASM);
+        vm.warp(P0_END + 1);
+
+        (,, uint256 agrScore) = counter.accrualOf(KIND_AGREEMENT, AGR, 0);
+        (,, uint256 asmScore) = counter.accrualOf(KIND_ASSEMBLY, ASM, 0);
+        assertEq(agrScore, asmScore, "uniform scoring across the kinds");
+        assertEq(counter.totalScoreIn(0), agrScore + asmScore);
+
+        RpgfMinter.ClauseOrAssemblyKey[] memory a = new RpgfMinter.ClauseOrAssemblyKey[](1);
+        a[0] = RpgfMinter.ClauseOrAssemblyKey(KIND_AGREEMENT, AGR);
+        vm.prank(designer);
+        vm.expectRevert(abi.encodeWithSelector(RpgfMinter.NotAuthorOfRecord.selector, KIND_AGREEMENT, AGR, designer));
+        minter.claim(0, a);
+
+        vm.prank(agreementDesigner);
+        minter.claim(0, a);
+        vm.prank(designer);
+        minter.claim(0, _assembly(ASM));
+        assertEq(florin.balanceOf(agreementDesigner), T0 / 2);
+        assertEq(florin.balanceOf(designer), T0 / 2);
     }
 }

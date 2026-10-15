@@ -3,11 +3,11 @@ import {
     deriveInFlightOrders,
     deriveClauseWithdrawGate,
     deriveAssemblyWithdrawGate,
+    deriveAgreementWithdrawGate,
     type InFlightAgreement,
 } from "../src/derive/withdraw.js";
 import type { CoreEvents } from "../src/state.js";
 import type { Agreement } from "../src/agreement.js";
-import type { AssemblyTemplate } from "../src/assembly.js";
 import type {
     Hex,
     Address,
@@ -152,117 +152,68 @@ describe("deriveClauseWithdrawGate", () => {
 
 // ── Assembly gate ────────────────────────────────────────────────────────────
 
-/** Two-node template: a root composing commerce+topology, a sub composing
- *  commerce+topology+courier. */
-function template(): AssemblyTemplate {
-    return {
-        agreements: [
-            { id: "order-0", clauses: { [keyOf("figaro-commerce")]: {}, [keyOf("figaro-topology")]: {} } },
-            { id: "order-1", clauses: { [keyOf("figaro-commerce")]: {}, [keyOf("figaro-topology")]: {}, [keyOf("figaro-courier-process")]: {} } },
-        ],
-    };
+const COMPOSITION = ("0x" + "c0".repeat(32)) as Hex;
+const OTHER_COMPOSITION = ("0x" + "c1".repeat(32)) as Hex;
+const AGREEMENT_KEY = ("0x" + "a0".repeat(32)) as Hex;
+const OTHER_AGREEMENT_KEY = ("0x" + "a1".repeat(32)) as Hex;
+
+/** An agreement whose provenance leaf names the given registered agreement
+ *  and assembly. */
+function instantiated(agreementKey: Hex, compositionHash: Hex): Agreement {
+    return { ...agreementWith(["figaro-commerce", "figaro-topology"]), provenance: { agreementKey, compositionHash } };
 }
 
-describe("deriveAssemblyWithdrawGate", () => {
-    it("zero orders → canWithdraw true", () => {
-        expect(deriveAssemblyWithdrawGate(template(), [])).toEqual({
-            canWithdraw: true,
-            inFlightCount: 0,
-            unverifiedCount: 0,
+for (const [label, derive, key, other] of [
+    ["deriveAssemblyWithdrawGate", deriveAssemblyWithdrawGate, COMPOSITION, OTHER_COMPOSITION],
+    ["deriveAgreementWithdrawGate", deriveAgreementWithdrawGate, AGREEMENT_KEY, OTHER_AGREEMENT_KEY],
+] as const) {
+    const named = (k: Hex) => label === "deriveAssemblyWithdrawGate"
+        ? instantiated(AGREEMENT_KEY, k)
+        : instantiated(k, COMPOSITION);
+
+    describe(label, () => {
+        it("zero orders → canWithdraw true (absence, not error)", () => {
+            expect(derive(key, [])).toEqual({ canWithdraw: true, inFlightCount: 0, unverifiedCount: 0 });
+        });
+
+        it("a process whose verified provenance names the key → false", () => {
+            expect(derive(key, [{ processId: PROC_A, agreement: named(key) }])).toEqual({
+                canWithdraw: false, inFlightCount: 1, unverifiedCount: 0,
+            });
+        });
+
+        it("matches the key in any letter case", () => {
+            const upper = key.toUpperCase().replace("0X", "0x") as Hex;
+            expect(derive(upper, [{ processId: PROC_A, agreement: named(key) }]).inFlightCount).toBe(1);
+        });
+
+        it("a process naming another key, or no provenance, does NOT match", () => {
+            expect(derive(key, [
+                { processId: PROC_A, agreement: named(other) },
+                { processId: PROC_B, agreement: agreementWith(["figaro-commerce", "figaro-topology"]) },
+            ]).canWithdraw).toBe(true);
+        });
+
+        it("counts distinct in-flight processes, not orders", () => {
+            expect(derive(key, [
+                { processId: PROC_A, agreement: named(key) },
+                { processId: PROC_A, agreement: named(key) },
+                { processId: PROC_B, agreement: named(key) },
+            ]).inFlightCount).toBe(2);
+        });
+
+        it("unverified-only: a process with an unverifiable agreement is a caveat, never blocking", () => {
+            expect(derive(key, [
+                { processId: PROC_A, agreement: named(key) },
+                { processId: PROC_A, agreement: null },
+            ])).toEqual({ canWithdraw: true, inFlightCount: 0, unverifiedCount: 1 });
+        });
+
+        it("mixed: a verified composing process blocks, unverified counted alongside", () => {
+            expect(derive(key, [
+                { processId: PROC_A, agreement: named(key) },
+                { processId: PROC_B, agreement: null },
+            ])).toEqual({ canWithdraw: false, inFlightCount: 1, unverifiedCount: 1 });
         });
     });
-
-    it("a process reproducing the template's per-node clause composition → false", () => {
-        const agreements: InFlightAgreement[] = [
-            { processId: PROC_A, agreement: agreementWith(["figaro-commerce", "figaro-topology"]) },
-            { processId: PROC_A, agreement: agreementWith(["figaro-commerce", "figaro-topology", "figaro-courier-process"]) },
-        ];
-        expect(deriveAssemblyWithdrawGate(template(), agreements)).toEqual({
-            canWithdraw: false,
-            inFlightCount: 1,
-            unverifiedCount: 0,
-        });
-    });
-
-    it("a process with a different composition does NOT match", () => {
-        const agreements: InFlightAgreement[] = [
-            // single-node process: not this two-node assembly
-            { processId: PROC_A, agreement: agreementWith(["figaro-commerce", "figaro-topology"]) },
-        ];
-        expect(deriveAssemblyWithdrawGate(template(), agreements).canWithdraw).toBe(true);
-    });
-
-    it("counts distinct in-flight processes, not orders", () => {
-        const match = (p: Hex): InFlightAgreement[] => [
-            { processId: p, agreement: agreementWith(["figaro-commerce", "figaro-topology"]) },
-            { processId: p, agreement: agreementWith(["figaro-commerce", "figaro-topology", "figaro-courier-process"]) },
-        ];
-        expect(deriveAssemblyWithdrawGate(template(), [...match(PROC_A), ...match(PROC_B)]).inFlightCount).toBe(2);
-    });
-
-    it("all orders resolved (no in-flight) → true", () => {
-        // Nothing in-flight is passed at all — the resolved process contributes no entries.
-        expect(deriveAssemblyWithdrawGate(template(), []).canWithdraw).toBe(true);
-    });
-
-    it("THE ASSEMBLY-SCOPE FOLD: a template with assemblyClauses matches the FOLDED committed shape (the K4 regression)", () => {
-        // A template composing assembly-scoped clauses (applicable law, a
-        // denomination pin) has planTemplateOrders fold them into EVERY node —
-        // so committed sections always include them. The
-        // fingerprint must apply the same fold or it can never match a real
-        // process, silently disabling the stake-lock for every assembly
-        // author (the bug found by assembly-withdraw.devnet.spec.ts).
-        const pinned: AssemblyTemplate = {
-            ...template(),
-            assemblyClauses: { [keyOf("figaro-applicable-law")]: {}, [keyOf("figaro-utility-token")]: {} },
-        };
-        const folded: InFlightAgreement[] = [
-            { processId: PROC_A, agreement: agreementWith(["figaro-applicable-law", "figaro-utility-token", "figaro-commerce", "figaro-topology"]) },
-            { processId: PROC_A, agreement: agreementWith(["figaro-applicable-law", "figaro-utility-token", "figaro-commerce", "figaro-topology", "figaro-courier-process"]) },
-        ];
-        expect(deriveAssemblyWithdrawGate(pinned, folded)).toEqual({
-            canWithdraw: false,
-            inFlightCount: 1,
-            unverifiedCount: 0,
-        });
-    });
-
-    it("the fold is exact: committed sections MISSING the assembly-scoped clauses do not match a pinned template", () => {
-        const pinned: AssemblyTemplate = {
-            ...template(),
-            assemblyClauses: { [keyOf("figaro-applicable-law")]: {} },
-        };
-        const unfolded: InFlightAgreement[] = [
-            { processId: PROC_A, agreement: agreementWith(["figaro-commerce", "figaro-topology"]) },
-            { processId: PROC_A, agreement: agreementWith(["figaro-commerce", "figaro-topology", "figaro-courier-process"]) },
-        ];
-        expect(deriveAssemblyWithdrawGate(pinned, unfolded).canWithdraw).toBe(true);
-    });
-
-    it("unverified-only: a process with an unverifiable agreement is a caveat, never blocking", () => {
-        const agreements: InFlightAgreement[] = [
-            { processId: PROC_A, agreement: agreementWith(["figaro-commerce", "figaro-topology"]) },
-            { processId: PROC_A, agreement: null },
-        ];
-        expect(deriveAssemblyWithdrawGate(template(), agreements)).toEqual({
-            canWithdraw: true,
-            inFlightCount: 0,
-            unverifiedCount: 1,
-        });
-    });
-
-    it("mixed: a verified composing process blocks, unverified counted alongside", () => {
-        const agreements: InFlightAgreement[] = [
-            // PROC_A verifiably reproduces the template
-            { processId: PROC_A, agreement: agreementWith(["figaro-commerce", "figaro-topology"]) },
-            { processId: PROC_A, agreement: agreementWith(["figaro-commerce", "figaro-topology", "figaro-courier-process"]) },
-            // PROC_B can't be fingerprinted (one foreign, party-private order)
-            { processId: PROC_B, agreement: null },
-        ];
-        expect(deriveAssemblyWithdrawGate(template(), agreements)).toEqual({
-            canWithdraw: false,
-            inFlightCount: 1,
-            unverifiedCount: 1,
-        });
-    });
-});
+}

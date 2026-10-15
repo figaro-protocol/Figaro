@@ -5,9 +5,11 @@
  * UsageCounter is a protocol contract, not core, so its ABI stays out of
  * lib/kernel by the layer rule).
  *
- * Both calls are PERMISSIONLESS by design: UsageCounter re-verifies every
- * fact from state the chain already holds (order RESOLVED + merkle proof
- * against the signed agreementHash), so nothing about the caller is trusted.
+ * The three calls — a clause, a registered agreement, an assembly — are
+ * PERMISSIONLESS by design: UsageCounter re-verifies every fact from state
+ * the chain already holds (order RESOLVED + merkle proof against the signed
+ * agreementHash; for an assembly, the order slot's membership under its
+ * composition root too), so nothing about the caller is trusted.
  * The resolve capability plans these before the buyer resolves
  * (`planUsageRecords`, from the counter's own facts read by
  * `fetchClaimContext`) and sends them right after — count usage when it
@@ -29,6 +31,42 @@ import { activeChain } from "@/lib/shared/chains";
 
 type Hex = `0x${string}`;
 
+/** One usage write, by the family it credits — the counter's three entry
+ *  points. `proof` is the provenance leaf's (agreement, assembly) or the
+ *  section leaf's (clause) sorted-pair proof under the order's agreementHash. */
+export type UsageWrite =
+    | {
+          kind: "clause";
+          order: Commitment;
+          /** The clause key the section carries. */
+          key: Hex;
+          /** The section FINGERPRINT — only it reaches calldata, never the
+           *  plaintext, so a private section stays off-chain. */
+          sectionHash: Hex;
+          proof: readonly Hex[];
+      }
+    | {
+          kind: "agreement";
+          order: Commitment;
+          /** The registered agreement's key (`AgreementRegistry`). */
+          key: Hex;
+          /** The composition root the provenance leaf names beside it. */
+          compositionHash: Hex;
+          proof: readonly Hex[];
+      }
+    | {
+          kind: "assembly";
+          order: Commitment;
+          /** The assembly's compositionHash. */
+          key: Hex;
+          /** The order slot's agreement key and the hash of its slot bytes. */
+          agreementKey: Hex;
+          slotContentHash: Hex;
+          proof: readonly Hex[];
+          /** The order slot leaf's proof under `key`. */
+          membershipProof: readonly Hex[];
+      };
+
 export function useUsageRecorder() {
     const { writeContractAsync } = useWriteContract();
     const publicClient = usePublicClient();
@@ -47,39 +85,37 @@ export function useUsageRecorder() {
         return publicClient;
     };
 
-    /** The counter's fact — its provenance leaf key — read once from the
-     *  deployment being called; it serves every order of the process. */
+    /** The counter's facts — its provenance and assembly-terms leaf keys —
+     *  read once from the deployment being called; they serve every order of
+     *  the process. */
     const fetchClaimContext = (): Promise<UsageClaimContext> =>
         fetchUsageClaimContext(requireClient() as unknown as PublicClient, requireCounter());
 
-    const clauseUsageCall = (order: Commitment, clauseOrAssembly: Hex, sectionHash: Hex, proof: readonly Hex[]) => ({
-        address: requireCounter(),
-        abi: USAGE_COUNTER_ABI,
-        functionName: "recordClauseUsage" as const,
-        args: [order, clauseOrAssembly, sectionHash, [...proof]] as const,
-        account,
-    });
-    const assemblyUsageCall = (order: Commitment, compositionHash: Hex, proof: readonly Hex[]) => ({
-        address: requireCounter(),
-        abi: USAGE_COUNTER_ABI,
-        functionName: "recordAssemblyUsage" as const,
-        args: [order, compositionHash, [...proof]] as const,
-        account,
-    });
+    const usageCall = (write: UsageWrite) => {
+        const base = { address: requireCounter(), abi: USAGE_COUNTER_ABI, account } as const;
+        switch (write.kind) {
+            case "clause":
+                return { ...base, functionName: "recordClauseUsage" as const, args: [write.order, write.key, write.sectionHash, [...write.proof]] as const };
+            case "agreement":
+                return { ...base, functionName: "recordAgreementUsage" as const, args: [write.order, write.key, write.compositionHash, [...write.proof]] as const };
+            case "assembly":
+                return {
+                    ...base,
+                    functionName: "recordAssemblyUsage" as const,
+                    args: [write.order, write.key, write.agreementKey, write.slotContentHash, [...write.proof], [...write.membershipProof]] as const,
+                };
+        }
+    };
 
+    // The three calls are one union; viem types each call by its function
+    // name, so the union is handed over as the call it is.
     /** Throws the counter's revert when the write would not land. */
-    const simulateClauseUsage = async (order: Commitment, clauseOrAssembly: Hex, sectionHash: Hex, proof: readonly Hex[]): Promise<void> => {
-        await requireClient().simulateContract(clauseUsageCall(order, clauseOrAssembly, sectionHash, proof));
-    };
-    const simulateAssemblyUsage = async (order: Commitment, compositionHash: Hex, proof: readonly Hex[]): Promise<void> => {
-        await requireClient().simulateContract(assemblyUsageCall(order, compositionHash, proof));
+    const simulateUsage = async (write: UsageWrite): Promise<void> => {
+        await requireClient().simulateContract(usageCall(write) as never);
     };
 
-    const recordClauseUsage = async (order: Commitment, clauseOrAssembly: Hex, sectionHash: Hex, proof: readonly Hex[]): Promise<Hex> =>
-        writeContractAsync({ ...clauseUsageCall(order, clauseOrAssembly, sectionHash, proof), chain: chainConfig });
+    const recordUsage = async (write: UsageWrite): Promise<Hex> =>
+        writeContractAsync({ ...usageCall(write), chain: chainConfig } as never);
 
-    const recordAssemblyUsage = async (order: Commitment, compositionHash: Hex, proof: readonly Hex[]): Promise<Hex> =>
-        writeContractAsync({ ...assemblyUsageCall(order, compositionHash, proof), chain: chainConfig });
-
-    return { fetchClaimContext, simulateClauseUsage, simulateAssemblyUsage, recordClauseUsage, recordAssemblyUsage };
+    return { fetchClaimContext, simulateUsage, recordUsage };
 }

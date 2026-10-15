@@ -20,7 +20,8 @@ import { parseUnits } from "viem";
 import { describe, expect, it } from "vitest";
 import { reconstructOrdersFromTemplate } from "../src/reconstructOrders.js";
 import { resolveSubOrderPricing, type PricingCatalog } from "../src/checkoutPlan.js";
-import type { AssemblyTemplate, TemplateAgreement } from "../src/assembly.js";
+import type { HydratedAssembly } from "../src/assembly.js";
+import { hydrateAuthored } from "./hydrate.js";
 import { keyOf, specSourceFromFixtures } from "./specFixtures.js";
 import { addressArb } from "./propertyArbs.js";
 
@@ -54,8 +55,8 @@ const chainArb = fc.integer({ min: 1, max: 6 }).chain((n) =>
     }),
 );
 
-function templateFrom(parents: readonly number[][]): AssemblyTemplate {
-    return {
+function templateFrom(parents: readonly number[][]): HydratedAssembly {
+    return hydrateAuthored({
         agreements: parents.map((ps, i) => ({
             id: `n${i}`,
             clauses: {
@@ -63,7 +64,7 @@ function templateFrom(parents: readonly number[][]): AssemblyTemplate {
                 [keyOf("figaro-topology")]: { parentOrderHashes: ps.map((p) => `n${p}`) },
             },
         })),
-    };
+    });
 }
 
 /** A decimal price string valid for `parseUnits(price, decimals)`: up to
@@ -153,7 +154,7 @@ describe("reconstructOrdersFromTemplate — payment conservation", () => {
 });
 
 describe("resolveSubOrderPricing — replay invariant", () => {
-    const node: TemplateAgreement = { id: "R", clauses: { [keyOf("figaro-commerce")]: {} } };
+    const node = { clauses: { [keyOf("figaro-commerce")]: {} } };
 
     it("fixed items: payment = unitPrice, billedQuantity = 1, exactly the published price", () => {
         fc.assert(

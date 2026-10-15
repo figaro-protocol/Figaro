@@ -34,6 +34,7 @@ import {
     planSubOrderSellers,
     reconstructOrdersFromTemplate,
     resolveSubOrderPricing,
+    slotClauses,
     templateParentOrderHashes,
     type AssemblyCheckoutLineItem,
     type PlannedTemplateOrder,
@@ -173,7 +174,8 @@ export async function executeAssemblyCheckout(
     const { buyer, currency, assembly } = params;
     const { signRoot, signAndShare } = deps;
     const specs = specSource();
-    const template = assembly.assemblyTemplate;
+    const hydrated = assembly.hydratedAssembly;
+    const template = hydrated.template;
 
     // UTILITY-TOKEN PIN VERIFICATION: when the assembly pins
     // its denomination (an assembly-scoped term, part of the
@@ -216,7 +218,7 @@ export async function executeAssemblyCheckout(
     // per-clause cursor); a node the profile leaves unbound takes the buyer's
     // checkout-time choice.
     const boundSellerByNode = new Map(
-        planSubOrderSellers(assembly).map(({ node, seller }) => [node.id, seller]),
+        planSubOrderSellers(assembly).map(({ node, seller }) => [node.nodeId, seller]),
     );
 
     // Per-node state the realization callbacks share: the sub's line items are
@@ -232,7 +234,7 @@ export async function executeAssemblyCheckout(
         commitment: order.commitment,
     });
 
-    await reconstructOrdersFromTemplate(template, {
+    await reconstructOrdersFromTemplate(hydrated, {
         buyer,
         currency,
         chainId: deps.chainId,
@@ -304,9 +306,13 @@ function checkoutNodes(
 ): (planned: PlannedTemplateOrder) => ReconstructNodeSpec {
     const { rootId, boundSellerByNode, compositionByNode, specs } = ctx;
     const { leadSellerAddress, currency, payment, lineItems, sellerCatalogs, tokenDecimals, subOrderSelections } = params;
-    const template = params.assembly.assemblyTemplate;
+    const hydrated = params.assembly.hydratedAssembly;
     return (planned) => {
-        const node = template.agreements.find((a) => a.id === planned.nodeId)!;
+        // The order slot's own clauses — its registered agreement's, with the
+        // order slot's fills merged over them — never the assembly-scoped
+        // terms the walk folds into every order.
+        const slot = hydrated.template.agreements.find((a) => a.id === planned.nodeId)!;
+        const node = { clauses: slotClauses(hydrated, slot) };
         if (planned.nodeId === rootId) {
             // The root's clause map: the derived LOGISTICS sections (cargo /
             // class leaves / dimweight) filled from the cart — wherever
@@ -345,7 +351,7 @@ function checkoutNodes(
         const pricing = selection
             ? null
             : resolveSubOrderPricing({
-                node: { ...node, clauses: nodeClauses },
+                node: { clauses: nodeClauses },
                 seller: subSeller, sellerCatalogs, tokenDecimals, specs,
                 checkoutQuantity: params.subOrderQuantities?.[planned.nodeId],
             });
@@ -421,16 +427,17 @@ export async function planAssemblyOrders(
     if (!CONTRACTS.core) {
         throw new Error("Core contract address is not configured, so orders cannot be built.");
     }
-    const template = params.assembly.assemblyTemplate;
+    const hydrated = params.assembly.hydratedAssembly;
+    const template = hydrated.template;
     const rootId =
         template.agreements.find((o) => templateParentOrderHashes(o).length === 0)?.id ??
         template.agreements[0]?.id;
     if (rootId === undefined) throw new Error("This assembly has no root order.");
     const boundSellerByNode = new Map(
-        planSubOrderSellers(params.assembly).map(({ node, seller }) => [node.id, seller]),
+        planSubOrderSellers(params.assembly).map(({ node, seller }) => [node.nodeId, seller]),
     );
     const specs = specSource();
-    return reconstructOrdersFromTemplate(template, {
+    return reconstructOrdersFromTemplate(hydrated, {
         buyer: params.buyer,
         currency: params.currency,
         chainId: opts.chainId,

@@ -67,7 +67,14 @@ contract FigaroBatchVerifierTest is Test {
         MockClauseOrAssemblyStake stakeGate = new MockClauseOrAssemblyStake();
         address predicted = vm.computeCreateAddress(address(this), vm.getNonce(address(this)) + 1);
         counter = new UsageCounter(
-            address(core), address(members), address(stakeGate), address(stakeGate), predicted, 1, periods
+            address(core),
+            address(members),
+            address(stakeGate),
+            address(stakeGate),
+            address(stakeGate),
+            predicted,
+            1,
+            periods
         );
         verifier = new FigaroBatchVerifier(address(sp1), VKEY, address(registry), address(counter), GENESIS);
         assertEq(address(verifier), predicted, "verifier address prediction");

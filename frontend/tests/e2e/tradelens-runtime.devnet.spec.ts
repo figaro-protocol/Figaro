@@ -29,7 +29,7 @@
  *   audit     the new clauses' evidence surfaces in the audit bundle.
  */
 import { test, expect, gotoAsWallet } from './devnet-multi-test';
-import { ATTESTATION_COORDINATOR_ABI, PROVENANCE_LEAF_KEY, USAGE_COUNTER_ABI, calculateBonds } from '@figaro-protocol/sdk';
+import { ATTESTATION_COORDINATOR_ABI, PROVENANCE_LEAF_KEY, USAGE_COUNTER_ABI, USAGE_KIND_AGREEMENT, USAGE_KIND_ASSEMBLY, calculateBonds } from '@figaro-protocol/sdk';
 import { mnemonicToAccount } from 'viem/accounts';
 import { createPublicClient, createWalletClient, http, parseAbi, parseUnits, type Hex } from 'viem';
 import type { Page } from '@playwright/test';
@@ -313,9 +313,10 @@ test.describe('TRADELENS RUNTIME — six sellers bond, the container story attes
 
         // ── RPGF USAGE RECORDING (count usage when it happens):
         //    the resolve capability records every committed
-        //    clause's or assembly's use on the UsageCounter — one UsageRecorded per
-        //    DISTINCT clause or assembly in the process (a key two orders carry
-        //    is planned once), INCLUDING the assembly's compositionHash via the
+        //    clause's, agreement's and assembly's use on the UsageCounter — one
+        //    UsageRecorded per DISTINCT (kind, key) in the process (a key two
+        //    orders carry is planned once), INCLUDING each order slot's
+        //    agreement key and the assembly's compositionHash via the
         //    agreement's provenance leaf, which the checkout walk sets. Verified out-of-band
         //    from the chain, never from the UI. ──
         const usageCounter = config.usageCounter as Hex;
@@ -332,9 +333,12 @@ test.describe('TRADELENS RUNTIME — six sellers bond, the container story attes
         // recorded clauses and assemblies — the assembly-designer credit leg.
         const adopted = (await discoverAnchoredAssemblies()).find((t) => t.slug === slug);
         expect(adopted?.compositionHash, 'the adopted assembly re-discovers from chain').toBeTruthy();
-        const clausesAndAssemblies = (await usageEvents()).map((e) => (e.args.clauseOrAssembly as string).toLowerCase());
+        const recorded = await usageEvents();
+        const keysOfKind = (kind: number) => recorded
+            .filter((e) => Number(e.args.kind) === kind)
+            .map((e) => (e.args.clauseOrAssembly as string).toLowerCase());
         expect(
-            clausesAndAssemblies,
+            keysOfKind(USAGE_KIND_ASSEMBLY),
             "the assembly's compositionHash is a recorded assembly (designer credit)",
         ).toContain(adopted!.compositionHash!.toLowerCase());
 
@@ -346,6 +350,16 @@ test.describe('TRADELENS RUNTIME — six sellers bond, the container story attes
             timeout: 180000, message: 'the resolve capability finishes its usage writes',
         }).toBeTruthy();
         console.log(`[tradelens-rt] ${usageSummary}`);
+        // Every write has landed: each order slot's registered agreement is
+        // recorded under its own kind — the agreement designer's credit leg,
+        // beside the assembly's.
+        const agreementKeys = (await usageEvents())
+            .filter((e) => Number(e.args.kind) === USAGE_KIND_AGREEMENT)
+            .map((e) => (e.args.clauseOrAssembly as string).toLowerCase());
+        for (const slot of adopted!.agreements) {
+            expect(agreementKeys, `order slot ${slot.id}'s agreement is a recorded agreement`)
+                .toContain(slot.agreementKey.toLowerCase());
+        }
         const resolveEvents = await publicClient.getContractEvents({
             address: core, abi: CORE_ABI, eventName: 'ProcessResolved', args: { processId }, fromBlock: 0n,
         });

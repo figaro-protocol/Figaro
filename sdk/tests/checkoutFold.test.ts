@@ -349,12 +349,17 @@ describe("every spec-routed fill reads the spec each composed key names", () => 
 
     it("the walk's guarded fillWalkProvenance writes agreement.provenance, never a section", () => {
         const agreement: Agreement = { version: "a1", buyer: "0x01", seller: "0x02", sections: [{ clause: REAL, data: {} }] };
-        const filled = fillWalkProvenance(agreement, HASH, "n");
-        expect(filled.provenance).toBe(HASH);
+        const KEY = `0x${"ef".repeat(32)}` as `0x${string}`;
+        const P = { agreementKey: KEY, compositionHash: HASH };
+        const filled = fillWalkProvenance(agreement, P, "n");
+        expect(filled.provenance).toEqual(P);
         expect(filled.sections).toEqual(agreement.sections);
-        // An identical claim passes (case-insensitive); a different one is a forgery.
-        expect(fillWalkProvenance({ ...agreement, provenance: HASH.toUpperCase().replace("0X", "0x") as `0x${string}` }, HASH, "n").provenance).toBe(HASH);
-        expect(() => fillWalkProvenance({ ...agreement, provenance: `0x${"cd".repeat(32)}` }, HASH, "n"))
+        // An identical claim passes (case-insensitive); a different key or hash is a forgery.
+        const upper = HASH.toUpperCase().replace("0X", "0x") as `0x${string}`;
+        expect(fillWalkProvenance({ ...agreement, provenance: { agreementKey: KEY, compositionHash: upper } }, P, "n").provenance).toEqual(P);
+        expect(() => fillWalkProvenance({ ...agreement, provenance: { agreementKey: KEY, compositionHash: `0x${"cd".repeat(32)}` } }, P, "n"))
+            .toThrow(/refusing to claim a different provenance/);
+        expect(() => fillWalkProvenance({ ...agreement, provenance: { agreementKey: `0x${"cd".repeat(32)}`, compositionHash: HASH } }, P, "n"))
             .toThrow(/refusing to claim a different provenance/);
     });
 
@@ -415,7 +420,7 @@ describe("every spec-routed fill reads the spec each composed key names", () => 
             }],
         }] as unknown as Parameters<typeof resolveSubOrderPricing>[0]["sellerCatalogs"];
         const priced = (clauses: Record<string, Record<string, unknown>>) => resolveSubOrderPricing({
-            node: { id: "n", clauses },
+            node: { clauses },
             seller: SELLER, sellerCatalogs: catalogs, tokenDecimals: 0, specs: window.specs,
         });
         expect(priced({ [CARGO_KEY]: span }).issue).toBe("unresolvable-quantity");

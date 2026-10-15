@@ -24,9 +24,9 @@ import { templateCompositionHash, type AssemblyTemplate } from "../src/assembly.
 import {
     addressArb,
     agreementArb,
-    clauseDataArb,
     commitmentArb,
     hexOf,
+    templateArb,
     uint256Arb,
 } from "./propertyArbs.js";
 import { keyOf } from "./specFixtures.js";
@@ -66,41 +66,6 @@ const payloadArb: fc.Arbitrary<CommitmentPayload> = fc.record(
     },
     { requiredKeys: ["commitment", "agreement"] },
 );
-
-/** A template: node 0 is the root; every later node's topology clause parents
- *  it on earlier local ids (acyclic by construction). Editorial prose optional. */
-const templateArb: fc.Arbitrary<AssemblyTemplate> = fc
-    .integer({ min: 1, max: 4 })
-    .chain((n) =>
-        fc.record(
-            {
-                name: fc.string({ maxLength: 16 }),
-                summary: fc.string({ maxLength: 24 }),
-                agreements: fc.tuple(
-                    ...Array.from({ length: n }, (_, i) =>
-                        fc.record({
-                            id: fc.constant(`order-${i}`),
-                            clauses: fc
-                                .tuple(
-                                    i === 0
-                                        ? fc.constant<string[]>([])
-                                        : fc.uniqueArray(fc.integer({ min: 0, max: i - 1 }), {
-                                              minLength: 1,
-                                              maxLength: Math.min(i, 2),
-                                          }).map((ps) => ps.map((p) => `order-${p}`)),
-                                    clauseDataArb,
-                                )
-                                .map(([parents, data]) => ({
-                                    [keyOf("figaro-topology")]: { parentOrderHashes: parents },
-                                    [keyOf("figaro-commerce")]: data,
-                                })),
-                        }),
-                    ),
-                ),
-            },
-            { requiredKeys: ["agreements"] },
-        ),
-    );
 
 // ── Properties ──────────────────────────────────────────────────────────────
 

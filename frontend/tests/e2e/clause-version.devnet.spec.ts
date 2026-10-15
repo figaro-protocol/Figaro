@@ -18,10 +18,9 @@
  */
 import { test, expect } from './devnet-multi-test';
 import { createPublicClient, defineChain, http, type Hex } from 'viem';
-import { ASSEMBLY_REGISTRY_ABI, CLAUSE_REGISTRY_ABI } from '@figaro-protocol/sdk';
-import { deriveAssemblySlug } from '@/lib/shared/assemblyTemplate';
+import { CLAUSE_REGISTRY_ABI } from '@figaro-protocol/sdk';
 import { makeProbeSpec, registerProbeClause } from './probeAssembly';
-import { readLocalDeploymentConfig, publishOrAdoptReviewed } from './devnet-helpers';
+import { discoverAnchoredAssemblies, readAgreementBinding, readLocalDeploymentConfig, publishOrAdoptReviewed } from './devnet-helpers';
 
 const RPC_URL = 'http://127.0.0.1:8545';
 const LOCAL_ANVIL = defineChain({
@@ -99,22 +98,15 @@ test.describe('clause lookalike (devnet)', () => {
         const handle = page.url().match(/[?&]slug=(asm-[a-z0-9-]+)/)?.[1];
         const slug = await publishOrAdoptReviewed(page, handle!);
 
-        // Out-of-band: the anchored template is keyed by the lookalike's key,
-        // and the composition hash the chain keys on derives that slug.
-        const assemblyRegistry = (process.env.NEXT_PUBLIC_ASSEMBLY_REGISTRY ?? config.assemblyRegistry) as Hex;
-        const events = await pub.getContractEvents({
-            address: assemblyRegistry, abi: ASSEMBLY_REGISTRY_ABI, eventName: 'AssemblyRegistered', fromBlock: 0n,
-        });
-        const anchored = events.find(
-            (e) => deriveAssemblySlug(e.args.compositionHash as `0x${string}`) === slug,
-        );
-        expect(anchored, 'the published composition is anchored on-chain').toBeTruthy();
-        const gateway = process.env.NEXT_PUBLIC_IPFS_GATEWAY_URL ?? 'http://127.0.0.1:8080';
-        const uri = anchored!.args.contentURI as string;
-        const doc = await (await fetch(`${gateway}/ipfs/${uri.slice('ipfs://'.length)}`)).json() as {
-            agreements: Array<{ clauses: Record<string, unknown> }>;
-        };
-        const composedKeys = doc.agreements.flatMap((a) => Object.keys(a.clauses).map((k) => k.toLowerCase()));
+        // Out-of-band: the anchored template's order slot binds a registered
+        // agreement keyed by the lookalike's key, and the composition hash
+        // the chain keys on derives that slug.
+        const anchored = (await discoverAnchoredAssemblies()).find((a) => a.slug === slug);
+        expect(anchored, 'the published composition is anchored on-chain, its agreements registered').toBeTruthy();
+        for (const slot of anchored!.agreements) {
+            expect(await readAgreementBinding(slot.agreementKey), `order slot ${slot.id} binds a registered agreement`).not.toBeNull();
+        }
+        const composedKeys = anchored!.agreements.flatMap((a) => Object.keys(a.clauses).map((k) => k.toLowerCase()));
         expect(composedKeys, 'the pinned template is keyed by the lookalike').toContain(lookalikeKey.toLowerCase());
         expect(composedKeys, 'and never names the original').not.toContain(originalKey.toLowerCase());
     });

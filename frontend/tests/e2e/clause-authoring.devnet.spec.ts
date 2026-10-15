@@ -326,7 +326,7 @@ test.describe('CLAUSE AUTHORING — register on /clauses/register, inventory rea
         await expect(
             reclaimBtn,
             'the disabled reason names the verified in-flight count',
-        ).toHaveAttribute('title', /Cannot reclaim the stake yet: 1 in-flight trade still composes this clause or assembly/, { timeout: 60000 });
+        ).toHaveAttribute('title', /Cannot reclaim the stake yet: 1 in-flight trade still composes this registration/, { timeout: 60000 });
         await expect(reclaimBtn).toBeDisabled();
 
         // ── RESOLVE (buyer dominance, atomic): the author-as-buyer resolves the

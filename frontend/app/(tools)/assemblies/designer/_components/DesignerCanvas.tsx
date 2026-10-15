@@ -55,7 +55,13 @@ import { AssemblyTermsPanel } from "./AssemblyTermsPanel";
 import { CompositionAssist } from "./CompositionAssist";
 import { CompositionIdentity } from "./CompositionIdentity";
 import { assemblyTemplateToDraft } from "@/lib/designer/assemblyTemplateToDraft";
-import type { AssemblyTemplate } from "@/lib/shared/assemblyTemplate";
+import type { HydratedAssembly } from "@figaro-protocol/sdk";
+import { clauseIsMandatory } from "@/lib/shared/clauseSpecSource";
+import {
+    fetchComposedAgreement,
+    getComposedAgreement,
+    useComposedAgreementsVersion,
+} from "@/lib/protocol/useAgreementRegistry";
 import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
 import { maxCommitsLandableInOneBlock, maxOrdersResolvablePerProcess } from "@/lib/shared/chainGasCeilings";
 import { useChainId, usePublicClient } from "wagmi";
@@ -74,6 +80,7 @@ interface InitialState {
     description: string;
     slug: string | null;
     clausesByOrderId: Record<string, Record<string, Record<string, unknown>>>;
+    registeredByOrderId: Record<string, `0x${string}`>;
     assemblyClauses: Record<string, Record<string, unknown>>;
 }
 
@@ -90,6 +97,7 @@ function buildBlankInitial(): InitialState {
         description: "",
         slug: null,
         clausesByOrderId: {},
+        registeredByOrderId: {},
         assemblyClauses: {},
     };
 }
@@ -108,6 +116,7 @@ function snapshotToInitial(snap: DesignSnapshot): InitialState {
         description: snap.description ?? "",
         slug: snap.slug || null,
         clausesByOrderId: snap.clausesByOrderId ?? {},
+        registeredByOrderId: snap.registeredByOrderId ?? {},
         assemblyClauses: snap.assemblyClauses ?? {},
     };
 }
@@ -156,6 +165,18 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
     const [clausesByOrderId, setClausesByOrderId] = useState<
         Record<string, Record<string, Record<string, unknown>>>
     >(() => initial.clausesByOrderId);
+    // Per-order registered agreement (the drawer's "registered agreement"
+    // pick): order id → the AgreementRegistry key the order slot binds as is.
+    const [registeredByOrderId, setRegisteredByOrderId] = useState<
+        Record<string, `0x${string}`>
+    >(() => initial.registeredByOrderId);
+    // The bound agreements' documents are read from the registry (chain →
+    // IPFS) into the session cache the build reads; a read re-derives the
+    // identity and the canvas's per-node clauses.
+    const composedAgreementsVersion = useComposedAgreementsVersion();
+    useEffect(() => {
+        for (const key of Object.values(registeredByOrderId)) void fetchComposedAgreement(key);
+    }, [registeredByOrderId]);
     // The assembly-scoped terms, clause key → the designer's values.
     const [assemblyClauses, setAssemblyClauses] = useState<
         Record<string, Record<string, unknown>>
@@ -226,6 +247,7 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
             setDescription(restored.description);
             setSlug(restored.slug);
             setClausesByOrderId(restored.clausesByOrderId);
+            setRegisteredByOrderId(restored.registeredByOrderId);
             setAssemblyClauses(restored.assemblyClauses);
             setHydrated(true);
             return;
@@ -241,6 +263,7 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
             setDescription(init.description);
             setSlug(init.slug);
             setClausesByOrderId(init.clausesByOrderId);
+            setRegisteredByOrderId(init.registeredByOrderId);
             setAssemblyClauses(init.assemblyClauses);
         }
         setHydrated(true);
@@ -262,13 +285,14 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
             nextSellerIndex: session.nextSellerIndex,
             orders,
             clausesByOrderId,
+            ...(Object.keys(registeredByOrderId).length > 0 ? { registeredByOrderId } : {}),
             ...(Object.keys(assemblyClauses).length > 0 ? { assemblyClauses } : {}),
             createdAt: Date.now(),
             updatedAt: Date.now(),
         };
         saveCurrentSession(snap);
         setSavedAt(Date.now());
-    }, [hydrated, seedError, orders, clausesByOrderId, assemblyClauses, name, summary, description, slug, session.processId, session.nextOrderIndex, session.nextSellerIndex]);
+    }, [hydrated, seedError, orders, clausesByOrderId, registeredByOrderId, assemblyClauses, name, summary, description, slug, session.processId, session.nextOrderIndex, session.nextSellerIndex]);
 
     // Read both chain gas ceilings (each depends on the live block gas limit, so
     // it's a runtime read; recompute when the chain changes).
@@ -292,6 +316,19 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
         const out = toggleClauseByKey(clausesByOrderId[orderId] ?? {}, clauseKey, next, {});
         setClausesByOrderId((prev) => ({ ...prev, [orderId]: out }));
     }, [clausesByOrderId]);
+
+    /** Bind a registered agreement to an order slot as is, or unbind it
+     *  (`null`). Binding leaves the order's composed clauses where they are:
+     *  an order slot that both binds and composes is the build's refusal,
+     *  surfaced in the identity readout and the review. */
+    const bindAgreement = useCallback((orderId: string, agreementKey: `0x${string}` | null) => {
+        setRegisteredByOrderId((prev) => {
+            const next = { ...prev };
+            if (agreementKey) next[orderId] = agreementKey;
+            else delete next[orderId];
+            return next;
+        });
+    }, []);
 
     const setClauseField = useCallback(
         (orderId: string, clauseKey: string, field: string, value: unknown) => {
@@ -356,6 +393,9 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
                 if (selectedOrderId && toRemove.has(selectedOrderId)) {
                     setSelectedOrderId(null);
                 }
+                setRegisteredByOrderId((bound) => Object.fromEntries(
+                    Object.entries(bound).filter(([id]) => !toRemove.has(id)),
+                ));
                 return prev.filter((o) => !toRemove.has(o.orderHash));
             });
         },
@@ -393,6 +433,7 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
         setSummary("");
         setDescription("");
         setSlug(null);
+        setRegisteredByOrderId({});
         clearCurrentSession();
     }, [session]);
 
@@ -403,10 +444,11 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
      *  stay the designer's act. Throws on a template the chain-loaded specs
      *  can't project — the assist panel surfaces it before state is touched.
      *  Returns false when the designer declines the replace-confirmation. */
-    const handleImportTemplate = useCallback((template: AssemblyTemplate): boolean => {
+    const handleImportTemplate = useCallback((hydratedImport: HydratedAssembly, composeKeys: ReadonlySet<string>): boolean => {
+        const template = hydratedImport.template;
         // Hydrate FIRST — a throw here (unregistered clause, bad topology)
         // must leave the canvas untouched.
-        const draft = assemblyTemplateToDraft(template, { slug: "", name: template.name ?? "" });
+        const draft = assemblyTemplateToDraft(hydratedImport, { slug: "", name: template.name ?? "", composeKeys });
         const nonTrivial = orders.length > 1
             || Object.values(clausesByOrderId).some((c) => Object.keys(c).length > 0);
         if (nonTrivial) {
@@ -425,6 +467,7 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
         setDescription(template.description ?? "");
         setSlug(null);
         setClausesByOrderId(restored.clausesByOrderId);
+        setRegisteredByOrderId(restored.registeredByOrderId);
         setAssemblyClauses(restored.assemblyClauses);
         setSelectedOrderId(null);
         return true;
@@ -457,12 +500,13 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
                 nextSellerIndex: session.nextSellerIndex,
                 orders,
                 clausesByOrderId,
+                ...(Object.keys(registeredByOrderId).length > 0 ? { registeredByOrderId } : {}),
                 ...(Object.keys(assemblyClauses).length > 0 ? { assemblyClauses } : {}),
                 createdAt: Date.now(),
                 updatedAt: Date.now(),
             },
         };
-    }, [slug, name, summary, description, orders, clausesByOrderId, assemblyClauses, session]);
+    }, [slug, name, summary, description, orders, clausesByOrderId, registeredByOrderId, assemblyClauses, session]);
 
     function explainSnapshotReason(_reason: "empty-composition"): string {
         return "Add at least one order before publishing.";
@@ -537,6 +581,23 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
         const result = buildSnapshot();
         return result.ok ? result.snapshot : null;
     }, [buildSnapshot]);
+
+    // What each node shows on the canvas: the clauses composed on it, or —
+    // for an order slot binding a registered agreement — that agreement's
+    // clauses (the mandatory folds left out, as the composed view leaves them).
+    const canvasClausesByOrderId = useMemo(() => {
+        const out = { ...clausesByOrderId };
+        for (const [orderId, key] of Object.entries(registeredByOrderId)) {
+            const doc = getComposedAgreement(key);
+            if (!doc) continue;
+            out[orderId] = {
+                ...Object.fromEntries(Object.entries(doc.clauses).filter(([clauseKey]) => !clauseIsMandatory(clauseKey))),
+                ...(clausesByOrderId[orderId] ?? {}),
+            };
+        }
+        return out;
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [clausesByOrderId, registeredByOrderId, composedAgreementsVersion]);
 
     const savedHint = useMemo(() => {
         if (!savedAt) return null;
@@ -752,7 +813,7 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
                     <div className="h-full px-6 py-4 flex flex-col">
                         <TopologyCanvas
                             orders={orders}
-                            clauseValuesByOrderId={clausesByOrderId}
+                            clauseValuesByOrderId={canvasClausesByOrderId}
                             designerMode
                             onAddSubOrder={handleAddSubOrder}
                             onAddParent={handleAddParent}
@@ -776,6 +837,10 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
                     }
                     onToggleClause={(clauseKey, next) => {
                         if (selectedOrderId) toggleClause(selectedOrderId, clauseKey, next);
+                    }}
+                    boundAgreementKey={selectedOrderId ? registeredByOrderId[selectedOrderId] : undefined}
+                    onBindAgreement={(agreementKey) => {
+                        if (selectedOrderId) bindAgreement(selectedOrderId, agreementKey);
                     }}
                     onSetClauseField={(clauseKey, field, value) => {
                         // No clause selection spawns a node — the designer draws nodes

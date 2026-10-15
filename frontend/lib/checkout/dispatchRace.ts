@@ -47,6 +47,7 @@ import {
     derivePricedFields,
     hashCommitmentStruct,
     resolveSubOrderPricing,
+    slotClauses,
 } from "@figaro-protocol/sdk";
 import {
     startRace,
@@ -303,11 +304,11 @@ export function useDispatchRace() {
         runRef.current = null;
         try {
             setStep("drafting");
-            const template = checkout.assembly.assemblyTemplate;
-            const node = template.agreements.find((a) => a.id === racedNodeId);
+            const hydrated = checkout.assembly.hydratedAssembly;
+            const node = hydrated.template.agreements.find((a) => a.id === racedNodeId);
             if (!node) throw new Error(`Template node "${racedNodeId}" not found.`);
             const specs = specSource();
-            const nodeClauses = { ...node.clauses, ...(checkout.clauseFills?.[racedNodeId] ?? {}) };
+            const nodeClauses = { ...slotClauses(hydrated, node), ...(checkout.clauseFills?.[racedNodeId] ?? {}) };
 
             // The candidate set: the live discovered-seller catalogs that can
             // price this node — the same registry read the manual path uses,
@@ -322,7 +323,7 @@ export function useDispatchRace() {
                     address: cat.address as Hex,
                     services: cat.agentServices,
                     pricing: resolveSubOrderPricing({
-                        node: { ...node, clauses: nodeClauses },
+                        node: { clauses: nodeClauses },
                         seller: cat.address as Hex,
                         sellerCatalogs: checkout.sellerCatalogs,
                         tokenDecimals: checkout.tokenDecimals,
@@ -349,7 +350,7 @@ export function useDispatchRace() {
             // single deadline. Every dry walk and the final checkout use them.
             const deadline = await chainDeadline();
             const salts = new Map<string, bigint>(
-                template.agreements.map((a) => [a.id, generateSalt()]),
+                hydrated.template.agreements.map((a) => [a.id, generateSalt()]),
             );
             const saltFn = (nodeId: string) => {
                 const s = salts.get(nodeId);

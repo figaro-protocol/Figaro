@@ -25,7 +25,7 @@ Pre-defined agents are **maintainer-facing by default** — they act on this rep
 
 - **Public ecosystem agents** (this document's subject; any user, acting for their own wallet, never the repo) are prompt definitions in `ecosystem-agents/`, one per capacity:
   - **`figaro-operator`** — *operate* a wallet: sign every transaction on the owner's behalf (accept, resolve, originate, attest) using `@figaro-protocol/sdk/agent`, guided by the owner's policy (HITL by default; refuse-all until a rule is set). Role is read from process state, so the same operator is buyer in one process and seller in another.
-  - **`figaro-clause-author` / `figaro-assembly-designer`** — write or **fork** a clause/assembly and register it on the permissionless registries (an off-chain `ClauseSpec` / an `AssemblyTemplate` → IPFS → `ClauseRegistry`/`AssemblyRegistry`, under the **user's** key). The clause or assembly belongs to the user, and designer rewards follow its use.
+  - **`figaro-clause-author` / `figaro-assembly-designer`** — write or **fork** a clause/assembly and register it on the permissionless registries (an off-chain `ClauseSpec` / a `ComposedAgreement` / an `AssemblyTemplate` → IPFS → `ClauseRegistry`/`AgreementRegistry`/`AssemblyRegistry`, under the **user's** key). The designer composes an assembly from registered agreements and registers a new one only when none fits. The clause, agreement or assembly belongs to the user, and designer rewards follow its use.
   - **`figaro-analyst`** — *read and analyze* a market's public graphs with `@figaro-protocol/sdk/derive` (base graphs from the must-have clauses, overlays spec-derived per attestable clause family in use, composition graphs from discovered venues). It holds **no key and signs nothing**; substance it was not given it BUYS as an ordinary data-market buyer, through the operator; and it sells **analyses**, never the corpus. Reference runnable: `ecosystem-agents/runtime/figaro-analyst.mjs` — a service, not a script: six HTTP routes (`GET /status`, `GET /graphs`, three `GET /queries/*`, and a key-gated `POST /prompt`), CORS answered so browsers read it directly, with opt-in cross-checking against extra RPC endpoints via `FIGARO_ANALYST_CROSSCHECK_RPC_URLS`.
 - **Maintainer-facing repo agents** (the subagents that build THIS repo, acting only for the maintainer): their definitions are NOT in the public tree — the build side of the seam is private, and `ecosystem-agents/` is the whole public set. They touch the repo, which is their job; nothing in this document applies to them.
 
@@ -62,8 +62,9 @@ deadline-is-CHAIN-time rule — is `sdk/README.md` § "The offer envelope".
 
 ### The exchange
 
-1. **Buyer** instantiates a discovered assembly's root order (merges its own terms
-   onto the template's clause bag), signs its half, and sends the envelope to the
+1. **Buyer** instantiates a discovered assembly's root order (fills the registered
+   agreement the root order slot holds, hydrated against its `agreementKey`, with
+   its own values; it adds and drops no clause), signs its half, and sends the envelope to the
    seller over a coordination channel.
 2. **Seller** runs the anti-tamper gate (below), applies BOTH of its decision floors
    (below), and — if accepting — approves its 2× cumulative-value bond and
@@ -219,10 +220,11 @@ over the orders they chose to treat as comparable, and the protocol neither
 publishes that comparison nor endorses it.
 
 **Provenance rides committed leaves.** The agreement format's reserved
-provenance leaf carries the `compositionHash` that names which registered
-assembly a process instantiated — the same
-value the once-per-process assembly credit is claimed from, and it counts only while
-that composition holds a live `AssemblyRegistry` binding — and `figaro-topology`'s
+provenance leaf carries the `agreementKey` and the `compositionHash` that name
+which registered agreement and which registered assembly an order instantiated —
+the same values the once-per-process agreement and assembly credits are claimed
+from, each counting only while its own registry holds a live binding, the
+assembly credit with the agreement's membership proof under the root — and `figaro-topology`'s
 `parentOrderHashes` carries the edges the Core does not store. Both are merkle
 leaves under `agreementHash`, so a provenance claim is verifiable by inclusion proof
 against the on-chain root instead of trusted from an index. That supports asking
@@ -275,9 +277,10 @@ What is emitted, and what each thing is evidence of:
   `services`. `MemberWithdrawalRequested` / `MemberWithdrawn` are the same signal run
   backwards. Evidence of: a counterparty holding a live, reclaimable stake — never a
   score, never a gate.
-- **New terms and new shapes of trade exist.** `ClauseRegistry.ClauseRegistered` and
-  `AssemblyRegistry.AssemblyRegistered` carry the designer and a `contentURI`; the content
-  resolves chain → IPFS. Either registry's `DepositWithdrawn` de-surfaces the entry for new
+- **New terms and new shapes of trade exist.** `ClauseRegistry.ClauseRegistered`,
+  `AgreementRegistry.AgreementRegistered` and `AssemblyRegistry.AssemblyRegistered` carry
+  the designer and a `contentURI`; the content resolves chain → IPFS, and a reader
+  verifies it against the key (a composed agreement by recomputing its `agreementKey`). Either registry's `DepositWithdrawn` de-surfaces the entry for new
   compositions while every order already committed against it still resolves.
 - **Someone bonded.** `FigaroCore.OrderCommitted`, with `OrderSeller` and `OrderCurrency`
   beside it: a value at one link of a chain, in a named token, backed 2×. The TERMS behind
@@ -296,10 +299,11 @@ What is emitted, and what each thing is evidence of:
 - **What the network is actually composed OF.**
   `UsageCounter.UsageRecorded(kind, clauseOrAssembly, period, processId, seller, c, d, score)`,
   plus `BatchUsageRecorded` on the batch path (cumulative — it REPLACES rather than adds);
-  `scoreOf(kind, clauseOrAssembly, period)` sums both, kind `0` for a clause key and
-  `1` for an assembly's `compositionHash`. The `d` term counts DISTINCT LIVE-STAKED
+  `scoreOf(kind, clauseOrAssembly, period)` sums both, kind `0` for a clause key,
+  `1` for an assembly's `compositionHash` and `2` for a registered agreement's
+  `agreementKey`. The `d` term counts DISTINCT LIVE-STAKED
   sellers, so it reads as adoption breadth priced at one deposit per seller — the nearest
-  thing on the network to a demand signal for a clause or an assembly. It exists only
+  thing on the network to a demand signal for a clause, an agreement or an assembly. It exists only
   because buyers call `recordProcessUsage` at resolution; uncounted usage is permanently
   deniable.
 
@@ -353,8 +357,10 @@ composes.
   those bytes (`computeClauseKey(spec)`), and the spec's `clauseId` and `version` are
   its label. Permissionless, first-write-wins,
   deposit-backed; the capacity's prompt is `ecosystem-agents/figaro-clause-author.md`.
-- **Assembly designer** — `AssemblyRegistry.registerAssembly(compositionHash, contentURI)`
-  over a published template. Composition is the designer's act and happens only there,
+- **Assembly designer** — `AgreementRegistry.registerAgreement(agreementKey, contentURI)`
+  for each composed agreement no registration already carries, then
+  `AssemblyRegistry.registerAssembly(compositionHash, contentURI)` over a published
+  template whose order slots name registered agreements. Composition is the designer's act and happens only there,
   never mid-checkout and never mid-process (`OPEN_WORLD.md` §1, pattern 1); the prompt is
   `ecosystem-agents/figaro-assembly-designer.md`.
 - **Composition** — dispatched from the spec, never from a table the agent carries: a

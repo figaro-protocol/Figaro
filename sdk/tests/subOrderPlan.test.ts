@@ -11,8 +11,8 @@ import {
     type BoundAssemblyPlanInput,
     type PricingCatalog,
 } from "../src/checkoutPlan.js";
-import type { TemplateAgreement } from "../src/assembly.js";
 import { keyOf, specSourceFromFixtures } from "./specFixtures.js";
+import { hydrateAuthored } from "./hydrate.js";
 
 // The kit-assembly diamond: A (lead, root) → B, A → C, B → D, C → D.
 // B + D carry proximity-policy, C carries emissions. Proximity is bound
@@ -40,7 +40,7 @@ const assembly: BoundAssemblyPlanInput = {
         { clauseKey: PROX, addresses: [SWIFT, MERCATO] },
         { clauseKey: EMISSIONS, addresses: [ROSSO] },
     ],
-    assemblyTemplate: {
+    hydratedAssembly: hydrateAuthored({
         name: "Kit",
         agreements: [
             { id: "A", clauses: { ...parents([]) } },
@@ -48,7 +48,7 @@ const assembly: BoundAssemblyPlanInput = {
             { id: "C", clauses: { [EMISSIONS]: {}, ...parents(["A"]) } },
             { id: "D", clauses: { [PROX]: {}, ...parents(["B", "C"]) } },
         ],
-    },
+    }),
 };
 
 // Every seller — the lead included — prices from its OWN catalog's component
@@ -77,22 +77,22 @@ const catalogs = [
     },
 ] as unknown as PricingCatalog[];
 
-const orderById = (id: string): TemplateAgreement =>
-    assembly.assemblyTemplate.agreements.find((o) => o.id === id)!;
-const payArgs = (node: TemplateAgreement, seller: `0x${string}`) => ({
+const orderById = (id: string) =>
+    planSubOrderSellers(assembly).map((p) => p.node).find((o) => o.nodeId === id)!;
+const payArgs = (node: { clauses: Record<string, Record<string, unknown>> }, seller: `0x${string}`) => ({
     node, seller, sellerCatalogs: catalogs, tokenDecimals: 18, specs: NO_SPECS,
 });
 
 describe("planSubOrderSellers", () => {
     it("orders sub-orders topologically (parents before children)", () => {
-        expect(planSubOrderSellers(assembly).map((p) => p.node.id)).toEqual(["B", "C", "D"]);
+        expect(planSubOrderSellers(assembly).map((p) => p.node.nodeId)).toEqual(["B", "C", "D"]);
     });
 
     it("assigns sellers by binding, drawing shared-clause siblings by commit order", () => {
         const plan = planSubOrderSellers(assembly);
-        expect(plan.find((p) => p.node.id === "B")!.seller).toBe(SWIFT); // proximity cursor 0
-        expect(plan.find((p) => p.node.id === "C")!.seller).toBe(ROSSO); // emissions
-        expect(plan.find((p) => p.node.id === "D")!.seller).toBe(MERCATO); // proximity cursor 1
+        expect(plan.find((p) => p.node.nodeId === "B")!.seller).toBe(SWIFT); // proximity cursor 0
+        expect(plan.find((p) => p.node.nodeId === "C")!.seller).toBe(ROSSO); // emissions
+        expect(plan.find((p) => p.node.nodeId === "D")!.seller).toBe(MERCATO); // proximity cursor 1
     });
 
     it("returns a null seller when no binding covers the order's clause", () => {
@@ -146,8 +146,8 @@ const LA = "9q5ct";
 const rateCatalog = (item: Record<string, unknown>): PricingCatalog[] =>
     [{ address: SWIFT, items: [item] }] as unknown as PricingCatalog[];
 
-const nodeWithClauses = (clauses: Record<string, Record<string, unknown>>): TemplateAgreement =>
-    ({ id: "R", clauses: { ...clauses, ...parents(["A"]) } }) as TemplateAgreement;
+const nodeWithClauses = (clauses: Record<string, Record<string, unknown>>) =>
+    ({ clauses: { ...clauses, ...parents(["A"]) } });
 
 describe("resolveSubOrderPricing — rate items", () => {
     it("checkout-quantity: payment = rate × the buyer's entered units", () => {

@@ -24,9 +24,14 @@
  * by FIELD NAME, never clause id).
  */
 
-import { templateParentOrderHashes, templateCompositionHash } from "./assembly.js";
-import type { AssemblyTemplate, TemplateAgreement } from "./assembly.js";
-import { computeAgreementHash, type Agreement, type AgreementSection } from "./agreement.js";
+import { slotClauses, templateParentOrderHashes, templateCompositionHash } from "./assembly.js";
+import type { HydratedAssembly, TemplateSlot } from "./assembly.js";
+import {
+    computeAgreementHash,
+    type Agreement,
+    type AgreementProvenance,
+    type AgreementSection,
+} from "./agreement.js";
 import {
     buildCommitment,
     buildDomain,
@@ -47,12 +52,15 @@ import type { Address, Commitment, Hex } from "./types.js";
 
 // ── Layer 1: pure structure ─────────────────────────────────────────────────
 
-/** One template node, in commit order. */
+/** One order slot, in commit order. */
 export interface PlannedTemplateOrder {
-    /** Template node id (matches `template.agreements[].id`). */
+    /** Order slot id (matches `template.agreements[].id`). */
     nodeId: string;
-    /** The node's clause bag (clauseKey → values), verbatim from the
-     *  template (parents still template-local). */
+    /** The registered agreement the order slot binds. */
+    agreementKey: Hex;
+    /** The order slot's clause bag (clauseKey → values): the assembly-scoped
+     *  sections, the registered agreement's clauses and the order slot's own
+     *  fills over them (parents still template-local). */
     clauses: Record<string, Record<string, unknown>>;
     /** Template-local parent node ids (empty on the root). */
     parentLocalIds: string[];
@@ -61,16 +69,18 @@ export interface PlannedTemplateOrder {
 }
 
 /**
- * The template's agreements in commit order (parents before children, root
- * first), each with its clause bag. Throws on a
- * cyclic topology; a template whose first node has parents (a sub-order with
+ * The template's order slots in commit order (parents before children, root
+ * first), each with its clause bag read from its hydrated registered
+ * agreement. Throws on a cyclic topology and on an order slot whose agreement
+ * is not hydrated; a template whose first node has parents (a sub-order with
  * no root) is rejected by the realization layer.
  */
-export function planTemplateOrders(template: AssemblyTemplate): PlannedTemplateOrder[] {
+export function planTemplateOrders(hydrated: HydratedAssembly): PlannedTemplateOrder[] {
+    const { template } = hydrated;
     const byId = new Map(template.agreements.map((a) => [a.id, a]));
     const orderedIds = topologicalOrder(
         template.agreements.map((a) => a.id),
-        (id) => [...templateParentOrderHashes(byId.get(id) as TemplateAgreement)],
+        (id) => [...templateParentOrderHashes(byId.get(id) as TemplateSlot)],
         "throw",
     );
     // THE ASSEMBLY-SCOPE FOLD: the template's
@@ -80,11 +90,12 @@ export function planTemplateOrders(template: AssemblyTemplate): PlannedTemplateO
     // neither the designer nor any party repeats anything.
     const assemblyClauses = template.assemblyClauses ?? {};
     return orderedIds.map((id, index) => {
-        const node = byId.get(id) as TemplateAgreement;
+        const slot = byId.get(id) as TemplateSlot;
         return {
             nodeId: id,
-            clauses: { ...assemblyClauses, ...node.clauses },
-            parentLocalIds: [...templateParentOrderHashes(node)],
+            agreementKey: slot.agreementKey,
+            clauses: { ...assemblyClauses, ...slotClauses(hydrated, slot) },
+            parentLocalIds: [...templateParentOrderHashes(slot)],
             index,
         };
     });
@@ -194,18 +205,19 @@ export interface ReconstructedOrder {
  * consistent running total.
  */
 export async function reconstructOrdersFromTemplate(
-    template: AssemblyTemplate,
+    hydrated: HydratedAssembly,
     params: ReconstructParams,
 ): Promise<ReconstructedOrder[]> {
-    const planned = planTemplateOrders(template);
+    const planned = planTemplateOrders(hydrated);
     const domain = buildDomain(params.chainId, params.core);
 
     const realHash = new Map<string, Hex>();
     let rootProcessId: Hex | null = null;
     let cumulative = 0n;
-    // The template's OWN composition hash — every realized order carries it
-    // as the agreement's provenance leaf (see fillWalkProvenance).
-    const compositionHash = templateCompositionHash(template);
+    // The template's OWN composition hash — every realized order carries it,
+    // beside its order slot's agreement key, as the agreement's provenance
+    // leaf (see fillWalkProvenance).
+    const compositionHash = templateCompositionHash(hydrated.template);
     const out: ReconstructedOrder[] = [];
 
     for (const node of planned) {
@@ -238,7 +250,7 @@ export async function reconstructOrdersFromTemplate(
                   spec.seller,
                   spec.overrides,
               );
-        const agreement = fillWalkProvenance(built, compositionHash, node.nodeId);
+        const agreement = fillWalkProvenance(built, { agreementKey: node.agreementKey, compositionHash }, node.nodeId);
         const agreementHash = computeAgreementHash(agreement);
 
         const { commitment, typedData } = buildCommitment(
@@ -357,27 +369,33 @@ function fillWalkCurrency(
     });
 }
 
-/** Write the instantiated template's OWN composition hash into the agreement's
- *  provenance leaf (`Agreement.provenance`) BEFORE hashing — the agreement
- *  format's own field, never a clause section; the hash cannot appear inside
- *  the composition it hashes, so it fills at instantiation, never at design.
- *  An agreement already naming the SAME hash passes (case-insensitive); one
- *  naming a DIFFERENT hash throws — an agreement claiming to instantiate a
- *  different composition than the one that built it is a forgery to surface,
- *  not a value to reconcile. */
+/** Write the order's provenance — the registered agreement its order slot
+ *  binds and the instantiated template's OWN composition hash — into the
+ *  agreement's provenance leaf (`Agreement.provenance`) BEFORE hashing: the
+ *  agreement format's own field, never a clause section; neither hash can
+ *  appear inside the composition it hashes, so it fills at instantiation,
+ *  never at design. An agreement already naming the SAME pair passes
+ *  (case-insensitive); one naming a DIFFERENT key or hash throws — an
+ *  agreement claiming to instantiate a different design than the one that
+ *  built it is a forgery to surface, not a value to reconcile. */
 export function fillWalkProvenance(
     agreement: Agreement,
-    compositionHash: Hex,
+    provenance: AgreementProvenance,
     nodeId: string,
 ): Agreement {
     const existing = agreement.provenance;
-    if (existing !== undefined && existing.toLowerCase() !== compositionHash.toLowerCase()) {
+    if (
+        existing !== undefined &&
+        (existing.agreementKey.toLowerCase() !== provenance.agreementKey.toLowerCase() ||
+            existing.compositionHash.toLowerCase() !== provenance.compositionHash.toLowerCase())
+    ) {
         throw new Error(
-            `node "${nodeId}": the agreement names provenance ${existing}, which contradicts this template's ` +
-            `own composition hash ${compositionHash} — refusing to claim a different provenance`,
+            `node "${nodeId}": the agreement names provenance ${existing.agreementKey} / ${existing.compositionHash}, ` +
+            `which contradicts this order slot's ${provenance.agreementKey} / ${provenance.compositionHash} — ` +
+            `refusing to claim a different provenance`,
         );
     }
-    return { ...agreement, provenance: compositionHash };
+    return { ...agreement, provenance: { agreementKey: provenance.agreementKey, compositionHash: provenance.compositionHash } };
 }
 
 /** The one clause-bag ∪ overrides merge (per-clause shallow spread) — shared

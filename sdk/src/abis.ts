@@ -309,6 +309,29 @@ export const ASSEMBLY_REGISTRY_ABI = parseAbi([
     "error TransferFailed()",
 ]);
 
+// ── AgreementRegistry ABI ─────────────────────────────────────────────────
+// AssemblyRegistry's shape, keyed by `agreementKey` (`agreementKeyOf`, the
+// canonical hash of the clauses composed for one order slot). Parallel to the
+// clause and assembly registries: no edge to either.
+
+export const AGREEMENT_REGISTRY_ABI = parseAbi([
+    "function registerAgreement(bytes32 agreementKey, string contentURI) external payable",
+    "function withdrawDeposit(bytes32 agreementKey) external",
+    "function bindings(bytes32 agreementKey) view returns (address registeredBy, uint64 registeredAt, bool depositWithdrawn, string contentURI)",
+    "function registrationDeposit() view returns (uint256)",
+    "event AgreementRegistered(bytes32 indexed agreementKey, address indexed registeredBy, string contentURI)",
+    "event DepositWithdrawn(bytes32 indexed agreementKey, address indexed registeredBy, uint256 amount)",
+    "error EmptyContentURI()",
+    "error ZeroAgreementKey()",
+    "error AgreementAlreadyRegistered(bytes32 agreementKey)",
+    "error ReservedKeyIsNotARegistration(bytes32 key)",
+    "error WrongDeposit(uint256 provided, uint256 required)",
+    "error NotRegistered()",
+    "error NotRegisteredBy(address caller, address registeredBy)",
+    "error AlreadyWithdrawn()",
+    "error TransferFailed()",
+]);
+
 // ── Florin Token ABIs ─────────────────────────────────────────────────────────
 
 export const FLORIN_TOKEN_ABI = parseAbi([
@@ -333,9 +356,12 @@ export const FLORIN_TOKEN_ABI = parseAbi([
 // the same leaf shape `computeSectionLeaf` builds. It carries only the section
 // FINGERPRINT `sectionHash` (`keccak256` of the committed bytes), never the
 // preimage, so a `private` section's plaintext never touches public calldata.
-// `recordAssemblyUsage` takes no section at all — the content of the agreement
-// format's reserved provenance leaf (`provenanceLeaf`) is fully determined by
-// `compositionHash`, so the contract derives it. Accrual
+// `recordAgreementUsage` and `recordAssemblyUsage` take no section at all —
+// the content of the agreement format's reserved provenance leaf
+// (`provenanceLeaf`) is fully determined by the two keys it names
+// (`agreementKey`, `compositionHash`), so the contract derives it; the
+// assembly claim adds the order slot's membership proof under
+// `compositionHash`. Accrual
 // buckets into fixed periods; a period's counts are final once `periodClosed`.
 //
 // BATCH-RESOLVED trade never touches FigaroCore, so it can never travel that
@@ -349,23 +375,28 @@ export const FLORIN_TOKEN_ABI = parseAbi([
 export const USAGE_COUNTER_ABI = parseAbi([
     // ── Recording (permissionless) ──────────────────────────────────
     `function recordClauseUsage(${COMMITMENT_TUPLE} order, bytes32 clauseOrAssembly, bytes32 sectionHash, bytes32[] proof) external`,
-    `function recordAssemblyUsage(${COMMITMENT_TUPLE} order, bytes32 compositionHash, bytes32[] proof) external`,
+    `function recordAgreementUsage(${COMMITMENT_TUPLE} order, bytes32 agreementKey, bytes32 compositionHash, bytes32[] proof) external`,
+    `function recordAssemblyUsage(${COMMITMENT_TUPLE} order, bytes32 compositionHash, bytes32 agreementKey, bytes32 slotContentHash, bytes32[] leafProof, bytes32[] membershipProof) external`,
 
     // ── Composition + schedule ──────────────────────────────────────
     "function core() view returns (address)",
     "function members() view returns (address)",
+    "function agreements() view returns (address)",
     "function batchVerifier() view returns (address)",
     "function provenanceLeaf() view returns (bytes32)",
+    "function assemblyTermsLeaf() view returns (bytes32)",
     "function periodEnd(uint256) view returns (uint64)",
     "function periodCount() view returns (uint256)",
     "function currentPeriod() view returns (uint8)",
     "function periodClosed(uint8 period) view returns (bool)",
 
     // ── Accrual ─────────────────────────────────────────────────────
-    // Every accrual is keyed by (kind, key): kind 0 is a clause, 1 an assembly;
-    // the two families never share a slot (UsageCounter.KIND_CLAUSE / KIND_ASSEMBLY).
+    // Every accrual is keyed by (kind, key): kind 0 is a clause, 1 an assembly,
+    // 2 a registered agreement; the families never share a slot
+    // (UsageCounter.KIND_CLAUSE / KIND_ASSEMBLY / KIND_AGREEMENT).
     "function KIND_CLAUSE() view returns (uint8)",
     "function KIND_ASSEMBLY() view returns (uint8)",
+    "function KIND_AGREEMENT() view returns (uint8)",
     "function accrualOf(uint8 kind, bytes32 clauseOrAssembly, uint8 period) view returns (uint64 c, uint64 d, uint256 score)",
     "function batchAccrualOf(uint8 kind, bytes32 clauseOrAssembly, uint8 period) view returns (uint64 c, uint64 d, uint256 score)",
     "function scoreOf(uint8 kind, bytes32 clauseOrAssembly, uint8 period) view returns (uint256)",
@@ -395,7 +426,8 @@ export const USAGE_COUNTER_ABI = parseAbi([
     "error NotBatchVerifier()",
     "error PeriodMismatch(uint8 open, uint8 claimed)",
     "error ProvenanceLeafMismatch(bytes32 expected, bytes32 claimed)",
-    "error ProvenanceLeafIsNotARegistration(bytes32 key)",
+    "error ReservedKeyIsNotARegistration(bytes32 key)",
+    "error InvalidMembershipProof()",
     "error AccrualWentBackwards(bytes32 clauseOrAssembly)",
 ]);
 
@@ -417,6 +449,7 @@ export const RPGF_MINTER_ABI = parseAbi([
     // A claim names (kind, key) pairs; the minter reads only the registry each kind names.
     "function KIND_CLAUSE() view returns (uint8)",
     "function KIND_ASSEMBLY() view returns (uint8)",
+    "function KIND_AGREEMENT() view returns (uint8)",
     "function claim(uint8 periodId, (uint8 kind, bytes32 key)[] clausesOrAssemblies) external",
     "function claimable(uint8 periodId, address account, (uint8 kind, bytes32 key)[] clausesOrAssemblies) view returns (uint256)",
     "function periodAmount(uint256) view returns (uint256)",
@@ -427,6 +460,7 @@ export const RPGF_MINTER_ABI = parseAbi([
     "function counter() view returns (address)",
     "function clauses() view returns (address)",
     "function assemblies() view returns (address)",
+    "function agreements() view returns (address)",
     "event Claimed(uint8 indexed periodId, address indexed account, uint256 amount, uint256 score)",
     "error ZeroAddress()",
     "error UnknownPeriod(uint8 periodId)",

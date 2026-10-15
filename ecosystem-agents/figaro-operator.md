@@ -183,20 +183,25 @@ channel.register(sellerAddr, makeSellerOfferHandler(sellerWallet, publicClient, 
   specs,
 }));
 const result = await originateProcess(buyerWallet, publicClient, addresses, {
-  channel, template, seller, currency, payment, chainId, core, overrides, deadline, specs,
+  channel, assembly, seller, currency, payment, chainId, core, overrides, deadline, specs,
 });
 ```
 
 **4. Write the transaction particulars — ROUTED BY DECLARED FIELD, never by clause name.**
-A published template arrives value-free: the designer composed the clause SELECTION and
-their own tailoring; the remaining required content fields are the BUYER's to fill at
+A published assembly arrives value-free and is passed HYDRATED (`HydratedAssembly {
+template, agreements }`): each order slot names a registered agreement by `agreementKey`, and
+you hydrate it from its `AgreementRegistry` binding with `anchorComposedAgreement(raw,
+agreementKey)`, which returns the composed agreement only when its recomputed key matches —
+`null` (a failed fetch, parse or match) means the assembly is not offered, never a fallback.
+The designer composed the clause SELECTION and their own tailoring; the remaining required content fields are the BUYER's to fill at
 origination. Route each value by the field a clause DECLARES, read from its spec — a clause
 id is an open set, and a hardcoded one silently skips whatever the designer actually
 composed:
 
 ```ts
 const overrides = {};
-for (const clauseKey of Object.keys(template.agreements[0].clauses)) {
+const root = assembly.template.agreements[0];
+for (const clauseKey of Object.keys(slotClauses(assembly, root))) {
   const fields = specs.get(clauseKey)?.fields ?? [];
   if (fields.some((f) => f.name === "lineItems"))          // the commerce clause, by field
     overrides[clauseKey] = { currency, payment: payment.toString(), lineItems };
@@ -214,18 +219,22 @@ the gate stops objecting.
 
 Two of them are not yours to write. The **denomination** — the `currency` leaf — is a TERM
 that the commitment struct MIRRORS: write the same address into both, or the gate refuses.
-And the assembly's **`compositionHash`** is written by the instantiation itself, with or
-without `specs`: `instantiateRootAgreement` and the template walk set `agreement.provenance`
-to `templateCompositionHash(template)` on every order — the agreement format's reserved
-provenance leaf (key `PROVENANCE_LEAF_KEY`, `keccak256("figaro-agreement-provenance")`;
-bytes `{"compositionHash":"0x<lowercase hex>"}`), a leaf of the agreement and never a clause
-section. Do not hand-write provenance: an agreement naming a different hash than the
-template you instantiated is a claim to a different assembly, and the SDK throws on it.
+And the **provenance** — the order slot's `agreementKey` and the assembly's
+`compositionHash` — is written by the instantiation itself, with or without `specs`:
+`instantiateRootAgreement` and the template walk set `agreement.provenance` on every order to
+the registered agreement its order slot holds and `templateCompositionHash(template)` — the
+agreement format's reserved provenance leaf (key `PROVENANCE_LEAF_KEY`,
+`keccak256("figaro-agreement-provenance")`; bytes
+`{"agreementKey":"0x<lowercase hex>","compositionHash":"0x<lowercase hex>"}`), a leaf of the
+agreement and never a clause section. Do not hand-write provenance: an agreement naming a
+different pair than the order slot you instantiated is a claim to a different design, and the
+SDK throws on it. Instantiation adds and drops no clause: it fills values and writes the
+topology.
 While the process is OPEN you may attest that leaf as the buyer —
 `attestAsBuyer(walletClient, coordinator, target, p.clauseId, p.stage, p.sectionHash,
 p.proof, p.contentRef)` with `p = provenanceLeafAttestation(agreement)` — which makes the
-process-to-assembly link public: a reader matches the attestation's `contentRef` against
-`provenanceContentRef(compositionHash)` for a registered assembly. The coordinator refuses
+process-to-design link public: a reader matches the attestation's `contentRef` against
+`provenanceContentRef(agreementKey, compositionHash)` for a registered agreement and assembly. The coordinator refuses
 every attestation once the order is resolved (`OrderResolved`).
 
 **5. Resolve — and count the usage in the same breath.** Only the buyer can end a process,
@@ -243,18 +252,19 @@ const report = await recordProcessUsage(walletClient, publicClient, addresses.us
 
 Usage is counted **at resolution or it is permanently deniable** (`docs/DESIGN_DECISIONS.md`
 §21 — a seller can unstake, a period can close, and a late claim is refusable). A buyer
-agent that resolves without this credits no clause designer and no assembly designer, and
+agent that resolves without this credits no clause, agreement or assembly designer, and
 the 600M reward's uniformity across actors is exactly this call. Only the section FINGERPRINT
 reaches calldata, so a private section's plaintext never becomes public. Read the report,
 not the absence of an exception. **Every clause EARNS**, the mandatory ones included:
 commerce and topology ride on every order and are scored for their designer of record like
 any other, and `recordProcessUsage` sends one clause leg per distinct clause key the
-process carries (`attempted` / `recorded`). The once-per-process assembly credit is an
-INDEPENDENT leg (`assemblyRecorded`): `recordAssemblyUsage` is called with the agreement's
-`provenance` and the provenance leaf's inclusion proof, the counter rebuilds the leaf under
-its `provenanceLeaf()` key and proves it, and it requires that composition to hold a live
-`AssemblyRegistry` binding — so an agreement with no `provenance` credits no designer at
-all. A leg that reverts lands in `report.failures` with its reason, nothing thrown. Report
+process carries (`attempted` / `recorded`). The once-per-process agreement and assembly credits are
+INDEPENDENT legs (`agreementRecorded`, `assemblyRecorded`): `recordAgreementUsage` is called
+with the agreement's `provenance` (both keys) and the provenance leaf's inclusion proof — the
+counter rebuilds the leaf under its `provenanceLeaf()` key, proves it, and requires the
+agreement to hold a live `AgreementRegistry` binding; `recordAssemblyUsage` proves the same
+leaf plus the order slot's membership proof under `compositionHash` and requires a live
+`AssemblyRegistry` binding. An agreement with no `provenance` credits neither designer. A leg that reverts lands in `report.failures` with its reason, nothing thrown. Report
 the report, never "it reverted, so it failed".
 
 ## Trading the wallet's data — an ordinary bonded order
@@ -301,24 +311,27 @@ README. Read the section; never reconstruct one from the ABI.
   over-balance leg reverts the whole batch: "Routing what you received". It reads no process
   state, so it behaves identically for receipts from either path — and the fiscal trail it
   leaves is a byproduct the owner can show anyone.
-- **Claiming what the owner's clauses and assemblies earned** — `RpgfMinter.claim`, once
+- **Claiming what the owner's clauses, agreements and assemblies earned** — `RpgfMinter.claim`, once
   per wallet per CLOSED period, carrying every `(kind, key)` pair the wallet designed —
-  `{ kind: USAGE_KIND_CLAUSE, key: clauseKey }` or `{ kind: USAGE_KIND_ASSEMBLY, key:
-  compositionHash }`, each checked against the one registry its kind names (a duplicate
+  `{ kind: USAGE_KIND_CLAUSE, key: clauseKey }`, `{ kind: USAGE_KIND_ASSEMBLY, key:
+  compositionHash }` or `{ kind: USAGE_KIND_AGREEMENT, key: agreementKey }`, each checked
+  against the one registry its kind names (a duplicate
   pair or a key it did not register under that kind reverts): "Claiming the designer's mint".
 
 ## Reclaiming a registration stake — apply the K4 withdraw gate yourself
 
-If the owner registered a clause or an assembly, its stake comes back with one call
-(`ClauseRegistry.withdrawDeposit(clauseKey)` / `AssemblyRegistry.withdrawDeposit(compositionHash)`)
+If the owner registered a clause, an agreement or an assembly, its stake comes back with one call
+(`ClauseRegistry.withdrawDeposit(clauseKey)` / `AgreementRegistry.withdrawDeposit(agreementKey)` /
+`AssemblyRegistry.withdrawDeposit(compositionHash)`)
 — which **de-surfaces the entry for new compositions while the binding stays permanent**,
 because orders already committed against it still resolve. The rule the stake
-encodes: do not reclaim it while processes composed from that clause or assembly are still
+encodes: do not reclaim it while processes composed from that clause, agreement or assembly are still
 in flight. Derive that before withdrawing:
 
 ```ts
 import { fetchCoreEvents } from "@figaro-protocol/sdk";
-import { deriveInFlightOrders, deriveClauseWithdrawGate, deriveAssemblyWithdrawGate } from "@figaro-protocol/sdk/derive";
+import { deriveInFlightOrders, deriveClauseWithdrawGate, deriveAgreementWithdrawGate,
+         deriveAssemblyWithdrawGate } from "@figaro-protocol/sdk/derive";
 
 // fromBlock is `deploymentBlock` from the same deployment record you mapped `addresses`
 // out of — never 0n. Public RPC endpoints cap the eth_getLogs range, so a from-genesis
@@ -330,6 +343,8 @@ const inFlight = deriveInFlightOrders(
 // { processId, agreement }; a null agreement is party-private and counted, never blocking.
 const gate = deriveClauseWithdrawGate(clauseKey, agreements);  // the key you registered, never a name
 if (!gate.canWithdraw) { /* report inFlightCount + unverifiedCount; do not withdraw */ }
+// an agreement or an assembly: the same shape, attributed by each verified agreement's
+// decoded provenance { agreementKey, compositionHash }
 ```
 
 `canWithdraw === (inFlightCount === 0)`; `unverifiedCount` is a caveat to surface, never a
@@ -442,8 +457,8 @@ deployment record's `batchVerifier` address, with `BATCH_VERIFIER_ABI` from
 
 Exactly one thing crosses the seam: the usage accrual behind designer rewards, carried by
 the proof into `UsageCounter.applyBatchAccrual` as proved numbers. So if the owner asks what
-their clauses and assemblies earned, read `scoreOf(kind, clauseOrAssembly, period)` — kind `0`
-a clause key, `1` an assembly `compositionHash` — (it sums both
+their clauses, agreements and assemblies earned, read `scoreOf(kind, clauseOrAssembly, period)` — kind `0`
+a clause key, `1` an assembly `compositionHash`, `2` an `agreementKey` — (it sums both
 paths) — never `accrualOf` alone, and if you mirror the events off-chain, fold
 `UsageRecorded` **and** `BatchUsageRecorded` (the batch one is CUMULATIVE — it REPLACES, it
 does not add).

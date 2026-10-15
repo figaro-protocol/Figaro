@@ -11,25 +11,26 @@
  * export with zero server routes, and assistance is the designer's DELEGATE
  * — so nothing is invoked from here. The surface is a round-trip:
  *
- *   OUT — the current canvas serialized as the canonical `AssemblyTemplate`
- *         JSON (the exact assembly template shape the agent composes and hashes;
- *         built by the same `buildAssemblyTemplate` walk publish uses), for
- *         the designer to hand their agent as its starting point.
- *   IN  — the agent's template pasted back, parsed + soundness-probed
- *         (`parseAssemblyTemplateJson`), then applied to the canvas as an
- *         ordinary draft. Composition stays the designer's act: the import
+ *   OUT — the current canvas serialized as `{ template, agreements }`: the
+ *         canonical `AssemblyTemplate` (one order slot per order, each
+ *         binding an agreement by key) and the agreements newly composed for
+ *         it, built by the same `buildAssemblyTemplate` walk publish uses,
+ *         for the designer to hand their agent as its starting point.
+ *   IN  — the agent's composition pasted back, parsed + soundness-probed
+ *         (`parseAssemblyTemplateJson`), each order slot's agreement read
+ *         from the paste or the AgreementRegistry (`hydrateImportedTemplate`),
+ *         then applied to the canvas as an ordinary draft. Composition stays the designer's act: the import
  *         lands as unsaved canvas state to review, edit, and publish through
  *         the normal review page — nothing auto-publishes.
  */
 
 import Link from "@/components/shared/Link";
 import { useCallback, useMemo, useState } from "react";
-import { serializeAssemblyTemplate } from "@figaro-protocol/sdk";
+import { canonicalize, type HydratedAssembly } from "@figaro-protocol/sdk";
 import { snapshotToAssemblyTemplate } from "@/lib/designer/draftToAssemblyTemplate";
 import { extractErrorMessage } from "@/lib/shared/errors";
-import type { AssemblyTemplate } from "@/lib/shared/assemblyTemplate";
 import type { DesignSnapshot } from "@/lib/designer/syntheticDesignStore";
-import { parseAssemblyTemplateJson } from "@/lib/designer/assemblyTemplateToDraft";
+import { hydrateImportedTemplate, parseAssemblyTemplateJson } from "@/lib/designer/assemblyTemplateToDraft";
 import { ModalChrome } from "@/components/ui/ModalChrome";
 import { Button } from "@/components/ui/Button";
 
@@ -41,7 +42,7 @@ interface CompositionAssistProps {
      *  replace-confirmation and the state swap). Returns false when the
      *  designer declines the replacement — the panel then stays open with
      *  the pasted text intact. */
-    onImportTemplate: (template: AssemblyTemplate) => boolean;
+    onImportTemplate: (hydrated: HydratedAssembly, composeKeys: ReadonlySet<string>) => boolean;
 }
 
 /** The current draft as pretty-printed canonical template JSON, or an
@@ -53,7 +54,8 @@ function serializeDraft(snapshot: DesignSnapshot | null): { json: string | null;
         // The ONE draft→template walk publish uses — so the handoff template
         // is byte-identical to what publish would anchor, the assembly-level
         // terms (`assemblyClauses`) included.
-        const { json } = serializeAssemblyTemplate(snapshotToAssemblyTemplate(snapshot));
+        const built = snapshotToAssemblyTemplate(snapshot);
+        const json = canonicalize({ template: built.template, agreements: built.agreements });
         return { json: JSON.stringify(JSON.parse(json), null, 2), error: null };
     } catch (cause) {
         return { json: null, error: extractErrorMessage(cause, "Could not serialize the draft.") };
@@ -82,14 +84,19 @@ export function CompositionAssist({ getSnapshot, onImportTemplate }: Composition
         });
     }, [draft.json]);
 
-    const handleImport = useCallback(() => {
+    const handleImport = useCallback(async () => {
         const parsed = parseAssemblyTemplateJson(importText);
         if (!parsed.ok) {
             setImportError(parsed.error);
             return;
         }
+        const read = await hydrateImportedTemplate(parsed);
+        if ("error" in read) {
+            setImportError(read.error);
+            return;
+        }
         try {
-            if (!onImportTemplate(parsed.template)) return;
+            if (!onImportTemplate(read.hydrated, read.composeKeys)) return;
             setImportError(null);
             setImportText("");
             setOpen(false);
@@ -193,7 +200,7 @@ export function CompositionAssist({ getSnapshot, onImportTemplate }: Composition
                             value={importText}
                             onChange={(e) => { setImportText(e.target.value); setImportError(null); }}
                             rows={8}
-                            placeholder='Paste the AssemblyTemplate JSON your agent returned — {"agreements": [...]}'
+                            placeholder='Paste the composition your agent returned — {"template": {...}, "agreements": {...}}'
                             aria-label="Template JSON to import"
                             data-testid="designer-assist-import-input"
                             className="w-full text-[11px] font-mono px-2 py-1.5 rounded border border-default bg-paper text-ink-body placeholder:text-ink-muted resize-y focus:outline-none focus:ring-2 focus:ring-focus"

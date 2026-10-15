@@ -29,7 +29,6 @@ import {
     unfilledAssemblyTerms,
     assemblyClauseDefaults,
 } from "@/lib/designer/draftToAssemblyTemplate";
-import { assemblyTemplateToDraft } from "@/lib/designer/assemblyTemplateToDraft";
 import { listKnownClauses, loadClauseSpec, noteClauseStakes, setClauseSpecFetcher } from "@/lib/shared/clauseSpecSource";
 import {
     createSyntheticRootOrder,
@@ -127,7 +126,7 @@ describe("projectSnapshotForReview — the review reads the bytes publish sends"
         expect(listed(drawn.orders[0].orderHash)).toEqual(["figaro-acceptance-criteria#1", "figaro-schedule#1"]);
         expect(listed(drawn.orders[1].orderHash)).toEqual(["figaro-acceptance-criteria#1"]);
         // The same listing the /view path reads off a published template.
-        expect(templateComposedClauses(review.template)["order-0"].map((c) => c.clauseKey).sort())
+        expect(templateComposedClauses(review.hydrated)["order-0"].map((c) => c.clauseKey).sort())
             .toEqual(keys(ORDER_CLAUSES).sort());
     });
 
@@ -144,7 +143,7 @@ describe("projectSnapshotForReview — the review reads the bytes publish sends"
     it("is the SAME BYTES publish anchors — one template, one hash", () => {
         const review = projectSnapshotForReview(composed);
         if (!review.ok) throw new Error(review.error);
-        const published = serializeAssemblyTemplate(snapshotToAssemblyTemplate(composed));
+        const published = serializeAssemblyTemplate(snapshotToAssemblyTemplate(composed).template);
         expect(review.compositionHash).toBe(published.compositionHash);
         expect(review.slug).toBe(deriveAssemblySlug(published.compositionHash));
         // And the canvas's own identity readout agrees with the review's.
@@ -159,9 +158,10 @@ describe("projectSnapshotForReview — the review reads the bytes publish sends"
                 review.composedByOrderId[drawn.orders[0].orderHash],
                 "an auto-folded mandatory clause is not a term the designer composed",
             ).not.toHaveProperty(clauseId);
+            const slot = review.template.agreements[0];
             expect(
-                review.template.agreements[0].clauses,
-                "…but the published bytes carry it",
+                review.newAgreements[slot.agreementKey].clauses,
+                "…but the agreement the order slot binds carries it",
             ).toHaveProperty(clauseId);
         }
     });
@@ -194,7 +194,7 @@ describe("projectSnapshotForReview — the review reads the bytes publish sends"
         if (!review.ok) throw new Error(review.error);
         // The `/view` path reads the pinned bytes directly — keyed by the
         // template's agreement ids, same mandatory-fold exclusion.
-        const byAgreement = templateComposedByAgreement(review.template);
+        const byAgreement = templateComposedByAgreement(review.hydrated);
         expect(Object.keys(byAgreement)).toEqual(["order-0", "order-1"]);
         expect(Object.keys(byAgreement["order-0"]).sort()).toEqual(keys(ORDER_CLAUSES).sort());
     });
@@ -323,11 +323,12 @@ describe("the mandatory fold — every live mandatory registration, each listed 
         ]);
         expect(review.folded.map((f) => f.clauseKey).sort()).toEqual(keys(MANDATORY).sort());
         // The complement of the composed readout: together they are the template.
-        for (const agreement of review.template.agreements) {
-            const composed = Object.keys(templateComposedByAgreement(review.template)[agreement.id]);
-            const folded = templateFoldedClauses(review.template)
-                .filter((f) => f.carriedBy.includes(agreement.id)).map((f) => f.clauseKey);
-            expect([...composed, ...folded].sort()).toEqual(Object.keys(agreement.clauses).sort());
+        for (const slot of review.template.agreements) {
+            const composed = Object.keys(templateComposedByAgreement(review.hydrated)[slot.id]);
+            const folded = templateFoldedClauses(review.hydrated)
+                .filter((f) => f.carriedBy.includes(slot.id)).map((f) => f.clauseKey);
+            const carried = review.hydrated.agreements[slot.agreementKey.toLowerCase() as `0x${string}`].clauses;
+            expect([...composed, ...folded].sort()).toEqual(Object.keys(carried).sort());
         }
     });
 

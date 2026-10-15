@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
+import {Vm} from "forge-std/Vm.sol";
+
 /// @title AgreementTestHelper
 /// @notice Pure-function merkle helpers for building test agreements and their
 ///         inclusion proofs. Mirrors the off-chain
@@ -10,8 +12,35 @@ pragma solidity ^0.8.24;
 ///           proof  = sibling hashes walking the leaf up to the root
 ///         Used by AttestationCoordinator tests so each commitment's
 ///         `agreementHash` is a real merkle root and attestations can carry
-///         valid inclusion proofs.
+///         valid inclusion proofs, and by the reward tests for an assembly's
+///         tree: the same leaf convention and root over the slot leaves and
+///         the terms leaf, whose root is the compositionHash.
 library AgreementTestHelper {
+    Vm private constant VM = Vm(address(uint160(uint256(keccak256("hevm cheat code")))));
+
+    /// @dev The agreement format's reserved provenance leaf key.
+    bytes32 internal constant PROVENANCE_LEAF_KEY = keccak256("figaro-agreement-provenance");
+
+    /// @dev The key of an assembly tree's terms leaf (the assembly-scoped clauses).
+    bytes32 internal constant ASSEMBLY_TERMS_LEAF_KEY = keccak256("figaro-assembly-terms");
+
+    /// @dev The provenance section's canonical-JSON bytes: the registered
+    ///      agreement an order instantiates and the assembly it came from,
+    ///      both as 0x-prefixed lowercase hex (keys sorted, as canonical JSON
+    ///      sorts them).
+    function provenanceSection(bytes32 agreementKey, bytes32 compositionHash) internal pure returns (bytes memory) {
+        return abi.encodePacked(
+            '{"agreementKey":"', VM.toString(agreementKey), '","compositionHash":"', VM.toString(compositionHash), '"}'
+        );
+    }
+
+    /// @dev An order slot leaf's canonical-JSON bytes: `{"clauses":{…},"slot":i}`
+    ///      — the order slot's own clause fills and its index. `clausesJson` is
+    ///      the fills as canonical JSON (e.g. `{}`).
+    function slotSection(uint256 slot, string memory clausesJson) internal pure returns (bytes memory) {
+        return abi.encodePacked('{"clauses":', clausesJson, ',"slot":', VM.toString(slot), "}");
+    }
+
     /// @dev Compute the merkle leaf for one clause clause.
     function leafFor(bytes32 clauseId, bytes memory sectionData) internal pure returns (bytes32) {
         return keccak256(bytes.concat(keccak256(abi.encodePacked(clauseId, keccak256(sectionData)))));

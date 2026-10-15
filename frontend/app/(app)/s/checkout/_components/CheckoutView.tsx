@@ -28,7 +28,7 @@ import { CartLineList } from "@/components/runtime/CartLineList";
 import { useCommerce, useCheckout } from "@/lib/checkout";
 import { useCartStore } from "@/lib/checkout/cartStore";
 import { useRegisteredCatalogs } from "@/lib/member/useRegisteredCatalogs";
-import { planSubOrderSellers, readUtilityTokenPin, resolveSubOrderPricing } from "@figaro-protocol/sdk";
+import { planSubOrderSellers, readUtilityTokenPin, resolveSubOrderPricing, slotClauses } from "@figaro-protocol/sdk";
 import { executeAssemblyCheckout, type AssemblyCheckoutParams } from "@/lib/checkout/assemblyCheckout";
 import {
     buyerAuthoredFields,
@@ -150,7 +150,7 @@ export function CheckoutView({ sellerAddress }: Props) {
     // "assembly") — a term of the composition, folded into
     // every agreement at checkout; the old root-order convention is dead.
     const utilityTokenPin = pickedAssembly
-        ? readUtilityTokenPin(pickedAssembly.assemblyTemplate.assemblyClauses ?? {}, specSource())
+        ? readUtilityTokenPin(pickedAssembly.hydratedAssembly.template.assemblyClauses ?? {}, specSource())
         : undefined;
     const sellerDefault = memberCatalog?.defaultTokenAddress as `0x${string}` | undefined;
     // What this surface already knows, offered to the format inputs as
@@ -297,7 +297,7 @@ export function CheckoutView({ sellerAddress }: Props) {
     // Assembly-level fills (the "assembly" review group) apply to EVERY
     // node: expand them under each template order id, designer values under
     // buyer values, so the walk and the price preview see one merged map.
-    const assemblySections = pickedAssembly?.assemblyTemplate.assemblyClauses ?? {};
+    const assemblySections = pickedAssembly?.hydratedAssembly.template.assemblyClauses ?? {};
     const assemblyFills = clauseFills["assembly"] ?? {};
     const mergedAssemblyEntries = Object.fromEntries(
         (Object.keys(assemblySections) as `0x${string}`[]).map((clauseKey) => [
@@ -306,13 +306,13 @@ export function CheckoutView({ sellerAddress }: Props) {
         ]),
     );
     const expandedClauseFills: typeof clauseFills = Object.fromEntries(
-        (pickedAssembly?.assemblyTemplate.agreements ?? []).map((o, i) => {
+        (pickedAssembly?.hydratedAssembly.template.agreements ?? []).map((o, i) => {
             const nodeId = String(o.id ?? i);
             return [nodeId, { ...mergedAssemblyEntries, ...(clauseFills[nodeId] ?? {}) }];
         }),
     );
     const subOrderPlan = (() => {
-        if (!pickedAssembly || pickedAssembly.assemblyTemplate.agreements.length <= 1) return [];
+        if (!pickedAssembly || pickedAssembly.hydratedAssembly.template.agreements.length <= 1) return [];
         try {
             return planSubOrderSellers(pickedAssembly);
         } catch {
@@ -352,10 +352,10 @@ export function CheckoutView({ sellerAddress }: Props) {
             })),
             ...subOrderPlan.flatMap(({ node, seller }): ListedPrice[] => {
                 if (!seller) return [];
-                const pricing = listedKit?.rows.find((r) => r.nodeId === node.id)?.pricing;
+                const pricing = listedKit?.rows.find((r) => r.nodeId === node.nodeId)?.pricing;
                 if (!pricing?.item || pricing.issue) return [];
                 return [{
-                    key: `node:${node.id}`,
+                    key: `node:${node.nodeId}`,
                     label: pricing.item.name,
                     seller,
                     listedToken: defaultOf(seller),
@@ -365,7 +365,7 @@ export function CheckoutView({ sellerAddress }: Props) {
             }),
             // The buyer's pick fills every unbound sub-order the race did
             // not: one listed price, one amount.
-            ...(sellerSelection && subOrderPlan.some(({ node, seller }) => !seller && !(raceOutcome && raceOutcome.nodeId === node.id))
+            ...(sellerSelection && subOrderPlan.some(({ node, seller }) => !seller && !(raceOutcome && raceOutcome.nodeId === node.nodeId))
                 ? [{
                     key: "pick",
                     label: sellerSelection.item.name,
@@ -474,8 +474,8 @@ export function CheckoutView({ sellerAddress }: Props) {
     const orderCompositions = ((): OrderComposition[] => {
         if (!pickedAssembly) return [];
         const out: OrderComposition[] = [];
-        for (const order of pickedAssembly.assemblyTemplate.agreements) {
-            for (const cid of Object.keys(order.clauses)) {
+        for (const order of pickedAssembly.hydratedAssembly.template.agreements) {
+            for (const cid of Object.keys(slotClauses(pickedAssembly.hydratedAssembly, order))) {
                 const block = getClauseSpec(cid)?.block;
                 if (block?.design.composes && block.runtime.fields.length > 0) {
                     out.push({ nodeId: order.id, clauseKey: cid, interface: block.design.composes.interface, fields: block.runtime.fields });
@@ -509,8 +509,8 @@ export function CheckoutView({ sellerAddress }: Props) {
     // order; the final per-order sign confirmation is the shared agreement-preview
     // gate (the same one the seller's accept uses).
     const pickedRoot = pickedAssembly
-        ? (pickedAssembly.assemblyTemplate.agreements.find((o) => templateParentOrderHashes(o).length === 0)
-            ?? pickedAssembly.assemblyTemplate.agreements[0])
+        ? (pickedAssembly.hydratedAssembly.template.agreements.find((o) => templateParentOrderHashes(o).length === 0)
+            ?? pickedAssembly.hydratedAssembly.template.agreements[0])
         : undefined;
     const cartUnitAmount = (item: (typeof cartItems)[number]) =>
         unitAmountFor(`line:${item.catalogItemId}`, item.price) ?? 0n;
@@ -597,7 +597,7 @@ export function CheckoutView({ sellerAddress }: Props) {
         if (!buyer || !pickedAssembly || !currency) return null;
         const manualSelections = buyerChoosesCounterparty && sellerSelection
             ? Object.fromEntries(buyerPickSubOrders.map(({ node }) => [
-                node.id,
+                node.nodeId,
                 {
                     seller: sellerSelection.seller,
                     price: pickedSelection!.price,
@@ -658,7 +658,7 @@ export function CheckoutView({ sellerAddress }: Props) {
         if (!checkout || !racedNode) return;
         void race.start({
             checkout,
-            racedNodeId: racedNode.id,
+            racedNodeId: racedNode.nodeId,
             windowMs: policy.windowMs,
             maxCandidates: policy.maxCandidates,
             quote: policy.ceiling ? { ceiling: parseToken(policy.ceiling, tokenDecimals) } : undefined,

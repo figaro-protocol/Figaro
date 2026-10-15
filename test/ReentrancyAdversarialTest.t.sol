@@ -161,6 +161,7 @@ contract ReentrancyAdversarialTest is Test {
             address(new MembersRegistry(0, 0)),
             address(new MockClauseOrAssemblyStake()),
             address(new MockClauseOrAssemblyStake()),
+            address(new MockClauseOrAssemblyStake()),
             vm.computeCreateAddress(address(this), vm.getNonce(address(this)) + 1),
             1,
             periods

@@ -2,7 +2,7 @@
 # emit-abi-bundle.sh — the tracked ABI bundle for non-TS integrators.
 #
 # Emits abi/<Contract>.json (the bare ABI array, pretty-printed) for every
-# contract named in the deployments/<chainId>.json record shape — the nine
+# contract named in the deployments/<chainId>.json record shape — the ten
 # public-surface contracts an integrator without the TS SDK needs to speak to
 # a deployment. Source of truth is the forge build artifact; this script only
 # extracts, never edits. Run after `forge build`; pre-commit's
@@ -23,6 +23,7 @@ CONTRACTS=(
     ClauseRegistry
     MembersRegistry
     AssemblyRegistry
+    AgreementRegistry
     FlorinToken
     UsageCounter
     RpgfMinter

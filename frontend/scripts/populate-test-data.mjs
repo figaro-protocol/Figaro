@@ -16,6 +16,7 @@
  * TESTING ONLY. For production clause population use populate-clauses.mjs.
  *
  * Env (frontend/.env.local): NEXT_PUBLIC_CLAUSE_REGISTRY, NEXT_PUBLIC_MEMBERS_REGISTRY,
+ *   NEXT_PUBLIC_ASSEMBLY_REGISTRY, NEXT_PUBLIC_AGREEMENT_REGISTRY,
  *   NEXT_PUBLIC_TOKEN_ADDRESS, NEXT_PUBLIC_IPFS_API_URL, RPC_URL.
  */
 import fs from 'node:fs';
@@ -27,11 +28,11 @@ import { mnemonicToAccount } from 'viem/accounts';
 // identity (compositionHash + slug). Nothing is re-implemented here.
 import { MEMBERS_REGISTRY_ABI, ERC20_ABI } from '@figaro-protocol/sdk';
 import {
-    ASSEMBLIES_DIR, LOCAL_ANVIL, anchorAssembly, fillDeployTimeCurrency, loadAuthoredSpecs, pinFile, pinJSON,
-    readResolvedTemplate,
+    ASSEMBLIES_DIR, LOCAL_ANVIL, anchorBuiltAssembly, fillDeployTimeCurrency, loadAuthoredSpecs, pinFile, pinJSON,
+    readBuiltAssembly,
     populateClauses, populateReferenceAssemblies, readEnvLocal, registrarAccount,
 } from './populate-clauses.mjs';
-import { templateCompositionHash, deriveAssemblySlug, resolveAuthoredClauseKeys } from '@figaro-protocol/sdk';
+import { templateCompositionHash, deriveAssemblySlug, resolveAuthoredClauseKeys, slotsFromAuthoredAgreements } from '@figaro-protocol/sdk';
 
 // The specs in clauses/, each with its key — the set every authored clause
 // NAME below resolves against at seed time (`resolveAuthoredClauseKeys`);
@@ -69,7 +70,7 @@ const SELLERS = [
  *  template AFTER the deploy-time currency fill — the same hash
  *  populateReferenceAssemblies anchored, never the raw file's. */
 function referenceSlug(file, tokenAddress) {
-    const template = readResolvedTemplate(path.join(ASSEMBLIES_DIR, file), AUTHORED);
+    const { template } = readBuiltAssembly(path.join(ASSEMBLIES_DIR, file), AUTHORED);
     return deriveAssemblySlug(templateCompositionHash(fillDeployTimeCurrency(template, tokenAddress)));
 }
 
@@ -82,11 +83,11 @@ const isAlreadyRegistered = (err) => /AlreadyRegistered/i.test(err instanceof Er
 // (the even-surfacing rule: a member surfaces only with an anchored binding,
 // so an empty AssemblyRegistry means zero surfaced members). Seeding is
 // PRE-POPULATION, exactly like clauses and sellers above — never a test
-// (the scenario-era build-order coupling is the cautionary tale). The template reproduces the designer's emission byte for
-// byte: identity (compositionHash + slug) and canonical JSON come from the
-// SDK; the mandatory fold mirrors `lib/designer/buildAssemblyTemplate.ts`
-// (composeStructuralClauses) — so the anchored document is indistinguishable
-// from a designer-published one.
+// (the scenario-era build-order coupling is the cautionary tale). Each seed is
+// authored like a reference assembly and derived through the same
+// `slotsFromAuthoredAgreements` walk: its agreements register on
+// AgreementRegistry, then its template anchors — identity (agreement keys,
+// compositionHash + slug) and canonical JSON come from the SDK.
 
 /** Fold the MANDATORY clauses (block.design.article === "mandatory",
  *  read from the canonical Layer-A specs — derived, never named) onto an
@@ -117,13 +118,13 @@ function mandatoryClauseFold(parents = []) {
 
 /** The blank single-agreement composition: mandatory clauses only — the
  *  minimal bindable assembly the single-order specs run against. */
-function seedTemplateBlank() {
-    return {
+function seedBlank() {
+    return slotsFromAuthoredAgreements({
         name: 'Devnet seed',
         summary: 'Pre-populated bindable assembly for the e2e suite.',
         description: 'A blank single-agreement composition (mandatory clauses only), anchored by populate-test-data so sellers can bind before any spec runs.',
         agreements: [{ id: 'order-0', clauses: mandatoryClauseFold() }],
-    };
+    }, AUTHORED);
 }
 
 /** The multi-order value-added CHAIN — the externalized P&L the multi-order
@@ -132,8 +133,8 @@ function seedTemplateBlank() {
  *  which agreement is scenario DATA (a designed assembly this seed reproduces
  *  byte-for-byte), exactly like the member roster above. Counterparties are
  *  NOT seeded — the lead binds + designates them through the real UI flow. */
-function seedTemplateChain() {
-    return resolveAuthoredClauseKeys({
+function seedChain() {
+    return slotsFromAuthoredAgreements({
         name: 'Devnet delivery chain',
         summary: 'Three-order value-added chain: merchant, courier, supplier.',
         description: 'A delivery chain for the multi-order e2e: the buyer sees the full decomposition at checkout, each contributor is bond-secured, and the single resolve pays every party.',
@@ -171,10 +172,11 @@ async function main() {
     const clauseRegistry = env.NEXT_PUBLIC_CLAUSE_REGISTRY;
     const membersRegistry = env.NEXT_PUBLIC_MEMBERS_REGISTRY;
     const assemblyRegistry = env.NEXT_PUBLIC_ASSEMBLY_REGISTRY;
+    const agreementRegistry = env.NEXT_PUBLIC_AGREEMENT_REGISTRY;
     const mockErc20 = env.NEXT_PUBLIC_TOKEN_ADDRESS;
     const ipfsApiUrl = env.NEXT_PUBLIC_IPFS_API_URL ?? 'http://127.0.0.1:5001';
-    if (!clauseRegistry || !membersRegistry || !assemblyRegistry || !mockErc20) {
-        throw new Error('NEXT_PUBLIC_CLAUSE_REGISTRY / NEXT_PUBLIC_MEMBERS_REGISTRY / NEXT_PUBLIC_ASSEMBLY_REGISTRY / NEXT_PUBLIC_TOKEN_ADDRESS missing — deploy first.');
+    if (!clauseRegistry || !membersRegistry || !assemblyRegistry || !agreementRegistry || !mockErc20) {
+        throw new Error('NEXT_PUBLIC_CLAUSE_REGISTRY / NEXT_PUBLIC_MEMBERS_REGISTRY / NEXT_PUBLIC_ASSEMBLY_REGISTRY / NEXT_PUBLIC_AGREEMENT_REGISTRY / NEXT_PUBLIC_TOKEN_ADDRESS missing — deploy first.');
     }
 
     const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
@@ -196,7 +198,7 @@ async function main() {
     //  ipfs:// reference resolves. The two inline templates below are
     //  devnet TEST SCAFFOLDING, not references.
     console.log('\nAssemblies:');
-    const anchorArgs = { publicClient, walletClient: registrarClient, account: registrar, registry: assemblyRegistry, ipfsApiUrl };
+    const anchorArgs = { publicClient, walletClient: registrarClient, account: registrar, registry: assemblyRegistry, agreementRegistry, ipfsApiUrl };
     const documentsDir = path.join(ASSEMBLIES_DIR, 'documents');
     if (fs.existsSync(documentsDir)) {
         for (const file of fs.readdirSync(documentsDir).sort()) {
@@ -211,8 +213,8 @@ async function main() {
     // not a single-order REFERENCE (pos/freelancer). The references anchor
     // after and are discovered by their OWN specific shapes, so order doesn't
     // affect them. (Refs-first would shadow the blank.)
-    await anchorAssembly({ ...anchorArgs, template: seedTemplateBlank() });
-    await anchorAssembly({ ...anchorArgs, template: seedTemplateChain() });
+    await anchorBuiltAssembly({ ...anchorArgs, built: seedBlank() });
+    await anchorBuiltAssembly({ ...anchorArgs, built: seedChain() });
     await populateReferenceAssemblies({ ...anchorArgs, tokenAddress: mockErc20 });
 
     // ── 2. Members (catalog → profile → register, all pinned + anchored) ──

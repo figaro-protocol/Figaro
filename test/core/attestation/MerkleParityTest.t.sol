@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 import "forge-std/Test.sol";
 import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import {UsageCounter} from "src/build/rewards/UsageCounter.sol";
+import {AgreementTestHelper} from "test/helpers/AgreementTestHelper.sol";
 
 /// @title MerkleParityTest — the Solidity leg of the three-way agreement-tree lock
 /// @notice The SDK builds the agreement's merkle root and every section's
@@ -19,15 +20,22 @@ import {UsageCounter} from "src/build/rewards/UsageCounter.sol";
 ///         the section hash over the canonical bytes — and verifies every frozen
 ///         proof with the library the consumers call.
 ///
-///         An agreement that instantiated an assembly carries one more leaf, the
-///         format's reserved PROVENANCE leaf, frozen under the agreement's
-///         optional `provenance` entry. It is keyed by the constant
-///         `UsageCounter.provenanceLeaf` (`keccak256("figaro-agreement-provenance")`,
-///         never a clause key), and its section bytes are exactly
-///         `{"compositionHash":"0x<64 lowercase hex>"}` — the bytes
-///         `UsageCounter.recordAssemblyUsage` reproduces from the composition
-///         claimed. This test rebuilds that leaf the same way and opens its
-///         frozen proof against the same root.
+///         An agreement that instantiated an order slot of an assembly carries
+///         one more leaf, the format's reserved PROVENANCE leaf, frozen under
+///         the agreement's optional `provenance` entry. It is keyed by the
+///         constant `UsageCounter.provenanceLeaf`
+///         (`keccak256("figaro-agreement-provenance")`, never a clause key), and
+///         its section bytes are exactly `{"agreementKey":"0x<64 lowercase
+///         hex>","compositionHash":"0x<64 lowercase hex>"}` — the bytes
+///         `UsageCounter.recordAgreementUsage` and `recordAssemblyUsage`
+///         reproduce from the two keys claimed. This test rebuilds that leaf the
+///         same way and opens its frozen proof against the same root.
+///
+///         The assembly's own tree is locked the same way against
+///         `test/fixtures/assembly-vectors.json`: one leaf per order slot and
+///         the terms leaf under the compositionHash, each order slot's
+///         membership proof opened with the library `recordAssemblyUsage`
+///         calls (`test_everyAssemblyVectorOpensUnderItsRoot`).
 ///
 ///         `MERKLE_VECTORS` names another file in the same format: the
 ///         differential fuzz (`scripts/test-cross-impl-fuzz.sh`) points it at
@@ -37,17 +45,23 @@ contract MerkleParityTest is Test {
 
     string internal path;
     bool internal generated;
-    /// @dev The counter's own `provenanceLeaf`, read from a deployed counter so
-    ///      the key under test is the contract's, never a copy of its label.
+    string internal constant ASSEMBLY_FIXTURE = "test/fixtures/assembly-vectors.json";
+
+    /// @dev The counter's own `provenanceLeaf` and `assemblyTermsLeaf`, read
+    ///      from a deployed counter so the keys under test are the contract's,
+    ///      never a copy of their labels.
     bytes32 internal provenanceLeaf;
+    bytes32 internal assemblyTermsLeaf;
 
     function setUp() public {
         path = vm.envOr("MERKLE_VECTORS", FIXTURE);
         generated = keccak256(bytes(path)) != keccak256(bytes(FIXTURE));
         uint64[] memory periods = new uint64[](1);
         periods[0] = type(uint64).max;
-        provenanceLeaf =
-            new UsageCounter(address(1), address(1), address(1), address(1), address(1), 1, periods).provenanceLeaf();
+        UsageCounter counter =
+            new UsageCounter(address(1), address(1), address(1), address(1), address(1), address(1), 1, periods);
+        provenanceLeaf = counter.provenanceLeaf();
+        assemblyTermsLeaf = counter.assemblyTermsLeaf();
     }
 
     function _leaf(bytes32 clauseKey, string memory sectionData) internal pure returns (bytes32) {
@@ -55,16 +69,12 @@ contract MerkleParityTest is Test {
         return keccak256(bytes.concat(keccak256(abi.encodePacked(clauseKey, sectionHash))));
     }
 
-    /// @dev The provenance leaf as `UsageCounter.recordAssemblyUsage` rebuilds
-    ///      it: the reserved key, and the section bytes reproduced from the
-    ///      composition — never parsed from the fixture.
-    function _provenanceLeaf(bytes32 compositionHash) internal view returns (bytes32) {
-        bytes32 sectionHash = keccak256(_provenanceSection(compositionHash));
+    /// @dev The provenance leaf as `UsageCounter` rebuilds it: the reserved
+    ///      key, and the section bytes reproduced from the two keys — never
+    ///      parsed from the fixture.
+    function _provenanceLeaf(bytes32 agreementKey, bytes32 compositionHash) internal view returns (bytes32) {
+        bytes32 sectionHash = keccak256(AgreementTestHelper.provenanceSection(agreementKey, compositionHash));
         return keccak256(bytes.concat(keccak256(abi.encodePacked(provenanceLeaf, sectionHash))));
-    }
-
-    function _provenanceSection(bytes32 compositionHash) internal pure returns (bytes memory) {
-        return abi.encodePacked('{"compositionHash":"', vm.toString(compositionHash), '"}');
     }
 
     function test_everyFrozenProofOpensAgainstTheRebuiltLeaf() public view {
@@ -105,21 +115,26 @@ contract MerkleParityTest is Test {
             provenanceLeaf,
             "the SDK's reserved key is the counter's"
         );
+        bytes32 agreementKey = vm.parseJsonBytes32(json, string.concat(pb, ".agreementKey"));
         bytes32 compositionHash = vm.parseJsonBytes32(json, string.concat(pb, ".compositionHash"));
         assertEq(
             keccak256(bytes(vm.parseJsonString(json, string.concat(pb, ".sectionData")))),
-            keccak256(_provenanceSection(compositionHash)),
+            keccak256(AgreementTestHelper.provenanceSection(agreementKey, compositionHash)),
             "the SDK's section bytes are the ones the counter reproduces"
         );
-        bytes32 leaf = _provenanceLeaf(compositionHash);
+        bytes32 leaf = _provenanceLeaf(agreementKey, compositionHash);
         assertEq(
             leaf, vm.parseJsonBytes32(json, string.concat(pb, ".leaf")), "the rebuilt provenance leaf is the SDK's"
         );
         bytes32[] memory proof = vm.parseJsonBytes32Array(json, string.concat(pb, ".proof"));
         assertTrue(MerkleProof.verify(proof, root, leaf), "the frozen provenance proof opens");
         assertFalse(
-            MerkleProof.verify(proof, root, _provenanceLeaf(compositionHash ^ bytes32(uint256(1)))),
+            MerkleProof.verify(proof, root, _provenanceLeaf(agreementKey, compositionHash ^ bytes32(uint256(1)))),
             "another composition's leaf does not open"
+        );
+        assertFalse(
+            MerkleProof.verify(proof, root, _provenanceLeaf(agreementKey ^ bytes32(uint256(1)), compositionHash)),
+            "another agreement's leaf does not open"
         );
     }
 
@@ -141,5 +156,110 @@ contract MerkleParityTest is Test {
         bytes32 leaf = vm.parseJsonBytes32(json, ".agreements[1].sections[0].leaf");
         assertEq(root, leaf, "root == leaf");
         assertEq(vm.parseJsonBytes32Array(json, ".agreements[1].sections[0].proof").length, 0, "empty proof");
+    }
+
+    // ── The assembly's tree ─────────────────────────────────────────
+
+    /// @dev The length of the JSON array at `key`.
+    function _count(string memory json, string memory key) internal view returns (uint256 n) {
+        while (vm.keyExistsJson(json, string.concat(key, "[", vm.toString(n), "]"))) n++;
+    }
+
+    /// @dev `keccak256(keccak256(key ‖ sectionHash))` — the one leaf convention.
+    function _leafOf(bytes32 key, bytes32 sectionHash) internal pure returns (bytes32) {
+        return keccak256(bytes.concat(keccak256(abi.encodePacked(key, sectionHash))));
+    }
+
+    /// Every registered agreement's key is the hash of its key bytes, the
+    /// canonical JSON of its `clauses`.
+    function test_everyAgreementKeyIsTheHashOfItsKeyBytes() public view {
+        string memory json = vm.readFile(ASSEMBLY_FIXTURE);
+        uint256 n = _count(json, ".agreements");
+        assertGt(n, 0, "fixture carries agreements");
+        for (uint256 a = 0; a < n; a++) {
+            string memory ab = string.concat(".agreements[", vm.toString(a), "]");
+            assertEq(
+                keccak256(bytes(vm.parseJsonString(json, string.concat(ab, ".keyBytes")))),
+                vm.parseJsonBytes32(json, string.concat(ab, ".agreementKey")),
+                "agreementKey = keccak256(keyBytes)"
+            );
+        }
+    }
+
+    /// Every order slot's leaf is rebuilt as `recordAssemblyUsage` rebuilds it
+    /// and its frozen membership proof opens under the compositionHash with the
+    /// library the counter calls; the terms leaf is keyed by the counter's
+    /// constant; the root over every leaf is the compositionHash; and every
+    /// order slot's provenance bytes are the ones the counter reproduces from
+    /// the two keys.
+    function test_everyAssemblyVectorOpensUnderItsRoot() public view {
+        string memory json = vm.readFile(ASSEMBLY_FIXTURE);
+        uint256 n = _count(json, ".assemblies");
+        assertGt(n, 0, "fixture carries assemblies");
+        bool sawTerms;
+        for (uint256 a = 0; a < n; a++) {
+            string memory ab = string.concat(".assemblies[", vm.toString(a), "]");
+            bytes32 root = vm.parseJsonBytes32(json, string.concat(ab, ".compositionHash"));
+            uint256 slots = _count(json, string.concat(ab, ".slots"));
+            bool hasTerms = vm.keyExistsJson(json, string.concat(ab, ".terms.leaf"));
+            bytes32[] memory leaves = new bytes32[](slots + (hasTerms ? 1 : 0));
+            for (uint256 i = 0; i < slots; i++) {
+                leaves[i] = _assertSlot(json, string.concat(ab, ".slots[", vm.toString(i), "]"), root);
+            }
+            if (hasTerms) {
+                sawTerms = true;
+                leaves[slots] = _assertTerms(json, string.concat(ab, ".terms"));
+            }
+            assertEq(AgreementTestHelper.rootFor(leaves), root, "the root over every leaf is the compositionHash");
+        }
+        assertTrue(sawTerms, "the fixture pins a terms leaf");
+    }
+
+    /// @dev One order slot: its content hash, its leaf, its membership proof,
+    ///      and its provenance leaf. Returns the leaf.
+    function _assertSlot(string memory json, string memory sb, bytes32 root) internal view returns (bytes32 leaf) {
+        bytes32 agreementKey = vm.parseJsonBytes32(json, string.concat(sb, ".agreementKey"));
+        bytes32 slotContentHash = keccak256(bytes(vm.parseJsonString(json, string.concat(sb, ".slotBytes"))));
+        assertEq(
+            slotContentHash,
+            vm.parseJsonBytes32(json, string.concat(sb, ".slotContentHash")),
+            "slotContentHash = keccak256(slotBytes)"
+        );
+        leaf = _leafOf(agreementKey, slotContentHash);
+        assertEq(
+            leaf, vm.parseJsonBytes32(json, string.concat(sb, ".leaf")), "the rebuilt order slot leaf is the SDK's"
+        );
+        bytes32[] memory proof = vm.parseJsonBytes32Array(json, string.concat(sb, ".membershipProof"));
+        assertTrue(MerkleProof.verify(proof, root, leaf), "the frozen membership proof opens");
+        assertFalse(
+            MerkleProof.verify(proof, root, _leafOf(agreementKey ^ bytes32(uint256(1)), slotContentHash)),
+            "another agreement's order slot leaf does not open"
+        );
+
+        string memory pb = string.concat(sb, ".provenance");
+        assertEq(vm.parseJsonBytes32(json, string.concat(pb, ".leafKey")), provenanceLeaf, "the counter's key");
+        assertEq(vm.parseJsonBytes32(json, string.concat(pb, ".agreementKey")), agreementKey, "names the order slot's");
+        assertEq(vm.parseJsonBytes32(json, string.concat(pb, ".compositionHash")), root, "names the assembly");
+        bytes32 sectionHash = keccak256(AgreementTestHelper.provenanceSection(agreementKey, root));
+        assertEq(
+            keccak256(bytes(vm.parseJsonString(json, string.concat(pb, ".sectionData")))),
+            sectionHash,
+            "the SDK's provenance bytes are the ones the counter reproduces"
+        );
+        assertEq(vm.parseJsonBytes32(json, string.concat(pb, ".sectionHash")), sectionHash);
+        assertEq(
+            vm.parseJsonBytes32(json, string.concat(pb, ".leaf")),
+            _provenanceLeaf(agreementKey, root),
+            "the rebuilt provenance leaf is the SDK's"
+        );
+    }
+
+    /// @dev The terms leaf: keyed by the counter's constant, over the terms bytes.
+    function _assertTerms(string memory json, string memory tb) internal view returns (bytes32 leaf) {
+        assertEq(vm.parseJsonBytes32(json, string.concat(tb, ".leafKey")), assemblyTermsLeaf, "the counter's key");
+        bytes32 sectionHash = keccak256(bytes(vm.parseJsonString(json, string.concat(tb, ".termsBytes"))));
+        assertEq(vm.parseJsonBytes32(json, string.concat(tb, ".sectionHash")), sectionHash);
+        leaf = _leafOf(assemblyTermsLeaf, sectionHash);
+        assertEq(leaf, vm.parseJsonBytes32(json, string.concat(tb, ".leaf")), "the rebuilt terms leaf is the SDK's");
     }
 }

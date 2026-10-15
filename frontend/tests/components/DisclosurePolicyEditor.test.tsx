@@ -20,7 +20,7 @@ const CHOICE: AssemblyChoice = {
     summary: "A licensed drone operator flies for you.",
     agreementCount: 1,
     clauses: ["figaro-commerce"],
-    assemblyTemplate: null,
+    hydratedAssembly: null,
     stakeWithdrawn: false,
 };
 

@@ -56,6 +56,7 @@ import {
     calculateBonds,
     computeOrderHash,
     USAGE_COUNTER_ABI,
+    USAGE_KIND_CLAUSE,
     buildUsageClaims,
     fetchUsageClaimContext,
     computeAgreementHash,
@@ -553,7 +554,7 @@ describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
             address: usageCounterAddress,
             abi: USAGE_COUNTER_ABI,
             functionName: "batchAccrualOf",
-            args: [clauseKey, 0],
+            args: [USAGE_KIND_CLAUSE, clauseKey, 0],
         })) as readonly [bigint, bigint, bigint];
 
         expect(batchAccrual[0], "one distinct resolved process").toBe(1n);
@@ -566,7 +567,7 @@ describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
             address: usageCounterAddress,
             abi: USAGE_COUNTER_ABI,
             functionName: "scoreOf",
-            args: [clauseKey, 0],
+            args: [USAGE_KIND_CLAUSE, clauseKey, 0],
         })) as bigint;
         expect(merged).toBe(batchAccrual[2]);
 

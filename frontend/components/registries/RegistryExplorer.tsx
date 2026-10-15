@@ -2,7 +2,7 @@
 
 /**
  * The registry explorer — `/registries`. ONE reads-only surface over the
- * three protocol registries: what is registered, searchable, faceted,
+ * four protocol registries (clauses, agreements, assemblies, members): what is registered, searchable, faceted,
  * sortable. The concept pages (`/clauses`, `/assemblies`, `/members`) say
  * what each thing IS; this page says what EXISTS on the network the site
  * is reading. Every row comes from an event stream + pinned content through
@@ -15,12 +15,18 @@
  */
 
 import Link from "@/components/shared/Link";
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useAllRegisteredClauses } from "@/lib/protocol/useClauseRegistry";
 import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
 import { getClauseSpec, getClauseSpecLoadError, isLiveRegistration } from "@/lib/shared/clauseSpecSource";
 import { useAssemblyChoices } from "@/lib/protocol/assemblyChoices";
+import {
+    fetchComposedAgreement,
+    getComposedAgreement,
+    useComposedAgreementsVersion,
+    usePublishedAgreements,
+} from "@/lib/protocol/useAgreementRegistry";
 import { useRegisteredMembers } from "@/lib/member/useRegisteredMembers";
 import { AssemblyShapeLine } from "@/components/assemblies/AssemblyShapeLine";
 import { Breadcrumb } from "@/components/shared/Breadcrumb";
@@ -32,7 +38,7 @@ import {
     type ExplorerQuery, type ExplorerRow, type RegistryFamily,
 } from "@/lib/registries/explorer";
 
-const FAMILY_LABEL: Record<RegistryFamily, string> = { clauses: "Clauses", assemblies: "Assemblies", members: "Members" };
+const FAMILY_LABEL: Record<RegistryFamily, string> = { clauses: "Clauses", agreements: "Agreements", assemblies: "Assemblies", members: "Members" };
 // ONE role, plainly phrased: the wallet that registered the row — both
 // contracts spell it `registeredBy` (ClauseRegistry and AssemblyRegistry,
 // the same per-wallet role); the reader sees one expression.
@@ -63,11 +69,18 @@ export function RegistryExplorer() {
         router.replace(`${pathname}?${serializeExplorerQuery(next)}`, { scroll: false });
     }, [state, router, pathname]);
 
-    // ── The three registries, each through its own walletless reader ──
+    // ── The four registries, each through its own walletless reader ──
     const { data: clauseEvents, failed: clausesFailed } = useAllRegisteredClauses();
     const { version: specVersion } = useClauseSpecs();
     const { data: assemblies, failed: assembliesFailed } = useAssemblyChoices(undefined, { includeWithdrawn: true });
     const { data: members, failed: membersFailed } = useRegisteredMembers();
+    const { data: agreements, failed: agreementsFailed } = usePublishedAgreements(undefined, { includeWithdrawn: true });
+    // Each registered agreement's pinned document, read by its binding and
+    // verified against its key; the rows re-derive as documents verify.
+    const agreementsVersion = useComposedAgreementsVersion();
+    useEffect(() => {
+        for (const a of agreements ?? []) void fetchComposedAgreement(a.agreementKey, a.contentURI);
+    }, [agreements]);
 
     const rows = useMemo<Array<ExplorerRow & RowText>>(() => {
         const out: Array<ExplorerRow & RowText> = [];
@@ -87,8 +100,24 @@ export function RegistryExplorer() {
                 text: [e.clauseKey, spec?.clauseId ?? "", name, description, article, e.registeredBy].join(" "),
             });
         }
+        for (const a of agreements ?? []) {
+            // A row is one registration, keyed and anchored by its agreement
+            // key; its pinned document's name is its label.
+            const doc = getComposedAgreement(a.agreementKey);
+            const clauses = doc ? Object.keys(doc.clauses) : [];
+            const name = doc?.name ?? truncateHex(a.agreementKey, { head: 10, tail: 4 });
+            const description = doc?.summary ?? doc?.description ?? "";
+            out.push({
+                family: "agreements", key: `agreement-${a.agreementKey}`, id: a.agreementKey, name, article: "", description,
+                content: doc ? "resolved" : "resolving",
+                registeredBy: a.registeredBy, blockNumber: a.blockNumber, stakeWithdrawn: a.stakeWithdrawn, clauses,
+                contentURI: a.contentURI, anchoredHash: a.agreementKey,
+                text: [a.agreementKey, name, description, a.registeredBy, ...clauses,
+                    ...clauses.map((k) => getClauseSpec(k)?.clauseId ?? "")].join(" "),
+            });
+        }
         for (const a of assemblies ?? []) {
-            const description = a.assemblyTemplate?.summary ?? a.assemblyTemplate?.description ?? "";
+            const description = a.hydratedAssembly?.template.summary ?? a.hydratedAssembly?.template.description ?? "";
             out.push({
                 family: "assemblies", key: `assembly-${a.slug}`, id: a.slug, name: a.name, article: "", description,
                 content: a.state === "loaded" ? "resolved" : "resolving",
@@ -112,13 +141,15 @@ export function RegistryExplorer() {
         // `specVersion` bumps as clause specs resolve from IPFS — names and
         // articles fill in without a refetch.
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [clauseEvents, assemblies, members, specVersion]);
+    }, [clauseEvents, agreements, assemblies, members, specVersion, agreementsVersion]);
 
     const selected = useMemo(() => selectRows(rows, state), [rows, state]);
     const articles = useMemo(() => facetValues(rows, "clauses", "article"), [rows]);
     const familyLoading = state.family === "clauses" ? clauseEvents === null
+        : state.family === "agreements" ? agreements === null
         : state.family === "assemblies" ? assemblies === null : members === null;
     const familyFailed = state.family === "clauses" ? clausesFailed
+        : state.family === "agreements" ? agreementsFailed
         : state.family === "members" ? membersFailed : assembliesFailed;
     const familyTotal = rows.filter((r) => r.family === state.family && isLiveRegistration(r)).length;
 
@@ -223,6 +254,7 @@ export function RegistryExplorer() {
                         {state.q || state.article || state.registeredBy || state.clause ? " match" : ""}.
                     </p>
                     {state.family === "clauses" ? <ClauseRows rows={selected} state={state} onFacet={setState} /> : null}
+                    {state.family === "agreements" ? <AgreementRows rows={selected} onFacet={setState} /> : null}
                     {state.family === "assemblies" ? <AssemblyRows rows={selected} assemblies={assemblies ?? []} onFacet={setState} /> : null}
                     {state.family === "members" ? <MemberRows rows={selected} members={members ?? []} /> : null}
                 </>
@@ -285,6 +317,43 @@ function ClauseRows({ rows, state, onFacet }: { rows: Array<ExplorerRow & RowTex
                 </section>
             ))}
         </div>
+    );
+}
+
+/** Registered agreements — one row per `AgreementRegistry` registration: its
+ *  pinned document's name, its key, its designer of record, its stake state,
+ *  the clauses it composes, and the pinned document checked against the key.
+ *  Row ids are `agreement-<agreementKey>`. */
+function AgreementRows({ rows, onFacet }: { rows: Array<ExplorerRow & RowText>; onFacet: (p: Partial<ExplorerQuery>) => void }) {
+    if (rows.length === 0) return <Empty family="agreements" />;
+    return (
+        <ul className="space-y-5">
+            {rows.map((r) => (
+                <li key={r.key} id={r.key} className="flex flex-col gap-1 scroll-mt-24" data-testid={`agreement-row-${r.id.toLowerCase()}`}>
+                    <div className="flex flex-col sm:flex-row sm:items-baseline sm:gap-3">
+                        <span className="text-sm font-semibold text-ink-heading">{r.name}</span>
+                        <code className="font-mono text-xs text-ink-muted break-all" data-testid={`agreement-key-${r.id.toLowerCase()}`}>{r.id}</code>
+                    </div>
+                    {r.description ? <p className="text-sm text-ink-body">{r.description}</p> : null}
+                    {r.clauses.length > 0 ? (
+                        <p className="text-xs text-ink-muted">
+                            Composes {r.clauses.map((k) => getClauseSpec(k)?.title ?? truncateHex(k, { head: 10, tail: 0 })).join(", ")}
+                        </p>
+                    ) : null}
+                    <p className="text-xs text-ink-muted">
+                        Designer of record{" "}
+                        <button type="button" className="font-mono underline" onClick={() => onFacet({ registeredBy: r.registeredBy })}>
+                            {truncateHex(r.registeredBy)}
+                        </button>
+                        <span className="ml-2" data-testid={`agreement-stake-${r.id.toLowerCase()}`}>
+                            {r.stakeWithdrawn ? "(stake withdrawn)" : "(live stake)"}
+                        </span>
+                        <ContentStateNote content={r.content} />
+                    </p>
+                    <StoredRow row={r} />
+                </li>
+            ))}
+        </ul>
     );
 }
 

@@ -80,7 +80,7 @@ pub enum ContentKind {
 /// The one key the gates do not run for is the agreement format's
 /// reserved provenance leaf (`kernel::PROVENANCE_LEAF_KEY`): it is not a
 /// clause, so S and C give way to the format's own rule — `section_data`
-/// is the reproduction of the compositionHash it carries, `content_ref` is
+/// is the reproduction of the agreementKey and compositionHash it carries, `content_ref` is
 /// its keccak — and I runs as for any leaf; no spec binding is committed.
 ///
 /// JSON crosses the SP1 stdin boundary as pre-serialized `String`s —
@@ -111,8 +111,8 @@ pub struct AttestationContentProof {
 
 /// A single FigaroCore operation within a proof batch.
 ///
-/// Registry mutations (clause/seller/assembly registration) are NOT
-/// batched: they are once-per-clause-or-assembly ETH-staked intents (K4)
+/// Registry mutations (clause/seller/agreement/assembly registration) are NOT
+/// batched: they are once-per-key ETH-staked intents (K4)
 /// that don't fit ERC-20 position netting, carry no throughput concern, and
 /// batching them would fork a second first-write-wins namespace. They
 /// stay on the direct path; the batch covers the high-frequency FigaroCore
@@ -171,52 +171,71 @@ pub enum KernelOp {
 
 // ── Usage accrual (the RPGF bridge) ───────────────────────────────
 
-/// Which family — clause or assembly — a usage claim credits, and the
-/// witness each needs. Mirrors `UsageCounter.recordClauseUsage` /
-/// `recordAssemblyUsage` — same leaf convention, same proof, one step
-/// different in how the section is identified.
+/// Which family — clause, agreement or assembly — a usage claim credits,
+/// and the witness each needs. Mirrors `UsageCounter.recordClauseUsage`,
+/// `recordAgreementUsage` and `recordAssemblyUsage` — the same leaf
+/// convention and the same sorted-pair proof, differing in how the leaf is
+/// identified.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum UsageClaimKind {
     /// Clause usage. The leaf key IS the clause, and the section's
     /// committed bytes are supplied as a FINGERPRINT — the preimage
     /// never enters the batch, exactly as on the direct path.
     Clause { section_hash: B256 },
-    /// Assembly usage. The leaf key is the reserved PROVENANCE leaf's key,
-    /// a constant of the agreement format (never the assembly — a
-    /// compositionHash is not a leaf key — and never a clause), and the section
-    /// bytes are REPRODUCED from the assembly rather than supplied:
-    /// `{"compositionHash":"0x…"}`. A wrong compositionHash derives a
-    /// leaf that is simply not in the tree.
-    Assembly,
+    /// Agreement usage; the claim's key is the registered agreementKey.
+    /// The leaf is the reserved PROVENANCE leaf, a constant of the
+    /// agreement format, and its bytes are REPRODUCED from both keys rather
+    /// than supplied: `{"agreementKey":"0x…","compositionHash":"0x…"}`, the
+    /// compositionHash of the assembly whose order slot the order instantiates. A
+    /// wrong key on either side derives a leaf that is simply not in the
+    /// tree.
+    Agreement { composition_hash: B256 },
+    /// Assembly usage; the claim's key is the compositionHash. The
+    /// provenance leaf is proved exactly as for an agreement claim, from
+    /// `agreement_key` and the compositionHash; then the order-slot leaf
+    /// `keccak256(keccak256(agreement_key ‖ slot_content_hash))` is proved
+    /// under the compositionHash by `membership_proof`, with the same
+    /// sorted-pair verifier — the assembly's root is a merkle tree over its
+    /// order slots.
+    Assembly {
+        agreement_key: B256,
+        slot_content_hash: B256,
+        membership_proof: Vec<B256>,
+    },
 }
 
 /// The reward family of a clause key, as the accrual carries it.
 pub const USAGE_KIND_CLAUSE: u8 = 0;
 /// The reward family of an assembly key, as the accrual carries it.
 pub const USAGE_KIND_ASSEMBLY: u8 = 1;
+/// The reward family of an agreement key, as the accrual carries it.
+pub const USAGE_KIND_AGREEMENT: u8 = 2;
 
 impl UsageClaimKind {
-    /// The family this claim credits: `USAGE_KIND_CLAUSE` or
-    /// `USAGE_KIND_ASSEMBLY`. A registry accepts any bytes32, so a clause
-    /// key and an assembly key can be the same word; every count and
-    /// accrual is keyed by (kind, key) and the two families never merge.
+    /// The family this claim credits: `USAGE_KIND_CLAUSE`,
+    /// `USAGE_KIND_ASSEMBLY` or `USAGE_KIND_AGREEMENT`. A registry accepts
+    /// any bytes32, so keys of two families can be the same word; every
+    /// count and accrual is keyed by (kind, key) and the families never
+    /// merge.
     pub fn code(&self) -> u8 {
         match self {
             Self::Clause { .. } => USAGE_KIND_CLAUSE,
-            Self::Assembly => USAGE_KIND_ASSEMBLY,
+            Self::Agreement { .. } => USAGE_KIND_AGREEMENT,
+            Self::Assembly { .. } => USAGE_KIND_ASSEMBLY,
         }
     }
 }
 
-/// A claim that one RESOLVED order used one clause or assembly. The guest
-/// proves it against the batch's own post-state and the order's signed
-/// `agreement_hash`; nothing here is taken on the sequencer's word.
+/// A claim that one RESOLVED order used one clause, agreement or assembly.
+/// The guest proves it against the batch's own post-state and the order's
+/// signed `agreement_hash`; nothing here is taken on the sequencer's word.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct UsageClaim {
     /// The order's commitment struct, exactly as signed.
     pub order: Commitment,
-    /// Clause key (keccak256 of the spec's pinned bytes) or assembly
-    /// compositionHash — each family's own registry key, never a new identifier.
+    /// The key the claim credits, each family's own registry key: the
+    /// clause key (keccak256 of the spec's pinned bytes), the agreementKey,
+    /// or the compositionHash — never a new identifier.
     pub clause_or_assembly: B256,
     pub kind: UsageClaimKind,
     /// Sorted-pair Merkle proof of the section leaf against the order's
@@ -224,7 +243,7 @@ pub struct UsageClaim {
     pub inclusion_proof: Vec<B256>,
 }
 
-/// One clause-or-assembly's accrual AFTER this batch — the CUMULATIVE
+/// One clause, agreement or assembly's accrual AFTER this batch — the CUMULATIVE
 /// `(c, d)` for the batch path in `period`, not a delta, under its
 /// (kind, key). The verifier overwrites the counter's batch-side slot of
 /// that kind with it, so the on-chain write is O(distinct (kind, key)
@@ -232,11 +251,11 @@ pub struct UsageClaim {
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct UsageAccrual {
     pub clause_or_assembly: B256,
-    /// `USAGE_KIND_CLAUSE` or `USAGE_KIND_ASSEMBLY`, from the claims'
-    /// own `UsageClaimKind`.
+    /// `USAGE_KIND_CLAUSE`, `USAGE_KIND_ASSEMBLY` or
+    /// `USAGE_KIND_AGREEMENT`, from the claims' own `UsageClaimKind`.
     pub kind: u8,
-    /// Distinct resolved processes that used this clause or assembly (batch
-    /// path).
+    /// Distinct resolved processes that used this clause, agreement or
+    /// assembly (batch path).
     pub c: u64,
     /// Distinct staked sellers in this period (batch path).
     pub d: u64,
@@ -337,13 +356,13 @@ pub struct PublicValues {
     /// The on-chain verifier checks each binding's fields are equal and
     /// its key `ClauseRegistry.registered` before accepting the batch.
     pub spec_bindings_hash: B256,
-    /// Hash of the batch's RPGF usage accrual — the period, the
-    /// provenance leaf's key, the per-clause-or-assembly cumulative `(c, d)`,
+    /// Hash of the batch's designer-reward usage accrual — the period, the
+    /// provenance leaf's key, the per-(kind, key) cumulative `(c, d)`,
     /// and the distinct sellers the accrual rests on. The on-chain verifier
     /// re-derives it from calldata, anchors every seller against
-    /// `MembersRegistry.registered` and every clause or assembly against its
-    /// live registration in `ClauseRegistry` or `AssemblyRegistry`, then
-    /// writes the accrual.
+    /// `MembersRegistry.registered` and every clause, agreement or assembly
+    /// against its live registration in `ClauseRegistry`,
+    /// `AgreementRegistry` or `AssemblyRegistry`, then writes the accrual.
     pub usage_accrual_hash: B256,
     /// The clock the guest checked every commitment deadline against
     /// (`input.block_timestamp`). It is COMMITTED here so the on-chain verifier
@@ -444,7 +463,7 @@ pub struct BatchEvents {
     /// Deduplicated, sorted — the verifier checks each against the
     /// live ClauseRegistry.
     pub spec_bindings: Vec<SpecBinding>,
-    /// Per-clause-or-assembly cumulative accrual after this batch, sorted
+    /// Per-(kind, key) cumulative accrual after this batch, sorted
     /// by key. Empty when the batch carries no usage claims.
     pub usage_accruals: Vec<UsageAccrual>,
     /// The distinct sellers of record behind those accruals, sorted.
@@ -521,24 +540,26 @@ pub enum KernelError {
     /// Usage is what a FINISHED process leaves behind — the inverse of
     /// the attestation gate, exactly as on the direct path.
     UsageOrderNotResolved(B256),
-    /// This (clause-or-assembly, process) pair was already counted in an earlier
+    /// This (kind, key, process) triple was already counted in an earlier
     /// batch (or earlier in this one). Once ever, whatever the period —
     /// the guest's mirror of `UsageCounter.AlreadyCounted`.
     UsageAlreadyCounted { clause_or_assembly: B256, process_id: B256 },
     /// The claimed section is not a leaf of the order's signed
-    /// agreement — for an assembly claim, the usual cause is a
-    /// compositionHash that does not match the committed provenance
-    /// section.
+    /// agreement — for an agreement or assembly claim, the usual cause is
+    /// an agreementKey or compositionHash that does not match the committed
+    /// provenance section — or, for an assembly claim, the order-slot leaf is not
+    /// a leaf of the compositionHash.
     UsageInvalidInclusionProof,
     /// An attestation of the reserved provenance leaf whose bytes are not
-    /// `{"compositionHash":"0x<64 lowercase hex>"}` reproduced from the
-    /// compositionHash they carry.
+    /// `{"agreementKey":"0x<64 lowercase hex>","compositionHash":"0x<64 lowercase hex>"}`
+    /// reproduced from the two keys they carry.
     ProvenanceLeafNotCanonical,
-    /// A usage claim keyed on the reserved provenance leaf. The key is a
-    /// constant of the agreement format, never a clause or an assembly, so
-    /// no claim is credited under it — the guest's mirror of
-    /// `UsageCounter.ProvenanceLeafIsNotARegistration`.
-    ProvenanceLeafIsNotARegistration,
+    /// A usage claim keyed on a reserved key of the format (the
+    /// provenance leaf's or the assembly terms leaf's), or an assembly
+    /// claim whose order slot names one as its agreementKey. Neither key is
+    /// ever a clause, an agreement or an assembly, so no claim is credited
+    /// under it — the guest's mirror of the counter's refusal of both.
+    ReservedKeyIsNotARegistration(B256),
 }
 
 impl core::fmt::Display for KernelError {

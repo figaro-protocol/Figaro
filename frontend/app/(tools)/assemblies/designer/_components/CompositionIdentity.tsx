@@ -3,10 +3,10 @@
 /**
  * CompositionIdentity — the canvas's live identity readout.
  *
- * The assembly's identity IS its composition: `compositionHash` = keccak256 of
- * the template's canonical composition subset, which is the AssemblyRegistry
- * key (first-write-wins, immutable), and the published slug is a pure function
- * of it. Editorial prose (name / summary / description) is excluded from the
+ * The assembly's identity IS its composition: `compositionHash` = the merkle
+ * root over its order slots (each slot's agreement key and its own fills) and
+ * its assembly terms, which is the AssemblyRegistry key (first-write-wins,
+ * immutable), and the published slug is a pure function of it. Editorial prose (name / summary / description) is excluded from the
  * subset, so renaming never forks identity.
  *
  * Why it is on the canvas rather than only on the review page: a design fill's
@@ -30,6 +30,7 @@ import { useMemo } from "react";
 import type { DesignSnapshot } from "@/lib/designer/syntheticDesignStore";
 import { snapshotCompositionIdentity } from "@/lib/designer/draftToAssemblyTemplate";
 import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
+import { useComposedAgreementsVersion } from "@/lib/protocol/useAgreementRegistry";
 import { truncateHex } from "@/lib/shared/formatHex";
 
 export function CompositionIdentity({ snapshot }: { snapshot: DesignSnapshot | null }) {
@@ -39,11 +40,14 @@ export function CompositionIdentity({ snapshot }: { snapshot: DesignSnapshot | n
     // is for a genuinely unbuildable composition (a mis-scoped clause from an
     // imported template), not for a cold cache.
     const { version: specsVersion } = useClauseSpecs();
+    // The registered agreements an order slot binds are an input too: the
+    // build reads them once the registry read verifies them.
+    const agreementsVersion = useComposedAgreementsVersion();
 
     const identity = useMemo(
         () => (snapshot ? snapshotCompositionIdentity(snapshot) : null),
         // eslint-disable-next-line react-hooks/exhaustive-deps
-        [snapshot, specsVersion],
+        [snapshot, specsVersion, agreementsVersion],
     );
 
     // Nothing composed yet — there is no identity to state, and a placeholder

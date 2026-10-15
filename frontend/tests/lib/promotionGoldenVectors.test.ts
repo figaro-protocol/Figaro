@@ -104,15 +104,21 @@ function templateCase() {
         { orderHash: "synthetic-root", parentOrderHashes: [] },
         { orderHash: "synthetic-child", parentOrderHashes: ["synthetic-root"] },
     ];
-    return serializeAssemblyTemplate(
-        buildAssemblyTemplate({
-            name: "Golden Vector Chain",
-            orders,
-            clausesByOrderId: {},
-            assemblyClauses: byKey({ "figaro-applicable-law": { applicableLaw: "US-NY" } }),
-            specs: specSource(),
-        }),
-    );
+    const built = buildAssemblyTemplate({
+        name: "Golden Vector Chain",
+        orders,
+        clausesByOrderId: {},
+        assemblyClauses: byKey({ "figaro-applicable-law": { applicableLaw: "US-NY" } }),
+        specs: specSource(),
+    });
+    return {
+        ...serializeAssemblyTemplate(built.template),
+        // The agreements newly composed for the order slots, each as the
+        // canonical document publish pins.
+        agreements: Object.fromEntries(
+            Object.entries(built.agreements).map(([key, doc]) => [key, canonicalize(doc)]),
+        ),
+    };
 }
 
 function payloadCase(agreement: Agreement, agreementHash: `0x${string}`): CommitmentPayload {
@@ -149,7 +155,7 @@ interface GoldenVectors {
         defaults: { canonicalAgreement: string; agreementHash: string };
         processLog: { canonicalAgreement: string; agreementHash: string };
     };
-    assemblyTemplate: { canonicalJson: string; compositionHash: string };
+    assemblyTemplate: { canonicalJson: string; compositionHash: string; agreements: Record<string, string> };
 }
 
 beforeAll(async () => {
@@ -201,6 +207,7 @@ beforeAll(async () => {
             assemblyTemplate: {
                 canonicalJson: template.json,
                 compositionHash: template.compositionHash,
+                agreements: template.agreements,
             },
         };
         mkdirSync(path.dirname(FIXTURE_PATH), { recursive: true });
@@ -269,10 +276,11 @@ describe("SDK-promotion golden vectors — the live bytes, frozen", () => {
         expect(agreementHash).toBe(v.agreementHash);
     });
 
-    it("assembly template: mandatory fold + relabeling reproduce the frozen template + compositionHash", () => {
+    it("assembly template: mandatory fold + relabeling reproduce the frozen template, its agreements + compositionHash", () => {
         const v = loadVectors().assemblyTemplate;
         const template = templateCase();
         expect(template.json).toBe(v.canonicalJson);
         expect(template.compositionHash).toBe(v.compositionHash);
+        expect(template.agreements).toEqual(v.agreements);
     });
 });

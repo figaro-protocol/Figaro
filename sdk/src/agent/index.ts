@@ -119,7 +119,8 @@ export {
 } from "./originate.js";
 export type {
     AssemblyTemplate,
-    TemplateAgreement,
+    HydratedAssembly,
+    TemplateSlot,
     InstantiateParams,
     BuildOfferParams,
     OfferCheck,
@@ -188,6 +189,7 @@ export type {
     SequencerOp,
     SequencerCommitment,
     SequencerUsageClaim,
+    SequencerUsageClaimKind,
     SequencerSignature,
     SequencerContentProof,
     SequencerContentKind,

@@ -17,6 +17,7 @@ One file per network, named `<chainId>.json`, in the same shape
   "clauseRegistry": "0x...",
   "membersRegistry": "0x...",
   "assemblyRegistry": "0x...",
+  "agreementRegistry": "0x...",
   "florinToken": "0x...",
   "usageCounter": "0x...",
   "rpgfMinter": "0x...",
@@ -74,8 +75,8 @@ checked from outside it:
 Beside each record, `<chainId>.expected.json` states what the chain must read
 after the deploy and the genesis registration, and is written BEFORE them: the
 audited guest key and the SP1 gateway the batch verifier pins, every
-parameter the contracts fix forever (registration deposits, the cooldown, the
-reward schedule, the provenance leaf key), the florin genesis, and who registers
+parameter the contracts fix forever (registration stakes, the cooldown, the
+reward schedule, the provenance and assembly terms leaf keys), the florin genesis, and who registers
 each clause (the genesis registration plan). The plan names clauses by the
 `clauseId` of their spec in `clauses/` — the maintainer's authored name, under
 `registrations.byClause`, with `registrations.default` for the rest; the check

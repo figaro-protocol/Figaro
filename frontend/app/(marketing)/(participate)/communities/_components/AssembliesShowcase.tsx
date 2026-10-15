@@ -42,7 +42,7 @@ function useSellersByAssembly(): Map<string, Seller[]> {
  *  questions. An assembly whose designer wrote none says so in the muted color;
  *  nothing is ordered from an assembly, so no other button. */
 function AssemblyCard({ choice, sellers }: { choice: AssemblyChoice; sellers: Seller[] }) {
-    const faqCount = choice.assemblyTemplate?.faq?.length ?? 0;
+    const faqCount = choice.hydratedAssembly?.template.faq?.length ?? 0;
     return (
         <li className="flex flex-col" data-testid="showcase-assembly">
             <h3 className="text-heading-h3 text-ink-heading mb-1">
@@ -73,7 +73,7 @@ function AssemblyCard({ choice, sellers }: { choice: AssemblyChoice; sellers: Se
 }
 
 function AssemblyDetail({ choice, sellers }: { choice: AssemblyChoice; sellers: Seller[] }) {
-    const template = choice.assemblyTemplate;
+    const template = choice.hydratedAssembly?.template ?? null;
     return (
         <>
             <MarketingSection title={`${choice.name}.`} sectionId="assembly">

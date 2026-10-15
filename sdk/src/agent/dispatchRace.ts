@@ -34,7 +34,7 @@ import { checkOfferPolicy, instantiateRootAgreement, verifyRaceReply, type Offer
 // One owner for the reply check: the offer loops and the race both use it.
 export { verifyRaceReply };
 import { assertAgreementSignable, type SpecSource } from "../projection.js";
-import type { AssemblyTemplate } from "../assembly.js";
+import type { HydratedAssembly } from "../assembly.js";
 
 /**
  * Structural validation a candidate MUST run before countersigning a race
@@ -221,7 +221,9 @@ function setAtPath(node: unknown, path: readonly string[], value: string): Recor
 }
 
 export interface BuildQuoteRequestParams {
-    template: AssemblyTemplate;
+    /** The assembly, each order slot's registered agreement hydrated beside
+     *  its template. */
+    assembly: HydratedAssembly;
     buyer: Address;
     /** The candidate this request drafts against — one request per candidate,
      *  each naming its exact counterparty (no counterparty deferral). */
@@ -237,7 +239,7 @@ export interface BuildQuoteRequestParams {
      *  clause(s); the ceiling is substituted here at build time so draft and
      *  quote differ ONLY through the same substitution. */
     pricedFields: readonly PricedField[];
-    /** Per-clause overrides merged onto the template's root clause bag (the
+    /** Per-clause overrides merged onto the root order slot's clause bag (the
      *  non-price terms of the job). */
     overrides?: Record<string, Record<string, unknown>>;
     salt?: bigint;
@@ -252,7 +254,7 @@ export interface BuildQuoteRequestParams {
  * is the same payload shape built from the chain walk.
  */
 export function buildQuoteRequest(params: BuildQuoteRequestParams): CommitmentPayload {
-    const instantiated = instantiateRootAgreement(params.template, {
+    const instantiated = instantiateRootAgreement(params.assembly, {
         buyer: params.buyer, seller: params.seller, overrides: params.overrides,
     });
     const agreement = substitutePricedValue(instantiated, params.pricedFields, params.ceiling);

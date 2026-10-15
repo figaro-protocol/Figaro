@@ -1,24 +1,24 @@
 ---
 title: Designer rewards
-description: The 600M-florin reserve that rewards the designers of record for the clauses and assemblies the network actually uses — a uniform meter, a two-sided live ETH stake, and the two on-chain surfaces a designer claims through.
+description: The 600M-florin reserve that rewards the designers of record for the clauses, registered agreements and assemblies the network actually uses — a uniform meter, a two-sided live ETH stake, and the two on-chain surfaces a designer claims through.
 ---
 
-600M florins are reserved for the designers whose clauses and assemblies the network actually uses. The reward is retroactive and it is uniform: a designer earns for real recorded usage alone, and nothing about who they are, what category their work falls in, or how the DAO feels about it enters the meter. Neutrality is achieved by the stake, not by weighting.
+600M florins are reserved for the designers whose clauses, registered agreements and assemblies the network actually uses. The reward is retroactive and it is uniform: a designer earns for real recorded usage alone, and nothing about who they are, what category their work falls in, or how the DAO feels about it enters the meter. Neutrality is achieved by the stake, not by weighting.
 
 Read the [whole model](/) first, and [The contracts](/protocol/contracts/) for the two surfaces named below (`UsageCounter`, `RpgfMinter`). The reasoning this page states in brief is owned in full by [`docs/DESIGNER_REWARDS.md`](https://github.com/figaro-protocol/Figaro/blob/main/docs/DESIGNER_REWARDS.md); the florin itself and the reserve's place in the supply are on [Florin](/token/florin/); the discretionary, human-judged half is the [DAO](/token/dao/) treasury, at a different tier.
 
 ## Who earns
 
-A **designer of record** is the wallet that wrote and registered a clause or an assembly — and it holds that standing for exactly as long as its registration stake in that entry's own registry stays live. Clauses and assemblies earn on the same terms, from the same pool, through the same call, with no seniority between them, and the reward keeps the two families apart: every count, score and claim is keyed by `(kind, key)` — kind `0` a clause key, kind `1` an assembly `compositionHash` — and each kind is checked against its own registry only (`src/build/rewards/UsageCounter.sol:137-148`). A registry takes any bytes32, so a wallet can register an existing assembly's `compositionHash` as a clause key; that registration earns nothing of the assembly's reward.
+A **designer of record** is the wallet that wrote and registered a clause, a composed agreement or an assembly — and it holds that standing for exactly as long as its registration stake in that entry's own registry stays live. Clauses, registered agreements and assemblies earn on the same terms, from the same pool, through the same call, with no seniority between them, and the reward keeps the three families apart: every count, score and claim is keyed by `(kind, key)` — kind `0` a clause key, kind `1` an assembly `compositionHash`, kind `2` a registered agreement's `agreementKey` — and each kind is checked against its own registry only (`src/build/rewards/UsageCounter.sol:161-167`). A registry takes any bytes32 but its reserved keys, so a wallet can register an existing assembly's `compositionHash` as a clause key or an agreement key; that registration earns nothing of the assembly's reward.
 
 Two consequences people expect to be otherwise:
 
-- **The mandatory clauses earn.** `figaro-commerce` and `figaro-topology` ride on every order and are scored for their designer of record like any other clause. "Mandatory" is a registration-layer convention about what a runtime composes; nothing on chain privileges or exempts them.
+- **The mandatory clauses earn.** `figaro-commerce` and `figaro-topology` ride on every order and are scored for their designer of record like any other clause. "Mandatory" is a registration-layer convention about what a runtime composes; nothing on chain privileges or exempts them. A registered agreement that carries them earns for its own designer of record under kind `2`, beside them: nothing is excluded.
 - **Registering is the whole of the claim.** First-write-wins: whoever registers a clause key under their wallet is its designer of record, and the binding is irreversible. Competing with a better clause under your own wallet is equally permissionless.
 
 ## The meter is uniform
 
-A clause's or assembly's score in a period is its real usage alone:
+A clause's, registered agreement's or assembly's score in a period is its real usage alone:
 
 ```
 score = icbrt(c · d² · 1e18)
@@ -28,40 +28,42 @@ where `c` is the count of distinct resolved processes that used it and `d` the n
 
 **There is no tag, category, weight, per-wallet cap, match round, or quadratic component, and none may be added.** A per-clause multiplier would say some kinds of contribution are worth more than their use — a judgment the mechanism exists to avoid. That judgment lives at a different tier, in the DAO treasury.
 
-`icbrt(c · d² · 1e18)` is the formula in `UsageCounter._score` (`src/build/rewards/UsageCounter.sol:720-723`), and the on-chain `icbrt` (`:736`) mirrors the SDK's so an off-chain recompute agrees exactly.
+`icbrt(c · d² · 1e18)` is the formula in `UsageCounter._score` (`src/build/rewards/UsageCounter.sol:834`), and the on-chain `icbrt` (`:850`) mirrors the SDK's so an off-chain recompute agrees exactly.
 
 ## Neutrality comes from the stake
 
 What keeps the meter honest against a wallet that manufactures usage is not a cap on what it can earn but a **two-sided live ETH stake** any manufactured trade must carry, in the base chain's own currency, at the moment it counts:
 
-- **Seller side.** Usage counts only for a seller of record whose `MembersRegistry` stake is live. `UsageCounter` gates every count on `MembersRegistry.registered(seller)`, on both resolution paths (`src/build/rewards/UsageCounter.sol:586`, `:678`).
-- **Designer side.** A claim rewards only entries whose registry stake is live and registered by the claimant. `RpgfMinter._isAuthor(kind, key, account)` verifies each entry against the one registry its kind names and never the other — `ClauseRegistry.depositOf` for kind `0`, `AssemblyRegistry.bindings` for kind `1` — requiring `registeredBy == caller` and the stake un-withdrawn (`src/build/rewards/RpgfMinter.sol:270-280`).
+- **Seller side.** Usage counts only for a seller of record whose `MembersRegistry` stake is live. `UsageCounter` gates every count on `MembersRegistry.registered(seller)`, on both resolution paths (`src/build/rewards/UsageCounter.sol:695`, `:792`).
+- **Designer side.** A claim rewards only entries whose registry stake is live and registered by the claimant. `RpgfMinter._isAuthor(kind, key, account)` verifies each entry against the one registry its kind names and never another — `ClauseRegistry.depositOf` for kind `0`, `AssemblyRegistry.bindings` for kind `1`, `AgreementRegistry.bindings` for kind `2` — requiring `registeredBy == caller` and the stake un-withdrawn (`src/build/rewards/RpgfMinter.sol:297`).
 
 This is a **value loop, not a cost.** The stake is reclaimable, and holding it is exposure to the growth of the network your own work produces. A designer who withdraws de-surfaces the entry for new compositions and stops earning on it, while every order already committed against it still resolves.
 
 ## Counting happens when the trade resolves
 
-`UsageCounter` counts usage at resolution, permissionlessly, from facts the chain already holds: the order is resolved (`orderStatus == 2`) and the clause or assembly was merkle-committed in the signed `agreementHash` — the same leaf shape the [attestation coordinator](/protocol/contracts/) checks, with the status gate inverted. Anyone may call `recordClauseUsage` (`UsageCounter.sol:444`, counted under kind `0`) or `recordAssemblyUsage` (`:485`, kind `1`); the proof is what is trusted, never the caller. Trade resolved in a proved batch is counted by the batch's own proof and written by the verifier through `applyBatchAccrual` (`:561`, verifier-only), each accrual carrying its kind.
+`UsageCounter` counts usage at resolution, permissionlessly, from facts the chain already holds: the order is resolved (`orderStatus == 2`) and the clause — or the provenance leaf naming the registered agreement and the assembly — was merkle-committed in the signed `agreementHash`, the same leaf shape the [attestation coordinator](/protocol/contracts/) checks, with the status gate inverted. Anyone may call `recordClauseUsage` (`UsageCounter.sol:482`, counted under kind `0`), `recordAssemblyUsage` (`:563`, kind `1`) or `recordAgreementUsage` (`:525`, kind `2`); the proof is what is trusted, never the caller. Trade resolved in a proved batch is counted by the batch's own proof and written by the verifier through `applyBatchAccrual` (`:670`, verifier-only), each accrual carrying its kind.
 
-The timing is forced, not chosen: the chain cannot look backwards — the Core never calls the registries, and no contract can read an event. So the fact is recorded when it occurs, or it is permanently deniable. Read `scoreOf(kind, clauseOrAssembly, period)` (`:421`), which sums both paths' scores; `accrualOf` alone under-reports any key whose trade moved to batches. Only the section fingerprint reaches calldata, so a private section's plaintext never becomes public in the counting.
+The timing is forced, not chosen: the chain cannot look backwards — the Core never calls the registries, and no contract can read an event. So the fact is recorded when it occurs, or it is permanently deniable. Read `scoreOf(kind, clauseOrAssembly, period)` (`:459`), which sums both paths' scores; `accrualOf` alone under-reports any key whose trade moved to batches. Only the section fingerprint reaches calldata, so a private section's plaintext never becomes public in the counting.
 
-Every committed clause key is scored, and an assembly is scored through its own leg. An assembly's designer is credited from the agreement's **provenance leaf** — a reserved leaf of the agreement format, not a clause, whose key is `provenanceLeaf()` = `keccak256("figaro-agreement-provenance")` (`UsageCounter.sol:167`) and whose committed bytes are `{"compositionHash":"0x<64 lowercase hex>"}`. `recordAssemblyUsage(order, compositionHash, proof)` rebuilds that leaf from the hash it is given and proves it against `agreementHash`; `buildProvenanceInclusionProof(agreement)` returns the proof. The reserved key earns nothing whatever a registry holds at it: the direct path reverts `ProvenanceLeafIsNotARegistration` (`UsageCounter.sol:657`) and the batch path skips it (`:604`). The leaf and how a buyer attests it are on [Clauses and agreements](/protocol/clauses/).
+Every committed clause key is scored, and a registered agreement and an assembly are each scored through their own leg. Both designers are credited from the agreement's **provenance leaf** — a reserved leaf of the agreement format, not a clause, whose key is `provenanceLeaf()` = `keccak256("figaro-agreement-provenance")` (`UsageCounter.sol:188`) and whose committed bytes are `{"agreementKey":"0x<64 lowercase hex>","compositionHash":"0x<64 lowercase hex>"}`. `recordAgreementUsage(order, agreementKey, compositionHash, proof)` rebuilds that leaf from the two keys and proves it against `agreementHash`; `recordAssemblyUsage(order, compositionHash, agreementKey, slotContentHash, leafProof, membershipProof)` proves the same leaf and then the order slot's leaf under `compositionHash` — the membership proof, from `buildSlotInclusionProof(template, i)`. `buildProvenanceInclusionProof(agreement)` returns the leaf's proof, and `buildUsageClaims` assembles all three kinds' claims. The two reserved keys — the provenance key and the assembly terms key, `keccak256("figaro-assembly-terms")` — earn nothing whatever a registry holds at them: the direct path reverts (`ReservedKeyIsNotARegistration`) and the batch path skips both. The leaf and how a buyer attests it are on [Clauses and agreements](/protocol/clauses/).
 
 ## How a designer claims
 
 `RpgfMinter` mints from the 600M reserve, pro rata to real recorded usage, one claim per wallet per closed period:
 
 ```solidity
-struct ClauseOrAssemblyKey { uint8 kind; bytes32 key; }                                    // RpgfMinter.sol:103
-function claim(uint8 periodId, ClauseOrAssemblyKey[] calldata clausesOrAssemblies) external;  // RpgfMinter.sol:192
+struct ClauseOrAssemblyKey { uint8 kind; bytes32 key; }                                    // RpgfMinter.sol:117
+function claim(uint8 periodId, ClauseOrAssemblyKey[] calldata clausesOrAssemblies) external;  // RpgfMinter.sol:219
 ```
 
 ```ts
-import { USAGE_KIND_CLAUSE, USAGE_KIND_ASSEMBLY, RPGF_MINTER_ABI } from "@figaro-protocol/sdk";
+import { USAGE_KIND_CLAUSE, USAGE_KIND_ASSEMBLY, USAGE_KIND_AGREEMENT,
+         RPGF_MINTER_ABI } from "@figaro-protocol/sdk";
 
 const mine = [
   { kind: USAGE_KIND_CLAUSE, key: myClauseKey },          // 0 — checked against ClauseRegistry
   { kind: USAGE_KIND_ASSEMBLY, key: myCompositionHash },  // 1 — checked against AssemblyRegistry
+  { kind: USAGE_KIND_AGREEMENT, key: myAgreementKey },    // 2 — checked against AgreementRegistry
 ];
 await walletClient.writeContract({
   address: addresses.rpgfMinter!, abi: RPGF_MINTER_ABI,
@@ -69,7 +71,7 @@ await walletClient.writeContract({
 });
 ```
 
-`claim` mints `periodAmount[periodId] · yourScore / totalScoreInPeriod` and requires the period closed — so a share is score-over-total against numbers that stopped moving, with no snapshot and no history walk. Pass every clause and assembly you designed in one call, as `(kind, key)` pairs; each is verified against the registry its kind names with a live stake, and a repeated `(kind, key)` reverts `DuplicateClauseOrAssembly`. `claimable(periodId, account, pairs)` reads the figure first, and `computeRpgfAllocations` from the SDK returns each wallet's list as `allocation.claims`. This is the designer-side half of the two-sided live-stake gate; the seller-side half is `UsageCounter`'s.
+`claim` mints `periodAmount[periodId] · yourScore / totalScoreInPeriod` and requires the period closed — so a share is score-over-total against numbers that stopped moving, with no snapshot and no history walk. Pass every clause, agreement and assembly you designed in one call, as `(kind, key)` pairs; each is verified against the registry its kind names with a live stake, and a repeated `(kind, key)` reverts `DuplicateClauseOrAssembly`. `claimable(periodId, account, pairs)` reads the figure first, and `computeRpgfAllocations` from the SDK returns each wallet's list as `allocation.claims`. This is the designer-side half of the two-sided live-stake gate; the seller-side half is `UsageCounter`'s.
 
 ## The schedule, and what does not exist
 

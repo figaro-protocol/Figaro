@@ -14,14 +14,14 @@
  * speak one shape.
  */
 
-import { canonicalize, templateCompositionHash } from "@figaro-protocol/sdk";
+import { agreementKeyOf, canonicalize, templateCompositionHash } from "@figaro-protocol/sdk";
 import { keccak256 } from "viem";
 import type { BreadcrumbItem } from "@/components/shared/Breadcrumb";
 import { safeJsonParse, strippingReviver } from "@/lib/shared/safeJson";
 import { pick, queryParam } from "@/lib/shared/urlQuery";
 import { isLiveRegistration } from "@/lib/shared/clauseSpecSource";
 
-export const REGISTRY_FAMILIES = ["clauses", "assemblies", "members"] as const;
+export const REGISTRY_FAMILIES = ["clauses", "agreements", "assemblies", "members"] as const;
 export type RegistryFamily = (typeof REGISTRY_FAMILIES)[number];
 
 export const REGISTRY_SORTS = ["article", "name", "block", "registeredBy"] as const;
@@ -91,13 +91,14 @@ export interface ExplorerRow {
     /** Stable id for the DOM anchor and the React key. */
     key: string;
     name: string;
-    /** Clauses: the clause key; assemblies: the slug; members: the address. */
+    /** Clauses: the clause key; agreements: the agreement key; assemblies:
+     *  the slug; members: the address. */
     id: string;
     article: string;
     registeredBy: string;
     blockNumber: bigint;
     stakeWithdrawn: boolean;
-    /** Assemblies: composed clause keys. Clauses/members: empty. */
+    /** Agreements and assemblies: composed clause keys. Clauses/members: empty. */
     clauses: readonly string[];
     /** Whether the pinned content behind the on-chain pointer (the clause's
      *  spec, the assembly's template, the member's profile) has resolved.
@@ -111,8 +112,9 @@ export interface ExplorerRow {
      *  member's own and not anchored by a registration hash. */
     contentURI: string;
     /** The digest the CHAIN anchors for this row: the clause key (the hash of
-     *  the pinned spec bytes) for a clause, `AssemblyRegistry`'s
-     *  `compositionHash` for an assembly.
+     *  the pinned spec bytes) for a clause, `AgreementRegistry`'s agreement
+     *  key for an agreement, `AssemblyRegistry`'s `compositionHash` for an
+     *  assembly.
      *  Empty where the family anchors none. */
     anchoredHash: string;
     text: string;
@@ -152,29 +154,38 @@ function compareRows(a: ExplorerRow, b: ExplorerRow, sort: RegistrySort): number
 // ── The document as stored ──────────────────────────────────────────────────
 
 /**
- * What a family's on-chain digest is computed OVER. The two are NOT the same
- * shape, and a surface that showed one note for both would misstate one of
- * them:
+ * What a family's on-chain digest is computed OVER. The three are NOT the
+ * same shape, and a surface that showed one note for all would misstate one
+ * of them:
  *
  *   `content-hash` — clauses. The clause KEY `ClauseRegistry` registers is the
  *   keccak256 of exactly the bytes the designer pinned (the spec's canonical
  *   JSON), so hashing the bytes the gateway served — as served, nothing
  *   re-canonicalized — must reproduce it.
  *
+ *   `agreement-key` — registered agreements. `AgreementRegistry`'s key is the
+ *   canonical content hash of the document's `{ clauses }` alone
+ *   (`agreementKeyOf`); the designer's editorial fields ride in the same
+ *   document outside the key.
+ *
  *   `composition-hash` — assemblies. `AssemblyRegistry`'s `compositionHash` is
- *   the keccak256 of the canonical form of the template's COMPOSITION slice
- *   alone (`agreements`, plus `assemblyClauses` where composed —
- *   `templateCompositionHash`). The designer's editorial
+ *   the merkle root over the template's order slots (each slot's agreement
+ *   key and its own fills) and, where composed, its assembly-scoped clauses
+ *   (`templateCompositionHash`). The designer's editorial
  *   fields (name, summary, description) ride in the same document and are
  *   deliberately NOT covered: a differently-worded assembly is the same
  *   assembly, a differently-termed one is not.
  */
-export type StoredDocumentAnchor = "content-hash" | "composition-hash";
+export type StoredDocumentAnchor = "content-hash" | "agreement-key" | "composition-hash";
 
 /** Which digest a family anchors. Members anchor none — a profile is the
  *  member's own declaration, re-pinnable at will, not a registration. */
 export function anchorForFamily(family: RegistryFamily): StoredDocumentAnchor | null {
-    return family === "clauses" ? "content-hash" : family === "assemblies" ? "composition-hash" : null;
+    return family === "clauses"
+        ? "content-hash"
+        : family === "agreements"
+            ? "agreement-key"
+            : family === "assemblies" ? "composition-hash" : null;
 }
 
 /** The one-line statement of what the chain's digest covers, per anchor. Shown
@@ -182,8 +193,10 @@ export function anchorForFamily(family: RegistryFamily): StoredDocumentAnchor | 
 export const STORED_DOCUMENT_NOTE: Record<StoredDocumentAnchor, string> = {
     "content-hash":
         "The hash on chain is the clause key: the keccak256 of exactly these bytes, as pinned. The designer pins the spec's canonical form — object keys sorted at every depth, no whitespace — so anyone can hash the bytes the gateway serves and reproduce the key; the same document in any other byte form is another key.",
+    "agreement-key":
+        "The hash on chain is the agreement key: the keccak256 of the canonical form of this document's clauses — the clauses composed for one order slot. The designer's editorial wording rides in the same document and is deliberately outside the key.",
     "composition-hash":
-        "The hash on chain is the keccak256 of the canonical form of this document's composition — its agreements, and the assembly-scoped clauses where it composes any. The designer's editorial wording rides in the same document and is deliberately outside the anchor.",
+        "The hash on chain is the composition root: the merkle root over this document's order slots — each one the key of the registered agreement it binds and its own fills — and the assembly-scoped clauses where it composes any. The designer's editorial wording rides in the same document and is deliberately outside the anchor.",
 };
 
 /** A pinned document read back and checked against the chain's own digest. */
@@ -194,8 +207,8 @@ export interface StoredDocument {
     anchored: string;
     /** Recomputed from the served bytes; null when they will not parse as
      *  JSON, which is a permanent failure and not a hash disagreement. A
-     *  clause's is the hash of the bytes themselves; an assembly's, of the
-     *  parsed composition. */
+     *  clause's is the hash of the bytes themselves; an agreement's and an
+     *  assembly's, of the parsed document. */
     recomputed: string | null;
     /** True only when the recomputation reproduced the anchor. A false here is
      *  a real finding — the pin does not answer for what the chain claims. */
@@ -270,7 +283,9 @@ export function storedDocument(fetched: Uint8Array | string, anchored: string, a
         recomputed =
             anchor === "content-hash"
                 ? keccak256(bytes)
-                : templateCompositionHash(parsed as Parameters<typeof templateCompositionHash>[0]);
+                : anchor === "agreement-key"
+                    ? agreementKeyOf(parsed as unknown as Parameters<typeof agreementKeyOf>[0])
+                    : templateCompositionHash(parsed as unknown as Parameters<typeof templateCompositionHash>[0]);
     } catch {
         // A document that parses but carries no composition to hash cannot
         // reproduce the anchor. Absence of a recomputation, never a match.
@@ -305,7 +320,7 @@ export function facetValues(rows: readonly ExplorerRow[], family: RegistryFamily
 /** The breadcrumb trail a deep-linked arrival sees — derived from the
  *  active state, never a stored taxonomy. The last item is hrefless. */
 export function explorerBreadcrumb(state: ExplorerQuery): BreadcrumbItem[] {
-    const familyLabel = { clauses: "Clauses", assemblies: "Assemblies", members: "Members" }[state.family];
+    const familyLabel = { clauses: "Clauses", agreements: "Agreements", assemblies: "Assemblies", members: "Members" }[state.family];
     const trail: BreadcrumbItem[] = [
         { label: "Terms", href: "/terms" },
         { label: "Registries", href: "/registries" },
@@ -324,6 +339,7 @@ export function explorerBreadcrumb(state: ExplorerQuery): BreadcrumbItem[] {
  *  registered", the concept page answers "what it is". */
 export const FAMILY_CONCEPT_ROUTE: Record<RegistryFamily, string> = {
     clauses: "/clauses",
+    agreements: "/assemblies",
     assemblies: "/assemblies",
     members: "/members",
 };

@@ -1,7 +1,7 @@
 # Designer Rewards — Design Document
 
-The 600M florins reserved for the designers whose clauses and assemblies the
-network actually uses. This document owns the mechanism's reasoning: who earns,
+The 600M florins reserved for the designers whose clauses, registered
+agreements and assemblies the network actually uses. This document owns the mechanism's reasoning: who earns,
 on what meter, on what schedule, and what deliberately does not exist.
 
 The contract surfaces — `UsageCounter`, `RpgfMinter`, their proof shapes and
@@ -16,14 +16,15 @@ of the allocation table in `docs/FLORIN_TOKEN.md`.
 ## Who earns
 
 **Designers of record.** A designer is the wallet that wrote and registered a
-clause or an assembly; it is the designer of record for as long as it holds a
-live stake against that entry in the entry's own registry. An entry is a
-(kind, key) pair — a clause key under the clause kind, an assembly's
-`compositionHash` under the assembly kind — and the meter, the claim and the
-check of the designer of record are all keyed by it, so a stake in one family never
-earns another family's usage at the same bytes (`DESIGN_DECISIONS.md` § 24).
-Clauses and assemblies earn on the same
-terms, from the same pool, through the same call — there is no seniority
+clause, a registered agreement or an assembly; it is the designer of record
+for as long as it holds a live stake against that entry in the entry's own
+registry. An entry is a (kind, key) pair — a clause key under the clause kind
+(0), an assembly's `compositionHash` under the assembly kind (1), a registered
+agreement's `agreementKey` under the agreement kind (2) — and the meter, the
+claim and the check of the designer of record are all keyed by it, so a stake
+in one family never earns another family's usage at the same bytes
+(`DESIGN_DECISIONS.md` § 24). Clauses, registered agreements and assemblies
+earn on the same terms, from the same pool, through the same call — there is no seniority
 between them, and no distinction between a designer who registered one clause
 and one who registered fifty.
 
@@ -48,7 +49,8 @@ equally permissionless and equally welcome.
 
 ## The meter is uniform
 
-A clause's or an assembly's score in a period is its **real usage alone**:
+A clause's, a registered agreement's or an assembly's score in a period is its
+**real usage alone**:
 
     score = icbrt(c · d² · 1e18)
 
@@ -72,13 +74,16 @@ earn but the two live stakes any manufactured trade must carry.
 
 ## Counting happens when the trade resolves
 
-`UsageCounter` counts a clause's or an assembly's usage at resolution,
-permissionlessly, from facts the chain already holds: the order is resolved,
-and the clause or assembly was merkle-committed in the signed `agreementHash`.
+`UsageCounter` counts a clause's, a registered agreement's or an assembly's
+usage at resolution, permissionlessly, from facts the chain already holds: the
+order is resolved, and the clause — or the provenance leaf naming the
+registered agreement and the assembly, with the agreement's membership proof
+under the assembly's root — was merkle-committed in the signed
+`agreementHash`.
 Anyone may call it; the proof is what is trusted, never the caller. Trade
 resolved in a proved batch is counted by the batch's own proof and written by
 the verifier alone, with the counter checking the open period, each seller's
-live stake, and each clause's or assembly's live registration itself
+live stake, and each entry's live registration in its own registry
 (`CONTRACTS.md` § "Usage accounting" owns the two routes). Nothing is posted, bonded, challenged, or adjudicated,
 and there is no recurring cost to anyone.
 
@@ -110,7 +115,8 @@ own currency, at the moment it counts:
   live and registered by the claimant. A claim names `(kind, key)` pairs, and
   `RpgfMinter` verifies each against the one registry its kind names —
   `ClauseRegistry` for the clause kind, `AssemblyRegistry` for the assembly
-  kind; a withdrawn stake earns nothing further.
+  kind, `AgreementRegistry` for the agreement kind; a withdrawn stake earns
+  nothing further.
 
 This is a **value loop, not a cost.** The stake is reclaimable, and holding it
 is exposure to the growth of the network one's own work produces. A designer
@@ -149,17 +155,20 @@ that an end-to-end run can cross a period boundary in a single session.
 
 ## The boundary — the meter earns nothing
 
-The meter is the agreement format's reserved provenance leaf, the link from a
-process to the assembly it instantiated (`CLAUSES.md` § "Every clause is a
-merkle leaf"). It is no registration: its key,
-`keccak256("figaro-agreement-provenance")`, is a constant of the format,
-distinct from every clause key under keccak256's second-preimage resistance,
-and it is refused at accrual by comparison with the constant whatever a
-registry holds at it: the direct path reverts (`UsageCounter._accrue`,
-`ProvenanceLeafIsNotARegistration`), the guest refuses a batch claim keyed on
-it (`apply_usage_claims`), and the counter's batch path skips it
-(`applyBatchAccrual`). No other key is
-refused by list. The line it draws is **terms versus meter**.
+The meter is the agreement format's reserved provenance leaf, the link from an
+order to the registered agreement and the assembly it instantiated
+(`CLAUSES.md` § "Every clause is a merkle leaf"). It is no registration: its
+key, `keccak256("figaro-agreement-provenance")`, is a constant of the format,
+distinct from every clause key under keccak256's second-preimage resistance.
+The format holds one more constant, the assembly terms leaf's key,
+`keccak256("figaro-assembly-terms")`, a leaf of the assembly's root and never
+an order slot. Both are refused at accrual on every kind by comparison with the
+constants whatever a registry holds at them: the direct path reverts
+(`UsageCounter._accrue`), the guest refuses a batch claim keyed on either
+(`apply_usage_claims`), the counter's batch path skips both
+(`applyBatchAccrual`), and `AgreementRegistry` refuses either as a
+registration. No other key is refused by list. The line they draw is **terms
+versus meter**.
 
 Commerce and topology are contract *terms* the parties agree to. A runtime that
 composes them is making an offer, and the set of terms a runtime folds into
@@ -169,9 +178,14 @@ clauses the commons may hold — as many as survive that competition.
 
 The provenance leaf is not a term anyone agreed to. It is the reward system's
 own attribution plumbing, structurally singular, with no competing runtime to
-exit to. It meters; it never earns. The assembly's designer accrues through
-the assembly leg, which proves that leaf, and every registered clause —
-commerce and topology among them — earns under the uniform rule.
+exit to. It meters; it never earns. The registered agreement's designer
+accrues through the agreement leg, which proves that leaf; the assembly's
+designer accrues through the assembly leg, which proves that leaf and the
+agreement's membership under the assembly's root; and every registered clause
+— commerce and topology among them — earns under the uniform rule. Nothing is
+excluded: a registered agreement that carries the mandatory clauses earns for
+its own designer of record on the same meter, and the mandatory clauses inside
+it earn for theirs.
 
 ---
 

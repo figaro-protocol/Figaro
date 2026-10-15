@@ -56,12 +56,12 @@ export function translateContractRevert(
 /**
  * The shared `withdrawDeposit` revert table — the on-chain guards only
  * (registeredBy-only, once-only, must-exist; the commits==resolves gate is
- * off-chain/advisory via `useWithdrawGate`). The two registries' tables
+ * off-chain/advisory via `useWithdrawGate`). The registries' tables
  * differed only by noun, so the noun is the parameter; the assembly keeps
  * "composition" for the must-exist case because the binding's identity IS
  * the composition.
  */
-export function withdrawRevertMessage(noun: "clause" | "assembly") {
+export function withdrawRevertMessage(noun: "clause" | "assembly" | "agreement") {
     return (errorName: string | undefined): string | null => {
         switch (errorName) {
             case "AlreadyWithdrawn":
@@ -71,7 +71,7 @@ export function withdrawRevertMessage(noun: "clause" | "assembly") {
             case "NotRegistered":
                 return noun === "assembly"
                     ? "No registration binding exists for this composition."
-                    : "No registration binding exists for this clause.";
+                    : `No registration binding exists for this ${noun}.`;
             case "TransferFailed":
                 return "The stake refund transfer failed. No state changed — retry.";
             default:

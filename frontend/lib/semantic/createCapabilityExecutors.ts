@@ -18,6 +18,7 @@ import {
     PROVENANCE_LEAF_KEY,
     provenanceSectionBytes,
     type Agreement,
+    type AssemblyTemplate,
     type Commitment,
     type UsageClaimContext,
 } from "@figaro-protocol/sdk";
@@ -27,6 +28,8 @@ import { restoreSignedProcessId } from "@/lib/kernel/signedCommitment";
 import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
 import { DEVNET_CHAIN_ID } from "@/lib/shared/chains";
 import { verifyTxSuccess } from "@/lib/shared/verifyTxSuccess";
+import { isBytes32Hex } from "@/lib/shared/evm";
+import type { UsageWrite } from "@/lib/protocol/useUsageRecorder";
 import { planUsageRecords, type PlannedUsageWrite, type UsagePlanEntry } from "@/lib/semantic/planUsageRecords";
 import type { AttestProvenanceLeafCapabilityAction, SubmitClauseAttestationCapabilityAction } from "@/lib/semantic/models";
 
@@ -53,10 +56,12 @@ export interface CapabilityExecutorDeps {
      *  — count usage when it happens. Each write is simulated first and sent
      *  only if the simulation passes. */
     fetchUsageClaimContext: () => Promise<UsageClaimContext>;
-    simulateClauseUsage: (order: Commitment, clauseOrAssembly: Hex, sectionHash: Hex, proof: readonly Hex[]) => Promise<void>;
-    simulateAssemblyUsage: (order: Commitment, compositionHash: Hex, proof: readonly Hex[]) => Promise<void>;
-    recordClauseUsage: (order: Commitment, clauseOrAssembly: Hex, sectionHash: Hex, proof: readonly Hex[]) => Promise<Hex | undefined>;
-    recordAssemblyUsage: (order: Commitment, compositionHash: Hex, proof: readonly Hex[]) => Promise<Hex | undefined>;
+    /** The template of the assembly a provenance names, read from
+     *  `AssemblyRegistry` by its composition root (whatever its stake) and
+     *  verified against it; null when absent. */
+    readAssemblyTemplate: (compositionHash: Hex) => Promise<AssemblyTemplate | null>;
+    simulateUsage: (write: UsageWrite) => Promise<void>;
+    recordUsage: (write: UsageWrite) => Promise<Hex | undefined>;
     submitAttestation: (role: "buyer" | "seller", args: AttestationSubmitArgs) => Promise<Hex | undefined>;
     registerMember: (metadataURI: string) => Promise<Hex | undefined | void>;
     updateMemberProfile: (metadataURI: string) => Promise<Hex | undefined | void>;
@@ -104,9 +109,9 @@ export function createCapabilityExecutors(deps: CapabilityExecutorDeps) {
         // ── USAGE RECORDING, PLANNED BEFORE THE BUYER IS ASKED: the buyer's
         // app holds every agreement and proof at the moment of resolve, so it
         // plans the usage writes first (`planUsageRecords` — one per distinct
-        // key across the process: every clause section, and the assembly from
-        // each agreement's provenance leaf) and the confirm says how many the
-        // wallet signs after.
+        // key across the process: every clause section, and the registered
+        // agreement and the assembly from each agreement's provenance leaf)
+        // and the confirm says how many the wallet signs after.
         // Under the e2e mock there is no chain: nothing is planned or sent.
         const plan = deps.isE2EMock ? [] : await planProcessUsage(activeOrders, commitments);
         if (!deps.confirmResolve(plan.length)) return undefined;
@@ -123,29 +128,26 @@ export function createCapabilityExecutors(deps: CapabilityExecutorDeps) {
             await waitForTransactionConfirmation(resolveTx as Hex | undefined);
             let recorded = 0;
             let skipped = 0;
-            let assemblyRecorded = false;
+            const recordedKinds = new Set<string>();
             for (const write of plan) {
-                const label = write.kind === "clause" ? (getClauseSpec(write.key)?.title ?? `clause ${write.key}`) : `assembly ${write.key}`;
+                const label = write.kind === "clause" ? (getClauseSpec(write.key)?.title ?? `clause ${write.key}`) : `${write.kind} ${write.key}`;
                 try {
-                    if (write.kind === "clause") await deps.simulateClauseUsage(write.order, write.key, write.sectionHash, write.proof);
-                    else await deps.simulateAssemblyUsage(write.order, write.key, write.proof);
+                    await deps.simulateUsage(write);
                 } catch (error) {
                     skipped++;
                     console.error(`[usage-recording] ${label} on order ${write.orderHash}: simulation reverted, not sent: ${error instanceof Error ? error.message : String(error)}`);
                     continue;
                 }
                 try {
-                    const tx = write.kind === "clause"
-                        ? await deps.recordClauseUsage(write.order, write.key, write.sectionHash, write.proof)
-                        : await deps.recordAssemblyUsage(write.order, write.key, write.proof);
+                    const tx = await deps.recordUsage(write);
                     await waitForTransactionConfirmation(tx);
                     recorded++;
-                    if (write.kind === "assembly") assemblyRecorded = true;
+                    if (write.kind !== "clause") recordedKinds.add(write.kind);
                 } catch (error) {
                     console.error(`[usage-recording] ${label} on order ${write.orderHash}: ${error instanceof Error ? error.message : String(error)}`);
                 }
             }
-            console.error(`[usage-recording] recorded ${recorded}/${plan.length} planned (${skipped} skipped after a reverted simulation)${assemblyRecorded ? " + assembly" : ""} for process ${targetProcessId}`);
+            console.error(`[usage-recording] recorded ${recorded}/${plan.length} planned (${skipped} skipped after a reverted simulation)${[...recordedKinds].map((k) => ` + ${k}`).join("")} for process ${targetProcessId}`);
         }
         return resolveTx;
     };
@@ -161,9 +163,11 @@ export function createCapabilityExecutors(deps: CapabilityExecutorDeps) {
         try {
             context = await deps.fetchUsageClaimContext();
         } catch (error) {
-            console.error(`[usage-recording] the UsageCounter's provenance leaf did not read — skipping every clause and assembly of this process: ${error instanceof Error ? error.message : String(error)}`);
+            console.error(`[usage-recording] the UsageCounter's reserved leaves did not read — skipping every clause, agreement and assembly of this process: ${error instanceof Error ? error.message : String(error)}`);
             return [];
         }
+        // Each assembly a provenance names, read once by its composition root.
+        const templates = new Map<string, AssemblyTemplate | null>();
         const entries: UsagePlanEntry[] = [];
         for (let i = 0; i < activeOrders.length; i++) {
             const { orderHash, agreementHash } = activeOrders[i];
@@ -172,7 +176,13 @@ export function createCapabilityExecutors(deps: CapabilityExecutorDeps) {
                 console.error(`[usage-recording] no hydrated agreement for order ${orderHash} (hash ${agreementHash}) — skipping its clauses and assemblies`);
                 continue;
             }
-            entries.push({ orderHash, commitment: commitments[i], agreement, context });
+            let template: AssemblyTemplate | undefined;
+            if (agreement.provenance && isBytes32Hex(agreement.provenance.compositionHash)) {
+                const key = agreement.provenance.compositionHash.toLowerCase();
+                if (!templates.has(key)) templates.set(key, await deps.readAssemblyTemplate(agreement.provenance.compositionHash).catch(() => null));
+                template = templates.get(key) ?? undefined;
+            }
+            entries.push({ orderHash, commitment: commitments[i], agreement, context, template });
         }
         const { writes, problems } = planUsageRecords(entries);
         for (const problem of problems) console.error(`[usage-recording] ${problem}`);
@@ -243,7 +253,7 @@ export function createCapabilityExecutors(deps: CapabilityExecutorDeps) {
             orderHash: action.orderHash as Hex,
             clauseId: PROVENANCE_LEAF_KEY,
             stage: 0,
-            content: provenanceSectionBytes(action.compositionHash),
+            content: provenanceSectionBytes(action.agreementKey, action.compositionHash),
             failureMessage: "provenance attestation failed",
         });
 

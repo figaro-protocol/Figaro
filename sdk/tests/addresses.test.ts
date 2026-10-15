@@ -17,6 +17,7 @@ const RECORD = {
     clauseRegistry: "0x33599bF469bE8cB082919a22b6efFC46bD00F0Ba",
     membersRegistry: "0x6FbDc4b41Bc30713F08A4c82350e203934E97D3e",
     assemblyRegistry: "0x5dd25cb04a82590B4f5221eD489399DA02b37Eb2",
+    agreementRegistry: "0x7a2088a1bFc9d81c55368AE168C2C02570cB814F",
     permit2: "0x09D3bbF6fF8DC6567a9eCD92F6f38AB88be8070d",
     florinToken: "0xE62860dC192eB92f0b270aA8E46E17731c0Ad56e",
     swapRouter: "0x8F52DD8ACfAB2d9696F0FE6a51D99abd4443eC1B",
@@ -38,6 +39,7 @@ describe("addressesFromDeploymentRecord", () => {
             clauseRegistry: RECORD.clauseRegistry,
             membersRegistry: RECORD.membersRegistry,
             assemblyRegistry: RECORD.assemblyRegistry,
+            agreementRegistry: RECORD.agreementRegistry,
             permit2: RECORD.permit2,
             swapRouter: RECORD.swapRouter,
             witnessSwapAndCommitCoordinator: RECORD.witnessSwapAndCommitCoordinator,
@@ -56,6 +58,7 @@ describe("addressesFromDeploymentRecord", () => {
         const addresses = addressesFromDeploymentRecord({ figaroCore: RECORD.figaroCore });
         expect(addresses).toEqual({ core: RECORD.figaroCore });
         expect("token" in addresses).toBe(false);
+        expect("agreementRegistry" in addresses).toBe(false);
         expect("batchVerifier" in addresses).toBe(false);
         expect("usageCounter" in addresses).toBe(false);
         expect("rpgfMinter" in addresses).toBe(false);
@@ -67,6 +70,8 @@ describe("addressesFromDeploymentRecord", () => {
     });
 
     it("passes through each optional deployment-record key present, one at a time", () => {
+        expect(addressesFromDeploymentRecord({ figaroCore: RECORD.figaroCore, agreementRegistry: RECORD.agreementRegistry }))
+            .toEqual({ core: RECORD.figaroCore, agreementRegistry: RECORD.agreementRegistry });
         expect(addressesFromDeploymentRecord({ figaroCore: RECORD.figaroCore, batchVerifier: RECORD.batchVerifier }))
             .toEqual({ core: RECORD.figaroCore, batchVerifier: RECORD.batchVerifier });
         expect(addressesFromDeploymentRecord({ figaroCore: RECORD.figaroCore, usageCounter: RECORD.usageCounter }))

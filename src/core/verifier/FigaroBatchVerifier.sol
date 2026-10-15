@@ -42,7 +42,7 @@ interface IUsageCounter {
 ///         against the live ClauseRegistry, reconciles net token positions,
 ///         re-emits protocol-compatible attestation events, and advances the
 ///         state root. Registry mutations are NOT batched — they are
-///         once-per-clause-or-assembly ETH-staked intents that stay on the
+///         once-per-clause-agreement-or-assembly ETH-staked intents that stay on the
 ///         direct path.
 /// @dev DISCLAIMER: This contract is provided as-is, without warranty of any kind, express or implied. No liability is accepted for loss, damages, or bugs. Use at your own risk.
 ///
@@ -65,8 +65,8 @@ interface IUsageCounter {
 ///         trade. Without a bridge the 600M would measure a shrinking
 ///         fraction of real adoption exactly as the protocol scales, so
 ///         this contract carries the accrual across: the guest proves
-///         each clause or assembly's cumulative `(c, d)`, and one write
-///         per clause or assembly per batch lands it. The gates the proof
+///         each clause's, agreement's or assembly's cumulative `(c, d)`, and one write
+///         per clause, agreement or assembly per batch lands it. The gates the proof
 ///         cannot see (open period, the seller of record's live member stake, registration) are the
 ///         counter's own and are checked there, not here.
 ///
@@ -156,11 +156,11 @@ contract FigaroBatchVerifier is ReentrancyGuard {
         ///      whether this is the open one — the sequencer's clock has
         ///      no authority here.
         uint8 period;
-        /// @dev The provenance leaf key the guest proved assembly
+        /// @dev The provenance leaf key the guest proved agreement and assembly
         ///      claims against; the counter matches it to its own.
         bytes32 provenanceLeaf;
-        /// @dev Per-(kind, clause-or-assembly) CUMULATIVE (c, d) after this batch,
-        ///      sorted by (clause-or-assembly key, kind) in the prover.
+        /// @dev Per-(kind, key) CUMULATIVE (c, d) after this batch,
+        ///      sorted by (key, kind) in the prover.
         IUsageCounter.BatchAccrual[] accruals;
         /// @dev Distinct sellers of record behind the accruals, sorted.
         address[] sellers;
@@ -180,7 +180,7 @@ contract FigaroBatchVerifier is ReentrancyGuard {
     ///         proven provenance leaf did not match. Resolution is decoupled
     ///         from the reward on purpose: a reward-tier gate must never unwind
     ///         another party's trade. The dropped accrual is recovered by the
-    ///         next batch that touches the same clauses and assemblies (the
+    ///         next batch that touches the same clauses, agreements and assemblies (the
     ///         counter's write
     ///         is a cumulative overwrite), or forgone — conservative under-pay,
     ///         never over-pay.

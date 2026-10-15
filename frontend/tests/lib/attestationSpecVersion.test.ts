@@ -33,13 +33,13 @@ const SPEC_VERSION_2 = {
     stages: { "1": [{ name: "reading", type: "string", required: true, disposition: "private" }] },
 };
 
-const V1 = pinSpec(SPEC_VERSION_1);
-const V2 = pinSpec(SPEC_VERSION_2);
+const SPEC_V1 = pinSpec(SPEC_VERSION_1);
+const SPEC_V2 = pinSpec(SPEC_VERSION_2);
 
 beforeAll(async () => {
-    setClauseSpecFetcher(async (uri) => (uri === "mem://v1" ? V1.bytes : V2.bytes));
-    await loadClauseSpec(V1.clauseKey, "mem://v1");
-    await loadClauseSpec(V2.clauseKey, "mem://v2");
+    setClauseSpecFetcher(async (uri) => (uri === "mem://v1" ? SPEC_V1.bytes : SPEC_V2.bytes));
+    await loadClauseSpec(SPEC_V1.clauseKey, "mem://v1");
+    await loadClauseSpec(SPEC_V2.clauseKey, "mem://v2");
 });
 
 function executors(submitAttestation: CapabilityExecutorDeps["submitAttestation"]) {
@@ -51,10 +51,9 @@ function executors(submitAttestation: CapabilityExecutorDeps["submitAttestation"
         processAgreements: new Map(),
         resolveProcess: unused,
         fetchUsageClaimContext: unused,
-        simulateClauseUsage: unused,
-        simulateAssemblyUsage: unused,
-        recordClauseUsage: unused,
-        recordAssemblyUsage: unused,
+        readAssemblyTemplate: unused,
+        simulateUsage: unused,
+        recordUsage: unused,
         submitAttestation,
         registerMember: unused,
         updateMemberProfile: unused,
@@ -66,10 +65,10 @@ function executors(submitAttestation: CapabilityExecutorDeps["submitAttestation"
 
 describe("attestation under the committed clause key, beside another spec of the same name", () => {
     it("both specs are loaded, each read by its own key", () => {
-        expect(V1.clauseKey).not.toBe(V2.clauseKey);
-        expect(getClauseSpec(V2.clauseKey)?.version).toBe(2);
-        expect(getClauseSpec(V1.clauseKey)?.version).toBe(1);
-        expect(getClauseSpec(V1.clauseKey)?.clauseId).toBe(CLAUSE);
+        expect(SPEC_V1.clauseKey).not.toBe(SPEC_V2.clauseKey);
+        expect(getClauseSpec(SPEC_V2.clauseKey)?.version).toBe(2);
+        expect(getClauseSpec(SPEC_V1.clauseKey)?.version).toBe(1);
+        expect(getClauseSpec(SPEC_V1.clauseKey)?.clauseId).toBe(CLAUSE);
     });
 
     it("a ladder attestation keys and encodes from the committed version", async () => {
@@ -79,15 +78,15 @@ describe("attestation under the committed clause key, beside another spec of the
             executionType: "transaction",
             kind: "submit-clause-attestation",
             orderHash: `0x${"aa".repeat(32)}`,
-            clauseKey: V1.clauseKey,
+            clauseKey: SPEC_V1.clauseKey,
             stage: 0,
             eventCode: "packed",
             ladderField: "eventType",
             party: "seller",
         });
-        const v1 = getClauseSpec(V1.clauseKey)!;
+        const v1 = getClauseSpec(SPEC_V1.clauseKey)!;
         expect(submitAttestation).toHaveBeenCalledExactlyOnceWith("seller", expect.objectContaining({
-            clauseId: V1.clauseKey,
+            clauseId: SPEC_V1.clauseKey,
             content: encodeContentFromSpec(v1, { eventType: "packed" }),
         }));
     });
@@ -99,24 +98,24 @@ describe("attestation under the committed clause key, beside another spec of the
             executionType: "transaction",
             kind: "submit-clause-attestation",
             orderHash: `0x${"aa".repeat(32)}`,
-            clauseKey: V1.clauseKey,
+            clauseKey: SPEC_V1.clauseKey,
             stage: 1,
             party: "buyer",
         }, { reading: "4C" });
         expect(submitAttestation).toHaveBeenCalledExactlyOnceWith("buyer", expect.objectContaining({
-            clauseId: V1.clauseKey,
+            clauseId: SPEC_V1.clauseKey,
         }));
     });
 
     it("witness content publishes by the committed spec's disposition (public in v1, private in v2)", async () => {
-        const content: Hex = encodeContentFromSpec(getClauseSpec(V1.clauseKey)!, { reading: "4C" }, { stage: 1 });
+        const content: Hex = encodeContentFromSpec(getClauseSpec(SPEC_V1.clauseKey)!, { reading: "4C" }, { stage: 1 });
         const pinKeccakRawBlock = vi.fn().mockResolvedValue("bafy-other");
         const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-        await publishWitnessContent({ clauseId: V1.clauseKey, stage: 1, content, ipfs: { pinKeccakRawBlock } });
+        await publishWitnessContent({ clauseId: SPEC_V1.clauseKey, stage: 1, content, ipfs: { pinKeccakRawBlock } });
         expect(pinKeccakRawBlock).toHaveBeenCalledExactlyOnceWith(hexToBytes(content));
         pinKeccakRawBlock.mockClear();
         // The v2 key withholds: its reading is private.
-        await publishWitnessContent({ clauseId: V2.clauseKey, stage: 1, content, ipfs: { pinKeccakRawBlock } });
+        await publishWitnessContent({ clauseId: SPEC_V2.clauseKey, stage: 1, content, ipfs: { pinKeccakRawBlock } });
         expect(pinKeccakRawBlock).not.toHaveBeenCalled();
         warn.mockRestore();
     });

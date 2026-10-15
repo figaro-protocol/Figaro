@@ -13,6 +13,7 @@ import "../src/build/florin/FlorinToken.sol";
 import {RpgfMinter} from "../src/build/rewards/RpgfMinter.sol";
 import {UsageCounter} from "../src/build/rewards/UsageCounter.sol";
 import {AssemblyRegistry} from "../src/build/registries/AssemblyRegistry.sol";
+import {AgreementRegistry} from "../src/build/registries/AgreementRegistry.sol";
 import "../src/core/verifier/FigaroBatchVerifier.sol";
 
 /// @title DeployMainnet — Mainnet deployment of the full Figaro protocol stack
@@ -74,6 +75,7 @@ contract DeployMainnet is Script {
     address internal _members;
     address internal _florin;
     address internal _assemblies;
+    address internal _agreements;
     address internal _usageCounter;
     address internal _rpgfMinter;
     address internal _batchVerifier;
@@ -166,6 +168,13 @@ contract DeployMainnet is Script {
         _assemblies = address(assemblies);
         console.log("AssemblyRegistry:       ", _assemblies);
 
+        // AgreementRegistry — the registered agreements' anchor, parallel to
+        // ClauseRegistry and AssemblyRegistry. RpgfMinter reads it for the
+        // agreement's designer of record. Same stake, same reasoning as above.
+        AgreementRegistry agreements = new AgreementRegistry(0.05 ether);
+        _agreements = address(agreements);
+        console.log("AgreementRegistry:      ", _agreements);
+
         // Clauses are NOT registered here. Their content is pinned to IPFS +
         // anchored on ClauseRegistry by frontend/scripts/populate-clauses.mjs —
         // the single clause-population path for prod/testnet/mainnet, so each
@@ -252,10 +261,11 @@ contract DeployMainnet is Script {
         UsageCounter usageCounter = new UsageCounter(
             _core,
             _members, // seller-side live-stake gate: usage counts only for live-staked sellers
-            _clauses, // registration-side gate: a clause earns only while its deposit is live
-            _assemblies, // registration-side gate: an assembly earns only while its deposit is live
+            _clauses, // registration-side gate: a clause earns only while its stake is live
+            _assemblies, // registration-side gate: an assembly earns only while its stake is live
+            _agreements, // registration-side gate: an agreement earns only while its stake is live
             batchVerifier_, // proof-gated writer of the batch-path accrual
-            3, // minimum-support floor: d' >= 3 distinct staked sellers before a clause or assembly scores
+            3, // minimum-support floor: d' >= 3 distinct staked sellers before a clause, agreement or assembly scores
             periods
         );
         _usageCounter = address(usageCounter);
@@ -295,7 +305,8 @@ contract DeployMainnet is Script {
             amountsSum += amounts[i];
         }
         require(amountsSum == RPGF_ALLOC, "RPGF period budgets must sum to the allocation");
-        RpgfMinter rpgfMinter = new RpgfMinter(address(florin), _usageCounter, _clauses, _assemblies, amounts);
+        RpgfMinter rpgfMinter =
+            new RpgfMinter(address(florin), _usageCounter, _clauses, _assemblies, _agreements, amounts);
         _rpgfMinter = address(rpgfMinter);
         console.log("RpgfMinter:             ", _rpgfMinter);
         florin.registerMinter(_rpgfMinter, RPGF_ALLOC);
@@ -332,6 +343,7 @@ contract DeployMainnet is Script {
         console.log("  NEXT_PUBLIC_PERMIT2=", vm.envAddress("PERMIT2"));
         console.log("  NEXT_PUBLIC_CLAUSE_REGISTRY=          ", _clauses);
         console.log("  NEXT_PUBLIC_ASSEMBLY_REGISTRY=        ", _assemblies);
+        console.log("  NEXT_PUBLIC_AGREEMENT_REGISTRY=       ", _agreements);
         console.log("  NEXT_PUBLIC_MEMBERS_REGISTRY=       ", _members);
         console.log("  NEXT_PUBLIC_FLORIN_TOKEN_ADDRESS=        ", _florin);
         console.log("  NEXT_PUBLIC_USAGE_COUNTER=            ", _usageCounter);

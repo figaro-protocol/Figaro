@@ -41,7 +41,7 @@ delay, never forge:**
   struct. **Batch-path signatures are over the VERIFIER's EIP-712 domain, not
   `FigaroCore`'s** — `FigaroBatchVerifier` requires
   `pv.verifyingContract == address(this)`, so verify against the
-  `verifying_contract` and `chain_id` each record carries;
+  `verifying_contract` and `chain_id` each entry carries;
 - `seller_payout` / `buyer_payout` are a pure function of the signed struct
   (`2 × expectedCumulativeValue + payment`, and `payment`);
 - the batch itself is anchored on chain by its `prev_state_root →
@@ -52,10 +52,10 @@ these checks. A relay that publishes nothing is simply less useful than one
 that does — which is why `404` here says "not in **this** relay's archive",
 never "did not happen".
 
-**Custody, honestly.** The parties always hold their own signed records —
+**Who holds what.** The parties always hold their own signed commitments —
 each keeps its copy of the commitment and the signatures it produced. A relay
-is a convenience publisher, never the sole custodian: if every relay drops a
-record, the parties still have it, and any of them can re-publish or
+is a convenience publisher, never the only holder: if every relay drops an
+entry, the parties still have it, and any of them can re-publish or
 re-submit it.
 
 **Attestations are already on chain.** `FigaroBatchVerifier` re-emits every
@@ -73,7 +73,7 @@ ways to get one, and the second is the one that proves anything.
 repo's GitHub Releases, built by `.github/workflows/sequencer-release.yml`.
 Download it, check the companion `.sha256` and the build-provenance
 attestation (`gh attestation verify <archive> --repo <owner>/<repo>`, which
-checks the archive against the Sigstore record of the run that built it),
+checks the archive against the Sigstore attestation of the run that built it),
 extract, run. This removes a toolchain install; it grants nothing and implies
 no hosted service.
 
@@ -85,7 +85,7 @@ curl -L https://sp1up.succinct.xyz | bash && sp1up
 cd prover && cargo build --release --locked -p figaro-sequencer --bin sequencer
 ```
 
-Each release body records the commit, both toolchain versions, the exact build
+Each release body names the commit, both toolchain versions, the exact build
 invocation, and the guest program's verification key (the value
 `FigaroBatchVerifier` pins as `programVKey`), so a prebuilt binary can be
 **rebuilt and compared** rather than trusted. The trust model above is unchanged
@@ -96,7 +96,7 @@ proof and the chain — never the provenance of a download.
 
 Proving is a **batch-operator** cost, not a per-trade cost paid by any buyer
 or seller — whoever runs the sequencer absorbs it once per batch, never once
-per order, and no protocol fee passes it through to participants. No
+per order, and nothing in the protocol passes it through to participants. No
 benchmark numbers are published here: proof time, memory, and proof size
 depend on your hardware, the batch size, and whether the k256 precompile
 patch is active (pinned in `prover/Cargo.toml`). Measure your own setup with
@@ -148,6 +148,7 @@ BATCH_VERIFIER_ADDRESS=0x... \
 USAGE_COUNTER_ADDRESS=0x... \
 CLAUSE_REGISTRY_ADDRESS=0x... \
 ASSEMBLY_REGISTRY_ADDRESS=0x... \
+AGREEMENT_REGISTRY_ADDRESS=0x... \
 MEMBERS_REGISTRY_ADDRESS=0x... \
 cargo run -p figaro-sequencer --bin sequencer
 ```
@@ -176,17 +177,18 @@ floors): Groth16 wrap ~14 GB RAM, PLONK wrap ~60 GB; both wrap through the
 | `CHAIN_ID` | `31337` | EIP-712 domain chain id |
 | `FIGARO_CORE_ADDRESS` | zero | EIP-712 verifying contract (`FigaroCore`) |
 | `BATCH_VERIFIER_ADDRESS` | zero | `FigaroBatchVerifier`; zero = prove-only dry run |
-| `USAGE_COUNTER_ADDRESS` | zero | RPGF `UsageCounter`; zero = credit no usage |
-| `CLAUSE_REGISTRY_ADDRESS` | zero | `ClauseRegistry`, read by the usage-claim pre-filter |
-| `ASSEMBLY_REGISTRY_ADDRESS` | zero | `AssemblyRegistry`, read by the usage-claim pre-filter |
-| `MEMBERS_REGISTRY_ADDRESS` | zero | `MembersRegistry`, read by the usage-claim pre-filter; all three zero disables the filter |
+| `USAGE_COUNTER_ADDRESS` | zero | The designer-reward `UsageCounter`; zero = credit no usage |
+| `CLAUSE_REGISTRY_ADDRESS` | zero | `ClauseRegistry`, read by the usage-claim pre-filter for a clause claim (kind 0) |
+| `ASSEMBLY_REGISTRY_ADDRESS` | zero | `AssemblyRegistry`, read by the usage-claim pre-filter for an assembly claim (kind 1) |
+| `AGREEMENT_REGISTRY_ADDRESS` | zero | `AgreementRegistry`, read by the usage-claim pre-filter for an agreement claim (kind 2) |
+| `MEMBERS_REGISTRY_ADDRESS` | zero | `MembersRegistry`, read by the usage-claim pre-filter; with `USAGE_COUNTER_ADDRESS` set, a registry left zero drops every claim that reads it |
 | `SP1_PROVER` | `mock` | `mock` (devnet), `cpu`, `cuda` (local), `network` (the Succinct Prover Network; `NETWORK_PRIVATE_KEY` = the requester key that pays in PROVE — the relay operator's cost, never the protocol's or its users') — who proves |
 | `SP1_PROOF_MODE` | `groth16` | `groth16` or `plonk` — the on-chain proof form; must match the deployed gateway |
 | `SEQUENCER_PRIVATE_KEY` | none — required | Resolution tx signer (pays gas; no protocol privilege); the relay refuses to start without it |
 | `LISTEN_ADDR` | `0.0.0.0:3001` | HTTP listen address |
 | `BATCH_INTERVAL_SECS` | `10` | Batch assembly tick |
 | `MAX_BATCH_OPS` | `100` | Most operations one batch takes, oldest first — the operator's bound on what the prover finishes in one sitting; the rest wait for the next tick. The chain's bound is derived, never set (see The batch's bound) |
-| `SETTLE_GAS_CAP` | `16777216` | The chain's cap on one transaction's gas (EIP-7825's 2^24, which mainnet enforces); a chain without it is told so here (Sepolia carries larger transactions), set below 95 percent of its block limit. It is the bound a batch-path process is admitted under, stable across ticks, and the tick's budget never plans past it; a value below a settle of a one-order process (590,096), or at or past 95 percent of the block limit read at startup, is a refusal to start |
+| `SETTLE_GAS_CAP` | `16777216` | The chain's cap on one transaction's gas (EIP-7825's 2^24, which mainnet enforces); a chain without it is told so here (Sepolia carries larger transactions), set below 95 percent of its block limit. It is the bound a batch-path process is admitted under, stable across ticks, and the tick's budget never plans past it; a value below the gas of resolving a one-order process (590,096), or at or past 95 percent of the block limit read at startup, is a refusal to start |
 | `MEMPOOL_MAX_OPS` | `10000` | Pending-op queue cap |
 | `MEMPOOL_MAX_USAGE_CLAIMS` | `10000` | Pending usage-claim queue cap |
 | `MAX_BODY_BYTES` | `1048576` | Per-request HTTP body cap |
@@ -250,8 +252,8 @@ All errors are structured JSON: `{ "error": "<reason>" }`.
   "archive": { "first_batch", "last_batch", "retained_batches", "max_batches" } }`.
   `dead_lettered_ops` counts, for the whole relay, the ops dropped without
   resolving, whatever the path — one that did not apply against the drain it
-  was taken in, one short of funds or whose funding could not be read,
-  unanchored or past the resolve capacity, one that fits no settle, a batch
+  was taken in, one whose bond its wallet cannot cover or whose balance could not be read,
+  unanchored or past the resolve capacity, one that fits no resolution, a batch
   that failed to prove or to plan, a batch the chain refused — every one
   re-submittable, and `last_settle_error` carries the most recent failure's
   reason verbatim, whatever its path (null while clean). Neither says whose
@@ -316,7 +318,7 @@ already published.
 
 `sequencer --vkey` prints `SP1_PROGRAM_VKEY=…`, the verification key of the
 guest this binary embeds — the value a `FigaroBatchVerifier` deploy pins as
-`programVKey`, and what `deployments/<chainId>.json` records. At startup,
+`programVKey`, and what `deployments/<chainId>.json` holds. At startup,
 with `BATCH_VERIFIER_ADDRESS` set, the sequencer reads the verifier's
 `programVKey()` and compares: a mismatch is a refusal to start with both
 values printed, because every proof such a binary made would be refused
@@ -353,9 +355,9 @@ The relay builds only on a held state whose root is the verifier's. It reads
 - the root is the mirror's own: it builds;
 - the root is a held next state's: that batch landed without this relay
   reading the receipt. Its state becomes the mirror's and the kept one. The
-  transaction is read from the verifier's `BatchSettled` log and the record
+  transaction is read from the verifier's `BatchSettled` log and the entry
   is published under it; when the log is not found in the blocks read, the
-  state is adopted and the record is NOT published (the log names the root);
+  state is adopted and the entry is NOT published (the log names the root);
 - the root is neither: another submitter's batch landed, the state file is
   not this verifier's, or it is older than the verifier's last batch (a
   stale backup, or a reorg past a kept batch). At startup that is a refusal
@@ -450,7 +452,7 @@ bindings it anchors, the usage accruals it writes — plus the proof's
 verification, the call's fixed execution and the calldata it carries, never
 the number of operations proved. Before proving, the relay executes the
 assembled batch on its mirror, counts those items, encodes the calldata they
-would ride in, and plans the settle at per-item ceilings
+would ride in, and plans the `settleBatch` call at per-item ceilings
 (`src/gas.rs`, measured in `test/core/verifier/BatchGasCeilingTest.t.sol` on
 the pre-fork EVM with a stated allowance, the proof's verification read from
 live receipts) against 95 percent of the latest block's gas limit, read at
@@ -462,12 +464,12 @@ kept — a claim credits an order the batch resolves — and cut to the budget
 the same way; claims set aside wait too, and a tick whose claims were cut
 gives the next tick's claims the first half of the budget, so a deep
 operation queue never starves them. A batch-path process is kept within
-what one settle can resolve: a commit that would grow a process past that
+what one `settleBatch` call can resolve: a commit that would grow a process past that
 (`gas::max_orders_in_one_settle`, one position an order and one for the
 buyer — about 260 orders under the default cap) is dropped at batch
 formation and dead-lettered with the reason, since such a process would
-have no resolve any relay on the chain could settle and its bonds would
-stay where they are. An operation that fits no settle under the cap on its own is
+have no resolve any relay on the chain could land and its bonds would
+stay where they are. An operation that fits no `settleBatch` call under the cap on its own is
 dead-lettered with the gas it was planned at, and the operations filtered
 into an order behind it are filtered again without it; one that fits the
 cap but not a tick's budget waits, though one that fits the tick's whole

@@ -49,7 +49,7 @@ import {
 import { frame } from "./dataChannel.mjs";
 import { ipfsGateways } from "./ipfsRead.mjs";
 import { fetchWitnessContent } from "./witnessContent.mjs";
-import { fetchAnchoredClauseSpec, fetchAnchoredTemplate } from "./anchoredContent.mjs";
+import { fetchAnchoredClauseSpec, fetchAnchoredComposedAgreement, fetchAnchoredTemplate } from "./anchoredContent.mjs";
 
 // ── Serialization ───────────────────────────────────────────────────────────
 
@@ -251,6 +251,7 @@ export async function corroborateEndpoints({
         clauseRegistry: addresses.clauseRegistry,
         membersRegistry: addresses.membersRegistry,
         assemblyRegistry: addresses.assemblyRegistry,
+        agreementRegistry: addresses.agreementRegistry,
     }).filter(([, address]) => Boolean(address));
     try {
         const perContract = {};
@@ -354,11 +355,21 @@ export async function syncCorpus({
             // substituted contributes no pin.
             const hit = await fetchAnchoredTemplate(assembly, { gateways });
             if (hit.absent) continue;
-            for (const agreement of hit.template.agreements ?? []) {
+            for (const slot of hit.template.agreements ?? []) {
+                // Each order slot's registered agreement, read from its
+                // binding whatever its stake and verified against its key: an
+                // agreement a gateway substituted, or one not registered,
+                // contributes no pin.
+                const binding = discovery.getAgreementBinding(slot.agreementKey);
+                const composed = binding ? await fetchAnchoredComposedAgreement(binding, { gateways }) : { absent: "not registered" };
                 // The pin is composed at the assembly level and folds into every
-                // agreement's bag, each clause read by its key.
+                // order slot's bag, each clause read by its key.
                 const pin = readUtilityTokenPin(
-                    { ...(hit.template.assemblyClauses ?? {}), ...(agreement.clauses ?? {}) },
+                    {
+                        ...(hit.template.assemblyClauses ?? {}),
+                        ...(composed.absent ? {} : composed.composed.clauses),
+                        ...(slot.clauses ?? {}),
+                    },
                     specs,
                 );
                 if (pin && !pins.includes(pin)) pins.push(pin);
@@ -406,9 +417,9 @@ export async function syncCorpus({
 
 /**
  * Assembly attribution from the agreements the operator actually holds: the
- * agreement's provenance leaf (`agreement.provenance`, the composition hash of
- * the assembly it instantiated) — the agreement format's own field, never a
- * clause section. A process with no held agreement is `undefined` — counted
+ * agreement's provenance leaf (`agreement.provenance`, the registered
+ * agreement and the composition hash of the assembly it instantiated) — the
+ * agreement format's own field, never a clause section. A process with no held agreement is `undefined` — counted
  * as unattributed, never binned under a fabricated key. That is the honest
  * public picture: the resolution skeleton is public, the body that says WHICH
  * assembly produced it is party-private until someone discloses or sells it.
@@ -416,7 +427,7 @@ export async function syncCorpus({
 function assemblyAttribution(corpus) {
     const byProcess = new Map();
     for (const { agreement, order } of corpus.held.byHash.values()) {
-        const key = agreement.provenance;
+        const key = agreement.provenance?.compositionHash;
         // A composition hash is a bytes32; anything else there is a party's
         // free text, attributes nothing, and never reaches the wire.
         if (typeof key === "string" && BYTES32.test(key)) byProcess.set(order.processId.toLowerCase(), key);
@@ -462,8 +473,9 @@ export function graphInventory(corpus) {
             // and nothing else. Its registrant chose it: framed.
             clauseId: framedClauseId(g),
             // The agreement format's reserved leaf (the buyer's attestation of
-            // the assembly the process instantiated), recognised by the SDK
-            // against the format constant — never by a clause name.
+            // the registered agreement and the assembly the order
+            // instantiated), recognised by the SDK against the format
+            // constant — never by a clause name.
             provenanceLeaf: g.provenanceLeaf === true,
             specResolved: g.spec !== null,
             entries: g.entries.length,

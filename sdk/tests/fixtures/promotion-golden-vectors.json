@@ -23,7 +23,10 @@
     }
   },
   "assemblyTemplate": {
-    "canonicalJson": "{\"agreements\":[{\"clauses\":{\"0x87e7c774689da74878b6353c9a244d04c50765f775b64c288eef70145d3b47b9\":{},\"0xd7555453daf821f5fdf852d3c1cb7d88d6cd741dbdfb631c3406114bbf2d91bc\":{\"parentOrderHashes\":[]}},\"id\":\"order-0\"},{\"clauses\":{\"0x87e7c774689da74878b6353c9a244d04c50765f775b64c288eef70145d3b47b9\":{},\"0xd7555453daf821f5fdf852d3c1cb7d88d6cd741dbdfb631c3406114bbf2d91bc\":{\"parentOrderHashes\":[\"order-0\"]}},\"id\":\"order-1\"}],\"assemblyClauses\":{\"0xf79ded2de5be2f5194b75e56a3bcd6b357bb550da2f765c20a482b4f8e368b74\":{\"applicableLaw\":\"US-NY\"}},\"name\":\"Golden Vector Chain\"}",
-    "compositionHash": "0x5791111be0e32594ca989217d8bd19a68236e92dc20f9f48e8bffd22559cafd5"
+    "canonicalJson": "{\"agreements\":[{\"agreementKey\":\"0x60ca7294e90c1a63dfb336110da753d39ef100507d8c781ab27c566cc595b04d\",\"clauses\":{\"0xd7555453daf821f5fdf852d3c1cb7d88d6cd741dbdfb631c3406114bbf2d91bc\":{\"parentOrderHashes\":[]}},\"id\":\"order-0\"},{\"agreementKey\":\"0x60ca7294e90c1a63dfb336110da753d39ef100507d8c781ab27c566cc595b04d\",\"clauses\":{\"0xd7555453daf821f5fdf852d3c1cb7d88d6cd741dbdfb631c3406114bbf2d91bc\":{\"parentOrderHashes\":[\"order-0\"]}},\"id\":\"order-1\"}],\"assemblyClauses\":{\"0xf79ded2de5be2f5194b75e56a3bcd6b357bb550da2f765c20a482b4f8e368b74\":{\"applicableLaw\":\"US-NY\"}},\"name\":\"Golden Vector Chain\"}",
+    "compositionHash": "0xc497abf4ac96e897dbfac3068643c61875b8e778930e291a2c4a39e2b95f8212",
+    "agreements": {
+      "0x60ca7294e90c1a63dfb336110da753d39ef100507d8c781ab27c566cc595b04d": "{\"clauses\":{\"0x87e7c774689da74878b6353c9a244d04c50765f775b64c288eef70145d3b47b9\":{},\"0xd7555453daf821f5fdf852d3c1cb7d88d6cd741dbdfb631c3406114bbf2d91bc\":{}}}"
+    }
   }
 }

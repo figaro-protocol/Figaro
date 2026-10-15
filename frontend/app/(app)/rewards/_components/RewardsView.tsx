@@ -1,11 +1,12 @@
 "use client";
 
 /**
- * RewardsView — the RPGF minter's runtime surface at `/rewards`. Not an admin
+ * RewardsView — the designer-rewards minter's runtime surface at `/rewards`. Not an admin
  * panel and not an application form: usage is COUNTED ON CHAIN as it happens
- * (a resolved process, the clause or assembly proven present in the agreement both parties
- * signed), a period's counts stop moving the moment it ends, and the wallet
- * then claims its clauses' and assemblies' UNIFORM pro-rata share of that period's budget —
+ * (a resolved process, the clause, the registered agreement or the assembly
+ * proven present in the agreement both parties signed), a period's counts
+ * stop moving the moment it ends, and the wallet then claims its clauses',
+ * agreements' and assemblies' UNIFORM pro-rata share of that period's budget —
  * no cap. There is nothing to post, bond, challenge or adjudicate. The
  * marketing telling lives at /rpgf; this page is the doing surface.
  */
@@ -21,6 +22,16 @@ import { WalletGate, STRANGER_EXPLAINER } from "@/components/runtime/WalletGate"
 import { useRpgfRewards, type RpgfPeriodState } from "@/lib/composition/useRpgfRewards";
 import { CONTRACTS } from "@/lib/kernel/contracts";
 import { extractErrorMessage } from "@/lib/shared/errors";
+import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
+import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
+
+/** A clause row names its spec's own name and version once the spec has
+ *  loaded (read from the spec the key names); every other row keeps its
+ *  label. */
+function accrualLabel(a: RpgfPeriodState["accruals"][number]): string {
+    const spec = a.family === "clause" ? getClauseSpec(a.clauseOrAssembly) : undefined;
+    return spec ? `${spec.clauseId} v${spec.version}` : a.label;
+}
 
 /** The period's phase, DERIVED from chain state — never stored. Periods are
  *  consecutive windows: exactly ONE accrues at a time (the first unclosed
@@ -36,6 +47,9 @@ export function RewardsView() {
     // Reading accrual is walletless (?wallet=0x… names any address); claiming needs the wallet.
     const account = useViewedWallet(connected);
     const rewards = useRpgfRewards(account);
+    // Re-renders as clause specs load from the registry, so a clause row
+    // names its spec once the spec is here.
+    useClauseSpecs();
     const publicClient = usePublicClient();
     const [busy, setBusy] = useState<string | null>(null);
     const [error, setError] = useState("");
@@ -80,13 +94,14 @@ export function RewardsView() {
         <section className="container mx-auto px-6 pt-24 pb-16 max-w-3xl" data-testid="rewards-page">
             <h1 className="text-heading-h1 text-ink-heading mb-3">Claim rewards</h1>
             <p className="text-base text-ink-body leading-relaxed mb-8">
-                The 600M florins reserved for clause authors and assembly designers of record.
-                Usage is counted on chain as it happens — a resolved process, the clause or assembly proven
-                present in the agreement both parties signed — and buckets into fixed periods.
-                Once a period ends its counts are final, and each author claims their clauses&apos; and assemblies&apos;
-                share of that period&apos;s budget: their score over the period&apos;s total, uniform
-                pro rata with no cap. Eligibility is a live ETH stake — you earn only while your
-                clause&apos;s or assembly&apos;s stake stays live. Nothing is
+                The 600M florins reserved for the designers of record of clauses, agreements and assemblies.
+                Usage is counted on chain as it happens — a resolved process, the clause, the registered
+                agreement or the assembly proven present in the agreement both parties signed — and
+                buckets into fixed periods. Once a period ends its counts are final, and each
+                designer of record claims their clauses&apos;, agreements&apos; and assemblies&apos; share of that
+                period&apos;s budget: their score over the period&apos;s total, uniform pro rata with no
+                cap. Eligibility is a live ETH stake — you earn only while your clause&apos;s,
+                agreement&apos;s or assembly&apos;s stake stays live. Nothing is
                 posted, bonded, or disputed; there is no committee and no application.
             </p>
             <p className="text-sm text-ink-muted mb-8">
@@ -128,7 +143,7 @@ export function RewardsView() {
                 {rewards.available && rewards.readState === "ready" && rewards.periods.length === 0 && (
                     <p className="text-base text-ink-muted" data-testid="rewards-no-periods">
                         No reward periods exist on this network yet. Usage starts counting the
-                        moment a period opens; author a clause or an assembly and the trades that
+                        moment a period opens; design a clause, an agreement or an assembly and the trades that
                         carry it accrue to this wallet here.
                     </p>
                 )}
@@ -151,20 +166,24 @@ export function RewardsView() {
                                     </span>
                                 </div>
                                 <p className="text-sm text-ink-muted mb-1" data-testid={`period-total-score-${t.periodId}`}>
-                                    period score across all clauses and assemblies:{" "}
+                                    period score across all clauses, agreements and assemblies:{" "}
                                     <span className="font-mono">{t.totalScore.toString()}</span> · minted so far{" "}
                                     {formatUnits(t.minted, 18)} FLORIN
                                 </p>
                                 {t.accruals.length > 0 && (
                                     <div className="mt-3 mb-3" data-testid={`period-accruals-${t.periodId}`}>
                                         <p className="text-sm text-ink-body mb-1">
-                                            Your clauses and assemblies in this period (score{" "}
+                                            Your clauses, agreements and assemblies in this period (score{" "}
                                             <span className="font-mono">{t.myScore.toString()}</span>):
                                         </p>
                                         <ul className="text-sm text-ink-muted space-y-1">
                                             {t.accruals.map((a) => (
-                                                <li key={`${a.kind}:${a.clauseOrAssembly}`} className="font-mono break-all">
-                                                    {a.label} — {(a.c + a.batchC).toString()} resolved process
+                                                <li
+                                                    key={`${a.kind}:${a.clauseOrAssembly}`}
+                                                    className="font-mono break-all"
+                                                    data-testid={`period-accrual-${t.periodId}-${a.family}-${a.clauseOrAssembly.toLowerCase()}`}
+                                                >
+                                                    <span className="font-sans">{a.family} </span>{accrualLabel(a)} — {(a.c + a.batchC).toString()} resolved process
                                                     {a.c + a.batchC === 1n ? "" : "es"},{" "}
                                                     {(a.d + a.batchD).toString()} distinct staked seller
                                                     {a.d + a.batchD === 1n ? "" : "s"}, score{" "}

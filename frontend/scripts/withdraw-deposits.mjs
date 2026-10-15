@@ -1,6 +1,6 @@
 /**
- * withdraw-deposits.mjs — bulk-reclaim registration deposits from the clause
- * and assembly registries, the withdraw half of populate-clauses.mjs (which
+ * withdraw-deposits.mjs — bulk-reclaim registration deposits from the clause,
+ * agreement and assembly registries, the withdraw half of populate-clauses.mjs (which
  * is the bulk-deposit half). Built for the Sepolia redeploy day: every id the
  * acting wallet registered on the OLD stack is withdrawn (no cooldown), the
  * stakes return, and the new stack is seeded fresh. Withdrawing de-surfaces;
@@ -16,7 +16,7 @@
  *     VAULT, which forwards per the day's plan — this script never moves it.
  *
  * Discovery is from the chain, never a list: ClauseRegistered /
- * AssemblyRegistered events are scanned (SCAN_FROM_BLOCK trims public-network
+ * AgreementRegistered / AssemblyRegistered events are scanned (SCAN_FROM_BLOCK trims public-network
  * scans), narrowed to rows whose registeredBy is the actor, and each live
  * deposit is withdrawn. Already-withdrawn ids are skipped, so a re-run
  * converges — same idempotence discipline as the populate scripts. The old
@@ -30,14 +30,19 @@
  *   RPC_URL                       — required
  *   NEXT_PUBLIC_CLAUSE_REGISTRY   — falls back to frontend/.env.local
  *   NEXT_PUBLIC_ASSEMBLY_REGISTRY — falls back to frontend/.env.local
+ *   NEXT_PUBLIC_AGREEMENT_REGISTRY — falls back to frontend/.env.local; a
+ *                                   stack without one has no agreements to
+ *                                   withdraw
  *   SCAN_FROM_BLOCK               — first block to scan (default 0)
  *   WITHDRAW_CLAUSES              — csv of clause keys (bytes32 hex):
  *                                   build the manifest from these EXPLICIT keys
  *                                   instead of the event scan (public gateways'
  *                                   log indexes are load-balanced and flaky —
  *                                   state reads are not). WITHDRAW_ASSEMBLIES
- *                                   is its sibling (csv of compositionHashes);
- *                                   either alone skips the other family's scan.
+ *                                   is its sibling (csv of compositionHashes),
+ *                                   and WITHDRAW_AGREEMENTS (csv of agreement
+ *                                   keys); any one alone skips the other
+ *                                   families' scans.
  *   DRY_RUN                       — print the manifest, send nothing
  *   ACTOR                         — DRY_RUN only: manifest for this address
  *                                   without constructing a signer (no device)
@@ -45,7 +50,7 @@
 
 import { createPublicClient, createWalletClient, encodeFunctionData, formatEther, http } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
-import { CLAUSE_REGISTRY_ABI, ASSEMBLY_REGISTRY_ABI, isBytes32Hex } from '@figaro-protocol/sdk';
+import { CLAUSE_REGISTRY_ABI, ASSEMBLY_REGISTRY_ABI, AGREEMENT_REGISTRY_ABI, isBytes32Hex } from '@figaro-protocol/sdk';
 import {
     VAULT_ABI, ledgerWalletClient, readEnvLocal, registrarAccount, resolveChain, vaultExecute,
 } from './populate-clauses.mjs';
@@ -73,6 +78,7 @@ async function main() {
     const clauseRegistry = process.env.NEXT_PUBLIC_CLAUSE_REGISTRY ?? envLocal.NEXT_PUBLIC_CLAUSE_REGISTRY;
     const assemblyRegistry = process.env.NEXT_PUBLIC_ASSEMBLY_REGISTRY ?? envLocal.NEXT_PUBLIC_ASSEMBLY_REGISTRY;
     if (!clauseRegistry || !assemblyRegistry) throw new Error('registry addresses missing (env or frontend/.env.local)');
+    const agreementRegistry = process.env.NEXT_PUBLIC_AGREEMENT_REGISTRY ?? envLocal.NEXT_PUBLIC_AGREEMENT_REGISTRY;
 
     const chain = await resolveChain();
     const publicClient = createPublicClient({ chain, transport: http(RPC_URL) });
@@ -111,7 +117,8 @@ async function main() {
     });
     const explicitClauses = (process.env.WITHDRAW_CLAUSES ?? '').split(',').map((s) => s.trim()).filter(Boolean);
     const explicitAssemblies = (process.env.WITHDRAW_ASSEMBLIES ?? '').split(',').map((s) => s.trim()).filter(Boolean);
-    const explicit = explicitClauses.length || explicitAssemblies.length;
+    const explicitAgreements = (process.env.WITHDRAW_AGREEMENTS ?? '').split(',').map((s) => s.trim()).filter(Boolean);
+    const explicit = explicitClauses.length || explicitAssemblies.length || explicitAgreements.length;
     const clauseRows = explicit
         ? explicitClauses.map((s) => {
             if (!isBytes32Hex(s)) throw new Error(`WITHDRAW_CLAUSES: "${s}" is not a clause key (bytes32 hex)`);
@@ -157,6 +164,33 @@ async function main() {
             registry: assemblyRegistry, abi: ASSEMBLY_REGISTRY_ABI, key, stake: assemblyDeposit,
             label: `assembly ${key}`,
         });
+    }
+
+    if (agreementRegistry) {
+        const agreementDeposit = await publicClient.readContract({
+            address: agreementRegistry, abi: AGREEMENT_REGISTRY_ABI, functionName: 'registrationDeposit',
+        });
+        const agreementKeys = explicit
+            ? explicitAgreements.map((s) => {
+                if (!isBytes32Hex(s)) throw new Error(`WITHDRAW_AGREEMENTS: "${s}" is not an agreement key (bytes32 hex)`);
+                return s.toLowerCase();
+            })
+            : (await scanContractEvents(publicClient, {
+                address: agreementRegistry, abi: AGREEMENT_REGISTRY_ABI, eventName: 'AgreementRegistered',
+            }, fromBlock))
+                .filter((e) => String(e.args.registeredBy ?? '').toLowerCase() === actor)
+                .map((e) => e.args.agreementKey);
+        for (const key of agreementKeys) {
+            const [registeredBy, , depositWithdrawn] = await publicClient.readContract({
+                address: agreementRegistry, abi: AGREEMENT_REGISTRY_ABI, functionName: 'bindings', args: [key],
+            });
+            if (registeredBy.toLowerCase() !== actor) { console.log(`  · agreement ${key} — not this actor's (registeredBy ${registeredBy}), skipped`); continue; }
+            if (depositWithdrawn) { console.log(`  · agreement ${key} — already withdrawn, skipped`); continue; }
+            manifest.push({
+                registry: agreementRegistry, abi: AGREEMENT_REGISTRY_ABI, key, stake: agreementDeposit,
+                label: `agreement ${key}`,
+            });
+        }
     }
 
     // ── The manifest is the written plan: print it whole before anything moves. ──

@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { createWalletClient, http } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import { buildBuyerOffer, type AssemblyTemplate, type OfferPolicy } from "../src/agent/originate.js";
+import { buildBuyerOffer, type OfferPolicy } from "../src/agent/originate.js";
 import {
     validateDraft, counterSignDraft, verifyRaceReply, selectRaceWinner,
     substitutePricedValue, buildQuoteRequest, quoteDraft, verifyQuoteReply,
@@ -13,6 +13,7 @@ import { keyOf, specSourceFromFixtures } from "./specFixtures.js";
 import { buildDomain, hashCommitmentStruct, COMMITMENT_TYPES } from "../src/commitments.js";
 import { computeAgreementHash } from "../src/agreement.js";
 import type { Address, Hex } from "../src/types.js";
+import { hydrateAuthored } from "./hydrate.js";
 
 const BUYER = privateKeyToAccount("0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"); // anvil[0]
 const COURIER_A = privateKeyToAccount("0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d"); // anvil[1]
@@ -27,9 +28,9 @@ const buyerW = createWalletClient({ account: BUYER, transport: http("http://loca
 const courierAW = createWalletClient({ account: COURIER_A, transport: http("http://localhost:0") });
 const courierBW = createWalletClient({ account: COURIER_B, transport: http("http://localhost:0") });
 
-const template: AssemblyTemplate = {
+const template = hydrateAuthored({
     agreements: [{ id: "order-0", clauses: { [keyOf("figaro-commerce")]: {}, [keyOf("figaro-topology")]: { parentOrderHashes: [] } } }],
-};
+});
 
 const policy: OfferPolicy = { requireRootShape: true, currencyAllowlist: [CURRENCY], maxValue: 10_000n };
 
@@ -39,7 +40,7 @@ const policy: OfferPolicy = { requireRootShape: true, currencyAllowlist: [CURREN
  *  identical between the two legs by design. */
 async function draftFor(candidate: Address, payment: bigint): Promise<CommitmentPayload> {
     const offer = await buildBuyerOffer(buyerW, {
-        template, seller: candidate, currency: CURRENCY, payment, chainId: CHAIN, core: CORE, deadline: 1_900_000_000n,
+        assembly: template, seller: candidate, currency: CURRENCY, payment, chainId: CHAIN, core: CORE, deadline: 1_900_000_000n,
         overrides: { [keyOf("figaro-commerce")]: { currency: CURRENCY, payment: payment.toString() } },
     });
     const { buyerSig: _stripped, ...draft } = offer;
@@ -54,7 +55,7 @@ describe("validateDraft", () => {
 
     it("rejects a payload carrying a buyer signature — that is an offer, not a draft", async () => {
         const offer = await buildBuyerOffer(buyerW, {
-            template, seller: COURIER_A.address, currency: CURRENCY, payment: 1000n, chainId: CHAIN, core: CORE, deadline: 1_900_000_000n,
+            assembly: template, seller: COURIER_A.address, currency: CURRENCY, payment: 1000n, chainId: CHAIN, core: CORE, deadline: 1_900_000_000n,
         });
         const check = validateDraft(offer, COURIER_A.address);
         expect(check.ok).toBe(false);
@@ -177,7 +178,7 @@ const CEILING = 1000n;
  *  the priced fields the request names. */
 function requestFor(candidate: Address): CommitmentPayload {
     return buildQuoteRequest({
-        template, buyer: BUYER.address, seller: candidate, currency: CURRENCY,
+        assembly: template, buyer: BUYER.address, seller: candidate, currency: CURRENCY,
         ceiling: CEILING, chainId: CHAIN, core: CORE, pricedFields: PRICED, deadline: 1_900_000_000n,
         overrides: {
             [keyOf("figaro-commerce")]: {
@@ -360,7 +361,7 @@ describe("the merkle-leaf seam on the race + quote legs (docs/CLAUSES.md § 'Eve
      *  only a SpecSource can see (the struct alone is allowlist-clean). */
     async function mismatchedDraft(candidate: Address): Promise<CommitmentPayload> {
         const offer = await buildBuyerOffer(buyerW, {
-            template, seller: candidate, currency: CURRENCY, payment: 1000n,
+            assembly: template, seller: candidate, currency: CURRENCY, payment: 1000n,
             chainId: CHAIN, core: CORE, deadline: 1_900_000_000n,
             overrides: fullCommerce(BAD_CURRENCY, "1000"),
         });
@@ -382,7 +383,7 @@ describe("the merkle-leaf seam on the race + quote legs (docs/CLAUSES.md § 'Eve
 
     it("a clean draft still countersigns with the gate on (specs via the mountable handler too)", async () => {
         const offer = await buildBuyerOffer(buyerW, {
-            template, seller: COURIER_A.address, currency: CURRENCY, payment: 1000n,
+            assembly: template, seller: COURIER_A.address, currency: CURRENCY, payment: 1000n,
             chainId: CHAIN, core: CORE, deadline: 1_900_000_000n,
             overrides: fullCommerce(CURRENCY, "1000"),
         });
@@ -398,7 +399,7 @@ describe("the merkle-leaf seam on the race + quote legs (docs/CLAUSES.md § 'Eve
         const reply = await quoteDraft(courierAW, clean, CTX, () => 700n, quotePolicy, SPECS);
         expect(reply?.sellerSig).toBeDefined();
         const tampered = buildQuoteRequest({
-            template, buyer: BUYER.address, seller: COURIER_A.address, currency: CURRENCY,
+            assembly: template, buyer: BUYER.address, seller: COURIER_A.address, currency: CURRENCY,
             ceiling: CEILING, chainId: CHAIN, core: CORE, pricedFields: PRICED, deadline: 1_900_000_000n,
             overrides: fullCommerce(BAD_CURRENCY, "0"),
         });

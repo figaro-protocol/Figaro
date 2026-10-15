@@ -307,10 +307,11 @@ function SearchMode() {
                 }
                 // The agreement format's provenance leaf — a leaf of the same
                 // tree, under the reserved key, never a clause section.
-                if (agreement.provenance !== undefined && hexEqual(computeProvenanceLeaf(agreement.provenance), target)) {
+                if (agreement.provenance !== undefined
+                    && hexEqual(computeProvenanceLeaf(agreement.provenance.agreementKey, agreement.provenance.compositionHash), target)) {
                     found.push({
                         kind: "provenance-leaf",
-                        label: `Provenance leaf — assembly ${agreement.provenance}`,
+                        label: `Provenance leaf — agreement ${agreement.provenance.agreementKey} in assembly ${agreement.provenance.compositionHash}`,
                         location: `Merkle leaf under agreementHash ${order.agreementHash} (order ${order.orderHash})`,
                     });
                 }

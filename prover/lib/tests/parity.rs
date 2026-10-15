@@ -1039,3 +1039,211 @@ fn a_bond_accumulation_overflow_is_rejected_not_a_panic() {
         "expected a clean Overflow error, got {result:?}",
     );
 }
+
+// ── Agreement and assembly claims against the SDK's vectors ───────
+//
+// Each order slot of `test/fixtures/assembly-vectors.json` is
+// instantiated as one order whose agreement carries the order slot's
+// provenance leaf (as the lone leaf, so the inclusion proof is empty), then
+// committed, resolved and claimed for its agreement (kind 2) and its
+// assembly (kind 1) with the SDK's frozen membership proof.
+
+fn assembly_vectors() -> serde_json::Value {
+    let mut p = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    p.pop();
+    p.pop();
+    p.push("test/fixtures/assembly-vectors.json");
+    let text = std::fs::read_to_string(&p).unwrap_or_else(|e| panic!("read {}: {e}", p.display()));
+    serde_json::from_str(&text).expect("fixture JSON")
+}
+
+fn hex32(v: &serde_json::Value) -> B256 {
+    v.as_str().expect("hex").parse().expect("bytes32")
+}
+
+/// A resolved order under `agreement_hash`, and the batch's operations.
+fn resolved_order_under(agreement_hash: B256, salt: u64) -> (Commitment, Vec<KernelOp>) {
+    let buyer_key = make_signing_key(BUYER_KEY);
+    let seller_key = make_signing_key(SELLER1_KEY);
+    let domain = domain_separator(CHAIN_ID, CORE);
+    let order = Commitment {
+        process_id: B256::ZERO,
+        buyer: BUYER,
+        seller: SELLER1,
+        currency: TOKEN,
+        payment: U256::from(100u64),
+        expected_cumulative_value: U256::from(100u64),
+        agreement_hash,
+        salt: U256::from(salt),
+        deadline: U256::from(2000u64),
+    };
+    let process_id = typed_data_hash(&domain, &commitment_struct_hash(&order));
+    let ops = vec![
+        KernelOp::Commit {
+            commitment: order.clone(),
+            buyer_sig: sign_commitment(&order, &domain, &buyer_key),
+            seller_sig: sign_commitment(&order, &domain, &seller_key),
+        },
+        KernelOp::Resolve {
+            process_id,
+            commitments: vec![order.clone()],
+            buyer_sig: sign_digest(&buyer_key, &typed_data_hash(&domain, &resolve_struct_hash(&process_id))),
+        },
+    ];
+    (order, ops)
+}
+
+fn claims_batch(ops: Vec<KernelOp>, claims: Vec<UsageClaim>) -> BatchInput {
+    BatchInput {
+        chain_id: CHAIN_ID,
+        verifying_contract: CORE,
+        block_timestamp: 1000,
+        operations: ops,
+        prev_state: empty_snapshot(),
+        usage_claims: claims,
+        usage_period: 0,
+        provenance_leaf: keccak256(b"figaro-agreement-provenance"),
+    }
+}
+
+fn kind2(order: &Commitment, slot: &serde_json::Value) -> UsageClaim {
+    UsageClaim {
+        order: order.clone(),
+        clause_or_assembly: hex32(&slot["agreementKey"]),
+        kind: UsageClaimKind::Agreement {
+            composition_hash: hex32(&slot["provenance"]["compositionHash"]),
+        },
+        inclusion_proof: vec![],
+    }
+}
+
+fn kind1(order: &Commitment, composition: B256, agreement_key: B256, slot_content_hash: B256, proof: Vec<B256>) -> UsageClaim {
+    UsageClaim {
+        order: order.clone(),
+        clause_or_assembly: composition,
+        kind: UsageClaimKind::Assembly {
+            agreement_key,
+            slot_content_hash,
+            membership_proof: proof,
+        },
+        inclusion_proof: vec![],
+    }
+}
+
+fn proof_list(v: &serde_json::Value) -> Vec<B256> {
+    v.as_array().expect("proof").iter().map(hex32).collect()
+}
+
+#[test]
+fn every_vector_order_slot_credits_its_agreement_and_its_assembly() {
+    let fx = assembly_vectors();
+    let mut salt = 1000u64;
+    for assembly in fx["assemblies"].as_array().unwrap() {
+        let composition = hex32(&assembly["compositionHash"]);
+        for slot in assembly["slots"].as_array().unwrap() {
+            salt += 1;
+            let (order, ops) = resolved_order_under(hex32(&slot["provenance"]["leaf"]), salt);
+            let claims = vec![
+                kind2(&order, slot),
+                kind1(
+                    &order,
+                    composition,
+                    hex32(&slot["agreementKey"]),
+                    hex32(&slot["slotContentHash"]),
+                    proof_list(&slot["membershipProof"]),
+                ),
+            ];
+            let (_, _, events) = apply_batch(&claims_batch(ops, claims))
+                .unwrap_or_else(|e| panic!("{} {}: {e}", assembly["label"], slot["id"]));
+            let mut got: Vec<(B256, u8)> =
+                events.usage_accruals.iter().map(|a| (a.clause_or_assembly, a.kind)).collect();
+            got.sort();
+            let mut want = vec![
+                (hex32(&slot["agreementKey"]), USAGE_KIND_AGREEMENT),
+                (composition, USAGE_KIND_ASSEMBLY),
+            ];
+            want.sort();
+            assert_eq!(got, want);
+        }
+    }
+}
+
+/// An order slot's membership proof taken from another assembly that holds
+/// the same agreement opens nothing under the claimed root.
+#[test]
+fn a_vector_membership_proof_from_another_assembly_is_refused() {
+    let fx = assembly_vectors();
+    let assemblies = fx["assemblies"].as_array().unwrap();
+    // `two-slots` order-1 and `one-slot` order-0 both bind the one-section agreement.
+    let two = &assemblies[1];
+    let one = &assemblies[0];
+    let slot = &two["slots"][1];
+    assert_eq!(slot["agreementKey"], one["slots"][0]["agreementKey"]);
+    let (order, ops) = resolved_order_under(hex32(&slot["provenance"]["leaf"]), 1);
+    let claim = kind1(
+        &order,
+        hex32(&two["compositionHash"]),
+        hex32(&slot["agreementKey"]),
+        hex32(&one["slots"][0]["slotContentHash"]),
+        proof_list(&one["slots"][0]["membershipProof"]),
+    );
+    match apply_batch(&claims_batch(ops, vec![claim])).map(|_| ()) {
+        Err(KernelError::UsageInvalidInclusionProof) => {}
+        other => panic!("expected UsageInvalidInclusionProof, got {other:?}"),
+    }
+}
+
+/// A kind-2 claim naming the wrong agreementKey against a vector's
+/// provenance leaf derives other bytes and opens nothing.
+#[test]
+fn a_vector_agreement_claim_with_the_wrong_agreement_key_is_refused() {
+    let fx = assembly_vectors();
+    let slot = &fx["assemblies"][2]["slots"][2];
+    let (order, ops) = resolved_order_under(hex32(&slot["provenance"]["leaf"]), 1);
+    let mut claim = kind2(&order, slot);
+    claim.clause_or_assembly = hex32(&fx["assemblies"][2]["slots"][0]["agreementKey"]);
+    match apply_batch(&claims_batch(ops, vec![claim])).map(|_| ()) {
+        Err(KernelError::UsageInvalidInclusionProof) => {}
+        other => panic!("expected UsageInvalidInclusionProof, got {other:?}"),
+    }
+}
+
+/// The vector's terms leaf IS a leaf of its assembly root — its sorted-pair
+/// proof opens — yet an assembly claim passing it as an order slot (the
+/// terms key as agreementKey, the terms bytes' hash as the order-slot content) is
+/// refused by its key: the terms leaf is not an order slot.
+#[test]
+fn the_vector_terms_leaf_never_passes_as_an_order_slot() {
+    let fx = assembly_vectors();
+    let assembly = &fx["assemblies"][2];
+    let composition = hex32(&assembly["compositionHash"]);
+    let terms = &assembly["terms"];
+    let terms_leaf = hex32(&terms["leaf"]);
+
+    // The terms leaf's proof: its sibling is the order slot whose proof
+    // begins with the terms leaf; the rest of that order slot's path follows.
+    let sibling = assembly["slots"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|s| hex32(&s["membershipProof"][0]) == terms_leaf)
+        .expect("an order slot pairs with the terms leaf");
+    let mut proof = vec![hex32(&sibling["leaf"])];
+    proof.extend(proof_list(&sibling["membershipProof"]).into_iter().skip(1));
+    assert!(
+        figaro_kernel::merkle::verify_inclusion(&proof, composition, terms_leaf),
+        "the terms leaf is a leaf of the root"
+    );
+
+    let terms_key = hex32(&terms["leafKey"]);
+    let bytes = figaro_kernel::kernel::provenance_section_bytes(&terms_key, &composition);
+    let mut preimage = [0u8; 64];
+    preimage[..32].copy_from_slice(keccak256(b"figaro-agreement-provenance").as_slice());
+    preimage[32..].copy_from_slice(keccak256(&bytes).as_slice());
+    let (order, ops) = resolved_order_under(keccak256(keccak256(preimage)), 1);
+    let claim = kind1(&order, composition, terms_key, hex32(&terms["sectionHash"]), proof);
+    match apply_batch(&claims_batch(ops, vec![claim])).map(|_| ()) {
+        Err(KernelError::ReservedKeyIsNotARegistration(k)) => assert_eq!(k, terms_key),
+        other => panic!("expected ReservedKeyIsNotARegistration, got {other:?}"),
+    }
+}

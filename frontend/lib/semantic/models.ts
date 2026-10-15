@@ -78,14 +78,16 @@ export interface SubmitClauseAttestationCapabilityAction {
 
 /** The buyer's attestation of the agreement FORMAT's provenance leaf — the
  *  reserved key (`PROVENANCE_LEAF_KEY`), not a clause: its section data is
- *  `provenanceSectionBytes(compositionHash)` and its content reference their
- *  hash. Filed while the process is open, like every attestation. */
+ *  `provenanceSectionBytes(agreementKey, compositionHash)` and its content
+ *  reference their hash. Filed while the process is open, like every
+ *  attestation. */
 export interface AttestProvenanceLeafCapabilityAction {
     executionType: "transaction";
     kind: "attest-provenance-leaf";
     orderHash: string;
-    /** The agreement's `provenance` — the composition hash of the registered
-     *  assembly the order instantiated. */
+    /** The agreement's `provenance`: the registered agreement the order
+     *  instantiated, and the composition root of its registered assembly. */
+    agreementKey: `0x${string}`;
     compositionHash: `0x${string}`;
     party: "buyer";
 }

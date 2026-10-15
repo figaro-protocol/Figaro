@@ -15,7 +15,7 @@
  *
  * Five `block` hints are HASH-LOAD-BEARING and therefore projection
  * vocabulary, not presentation: `design.article: "mandatory"` (which clauses
- * auto-fold into every template agreement → compositionHash),
+ * auto-fold into every newly composed agreement → agreementKey),
  * `design.article: "attestations"` (process-log clauses stay empty anchors at
  * commit → agreementHash), `design.scope: "assembly"` (composed once for the
  * whole design, folded into EVERY agreement at checkout → compositionHash +
@@ -38,7 +38,15 @@ import {
     type Agreement,
     type AgreementSection,
 } from "./agreement.js";
-import { templateCompositionHash, type AssemblyTemplate } from "./assembly.js";
+import {
+    agreementKeyOf,
+    assertNotReservedKey,
+    resolveAuthoredClauseKeys,
+    templateCompositionHash,
+    type AssemblyTemplate,
+    type ComposedAgreement,
+    type TemplateSlot,
+} from "./assembly.js";
 import { validateContent, type ClauseSpec } from "./clauses/index.js";
 import { isAddressHex, type Hex } from "./types.js";
 
@@ -200,7 +208,7 @@ export function publicForm(agreement: Agreement, specs: SpecSource): Agreement {
 }
 
 /** True for the MANDATORY clauses (`block.design.article: "mandatory"` —
- *  commerce, topology) that auto-fold into every template agreement; they are
+ *  commerce, topology) that auto-fold into every newly composed agreement; they are
  *  not designer choices. Never name this article "structural" — that word
  *  collides with the design/DAG sense.
  *
@@ -604,32 +612,61 @@ export interface TemplateOrderNode {
     parentOrderHashes?: readonly string[];
 }
 
-/** Fold the MANDATORY clauses into a template agreement's clause set. Each
- *  mandatory clause (`block.design.article: "mandatory"`) draws the fields it
- *  declares from the design-time value bag — topology gets
- *  `{ parentOrderHashes }` (mode is DERIVED from the edges, never stored);
- *  commerce's currency/payment/lineItems are NOT design-time (the buyer fills
- *  them at checkout), so commerce folds in empty. Generic: a never-seen
- *  mandatory clause composes the subset of the bag it declares, with zero
- *  per-clause code. */
-function composeMandatoryClauses(
-    mandatorySpecs: readonly ProjectionSpecView[],
+/** The order slot's own fills for a composed clause map — the design-time
+ *  values the ORDER SLOT carries rather than the registered agreement: each
+ *  composed clause whose loaded spec declares `parentOrderHashes` (the
+ *  topology, matched by declared field, never by clause id) gets
+ *  `{ parentOrderHashes: parents }` (root = []). The registered agreement
+ *  composes those clauses with `{}`, so one agreement sits in any order slot
+ *  of any assembly. */
+function slotTopologyFills(
+    clauses: Readonly<Record<Hex, Record<string, unknown>>>,
     parents: string[],
+    specs: SpecSource,
 ): Record<Hex, Record<string, unknown>> {
-    // The design-time value bag. Checkout-time values (commerce's
-    // currency/payment/lineItems) are deliberately absent — filled downstream.
-    const bag: Record<string, unknown> = {
-        parentOrderHashes: parents,
-    };
     const out: Record<Hex, Record<string, unknown>> = {};
-    for (const spec of mandatorySpecs) {
-        const data: Record<string, unknown> = {};
-        for (const field of spec.fields ?? []) {
-            if (field.name in bag) data[field.name] = bag[field.name];
-        }
-        out[spec.clauseKey] = data;
+    for (const clauseKey of Object.keys(clauses) as Hex[]) {
+        const spec = specs.get(clauseKey);
+        if (spec && specDeclaresField(spec, "parentOrderHashes")) out[clauseKey] = { parentOrderHashes: [...parents] };
     }
     return out;
+}
+
+/** Fold the MANDATORY clauses into a newly composed agreement's clause map:
+ *  every spec the source lists with `block.design.article: "mandatory"` at
+ *  agreement scope that the map does not carry folds in with `{}` (one it
+ *  carries stays as composed). Composition time only — checkout adds no
+ *  clause. Generic: a never-seen mandatory clause folds with zero
+ *  per-clause code. */
+function foldMandatoryClauses(
+    clauses: Readonly<Record<Hex, Record<string, unknown>>>,
+    mandatorySpecs: readonly ProjectionSpecView[],
+): Record<Hex, Record<string, unknown>> {
+    const carried = new Set(Object.keys(clauses).map((k) => k.toLowerCase()));
+    const out: Record<Hex, Record<string, unknown>> = {};
+    for (const spec of mandatorySpecs) {
+        if (!carried.has(spec.clauseKey.toLowerCase())) out[spec.clauseKey] = {};
+    }
+    return { ...out, ...clauses };
+}
+
+/** The live mandatory specs the source lists, split by the scope they fold
+ *  at. Throws when none is listed: without the chain→IPFS spec set the
+ *  mandatory clauses cannot be resolved, and a composition missing them is
+ *  refused rather than emitted. */
+function mandatorySpecsByScope(specs: SpecSource): { agreement: ProjectionSpecView[]; assembly: ProjectionSpecView[] } {
+    const agreement: ProjectionSpecView[] = [];
+    const assembly: ProjectionSpecView[] = [];
+    for (const spec of specs.list()) {
+        if (!specIsMandatory(spec)) continue;
+        (specIsAssemblyScoped(spec) ? assembly : agreement).push(spec);
+    }
+    if (agreement.length === 0) {
+        throw new Error(
+            "clause specs not loaded: no mandatory clauses in the SpecSource — warm the spec cache before building templates",
+        );
+    }
+    return { agreement, assembly };
 }
 
 /** Only the values a clause's `design.fills` declares survive into a template
@@ -652,10 +689,25 @@ function clauseLabel(clauseKey: string, spec: ProjectionSpecView | undefined): s
     return spec ? `${spec.clauseId} (${clauseKey})` : clauseKey;
 }
 
-/** Build the no-hash assembly template from the design's orders + the per-order
- *  clause selection: one template AGREEMENT per canvas order, every clause
- *  keyed by its clause key. The MANDATORY clauses (commerce + topology) fold
- *  in automatically on every agreement — they are not designer choices. */
+/** What a design-time build produces: the template (one order slot per
+ *  canvas order, each binding a registered agreement by key) and the
+ *  agreements newly composed for it, keyed by `agreementKeyOf` — the ones to
+ *  pin and register on `AgreementRegistry` (one stake each; a key already
+ *  registered is skipped) before the assembly is registered. */
+export interface BuiltAssemblyTemplate {
+    template: AssemblyTemplate;
+    agreements: Record<Hex, ComposedAgreement>;
+}
+
+/** Build the assembly template from the design's orders. Each canvas order
+ *  becomes one order slot binding a registered agreement: EITHER a
+ *  registered agreement bound as is (`registeredByOrderId`), OR the clauses
+ *  the designer composed for it (`clausesByOrderId`), which become a new
+ *  agreement — value-free, with the MANDATORY clauses folded in (composition
+ *  time is the fold's only place; checkout adds no clause). The topology's
+ *  parents are the order slot's own fill. A bound agreement that lacks a
+ *  live mandatory spec at its scope is refused: the designer composes a new
+ *  agreement for that order slot instead. */
 export function buildAssemblyTemplate(args: {
     name?: string;
     summary?: string;
@@ -663,13 +715,17 @@ export function buildAssemblyTemplate(args: {
     orders: readonly TemplateOrderNode[];
     /** orderId → clauseKey → the designer's composed values. */
     clausesByOrderId: Readonly<Record<string, Readonly<Record<Hex, Record<string, unknown>>>>>;
+    /** orderId → the registered agreement (hydrated and verified against
+     *  its key) the order slot binds as is. An order named here composes no
+     *  clauses of its own. */
+    registeredByOrderId?: Readonly<Record<string, ComposedAgreement>>;
     /** ASSEMBLY-SCOPED composition — clauses declaring
      *  `block.design.scope: "assembly"`, composed ONCE for the whole design
      *  (clauseKey → the designer's values). Optional; absent = none. */
     assemblyClauses?: Readonly<Record<Hex, Record<string, unknown>>>;
     specs: SpecSource;
-}): AssemblyTemplate {
-    const { name, summary, description, orders, clausesByOrderId, assemblyClauses, specs } = args;
+}): BuiltAssemblyTemplate {
+    const { name, summary, description, orders, clausesByOrderId, registeredByOrderId, assemblyClauses, specs } = args;
     // SCOPE VERIFICATION: a clause binds where its spec
     // declares — an assembly-scoped clause composed on an order (or an
     // agreement-scoped clause composed at assembly level) is a build error,
@@ -705,68 +761,128 @@ export function buildAssemblyTemplate(args: {
     // mandatory folds, with no selection among them — a clause is its spec,
     // so two mandatory specs are two clauses and both fold. A MANDATORY
     // clause folds AT THE LEVEL ITS SCOPE NAMES: agreement-scoped mandatory
-    // (commerce, topology) folds into every agreement; an assembly-scoped
-    // mandatory clause folds into the assembly's terms below. The source is
-    // the registrations the caller surfaces (a live-stake source for a new
-    // composition), and every folded clause is in the template, where a
-    // review shows it before anchoring.
-    const mandatorySpecs: ProjectionSpecView[] = [];
-    const assemblyMandatory: ProjectionSpecView[] = [];
-    for (const spec of specs.list()) {
-        if (!specIsMandatory(spec)) continue;
-        (specIsAssemblyScoped(spec) ? assemblyMandatory : mandatorySpecs).push(spec);
-    }
-    if (mandatorySpecs.length === 0) {
-        // Without the chain→IPFS spec set the mandatory clauses cannot be
-        // resolved — refuse loudly rather than emit a template missing them.
-        // Consumers gate on their spec cache being warm before building.
-        throw new Error(
-            "clause specs not loaded: no mandatory clauses in the SpecSource — warm the spec cache before building templates",
-        );
-    }
+    // (commerce, topology) folds into every newly composed agreement; an
+    // assembly-scoped mandatory clause folds into the assembly's terms below.
+    // The source is the registrations the caller surfaces (a live-stake
+    // source for a new composition), and every folded clause is in the
+    // output, where a review shows it before anchoring.
+    const mandatory = mandatorySpecsByScope(specs);
     // Re-label each design-time (synthetic) order id to a clean local label
-    // naming the future order slot. The template carries no chain ids
-    // and no party addresses — only the clauses (the mandatory ones among
-    // them), keyed by these local labels.
+    // naming the future order slot. The template carries no chain ids and no
+    // party addresses.
     const idToLocal = new Map(orders.map((o, i) => [o.orderHash, `order-${i}`]));
     // Assembly-scoped sections keep the same value-free rule as agreements:
     // only design.fills values survive into the template. Assembly-scoped
     // MANDATORY clauses fold in automatically first (empty sections, filled
     // at checkout); the designer's own composition merges over them.
     const assemblySelection: Record<Hex, Record<string, unknown>> = {};
-    for (const spec of assemblyMandatory) assemblySelection[spec.clauseKey] = {};
+    for (const spec of mandatory.assembly) assemblySelection[spec.clauseKey] = {};
     for (const [clauseKey, values] of Object.entries(assemblyClauses ?? {}) as [Hex, Record<string, unknown>][]) {
         assemblySelection[clauseKey] = designFillValues(specs.get(clauseKey), values);
     }
-    return {
-        ...(name ? { name } : {}),
-        ...(summary ? { summary } : {}),
-        ...(description ? { description } : {}),
-        ...(Object.keys(assemblySelection).length > 0 ? { assemblyClauses: assemblySelection } : {}),
-        agreements: orders.map((order, i) => {
-            // Design time is STRUCTURAL: the template keeps
-            // the designer's clause SELECTION, but a clause's field values are
-            // transaction particulars — filled at checkout, never composed.
-            // Only clauses declaring designer fills (block.design.fills — the
-            // designer's tailoring, consent's affixed documents) keep their
-            // composed values; everything else strips to `{}` here, so
-            // templates are value-free by construction, not by convention.
-            const composed = clausesByOrderId[order.orderHash] ?? {};
-            const selection: Record<Hex, Record<string, unknown>> = {};
-            for (const [clauseKey, values] of Object.entries(composed) as [Hex, Record<string, unknown>][]) {
-                selection[clauseKey] = designFillValues(specs.get(clauseKey), values);
+    const agreements: Record<Hex, ComposedAgreement> = {};
+    const slots: TemplateSlot[] = orders.map((order, i) => {
+        const id = `order-${i}`;
+        const parents = (order.parentOrderHashes ?? []).map((p) => idToLocal.get(p) ?? p);
+        const bound = registeredByOrderId?.[order.orderHash];
+        if (bound) {
+            if (Object.keys(clausesByOrderId[order.orderHash] ?? {}).length > 0) {
+                throw new Error(`${id} binds a registered agreement and also composes clauses — choose one`);
             }
-            return {
-                id: `order-${i}`,
-                clauses: {
-                    ...selection,
-                    ...composeMandatoryClauses(
-                        mandatorySpecs,
-                        (order.parentOrderHashes ?? []).map((p) => idToLocal.get(p) ?? p),
-                    ),
-                },
-            };
-        }),
+            const agreementKey = agreementKeyOf(bound);
+            assertNotReservedKey(agreementKey, `${id} agreementKey`);
+            const carried = new Set(Object.keys(bound.clauses).map((k) => k.toLowerCase()));
+            const missing = mandatory.agreement.filter((spec) => !carried.has(spec.clauseKey.toLowerCase()));
+            if (missing.length > 0) {
+                throw new Error(
+                    `${id}: registered agreement ${agreementKey} lacks the live mandatory ` +
+                    `${missing.map((spec) => clauseLabel(spec.clauseKey, spec)).join(", ")} — compose a new agreement for this order slot`,
+                );
+            }
+            return { id, agreementKey, clauses: slotTopologyFills(bound.clauses, parents, specs) };
+        }
+        // Design time is STRUCTURAL: the agreement keeps the designer's clause
+        // SELECTION, but a clause's field values are transaction particulars —
+        // filled at checkout, never composed. Only clauses declaring designer
+        // fills (block.design.fills — the designer's tailoring, consent's
+        // affixed documents) keep their composed values; everything else
+        // strips to `{}` here, so agreements are value-free by construction.
+        const composed = clausesByOrderId[order.orderHash] ?? {};
+        const selection: Record<Hex, Record<string, unknown>> = {};
+        for (const [clauseKey, values] of Object.entries(composed) as [Hex, Record<string, unknown>][]) {
+            selection[clauseKey] = designFillValues(specs.get(clauseKey), values);
+        }
+        const clauses = foldMandatoryClauses(selection, mandatory.agreement);
+        const agreementKey = agreementKeyOf({ clauses });
+        agreements[agreementKey] = { clauses };
+        return { id, agreementKey, clauses: slotTopologyFills(clauses, parents, specs) };
+    });
+    return {
+        template: {
+            ...(name ? { name } : {}),
+            ...(summary ? { summary } : {}),
+            ...(description ? { description } : {}),
+            ...(Object.keys(assemblySelection).length > 0 ? { assemblyClauses: assemblySelection } : {}),
+            agreements: slots,
+        },
+        agreements,
+    };
+}
+
+/**
+ * Derive a reference assembly's registered agreements and order slots from
+ * its AUTHORED file (`assemblies/*.json`: `agreements[].clauses` by clause
+ * name, the topology clause carrying its parents as `order-<j>` labels).
+ * Seed time only. For each authored agreement: resolve clause names to keys
+ * (`resolveAuthoredClauseKeys`), lift the `parentOrderHashes` values out of
+ * the agreement into the order slot's own fill (the clause stays composed,
+ * with `{}`), fold the live agreement-scoped mandatory specs the agreement
+ * does not carry, and key the result (`agreementKeyOf`). Returns each
+ * DISTINCT agreement once (two order slots composing the same clauses share
+ * one registration) and the template binding them; editorial fields and the
+ * assembly-scoped clauses carry over unchanged.
+ */
+export function slotsFromAuthoredAgreements(
+    authored: object,
+    specs: SpecSource,
+): BuiltAssemblyTemplate {
+    const doc = resolveAuthoredClauseKeys(authored, specs) as {
+        name?: string;
+        summary?: string;
+        description?: string;
+        faq?: AssemblyTemplate["faq"];
+        assemblyClauses?: Record<Hex, Record<string, unknown>>;
+        agreements?: { id?: string; clauses?: Record<Hex, Record<string, unknown>> }[];
+    };
+    if (!Array.isArray(doc.agreements) || doc.agreements.length === 0) {
+        throw new Error("the authored assembly has no agreements");
+    }
+    const mandatory = mandatorySpecsByScope(specs);
+    const agreements: Record<Hex, ComposedAgreement> = {};
+    const slots: TemplateSlot[] = doc.agreements.map((entry, i) => {
+        const id = entry.id ?? `order-${i}`;
+        const composed: Record<Hex, Record<string, unknown>> = {};
+        const fills: Record<Hex, Record<string, unknown>> = {};
+        for (const [clauseKey, values] of Object.entries(entry.clauses ?? {}) as [Hex, Record<string, unknown>][]) {
+            const { parentOrderHashes, ...rest } = values ?? {};
+            composed[clauseKey] = rest;
+            if (Array.isArray(parentOrderHashes)) fills[clauseKey] = { parentOrderHashes: [...parentOrderHashes] };
+        }
+        const clauses = foldMandatoryClauses(composed, mandatory.agreement);
+        const agreementKey = agreementKeyOf({ clauses });
+        agreements[agreementKey] = { clauses };
+        return { id, agreementKey, clauses: fills };
+    });
+    return {
+        template: {
+            ...(doc.name !== undefined ? { name: doc.name } : {}),
+            ...(doc.summary !== undefined ? { summary: doc.summary } : {}),
+            ...(doc.description !== undefined ? { description: doc.description } : {}),
+            ...(doc.faq !== undefined ? { faq: doc.faq } : {}),
+            ...(doc.assemblyClauses !== undefined ? { assemblyClauses: doc.assemblyClauses } : {}),
+            agreements: slots,
+        },
+        agreements,
     };
 }
 

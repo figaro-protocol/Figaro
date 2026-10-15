@@ -3,12 +3,13 @@ import { createWalletClient, http, type PublicClient } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import {
     buildChainOffers, originateChain, counterSignOffer, buildBuyerOffer, originateProcess,
-    type AssemblyTemplate, type ChainNodeSpec, type OfferPolicy,
+    type ChainNodeSpec, type OfferPolicy,
 } from "../src/agent/originate.js";
 import { InProcessChannel } from "../src/agent/coordination.js";
 import { keyOf, specSourceFromFixtures } from "./specFixtures.js";
 import { buildDomain, computeCommitmentProcessId, computeOrderHash, COMMITMENT_TYPES, ZERO_PROCESS_ID } from "../src/commitments.js";
 import type { Address } from "../src/types.js";
+import { hydrateAuthored } from "./hydrate.js";
 
 const BUYER = privateKeyToAccount("0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"); // anvil[0]
 const S0 = privateKeyToAccount("0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d"); // anvil[1]
@@ -22,19 +23,19 @@ const w = (acc: typeof BUYER) => createWalletClient({ account: acc, transport: h
 const buyerW = w(BUYER);
 
 // A 3-order value-added chain: root (order-0) + two subs under it (like the seed chain).
-const template: AssemblyTemplate = {
+const template = hydrateAuthored({
     agreements: [
         { id: "order-0", clauses: { [keyOf("figaro-commerce")]: {}, [keyOf("figaro-topology")]: { parentOrderHashes: [] } } },
         { id: "order-1", clauses: { [keyOf("figaro-courier-process")]: {}, [keyOf("figaro-topology")]: { parentOrderHashes: ["order-0"] } } },
         { id: "order-2", clauses: { [keyOf("figaro-merchant-process")]: {}, [keyOf("figaro-topology")]: { parentOrderHashes: ["order-0"] } } },
     ],
-};
+});
 const nodes: ChainNodeSpec[] = [
     { nodeId: "order-0", seller: S0.address, payment: 1000n, overrides: { [keyOf("figaro-commerce")]: { currency: CURRENCY, payment: "1000", lineItems: [{ itemId: "m", name: "Meal", quantity: 1, unitPrice: "1000" }] } } },
     { nodeId: "order-1", seller: S1.address, payment: 500n },
     { nodeId: "order-2", seller: S2.address, payment: 300n },
 ];
-const params = { template, currency: CURRENCY, chainId: CHAIN, core: CORE, nodes, salt: () => 42n, deadline: 1_900_000_000n };
+const params = { assembly: template, currency: CURRENCY, chainId: CHAIN, core: CORE, nodes, salt: () => 42n, deadline: 1_900_000_000n };
 
 // A chain-tolerant operator policy: no requireRootShape (sub-orders carry the
 // running cumulative value), the chain's currency, cap above the 1800 total.
@@ -130,7 +131,7 @@ describe("the buyer commits only the offer it sent", () => {
         readContract: () => { throw new Error("chain must not be touched on a bad reply"); },
     } as unknown as PublicClient;
     const rootParams = {
-        template: { agreements: [template.agreements[0]] } as AssemblyTemplate,
+        assembly: { ...template, template: { agreements: [template.template.agreements[0]] } },
         currency: CURRENCY, payment: 1000n, chainId: CHAIN, core: CORE,
         buyer: BUYER.address, seller: S0.address,
         overrides: nodes[0].overrides, salt: 7n, deadline: 1_900_000_000n,

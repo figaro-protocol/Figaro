@@ -19,8 +19,10 @@
  * Three agreements: three sections (an odd leaf count, so one node is promoted
  * unpaired), one section (an empty proof, leaf == root), and two sections plus
  * the reserved provenance leaf (the agreement format's own leaf, keyed by
- * `PROVENANCE_LEAF_KEY` and reproduced from the composition hash — what both
- * consumers rebuild for an assembly claim).
+ * `PROVENANCE_LEAF_KEY` and reproduced from the two keys it names — the
+ * registered agreement and the assembly, taken from the third assembly of
+ * `assembly-vectors.json` — what both consumers rebuild for an agreement or
+ * assembly claim).
  *
  *   1. Regenerate the fixture on `HARVEST_MERKLE_VECTORS=1`.
  *   2. On `AGREEMENT_FUZZ_SEED=<n>`, write GENERATED agreements in the
@@ -43,11 +45,8 @@ import {
     type Agreement,
 } from "../src/agreement.js";
 import { agreementArb } from "./propertyArbs.js";
-import { computeClauseKey } from "../src/discovery.js";
-
-const CLAUSES_DIR = path.resolve(__dirname, "../../clauses");
-/** The real key of a reference clause: the hash of its spec's canonical bytes. */
-const K = (name: string): `0x${string}` => computeClauseKey(JSON.parse(readFileSync(path.join(CLAUSES_DIR, `${name}.json`), "utf8")));
+import { agreementKeyOf, templateCompositionHash } from "../src/assembly.js";
+import { ASSEMBLY_THREE, COMPOSED_DESIGN, K } from "./assemblyVectors.js";
 
 const FUZZ_PATH = path.resolve(__dirname, "../../test/fixtures/streams/agreements.json");
 const FIXTURE_PATH = path.resolve(__dirname, "../../test/fixtures/merkle-vectors.json");
@@ -78,7 +77,7 @@ const WITH_DESIGN: Agreement = {
         { clause: K("figaro-commerce"), data: { currency: "0x0000000000000000000000000000000000000000", payment: "7" } },
         { clause: K("figaro-topology"), data: { parentOrderHashes: [] } },
     ],
-    provenance: "0x9b3c1d2e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c",
+    provenance: { agreementKey: agreementKeyOf(COMPOSED_DESIGN), compositionHash: templateCompositionHash(ASSEMBLY_THREE) },
 };
 
 function vectorFor(label: string, agreement: Agreement) {
@@ -88,8 +87,12 @@ function vectorFor(label: string, agreement: Agreement) {
             // The reserved key and the bytes the leaf hashes: both consumers
             // rebuild the leaf from these two, exactly as for a section.
             leafKey: PROVENANCE_LEAF_KEY,
-            compositionHash: agreement.provenance,
-            sectionData: Buffer.from(provenanceSectionBytes(agreement.provenance).slice(2), "hex").toString("utf8"),
+            agreementKey: agreement.provenance.agreementKey,
+            compositionHash: agreement.provenance.compositionHash,
+            sectionData: Buffer.from(
+                provenanceSectionBytes(agreement.provenance.agreementKey, agreement.provenance.compositionHash).slice(2),
+                "hex",
+            ).toString("utf8"),
             leaf,
             proof,
         };

@@ -21,7 +21,7 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { beforeAll, describe, expect, it } from "vitest";
-import { keyOf, primeClauseSpecs, resolveAuthored } from "./primeClauseSpecs";
+import { hydrateAuthored, keyOf, primeClauseSpecs } from "./primeClauseSpecs";
 import {
     buyerAuthoredFields,
     deriveAgreementGroups,
@@ -30,18 +30,18 @@ import {
 } from "@/lib/checkout/checkoutDerivations";
 import { isSiblingFormatSource } from "@/components/runtime/fieldFormatInputs";
 import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
-import type { AssemblyTemplate } from "@/lib/shared/assemblyTemplate";
 
 const ASSEMBLIES_DIR = path.resolve(process.cwd(), "../assemblies");
 const LEAD = "0x1111111111111111111111111111111111111111" as const;
 
-/** A reference template as the seeding anchors it: authored names resolved to keys. */
-const template = (file: string) =>
-    resolveAuthored(JSON.parse(readFileSync(path.join(ASSEMBLIES_DIR, file), "utf8")) as AssemblyTemplate);
+/** A reference assembly as the seeding registers it: authored names resolved
+ *  to keys, order slots derived, every order slot's agreement beside the template. */
+const hydrated = (file: string) =>
+    hydrateAuthored(JSON.parse(readFileSync(path.join(ASSEMBLIES_DIR, file), "utf8")));
 
 const groupsFor = (file: string) =>
     deriveAgreementGroups({
-        pickedAssembly: { assemblyTemplate: template(file), counterpartyBindings: [] } as never,
+        pickedAssembly: { hydratedAssembly: hydrated(file), counterpartyBindings: [] },
         leadAddress: LEAD,
         sellerCatalogs: [] as never,
     });
@@ -200,11 +200,12 @@ describe("unfilledRequiredFills — a value already composed on the template cou
     });
 
     it("a term the designer valued on the template is not asked of the buyer again", () => {
-        const composed = template("tradelens.json");
-        const order0 = composed.agreements[0] as { clauses: Record<string, Record<string, unknown>> };
+        const composed = hydrated("tradelens.json");
+        // The designer's value sits in order-0's registered agreement.
+        const order0 = composed.agreements[composed.template.agreements[0].agreementKey.toLowerCase() as `0x${string}`];
         order0.clauses[keyOf("figaro-acceptance-criteria")] = { acceptanceBasis: "AQL 2.5 per ISO 2859-1" };
         const groups = deriveAgreementGroups({
-            pickedAssembly: { assemblyTemplate: composed, counterpartyBindings: [] } as never,
+            pickedAssembly: { hydratedAssembly: composed, counterpartyBindings: [] },
             leadAddress: LEAD,
             sellerCatalogs: [] as never,
         });

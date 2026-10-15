@@ -7,18 +7,20 @@
  *
  * THERE IS NOTHING TO POST AND NOTHING TO DISPUTE. `UsageCounter` counts
  * verified usage as it happens — a resolved order plus merkle inclusion of the
- * clause or assembly in the agreement both parties signed — so a period's payout is arithmetic
- * over numbers that are already final. A period's counts stop moving the
- * moment it ends; the minter rewards a wallet its clauses' and assemblies' score over the
- * period's total, UNIFORM pro rata (no cap), to live-staked designers of record.
- * The one act is `claim`.
+ * clause, or of the provenance leaf naming the registered agreement and the
+ * assembly, in the agreement both parties signed — so a period's payout is
+ * arithmetic over numbers that are already final. A period's counts stop
+ * moving the moment it ends; the minter rewards a wallet its clauses',
+ * agreements' and assemblies' score over the period's total, UNIFORM pro rata
+ * (no cap), to live-staked designers of record. The one act is `claim`.
  *
- * The wallet's clauses and assemblies are DISCOVERED from the two registries' own event
- * streams (both keyed by registeredBy) — the same open-world
- * read the minter's `_isAuthor` performs on chain, never a bundled list. Every
- * read and the claim name a `(kind, key)` pair: a registry accepts any
- * bytes32, so the kind — which registry the key was found in — is what keeps
- * a clause key and an assembly composition hash of the same bytes apart.
+ * The wallet's clauses, agreements and assemblies are DISCOVERED from the
+ * three registries' own event streams (each keyed by registeredBy) — the same
+ * open-world read the minter's `_isAuthor` performs on chain, never a bundled
+ * list. Every read and the claim name a `(kind, key)` pair: a registry accepts
+ * any bytes32, so the kind — which registry the key was found in — is what
+ * keeps a clause key, an agreement key and an assembly composition hash of
+ * the same bytes apart.
  */
 
 import { useCallback, useEffect, useState } from "react";
@@ -26,8 +28,10 @@ import { useAccount, useChainId, usePublicClient, useWriteContract } from "wagmi
 import { cachedGetContractEvents } from "@/lib/kernel/eventCache";
 import { hexEqual } from "@/lib/shared/evm";
 import {
+    AGREEMENT_REGISTRY_ABI,
     RPGF_MINTER_ABI,
     USAGE_COUNTER_ABI,
+    USAGE_KIND_AGREEMENT,
     USAGE_KIND_ASSEMBLY,
     USAGE_KIND_CLAUSE,
     usageKeyId,
@@ -40,20 +44,21 @@ import { getRpgfMinter, getUsageCounter } from "@/lib/composition/contracts";
 import { verifyTxSuccess } from "@/lib/shared/verifyTxSuccess";
 import { truncateHex } from "@/lib/shared/formatHex";
 
-/** One clause or assembly the connected wallet is designer of record for, with
+/** One clause, agreement or assembly the connected wallet is designer of record for, with
  *  the accrual it carried in a given period. `c` = distinct resolved processes,
  *  `d` = distinct staked sellers, `score` = the uniform breadth
  *  measure (`icbrt(c·d²·1e18)`) the payout divides by. */
 export interface RpgfClauseOrAssemblyAccrual {
-    /** Clause key or assembly compositionHash — the clause-or-assembly key. */
+    /** Clause key, agreement key or assembly compositionHash. */
     clauseOrAssembly: `0x${string}`;
-    /** The registry the key was found in — `USAGE_KIND_CLAUSE` or
-     *  `USAGE_KIND_ASSEMBLY`; every read and the claim name it. */
+    /** The registry the key was found in — `USAGE_KIND_CLAUSE`,
+     *  `USAGE_KIND_AGREEMENT` or `USAGE_KIND_ASSEMBLY`; every read and the
+     *  claim name it. */
     kind: UsageKind;
     /** Human label: the clause spec's own name and version when it is loaded,
      *  else the truncated key. */
     label: string;
-    family: "clause" | "assembly";
+    family: "clause" | "agreement" | "assembly";
     /** Distinct resolved processes, DIRECT path (`accrualOf`). */
     c: bigint;
     /** Distinct staked sellers in this period, DIRECT path. */
@@ -77,11 +82,11 @@ export interface RpgfPeriodState {
     /** True once the matching accrual period has ended: counts are final and
      *  the period is claimable. */
     periodClosed: boolean;
-    /** Every clause's and assembly's score in this period — the payout denominator. */
+    /** Every clause's, agreement's and assembly's score in this period — the payout denominator. */
     totalScore: bigint;
-    /** The connected wallet's clauses and assemblies and their accrual in this period. */
+    /** The connected wallet's clauses, agreements and assemblies and their accrual in this period. */
     accruals: RpgfClauseOrAssemblyAccrual[];
-    /** Summed score of those clauses and assemblies. */
+    /** Summed score of those clauses, agreements and assemblies. */
     myScore: bigint;
     /** What the minter says the wallet can take right now (0 once claimed,
      *  or while the period is still accruing). */
@@ -108,8 +113,8 @@ export function useRpgfRewards(subject?: `0x${string}`) {
 
     const refresh = useCallback(() => setRefreshNonce((n) => n + 1), []);
 
-    /** Every clause and assembly the wallet is designer of record for, from the
-     *  registries' event streams. Empty (not an error) when the wallet
+    /** Every clause, agreement and assembly the wallet is designer of record
+     *  for, from the registries' event streams. Empty (not an error) when the wallet
      *  designed nothing — resolved-empty is absence. */
     const discoverClausesAndAssemblies = useCallback(async (): Promise<
         Array<Pick<RpgfClauseOrAssemblyAccrual, "clauseOrAssembly" | "kind" | "label" | "family">>
@@ -117,12 +122,19 @@ export function useRpgfRewards(subject?: `0x${string}`) {
         if (!publicClient || !account) return [];
         // Through the event cache (deployment block, adaptive chunks); the
         // wallet narrowing is client-side over the one cached scan per event.
-        const [allClauseEvents, allAssemblyEvents] = await Promise.all([
+        const [allClauseEvents, allAgreementEvents, allAssemblyEvents] = await Promise.all([
             cachedGetContractEvents(publicClient, chainId, {
                 address: CONTRACTS.clauseRegistry,
                 abi: CLAUSE_REGISTRY_ABI,
                 eventName: "ClauseRegistered",
             }),
+            CONTRACTS.agreementRegistry
+                ? cachedGetContractEvents(publicClient, chainId, {
+                    address: CONTRACTS.agreementRegistry,
+                    abi: AGREEMENT_REGISTRY_ABI,
+                    eventName: "AgreementRegistered",
+                })
+                : Promise.resolve([]),
             cachedGetContractEvents(publicClient, chainId, {
                 address: CONTRACTS.assemblyRegistry,
                 abi: ASSEMBLY_REGISTRY_ABI,
@@ -130,8 +142,10 @@ export function useRpgfRewards(subject?: `0x${string}`) {
             }),
         ]);
         type ClauseArgs = { registeredBy?: string; clauseKey?: `0x${string}` };
+        type AgreementArgs = { registeredBy?: string; agreementKey?: `0x${string}` };
         type AssemblyArgs = { registeredBy?: string; compositionHash?: `0x${string}` };
         const clauseEvents = allClauseEvents.filter((l) => hexEqual(String((l.args as ClauseArgs | undefined)?.registeredBy ?? ""), account));
+        const agreementEvents = allAgreementEvents.filter((l) => hexEqual(String((l.args as AgreementArgs | undefined)?.registeredBy ?? ""), account));
         const assemblyEvents = allAssemblyEvents.filter((l) => hexEqual(String((l.args as AssemblyArgs | undefined)?.registeredBy ?? ""), account));
         const out = new Map<string, Pick<RpgfClauseOrAssemblyAccrual, "clauseOrAssembly" | "kind" | "label" | "family">>();
         for (const ev of clauseEvents) {
@@ -143,6 +157,16 @@ export function useRpgfRewards(subject?: `0x${string}`) {
                 kind: USAGE_KIND_CLAUSE,
                 label: spec ? `${spec.clauseId} v${spec.version}` : truncateHex(clauseOrAssembly, { head: 10, tail: 0 }),
                 family: "clause",
+            });
+        }
+        for (const ev of agreementEvents) {
+            const clauseOrAssembly = (ev.args as AgreementArgs | undefined)?.agreementKey;
+            if (!clauseOrAssembly) continue;
+            out.set(usageKeyId(USAGE_KIND_AGREEMENT, clauseOrAssembly), {
+                clauseOrAssembly,
+                kind: USAGE_KIND_AGREEMENT,
+                label: truncateHex(clauseOrAssembly, { head: 10, tail: 0 }),
+                family: "agreement",
             });
         }
         for (const ev of assemblyEvents) {
@@ -269,7 +293,7 @@ export function useRpgfRewards(subject?: `0x${string}`) {
     }, [minter, counter, publicClient, account, discoverClausesAndAssemblies, refreshNonce]);
 
     /** Claim a closed period: one call per wallet per period, carrying every
-     *  clause or assembly the wallet designed. simulate → write → receipt → refresh, per
+     *  clause, agreement or assembly the wallet designed. simulate → write → receipt → refresh, per
      *  the publish-flow pattern — any minter revert (still accruing, already
      *  claimed, not designer of record) surfaces BEFORE the wallet prompt. */
     const claim = useCallback(

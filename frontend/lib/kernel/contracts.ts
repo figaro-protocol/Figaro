@@ -1,5 +1,5 @@
-// Figaro contract configuration — the five core Figaro contracts only
-// (the Core + Clause/Members/Assembly registries + florin token) plus the agnostic ERC-20.
+// Figaro contract configuration — the core Figaro contracts only
+// (the Core + Clause/Members/Assembly/Agreement registries + florin token) plus the agnostic ERC-20.
 // Addresses are sourced from environment variables written by deploy-local.sh.
 // ABIs are re-exported from the canonical SDK (@figaro-protocol/sdk).
 // Any contract the frontend merely COMPOSES with lives in lib/composition/, not here.
@@ -34,6 +34,8 @@ export interface ChainConfig {
     membersRegistry: `0x${string}`;
     /** AssemblyRegistry. */
     assemblyRegistry: `0x${string}`;
+    /** AgreementRegistry. */
+    agreementRegistry: `0x${string}`;
     /** The florin — the protocol's own token. */
     florinToken: `0x${string}`;
     /** UsageCounter — the designer rewards' verified-usage ledger (counted at resolve, claimed per period). */
@@ -45,6 +47,7 @@ export const CONTRACTS: ChainConfig = {
     clauseRegistry: (process.env.NEXT_PUBLIC_CLAUSE_REGISTRY || "") as `0x${string}`,
     membersRegistry: (process.env.NEXT_PUBLIC_MEMBERS_REGISTRY || "") as `0x${string}`,
     assemblyRegistry: (process.env.NEXT_PUBLIC_ASSEMBLY_REGISTRY || "") as `0x${string}`,
+    agreementRegistry: (process.env.NEXT_PUBLIC_AGREEMENT_REGISTRY || "") as `0x${string}`,
     florinToken: (process.env.NEXT_PUBLIC_FLORIN_TOKEN_ADDRESS || "") as `0x${string}`,
     usageCounter: (process.env.NEXT_PUBLIC_USAGE_COUNTER || "") as `0x${string}`,
 };
@@ -74,5 +77,6 @@ export function getMissingContractEnv(): string[] {
     if (!process.env.NEXT_PUBLIC_CLAUSE_REGISTRY) missing.push("NEXT_PUBLIC_CLAUSE_REGISTRY");
     if (!process.env.NEXT_PUBLIC_MEMBERS_REGISTRY) missing.push("NEXT_PUBLIC_MEMBERS_REGISTRY");
     if (!process.env.NEXT_PUBLIC_ASSEMBLY_REGISTRY) missing.push("NEXT_PUBLIC_ASSEMBLY_REGISTRY");
+    if (!process.env.NEXT_PUBLIC_AGREEMENT_REGISTRY) missing.push("NEXT_PUBLIC_AGREEMENT_REGISTRY");
     return missing;
 }

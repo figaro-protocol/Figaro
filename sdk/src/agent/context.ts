@@ -21,6 +21,7 @@ import type {
     RegisteredClause,
     RegisteredMember,
     RegisteredAssembly,
+    RegisteredAgreement,
 } from "../types.js";
 import { Topology } from "../state.js";
 import { fetchCoreEvents } from "../events.js";
@@ -37,6 +38,8 @@ export interface SyncResult {
     newMembers: number;
     /** Number of new AssemblyRegistered events ingested. */
     newAssemblies: number;
+    /** Number of new AgreementRegistered events ingested. */
+    newAgreements: number;
     /** Block number synced up to. */
     syncedToBlock: bigint;
 }
@@ -88,6 +91,7 @@ export class FigaroContext {
                 newClauses: 0,
                 newMembers: 0,
                 newAssemblies: 0,
+                newAgreements: 0,
                 syncedToBlock: this.lastSyncedBlock,
             };
         }
@@ -107,6 +111,7 @@ export class FigaroContext {
             newClauses: discoveryEvents.clauseRegistered.length,
             newMembers: discoveryEvents.memberRegistered.length,
             newAssemblies: discoveryEvents.assemblyRegistered.length,
+            newAgreements: discoveryEvents.agreementRegistered.length,
             syncedToBlock: currentBlock,
         };
     }
@@ -173,6 +178,18 @@ export class FigaroContext {
      *  instantiate from a cold start. */
     getAssemblies(): RegisteredAssembly[] {
         return this.discovery.getAssemblies();
+    }
+
+    /** All live-staked registered agreements — what a designer composes a new
+     *  assembly from. */
+    getAgreements(): RegisteredAgreement[] {
+        return this.discovery.getAgreements();
+    }
+
+    /** A registered agreement's binding by key WHATEVER its stake — what
+     *  hydrating an assembly's order slot reads (`hydrateAssembly`). */
+    getAgreementBinding(agreementKey: Hex): RegisteredAgreement | undefined {
+        return this.discovery.getAgreementBinding(agreementKey);
     }
 
     /**

@@ -18,7 +18,9 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 import { FigaroContext, originateChain, makeSellerOfferHandler, InProcessChannel } from "@figaro-protocol/sdk/agent";
-import { computeDeadline, readChainTimestamp, parseProjectionHints } from "@figaro-protocol/sdk";
+import {
+    anchorTemplate, computeDeadline, hydrateAssembly, parseProjectionHints, readChainTimestamp, slotClauses,
+} from "@figaro-protocol/sdk";
 import { parseClauseSpec } from "@figaro-protocol/sdk/clauses";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -31,6 +33,7 @@ const GATEWAY = "http://127.0.0.1:8080/ipfs/";
 const addresses = {
     core: env.NEXT_PUBLIC_FIGARO_CORE, clauseRegistry: env.NEXT_PUBLIC_CLAUSE_REGISTRY,
     membersRegistry: env.NEXT_PUBLIC_MEMBERS_REGISTRY, assemblyRegistry: env.NEXT_PUBLIC_ASSEMBLY_REGISTRY,
+    agreementRegistry: env.NEXT_PUBLIC_AGREEMENT_REGISTRY,
 };
 const TOKEN = env.NEXT_PUBLIC_TOKEN_ADDRESS;
 const BUYER = privateKeyToAccount("0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"); // anvil[0]
@@ -64,23 +67,36 @@ for (const c of ctx.getClauses()) {
     const raw = await tryHydrate(c.contentURI);
     if (!raw) continue;
     const parsed = parseClauseSpec(raw);
-    if (parsed.ok) specViews.push({ ...parsed.spec, hints: parseProjectionHints(raw) });
+    if (parsed.ok) specViews.push({ ...parsed.spec, clauseKey: c.clauseKey, hints: parseProjectionHints(raw) });
 }
 const specs = {
-    get: (clauseId, version) => specViews.find((v) => v.clauseId === clauseId && (version === undefined || v.version === version)),
+    get: (clauseKey) => specViews.find((v) => v.clauseKey.toLowerCase() === clauseKey.toLowerCase()),
     list: () => specViews,
 };
 
-let chosen = null, template = null;
+// An assembly is offered only when its template hashes to its composition
+// hash and every order slot's registered agreement hydrates and verifies
+// against its key — read from the binding whatever its stake.
+const hydrate = async (a) => {
+    const t = anchorTemplate(await tryHydrate(a.contentURI), a.compositionHash);
+    if (!t) return null;
+    return hydrateAssembly(t, async (key) => {
+        const binding = ctx.getAgreementBinding(key);
+        return binding ? tryHydrate(binding.contentURI) : null;
+    });
+};
+
+let chosen = null, assembly = null;
 for (const a of ctx.getAssemblies()) {
-    const t = await tryHydrate(a.contentURI);
-    if (t && Array.isArray(t.agreements) && t.agreements.length === 3) { chosen = a; template = t; break; }
+    const h = await hydrate(a);
+    if (h && h.template.agreements.length === 3) { chosen = a; assembly = h; break; }
 }
-check("discovered the 3-order seed chain", !!template);
-if (!template) process.exit(1);
+check("discovered the 3-order seed chain", !!assembly);
+if (!assembly) process.exit(1);
+const slotClausesById = new Map(assembly.template.agreements.map((s) => [s.id, slotClauses(assembly, s)]));
 
 // Commerce clause by declared field (lineItems) — open-world, once for the chain.
-const commerceClauseId = [...new Set(template.agreements.flatMap((a) => Object.keys(a.clauses)))]
+const commerceClauseId = [...new Set([...slotClausesById.values()].flatMap((c) => Object.keys(c)))]
     .find((cid) => (specs.get(cid)?.fields ?? []).some((f) => f.name === "lineItems")) ?? null;
 check("located the commerce clause by its declared field", !!commerceClauseId);
 
@@ -104,23 +120,22 @@ channel.register(SELLERS[1].address, makeSellerOfferHandler(sellerW[1], pub, add
 }));
 
 // ── Buyer LOOP: originate the whole chain ─────────────────────────────────────
+const parentsOf = (id) => Object.values(slotClausesById.get(id) ?? {}).find((d) => Array.isArray(d.parentOrderHashes))?.parentOrderHashes ?? [];
 const orderedIds = [
-    ...template.agreements.filter((a) => (Object.values(a.clauses).find((d) => Array.isArray(d.parentOrderHashes))?.parentOrderHashes ?? []).length === 0),
-    ...template.agreements.filter((a) => (Object.values(a.clauses).find((d) => Array.isArray(d.parentOrderHashes))?.parentOrderHashes ?? []).length > 0),
+    ...assembly.template.agreements.filter((a) => parentsOf(a.id).length === 0),
+    ...assembly.template.agreements.filter((a) => parentsOf(a.id).length > 0),
 ].map((a) => a.id);
 // The headless buyer authors its transaction particulars exactly as checkout
-// does: the modality is the buyer's request, and the provenance section fills
-// mechanically with the instantiated assembly's OWN compositionHash — the gate
-// (engaged via `specs`) refuses to sign while any required term is missing,
-// which is how the pre-gate version of this proof was caught committing empty
-// provenance/modality sections.
+// does: the modality is the buyer's request. The provenance leaf is the
+// agreement format's own, written by the walk — no clause carries it. The
+// gate (engaged via `specs`) refuses to sign while any required term is
+// missing.
 const rootParticulars = (agreementId) => {
-    const clauses = template.agreements.find((a) => a.id === agreementId)?.clauses ?? {};
+    const clauses = slotClausesById.get(agreementId) ?? {};
     const fill = {};
     for (const cid of Object.keys(clauses)) {
         const fields = specs.get(cid)?.fields ?? [];
         if (fields.some((f) => f.name === "modality")) fill[cid] = { modality: "virtual" };
-        if (fields.some((f) => f.name === "compositionHash")) fill[cid] = { compositionHash: chosen.compositionHash };
     }
     return fill;
 };
@@ -133,7 +148,7 @@ const nodes = orderedIds.map((id, i) => ({
 }));
 
 const result = await originateChain(buyerW, pub, addresses, {
-    template, currency: TOKEN, chainId, core: addresses.core, channel, nodes, deadline, specs,
+    assembly, currency: TOKEN, chainId, core: addresses.core, channel, nodes, deadline, specs,
 });
 check("originateChain committed all three orders (3 tx hashes)", result?.hashes?.length === 3);
 

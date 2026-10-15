@@ -55,7 +55,7 @@ writes via `WalletGate`.**
 | `/members/manage` | The registered dashboard + stake claim. |
 | `/members/{identity,agents,assemblies,buyer,catalog,endpoints,review}` | The member wizard: Identity, Sell through (`assemblies`: bind, and offer the data those trades produce), Buy through (`buyer`: subscribe, and offer the data those trades produce), Catalog, Agents, Endpoints, Review. The two assembly steps are one loop walked twice and both precede Catalog, which prices what they declare. |
 | `/members/edit/{identity,agents,assemblies,buyer,catalog,endpoints}` | Endpoints are the member's own infrastructure — device configuration via `lib/shared/userEndpoints.ts`, never pinned or published. |
-| `/orders`, `/orders/view?process=` | The wallet's actor-neutral order list, buyer and seller both; "Your turn" is where counter-sign/accept fires, and `resolveProcess` fires on the detail view: its confirm names how many usage writes the wallet signs next (`lib/semantic/planUsageRecords.ts` plans them, one per distinct key; each is simulated before it is sent), and a resolved order links the party's data (`/data/yours`). |
+| `/orders`, `/orders/view?process=` | The wallet's actor-neutral order list, buyer and seller both; "Your turn" is where counter-sign/accept fires, and `resolveProcess` fires on the detail view: its confirm names how many usage writes the wallet signs next (`lib/semantic/planUsageRecords.ts` plans them, one per distinct key across the three kinds — clause, agreement, assembly — through one `UsageWrite` union that `lib/protocol/useUsageRecorder.ts` sends; each is simulated before it is sent), and a resolved order links the party's data (`/data/yours`). |
 
 The build-baked `NEXT_PUBLIC_*` values are defaults only, so a hosted deploy never
 seizes users onto the operator's provider key or pinning node. Endpoint configuration
@@ -106,7 +106,7 @@ Tiered, bottom to top; each tier imports only what sits below it (enforced by th
 
 - **`shared/`** — the generic leaf: the section map (`sections.json` — which section owns which route, the one owner; `sections.ts` reads it for the chrome), EVM helpers (`evm.ts`), wagmi/chain config (`wagmi.ts`, `chains.ts`, `connectors.ts`), IPFS (`ipfsService.ts`), clause-spec cache source (`clauseSpecSource.ts`), assembly-template reading vocabulary (`assemblyTemplate.ts`, `clauseFields.ts`), errors/formatting/json. Imports no other `lib/` layer; the one sanctioned exception is the runtime-services DI seam (`runtimeServices.ts` + `runtimeServicesContext.tsx`), which assembles feature-layer service implementations.
 - **`kernel/`** — the FigaroCore seam: commit/resolve writes (`useFigaroActions.ts`, `orderCommitted.ts`), order-event reads (`indexer.ts`, `walletProcessQueries.ts`, `eventCache.ts`), the deployment-curried hash wrappers + agreement fetch (`signedCommitment.ts`, `agreementFetch.ts`), chain config (`contracts.ts` — the five core contract ABIs + ERC20, SDK-sourced), the `Order` domain types + UI store (`store.ts`). Imports only `shared/`. (The agreement projection itself — `buildOrderAgreement`, the off-chain sign gate, `sectionByField` — is `@figaro-protocol/sdk`; `sdk/README.md` owns it.)
-- **`protocol/`** — the registry tier: `useClauseRegistry.ts`, `useClauseSpecs.ts`, `useAssemblyRegistry.ts`, `assemblyChoices.ts`, `membersRegistryIndexer.ts` (liveness fold delegated to the SDK's `reconstructDiscovery`), plus the shared factory shapes the clause/assembly readers are built from (`registryEventScan.ts` — the paired registered+withdrawn cached scan with the `failed` contract; `useWithdrawStake.ts` — the `withdrawDeposit` write hook, the shared revert-extraction preamble, and the noun-parameterized withdraw revert table). Reads ClauseRegistry / MembersRegistry / AssemblyRegistry; imports `kernel/` + `shared/`.
+- **`protocol/`** — the registry tier: `useClauseRegistry.ts`, `useClauseSpecs.ts`, `useAgreementRegistry.ts`, `useAssemblyRegistry.ts`, `assemblyChoices.ts`, `membersRegistryIndexer.ts` (liveness fold delegated to the SDK's `reconstructDiscovery`), plus the shared factory shapes the clause/assembly readers are built from (`registryEventScan.ts` — the paired registered+withdrawn cached scan with the `failed` contract; `useWithdrawStake.ts` — the `withdrawDeposit` write hook, the shared revert-extraction preamble, and the noun-parameterized withdraw revert table). Reads ClauseRegistry / MembersRegistry / AgreementRegistry / AssemblyRegistry. `useAgreementRegistry.ts` has the shape of `useAssemblyRegistry.ts`: `getAgreementRegistry`, `usePublishedAgreements(registeredBy, { includeWithdrawn })`, `useWithdrawAgreement`, `translateAgreementRegisterRevert`, `readAgreementBinding(key)`, and `fetchComposedAgreement(key, contentURI?)`, which reads the binding whatever the stake, fetches the pinned document and anchors it with the SDK's `anchorComposedAgreement` — `null` on any failure, never a fallback; `hydrateAssemblyTemplate(template)` runs the SDK's `hydrateAssembly` over that reader. `useAssemblyRegistry.ts` adds `fetchHydratedAssembly(contentURI, compositionHash)` and `fetchAssemblyTemplateByHash(compositionHash)`; imports `kernel/` + `shared/`.
 - `lib/protocol/registryWrites.ts` — the one signal a registry write sends to the readers that derive from its events (`noteRegistryWrite` after a confirmed write; `useRegistryWriteVersion` in a read-at-edge panel, which refetches when it changes). Nothing stored; the chain stays the source.
 - **`agent/`** — did:web identity for agents acting for wallets (`useDidWeb.ts`)
 - **`audit/`** — audit-bundle assembly + dispute evidence (read path for `/audit/view?process=<id>`). Witness VALUES resolve from the network: an `Attestation` event's `contentRef` is the keccak-CID digest of the published preimage (`lib/composition/witnessContent.ts`), so the reader derives the address from the event alone, verifies the bytes hash back to the fingerprint, and decodes them through the spec's declared stage fields (`describeWitness`); private-disposition, withheld, or erased content resolves absent and the fingerprint receipt still renders.
@@ -186,8 +186,19 @@ The Designer is a DAG editor — assembly designers start blank or fork an exist
 - `CompositionIdentity.tsx` — the canvas's whole-composition identity readout (left inspector): derived slug + truncated compositionHash from the live draft via `snapshotCompositionIdentity`, with the one-paragraph statement that changing a composed value is a DIFFERENT assembly (regime variants are siblings) while editorial prose is hash-excluded. Nothing renders on an empty canvas.
 - `AssemblyTermsPanel.tsx` — the canvas-level composer for ASSEMBLY-SCOPED clauses (`design.scope: "assembly"`) — the denomination pin, the dispute forum: terms that compose once per assembly, partitioned from the per-order drawer by declared scope.
 - `CompositionAssist.tsx` — the composition-assist hand-off surface (toolbar "Agent assist"). The designer's OWN agent (`figaro-assembly-designer`, the public ecosystem seam — `docs/AI_AGENT_COORDINATION.md`) runs in the designer's runtime for the designer's wallet; nothing is invoked from this static export. The panel round-trips the canonical assembly template instead: OUT — the live draft serialized by the same `buildAssemblyTemplate` walk publish uses; IN — a pasted template parsed by `parseAssemblyTemplateJson` (`lib/designer/assemblyTemplateToDraft.ts`) and applied to the canvas as ordinary unsaved state (replace-confirmed when the canvas is non-trivial). Composition stays the designer's act — review/edit/publish are unchanged.
-- `AgreementDrawer.tsx` — per-node clause composer, with two tabs.
-  - *Parties:* buyer, seller, DAG position.
+- `AgreementDrawer.tsx` — the per-order-slot composer. Each order slot holds one
+  registered agreement, and the drawer offers two ways to fill it: the
+  *agreements* tab binds a registered agreement as is (one row per LIVE
+  `AgreementRegistry` registration, labeled by its document's name with the key
+  shown, bind/unbind; a withdrawn one stays hydratable for the assemblies already
+  composed from it but is not offered), or the clause tabs compose a new
+  agreement for that order slot. `DesignSnapshot.registeredByOrderId` holds the
+  bound key per order slot. Publish pins and registers each new agreement
+  (`registerAgreement`, one stake per distinct new agreement, a receipt row per
+  registration) before the assembly. The review lists each order slot's
+  `agreementKey`, whether it is bound or composed, and the composition root;
+  `AssemblyTermsPanel` takes a `composition` prop.
+  - *Parties:* buyer, seller, DAG position (the order slot's topology fill).
   - *Registry:* every clause registered on `ClauseRegistry`, grouped by
     `block.design.article`, each a checkbox — read from the network, never a
     hardcoded roster. ASSEMBLY-SCOPED clauses (`design.scope: "assembly"`) are
@@ -213,7 +224,7 @@ The Designer is a DAG editor — assembly designers start blank or fork an exist
 
 **State:** `lib/designer/syntheticProcess.ts` (synthetic session + DAG mutation helpers — `createSyntheticRootOrder`, `createSyntheticSubOrder`, `mergeSyntheticParent`, `collectDescendants`, `isRootOrder`). Persistence: `lib/designer/syntheticDesignStore.ts` (localStorage); agreements via `lib/designer/syntheticAgreementStore.ts` (`saveAgreement`). Bridge: `lib/designer/forkAssembly.ts` + `lib/designer/assemblyTemplateToDraft.ts` (fork a published assembly's template into an editable draft).
 
-**The agreement build (composition rules).** The published **template is the faithful statement** of what the designer composed; `buildOrderAgreement` (`@figaro-protocol/sdk`, fed by the live-cache `specSource()` adapter) is a **pure, deterministic projection** of it — the composed clauses, plus the spec-declared mandatory defaults, and nothing more. It synthesizes no meaning the template + specs don't determine and reads no clause by name: mandatory clauses (`block.design.article: "mandatory"` — commerce, topology) auto-fold into every draft generically (the SDK's fold iterates the registrations whose stake is live — `liveSpecSource`, ruled by `isLiveRegistration` — so a never-seen mandatory clause folds in with zero code). Never a hardcoded clause→clause map, a named-clause branch, or a checkout-time guess; and no clause auto-spawns a DAG node — nodes are the designer's, drawn on the canvas.
+**The agreement build (composition rules).** The published **template is the faithful statement** of what the designer composed; `buildOrderAgreement` (`@figaro-protocol/sdk`, fed by the live-cache `specSource()` adapter) is a **pure, deterministic projection** of it — the composed clauses, plus the spec-declared mandatory defaults, and nothing more. It synthesizes no meaning the template + specs don't determine and reads no clause by name: mandatory clauses (`block.design.article: "mandatory"` — commerce, topology) auto-fold into every newly composed agreement generically (the SDK's fold iterates the registrations whose stake is live — `liveSpecSource`, ruled by `isLiveRegistration` — so a never-seen mandatory clause folds in with zero code). The fold is at composition only: `buildAssemblyTemplate` refuses an order slot whose registered agreement lacks a live mandatory spec at its scope, and checkout fills values and writes the topology, never adding or dropping a clause. Never a hardcoded clause→clause map, a named-clause branch, or a checkout-time guess; and no clause auto-spawns a DAG node — nodes are the designer's, drawn on the canvas.
 
 ## Clause validation in the frontend
 
@@ -320,7 +331,11 @@ Y", not as an open-ended build.)
   (`frontend/components/registries/RegistryExplorer.tsx` over the pure
   `frontend/lib/registries/explorer.ts`) with
   `frontend/tests/e2e/registries.devnet.spec.ts` (one test per family + a
-  facet deep link). Every row carries the state of the pinned content behind
+  facet deep link). The explorer carries the four families
+  (`REGISTRY_FAMILIES` in `explorer.ts`) — clauses, agreements, assemblies,
+  members; an agreement row shows its key, designer of record, stake state,
+  composed clauses, and the pinned document checked against the key (anchor type
+  `agreement-key`), and `RegistryCountLink` counts the family. Every row carries the state of the pinned content behind
   its on-chain pointer (`ExplorerRow.content`: resolved / resolving /
   unavailable) and renders an unresolved row as unresolved — the identity
   alone, never a name or article it does not have; "(unclassified)" is a
@@ -328,7 +343,8 @@ Y", not as an open-ended build.)
   yet is re-read on `contentRetryDelayMs`'s schedule (10 s, 20 s, 40 s, then
   every 60 s) by the three pointer readers — `useClauseSpecs`,
   `useAssemblyChoices`, `useRegisteredMembers` — so a fresh registration names
-  itself without a reload; reads walk the gateway chain (`ipfsService.ts`:
+  itself without a reload (the agreement family reads once through
+  `fetchComposedAgreement`, and an unreachable document is absence); reads walk the gateway chain (`ipfsService.ts`:
   `NEXT_PUBLIC_IPFS_GATEWAY_URL`, then `NEXT_PUBLIC_IPFS_FALLBACK_GATEWAY_URL`).
 - **Scenario e2e** — `frontend/tests/e2e/local-commerce.devnet.spec.ts` is the
   live exemplar (composes on the canvas, pins to IPFS + anchors on-chain, then

@@ -1,29 +1,28 @@
 {
     "chainId": 11155111,
-    "about": "What must hold on Sepolia after the pair redeploy (scripts/deploy-sepolia.sh PAIR_ONLY=1) and the genesis registration. Read by scripts/check-deployment.mjs with --artifacts from a `forge build --via-ir` at the audit tag. The links entry states the pair-redeploy residual: the live RpgfMinter keeps the counter it was deployed with (minter registration renounced), so it never follows a pair redeploy.",
+    "about": "What must hold on Sepolia after the full deployment (scripts/deploy-sepolia.sh) and the genesis registration, written before either. Read by scripts/check-deployment.mjs with --artifacts from a `forge build --via-ir` at the audit tag. Every contract-to-contract link reads back as the record's addresses, the RpgfMinter's counter included.",
     "wallets": {
         "founder": "0xB4592b12F02a46a8FD8529CE992f067403BDe3e9",
         "supporters": "0xE75DA40Ee55ecECBc1161A4dD6798086b968C87C",
         "dao": { "record": "daoTreasury" },
         "daoVault": { "record": "daoTreasury" }
     },
-    "links": {
-        "rpgfMinter.counter": "0xF45e73D66319bc900A9d227c5f6a91AFb0959fda"
-    },
     "batchVerifier": {
-        "programVKey": "0x005f16f47c211b066a9cd85fb78295ae76df7f888f2e4962871f25636a0b3452",
+        "programVKey": "0x002586491e868c547e067fd932ea70d0068d96fbcecebcf4c14385336daf6fe9",
         "verifier": "0x397A5f7f3dBd538f23DE225B51f532c34448dA9B"
     },
     "registries": {
         "membersRegistrationDeposit": "50000000000000000",
         "membersWithdrawalCooldown": "2419200",
         "clauseRegistrationDeposit": "50000000000000000",
-        "assemblyRegistrationDeposit": "50000000000000000"
+        "assemblyRegistrationDeposit": "50000000000000000",
+        "agreementRegistrationDeposit": "50000000000000000"
     },
     "usageCounter": {
         "minSellers": "3",
         "periodCount": "9",
-        "provenanceLeaf": "0x26dc18a2251a8f4629ada6df88b7c98553e011c08682d28ce5bb51a441227dc6"
+        "provenanceLeaf": "0x26dc18a2251a8f4629ada6df88b7c98553e011c08682d28ce5bb51a441227dc6",
+        "assemblyTermsLeaf": "0xefe0eaa5bce6c7b996059fedd6d0e4827f99c474563f43ff55e6e593e5915860"
     },
     "rpgfMinter": { "periodAmountSum": "600000000000000000000000000" },
     "florin": {

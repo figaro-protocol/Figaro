@@ -13,8 +13,9 @@
 //! An agreement that instantiates an assembly carries the reserved
 //! provenance leaf (the vector's optional `provenance` entry): its key is a
 //! constant of the agreement format, `keccak256("figaro-agreement-provenance")`,
-//! never a clause key, and its bytes are `{"compositionHash":"0x…"}`, which
-//! the guest reproduces from the compositionHash for an assembly claim
+//! never a clause key, and its bytes are
+//! `{"agreementKey":"0x…","compositionHash":"0x…"}`, which the guest
+//! reproduces from the two keys for an agreement or assembly claim
 //! (`kernel::provenance_section_bytes`). This file rebuilds that leaf from
 //! `leafKey` and the bytes, checks the guest reproduces the SDK's bytes, and
 //! opens the frozen proof against `agreementHash`.
@@ -26,7 +27,7 @@ use std::str::FromStr;
 
 use alloy_primitives::{keccak256, B256};
 
-use figaro_kernel::kernel::provenance_section_bytes;
+use figaro_kernel::kernel::{provenance_section_bytes, ASSEMBLY_TERMS_LEAF_KEY, PROVENANCE_LEAF_KEY};
 use figaro_kernel::merkle::verify_inclusion;
 
 fn generated() -> bool {
@@ -106,8 +107,9 @@ fn every_frozen_proof_opens_against_the_rebuilt_leaf() {
 }
 
 /// The reserved provenance leaf: the key is the agreement format's
-/// constant, the bytes are what the guest reproduces from the
-/// compositionHash, and the frozen proof opens against the agreement root.
+/// constant, the bytes are what the guest reproduces from the agreementKey
+/// and the compositionHash, and the frozen proof opens against the
+/// agreement root.
 fn opens_the_provenance_leaf(provenance: &serde_json::Value, root: B256) {
     let key = b256(&provenance["leafKey"]);
     assert_eq!(
@@ -116,11 +118,19 @@ fn opens_the_provenance_leaf(provenance: &serde_json::Value, root: B256) {
         "the provenance leaf's key is the agreement format's constant"
     );
     let section_data = provenance["sectionData"].as_str().unwrap();
+    let agreement = b256(&provenance["agreementKey"]);
     let composition = b256(&provenance["compositionHash"]);
     assert_eq!(
-        provenance_section_bytes(&composition),
+        provenance_section_bytes(&agreement, &composition),
         section_data.as_bytes(),
-        "the guest reproduces the SDK's provenance bytes from the compositionHash"
+        "the guest reproduces the SDK's provenance bytes from both keys"
+    );
+    let mut other = agreement;
+    other.0[0] ^= 1;
+    assert_ne!(
+        provenance_section_bytes(&other, &composition),
+        section_data.as_bytes(),
+        "a wrong agreementKey reproduces other bytes"
     );
     let rebuilt = leaf_under(key, section_data);
     assert_eq!(
@@ -177,4 +187,119 @@ fn a_single_section_root_is_the_leaf() {
         b256(&one["sections"][0]["leaf"])
     );
     assert!(one["sections"][0]["proof"].as_array().unwrap().is_empty());
+}
+
+// ── The assembly root: order slots and the terms leaf ─────────────────
+//
+// `sdk/tests` freezes the agreement keys, the order slots' bytes and
+// leaves, the terms leaf, every composition root, each order slot's
+// membership proof and its two-key provenance leaf into
+// `test/fixtures/assembly-vectors.json`. This leg rebuilds each from the
+// bytes with the guest's own functions and opens every membership proof
+// with `merkle::verify_inclusion` — the verifier an assembly claim uses.
+
+fn assembly_fixture() -> serde_json::Value {
+    let mut p = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    p.pop(); // prover/
+    p.pop(); // repo root
+    p.push("test/fixtures/assembly-vectors.json");
+    let text = std::fs::read_to_string(&p).unwrap_or_else(|e| panic!("read {}: {e}", p.display()));
+    serde_json::from_str(&text).expect("fixture JSON")
+}
+
+fn proof_of(v: &serde_json::Value) -> Vec<B256> {
+    v.as_array().expect("proof").iter().map(b256).collect()
+}
+
+#[test]
+fn every_agreement_key_is_the_hash_of_its_key_bytes() {
+    let fx = assembly_fixture();
+    for agreement in fx["agreements"].as_array().unwrap() {
+        assert_eq!(
+            keccak256(agreement["keyBytes"].as_str().unwrap().as_bytes()),
+            b256(&agreement["agreementKey"]),
+            "{}",
+            agreement["label"]
+        );
+    }
+}
+
+#[test]
+fn every_order_slot_opens_under_its_own_root_and_no_other() {
+    let fx = assembly_fixture();
+    let assemblies = fx["assemblies"].as_array().unwrap();
+    let roots: Vec<B256> = assemblies.iter().map(|a| b256(&a["compositionHash"])).collect();
+    for (i, assembly) in assemblies.iter().enumerate() {
+        let root = roots[i];
+        for slot in assembly["slots"].as_array().unwrap() {
+            let content = keccak256(slot["slotBytes"].as_str().unwrap().as_bytes());
+            assert_eq!(content, b256(&slot["slotContentHash"]), "the order slot's content hash");
+            let leaf = leaf_under(b256(&slot["agreementKey"]), slot["slotBytes"].as_str().unwrap());
+            assert_eq!(leaf, b256(&slot["leaf"]), "the rebuilt order-slot leaf is the SDK's");
+            let proof = proof_of(&slot["membershipProof"]);
+            assert!(verify_inclusion(&proof, root, leaf), "the membership proof opens");
+            for (j, other) in roots.iter().enumerate() {
+                if j != i {
+                    assert!(
+                        !verify_inclusion(&proof, *other, leaf),
+                        "the membership proof opens under no other assembly's root"
+                    );
+                }
+            }
+            let mut wrong_key = b256(&slot["agreementKey"]);
+            wrong_key.0[0] ^= 1;
+            assert!(
+                !verify_inclusion(&proof, root, leaf_under(wrong_key, slot["slotBytes"].as_str().unwrap())),
+                "another agreement in the same order slot does not open"
+            );
+        }
+    }
+}
+
+#[test]
+fn every_order_slot_s_provenance_leaf_is_the_guest_s_reproduction() {
+    let fx = assembly_fixture();
+    for assembly in fx["assemblies"].as_array().unwrap() {
+        for slot in assembly["slots"].as_array().unwrap() {
+            let p = &slot["provenance"];
+            assert_eq!(b256(&p["leafKey"]), PROVENANCE_LEAF_KEY);
+            assert_eq!(b256(&p["agreementKey"]), b256(&slot["agreementKey"]));
+            assert_eq!(b256(&p["compositionHash"]), b256(&assembly["compositionHash"]));
+            let bytes = provenance_section_bytes(&b256(&p["agreementKey"]), &b256(&p["compositionHash"]));
+            assert_eq!(bytes, p["sectionData"].as_str().unwrap().as_bytes());
+            assert_eq!(keccak256(&bytes), b256(&p["sectionHash"]));
+            assert_eq!(
+                leaf_under(PROVENANCE_LEAF_KEY, p["sectionData"].as_str().unwrap()),
+                b256(&p["leaf"])
+            );
+        }
+    }
+}
+
+#[test]
+fn the_terms_leaf_is_keyed_on_the_reserved_terms_key() {
+    let fx = assembly_fixture();
+    let mut carriers = 0;
+    for assembly in fx["assemblies"].as_array().unwrap() {
+        let terms = &assembly["terms"];
+        if terms.is_null() {
+            continue;
+        }
+        carriers += 1;
+        assert_eq!(b256(&terms["leafKey"]), ASSEMBLY_TERMS_LEAF_KEY);
+        let bytes = terms["termsBytes"].as_str().unwrap();
+        assert_eq!(keccak256(bytes.as_bytes()), b256(&terms["sectionHash"]));
+        assert_eq!(leaf_under(ASSEMBLY_TERMS_LEAF_KEY, bytes), b256(&terms["leaf"]));
+    }
+    assert!(carriers >= 1, "the lock covers the terms leaf");
+}
+
+#[test]
+fn a_one_order_slot_root_is_its_leaf() {
+    let fx = assembly_fixture();
+    let one = &fx["assemblies"][0];
+    assert_eq!(one["slots"].as_array().unwrap().len(), 1);
+    assert!(one["terms"].is_null());
+    assert_eq!(b256(&one["compositionHash"]), b256(&one["slots"][0]["leaf"]));
+    assert!(one["slots"][0]["membershipProof"].as_array().unwrap().is_empty());
 }

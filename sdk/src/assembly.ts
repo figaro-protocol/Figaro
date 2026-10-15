@@ -1,37 +1,77 @@
 /**
- * @figaro-protocol/sdk — Assembly identity
+ * @figaro-protocol/sdk — Assembly and agreement identity
  *
- * The AssemblyRegistry keys bindings by `compositionHash`, as the
- * ClauseRegistry keys clauses by the hash of the pinned spec
- * (`computeClauseKey`). This module is that family's key derivation — pure
- * functions over the template document, no chain access — and the one
- * authoring resolver that turns the clause NAMES a human writes in a source
- * document into the clause keys a published document carries.
+ * Two design-time registry families key by content. `AgreementRegistry`
+ * keys a registered agreement by `agreementKeyOf(composed)` — the canonical
+ * hash of the clauses composed for one order slot. `AssemblyRegistry` keys
+ * an assembly by `compositionHash` — the merkle ROOT over its order slots
+ * (each a registered agreement key and the order slot's own fills) and its
+ * assembly-scoped terms,
+ * built with the agreement format's own leaf convention, so membership of an
+ * agreement in an assembly is a merkle proof (`buildSlotInclusionProof`).
+ * This module is both families' key derivation — pure functions over the
+ * documents, no chain access — and the one authoring resolver that turns the
+ * clause NAMES a human writes in a source document into the clause keys a
+ * published document carries.
  */
 
+import { keccak256, toHex } from "viem";
 import type { Hex } from "./types.js";
 import { isBytes32Hex } from "./types.js";
-import { canonicalContentHash } from "./agreement.js";
+import {
+    buildLeafInclusionProof,
+    buildMerkleRoot,
+    canonicalContentHash,
+    canonicalize,
+    computeSectionLeaf,
+    PROVENANCE_LEAF_KEY,
+    sortLeaves,
+} from "./agreement.js";
 import type { ProjectionSpecView } from "./projection.js";
+
+// ── The registered agreement (the pinned document behind an agreement key) ──
+
+/** A registered agreement's pinned document: the clauses composed for ONE
+ *  order slot, value-free, with the designer's fills. The topology clause is
+ *  composed with `{}` — who follows whom is the assembly's fact (each order
+ *  slot's own `clauses` fill it), so one registered agreement sits in any
+ *  order slot of any assembly.
+ *  The editorial fields are the designer's own words, pinned in the document
+ *  and EXCLUDED from the key, as the assembly's are. */
+export interface ComposedAgreement {
+    name?: string;
+    summary?: string;
+    description?: string;
+    /** clauseKey → the designer's composed values (`block.design.fills`
+     *  only; `{}` for a clause the designer only selects). */
+    clauses: Record<Hex, Record<string, unknown>>;
+}
+
+/** A registered agreement's key — `canonicalContentHash({ clauses })`, the
+ *  key `AgreementRegistry.registerAgreement` takes. Editorial prose is
+ *  excluded, so renaming never forks the key. A reader recomputes it from a
+ *  fetched document (`anchorComposedAgreement`). */
+export function agreementKeyOf(doc: ComposedAgreement): Hex {
+    return canonicalContentHash({ clauses: doc.clauses });
+}
 
 // ── The template document (the pinned assembly, hydrated off-chain) ──────────
 
-export interface TemplateAgreement {
-    /** Local label for the order slot this agreement binds to at
-     *  checkout — `order-<index>`, stable within the template; the reference
-     *  target the topology clause points at. NOT a chain id, and NOT a
-     *  party — the template is party-agnostic. */
+/** One order slot of an assembly: the registered agreement it binds and the
+ *  order slot's own fills over it. */
+export interface TemplateSlot {
+    /** Local label for the order slot — `order-<index>`, stable within the
+     *  template; the reference target the topology clause's
+     *  `parentOrderHashes` names. NOT a chain id, and NOT a party — the
+     *  template is party-agnostic. */
     id: string;
-    /** clauseKey → the designer's composed clause map. Design time is
-     *  STRUCTURAL: a clause with no designer fills carries
-     *  `{}` — the selection only; its fields are transaction particulars
-     *  filled at checkout. Exactly two kinds of values exist here: the
-     *  mandatory topology clause's `{ parentOrderHashes }` (root = [] — the
-     *  DAG, the design itself) and clauses declaring `block.design.fills`
-     *  (the designer's tailoring — a pinned consent document, a pinned
-     *  denomination) whose values are the designer's fills.
-     *  `buildAssemblyTemplate` (exported from the root `@figaro-protocol/sdk`; defined
-     *  in `projection.ts`, not here) enforces this by construction. */
+    /** The registered agreement this order slot binds (`AgreementRegistry`
+     *  key). */
+    agreementKey: Hex;
+    /** The order slot's own fills, clauseKey → values, merged over the
+     *  registered agreement's `clauses` at checkout (the order slot's fill
+     *  wins for the keys it names): the topology clause's
+     *  `{ parentOrderHashes: ["order-<j>", …] }` (empty on the root). */
     clauses: Record<Hex, Record<string, unknown>>;
 }
 
@@ -61,58 +101,157 @@ export interface AssemblyTemplate {
      *  (clauseKey → the designer's values, `design.fills` only — same
      *  value-free rule as agreements). At checkout every one of these folds
      *  into EVERY agreement, so every party signs the assembly-wide term in
-     *  their own agreement. Sparse: absent when none composed (the hash of an
-     *  assembly without them is unchanged). */
+     *  their own agreement. Sparse: absent when none composed; when present,
+     *  one leaf of the composition tree (`ASSEMBLY_TERMS_LEAF_KEY`). */
     assemblyClauses?: Record<Hex, Record<string, unknown>>;
-    /** The composition: the agreements the designer composed, one per future
-     *  FigaroCore order. */
-    agreements: TemplateAgreement[];
+    /** The composition: one order slot per future FigaroCore order, in
+     *  template order — each a registered agreement and its own fills. */
+    agreements: TemplateSlot[];
 }
 
-/** Read a template agreement's parent ids — the data of its topology clause.
- *  The topology is a clause like any other; this is the one accessor for it.
- *  The entry is found by its DATA KEY (`parentOrderHashes` — named for what
- *  the committed clause holds at runtime: the parent orders' FigaroCore order
- *  hashes; at design time the values are sibling `order-<i>` labels), so
- *  reading needs no spec cache and tolerates any registry-defined topology
- *  clause. */
-export function templateParentOrderHashes(agreement: TemplateAgreement): string[] {
-    const entry = Object.values(agreement.clauses).find(
+/** An assembly template with every order slot's registered agreement
+ *  beside it, keyed by lowercased `agreementKey` — what checkout plans from.
+ *  Each document is read from the agreement registry's binding and verified
+ *  against its key (`anchorComposedAgreement`) before it lands here. */
+export interface HydratedAssembly {
+    template: AssemblyTemplate;
+    agreements: Record<Hex, ComposedAgreement>;
+}
+
+/** The registered agreement an order slot binds. Throws when the hydrated
+ *  map does not carry it — a checkout never plans an order slot it cannot
+ *  read. */
+export function slotAgreement(hydrated: HydratedAssembly, slot: TemplateSlot): ComposedAgreement {
+    const doc = hydrated.agreements[slot.agreementKey.toLowerCase() as Hex]
+        ?? hydrated.agreements[slot.agreementKey];
+    if (!doc) {
+        throw new Error(`order slot ${slot.id} binds agreement ${slot.agreementKey}, which is not hydrated`);
+    }
+    return doc;
+}
+
+/** The clauses an order slot instantiates: the registered agreement's
+ *  `clauses` with the order slot's own fills merged over them (per clause,
+ *  the order slot's values win for the fields it names). An order slot
+ *  fills clauses its agreement composes and never adds one: a fill naming a
+ *  clause the registered agreement does not carry throws. */
+export function slotClauses(hydrated: HydratedAssembly, slot: TemplateSlot): Record<Hex, Record<string, unknown>> {
+    const composed = slotAgreement(hydrated, slot).clauses;
+    const out: Record<Hex, Record<string, unknown>> = { ...composed };
+    const carried = new Map((Object.keys(composed) as Hex[]).map((k) => [k.toLowerCase(), k]));
+    for (const [clauseKey, values] of Object.entries(slot.clauses ?? {}) as [Hex, Record<string, unknown>][]) {
+        const key = carried.get(clauseKey.toLowerCase());
+        if (!key) {
+            throw new Error(`order slot ${slot.id} fills clause ${clauseKey}, which its agreement ${slot.agreementKey} does not compose`);
+        }
+        out[key] = { ...out[key], ...values };
+    }
+    return out;
+}
+
+/** An order slot's parent ids — the data of its topology fill. The entry is
+ *  found by its DATA KEY (`parentOrderHashes` — named for what the committed
+ *  clause holds at runtime: the parent orders' FigaroCore order hashes; at
+ *  design time the values are sibling `order-<i>` labels), so reading needs
+ *  no spec cache and tolerates any registry-defined topology clause. */
+export function templateParentOrderHashes(slot: Pick<TemplateSlot, "clauses">): string[] {
+    const entry = Object.values(slot.clauses ?? {}).find(
         (fields) => Array.isArray((fields as { parentOrderHashes?: unknown } | undefined)?.parentOrderHashes),
     );
     const ids = (entry as { parentOrderHashes?: unknown } | undefined)?.parentOrderHashes;
     return Array.isArray(ids) ? ids.filter((p): p is string => typeof p === "string") : [];
 }
 
-/** Every clause a template composes — the assembly-scoped sections plus each
- *  agreement's own — as one sorted, de-duplicated key list. The registration
- *  prerequisite of an assembly: `AssemblyRegistry` anchors a composition, so
- *  each of these must be live on `ClauseRegistry` before the anchor resolves. */
-export function templateComposedClauseKeys(template: AssemblyTemplate): Hex[] {
+/** Every clause a hydrated assembly composes — the assembly-scoped sections
+ *  plus each order slot's — as one sorted, de-duplicated key list: each of these must be live on `ClauseRegistry` for the design to
+ *  check out. */
+export function templateComposedClauseKeys(
+    template: AssemblyTemplate,
+    agreements: Readonly<Record<Hex, ComposedAgreement>>,
+): Hex[] {
+    const hydrated: HydratedAssembly = { template, agreements: agreements as Record<Hex, ComposedAgreement> };
     const keys = new Set<Hex>(Object.keys(template.assemblyClauses ?? {}) as Hex[]);
-    for (const agreement of template.agreements) {
-        for (const clauseKey of Object.keys(agreement.clauses) as Hex[]) keys.add(clauseKey);
+    for (const slot of template.agreements) {
+        for (const clauseKey of Object.keys(slotClauses(hydrated, slot)) as Hex[]) keys.add(clauseKey);
     }
     return Array.from(keys).sort();
 }
 
-/** The assembly's identity — keccak256 of the canonical COMPOSITION subset of
- *  the template (the composed agreements: their clauses, values, and topology;
- *  editorial prose excluded, so renaming never forks identity). This is the
- *  hash `AssemblyRegistry` keys bindings on. Publishers anchor it; readers
- *  recompute it from a fetched document to verify integrity. */
+// ── The composition tree ────────────────────────────────────────────────────
+
+/** The label the assembly-terms leaf's key is the hash of — a bare string no
+ *  spec or agreement document serializes to. */
+export const ASSEMBLY_TERMS_LEAF_LABEL = "figaro-assembly-terms";
+
+/** The reserved key of the composition tree's assembly-terms leaf, whose
+ *  bytes are the canonical JSON of `assemblyClauses`. */
+export const ASSEMBLY_TERMS_LEAF_KEY: Hex = keccak256(toHex(ASSEMBLY_TERMS_LEAF_LABEL));
+
+/** An order slot leaf's committed bytes — canonical JSON
+ *  `{"clauses":{…},"slot":i}` of the order slot's own fills (object keys
+ *  sorted, arrays in authored order). `i` is the order slot's 0-based
+ *  position in the template. */
+export function slotSectionBytes(slot: Pick<TemplateSlot, "clauses">, i: number): Hex {
+    if (!Number.isSafeInteger(i) || i < 0) throw new Error(`slot index is not a non-negative integer: ${i}`);
+    return toHex(new TextEncoder().encode(canonicalize({ clauses: slot.clauses ?? {}, slot: i })));
+}
+
+/** The two format keys an agreement key may never be: the provenance leaf's
+ *  and the assembly-terms leaf's. Throws for either. */
+export function assertNotReservedKey(agreementKey: Hex, where = "agreementKey"): void {
+    const k = agreementKey.toLowerCase();
+    if (k === PROVENANCE_LEAF_KEY.toLowerCase() || k === ASSEMBLY_TERMS_LEAF_KEY.toLowerCase()) {
+        throw new Error(`${where} ${agreementKey} is a reserved format key, never a registered agreement`);
+    }
+}
+
+/** An order slot's leaf — the agreement leaf convention with the order
+ *  slot's `agreementKey` as the key and `keccak256(slotSectionBytes)` as the
+ *  section hash. Throws for a reserved key. */
+function slotLeaf(slot: TemplateSlot, i: number): Hex {
+    assertNotReservedKey(slot.agreementKey, `order slot ${i} agreementKey`);
+    return computeSectionLeaf({ clause: slot.agreementKey, dataHash: keccak256(slotSectionBytes(slot, i)) });
+}
+
+/** Every leaf of the composition tree, sorted as the tree is built: one per
+ *  order slot, plus the assembly-terms leaf when any assembly-scoped clause is
+ *  composed. */
+export function templateLeaves(template: AssemblyTemplate): Hex[] {
+    const leaves = template.agreements.map((slot, i) => slotLeaf(slot, i));
+    const terms = template.assemblyClauses;
+    if (terms && Object.keys(terms).length > 0) {
+        leaves.push(computeSectionLeaf({ clause: ASSEMBLY_TERMS_LEAF_KEY, data: terms }));
+    }
+    return sortLeaves(leaves);
+}
+
+/** The assembly's identity — the merkle root over its order slot leaves and its
+ *  assembly-terms leaf (`templateLeaves`), built by the agreement format's
+ *  own tree (`buildMerkleRoot`): a one-leaf tree's root is its leaf.
+ *  Editorial prose is excluded, so renaming never forks identity. This is
+ *  the hash `AssemblyRegistry` keys bindings on. Publishers anchor it;
+ *  readers recompute it from a fetched document to verify integrity. */
 export function templateCompositionHash(
-    template: Pick<AssemblyTemplate, "agreements" | "assemblyClauses">,
+    template: AssemblyTemplate,
 ): Hex {
-    // Assembly-scoped sections are IDENTITY-BEARING (a differently-termed
-    // assembly is a different assembly) — included in the hash whenever
-    // composed; omitted entirely when none.
-    const assemblyClauses = template.assemblyClauses;
-    const hasAssemblyClauses = assemblyClauses && Object.keys(assemblyClauses).length > 0;
-    return canonicalContentHash({
-        agreements: template.agreements,
-        ...(hasAssemblyClauses && { assemblyClauses }),
-    });
+    return buildMerkleRoot(templateLeaves(template));
+}
+
+/** The membership proof of order slot `i` under `templateCompositionHash`:
+ *  its leaf, its sorted-pair proof, and `slotContentHash` =
+ *  `keccak256(slotSectionBytes(slot, i))` — what
+ *  `UsageCounter.recordAssemblyUsage` and the batch path's assembly claim
+ *  take beside the order slot's agreement key. Throws for an index outside
+ *  the template. */
+export function buildSlotInclusionProof(
+    template: AssemblyTemplate,
+    i: number,
+): { leaf: Hex; proof: Hex[]; slotContentHash: Hex } {
+    const slot = template.agreements[i];
+    if (!slot) throw new Error(`order slot ${i} is not in the template (${template.agreements.length} order slots)`);
+    const slotContentHash = keccak256(slotSectionBytes(slot, i));
+    const { leaf, proof } = buildLeafInclusionProof(templateLeaves(template), slotLeaf(slot, i));
+    return { leaf, proof, slotContentHash };
 }
 
 /** The published slug — presentation only, a deterministic pure function of

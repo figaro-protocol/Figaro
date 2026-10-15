@@ -23,6 +23,11 @@
         "internalType": "address"
       },
       {
+        "name": "_agreements",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
         "name": "_batchVerifier",
         "type": "address",
         "internalType": "address"
@@ -39,6 +44,19 @@
       }
     ],
     "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "KIND_AGREEMENT",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint8",
+        "internalType": "uint8"
+      }
+    ],
+    "stateMutability": "view"
   },
   {
     "type": "function",
@@ -107,6 +125,19 @@
   },
   {
     "type": "function",
+    "name": "agreements",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "contract IAgreementStake"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "applyBatchAccrual",
     "inputs": [
       {
@@ -164,6 +195,19 @@
         "name": "",
         "type": "address",
         "internalType": "contract IAssemblyStake"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "assemblyTermsLeaf",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bytes32",
+        "internalType": "bytes32"
       }
     ],
     "stateMutability": "view"
@@ -399,6 +443,81 @@
   },
   {
     "type": "function",
+    "name": "recordAgreementUsage",
+    "inputs": [
+      {
+        "name": "order",
+        "type": "tuple",
+        "internalType": "struct CommitmentTypes.Commitment",
+        "components": [
+          {
+            "name": "processId",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
+            "name": "buyer",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "seller",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "currency",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "payment",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "expectedCumulativeValue",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "agreementHash",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
+            "name": "salt",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "deadline",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ]
+      },
+      {
+        "name": "agreementKey",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "compositionHash",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "proof",
+        "type": "bytes32[]",
+        "internalType": "bytes32[]"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "recordAssemblyUsage",
     "inputs": [
       {
@@ -459,7 +578,22 @@
         "internalType": "bytes32"
       },
       {
-        "name": "proof",
+        "name": "agreementKey",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "slotContentHash",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "leafProof",
+        "type": "bytes32[]",
+        "internalType": "bytes32[]"
+      },
+      {
+        "name": "membershipProof",
         "type": "bytes32[]",
         "internalType": "bytes32[]"
       }
@@ -766,6 +900,11 @@
   },
   {
     "type": "error",
+    "name": "InvalidMembershipProof",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "NotBatchVerifier",
     "inputs": []
   },
@@ -797,17 +936,6 @@
   },
   {
     "type": "error",
-    "name": "ProvenanceLeafIsNotARegistration",
-    "inputs": [
-      {
-        "name": "key",
-        "type": "bytes32",
-        "internalType": "bytes32"
-      }
-    ]
-  },
-  {
-    "type": "error",
     "name": "ProvenanceLeafMismatch",
     "inputs": [
       {
@@ -817,6 +945,17 @@
       },
       {
         "name": "claimed",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "ReservedKeyIsNotARegistration",
+    "inputs": [
+      {
+        "name": "key",
         "type": "bytes32",
         "internalType": "bytes32"
       }

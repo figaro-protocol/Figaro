@@ -1,14 +1,15 @@
 /**
  * anchoredContent — registry-anchored documents, verified before use.
  *
- * A clause spec and an assembly template are fetched from IPFS through
- * whatever gateway the host configured, and the registries anchor each one
- * on chain: `ClauseRegistry` keys a clause by the hash of its pinned spec
- * bytes (the clause key), `AssemblyRegistry` keys the template by its
- * composition hash. A gateway can serve any bytes, so the bytes are checked
- * against the anchor before anything reads them,
- * by the SDK's `anchorClauseSpec` and `anchorTemplate` — the functions the
- * frontend verifies with. A
+ * A clause spec, a registered agreement and an assembly template are fetched
+ * from IPFS through whatever gateway the host configured, and the registries
+ * anchor each one on chain: `ClauseRegistry` keys a clause by the hash of its
+ * pinned spec bytes (the clause key), `AgreementRegistry` keys a registered
+ * agreement by `agreementKeyOf` of its document, `AssemblyRegistry` keys the
+ * template by its composition hash. A gateway can serve any bytes, so the
+ * bytes are checked against the anchor before anything reads them, by the
+ * SDK's `anchorClauseSpec`, `anchorComposedAgreement` and `anchorTemplate` —
+ * the functions the frontend verifies with. A
  * document that does not hash to its anchor reads as absence, never as the
  * registry's content: the verification is what makes an untrusted gateway an
  * acceptable transport (`witnessContent.mjs` holds attestation content to the
@@ -20,7 +21,14 @@
  */
 
 import { keccak256 } from "viem";
-import { anchorClauseSpec, anchorTemplate, strippingReviver, templateCompositionHash } from "@figaro-protocol/sdk";
+import {
+    agreementKeyOf,
+    anchorClauseSpec,
+    anchorComposedAgreement,
+    anchorTemplate,
+    strippingReviver,
+    templateCompositionHash,
+} from "@figaro-protocol/sdk";
 import { cidOf, fetchIpfsBytes, fetchIpfsText } from "./ipfsRead.mjs";
 
 /** Parse untrusted JSON text; `null` when it is not JSON. */
@@ -56,6 +64,38 @@ export async function fetchAnchoredClauseSpec(clause, options = {}) {
 }
 
 /**
+ * A registered agreement's document, verified against its agreement key:
+ * `agreementKeyOf` of the parsed document (its `{ clauses }` subset — the
+ * editorial fields are outside the key) must equal the key. Read from the
+ * binding whatever its stake: a binding is never cleared, so an assembly
+ * composed from a withdrawn agreement still hydrates.
+ *
+ * @param agreement  a `RegisteredAgreement` from the discovery graph
+ *                   (`contentURI`, `agreementKey`)
+ * @returns `{ composed, text }`, or `{ absent }` naming why. Throws only when
+ *          every gateway failed to answer.
+ */
+export async function fetchAnchoredComposedAgreement(agreement, options = {}) {
+    const text = await fetchIpfsText(cidOf(agreement.contentURI), options);
+    if (text === null) return { absent: "not served" };
+    const parsed = parseUntrusted(text);
+    if (parsed === null || typeof parsed !== "object" || parsed.clauses === null || typeof parsed.clauses !== "object") {
+        return { absent: "not a registered agreement" };
+    }
+    const composed = anchorComposedAgreement(parsed, agreement.agreementKey);
+    if (composed === null) {
+        let recomputed;
+        try {
+            recomputed = agreementKeyOf(parsed);
+        } catch {
+            recomputed = "no key";
+        }
+        return { absent: `keys to ${recomputed}, the registry anchors ${agreement.agreementKey}` };
+    }
+    return { composed, text };
+}
+
+/**
  * A live assembly's template, verified against its composition hash.
  *
  * @param assembly  a `RegisteredAssembly` from the discovery graph
@@ -71,7 +111,13 @@ export async function fetchAnchoredTemplate(assembly, options = {}) {
         return { absent: "not an assembly template" };
     }
     if (anchorTemplate(template, assembly.compositionHash) === null) {
-        return { absent: `hashes to ${templateCompositionHash(template)}, the registry anchors ${assembly.compositionHash}` };
+        let recomputed;
+        try {
+            recomputed = templateCompositionHash(template);
+        } catch {
+            recomputed = "no root";
+        }
+        return { absent: `hashes to ${recomputed}, the registry anchors ${assembly.compositionHash}` };
     }
     return { template, text };
 }

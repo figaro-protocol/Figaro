@@ -13,6 +13,7 @@ import {UsageCounter} from "src/build/rewards/UsageCounter.sol";
 import {RpgfMinter} from "src/build/rewards/RpgfMinter.sol";
 import {ClauseRegistry} from "src/build/registries/ClauseRegistry.sol";
 import {AssemblyRegistry} from "src/build/registries/AssemblyRegistry.sol";
+import {AgreementRegistry} from "src/build/registries/AgreementRegistry.sol";
 import {MembersRegistry} from "src/app/MembersRegistry.sol";
 import {FlorinToken} from "src/build/florin/FlorinToken.sol";
 import {MockWitnessPermit2} from "src/mocks/MockWitnessPermit2.sol";
@@ -48,6 +49,10 @@ contract DevnetDeployHarness is Deploy {
 
     function assemblies() external view returns (AssemblyRegistry) {
         return _assemblies;
+    }
+
+    function agreements() external view returns (AgreementRegistry) {
+        return _agreements;
     }
 
     function members() external view returns (MembersRegistry) {
@@ -95,6 +100,10 @@ contract MainnetDeployHarness is DeployMainnet {
 
     function assemblies() external view returns (address) {
         return _assemblies;
+    }
+
+    function agreements() external view returns (address) {
+        return _agreements;
     }
 
     function usageCounter() external view returns (address) {
@@ -203,6 +212,7 @@ contract DeployWiringTest is Test {
         assertEq(address(uc.members()), address(d.members()), "counter -> members");
         assertEq(address(uc.clauses()), address(d.clauses()), "counter -> clauses");
         assertEq(address(uc.assemblies()), address(d.assemblies()), "counter -> assemblies");
+        assertEq(address(uc.agreements()), address(d.agreements()), "counter -> agreements");
         assertEq(uc.provenanceLeaf(), PROVENANCE_LEAF, "the agreement format's provenance leaf");
         assertEq(uc.periodCount(), 9, "nine periods");
         assertEq(uc.minSellers(), 3, "the minimum-support floor");
@@ -211,6 +221,7 @@ contract DeployWiringTest is Test {
     function _assertDevnetRegistriesAndFlorin(DevnetDeployHarness d) internal view {
         assertEq(d.clauses().registrationDeposit(), 0.001 ether, "devnet clause deposit");
         assertEq(d.assemblies().registrationDeposit(), 0.001 ether, "devnet assembly deposit");
+        assertEq(d.agreements().registrationDeposit(), 0.001 ether, "devnet agreement stake");
         assertEq(d.members().registrationDeposit(), 0.001 ether, "devnet member deposit");
         assertEq(d.members().withdrawalCooldown(), 0, "devnet cooldown");
 
@@ -276,6 +287,7 @@ contract DeployWiringTest is Test {
         assertEq(address(uc.members()), d.members(), "counter -> members");
         assertEq(address(uc.clauses()), d.clauses(), "counter -> clauses");
         assertEq(address(uc.assemblies()), d.assemblies(), "counter -> assemblies");
+        assertEq(address(uc.agreements()), d.agreements(), "counter -> agreements");
         assertEq(uc.provenanceLeaf(), PROVENANCE_LEAF, "the agreement format's provenance leaf");
         assertEq(uc.periodCount(), 9, "nine annual periods");
         assertEq(uc.minSellers(), 3, "the minimum-support floor");
@@ -285,6 +297,7 @@ contract DeployWiringTest is Test {
     function _assertMainnetRegistries(MainnetDeployHarness d) internal view {
         assertEq(ClauseRegistry(d.clauses()).registrationDeposit(), 0.05 ether, "mainnet clause deposit");
         assertEq(AssemblyRegistry(d.assemblies()).registrationDeposit(), 0.05 ether, "mainnet assembly deposit");
+        assertEq(AgreementRegistry(d.agreements()).registrationDeposit(), 0.05 ether, "mainnet agreement stake");
         assertEq(MembersRegistry(d.members()).registrationDeposit(), 0.05 ether, "mainnet member deposit");
         assertEq(MembersRegistry(d.members()).withdrawalCooldown(), 28 days, "mainnet cooldown");
     }
@@ -304,13 +317,22 @@ contract DeployWiringTest is Test {
         MembersRegistry members = new MembersRegistry(0.05 ether, 28 days);
         ClauseRegistry clauses = new ClauseRegistry(0.05 ether);
         AssemblyRegistry assemblies = new AssemblyRegistry(0.05 ether);
+        AgreementRegistry agreements = new AgreementRegistry(0.05 ether);
         address gateway = address(new MockSP1Verifier());
         bytes32 vkey = keccak256("pair-vkey");
         uint64 genesis = uint64(block.timestamp);
 
         SepoliaPairDeployHarness d = new SepoliaPairDeployHarness();
         d.runWith(
-            DEPLOYER_KEY, address(core), address(members), address(clauses), address(assemblies), gateway, vkey, genesis
+            DEPLOYER_KEY,
+            address(core),
+            address(members),
+            address(clauses),
+            address(assemblies),
+            address(agreements),
+            gateway,
+            vkey,
+            genesis
         );
 
         FigaroBatchVerifier bv = FigaroBatchVerifier(d.batchVerifier());
@@ -327,6 +349,7 @@ contract DeployWiringTest is Test {
         assertEq(address(uc.members()), address(members), "counter -> the EXISTING members registry");
         assertEq(address(uc.clauses()), address(clauses), "counter -> the EXISTING clause registry");
         assertEq(address(uc.assemblies()), address(assemblies), "counter -> the EXISTING assembly registry");
+        assertEq(address(uc.agreements()), address(agreements), "counter -> the EXISTING agreement registry");
         assertEq(uc.provenanceLeaf(), PROVENANCE_LEAF, "the agreement format's provenance leaf");
         assertEq(uc.periodCount(), 9, "nine annual periods");
         assertEq(uc.minSellers(), 3, "the minimum-support floor");
@@ -340,6 +363,7 @@ contract DeployWiringTest is Test {
         MembersRegistry members = new MembersRegistry(0.05 ether, 28 days);
         ClauseRegistry clauses = new ClauseRegistry(0.05 ether);
         AssemblyRegistry assemblies = new AssemblyRegistry(0.05 ether);
+        AgreementRegistry agreements = new AgreementRegistry(0.05 ether);
         address gateway = address(new MockSP1Verifier());
 
         SepoliaPairDeployHarness d = new SepoliaPairDeployHarness();
@@ -350,6 +374,7 @@ contract DeployWiringTest is Test {
             address(members),
             address(clauses),
             address(assemblies),
+            address(agreements),
             gateway,
             keccak256("pair-vkey"),
             uint64(block.timestamp)
@@ -362,6 +387,7 @@ contract DeployWiringTest is Test {
         assertEq(address(m.counter()), d.usageCounter(), "minter -> counter");
         assertEq(address(m.clauses()), d.clauses(), "minter -> clauses");
         assertEq(address(m.assemblies()), d.assemblies(), "minter -> assemblies");
+        assertEq(address(m.agreements()), d.agreements(), "minter -> agreements");
         assertEq(m.periodCount(), 9, "one schedule");
         uint256 budget;
         for (uint256 i = 0; i < 9; i++) {

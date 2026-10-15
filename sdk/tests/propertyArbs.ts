@@ -7,6 +7,7 @@
  */
 import fc from "fast-check";
 import type { Agreement, AgreementSection } from "../src/agreement.js";
+import type { AssemblyTemplate, ComposedAgreement, TemplateSlot } from "../src/assembly.js";
 import type { Commitment } from "../src/types.js";
 
 /** Fixed-width lowercase hex string of `bytes` bytes (0x-prefixed). */
@@ -79,4 +80,34 @@ export const commitmentArb: fc.Arbitrary<Commitment> = fc.record({
     agreementHash: bytes32Arb,
     salt: uint256Arb,
     deadline: uint256Arb,
+});
+
+/** A registered agreement's composed document: unique clause keys, JSON-safe
+ *  values, and optional editorial prose (outside the key). */
+export const composedAgreementArb: fc.Arbitrary<ComposedAgreement> = fc.record({
+    clauses: fc.uniqueArray(sectionArb, { selector: (s) => s.clause, minLength: 1, maxLength: 5 })
+        .map((sections) => Object.fromEntries(sections.map((s) => [s.clause, s.data ?? {}])) as ComposedAgreement["clauses"]),
+    name: fc.option(fc.string({ maxLength: 12 }), { nil: undefined }),
+    summary: fc.option(fc.string({ maxLength: 12 }), { nil: undefined }),
+}).map(({ name, summary, clauses }) => ({
+    ...(name !== undefined ? { name } : {}),
+    ...(summary !== undefined ? { summary } : {}),
+    clauses,
+}));
+
+/** An assembly template: one to six order slots, each binding a random
+ *  agreement key (a key may repeat across order slots), each order slot
+ *  after the root naming earlier order slots as parents through one
+ *  topology-shaped fill, and optional assembly-scoped terms. */
+export const templateArb: fc.Arbitrary<AssemblyTemplate> = fc.record({
+    topologyKey: bytes32Arb,
+    keys: fc.array(bytes32Arb, { minLength: 1, maxLength: 6 }),
+    edges: fc.array(fc.array(fc.nat(), { maxLength: 2 }), { minLength: 6, maxLength: 6 }),
+    terms: fc.option(fc.dictionary(bytes32Arb, clauseDataArb, { minKeys: 1, maxKeys: 2 }), { nil: undefined }),
+}).map(({ topologyKey, keys, edges, terms }) => {
+    const agreements: TemplateSlot[] = keys.map((agreementKey, i) => {
+        const parents = i === 0 ? [] : [...new Set(edges[i].map((n) => `order-${n % i}`))];
+        return { id: `order-${i}`, agreementKey, clauses: { [topologyKey]: { parentOrderHashes: parents } } };
+    });
+    return { ...(terms ? { assemblyClauses: terms as AssemblyTemplate["assemblyClauses"] } : {}), agreements };
 });

@@ -98,8 +98,8 @@ export function useAttestationCoordinatorActions() {
 
     /**
      * Build the `sectionHash` + inclusion `proof` arguments for an attestation
-     * against a target order's `agreementHash`. Hydrates the signed agreement
-     * assemblyTemplate (from localStorage or IPFS), finds the clause for `clauseId`,
+     * against a target order's `agreementHash`. Reads the signed agreement
+     * (from localStorage or IPFS), finds the clause for `clauseId`,
      * and produces the merkle inclusion proof the coordinator verifies. Returns
      * the section FINGERPRINT (`keccak256` of its canonical bytes), never the
      * preimage — the coordinator takes only the hash, so a private section's
@@ -108,7 +108,7 @@ export function useAttestationCoordinatorActions() {
     const buildReceipt = useCallback(async (targetAgreementHash: Hex, clauseId: Hex) => {
         const agreement = await fetchAgreement(targetAgreementHash);
         if (!agreement) {
-            const message = `Agreement assemblyTemplate unavailable for ${truncateHex(targetAgreementHash, { head: 10, tail: 0 })} — `
+            const message = `Agreement unavailable for ${truncateHex(targetAgreementHash, { head: 10, tail: 0 })} — `
                 + `cannot generate inclusion proof`;
             setError(message);
             throw new Error(message);

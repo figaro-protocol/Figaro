@@ -20,6 +20,10 @@ The spec's `clauseId` (a bare human name) and `version` (a lineage counter) are 
 reader shows; nothing on chain reads them, and two specs sharing a name are two clauses. That is the whole clause: **you write no on-chain code —
 no validator contract, no Solidity.** Well-formedness is validated off-chain at
 author time; consumers load the clause from `ClauseRegistry → IPFS` at runtime.
+Designers compose clauses into **registered agreements** — one order's clauses with the
+designer's fills, registered on `AgreementRegistry` under their `agreementKey` — and compose
+assemblies from those (`figaro-assembly-designer`); a clause is reused through every
+agreement that composes it, and it earns for its designer of record on each one.
 
 ## Hard boundaries — read before anything
 
@@ -85,10 +89,10 @@ these five and nothing else:
 
 | Hint | Reaches | Effect |
 |---|---|---|
-| `block.design.article: "mandatory"` | `compositionHash` + `agreementHash` | auto-folds the clause into EVERY template agreement, chosen or not |
+| `block.design.article: "mandatory"` | `agreementKey` + `agreementHash` | auto-folds the clause into EVERY newly composed agreement, chosen or not; a registered agreement that lacks it cannot fill an order slot of a new assembly |
 | `block.design.article: "attestations"` | `agreementHash` | the section is committed as an EMPTY anchor, filled by attestation later; field `default`s are NOT applied |
 | `block.design.scope: "assembly"` | `compositionHash` + `agreementHash` | composed ONCE for the whole design, folded into EVERY agreement at checkout; composing it on one order is a build error |
-| `block.design.fills` | `compositionHash` | names the fields whose DESIGNER-authored values survive into the template; name nothing and the template carries `{}` |
+| `block.design.fills` | `agreementKey` | names the fields whose DESIGN-TIME values survive into a composed agreement; name nothing and the agreement carries `{}` |
 | `block.checkout.catalogueFills` / `profileFills` | `agreementHash` | names which fields the seller's catalog / profile folds write onto the leaf at checkout |
 
 **The reserved-article trap — picking one by accident is silent.** The group name is free

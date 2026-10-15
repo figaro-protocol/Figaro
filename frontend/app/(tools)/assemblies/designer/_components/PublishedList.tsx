@@ -4,12 +4,12 @@
  * PublishedList — renders the connected wallet's published assemblies.
  *
  * Reads from `useAssemblyChoices(address)` which combines the
- * `AssemblyRegistered` event log with lazy assemblyTemplate enrichment (name,
+ * `AssemblyRegistered` event log with a lazy hydrated read (name,
  * order count, clause set). The same hook backs the member-profile
  * assembly picker, so the two surfaces can't drift on what they show
  * about an assembly.
  *
- * Each row has a Fork button (re-uses the assemblyTemplate the hook already
+ * Each row has a Fork button (re-uses the hydrated assembly the hook already
  * fetched) and an Inspect link to /view/[slug]. No-wallet, empty, and
  * loading states each render their own message.
  */
@@ -37,7 +37,7 @@ export function PublishedList() {
 
     const handleFork = useCallback(
         async (choice: AssemblyChoice) => {
-            if (choice.state !== "loaded" || !choice.assemblyTemplate) {
+            if (choice.state !== "loaded" || !choice.hydratedAssembly) {
                 window.alert(
                     `Content for "${choice.slug}" is not yet available. Wait for it to load (or check the IPFS gateway) before forking.`,
                 );
@@ -45,7 +45,7 @@ export function PublishedList() {
             }
             setForking(choice.slug);
             try {
-                const outcome = forkPublishedAssembly(choice.slug, choice.assemblyTemplate);
+                const outcome = forkPublishedAssembly(choice.slug, choice.hydratedAssembly);
                 router.push(`/assemblies/designer/edit?slug=${encodeURIComponent(outcome.finalSlug)}`);
             } catch (err) {
                 const message = extractErrorMessage(err, "Loading the published assemblies failed.");

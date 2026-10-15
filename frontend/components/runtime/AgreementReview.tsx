@@ -221,6 +221,25 @@ export function AgreementReview({ commitment, agreement }: Props) {
                 </section>
             )}
 
+            {/* Provenance — the registered agreement this order instantiates and
+                the assembly's composition root, both committed under the
+                agreementHash as the provenance leaf. */}
+            {agreement?.provenance && (
+                <section data-testid="preview-provenance">
+                    <h3 className="text-xs font-semibold text-ink-muted mb-2">Provenance</h3>
+                    <dl className="grid grid-cols-[140px_1fr] gap-y-1 text-xs">
+                        <dt className="text-ink-muted">Agreement key</dt>
+                        <dd className="font-mono text-ink-primary break-all" data-testid="preview-provenance-agreement-key">
+                            {agreement.provenance.agreementKey}
+                        </dd>
+                        <dt className="text-ink-muted">Composition root</dt>
+                        <dd className="font-mono text-ink-primary break-all" data-testid="preview-provenance-composition-hash">
+                            {agreement.provenance.compositionHash}
+                        </dd>
+                    </dl>
+                </section>
+            )}
+
             {/* Hash */}
             <section className="border-t border-default pt-4">
                 <h3 className="text-xs font-semibold text-ink-muted mb-2">

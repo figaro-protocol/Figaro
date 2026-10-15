@@ -21,6 +21,7 @@
 import { sha256, isAddress } from "viem";
 
 const OPERATIVE_ADDRESSES: readonly (readonly [string, string | undefined])[] = [
+    ["agreementRegistry", process.env.NEXT_PUBLIC_AGREEMENT_REGISTRY],
     ["assemblyRegistry", process.env.NEXT_PUBLIC_ASSEMBLY_REGISTRY],
     ["attestationCoordinator", process.env.NEXT_PUBLIC_ATTESTATION_COORDINATOR],
     ["batchVerifier", process.env.NEXT_PUBLIC_BATCH_VERIFIER],

@@ -27,11 +27,12 @@ batch path uses (<code>fetchUsageClaimContext</code> + <code>buildUsageClaims</c
 committed section gets a CLAUSE leg (<code>UsageCounter.recordClauseUsage</code> —
 only the section FINGERPRINT reaches calldata, never plaintext, so private
 sections stay off-chain), and the agreement's provenance leaf
-(<code>Agreement.provenance</code>, the composition hash of the assembly it
-instantiated) gets the INDEPENDENT ASSEMBLY leg (<code>recordAssemblyUsage</code> —
-the counter reproduces the leaf from the hash). A key is counted once per
-process, so a key two orders carry is sent once. Tolerate-the-revert per
-leg; the report says what landed.</p>
+(<code>Agreement.provenance</code>, the registered agreement and the assembly it
+instantiated) gets the INDEPENDENT AGREEMENT leg (<code>recordAgreementUsage</code>)
+and ASSEMBLY leg (<code>recordAssemblyUsage</code>, with the order slot's membership
+proof) — the counter reproduces the leaf from the two keys. A key is
+counted once per process, so a key two orders carry is sent once.
+Tolerate-the-revert per leg; the report says what landed.</p>
 </div>
 <div class="tsd-parameters">
 <h4 class="tsd-parameters-title">Parameters</h4>
@@ -42,7 +43,7 @@ leg; the report says what landed.</p>
 <li><span><span class="tsd-kind-parameter">entries</span>: <span class="tsd-signature-keyword">readonly</span> <a href="../interfaces/agent.UsageRecordingEntry.html" class="tsd-signature-type tsd-kind-interface">UsageRecordingEntry</a><span class="tsd-signature-symbol">[]</span></span></li></ul></div>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/agent.UsageRecordingReport.html" class="tsd-signature-type tsd-kind-interface">UsageRecordingReport</a><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/agent/autonomous.ts#L145">agent/autonomous.ts:145</a></li></ul></aside></div></li></ul></section></div>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/agent/autonomous.ts#L151">agent/autonomous.ts:151</a></li></ul></aside></div></li></ul></section></div>
 <div class="col-sidebar">
 <div class="page-menu">
 <div class="tsd-navigation settings">

@@ -22,12 +22,14 @@ import Link from "@/components/shared/Link";
 import { useMemo } from "react";
 import { useAllRegisteredClauses } from "@/lib/protocol/useClauseRegistry";
 import { usePublishedAssemblies } from "@/lib/protocol/useAssemblyRegistry";
+import { usePublishedAgreements } from "@/lib/protocol/useAgreementRegistry";
 import { useRegisteredMembers } from "@/lib/member/useRegisteredMembers";
 import type { RegistryFamily } from "@/lib/registries/explorer";
 import { isLiveRegistration } from "@/lib/shared/clauseSpecSource";
 
 const NOUN: Record<RegistryFamily, [string, string]> = {
     clauses: ["clause", "clauses"],
+    agreements: ["agreement", "agreements"],
     assemblies: ["assembly", "assemblies"],
     members: ["member", "members"],
 };
@@ -42,6 +44,9 @@ const SCAFFOLDING: Record<
     { registry: string; event: string; dir: string } | null
 > = {
     clauses: { registry: "ClauseRegistry", event: "ClauseRegistered", dir: "clauses" },
+    // The reference agreements are derived from the reference assemblies'
+    // files, one per distinct order slot composition.
+    agreements: { registry: "AgreementRegistry", event: "AgreementRegistered", dir: "assemblies" },
     assemblies: { registry: "AssemblyRegistry", event: "AssemblyRegistered", dir: "assemblies" },
     members: null,
 };
@@ -49,12 +54,14 @@ const SCAFFOLDING: Record<
 function useFamilyCount(family: RegistryFamily): number | null {
     const clauses = useAllRegisteredClauses();
     const assemblies = usePublishedAssemblies(undefined);
+    const agreements = usePublishedAgreements(undefined);
     const members = useRegisteredMembers();
     return useMemo(() => {
         if (family === "clauses") return clauses.data === null ? null : clauses.data.filter(isLiveRegistration).length;
+        if (family === "agreements") return agreements.data === null ? null : agreements.data.length;
         if (family === "assemblies") return assemblies.data === null ? null : assemblies.data.length;
         return members.data === null ? null : members.data.filter(isLiveRegistration).length;
-    }, [family, clauses.data, assemblies.data, members.data]);
+    }, [family, clauses.data, assemblies.data, agreements.data, members.data]);
 }
 
 export function RegistryCountLink({ family }: { family: RegistryFamily }) {

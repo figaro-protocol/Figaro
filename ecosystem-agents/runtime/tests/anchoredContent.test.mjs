@@ -11,8 +11,8 @@ import * as http from "node:http";
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
 import { keccak256, toBytes } from "viem";
-import { canonicalize, templateCompositionHash } from "@figaro-protocol/sdk";
-import { fetchAnchoredClauseSpec, fetchAnchoredTemplate } from "../anchoredContent.mjs";
+import { agreementKeyOf, canonicalize, templateCompositionHash } from "@figaro-protocol/sdk";
+import { fetchAnchoredClauseSpec, fetchAnchoredComposedAgreement, fetchAnchoredTemplate } from "../anchoredContent.mjs";
 import { fetchIpfsBytes } from "../ipfsRead.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -21,8 +21,11 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SPEC = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "..", "..", "clauses", "figaro-commerce.json"), "utf8"));
 const SPEC_TEXT = canonicalize(SPEC);
 const SPEC_KEY = keccak256(toBytes(SPEC_TEXT));
+const COMMERCE = SPEC_KEY;
+const TOPOLOGY = `0x${"7c".repeat(32)}`;
+const COMPOSED = { name: "One order", clauses: { [COMMERCE]: {}, [TOPOLOGY]: {} } };
 const TEMPLATE = {
-    agreements: [{ id: "order-0", clauses: { "figaro-commerce": {}, "figaro-topology": { parentOrderHashes: [] } } }],
+    agreements: [{ id: "order-0", agreementKey: agreementKeyOf(COMPOSED), clauses: { [TOPOLOGY]: { parentOrderHashes: [] } } }],
 };
 
 /** A gateway serving `bodies[cid]` at /ipfs/<cid>; anything else 404s. */
@@ -70,7 +73,7 @@ test("a clause spec a gateway substituted reads as absence", async () => {
 });
 
 test("a template that hashes to its composition hash is read; a substituted one is absence", async () => {
-    const forged = { agreements: [{ ...TEMPLATE.agreements[0], clauses: { "figaro-commerce": { payment: "1" } } }] };
+    const forged = { agreements: [{ ...TEMPLATE.agreements[0], clauses: { [TOPOLOGY]: { parentOrderHashes: ["order-9"] } } }] };
     const gw = await gateway({ t: JSON.stringify(TEMPLATE), forged: JSON.stringify(forged), notTemplate: "{\"x\":1}" });
     try {
         const assembly = { contentURI: "ipfs://t", compositionHash: templateCompositionHash(TEMPLATE) };
@@ -82,6 +85,29 @@ test("a template that hashes to its composition hash is read; a substituted one 
         assert.match(swapped.absent, /the registry anchors/);
         const notTemplate = await fetchAnchoredTemplate({ ...assembly, contentURI: "ipfs://notTemplate" }, { gateways: [gw.url] });
         assert.equal(notTemplate.absent, "not an assembly template");
+    } finally { await gw.close(); }
+});
+
+test("a registered agreement whose { clauses } key to its agreement key is read, editorial prose aside; another is absence", async () => {
+    const forged = { ...COMPOSED, clauses: { ...COMPOSED.clauses, [COMMERCE]: { payment: "1" } } };
+    const gw = await gateway({
+        g: JSON.stringify(COMPOSED), renamed: JSON.stringify({ ...COMPOSED, name: "Renamed" }),
+        forged: JSON.stringify(forged), notAgreement: "{\"x\":1}",
+    });
+    try {
+        const agreement = { contentURI: "ipfs://g", agreementKey: agreementKeyOf(COMPOSED) };
+        const hit = await fetchAnchoredComposedAgreement(agreement, { gateways: [gw.url] });
+        assert.equal(hit.absent, undefined, hit.absent);
+        assert.deepEqual(hit.composed.clauses, COMPOSED.clauses);
+        const renamed = await fetchAnchoredComposedAgreement({ ...agreement, contentURI: "ipfs://renamed" }, { gateways: [gw.url] });
+        assert.equal(renamed.absent, undefined, renamed.absent);
+
+        const swapped = await fetchAnchoredComposedAgreement({ ...agreement, contentURI: "ipfs://forged" }, { gateways: [gw.url] });
+        assert.match(swapped.absent, /the registry anchors/);
+        const notAgreement = await fetchAnchoredComposedAgreement({ ...agreement, contentURI: "ipfs://notAgreement" }, { gateways: [gw.url] });
+        assert.equal(notAgreement.absent, "not a registered agreement");
+        const missing = await fetchAnchoredComposedAgreement({ ...agreement, contentURI: "ipfs://missing" }, { gateways: [gw.url] });
+        assert.equal(missing.absent, "not served");
     } finally { await gw.close(); }
 });
 

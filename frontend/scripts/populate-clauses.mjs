@@ -15,6 +15,12 @@
  * AUTHORED by clause name (`name` or `name@version`); every name is resolved
  * to the key of the loaded spec it names (`resolveAuthoredClauseKeys`) here,
  * at seed time, before anything is pinned — everything pinned carries keys.
+ * Each reference assembly's order slots are derived from its authored file
+ * (`slotsFromAuthoredAgreements`: the topology parents lifted into the order
+ * slot, the mandatory clauses folded, each order slot's agreement keyed);
+ * every DISTINCT agreement is pinned and registered once on AgreementRegistry
+ * (a key the registry already binds is skipped), then the assembly is
+ * registered on AssemblyRegistry.
  *
  * No deploy script anchors a placeholder hash, and no clause spec ships bundled
  * in the frontend: `clauses/*.json` pinned to IPFS and anchored here is the only
@@ -57,8 +63,11 @@
  * The vault confers no special role: any wallet — the founder's address, a
  * stranger's — is registrar of its own artifacts through the same registries.
  *
- * REFERENCE ASSEMBLIES ride the same invocation when both are set:
+ * REFERENCE ASSEMBLIES ride the same invocation when all three are set:
  *   NEXT_PUBLIC_ASSEMBLY_REGISTRY — the AssemblyRegistry address
+ *   NEXT_PUBLIC_AGREEMENT_REGISTRY — the AgreementRegistry address (each
+ *                                   reference assembly's agreements register
+ *                                   there first)
  *   ASSEMBLY_TOKEN_ADDRESS        — the denomination substituted for the
  *                                   checked-in ZERO_ADDRESS sentinel (Sepolia:
  *                                   USDC)
@@ -78,7 +87,9 @@
  *                           both are given). The vault-registrar genesis run
  *                           names exactly the mandatory clauses here.
  *   SEED_LIMIT            — cap NEW registrations this run (one shared budget:
- *                           clauses first, assemblies get the remainder)
+ *                           clauses first, assemblies get the remainder; an
+ *                           assembly's own agreements register with it and
+ *                           are not counted apart)
  *   IPFS_PIN_SERVICE_JWT  — pin via a managed pinning service instead of local
  *                           Kubo (public seeding: the Pinata DAO key, so seed
  *                           specs outlive the maintainer's laptop)
@@ -102,18 +113,20 @@ import { mnemonicToAccount, privateKeyToAccount } from 'viem/accounts';
 // compiled dist resolves from plain node ESM): the registry ABI, the clause
 // key, and the canonical-JSON convention. Nothing is re-implemented here.
 import {
-    CLAUSE_REGISTRY_ABI, ASSEMBLY_REGISTRY_ABI, computeClauseKey, canonicalize,
-    templateCompositionHash, deriveAssemblySlug,
-    templateComposedClauseKeys, resolveAuthoredClauseKeys,
+    CLAUSE_REGISTRY_ABI, ASSEMBLY_REGISTRY_ABI, AGREEMENT_REGISTRY_ABI, computeClauseKey, canonicalize,
+    templateCompositionHash, deriveAssemblySlug, parseProjectionHints,
+    templateComposedClauseKeys, resolveAuthoredClauseKeys, slotsFromAuthoredAgreements,
 } from '@figaro-protocol/sdk';
+import { parseClauseSpec } from '@figaro-protocol/sdk/clauses';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // Canonical Layer-A specs / ClauseRegistry seed data — the single origin,
 // pinned to IPFS and anchored on-chain. Nothing bundles a copy.
 export const CLAUSES_DIR = path.resolve(__dirname, '../../clauses');
 /** The reference assemblies — the user-onboarding set, `clauses/`' sibling:
- *  canonical AssemblyTemplate JSONs anchored on AssemblyRegistry at populate
- *  time (affixed documents in `assemblies/documents/`). */
+ *  authored assemblies whose order slots' agreements register on
+ *  AgreementRegistry and whose templates anchor on AssemblyRegistry at
+ *  populate time (affixed documents in `assemblies/documents/`). */
 export const ASSEMBLIES_DIR = path.resolve(__dirname, '../../assemblies');
 const RPC_URL = process.env.RPC_URL ?? 'http://127.0.0.1:8545';
 const ANVIL_MNEMONIC = 'test test test test test test test test test test test junk';
@@ -364,16 +377,23 @@ export function registrarAccount() {
 /**
  * Every spec in `clauses/`, each with the clause key its canonical bytes hash
  * to. The set seeding resolves authored names against
- * (`resolveAuthoredClauseKeys`'s `AuthoredSpecSet`): `list()` carries each
- * spec's key beside its own `clauseId` and `version`.
+ * (`resolveAuthoredClauseKeys`'s `AuthoredSpecSet`) and derives order slots
+ * over (a `SpecSource`: `get` by key, `list()` — each entry the parsed spec
+ * view beside its key, its own `clauseId` and `version`, its file and raw spec).
  */
 export function loadAuthoredSpecs() {
     const specs = fs.readdirSync(CLAUSES_DIR).filter((f) => f.endsWith('.json')).sort().map((file) => {
         const spec = JSON.parse(fs.readFileSync(path.join(CLAUSES_DIR, file), 'utf8'));
         if (!spec.clauseId) throw new Error(`${file} has no clauseId`);
-        return { file, spec, clauseKey: computeClauseKey(spec), clauseId: spec.clauseId, version: spec.version };
+        const parsed = parseClauseSpec(spec);
+        if (!parsed.ok) throw new Error(`${file} does not parse as a clause spec`);
+        return {
+            ...parsed.spec, hints: parseProjectionHints(spec),
+            file, spec, clauseKey: computeClauseKey(spec), clauseId: spec.clauseId, version: spec.version,
+        };
     });
-    return { specs, list: () => specs };
+    const byKey = new Map(specs.map((s) => [s.clauseKey.toLowerCase(), s]));
+    return { specs, list: () => specs, get: (clauseKey) => byKey.get(String(clauseKey).toLowerCase()) };
 }
 
 /** The keys of the clauses an authored name list names (`name` or
@@ -386,11 +406,11 @@ export function resolveAuthoredClauseNames(names, authored = loadAuthoredSpecs()
     return Object.keys(doc.assemblyClauses);
 }
 
-/** An authored reference template (`assemblies/<file>`), its clause names
- *  resolved to keys over the loaded specs — the template seeding anchors.
- *  Seed time only. */
-export function readResolvedTemplate(file, authored = loadAuthoredSpecs()) {
-    return resolveAuthoredClauseKeys(JSON.parse(fs.readFileSync(file, 'utf8')), authored);
+/** An authored reference assembly (`assemblies/<file>`) derived into its
+ *  order slots: `{ template, agreements }` — the template seeding anchors and
+ *  the agreements its order slots bind, keyed. Seed time only. */
+export function readBuiltAssembly(file, authored = loadAuthoredSpecs()) {
+    return slotsFromAuthoredAgreements(JSON.parse(fs.readFileSync(file, 'utf8')), authored);
 }
 
 /**
@@ -519,9 +539,69 @@ export function fillDeployTimeCurrency(template, tokenAddress) {
     };
 }
 
+/** Register one composed agreement on AgreementRegistry (idempotent — the
+ *  key is content-derived, first-write-wins: a key the registry already
+ *  binds is skipped). The pinned document carries the editorial `name` beside
+ *  the keyed clauses. In vault mode the multisig is msg.sender, so the DAO is
+ *  the agreement's designer of record. */
+export async function registerComposedAgreement({ publicClient, walletClient, account, registry, ipfsApiUrl, agreementKey, document, vault, ownerClients, log = console.log }) {
+    const [, registeredAt] = await publicClient.readContract({
+        address: registry, abi: AGREEMENT_REGISTRY_ABI, functionName: 'bindings', args: [agreementKey],
+    });
+    if (registeredAt !== 0n && registeredAt !== 0) {
+        log(`    · agreement ${agreementKey} — already registered, skipped`);
+        return { registered: false };
+    }
+    const contentURI = await pinJSON(ipfsApiUrl, canonicalize(document));
+    const deposit = await publicClient.readContract({
+        address: registry, abi: AGREEMENT_REGISTRY_ABI, functionName: 'registrationDeposit',
+    });
+    if (vault) {
+        await vaultExecute({
+            publicClient, vault, ownerClients,
+            to: registry,
+            value: deposit,
+            data: encodeFunctionData({ abi: AGREEMENT_REGISTRY_ABI, functionName: 'registerAgreement', args: [agreementKey, contentURI] }),
+            // Nonce = the agreement key: unique per agreement, deterministic across re-runs.
+            nonce: BigInt(agreementKey),
+            log,
+        });
+    } else {
+        await publicClient.simulateContract({
+            account: account.address, address: registry, abi: AGREEMENT_REGISTRY_ABI,
+            functionName: 'registerAgreement', args: [agreementKey, contentURI], value: deposit,
+        });
+        const hash = await walletClient.writeContract({
+            address: registry, abi: AGREEMENT_REGISTRY_ABI, functionName: 'registerAgreement',
+            args: [agreementKey, contentURI], value: deposit,
+        });
+        await publicClient.waitForTransactionReceipt({ hash });
+    }
+    log(`    ✓ agreement ${agreementKey} — registered; document ${contentURI}`);
+    return { registered: true };
+}
+
+/** Register a built assembly's agreements (each DISTINCT key once, in order
+ *  slot order; each document named after the assembly and the first order
+ *  slot binding it), then anchor its template. */
+export async function anchorBuiltAssembly({ built, agreementRegistry, ...args }) {
+    const { template, agreements } = built;
+    for (const [i, slot] of template.agreements.entries()) {
+        const doc = agreements[slot.agreementKey];
+        if (!doc || template.agreements.findIndex((s) => s.agreementKey === slot.agreementKey) !== i) continue;
+        await registerComposedAgreement({
+            ...args,
+            registry: agreementRegistry,
+            agreementKey: slot.agreementKey,
+            document: { ...(template.name ? { name: `${template.name} · ${slot.id}` } : {}), clauses: doc.clauses },
+        });
+    }
+    return anchorAssembly({ ...args, template });
+}
+
 /** Anchor one AssemblyTemplate (idempotent — compositionHash is content-derived,
  *  first-write-wins). In vault mode the multisig is msg.sender, so the DAO
- *  becomes the author-of-record for the anchored binding. */
+ *  becomes the assembly's designer of record. */
 export async function anchorAssembly({ publicClient, walletClient, account, registry, ipfsApiUrl, template, vault, ownerClients, log = console.log }) {
     // Composition hash over the COMPOSITION ONLY (editorial excluded); the slug
     // is presentation, derived off-chain. Both from the SDK single home — the
@@ -580,7 +660,7 @@ export async function anchorAssembly({ publicClient, walletClient, account, regi
  *  checked-in sentinel. The ONE reference-assembly population path —
  *  devnet (EOA, mock token) and testnet/mainnet (vault, ruled token)
  *  differ only in the arguments. */
-export async function populateReferenceAssemblies({ publicClient, walletClient, account, registry, ipfsApiUrl, tokenAddress, vault, ownerClients, limit, only, log = console.log }) {
+export async function populateReferenceAssemblies({ publicClient, walletClient, account, registry, agreementRegistry, ipfsApiUrl, tokenAddress, vault, ownerClients, limit, only, log = console.log }) {
     const documentsDir = path.join(ASSEMBLIES_DIR, 'documents');
     if (fs.existsSync(documentsDir)) {
         for (const file of fs.readdirSync(documentsDir).sort()) {
@@ -598,8 +678,12 @@ export async function populateReferenceAssemblies({ publicClient, walletClient, 
             log(`  · SEED_LIMIT ${limit} reached — remaining reference assemblies deferred to a later run`);
             break;
         }
-        const template = fillDeployTimeCurrency(readResolvedTemplate(path.join(ASSEMBLIES_DIR, file), authored), tokenAddress);
-        const result = await anchorAssembly({ publicClient, walletClient, account, registry, ipfsApiUrl, template, vault, ownerClients, log });
+        const built = readBuiltAssembly(path.join(ASSEMBLIES_DIR, file), authored);
+        const template = fillDeployTimeCurrency(built.template, tokenAddress);
+        const result = await anchorBuiltAssembly({
+            built: { template, agreements: built.agreements }, agreementRegistry,
+            publicClient, walletClient, account, registry, ipfsApiUrl, vault, ownerClients, log,
+        });
         if (result.anchored) anchored += 1;
     }
     return anchored;
@@ -654,7 +738,8 @@ async function main() {
         for (const name of onlyAssemblies) {
             const file = path.join(ASSEMBLIES_DIR, `${name}.json`);
             if (!fs.existsSync(file)) throw new Error(`SEED_ASSEMBLIES names "${name}" but ${file} does not exist`);
-            for (const key of templateComposedClauseKeys(readResolvedTemplate(file))) onlyClauses.add(key);
+            const built = readBuiltAssembly(file);
+            for (const key of templateComposedClauseKeys(built.template, built.agreements)) onlyClauses.add(key);
         }
         console.log(`SEED_ASSEMBLIES ${[...onlyAssemblies].join(', ')} → clause set ${[...onlyClauses].sort().join(', ')}`);
     }
@@ -663,6 +748,27 @@ async function main() {
         const names = process.env.SEED_CLAUSES.split(',').map((s) => s.trim()).filter(Boolean);
         for (const key of resolveAuthoredClauseNames(names)) onlyClauses.add(key);
         console.log(`SEED_CLAUSES → ${[...onlyClauses].sort().join(', ')}`);
+    }
+
+    // A Ledger-driven founder run registers the founder's own artifacts and
+    // never a mandatory clause: those are the DAO vault's (RELEASE_READINESS
+    // Task 13), and first write wins forever. An assembly's prerequisite set
+    // folds the mandatory clauses in, so they are taken back out here unless
+    // SEED_CLAUSES names one by hand (a deliberate act, logged as such). The
+    // devnet's one-key seeding (no Ledger, no vault) is untouched.
+    if (process.env.REGISTRAR_LEDGER_HD_PATH && !vault) {
+        const authored = loadAuthoredSpecs();
+        const named = process.env.SEED_CLAUSES
+            ? new Set(resolveAuthoredClauseNames(process.env.SEED_CLAUSES.split(',').map((s) => s.trim()).filter(Boolean)).map((k) => k.toLowerCase()))
+            : new Set();
+        const mandatory = authored.list().filter((s) => s.spec?.block?.design?.article === 'mandatory');
+        const skipped = [];
+        onlyClauses ??= new Set(authored.list().map((s) => s.clauseKey));
+        for (const m of mandatory) {
+            if (named.has(m.clauseKey.toLowerCase())) { console.log(`  SEED_CLAUSES names the mandatory ${m.clauseId}@${m.version} by hand — the founder registers it`); continue; }
+            for (const key of [...onlyClauses]) if (key.toLowerCase() === m.clauseKey.toLowerCase()) { onlyClauses.delete(key); skipped.push(`${m.clauseId}@${m.version}`); }
+        }
+        if (skipped.length) console.log(`  mandatory clauses are the DAO vault's, not the founder's — skipped: ${skipped.join(', ')}`);
     }
 
     // SEED_LIMIT: one shared budget per run — clauses consume first (they must
@@ -683,7 +789,11 @@ async function main() {
     // denomination fill are both provided (testnet/mainnet: Sepolia USDC;
     // devnet's populate-test-data passes its mock instead).
     const assemblyRegistry = process.env.NEXT_PUBLIC_ASSEMBLY_REGISTRY ?? env.NEXT_PUBLIC_ASSEMBLY_REGISTRY;
+    const agreementRegistry = process.env.NEXT_PUBLIC_AGREEMENT_REGISTRY ?? env.NEXT_PUBLIC_AGREEMENT_REGISTRY;
     const assemblyToken = process.env.ASSEMBLY_TOKEN_ADDRESS;
+    if (assemblyRegistry && assemblyToken && !agreementRegistry) {
+        throw new Error('NEXT_PUBLIC_ASSEMBLY_REGISTRY is set but NEXT_PUBLIC_AGREEMENT_REGISTRY is not — a reference assembly\'s agreements register before it');
+    }
     if (assemblyRegistry && assemblyToken) {
         const remaining = seedLimit === undefined ? undefined : Math.max(0, seedLimit - n);
         if (remaining === 0) {
@@ -691,7 +801,7 @@ async function main() {
         } else {
             console.log(`\nPopulating reference assemblies → AssemblyRegistry ${assemblyRegistry} (token ${assemblyToken})`);
             const a = await populateReferenceAssemblies({
-                publicClient, walletClient, account, registry: assemblyRegistry, ipfsApiUrl,
+                publicClient, walletClient, account, registry: assemblyRegistry, agreementRegistry, ipfsApiUrl,
                 tokenAddress: assemblyToken, vault, ownerClients, limit: remaining, only: onlyAssemblies,
             });
             console.log(`Done — ${a} reference assembly(ies) newly anchored.`);

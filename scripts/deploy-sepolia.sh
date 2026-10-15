@@ -32,7 +32,7 @@ set -e
 #
 # PAIR_ONLY=1 redeploys ONLY the counter↔verifier pair (UsageCounter +
 # FigaroBatchVerifier) via script/DeploySepoliaPair.s.sol against the stack the
-# record already names — the Core, the three registries and their stakes are
+# record already names — the Core, the four registries and their stakes are
 # untouched. The EXISTING_* addresses are read from deployments/11155111.json,
 # RPGF_GENESIS is derived from the LIVE counter's periodEnd[0] (never invented;
 # a preset RPGF_GENESIS that disagrees refuses), and the record is UPDATED in
@@ -134,6 +134,7 @@ if [ "${PAIR_ONLY:-}" = "1" ]; then
   export EXISTING_MEMBERS_REGISTRY=$(jq -r .membersRegistry "$RECORD_PATH")
   export EXISTING_CLAUSE_REGISTRY=$(jq -r .clauseRegistry "$RECORD_PATH")
   export EXISTING_ASSEMBLY_REGISTRY=$(jq -r .assemblyRegistry "$RECORD_PATH")
+  export EXISTING_AGREEMENT_REGISTRY=$(jq -r .agreementRegistry "$RECORD_PATH")
   OLD_COUNTER=$(jq -r .usageCounter "$RECORD_PATH")
   OLD_VERIFIER=$(jq -r .batchVerifier "$RECORD_PATH")
 
@@ -157,6 +158,7 @@ if [ "${PAIR_ONLY:-}" = "1" ]; then
   echo "   existing MembersRegistry    = $EXISTING_MEMBERS_REGISTRY"
   echo "   existing ClauseRegistry     = $EXISTING_CLAUSE_REGISTRY"
   echo "   existing AssemblyRegistry   = $EXISTING_ASSEMBLY_REGISTRY"
+  echo "   existing AgreementRegistry  = $EXISTING_AGREEMENT_REGISTRY"
   echo "   replacing UsageCounter      = $OLD_COUNTER"
   echo "   replacing FigaroBatchVerifier = $OLD_VERIFIER"
   echo "   rpgf genesis (from chain)   = $RPGF_GENESIS"
@@ -171,7 +173,8 @@ if [ "${PAIR_ONLY:-}" = "1" ]; then
   fi
   FORGE_OUT=$(forge script script/DeploySepoliaPair.s.sol:DeploySepoliaPair \
       --rpc-url "$RPC_URL" \
-      --broadcast --slow --via-ir $VERIFY_FLAG 2>&1)
+      --broadcast --slow --via-ir $VERIFY_FLAG \
+      ${FORGE_GAS_MULTIPLIER:+--gas-estimate-multiplier "$FORGE_GAS_MULTIPLIER"} ${FORGE_SKIP_SIMULATION:+--skip-simulation} 2>&1) || { echo "$FORGE_OUT"; echo "❌ forge script failed — see its output above"; exit 1; }
   echo "$FORGE_OUT"
 
   USAGE_COUNTER_ADDR=$(echo "$FORGE_OUT"  | grep 'NEXT_PUBLIC_USAGE_COUNTER='  | grep -oE '0x[0-9a-fA-F]+')
@@ -245,9 +248,22 @@ VERIFY_FLAG="--verify"
 if [ "${SKIP_VERIFY:-}" = "1" ]; then
   VERIFY_FLAG=""
 fi
+# The output is printed whether forge succeeds or fails: under `set -e` a
+# failing forge would otherwise exit this script with its output unseen.
+# FORGE_GAS_MULTIPLIER (percent) widens forge's gas limits: forge sizes each
+# transaction from its own local simulation, and a live chain whose fork
+# charges more for the same creation runs the transaction out of gas at
+# forge's default 130 — a failed creation that still costs its gas.
+# FORGE_SKIP_SIMULATION=1 goes further: forge skips its own simulation and
+# takes the node's eth_estimateGas for every transaction, so a chain whose
+# rules forge's EVM does not model (Sepolia under Glamsterdam charges about
+# seven times forge's figure for a creation) sizes its own transactions;
+# pair it with a small multiplier so the largest creation stays under the
+# per-transaction gas cap.
 FORGE_OUT=$(forge script script/DeploySepolia.s.sol:DeploySepolia \
     --rpc-url "$RPC_URL" \
-    --broadcast --slow --via-ir $VERIFY_FLAG 2>&1)
+    --broadcast --slow --via-ir $VERIFY_FLAG \
+    ${FORGE_GAS_MULTIPLIER:+--gas-estimate-multiplier "$FORGE_GAS_MULTIPLIER"} ${FORGE_SKIP_SIMULATION:+--skip-simulation} 2>&1) || { echo "$FORGE_OUT"; echo "❌ forge script failed — see its output above"; exit 1; }
 echo "$FORGE_OUT"
 
 # ── Parse addresses from the script's NEXT_PUBLIC_* summary block ──────────
@@ -255,6 +271,7 @@ CORE_ADDR=$(echo "$FORGE_OUT"            | grep 'NEXT_PUBLIC_FIGARO_CORE='      
 ATTESTATION_ADDR=$(echo "$FORGE_OUT"     | grep 'NEXT_PUBLIC_ATTESTATION_COORDINATOR=' | grep -oE '0x[0-9a-fA-F]+')
 CLAUSE_ADDR=$(echo "$FORGE_OUT"          | grep 'NEXT_PUBLIC_CLAUSE_REGISTRY='         | grep -oE '0x[0-9a-fA-F]+')
 ASSEMBLY_ADDR=$(echo "$FORGE_OUT"        | grep 'NEXT_PUBLIC_ASSEMBLY_REGISTRY='       | grep -oE '0x[0-9a-fA-F]+')
+AGREEMENT_ADDR=$(echo "$FORGE_OUT"       | grep 'NEXT_PUBLIC_AGREEMENT_REGISTRY='      | grep -oE '0x[0-9a-fA-F]+')
 MEMBERS_ADDR=$(echo "$FORGE_OUT"         | grep 'NEXT_PUBLIC_MEMBERS_REGISTRY='        | grep -oE '0x[0-9a-fA-F]+')
 FLORIN_TOKEN_ADDR=$(echo "$FORGE_OUT"    | grep 'NEXT_PUBLIC_FLORIN_TOKEN_ADDRESS='    | grep -oE '0x[0-9a-fA-F]+')
 USAGE_COUNTER_ADDR=$(echo "$FORGE_OUT"   | grep 'NEXT_PUBLIC_USAGE_COUNTER='           | grep -oE '0x[0-9a-fA-F]+')
@@ -302,6 +319,7 @@ cat > "$DEPLOY_DIR/${ACTUAL_CHAIN_ID}.json" <<EOF
   "clauseRegistry": "$CLAUSE_ADDR",
   "membersRegistry": "$MEMBERS_ADDR",
   "assemblyRegistry": "$ASSEMBLY_ADDR",
+  "agreementRegistry": "$AGREEMENT_ADDR",
   "florinToken": "$FLORIN_TOKEN_ADDR",
   "usageCounter": "$USAGE_COUNTER_ADDR",
   "rpgfMinter": "$RPGF_MINTER_ADDR",
@@ -325,6 +343,7 @@ echo "   AttestationCoordinator  = $ATTESTATION_ADDR"
 echo "   ClauseRegistry          = $CLAUSE_ADDR"
 echo "   MembersRegistry         = $MEMBERS_ADDR"
 echo "   AssemblyRegistry        = $ASSEMBLY_ADDR"
+echo "   AgreementRegistry       = $AGREEMENT_ADDR"
 echo "   FlorinToken             = $FLORIN_TOKEN_ADDR"
 echo "   UsageCounter            = $USAGE_COUNTER_ADDR"
 echo "   RpgfMinter              = $RPGF_MINTER_ADDR"

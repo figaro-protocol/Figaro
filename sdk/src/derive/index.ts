@@ -46,6 +46,7 @@ export {
     deriveInFlightOrders,
     deriveClauseWithdrawGate,
     deriveAssemblyWithdrawGate,
+    deriveAgreementWithdrawGate,
 } from "./withdraw.js";
 export type {
     InFlightOrderRef,

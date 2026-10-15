@@ -125,10 +125,10 @@ export interface AttestationEvent {
     transactionHash: Hex | null;
 }
 
-// ── Discovery: registry events (the three registry families) ─────────────────
+// ── Discovery: registry events (the registry families) ───────────────────────
 //
 // Parallel to the core process events above. A cold-start agent folds these to
-// learn what clauses, members, and assemblies EXIST — the registries are the
+// learn what clauses, members, agreements and assemblies EXIST — the registries are the
 // network's catalog. Every event carries `logIndex` because member liveness
 // is order-dependent within a block (see DiscoveryGraph), unlike the core
 // process events whose block-ordering suffices.
@@ -197,6 +197,27 @@ export interface AssemblyWithdrawnEvent {
     logIndex: number;
 }
 
+/** AgreementRegistry `AgreementRegistered`. Identity IS `agreementKey`
+ *  (`agreementKeyOf`, the canonical hash of the clauses composed for one
+ *  order slot). */
+export interface AgreementRegisteredEvent {
+    agreementKey: Hex;
+    registeredBy: Address;
+    contentURI: string;
+    blockNumber: number;
+    logIndex: number;
+    /** Set when the source log carries it. */
+    transactionHash: Hex | null;
+}
+
+/** AgreementRegistry `DepositWithdrawn` — keyed by `agreementKey` directly. */
+export interface AgreementWithdrawnEvent {
+    agreementKey: Hex;
+    registeredBy: Address;
+    blockNumber: number;
+    logIndex: number;
+}
+
 // ── Discovery: live views (deposit-withdrawn entries filtered out) ─────────
 //
 // What `getClauses/getMembers/getAssemblies` return: the LIVE-staked set, each
@@ -223,6 +244,21 @@ export interface RegisteredAssembly {
     compositionHash: Hex;
     registeredBy: Address;
     contentURI: string;
+}
+
+export interface RegisteredAgreement {
+    /** The agreement key — `agreementKeyOf` of the pinned document at
+     *  `contentURI`; a reader verifies the fetched document against it
+     *  (`anchorComposedAgreement`). */
+    agreementKey: Hex;
+    contentURI: string;
+    registeredBy: Address;
+    /** The block the `AgreementRegistered` event landed in — the event
+     *  carries no timestamp; `bindings(agreementKey).registeredAt` holds the
+     *  chain time. */
+    registeredAt: number;
+    /** True once the registrant withdrew the stake (`DepositWithdrawn`). */
+    stakeWithdrawn: boolean;
 }
 
 
@@ -257,11 +293,12 @@ export interface FigaroAddresses {
     clauseRegistry?: Address;
     membersRegistry?: Address;
     assemblyRegistry?: Address;
+    agreementRegistry?: Address;
     /** FigaroBatchVerifier — batch-resolved clause content verification (batch path only). */
     batchVerifier?: Address;
-    /** UsageCounter — records verified clause/assembly usage per accrual period. */
+    /** UsageCounter — records verified clause, assembly and agreement usage per accrual period. */
     usageCounter?: Address;
-    /** RpgfMinter — pays clause authors and assembly designers pro rata to recorded usage. */
+    /** RpgfMinter — rewards the designers of record of clauses, assemblies and agreements pro rata to recorded usage. */
     rpgfMinter?: Address;
     /** Permit2 — the permit layer WitnessSwapAndCommitCoordinator pulls swap input tokens through. */
     permit2?: Address;
@@ -298,6 +335,7 @@ export interface FigaroDeploymentRecord {
     clauseRegistry?: Address;
     membersRegistry?: Address;
     assemblyRegistry?: Address;
+    agreementRegistry?: Address;
     batchVerifier?: Address;
     usageCounter?: Address;
     rpgfMinter?: Address;
@@ -323,6 +361,7 @@ export function addressesFromDeploymentRecord(record: FigaroDeploymentRecord): F
         ...(record.clauseRegistry ? { clauseRegistry: record.clauseRegistry } : {}),
         ...(record.membersRegistry ? { membersRegistry: record.membersRegistry } : {}),
         ...(record.assemblyRegistry ? { assemblyRegistry: record.assemblyRegistry } : {}),
+        ...(record.agreementRegistry ? { agreementRegistry: record.agreementRegistry } : {}),
         ...(record.batchVerifier ? { batchVerifier: record.batchVerifier } : {}),
         ...(record.usageCounter ? { usageCounter: record.usageCounter } : {}),
         ...(record.rpgfMinter ? { rpgfMinter: record.rpgfMinter } : {}),

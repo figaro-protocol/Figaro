@@ -11,9 +11,10 @@ import {
     planTemplateOrders,
     reconstructOrdersFromTemplate,
 } from "../src/reconstructOrders.js";
-import { templateCompositionHash, type AssemblyTemplate } from "../src/assembly.js";
+import { templateCompositionHash } from "../src/assembly.js";
 import { computeAgreementHash, buildProvenanceInclusionProof, verifyInclusionProof } from "../src/agreement.js";
 import { keyOf, rawSpecOf, specSourceFromFixtures, specSourceWithRegistrations, viewOf } from "./specFixtures.js";
+import { hydrateAuthored } from "./hydrate.js";
 
 const SPECS = specSourceFromFixtures(["figaro-commerce", "figaro-topology"]);
 
@@ -24,7 +25,7 @@ const CURRENCY = "0x0000000000000000000000000000000000000001" as const;
 const CORE = "0x00000000000000000000000000000000000000c0" as const;
 
 /** Child listed FIRST to prove commit order comes from topology, not input. */
-const template: AssemblyTemplate = {
+const template = hydrateAuthored({
     agreements: [
         {
             id: "courier",
@@ -38,7 +39,7 @@ const template: AssemblyTemplate = {
             clauses: { [keyOf("figaro-commerce")]: {}, [keyOf("figaro-topology")]: { parentOrderHashes: [] } },
         },
     ],
-};
+});
 
 describe("planTemplateOrders — pure structure", () => {
     it("orders nodes root-first with local parents and the template's clause bags", () => {
@@ -52,12 +53,12 @@ describe("planTemplateOrders — pure structure", () => {
     });
 
     it("throws on a cyclic topology", () => {
-        const cyclic: AssemblyTemplate = {
+        const cyclic = hydrateAuthored({
             agreements: [
                 { id: "a", clauses: { [keyOf("figaro-topology")]: { parentOrderHashes: ["b"] } } },
                 { id: "b", clauses: { [keyOf("figaro-topology")]: { parentOrderHashes: ["a"] } } },
             ],
-        };
+        });
         expect(() => planTemplateOrders(cyclic)).toThrow(/cycle/);
     });
 });
@@ -120,7 +121,11 @@ describe("reconstructOrdersFromTemplate — realization", () => {
                 deadline: 1770000000n,
             });
             for (const order of orders) {
-                expect(order.agreement.provenance).toBe(templateCompositionHash(template));
+                const slot = template.template.agreements.find((a) => a.id === order.nodeId)!;
+                expect(order.agreement.provenance).toEqual({
+                    agreementKey: slot.agreementKey,
+                    compositionHash: templateCompositionHash(template.template),
+                });
                 expect(order.agreementHash).toBe(computeAgreementHash(order.agreement));
                 expect(order.commitment.agreementHash).toBe(order.agreementHash);
                 const { leaf, proof } = buildProvenanceInclusionProof(order.agreement);
@@ -130,11 +135,11 @@ describe("reconstructOrdersFromTemplate — realization", () => {
     });
 
     it("rejects a template whose commit order starts with a parented node", async () => {
-        const dangling: AssemblyTemplate = {
+        const dangling = hydrateAuthored({
             agreements: [
                 { id: "only", clauses: { [keyOf("figaro-topology")]: { parentOrderHashes: ["ghost"] } } },
             ],
-        };
+        });
         await expect(
             reconstructOrdersFromTemplate(dangling, {
                 buyer: BUYER,
@@ -172,7 +177,7 @@ describe("reconstructOrdersFromTemplate — the walk's fills read the spec each 
 
     it("the real key fills the real currency leaf", async () => {
         const [root] = await reconstructOrdersFromTemplate(
-            { agreements: [{ id: "only", clauses: { [keyOf("figaro-commerce")]: {} } }] },
+            hydrateAuthored({ agreements: [{ id: "only", clauses: { [keyOf("figaro-commerce")]: {} } }] }),
             params,
         );
         const commerce = root.agreement.sections.find((s) => s.clause === keyOf("figaro-commerce"));
@@ -181,7 +186,7 @@ describe("reconstructOrdersFromTemplate — the walk's fills read the spec each 
 
     it("the lookalike's key is read as the lookalike, whose currency is no content leaf", async () => {
         const [root] = await reconstructOrdersFromTemplate(
-            { agreements: [{ id: "only", clauses: { [lookalike.clauseKey]: {} } }] },
+            hydrateAuthored({ agreements: [{ id: "only", clauses: { [lookalike.clauseKey]: {} } }] }),
             params,
         );
         const commerce = root.agreement.sections.find((s) => s.clause === lookalike.clauseKey);

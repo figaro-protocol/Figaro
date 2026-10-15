@@ -295,14 +295,14 @@ test.describe('designer rewards — usage accrues, the UI reads it (devnet)', ()
             .toContainText(`${usedSpec.clauseId} v${usedSpec.version}`, { timeout: 60000 });
         await expect(page.getByTestId(`period-accruals-${period}`), 'with the counts the chain recorded')
             .toContainText(`score ${score.toString()}`);
-        // The period total is the sum over EVERY clause and assembly that accrued in this
+        // The period total is the sum over EVERY clause, agreement and assembly that accrued in this
         // period, so it equals this clause's score only on a chain where
         // nothing else traded — which is never true inside the full suite (this
         // spec runs after ~28 others on the same chain). Assert the real
         // relationship instead: the divisor is present and is at least this
         // clause's share of it.
         const totalText = await page.getByTestId(`period-total-score-${period}`).innerText();
-        const totalMatch = totalText.match(/period score across all clauses and assemblies:\s*(\d+)/);
+        const totalMatch = totalText.match(/period score across all clauses, agreements and assemblies:\s*(\d+)/);
         expect(totalMatch, `the period total renders (got: ${totalText})`).not.toBeNull();
         expect(
             BigInt(totalMatch![1]),

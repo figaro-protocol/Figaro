@@ -12,8 +12,19 @@
  */
 import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
-import { canonicalize, computeClauseKey, resolveAuthoredClauseKeys, type Hex } from "@figaro-protocol/sdk";
-import { listKnownClauses, loadClauseSpec, noteClauseStakes, setClauseSpecFetcher } from "@/lib/shared/clauseSpecSource";
+import {
+    canonicalize,
+    computeClauseKey,
+    resolveAuthoredClauseKeys,
+    agreementKeyOf,
+    slotsFromAuthoredAgreements,
+    type AssemblyTemplate,
+    type ComposedAgreement,
+    type Hex,
+    type HydratedAssembly,
+    type TemplateSlot,
+} from "@figaro-protocol/sdk";
+import { listKnownClauses, loadClauseSpec, noteClauseStakes, setClauseSpecFetcher, specSource } from "@/lib/shared/clauseSpecSource";
 
 // Vitest runs with cwd = frontend/ (the vitest config root).
 const EXAMPLES_DIR = path.resolve(process.cwd(), "../clauses");
@@ -77,4 +88,40 @@ export function authoredSpecSet(): { list(): { clauseKey: Hex; clauseId: string;
  *  resolved to keys over `clauses/` — what the seeding pins. */
 export function resolveAuthored<T extends object>(doc: T): T {
     return resolveAuthoredClauseKeys(doc, authoredSpecSet());
+}
+
+/** A hydrated assembly from the AUTHORED shape a test writes
+ *  (`agreements[].clauses` by clause key or name, the topology clause
+ *  carrying its parents as `order-<j>` labels): each order slot's parents
+ *  lifted into its own fill (the clause stays composed, with `{}`) and each
+ *  order slot's agreement keyed — every registered agreement beside the
+ *  template, keyed by lowercased key, as a registry read hands them to
+ *  checkout. By default derived exactly as the seeding derives it
+ *  (`slotsFromAuthoredAgreements` over the primed specs, the mandatory
+ *  clauses folded — prime the specs first); `{ fold: false }` keys each
+ *  authored clause set as written, for a test whose spec set carries no
+ *  mandatory clause. */
+export function hydrateAuthored(authored: object, opts: { fold?: boolean } = {}): HydratedAssembly {
+    const byKey: Record<Hex, ComposedAgreement> = {};
+    if (opts.fold !== false) {
+        const { template, agreements } = slotsFromAuthoredAgreements(authored, specSource());
+        for (const [key, doc] of Object.entries(agreements)) byKey[key.toLowerCase() as Hex] = doc;
+        return { template, agreements: byKey };
+    }
+    const { agreements: entries, ...rest } = authored as {
+        agreements: { id: string; clauses: Record<Hex, Record<string, unknown>> }[];
+    } & Omit<AssemblyTemplate, "agreements">;
+    const slots: TemplateSlot[] = entries.map((entry) => {
+        const clauses: Record<Hex, Record<string, unknown>> = {};
+        const fills: Record<Hex, Record<string, unknown>> = {};
+        for (const [key, values] of Object.entries(entry.clauses) as [Hex, Record<string, unknown>][]) {
+            const { parentOrderHashes, ...composed } = values ?? {};
+            clauses[key] = composed;
+            if (Array.isArray(parentOrderHashes)) fills[key] = { parentOrderHashes: [...parentOrderHashes] };
+        }
+        const agreementKey = agreementKeyOf({ clauses });
+        byKey[agreementKey.toLowerCase() as Hex] = { clauses };
+        return { id: entry.id, agreementKey, clauses: fills };
+    });
+    return { template: { ...rest, agreements: slots }, agreements: byKey };
 }

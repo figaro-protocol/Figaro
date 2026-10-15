@@ -212,7 +212,7 @@ test.describe('AssemblyRegistry withdraw — the commits==resolves gate (devnet)
         await expect(
             withdrawBtn,
             'the disabled reason names the verified in-flight count',
-        ).toHaveAttribute('title', /Cannot reclaim the stake yet: 1 in-flight trade still composes this clause or assembly/, { timeout: 60000 });
+        ).toHaveAttribute('title', /Cannot reclaim the stake yet: 1 in-flight trade still composes this registration/, { timeout: 60000 });
         // Still disabled after the gate resolved (not just the loading state).
         await expect(withdrawBtn).toBeDisabled();
 

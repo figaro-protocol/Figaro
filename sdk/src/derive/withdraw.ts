@@ -1,10 +1,10 @@
 /**
  * @figaro-protocol/sdk/derive — Withdraw gate (commits==resolves)
  *
- * The off-chain, advisory half of the K4 staked-intent model: a clause-or-assembly
- * author (each registry's `registeredBy`) must not reclaim their
- * registration stake while trades COMPOSED FROM that clause or assembly are still in
- * flight. This is the read-side derivation RPGF attribution pays on — the same
+ * The off-chain, advisory half of the K4 staked-intent model: the designer of
+ * record of a clause, a registered agreement or an assembly (each registry's
+ * `registeredBy`) must not reclaim their registration stake while trades
+ * COMPOSED FROM it are still in flight. This is the read-side derivation RPGF attribution pays on — the same
  * count. It is ADVISORY today (surfaced as a disabled affordance); an on-chain
  * inclusion-proof withdraw lock would harden it if one is ever built — a
  * deliberate open item, not machinery that exists. Nothing here touches the
@@ -18,15 +18,11 @@
  *      pinned, hash-verified agreement document for it (the SDK stays viem-only
  *      and does no IPFS I/O — the frontend's `fetchAgreement` is that fetch);
  *   3. the agreement NAMES the clauses it composes — `Agreement.sections[].clause`,
- *      each the clause's key. There is NO stored assembly
- *      reference on the committed agreement, so an assembly is attributed
- *      STRUCTURALLY: its template's per-node clause composition (the set of
- *      `TemplateAgreement.clauses` keys) is fingerprinted and matched against
- *      the in-flight process's committed orders (whose section-clause sets are
- *      preserved verbatim from the template — checkout fills VALUES, never adds
- *      or drops clauses). Collisions between two assemblies with identical
- *      per-node clause sets OVER-block (both authors see the trade), which is the
- *      safe direction for a withdraw gate.
+ *      each the clause's key — and, in its provenance leaf
+ *      (`Agreement.provenance`, under the same hash), the registered agreement
+ *      and the assembly it instantiated. A clause is attributed by its key
+ *      among the sections; an agreement and an assembly by the provenance's
+ *      `agreementKey` and `compositionHash`.
  *
  * `canWithdraw(clauseOrAssembly) == (inFlightCount === 0)`.
  *
@@ -50,8 +46,7 @@ import type { Hex } from "../types.js";
 import { OrderState } from "../types.js";
 import type { CoreEvents } from "../state.js";
 import { Topology } from "../state.js";
-import type { Agreement } from "../agreement.js";
-import type { AssemblyTemplate } from "../assembly.js";
+import type { Agreement, AgreementProvenance } from "../agreement.js";
 
 // ── In-flight extraction (pure — the caller supplies fetched events) ─────────
 
@@ -140,50 +135,13 @@ export function deriveClauseWithdrawGate(
     return gate(inFlightCount, unverifiedCount);
 }
 
-/** The sorted clause keys one node composes — its structural signature. */
-function nodeSignature(clauseKeys: readonly string[]): string {
-    return [...new Set(clauseKeys.map((k) => k.toLowerCase()))].sort().join("|");
-}
-
-/** An assembly's structural fingerprint: the sorted multiset of its nodes'
- *  clause signatures. Derivable identically from the registered template and
- *  from an in-flight process's committed orders, so the two are comparable
- *  without recomputing the (irrecoverable-from-runtime) composition hash.
- *  Each node's signature applies THE ASSEMBLY-SCOPE FOLD exactly as
- *  `planTemplateOrders` does (`{...assemblyClauses, ...node.clauses}`): a
- *  committed order's sections always carry the template's assembly-scoped
- *  clauses, so a fingerprint computed without the fold
- *  can never match a real process — which is precisely the bug this comment
- *  guards against recurring. */
-function assemblyFingerprint(template: AssemblyTemplate): string[] {
-    const assemblyClauseKeys = Object.keys(template.assemblyClauses ?? {});
-    return template.agreements
-        .map((node) => nodeSignature([...assemblyClauseKeys, ...Object.keys(node.clauses)]))
-        .sort();
-}
-
-function processFingerprint(orders: readonly Agreement[]): string[] {
-    return orders.map((a) => nodeSignature(a.sections.map((s) => s.clause))).sort();
-}
-
-function fingerprintsEqual(a: readonly string[], b: readonly string[]): boolean {
-    return a.length === b.length && a.every((v, i) => v === b[i]);
-}
-
-/**
- * Withdraw gate for an ASSEMBLY. A trade is composed from the assembly
- * iff it is a PROCESS whose committed orders reproduce the template's per-node
- * clause composition (see `assemblyFingerprint`). Counted per process. A
- * process with any unverifiable agreement can't be fully fingerprinted, so it
- * lands in `unverifiedCount` (surfaced, never blocking). The structural match
- * is EXACT: a process only partially committed (mid-checkout) or extended
- * beyond the template does not fingerprint-match and is not counted — this
- * hardens when on-chain provenance (the inclusion-proof model) lands.
- * `template` is the fetched, composition-hash-verified assembly document; the
- * SDK does no IPFS I/O.
- */
-export function deriveAssemblyWithdrawGate(
-    template: AssemblyTemplate,
+/** A gate counted per PROCESS from the verified agreements' provenance: a
+ *  process counts once when any of its verified orders names `key` under
+ *  `field`; a process with any unverifiable agreement lands in
+ *  `unverifiedCount` (surfaced, never blocking). */
+function provenanceGate(
+    field: keyof AgreementProvenance,
+    key: Hex,
     agreements: readonly InFlightAgreement[],
 ): WithdrawGate {
     const byProcess = new Map<Hex, InFlightAgreement[]>();
@@ -192,8 +150,6 @@ export function deriveAssemblyWithdrawGate(
         if (group) group.push(entry);
         else byProcess.set(entry.processId, [entry]);
     }
-
-    const target = assemblyFingerprint(template);
     let inFlightCount = 0;
     let unverifiedCount = 0;
     for (const group of byProcess.values()) {
@@ -201,10 +157,33 @@ export function deriveAssemblyWithdrawGate(
             unverifiedCount += 1;
             continue;
         }
-        const fingerprint = processFingerprint(group.map((g) => g.agreement as Agreement));
-        if (fingerprintsEqual(fingerprint, target)) {
-            inFlightCount += 1;
-        }
+        const names = group.some((g) => g.agreement?.provenance?.[field]?.toLowerCase() === key.toLowerCase());
+        if (names) inFlightCount += 1;
     }
     return gate(inFlightCount, unverifiedCount);
+}
+
+/**
+ * Withdraw gate for an ASSEMBLY. A trade is composed from the assembly iff
+ * one of its verified orders' provenance names the `compositionHash`.
+ * Counted per process.
+ */
+export function deriveAssemblyWithdrawGate(
+    compositionHash: Hex,
+    agreements: readonly InFlightAgreement[],
+): WithdrawGate {
+    return provenanceGate("compositionHash", compositionHash, agreements);
+}
+
+/**
+ * Withdraw gate for a REGISTERED AGREEMENT. A trade is composed from the
+ * agreement iff one of its verified orders' provenance names the
+ * `agreementKey` — whichever assembly the order slot sits in. Counted per
+ * process, as the assembly gate.
+ */
+export function deriveAgreementWithdrawGate(
+    agreementKey: Hex,
+    agreements: readonly InFlightAgreement[],
+): WithdrawGate {
+    return provenanceGate("agreementKey", agreementKey, agreements);
 }

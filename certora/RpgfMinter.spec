@@ -9,8 +9,8 @@
 //
 // Scope: only `src/build/rewards/RpgfMinter.sol` is in the verified scene. Every
 // dependency it calls through an interface — `IUsageCounter` (counter),
-// `IFlorinMinter` (florin), `IClauseAuthor`/`IAssemblyAuthor` (clauses,
-// assemblies) — is NOT itself verified here (each has, or will have, its own
+// `IFlorinMinter` (florin), `IClauseAuthor`/`IAssemblyAuthor`/`IAgreementAuthor`
+// (clauses, assemblies, agreements) — is NOT itself verified here (each has, or will have, its own
 // spec / Foundry suite); RpgfMinter's calls into them are summarized so the
 // prover explores RpgfMinter's OWN logic against every possible answer those
 // dependencies could give.
@@ -22,8 +22,9 @@
 //     uses for FigaroBatchVerifier's own internal helpers (_hashPositions et
 //     al.): an internal-function summary on the contract UNDER VERIFICATION,
 //     not a mock of an external dependency. This is deliberately NOT a
-//     dispatcher over ClauseRegistry.depositOf / AssemblyRegistry.bindings —
-//     the latter's auto-generated getter returns a dynamic `string contentURI`
+//     dispatcher over ClauseRegistry.depositOf / AssemblyRegistry.bindings /
+//     AgreementRegistry.bindings — the latter two's auto-generated getters
+//     return a dynamic `string contentURI`
 //     CVL has no reason to model here, and whether THOSE registries correctly
 //     compute (registrar, withdrawn) / (author, depositWithdrawn) is their own
 //     test suite's job. What THIS spec must prove is narrower and sharper:
@@ -188,9 +189,11 @@ rule duplicateClauseOrAssemblyReverts(uint8 periodId, RpgfMinter.ClauseOrAssembl
 // RULE 5: Eligibility — a withdrawn/non-author clause-or-assembly receives nothing
 //
 // `_isAuthor(kind, clauseOrAssembly, account)` is the live-stake gate, reading
-// the one registry the kind names: false whenever the
-// clause registrar or assembly designer has withdrawn its registration
-// deposit (or the caller was never the author of record at all). Proved
+// the one registry the kind names (clause, assembly or agreement): false
+// whenever the designer of record has withdrawn its registration stake, the
+// caller was never the designer of record at all, or the kind names no
+// registry (the ghost ranges over every uint8 kind, the agreement kind and
+// every kind past it included). Proved
 // against the ghost directly — for ANY (kind, clauseOrAssembly, account) the gate
 // would refuse, including one buried anywhere in an arbitrary-length list —
 // `claim` must revert rather than pay. This matches RpgfMinter's actual

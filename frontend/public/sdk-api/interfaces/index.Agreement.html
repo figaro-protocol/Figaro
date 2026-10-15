@@ -15,7 +15,7 @@
 <div class="tsd-comment tsd-typography"><p>The signed agreement. Parties compose sections from registered clauses, sort
 by clause key, and sign the merkle root of the leaves.</p>
 </div></section>
-<div class="tsd-signature"><span class="tsd-signature-keyword">interface</span> <span class="tsd-kind-interface">Agreement</span> <span class="tsd-signature-symbol">{</span><br/>    <a class="tsd-kind-property" href="#buyer">buyer</a><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">`</span><span class="tsd-signature-type">0x</span><span class="tsd-signature-symbol">${</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">`</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#provenance">provenance</a><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-symbol">`</span><span class="tsd-signature-type">0x</span><span class="tsd-signature-symbol">${</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">`</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#sections">sections</a><span class="tsd-signature-symbol">:</span> <a href="index.AgreementSection.html" class="tsd-signature-type tsd-kind-interface">AgreementSection</a><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#seller">seller</a><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">`</span><span class="tsd-signature-type">0x</span><span class="tsd-signature-symbol">${</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">`</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#version">version</a><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">&quot;a1&quot;</span><span class="tsd-signature-symbol">;</span><br/><span class="tsd-signature-symbol">}</span></div><aside class="tsd-sources">
+<div class="tsd-signature"><span class="tsd-signature-keyword">interface</span> <span class="tsd-kind-interface">Agreement</span> <span class="tsd-signature-symbol">{</span><br/>    <a class="tsd-kind-property" href="#buyer">buyer</a><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">`</span><span class="tsd-signature-type">0x</span><span class="tsd-signature-symbol">${</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">`</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#provenance">provenance</a><span class="tsd-signature-symbol">?:</span> <a href="index.AgreementProvenance.html" class="tsd-signature-type tsd-kind-interface">AgreementProvenance</a><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#sections">sections</a><span class="tsd-signature-symbol">:</span> <a href="index.AgreementSection.html" class="tsd-signature-type tsd-kind-interface">AgreementSection</a><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#seller">seller</a><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">`</span><span class="tsd-signature-type">0x</span><span class="tsd-signature-symbol">${</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">`</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#version">version</a><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">&quot;a1&quot;</span><span class="tsd-signature-symbol">;</span><br/><span class="tsd-signature-symbol">}</span></div><aside class="tsd-sources">
 <ul>
 <li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/agreement.ts#L61">agreement.ts:61</a></li></ul></aside>
 <section class="tsd-panel-group tsd-index-group">
@@ -41,18 +41,21 @@ by clause key, and sign the merkle root of the leaves.</p>
 <li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/agreement.ts#L63">agreement.ts:63</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="provenance"><code class="tsd-tag">Optional</code><span>provenance</span><a href="#provenance" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
-<div class="tsd-signature"><span class="tsd-kind-property">provenance</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-symbol">`</span><span class="tsd-signature-type">0x</span><span class="tsd-signature-symbol">${</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">`</span></div>
-<div class="tsd-comment tsd-typography"><p>The <code>compositionHash</code> of the registered assembly this agreement was
-instantiated from — the design-time identity, carried by the agreement
-FORMAT as one reserved leaf (<code>PROVENANCE_LEAF_KEY</code>), never by a clause.
-Checkout fills it from the template's own hash; a design cannot carry
-it, since the hash cannot appear inside the composition it hashes.
-Every process instantiates an assembly, so a signed agreement carries
-it; an agreement built without a design (a test fixture, a bare pair)
-leaves it absent and has no provenance leaf.</p>
+<div class="tsd-signature"><span class="tsd-kind-property">provenance</span><span class="tsd-signature-symbol">?:</span> <a href="index.AgreementProvenance.html" class="tsd-signature-type tsd-kind-interface">AgreementProvenance</a></div>
+<div class="tsd-comment tsd-typography"><p>Where this agreement came from at design time: the registered
+agreement (<code>agreementKey</code>, the <code>AgreementRegistry</code> key) the order's
+slot binds, and the registered assembly (<code>compositionHash</code>, the
+<code>AssemblyRegistry</code> key) the slot sits in. Carried by the agreement
+FORMAT as one reserved leaf (<code>PROVENANCE_LEAF_KEY</code>), never by a
+clause. Checkout writes it from the slot the order instantiates; a
+design cannot carry it, since neither hash can appear inside the
+composition it hashes. Every process instantiates an assembly, so a
+signed agreement carries it; an agreement built without a design (a
+test fixture, a bare pair) leaves it absent and has no provenance
+leaf.</p>
 </div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/agreement.ts#L74">agreement.ts:74</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/agreement.ts#L77">agreement.ts:77</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="sections"><span>sections</span><a href="#sections" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">sections</span><span class="tsd-signature-symbol">:</span> <a href="index.AgreementSection.html" class="tsd-signature-type tsd-kind-interface">AgreementSection</a><span class="tsd-signature-symbol">[]</span></div><aside class="tsd-sources">

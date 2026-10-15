@@ -28,7 +28,7 @@
 // ABIs
 export {
     CORE_ABI, ATTESTATION_COORDINATOR_ABI, CLAUSE_REGISTRY_ABI,
-    ERC20_ABI, MEMBERS_REGISTRY_ABI, ASSEMBLY_REGISTRY_ABI,
+    ERC20_ABI, MEMBERS_REGISTRY_ABI, ASSEMBLY_REGISTRY_ABI, AGREEMENT_REGISTRY_ABI,
     FLORIN_TOKEN_ABI,
     WITNESS_SWAP_AND_COMMIT_COORDINATOR_ABI, SWAP_FUNDING_TUPLE,
     USAGE_COUNTER_ABI, RPGF_MINTER_ABI,
@@ -83,9 +83,12 @@ export type {
     MemberWithdrawnEvent,
     AssemblyRegisteredEvent,
     AssemblyWithdrawnEvent,
+    AgreementRegisteredEvent,
+    AgreementWithdrawnEvent,
     RegisteredClause,
     RegisteredMember,
     RegisteredAssembly,
+    RegisteredAgreement,
 } from "./types.js";
 export {
     OrderState,
@@ -131,6 +134,7 @@ export {
     parseClauseRegistryLogs,
     parseMembersRegistryLogs,
     parseAssemblyRegistryLogs,
+    parseAgreementRegistryLogs,
     fetchDiscoveryEvents,
     reconstructDiscovery,
     DiscoveryGraph,
@@ -140,6 +144,7 @@ export type {
     ClauseRegistryEvents,
     MembersRegistryEvents,
     AssemblyRegistryEvents,
+    AgreementRegistryEvents,
 } from "./discovery.js";
 
 // Commitment builder
@@ -210,7 +215,7 @@ export {
     sectionDataHash,
     withholdSectionContent,
 } from "./agreement.js";
-export type { Agreement, AgreementSection } from "./agreement.js";
+export type { Agreement, AgreementProvenance, AgreementSection } from "./agreement.js";
 
 // Prototype-pollution defense for parsed envelopes
 export { strippingReviver } from "./safeJson.js";
@@ -220,6 +225,8 @@ export {
     type Anchored,
     anchorClauseSpec,
     anchorTemplate,
+    anchorComposedAgreement,
+    hydrateAssembly,
     anchorAgreement,
     anchorAttestationContent,
     deriveAnchored,
@@ -235,6 +242,7 @@ export {
     sectionByField,
     sectionsByField,
     serializeAssemblyTemplate,
+    slotsFromAuthoredAgreements,
     specDeclaresField,
     specDeclaresContentField,
     specDeclaresDesignFill,
@@ -256,6 +264,7 @@ export type {
     ProjectionSpecView,
     SpecSource,
     TemplateOrderNode,
+    BuiltAssemblyTemplate,
 } from "./projection.js";
 
 // The ONE template → orders walk (+ the generic topology math under it)
@@ -309,9 +318,25 @@ export {
     deriveAssemblySlug,
     templateParentOrderHashes,
     templateComposedClauseKeys,
+    agreementKeyOf,
+    slotAgreement,
+    slotClauses,
+    slotSectionBytes,
+    templateLeaves,
+    buildSlotInclusionProof,
+    assertNotReservedKey,
+    ASSEMBLY_TERMS_LEAF_KEY,
+    ASSEMBLY_TERMS_LEAF_LABEL,
     resolveAuthoredClauseKeys,
 } from "./assembly.js";
-export type { AssemblyTemplate, AssemblyFaqEntry, TemplateAgreement, AuthoredSpecSet } from "./assembly.js";
+export type {
+    AssemblyTemplate,
+    AssemblyFaqEntry,
+    TemplateSlot,
+    ComposedAgreement,
+    HydratedAssembly,
+    AuthoredSpecSet,
+} from "./assembly.js";
 
 // Member profile document — the identity envelope pinned to
 // MembersRegistry.metadataURI (discovery hands you the URI; this is the
@@ -372,7 +397,9 @@ export {
     RPGF_MIN_SELLERS,
     USAGE_KIND_CLAUSE,
     USAGE_KIND_ASSEMBLY,
+    USAGE_KIND_AGREEMENT,
     usageKeyId,
+    usageClaimKindCode,
 } from "./rpgf/index.js";
 export type {
     RpgfAllocation,

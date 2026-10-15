@@ -12,6 +12,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
+    agreementKeyOf,
     assertAgreementSignable,
     buildAssemblyTemplate,
     buildOrderAgreement,
@@ -66,13 +67,13 @@ describe("assertAgreementSignable — the shared sign gate", () => {
         expect(() => assertAgreementSignable(agreement, agreementHash, SPECS, STRUCT)).not.toThrow();
     });
 
-    it("signs the provenance leaf under the root and refuses a provenance that is not a 32-byte hash", () => {
+    it("signs the provenance leaf under the root and refuses a provenance that is not two 32-byte keys", () => {
         const { agreement } = buildOrderAgreement(BUYER, SELLER, { [keyOf("figaro-commerce")]: commerceData() }, SPECS);
-        const named = { ...agreement, provenance: `0x${"5e".repeat(32)}` as const };
+        const named = { ...agreement, provenance: { agreementKey: `0x${"6f".repeat(32)}`, compositionHash: `0x${"5e".repeat(32)}` } as const };
         expect(() => assertAgreementSignable(named, computeAgreementHash(named), SPECS, STRUCT)).not.toThrow();
         // The root without the provenance leaf is not this agreement's.
         expect(() => assertAgreementSignable(named, computeAgreementHash(agreement), SPECS, STRUCT)).toThrow(/merkle/);
-        const malformed = { ...agreement, provenance: "0x5e" as `0x${string}` };
+        const malformed = { ...agreement, provenance: { agreementKey: `0x${"6f".repeat(32)}`, compositionHash: "0x5e" } as const };
         expect(() => assertAgreementSignable(malformed, computeAgreementHash(agreement), SPECS, STRUCT))
             .toThrow(/32-byte/);
     });
@@ -227,7 +228,7 @@ describe("projection — golden-vector byte-exactness", () => {
             defaults: { canonicalAgreement: string; agreementHash: string };
             processLog: { canonicalAgreement: string; agreementHash: string };
         };
-        assemblyTemplate: { canonicalJson: string; compositionHash: string };
+        assemblyTemplate: { canonicalJson: string; compositionHash: string; agreements: Record<string, string> };
     };
 
     it("spec-default injection reproduces the frozen agreement + hash", () => {
@@ -257,20 +258,21 @@ describe("projection — golden-vector byte-exactness", () => {
         // and DESIGNER-AUTHORED (design.fills — recourse
         // terms are part of the assembly's identity, never buyer-authored),
         // so its typed value SURVIVES into the frozen output.
-        const template = serializeAssemblyTemplate(
-            buildAssemblyTemplate({
-                name: "Golden Vector Chain",
-                orders: [
-                    { orderHash: "synthetic-root", parentOrderHashes: [] },
-                    { orderHash: "synthetic-child", parentOrderHashes: ["synthetic-root"] },
-                ],
-                clausesByOrderId: {},
-                assemblyClauses: { [keyOf("figaro-applicable-law")]: { applicableLaw: "US-NY" } },
-                specs: SPECS,
-            }),
-        );
+        const built = buildAssemblyTemplate({
+            name: "Golden Vector Chain",
+            orders: [
+                { orderHash: "synthetic-root", parentOrderHashes: [] },
+                { orderHash: "synthetic-child", parentOrderHashes: ["synthetic-root"] },
+            ],
+            clausesByOrderId: {},
+            assemblyClauses: { [keyOf("figaro-applicable-law")]: { applicableLaw: "US-NY" } },
+            specs: SPECS,
+        });
+        const template = serializeAssemblyTemplate(built.template);
         expect(template.json).toBe(vectors.assemblyTemplate.canonicalJson);
         expect(template.compositionHash).toBe(vectors.assemblyTemplate.compositionHash);
+        expect(Object.fromEntries(Object.entries(built.agreements).map(([k, v]) => [k, canonicalize(v)])))
+            .toEqual(vectors.assemblyTemplate.agreements);
     });
 
     it("refuses wrong-level composition (scope verification)", () => {
@@ -459,17 +461,18 @@ describe("buildAssemblyTemplate — a clause is its spec: the fold folds every m
         const fake = lookalike("figaro-commerce");
         expect(fake.clauseKey).not.toBe(keyOf("figaro-commerce"));
         expect(fake.clauseId).toBe("figaro-commerce");
-        const template = buildAssemblyTemplate({ orders: ORDERS, clausesByOrderId: {}, specs: specSourceWithRegistrations(base, [fake]) });
-        for (const agreement of template.agreements) {
-            expect(agreement.clauses).toHaveProperty(keyOf("figaro-commerce"));
-            expect(agreement.clauses).toHaveProperty(fake.clauseKey);
-            expect(agreement.clauses).toHaveProperty(keyOf("figaro-topology"));
+        const { template, agreements } = buildAssemblyTemplate({ orders: ORDERS, clausesByOrderId: {}, specs: specSourceWithRegistrations(base, [fake]) });
+        for (const slot of template.agreements) {
+            const composed = agreements[slot.agreementKey].clauses;
+            expect(composed).toHaveProperty(keyOf("figaro-commerce"));
+            expect(composed).toHaveProperty(fake.clauseKey);
+            expect(composed).toHaveProperty(keyOf("figaro-topology"));
         }
     });
 
     it("with no registration added the template is the same — the fold reads only what the source surfaces", () => {
-        const once = serializeAssemblyTemplate(buildAssemblyTemplate({ orders: ORDERS, clausesByOrderId: {}, specs: base }));
-        const twice = serializeAssemblyTemplate(buildAssemblyTemplate({ orders: ORDERS, clausesByOrderId: {}, specs: base }));
+        const once = serializeAssemblyTemplate(buildAssemblyTemplate({ orders: ORDERS, clausesByOrderId: {}, specs: base }).template);
+        const twice = serializeAssemblyTemplate(buildAssemblyTemplate({ orders: ORDERS, clausesByOrderId: {}, specs: base }).template);
         expect(twice.compositionHash).toBe(once.compositionHash);
     });
 
@@ -479,21 +482,22 @@ describe("buildAssemblyTemplate — a clause is its spec: the fold folds every m
             clauseId: "stranger-assembly-floor",
             block: { ...(r.block as Record<string, unknown>), design: { ...((r.block as { design?: object }).design ?? {}), article: "mandatory", scope: "assembly" } },
         }));
-        const template = buildAssemblyTemplate({ orders: [ORDERS[0]], clausesByOrderId: {}, specs: specSourceWithRegistrations(base, [floor]) });
+        const { template, agreements } = buildAssemblyTemplate({ orders: [ORDERS[0]], clausesByOrderId: {}, specs: specSourceWithRegistrations(base, [floor]) });
         expect(template.assemblyClauses).toEqual({ [floor.clauseKey]: {} });
-        expect(template.agreements[0].clauses).not.toHaveProperty(floor.clauseKey);
+        expect(agreements[template.agreements[0].agreementKey].clauses).not.toHaveProperty(floor.clauseKey);
     });
 
     it("composes the key the design names, whatever else shares its name", () => {
         const fake = lookalike("figaro-geolocation");
         const specs = specSourceWithRegistrations(base, [fake]);
-        const template = buildAssemblyTemplate({
+        const { template, agreements } = buildAssemblyTemplate({
             orders: [ORDERS[0]],
             clausesByOrderId: { "synthetic-root": { [keyOf("figaro-geolocation")]: {} } },
             specs,
         });
-        expect(template.agreements[0].clauses).toHaveProperty(keyOf("figaro-geolocation"));
-        expect(template.agreements[0].clauses).not.toHaveProperty(fake.clauseKey);
+        const composed = agreements[template.agreements[0].agreementKey].clauses;
+        expect(composed).toHaveProperty(keyOf("figaro-geolocation"));
+        expect(composed).not.toHaveProperty(fake.clauseKey);
     });
 
     it("a composed key whose spec is not loaded is a build error, on an order and at the assembly level", () => {
@@ -509,6 +513,44 @@ describe("buildAssemblyTemplate — a clause is its spec: the fold folds every m
             assemblyClauses: { [unloaded]: {} },
             specs: base,
         })).toThrow(new RegExp(`clause ${unloaded} is composed at the assembly level but its spec is not loaded`));
+    });
+
+    it("puts the topology's parents in the order slot and composes the topology clause with {}", () => {
+        const { template, agreements } = buildAssemblyTemplate({ orders: ORDERS, clausesByOrderId: {}, specs: base });
+        // Both order slots compose the same clauses, so they bind one agreement.
+        expect(Object.keys(agreements)).toHaveLength(1);
+        const [root, child] = template.agreements;
+        expect(root.agreementKey).toBe(child.agreementKey);
+        expect(agreements[root.agreementKey].clauses[keyOf("figaro-topology")]).toEqual({});
+        expect(root.clauses).toEqual({ [keyOf("figaro-topology")]: { parentOrderHashes: [] } });
+        expect(child.clauses).toEqual({ [keyOf("figaro-topology")]: { parentOrderHashes: ["order-0"] } });
+        expect(agreementKeyOf(agreements[root.agreementKey])).toBe(root.agreementKey);
+    });
+
+    it("binds a registered agreement as is, and refuses one lacking a live mandatory spec", () => {
+        const registered = { name: "Registered", clauses: { [keyOf("figaro-commerce")]: {}, [keyOf("figaro-topology")]: {}, [keyOf("figaro-geolocation")]: {} } };
+        const { template, agreements } = buildAssemblyTemplate({
+            orders: ORDERS,
+            clausesByOrderId: {},
+            registeredByOrderId: { "synthetic-child": registered },
+            specs: base,
+        });
+        expect(template.agreements[1].agreementKey).toBe(agreementKeyOf(registered));
+        expect(template.agreements[1].clauses).toEqual({ [keyOf("figaro-topology")]: { parentOrderHashes: ["order-0"] } });
+        // Only the newly composed agreement is returned to register.
+        expect(Object.keys(agreements)).toEqual([template.agreements[0].agreementKey]);
+        // A registered agreement missing a live mandatory clause is refused…
+        const lacking = { clauses: { [keyOf("figaro-commerce")]: {} } };
+        expect(() => buildAssemblyTemplate({
+            orders: ORDERS, clausesByOrderId: {}, registeredByOrderId: { "synthetic-child": lacking }, specs: base,
+        })).toThrow(/lacks the live mandatory/);
+        // …as is one order binding a registered agreement and composing clauses too.
+        expect(() => buildAssemblyTemplate({
+            orders: ORDERS,
+            clausesByOrderId: { "synthetic-child": { [keyOf("figaro-geolocation")]: {} } },
+            registeredByOrderId: { "synthetic-child": registered },
+            specs: base,
+        })).toThrow(/choose one/);
     });
 
     it("refuses a template build with no mandatory clause loaded", () => {

@@ -6,6 +6,7 @@ import {RpgfMinter} from "src/build/rewards/RpgfMinter.sol";
 import {FlorinToken} from "src/build/florin/FlorinToken.sol";
 import {ClauseRegistry} from "src/build/registries/ClauseRegistry.sol";
 import {AssemblyRegistry} from "src/build/registries/AssemblyRegistry.sol";
+import {AgreementRegistry} from "src/build/registries/AgreementRegistry.sol";
 
 /// @notice Stand-in for UsageCounter so payout maths can be exercised directly,
 ///         including shapes a real accrual would take many resolved processes to
@@ -57,15 +58,18 @@ contract RpgfMinterTest is Test {
     FlorinToken florin;
     ClauseRegistry clauses;
     AssemblyRegistry assemblies;
+    AgreementRegistry agreements;
 
     address alice = address(0xA11CE);
     address bob = address(0xB0B);
     address carol = address(0xCA401);
+    address dave = address(0xDA7E);
 
     // Each clause key is keccak256 of a spec's pinned bytes.
     bytes32 constant A_KEY = keccak256('{"clauseId":"clause-a","version":1}');
     bytes32 constant B_KEY = keccak256('{"clauseId":"clause-b","version":1}');
     bytes32 constant ASM = keccak256("an-assembly");
+    bytes32 constant AGR = keccak256("an-agreement");
 
     // The reference per-year slices: a first-tranche year,
     // a second-tranche year, a third-tranche year. The grouping itself is
@@ -86,6 +90,7 @@ contract RpgfMinterTest is Test {
         counter = new StubCounter();
         clauses = new ClauseRegistry(0);
         assemblies = new AssemblyRegistry(0);
+        agreements = new AgreementRegistry(0);
 
         vm.prank(alice);
         clauses.registerClause(A_KEY, "ipfs://a");
@@ -93,13 +98,18 @@ contract RpgfMinterTest is Test {
         clauses.registerClause(B_KEY, "ipfs://b");
         vm.prank(carol);
         assemblies.registerAssembly(ASM, "ipfs://asm");
+        vm.prank(dave);
+        agreements.registerAgreement(AGR, "ipfs://agr");
 
-        minter = new RpgfMinter(address(florin), address(counter), address(clauses), address(assemblies), _amounts());
+        minter = new RpgfMinter(
+            address(florin), address(counter), address(clauses), address(assemblies), address(agreements), _amounts()
+        );
         florin.registerMinter(address(minter), 600_000_000 ether);
     }
 
     uint8 constant KIND_CLAUSE = 0;
     uint8 constant KIND_ASSEMBLY = 1;
+    uint8 constant KIND_AGREEMENT = 2;
 
     function _entry(uint8 kind, bytes32 k) internal pure returns (RpgfMinter.ClauseOrAssemblyKey memory) {
         return RpgfMinter.ClauseOrAssemblyKey(kind, k);
@@ -113,6 +123,11 @@ contract RpgfMinterTest is Test {
     function _assembly(bytes32 k) internal pure returns (RpgfMinter.ClauseOrAssemblyKey[] memory a) {
         a = new RpgfMinter.ClauseOrAssemblyKey[](1);
         a[0] = _entry(KIND_ASSEMBLY, k);
+    }
+
+    function _agreement(bytes32 k) internal pure returns (RpgfMinter.ClauseOrAssemblyKey[] memory a) {
+        a = new RpgfMinter.ClauseOrAssemblyKey[](1);
+        a[0] = _entry(KIND_AGREEMENT, k);
     }
 
     // ── Pro-rata payout ─────────────────────────────────────────────
@@ -205,14 +220,72 @@ contract RpgfMinterTest is Test {
         assertEq(florin.balanceOf(bob), 0);
     }
 
+    /// The kinds end at the agreement kind: the first kind past it names no
+    /// registry.
     function test_revertsOnUnknownKind() public {
         counter.setScore(KIND_CLAUSE, A_KEY, 0, 100);
         counter.setClosed(0, true);
         RpgfMinter.ClauseOrAssemblyKey[] memory list = new RpgfMinter.ClauseOrAssemblyKey[](1);
-        list[0] = _entry(7, A_KEY);
+        list[0] = _entry(3, A_KEY);
         vm.prank(alice);
-        vm.expectRevert(abi.encodeWithSelector(RpgfMinter.UnknownKind.selector, uint8(7)));
+        vm.expectRevert(abi.encodeWithSelector(RpgfMinter.UnknownKind.selector, uint8(3)));
         minter.claim(0, list);
+    }
+
+    // ── The agreement kind ──────────────────────────────────────────
+
+    /// A claim by kind 2 pays the agreement's designer of record from the
+    /// agreement's own score, while its stake is live.
+    function test_agreementDesignerIsPaid() public {
+        counter.setScore(KIND_AGREEMENT, AGR, 0, 250);
+        counter.setScore(KIND_CLAUSE, A_KEY, 0, 750);
+        counter.setClosed(0, true);
+        vm.prank(dave);
+        minter.claim(0, _agreement(AGR));
+        assertEq(florin.balanceOf(dave), (T0 * 250) / 1000);
+    }
+
+    /// The same gate on the agreement arm: withdraw the stake and the claim
+    /// fails — the agreement is no longer the wallet's of record.
+    function test_withdrawnAgreementDesignerForfeitsTheReward() public {
+        counter.setScore(KIND_AGREEMENT, AGR, 0, 100);
+        counter.setClosed(0, true);
+        vm.prank(dave);
+        agreements.withdrawDeposit(AGR);
+
+        vm.prank(dave);
+        vm.expectRevert(abi.encodeWithSelector(RpgfMinter.NotAuthorOfRecord.selector, KIND_AGREEMENT, AGR, dave));
+        minter.claim(0, _agreement(AGR));
+    }
+
+    /// The same bytes staked in all three registries by three wallets: each
+    /// kind names its own registry and its own score, and nobody is paid from
+    /// another family's accrual.
+    function test_theThreeKindsPayOnlyTheirOwnDesignerOfRecord() public {
+        vm.prank(bob);
+        clauses.registerClause(AGR, "ipfs://bob-stakes-daves-agreement-key-as-a-clause");
+        vm.prank(carol);
+        assemblies.registerAssembly(AGR, "ipfs://carol-stakes-daves-agreement-key-as-an-assembly");
+        counter.setScore(KIND_AGREEMENT, AGR, 0, 500);
+        counter.setClosed(0, true);
+
+        vm.prank(bob);
+        vm.expectRevert(RpgfMinter.NothingToClaim.selector);
+        minter.claim(0, _clause(AGR));
+
+        vm.prank(carol);
+        vm.expectRevert(RpgfMinter.NothingToClaim.selector);
+        minter.claim(0, _assembly(AGR));
+
+        vm.prank(bob);
+        vm.expectRevert(abi.encodeWithSelector(RpgfMinter.NotAuthorOfRecord.selector, KIND_AGREEMENT, AGR, bob));
+        minter.claim(0, _agreement(AGR));
+
+        vm.prank(dave);
+        minter.claim(0, _agreement(AGR));
+        assertEq(florin.balanceOf(dave), T0, "the agreement's designer of record takes its accrual");
+        assertEq(florin.balanceOf(bob), 0);
+        assertEq(florin.balanceOf(carol), 0);
     }
 
     function test_revertsOnUnknownClauseOrAssembly() public {
@@ -445,13 +518,15 @@ contract RpgfMinterTest is Test {
     function test_constructor_rejectsZeroAddresses() public {
         uint256[] memory amts = _amounts();
         vm.expectRevert(RpgfMinter.ZeroAddress.selector);
-        new RpgfMinter(address(0), address(counter), address(clauses), address(assemblies), amts);
+        new RpgfMinter(address(0), address(counter), address(clauses), address(assemblies), address(agreements), amts);
         vm.expectRevert(RpgfMinter.ZeroAddress.selector);
-        new RpgfMinter(address(florin), address(0), address(clauses), address(assemblies), amts);
+        new RpgfMinter(address(florin), address(0), address(clauses), address(assemblies), address(agreements), amts);
         vm.expectRevert(RpgfMinter.ZeroAddress.selector);
-        new RpgfMinter(address(florin), address(counter), address(0), address(assemblies), amts);
+        new RpgfMinter(address(florin), address(counter), address(0), address(assemblies), address(agreements), amts);
         vm.expectRevert(RpgfMinter.ZeroAddress.selector);
-        new RpgfMinter(address(florin), address(counter), address(clauses), address(0), amts);
+        new RpgfMinter(address(florin), address(counter), address(clauses), address(0), address(agreements), amts);
+        vm.expectRevert(RpgfMinter.ZeroAddress.selector);
+        new RpgfMinter(address(florin), address(counter), address(clauses), address(assemblies), address(0), amts);
     }
 
     /// The budget array and the counter's period schedule are ONE schedule —
@@ -461,6 +536,8 @@ contract RpgfMinterTest is Test {
         tooFew[0] = T0;
         tooFew[1] = T1;
         vm.expectRevert(abi.encodeWithSelector(RpgfMinter.AmountsPeriodsMismatch.selector, 2, 3));
-        new RpgfMinter(address(florin), address(counter), address(clauses), address(assemblies), tooFew);
+        new RpgfMinter(
+            address(florin), address(counter), address(clauses), address(assemblies), address(agreements), tooFew
+        );
     }
 }

@@ -5,25 +5,25 @@ pragma solidity 0.8.26;
 /// @custom:security-contact figarosecurity@gmail.com
 /// @custom:audit-status UNAUDITED — This contract has not been reviewed by an independent security auditor.
 /// @notice On-chain dedup guard + event emission for assembly registration.
-///         Parallel to `ClauseRegistry` (clauses) and `MembersRegistry`
-///         (sellers) — each family carries its own anchor per
-///         the protocol's separation-of-concerns doctrine.
+///         Parallel to `ClauseRegistry` (clauses), `AgreementRegistry`
+///         (agreements) and `MembersRegistry` (members) — each family carries
+///         its own anchor per the protocol's separation-of-concerns doctrine.
 ///
-///         An assembly is a composition template that USES clauses. Its
-///         identity IS its composition: compositionHash is keccak256 of
-///         the canonical composition subset of the off-chain assembly
-///         template (the composed agreements — their clauses, values, and
-///         topology; editorial prose excluded, so renaming never forks
-///         identity). The registry keys bindings by compositionHash:
+///         An assembly composes registered agreements into order slots; its
+///         identity IS its composition: compositionHash is the merkle root,
+///         under the agreement format's leaf convention, over one leaf per
+///         order slot (key: its agreementKey; bytes: `{"clauses":…,"slot":i}`)
+///         and the terms leaf when assembly-scoped clauses are composed
+///         (editorial prose excluded). The registry keys bindings by compositionHash:
 ///         identical compositions collapse to one binding, and no
 ///         caller-chosen name exists on-chain to squat. The human-readable
 ///         slug is presentation, derived off-chain as a pure function of
 ///         compositionHash.
 ///
 ///         contentURI points at the full pinned template document
-///         (typically IPFS) — including the editorial prose the hash
+///         (typically IPFS) — including the editorial prose the root
 ///         excludes. Readers fetch the document from contentURI and verify
-///         it by recomputing compositionHash from its composition subset.
+///         it by rebuilding the root from its order slots and terms.
 ///
 ///         The contract does NOT validate assembly-template content. It cannot —
 ///         the document lives off-chain; the contract only stores its
@@ -52,15 +52,15 @@ pragma solidity 0.8.26;
 ///
 ///         WITHDRAW GATE (commits == resolves): the registering wallet should not
 ///         withdraw while processes composed from the assembly are in
-///         flight. The usage count lives in the indexer — the same count
-///         the RPGF program pays on — so the gate is enforced at the
-///         protocol surface (SDK/frontend refuse while commits > resolves).
-///         The contract itself cannot hold the count: FigaroCore is frozen
-///         and carries no composition provenance, so there is no on-chain
-///         hardening of this gate.
+///         flight. The in-flight count lives in the indexer (commits without
+///         resolution, attributed by each order's decoded provenance), so
+///         the gate is enforced at the protocol surface (SDK/frontend refuse
+///         while commits > resolves). `FigaroCore` never calls the registries
+///         and carries no usage, so no contract can learn the count and there
+///         is no on-chain hardening of this gate.
 ///
-///         Authorship is first-write-wins on the compositionHash: whoever
-///         anchors a composition first is its author-of-record. Editorial
+///         The designer of record is first-write-wins on the compositionHash:
+///         whoever anchors a composition first is its designer of record. Editorial
 ///         prose is not identity, so a front-runner can anchor someone
 ///         else's composition under their own prose — the same accepted
 ///         squatting economics as ClauseRegistry name registration; the
@@ -92,15 +92,15 @@ contract AssemblyRegistry {
         string contentURI;
     }
 
-    /// @notice compositionHash (keccak256 of the canonical composition
-    ///         subset of the template) → binding details.
+    /// @notice compositionHash (the merkle root over the template's order
+    ///         slots and terms) → binding details.
     mapping(bytes32 => AssemblyBinding) public bindings;
 
     // ── Events ──────────────────────────────────────────────────────────
 
     /// @notice Emitted when an assembly is registered.
-    /// @param compositionHash keccak256 of the canonical composition subset
-    ///                        of the off-chain assembly template — the
+    /// @param compositionHash The merkle root over the off-chain assembly
+    ///                        template's order slots and terms — the
     ///                        assembly's identity.
     /// @param registeredBy    Address that registered the assembly.
     /// @param contentURI      Full off-chain assembly-template document URI
@@ -141,8 +141,8 @@ contract AssemblyRegistry {
     ///         off-chain; clause content well-formedness is the off-chain
     ///         Layer-A SDK's concern — there is no on-chain content
     ///         validation.
-    /// @param compositionHash keccak256 of the canonical composition subset
-    ///                        of the off-chain assembly template.
+    /// @param compositionHash The merkle root over the off-chain assembly
+    ///                        template's order slots and terms.
     /// @param contentURI      Full off-chain assembly-template document
     ///                        pointer (typically IPFS).
     function registerAssembly(bytes32 compositionHash, string calldata contentURI) external payable {

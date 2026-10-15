@@ -17,8 +17,10 @@
 <div class="tsd-signature tsd-anchor-link" id="anchortemplate"><span class="tsd-kind-call-signature">anchorTemplate</span><span class="tsd-signature-symbol">(</span><br/>    <span class="tsd-kind-parameter">raw</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">unknown</span><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">compositionHash</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">,</span><br/><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <a href="../types/index.Anchored.html" class="tsd-signature-type tsd-kind-type-alias">Anchored</a><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/index.AssemblyTemplate.html" class="tsd-signature-type tsd-kind-interface">AssemblyTemplate</a><span class="tsd-signature-symbol">&gt;</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">null</span><a href="#anchortemplate" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
 <div class="tsd-description">
 <div class="tsd-comment tsd-typography"><p>An assembly template, verified against <code>AssemblyRegistry</code>'s
-<code>compositionHash</code>: its composition subset hashes to it. A document with no
-<code>agreements</code> array carries no composition and is not a template.</p>
+<code>compositionHash</code>: the merkle root over its order slot leaves and its
+assembly-terms leaf is the hash. A document with no <code>agreements</code> array
+carries no composition and is not a template; an order slot whose key is
+malformed or reserved does not hash.</p>
 </div>
 <div class="tsd-parameters">
 <h4 class="tsd-parameters-title">Parameters</h4>
@@ -27,7 +29,7 @@
 <li><span><span class="tsd-kind-parameter">compositionHash</span>: <span class="tsd-signature-type">string</span></span></li></ul></div>
 <h4 class="tsd-returns-title">Returns <a href="../types/index.Anchored.html" class="tsd-signature-type tsd-kind-type-alias">Anchored</a><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/index.AssemblyTemplate.html" class="tsd-signature-type tsd-kind-interface">AssemblyTemplate</a><span class="tsd-signature-symbol">&gt;</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">null</span></h4><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/anchored.ts#L67">anchored.ts:67</a></li></ul></aside></div></li></ul></section></div>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/anchored.ts#L150">anchored.ts:150</a></li></ul></aside></div></li></ul></section></div>
 <div class="col-sidebar">
 <div class="page-menu">
 <div class="tsd-navigation settings">

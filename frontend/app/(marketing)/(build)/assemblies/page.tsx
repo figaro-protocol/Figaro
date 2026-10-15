@@ -10,7 +10,7 @@ import { DesignGraphCollapseFigure } from "@/components/figures/DesignGraphColla
 export const metadata: Metadata = withOg({
     title: "Assemblies — Figaro Protocol",
     description:
-        "Composition templates anchored on AssemblyRegistry — each assembly wires clauses into a multi-order process. The registry explorer reads on-chain AssemblyRegistered events directly.",
+        "Composition templates anchored on AssemblyRegistry — each assembly composes registered agreements, each a reusable composition of clauses, into a multi-order process. The registry explorer reads on-chain AssemblyRegistered events directly.",
 });
 
 export default function Assemblies() {
@@ -25,7 +25,8 @@ export default function Assemblies() {
                         a data sale, a certified repair. Somebody draws a shape once, and
                         anyone who fits it can trade through it without drawing it again.
                         An assembly is that drawing &mdash; a composition template
-                        that wires clauses{" "}
+                        that wires registered agreements, each a reusable composition of
+                        clauses,{" "}
                         into a multi-order process. Each one registers on{" "}
                         <code>AssemblyRegistry</code> under its <strong>composition hash</strong>
                         {" "}&mdash; the hash IS the identity &mdash; with an IPFS pointer to its
@@ -52,7 +53,7 @@ export default function Assemblies() {
 
             <MarketingSection title="How one is composed.">
                 <p className="text-sm text-ink-body leading-relaxed">
-                    Every assembly carries two mandatory clauses automatically: commerce terms, the payment and the denomination committed at buy time; and order topology, which seller follows which. The checkout writes which assembly a process instantiates into every agreement &mdash; the assembly&apos;s <code>compositionHash</code>, as one reserved leaf of the agreement&apos;s merkle tree that the chain can prove by inclusion &mdash; so the assembly&apos;s designer is credited without any clause carrying it. From there, a designer composes the rest by spawning sub-orders from any node and attaching the clauses that define each edge: geolocation, modalities, schedule, handoff, proximity, emissions, applicable law and forum, and more. Those clauses are read live from the <code>ClauseRegistry</code>, never a fixed menu &mdash; a clause registered tomorrow is available to compose immediately, no code change.
+                    An assembly is composed from registered agreements: each order in it holds one, a reusable composition of clauses registered once on <code>AgreementRegistry</code> and bound as is by any assembly that needs it. A designer spawns sub-orders from any node and fills each with a registered agreement &mdash; or composes the clauses that define that edge into a new agreement, registered when the assembly is published: geolocation, modalities, schedule, handoff, proximity, emissions, applicable law and forum, and more. Every agreement carries two mandatory clauses: commerce terms, the payment and the denomination committed at buy time; and order topology, which seller follows which. Clauses and agreements are read live from their registries, never a fixed menu &mdash; one registered tomorrow is available to compose immediately, no code change. The checkout writes which registered agreement and which assembly an order instantiates into its agreement &mdash; one reserved leaf of the agreement&apos;s merkle tree that the chain can prove by inclusion &mdash; so both designers are credited without any clause carrying it.
                 </p>
                 <DesignGraphCollapseFigure
                     idPrefix="assemblies-design-collapse"
@@ -123,9 +124,9 @@ export default function Assemblies() {
                     contentURI)</code>. That is the whole on-chain record. <strong>There is no
                     slug on chain, and no name.</strong> The <code>contentURI</code> points at
                     the off-chain assembly template, which carries the topology &mdash; the
-                    orders and their parent-child links &mdash; plus the per-order agreements
-                    (which clauses attach, and the field values that compose into each
-                    agreement hash). Anything a seller offers at checkout composes through
+                    orders and their parent-child links &mdash; plus the key of the registered
+                    agreement each order holds (each one names which clauses attach and the
+                    designer&apos;s fills). Anything a seller offers at checkout composes through
                     assemblies.
                 </p>
                 <p className="text-sm text-ink-body leading-relaxed mb-4">
@@ -144,14 +145,15 @@ export default function Assemblies() {
                     one binding, and withdrawing the stake de-surfaces the assembly without
                     clearing it. To change an assembly, register the changed composition: it
                     hashes differently, so it is a different assembly with a different derived
-                    slug, and the original author&apos;s binding is untouched.
+                    slug, and the original designer of record&apos;s binding is untouched.
                 </p>
             </MarketingSection>
 
             <MarketingSection title="What the composition hash covers.">
                 <p className="text-sm text-ink-body leading-relaxed mb-4">
-                    An assembly&apos;s identity is computed over a <em>subset</em> of the document
-                    you pin, and knowing which subset is what lets you rename an assembly without
+                    An assembly&apos;s identity is a merkle root computed over a <em>subset</em> of
+                    the document you pin &mdash; one leaf per order, keyed by the registered
+                    agreement it holds, and one for the assembly-scoped terms &mdash; and knowing which subset is what lets you rename an assembly without
                     forking it &mdash; or accidentally fork it by touching one field. This is the
                     assembly half of the same question the clause registry answers on{" "}
                     <Link href="/clauses" className="underline">Clauses</Link>:
@@ -167,24 +169,24 @@ export default function Assemblies() {
                         </thead>
                         <tbody className="[&>tr]:border-b [&>tr]:border-default align-top">
                             <tr>
-                                <td className="py-2 pr-4"><code>agreements[]</code> &mdash; every composed clause and every designer-authored value in it</td>
+                                <td className="py-2 pr-4"><code>agreements[].agreementKey</code> &mdash; the registered agreement each order holds</td>
                                 <td className="py-2 pr-4 font-semibold">Yes</td>
-                                <td className="py-2">This is the composition. A different clause set, or one different design fill, is a different assembly.</td>
+                                <td className="py-2">One leaf per order, in order, so one registered agreement may hold two orders. A different registered agreement in any order is a different assembly.</td>
                             </tr>
                             <tr>
-                                <td className="py-2 pr-4">the topology, carried as a clause (<code>parentOrderHashes</code>)</td>
+                                <td className="py-2 pr-4">the clause keys and design fills inside each registered agreement</td>
+                                <td className="py-2 pr-4 font-semibold">Yes, through its key</td>
+                                <td className="py-2">An agreement&apos;s key is the hash of the clause keys it composes and the designer&apos;s fills. A different clause set, one different design fill, or another clause that shares a name is a different agreement, so a different assembly.</td>
+                            </tr>
+                            <tr>
+                                <td className="py-2 pr-4">the topology, carried as a clause in each order (<code>parentOrderHashes</code>)</td>
                                 <td className="py-2 pr-4 font-semibold">Yes</td>
-                                <td className="py-2">Topology is a clause like any other, so it rides in with the agreements. Re-wire the chain, get a new assembly.</td>
+                                <td className="py-2">The registered agreement leaves it empty; each order fills it in its own leaf. Re-wire the chain, get a new assembly from the same agreements.</td>
                             </tr>
                             <tr>
                                 <td className="py-2 pr-4"><code>assemblyClauses</code> &mdash; the assembly-scoped terms composed once for the whole design</td>
                                 <td className="py-2 pr-4 font-semibold">Yes</td>
-                                <td className="py-2">A differently-termed assembly is a different assembly. (Omitted from the hash entirely when none are composed, so pre-existing hashes are unchanged.)</td>
-                            </tr>
-                            <tr>
-                                <td className="py-2 pr-4">the clause keys composed</td>
-                                <td className="py-2 pr-4 font-semibold">Yes</td>
-                                <td className="py-2">A clause&apos;s identity is its key, the hash of its pinned spec, and the template carries the keys it composed. Two clauses that share a name have two keys, so composing the other one is a different assembly.</td>
+                                <td className="py-2">One more leaf, present only when any are composed. A differently-termed assembly is a different assembly.</td>
                             </tr>
                             <tr>
                                 <td className="py-2 pr-4">editorial prose &mdash; <code>name</code>, <code>summary</code>, <code>description</code></td>
@@ -207,7 +209,7 @@ export default function Assemblies() {
                 <pre className="text-xs font-mono text-ink-body bg-paper border border-default rounded-section p-4 overflow-x-auto mt-3"><code>{`import { templateCompositionHash,
          deriveAssemblySlug } from "@figaro-protocol/sdk";
 
-const h = templateCompositionHash(template);   // the registry key
+const h = templateCompositionHash(template);   // the registry key: the merkle root
 deriveAssemblySlug(h);                         // "asm-<first 8 bytes>"
 
 // Prove prose is excluded: same hash, different words.
@@ -221,7 +223,7 @@ templateCompositionHash({ ...template, name: "Anything" }) === h;  // true`}</co
                 <p className="text-sm text-ink-body leading-relaxed mb-6">
                     Every registered assembly is searchable in the registry explorer &mdash; each
                     row one on-chain binding keyed by its composition hash, its template fetched
-                    from IPFS, its author the wallet that anchored it.
+                    from IPFS, its designer of record the wallet that anchored it.
                 </p>
                 <RegistryCountLink family="assemblies" />
                 <p className="text-sm text-ink-body leading-relaxed mt-6">

@@ -11,7 +11,7 @@ import "../src/core/verifier/FigaroBatchVerifier.sol";
 ///
 /// @notice Redeploys ONLY the adjacent pair (UsageCounter + FigaroBatchVerifier,
 ///         which hold each other's address) against a stack already live on
-///         Sepolia. The Core, the three registries and their stakes are
+///         Sepolia. The Core, the four registries and their stakes are
 ///         untouched; their addresses come from the deployment record, exported
 ///         as EXISTING_* by scripts/deploy-sepolia.sh's PAIR_ONLY mode. The pair
 ///         is parameterized exactly as script/DeploySepolia.s.sol's pair section,
@@ -38,6 +38,7 @@ import "../src/core/verifier/FigaroBatchVerifier.sol";
 ///   EXISTING_MEMBERS_REGISTRY   — the record's membersRegistry
 ///   EXISTING_CLAUSE_REGISTRY    — the record's clauseRegistry
 ///   EXISTING_ASSEMBLY_REGISTRY  — the record's assemblyRegistry
+///   EXISTING_AGREEMENT_REGISTRY — the record's agreementRegistry
 contract DeploySepoliaPair is Script {
     /// @dev The REAL accrual period — DeploySepolia.s.sol's value.
     uint64 constant PERIOD = 365 days;
@@ -52,6 +53,7 @@ contract DeploySepoliaPair is Script {
             vm.envAddress("EXISTING_MEMBERS_REGISTRY"),
             vm.envAddress("EXISTING_CLAUSE_REGISTRY"),
             vm.envAddress("EXISTING_ASSEMBLY_REGISTRY"),
+            vm.envAddress("EXISTING_AGREEMENT_REGISTRY"),
             vm.envAddress("SP1_VERIFIER_GATEWAY"),
             vm.envBytes32("SP1_PROGRAM_VKEY"),
             uint64(vm.envUint("RPGF_GENESIS"))
@@ -69,6 +71,7 @@ contract DeploySepoliaPair is Script {
         address members_,
         address clauses_,
         address assemblies_,
+        address agreements_,
         address gateway_,
         bytes32 vkey_,
         uint64 genesis_
@@ -80,6 +83,7 @@ contract DeploySepoliaPair is Script {
         require(members_.code.length != 0, "EXISTING_MEMBERS_REGISTRY has no code on this chain");
         require(clauses_.code.length != 0, "EXISTING_CLAUSE_REGISTRY has no code on this chain");
         require(assemblies_.code.length != 0, "EXISTING_ASSEMBLY_REGISTRY has no code on this chain");
+        require(agreements_.code.length != 0, "EXISTING_AGREEMENT_REGISTRY has no code on this chain");
         require(gateway_ != address(0), "SP1_VERIFIER_GATEWAY not set");
         require(vkey_ != bytes32(0), "SP1_PROGRAM_VKEY not set");
         require(
@@ -88,7 +92,7 @@ contract DeploySepoliaPair is Script {
         );
 
         vm.startBroadcast(privateKey);
-        _deployPair(privateKey, core_, members_, clauses_, assemblies_, gateway_, vkey_, genesis_);
+        _deployPair(privateKey, core_, members_, clauses_, assemblies_, agreements_, gateway_, vkey_, genesis_);
         vm.stopBroadcast();
     }
 
@@ -102,6 +106,7 @@ contract DeploySepoliaPair is Script {
         address members_,
         address clauses_,
         address assemblies_,
+        address agreements_,
         address gateway_,
         bytes32 vkey_,
         uint64 genesis_
@@ -119,6 +124,7 @@ contract DeploySepoliaPair is Script {
             members_,
             clauses_,
             assemblies_,
+            agreements_,
             predictedVerifier,
             3, // minimum-support floor
             periods

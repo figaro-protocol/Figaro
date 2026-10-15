@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { act, renderHook } from "@testing-library/react";
+import { agreementKeyOf } from "@figaro-protocol/sdk";
 
 /**
  * The editorial projection: an assembly reaches a reader as the designer's
@@ -11,10 +12,10 @@ import { act, renderHook } from "@testing-library/react";
  */
 
 const publishedMock = vi.fn();
-const fetchAssemblyTemplateMock = vi.fn();
+const fetchHydratedAssemblyMock = vi.fn();
 vi.mock("@/lib/protocol/useAssemblyRegistry", () => ({
     usePublishedAssemblies: () => publishedMock(),
-    fetchAssemblyTemplate: (...args: unknown[]) => fetchAssemblyTemplateMock(...args),
+    fetchHydratedAssembly: (...args: unknown[]) => fetchHydratedAssemblyMock(...args),
 }));
 
 import { useAssemblyChoices } from "@/lib/protocol/assemblyChoices";
@@ -35,9 +36,21 @@ const flush = () =>
         await Promise.resolve();
     });
 
+/** The hydrated read of a template whose order slots each bind the agreement
+ *  their clauses key to. */
+function hydrated(template: Record<string, unknown> & { agreements: { id: string; clauses: Record<string, Record<string, unknown>> }[] }) {
+    const agreements: Record<string, { clauses: Record<string, Record<string, unknown>> }> = {};
+    const slots = template.agreements.map((entry) => {
+        const agreementKey = agreementKeyOf({ clauses: entry.clauses as Record<`0x${string}`, Record<string, unknown>> });
+        agreements[agreementKey.toLowerCase()] = { clauses: entry.clauses };
+        return { id: entry.id, agreementKey, clauses: {} };
+    });
+    return { template: { ...template, agreements: slots }, agreements };
+}
+
 /** Render the projection over one published assembly with the given template. */
-async function choiceFor(template: Record<string, unknown> | null) {
-    fetchAssemblyTemplateMock.mockResolvedValue(template);
+async function choiceFor(template: (Record<string, unknown> & { agreements: { id: string; clauses: Record<string, Record<string, unknown>> }[] }) | null) {
+    fetchHydratedAssemblyMock.mockResolvedValue(template ? hydrated(template) : null);
     const { result } = renderHook(() => useAssemblyChoices());
     await flush();
     return result.current.data![0];
@@ -46,7 +59,7 @@ async function choiceFor(template: Record<string, unknown> | null) {
 describe("useAssemblyChoices — the designer's words reach the reader", () => {
     beforeEach(() => {
         publishedMock.mockReturnValue({ data: [EVENT], isLoading: false, failed: false, refetch: vi.fn() });
-        fetchAssemblyTemplateMock.mockReset();
+        fetchHydratedAssemblyMock.mockReset();
     });
 
     it("carries the template's name and summary", async () => {

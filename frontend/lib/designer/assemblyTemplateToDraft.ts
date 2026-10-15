@@ -1,21 +1,35 @@
 /**
- * assemblyTemplateToDraft — hydrates a `DesignSnapshot` from a published
- * assembly TEMPLATE (the no-hash JSON pinned on AssemblyRegistry). Powers the
- * "Fork" button: a published template is fetched, this helper turns it into a
- * localStorage draft under a new slug, and the canvas opens at
- * /assemblies/designer/edit?slug=<new-slug>.
+ * assemblyTemplateToDraft — hydrates a `DesignSnapshot` from a HYDRATED
+ * assembly (the template pinned on AssemblyRegistry beside every order slot's
+ * registered agreement, each verified). Powers the "Fork" button: a published
+ * assembly is read, this helper turns it into a localStorage draft under a
+ * new slug, and the canvas opens at /assemblies/designer/edit?slug=<new-slug>.
  *
- * The template carries structure (orders + topology parents) + the per-order clause
- * choices, but no agreements and no payment (payment is a runtime value). So
- * each template order is reconstructed into a display Order with a synthetic
- * agreement (built from its clauses + topology parents) seeded into the store so the
- * canvas resolves it by hash; the clause choices are carried into the draft's
- * `clausesByOrderId` so re-opening the fork shows them.
+ * The template carries structure (order slots + the topology parents in each
+ * slot's own fill) and, per order slot, the registered agreement it binds —
+ * no payment (payment is a runtime value). Each order slot is reconstructed
+ * into a display Order with a synthetic agreement (built from its clauses +
+ * topology parents) seeded into the store so the canvas resolves it by hash.
+ * Each order slot keeps binding its registered agreement (`registeredByOrderId`)
+ * — unless the caller names its key among `composeKeys`, in which case the
+ * agreement's clauses are carried into `clausesByOrderId` for the designer to
+ * compose anew (an imported agreement no registry binds yet).
  */
 
-import { isBytes32Hex, planTemplateOrders } from "@figaro-protocol/sdk";
+import {
+    anchorComposedAgreement,
+    hydrateAssembly,
+    isBytes32Hex,
+    planTemplateOrders,
+    slotAgreement,
+    type ComposedAgreement,
+    type Hex,
+    type HydratedAssembly,
+} from "@figaro-protocol/sdk";
 import { ZERO_ADDRESS } from "@/lib/shared/evm";
 import { templateCompositionHash, type AssemblyTemplate } from "@/lib/shared/assemblyTemplate";
+import { fetchComposedAgreement } from "@/lib/protocol/useAgreementRegistry";
+import { safeJsonParse } from "@/lib/shared/safeJson";
 import type { ClauseFields } from "@/lib/shared/clauseFields";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import type { DesignSnapshot } from "./syntheticDesignStore";
@@ -32,14 +46,14 @@ const SYNTHETIC_PROCESS_ID = `0x${"00".repeat(32)}` as `0x${string}`;
  * so the canvas resolves it by hash. Used by the fork path and the read-only
  * `/view` resolver.
  */
-export function templateToOrders(template: AssemblyTemplate): Order[] {
+export function templateToOrders(hydrated: HydratedAssembly): Order[] {
     // The template is party-agnostic. For DISPLAY (fork / read-only /view) we
     // reconstruct synthetic parties — one shared synthetic buyer (rootBuyer) +
     // a distinct synthetic seller per order. Real parties bind at
     // adoption/checkout, never from the template. The nodes come from the ONE
     // template walk (`planTemplateOrders` — commit order, local parent edges);
     // per-order build→hash→save→assemble is the shared `buildSyntheticOrder`.
-    return planTemplateOrders(template).map((planned) =>
+    return planTemplateOrders(hydrated).map((planned) =>
         buildSyntheticOrder({
             orderId: planned.nodeId as `0x${string}`,
             processId: SYNTHETIC_PROCESS_ID,
@@ -55,10 +69,18 @@ export function templateToOrders(template: AssemblyTemplate): Order[] {
 }
 
 export function assemblyTemplateToDraft(
-    template: AssemblyTemplate,
-    options: { slug: string; name?: string },
+    hydrated: HydratedAssembly,
+    options: { slug: string; name?: string; composeKeys?: ReadonlySet<string> },
 ): DesignSnapshot {
-    const orders = templateToOrders(template);
+    const { template } = hydrated;
+    const orders = templateToOrders(hydrated);
+    const compose = (key: Hex) => options.composeKeys?.has(key.toLowerCase()) ?? false;
+    const registeredByOrderId: Record<string, Hex> = {};
+    const clausesByOrderId: Record<string, Record<string, Record<string, unknown>>> = {};
+    for (const slot of template.agreements) {
+        if (compose(slot.agreementKey)) clausesByOrderId[slot.id] = { ...slotAgreement(hydrated, slot).clauses };
+        else registeredByOrderId[slot.id] = slot.agreementKey;
+    }
     return {
         slug: options.slug,
         name: options.name ?? "Forked assembly",
@@ -66,9 +88,8 @@ export function assemblyTemplateToDraft(
         nextOrderIndex: orders.length,
         nextSellerIndex: orders.length + 1,
         orders,
-        clausesByOrderId: Object.fromEntries(
-            template.agreements.map((to) => [to.id, to.clauses]),
-        ),
+        clausesByOrderId,
+        ...(Object.keys(registeredByOrderId).length > 0 ? { registeredByOrderId } : {}),
         // Assembly-scoped sections travel as their own level — never smeared
         // onto an order (scope placement is verified at build/publish).
         ...(template.assemblyClauses && Object.keys(template.assemblyClauses).length > 0
@@ -79,56 +100,95 @@ export function assemblyTemplateToDraft(
     };
 }
 
-/** Result of parsing pasted template JSON (the composition-assist import). */
+/** Result of reading pasted composition JSON (the composition-assist import). */
 export type ParsedTemplateResult =
-    | { ok: true; template: AssemblyTemplate }
+    | { ok: true; template: AssemblyTemplate; agreements: Record<string, unknown> }
     | { ok: false; error: string };
 
 /**
- * Parse text pasted as an `AssemblyTemplate` — the composition-assist import
+ * Parse text pasted as a composition — the composition-assist import
  * surface, where the JSON comes from the designer's own agent rather than a
  * chain-anchored URI (so there is no compositionHash to check integrity
- * against; soundness is the bar). Shape-checks the agreements array, then
- * probes the composition through `templateCompositionHash` — the same walk
- * the registry key uses — so anything it cannot hash is rejected here with a
- * message instead of failing later at publish.
+ * against; soundness is the bar). Accepts the handoff shape
+ * `{ template, agreements }` (the template and the agreements newly composed
+ * for it, keyed by agreement key) or a bare template. Shape-checks the order
+ * slots, then probes the composition through `templateCompositionHash` — the
+ * same walk the registry key uses — so anything it cannot hash is rejected
+ * here with a message instead of failing later at publish.
  */
 export function parseAssemblyTemplateJson(text: string): ParsedTemplateResult {
-    let parsed: unknown;
-    try {
-        parsed = JSON.parse(text);
-    } catch {
-        return { ok: false, error: "Not valid JSON." };
+    const parsed = safeJsonParse<unknown>(text);
+    if (parsed === null) return { ok: false, error: "Not valid JSON." };
+    if (typeof parsed !== "object" || Array.isArray(parsed)) {
+        return { ok: false, error: "A composition is a JSON object: `{ template, agreements }`, or a template with an `agreements` array." };
     }
-    if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
-        return { ok: false, error: "A template is a JSON object with an `agreements` array." };
+    const bundle = parsed as { template?: unknown; agreements?: unknown };
+    const isBundle = typeof bundle.template === "object" && bundle.template !== null && !Array.isArray(bundle.agreements);
+    const candidate = (isBundle ? bundle.template : parsed) as { agreements?: unknown; assemblyClauses?: unknown };
+    const agreementDocs = isBundle && typeof bundle.agreements === "object" && bundle.agreements !== null
+        ? bundle.agreements as Record<string, unknown>
+        : {};
+    const slots = candidate.agreements;
+    if (!Array.isArray(slots) || slots.length === 0) {
+        return { ok: false, error: "A template carries a non-empty `agreements` array — one order slot per order." };
     }
-    const agreements = (parsed as { agreements?: unknown }).agreements;
-    if (!Array.isArray(agreements) || agreements.length === 0) {
-        return { ok: false, error: "A template carries a non-empty `agreements` array — one entry per order." };
-    }
-    for (const entry of agreements) {
+    for (const entry of slots) {
         const id = (entry as { id?: unknown } | null)?.id;
+        const agreementKey = (entry as { agreementKey?: unknown } | null)?.agreementKey;
         const clauses = (entry as { clauses?: unknown } | null)?.clauses;
-        if (typeof entry !== "object" || entry === null || typeof id !== "string"
+        if (typeof entry !== "object" || entry === null || typeof id !== "string" || !isBytes32Hex(agreementKey)
             || typeof clauses !== "object" || clauses === null || Array.isArray(clauses)) {
-            return { ok: false, error: "Each agreement needs a string `id` and a `clauses` object (clause key → fields)." };
+            return { ok: false, error: "Each order slot needs a string `id`, an `agreementKey` (the 32-byte key of a registered agreement) and a `clauses` object (the order slot's own fills)." };
         }
         const unkeyed = Object.keys(clauses).find((k) => !isBytes32Hex(k));
         if (unkeyed !== undefined) {
             return { ok: false, error: `Each clause is named by its clause key (the 32-byte hash of its pinned spec); "${unkeyed}" is not one.` };
         }
     }
-    const assemblyClauses = (parsed as { assemblyClauses?: unknown }).assemblyClauses;
+    const assemblyClauses = candidate.assemblyClauses;
     if (assemblyClauses !== undefined && (typeof assemblyClauses !== "object" || assemblyClauses === null
         || Object.keys(assemblyClauses).some((k) => !isBytes32Hex(k)))) {
         return { ok: false, error: "`assemblyClauses` maps clause keys (the 32-byte hash of each pinned spec) to the designer's values." };
     }
-    const template = parsed as AssemblyTemplate;
+    const template = candidate as AssemblyTemplate;
     try {
         templateCompositionHash(template);
     } catch (cause) {
         return { ok: false, error: `The composition does not hash: ${extractErrorMessage(cause, "malformed template")}` };
     }
-    return { ok: true, template };
+    return { ok: true, template, agreements: agreementDocs };
+}
+
+/**
+ * Hydrate a parsed import: each order slot's agreement is read from the
+ * pasted documents (verified against its key) or, when the paste does not
+ * carry it, from `AgreementRegistry`. Every pasted agreement comes back among
+ * `composeKeys` — the agent's composition lands on the canvas as composition
+ * (publish registers it unless a registry already binds its key); an order
+ * slot the paste names only by key binds that registered agreement. An
+ * `error` says an order slot's agreement is absent from both.
+ */
+export async function hydrateImportedTemplate(
+    parsed: Extract<ParsedTemplateResult, { ok: true }>,
+): Promise<{ hydrated: HydratedAssembly; composeKeys: Set<string> } | { error: string }> {
+    const pasted = new Map<string, ComposedAgreement>();
+    for (const [key, raw] of Object.entries(parsed.agreements)) {
+        if (!isBytes32Hex(key)) continue;
+        const doc = anchorComposedAgreement(raw, key);
+        if (doc) pasted.set(key.toLowerCase(), doc);
+    }
+    const composeKeys = new Set<string>();
+    const hydrated = await hydrateAssembly(parsed.template, async (agreementKey) => {
+        const key = agreementKey.toLowerCase();
+        const local = pasted.get(key);
+        if (local) {
+            composeKeys.add(key);
+            return local;
+        }
+        return fetchComposedAgreement(agreementKey);
+    });
+    if (!hydrated) {
+        return { error: "An order slot binds an agreement that is neither in the pasted composition nor registered on this network's AgreementRegistry." };
+    }
+    return { hydrated, composeKeys };
 }

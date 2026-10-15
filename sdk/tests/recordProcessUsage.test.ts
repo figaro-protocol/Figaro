@@ -1,13 +1,15 @@
 /**
  * recordProcessUsage — the headless at-resolution usage recording. Every
  * committed section earns a clause leg, the agreement's provenance leaf
- * earns the assembly leg, and a key is sent once per process.
+ * earns the agreement leg and the assembly leg (with the order slot's
+ * membership proof), and a key is sent once per process.
  */
 import { describe, it, expect } from "vitest";
 import { encodePacked, keccak256, type Address, type Hex, type PublicClient, type WalletClient } from "viem";
 import { recordProcessUsage } from "../src/agent/index.js";
 import { computeClauseKey } from "../src/discovery.js";
 import { PROVENANCE_LEAF_KEY, type Agreement } from "../src/agreement.js";
+import { ASSEMBLY_TERMS_LEAF_KEY, buildSlotInclusionProof, templateCompositionHash, type AssemblyTemplate } from "../src/assembly.js";
 import type { Commitment } from "../src/types.js";
 import { keyOf } from "./specFixtures.js";
 
@@ -15,7 +17,9 @@ const COUNTER = "0x00000000000000000000000000000000000c0de5" as Address;
 const CORE = "0x0000000000000000000000000000000000c0ffee" as Address;
 const COMMERCE = keyOf("figaro-commerce");
 const MODALITIES = keyOf("figaro-modalities");
-const COMPOSITION = keccak256(encodePacked(["string"], ["an-assembly"]));
+const AGREEMENT_KEY = keccak256(encodePacked(["string"], ["an-agreement"]));
+const TEMPLATE: AssemblyTemplate = { agreements: [{ id: "order-0", agreementKey: AGREEMENT_KEY, clauses: {} }] };
+const COMPOSITION = templateCompositionHash(TEMPLATE);
 
 function order(salt: bigint): Commitment {
     return {
@@ -31,7 +35,7 @@ function order(salt: bigint): Commitment {
     };
 }
 
-function agreement(provenance: Hex = COMPOSITION): Agreement {
+function agreement(provenance: Agreement["provenance"] = { agreementKey: AGREEMENT_KEY, compositionHash: COMPOSITION }): Agreement {
     const o = order(1n);
     return {
         version: "a1", buyer: o.buyer, seller: o.seller,
@@ -43,7 +47,7 @@ function agreement(provenance: Hex = COMPOSITION): Agreement {
     };
 }
 
-interface Sent { functionName: string; key: Hex }
+interface Sent { functionName: string; key: Hex; args: readonly unknown[] }
 
 /** Stub clients: the counter answers its FigaroCore and its provenance leaf,
  *  and nothing else. */
@@ -54,6 +58,7 @@ function clients(opts: { failOn?: Hex } = {}) {
         readContract: async ({ functionName, args }: { functionName: string; args?: readonly unknown[] }) => {
             if (functionName === "core") return CORE;
             if (functionName === "provenanceLeaf") return PROVENANCE_LEAF_KEY;
+            if (functionName === "assemblyTermsLeaf") return ASSEMBLY_TERMS_LEAF_KEY;
             throw new Error(`unexpected read ${functionName}(${(args ?? []).join(",")})`);
         },
         waitForTransactionReceipt: async () => ({ status: "success" }),
@@ -64,7 +69,7 @@ function clients(opts: { failOn?: Hex } = {}) {
         writeContract: async ({ functionName, args }: { functionName: string; args: readonly unknown[] }) => {
             const key = args[1] as Hex;
             if (opts.failOn && key.toLowerCase() === opts.failOn.toLowerCase()) throw new Error("SellerNotStaked");
-            sent.push({ functionName, key });
+            sent.push({ functionName, key, args });
             return `0x${"1".repeat(64)}` as Hex;
         },
     } as unknown as WalletClient;
@@ -72,21 +77,30 @@ function clients(opts: { failOn?: Hex } = {}) {
 }
 
 describe("recordProcessUsage", () => {
-    it("sends every section's clause leg and the assembly leg from the agreement's provenance leaf", async () => {
+    it("sends every section's clause leg, and the agreement and assembly legs from the agreement's provenance leaf", async () => {
         const { publicClient, walletClient, sent } = clients();
-        const report = await recordProcessUsage(walletClient, publicClient, COUNTER, [{ commitment: order(1n), agreement: agreement() }]);
+        const report = await recordProcessUsage(walletClient, publicClient, COUNTER, [{ commitment: order(1n), agreement: agreement(), template: TEMPLATE }]);
 
         expect(sent.filter((s) => s.functionName === "recordClauseUsage").map((s) => s.key.toLowerCase()).sort())
             .toEqual([COMMERCE.toLowerCase(), MODALITIES.toLowerCase()].sort());
         expect(sent.some((s) => s.key.toLowerCase() === PROVENANCE_LEAF_KEY.toLowerCase()), "the reserved leaf key is never a clause leg").toBe(false);
-        expect(sent.filter((s) => s.functionName === "recordAssemblyUsage").map((s) => s.key)).toEqual([COMPOSITION]);
-        expect(report).toEqual({ attempted: 2, recorded: 2, assemblyRecorded: true, failures: [] });
+        const assembly = sent.filter((s) => s.functionName === "recordAssemblyUsage");
+        expect(assembly.map((s) => s.key)).toEqual([COMPOSITION]);
+        const membership = buildSlotInclusionProof(TEMPLATE, 0);
+        // (order, compositionHash, agreementKey, slotContentHash, leafProof, membershipProof)
+        expect(assembly[0].args[2]).toBe(AGREEMENT_KEY);
+        expect(assembly[0].args[3]).toBe(membership.slotContentHash);
+        expect(assembly[0].args[5]).toEqual(membership.proof);
+        const agreementLeg = sent.filter((s) => s.functionName === "recordAgreementUsage");
+        expect(agreementLeg.map((s) => s.key)).toEqual([AGREEMENT_KEY]);
+        expect(agreementLeg[0].args[2]).toBe(COMPOSITION);
+        expect(report).toEqual({ attempted: 2, recorded: 2, assemblyRecorded: true, agreementRecorded: true, failures: [] });
     });
 
     it("an agreement whose provenance is malformed has no provable leg: nothing is sent and the report says so", async () => {
         const { publicClient, walletClient, sent } = clients();
         const report = await recordProcessUsage(walletClient, publicClient, COUNTER, [
-            { commitment: order(1n), agreement: agreement("0x12" as Hex) },
+            { commitment: order(1n), agreement: agreement({ agreementKey: AGREEMENT_KEY, compositionHash: "0x12" }), template: TEMPLATE },
         ]);
 
         expect(sent).toHaveLength(0);
@@ -99,11 +113,11 @@ describe("recordProcessUsage", () => {
     it("sends a key two orders carry once: the counter counts it once per process", async () => {
         const { publicClient, walletClient, sent } = clients();
         const report = await recordProcessUsage(walletClient, publicClient, COUNTER, [
-            { commitment: order(1n), agreement: agreement() },
-            { commitment: order(2n), agreement: agreement() },
+            { commitment: order(1n), agreement: agreement(), template: TEMPLATE },
+            { commitment: order(2n), agreement: agreement(), template: TEMPLATE },
         ]);
 
-        expect(sent).toHaveLength(3);
+        expect(sent).toHaveLength(4);
         expect(report.attempted).toBe(2);
         expect(report.recorded).toBe(2);
         expect(report.assemblyRecorded).toBe(true);
@@ -111,12 +125,19 @@ describe("recordProcessUsage", () => {
 
     it("a leg that fails lands in the report and the others still go", async () => {
         const { publicClient, walletClient, sent } = clients({ failOn: COMMERCE });
-        const report = await recordProcessUsage(walletClient, publicClient, COUNTER, [{ commitment: order(1n), agreement: agreement() }]);
+        const report = await recordProcessUsage(walletClient, publicClient, COUNTER, [{ commitment: order(1n), agreement: agreement(), template: TEMPLATE }]);
 
         expect(report.attempted).toBe(2);
         expect(report.recorded).toBe(1);
         expect(report.assemblyRecorded).toBe(true);
         expect(report.failures).toEqual([`clause ${COMMERCE}: SellerNotStaked`]);
-        expect(sent.map((s) => s.functionName).sort()).toEqual(["recordAssemblyUsage", "recordClauseUsage"]);
+        expect(sent.map((s) => s.functionName).sort()).toEqual(["recordAgreementUsage", "recordAssemblyUsage", "recordClauseUsage"]);
+    });
+
+    it("an agreement naming a provenance without its template has no provable leg: the report says so", async () => {
+        const { publicClient, walletClient, sent } = clients();
+        const report = await recordProcessUsage(walletClient, publicClient, COUNTER, [{ commitment: order(1n), agreement: agreement() }]);
+        expect(sent).toHaveLength(0);
+        expect(report.failures[0]).toMatch(/template is needed/);
     });
 });

@@ -148,9 +148,10 @@ describe("publishWitnessContent", () => {
 
 describe("publishWitnessContent — the agreement format's provenance leaf", () => {
     const COMPOSITION = `0x${"9a".repeat(32)}` as Hex;
+    const AGREEMENT_KEY = `0x${"8b".repeat(32)}` as Hex;
 
     it("pins the format's own bytes as-is, with no spec", async () => {
-        const content = provenanceSectionBytes(COMPOSITION);
+        const content = provenanceSectionBytes(AGREEMENT_KEY, COMPOSITION);
         const pinKeccakRawBlock = vi.fn().mockResolvedValue("f01551b20" + keccak256(content).slice(2));
         const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
         await publishWitnessContent({ clauseId: PROVENANCE_LEAF_KEY, stage: 0, content, ipfs: { pinKeccakRawBlock } });

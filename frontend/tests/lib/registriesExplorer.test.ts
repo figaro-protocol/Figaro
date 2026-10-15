@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { canonicalContentHash, canonicalize, computeClauseKey, templateCompositionHash } from "@figaro-protocol/sdk";
+import { agreementKeyOf, canonicalContentHash, canonicalize, computeClauseKey, templateCompositionHash } from "@figaro-protocol/sdk";
 import { keccak256, stringToBytes } from "viem";
 import {
     parseExplorerQuery, serializeExplorerQuery, selectRows, facetValues, explorerBreadcrumb,
@@ -86,14 +86,18 @@ describe("the document as stored — the reader re-derives the anchor themselves
         title: "Applicable law",
         fields: [{ name: "jurisdiction", type: "string" }],
     };
+    const COMMERCE = `0x${"c1".repeat(32)}` as const;
+    const AGREEMENT = { name: "Equipment hire · order-0", clauses: { [COMMERCE]: {} } };
+    const AGREEMENT_KEY = agreementKeyOf(AGREEMENT);
     const TEMPLATE = {
         name: "Equipment hire",
         summary: "The designer's own words — deliberately outside the anchor.",
-        agreements: [{ id: "order-0", clauses: { "figaro-commerce": { payment: "1" } } }],
+        agreements: [{ id: "order-0", agreementKey: AGREEMENT_KEY, clauses: {} }],
     };
 
     it("names the anchor each family carries, and none for members", () => {
         expect(anchorForFamily("clauses")).toBe("content-hash");
+        expect(anchorForFamily("agreements")).toBe("agreement-key");
         expect(anchorForFamily("assemblies")).toBe("composition-hash");
         expect(anchorForFamily("members")).toBeNull();
     });
@@ -101,7 +105,8 @@ describe("the document as stored — the reader re-derives the anchor themselves
     it("every anchor has the one-line note that says what it covers", () => {
         expect(STORED_DOCUMENT_NOTE["content-hash"]).toMatch(/keccak256/);
         expect(STORED_DOCUMENT_NOTE["content-hash"]).toMatch(/exactly these bytes/i);
-        expect(STORED_DOCUMENT_NOTE["composition-hash"]).toMatch(/keccak256/);
+        expect(STORED_DOCUMENT_NOTE["agreement-key"]).toMatch(/keccak256/);
+        expect(STORED_DOCUMENT_NOTE["composition-hash"]).toMatch(/merkle root/);
     });
 
     it("a clause's served canonical bytes reproduce its clause key", () => {
@@ -153,8 +158,18 @@ describe("the document as stored — the reader re-derives the anchor themselves
         const reworded = JSON.stringify({ ...TEMPLATE, name: "Kit hire", summary: "Different words entirely." });
         expect(storedDocument(reworded, anchored, "composition-hash").matches).toBe(true);
         // Changing the COMPOSITION does break it — the anchor is the terms.
-        const retermed = JSON.stringify({ ...TEMPLATE, agreements: [{ id: "order-0", clauses: { "figaro-commerce": { payment: "2" } } }] });
+        const retermed = JSON.stringify({ ...TEMPLATE, agreements: [{ id: "order-0", agreementKey: `0x${"a2".repeat(32)}`, clauses: {} }] });
         expect(storedDocument(retermed, anchored, "composition-hash").matches).toBe(false);
+    });
+
+    it("an agreement's served document reproduces its key; its name is outside the key", () => {
+        const v = storedDocument(JSON.stringify(AGREEMENT, null, 2), AGREEMENT_KEY, "agreement-key");
+        expect(v.matches).toBe(true);
+        expect(v.anchor).toBe("agreement-key");
+        const renamed = JSON.stringify({ ...AGREEMENT, name: "Kit hire" });
+        expect(storedDocument(renamed, AGREEMENT_KEY, "agreement-key").matches).toBe(true);
+        const reclaused = JSON.stringify({ ...AGREEMENT, clauses: { [COMMERCE]: { x: 1 } } });
+        expect(storedDocument(reclaused, AGREEMENT_KEY, "agreement-key").matches).toBe(false);
     });
 
     it("an honest document reads the same as what was hashed — no differences", () => {

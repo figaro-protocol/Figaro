@@ -27,22 +27,21 @@ import { ERC20_ABI } from "../abis.js";
 import { commit, type TxResult } from "./autonomous.js";
 import type { Hex, Address, Commitment, FigaroAddresses } from "../types.js";
 import type { CommitmentPayload, CoordinationChannel, OfferHandler } from "./coordination.js";
-import { templateParentOrderHashes } from "../assembly.js";
-import type { AssemblyTemplate, TemplateAgreement } from "../assembly.js";
+import { slotClauses, templateCompositionHash, templateParentOrderHashes } from "../assembly.js";
+import type { AssemblyTemplate, HydratedAssembly, TemplateSlot } from "../assembly.js";
 import { reconstructOrdersFromTemplate, templateAgreementFromClauses, mergeOverrides, fillWalkProvenance } from "../reconstructOrders.js";
-import { templateCompositionHash } from "../assembly.js";
 
 // ── Assembly template (the pinned document, hydrated off-SDK) ─────────────────
-// The shape's single home is ../assembly.js; re-exported here so the /agent
-// subpath keeps offering it alongside instantiate/originate.
+// The shapes' single home is ../assembly.js; re-exported here so the /agent
+// subpath keeps offering them alongside instantiate/originate.
 
-export type { AssemblyTemplate, TemplateAgreement };
+export type { AssemblyTemplate, HydratedAssembly, TemplateSlot };
 
-/** A template agreement is a ROOT if no clause declares a non-empty
- *  `parentOrderHashes` — the mandatory topology clause's field, matched by name not by
- *  clause id (open-world). */
-function isRootAgreement(a: TemplateAgreement): boolean {
-    return templateParentOrderHashes(a).length === 0;
+/** An order slot is a ROOT if its topology fill names no parent —
+ *  `parentOrderHashes`, the mandatory topology clause's field, matched by
+ *  name not by clause id (open-world). */
+function isRootSlot(slot: TemplateSlot): boolean {
+    return templateParentOrderHashes(slot).length === 0;
 }
 
 export interface InstantiateParams {
@@ -55,13 +54,15 @@ export interface InstantiateParams {
 }
 
 /**
- * Instantiate an assembly template's ROOT order into a signable Agreement.
- * Merges the buyer's overrides onto the template's clause bag; the resulting
+ * Instantiate a hydrated assembly's ROOT order slot into a signable
+ * Agreement. Merges the buyer's overrides onto the order slot's clause bag
+ * (its registered agreement's clauses and its own fills); the resulting
  * merkle root becomes the commitment's `agreementHash`.
  */
-export function instantiateRootAgreement(template: AssemblyTemplate, params: InstantiateParams): Agreement {
-    const root = template.agreements.find(isRootAgreement) ?? template.agreements[0];
-    if (!root) throw new Error("assembly template has no agreements to instantiate");
+export function instantiateRootAgreement(hydrated: HydratedAssembly, params: InstantiateParams): Agreement {
+    const { template } = hydrated;
+    const root = template.agreements.find(isRootSlot) ?? template.agreements[0];
+    if (!root) throw new Error("assembly template has no order slots to instantiate");
     // THE ASSEMBLY-SCOPE FOLD, exactly as the walk performs
     // it: the template's assembly-scoped sections — terms of the composition
     // itself (a denomination pin, a dispute forum) — fold into the root
@@ -69,15 +70,15 @@ export function instantiateRootAgreement(template: AssemblyTemplate, params: Ins
     // Skipping the fold was the audit-confirmed parity hole: the pin escaped
     // the sign gate.
     const assemblyClauses = template.assemblyClauses ?? {};
-    const folded = { ...assemblyClauses, ...root.clauses };
+    const folded = { ...assemblyClauses, ...slotClauses(hydrated, root) };
     const merged = mergeOverrides(folded, params.overrides);
     // The one clause-bag → Agreement builder (root and multi-order alike)
     // lives with the template walk: ../reconstructOrders.js. The agreement
-    // names the design it instantiates in its provenance leaf, the same fill
-    // the walk performs on every order.
+    // names the registered agreement and the design it instantiates in its
+    // provenance leaf, the same fill the walk performs on every order.
     return fillWalkProvenance(
         templateAgreementFromClauses(merged, params.buyer, params.seller),
-        templateCompositionHash(template),
+        { agreementKey: root.agreementKey, compositionHash: templateCompositionHash(template) },
         root.id ?? "root",
     );
 }
@@ -85,7 +86,9 @@ export function instantiateRootAgreement(template: AssemblyTemplate, params: Ins
 // ── Buyer side: build + sign the offer ────────────────────────────────────────
 
 export interface BuildOfferParams extends InstantiateParams {
-    template: AssemblyTemplate;
+    /** The discovered assembly, each order slot's registered agreement
+     *  hydrated beside its template. */
+    assembly: HydratedAssembly;
     currency: Address;
     /** The root order's payment (== the process's opening cumulative value). */
     payment: bigint;
@@ -113,7 +116,7 @@ export async function buildBuyerOffer(wallet: WalletClient, params: BuildOfferPa
     const account = wallet.account;
     if (!account) throw new Error("buildBuyerOffer: wallet has no account");
     const buyer = account.address;
-    const agreement = instantiateRootAgreement(params.template, {
+    const agreement = instantiateRootAgreement(params.assembly, {
         buyer, seller: params.seller, overrides: params.overrides,
     });
     const agreementHash = computeAgreementHash(agreement);
@@ -480,7 +483,9 @@ export interface ChainNodeSpec {
 }
 
 export interface BuildChainParams {
-    template: AssemblyTemplate;
+    /** The discovered assembly, each order slot's registered agreement
+     *  hydrated beside its template. */
+    assembly: HydratedAssembly;
     currency: Address;
     chainId: number;
     core: Address;
@@ -520,7 +525,7 @@ export async function buildChainOffers(wallet: WalletClient, params: BuildChainP
     const buyer = account.address;
     const specByNode = new Map(params.nodes.map((n) => [n.nodeId, n]));
     const out: ChainOffer[] = [];
-    await reconstructOrdersFromTemplate(params.template, {
+    await reconstructOrdersFromTemplate(params.assembly, {
         buyer,
         currency: params.currency,
         chainId: params.chainId,

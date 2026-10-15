@@ -7,6 +7,7 @@ import {CommitmentTypes} from "src/core/kernel/CommitmentTypes.sol";
 import {MembersRegistry} from "src/app/MembersRegistry.sol";
 import {ClauseRegistry} from "src/build/registries/ClauseRegistry.sol";
 import {AssemblyRegistry} from "src/build/registries/AssemblyRegistry.sol";
+import {AgreementRegistry} from "src/build/registries/AgreementRegistry.sol";
 import {UsageCounter} from "src/build/rewards/UsageCounter.sol";
 import {MockERC20} from "src/mocks/MockERC20.sol";
 import {AgreementTestHelper} from "test/helpers/AgreementTestHelper.sol";
@@ -16,9 +17,10 @@ import {MockClauseOrAssemblyStake} from "test/helpers/MockClauseOrAssemblyStake.
 ///         the fact. Every test here is a property of "count it when it
 ///         happens": nothing is trusted but the proof, a resolved process counts
 ///         exactly once, breadth counts distinct LIVE-STAKED SELLERS (so every
-///         unit of it costs a stake), a clause or assembly scores nothing until the
-///         minimum-support floor is met, and a period's numbers stop moving
-///         when it ends.
+///         unit of it costs a stake), a clause, agreement or assembly scores
+///         nothing until the minimum-support floor is met, the three kinds
+///         never share a count, and a period's numbers stop moving when it
+///         ends.
 contract UsageCounterTest is Test {
     using CommitmentTypes for CommitmentTypes.Commitment;
 
@@ -44,11 +46,25 @@ contract UsageCounterTest is Test {
     bytes32 constant GEO_KEY = keccak256('{"clauseId":"figaro-geolocation","version":1}');
     bytes32 constant CARGO_KEY = keccak256('{"clauseId":"figaro-cargo","version":1}');
 
+    /// @dev An assembly key for the batch path, which takes any bytes32; the
+    ///      direct path proves membership, so it uses `_asmRoot()`.
     bytes32 constant ASM_KEY = keccak256("an-assembly");
 
-    /// @dev The counter's two kinds — every accrual, count and score is keyed by (kind, key).
+    /// @dev Two registered agreements: the canonical content hash of each one's
+    ///      `{ clauses }`. Order slot 0 of the test assembly instantiates
+    ///      AGR_KEY, order slot 1 instantiates AGR2_KEY after order slot 0.
+    bytes32 constant AGR_KEY = keccak256("an-agreement");
+    bytes32 constant AGR2_KEY = keccak256("a-second-agreement");
+    /// @dev Order slot 1's own fills: the topology clause naming order slot 0.
+    string constant TOPOLOGY_FILL =
+        '{"0x7070000000000000000000000000000000000000000000000000000000000000":{"parentOrderHashes":["order-0"]}}';
+    /// @dev The canonical JSON of the test assembly's `assemblyClauses`.
+    bytes constant TERMS = '{"0xabc0000000000000000000000000000000000000000000000000000000000000":{}}';
+
+    /// @dev The counter's three kinds — every accrual, count and score is keyed by (kind, key).
     uint8 constant KIND_CLAUSE = 0;
     uint8 constant KIND_ASSEMBLY = 1;
+    uint8 constant KIND_AGREEMENT = 2;
 
     /// @dev The agreement format's reserved provenance leaf key — a plain-string
     ///      preimage, never the canonical JSON bytes of a spec a clause key hashes.
@@ -99,7 +115,7 @@ contract UsageCounterTest is Test {
         // properties are proved in the "Minimum-support floor" section below on
         // a counter deployed at the mainnet value of 3.
         counter = new UsageCounter(
-            address(core), address(members), address(stake), address(stake), batchVerifier, 1, periods
+            address(core), address(members), address(stake), address(stake), address(stake), batchVerifier, 1, periods
         );
 
         address[5] memory ppl = [buyer, buyer2, seller1, seller2, seller3];
@@ -178,16 +194,22 @@ contract UsageCounterTest is Test {
         counter.recordClauseUsage(c, clauseOrAssembly, keccak256(SECTION), new bytes32[](0));
     }
 
-    /// @dev A resolved one-order process whose agreement carries the format's
-    ///      reserved PROVENANCE leaf for `compositionHash` — the only leaf an
-    ///      assembly is ever provable through, since a compositionHash is never
-    ///      itself a leaf key. The section commits as the canonical-JSON bytes
-    ///      the counter reproduces from the claimed hash.
-    function _settledUnderAssembly(bytes32 compositionHash, uint256 salt)
+    /// @dev A resolved one-order process whose agreement carries a clause
+    ///      section and the format's reserved PROVENANCE leaf naming
+    ///      `agreementKey` (the registered agreement the order instantiates)
+    ///      and `compositionHash` (the assembly it came from). The section
+    ///      commits as the canonical-JSON bytes the counter reproduces from
+    ///      the two keys. Returns the provenance leaf's proof under the root.
+    function _settledUnderSlot(bytes32 agreementKey, bytes32 compositionHash, uint256 salt)
         internal
-        returns (CommitmentTypes.Commitment memory c)
+        returns (CommitmentTypes.Commitment memory c, bytes32[] memory provenanceProof)
     {
-        bytes memory sectionData = abi.encodePacked('{"compositionHash":"', vm.toString(compositionHash), '"}');
+        bytes32[] memory leaves = new bytes32[](2);
+        leaves[0] = AgreementTestHelper.leafFor(CARGO_KEY, SECTION);
+        leaves[1] = AgreementTestHelper.leafFor(
+            PROVENANCE_LEAF, AgreementTestHelper.provenanceSection(agreementKey, compositionHash)
+        );
+        provenanceProof = AgreementTestHelper.proofFor(leaves, 1);
         c = CommitmentTypes.Commitment({
             processId: bytes32(0),
             buyer: buyer,
@@ -195,7 +217,7 @@ contract UsageCounterTest is Test {
             currency: address(token),
             payment: 100 ether,
             expectedCumulativeValue: 100 ether,
-            agreementHash: AgreementTestHelper.singleSectionRoot(PROVENANCE_LEAF, sectionData),
+            agreementHash: AgreementTestHelper.rootFor(leaves),
             salt: salt,
             deadline: block.timestamp + 1 hours
         });
@@ -205,6 +227,48 @@ contract UsageCounterTest is Test {
         all[0] = c;
         vm.prank(buyer);
         core.resolveProcess(processId, all);
+    }
+
+    /// @dev The test assembly's order slot bytes: order slot 0 fills nothing,
+    ///      order slot 1 fills the topology clause to follow order slot 0.
+    function _slotSection(uint256 slot) internal pure returns (bytes memory) {
+        return AgreementTestHelper.slotSection(slot, slot == 0 ? "{}" : TOPOLOGY_FILL);
+    }
+
+    /// @dev The registered agreement each order slot of the test assembly instantiates.
+    function _slotAgreement(uint256 slot) internal pure returns (bytes32) {
+        return slot == 0 ? AGR_KEY : AGR2_KEY;
+    }
+
+    /// @dev The test assembly's tree: one leaf per order slot (key = its
+    ///      agreementKey, bytes = the order slot section) and the terms leaf.
+    function _templateLeaves() internal pure returns (bytes32[] memory leaves) {
+        leaves = new bytes32[](3);
+        leaves[0] = AgreementTestHelper.leafFor(AGR_KEY, _slotSection(0));
+        leaves[1] = AgreementTestHelper.leafFor(AGR2_KEY, _slotSection(1));
+        leaves[2] = AgreementTestHelper.leafFor(AgreementTestHelper.ASSEMBLY_TERMS_LEAF_KEY, TERMS);
+    }
+
+    /// @dev The test assembly's compositionHash: the root of its tree.
+    function _asmRoot() internal pure returns (bytes32) {
+        return AgreementTestHelper.rootFor(_templateLeaves());
+    }
+
+    /// @dev Credit the test assembly for an order instantiating `slot`.
+    function _recordAssembly(
+        UsageCounter target,
+        CommitmentTypes.Commitment memory c,
+        uint256 slot,
+        bytes32[] memory provenanceProof
+    ) internal {
+        target.recordAssemblyUsage(
+            c,
+            _asmRoot(),
+            _slotAgreement(slot),
+            keccak256(_slotSection(slot)),
+            provenanceProof,
+            AgreementTestHelper.proofFor(_templateLeaves(), slot)
+        );
     }
 
     // ── What a record proves ────────────────────────────────────────
@@ -317,10 +381,21 @@ contract UsageCounterTest is Test {
         // composition earns only while its AssemblyRegistry binding is live.
         // The provenance leaf opens (the process DID run under this assembly);
         // what fails is the stake behind the composition being credited.
-        stake.kill(ASM_KEY);
-        CommitmentTypes.Commitment memory c = _settledUnderAssembly(ASM_KEY, 1);
-        vm.expectRevert(abi.encodeWithSelector(UsageCounter.ClauseOrAssemblyNotRegistered.selector, ASM_KEY));
-        counter.recordAssemblyUsage(c, ASM_KEY, new bytes32[](0));
+        bytes32 root = _asmRoot();
+        stake.kill(root);
+        (CommitmentTypes.Commitment memory c, bytes32[] memory proof) = _settledUnderSlot(AGR2_KEY, root, 1);
+        vm.expectRevert(abi.encodeWithSelector(UsageCounter.ClauseOrAssemblyNotRegistered.selector, root));
+        _recordAssembly(counter, c, 1, proof);
+    }
+
+    function test_revertsWhenAgreementNotRegistered() public {
+        // The agreement form of the same gate: a registered agreement earns
+        // only while its AgreementRegistry binding is live. The provenance
+        // leaf opens; what fails is the stake behind the agreement credited.
+        stake.kill(AGR_KEY);
+        (CommitmentTypes.Commitment memory c, bytes32[] memory proof) = _settledUnderSlot(AGR_KEY, _asmRoot(), 1);
+        vm.expectRevert(abi.encodeWithSelector(UsageCounter.ClauseOrAssemblyNotRegistered.selector, AGR_KEY));
+        counter.recordAgreementUsage(c, AGR_KEY, _asmRoot(), proof);
     }
 
     // ── Counting properties ─────────────────────────────────────────
@@ -406,47 +481,77 @@ contract UsageCounterTest is Test {
         assertEq(counter.provenanceLeaf(), 0x26dc18a2251a8f4629ada6df88b7c98553e011c08682d28ce5bb51a441227dc6);
     }
 
+    /// @dev A counter over REAL registries, one per family.
+    function _realCounter()
+        internal
+        returns (
+            UsageCounter real,
+            ClauseRegistry clauses_,
+            AssemblyRegistry assemblies_,
+            AgreementRegistry agreements_
+        )
+    {
+        uint64[] memory periods = new uint64[](2);
+        periods[0] = P0_END;
+        periods[1] = P1_END;
+        clauses_ = new ClauseRegistry(0);
+        assemblies_ = new AssemblyRegistry(0);
+        agreements_ = new AgreementRegistry(0);
+        real = new UsageCounter(
+            address(core),
+            address(members),
+            address(clauses_),
+            address(assemblies_),
+            address(agreements_),
+            batchVerifier,
+            1,
+            periods
+        );
+    }
+
     /// The reserved leaf earns nothing as a clause: its key is a plain-string
     /// preimage, a clause key is keccak256 of a spec's canonical JSON bytes, so
     /// no honest spec lands on it. Recorded against REAL registries, the leaf
     /// opens (the agreement does commit it) and the stake gate refuses it,
     /// because the key is registered nowhere; and a stranger who stakes the key
-    /// itself in either registry is refused by the counter's own check.
+    /// itself in the clause registry is refused by the counter's own check.
+    /// An assembly at the reserved key is never provable at all: no tree has
+    /// the reserved key as its root.
     function test_theProvenanceLeafCannotBeClaimedAsAClause() public {
-        uint64[] memory periods = new uint64[](2);
-        periods[0] = P0_END;
-        periods[1] = P1_END;
-        AssemblyRegistry assemblies_ = new AssemblyRegistry(0);
-        ClauseRegistry clauses_ = new ClauseRegistry(0);
-        UsageCounter real = new UsageCounter(
-            address(core), address(members), address(clauses_), address(assemblies_), batchVerifier, 1, periods
-        );
+        (UsageCounter real, ClauseRegistry clauses_, AssemblyRegistry assemblies_,) = _realCounter();
 
-        CommitmentTypes.Commitment memory c = _settledUnderAssembly(ASM_KEY, 1);
-        bytes memory sectionData = abi.encodePacked('{"compositionHash":"', vm.toString(ASM_KEY), '"}');
+        bytes32 root = _asmRoot();
+        (CommitmentTypes.Commitment memory c, bytes32[] memory proof) = _settledUnderSlot(AGR_KEY, root, 1);
+        bytes32 sectionHash = keccak256(AgreementTestHelper.provenanceSection(AGR_KEY, root));
         vm.expectRevert(abi.encodeWithSelector(UsageCounter.ClauseOrAssemblyNotRegistered.selector, PROVENANCE_LEAF));
-        real.recordClauseUsage(c, PROVENANCE_LEAF, keccak256(sectionData), new bytes32[](0));
+        real.recordClauseUsage(c, PROVENANCE_LEAF, sectionHash, proof);
 
         // The clause registry takes the key as given, so a stranger can stake a
         // CLAUSE at the reserved key too. The clause-side gate then passes, and
         // the counter's own check refuses the key.
         clauses_.registerClause(PROVENANCE_LEAF, "ipfs://a-stranger-stakes-the-reserved-key-as-a-clause");
-        vm.expectRevert(abi.encodeWithSelector(UsageCounter.ProvenanceLeafIsNotARegistration.selector, PROVENANCE_LEAF));
-        real.recordClauseUsage(c, PROVENANCE_LEAF, keccak256(sectionData), new bytes32[](0));
+        vm.expectRevert(abi.encodeWithSelector(UsageCounter.ReservedKeyIsNotARegistration.selector, PROVENANCE_LEAF));
+        real.recordClauseUsage(c, PROVENANCE_LEAF, sectionHash, proof);
 
         // A registry takes any bytes32, so a stranger can register an ASSEMBLY
-        // at the reserved key for one stake. That makes the key "live" to the
-        // registration gate — and still it never accrues: the direct path
-        // reverts and the batch path skips, because the key is the agreement
-        // format's own, never a registration.
+        // at the reserved key for one stake, and an order can name it in its
+        // provenance. The order slot leaf is then proved under the reserved key as a
+        // root, which no tree has: the claim never reaches the stake gate.
         assemblies_.registerAssembly(PROVENANCE_LEAF, "ipfs://a-stranger-squats-the-reserved-key");
-        CommitmentTypes.Commitment memory d = _settledUnderAssembly(PROVENANCE_LEAF, 2);
-        vm.expectRevert(abi.encodeWithSelector(UsageCounter.ProvenanceLeafIsNotARegistration.selector, PROVENANCE_LEAF));
-        real.recordAssemblyUsage(d, PROVENANCE_LEAF, new bytes32[](0));
+        (CommitmentTypes.Commitment memory d, bytes32[] memory dProof) = _settledUnderSlot(AGR_KEY, PROVENANCE_LEAF, 2);
+        vm.expectRevert(UsageCounter.InvalidMembershipProof.selector);
+        real.recordAssemblyUsage(
+            d,
+            PROVENANCE_LEAF,
+            AGR_KEY,
+            keccak256(_slotSection(0)),
+            dProof,
+            AgreementTestHelper.proofFor(_templateLeaves(), 0)
+        );
 
         // The batch path's twin: an accrual naming the reserved key is skipped,
         // never written, and the period total stays put — with the squatted
-        // assembly registration live.
+        // registrations live.
         vm.prank(batchVerifier);
         real.applyBatchAccrual(0, PROVENANCE_LEAF, _accrual(PROVENANCE_LEAF, 9, 9), _sellers(seller1));
         (uint64 bc,, uint256 score) = real.batchAccrualOf(KIND_CLAUSE, PROVENANCE_LEAF, 0);
@@ -455,79 +560,303 @@ contract UsageCounterTest is Test {
         assertEq(real.totalScoreIn(0), 0, "total unchanged");
     }
 
-    /// @dev A counter over REAL registries, an assembly at `ASM_KEY` registered
-    ///      by `designer`, and the same bytes staked as a CLAUSE by `stranger`.
+    /// The two reserved keys are refused under the AGREEMENT kind too. The
+    /// agreement registry refuses both as registrations, so the gate here
+    /// stands in for a registry that took them: an order names a reserved key
+    /// as its agreementKey, the provenance leaf opens, the gate passes, and
+    /// the counter's own check refuses the key on the direct path and skips
+    /// it on the batch path.
+    function test_theReservedKeysAreRefusedUnderTheAgreementKind() public {
+        bytes32 terms = AgreementTestHelper.ASSEMBLY_TERMS_LEAF_KEY;
+        assertEq(counter.assemblyTermsLeaf(), terms);
+
+        (CommitmentTypes.Commitment memory c, bytes32[] memory proof) =
+            _settledUnderSlot(PROVENANCE_LEAF, _asmRoot(), 1);
+        vm.expectRevert(abi.encodeWithSelector(UsageCounter.ReservedKeyIsNotARegistration.selector, PROVENANCE_LEAF));
+        counter.recordAgreementUsage(c, PROVENANCE_LEAF, _asmRoot(), proof);
+
+        (CommitmentTypes.Commitment memory d, bytes32[] memory dProof) = _settledUnderSlot(terms, _asmRoot(), 2);
+        vm.expectRevert(abi.encodeWithSelector(UsageCounter.ReservedKeyIsNotARegistration.selector, terms));
+        counter.recordAgreementUsage(d, terms, _asmRoot(), dProof);
+
+        UsageCounter.BatchAccrual[] memory a = new UsageCounter.BatchAccrual[](2);
+        a[0] = UsageCounter.BatchAccrual(PROVENANCE_LEAF, KIND_AGREEMENT, 9, 9);
+        a[1] = UsageCounter.BatchAccrual(terms, KIND_AGREEMENT, 9, 9);
+        vm.prank(batchVerifier);
+        counter.applyBatchAccrual(0, PROVENANCE_LEAF, a, _sellers(seller1));
+        (uint64 bp,,) = counter.batchAccrualOf(KIND_AGREEMENT, PROVENANCE_LEAF, 0);
+        (uint64 bt,,) = counter.batchAccrualOf(KIND_AGREEMENT, terms, 0);
+        assertEq(bp, 0, "the provenance key is never written under the agreement kind");
+        assertEq(bt, 0, "the terms key is never written under the agreement kind");
+        assertEq(counter.totalScoreIn(0), 0, "total unchanged");
+    }
+
+    /// The terms leaf shares the assembly's tree with the order slots and
+    /// opens under its root, so a claim naming it as the order slot's
+    /// agreementKey, with the terms bytes as the order slot content and an order
+    /// whose provenance names it, would prove membership. It is refused: the
+    /// terms leaf never passes as an order slot.
+    function test_theTermsLeafNeverPassesAsAnOrderSlot() public {
+        bytes32 terms = AgreementTestHelper.ASSEMBLY_TERMS_LEAF_KEY;
+        bytes32 root = _asmRoot();
+        (CommitmentTypes.Commitment memory c, bytes32[] memory proof) = _settledUnderSlot(terms, root, 1);
+        bytes32[] memory membership = AgreementTestHelper.proofFor(_templateLeaves(), 2);
+        vm.expectRevert(abi.encodeWithSelector(UsageCounter.ReservedKeyIsNotARegistration.selector, terms));
+        counter.recordAssemblyUsage(c, root, terms, keccak256(TERMS), proof, membership);
+
+        (CommitmentTypes.Commitment memory d, bytes32[] memory dProof) = _settledUnderSlot(PROVENANCE_LEAF, root, 2);
+        vm.expectRevert(abi.encodeWithSelector(UsageCounter.ReservedKeyIsNotARegistration.selector, PROVENANCE_LEAF));
+        counter.recordAssemblyUsage(d, root, PROVENANCE_LEAF, keccak256(TERMS), dProof, membership);
+    }
+
+    // ── The agreement kind and the assembly's membership proof ──────
+
+    /// An order instantiating a registered agreement credits it under the
+    /// AGREEMENT kind, and the same order credits the assembly under the
+    /// ASSEMBLY kind through the slot's membership proof: two counts, one
+    /// process, two slots that never touch.
+    function test_oneOrderCreditsItsAgreementAndItsAssembly() public {
+        bytes32 root = _asmRoot();
+        (CommitmentTypes.Commitment memory c, bytes32[] memory proof) = _settledUnderSlot(AGR2_KEY, root, 1);
+
+        counter.recordAgreementUsage(c, AGR2_KEY, root, proof);
+        _recordAssembly(counter, c, 1, proof);
+
+        (uint64 agrC, uint64 agrD, uint256 agrScore) = counter.accrualOf(KIND_AGREEMENT, AGR2_KEY, 0);
+        (uint64 asmC,, uint256 asmScore) = counter.accrualOf(KIND_ASSEMBLY, root, 0);
+        assertEq(agrC, 1, "the agreement's use is counted under its kind");
+        assertEq(agrD, 1);
+        assertEq(asmC, 1, "the assembly's use is counted under its kind");
+        assertEq(agrScore, asmScore, "uniform scoring across the kinds");
+        assertEq(counter.totalScoreIn(0), agrScore + asmScore);
+
+        vm.expectRevert(UsageCounter.AlreadyCounted.selector);
+        counter.recordAgreementUsage(c, AGR2_KEY, root, proof);
+        vm.expectRevert(UsageCounter.AlreadyCounted.selector);
+        _recordAssembly(counter, c, 1, proof);
+    }
+
+    /// The provenance bytes are rebuilt from BOTH keys claimed, so a claim
+    /// naming any other agreement derives a leaf that is not in the tree, on
+    /// either path.
+    function test_aProvenanceLeafNamingAnotherAgreementIsNotInTheTree() public {
+        bytes32 root = _asmRoot();
+        (CommitmentTypes.Commitment memory c, bytes32[] memory proof) = _settledUnderSlot(AGR_KEY, root, 1);
+
+        vm.expectRevert(UsageCounter.InvalidInclusionProof.selector);
+        counter.recordAgreementUsage(c, AGR2_KEY, root, proof);
+
+        // The order instantiated order slot 0 (AGR_KEY); order slot 1's agreement and its
+        // valid membership proof cannot be credited through it.
+        vm.expectRevert(UsageCounter.InvalidInclusionProof.selector);
+        _recordAssembly(counter, c, 1, proof);
+
+        // A claim naming the right agreement under another assembly fails too.
+        vm.expectRevert(UsageCounter.InvalidInclusionProof.selector);
+        counter.recordAgreementUsage(c, AGR_KEY, keccak256("another-assembly"), proof);
+    }
+
+    /// An order slot leaf proves membership only under the root of the tree that
+    /// holds it. The order names another assembly, whose tree holds no slot
+    /// for AGR_KEY: the provenance opens under that assembly, and the order slot leaf
+    /// with its proof from the test assembly's tree fails under its root.
+    function test_aSlotLeafUnderADifferentCompositionHashFails() public {
+        bytes32[] memory otherLeaves = new bytes32[](1);
+        otherLeaves[0] = AgreementTestHelper.leafFor(AGR2_KEY, AgreementTestHelper.slotSection(0, "{}"));
+        bytes32 otherRoot = AgreementTestHelper.rootFor(otherLeaves);
+
+        (CommitmentTypes.Commitment memory c, bytes32[] memory proof) = _settledUnderSlot(AGR_KEY, otherRoot, 1);
+        bytes32[] memory membership = AgreementTestHelper.proofFor(_templateLeaves(), 0);
+
+        vm.expectRevert(UsageCounter.InvalidMembershipProof.selector);
+        counter.recordAssemblyUsage(c, otherRoot, AGR_KEY, keccak256(_slotSection(0)), proof, membership);
+
+        // And the test assembly cannot be credited: the order does not name it.
+        vm.expectRevert(UsageCounter.InvalidInclusionProof.selector);
+        counter.recordAssemblyUsage(c, _asmRoot(), AGR_KEY, keccak256(_slotSection(0)), proof, membership);
+    }
+
+    /// The order slot leaf commits its index and its own fills: a claim with
+    /// the right agreement and another slot's bytes is not a leaf of the tree.
+    function test_aSlotLeafWithAnotherSlotsBytesFails() public {
+        bytes32 root = _asmRoot();
+        (CommitmentTypes.Commitment memory c, bytes32[] memory proof) = _settledUnderSlot(AGR_KEY, root, 1);
+        bytes32[] memory membership = AgreementTestHelper.proofFor(_templateLeaves(), 0);
+        vm.expectRevert(UsageCounter.InvalidMembershipProof.selector);
+        counter.recordAssemblyUsage(c, root, AGR_KEY, keccak256(_slotSection(1)), proof, membership);
+    }
+
+    /// The assembly terms leaf shares the tree with the slots; it is proved
+    /// with the same convention and opens under the root.
+    function test_theTermsLeafIsALeafOfTheAssemblyTree() public pure {
+        bytes32[] memory leaves = _templateLeaves();
+        bytes32[] memory termsProof = AgreementTestHelper.proofFor(leaves, 2);
+        bytes32 root = AgreementTestHelper.rootFor(leaves);
+        bytes32 computed = leaves[2];
+        for (uint256 i = 0; i < termsProof.length; ++i) {
+            computed = computed < termsProof[i]
+                ? keccak256(abi.encodePacked(computed, termsProof[i]))
+                : keccak256(abi.encodePacked(termsProof[i], computed));
+        }
+        assertEq(computed, root);
+    }
+
+    // ── Kind separation, three kinds ────────────────────────────────
+
+    /// A registry takes any bytes32, so the same bytes can be staked in all
+    /// three registries by three different wallets. Every accrual, count and
+    /// score is keyed by (kind, key): the three uses land in three slots,
+    /// each kind's gate reads its own registry only, and withdrawing one
+    /// family's stake closes that kind alone, on both paths.
+    function test_theThreeKindsNeverShareACount() public {
+        (UsageCounter real, ClauseRegistry clauses_, AssemblyRegistry assemblies_, AgreementRegistry agreements_) =
+            _realCounter();
+        bytes32 k = _asmRoot();
+        vm.prank(address(0xC1));
+        clauses_.registerClause(k, "ipfs://the-bytes-as-a-clause");
+        vm.prank(address(0xA5));
+        assemblies_.registerAssembly(k, "ipfs://the-bytes-as-an-assembly");
+        vm.prank(address(0xA6));
+        agreements_.registerAgreement(k, "ipfs://the-bytes-as-an-agreement");
+
+        // One use per kind, each through its own proof.
+        CommitmentTypes.Commitment memory clauseOrder = _settledOrder(k, buyer, BUYER_KEY, seller1, SELLER1_KEY, 1);
+        real.recordClauseUsage(clauseOrder, k, keccak256(SECTION), new bytes32[](0));
+        (CommitmentTypes.Commitment memory asmOrder, bytes32[] memory asmProof) = _settledUnderSlot(AGR_KEY, k, 2);
+        _recordAssembly(real, asmOrder, 0, asmProof);
+        (CommitmentTypes.Commitment memory agrOrder, bytes32[] memory agrProof) = _settledUnderSlot(k, k, 3);
+        real.recordAgreementUsage(agrOrder, k, k, agrProof);
+
+        for (uint8 kind = 0; kind < 3; ++kind) {
+            (uint64 c, uint64 d,) = real.accrualOf(kind, k, 0);
+            assertEq(c, 1, "each kind counts its own use once");
+            assertEq(d, 1);
+        }
+        assertEq(real.totalScoreIn(0), 3 * _score(1, 1), "three slots, three scores");
+        assertFalse(real.processCounted(KIND_AGREEMENT, k, _pid(clauseOrder)), "a clause use is no agreement's");
+        assertFalse(real.processCounted(KIND_CLAUSE, k, _pid(agrOrder)), "an agreement use is no clause's");
+        assertFalse(real.processCounted(KIND_ASSEMBLY, k, _pid(agrOrder)), "an agreement use is no assembly's");
+
+        // The agreement's own stake is withdrawn: its kind closes, and the
+        // live clause and assembly stakes at the same bytes do not reopen it.
+        vm.prank(address(0xA6));
+        agreements_.withdrawDeposit(k);
+        (CommitmentTypes.Commitment memory late, bytes32[] memory lateProof) = _settledUnderSlot(k, k, 4);
+        vm.expectRevert(abi.encodeWithSelector(UsageCounter.ClauseOrAssemblyNotRegistered.selector, k));
+        real.recordAgreementUsage(late, k, k, lateProof);
+
+        UsageCounter.BatchAccrual[] memory a = new UsageCounter.BatchAccrual[](3);
+        a[0] = UsageCounter.BatchAccrual(k, KIND_CLAUSE, 2, 2);
+        a[1] = UsageCounter.BatchAccrual(k, KIND_ASSEMBLY, 3, 2);
+        a[2] = UsageCounter.BatchAccrual(k, KIND_AGREEMENT, 4, 2);
+        vm.prank(batchVerifier);
+        real.applyBatchAccrual(0, PROVENANCE_LEAF, a, _sellers(seller1));
+        (uint64 bClause,,) = real.batchAccrualOf(KIND_CLAUSE, k, 0);
+        (uint64 bAssembly,,) = real.batchAccrualOf(KIND_ASSEMBLY, k, 0);
+        (uint64 bAgreement,,) = real.batchAccrualOf(KIND_AGREEMENT, k, 0);
+        assertEq(bClause, 2, "the clause kind is gated by the clause registry alone");
+        assertEq(bAssembly, 3, "the assembly kind is gated by the assembly registry alone");
+        assertEq(bAgreement, 0, "the agreement kind closed with its own stake");
+    }
+
+    /// @dev The processId FigaroCore assigns a first order.
+    function _pid(CommitmentTypes.Commitment memory c) internal view returns (bytes32) {
+        return keccak256(abi.encodePacked("\x19\x01", core.DOMAIN_SEPARATOR(), c.hashStruct()));
+    }
+
+    /// @dev A counter over REAL registries, an assembly at the test assembly's
+    ///      root registered by `designer`, and the same bytes staked as a
+    ///      CLAUSE by `stranger`.
     function _counterWithASquattedAssemblyKey(address designer, address stranger)
         internal
         returns (UsageCounter real, AssemblyRegistry assemblies_)
     {
-        uint64[] memory periods = new uint64[](1);
-        periods[0] = P0_END;
-        ClauseRegistry clauses_ = new ClauseRegistry(0);
-        assemblies_ = new AssemblyRegistry(0);
-        real = new UsageCounter(
-            address(core), address(members), address(clauses_), address(assemblies_), batchVerifier, 1, periods
-        );
+        ClauseRegistry clauses_;
+        (real, clauses_, assemblies_,) = _realCounter();
         vm.prank(designer);
-        assemblies_.registerAssembly(ASM_KEY, "ipfs://asm");
+        assemblies_.registerAssembly(_asmRoot(), "ipfs://asm");
         vm.prank(stranger);
-        clauses_.registerClause(ASM_KEY, "ipfs://a-stranger-stakes-the-assembly-key-as-a-clause");
+        clauses_.registerClause(_asmRoot(), "ipfs://a-stranger-stakes-the-assembly-key-as-a-clause");
     }
 
     /// The direct path counts an assembly's use under the ASSEMBLY kind only:
     /// a clause stake at the same bytes shares no slot with it.
     function test_assemblyUsageLandsUnderTheAssemblyKindOnly() public {
         (UsageCounter real,) = _counterWithASquattedAssemblyKey(address(0xDE5), address(0x5745));
+        bytes32 root = _asmRoot();
 
-        CommitmentTypes.Commitment memory c = _settledUnderAssembly(ASM_KEY, 1);
-        real.recordAssemblyUsage(c, ASM_KEY, new bytes32[](0));
+        (CommitmentTypes.Commitment memory c, bytes32[] memory proof) = _settledUnderSlot(AGR_KEY, root, 1);
+        _recordAssembly(real, c, 0, proof);
 
-        (uint64 asmC,, uint256 asmScore) = real.accrualOf(KIND_ASSEMBLY, ASM_KEY, 0);
-        (uint64 clauseC,, uint256 clauseScore) = real.accrualOf(KIND_CLAUSE, ASM_KEY, 0);
+        (uint64 asmC,, uint256 asmScore) = real.accrualOf(KIND_ASSEMBLY, root, 0);
+        (uint64 clauseC,, uint256 clauseScore) = real.accrualOf(KIND_CLAUSE, root, 0);
         assertEq(asmC, 1, "the assembly's use is counted under its kind");
         assertGt(asmScore, 0);
         assertEq(clauseC, 0, "the clause kind at the same bytes stands apart");
         assertEq(clauseScore, 0);
-        assertEq(real.scoreOf(KIND_CLAUSE, ASM_KEY, 0), 0, "and scores nothing of it");
-        assertEq(real.scoreOf(KIND_ASSEMBLY, ASM_KEY, 0), asmScore);
+        assertEq(real.scoreOf(KIND_CLAUSE, root, 0), 0, "and scores nothing of it");
+        assertEq(real.scoreOf(KIND_ASSEMBLY, root, 0), asmScore);
     }
 
     /// The batch path gates each accrual by its OWN kind's registry, never
     /// "any live registration": a clause stake at an assembly's bytes neither
     /// joins the assembly's accrual nor keeps it alive once the assembly's own
-    /// deposit is withdrawn. An unknown kind names no registry and is skipped.
+    /// stake is withdrawn. A kind beyond the three names no registry and is
+    /// skipped.
     function test_batchAccrualGatesEachKindByItsOwnRegistry() public {
         address designer = address(0xDE5);
         (UsageCounter real, AssemblyRegistry assemblies_) = _counterWithASquattedAssemblyKey(designer, address(0x5745));
+        bytes32 root = _asmRoot();
 
-        UsageCounter.BatchAccrual[] memory a = new UsageCounter.BatchAccrual[](3);
-        a[0] = UsageCounter.BatchAccrual(ASM_KEY, KIND_CLAUSE, 1, 1);
-        a[1] = UsageCounter.BatchAccrual(ASM_KEY, KIND_ASSEMBLY, 5, 3);
-        a[2] = UsageCounter.BatchAccrual(ASM_KEY, 7, 9, 9);
+        UsageCounter.BatchAccrual[] memory a = new UsageCounter.BatchAccrual[](4);
+        a[0] = UsageCounter.BatchAccrual(root, KIND_CLAUSE, 1, 1);
+        a[1] = UsageCounter.BatchAccrual(root, KIND_ASSEMBLY, 5, 3);
+        a[2] = UsageCounter.BatchAccrual(root, KIND_AGREEMENT, 8, 8);
+        a[3] = UsageCounter.BatchAccrual(root, 3, 9, 9);
         vm.prank(batchVerifier);
         real.applyBatchAccrual(0, PROVENANCE_LEAF, a, _sellers(seller1));
 
-        (uint64 asmC, uint64 asmD,) = real.batchAccrualOf(KIND_ASSEMBLY, ASM_KEY, 0);
-        (uint64 clauseC, uint64 clauseD,) = real.batchAccrualOf(KIND_CLAUSE, ASM_KEY, 0);
-        (uint64 unknownC,,) = real.batchAccrualOf(7, ASM_KEY, 0);
+        (uint64 asmC, uint64 asmD,) = real.batchAccrualOf(KIND_ASSEMBLY, root, 0);
+        (uint64 clauseC, uint64 clauseD,) = real.batchAccrualOf(KIND_CLAUSE, root, 0);
+        (uint64 agreementC,,) = real.batchAccrualOf(KIND_AGREEMENT, root, 0);
+        (uint64 unknownC,,) = real.batchAccrualOf(3, root, 0);
         assertEq(asmC, 5);
         assertEq(asmD, 3);
         assertEq(clauseC, 1, "the stranger's clause-kind accrual is its own");
         assertEq(clauseD, 1);
-        assertEq(unknownC, 0, "an unknown kind is skipped");
+        assertEq(agreementC, 0, "no agreement is registered at these bytes: skipped");
+        assertEq(unknownC, 0, "a kind beyond the three is skipped");
         assertEq(real.totalScoreIn(0), _score(5, 3) + _score(1, 1));
 
         // The assembly's own stake is withdrawn: its kind's gate closes, and the
         // live clause stake at the same bytes does not reopen it.
         vm.prank(designer);
-        assemblies_.withdrawDeposit(ASM_KEY);
+        assemblies_.withdrawDeposit(root);
         UsageCounter.BatchAccrual[] memory b = new UsageCounter.BatchAccrual[](1);
-        b[0] = UsageCounter.BatchAccrual(ASM_KEY, KIND_ASSEMBLY, 6, 4);
+        b[0] = UsageCounter.BatchAccrual(root, KIND_ASSEMBLY, 6, 4);
         vm.prank(batchVerifier);
         real.applyBatchAccrual(0, PROVENANCE_LEAF, b, _sellers(seller1));
-        (asmC, asmD,) = real.batchAccrualOf(KIND_ASSEMBLY, ASM_KEY, 0);
+        (asmC, asmD,) = real.batchAccrualOf(KIND_ASSEMBLY, root, 0);
         assertEq(asmC, 5, "skipped: the clause registry is never read for an assembly");
         assertEq(asmD, 3);
+    }
+
+    /// The agreement kind on the batch path: written while the agreement's
+    /// stake is live, skipped once it is not.
+    function test_batchAccrualGatesTheAgreementKindByTheAgreementRegistry() public {
+        UsageCounter.BatchAccrual[] memory a = new UsageCounter.BatchAccrual[](2);
+        a[0] = UsageCounter.BatchAccrual(AGR_KEY, KIND_AGREEMENT, 4, 2);
+        a[1] = UsageCounter.BatchAccrual(AGR2_KEY, KIND_AGREEMENT, 4, 2);
+        stake.kill(AGR2_KEY);
+        vm.prank(batchVerifier);
+        counter.applyBatchAccrual(0, PROVENANCE_LEAF, a, _sellers(seller1));
+
+        (uint64 live,, uint256 liveScore) = counter.batchAccrualOf(KIND_AGREEMENT, AGR_KEY, 0);
+        (uint64 dead,,) = counter.batchAccrualOf(KIND_AGREEMENT, AGR2_KEY, 0);
+        assertEq(live, 4, "a live agreement's batch accrual is written");
+        assertEq(liveScore, _score(4, 2));
+        assertEq(dead, 0, "an un-live agreement's is skipped");
+        assertEq(counter.totalScoreIn(0), liveScore);
     }
 
     function test_mandatoryClausesEarnForTheirAuthor() public {
@@ -755,7 +1084,7 @@ contract UsageCounterTest is Test {
         periods[0] = P0_END;
         periods[1] = P1_END;
         floored = new UsageCounter(
-            address(core), address(members), address(stake), address(stake), batchVerifier, 3, periods
+            address(core), address(members), address(stake), address(stake), address(stake), batchVerifier, 3, periods
         );
     }
 
@@ -833,15 +1162,27 @@ contract UsageCounterTest is Test {
         uint64[] memory p = new uint64[](1);
         p[0] = P0_END;
         vm.expectRevert(UsageCounter.ZeroAddress.selector);
-        new UsageCounter(address(0), address(members), address(stake), address(stake), batchVerifier, 1, p);
+        new UsageCounter(
+            address(0), address(members), address(stake), address(stake), address(stake), batchVerifier, 1, p
+        );
         vm.expectRevert(UsageCounter.ZeroAddress.selector);
-        new UsageCounter(address(core), address(0), address(stake), address(stake), batchVerifier, 1, p);
+        new UsageCounter(address(core), address(0), address(stake), address(stake), address(stake), batchVerifier, 1, p);
         vm.expectRevert(UsageCounter.ZeroAddress.selector);
-        new UsageCounter(address(core), address(members), address(0), address(stake), batchVerifier, 1, p);
+        new UsageCounter(
+            address(core), address(members), address(0), address(stake), address(stake), batchVerifier, 1, p
+        );
         vm.expectRevert(UsageCounter.ZeroAddress.selector);
-        new UsageCounter(address(core), address(members), address(stake), address(0), batchVerifier, 1, p);
+        new UsageCounter(
+            address(core), address(members), address(stake), address(0), address(stake), batchVerifier, 1, p
+        );
         vm.expectRevert(UsageCounter.ZeroAddress.selector);
-        new UsageCounter(address(core), address(members), address(stake), address(stake), address(0), 1, p);
+        new UsageCounter(
+            address(core), address(members), address(stake), address(stake), address(0), batchVerifier, 1, p
+        );
+        vm.expectRevert(UsageCounter.ZeroAddress.selector);
+        new UsageCounter(
+            address(core), address(members), address(stake), address(stake), address(stake), address(0), 1, p
+        );
     }
 
     function test_constructor_rejectsTooManyPeriods() public {
@@ -850,13 +1191,22 @@ contract UsageCounterTest is Test {
             p[i] = uint64(P0_END + i);
         }
         vm.expectRevert(UsageCounter.TooManyPeriods.selector);
-        new UsageCounter(address(core), address(members), address(stake), address(stake), batchVerifier, 1, p);
+        new UsageCounter(
+            address(core), address(members), address(stake), address(stake), address(stake), batchVerifier, 1, p
+        );
     }
 
     function test_constructor_rejectsEmptyPeriods() public {
         vm.expectRevert(UsageCounter.EmptyPeriods.selector);
         new UsageCounter(
-            address(core), address(members), address(stake), address(stake), batchVerifier, 1, new uint64[](0)
+            address(core),
+            address(members),
+            address(stake),
+            address(stake),
+            address(stake),
+            batchVerifier,
+            1,
+            new uint64[](0)
         );
     }
 
@@ -865,7 +1215,9 @@ contract UsageCounterTest is Test {
         p[0] = P1_END;
         p[1] = P0_END;
         vm.expectRevert(UsageCounter.PeriodsNotAscending.selector);
-        new UsageCounter(address(core), address(members), address(stake), address(stake), batchVerifier, 1, p);
+        new UsageCounter(
+            address(core), address(members), address(stake), address(stake), address(stake), batchVerifier, 1, p
+        );
     }
 
     function test_constructor_rejectsZeroMinSellers() public {
@@ -874,7 +1226,9 @@ contract UsageCounterTest is Test {
         uint64[] memory p = new uint64[](1);
         p[0] = P0_END;
         vm.expectRevert(UsageCounter.ZeroMinSellers.selector);
-        new UsageCounter(address(core), address(members), address(stake), address(stake), batchVerifier, 0, p);
+        new UsageCounter(
+            address(core), address(members), address(stake), address(stake), address(stake), batchVerifier, 0, p
+        );
     }
 
     // ── The batch bridge: proof-gated accrual ───────────────────────

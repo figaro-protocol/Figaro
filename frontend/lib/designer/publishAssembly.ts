@@ -2,20 +2,27 @@
  * lib/designer/publishAssembly.ts — AUTHORING: pin + anchor an assembly.
  *
  * Designer-tier only. Builds the off-chain assembly template from a design
- * snapshot, pins it to IPFS, and registers it on `AssemblyRegistry`.
+ * snapshot, registers each newly composed agreement on `AgreementRegistry`,
+ * pins the template to IPFS, and registers it on `AssemblyRegistry`.
  * READING published assemblies (the `AssemblyChoice` enrichment) lives in
  * `@/lib/protocol/assemblyChoices` — design is design; reading is everyone's.
  *
  * Publish flow:
- *   1. Build a full off-chain assemblyTemplate from the snapshot — one
- *      agreement per canvas order (clauses inlined, topology as a clause),
- *      plus prose.
- *   2. Compute the canonical composition hash (keccak256 of the stable-JSON
- *      composition subset — the assembly's identity).
- *   3. Pin the assemblyTemplate to IPFS via DEFAULT_IPFS_SERVICE.
- *   4. Call AssemblyRegistry.registerAssembly(compositionHash, contentURI).
+ *   1. Build the template from the snapshot — one order slot per canvas
+ *      order, each binding a registered agreement by key (one the designer
+ *      bound, or one newly composed from the order's clauses), the topology
+ *      parents in the order slot's own fill — plus prose.
+ *   2. Compute the composition root (the merkle root over the order slots
+ *      and the assembly terms — the assembly's identity).
+ *   3. Pin the template to IPFS and simulate
+ *      AssemblyRegistry.registerAssembly(compositionHash, contentURI); pin
+ *      each newly composed agreement no registry binds yet and simulate its
+ *      AgreementRegistry.registerAgreement(key, uri). Every check passes
+ *      before any write is sent.
+ *   4. Send each agreement registration with its stake — one transaction,
+ *      one receipt each — then registerAssembly.
  *      Before the call, a CLIENT-SIDE publish guard checks
- *      that the agreement count fits the per-process gas
+ *      that the order slot count fits the per-process gas
  *      ceiling, derived at runtime from the active chain's block gas limit
  *      via `maxOrdersResolvablePerProcess` in `@/lib/shared/chainGasCeilings`.
  *      The count is not a contract parameter and is never stored on-chain.
@@ -30,12 +37,17 @@ import type { Abi } from "viem";
 import { publishTail } from "@/lib/protocol/publishTail";
 import { DEFAULT_IPFS_SERVICE } from "@/lib/shared/ipfsService";
 import type { DesignSnapshot } from "@/lib/designer/syntheticDesignStore";
-import { serializeAssemblyTemplate } from "@figaro-protocol/sdk";
+import { AGREEMENT_REGISTRY_ABI, canonicalize, serializeAssemblyTemplate, type ComposedAgreement } from "@figaro-protocol/sdk";
 import { snapshotToAssemblyTemplate } from "@/lib/designer/draftToAssemblyTemplate";
 import { deriveAssemblySlug } from "@/lib/shared/assemblyTemplate";
 import { hexEqual } from "@/lib/shared/evm";
 import { maxOrdersResolvablePerProcess } from "@/lib/shared/chainGasCeilings";
 import { ASSEMBLY_REGISTRY_ABI } from "@/lib/kernel/contracts";
+import {
+    getAgreementRegistry,
+    readAgreementBinding,
+    translateAgreementRegisterRevert,
+} from "@/lib/protocol/useAgreementRegistry";
 import {
     getAssemblyRegistry,
     translatePublishRevert,
@@ -49,12 +61,13 @@ export function usePublishAssembly() {
         useWriteContract();
     const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
 
-    /** Build a assemblyTemplate from the snapshot, pin to IPFS, fetch the
-     *  registry's stake amount, simulate to catch reverts (composition
-     *  already anchored, wrong stake) BEFORE opening the wallet, send the
-     *  transaction, then wait for the receipt and verify status is
-     *  `success`. Returns the transaction hash + IPFS URI on confirmed
-     *  success. Throws on any failure — no wallet, IPFS down,
+    /** Build the template from the snapshot, register each newly composed
+     *  agreement, pin the template to IPFS, fetch the registry's stake amount,
+     *  simulate to catch reverts (composition already anchored, wrong stake)
+     *  BEFORE opening the wallet, send the transaction, then wait for the
+     *  receipt and verify status is `success`. Returns the transaction hash +
+     *  IPFS URI on confirmed success, beside one entry per agreement
+     *  registered. Throws on any failure — no wallet, IPFS down,
      *  insufficient ETH, composition collision, on-chain revert, etc.
      *
      *  `reviewedCompositionHash` is the BYTE-EQUALITY GATE: the identity the
@@ -102,7 +115,8 @@ export function usePublishAssembly() {
         // placement: an assembly-scoped clause on an order,
         // or an agreement-scoped one at assembly level, throws here — publish
         // refuses, never a silent no-op.
-        const template = snapshotToAssemblyTemplate(snapshot);
+        const built = snapshotToAssemblyTemplate(snapshot);
+        const { template } = built;
         const { json, compositionHash } = serializeAssemblyTemplate(template);
         // One template, one hash: refuse before the pin and before the wallet
         // when this build is not the composition the caller reviewed.
@@ -117,14 +131,92 @@ export function usePublishAssembly() {
         // identical compositions collapse to one on-chain binding (the
         // registry's first-write-wins dedups them); the user never names it.
         const slug = deriveAssemblySlug(compositionHash);
-        const ipfs = await DEFAULT_IPFS_SERVICE.publishJSON(JSON.parse(json));
 
-        // Simulate before opening the wallet — catches composition collision /
-        // wrong-deposit reverts so the user sees a typed error instead of
-        // a silent on-chain revert post-submission. Waits for the receipt
-        // and verifies it didn't revert on-chain: `writeContractAsync` only
-        // confirms wallet submission, so without that wait the UI could
-        // declare success on a transaction the chain ultimately rejected.
+        // EVERY CHECK BEFORE ANY WRITE. The pins are content addressing, not
+        // chain writes; the simulations surface a typed revert before the
+        // wallet opens. Only once the assembly's registration and every new
+        // agreement's registration simulate clean is anything sent — so a
+        // publish that would revert (a composition already anchored, a stake
+        // mismatch) leaves no agreement registered and no stake placed.
+        const ipfs = await DEFAULT_IPFS_SERVICE.publishJSON(JSON.parse(json));
+        try {
+            await client.simulateContract({
+                address: registry,
+                abi: ASSEMBLY_REGISTRY_ABI as Abi,
+                functionName: "registerAssembly",
+                args: [compositionHash, ipfs.uri],
+                value: deposit,
+                account: address,
+            });
+        } catch (err) {
+            throw translatePublishRevert(err, slug);
+        }
+
+        // The agreements newly composed for this assembly: each one no
+        // registry binds yet is pinned and simulated now, and registered
+        // FIRST below (one stake each), so every order slot the template names
+        // is readable the moment the assembly anchors. A key the registry
+        // already binds is skipped — the same clauses always key to one
+        // registration.
+        const toRegister: { agreementKey: `0x${string}`; uri: string }[] = [];
+        const newKeys = Object.keys(built.agreements) as `0x${string}`[];
+        const agreementRegistry = getAgreementRegistry();
+        let agreementDeposit = 0n;
+        if (newKeys.length > 0) {
+            if (!agreementRegistry) {
+                throw new Error("AgreementRegistry address not configured (NEXT_PUBLIC_AGREEMENT_REGISTRY).");
+            }
+            agreementDeposit = await client.readContract({
+                address: agreementRegistry,
+                abi: AGREEMENT_REGISTRY_ABI,
+                functionName: "registrationDeposit",
+            });
+            for (const agreementKey of newKeys) {
+                if (await readAgreementBinding(agreementKey, client)) continue;
+                const index = template.agreements.findIndex((s) => hexEqual(s.agreementKey, agreementKey));
+                // The pinned document carries the designer's words beside the
+                // clauses; the key is over the clauses alone.
+                const doc: ComposedAgreement = {
+                    ...(template.name ? { name: `${template.name} · order ${index + 1}` } : {}),
+                    clauses: built.agreements[agreementKey].clauses,
+                };
+                const pinned = await DEFAULT_IPFS_SERVICE.publishJSON(JSON.parse(canonicalize(doc)));
+                try {
+                    await client.simulateContract({
+                        address: agreementRegistry,
+                        abi: AGREEMENT_REGISTRY_ABI as Abi,
+                        functionName: "registerAgreement",
+                        args: [agreementKey, pinned.uri],
+                        value: agreementDeposit,
+                        account: address,
+                    });
+                } catch (err) {
+                    throw translateAgreementRegisterRevert(err, agreementKey);
+                }
+                toRegister.push({ agreementKey, uri: pinned.uri });
+            }
+        }
+
+        // The writes: agreements first, then the assembly. Each waits for a
+        // `success` receipt (`publishTail`), so the UI never declares success
+        // on a transaction the chain rejected.
+        const agreements: PublishOutcome["agreements"] = [];
+        for (const { agreementKey, uri } of toRegister) {
+            const agreementTx = await publishTail({
+                client,
+                writeContractAsync,
+                address: agreementRegistry!,
+                abi: AGREEMENT_REGISTRY_ABI as Abi,
+                functionName: "registerAgreement",
+                args: [agreementKey, uri],
+                value: agreementDeposit,
+                account: address,
+                translateRevert: (err) => translateAgreementRegisterRevert(err, agreementKey),
+                failureMessage: "The agreement registration was not created.",
+            });
+            agreements.push({ agreementKey, hash: agreementTx, ipfsURI: uri });
+        }
+
         const txHash = await publishTail({
             client,
             writeContractAsync,
@@ -138,7 +230,7 @@ export function usePublishAssembly() {
             failureMessage: "The composition binding was not created.",
         });
 
-        return { hash: txHash, ipfsURI: ipfs.uri, slug };
+        return { hash: txHash, ipfsURI: ipfs.uri, slug, agreements };
     }
 
     return {

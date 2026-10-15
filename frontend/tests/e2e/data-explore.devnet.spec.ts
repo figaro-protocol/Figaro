@@ -111,7 +111,6 @@ import {
 } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import {
-    ASSEMBLY_REGISTRY_ABI,
     ATTESTATION_COORDINATOR_ABI,
     CLAUSE_REGISTRY_ABI,
     PROVENANCE_LEAF_KEY,
@@ -124,7 +123,6 @@ import {
     reconstructOrdersFromTemplate,
     sectionDataHash,
     templateCompositionHash,
-    type AssemblyTemplate,
     type ReconstructedOrder,
 } from '@figaro-protocol/sdk';
 import { decodeContentFromSpec, encodeContentFromSpec, type ClauseSpec } from '@figaro-protocol/sdk/clauses';
@@ -138,7 +136,7 @@ import {
     type VenueEvent,
 } from '@figaro-protocol/sdk/derive';
 import { formatToken } from '@/lib/shared/utils';
-import { LOCAL_ANVIL, RPC_URL, localPublicClient, readLocalDeploymentConfig, keyOf, primeRegisteredClauseSpecs } from './devnet-helpers';
+import { LOCAL_ANVIL, RPC_URL, discoverAnchoredAssemblies, localPublicClient, readAgreementBinding, readLocalDeploymentConfig, keyOf, primeRegisteredClauseSpecs } from './devnet-helpers';
 import { ANVIL_KEYS } from '../anvilAccounts';
 import { CORE_ABI } from '@/lib/kernel/contracts';
 
@@ -282,34 +280,24 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
             }
         }
 
-        // ── ADOPT from chain + IPFS: anchored templates resolved in full,
-        //    integrity re-hashed, selected by SHAPE (single order composing
-        //    the credential clause, the GEO clause, and the each-own
-        //    data-terms regime) — never a hardcoded slug. ──
-        const anchored: Array<{ compositionHash: Hex; template: AssemblyTemplate }> = [];
-        for (const ev of await publicClient.getContractEvents({
-            address: assemblyRegistry, abi: ASSEMBLY_REGISTRY_ABI, eventName: 'AssemblyRegistered', fromBlock: 0n,
-        })) {
-            const { compositionHash, contentURI } = ev.args as { compositionHash?: Hex; contentURI?: string };
-            if (!compositionHash || !contentURI) continue;
-            try {
-                const cid = contentURI.replace(/^ipfs:\/\//, '');
-                const doc = await (await fetch(`${IPFS_API}/api/v0/cat?arg=${cid}`, { method: 'POST' })).json() as AssemblyTemplate;
-                if (!Array.isArray(doc.agreements) || doc.agreements.length === 0) continue;
-                anchored.push({ compositionHash, template: doc });
-            } catch {
-                continue; // unresolvable/garbage URI — mainnet-realistic tolerance
-            }
-        }
+        // ── ADOPT from chain + IPFS: anchored templates resolved in full —
+        //    each order slot's agreement read by key from AgreementRegistry
+        //    and verified — selected by SHAPE (single order composing the
+        //    credential clause, the GEO clause, and the each-own data-terms
+        //    regime) — never a hardcoded slug. ──
+        const anchored = await discoverAnchoredAssemblies();
         const aerial = anchored.find((a) =>
-            a.template.agreements.length === 1
-            && CREDENTIAL in a.template.agreements[0].clauses
-            && GEO in a.template.agreements[0].clauses
-            && (a.template.agreements[0].clauses[DATA_TERMS] as { disclosure?: string } | undefined)?.disclosure === 'each-own');
+            a.agreements.length === 1
+            && CREDENTIAL in a.agreements[0].clauses
+            && GEO in a.agreements[0].clauses
+            && (a.agreements[0].clauses[DATA_TERMS] as { disclosure?: string } | undefined)?.disclosure === 'each-own');
         expect(aerial, 'the geo-bearing aerial-survey reference is anchored — run populate-test-data first').toBeTruthy();
-        expect(templateCompositionHash(aerial!.template), 'the pinned template re-hashes to its anchored identity')
+        expect(templateCompositionHash(aerial!.hydrated.template), 'the pinned template re-hashes to its anchored identity')
             .toBe(aerial!.compositionHash);
-        const assemblyName = (aerial!.template as { name?: string }).name ?? '';
+        // CHAIN FACT: the order slot's agreement is a live registration, read by key.
+        const aerialAgreementKey = aerial!.agreements[0].agreementKey;
+        expect(await readAgreementBinding(aerialAgreementKey), 'the order slot binds a registered agreement').not.toBeNull();
+        const assemblyName = aerial!.name ?? '';
         expect(assemblyName, 'the anchored template carries its registered display name').not.toBe('');
 
         // ── The REGISTERED specs (ClauseRegistered → IPFS — the same read
@@ -330,7 +318,7 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
         //    client (buyer) books the surveyor (seller); value legs asserted
         //    from the token contract (the e2e value-legs rule). ──
         const chainNow = (await publicClient.getBlock({ blockTag: 'latest' })).timestamp;
-        const orders = await reconstructOrdersFromTemplate(aerial!.template, {
+        const orders = await reconstructOrdersFromTemplate(aerial!.hydrated, {
             buyer: client.address,
             currency: token,
             chainId: LOCAL_ANVIL.id,
@@ -362,7 +350,8 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
         const order: ReconstructedOrder = orders[0];
         // Mechanical at checkout: the walk sets the agreement's provenance
         // leaf to the adopted assembly's own verified identity.
-        expect(order.agreement.provenance, 'the agreement names the adopted assembly').toBe(aerial!.compositionHash);
+        expect(order.agreement.provenance, 'the agreement names its registered agreement and the adopted assembly')
+            .toEqual({ agreementKey: aerialAgreementKey, compositionHash: aerial!.compositionHash });
 
         const buyerSig = await clientWallet.signTypedData(order.typedData);
         const sellerSig = await surveyorWallet.signTypedData(order.typedData);
@@ -444,7 +433,7 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
         // the agreement format's leaf under its reserved key, its own bytes
         // published at their fingerprint, filed while the process is open.
         const prov = provenanceLeafAttestation(order.agreement);
-        const provBytes = provenanceSectionBytes(aerial!.compositionHash);
+        const provBytes = provenanceSectionBytes(aerialAgreementKey, aerial!.compositionHash);
         expect(keccak256(provBytes), "the leaf's content reference is its bytes' hash").toBe(prov.contentRef);
         await pinWitnessBytes(provBytes);
         expect(await fetchWitnessBytes(prov.contentRef), 'the published provenance resolves from its own fingerprint')
@@ -506,9 +495,9 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
             if ((ev.args.clauseId as string).toLowerCase() !== PROVENANCE_LEAF_KEY.toLowerCase()) continue;
             const bytes = await fetchWitnessBytes(ev.args.contentRef as string);
             if (!bytes) continue;
-            const compositionHash = decodeProvenanceContent(bytes as Hex);
-            if (compositionHash) {
-                attributionByProcess.set((ev.args.processId as string).toLowerCase(), compositionHash.toLowerCase());
+            const provenance = decodeProvenanceContent(bytes as Hex);
+            if (provenance) {
+                attributionByProcess.set((ev.args.processId as string).toLowerCase(), provenance.compositionHash.toLowerCase());
             }
         }
         const marketKey = aerial!.compositionHash.toLowerCase();

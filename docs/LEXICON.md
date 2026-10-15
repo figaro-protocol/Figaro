@@ -4,11 +4,15 @@ Nouns and their definitions. One name per thing.
 
 **agent** — Software that holds a signing key and acts with it, on the same footing as a person. An agent acts for itself — it is then the asset, selling its own value — or for another asset whose wallet it operates. Either way it can buy, sell, and design clauses and assemblies.
 
-**agreement** — The clauses composed for one order, every field filled: the terms of the contract every trade is, and the parties' document. Its merkle root is what the commitment carries.
+**agreement** — The clauses composed for one order, every field filled: the terms of the contract every trade is, and the parties' document. Its merkle root is what the commitment carries. Filled at checkout from a registered agreement; never the composed agreement itself, which holds no values.
+
+**agreement key** — The hash that names a composed agreement: the canonical content hash of the clauses it composes and the designer's fills, value-free; a registered agreement is registered under it. A design-time key, never the merkle root an order's commitment carries.
 
 **arbitration forum** — An outside body a designer composes into an assembly to rule on disputes about a process, using the process's data as evidence. A forum rules; the buyer resolves.
 
-**assembly** — Agreements composed into one reusable design of a process: which relationships it holds, in what order, under what terms. Published under the hash of its composition; a process instantiates it.
+**assembly** — Registered agreements composed, one per order slot, into one reusable design of a process: which relationships it holds, in what order, under what terms. Published under the merkle root over its order slots and its assembly terms leaf; a process instantiates it.
+
+**assembly terms leaf** — The leaf of an assembly's merkle root that holds the clauses composed at assembly scope, which every order's agreement under the assembly carries. Present only when the assembly composes any.
 
 **asset** — A productive thing that owns a wallet and trades through it: a kitchen, a vehicle, a person's labor, a machine, an agent selling its own service. The asset is the party; whoever holds its key operates it.
 
@@ -32,6 +36,8 @@ Nouns and their definitions. One name per thing.
 
 **community token** — A community's own token used as a denomination, so value spent through processes elsewhere sustains its worth at home.
 
+**composed agreement** — The clauses composed for one order slot with the designer's fills, value-free: the design of one order, never its values, and the topology clause left empty because who follows whom belongs to the order slot. Named by its agreement key.
+
 **composition** — How anything here is built, on both sides of the Core. Internal: clauses composed into agreements, agreements into assemblies, assemblies instantiated as processes — the designer's act, over the Core without touching it. External, on-chain: plugging a process into another contract on the chain — a swap, a payment splitter, a dispute resolution forum. External, off-chain: meeting a legal or regulatory norm with the data a process leaves — an EU electronic invoice, ESG reporting, GDPR, taxation. Composition is what makes the protocol a network instead of a silo.
 
 **consideration** — The element of a contract by which each party gives value to the other. Between strangers it is the element that fails; the Core is what makes it hold.
@@ -52,9 +58,9 @@ Nouns and their definitions. One name per thing.
 
 **denomination** — The ERC-20 token in which every payment and every bond of one process is counted. One process, one token.
 
-**designer** — The wallet that writes and registers a clause or an assembly, and tailors its clauses to a market.
+**designer** — The wallet that writes and registers a clause, a registered agreement or an assembly, and tailors its clauses to a market.
 
-**designer rewards** — The share of florins a designer is rewarded, after the fact and in proportion to real use, for the clauses and assemblies processes have used. A reward, minted for the purpose; never a payment, which is the buyer's word.
+**designer rewards** — The share of florins a designer is rewarded, after the fact and in proportion to real use, for the clauses, registered agreements and assemblies processes have used. A reward, minted for the purpose; never a payment, which is the buyer's word.
 
 **dispatch race** — One way an offer forms: a buyer's request goes out and the first willing seller takes it.
 
@@ -66,11 +72,15 @@ Nouns and their definitions. One name per thing.
 
 **member** — A wallet that has registered a profile, with a stake, so that others can find it.
 
+**membership proof** — The merkle proof that a registered agreement holds an order slot of an assembly: the order slot's leaf, proved under the assembly's merkle root. Membership is proved, never looked up.
+
 **offer** — The buyer's signed commitment over an order's terms, carried to the seller before the seller has signed; the seller's counter-signature is the acceptance. Offers form by dispatch race or by request for quotes.
 
 **operator** — Whoever holds the signing key of an asset's wallet and acts for the asset: a person or an agent. Whose value the wallet carries decides the word — an asset acting for itself is a seller; a key-holder acting for another asset is its operator.
 
 **order** — One buyer–seller commitment inside a process.
+
+**order slot** — A position in an assembly: it holds one registered agreement and the fills that belong to the position, the topology naming the order slots it follows. Order slots are ordered, so one registered agreement may hold two.
 
 **payment** — The value transferred from the buyer to the seller for the value transferred by the seller to the buyer.
 
@@ -80,13 +90,15 @@ Nouns and their definitions. One name per thing.
 
 **profile** — The document a wallet publishes about itself when it registers as a member.
 
-**protocol** — The rules strangers follow to trade safely and to publish what they trade with: commit with bonds, resolve by the buyer alone, all at once; clauses, assemblies, and members registered publicly under a stake. Figaro is its name. The Core and the registries enforce the rules on a chain; any interface may read them, and anyone may build another. Decentralized and permissionless are the protocol's words, and they describe the protocol, never a wallet: the protocol is never called ownerless or said to have no owner, because an owner is the firm's question and the protocol has no seat for one to be missing from.
+**protocol** — The rules strangers follow to trade safely and to publish what they trade with: commit with bonds, resolve by the buyer alone, all at once; clauses, registered agreements, assemblies, and members registered publicly under a stake. Figaro is its name. The Core and the registries enforce the rules on a chain; any interface may read them, and anyone may build another. Decentralized and permissionless are the protocol's words, and they describe the protocol, never a wallet: the protocol is never described by its lack of an owner, because an owner is the firm's question and the protocol has no seat for one to be missing from.
 
 **refund** — The return of a bond to the party that deposited it, at resolution: each seller's whole, the buyer's less the payments it carried. Only a bond is ever refunded; a payment transfers. The reversal of a payment, which commerce calls by the same name, has no path in the protocol — a shortfall is put right before the buyer resolves.
 
 **register** — An outside authority's public list — a licensing board, a drivers' roster — that a clause may point to. It is read where it lives; it is never copied into the protocol.
 
-**registry** — One of the protocol's three public lists on the chain: clauses, assemblies, members. Each entry is placed by its own wallet with its own stake.
+**registered agreement** — A composed agreement pinned and registered under a stake in its own registry: the reusable unit a designer composes an assembly from, in any order slot of any assembly. Named by its agreement key; at checkout it is filled into an agreement.
+
+**registry** — One of the protocol's four public lists on the chain: clauses, registered agreements, assemblies, members. Each entry is placed by its own wallet with its own stake.
 
 **request for quotes** — The other way an offer forms: a buyer's request goes out and sellers answer with terms.
 
@@ -100,7 +112,7 @@ Nouns and their definitions. One name per thing.
 
 **sequencer** — The off-chain relay that gathers signed operations into a batch, proves it, and submits it.
 
-**stake** — The base chain's own currency a wallet places to take part in the ecosystem: to register as a member, or to register a clause or an assembly as a designer. It rises and falls with demand for the chain the ecosystem runs on. It stays reclaimable by the wallet that placed it; withdrawing it removes the registration from view.
+**stake** — The base chain's own currency a wallet places to take part in the ecosystem: to register as a member, or to register a clause, a registered agreement or an assembly as a designer. It rises and falls with demand for the chain the ecosystem runs on. It stays reclaimable by the wallet that placed it; withdrawing it removes the registration from view.
 
 **topology** — The clause that states the order of the sellers in a process.
 
@@ -116,13 +128,14 @@ Every noun above sits on one side of two seams, and a sentence that moves a noun
 
 **The layers.** Core, protocol, runtime (`CLAUDE.md` § "Three-Tier Naming"). Each layer is usable without the ones above it: a wallet may call the Core alone; a builder may use the Core with the registries and the designer rewards; this interface is one runtime among any number, and a clause this interface de-surfaces may still be surfaced and composed through another. Nothing in a lower layer reads, clears or depends on a higher one.
 
-**Design time and runtime.** Design time is the designer's: the clause, the agreement as composed, the assembly, the registries and the stake. Checkout is the buyer's: the assembly is instantiated, the real parties and amounts fill its agreements, and each agreement's merkle root is computed. Runtime is the process's: the order, the commitment, the process, the attestation, the resolution, the refund. A design holds no values and a process holds no design: an assembly is published once and instantiated any number of times, and a process is the runtime instance of an assembly, never the assembly itself.
+**Design time and runtime.** Design time is the designer's: the clause, the composed agreement, the assembly and its order slots, the registries and the stake. Checkout is the buyer's: the assembly is instantiated, the real parties and amounts fill its agreements, and each agreement's merkle root is computed. Runtime is the process's: the order, the commitment, the process, the attestation, the resolution, the refund. A design holds no values and a process holds no design: an assembly is published once and instantiated any number of times, and a process is the runtime instance of an assembly, never the assembly itself.
 
 | Noun | Layer | Time |
 |---|---|---|
 | clause | protocol | design |
-| agreement | protocol | design as composed; checkout when filled |
-| assembly | protocol | design |
+| composed agreement, registered agreement, agreement key | protocol | design |
+| agreement | protocol | checkout |
+| assembly, order slot, assembly terms leaf, membership proof | protocol | design |
 | stake | protocol | design |
 | checkout | runtime | checkout |
 | order, commitment | Core | checkout to runtime |

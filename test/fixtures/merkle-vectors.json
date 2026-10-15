@@ -49,13 +49,14 @@
         },
         {
             "label": "two-sections-and-a-design",
-            "agreementHash": "0xd88569ae480c06da52fe09e4eddc8d4670bc4c16b7408fc6c8c089cffb372172",
+            "agreementHash": "0x936ed2ce067b05573f474d59e71c6eec8017427d359249e57cd91d0f6c6f02b6",
             "sectionCount": 2,
             "provenance": {
                 "leafKey": "0x26dc18a2251a8f4629ada6df88b7c98553e011c08682d28ce5bb51a441227dc6",
-                "compositionHash": "0x9b3c1d2e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c",
-                "sectionData": "{\"compositionHash\":\"0x9b3c1d2e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c\"}",
-                "leaf": "0x8d786d1590506df2f4c39210e8e62bd4d2567d69fbfecefb4435a42311689f57",
+                "agreementKey": "0xbb3c9da739fcfd48102f1d1cec1a9534ed7c492f0522bbc963fe07058adc7555",
+                "compositionHash": "0x39e28370449706ac735f207566a4761906cf3dc8b9f7203a350204385003646e",
+                "sectionData": "{\"agreementKey\":\"0xbb3c9da739fcfd48102f1d1cec1a9534ed7c492f0522bbc963fe07058adc7555\",\"compositionHash\":\"0x39e28370449706ac735f207566a4761906cf3dc8b9f7203a350204385003646e\"}",
+                "leaf": "0x35406631847ae82a30b9446b5385b58a1f89a3c62c0991784fa2d65139fdd6ce",
                 "proof": [
                     "0x6836b6f83db97392813611ffd18d4157096175e3f3ad3fb4e4fe836c9ef120e9",
                     "0xc9a5eee4948d8b3af7c99eb27e95efd07a528cb73eed25dc70be9fe03b935a92"
@@ -67,7 +68,7 @@
                     "sectionData": "{\"currency\":\"0x0000000000000000000000000000000000000000\",\"payment\":\"7\"}",
                     "leaf": "0xc9a5eee4948d8b3af7c99eb27e95efd07a528cb73eed25dc70be9fe03b935a92",
                     "proof": [
-                        "0x29deb48892f2b3016af9f5457383836d20dd6dd99b1755631c63c512cefa4971"
+                        "0x8cc2d53b4306057a56fddb4127ccac2a175dd90629220b184ba49b31d9736767"
                     ]
                 },
                 {
@@ -75,7 +76,7 @@
                     "sectionData": "{\"parentOrderHashes\":[]}",
                     "leaf": "0x6836b6f83db97392813611ffd18d4157096175e3f3ad3fb4e4fe836c9ef120e9",
                     "proof": [
-                        "0x8d786d1590506df2f4c39210e8e62bd4d2567d69fbfecefb4435a42311689f57",
+                        "0x35406631847ae82a30b9446b5385b58a1f89a3c62c0991784fa2d65139fdd6ce",
                         "0xc9a5eee4948d8b3af7c99eb27e95efd07a528cb73eed25dc70be9fe03b935a92"
                     ]
                 }

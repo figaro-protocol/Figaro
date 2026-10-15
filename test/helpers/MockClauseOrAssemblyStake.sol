@@ -1,18 +1,17 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.26;
 
-/// @notice Test double for the CLAUSE-OR-ASSEMBLY-side stake gate `UsageCounter`
-///         reads — it implements both the `ClauseRegistry.depositOf` and the
-///         `AssemblyRegistry.bindings` shapes, so one instance can stand in for
-///         either registry (or both). Every key is LIVE by default, so a
-///         counting test need not register anything; `kill(clauseOrAssembly)`
-///         marks one un-live to exercise the `ClauseOrAssemblyNotRegistered`
-///         gate. This keeps the counter's counting properties isolated from real
-///         registration mechanics, exactly as `batchVerifier` is a plain EOA in
-///         the suite.
+/// @notice Test double for the designer-side stake gate `UsageCounter` reads —
+///         it implements both the `ClauseRegistry.depositOf` and the
+///         `AssemblyRegistry.bindings` / `AgreementRegistry.bindings` shapes (the
+///         last two are one shape), so one instance can stand in for any of the
+///         three registries. Every key is LIVE by default, so a counting test
+///         need not register anything; `kill(key)` marks one un-live to
+///         exercise the `ClauseOrAssemblyNotRegistered` gate. This keeps the
+///         counter's counting properties isolated from real registration
+///         mechanics, exactly as `batchVerifier` is a plain EOA in the suite.
 contract MockClauseOrAssemblyStake {
-    /// @dev Clauses and assemblies explicitly marked un-live (withdrawn / never
-    ///      registered).
+    /// @dev Keys explicitly marked un-live (withdrawn / never registered).
     mapping(bytes32 => bool) public dead;
 
     address public constant STAKER = address(0x5742E);
@@ -27,7 +26,7 @@ contract MockClauseOrAssemblyStake {
         return (STAKER, false);
     }
 
-    /// @dev `AssemblyRegistry.bindings` shape.
+    /// @dev `AssemblyRegistry.bindings` / `AgreementRegistry.bindings` shape.
     function bindings(bytes32 compositionHash)
         external
         view

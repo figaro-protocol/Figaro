@@ -19,10 +19,10 @@
 import { test, expect } from '@playwright/test';
 import { keccak256 } from 'viem';
 import {
-    ASSEMBLY_REGISTRY_ABI, CLAUSE_REGISTRY_ABI, MEMBERS_REGISTRY_ABI,
+    AGREEMENT_REGISTRY_ABI, ASSEMBLY_REGISTRY_ABI, CLAUSE_REGISTRY_ABI, MEMBERS_REGISTRY_ABI,
 } from '@figaro-protocol/sdk';
 import { deriveAssemblySlug } from '@/lib/shared/assemblyTemplate';
-import { localPublicClient, readLocalDeploymentConfig, resolveIpfsURI } from './devnet-helpers';
+import { discoverAnchoredAssemblies, localPublicClient, readAgreementBinding, readLocalDeploymentConfig, resolveIpfsURI } from './devnet-helpers';
 
 test.describe('Registry explorer (devnet)', () => {
     test('clauses: every surfaced row is an on-chain registration, grouped by article by default', async ({ page }) => {
@@ -127,6 +127,30 @@ test.describe('Registry explorer (devnet)', () => {
         await expect(page.getByTestId(`stored-json-clause-${found.clauseKey}`), 'the permalink opens the stored document').toBeVisible({ timeout: 30_000 });
     });
 
+    test('agreements: a registered agreement discovered from chain renders its key, designer of record, stake and pinned document', async ({ page }) => {
+        const publicClient = localPublicClient();
+        const registry = (process.env.NEXT_PUBLIC_AGREEMENT_REGISTRY ?? readLocalDeploymentConfig().agreementRegistry) as `0x${string}`;
+        const events = await publicClient.getContractEvents({
+            address: registry, abi: AGREEMENT_REGISTRY_ABI, eventName: 'AgreementRegistered', fromBlock: 0n,
+        });
+        expect(events.length, 'no registered agreements on this devnet — run populate-test-data first').toBeGreaterThan(0);
+        const agreementKey = (events[events.length - 1].args.agreementKey as `0x${string}`).toLowerCase();
+        // CHAIN FACT, read by key: the binding names its designer of record and stake.
+        const binding = await readAgreementBinding(agreementKey as `0x${string}`);
+        expect(binding, 'the registry binds the key').not.toBeNull();
+
+        await page.goto('/registries?family=agreements&stake=all');
+        const row = page.getByTestId(`agreement-row-${agreementKey}`);
+        await expect(row).toBeVisible({ timeout: 30_000 });
+        await expect(row.getByTestId(`agreement-key-${agreementKey}`)).toHaveText(new RegExp(agreementKey, 'i'));
+        await expect(row).toContainText(new RegExp(binding!.registeredBy.slice(0, 6), 'i'));
+        await expect(row.getByTestId(`agreement-stake-${agreementKey}`))
+            .toHaveText(binding!.stakeWithdrawn ? '(stake withdrawn)' : '(live stake)');
+        // The pinned document, read back and checked against the key.
+        await row.getByTestId(`stored-toggle-agreement-${agreementKey}`).click();
+        await expect(row.getByTestId(`stored-verdict-agreement-${agreementKey}`)).toContainText(/reproduces the anchor/i, { timeout: 30_000 });
+    });
+
     test('assemblies: an anchored assembly discovered from chain renders its row', async ({ page }) => {
         const publicClient = localPublicClient();
         const registry = (process.env.NEXT_PUBLIC_ASSEMBLY_REGISTRY ?? readLocalDeploymentConfig().assemblyRegistry) as `0x${string}`;
@@ -146,19 +170,15 @@ test.describe('Registry explorer (devnet)', () => {
 
     test('"assemblies composing it" keeps its promise — only the assemblies whose template composes the clause remain', async ({ page }) => {
         // Truth from chain → IPFS: every anchored template, and which compose the chosen clause.
-        const publicClient = localPublicClient();
-        const registry = (process.env.NEXT_PUBLIC_ASSEMBLY_REGISTRY ?? readLocalDeploymentConfig().assemblyRegistry) as `0x${string}`;
-        const events = await publicClient.getContractEvents({
-            address: registry, abi: ASSEMBLY_REGISTRY_ABI, eventName: 'AssemblyRegistered', fromBlock: 0n,
+        // Each assembly hydrated: its order slots' agreements read by key
+        // from AgreementRegistry → IPFS and verified.
+        const discovered = await discoverAnchoredAssemblies();
+        expect(discovered.length).toBeGreaterThan(1);
+        const templates = discovered.map((d) => {
+            const clauses = new Set<string>(Object.keys(d.hydrated.template.assemblyClauses ?? {}));
+            for (const a of d.agreements) for (const id of Object.keys(a.clauses)) clauses.add(id);
+            return { slug: d.slug, clauses };
         });
-        expect(events.length).toBeGreaterThan(1);
-        const templates = await Promise.all(events.map(async (e) => {
-            const res = await fetch(resolveIpfsURI(String(e.args.contentURI)));
-            const t = (await res.json()) as { agreements: Array<{ clauses: Record<string, unknown> }>; assemblyClauses?: Record<string, unknown> };
-            const clauses = new Set<string>(Object.keys(t.assemblyClauses ?? {}));
-            for (const a of t.agreements) for (const id of Object.keys(a.clauses)) clauses.add(id);
-            return { slug: deriveAssemblySlug(e.args.compositionHash as `0x${string}`), clauses };
-        }));
         // Pick a clause composed by SOME but not ALL assemblies — the facet must narrow.
         const counts = new Map<string, number>();
         for (const t of templates) for (const id of t.clauses) counts.set(id, (counts.get(id) ?? 0) + 1);

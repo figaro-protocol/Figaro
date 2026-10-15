@@ -1,11 +1,15 @@
 "use client";
 
 /**
- * AgreementDrawer — order inspector + live clause registry.
+ * AgreementDrawer — order inspector + live agreement and clause registries.
  *
- * Two panels:
+ * Three panels:
  *   - identity (Parties) — buyer / seller / topology position, read from the order
  *     + topology.
+ *   - agreements — every LIVE registration on `AgreementRegistry`, read from
+ *     the chain, each labeled by its pinned document's name with its key
+ *     shown: the designer binds one to this order slot as is (a reusable
+ *     unit), or unbinds it.
  *   - registry — every clause registered on `ClauseRegistry`, read live from
  *     the chain, grouped by `groupClausesByArticle()` (the single clause
  *     classification, shared with the /clauses inventory — grouping + order come
@@ -23,6 +27,12 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { Order } from "@/lib/kernel/store";
+import {
+    fetchComposedAgreement,
+    getComposedAgreement,
+    useComposedAgreementsVersion,
+    usePublishedAgreements,
+} from "@/lib/protocol/useAgreementRegistry";
 import { useAllRegisteredClauses, type RegisteredClauseEvent } from "@/lib/protocol/useClauseRegistry";
 import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
 import { groupClausesByArticle, getClauseSpec, clauseNestsUnder, clauseIsMandatory, clauseIsAssemblyScoped, clauseDesignFills, isLiveRegistration } from "@/lib/shared/clauseSpecSource";
@@ -53,6 +63,11 @@ interface Props {
     /** Set one field named in a selected clause's `design.fills` (the only
      *  fields the drawer renders editors for). */
     onSetClauseField?: (clauseKey: string, field: string, value: unknown) => void;
+    /** The registered agreement this order slot binds (`AgreementRegistry`
+     *  key), when it binds one. */
+    boundAgreementKey?: `0x${string}`;
+    /** Bind a registered agreement to this order slot, or unbind (`null`). */
+    onBindAgreement?: (agreementKey: `0x${string}` | null) => void;
 }
 
 export function AgreementDrawer({
@@ -65,6 +80,8 @@ export function AgreementDrawer({
     selectedClauseValues,
     onToggleClause,
     onSetClauseField,
+    boundAgreementKey,
+    onBindAgreement,
 }: Props) {
     const [openSection, setOpenSection] = useState<string | null>(null);
     const [minimized, setMinimized] = useState(false);
@@ -115,7 +132,7 @@ export function AgreementDrawer({
     // reconstructs these onto the order via fetchAgreement in the fork flow.
     const parentOrderHashes = order.parentOrderHashes ?? [];
 
-    const presentArticles: readonly string[] = ["identity", "registry"];
+    const presentArticles: readonly string[] = ["identity", "agreements", "registry"];
 
     function selectSection(section: string) {
         // Always open the clicked tab — never toggle it closed. Clicking an
@@ -310,6 +327,14 @@ export function AgreementDrawer({
                         </section>
                     )}
 
+                    {openSection === "agreements" && (
+                        <RegisteredAgreementsPanel
+                            boundAgreementKey={boundAgreementKey}
+                            onBindAgreement={onBindAgreement}
+                            readOnly={readOnly}
+                        />
+                    )}
+
                     {openSection === "registry" && (
                         <ClauseRegistryPanel
                             selectedClauseValues={selectedClauseValues}
@@ -323,6 +348,122 @@ export function AgreementDrawer({
             </div>
             </>)}
         </aside>
+    );
+}
+
+/**
+ * The agreement-registry content of the drawer: the order slot's bound
+ * agreement (its pinned document's name and its key), and every LIVE
+ * registration on `AgreementRegistry` to bind as is — one row per
+ * registration, labeled by its pinned document's name (the key alone while
+ * the document is unread or unnamed). A withdrawn stake de-surfaces here; an
+ * agreement already bound keeps reading whatever its stake.
+ */
+function RegisteredAgreementsPanel({
+    boundAgreementKey,
+    onBindAgreement,
+    readOnly,
+}: {
+    boundAgreementKey?: `0x${string}`;
+    onBindAgreement?: (agreementKey: `0x${string}` | null) => void;
+    readOnly: boolean;
+}) {
+    const { data: liveAgreements } = usePublishedAgreements(undefined);
+    // Re-renders as each document is read and verified (the labels read the
+    // session cache).
+    useComposedAgreementsVersion();
+    useEffect(() => {
+        for (const row of liveAgreements ?? []) void fetchComposedAgreement(row.agreementKey, row.contentURI);
+        if (boundAgreementKey) void fetchComposedAgreement(boundAgreementKey);
+    }, [liveAgreements, boundAgreementKey]);
+    const label = (agreementKey: `0x${string}`): string => {
+        const doc = getComposedAgreement(agreementKey);
+        const key = truncateHex(agreementKey, { head: 10, tail: 4 });
+        return doc?.name ? `${doc.name} · ${key}` : key;
+    };
+    const boundDoc = boundAgreementKey ? getComposedAgreement(boundAgreementKey) : undefined;
+    return (
+        <section data-testid="drawer-section-agreements" className="space-y-4">
+            <div data-testid="drawer-bound-agreement">
+                <p className="text-xs text-ink-muted mb-1">This order slot&rsquo;s agreement</p>
+                {boundAgreementKey ? (
+                    <div className="space-y-1">
+                        <p
+                            className="font-mono text-[11px] text-ink-body break-all"
+                            data-testid="drawer-bound-agreement-key"
+                            title={boundAgreementKey}
+                        >
+                            {label(boundAgreementKey)}
+                        </p>
+                        {boundDoc && (
+                            <ul className="text-[11px] text-ink-muted space-y-0.5" data-testid="drawer-bound-agreement-clauses">
+                                {Object.keys(boundDoc.clauses).map((clauseKey) => (
+                                    <li key={clauseKey}>
+                                        {getClauseSpec(clauseKey)?.title ?? truncateHex(clauseKey, { head: 10, tail: 0 })}
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
+                        {!readOnly && onBindAgreement && (
+                            <button
+                                type="button"
+                                onClick={() => onBindAgreement(null)}
+                                data-testid="drawer-unbind-agreement"
+                                className="text-xs underline text-ink-muted hover:text-ink-primary"
+                            >
+                                Unbind &mdash; compose this order&rsquo;s clauses instead
+                            </button>
+                        )}
+                    </div>
+                ) : (
+                    <p className="text-xs text-ink-body" data-testid="drawer-composed-agreement">
+                        A new agreement, composed from the clauses on the registry tab. Publishing
+                        registers it on the <code className="font-mono">AgreementRegistry</code> first.
+                    </p>
+                )}
+            </div>
+            {!readOnly && (
+                <div>
+                    <p className="text-xs text-ink-muted mb-2">
+                        Or bind a registered agreement as is &mdash; read live from the on-chain{" "}
+                        <code className="font-mono">AgreementRegistry</code>.
+                    </p>
+                    {liveAgreements === null ? (
+                        <p className="text-xs text-ink-muted" data-testid="drawer-agreements-loading">
+                            Reading the registry&hellip;
+                        </p>
+                    ) : liveAgreements.length === 0 ? (
+                        <p className="text-xs text-ink-muted" data-testid="drawer-agreements-empty">
+                            No agreements registered on the network this site is reading.
+                        </p>
+                    ) : (
+                        <ul className="space-y-1" data-testid="drawer-agreements-list">
+                            {liveAgreements.map((row) => {
+                                const bound = !!boundAgreementKey && boundAgreementKey.toLowerCase() === row.agreementKey.toLowerCase();
+                                return (
+                                    <li key={row.agreementKey}>
+                                        <button
+                                            type="button"
+                                            onClick={() => onBindAgreement?.(row.agreementKey)}
+                                            aria-pressed={bound}
+                                            data-testid={`drawer-agreement-${row.agreementKey}`}
+                                            title={row.agreementKey}
+                                            className={`w-full text-left text-[11px] font-mono px-2 py-1 rounded border break-all ${
+                                                bound
+                                                    ? "border-ink-primary bg-subtle text-ink-primary"
+                                                    : "border-default bg-paper text-ink-body hover:border-default-strong"
+                                            }`}
+                                        >
+                                            {label(row.agreementKey)}
+                                        </button>
+                                    </li>
+                                );
+                            })}
+                        </ul>
+                    )}
+                </div>
+            )}
+        </section>
     );
 }
 

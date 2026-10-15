@@ -13,7 +13,7 @@
 
 import { useMemo } from "react";
 import { isValidAddress } from "@/lib/shared/evm";
-import { anchorTemplate, parseAssemblyRegistryLogs, type Anchored } from "@figaro-protocol/sdk";
+import { anchorTemplate, parseAssemblyRegistryLogs, type Anchored, type HydratedAssembly } from "@figaro-protocol/sdk";
 import { ASSEMBLY_REGISTRY_ABI, CONTRACTS } from "@/lib/kernel/contracts";
 import { DEFAULT_IPFS_SERVICE, fetchCappedContent } from "@/lib/shared/ipfsService";
 import { safeJsonParse } from "@/lib/shared/safeJson";
@@ -23,6 +23,8 @@ import {
     withdrawRevertMessage,
 } from "@/lib/protocol/useWithdrawStake";
 import { createRegistryEventScan } from "@/lib/protocol/registryEventScan";
+import { publicClient } from "@/lib/shared/wagmi";
+import { hydrateAssemblyTemplate } from "@/lib/protocol/useAgreementRegistry";
 import {
     deriveAssemblySlug,
     type AssemblyTemplate,
@@ -43,6 +45,10 @@ export interface PublishOutcome {
     ipfsURI: string;
     /** The content-derived slug the assembly was registered under. */
     slug: string;
+    /** Each agreement this publish registered on `AgreementRegistry` before
+     *  the assembly (a newly composed agreement no registry bound yet): its
+     *  key, the registration's transaction and the pinned document's URI. */
+    agreements: { agreementKey: `0x${string}`; hash: `0x${string}`; ipfsURI: string }[];
 }
 
 // ── Read hooks (event-derived) ────────────────────────────────────────────────
@@ -85,7 +91,7 @@ export function translatePublishRevert(err: unknown, attemptedSlug: string): Err
             case "EmptyContentURI":
                 return "The IPFS pin returned an empty URI.";
             case "ZeroCompositionHash":
-                return "Computed an empty composition hash — likely a assemblyTemplate-builder bug.";
+                return "Computed an empty composition hash — likely a template-builder bug.";
             default:
                 return null;
         }
@@ -188,7 +194,7 @@ export function useAllPublishedAssemblies() {
 }
 
 /**
- * Fetch the IPFS-pinned assemblyTemplate at `contentURI` and VERIFY it
+ * Fetch the IPFS-pinned template at `contentURI` and VERIFY it
  * against the anchored identity: the fetched document's recomputed
  * composition hash must equal the on-chain `compositionHash`. A document
  * that fails verification is treated exactly like an unreachable one —
@@ -221,6 +227,48 @@ export async function fetchAssemblyTemplate(
             return null;
         }
         return template;
+    } catch {
+        return null;
+    }
+}
+
+/**
+ * The assembly a checkout, a view or a member profile consumes: the template
+ * read and verified against its composition root (`fetchAssemblyTemplate`),
+ * then every order slot's registered agreement read from `AgreementRegistry`
+ * by key and verified against it (`hydrateAssemblyTemplate`). Null when the
+ * template or any order slot's agreement is absent — the assembly is not
+ * offered, and nothing falls back to a bundled copy.
+ */
+export async function fetchHydratedAssembly(
+    contentURI: string,
+    expectedCompositionHash: `0x${string}`,
+): Promise<HydratedAssembly | null> {
+    const template = await fetchAssemblyTemplate(contentURI, expectedCompositionHash);
+    if (!template) return null;
+    return hydrateAssemblyTemplate(template);
+}
+
+/**
+ * The template an `AssemblyRegistry` binding names, read BY ITS COMPOSITION
+ * ROOT (whatever the stake: bindings are never cleared) and verified against
+ * it — what the usage planner needs for an order slot's membership proof.
+ * Null when unbound, unreachable or not the template the root names.
+ */
+export async function fetchAssemblyTemplateByHash(
+    compositionHash: `0x${string}`,
+): Promise<Anchored<AssemblyTemplate> | null> {
+    const registry = getAssemblyRegistry();
+    if (!registry) return null;
+    try {
+        const [, registeredAt, , contentURI] = (await publicClient.readContract({
+            address: registry,
+            abi: ASSEMBLY_REGISTRY_ABI,
+            functionName: "bindings",
+            args: [compositionHash],
+        })) as readonly [`0x${string}`, bigint, boolean, string];
+        if (registeredAt === 0n || !contentURI) return null;
+        return fetchAssemblyTemplate(contentURI, compositionHash);
     } catch {
         return null;
     }

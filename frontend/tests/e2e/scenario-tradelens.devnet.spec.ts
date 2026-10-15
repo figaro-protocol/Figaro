@@ -183,7 +183,7 @@ test.describe('TRADELENS SCENARIO — six bonded value-adders, authored on the c
         const anchored = (await discoverAnchoredAssemblies()).find((t) => t.slug === slug)!;
         const shipperBindings = await memberProfileBindings(SHIPPER.address as Hex);
         const plan = planSubOrderSellers({
-            assemblyTemplate: anchored as never,
+            hydratedAssembly: anchored.hydrated,
             counterpartyBindings: (shipperBindings.find((b) => b.assemblySlug === slug)?.counterpartyBindings ?? [])
                 .map((cb) => ({ clauseKey: cb.clauseKey as Hex, addresses: cb.addresses as `0x${string}`[] })),
         });

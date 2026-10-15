@@ -114,8 +114,11 @@ What it does, in order:
 
 1. **Discovers the network.** `new FigaroContext(publicClient, addresses)` +
    `await ctx.sync()` folds the registry event streams into a live catalog. It
-   picks its assembly by HYDRATING each `contentURI` from the IPFS gateway and
-   taking the first single-order template — no hardcoded id — and locates the
+   picks its assembly by HYDRATING each `contentURI` from the IPFS gateway —
+   the template checked against its composition hash (`anchorTemplate`), each
+   order slot's registered agreement read from `AgreementRegistry`'s binding and
+   checked against its key (`hydrateAssembly`) — and taking the first
+   single-order assembly — no hardcoded id — and locates the
    commerce clause by the field it DECLARES (`lineItems`), never by clause name.
 2. **Registers the seller loop.** `makeSellerOfferHandler(…)` on an
    `InProcessChannel`, with both refusal floors filled in explicitly (an `accept`
@@ -123,7 +126,7 @@ What it does, in order:
    the registry-built `SpecSource` (`specs`), which arms the merkle-leaf sign
    gate. A handler missing either floor declines every offer.
 3. **Runs the buyer loop.** `originateProcess(…)` instantiates the discovered
-   template's root agreement with the buyer's overrides, runs the merkle-leaf
+   assembly's root order slot with the buyer's overrides, runs the merkle-leaf
    sign gate (`assertAgreementSignable` — every section conforms to its spec,
    and the currency/payment TERMS equal the commitment struct's mirrors; a
    missing required term or a leaf/struct contradiction refuses to sign), signs
@@ -179,20 +182,24 @@ await executeAction(walletClient, publicClient, addresses, resolve);
 // unstake, a period can close — docs/DESIGN_DECISIONS.md §21). One call, the
 // headless twin of what the frontend does at the same moment. Every committed
 // clause EARNS — commerce and topology are scored for their author of record
-// like any other — and the assembly's designer accrues through
-// recordAssemblyUsage from the agreement's provenance leaf (the composition
-// hash the agreement names; the call reads the counter's provenanceLeaf() and
-// proves that leaf). Read the report, not the absence of an exception:
+// like any other — and the designers of the registered agreement and of the
+// assembly accrue through recordAgreementUsage and recordAssemblyUsage from the
+// agreement's provenance leaf (the agreement key and composition hash the
+// agreement names; the call reads the counter's provenanceLeaf() and proves
+// that leaf, and the assembly leg adds the order slot's membership proof under
+// the composition hash). Read the report, not the absence of an exception:
 import { instantiateRootAgreement, recordProcessUsage } from "@figaro-protocol/sdk/agent";
-// The agreement is REBUILT, never stored: step 4's template + the same overrides
+// The agreement is REBUILT, never stored: step 4's hydrated assembly + the same overrides
 // re-instantiate it identically, and its merkle root IS the committed
 // `agreementHash` the counter opens each section's proof against. Note the return
 // shape: this is the bare Agreement — when you need its hash, compute it with
 // `computeAgreementHash(agreement)` (root export); only `buildOrderAgreement`
 // returns the `{ agreement, agreementHash }` pair.
-const agreement = instantiateRootAgreement(template, { buyer, seller: resolve.commitments[0].seller, overrides });
+const agreement = instantiateRootAgreement(assembly, { buyer, seller: resolve.commitments[0].seller, overrides });
 const report = await recordProcessUsage(walletClient, publicClient, addresses.usageCounter!, [  // optional on the record type; present on every shipped record
-  { commitment: resolve.commitments[0], agreement }, // the agreement each order carries
+  // the agreement each order carries, and the template its provenance names
+  // (the assembly leg's membership proof is built from it)
+  { commitment: resolve.commitments[0], agreement, template: assembly.template },
 ]);
 ```
 
@@ -222,7 +229,7 @@ if that reproduces the id the event carried, hands the struct back with
 the lower-level `resolveProcess(walletClient, core, processId, commitments)`
 does NOT, and neither does hand-rolled `cast`.
 
-*`AccrualClosed()`.* `recordClauseUsage` and `recordAssemblyUsage` both open by
+*`AccrualClosed()`.* `recordClauseUsage`, `recordAgreementUsage` and `recordAssemblyUsage` all open by
 calling `UsageCounter.currentPeriod()`, which reverts `AccrualClosed()` once the
 last accrual period has ended (`src/build/rewards/UsageCounter.sol:389-395`) —
 the nine annual periods are the reward's whole life, and after the ninth
@@ -297,7 +304,9 @@ definition) and `RPGF_*` constant is a **root** export.
 | `anchorAgreement` | root | An agreement as `Anchored<Agreement>` when its merkle root is the commitment's `agreementHash`; null otherwise. |
 | `anchorAttestationContent` | root | Attestation bytes as `Anchored<Hex>` when they hash to the event's `contentRef`; null otherwise. |
 | `anchorClauseSpec` | root | The fetched spec BYTES (or exact text), parsed, as `Anchored<unknown>` when `keccak256(bytes)` is the clause key; null otherwise. |
-| `anchorTemplate` | root | A fetched template as `Anchored<AssemblyTemplate>` when its composition hashes to `AssemblyRegistry`'s `compositionHash`; null otherwise. |
+| `agreementKeyOf` | root | A registered agreement's key — the canonical hash of its `{ clauses }` (editorial prose excluded); the key `AgreementRegistry` binds. |
+| `anchorComposedAgreement` | root | A fetched registered agreement as `Anchored<ComposedAgreement>` when `agreementKeyOf` of it is the key; null (absence) otherwise. |
+| `anchorTemplate` | root | A fetched template as `Anchored<AssemblyTemplate>` when its merkle root over the order slots and terms is `AssemblyRegistry`'s `compositionHash`; null otherwise. |
 | `assertAgreementSignable` | root | The ONE pre-signature thrower: every section conforms to its spec, and the terms equal the struct. |
 | `assertApprovalCoversBond` | root | Throws when an approval is short of the full per-order bond `FigaroCore` will pull. |
 | `attestAsBuyer` | `/agent` | Submit a root-buyer attestation for one leaf of a committed order — a clause section, or the provenance leaf. |
@@ -307,10 +316,12 @@ definition) and `RPGF_*` constant is a **root** export.
 | `buildDomain` | root | The EIP-712 domain for a chain id + `FigaroCore` address. |
 | `buildOrderAgreement` | root | Build one order's agreement document and its merkle tree from its clause map. |
 | `buildQuoteRequest` | `/agent` | Build an UNSIGNED RFQ draft, priced at the buyer's ceiling. |
+| `buildAssemblyTemplate` | root | Design time: the template of order slots plus the newly composed agreements to register; binds a registered agreement as is or composes a new one with the mandatory clauses folded in. |
 | `buildProvenanceInclusionProof` | root | Merkle proof that the agreement's provenance leaf sits under a signed `agreementHash`. |
+| `buildSlotInclusionProof` | root | An order slot's membership proof under `compositionHash`, with its `slotContentHash` — what the assembly reward claim carries. |
 | `buildSectionInclusionProof` | root | Merkle proof that one clause section sits under a signed `agreementHash`. |
 | `buildSwapWitnessTypedData` | root | Permit2 witness typed data for the swap-and-commit funding leg. |
-| `buildUsageClaims` | root | Turn a batch-resolved order plus its agreement into the usage claims a sequencer proves. |
+| `buildUsageClaims` | root | Turn a resolved order plus its agreement (and the template its provenance names) into the clause, agreement and assembly usage claims. |
 | `calculateBonds` | root | `sellerBond = 2 × cumulativeValue`, `buyerBond = 2 × payment`. |
 | `KERNEL_EQUILIBRIUM` | root | `FigaroCore`'s equilibrium stated once (`sdk/src/equilibrium.json`): bonds, payoffs on both bases, the outcome table, the deterrent gap, the hypotheses, the worked example — render numbers from it, never retype them; the paper owns the theorem. |
 | `calculateRootApproval` | root | The ERC-20 approval each party needs before a ROOT commit. |
@@ -320,7 +331,7 @@ definition) and `RPGF_*` constant is a **root** export.
 | `canonicalize` | root | THE canonical-JSON convention: sorted keys at every depth, array order kept, no whitespace. |
 | `checkEndpointLogAgreement` | root | Agreement over the event sets N endpoints returned for one pinned range — pure, caller-fetched. |
 | `commit` | `/agent` | Submit `FigaroCore.commit` with both signatures; any holder of the payload may broadcast. |
-| `computeAgreementHash` | root | The agreement's merkle root over its sorted section leaves and its provenance leaf. |
+| `computeAgreementHash` | root | The agreement's merkle root over its sorted section leaves and its two-key provenance leaf. |
 | `computeClauseKey` | root | A clause's key: `keccak256` of the spec's canonical bytes (the bytes to pin) — the registry key, every section's `clause`, and the attest calls' `clauseId`. |
 | `computeDeadline` | root | A deadline from CHAIN time; pair with `readChainTimestamp` — there is no wall-clock fallback. |
 | `computeRpgfAllocations` | root | Off-chain mirror of the 600M pro-rata split for a closed accrual period. |
@@ -329,7 +340,8 @@ definition) and `RPGF_*` constant is a **root** export.
 | `decodeContentFromSpec` | `/clauses` | Canonical ABI bytes back to JSON content — the exact inverse of `encodeContentFromSpec`. |
 | `depthsOverParents` | root | Depth per node over in-set parent edges — root = 0, child = max(parent depths) + 1. |
 | `deriveAnchored` | root | What is read out of an `Anchored` document, typed `Anchored` too; a rejecting parse throws through. |
-| `deriveAssemblyWithdrawGate` | `/derive` | Whether an assembly's stake is withdrawable, and what still blocks it. |
+| `deriveAgreementWithdrawGate` | `/derive` | Whether a registered agreement's stake is withdrawable: in-flight processes whose provenance names its key. |
+| `deriveAssemblyWithdrawGate` | `/derive` | Whether an assembly's stake is withdrawable: in-flight processes whose provenance names its composition hash. |
 | `deriveClauseWithdrawGate` | `/derive` | Whether a clause's stake is withdrawable, and what still blocks it. |
 | `deriveInFlightOrders` | `/derive` | Every committed order whose process has not resolved. |
 | `deriveSharedSecretAsReceiver` | `/handoff` | ECDH shared secret from the sender's public key and your private key. |
@@ -362,7 +374,8 @@ definition) and `RPGF_*` constant is a **root** export.
 | `haversineDistance` | `/derive` | Great-circle distance between two lat/lng points, in kilometers. |
 | `HttpChannel` | `/agent` | Coordination channel over plain HTTP; `204` is the seller declining, not an error. |
 | `InProcessChannel` | `/agent` | In-process channel — both parties run real sign/validate logic; only the wire is elided. |
-| `instantiateRootAgreement` | `/agent` | Instantiate a template's ROOT order into the signable agreement; same inputs rebuild it identically. |
+| `hydrateAssembly` | root | A template with each order slot's registered agreement read through your fetcher and checked against its key; null (absence) if any slot fails. |
+| `instantiateRootAgreement` | `/agent` | Instantiate a hydrated assembly's ROOT order slot into the signable agreement; same inputs rebuild it identically. |
 | `isAddressHex` | root | Is this value a 20-byte hex string? The one home for the address-shape regex. |
 | `isBytes32Hex` | root | Is this value a 32-byte hex string? The one home for the bytes32-shape regex. |
 | `makeA2aOfferResponder` | `/agent` | Turn a seller's `OfferHandler` into a framework-agnostic A2A responder. |
@@ -380,7 +393,8 @@ definition) and `RPGF_*` constant is a **root** export.
 | `parseMemberProfileDocument` | root | Strict parse of a pinned profile document; throws on malformed input. |
 | `parseProjectionHints` | root | Read a spec's `block` projection hints — design fills, checkout fills, article. |
 | `planSubOrderSellers` | root | Topologically order an assembly's sub-orders and resolve each one's bound seller. |
-| `planTemplateOrders` | root | A template's agreements in commit order, each with its clause bag (keyed by clause key). |
+| `parseAgreementRegistryLogs` | root | Decode `AgreementRegistry` logs into registrations and stake withdrawals, keyed by `agreementKey`. |
+| `planTemplateOrders` | root | A hydrated assembly's order slots in commit order, each with its clause bag (keyed by clause key). |
 | `profileValuesFor` | root | The profile-filled clause values a given seller publishes, read from its catalog. |
 | `projectAgentServices` | root | Read the agent service endpoints out of a profile document, tolerating partial ones. |
 | `projectProcessGraph` | `/derive` | The process graph, labeled protocol-enforced — `reconstruct()`'s topology as a first-class object. |
@@ -393,10 +407,10 @@ definition) and `RPGF_*` constant is a **root** export.
 | `readUtilityTokenPin` | root | The designer's pinned denomination, read from a template's composed clauses. |
 | `reconstruct` | root | Rebuild the full process topology from parsed core events. |
 | `reconstructDiscovery` | root | Rebuild the live registry view; a member's current profile URI is EVENT-derived, not a getter. |
-| `reconstructOrdersFromTemplate` | root | THE template→orders walk: root signs `processId = 0`, children carry real parent order hashes. |
-| `provenanceContentRef` | root | The provenance leaf's fingerprint for a composition hash — its section hash, and the `contentRef` its attestation carries. |
+| `reconstructOrdersFromTemplate` | root | THE hydrated-assembly→orders walk: root signs `processId = 0`, children carry real parent order hashes. |
+| `provenanceContentRef` | root | The provenance leaf's fingerprint for an agreement key and a composition hash — its section hash, and the `contentRef` its attestation carries. |
 | `provenanceLeafAttestation` | root | The provenance leaf's attestation inputs — reserved key, fingerprint, proof, content ref — for `attestAsBuyer`. |
-| `recordProcessUsage` | `/agent` | File direct-path usage at resolution: one leg per distinct clause key plus the assembly leg from the provenance leaf; a sent leg that reverts lands in `failures`, never thrown. |
+| `recordProcessUsage` | `/agent` | File direct-path usage at resolution: one leg per distinct clause key plus the agreement and assembly legs from the provenance leaf; a sent leg that reverts lands in `failures`, never thrown. |
 | `registerRateQuantitySource` | root | Register a resolver for a catalog's rate-quantity source (a composition tenant, no core edit). |
 | `requestCounterSignatures` | `/agent` | Fan out race drafts, verify each reply by exact struct match, rank cheapest first. |
 | `requestQuotes` | `/agent` | Fan out RFQ requests, verify each reply by reconstruction, rank cheapest first. |
@@ -412,8 +426,11 @@ definition) and `RPGF_*` constant is a **root** export.
 | `socketSignerAccount` | `/signer` | A viem account backed by the policy-signer daemon's socket. |
 | `strippingReviver` | root | A `JSON.parse` reviver that drops `__proto__`/`constructor`/`prototype` keys. |
 | `tagAttestationUniverses` | root | The pure fold under `fetchAttestationRecords`: tag two address-filtered log streams and merge in block order. |
-| `templateComposedClauseKeys` | root | Every clause key a template composes, sorted — each must be live on `ClauseRegistry` before the assembly anchors. |
-| `templateCompositionHash` | root | The `compositionHash` `AssemblyRegistry` binds — an assembly's identity IS its composition. |
+| `serializeAssemblyTemplate` | root | The pinned template's canonical JSON beside its `compositionHash`. |
+| `slotClauses` | root | The clauses an order slot instantiates: its registered agreement's, with the order slot's own fills over them. |
+| `slotsFromAuthoredAgreements` | root | SEED-TIME only: a reference assembly file written by clause name → its registered agreements and the template of order slots binding them. |
+| `templateComposedClauseKeys` | root | Every clause key a hydrated assembly composes, sorted — each must be live on `ClauseRegistry` for the design to check out. |
+| `templateCompositionHash` | root | The `compositionHash` `AssemblyRegistry` binds — the merkle root over the order slots and the assembly terms. |
 | `topologicalOrder` | root | Order ids so every node follows its parents; `throw` or degrade on a cycle. |
 | `Topology` | root | The mutable shadow state an agent keeps, updated incrementally as events arrive. |
 | `TRUTH_BOUNDARY_GLOSS` | `/derive` | The one-line meaning of each truth boundary — render-ready gloss text, one home. |
@@ -453,7 +470,7 @@ streams (`fetchUsageRecords` + `fetchBatchUsageRecords`). Reading only the first
 under-reports every clause or assembly whose trade moved to batches, and the two merge as
 SCORES, never as components. The two families stay apart: every count,
 accrual and claim is keyed by `(kind, key)` — `kind` is `USAGE_KIND_CLAUSE`
-(0) or `USAGE_KIND_ASSEMBLY` (1), because a registry accepts any bytes32 and
+(0), `USAGE_KIND_ASSEMBLY` (1) or `USAGE_KIND_AGREEMENT` (2), because a registry accepts any bytes32 and
 nothing in a key's bytes says which family it names; the mirror files each
 pair under `usageKeyId(kind, key)`, `computeRpgfAllocations` takes its designers
 keyed the same way, and each allocation's `claims` is the `{ kind, key }` list
@@ -981,9 +998,10 @@ await attestAsSeller(
 // from @figaro-protocol/sdk/agent).
 
 // The provenance leaf is the agreement format's, not a clause: it has no spec,
-// and its bytes are reproduced from the composition hash it names. While the
-// process is open the buyer attests it, and that attestation is what links the
-// process to its assembly in the public data:
+// and its bytes are reproduced from the two keys it names (the registered
+// agreement and the assembly). While the process is open the buyer attests it,
+// and that attestation is what links the order to its agreement and assembly
+// in the public data:
 import { provenanceLeafAttestation } from "@figaro-protocol/sdk";
 import { attestAsBuyer } from "@figaro-protocol/sdk/agent";
 const p = provenanceLeafAttestation(agreement); // throws if the agreement names no assembly
@@ -1008,7 +1026,7 @@ channel.register(sellerAddr, makeSellerOfferHandler(sellerWallet, publicClient, 
            // content check runs on this side
 }));
 const tx = await originateProcess(buyerWallet, publicClient, addresses, {
-    channel, template, buyer, seller, currency, payment, chainId, core, overrides,
+    channel, assembly, buyer, seller, currency, payment, chainId, core, overrides,
     deadline, // CHAIN time: computeDeadline(await readChainTimestamp(publicClient))
     specs,    // same gate before the buyer signs
 });
@@ -1036,7 +1054,7 @@ const a2a = new A2aChannel({
     resolveEndpoint: didWebEndpointResolver(sellerToDid, { serviceType: "A2AEndpoint", chainId }),
 });
 const a2aTx = await originateProcess(buyerWallet, publicClient, addresses,
-    { channel: a2a, template, buyer, seller, currency, payment, chainId, core, overrides });
+    { channel: a2a, assembly, buyer, seller, currency, payment, chainId, core, overrides });
 // SELLER: the SDK ships no server. `makeA2aOfferResponder` is a pure
 // request→response function any server drives (node:http, express, a
 // serverless function), wrapping the SAME `makeSellerOfferHandler` — so the
@@ -1094,7 +1112,7 @@ channel.register(courierAddr, makeSellerQuoteHandler(courierWallet, { chainId, c
     policy: { requireRootShape: true, currencyAllowlist: [myToken], maxValue: myMaxBond },
 }));
 const drafts = candidates.map((seller) => buildQuoteRequest({
-    template, buyer, seller, currency, ceiling, chainId, core,
+    assembly, buyer, seller, currency, ceiling, chainId, core,
     pricedFields: [{ clause: "figaro-commerce", path: "payment" },
                    { clause: "figaro-commerce", path: "lineItems.0.unitPrice" }],
     overrides,
@@ -1117,10 +1135,17 @@ import { deserializeCommitmentPayload } from "@figaro-protocol/sdk/agent";
 // of `Anchored<T>`: they return the document when the digests agree and null
 // when they do not, so code that takes `Anchored<T>` cannot be handed bytes a
 // gateway served unchecked. `Anchored<T>` is a `T` wherever a `T` is taken.
-import { anchorClauseSpec, anchorTemplate, type Anchored, type AssemblyTemplate } from "@figaro-protocol/sdk";
+import { anchorClauseSpec, anchorTemplate, hydrateAssembly, type Anchored, type AssemblyTemplate } from "@figaro-protocol/sdk";
 const spec = anchorClauseSpec(specBytes, clause.clauseKey); // Uint8Array or the exact text
 const template: Anchored<AssemblyTemplate> | null =
-    anchorTemplate(JSON.parse(templateText, strippingReviver), assembly.compositionHash);
+    anchorTemplate(JSON.parse(templateText, strippingReviver), registered.compositionHash);
+// Each order slot binds a registered agreement by key: read its binding from
+// AgreementRegistry (whatever its stake — a binding is never cleared), fetch,
+// and check it against the key. Any slot that fails makes the assembly absent.
+const assembly = template && await hydrateAssembly(template, async (agreementKey) => {
+    const binding = ctx.getAgreementBinding(agreementKey);           // FigaroContext / DiscoveryGraph
+    return binding ? fetchText(binding.contentURI) : null;           // your IPFS read
+});
 
 // Submitting to the BATCH path — SequencerClient. `FigaroBatchVerifier.
 // settleBatch` is PERMISSIONLESS (no caller gate, no admin, no fee), but it
@@ -1300,6 +1325,7 @@ import {
   deriveInFlightOrders,
   deriveClauseWithdrawGate,
   deriveAssemblyWithdrawGate,
+  deriveAgreementWithdrawGate,
 } from "@figaro-protocol/sdk/derive";
 
 // Attestations live on the AttestationCoordinator, NOT in fetchCoreEvents
@@ -1331,8 +1357,9 @@ const cidB32 = witnessContentCidBase32(forClause[0].contentRef); // multibase ba
 const close = geohashesMatch("dr5ru7", "dr5ru8", 5); // true (5-char prefix match)
 const km = haversineDistance(40.71, -74.00, 34.05, -118.24); // ~3944 km
 
-// Withdraw gate (advisory): a clause-or-assembly author must not reclaim their
-// registration stake while trades composed from that clause or assembly are in flight.
+// Withdraw gate (advisory): the designer of record of a clause, a registered
+// agreement or an assembly must not reclaim the registration stake while trades
+// composed from it are in flight.
 // The join is derived at read time from chain + IPFS, never stored:
 const events = await fetchCoreEvents(client, addresses, 0n);
 const inFlight = deriveInFlightOrders(events); // committed, process unresolved
@@ -1341,8 +1368,11 @@ const inFlight = deriveInFlightOrders(events); // committed, process unresolved
 // is COUNTED as unverified and surfaced, but never blocks: agreement bodies are
 // party-private, and the on-chain inclusion-proof hardening doesn't lock the
 // stake on unrevealed trades either. Then:
+// A clause is found among the sections; a registered agreement and an assembly
+// by the two keys each verified agreement's provenance leaf names.
 const clauseGate = deriveClauseWithdrawGate(clauseKey, agreements);
-const assemblyGate = deriveAssemblyWithdrawGate(assemblyTemplate, agreements);
+const agreementGate = deriveAgreementWithdrawGate(agreementKey, agreements);
+const assemblyGate = deriveAssemblyWithdrawGate(compositionHash, agreements);
 // gate.canWithdraw === (inFlightCount === 0); unverifiedCount is a caveat
 ```
 
@@ -1379,9 +1409,10 @@ const atts = await fetchAttestationRecords(client, addresses, BigInt(record.depl
 const overlays = extractOverlays(atts.map((event) => ({ event, content: null })), specs);
 // One overlay is the agreement format's own: `provenanceLeaf: true` marks the
 // buyer's attestations of the provenance leaf (key `PROVENANCE_LEAF_KEY`). It
-// has no spec; an entry whose bytes you supply decodes to `{ compositionHash }`,
-// and with no bytes the contentRef alone matches a registered assembly —
-// provenanceContentRef(compositionHash) === entry.contentRef.
+// has no spec; an entry whose bytes you supply decodes to
+// `{ agreementKey, compositionHash }`, and with no bytes the contentRef alone
+// matches a registered agreement in a registered assembly —
+// provenanceContentRef(agreementKey, compositionHash) === entry.contentRef.
 
 // Composition: the swap legs are the value flowing between denominations.
 // The coordinator emits nothing of its own; each commit transaction's receipt
@@ -1696,10 +1727,11 @@ The host-shaped half (the sandbox wrapper carrying the policy's
 
 ## Projection: from Composed Clauses to the Hashed Agreement
 
-An adopted assembly template ships its clause maps mostly empty — an empty `{}`
-means the designer *selected* the clause but set no fields, deferring them
-downstream (the seller at first use, the buyer at checkout — `assembly.d.ts`).
-Turning a hydrated template into the filled, hashed `Agreement` that
+An adopted assembly's registered agreements ship their clause maps mostly
+empty — an empty `{}` means the designer *selected* the clause but set no
+fields, deferring them downstream (the seller at first use, the buyer at
+checkout — `assembly.d.ts`). Turning a hydrated assembly into the filled,
+hashed `Agreement` that
 `buildCommitment` signs is a **deterministic projection**: both parties, and any
 second frontend, must reproduce it byte-exactly because its outputs are hashed
 (`agreementHash` — the merkle root the commitment signs; `compositionHash` —
@@ -1725,7 +1757,7 @@ import type { SpecSource, ProjectionSpecView } from "@figaro-protocol/sdk";
 // `block.design.article` is normally your clause's own group name (free text:
 // "coordination", "logistics", …). TWO values are RESERVED and change
 // agreement semantics:
-//   "mandatory"    — auto-folds into EVERY template agreement (specIsMandatory)
+//   "mandatory"    — auto-folds into EVERY newly composed agreement (specIsMandatory)
 //   "attestations" — an empty anchor at commit, content attested later
 //                    (specIsProcessLog)
 // Pick either by accident — say you group an attestation clause under
@@ -1764,9 +1796,13 @@ function makeSpecSource(rawSpecsByKey: Map<Hex, unknown>): SpecSource {
 agreement leaf carries — and nothing reads a clause by name; a spec's
 `clauseId` and `version` are labels. `list` returns every spec the source
 surfaces, each with its `clauseKey`, and is the set `buildAssemblyTemplate`
-folds the mandatory clauses from: pass the registrations whose stake is live
-(the surfacing rule), and EVERY one whose spec marks `article: "mandatory"`
-folds — there is no selection among them, since two specs are two clauses.
+folds the mandatory clauses from when it composes a NEW agreement: pass the
+registrations whose stake is live (the surfacing rule), and EVERY one whose
+spec marks `article: "mandatory"` folds — there is no selection among them,
+since two specs are two clauses. The fold is at composition only: a registered
+agreement bound as is must already carry every live mandatory spec at its
+scope (`buildAssemblyTemplate` refuses it otherwise), and checkout adds no
+clause.
 
 A spec that is not (yet) loaded returns `undefined` from `get`, and the
 projection degrades exactly as the registry-reading frontend does (no defaults
@@ -1811,16 +1847,102 @@ assertAgreementSignable(agreement, agreementHash, specs, commitment, "checkout")
 const commerce = sectionByField(agreement, "lineItems", specs);
 ```
 
-## From Adopted Template to Signed Agreement — the ONE walk
+## Registered agreements — compose, register, hydrate, prove
 
-Every consumer that turns a template into `FigaroCore` orders — an agent originating a
+Three design-time objects are kept apart, each in its own registry family. A
+**clause** is its spec (`ClauseRegistry`, keyed by the hash of the pinned
+bytes). A **registered agreement** is the clauses composed for ONE order slot,
+value-free, with the designer's fills — the topology clause composed with
+`{}`, since who follows whom is the assembly's fact — keyed by
+`agreementKeyOf(composed)` = the canonical hash of its `{ clauses }`
+(`AgreementRegistry`, `AGREEMENT_REGISTRY_ABI`). An **assembly** is ordered
+order slots, each binding a registered agreement by key and carrying the
+order slot's own fills (today the topology's `{ parentOrderHashes:
+["order-<j>", …] }`), plus the assembly-scoped terms; its `compositionHash` is
+the MERKLE ROOT over one leaf per order slot (key = the agreement key, bytes =
+canonical `{"clauses":{…},"slot":i}`) and one terms leaf (key
+`ASSEMBLY_TERMS_LEAF_KEY`, bytes = canonical `assemblyClauses`, present only
+when any is composed), built with the agreement format's own leaf convention
+(`AssemblyRegistry`). Membership of an agreement in an assembly is a merkle
+proof (`buildSlotInclusionProof`). `PROVENANCE_LEAF_KEY` and
+`ASSEMBLY_TERMS_LEAF_KEY` are format keys, never an agreement key
+(`assertNotReservedKey`).
+
+```ts
+import {
+  buildAssemblyTemplate, serializeAssemblyTemplate, agreementKeyOf, canonicalize,
+  AGREEMENT_REGISTRY_ABI, ASSEMBLY_REGISTRY_ABI,
+} from "@figaro-protocol/sdk";
+
+// DESIGN: per canvas order, either bind a registered agreement as is
+// (`registeredByOrderId`, the hydrated document — refused if it lacks a live
+// mandatory spec at its scope) or compose clauses (`clausesByOrderId`), which
+// become a NEW agreement with the mandatory clauses folded in.
+const { template, agreements } = buildAssemblyTemplate({
+  name, orders, clausesByOrderId, registeredByOrderId, assemblyClauses, specs,
+});
+// `agreements` holds only the newly composed ones: pin each as canonical JSON
+// and register it (one stake each; a key already registered is skipped).
+for (const [agreementKey, composed] of Object.entries(agreements)) {
+  const [, registeredAt] = await publicClient.readContract({
+    address: addresses.agreementRegistry!, abi: AGREEMENT_REGISTRY_ABI, functionName: "bindings", args: [agreementKey],
+  });
+  if (registeredAt !== 0n) continue;
+  const contentURI = await pin(canonicalize({ name: "Delivery leg", ...composed })); // editorial prose is outside the key
+  await walletClient.writeContract({
+    address: addresses.agreementRegistry!, abi: AGREEMENT_REGISTRY_ABI, functionName: "registerAgreement",
+    args: [agreementKey, contentURI], value: deposit,
+  });
+}
+// Then the assembly, keyed by its root.
+const { json, compositionHash } = serializeAssemblyTemplate(template);
+```
+
+Readers go the other way. `parseAgreementRegistryLogs` and
+`fetchDiscoveryEvents` (with `addresses.agreementRegistry`, mapped from the
+deployment file's `"agreementRegistry"` by `addressesFromDeploymentRecord`) fold the family into
+`DiscoveryGraph`: `getAgreements()` is the LIVE set a drawer offers for a new
+composition, and `getAgreementBinding(key)` is the binding whatever its stake —
+a binding is never cleared, so an assembly composed from a withdrawn agreement
+keeps hydrating.
+
+```ts
+import { anchorTemplate, hydrateAssembly, slotClauses, buildSlotInclusionProof } from "@figaro-protocol/sdk";
+
+const anchored = anchorTemplate(JSON.parse(templateText, strippingReviver), registered.compositionHash);
+const assembly = anchored && await hydrateAssembly(anchored, async (agreementKey) => {
+  const binding = graph.getAgreementBinding(agreementKey);
+  return binding ? fetchText(binding.contentURI) : null;   // anchorComposedAgreement checks it
+});
+if (!assembly) { /* absence: the assembly is not offered */ }
+// What order slot i instantiates: its registered agreement, the order slot's fills over it.
+const clauses = slotClauses(assembly, assembly.template.agreements[i]);
+// Its membership under the root — what the assembly reward claim carries.
+const { leaf, proof, slotContentHash } = buildSlotInclusionProof(assembly.template, i);
+```
+
+`slotsFromAuthoredAgreements(authored, specs)` is the SEED-TIME derivation for
+a reference assembly file written by hand (`assemblies/*.json`, clause names, the topology
+carrying its parents): it resolves the names (`resolveAuthoredClauseKeys`),
+lifts the parents into each order slot, composes the topology `{}`, folds the
+live mandatory specs, and returns each DISTINCT agreement once beside the
+template. It never runs on a read path.
+
+## From Adopted Assembly to Signed Agreement — the ONE walk
+
+Every consumer that turns an assembly into `FigaroCore` orders — an agent originating a
 chain (`@figaro-protocol/sdk/agent` `buildChainOffers`), a checkout realizing a bound
 assembly, a designer displaying a draft — performs the same walk: order the
-template agreements so parents precede children, detect the root, replace
+order slots so parents precede children, detect the root, replace
 template-local parent ids with real EIP-712 order hashes, accumulate cumulative
 value, and derive each order's hash and the process id from the root.
 `reconstructOrdersFromTemplate` (`dist/reconstructOrders.d.ts`) is that walk's
-single home; do not hand-assemble sections order-by-order.
+single home; do not hand-assemble sections order-by-order. It takes a
+`HydratedAssembly` — the template beside each order slot's registered
+agreement — and each order's clauses are the assembly-scoped terms plus
+`slotClauses` (the registered agreement's, with the order slot's fills over
+them). Checkout fills values and writes the topology; it never adds or drops a
+clause.
 
 **Who fills what**: the designer selected the clauses and wrote any
 `design.fills` values (the tailoring); the seller filled profile/catalog
@@ -1832,28 +1954,25 @@ signature — the caller signs each node's `typedData` (per node via `onOrder`).
 
 ```ts
 import {
-  fetchDiscoveryEvents, reconstructDiscovery,
   reconstructOrdersFromTemplate, planTemplateOrders,
 } from "@figaro-protocol/sdk";
-import type { AssemblyTemplate } from "@figaro-protocol/sdk";
 
-// 1. Hydrate the adopted template: discovery → the assembly pointer → IPFS.
-const graph = reconstructDiscovery(await fetchDiscoveryEvents(client, addresses, 0n));
-const asm = graph.getAssemblies().find((a) => a.compositionHash === compositionHash);
-const template: AssemblyTemplate = await (await fetch(gateway(asm!.contentURI))).json();
+// 1. Hydrate the adopted assembly (the section above): `assembly` is a
+//    HydratedAssembly — the anchored template beside each order slot's
+//    registered agreement, each verified against its key.
 
 // PURE STRUCTURE for display (no parties, values, or signatures): commit-ordered
 // nodes with their clause bags (keyed by clause key) + local parent edges.
-const planned = planTemplateOrders(template);
+const planned = planTemplateOrders(assembly);
 
 // 2. The full realization. `specs` present ⇒ checkout semantics (spec-default
 //    projection via buildOrderAgreement, process-log clauses stay empty
 //    anchors); omit it for the raw override-merge (agent-origination semantics).
 //    Commits MUST be submitted in the returned order — root first — so the
 //    FigaroCore sees a consistent running cumulative total.
-const orders = await reconstructOrdersFromTemplate(template, {
+const orders = await reconstructOrdersFromTemplate(assembly, {
   buyer, currency, chainId, core: addresses.core, specs,
-  // One ReconstructNodeSpec per template node: who sells it, what it pays, and
+  // One ReconstructNodeSpec per order slot: who sells it, what it pays, and
   // the per-clause checkout values (keyed by clause key — the SDK names none).
   nodes: (node) => ({
     seller: sellerFor(node.nodeId),
@@ -1884,16 +2003,19 @@ const orders = await reconstructOrdersFromTemplate(template, {
 });
 ```
 
-Every realized order carries `agreement.provenance` — the template's own
-`templateCompositionHash`, the agreement format's reserved provenance leaf
-(`PROVENANCE_LEAF_KEY`, the keccak256 of `"figaro-agreement-provenance"`; its
-committed bytes are `{"compositionHash":"0x<lowercase hex>"}`). It is a leaf of
-the agreement, never a clause section: no spec declares it, and the walk
-writes it on every order, with or without `specs`. An agreement already
-naming a different hash is refused before hashing. The leaf is what
-`UsageCounter.recordAssemblyUsage` reproduces and proves to credit the
-assembly's designer, and what the buyer attests while the process is open
-(`provenanceLeafAttestation`).
+Every realized order carries `agreement.provenance` — `{ agreementKey,
+compositionHash }`: the registered agreement its order slot binds and the
+template's own `templateCompositionHash`, the agreement format's reserved
+provenance leaf (`PROVENANCE_LEAF_KEY`, the keccak256 of
+`"figaro-agreement-provenance"`; its committed bytes are
+`{"agreementKey":"0x<lowercase hex>","compositionHash":"0x<lowercase hex>"}`).
+It is a leaf of the agreement, never a clause section: no spec declares it,
+and the walk writes it on every order, with or without `specs`. An agreement
+already naming a different key or hash is refused before hashing. The leaf is
+what `UsageCounter.recordAgreementUsage` and `recordAssemblyUsage` reproduce
+and prove to credit the two designers (the assembly claim adds the order
+slot's membership proof), and what the buyer attests while the process is
+open (`provenanceLeafAttestation`).
 
 For a single non-templated order, use `buildOrderAgreement` (above) directly and
 feed its `agreementHash` into `buildCommitment` as in the `@figaro-protocol/sdk` entry
@@ -1929,12 +2051,13 @@ import {
   sum × quantity), `fillClassSections` (catalog-filled freight-class/hazmat/…),
   `fillProfileSections` (the seller's profile-filled master data — dimweight's
   divisor, a declared credential id — restricted to each spec's declared
-  `block.checkout.profileFills` subset, with the template's committed terms winning),
+  `block.checkout.profileFills` subset, with the registered agreement's committed terms winning),
   and the DERIVED `fillDimweightSection` (`billed = max(gross, volumetric)`,
   divisor read from the profile-folded leaf).
-- **Sub-order sellers**: `planSubOrderSellers` topologically orders the non-root
-  orders and resolves each one's seller from the adopting seller's counterparty
-  bindings via a per-clause binding cursor — a clause shared by sibling orders
+- **Sub-order sellers**: `planSubOrderSellers({ hydratedAssembly, counterpartyBindings })`
+  topologically orders the non-root order slots and resolves each one's seller
+  from the adopting seller's counterparty bindings (matched against the order
+  slot's own clauses, `slotClauses`) via a per-clause binding cursor — a clause shared by sibling orders
   draws distinct wallets by commit order, so the ordering must match the
   checkout's commit order (throws on a cyclic topology; `topologicalOrder` is the
   underlying pure math). `seller` is `null` when no counterparty is bound.
@@ -1978,14 +2101,15 @@ const lineItems: AssemblyCheckoutLineItem[] = [
   { itemId: "espresso", name: "Espresso", quantity: 2, unitPrice: "150000000000000000" },
 ];
 
-await reconstructOrdersFromTemplate(template, {
+await reconstructOrdersFromTemplate(assembly, {
   buyer, currency, chainId, core: addresses.core!, specs,
   nodes: (planned: PlannedTemplateOrder) => {
-    // `planned.clauses` is ALREADY the assembly-scope FOLD: planTemplateOrders
-    // (the walk `reconstructOrdersFromTemplate` runs internally) merges
-    // `template.assemblyClauses` into every node's bag before you ever see
-    // it — start the fills from `planned.clauses`, never from a fresh
-    // `{ ...node.clauses }` you build off a raw `template.agreements[i]` lookup.
+    // `planned.clauses` is ALREADY the assembly-scope FOLD over the order
+    // slot's clauses: planTemplateOrders (the walk
+    // `reconstructOrdersFromTemplate` runs internally) merges
+    // `template.assemblyClauses` into `slotClauses(assembly, slot)` before you
+    // ever see it — start the fills from `planned.clauses`, never from a map
+    // you build yourself.
     const filled = fillProfileSections(
       fillClassSections(
         fillCommerceSection(planned.clauses, payment, currency, specs, lineItems),
@@ -2005,19 +2129,17 @@ finds its target clause by DECLARED FIELD, searching only the keys of the map
 you pass it (`composedClauseDeclaring`, `checkoutPlan.ts`) — it never reads
 `template.assemblyClauses` itself. So the fold's guarantee is scoped to
 `planned.clauses`, not to whatever local map your own code builds. The moment
-you have a reason to rebuild that map from the raw template yourself — e.g. to
-hand `resolveSubOrderPricing` its `node: TemplateAgreement` argument, which
-`planned.clauses` alone doesn't satisfy — you must re-apply the same fold by
-hand before running any fill:
+you have a reason to rebuild that map from the hydrated assembly yourself, you
+must re-apply the same fold by hand before running any fill:
 
 ```ts
-const rawNode = template.agreements.find((a) => a.id === planned.nodeId)!;
-const clauses = { ...template.assemblyClauses, ...rawNode.clauses }; // ← the pre-merge
+const slot = assembly.template.agreements.find((a) => a.id === planned.nodeId)!;
+const clauses = { ...assembly.template.assemblyClauses, ...slotClauses(assembly, slot) }; // ← the pre-merge
 const filled = fillProfileSections(clauses, profileValuesFor(seller, memberCatalogs), specs);
 ```
 
 Skip the pre-merge and every fill finds no assembly-scoped clause in
-`rawNode.clauses` and silently no-ops for it. The section is still PRESENT in
+the order slot's clauses and silently no-ops for it. The section is still PRESENT in
 the signed agreement either way — the fold inside
 `reconstructOrdersFromTemplate` guarantees that — but it arrives without the
 values the fill writes.
@@ -2146,7 +2268,7 @@ const metadataURI = await pinJSON(doc);          // your IPFS pin → "ipfs://�
 //   MembersRegistry.updateProfile(metadataURI)
 ```
 
-**Raw call signatures for the two clause-or-assembly registries** (for `cast send` /
+**Raw call signatures for the clause, agreement and assembly registries** (for `cast send` /
 direct-ABI callers — the exact parameter types are the function's identity, so
 a mistyped one reverts with an opaque selector mismatch, not a friendly error):
 
@@ -2155,7 +2277,12 @@ a mistyped one reverts with an opaque selector mismatch, not a friendly error):
 // clauseKey = keccak256 of the spec bytes pinned at contentURI.
 function registerClause(bytes32 clauseKey, string calldata contentURI) external payable
 
-// AssemblyRegistry.sol:148 — cast selector: registerAssembly(bytes32,string)
+// AgreementRegistry — cast selector: registerAgreement(bytes32,string)
+// agreementKey = agreementKeyOf(the document pinned at contentURI); the two
+// reserved format keys revert ReservedKeyIsNotARegistration.
+function registerAgreement(bytes32 agreementKey, string calldata contentURI) external payable
+
+// AssemblyRegistry — cast selector: registerAssembly(bytes32,string)
 function registerAssembly(bytes32 compositionHash, string calldata contentURI) external payable
 
 // ClauseRegistry — a composed MECHANISM contract declaring which clause it
@@ -2165,19 +2292,20 @@ function registerAssembly(bytes32 compositionHash, string calldata contentURI) e
 function setMechanismClause(bytes32 clauseKey) external
 ```
 
-Both registries key by content: `clauseKey` is the hash of the pinned spec
-bytes, `compositionHash` the hash of the composition; neither takes a name or
-a version. Both registering calls are `payable`; `msg.value` must equal
+The three registries key by content: `clauseKey` is the hash of the pinned spec
+bytes, `agreementKey` the hash of an agreement's `{ clauses }`,
+`compositionHash` the merkle root of the composition; none takes a name or
+a version. The registering calls are `payable`; `msg.value` must equal
 `registrationDeposit()` exactly (`setMechanismClause` is not — it takes no deposit).
 
-**All three registries take the same reclaimable stake.** `MembersRegistry`,
-`ClauseRegistry`, and `AssemblyRegistry` each require a `registrationDeposit` on
-the registering call (`register` / `registerClause` / `registerAssembly`, all
+**All four registries take the same reclaimable stake.** `MembersRegistry`,
+`ClauseRegistry`, `AgreementRegistry` and `AssemblyRegistry` each require a `registrationDeposit` on
+the registering call (`register` / `registerClause` / `registerAgreement` / `registerAssembly`, all
 `payable`) — a stake no party can seize, and `msg.value`
 must equal it EXACTLY (there is no sweep). The amount is a deploy-time immutable;
 read it from the contract's `registrationDeposit()` view rather than hardcoding a
-figure. Clause and assembly deposits come back in one call —
-`withdrawDeposit(clauseKey | compositionHash)`, which de-surfaces the clause or assembly while
+figure. Clause, agreement and assembly stakes come back in one call —
+`withdrawDeposit(clauseKey | agreementKey | compositionHash)`, which de-surfaces the entry while
 leaving the binding permanent, because orders already committed against them still
 resolve.
 
@@ -2463,10 +2591,15 @@ which is the correct answer, not an error):
 ```ts
 const graph = reconstructDiscovery(await fetchDiscoveryEvents(client, addresses, fromBlock));
 for (const a of graph.getAssemblies()) {
-  const template = await (await fetch(gateway(a.contentURI))).json();
-  const composed = Object.keys(template.agreements[0].clauses);
+  const template = anchorTemplate(await (await fetch(gateway(a.contentURI))).json(), a.compositionHash);
+  const assembly = template && await hydrateAssembly(template, async (key) => {
+    const binding = graph.getAgreementBinding(key);
+    return binding ? (await fetch(gateway(binding.contentURI))).text() : null;
+  });
+  if (!assembly) continue;  // absence: not offered
+  const composed = Object.keys(slotClauses(assembly, assembly.template.agreements[0]));
   const licenses = composed.some((c) => (specs.get(c)?.fields ?? []).some((f) => f.name === "licenseScope"));
-  if (licenses) { /* this template sells access to records */ }
+  if (licenses) { /* this assembly sells access to records */ }
 }
 ```
 
@@ -2475,21 +2608,22 @@ particular assembly, only the clauses your buyer and you both sign.
 
 ## Claiming the designer's mint — `RpgfMinter.claim`
 
-Everything above earns. If the wallet registered a clause or an assembly and
+Everything above earns. If the wallet registered a clause, an agreement or an assembly and
 other people's trade composed it, the 600M designer-rewards reserve is claimed by the **designer of record** — the wallet each registry stored as `registeredBy`,
 and only while its registration stake is still un-withdrawn (that is the designer-side half of the two-sided live-stake gate; the seller-side half lives in
-`UsageCounter`). One call per wallet per period, carrying **every** clause and assembly that wallet registered:
+`UsageCounter`). One call per wallet per period, carrying **every** clause, agreement and assembly that wallet registered:
 
 ```ts
-import { USAGE_KIND_ASSEMBLY, USAGE_KIND_CLAUSE, RPGF_MINTER_ABI, USAGE_COUNTER_ABI } from "@figaro-protocol/sdk";
+import { USAGE_KIND_AGREEMENT, USAGE_KIND_ASSEMBLY, USAGE_KIND_CLAUSE, RPGF_MINTER_ABI, USAGE_COUNTER_ABI } from "@figaro-protocol/sdk";
 
 // Each entry is a (kind, key) pair: the kind names the one registry the
 // minter checks you against, so a stake in one family never earns the
-// other's. A clause's key is the hash of its pinned spec bytes; an assembly's
-// is its compositionHash. (`computeRpgfAllocations` hands back this list per
+// other's. A clause's key is the hash of its pinned spec bytes; a registered
+// agreement's is agreementKeyOf(document); an assembly's is its compositionHash. (`computeRpgfAllocations` hands back this list per
 // wallet as `allocation.claims`.)
 const mine = [
   { kind: USAGE_KIND_CLAUSE, key: myClauseKey },
+  { kind: USAGE_KIND_AGREEMENT, key: myAgreementKey },
   { kind: USAGE_KIND_ASSEMBLY, key: myCompositionHash },
 ];
 

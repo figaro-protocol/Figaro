@@ -71,7 +71,7 @@
  *       revert and resolves the tokens anyway (FigaroBatchVerifier.sol:322-327,
  *       DESIGN_DECISIONS.md §20). The GUEST state has already advanced — its
  *       usage_process_counted set rides the state root and is GLOBAL, once
- *       ever, whatever the period (kernel.rs:714) — so the dropped processes
+ *       ever, whatever the period (kernel.rs:855) — so the dropped processes
  *       can never be re-counted, in that period or any later one.
  *       WHAT IT CARRIES: AccrualNotLost. Note what it does NOT carry:
  *       AccrualNeverOverPays holds unconditionally. The failure mode is
@@ -93,7 +93,8 @@
  *                             (c, d), that the floor is applied per path, and
  *                             that the running total is maintained as a delta
  *   registry liveness       — MembersRegistry / ClauseRegistry /
- *                             AssemblyRegistry stakes are assumed LIVE; the
+ *                             AssemblyRegistry / AgreementRegistry stakes are
+ *                             assumed LIVE; the
  *                             one gate whose failure has a permanent
  *                             consequence (the period race) is modeled
  *                             explicitly as AssumeAccrualGatesAligned
@@ -113,7 +114,7 @@ EXTENDS Integers, FiniteSets, TLC
 CONSTANTS
   Buyers,                    \* non-empty finite set of buyer addresses
   Sellers,                   \* non-empty finite set of seller addresses
-  Artifacts,                 \* (kind, key) pairs: clause keys / assembly compositionHashes
+  Artifacts,                 \* (kind, key) pairs: clause keys / assembly compositionHashes / agreementKeys
   InitialBalance,            \* starting token balance per participant
   MaxPayment,                \* 1..MaxPayment are valid payments
   MaxProcesses,              \* upper bound on process identities
@@ -701,7 +702,7 @@ AccrualNeverOverPays == BatchWriteReplacesNeverAdds
 \* With the assumption removed the period can advance while a batch is in
 \* flight; applyBatchAccrual reverts PeriodMismatch, settleBatch catches it and
 \* resolves the tokens anyway, and the guest's GLOBAL counted set has already
-\* absorbed those processes (kernel.rs:714, once ever, whatever the period).
+\* absorbed those processes (kernel.rs:855, once ever, whatever the period).
 \* So the accrual is not "recovered by the next batch" for those processes —
 \* it is permanently forgone.
 AccrualNotLost ==

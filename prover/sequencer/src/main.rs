@@ -82,9 +82,10 @@ async fn main() {
     )
     .parse()
     .expect("invalid USAGE_COUNTER_ADDRESS");
-    // The three registries the usage-claim pre-filter reads. Unset (zero)
-    // disables the pre-filter — every claim passes through and the counter's own
-    // gates plus the verifier's try/catch remain the backstop.
+    // The four registries the usage-claim pre-filter reads. Unset (zero)
+    // with a counter configured, a claim of that registry's kind is dropped
+    // at the pre-filter; the counter's own gates plus the verifier's
+    // try/catch remain the backstop.
     let clause_registry_addr: Address = env_or(
         "CLAUSE_REGISTRY_ADDRESS",
         "0x0000000000000000000000000000000000000000",
@@ -97,6 +98,12 @@ async fn main() {
     )
     .parse()
     .expect("invalid ASSEMBLY_REGISTRY_ADDRESS");
+    let agreement_registry_addr: Address = env_or(
+        "AGREEMENT_REGISTRY_ADDRESS",
+        "0x0000000000000000000000000000000000000000",
+    )
+    .parse()
+    .expect("invalid AGREEMENT_REGISTRY_ADDRESS");
     let members_registry_addr: Address = env_or(
         "MEMBERS_REGISTRY_ADDRESS",
         "0x0000000000000000000000000000000000000000",
@@ -364,6 +371,7 @@ async fn main() {
         usage_counter_address: usage_counter_addr,
         clause_registry_address: clause_registry_addr,
         assembly_registry_address: assembly_registry_addr,
+        agreement_registry_address: agreement_registry_addr,
         members_registry_address: members_registry_addr,
         private_key,
     };
