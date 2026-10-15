@@ -7,7 +7,7 @@ import {
     setClauseSpecFetcher,
 } from "@/lib/shared/clauseSpecSource";
 import { contentRetryDelayMs } from "@/lib/shared/ipfsService";
-import { canonicalContentHash } from "@figaro-protocol/sdk";
+import { canonicalize, computeClauseKey } from "@figaro-protocol/sdk";
 
 const useAllRegisteredClausesMock = vi.fn();
 vi.mock("@/lib/protocol/useClauseRegistry", () => ({
@@ -25,13 +25,13 @@ const validSpec = (clauseId: string) => ({
     block: { design: { article: "logistics" } },
 });
 
-/** The registry event for `clauseId`, anchoring the document its registrant
- *  published (by default the clause's own valid spec). */
-const event = (clauseId: string, published: unknown = validSpec(clauseId)) => ({
-    idHash: "0x01" as `0x${string}`,
-    clauseId,
-    version: 1,
-    contentHash: canonicalContentHash(published),
+/** The key of `clauseId`'s valid spec — the hash of its canonical bytes. */
+const keyFor = (clauseId: string) => computeClauseKey(validSpec(clauseId));
+
+/** The registry event for `clauseId`: the key of its valid spec and the URI
+ *  its registrant pinned it at. */
+const event = (clauseId: string) => ({
+    clauseKey: keyFor(clauseId),
     contentURI: `ipfs://${clauseId}`,
     registeredBy: "0xA" as `0x${string}`,
     blockNumber: 1n,
@@ -58,7 +58,7 @@ describe("useClauseSpecs — a spec the gateway has not served yet is re-read, n
         setClauseSpecFetcher(async (uri) => {
             reads.push(uri);
             if (uri === "ipfs://figaro-fresh" && !freshServed) throw new Error("Failed to fetch clause spec at ipfs://figaro-fresh: 504 Gateway Time-out");
-            return validSpec(uri.slice("ipfs://".length));
+            return canonicalize(validSpec(uri.slice("ipfs://".length)));
         });
 
         const { result } = renderHook(() => useClauseSpecs());
@@ -67,8 +67,8 @@ describe("useClauseSpecs — a spec the gateway has not served yet is re-read, n
         // First pass completed: `loaded` is true (the pass finished), the served
         // spec cached, the miss skipped — and its error reported.
         expect(result.current.loaded).toBe(true);
-        expect(getClauseSpec("figaro-old", 1)).toBeDefined();
-        expect(getClauseSpec("figaro-fresh", 1)).toBeUndefined();
+        expect(getClauseSpec(keyFor("figaro-old"))).toBeDefined();
+        expect(getClauseSpec(keyFor("figaro-fresh"))).toBeUndefined();
         expect(result.current.errors).toHaveLength(1);
         const versionAfterFirstPass = result.current.version;
         expect(reads.filter((u) => u === "ipfs://figaro-fresh")).toHaveLength(1);
@@ -78,7 +78,7 @@ describe("useClauseSpecs — a spec the gateway has not served yet is re-read, n
         await act(async () => { vi.advanceTimersByTime(contentRetryDelayMs(0)); });
         await flush();
 
-        expect(getClauseSpec("figaro-fresh", 1)).toBeDefined();
+        expect(getClauseSpec(keyFor("figaro-fresh"))).toBeDefined();
         expect(result.current.version).toBeGreaterThan(versionAfterFirstPass);
         expect(result.current.errors).toHaveLength(0);
         // The already-cached spec was NOT re-read: only the unresolved one was.
@@ -101,14 +101,14 @@ describe("useClauseSpecs — a spec the gateway has not served yet is re-read, n
     });
 
     it("leaves a PERMANENT failure alone — a spec that fails verification is never re-read", async () => {
-        useAllRegisteredClausesMock.mockReturnValue({ data: [event("figaro-bad", validSpec("figaro-other"))], failed: false });
+        useAllRegisteredClausesMock.mockReturnValue({ data: [event("figaro-bad")], failed: false });
         let reads = 0;
-        // The document declares another clauseId: wrong content, not a slow gateway.
-        setClauseSpecFetcher(async () => { reads += 1; return validSpec("figaro-other"); });
+        // The gateway serves other bytes than the key's: wrong content, not a slow gateway.
+        setClauseSpecFetcher(async () => { reads += 1; return canonicalize(validSpec("figaro-other")); });
         renderHook(() => useClauseSpecs());
         await flush();
         expect(reads).toBe(1);
-        expect(getClauseSpecLoadError("figaro-bad", 1)).toMatch(/declares clauseId/);
+        expect(getClauseSpecLoadError(keyFor("figaro-bad"))).toMatch(/integrity failure/);
         await act(async () => { vi.advanceTimersByTime(10 * 60_000); });
         await flush();
         expect(reads).toBe(1);

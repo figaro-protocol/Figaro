@@ -41,21 +41,34 @@
  * Requires Anvil + ./scripts/deploy-local.sh + Kubo + the dev server.
  */
 import { test, expect } from './devnet-multi-test';
+import type { Hex } from 'viem';
+import { keyOf, primeRegisteredClauseSpecs } from './devnet-helpers';
 import type { Page } from '@playwright/test';
 import { composedClauseChip } from './probeAssembly';
 
-const GEO_CLAUSE_KEY = 'figaro-geolocation';
-const CONSENT_CLAUSE_KEY = 'figaro-consent';
+let GEO_CLAUSE_KEY: Hex;
+let CONSENT_CLAUSE_KEY: Hex;
 // A clause naming a design fill whose field is an ENUM — the disclosure regime.
 // The clause + field are named (as the other design-fill specs name theirs);
 // the VALUES are read off the live spec the drawer rendered.
-const REGIME_CLAUSE_KEY = 'figaro-data-terms';
+let REGIME_CLAUSE_KEY: Hex;
 const REGIME_FIELD = 'disclosure';
 // The composition a beta tester drew: two order-scoped terms plus a
 // dispute forum composed once for the whole assembly.
-const SCHEDULE_CLAUSE_KEY = 'figaro-schedule';
-const ACCEPTANCE_CLAUSE_KEY = 'figaro-acceptance-criteria';
-const FORUM_CLAUSE_KEY = 'figaro-arbitration-kleros';
+let SCHEDULE_CLAUSE_KEY: Hex;
+let ACCEPTANCE_CLAUSE_KEY: Hex;
+let FORUM_CLAUSE_KEY: Hex;
+test.beforeAll(async () => {
+    // Clause KEYS, located by the names their specs carry over the specs the
+    // chain registered — never a hardcoded key.
+    await primeRegisteredClauseSpecs();
+    GEO_CLAUSE_KEY = keyOf('figaro-geolocation');
+    CONSENT_CLAUSE_KEY = keyOf('figaro-consent');
+    REGIME_CLAUSE_KEY = keyOf('figaro-data-terms');
+    SCHEDULE_CLAUSE_KEY = keyOf('figaro-schedule');
+    ACCEPTANCE_CLAUSE_KEY = keyOf('figaro-acceptance-criteria');
+    FORUM_CLAUSE_KEY = keyOf('figaro-arbitration-kleros');
+});
 
 /** Open the (sole) root order's drawer on its registry tab and return the
  *  geo checkbox, awaited into existence (chain→IPFS spec warm). */
@@ -234,9 +247,9 @@ test.describe('Designer AgreementDrawer (devnet)', () => {
         await page.getByTestId('agreement-drawer').waitFor({ state: 'visible', timeout: 10000 });
         await page.getByTestId('drawer-tab-registry').click();
         await page.getByTestId('drawer-section-registry').waitFor({ state: 'visible', timeout: 5000 });
-        for (const clauseId of [SCHEDULE_CLAUSE_KEY, ACCEPTANCE_CLAUSE_KEY]) {
-            const box = page.getByTestId(`drawer-registry-clause-${clauseId}`);
-            await expect(box, `the drawer surfaces ${clauseId}`).toHaveCount(1, { timeout: 20000 });
+        for (const clauseKey of [SCHEDULE_CLAUSE_KEY, ACCEPTANCE_CLAUSE_KEY]) {
+            const box = page.getByTestId(`drawer-registry-clause-${clauseKey}`);
+            await expect(box, `the drawer surfaces ${clauseKey}`).toHaveCount(1, { timeout: 20000 });
             await box.check();
         }
 
@@ -247,7 +260,7 @@ test.describe('Designer AgreementDrawer (devnet)', () => {
         await forumToggle.check();
 
         // The canvas states the composition on the node itself — the reading the
-        // review must reproduce. Each chip carries its clause id as its tooltip.
+        // review must reproduce. Each chip carries its clause's name and key as its tooltip.
         const canvasChips = page.locator(`[data-testid="node-clauses-${orderId}"] span[title]`);
         await expect(canvasChips, 'the canvas node states both composed terms').toHaveCount(2, { timeout: 10000 });
 
@@ -273,11 +286,11 @@ test.describe('Designer AgreementDrawer (devnet)', () => {
         ).toHaveCount(0);
         const reviewChips = page.locator(`[data-testid="node-clauses-${orderId}"] span[title]`);
         await expect(reviewChips, 'the review states both composed terms on the same order').toHaveCount(2, { timeout: 20000 });
-        // Both terms are the populated version-1 registrations the drawer offered.
-        for (const clauseId of [SCHEDULE_CLAUSE_KEY, ACCEPTANCE_CLAUSE_KEY]) {
+        // Both terms are the registrations the drawer offered, by key.
+        for (const clauseKey of [SCHEDULE_CLAUSE_KEY, ACCEPTANCE_CLAUSE_KEY]) {
             await expect(
-                composedClauseChip(page, clauseId, 1, orderId!),
-                `the review names ${clauseId} on the order that composed it`,
+                composedClauseChip(page, clauseKey, orderId!),
+                `the review names ${clauseKey} on the order that composed it`,
             ).toHaveCount(1);
         }
 
@@ -292,10 +305,10 @@ test.describe('Designer AgreementDrawer (devnet)', () => {
         await page.locator(`[data-order-id="${orderId}"]`).first().click();
         await page.getByTestId('agreement-drawer').waitFor({ state: 'visible', timeout: 10000 });
         await page.getByTestId('drawer-tab-registry').click();
-        for (const clauseId of [SCHEDULE_CLAUSE_KEY, ACCEPTANCE_CLAUSE_KEY]) {
+        for (const clauseKey of [SCHEDULE_CLAUSE_KEY, ACCEPTANCE_CLAUSE_KEY]) {
             await expect(
-                page.getByTestId(`drawer-registry-clause-${clauseId}`),
-                `the review drawer shows ${clauseId} composed`,
+                page.getByTestId(`drawer-registry-clause-${clauseKey}`),
+                `the review drawer shows ${clauseKey} composed`,
             ).toBeChecked({ timeout: 20000 });
         }
 

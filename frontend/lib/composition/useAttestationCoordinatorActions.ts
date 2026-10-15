@@ -11,7 +11,6 @@ import { fetchAgreement } from "@/lib/kernel/agreementFetch";
 import { getAllOrderCommitted, getStringArg } from "@/lib/kernel/indexer";
 import { restoreSignedProcessId } from "@/lib/kernel/signedCommitment";
 import { keccak256 } from "viem";
-import { computeClauseKey } from "@figaro-protocol/sdk";
 import { hexEqual } from "@/lib/shared/evm";
 import { truncateHex } from "@/lib/shared/formatHex";
 import {
@@ -127,7 +126,7 @@ export function useAttestationCoordinatorActions() {
         }
         // The clauseId here is a runtime value (the clause being attested), not a
         // hardcoded literal — find its section by matching the on-chain id.
-        const section = agreement.sections.find((s) => hexEqual(computeClauseKey(s.clause, s.version), clauseId));
+        const section = agreement.sections.find((s) => hexEqual(s.clause, clauseId));
         if (!section) {
             const message = `Clause ${truncateHex(clauseId, { head: 10, tail: 0 })} not committed in the signed agreement`;
             setError(message);

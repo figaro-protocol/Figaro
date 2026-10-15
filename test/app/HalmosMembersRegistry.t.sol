@@ -251,7 +251,7 @@ contract HalmosMembersRegistry is Test {
         }
 
         UsageCounter.BatchAccrual[] memory accruals = new UsageCounter.BatchAccrual[](1);
-        accruals[0] = UsageCounter.BatchAccrual(keccak256("clauseOrAssembly"), 1, 1);
+        accruals[0] = UsageCounter.BatchAccrual(keccak256("clauseOrAssembly"), 0, 1, 1); // kind 0: a clause
         address[] memory sellers = new address[](1);
         sellers[0] = ALICE;
 
@@ -267,7 +267,7 @@ contract HalmosMembersRegistry is Test {
         assertEq(admitted, members.registered(ALICE), "admission tracks `registered` exactly");
         assertEq(admitted, !leaves, "and leaving is what turns it off");
 
-        (,, uint256 score) = counter.batchAccrualOf(keccak256("clauseOrAssembly"), 0);
+        (,, uint256 score) = counter.batchAccrualOf(0, keccak256("clauseOrAssembly"), 0);
         assertEq(score > 0, admitted, "nothing accrues on a refused batch");
     }
 }

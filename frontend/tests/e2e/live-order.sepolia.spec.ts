@@ -37,11 +37,19 @@ import { calculateBonds, MEMBERS_REGISTRY_ABI } from '@figaro-protocol/sdk';
 import { CORE_ABI, ERC20_ABI } from '@/lib/kernel/contracts';
 import {
     E2E_CHAIN, LOCAL_ANVIL, RPC_URL, assertPinnedInIpfs, readLocalDeploymentConfig, referenceAssemblySlug, scanContractEvents, waitForConnected,
+    keyOf,
+    primeRegisteredClauseSpecs,
 } from './devnet-helpers';
 import { attachLocalSigner } from './local-signer';
 import { gotoAsWallet } from './devnet-multi-test';
 import { ITEM_PRICE, smokeKeys, smokeProfileDir } from './live-order-shared';
 import { ANVIL_KEYS } from '../anvilAccounts';
+
+// Clause keys are located by the names their specs carry (`keyOf`), over
+// the specs the chain registered — primed once per file.
+test.beforeAll(async () => {
+    await primeRegisteredClauseSpecs();
+});
 
 test.describe('LIVE ORDER — a public deployment traded through the real UI', () => {
     test.setTimeout(E2E_CHAIN === 'sepolia' ? 1_500_000 : 420_000);
@@ -238,9 +246,9 @@ test.describe('LIVE ORDER — a public deployment traded through the real UI', (
             await addBtn.click();
             await page.getByTestId('btn-review-order').click();
             await page.getByTestId('checkout-view').waitFor({ timeout: 60_000 });
-            await page.locator('[data-testid^="checkout-field-"][data-testid$="-figaro-modalities-modality-consume-onsite"]').first().check();
-            await page.locator('[data-testid^="checkout-field-"][data-testid$="-figaro-geolocation-origin"]').first().fill('9q8yyk');
-            await page.locator('[data-testid^="checkout-field-"][data-testid$="-figaro-geolocation-destination"]').first().fill('9q8yyk');
+            await page.locator(`[data-testid^="checkout-field-"][data-testid$="-${keyOf('figaro-modalities')}-modality-consume-onsite"]`).first().check();
+            await page.locator(`[data-testid^="checkout-field-"][data-testid$="-${keyOf('figaro-geolocation')}-origin"]`).first().fill('9q8yyk');
+            await page.locator(`[data-testid^="checkout-field-"][data-testid$="-${keyOf('figaro-geolocation')}-destination"]`).first().fill('9q8yyk');
             const place = page.getByTestId('btn-place-order');
             await expect(place, 'buyer connected + order ready → "Place order"').toHaveText(/Place order/, { timeout: 60_000 });
             await place.click();

@@ -70,17 +70,17 @@ export function useClauseSpecs(): ClauseSpecsState {
         let canceled = false;
         let timer: ReturnType<typeof setTimeout> | undefined;
         setSettled(false);
-        const pending = events.filter((e) => e.contentURI && e.clauseId);
+        const pending = events.filter((e) => e.contentURI && e.clauseKey);
         /** One read pass over `batch`; the first pass fixes `loaded`, later
          *  passes re-read what is still unresolved and stop when nothing is. */
         const pass = (batch: typeof pending, attempt: number) => {
-            Promise.allSettled(batch.map((e) => loadClauseSpec(e.clauseId, e.version, e.contentURI, e.contentHash))).then((results) => {
+            Promise.allSettled(batch.map((e) => loadClauseSpec(e.clauseKey, e.contentURI))).then((results) => {
                 if (canceled) return;
                 setErrors(results.flatMap((r) => (r.status === "rejected" ? [String(r.reason)] : [])));
                 setSettled(true);
                 setVersion((v) => v + 1);
                 const unresolved = batch.filter(
-                    (e) => getClauseSpec(e.clauseId, e.version) === undefined && getClauseSpecLoadError(e.clauseId, e.version) === undefined,
+                    (e) => getClauseSpec(e.clauseKey) === undefined && getClauseSpecLoadError(e.clauseKey) === undefined,
                 );
                 if (unresolved.length === 0) return;
                 timer = setTimeout(() => pass(unresolved, attempt + 1), contentRetryDelayMs(attempt));
@@ -95,7 +95,7 @@ export function useClauseSpecs(): ClauseSpecsState {
 
     return useMemo<ClauseSpecsState>(() => {
         const total = events?.length ?? null;
-        const loadedCount = (events ?? []).filter((e) => getClauseSpec(e.clauseId, e.version) !== undefined).length;
+        const loadedCount = (events ?? []).filter((e) => getClauseSpec(e.clauseKey) !== undefined).length;
         // loaded = the registry read resolved AND the load pass finished (each
         // spec terminal). A FAILED registry read is never loaded. Resolved-empty
         // (a genuinely empty registry) completes immediately and counts as loaded:

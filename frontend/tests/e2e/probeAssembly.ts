@@ -6,11 +6,9 @@
  * on-chain and DON'T snapshot/revert (lint-no-devnet-revert). Assembly identity
  * is the compositionHash, and `AssemblyRegistry.registerAssembly` reverts on an
  * anchored composition, so a FIXED composition would collide with a prior run.
- * The nonce lives in the clause id (`figaro-probe-attest-<Date.now()>`), so each
- * run composes a genuinely unique assembly → a fresh compositionHash, no
- * collision, no revert.
- * (A date-in-name is a TEST-only throwaway; production evolves a clause by bumping
- * its `version` — see the punch-list version-axis item.)
+ * The nonce lives in the spec's name (`figaro-probe-attest-<Date.now()>`), so
+ * each run pins different bytes → a fresh clause key → a genuinely unique
+ * assembly → a fresh compositionHash, no collision, no revert.
  *
  * One home for the clause-registration + canvas-publish choreography the publish
  * specs share (permissionless-clause, designer-view, published-list-ui).
@@ -23,10 +21,9 @@ import {
 import { privateKeyToAccount } from 'viem/accounts';
 import type { Page } from '@playwright/test';
 import { expect } from './devnet-multi-test';
-import { readLocalDeploymentConfig, pinJSONToIPFS, localPublicClient, publishOrAdoptReviewed } from './devnet-helpers';
+import { readLocalDeploymentConfig, pinClauseSpec, localPublicClient, publishOrAdoptReviewed } from './devnet-helpers';
 import { ANVIL_KEYS } from '../anvilAccounts';
-import { computeClauseKey, CLAUSE_REGISTRY_ABI } from '@figaro-protocol/sdk';
-import { canonicalContentHash } from '@/lib/shared/canonicalJson';
+import { CLAUSE_REGISTRY_ABI } from '@figaro-protocol/sdk';
 
 const RPC_URL = 'http://127.0.0.1:8545';
 const LOCAL_ANVIL = defineChain({
@@ -113,30 +110,25 @@ export function makeProbeWitnessSpec(clauseId: string, title: string, version: n
     };
 }
 
-/** Register the probe clause permissionlessly via ClauseRegistry.registerClause —
- *  the documented registration path the protocol's own clauses use. Idempotent:
- *  skips if already registered (Playwright retry re-mints the nonce anyway). */
-export async function registerProbeClause(
-    clauseId: string,
-    spec: ReturnType<typeof makeProbeSpec> | ReturnType<typeof makeProbeWitnessSpec>,
-    version: number = PROBE_VERSION,
-): Promise<void> {
+/** Register a clause spec permissionlessly via
+ *  `ClauseRegistry.registerClause(clauseKey, contentURI)` — the documented
+ *  registration path the protocol's own clauses use: pin the spec's CANONICAL
+ *  bytes, and name the key they hash to. Idempotent: skips an already
+ *  registered key (the bytes ARE the identity, so a re-run of the same spec is
+ *  the same clause). Returns the clause key. */
+export async function registerProbeClause(spec: unknown): Promise<Hex> {
     const cfg = readLocalDeploymentConfig();
     const registry = (process.env.NEXT_PUBLIC_CLAUSE_REGISTRY ?? cfg.clauseRegistry) as Hex;
     const pub = localPublicClient();
-    const idHash = computeClauseKey(clauseId, version);
+    const { clauseKey, uri } = await pinClauseSpec(spec);
 
     const already = await pub.readContract({
-        address: registry, abi: CLAUSE_REGISTRY_ABI, functionName: 'registered', args: [idHash],
+        address: registry, abi: CLAUSE_REGISTRY_ABI, functionName: 'registered', args: [clauseKey],
     });
-    if (already) return;
+    if (already) return clauseKey;
 
     const registeredBy = privateKeyToAccount(ANVIL_KEYS[0] as Hex);
     const wallet = createWalletClient({ account: registeredBy, chain: LOCAL_ANVIL, transport: http(RPC_URL) });
-    const { uri } = await pinJSONToIPFS(spec);
-    // Digest over the CANONICAL form — the same convention populate-clauses.mjs
-    // anchors and loadClauseSpec verifies after fetch.
-    const contentHash = canonicalContentHash(spec);
     // Registering = staked intent (K4): the probe posts the registry's
     // deposit like any registeredBy.
     const deposit = await pub.readContract({
@@ -145,42 +137,46 @@ export async function registerProbeClause(
     const { request } = await pub.simulateContract({
         account: registeredBy.address, address: registry, abi: CLAUSE_REGISTRY_ABI,
         functionName: 'registerClause',
-        args: [clauseId, BigInt(version), contentHash, uri],
+        args: [clauseKey, uri],
         value: deposit,
     });
     await pub.waitForTransactionReceipt({ hash: await wallet.writeContract(request) });
+    return clauseKey;
 }
 
 
 export interface PublishedProbe {
     slug: string;
     name: string;
+    /** The probe clause's key — the hash of the bytes it pinned. */
+    clauseKey: Hex;
+    /** The probe spec's own name and version (presentation). */
     clauseId: string;
-    /** The registered version the probe composed. */
     version: number;
 }
 
-/** The canvas chip a node shows for a composed clause. A clause is named by
- *  its name and version, and the chip's title states both
- *  (`OrderNode`: `<clauseId> v<version>`). Scoped to one order's chips when
+/** The canvas chip a node shows for a composed clause, located by the clause
+ *  KEY (`OrderNode`: `node-clause-<orderId>-<clauseKey>`; its title reads
+ *  `<clauseId> v<version> · <clauseKey>`). Scoped to one order's chips when
  *  `orderId` is given, else to every node's. */
-export function composedClauseChip(page: Page, clauseId: string, version: number, orderId?: string) {
-    const scope = orderId === undefined ? '[data-testid^="node-clauses-"]' : `[data-testid="node-clauses-${orderId}"]`;
-    return page.locator(`${scope} span[title="${clauseId} v${version}"]`);
+export function composedClauseChip(page: Page, clauseKey: Hex, orderId?: string) {
+    return orderId === undefined
+        ? page.locator(`[data-testid^="node-clauses-"] [data-testid^="node-clause-"][data-testid$="-${clauseKey.toLowerCase()}"]`)
+        : page.getByTestId(`node-clause-${orderId}-${clauseKey.toLowerCase()}`);
 }
 
 /**
  * Register a per-run-unique probe clause, then author + publish a single-node
  * assembly carrying it through the REAL canvas (select node → drawer → check the
  * novel clause → name → review → confirm-publish). Returns the content-derived
- * slug, the editorial name, and the clause id. No snapshot/revert — the nonce
+ * slug, the editorial name, and the clause key. No snapshot/revert — the nonce
  * guarantees a fresh slug.
  */
 export async function publishProbeAssembly(page: Page): Promise<PublishedProbe> {
     const nonce = `${Date.now()}`;
     const clauseId = `figaro-probe-attest-${nonce}`;
     const name = `Probe assembly ${nonce}`;
-    await registerProbeClause(clauseId, makeProbeSpec(clauseId, `Probe attestation ${nonce}`));
+    const clauseKey = await registerProbeClause(makeProbeSpec(clauseId, `Probe attestation ${nonce}`));
 
     await page.goto('/assemblies/designer/new?fresh=1&e2e=devnet', { waitUntil: 'domcontentloaded' });
     await page.getByTestId('designer-canvas-toolbar').waitFor({ timeout: 30000 });
@@ -192,7 +188,7 @@ export async function publishProbeAssembly(page: Page): Promise<PublishedProbe> 
     await page.getByTestId('agreement-drawer').waitFor({ state: 'visible', timeout: 10000 });
     await page.getByTestId('drawer-tab-registry').click();
     await page.getByTestId('drawer-section-registry').waitFor({ state: 'visible', timeout: 5000 });
-    const novel = page.getByTestId(`drawer-registry-clause-${clauseId}`);
+    const novel = page.getByTestId(`drawer-registry-clause-${clauseKey}`);
     await expect(novel, 'the drawer surfaces the just-registered probe clause').toHaveCount(1, { timeout: 20000 });
     await novel.check();
 
@@ -215,7 +211,7 @@ export async function publishProbeAssembly(page: Page): Promise<PublishedProbe> 
         'no order reviews as termless when the drawer composed its terms',
     ).toHaveCount(0, { timeout: 30000 });
     await expect(
-        composedClauseChip(page, clauseId, PROBE_VERSION),
+        composedClauseChip(page, clauseKey),
         'the review names the clause the drawer composed',
     ).toHaveCount(1, { timeout: 30000 });
 
@@ -223,10 +219,10 @@ export async function publishProbeAssembly(page: Page): Promise<PublishedProbe> 
     // about to be anchored is what is on screen.
     const slug = await publishOrAdoptReviewed(page, handle!, async () => {
         await expect(
-            composedClauseChip(page, clauseId, PROBE_VERSION),
+            composedClauseChip(page, clauseKey),
             'the reviewed composition still names the composed clause at the moment of publish',
         ).toHaveCount(1, { timeout: 30000 });
     });
 
-    return { slug, name, clauseId, version: PROBE_VERSION };
+    return { slug, name, clauseKey, clauseId, version: PROBE_VERSION };
 }

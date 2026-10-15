@@ -140,7 +140,7 @@ export interface AssemblyCheckoutParams {
      *  quantity stands, and the payment is their product. */
     subOrderUnitPrices?: Record<string, bigint>;
     /** The buyer's checkout-time GENERAL-clause field fills, keyed by
-     *  template node id → clauseId → field values. Design time is
+     *  template node id → clause key → field values. Design time is
      *  structural: a general clause arrives from the
      *  template as `{}` and its transaction particulars are filled
      *  HERE. Specific-T&C values (consent's affix) come from the template
@@ -180,7 +180,7 @@ export async function executeAssemblyCheckout(
     // compositionHash), the commitment currency MUST be that token — refuse
     // before any signature rather than let the signed struct contradict the
     // signed term.
-    const pin = readUtilityTokenPin(template.assemblyClauses ?? {}, specs, template.assemblyClauseVersions);
+    const pin = readUtilityTokenPin(template.assemblyClauses ?? {}, specs);
     if (pin && !hexEqual(pin, currency)) {
         throw new Error(
             `this assembly is denominated by design (${pin}); the commitment currency ${currency} contradicts the pinned term`,
@@ -319,9 +319,8 @@ function checkoutNodes(
                     { ...node.clauses, ...(params.clauseFills?.[planned.nodeId] ?? {}) },
                     lineItems, specs,
                     profileValuesFor(leadSellerAddress, sellerCatalogs),
-                    planned.clauseVersions,
                 ),
-                payment, currency, specs, lineItems, planned.clauseVersions,
+                payment, currency, specs, lineItems,
             );
             return {
                 seller: leadSellerAddress,
@@ -396,9 +395,8 @@ function checkoutNodes(
                 { ...nodeClauses },
                 subLineItems ?? [], specs,
                 profileValuesFor(subSeller, sellerCatalogs),
-                planned.clauseVersions,
             ),
-            subPayment, currency, specs, subLineItems, planned.clauseVersions,
+            subPayment, currency, specs, subLineItems,
         );
         return {
             seller: subSeller,

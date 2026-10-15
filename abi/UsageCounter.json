@@ -42,8 +42,39 @@
   },
   {
     "type": "function",
+    "name": "KIND_ASSEMBLY",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint8",
+        "internalType": "uint8"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "KIND_CLAUSE",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint8",
+        "internalType": "uint8"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "accrualOf",
     "inputs": [
+      {
+        "name": "",
+        "type": "uint8",
+        "internalType": "uint8"
+      },
       {
         "name": "",
         "type": "bytes32",
@@ -99,6 +130,11 @@
             "internalType": "bytes32"
           },
           {
+            "name": "kind",
+            "type": "uint8",
+            "internalType": "uint8"
+          },
+          {
             "name": "c",
             "type": "uint64",
             "internalType": "uint64"
@@ -136,6 +172,11 @@
     "type": "function",
     "name": "batchAccrualOf",
     "inputs": [
+      {
+        "name": "",
+        "type": "uint8",
+        "internalType": "uint8"
+      },
       {
         "name": "",
         "type": "bytes32",
@@ -320,6 +361,11 @@
     "inputs": [
       {
         "name": "",
+        "type": "uint8",
+        "internalType": "uint8"
+      },
+      {
+        "name": "",
         "type": "bytes32",
         "internalType": "bytes32"
       },
@@ -501,6 +547,11 @@
     "name": "scoreOf",
     "inputs": [
       {
+        "name": "kind",
+        "type": "uint8",
+        "internalType": "uint8"
+      },
+      {
         "name": "clauseOrAssembly",
         "type": "bytes32",
         "internalType": "bytes32"
@@ -524,6 +575,11 @@
     "type": "function",
     "name": "sellerSeen",
     "inputs": [
+      {
+        "name": "",
+        "type": "uint8",
+        "internalType": "uint8"
+      },
       {
         "name": "",
         "type": "bytes32",
@@ -573,6 +629,12 @@
     "name": "BatchUsageRecorded",
     "inputs": [
       {
+        "name": "kind",
+        "type": "uint8",
+        "indexed": false,
+        "internalType": "uint8"
+      },
+      {
         "name": "clauseOrAssembly",
         "type": "bytes32",
         "indexed": true,
@@ -609,6 +671,12 @@
     "type": "event",
     "name": "UsageRecorded",
     "inputs": [
+      {
+        "name": "kind",
+        "type": "uint8",
+        "indexed": false,
+        "internalType": "uint8"
+      },
       {
         "name": "clauseOrAssembly",
         "type": "bytes32",

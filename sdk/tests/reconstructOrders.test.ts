@@ -1,6 +1,6 @@
 /**
  * reconstructOrders — the ONE template → orders walk. Structure via
- * `planTemplateOrders` (commit order, complete version maps, local parents)
+ * `planTemplateOrders` (commit order, clause bags, local parents)
  * and realization via `reconstructOrdersFromTemplate` (real parent hashes,
  * running cumulative value, root-derived processId, onOrder seam ordering).
  * The behavioral reference is the untouched originate-chain suite, which now
@@ -13,14 +13,9 @@ import {
 } from "../src/reconstructOrders.js";
 import { templateCompositionHash, type AssemblyTemplate } from "../src/assembly.js";
 import { computeAgreementHash, buildProvenanceInclusionProof, verifyInclusionProof } from "../src/agreement.js";
-import type { ProjectionSpecView } from "../src/projection.js";
-import { specSourceFromFixtures, specSourceWithRegistrations } from "./specFixtures.js";
+import { keyOf, rawSpecOf, specSourceFromFixtures, specSourceWithRegistrations, viewOf } from "./specFixtures.js";
 
-const FIXTURES = specSourceFromFixtures(["figaro-commerce", "figaro-topology"]);
-const COMMERCE_V1 = FIXTURES.get("figaro-commerce", 1)!;
-/** The template below composes the commerce clause at v2 on one node, so a v2
- *  is loaded: the walk reads each section's spec at its composed version. */
-const SPECS = specSourceWithRegistrations(FIXTURES, [{ ...COMMERCE_V1, version: 2 }]);
+const SPECS = specSourceFromFixtures(["figaro-commerce", "figaro-topology"]);
 
 const BUYER = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266" as const;
 const SELLER_A = "0x2546BcD3c84621e976D8185a91A922aE77ECEc30" as const;
@@ -34,35 +29,33 @@ const template: AssemblyTemplate = {
         {
             id: "courier",
             clauses: {
-                "figaro-commerce": {},
-                "figaro-topology": { parentOrderHashes: ["merchant"] },
+                [keyOf("figaro-commerce")]: {},
+                [keyOf("figaro-topology")]: { parentOrderHashes: ["merchant"] },
             },
-            clauseVersions: { "figaro-commerce": 2 },
         },
         {
             id: "merchant",
-            clauses: { "figaro-commerce": {}, "figaro-topology": { parentOrderHashes: [] } },
+            clauses: { [keyOf("figaro-commerce")]: {}, [keyOf("figaro-topology")]: { parentOrderHashes: [] } },
         },
     ],
 };
 
 describe("planTemplateOrders — pure structure", () => {
-    it("orders nodes root-first with local parents and COMPLETE version maps", () => {
+    it("orders nodes root-first with local parents and the template's clause bags", () => {
         const planned = planTemplateOrders(template);
         expect(planned.map((p) => p.nodeId)).toEqual(["merchant", "courier"]);
         expect(planned[0].parentLocalIds).toEqual([]);
         expect(planned[1].parentLocalIds).toEqual(["merchant"]);
-        // Complete maps: absent template entries resolve to 1 (the composition
-        // pinned WHICH clause it composed — no registry fallback downstream).
-        expect(planned[0].clauseVersions).toEqual({ "figaro-commerce": 1, "figaro-topology": 1 });
-        expect(planned[1].clauseVersions).toEqual({ "figaro-commerce": 2, "figaro-topology": 1 });
+        // The bag is keyed by clause key: the composition pinned WHICH clause
+        // it composed, so nothing downstream reads a registry by name.
+        expect(Object.keys(planned[0].clauses).sort()).toEqual([keyOf("figaro-commerce"), keyOf("figaro-topology")].sort());
     });
 
     it("throws on a cyclic topology", () => {
         const cyclic: AssemblyTemplate = {
             agreements: [
-                { id: "a", clauses: { "figaro-topology": { parentOrderHashes: ["b"] } } },
-                { id: "b", clauses: { "figaro-topology": { parentOrderHashes: ["a"] } } },
+                { id: "a", clauses: { [keyOf("figaro-topology")]: { parentOrderHashes: ["b"] } } },
+                { id: "b", clauses: { [keyOf("figaro-topology")]: { parentOrderHashes: ["a"] } } },
             ],
         };
         expect(() => planTemplateOrders(cyclic)).toThrow(/cycle/);
@@ -100,16 +93,13 @@ describe("reconstructOrdersFromTemplate — realization", () => {
         expect(sub.commitment.processId).toBe(root.processId);
         expect(sub.processId).toBe(root.processId);
         // The sub's topology section carries the root's REAL order hash.
-        const topo = sub.agreement.sections.find((s) => s.clause === "figaro-topology");
+        const topo = sub.agreement.sections.find((s) => s.clause === keyOf("figaro-topology"));
         expect(topo?.data.parentOrderHashes).toEqual([root.orderHash]);
-        // The composition's version pin survives into the section.
-        const commerce = sub.agreement.sections.find((s) => s.clause === "figaro-commerce");
-        expect(commerce?.version).toBe(2);
         // THE MERKLE-LEAF SEAM: with specs supplied, the walk fills the
         // commerce section's currency leaf to match the commitment struct —
         // on EVERY realized order, root and sub alike.
         for (const order of orders) {
-            const commerceSection = order.agreement.sections.find((s) => s.clause === "figaro-commerce");
+            const commerceSection = order.agreement.sections.find((s) => s.clause === keyOf("figaro-commerce"));
             expect(commerceSection?.data.currency).toBe(order.commitment.currency);
         }
     });
@@ -124,8 +114,8 @@ describe("reconstructOrdersFromTemplate — realization", () => {
                 specs,
                 nodes: (p) =>
                     p.nodeId === "merchant"
-                        ? { seller: SELLER_A, payment: 100n, overrides: specs ? undefined : { "figaro-commerce": { currency: CURRENCY } } }
-                        : { seller: SELLER_B, payment: 40n, overrides: specs ? undefined : { "figaro-commerce": { currency: CURRENCY } } },
+                        ? { seller: SELLER_A, payment: 100n, overrides: specs ? undefined : { [keyOf("figaro-commerce")]: { currency: CURRENCY } } }
+                        : { seller: SELLER_B, payment: 40n, overrides: specs ? undefined : { [keyOf("figaro-commerce")]: { currency: CURRENCY } } },
                 salt: () => 1n,
                 deadline: 1770000000n,
             });
@@ -142,7 +132,7 @@ describe("reconstructOrdersFromTemplate — realization", () => {
     it("rejects a template whose commit order starts with a parented node", async () => {
         const dangling: AssemblyTemplate = {
             agreements: [
-                { id: "only", clauses: { "figaro-topology": { parentOrderHashes: ["ghost"] } } },
+                { id: "only", clauses: { [keyOf("figaro-topology")]: { parentOrderHashes: ["ghost"] } } },
             ],
         };
         await expect(
@@ -157,17 +147,18 @@ describe("reconstructOrdersFromTemplate — realization", () => {
     });
 });
 
-describe("reconstructOrdersFromTemplate — the walk's fills read each section at its composed version", () => {
-    // A stranger's v2 of the commerce clause that declares `currency` as a
-    // DESIGN FILL (a pin, not content): the highest loaded, which a
-    // versionless read would route through. The template composes v1
-    // (absent = 1), so the walk still fills v1's currency leaf.
-    const strangerV2: ProjectionSpecView = {
-        ...COMMERCE_V1,
-        version: 2,
-        hints: { ...COMMERCE_V1.hints, designFills: ["currency"] },
-    };
-    const specs = specSourceWithRegistrations(FIXTURES, [strangerV2]);
+describe("reconstructOrdersFromTemplate — the walk's fills read the spec each key names", () => {
+    // A lookalike of the commerce clause (same clauseId and version, other
+    // bytes) that declares `currency` as a DESIGN FILL — a pin, not content.
+    // It is another clause: a template composing the real key fills the real
+    // currency leaf, and only one composing the lookalike's key reads it.
+    const raw = rawSpecOf("figaro-commerce");
+    const lookalike = viewOf({
+        ...raw,
+        title: "a stranger's registration",
+        block: { ...(raw.block as Record<string, Record<string, unknown>>), design: { ...((raw.block as { design?: object }).design ?? {}), fills: ["currency"] } },
+    });
+    const specs = specSourceWithRegistrations(SPECS, [lookalike]);
     const params = {
         buyer: BUYER,
         currency: CURRENCY,
@@ -179,23 +170,21 @@ describe("reconstructOrdersFromTemplate — the walk's fills read each section a
         deadline: 1770000000n,
     };
 
-    it("an unstated version fills v1's currency leaf", async () => {
+    it("the real key fills the real currency leaf", async () => {
         const [root] = await reconstructOrdersFromTemplate(
-            { agreements: [{ id: "only", clauses: { "figaro-commerce": {} } }] },
+            { agreements: [{ id: "only", clauses: { [keyOf("figaro-commerce")]: {} } }] },
             params,
         );
-        const commerce = root.agreement.sections.find((s) => s.clause === "figaro-commerce");
-        expect(commerce?.version).toBe(1);
-        expect(commerce?.data.currency).toBe(CURRENCY);
+        const commerce = root.agreement.sections.find((s) => s.clause === keyOf("figaro-commerce"));
+        expect(commerce?.data?.currency).toBe(CURRENCY);
     });
 
-    it("a stated v2 is read as v2, whose currency is no content leaf", async () => {
+    it("the lookalike's key is read as the lookalike, whose currency is no content leaf", async () => {
         const [root] = await reconstructOrdersFromTemplate(
-            { agreements: [{ id: "only", clauses: { "figaro-commerce": {} }, clauseVersions: { "figaro-commerce": 2 } }] },
+            { agreements: [{ id: "only", clauses: { [lookalike.clauseKey]: {} } }] },
             params,
         );
-        const commerce = root.agreement.sections.find((s) => s.clause === "figaro-commerce");
-        expect(commerce?.version).toBe(2);
-        expect(commerce?.data.currency).toBeUndefined();
+        const commerce = root.agreement.sections.find((s) => s.clause === lookalike.clauseKey);
+        expect(commerce?.data?.currency).toBeUndefined();
     });
 });

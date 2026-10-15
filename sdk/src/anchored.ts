@@ -2,7 +2,7 @@
  * anchored.ts — content the chain anchors, verified before it is used.
  *
  * Four kinds of document live off chain and are anchored on it by a digest:
- * a clause spec (`ClauseRegistry`'s `contentHash`), an assembly template
+ * a clause spec (its clause key, the digest of its pinned bytes), an assembly template
  * (`AssemblyRegistry`'s `compositionHash`), an agreement (the commitment's
  * `agreementHash`) and attestation content (the `contentRef` an
  * `Attestation` event carries). A gateway can serve any bytes, so a reader
@@ -23,7 +23,8 @@
  */
 
 import { keccak256, type Hex } from "viem";
-import { canonicalContentHash, computeAgreementHash, type Agreement } from "./agreement.js";
+import { computeAgreementHash, type Agreement } from "./agreement.js";
+import { strippingReviver } from "./safeJson.js";
 import { templateCompositionHash, type AssemblyTemplate } from "./assembly.js";
 import { isBytes32Hex } from "./types.js";
 
@@ -43,12 +44,21 @@ export type Anchored<T> = T & { readonly [ANCHORED]: true };
 
 const sameHex = (a: string, b: string): boolean => a.toLowerCase() === b.toLowerCase();
 
-/** A clause spec, verified against `ClauseRegistry`'s `contentHash`: the
- *  canonical serialization of the parsed JSON hashes to it. The spec is not
- *  parsed here; its shape is the clause parser's. */
-export function anchorClauseSpec(raw: unknown, contentHash: Hex | string): Anchored<unknown> | null {
-    if (raw === null || raw === undefined) return null;
-    return sameHex(canonicalContentHash(raw), contentHash) ? (raw as Anchored<unknown>) : null;
+/** A clause spec, verified against its clause key: `keccak256` of the BYTES
+ *  fetched equals the key. The key is the hash of exactly the bytes the
+ *  registrant pinned, so the check runs on what was fetched — the exact text
+ *  or bytes — and re-canonicalizes nothing; the same document pinned in
+ *  another byte form is another key. The spec is parsed from the verified
+ *  bytes (prototype-pollution keys stripped) and returned; its shape is the
+ *  clause parser's. Bytes that are not JSON are not a spec. */
+export function anchorClauseSpec(fetched: Uint8Array | string, clauseKey: Hex | string): Anchored<unknown> | null {
+    const bytes = typeof fetched === "string" ? new TextEncoder().encode(fetched) : fetched;
+    if (!sameHex(keccak256(bytes), clauseKey)) return null;
+    try {
+        return JSON.parse(new TextDecoder().decode(bytes), strippingReviver) as Anchored<unknown>;
+    } catch {
+        return null;
+    }
 }
 
 /** An assembly template, verified against `AssemblyRegistry`'s

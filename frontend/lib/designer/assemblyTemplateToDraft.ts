@@ -13,7 +13,7 @@
  * `clausesByOrderId` so re-opening the fork shows them.
  */
 
-import { planTemplateOrders } from "@figaro-protocol/sdk";
+import { isBytes32Hex, planTemplateOrders } from "@figaro-protocol/sdk";
 import { ZERO_ADDRESS } from "@/lib/shared/evm";
 import { templateCompositionHash, type AssemblyTemplate } from "@/lib/shared/assemblyTemplate";
 import type { ClauseFields } from "@/lib/shared/clauseFields";
@@ -50,7 +50,6 @@ export function templateToOrders(template: AssemblyTemplate): Order[] {
             salt: BigInt(planned.index + 1),
             clauseFields: planned.clauses as ClauseFields,
             parentOrderHashes: planned.parentLocalIds,
-            clauseVersions: planned.clauseVersions,
         }).order,
     );
 }
@@ -70,21 +69,10 @@ export function assemblyTemplateToDraft(
         clausesByOrderId: Object.fromEntries(
             template.agreements.map((to) => [to.id, to.clauses]),
         ),
-        // The template's sparse non-1 version picks are part of the clause's
-        // identity — a draft that dropped them would silently re-compose
-        // against v1.
-        clauseVersionsByOrderId: Object.fromEntries(
-            template.agreements
-                .filter((to) => to.clauseVersions && Object.keys(to.clauseVersions).length > 0)
-                .map((to) => [to.id, to.clauseVersions as Record<string, number>]),
-        ),
         // Assembly-scoped sections travel as their own level — never smeared
         // onto an order (scope placement is verified at build/publish).
         ...(template.assemblyClauses && Object.keys(template.assemblyClauses).length > 0
             ? { assemblyClauses: template.assemblyClauses }
-            : {}),
-        ...(template.assemblyClauseVersions && Object.keys(template.assemblyClauseVersions).length > 0
-            ? { assemblyClauseVersions: template.assemblyClauseVersions }
             : {}),
         createdAt: Date.now(),
         updatedAt: Date.now(),
@@ -124,8 +112,17 @@ export function parseAssemblyTemplateJson(text: string): ParsedTemplateResult {
         const clauses = (entry as { clauses?: unknown } | null)?.clauses;
         if (typeof entry !== "object" || entry === null || typeof id !== "string"
             || typeof clauses !== "object" || clauses === null || Array.isArray(clauses)) {
-            return { ok: false, error: "Each agreement needs a string `id` and a `clauses` object (clauseId → fields)." };
+            return { ok: false, error: "Each agreement needs a string `id` and a `clauses` object (clause key → fields)." };
         }
+        const unkeyed = Object.keys(clauses).find((k) => !isBytes32Hex(k));
+        if (unkeyed !== undefined) {
+            return { ok: false, error: `Each clause is named by its clause key (the 32-byte hash of its pinned spec); "${unkeyed}" is not one.` };
+        }
+    }
+    const assemblyClauses = (parsed as { assemblyClauses?: unknown }).assemblyClauses;
+    if (assemblyClauses !== undefined && (typeof assemblyClauses !== "object" || assemblyClauses === null
+        || Object.keys(assemblyClauses).some((k) => !isBytes32Hex(k)))) {
+        return { ok: false, error: "`assemblyClauses` maps clause keys (the 32-byte hash of each pinned spec) to the designer's values." };
     }
     const template = parsed as AssemblyTemplate;
     try {

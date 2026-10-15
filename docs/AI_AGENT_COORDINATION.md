@@ -294,9 +294,10 @@ What is emitted, and what each thing is evidence of:
 - **A process ended.** `OrderResolved` and `ProcessResolved` — the whole process resolving
   at once on the buyer's single call, atomically and terminally.
 - **What the network is actually composed OF.**
-  `UsageCounter.UsageRecorded(clauseOrAssembly, period, processId, seller, c, d, score)`,
+  `UsageCounter.UsageRecorded(kind, clauseOrAssembly, period, processId, seller, c, d, score)`,
   plus `BatchUsageRecorded` on the batch path (cumulative — it REPLACES rather than adds);
-  `scoreOf(clauseOrAssembly, period)` sums both. The `d` term counts DISTINCT LIVE-STAKED
+  `scoreOf(kind, clauseOrAssembly, period)` sums both, kind `0` for a clause key and
+  `1` for an assembly's `compositionHash`. The `d` term counts DISTINCT LIVE-STAKED
   sellers, so it reads as adoption breadth priced at one deposit per seller — the nearest
   thing on the network to a demand signal for a clause or an assembly. It exists only
   because buyers call `recordProcessUsage` at resolution; uncounted usage is permanently
@@ -347,8 +348,10 @@ composes.
   the root a counterparty recomputes before it signs; `assertAgreementSignable` is the gate
   every signature passes.
 - **Clause designer** — no process role at all:
-  `ClauseRegistry.registerClause(clauseId, version, contentHash, contentURI)` under the
-  designer's own key, over a spec pinned off-chain. Permissionless, first-write-wins,
+  `ClauseRegistry.registerClause(clauseKey, contentURI)` under the designer's own key,
+  over a spec pinned off-chain as its canonical bytes; the clause key is `keccak256` of
+  those bytes (`computeClauseKey(spec)`), and the spec's `clauseId` and `version` are
+  its label. Permissionless, first-write-wins,
   deposit-backed; the capacity's prompt is `ecosystem-agents/figaro-clause-author.md`.
 - **Assembly designer** — `AssemblyRegistry.registerAssembly(compositionHash, contentURI)`
   over a published template. Composition is the designer's act and happens only there,

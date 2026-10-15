@@ -28,7 +28,7 @@
 // per-order bag `ClauseFields` names (`Record<string, Record<string, unknown>>`).
 export type { AssemblyTemplate } from "@figaro-protocol/sdk";
 
-// The shape's accessors (topology parents, composed clause versions), the
+// The shape's accessor (topology parents), the
 // assembly's identity (the AssemblyRegistry key), and its derived slug —
 // single home is the SDK; re-exported here for the designer/registry surfaces.
 export {
@@ -36,7 +36,3 @@ export {
     templateCompositionHash,
     deriveAssemblySlug,
 } from "@figaro-protocol/sdk";
-
-/** @public pending consumer: per-clause version display on the drawer/audit
- *  read surfaces. */
-export { templateClauseVersion } from "@figaro-protocol/sdk";

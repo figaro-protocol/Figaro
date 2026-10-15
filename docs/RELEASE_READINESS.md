@@ -179,15 +179,20 @@ wallet, from the founder's own balance; each member profile is registered by its
 own wallet — the founder direct as a buyer-side member, the DAO under its
 EIP-7702-delegated operator EOA, never the vault address (`DAO.md` § "Who holds
 the treasury"). Registrar = designer of record = who the 600M reserve rewards
-(`RpgfMinter._isAuthor` reads `depositOf(...).registeredBy`); first-write-wins and
-permanent per id. The procedure is rehearsed end to end on the testnet.
+(`RpgfMinter._isAuthor(kind, key, account)` reads `depositOf(key).registeredBy`
+for the clause kind); first-write-wins and permanent per key — a clause key is
+`keccak256` of the spec's pinned canonical bytes, so a registration is one
+exact document. The procedure is rehearsed end to end on the testnet.
 
 Before mainnet genesis seeding:
 
-1. The seeding run is a WRITTEN registration plan — each id with its registrar —
-   that the maintainer reviews BEFORE the first broadcast; the vault-registrar mode
-   is invoked with `SEED_CLAUSES` naming exactly the mandatory two, and every
-   other run uses the founder's Ledger as direct registrar.
+1. The seeding run is a WRITTEN registration plan — each clause key (with the
+   spec name and version it was resolved from) and its registrar — that the
+   maintainer reviews BEFORE the first broadcast; the vault-registrar mode is
+   invoked with `SEED_CLAUSES` naming exactly the mandatory two as `name` or
+   `name@version`, which `populate-clauses.mjs` resolves to keys over the specs
+   it loads from `clauses/`, and every other run uses the founder's Ledger as
+   direct registrar.
 2. Rehearse the plan on an Anvil fork with the real devices before mainnet.
 3. Keep `CONTRACTS.md` § "Designer rewards", `DESIGNER_REWARDS.md`, and `DAO.md` in
    sync if the rule moves.

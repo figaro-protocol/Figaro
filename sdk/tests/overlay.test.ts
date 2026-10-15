@@ -45,10 +45,7 @@ function parsedSpec(raw: unknown): ClauseSpec {
 
 function specSourceOf(views: readonly ProjectionSpecView[]): SpecSource {
     return {
-        get: (clauseId, version) =>
-            views.find(
-                (v) => v.clauseId === clauseId && (version === undefined || v.version === version),
-            ),
+        get: (clauseKey) => views.find((v) => v.clauseKey.toLowerCase() === clauseKey.toLowerCase()),
         list: () => views,
     };
 }
@@ -73,8 +70,8 @@ function mkEvent(
 
 describe("extractOverlays", () => {
     const spec = parsedSpec(NEVER_SEEN_SPEC_JSON);
-    const key = computeClauseKey(spec.clauseId, spec.version);
-    const specs = specSourceOf([spec]);
+    const key = computeClauseKey(NEVER_SEEN_SPEC_JSON);
+    const specs = specSourceOf([{ ...spec, clauseKey: key }]);
 
     it("a never-seen clause family flows through unchanged and round-trips its content", () => {
         const content = encodeContentFromSpec(spec, {
@@ -114,7 +111,7 @@ describe("extractOverlays", () => {
     });
 
     it("an unresolvable spec degrades to fingerprint-only entries — absence, never fabrication", () => {
-        const unknownKey = computeClauseKey("some-family-nobody-loaded", 1);
+        const unknownKey = computeClauseKey({ clauseId: "some-family-nobody-loaded", version: 1 });
         const ref = "0x00000000000000000000000000000000000000000000000000000000000000ab" as Hex;
         const records: RecoveredAttestation[] = [
             {
@@ -154,12 +151,9 @@ describe("extractOverlays", () => {
     });
 
     it("groups families into distinct overlay graphs with entries in block order", () => {
-        const otherSpec = parsedSpec({
-            ...NEVER_SEEN_SPEC_JSON,
-            clauseId: "acme-hull-inspection",
-        });
-        const otherKey = computeClauseKey(otherSpec.clauseId, otherSpec.version);
-        const both = specSourceOf([spec, otherSpec]);
+        const otherJson = { ...NEVER_SEEN_SPEC_JSON, clauseId: "acme-hull-inspection" };
+        const otherKey = computeClauseKey(otherJson);
+        const both = specSourceOf([{ ...spec, clauseKey: key }, { ...parsedSpec(otherJson), clauseKey: otherKey }]);
         const content = encodeContentFromSpec(spec, { position: "u09tvw", altitudeMeters: 0 });
 
         const graphs = extractOverlays(
@@ -203,7 +197,7 @@ describe("extractOverlays — the agreement's provenance leaf", () => {
     });
 
     it("every other family is no provenance leaf", () => {
-        const [graph] = extractOverlays([{ event: mkEvent(computeClauseKey("acme-orbital-telemetry", 1)), content: null }], specSourceOf([]));
+        const [graph] = extractOverlays([{ event: mkEvent(computeClauseKey(NEVER_SEEN_SPEC_JSON)), content: null }], specSourceOf([]));
         expect(graph.provenanceLeaf).toBe(false);
     });
 });

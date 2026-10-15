@@ -61,7 +61,8 @@ export interface CommitmentPayload {
  *  `data` (numeric segments index arrays, e.g. `lineItems.0.unitPrice`); the
  *  substituted value is the quote's decimal string in raw token units. */
 export interface PricedField {
-    clause: string;
+    /** The priced section's clause key. */
+    clause: Hex;
     path: string;
 }
 

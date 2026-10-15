@@ -1,15 +1,17 @@
 ---
 title: Sharp edges
-description: Eight documented traps, ordered by when each one bites — writing a clause spec, building a commit, resolving and recording, then reading resolved state back — each with the mechanic and where its canonical explanation lives.
+description: Nine documented traps, ordered by when each one bites — writing a clause spec, building a commit, resolving and recording, then reading resolved state back — each with the mechanic and where its canonical explanation lives.
 ---
 
-Eight traps, in the order you can hit them: writing a clause spec, building a commit or a checkout, resolving a process and recording what it earned, then reading resolved state back. Each is a real mechanic verified against the shipped contracts and SDK. Where the canonical explanation lives in SDK source, this page links to it rather than restating it.
+Nine traps, in the order you can hit them: writing a clause spec, building a commit or a checkout, resolving a process and recording what it earned, then reading resolved state back. Each is a real mechanic verified against the shipped contracts and SDK. Where the canonical explanation lives in SDK source, this page links to it rather than restating it.
 
 Read the [whole model](/) first, and [The contracts](/protocol/contracts/) for the surfaces these traps sit on.
 
 ## Spec-authoring — before you register
 
 **Reserved `block.design.article` values, chosen by accident, are silent.** Two values are reserved and read straight off your spec: `"mandatory"` folds the clause into every agreement, and `"attestations"` makes the clause a runtime process log committed as an empty anchor. Each changes what the clause does at composition time; nothing warns you, nothing throws, and registration is permanent and first-write-wins — so if that is not what you mean, group under any other word before you register. What each one does is on [Clauses and agreements](/protocol/clauses/).
+
+**A clause's key is the hash of the bytes you pinned, so any other byte form is another clause.** The key is `keccak256` of exactly the bytes at the clause's `contentURI`; `computeClauseKey(spec)` hashes `canonicalize(spec)` — the whole raw document, `block` included, sorted keys, no whitespace (`sdk/src/discovery.ts:60`). Pin a pretty-printed copy, a re-serialization of a parsed spec (which drops `block`), or bytes with keys in another order, and the pinned bytes hash to a different key: a reader's `anchorClauseSpec(bytes, clauseKey)` hashes what it fetched, re-canonicalizes nothing, and returns `null` (`sdk/src/anchored.ts:54`), and the batch path's guest refuses the spec for that key (`prover/lib/src/kernel.rs:436-438`). Pin `canonicalize(spec)` and register `computeClauseKey(spec)`. The same rule cuts the other way: `clauseId` and `version` are labels inside the spec, so a lookalike spec carrying the same name and version is a different clause with a different key, sharing nothing with the original. Compose and verify by key, never by the name a spec displays. The model is on [Clauses and agreements](/protocol/clauses/).
 
 ## Commit-time — building the struct you sign
 

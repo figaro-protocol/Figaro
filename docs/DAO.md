@@ -119,8 +119,12 @@ forecast, and none should ever be added.
 
 The DAO Safe is designer of record of the two *scoring* mandatory clauses,
 `figaro-commerce` and `figaro-topology`, and of every mandatory clause it develops
-and registers after them. That assignment is the DAO's incentive. Every mandatory
-clause is composed into every agreement, with no selection among them, so the
+and registers after them. It holds each as a registration by clause key —
+`keccak256` of that spec's pinned bytes — so what it holds is the exact
+documents, never their names. That assignment is the DAO's incentive. A new
+composition reads the live-stake source, and the fold takes every spec that
+source lists whose `block.design.article` is `"mandatory"`, at the level its
+scope names, with no selection among them (`sdk/src/projection.ts`), so the
 treasury that developed them is rewarded, on the uniform meter, each time any
 trade resolves. The treasury
 spends on development, marketing and clauses by judgment, and developing

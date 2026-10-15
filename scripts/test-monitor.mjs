@@ -46,7 +46,7 @@ import {
 import { mnemonicToAccount } from "viem/accounts";
 import { foundry } from "viem/chains";
 // The SDK by its build output: the workspace is not linked at the repo root.
-import { buildCommitment, buildDomain, computeClauseKey, computeDeadline, readChainTimestamp } from "../sdk/dist/index.js";
+import { buildCommitment, buildDomain, computeDeadline, readChainTimestamp } from "../sdk/dist/index.js";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const RPC_URL = process.env.RPC_URL ?? "http://127.0.0.1:8545";
@@ -135,7 +135,7 @@ async function main() {
 
     console.log("\nThree deposits withdrawn in the window");
     const clauses = parseAbi([
-        "function registerClause(string clauseId, uint64 version, bytes32 contentHash, string contentURI) payable",
+        "function registerClause(bytes32 clauseKey, string contentURI) payable",
         "function withdrawDeposit(bytes32 idHash)",
         "function registrationDeposit() view returns (uint256)",
     ]);
@@ -143,8 +143,8 @@ async function main() {
     const stamp = Date.now();
     for (let i = 0; i < 3; i++) {
         const id = `monitor-test-${stamp}-${i}`;
-        await send(KEYS.registrant, base.clauseRegistry, clauses, "registerClause", [id, 1n, keccak256(toHex(id)), `ipfs://${id}`], deposit);
-        await send(KEYS.registrant, base.clauseRegistry, clauses, "withdrawDeposit", [computeClauseKey(id, 1n)]);
+        await send(KEYS.registrant, base.clauseRegistry, clauses, "registerClause", [keccak256(toHex(id)), `ipfs://${id}`], deposit);
+        await send(KEYS.registrant, base.clauseRegistry, clauses, "withdrawDeposit", [keccak256(toHex(id))]);
     }
     const withdrawn = await watch("withdrawals", base);
     check("withdrawal-burst-… raised", keysOf(withdrawn).some((k) => k.startsWith("withdrawal-burst-")), withdrawn.failed ?? JSON.stringify(keysOf(withdrawn)));

@@ -110,8 +110,8 @@ async function loadSpecSource(discovery, { gateways } = {}) {
     for (const clause of discovery.getClauses()) {
         let raw;
         try {
-            // Verified against the registry's content hash: a spec a gateway
-            // substituted is skipped, never decoded with.
+            // Verified against the clause key (the hash of the pinned bytes):
+            // a spec a gateway substituted is skipped, never decoded with.
             const hit = await fetchAnchoredClauseSpec(clause, { gateways });
             if (hit.absent) { skipped.push({ contentURI: clause.contentURI, reason: hit.absent }); continue; }
             raw = hit.raw;
@@ -121,11 +121,10 @@ async function loadSpecSource(discovery, { gateways } = {}) {
         }
         const parsed = parseClauseSpec(raw);
         if (!parsed.ok) { skipped.push({ contentURI: clause.contentURI, reason: "not a clause spec" }); continue; }
-        views.push({ ...parsed.spec, hints: parseProjectionHints(raw) });
+        views.push({ ...parsed.spec, clauseKey: clause.clauseKey, hints: parseProjectionHints(raw) });
     }
     const specs = {
-        get: (clauseId, version) =>
-            views.find((v) => v.clauseId === clauseId && (version === undefined || v.version === version)),
+        get: (clauseKey) => views.find((v) => v.clauseKey.toLowerCase() === clauseKey.toLowerCase()),
         list: () => views,
     };
     return { specs, loaded: views.length, skipped };
@@ -357,11 +356,10 @@ export async function syncCorpus({
             if (hit.absent) continue;
             for (const agreement of hit.template.agreements ?? []) {
                 // The pin is composed at the assembly level and folds into every
-                // agreement's bag, at the versions the template states (absent = 1).
+                // agreement's bag, each clause read by its key.
                 const pin = readUtilityTokenPin(
                     { ...(hit.template.assemblyClauses ?? {}), ...(agreement.clauses ?? {}) },
                     specs,
-                    { ...(hit.template.assemblyClauseVersions ?? {}), ...(agreement.clauseVersions ?? {}) },
                 );
                 if (pin && !pins.includes(pin)) pins.push(pin);
             }

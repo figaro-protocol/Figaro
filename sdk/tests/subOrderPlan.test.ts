@@ -12,7 +12,7 @@ import {
     type PricingCatalog,
 } from "../src/checkoutPlan.js";
 import type { TemplateAgreement } from "../src/assembly.js";
-import { specSourceFromFixtures } from "./specFixtures.js";
+import { keyOf, specSourceFromFixtures } from "./specFixtures.js";
 
 // The kit-assembly diamond: A (lead, root) → B, A → C, B → D, C → D.
 // B + D carry proximity-policy, C carries emissions. Proximity is bound
@@ -26,9 +26,9 @@ const MERCATO = "0x23618e81E3f5cdF7f54C3d65f7FBc0aBf5B21E8f" as const;
 const SWIFT = "0x14dC79964da2C08b23698B3D3cc7Ca32193d9955" as const;
 const ROSSO = "0x976EA74026E726554dB657fA54763abd0C3a0aa9" as const;
 
-const PROX = "figaro-proximity-policy";
-const EMISSIONS = "figaro-emissions";
-const TOPO = "figaro-topology";
+const PROX = keyOf("figaro-proximity-policy");
+const EMISSIONS = keyOf("figaro-emissions");
+const TOPO = keyOf("figaro-topology");
 const parents = (ids: string[]) => ({ [TOPO]: { parentOrderHashes: ids } });
 
 const NO_SPECS = specSourceFromFixtures([]);
@@ -37,8 +37,8 @@ const SCHEDULE_SPECS = specSourceFromFixtures(["figaro-schedule"]);
 
 const assembly: BoundAssemblyPlanInput = {
     counterpartyBindings: [
-        { clauseId: PROX, addresses: [SWIFT, MERCATO] },
-        { clauseId: EMISSIONS, addresses: [ROSSO] },
+        { clauseKey: PROX, addresses: [SWIFT, MERCATO] },
+        { clauseKey: EMISSIONS, addresses: [ROSSO] },
     ],
     assemblyTemplate: {
         name: "Kit",
@@ -137,8 +137,8 @@ describe("resolveSubOrderPricing — fixed items", () => {
 
 // ── Rate pricing: payment = rate × billed units (per started unit) ──────────
 
-const GEO = "figaro-geolocation";
-const SCHEDULE = "figaro-schedule";
+const GEO = keyOf("figaro-geolocation");
+const SCHEDULE = keyOf("figaro-schedule");
 // 9q8yy ≈ San Francisco, 9q5ct ≈ Los Angeles — several hundred km apart.
 const SF = "9q8yy";
 const LA = "9q5ct";

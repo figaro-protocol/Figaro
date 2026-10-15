@@ -14,7 +14,7 @@ import {AssemblyRegistry} from "src/build/registries/AssemblyRegistry.sol";
 contract StubCounter {
     mapping(uint8 => bool) public closed;
     mapping(uint8 => uint256) public totalScoreIn;
-    mapping(bytes32 => mapping(uint8 => uint256)) internal _score;
+    mapping(uint8 => mapping(bytes32 => mapping(uint8 => uint256))) internal _score;
 
     /// @dev The minter validates its budget array against this at deploy.
     function periodCount() external pure returns (uint256) {
@@ -25,9 +25,9 @@ contract StubCounter {
         closed[period] = v;
     }
 
-    function setScore(bytes32 clauseOrAssembly, uint8 period, uint256 s) external {
-        totalScoreIn[period] = totalScoreIn[period] + s - _score[clauseOrAssembly][period];
-        _score[clauseOrAssembly][period] = s;
+    function setScore(uint8 kind, bytes32 clauseOrAssembly, uint8 period, uint256 s) external {
+        totalScoreIn[period] = totalScoreIn[period] + s - _score[kind][clauseOrAssembly][period];
+        _score[kind][clauseOrAssembly][period] = s;
     }
 
     function periodClosed(uint8 period) external view returns (bool) {
@@ -37,8 +37,8 @@ contract StubCounter {
     /// @dev `scoreOf`, not `accrualOf`: the minter reads the sum of the direct
     ///      and batch paths, so a stub exposing only the direct accrual would
     ///      let a regression to the old read slip through silently.
-    function scoreOf(bytes32 clauseOrAssembly, uint8 period) external view returns (uint256) {
-        return _score[clauseOrAssembly][period];
+    function scoreOf(uint8 kind, bytes32 clauseOrAssembly, uint8 period) external view returns (uint256) {
+        return _score[kind][clauseOrAssembly][period];
     }
 
     /// @dev HOSTILE override: force `totalScoreIn` out of sync with the
@@ -62,10 +62,9 @@ contract RpgfMinterTest is Test {
     address bob = address(0xB0B);
     address carol = address(0xCA401);
 
-    string constant A_ID = "clause-a";
-    bytes32 constant A_KEY = keccak256(abi.encode("clause-a", uint64(1)));
-    string constant B_ID = "clause-b";
-    bytes32 constant B_KEY = keccak256(abi.encode("clause-b", uint64(1)));
+    // Each clause key is keccak256 of a spec's pinned bytes.
+    bytes32 constant A_KEY = keccak256('{"clauseId":"clause-a","version":1}');
+    bytes32 constant B_KEY = keccak256('{"clauseId":"clause-b","version":1}');
     bytes32 constant ASM = keccak256("an-assembly");
 
     // The reference per-year slices: a first-tranche year,
@@ -89,9 +88,9 @@ contract RpgfMinterTest is Test {
         assemblies = new AssemblyRegistry(0);
 
         vm.prank(alice);
-        clauses.registerClause(A_ID, 1, keccak256("a"), "ipfs://a");
+        clauses.registerClause(A_KEY, "ipfs://a");
         vm.prank(bob);
-        clauses.registerClause(B_ID, 1, keccak256("b"), "ipfs://b");
+        clauses.registerClause(B_KEY, "ipfs://b");
         vm.prank(carol);
         assemblies.registerAssembly(ASM, "ipfs://asm");
 
@@ -99,51 +98,63 @@ contract RpgfMinterTest is Test {
         florin.registerMinter(address(minter), 600_000_000 ether);
     }
 
-    function _one(bytes32 k) internal pure returns (bytes32[] memory a) {
-        a = new bytes32[](1);
-        a[0] = k;
+    uint8 constant KIND_CLAUSE = 0;
+    uint8 constant KIND_ASSEMBLY = 1;
+
+    function _entry(uint8 kind, bytes32 k) internal pure returns (RpgfMinter.ClauseOrAssemblyKey memory) {
+        return RpgfMinter.ClauseOrAssemblyKey(kind, k);
+    }
+
+    function _clause(bytes32 k) internal pure returns (RpgfMinter.ClauseOrAssemblyKey[] memory a) {
+        a = new RpgfMinter.ClauseOrAssemblyKey[](1);
+        a[0] = _entry(KIND_CLAUSE, k);
+    }
+
+    function _assembly(bytes32 k) internal pure returns (RpgfMinter.ClauseOrAssemblyKey[] memory a) {
+        a = new RpgfMinter.ClauseOrAssemblyKey[](1);
+        a[0] = _entry(KIND_ASSEMBLY, k);
     }
 
     // ── Pro-rata payout ─────────────────────────────────────────────
 
     function test_paysProRataOfTheClosedPeriod() public {
         // Straight pro-rata of the closed period's total — no cap.
-        counter.setScore(A_KEY, 0, 100);
-        counter.setScore(B_KEY, 0, 50);
-        counter.setScore(ASM, 0, 850);
+        counter.setScore(KIND_CLAUSE, A_KEY, 0, 100);
+        counter.setScore(KIND_CLAUSE, B_KEY, 0, 50);
+        counter.setScore(KIND_ASSEMBLY, ASM, 0, 850);
         counter.setClosed(0, true);
 
         vm.prank(alice);
-        minter.claim(0, _one(A_KEY));
+        minter.claim(0, _clause(A_KEY));
         assertEq(florin.balanceOf(alice), (T0 * 100) / 1000);
 
         vm.prank(bob);
-        minter.claim(0, _one(B_KEY));
+        minter.claim(0, _clause(B_KEY));
         assertEq(florin.balanceOf(bob), (T0 * 50) / 1000);
     }
 
     function test_assemblyDesignerIsPaidToo() public {
-        counter.setScore(ASM, 0, 500);
+        counter.setScore(KIND_ASSEMBLY, ASM, 0, 500);
         counter.setClosed(0, true);
         vm.prank(carol);
-        minter.claim(0, _one(ASM));
+        minter.claim(0, _assembly(ASM));
         assertEq(florin.balanceOf(carol), T0); // sole recipient → the whole period budget (no cap)
     }
 
     function test_multipleClausesAndAssembliesSumInOneClaim() public {
         // A wallet claims once per period and passes everything it authored.
         vm.prank(alice);
-        clauses.registerClause("clause-c", 1, keccak256("c"), "ipfs://c");
-        bytes32 cKey = keccak256(abi.encode("clause-c", uint64(1)));
+        bytes32 cKey = keccak256('{"clauseId":"clause-c","version":1}');
+        clauses.registerClause(cKey, "ipfs://c");
 
-        counter.setScore(A_KEY, 0, 50);
-        counter.setScore(cKey, 0, 50);
-        counter.setScore(B_KEY, 0, 900);
+        counter.setScore(KIND_CLAUSE, A_KEY, 0, 50);
+        counter.setScore(KIND_CLAUSE, cKey, 0, 50);
+        counter.setScore(KIND_CLAUSE, B_KEY, 0, 900);
         counter.setClosed(0, true);
 
-        bytes32[] memory mine = new bytes32[](2);
-        mine[0] = A_KEY;
-        mine[1] = cKey;
+        RpgfMinter.ClauseOrAssemblyKey[] memory mine = new RpgfMinter.ClauseOrAssemblyKey[](2);
+        mine[0] = _entry(KIND_CLAUSE, A_KEY);
+        mine[1] = _entry(KIND_CLAUSE, cKey);
         vm.prank(alice);
         minter.claim(0, mine);
         assertEq(florin.balanceOf(alice), (T0 * 100) / 1000);
@@ -154,41 +165,75 @@ contract RpgfMinterTest is Test {
     function test_revertsWhileThePeriodIsStillAccruing() public {
         // This is what removes the need for a snapshot: a period only pays
         // from numbers that can no longer move.
-        counter.setScore(A_KEY, 0, 100);
+        counter.setScore(KIND_CLAUSE, A_KEY, 0, 100);
         vm.prank(alice);
         vm.expectRevert(abi.encodeWithSelector(RpgfMinter.PeriodStillAccruing.selector, uint8(0)));
-        minter.claim(0, _one(A_KEY));
+        minter.claim(0, _clause(A_KEY));
     }
 
     // ── Authorship ──────────────────────────────────────────────────
 
     function test_revertsWhenNotAuthorOfRecord() public {
-        counter.setScore(A_KEY, 0, 100);
+        counter.setScore(KIND_CLAUSE, A_KEY, 0, 100);
         counter.setClosed(0, true);
         vm.prank(bob);
-        vm.expectRevert(abi.encodeWithSelector(RpgfMinter.NotAuthorOfRecord.selector, A_KEY, bob));
-        minter.claim(0, _one(A_KEY));
+        vm.expectRevert(abi.encodeWithSelector(RpgfMinter.NotAuthorOfRecord.selector, KIND_CLAUSE, A_KEY, bob));
+        minter.claim(0, _clause(A_KEY));
+    }
+
+    /// A registry takes any bytes32, so bob can stake carol's composition hash
+    /// as a CLAUSE. The kind names the one registry that decides authorship:
+    /// bob's clause-kind entry reads the clause slot (empty), his assembly-kind
+    /// entry reads `AssemblyRegistry` (carol's), and carol is paid.
+    function test_eachKindReadsOnlyItsOwnRegistry() public {
+        vm.prank(bob);
+        clauses.registerClause(ASM, "ipfs://bob-stakes-carols-assembly-key-as-a-clause");
+        counter.setScore(KIND_ASSEMBLY, ASM, 0, 500);
+        counter.setClosed(0, true);
+
+        vm.prank(bob);
+        vm.expectRevert(RpgfMinter.NothingToClaim.selector);
+        minter.claim(0, _clause(ASM));
+
+        vm.prank(bob);
+        vm.expectRevert(abi.encodeWithSelector(RpgfMinter.NotAuthorOfRecord.selector, KIND_ASSEMBLY, ASM, bob));
+        minter.claim(0, _assembly(ASM));
+
+        vm.prank(carol);
+        minter.claim(0, _assembly(ASM));
+        assertEq(florin.balanceOf(carol), T0);
+        assertEq(florin.balanceOf(bob), 0);
+    }
+
+    function test_revertsOnUnknownKind() public {
+        counter.setScore(KIND_CLAUSE, A_KEY, 0, 100);
+        counter.setClosed(0, true);
+        RpgfMinter.ClauseOrAssemblyKey[] memory list = new RpgfMinter.ClauseOrAssemblyKey[](1);
+        list[0] = _entry(7, A_KEY);
+        vm.prank(alice);
+        vm.expectRevert(abi.encodeWithSelector(RpgfMinter.UnknownKind.selector, uint8(7)));
+        minter.claim(0, list);
     }
 
     function test_revertsOnUnknownClauseOrAssembly() public {
         counter.setClosed(0, true);
         vm.prank(alice);
         vm.expectRevert();
-        minter.claim(0, _one(keccak256("never-registered")));
+        minter.claim(0, _clause(keccak256("never-registered")));
     }
 
     function test_withdrawnAuthorForfeitsTheReward() public {
         // Author-side live-stake gate: you earn RPGF only while your stake is
         // live. Withdraw and the claim fails — the clause or assembly is no longer yours
         // of record.
-        counter.setScore(A_KEY, 0, 100);
+        counter.setScore(KIND_CLAUSE, A_KEY, 0, 100);
         counter.setClosed(0, true);
         vm.prank(alice);
         clauses.withdrawDeposit(A_KEY);
 
         vm.prank(alice);
-        vm.expectRevert(abi.encodeWithSelector(RpgfMinter.NotAuthorOfRecord.selector, A_KEY, alice));
-        minter.claim(0, _one(A_KEY));
+        vm.expectRevert(abi.encodeWithSelector(RpgfMinter.NotAuthorOfRecord.selector, KIND_CLAUSE, A_KEY, alice));
+        minter.claim(0, _clause(A_KEY));
     }
 
     function test_withdrawnAssemblyDesignerForfeitsTheReward() public {
@@ -198,38 +243,38 @@ contract RpgfMinterTest is Test {
         // terms. Testing only the clause arm is the same asymmetry that let the
         // assembly-credit leg sit dead end-to-end; the arms
         // get covered together or the next reader learns the wrong lesson.
-        counter.setScore(ASM, 0, 100);
+        counter.setScore(KIND_ASSEMBLY, ASM, 0, 100);
         counter.setClosed(0, true);
         vm.prank(carol);
         assemblies.withdrawDeposit(ASM);
 
         vm.prank(carol);
-        vm.expectRevert(abi.encodeWithSelector(RpgfMinter.NotAuthorOfRecord.selector, ASM, carol));
-        minter.claim(0, _one(ASM));
+        vm.expectRevert(abi.encodeWithSelector(RpgfMinter.NotAuthorOfRecord.selector, KIND_ASSEMBLY, ASM, carol));
+        minter.claim(0, _assembly(ASM));
     }
 
     // ── Once per wallet per period ──────────────────────────────────
 
     function test_claimsOncePerPeriod() public {
-        counter.setScore(A_KEY, 0, 100);
+        counter.setScore(KIND_CLAUSE, A_KEY, 0, 100);
         counter.setClosed(0, true);
         vm.startPrank(alice);
-        minter.claim(0, _one(A_KEY));
+        minter.claim(0, _clause(A_KEY));
         vm.expectRevert(abi.encodeWithSelector(RpgfMinter.AlreadyClaimed.selector, uint8(0), alice));
-        minter.claim(0, _one(A_KEY));
+        minter.claim(0, _clause(A_KEY));
         vm.stopPrank();
     }
 
     function test_periodsAreIndependent() public {
-        counter.setScore(A_KEY, 0, 100);
-        counter.setScore(B_KEY, 0, 900);
-        counter.setScore(A_KEY, 1, 100);
-        counter.setScore(B_KEY, 1, 900);
+        counter.setScore(KIND_CLAUSE, A_KEY, 0, 100);
+        counter.setScore(KIND_CLAUSE, B_KEY, 0, 900);
+        counter.setScore(KIND_CLAUSE, A_KEY, 1, 100);
+        counter.setScore(KIND_CLAUSE, B_KEY, 1, 900);
         counter.setClosed(0, true);
         counter.setClosed(1, true);
         vm.startPrank(alice);
-        minter.claim(0, _one(A_KEY));
-        minter.claim(1, _one(A_KEY));
+        minter.claim(0, _clause(A_KEY));
+        minter.claim(1, _clause(A_KEY));
         vm.stopPrank();
         assertEq(florin.balanceOf(alice), (T0 / 10) + (T1 / 10));
     }
@@ -240,12 +285,12 @@ contract RpgfMinterTest is Test {
         // A dominant wallet takes its FULL pro-rata share — there is no cap. The
         // reward tracks real usage directly; Sybil resistance is the live ETH
         // stake, not a ceiling.
-        counter.setScore(A_KEY, 0, 900);
-        counter.setScore(B_KEY, 0, 100);
+        counter.setScore(KIND_CLAUSE, A_KEY, 0, 900);
+        counter.setScore(KIND_CLAUSE, B_KEY, 0, 100);
         counter.setClosed(0, true);
 
         vm.prank(alice);
-        minter.claim(0, _one(A_KEY));
+        minter.claim(0, _clause(A_KEY));
         assertEq(florin.balanceOf(alice), (T0 * 900) / 1000);
     }
 
@@ -255,22 +300,22 @@ contract RpgfMinterTest is Test {
         // sole-clause or assembly setup cannot detect this — there, 100% is the correct
         // answer either way, which is why the earlier version of this test
         // passed against a contract that let her take everything.
-        counter.setScore(A_KEY, 0, 100);
-        counter.setScore(B_KEY, 0, 900);
+        counter.setScore(KIND_CLAUSE, A_KEY, 0, 100);
+        counter.setScore(KIND_CLAUSE, B_KEY, 0, 900);
         counter.setClosed(0, true);
 
-        bytes32[] memory dupes = new bytes32[](10);
+        RpgfMinter.ClauseOrAssemblyKey[] memory dupes = new RpgfMinter.ClauseOrAssemblyKey[](10);
         for (uint256 i = 0; i < 10; ++i) {
-            dupes[i] = A_KEY;
+            dupes[i] = _entry(KIND_CLAUSE, A_KEY);
         }
 
         vm.prank(alice);
-        vm.expectRevert(abi.encodeWithSelector(RpgfMinter.DuplicateClauseOrAssembly.selector, A_KEY));
+        vm.expectRevert(abi.encodeWithSelector(RpgfMinter.DuplicateClauseOrAssembly.selector, KIND_CLAUSE, A_KEY));
         minter.claim(0, dupes);
 
         // And the honest claim still pays exactly the minority share.
         vm.prank(alice);
-        minter.claim(0, _one(A_KEY));
+        minter.claim(0, _clause(A_KEY));
         assertEq(florin.balanceOf(alice), (T0 * 100) / 1000);
     }
 
@@ -278,27 +323,27 @@ contract RpgfMinterTest is Test {
     /// refuses — a view that answered "the whole budget" would be a quoting bug
     /// even with `claim` safe.
     function test_claimableRejectsDuplicatesToo() public {
-        counter.setScore(A_KEY, 0, 100);
-        counter.setScore(B_KEY, 0, 900);
+        counter.setScore(KIND_CLAUSE, A_KEY, 0, 100);
+        counter.setScore(KIND_CLAUSE, B_KEY, 0, 900);
         counter.setClosed(0, true);
-        bytes32[] memory dupes = new bytes32[](2);
-        dupes[0] = A_KEY;
-        dupes[1] = A_KEY;
-        vm.expectRevert(abi.encodeWithSelector(RpgfMinter.DuplicateClauseOrAssembly.selector, A_KEY));
+        RpgfMinter.ClauseOrAssemblyKey[] memory dupes = new RpgfMinter.ClauseOrAssemblyKey[](2);
+        dupes[0] = _entry(KIND_CLAUSE, A_KEY);
+        dupes[1] = _entry(KIND_CLAUSE, A_KEY);
+        vm.expectRevert(abi.encodeWithSelector(RpgfMinter.DuplicateClauseOrAssembly.selector, KIND_CLAUSE, A_KEY));
         minter.claimable(0, alice, dupes);
     }
 
     /// Bob's entitlement must survive alice claiming first — the budget is not
     /// a race that a malformed claim can win.
     function test_oneAuthorCannotStarveAnother() public {
-        counter.setScore(A_KEY, 0, 100);
-        counter.setScore(B_KEY, 0, 900);
+        counter.setScore(KIND_CLAUSE, A_KEY, 0, 100);
+        counter.setScore(KIND_CLAUSE, B_KEY, 0, 900);
         counter.setClosed(0, true);
 
         vm.prank(alice);
-        minter.claim(0, _one(A_KEY));
+        minter.claim(0, _clause(A_KEY));
         vm.prank(bob);
-        minter.claim(0, _one(B_KEY));
+        minter.claim(0, _clause(B_KEY));
 
         assertEq(florin.balanceOf(alice), (T0 * 100) / 1000);
         assertEq(florin.balanceOf(bob), (T0 * 900) / 1000);
@@ -310,34 +355,34 @@ contract RpgfMinterTest is Test {
         counter.setClosed(0, true);
         vm.prank(alice);
         vm.expectRevert(RpgfMinter.NothingToClaim.selector);
-        minter.claim(0, _one(A_KEY));
+        minter.claim(0, _clause(A_KEY));
     }
 
     function test_revertsOnEmptyClauseOrAssemblyList() public {
         counter.setClosed(0, true);
         vm.prank(alice);
         vm.expectRevert(RpgfMinter.NoClausesOrAssemblies.selector);
-        minter.claim(0, new bytes32[](0));
+        minter.claim(0, new RpgfMinter.ClauseOrAssemblyKey[](0));
     }
 
     function test_revertsOnUnknownPeriod() public {
         vm.prank(alice);
         vm.expectRevert(abi.encodeWithSelector(RpgfMinter.UnknownPeriod.selector, uint8(3)));
-        minter.claim(3, _one(A_KEY));
+        minter.claim(3, _clause(A_KEY));
     }
 
     // ── View ────────────────────────────────────────────────────────
 
     function test_claimableMatchesTheClaim() public {
-        counter.setScore(A_KEY, 0, 100);
-        counter.setScore(B_KEY, 0, 900);
+        counter.setScore(KIND_CLAUSE, A_KEY, 0, 100);
+        counter.setScore(KIND_CLAUSE, B_KEY, 0, 900);
         counter.setClosed(0, true);
 
-        uint256 quoted = minter.claimable(0, alice, _one(A_KEY));
+        uint256 quoted = minter.claimable(0, alice, _clause(A_KEY));
         vm.prank(alice);
-        minter.claim(0, _one(A_KEY));
+        minter.claim(0, _clause(A_KEY));
         assertEq(florin.balanceOf(alice), quoted);
-        assertEq(minter.claimable(0, alice, _one(A_KEY)), 0);
+        assertEq(minter.claimable(0, alice, _clause(A_KEY)), 0);
     }
 
     /// The schedule's length is a view the site and the SDK read; it mirrors
@@ -352,7 +397,7 @@ contract RpgfMinterTest is Test {
     /// `NotAuthorOfRecord` here instead of answering zero.
     function test_claimableOnAnEmptyPeriodQuotesZeroForAnyone() public {
         counter.setClosed(0, true);
-        assertEq(minter.claimable(0, bob, _one(A_KEY)), 0);
+        assertEq(minter.claimable(0, bob, _clause(A_KEY)), 0);
     }
 
     /// `claimable` refuses a period the schedule does not hold, as `claim`
@@ -360,17 +405,17 @@ contract RpgfMinterTest is Test {
     /// would read as "already claimed".
     function test_claimableRevertsOnUnknownPeriod() public {
         vm.expectRevert(abi.encodeWithSelector(RpgfMinter.UnknownPeriod.selector, uint8(3)));
-        minter.claimable(3, alice, _one(A_KEY));
+        minter.claimable(3, alice, _clause(A_KEY));
     }
 
     // ── Budget backstop ─────────────────────────────────────────────
 
     function test_mintedTracksThePeriodSpend() public {
-        counter.setScore(A_KEY, 0, 100);
-        counter.setScore(B_KEY, 0, 900);
+        counter.setScore(KIND_CLAUSE, A_KEY, 0, 100);
+        counter.setScore(KIND_CLAUSE, B_KEY, 0, 900);
         counter.setClosed(0, true);
         vm.prank(alice);
-        minter.claim(0, _one(A_KEY));
+        minter.claim(0, _clause(A_KEY));
         assertEq(minter.minted(0), (T0 * 100) / 1000);
         assertLe(minter.minted(0), T0);
     }
@@ -385,12 +430,12 @@ contract RpgfMinterTest is Test {
     /// score exceeds its own period total (share > 1 ⇒ amount > budget) and
     /// the backstop must refuse to over-mint rather than pay it.
     function test_budgetBackstopRefusesOverMintOnInconsistentCounterData() public {
-        counter.setScore(A_KEY, 0, 100);
+        counter.setScore(KIND_CLAUSE, A_KEY, 0, 100);
         counter.forceTotal(0, 10); // hostile: total below the clauseOrAssembly's own score
         counter.setClosed(0, true);
         vm.prank(alice);
         vm.expectRevert(abi.encodeWithSelector(RpgfMinter.PeriodBudgetExceeded.selector, 0));
-        minter.claim(0, _one(A_KEY));
+        minter.claim(0, _clause(A_KEY));
         assertEq(minter.minted(0), 0);
         assertEq(florin.balanceOf(alice), 0);
     }

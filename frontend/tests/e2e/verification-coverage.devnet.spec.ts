@@ -30,11 +30,17 @@
 import { test, expect, gotoAsWallet } from './devnet-multi-test';
 import { createPublicClient, defineChain, http, parseAbi, type Hex } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
-import { readLocalDeploymentConfig } from './devnet-helpers';
+import { readLocalDeploymentConfig, keyOf, primeRegisteredClauseSpecs } from './devnet-helpers';
 import { ANVIL_KEYS } from '../anvilAccounts';
 import { CORE_ABI } from '@/lib/kernel/contracts';
 import { calculateBonds, computeSectionLeaf } from '@figaro-protocol/sdk';
 import type { Page } from '@playwright/test';
+
+// Clause keys are located by the names their specs carry (`keyOf`), over
+// the specs the chain registered — primed once per file.
+test.beforeAll(async () => {
+    await primeRegisteredClauseSpecs();
+});
 
 const RPC_URL = 'http://127.0.0.1:8545';
 const LOCAL_ANVIL = defineChain({
@@ -187,10 +193,10 @@ test.describe('VERIFICATION COVERAGE — FigaroCore-revert path, evidence reader
 
         // Mode B — section-leaf recompute: the page's computation must equal
         // the SDK's own computeSectionLeaf for the same section.
-        // version is part of the leaf (keccak over computeClauseKey(clause,
-        // version) ++ data hash) — the pasted JSON must carry it, or the
-        // page recomputes a different leaf.
-        const section = { clause: 'figaro-topology', version: 1, data: { parentOrderHashes: [] as string[] } };
+        // The section names its clause by KEY (the hash of the clause's
+        // pinned spec), and the leaf is keccak over that key ++ the data
+        // hash — the pasted JSON carries the key, nothing else identifies it.
+        const section = { clause: keyOf('figaro-topology'), data: { parentOrderHashes: [] as string[] } };
         const expectedLeaf = computeSectionLeaf(section);
         await page.getByTestId('verify-mode-section').click();
         await page.getByTestId('verify-section-mode').waitFor({ state: 'visible', timeout: 10000 });

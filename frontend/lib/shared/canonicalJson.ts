@@ -12,4 +12,4 @@
  * `populate-test-data.mjs`) import the same SDK functions.
  */
 
-export { canonicalize, canonicalContentHash } from "@figaro-protocol/sdk";
+export { canonicalize } from "@figaro-protocol/sdk";

@@ -38,6 +38,8 @@ import {
 // Built from the same event shapes fetchCoreEvents returns, so the projections
 // under test are the shipped ones, not re-implementations.
 
+/** A clause key no registry names — the agreement leaf needs a key, never a name. */
+const X_DEMO = `0x${"de".repeat(32)}`;
 const BUYER = "0x1111111111111111111111111111111111111111";
 const SELLER_A = "0x2222222222222222222222222222222222222222";
 const SELLER_B = "0x3333333333333333333333333333333333333333";
@@ -147,9 +149,9 @@ test("an agreement whose root is not a committed chain fact is REFUSED, whoever 
     try {
         const good = {
             version: "a1", buyer: BUYER, seller: SELLER_A,
-            sections: [{ clause: "x-demo", version: 1, data: { compositionHash: "0xfeed" } }],
+            sections: [{ clause: X_DEMO, data: { compositionHash: "0xfeed" } }],
         };
-        const forged = { ...good, sections: [{ clause: "x-demo", version: 1, data: { compositionHash: "0xbeef" } }] };
+        const forged = { ...good, sections: [{ clause: X_DEMO, data: { compositionHash: "0xbeef" } }] };
         fs.writeFileSync(path.join(dir, "good.json"), JSON.stringify(good));
         fs.writeFileSync(path.join(dir, "forged.json"), JSON.stringify(forged));
         fs.writeFileSync(path.join(dir, "junk.json"), "{not json");
@@ -254,7 +256,7 @@ test("every attacker-authored readable string leaves framed: decoded fields and 
 test("a provenance that is not a bytes32 attributes nothing — party free text never reaches the wire", () => {
     const doc = (provenance) => ({
         version: "a1", buyer: BUYER, seller: SELLER_A,
-        sections: [{ clause: "x-demo", version: 1, data: {} }],
+        sections: [{ clause: X_DEMO, data: {} }],
         provenance,
     });
     const shapeWith = (provenance, agreement = doc(provenance)) => {
@@ -269,7 +271,7 @@ test("a provenance that is not a bytes32 attributes nothing — party free text 
     // compositionHash field is a clause's content and attributes nothing.
     const sectionOnly = shapeWith(undefined, {
         version: "a1", buyer: BUYER, seller: SELLER_A,
-        sections: [{ clause: "x-demo", version: 1, data: { compositionHash: `0x${"5a".repeat(32)}` } }],
+        sections: [{ clause: X_DEMO, data: { compositionHash: `0x${"5a".repeat(32)}` } }],
     });
     assert.equal(sectionOnly.groups.length, 0);
     assert.equal(sectionOnly.unattributedProcessCount, 1);

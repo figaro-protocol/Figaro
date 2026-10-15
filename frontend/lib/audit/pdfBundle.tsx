@@ -396,7 +396,7 @@ function ClauseDataPage({ doc }: { doc: AuditBundle["clauseData"] }) {
                 here from its own spec.
             </Text>
             {doc.clauses.map((clause) => (
-                <View key={clause.clauseId}>
+                <View key={clause.clauseKey}>
                     <Text style={styles.h2}>{clause.title}</Text>
                     {clause.fields.length === 0 ? (
                         <Text style={styles.sectionBody}>Committed with no field values.</Text>
@@ -455,7 +455,7 @@ function ProcessLogsPage({ doc }: { doc: AuditBundle["processLogs"] }) {
             </Text>
 
             {doc.logs.map((group) => (
-                <View key={group.clauseHash}>
+                <View key={group.clauseKey}>
                     <Text style={styles.h2}>{group.title} ({group.events.length})</Text>
                     <View style={styles.table}>
                         <View style={[styles.tableRow, styles.tableHeader]}>
@@ -465,7 +465,7 @@ function ProcessLogsPage({ doc }: { doc: AuditBundle["processLogs"] }) {
                             <Text style={[styles.tCell, { flex: 1 }]}>Block</Text>
                         </View>
                         {group.events.map((e, i) => (
-                            <View key={`${group.clauseHash}-${e.contentRef}-${i}`} style={styles.tableRow}>
+                            <View key={`${group.clauseKey}-${e.contentRef}-${i}`} style={styles.tableRow}>
                                 <Text style={[styles.tCell, { flex: 0.8 }]}>{e.stage}</Text>
                                 <Text style={[styles.tCellMono, { flex: 3 }]}>{shortAddr(e.attester)}</Text>
                                 <Text style={[styles.tCellMono, { flex: 4 }]}>{shortHex(e.contentRef, 14, 8)}</Text>

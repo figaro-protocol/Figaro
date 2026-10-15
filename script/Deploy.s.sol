@@ -106,8 +106,8 @@ contract Deploy is Script {
         // Clauses are NOT registered here. They are pinned to IPFS + anchored
         // on ClauseRegistry by frontend/scripts/populate-clauses.mjs — the single
         // clause-population path for prod/testnet/mainnet, so each on-chain
-        // (contentHash, contentURI) points at a REAL pinned spec (not a
-        // placeholder). Run it after deploy.
+        // (clauseKey, contentURI) points at a REAL pinned spec whose bytes
+        // hash to the key (not a placeholder). Run it after deploy.
         //
         // There is NO on-chain clause-content validation: the chain binds an
         // attestation to its signed agreement (merkle inclusion) and to its
@@ -173,8 +173,8 @@ contract Deploy is Script {
         // keccak256("") per mirror state map (processes, orderStatus,
         // orderProcessId), matching the Rust KernelState::compute_root
         // on the empty state. ClauseRegistry is the witness-spec anchor:
-        // settleBatch checks each proof's (clause key → spec hash)
-        // binding against contentHashOf before resolving.
+        // the clause key IS the spec hash, so settleBatch requires each
+        // proof's binding to carry one word twice and the key registered.
         // Note: FigaroBatchVerifier is NOT a florin minter and never will be.
         _deployUsageAndVerifier(address(_clauses), address(_assemblies), address(_core), address(_members), deployer);
 

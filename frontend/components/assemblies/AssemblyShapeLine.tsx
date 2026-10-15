@@ -4,6 +4,7 @@ import {
     type AssemblyChoice,
     formatAssemblyClauseList,
 } from "@/lib/protocol/assemblyChoices";
+import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
 
 /**
  * AssemblyShapeLine — the one-line summary of an assembly's shape, shared by
@@ -29,6 +30,9 @@ export function AssemblyShapeLine({
     className?: string;
     testId?: string;
 }) {
+    // The template names its clauses by key; each reads as its spec's title
+    // once the spec cache has warmed (a re-render on each warm).
+    useClauseSpecs();
     if (choice.state === "loading") {
         return <p className={`${className} text-ink-muted`}>Loading assembly content&hellip;</p>;
     }

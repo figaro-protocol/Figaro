@@ -13,10 +13,11 @@ repeat; what this file does with it is produce one thing, correctly: a user-owne
 
 **What a clause IS in this protocol.** A registered vocabulary that lets strangers share
 one interpretation of a fact across counterparties and over time. Concretely it is:
-an **off-chain spec** (a closed JSON-Schema-subset document) → its **contentHash** →
-**pinned to IPFS** → **registered in `ClauseRegistry`** (permissionless, pays a deposit,
-first-write-wins; the on-chain id is `keccak256(abi.encode(clauseId, version))`, the
-`clauseId` a bare human name). That is the whole clause: **you write no on-chain code —
+an **off-chain spec** (a closed JSON-Schema-subset document) → its canonical bytes
+**pinned to IPFS** → **registered in `ClauseRegistry`** under its **clause key**, `keccak256`
+of exactly those pinned bytes (permissionless, pays a deposit, first-write-wins on the key).
+The spec's `clauseId` (a bare human name) and `version` (a lineage counter) are labels a
+reader shows; nothing on chain reads them, and two specs sharing a name are two clauses. That is the whole clause: **you write no on-chain code —
 no validator contract, no Solidity.** Well-formedness is validated off-chain at
 author time; consumers load the clause from `ClauseRegistry → IPFS` at runtime.
 
@@ -76,8 +77,8 @@ of them. Write the spec as the **user's** document (their workspace).
 ## Step 3a — The five hash-load-bearing `block` hints (and the reserved-article trap)
 
 **Say this out loud to the user; it is the highest-cost thing on this page.** The
-registered `contentHash` covers the WHOLE canonical document, `block` included — so every
-character of `block` moves the clause's anchor. And five hints inside it change what a
+clause key covers the WHOLE canonical document, `block` included — so every
+character of `block` moves the clause's key, and a changed key is a different clause. And five hints inside it change what a
 designer's *template* and a party's *signed agreement* actually contain. Verify what your
 spec declares with `parseProjectionHints(spec)` from `@figaro-protocol/sdk` — it returns exactly
 these five and nothing else:
@@ -97,7 +98,7 @@ differently than the user meant. The trap is that the reserved words are the *na
 ones — an attestation clause grouped, reasonably, under `"attestations"` silently commits
 empty. **Registration is permanent and first-write-wins**, so if that is not what the user
 wants, group it under any other word BEFORE registering. There is no fix afterwards, only
-a new `version`.
+a new spec, which is a new key and a new registration.
 
 **The fills-on-process-log trap — the SDK will tell you.** There is one combination that
 never makes sense: declaring content pins (`design.fills`, or
@@ -118,7 +119,7 @@ is documented as composition metadata, but it is NOT inert — when the composin
 omits the field, the spec's own `default` fills it, and that value lands in the signed
 section, changing the merkle leaf and the `agreementHash` both parties sign. Declare a
 default only where the user would be content for a stranger to sign it having never seen
-it. Show them: `buildOrderAgreement(buyer, seller, { [clauseId]: {} }, specs)` and inspect
+it. Show them: `buildOrderAgreement(buyer, seller, { [clauseKey]: {} }, specs)` and inspect
 `agreement.sections[0].data`.
 
 Public statement of all of this, for the user: `/clauses` § "What the hash covers".
@@ -129,52 +130,56 @@ Run the off-chain validator (`parseClauseSpec`) and the content encoder round-tr
 `@figaro-protocol/sdk/clauses`. Off-chain well-formedness is the gate that runs at author time and
 before every signature; get it green here. It is not the only content check that exists —
 the batched, proof-based resolution path re-validates the clause IN-PROOF against the
-spec anchored at `ClauseRegistry.contentHashOf`, so a spec that is wrong is wrong on both
-paths. (The direct attestation path merkle-binds and validates no content shape.) Either
+spec whose bytes hash to the clause key, and resolves only for a key
+`ClauseRegistry.registered` holds, so a spec that is wrong is wrong on both paths. (The direct attestation path merkle-binds and validates no content shape.) Either
 way, a malformed spec is caught here, at author time, and never on chain by a per-clause
 validator — there is none, by design.
 
 ## Step 5 — Pin + register (the user's wallet)
 
-0. **Check the slot is free BEFORE you pin anything or spend a wei.** `registerClause` is
-   permissionless and first-write-wins: an `id`+`version` someone already registered is
-   taken PERMANENTLY, and a second registration reverts `AlreadyRegistered` — after the
-   pin, and with the deposit already in the transaction. Compute the exact key the registry
-   hashes and read the dedup guard:
+0. **Check the key is free BEFORE you pin anything or spend a wei.** The clause key is
+   `keccak256` of the spec's canonical bytes, so the same bytes are the same clause: a key
+   someone already registered is taken PERMANENTLY, and a second registration reverts
+   `AlreadyRegistered` — after the pin, and with the deposit already in the transaction.
+   Compute the key from the finished RAW spec (the whole document, `block` included — never
+   `parseClauseSpec(...).spec`, which drops `block`) and read the dedup guard:
 
    ```ts
-   import { computeClauseKey, CLAUSE_REGISTRY_ABI } from "@figaro-protocol/sdk";
+   import { canonicalize, computeClauseKey, CLAUSE_REGISTRY_ABI } from "@figaro-protocol/sdk";
 
-   const key = computeClauseKey(clauseId, version); // keccak256(abi.encode(clauseId, version))
+   const bytes = canonicalize(spec);         // the bytes you will pin
+   const key = computeClauseKey(spec);       // keccak256 of exactly those bytes
    const taken = await client.readContract({
      address: clauseRegistryAddress, abi: CLAUSE_REGISTRY_ABI,
      functionName: "registered", args: [key],
    });
-   if (taken) throw new Error("this id+version is already registered — pick another");
+   if (taken) throw new Error("these exact spec bytes are already registered");
    ```
 
-   `registered` takes the bytes32 KEY, not the name. Do this first; everything after it
-   costs the user something.
-1. Pin the **canonical serialization** to IPFS → `contentURI` (`ipfs://…`): the exact
-   bytes `canonicalize(spec)` returns from `@figaro-protocol/sdk` (sorted keys at every depth, no
-   whitespace). Anchor `contentHash = canonicalContentHash(spec)`. Pin *that* serialization,
-   never a pretty-printed variant — readers re-canonicalize the fetched JSON and recompute
-   the hash to verify it, so pinned bytes must equal the hashed form or the clause never
-   surfaces. The IPFS add options (CID version, chunker) do NOT matter: the registry binds
-   the keccak CONTENT HASH, not the CID, and verification is always
-   fetch → re-canonicalize → re-hash.
-2. Register: `ClauseRegistry.registerClause(clauseId, version, contentHash, contentURI)`,
-   signed by the **user's** key. The call is **`payable`, and `msg.value` must EQUAL
+   `registered` takes the bytes32 KEY, never a name. A taken key means this exact spec is
+   already a clause; any change to the spec is a different key. Do this first; everything
+   after it costs the user something.
+1. Pin the **canonical bytes** to IPFS → `contentURI` (`ipfs://…`): exactly the `bytes`
+   `canonicalize(spec)` returned (sorted keys at every depth, array order kept, no
+   whitespace). Pin *those* bytes, never a pretty-printed variant or a re-serialization: a
+   reader verifies by hashing the bytes it fetched (`anchorClauseSpec(bytes, key)`) and
+   re-canonicalizes nothing, so any other byte form hashes to a different key and never
+   verifies as this clause. The IPFS add options (CID version, chunker) do NOT matter: the
+   registry binds the keccak hash of the bytes, not the CID.
+2. Register: `ClauseRegistry.registerClause(key, contentURI)`, signed by the **user's**
+   key. The call is **`payable`, and `msg.value` must EQUAL
    `registrationDeposit()`** — read that view off the registry itself and send exactly it;
    under and over BOTH revert (`WrongDeposit`), there is no sweep, and an overpay is not
    refunded. Never hardcode the figure: it is a deploy-time immutable and differs per
-   deployment. The parameter types are the function's identity — `version` is `uint64`, not
-   the `uint256` a caller reaches for by habit — so a mistyped one fails as an opaque
-   selector mismatch, not a friendly error. The deposit is a reclaimable stake, not a fee:
-   `withdrawDeposit(idHash)` returns it, de-surfacing the clause for new compositions while
+   deployment. The parameter types are the function's identity —
+   `registerClause(bytes32,string)` — so a mistyped one fails as an opaque selector
+   mismatch, not a friendly error. The stake is reclaimable, not a charge:
+   `withdrawDeposit(key)` returns it, de-surfacing the clause for new compositions while
    the binding stays permanent — and it is also the RPGF eligibility gate, so a withdrawn
-   deposit ends the author's earnings on that clause. First-write-wins: the id binds
-   permanently. A behavior change is a NEW `version` (never mutate a registered id).
+   stake ends the designer's rewards on that clause. First-write-wins: the key binds
+   permanently. A behavior change is a NEW spec — bump its `version` label so readers can
+   tell the revisions apart — and therefore a new key and a new registration; a registered
+   key never changes.
    There is no reward tag, category or weight to declare — the spec carries no
    `rpgfTag` field and `registerClause` takes no such argument. The 600M retroactive
    reward is UNIFORM: a clause's score is its real usage alone
@@ -186,12 +191,11 @@ validator — there is none, by design.
 ## Step 6 — Output (the user owns this)
 
 ```
-## Clause registered: <clauseId> v<version>
+## Clause registered: <clauseId> v<version>   (the spec's own labels)
 - Shared-reference justification: <one sentence>
 - Family / bounded generality: <one line>
-- contentHash:  0x…
-- contentURI:   ipfs://…
-- on-chain id:  keccak256(abi.encode("<clauseId>", <version>))
+- clause key:   0x…  (computeClauseKey(spec) = keccak256 of the pinned bytes)
+- contentURI:   ipfs://…  (pins canonicalize(spec), exactly)
 - tx:           0x…  (registeredBy = <user wallet>)
 - block hints declared: <parseProjectionHints output — the five, or "none">
 - Discoverable now in any UI that reads the registry.
@@ -270,5 +274,5 @@ bare, each falls back to behavioral-only and the user MUST be told exactly that.
 - `ecosystem-agents/README.md` § "Three habits, stated once" owns the repo-boundary
   self-check and the traditional-vocabulary caution; read it there rather than a
   second version here.
-- First-write-wins is permanent. A bug at v1 means v2 (new id), never a patch. Get the
+- First-write-wins is permanent. A bug in a registered spec means a new spec (new key), never a patch. Get the
   spec + encoder round-trip right before registering.

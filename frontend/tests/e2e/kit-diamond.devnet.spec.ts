@@ -72,7 +72,9 @@ import { mnemonicToAccount } from 'viem/accounts';
 import {
     assertPinnedInIpfs,
     confirmAgreementPreviews,
-    DELIVERY_CLAUSES,
+    deliveryClauseKeys,
+    keyOf,
+    primeRegisteredClauseSpecs,
     discoverAnchoredAssemblies,
     readLocalDeploymentConfig,
     memberProfileBindings,
@@ -107,8 +109,16 @@ const SUPPLIER_B = mnemonicToAccount(ANVIL_MNEMONIC, { addressIndex: 8 }).addres
 const SUPPLIER_D = mnemonicToAccount(ANVIL_MNEMONIC, { addressIndex: 11 }).address as Hex; // Fernhill Nursery
 const SUPPLIER_C = mnemonicToAccount(ANVIL_MNEMONIC, { addressIndex: 12 }).address as Hex; // Sterling Goods
 
-const EMISSIONS_CLAUSE = 'figaro-emissions';
-const TOPOLOGY_CLAUSE = 'figaro-topology';
+// Clause KEYS, located by name over the specs the chain registered.
+let DELIVERY_CLAUSES: ReturnType<typeof deliveryClauseKeys>;
+let EMISSIONS_CLAUSE: Hex;
+let TOPOLOGY_CLAUSE: Hex;
+test.beforeAll(async () => {
+    await primeRegisteredClauseSpecs();
+    DELIVERY_CLAUSES = deliveryClauseKeys();
+    EMISSIONS_CLAUSE = keyOf('figaro-emissions');
+    TOPOLOGY_CLAUSE = keyOf('figaro-topology');
+});
 
 /** The diamond's SHAPE on-chain: four orders, one committing TWO template
  *  parents, a courier-process final leg, an emissions leg. (The
@@ -227,9 +237,9 @@ test.describe('KIT DIAMOND — a DAG join: one buyer, four orders, two parents o
         type ProfileBindings = Awaited<ReturnType<typeof memberProfileBindings>>;
         const isConformant = (bindings: ProfileBindings): boolean => {
             const b = bindings.find((x) => x.assemblySlug === kitSlug);
-            const designated = (clauseId: string, addr: Hex) =>
+            const designated = (clauseKey: Hex, addr: Hex) =>
                 (b?.counterpartyBindings ?? []).some(
-                    (cb) => cb.clauseId === clauseId && cb.addresses.some((a) => a.toLowerCase() === addr.toLowerCase()),
+                    (cb) => cb.clauseKey.toLowerCase() === clauseKey && cb.addresses.some((a) => a.toLowerCase() === addr.toLowerCase()),
                 );
             return !!b
                 && designated(DELIVERY_CLAUSES.merchant, SUPPLIER_B)

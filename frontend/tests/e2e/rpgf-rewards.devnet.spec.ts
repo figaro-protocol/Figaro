@@ -45,17 +45,16 @@ import {
     buildSectionInclusionProof,
     calculateBonds,
     computeAgreementHash,
-    computeClauseKey,
     generateSalt,
     sectionDataHash,
+    USAGE_KIND_CLAUSE,
     type Agreement,
 } from '@figaro-protocol/sdk';
-import { localPublicClient, readLocalDeploymentConfig, LOCAL_ANVIL, RPC_URL } from './devnet-helpers';
+import { localPublicClient, readLocalDeploymentConfig, LOCAL_ANVIL, RPC_URL, keyOf, primeRegisteredClauseSpecs } from './devnet-helpers';
 import { ANVIL_ACCOUNTS, ANVIL_KEYS } from '../anvilAccounts';
 import { CORE_ABI } from '@/lib/kernel/contracts';
-import { specSource } from '@/lib/shared/clauseSpecSource';
+import { getClauseSpec, specSource } from '@/lib/shared/clauseSpecSource';
 import { RPGF_MINTER_ABI, USAGE_COUNTER_ABI } from "@figaro-protocol/sdk";
-import { primeClauseSpecs } from '../lib/primeClauseSpecs';
 import type { Page } from '@playwright/test';
 
 const ERC20_ABI = parseAbi([
@@ -84,8 +83,13 @@ const TRADE_BUYER_KEY = ANVIL_KEYS[18];
 const SELLER_KEYS = [ANVIL_KEYS[19], ANVIL_KEYS[34], ANVIL_KEYS[35]] as const;
 // The clause whose usage this scenario records. Registered by populate-clauses
 // under AUTHOR; the agreement composes it so it lands in the merkle tree.
-const USED_CLAUSE = 'figaro-geolocation';
-const USED_CLAUSE_VERSION = 1;
+let USED_CLAUSE: Hex;
+test.beforeAll(async () => {
+    // Clause KEYS, located by the names their specs carry over the specs the
+    // chain registered — never a hardcoded key.
+    await primeRegisteredClauseSpecs();
+    USED_CLAUSE = keyOf('figaro-geolocation');
+});
 
 test.describe('designer rewards — usage accrues, the UI reads it (devnet)', () => {
     test.setTimeout(300_000);
@@ -102,14 +106,16 @@ test.describe('designer rewards — usage accrues, the UI reads it (devnet)', ()
         expect(counter, 'the UsageCounter is deployed (deploy-local.sh writes its address)').toBeTruthy();
         expect(core && token && coordinator && membersRegistry, 'full deployment record').toBeTruthy();
 
-        // Prime the Node-side spec cache (this process never loads the
-        // browser's `useClauseSpecs` hook) so `assertAgreementSignable` below
-        // can find the commerce clause's currency-as-content leaf.
-        await primeClauseSpecs(['figaro-commerce', 'figaro-topology', USED_CLAUSE]);
+        // The Node-side spec cache is primed from the chain (beforeAll) — this
+        // process never loads the browser's `useClauseSpecs` hook — so
+        // `assertAgreementSignable` below finds the commerce clause's
+        // currency-as-content leaf.
+        const TOPOLOGY_CLAUSE = keyOf('figaro-topology');
+        const COMMERCE_CLAUSE = keyOf('figaro-commerce');
 
         const publicClient = localPublicClient();
         const chainId = LOCAL_ANVIL.id;
-        const clauseKey = computeClauseKey(USED_CLAUSE, USED_CLAUSE_VERSION);
+        const clauseKey = USED_CLAUSE;
         const period = (await publicClient.readContract({
             address: counter, abi: USAGE_COUNTER_ABI, functionName: 'currentPeriod',
         })) as number;
@@ -149,9 +155,9 @@ test.describe('designer rewards — usage accrues, the UI reads it (devnet)', ()
                 buyer: buyerAccount.address,
                 seller: sellerAccount.address,
                 sections: [
-                    { clause: 'figaro-topology', version: 1, data: { parentOrderHashes: [] } },
+                    { clause: TOPOLOGY_CLAUSE, data: { parentOrderHashes: [] } },
                     {
-                        clause: 'figaro-commerce', version: 1,
+                        clause: COMMERCE_CLAUSE,
                         data: {
                             currency: token,
                             payment: payment.toString(),
@@ -159,7 +165,7 @@ test.describe('designer rewards — usage accrues, the UI reads it (devnet)', ()
                         },
                     },
                     {
-                        clause: USED_CLAUSE, version: USED_CLAUSE_VERSION,
+                        clause: USED_CLAUSE,
                         data: { geocodeStandard: 'geohash', origin: 'u4pruy', destination: 'u4pruz' },
                     },
                 ],
@@ -248,7 +254,7 @@ test.describe('designer rewards — usage accrues, the UI reads it (devnet)', ()
 
         const accrual = async () =>
             (await publicClient.readContract({
-                address: counter, abi: USAGE_COUNTER_ABI, functionName: 'accrualOf', args: [clauseKey, period],
+                address: counter, abi: USAGE_COUNTER_ABI, functionName: 'accrualOf', args: [USAGE_KIND_CLAUSE, clauseKey, period],
             })) as readonly [bigint, bigint, bigint];
 
         // ── The floor, both halves ─────────────────────────────────────────
@@ -284,8 +290,9 @@ test.describe('designer rewards — usage accrues, the UI reads it (devnet)', ()
 
         const card = page.getByTestId(`period-card-${period}`);
         await card.waitFor({ timeout: 60000 });
-        await expect(page.getByTestId(`period-accruals-${period}`), 'the author sees the clause they registered')
-            .toContainText(USED_CLAUSE, { timeout: 60000 });
+        const usedSpec = getClauseSpec(USED_CLAUSE)!;
+        await expect(page.getByTestId(`period-accruals-${period}`), 'the author sees the clause they registered, by its name and version')
+            .toContainText(`${usedSpec.clauseId} v${usedSpec.version}`, { timeout: 60000 });
         await expect(page.getByTestId(`period-accruals-${period}`), 'with the counts the chain recorded')
             .toContainText(`score ${score.toString()}`);
         // The period total is the sum over EVERY clause and assembly that accrued in this
@@ -342,7 +349,7 @@ test.describe('designer rewards — usage accrues, the UI reads it (devnet)', ()
         // ── The UI follows the chain: accruing → claimable ────────────────
         const quoted = (await publicClient.readContract({
             address: minter, abi: RPGF_MINTER_ABI, functionName: 'claimable',
-            args: [period, AUTHOR, [clauseKey]],
+            args: [period, AUTHOR, [{ kind: USAGE_KIND_CLAUSE, key: clauseKey }]],
         })) as bigint;
         expect(quoted, 'a closed period with recorded usage owes its author something').toBeGreaterThan(0n);
 

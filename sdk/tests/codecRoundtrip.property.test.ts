@@ -29,6 +29,7 @@ import {
     hexOf,
     uint256Arb,
 } from "./propertyArbs.js";
+import { keyOf } from "./specFixtures.js";
 
 // ── Arbitraries ─────────────────────────────────────────────────────────────
 
@@ -90,8 +91,8 @@ const templateArb: fc.Arbitrary<AssemblyTemplate> = fc
                                     clauseDataArb,
                                 )
                                 .map(([parents, data]) => ({
-                                    "figaro-topology": { parentOrderHashes: parents },
-                                    "figaro-commerce": data,
+                                    [keyOf("figaro-topology")]: { parentOrderHashes: parents },
+                                    [keyOf("figaro-commerce")]: data,
                                 })),
                         }),
                     ),
@@ -153,7 +154,7 @@ describe("AssemblyTemplate document — property round-trip", () => {
                     ...template,
                     agreements: template.agreements.map((a, i) =>
                         i === 0
-                            ? { ...a, clauses: { ...a.clauses, "figaro-consent": { doc: prose } } }
+                            ? { ...a, clauses: { ...a.clauses, [keyOf("figaro-consent")]: { doc: prose } } }
                             : a,
                     ),
                 };

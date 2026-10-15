@@ -12,19 +12,19 @@
   ],
   "defaultTokenAddress": "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
   "buyerAssemblies": [
-    { "compositionHash": "0x569b54c49f6c62c2344ec849cfda503eadc00183a7fbef831b2cc53f01810698" },
-    { "compositionHash": "0x14e9391ac1a644d6690bc4ef7184571ddb5a8c306c0b9d59535936e0df8c0802" }
+    { "compositionHash": "0x6f269dd3e81e433bd51a58e38a6069c0c4944f0363d20fb3daef8adccd6191b2" },
+    { "compositionHash": "0x46ba937025f59ceb1ed2001e2657cdd312a8b48000db5194007c5cc951382d42" }
   ],
   "disclosurePolicy": [
     {
-      "compositionHash": "0x14e9391ac1a644d6690bc4ef7184571ddb5a8c306c0b9d59535936e0df8c0802",
+      "compositionHash": "0x46ba937025f59ceb1ed2001e2657cdd312a8b48000db5194007c5cc951382d42",
       "clauseId": "figaro-data-license",
       "posture": "buyer",
       "offered": true,
       "calendar": { "embargoDaysAfterSettlement": 30 }
     },
     {
-      "compositionHash": "0x569b54c49f6c62c2344ec849cfda503eadc00183a7fbef831b2cc53f01810698",
+      "compositionHash": "0x6f269dd3e81e433bd51a58e38a6069c0c4944f0363d20fb3daef8adccd6191b2",
       "clauseId": "figaro-content-handoff",
       "posture": "buyer",
       "offered": false

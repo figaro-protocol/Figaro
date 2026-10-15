@@ -4,6 +4,7 @@ import {
     parseMemberCatalogDocument,
     type MemberCatalogMetadata,
 } from "../src/memberCatalog.js";
+import { keyOf } from "./specFixtures.js";
 
 const subjectAddress = "0x70997970C51812dc3A010C7d01b50e0d17dc79C8";
 
@@ -95,7 +96,7 @@ describe("parseMemberCatalogDocument (strict)", () => {
     it("carries a data-product dataSold reference through a parse", () => {
         const dataSold = {
             compositionHash: `0x${"ef".repeat(32)}`,
-            clauseId: "figaro-geolocation",
+            clauseKey: keyOf("figaro-geolocation"),
             posture: "buyer",
         };
         const parsed = parseMemberCatalogDocument({
@@ -110,13 +111,13 @@ describe("parseMemberCatalogDocument (strict)", () => {
         expect(() => parseMemberCatalogDocument({
             subjectAddress: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
             version: "1",
-            items: [{ id: "i1", name: "Bad", price: "5", available: true, dataSold: { compositionHash: "0x12", clauseId: "c", posture: "buyer" } }],
+            items: [{ id: "i1", name: "Bad", price: "5", available: true, dataSold: { compositionHash: "0x12", clauseKey: keyOf("figaro-geolocation"), posture: "buyer" } }],
         })).toThrow(/dataSold\.compositionHash must be a 32-byte hex hash/);
     });
 
     it("carries the catalog-sourced clauseValues map through a parse", () => {
         const clauseValues = {
-            "figaro-hazmat": { unNumber: "UN1203", properShippingName: "Petrol", hazardClass: "3" },
+            [keyOf("figaro-hazmat")]: { unNumber: "UN1203", properShippingName: "Petrol", hazardClass: "3" },
         };
         const parsed = parseMemberCatalogDocument({
             subjectAddress,

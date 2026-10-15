@@ -3,9 +3,12 @@ import { serializeAssemblyTemplate } from "@figaro-protocol/sdk";
 import { deriveAssemblySlug, type AssemblyTemplate } from "@/lib/shared/assemblyTemplate";
 
 // Construct templates directly (no spec cache needed) to test the
-// serialize → compositionHash → slug pipeline in isolation.
-const composition = (x: number): AssemblyTemplate => ({
-    agreements: [{ id: "order-0", clauses: { "figaro-commerce": { x } } }],
+// serialize → compositionHash → slug pipeline in isolation. The clause keys
+// are opaque 32-byte hashes: the pipeline reads none of the specs behind them.
+const CLAUSE = `0x${"c1".repeat(32)}` as const;
+const LOOKALIKE = `0x${"c2".repeat(32)}` as const;
+const composition = (x: number, clauseKey: `0x${string}` = CLAUSE): AssemblyTemplate => ({
+    agreements: [{ id: "order-0", clauses: { [clauseKey]: { x } } }],
 });
 
 const slugOf = (t: AssemblyTemplate) => deriveAssemblySlug(serializeAssemblyTemplate(t).compositionHash);
@@ -20,8 +23,8 @@ describe("content-derived assembly slug", () => {
     });
 
     it("slug is stable under object-key reordering (canonicalization)", () => {
-        const ordered: AssemblyTemplate = { agreements: [{ id: "order-0", clauses: { "figaro-commerce": { x: 1 } } }] };
-        const reordered = { agreements: [{ clauses: { "figaro-commerce": { x: 1 } }, id: "order-0" }] } as AssemblyTemplate;
+        const ordered: AssemblyTemplate = { agreements: [{ id: "order-0", clauses: { [CLAUSE]: { x: 1 } } }] };
+        const reordered = { agreements: [{ clauses: { [CLAUSE]: { x: 1 } }, id: "order-0" }] } as AssemblyTemplate;
         expect(serializeAssemblyTemplate(ordered).compositionHash).toBe(serializeAssemblyTemplate(reordered).compositionHash);
     });
 
@@ -42,25 +45,10 @@ describe("content-derived assembly slug", () => {
         expect(JSON.parse(serializeAssemblyTemplate(titled).json).name).toBe("Direct Sale");
     });
 
-    // The version-as-evolution axis, propagated through assembly identity:
-    // a clause's identity is (name, version), and composing v2 IS composing a
-    // different clause — distinct compositionHash, distinct slug. (The clause
-    // side of the axis is covered in Foundry:
-    // ClauseRegistryTest.test_sameNameDifferentVersionIsDistinct.)
-    it("composing a clause's v2 → distinct composition identity", () => {
-        const onV2: AssemblyTemplate = {
-            agreements: [{ id: "order-0", clauses: { "figaro-commerce": { x: 1 } }, clauseVersions: { "figaro-commerce": 2 } }],
-        };
-        expect(slugOf(onV2)).not.toBe(slugOf(composition(1)));
-    });
-
-    // Normalization invariant: v1 pins are never serialized, so a v1-only
-    // template hashes identically to the pre-version-field form — no reseed,
-    // no slug churn. (The builder enforces the omission; this pins the hash.)
-    it("an explicit v1 map would fork the hash — which is why the builder omits it", () => {
-        const explicitV1 = {
-            agreements: [{ id: "order-0", clauses: { "figaro-commerce": { x: 1 } }, clauseVersions: { "figaro-commerce": 1 } }],
-        } as AssemblyTemplate;
-        expect(slugOf(explicitV1)).not.toBe(slugOf(composition(1)));
+    // A clause is its spec: another version of a clause — or a lookalike that
+    // shares its name — is another key, so composing it IS composing a
+    // different clause: distinct compositionHash, distinct slug.
+    it("composing another spec's key → distinct composition identity", () => {
+        expect(slugOf(composition(1, LOOKALIKE))).not.toBe(slugOf(composition(1)));
     });
 });

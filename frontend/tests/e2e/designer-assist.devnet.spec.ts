@@ -18,8 +18,16 @@
  * template exercises.
  */
 import { test, expect } from './devnet-multi-test';
+import type { Hex } from 'viem';
+import { keyOf, primeRegisteredClauseSpecs } from './devnet-helpers';
 
-const PROCESS_CLAUSE = 'figaro-merchant-process';
+let PROCESS_CLAUSE: Hex;
+test.beforeAll(async () => {
+    // Clause KEYS, located by the names their specs carry over the specs the
+    // chain registered — never a hardcoded key.
+    await primeRegisteredClauseSpecs();
+    PROCESS_CLAUSE = keyOf('figaro-merchant-process');
+});
 
 test.describe('COMPOSITION-ASSIST — export the draft, import a template, composing stays the designer\'s act (devnet)', () => {
     test.setTimeout(180_000);

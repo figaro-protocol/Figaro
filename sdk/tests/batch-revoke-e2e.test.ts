@@ -35,10 +35,10 @@ import {
     createPublicClient,
     createTestClient,
     createWalletClient,
-    encodeAbiParameters,
     encodeFunctionData,
     http,
     keccak256,
+    stringToHex,
     parseEther,
     type Address,
     type Hex,
@@ -136,16 +136,10 @@ describe.skipIf(SKIP)("Batch E2E: a revocation mid-flight dead-letters the revok
         const specJson = loadSpecJson("figaro-modalities");
         const parsed = parseClauseSpec(JSON.parse(specJson));
         if (!parsed.ok) throw new Error(`spec parse failed: ${JSON.stringify(parsed.errors)}`);
-        const clauseKey = keccak256(
-            encodeAbiParameters(
-                [{ type: "string" }, { type: "uint64" }],
-                [parsed.spec.clauseId, BigInt(parsed.spec.version)],
-            ),
-        );
+        // The key is the hash of the pinned (canonical) bytes the witness carries.
+        const clauseKey = keccak256(stringToHex(specJson));
         const stack = await deployBatchStack(publicClient, deployerWallet, {
             specJson,
-            clauseId: parsed.spec.clauseId,
-            version: parsed.spec.version,
             clauseKey,
         });
         tokenAddress = stack.tokenAddress;

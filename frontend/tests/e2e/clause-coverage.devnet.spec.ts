@@ -58,13 +58,12 @@
 import { test, expect, gotoAsWallet } from './devnet-multi-test';
 import { createPublicClient, decodeFunctionData, defineChain, http, parseAbi, type Hex } from 'viem';
 import { privateKeyToAccount, mnemonicToAccount } from 'viem/accounts';
-import { readLocalDeploymentConfig, assertPinnedInIpfs, publishOrAdoptReviewed } from './devnet-helpers';
+import { readLocalDeploymentConfig, assertPinnedInIpfs, publishOrAdoptReviewed, keyOf, primeRegisteredClauseSpecs } from './devnet-helpers';
 import { keccak256 } from 'viem';
 import { ANVIL_KEYS } from '../anvilAccounts';
 import { CORE_ABI } from '@/lib/kernel/contracts';
-import { calculateBonds, computeClauseKey, ATTESTATION_COORDINATOR_ABI, CLAUSE_REGISTRY_ABI } from '@figaro-protocol/sdk';
-import { clauseIsAssemblyScoped } from '@/lib/shared/clauseSpecSource';
-import { primeClauseSpecs } from '../lib/primeClauseSpecs';
+import { calculateBonds, ATTESTATION_COORDINATOR_ABI } from '@figaro-protocol/sdk';
+import { clauseIsAssemblyScoped, getClauseSpec } from '@/lib/shared/clauseSpecSource';
 import type { Page } from '@playwright/test';
 
 const ERC20_ABI = parseAbi(['function balanceOf(address) view returns (uint256)']);
@@ -83,14 +82,18 @@ const seller = mnemonicToAccount(ANVIL_MNEMONIC, { addressIndex: 16 }); // anvil
 const SELLER = seller.address;
 
 /** One rung: how the target clause gets composed + filled, and what must
- *  surface in the audit. All selectors drive the REAL generic surfaces —
- *  the checkout fill surface (`checkout-field-<orderId>-<clauseId>-<field>
- *  [-<option>]` — general-clause transaction particulars), the drawer's
- *  designer-fills editors (`drawer-field-<clauseId>-<field>` — consent's
- *  affix), the wizard's catalog clause-values editor
- *  (`item-<uid>-clause-<clauseId>-<field>[-<option>]`), and the nested
- *  sub-clause tree (`drawer-nested-<hostField>-<clauseId>`). */
+ *  surface in the audit. All selectors drive the REAL generic surfaces, each
+ *  keyed by the clause KEY — the checkout fill surface
+ *  (`checkout-field-<orderId>-<clauseKey>-<field>[-<option>]` — general-clause
+ *  transaction particulars), the drawer's designer-fills editors
+ *  (`drawer-field-<clauseKey>-<field>` — consent's affix), the wizard's catalog
+ *  clause-values editor (`item-<uid>-clause-<clauseKey>-<field>[-<option>]`),
+ *  and the nested sub-clause tree (`drawer-nested-<hostField>-<clauseKey>`).
+ *  A rung NAMES its clause by the name the spec carries (`clauseId`); every
+ *  selector resolves that name to the key with `keyOf`, over the specs the
+ *  chain registered. */
 interface ClauseRung {
+    /** The target spec's own name — resolved to its key with `keyOf`. */
     clauseId: string;
     /** Extra drawer work after ticking the target clause. Design time is
      *  STRUCTURAL: this hook is for design.fills only
@@ -100,10 +103,10 @@ interface ClauseRung {
     /** Checkout-time GENERAL-clause field fills (transaction particulars) —
      *  runs on the buyer's checkout view before "Place order". */
     checkout?: (page: Page) => Promise<void>;
-    /** Tick these host clauses BEFORE the target (nesting hosts, fold inputs). */
+    /** Tick these host clauses (by spec name) BEFORE the target (nesting hosts, fold inputs). */
     composeFirst?: string[];
     /** The target's checkbox lives inside this nested container instead of the
-     *  top-level registry list (`drawer-nested-<hostField>-<clauseId>`). */
+     *  top-level registry list (`drawer-nested-<hostField>-<clauseKey>`). */
     nestedUnder?: string;
     /** Wizard identity-step fills (profile-level fields, e.g. the divisor). */
     profile?: (page: Page) => Promise<void>;
@@ -127,49 +130,51 @@ interface ClauseRung {
      *  registered spec declares `stages`; the trigger is the spec, this is only
      *  the data a seller would type. */
     witness?: {
-        /** Fill the rail's generic witness form (`capability-input-<clauseId>-<field>`). */
+        /** Fill the rail's generic witness form (`capability-input-<clauseKey>-<field>`). */
         fill: (page: Page) => Promise<void>;
         /** Decoded witness values the audit must render (spec labels + values). */
         auditTexts: string[];
     };
 }
 
-/** Checkout-time general-clause field input (`checkout-field-<orderId>-<clauseId>-<field>`;
+// Each helper takes the clause by its spec's name and resolves the key at
+// call time — inside a test, after the chain priming.
+/** Checkout-time general-clause field input (`checkout-field-<orderId>-<clauseKey>-<field>`;
  *  prefix+suffix matched — the template-local order id varies per assembly). */
-const checkoutFill = (clauseId: string, field: string, value: string) =>
+const checkoutFill = (name: string, field: string, value: string) =>
     async (page: Page) =>
-        page.locator(`[data-testid^="checkout-field-"][data-testid$="-${clauseId}-${field}"]`).first().fill(value);
+        page.locator(`[data-testid^="checkout-field-"][data-testid$="-${keyOf(name)}-${field}"]`).first().fill(value);
 /** Checkout-time general-clause enum radio / enum-array checkbox. */
-const checkoutPick = (clauseId: string, field: string, option: string) =>
+const checkoutPick = (name: string, field: string, option: string) =>
     async (page: Page) =>
-        page.locator(`[data-testid^="checkout-field-"][data-testid$="-${clauseId}-${field}-${option}"]`).first().check();
-/** Assembly-terms panel scalar input (`assembly-terms-field-<clauseId>-<field>`
+        page.locator(`[data-testid^="checkout-field-"][data-testid$="-${keyOf(name)}-${field}-${option}"]`).first().check();
+/** Assembly-terms panel scalar input (`assembly-terms-field-<clauseKey>-<field>`
  *  — the designer fill for an ASSEMBLY-SCOPED clause, composed once for the
  *  whole design instead of per order). */
-const assemblyTermsFill = (clauseId: string, field: string, value: string) =>
+const assemblyTermsFill = (name: string, field: string, value: string) =>
     async (page: Page) =>
-        page.getByTestId(`assembly-terms-field-${clauseId}-${field}`).fill(value);
-/** Assembly-terms panel enum radio (`assembly-terms-field-<clauseId>-<field>-<option>`). */
-const assemblyTermsPick = (clauseId: string, field: string, option: string) =>
+        page.getByTestId(`assembly-terms-field-${keyOf(name)}-${field}`).fill(value);
+/** Assembly-terms panel enum radio (`assembly-terms-field-<clauseKey>-<field>-<option>`). */
+const assemblyTermsPick = (name: string, field: string, option: string) =>
     async (page: Page) =>
-        page.getByTestId(`assembly-terms-field-${clauseId}-${field}-${option}`).check();
+        page.getByTestId(`assembly-terms-field-${keyOf(name)}-${field}-${option}`).check();
 /** Wizard catalog clause-values input (suffix-matched — the item uid is dynamic). */
-const catalogFill = (clauseId: string, field: string, value: string) =>
+const catalogFill = (name: string, field: string, value: string) =>
     async (page: Page) =>
-        page.locator(`[data-testid$="-clause-${clauseId}-${field}"]`).first().fill(value);
-const catalogPick = (clauseId: string, field: string, option: string) =>
+        page.locator(`[data-testid$="-clause-${keyOf(name)}-${field}"]`).first().fill(value);
+const catalogPick = (name: string, field: string, option: string) =>
     async (page: Page) =>
-        page.locator(`[data-testid$="-clause-${clauseId}-${field}-${option}"]`).first().check();
+        page.locator(`[data-testid$="-clause-${keyOf(name)}-${field}-${option}"]`).first().check();
 
 const all = (...steps: Array<(page: Page) => Promise<unknown>>) =>
     async (page: Page) => { for (const s of steps) await s(page); };
 
-/** Witness-form scalar input on the rail (`capability-input-<clauseId>-<field>`). */
-const witnessFill = (clauseId: string, field: string, value: string) =>
-    async (page: Page) => page.getByTestId(`capability-input-${clauseId}-${field}`).fill(value);
+/** Witness-form scalar input on the rail (`capability-input-<clauseKey>-<field>`). */
+const witnessFill = (name: string, field: string, value: string) =>
+    async (page: Page) => page.getByTestId(`capability-input-${keyOf(name)}-${field}`).fill(value);
 /** Witness-form enum radio on the rail. */
-const witnessPick = (clauseId: string, field: string, option: string) =>
-    async (page: Page) => page.getByTestId(`capability-input-${clauseId}-${field}-${option}`).check();
+const witnessPick = (name: string, field: string, option: string) =>
+    async (page: Page) => page.getByTestId(`capability-input-${keyOf(name)}-${field}-${option}`).check();
 
 /** The affixed document's canonical text — its keccak256 is the committed
  *  anchor the rung asserts on the leaf. */
@@ -184,18 +189,18 @@ const RUNGS: ClauseRung[] = [
         // /faq page's register (EDPB Guidelines 02/2025).
         clauseId: 'figaro-consent',
         design: async (page) => {
-            await page.getByTestId('drawer-field-figaro-consent-documents-add').click();
-            await page.getByTestId('drawer-field-figaro-consent-documents-0-documentHash-affix')
+            await page.getByTestId(`drawer-field-${keyOf('figaro-consent')}-documents-add`).click();
+            await page.getByTestId(`drawer-field-${keyOf('figaro-consent')}-documents-0-documentHash-affix`)
                 .setInputFiles({
                     name: 'terms-of-service.txt',
                     mimeType: 'text/plain',
                     buffer: Buffer.from(CONSENT_DOC_TEXT),
                 });
             // The affix pins + anchors before the hash renders — wait for it.
-            await page.getByTestId('drawer-field-figaro-consent-documents-0-documentHash')
+            await page.getByTestId(`drawer-field-${keyOf('figaro-consent')}-documents-0-documentHash`)
                 .waitFor({ state: 'visible', timeout: 30000 });
-            await page.getByTestId('drawer-field-figaro-consent-documents-0-documentVersion').fill('1.0');
-            await page.getByTestId('drawer-field-figaro-consent-documents-0-documentTitle').fill('Terms of Service');
+            await page.getByTestId(`drawer-field-${keyOf('figaro-consent')}-documents-0-documentVersion`).fill('1.0');
+            await page.getByTestId(`drawer-field-${keyOf('figaro-consent')}-documents-0-documentTitle`).fill('Terms of Service');
         },
         preview: async (page) => {
             const notice = page.getByTestId('preview-consent-terms');
@@ -258,7 +263,7 @@ const RUNGS: ClauseRung[] = [
         clauseId: 'figaro-utility-token',
         design: async (page) => {
             const token = readLocalDeploymentConfig().tokenAddress as string;
-            await page.getByTestId('assembly-terms-field-figaro-utility-token-currency').fill(token);
+            await page.getByTestId(`assembly-terms-field-${keyOf('figaro-utility-token')}-currency`).fill(token);
         },
         auditTexts: ['Utility token'],
         leaf: (data, sections) => {
@@ -267,7 +272,7 @@ const RUNGS: ClauseRung[] = [
             // The provenance pair: the commerce leaf's currency matches the
             // pin — proving the denomination was designer-determined, not a
             // buyer/seller checkout-time choice that happens to coincide.
-            const commerce = sections.find((s) => s.clause === 'figaro-commerce');
+            const commerce = sections.find((s) => s.clause.toLowerCase() === keyOf('figaro-commerce'));
             expect(commerce, 'the commerce leaf is committed alongside the pin').toBeTruthy();
             expect(
                 String(commerce!.data.currency).toLowerCase(),
@@ -321,7 +326,7 @@ const RUNGS: ClauseRung[] = [
         composeFirst: ['figaro-cargo'],
         // The divisor is PROFILE-SOURCED master data — authored in the generic
         // profile clause-values section (spec-driven, from the live registry).
-        profile: async (page) => page.getByTestId('profile-clause-figaro-dimweight-divisor').fill('5000'),
+        profile: async (page) => page.getByTestId(`profile-clause-${keyOf('figaro-dimweight')}-divisor`).fill('5000'),
         catalog: async (page) => {
             await page.locator('[id^="item-"][id$="-mass"]').first().fill('500');
             await page.locator('[id^="item-"][id$="-volume"]').first().fill('1000');
@@ -367,9 +372,9 @@ const RUNGS: ClauseRung[] = [
         // The drawer renders editors for REQUIRED specific-term fields only —
         // the optional credentialTitle surfaces as a producing-surface note,
         // so the rung pins the register and leaves the title unset.
-        design: async (page) => page.getByTestId('drawer-field-figaro-credential-credentialRegisterUri')
+        design: async (page) => page.getByTestId(`drawer-field-${keyOf('figaro-credential')}-credentialRegisterUri`)
             .fill('https://register.example/lookup?entry={id}'),
-        profile: async (page) => page.getByTestId('profile-clause-figaro-credential-credentialId').fill('LIC-500458'),
+        profile: async (page) => page.getByTestId(`profile-clause-${keyOf('figaro-credential')}-credentialId`).fill('LIC-500458'),
         checkout: async (page) => {
             // The buyer's verification opportunity: the leaf's Verify link-out,
             // already substituted with the seller's declared id.
@@ -473,12 +478,13 @@ async function waitForConnected(page: Page) {
 test.describe('PER-CLAUSE COVERAGE — every protocol clause flows the generic pipeline (devnet)', () => {
     test.setTimeout(360_000);
 
-    // Node-side spec cache (this process never loads the browser's
-    // `useClauseSpecs` hook) so `clauseIsAssemblyScoped` below can classify
-    // each rung's clause from its registered spec — the SAME classification
-    // AgreementDrawer/AssemblyTermsPanel apply in the browser, read here to
-    // pick the right leg, never a hardcoded clause list.
-    test.beforeAll(async () => { await primeClauseSpecs(); });
+    // Node-side spec cache, primed from the CHAIN (this process never loads
+    // the browser's `useClauseSpecs` hook), so `keyOf` locates each rung's
+    // clause and `clauseIsAssemblyScoped` below classifies it from its
+    // registered spec — the SAME classification AgreementDrawer /
+    // AssemblyTermsPanel apply in the browser, read here to pick the right
+    // leg, never a hardcoded clause list.
+    test.beforeAll(async () => { await primeRegisteredClauseSpecs(); });
 
     for (const rung of RUNGS) {
         test(`${rung.clauseId}: drawer → encode → commit → audit through the generic pipeline`, async ({ page }) => {
@@ -490,6 +496,9 @@ test.describe('PER-CLAUSE COVERAGE — every protocol clause flows the generic p
             const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
             const balanceOf = (who: Hex) =>
                 publicClient.readContract({ address: token, abi: ERC20_ABI, functionName: 'balanceOf', args: [who] }) as Promise<bigint>;
+            // The rung's clause, by KEY — located by its spec's name over the
+            // specs the chain registered.
+            const rungKey = keyOf(rung.clauseId);
 
             // ── DRAWER + ENCODE: author the rung's assembly on the REAL canvas —
             //    the target clause surfaced from the live registry and filled
@@ -515,10 +524,8 @@ test.describe('PER-CLAUSE COVERAGE — every protocol clause flows the generic p
             // registry by declared scope). Everything else keeps the per-order
             // drawer leg. Derived from the registered spec, never a hardcoded
             // clause list.
-            // Each rung composes the populated registration of its clause —
-            // version 1, the row the drawer titles without a version suffix.
-            if (clauseIsAssemblyScoped(rung.clauseId, 1)) {
-                const checkbox = page.getByTestId(`assembly-terms-clause-${rung.clauseId}`);
+            if (clauseIsAssemblyScoped(rungKey)) {
+                const checkbox = page.getByTestId(`assembly-terms-clause-${rungKey}`);
                 await expect(
                     checkbox,
                     `the assembly-terms panel surfaces ${rung.clauseId} from the live registry (drawer leg)`,
@@ -532,13 +539,13 @@ test.describe('PER-CLAUSE COVERAGE — every protocol clause flows the generic p
                 await page.getByTestId('drawer-section-registry').waitFor({ state: 'visible', timeout: 5000 });
 
                 for (const host of rung.composeFirst ?? []) {
-                    await page.getByTestId(`drawer-registry-clause-${host}`).check();
+                    await page.getByTestId(`drawer-registry-clause-${keyOf(host)}`).check();
                 }
                 const checkbox = rung.nestedUnder
                     ? page
-                        .getByTestId(`drawer-nested-${rung.nestedUnder}-${rung.clauseId}`)
-                        .getByTestId(`drawer-registry-clause-${rung.clauseId}`)
-                    : page.getByTestId(`drawer-registry-clause-${rung.clauseId}`);
+                        .getByTestId(`drawer-nested-${rung.nestedUnder}-${rungKey}`)
+                        .getByTestId(`drawer-registry-clause-${rungKey}`)
+                    : page.getByTestId(`drawer-registry-clause-${rungKey}`);
                 await expect(
                     checkbox,
                     `the drawer surfaces ${rung.clauseId} from the live registry (drawer leg)`,
@@ -687,17 +694,9 @@ test.describe('PER-CLAUSE COVERAGE — every protocol clause flows the generic p
             //    the rung carries no fills FAILS here: a coverage gap is a
             //    finding, never a silent skip. ──
             const ipfsApi = process.env.NEXT_PUBLIC_IPFS_API_URL ?? 'http://127.0.0.1:5001';
-            const regEvents = await publicClient.getContractEvents({
-                address: config.clauseRegistry as Hex, abi: CLAUSE_REGISTRY_ABI,
-                eventName: 'ClauseRegistered', fromBlock: 0n,
-            });
-            const registration = regEvents.filter((e) => e.args.clauseId === rung.clauseId).pop();
-            expect(registration, `${rung.clauseId} is anchored on ClauseRegistry`).toBeTruthy();
-            const specCid = (registration!.args.contentURI as string).replace(/^ipfs:\/\//, '');
-            const registeredSpec = await (await fetch(`${ipfsApi}/api/v0/cat?arg=${specCid}`, { method: 'POST' })).json() as {
-                title: string; stages?: Record<string, unknown>;
-            };
-            const declaredStages = Object.keys(registeredSpec.stages ?? {}).map(Number);
+            const registeredSpec = getClauseSpec(rungKey);
+            expect(registeredSpec, `${rung.clauseId} is anchored on ClauseRegistry and its pinned spec loads`).toBeTruthy();
+            const declaredStages = Object.keys(registeredSpec!.stages ?? {}).map(Number);
             let witnessStage: number | null = null;
             if (declaredStages.length > 0) {
                 expect(
@@ -716,7 +715,7 @@ test.describe('PER-CLAUSE COVERAGE — every protocol clause flows the generic p
                 await page.getByTestId('order-timeline-view').waitFor({ timeout: 30000 });
                 await waitForConnected(page);
                 const witnessCap = page.locator(
-                    `[data-testid="capability-submit-clause-attestation"][data-clause-id="${rung.clauseId}"]`,
+                    `[data-testid="capability-submit-clause-attestation"][data-clause-key="${rungKey}"]`,
                 );
                 await expect(
                     witnessCap,
@@ -736,7 +735,7 @@ test.describe('PER-CLAUSE COVERAGE — every protocol clause flows the generic p
                     'the witness attestation lands on the timeline',
                 ).toBeVisible({ timeout: 60000 });
                 await expect(witnessRow, 'the row is labeled by the spec title')
-                    .toContainText(registeredSpec.title);
+                    .toContainText(registeredSpec!.title);
                 // Repeatable while the order is active: filing once does NOT
                 // retire the capability (periodic records are the point).
                 await expect(
@@ -795,19 +794,19 @@ test.describe('PER-CLAUSE COVERAGE — every protocol clause flows the generic p
                     'the chooser lists one row per section the card counts',
                 ).toHaveCount(reassertCountBefore);
                 const reassertRow = chooser.locator(
-                    `[data-testid="capability-choice-reassert-committed-section"][data-clause-id="${rung.clauseId}"]`,
+                    `[data-testid="capability-choice-reassert-committed-section"][data-clause-key="${rungKey}"]`,
                 );
                 await expect(
                     reassertRow,
                     `the chooser lists ${rung.clauseId} (committed section, no stage-0 witness)`,
                 ).toBeVisible({ timeout: 15000 });
                 await chooser.locator(
-                    `[data-testid="capability-execute-reassert-committed-section"][data-clause-id="${rung.clauseId}"]`,
+                    `[data-testid="capability-execute-reassert-committed-section"][data-clause-key="${rungKey}"]`,
                 ).click();
 
                 // Out-of-band: THIS clause's stage-0 Attestation, attested by
                 // the seller, read fresh from the chain.
-                const rungClauseKey = computeClauseKey(rung.clauseId, Number(registration!.args.version)).toLowerCase();
+                const rungClauseKey = rungKey.toLowerCase();
                 let reassertTxHash: Hex | undefined;
                 await expect.poll(async () => {
                     const events = await publicClient.getContractEvents({
@@ -871,7 +870,7 @@ test.describe('PER-CLAUSE COVERAGE — every protocol clause flows the generic p
                 // The witness's structured values, DECODED from transaction
                 // calldata against the declared stage's fields and rendered
                 // with the spec's own labels — the read side of the loop.
-                const witnessDl = evidence.getByTestId(`audit-witness-${rung.clauseId}-${witnessStage}`);
+                const witnessDl = evidence.getByTestId(`audit-witness-${rungKey}-${witnessStage}`);
                 await expect(
                     witnessDl.first(),
                     'the audit decodes the witness record from calldata',
@@ -899,13 +898,13 @@ test.describe('PER-CLAUSE COVERAGE — every protocol clause flows the generic p
             const agreement = JSON.parse(agreementJson) as {
                 sections: { clause: string; data: Record<string, unknown> }[];
             };
-            const leafClauses = agreement.sections.map((s) => s.clause);
+            const leafClauses = agreement.sections.map((s) => s.clause.toLowerCase());
             expect(leafClauses, 'the committed merkle tree carries the mandatory and target leaves')
                 .toEqual(expect.arrayContaining([
-                    'figaro-commerce', 'figaro-topology',
-                    ...(rung.composeFirst ?? []), rung.clauseId,
+                    keyOf('figaro-commerce'), keyOf('figaro-topology'),
+                    ...(rung.composeFirst ?? []).map(keyOf), rungKey,
                 ]));
-            const targetLeaf = agreement.sections.find((s) => s.clause === rung.clauseId);
+            const targetLeaf = agreement.sections.find((s) => s.clause.toLowerCase() === rungKey);
             expect(targetLeaf, `the ${rung.clauseId} section is a committed leaf`).toBeTruthy();
             await rung.leaf(targetLeaf!.data, agreement.sections);
 

@@ -5,8 +5,8 @@
  * Open-world and clause-agnostic: no clause is named. Each entry in an item's
  * `clauseValues` map is validated against that clause's REGISTERED spec via the
  * same `validateContent` the sign/attest paths use — one validator, one source
- * of truth. Requires the clause-spec cache warm (`useClauseSpecs`); a clauseId
- * whose spec isn't loaded is skipped (resolved-empty), never failed.
+ * of truth. Requires the clause-spec cache warm (`useClauseSpecs`); a clause
+ * key whose spec isn't loaded is skipped (resolved-empty), never failed.
  */
 
 import { validateContent, type FieldSpec } from "@figaro-protocol/sdk/clauses";
@@ -14,26 +14,26 @@ import {
     clauseCatalogFills,
     getClauseSpec,
     listCatalogSourcedClauses,
-    memberDocumentClauseSpec,
+    type KnownClause,
 } from "@/lib/shared/clauseSpecSource";
 import type { CatalogItemMetadata } from "@/lib/member/memberCatalogMetadata";
 
 /**
  * Validate an item's catalog-sourced clause values against each clause's
- * registered spec. Returns `clauseId.path: message` strings; empty = valid.
+ * registered spec. Returns `<spec name>.path: message` strings; empty = valid.
  */
 export function validateCatalogClauseValues(item: CatalogItemMetadata): string[] {
     const values = item.clauseValues;
     if (!values) return [];
     const errors: string[] = [];
-    for (const [clauseId, data] of Object.entries(values)) {
-        // The catalog document names the clause without a version.
-        const spec = memberDocumentClauseSpec(clauseId);
+    for (const [clauseKey, data] of Object.entries(values)) {
+        // The catalog document names the clause by its key.
+        const spec = getClauseSpec(clauseKey);
         if (!spec) continue; // spec not loaded — resolved-empty, not a failure
         const result = validateContent(data, spec);
         if (!result.ok) {
             for (const e of result.errors) {
-                errors.push(`${clauseId}${e.path.replace(/^\$/, "")}: ${e.message}`);
+                errors.push(`${spec.clauseId}${e.path.replace(/^\$/, "")}: ${e.message}`);
             }
         }
     }
@@ -58,15 +58,15 @@ export function validateCatalogClauseValues(item: CatalogItemMetadata): string[]
 export function catalogClausesForBindings(
     bindings: readonly { assemblySlug: string }[],
     choices: readonly { slug: string; clauses: readonly string[] | null }[],
-): readonly { clauseId: string; version: number }[] {
+): readonly KnownClause[] {
     const boundSlugs = new Set(bindings.map((b) => b.assemblySlug));
     const composed = new Set<string>();
     for (const choice of choices) {
         if (!boundSlugs.has(choice.slug)) continue;
-        for (const clauseId of choice.clauses ?? []) composed.add(clauseId);
+        for (const clauseKey of choice.clauses ?? []) composed.add(clauseKey.toLowerCase());
     }
     if (composed.size === 0) return [];
-    return listCatalogSourcedClauses().filter((c) => composed.has(c.clauseId));
+    return listCatalogSourcedClauses().filter((c) => composed.has(c.clauseKey.toLowerCase()));
 }
 
 /**
@@ -76,12 +76,9 @@ export function catalogClausesForBindings(
  * designer's fills, the buyer's checkout particulars, the member's profile)
  * are not the catalog's to ask for. Empty while the spec is uncached.
  */
-export function catalogFieldsOfClause(
-    clauseId: string,
-    version: number,
-): readonly FieldSpec[] {
-    const spec = getClauseSpec(clauseId, version);
+export function catalogFieldsOfClause(clauseKey: string): readonly FieldSpec[] {
+    const spec = getClauseSpec(clauseKey);
     if (!spec) return [];
-    const fills = new Set(clauseCatalogFills(clauseId, version));
+    const fills = new Set(clauseCatalogFills(clauseKey));
     return spec.fields.filter((f) => fills.has(f.name));
 }

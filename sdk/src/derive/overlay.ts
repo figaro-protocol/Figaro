@@ -39,7 +39,6 @@ import type { Hex, Address } from "../types.js";
 import type { ResolutionUniverse, UniverseAttestationEvent } from "../events.js";
 import type { SpecSource, ProjectionSpecView } from "../projection.js";
 import { decodeContentFromSpec } from "../clauses/index.js";
-import { computeClauseKey } from "../discovery.js";
 import { PROVENANCE_LEAF_KEY, decodeProvenanceContent } from "../agreement.js";
 
 // ── Input: an attestation with caller-recovered content ─────────────────────
@@ -78,8 +77,8 @@ export interface OverlayGraph {
     boundary: "protocol-derived";
     /** The attestation's on-chain clause key — the opaque grouping key. */
     clauseKey: Hex;
-    /** The resolved spec view, when the SpecSource holds a spec whose
-     *  `computeClauseKey(clauseId, version)` matches — the consumer's window
+    /** The resolved spec view, when the SpecSource holds the spec this key
+     *  names (`specs.get(clauseKey)`) — the consumer's window
      *  for routing by declared field and format. `null` = unresolved family:
      *  entries stay fingerprint-only. */
     spec: ProjectionSpecView | null;
@@ -105,12 +104,7 @@ export function extractOverlays(
     records: readonly RecoveredAttestation[],
     specs: SpecSource,
 ): OverlayGraph[] {
-    // The one place spec identity meets the opaque key: every loaded spec's
-    // on-chain key, computed — never a name comparison on the event side.
-    const specByKey = new Map<Hex, ProjectionSpecView>();
-    for (const view of specs.list()) {
-        specByKey.set(computeClauseKey(view.clauseId, view.version), view);
-    }
+    // The event names the clause key; the source reads the spec by it.
 
     const graphs = new Map<Hex, OverlayGraph>();
     for (const { event, content } of records) {
@@ -120,7 +114,7 @@ export function extractOverlays(
             graph = {
                 boundary: "protocol-derived",
                 clauseKey: event.clauseId,
-                spec: provenanceLeaf ? null : (specByKey.get(event.clauseId) ?? null),
+                spec: provenanceLeaf ? null : (specs.get(event.clauseId) ?? null),
                 provenanceLeaf,
                 entries: [],
             };

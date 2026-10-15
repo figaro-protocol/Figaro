@@ -24,9 +24,9 @@ contract BatchGasCeilingTest is FigaroBatchVerifierTest {
     // Each is a CEILING on the cold execution marginal measured below on
     // this pre-fork EVM (`foundry.toml`, cancun; the default profile, whose
     // figures stand a little above the via-IR profile's): a payout position
-    // 26,335, a deposit position 10,901, an attestation event 3,855, a spec
-    // binding 2,780, an accrual 92,766, a usage seller 3,055, the fixed
-    // execution 51,911. The live chain is past Glamsterdam, which reprices
+    // 26,335, a deposit position 10,901, an attestation event 3,925, a spec
+    // binding 2,841, an accrual 91,982, a usage seller 3,055, the fixed
+    // execution 52,089. The live chain is past Glamsterdam, which reprices
     // state creation (EIP-8037) and refunds (EIP-7778): FigaroCore's
     // resolve measured 29,800 an order on post-fork receipts against 11,960
     // here. So each constant carries an allowance over its measurement —
@@ -144,10 +144,10 @@ contract BatchGasCeilingTest is FigaroBatchVerifierTest {
         ev.specBindings = new FigaroBatchVerifier.SpecBinding[](n);
         vm.deal(address(this), n * DEPOSIT);
         for (uint256 i = 0; i < n; i++) {
-            string memory id = string(abi.encodePacked("gas-clause-", vm.toString(seed + i)));
-            bytes32 specHash = keccak256(abi.encode("spec", seed, i));
-            registry.registerClause{value: DEPOSIT}(id, 1, specHash, "ipfs://gas");
-            ev.specBindings[i] = FigaroBatchVerifier.SpecBinding(keccak256(abi.encode(id, uint64(1))), specHash);
+            // The key is keccak256 of the spec's bytes, so a binding carries it twice.
+            bytes32 clauseKey = keccak256(abi.encodePacked("gas-clause-spec-", vm.toString(seed + i)));
+            registry.registerClause{value: DEPOSIT}(clauseKey, "ipfs://gas");
+            ev.specBindings[i] = FigaroBatchVerifier.SpecBinding(clauseKey, clauseKey);
         }
     }
 
@@ -157,8 +157,9 @@ contract BatchGasCeilingTest is FigaroBatchVerifierTest {
         u.provenanceLeaf = PROVENANCE_LEAF;
         u.accruals = new IUsageCounter.BatchAccrual[](n);
         for (uint256 i = 0; i < n; i++) {
-            u.accruals[i] =
-                IUsageCounter.BatchAccrual(keccak256(abi.encode("accrual-key", seed, i)), uint64(i + 1), uint64(i + 1));
+            u.accruals[i] = IUsageCounter.BatchAccrual(
+                keccak256(abi.encode("accrual-key", seed, i)), 0, uint64(i + 1), uint64(i + 1)
+            );
         }
         u.sellers = new address[](1);
         u.sellers[0] = seller;
@@ -170,7 +171,7 @@ contract BatchGasCeilingTest is FigaroBatchVerifierTest {
         u.period = counter.currentPeriod();
         u.provenanceLeaf = PROVENANCE_LEAF;
         u.accruals = new IUsageCounter.BatchAccrual[](1);
-        u.accruals[0] = IUsageCounter.BatchAccrual(keccak256(abi.encode("sellers-key", seed)), 1, 1);
+        u.accruals[0] = IUsageCounter.BatchAccrual(keccak256(abi.encode("sellers-key", seed)), 0, 1, 1);
         u.sellers = new address[](n);
         for (uint256 i = 0; i < n; i++) {
             address who = address(uint160(seed + i));

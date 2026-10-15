@@ -1,4 +1,4 @@
-use crate::types::{KernelStateSnapshot, ProcessState};
+use crate::types::{KernelStateSnapshot, ProcessState, UsageAccrualKey};
 use alloy_primitives::{Address, B256, U256, keccak256};
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -14,16 +14,17 @@ pub struct KernelState {
     pub processes: BTreeMap<B256, ProcessState>,
     pub order_status: BTreeMap<B256, u8>,
     pub order_process_id: BTreeMap<B256, B256>,
-    /// (clauseOrAssembly, processId) already counted for RPGF on the batch path.
-    /// Under the root because idempotence is guest-owned — see
+    /// (kind, clauseOrAssembly, processId) already counted for designer rewards on the
+    /// batch path. Under the root because idempotence is guest-owned — see
     /// `KernelStateSnapshot`.
-    pub usage_counted: BTreeSet<(B256, B256)>,
-    /// (clauseOrAssembly, period, seller) — breadth counts distinct staked
-    /// sellers per period (the stake itself is checked
-    /// on-chain against the declared seller list).
-    pub usage_seller_seen: BTreeSet<(B256, u8, Address)>,
-    /// (clauseOrAssembly, period) → (c, d), the running batch-path accrual.
-    pub usage_accrual: BTreeMap<(B256, u8), (u64, u64)>,
+    pub usage_counted: BTreeSet<(u8, B256, B256)>,
+    /// (kind, clauseOrAssembly, period, seller) — breadth counts distinct
+    /// staked sellers per period (the stake itself is checked on-chain
+    /// against the declared seller list).
+    pub usage_seller_seen: BTreeSet<(u8, B256, u8, Address)>,
+    /// (kind, clauseOrAssembly, period) → (c, d), the running batch-path
+    /// accrual.
+    pub usage_accrual: BTreeMap<UsageAccrualKey, (u64, u64)>,
 }
 
 impl KernelState {
@@ -87,26 +88,30 @@ impl KernelState {
 
     /// Hash the three usage maps into one word. Each section is
     /// length-prefixed so the concatenation cannot be re-split — the
-    /// records are 64, 53 and 49 bytes wide, which without the prefixes
-    /// would admit collisions between different splits.
+    /// entries are 65, 54 and 50 bytes wide, which without the prefixes
+    /// would admit collisions between different splits. Every entry
+    /// leads with its kind byte.
     fn hash_usage(&self) -> B256 {
         let mut data = Vec::new();
 
         data.extend_from_slice(&(self.usage_counted.len() as u64).to_be_bytes());
-        for (clause_or_assembly, process_id) in &self.usage_counted {
+        for (kind, clause_or_assembly, process_id) in &self.usage_counted {
+            data.push(*kind);
             data.extend_from_slice(clause_or_assembly.as_slice());
             data.extend_from_slice(process_id.as_slice());
         }
 
         data.extend_from_slice(&(self.usage_seller_seen.len() as u64).to_be_bytes());
-        for (clause_or_assembly, period, seller) in &self.usage_seller_seen {
+        for (kind, clause_or_assembly, period, seller) in &self.usage_seller_seen {
+            data.push(*kind);
             data.extend_from_slice(clause_or_assembly.as_slice());
             data.push(*period);
             data.extend_from_slice(seller.as_slice());
         }
 
         data.extend_from_slice(&(self.usage_accrual.len() as u64).to_be_bytes());
-        for ((clause_or_assembly, period), (c, d)) in &self.usage_accrual {
+        for ((kind, clause_or_assembly, period), (c, d)) in &self.usage_accrual {
+            data.push(*kind);
             data.extend_from_slice(clause_or_assembly.as_slice());
             data.push(*period);
             data.extend_from_slice(&c.to_be_bytes());

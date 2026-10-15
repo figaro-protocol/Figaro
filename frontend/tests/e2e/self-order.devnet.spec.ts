@@ -29,9 +29,17 @@ import {
     seedRegisteredMember,
     memberProfileBindings,
     waitForConnected,
+    keyOf,
+    primeRegisteredClauseSpecs,
 } from './devnet-helpers';
 import { ANVIL_KEYS } from '../anvilAccounts';
 import { CORE_ABI } from '@/lib/kernel/contracts';
+
+// Clause keys are located by the names their specs carry (`keyOf`), over
+// the specs the chain registered — primed once per file.
+test.beforeAll(async () => {
+    await primeRegisteredClauseSpecs();
+});
 
 const RPC_URL = 'http://127.0.0.1:8545';
 const LOCAL_ANVIL = defineChain({
@@ -125,9 +133,9 @@ test.describe('A wallet orders from its own listing (buyer == seller, devnet)', 
         await page.getByTestId('btn-review-order').click();
 
         await page.getByTestId('checkout-view').waitFor({ timeout: 20_000 });
-        await page.locator('[data-testid^="checkout-field-"][data-testid$="-figaro-modalities-modality-consume-onsite"]').first().check();
-        await page.locator('[data-testid^="checkout-field-"][data-testid$="-figaro-geolocation-origin"]').first().fill('9q8yyk');
-        await page.locator('[data-testid^="checkout-field-"][data-testid$="-figaro-geolocation-destination"]').first().fill('9q8yyk');
+        await page.locator(`[data-testid^="checkout-field-"][data-testid$="-${keyOf('figaro-modalities')}-modality-consume-onsite"]`).first().check();
+        await page.locator(`[data-testid^="checkout-field-"][data-testid$="-${keyOf('figaro-geolocation')}-origin"]`).first().fill('9q8yyk');
+        await page.locator(`[data-testid^="checkout-field-"][data-testid$="-${keyOf('figaro-geolocation')}-destination"]`).first().fill('9q8yyk');
         const place = page.getByTestId('btn-place-order');
         await expect(place, 'connected + ready → "Place order"').toHaveText(/Place order/, { timeout: 20_000 });
         await place.click();

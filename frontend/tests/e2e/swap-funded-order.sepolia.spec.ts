@@ -30,11 +30,17 @@ import { createPublicClient, createWalletClient, formatUnits, http, parseAbi, pa
 import { privateKeyToAccount } from 'viem/accounts';
 import { calculateBonds, MEMBERS_REGISTRY_ABI } from '@figaro-protocol/sdk';
 import { CORE_ABI, ERC20_ABI } from '@/lib/kernel/contracts';
-import { E2E_CHAIN, LOCAL_ANVIL, RPC_URL, readLocalDeploymentConfig, scanContractEvents, waitForConnected } from './devnet-helpers';
+import { E2E_CHAIN, LOCAL_ANVIL, RPC_URL, readLocalDeploymentConfig, scanContractEvents, waitForConnected, keyOf, primeRegisteredClauseSpecs } from './devnet-helpers';
 import { attachLocalSigner } from './local-signer';
 import { gotoAsWallet } from './devnet-multi-test';
 import { ITEM_PRICE, smokeKeys, smokeProfileDir } from './live-order-shared';
 import { ANVIL_KEYS } from '../anvilAccounts';
+
+// Clause keys are located by the names their specs carry (`keyOf`), over
+// the specs the chain registered — primed once per file.
+test.beforeAll(async () => {
+    await primeRegisteredClauseSpecs();
+});
 
 const WETH9_ABI = parseAbi(['function deposit() payable', 'function WETH9() view returns (address)']);
 const MINT_ABI = parseAbi(['function mint(address to, uint256 amount) external']);
@@ -179,9 +185,9 @@ test.describe('SWAP-FUNDED ORDER — the on-ramp through the real venue, traded 
             await page.getByTestId('checkout-view').waitFor({ timeout: 60_000 });
             // The pos assembly's buyer-authored fields, as the smoke fills them
             // (the fields are the clauses' declared inputs, rendered from the spec).
-            await page.locator('[data-testid^="checkout-field-"][data-testid$="-figaro-modalities-modality-consume-onsite"]').first().check();
-            await page.locator('[data-testid^="checkout-field-"][data-testid$="-figaro-geolocation-origin"]').first().fill('9q8yyk');
-            await page.locator('[data-testid^="checkout-field-"][data-testid$="-figaro-geolocation-destination"]').first().fill('9q8yyk');
+            await page.locator(`[data-testid^="checkout-field-"][data-testid$="-${keyOf('figaro-modalities')}-modality-consume-onsite"]`).first().check();
+            await page.locator(`[data-testid^="checkout-field-"][data-testid$="-${keyOf('figaro-geolocation')}-origin"]`).first().fill('9q8yyk');
+            await page.locator(`[data-testid^="checkout-field-"][data-testid$="-${keyOf('figaro-geolocation')}-destination"]`).first().fill('9q8yyk');
             // The on-ramp: the seller accepts the funding token, the buyer lacks
             // the denomination — the panel offers it. Pick it, authorize Permit2.
             const option = page.getByTestId(`funding-token-option-${fundingToken.toLowerCase()}`);

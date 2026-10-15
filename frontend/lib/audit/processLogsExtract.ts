@@ -21,7 +21,7 @@
 import type { Order } from "@/lib/kernel/store";
 import type { AttestationRecord } from "@/lib/composition/indexer";
 import type { ExtractedDocument } from "./types";
-import { clauseIsProcessLog, clauseWitnessStages, getClauseSpec, clauseIdForHash } from "@/lib/shared/clauseSpecSource";
+import { clauseIsProcessLog, clauseWitnessStages, getClauseSpec } from "@/lib/shared/clauseSpecSource";
 
 interface ProcessLogEntry {
     clauseKey: string;
@@ -40,16 +40,11 @@ interface ProcessLogEntry {
 }
 
 /** One process clause's event timeline — the per-clause group the PDF
- *  renders as its own section. One group per registration: two versions of
- *  one name are two clauses. */
+ *  renders as its own section. One group per clause key: two specs that
+ *  share a name are two clauses. */
 interface ProcessLogGroup {
-    /** The on-chain clause hash the attestations carry —
-     *  keccak256(abi.encode(clauseId, version)). */
-    clauseHash: string;
-    /** Readable clauseId of the process clause. */
-    clauseId: string;
-    /** The registered version the clause hash names. */
-    version: number;
+    /** The clause key the attestations carry (lower-cased). */
+    clauseKey: string;
     /** Display title — the registered spec's title (the network-defined
      *  label). */
     title: string;
@@ -72,33 +67,24 @@ export function extractProcessLogs(
 
     for (const att of attestations) {
         if (att.orderHash !== order.orderHash) continue;
-        // Attestation events carry the clause HASH, which names one
-        // registration (clauseId, version); the spec reads key on that
-        // identity. A hash whose spec is not loaded resolves to nothing and
-        // is skipped until the cache warms.
-        const identity = clauseIdForHash(att.clauseId);
-        if (!identity) continue;
-        const { clauseId, version } = identity;
+        // Attestation events carry the clause KEY; the spec reads key on it.
+        // A key whose spec is not loaded is skipped until the cache warms.
+        const clauseKey = att.clauseId.toLowerCase();
+        const spec = getClauseSpec(clauseKey);
+        if (!spec) continue;
         // Two runtime-evidence shapes share this timeline: process-log LADDERS
         // (attestations article) and declared WITNESS stages (spec.stages[N] —
         // a temperature reading, measured grams, a detected band). Both are
         // spec-declared; neither is named here.
-        const isWitness = clauseWitnessStages(clauseId, version).some((w) => w.stage === att.stage);
-        if (!clauseIsProcessLog(clauseId, version) && !isWitness) continue;
-        const clauseHash = att.clauseId.toLowerCase();
-        let group = groups.get(clauseHash);
+        const isWitness = clauseWitnessStages(clauseKey).some((w) => w.stage === att.stage);
+        if (!clauseIsProcessLog(clauseKey) && !isWitness) continue;
+        let group = groups.get(clauseKey);
         if (!group) {
-            group = {
-                clauseHash,
-                clauseId,
-                version,
-                title: getClauseSpec(clauseId, version)?.title ?? clauseId,
-                events: [],
-            };
-            groups.set(clauseHash, group);
+            group = { clauseKey, title: spec.title, events: [] };
+            groups.set(clauseKey, group);
         }
         group.events.push({
-            clauseKey: clauseId,
+            clauseKey,
             attester: att.attester,
             stage: att.stage,
             contentRef: att.contentRef,

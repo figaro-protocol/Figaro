@@ -43,7 +43,13 @@ import {
 import { buildOrderAgreement, buildAssemblyTemplate, serializeAssemblyTemplate } from "@figaro-protocol/sdk";
 import { canonicalize } from "@/lib/shared/canonicalJson";
 import { specSource } from "@/lib/shared/clauseSpecSource";
-import { primeClauseSpecs } from "./primeClauseSpecs";
+import { primeClauseSpecs, resolveAuthored } from "./primeClauseSpecs";
+
+/** A clause map authored by NAME, resolved to clause keys over `clauses/` —
+ *  the seeding's resolution (`resolveAuthoredClauseKeys`); the inputs below
+ *  stay legible while every hashed byte carries keys. */
+const byKey = (authored: Record<string, Record<string, unknown>>): Record<`0x${string}`, Record<string, unknown>> =>
+    resolveAuthored({ agreements: [], assemblyClauses: authored }).assemblyClauses as Record<`0x${string}`, Record<string, unknown>>;
 
 const HARVEST = process.env.HARVEST_GOLDEN_VECTORS === "1";
 // Vitest cwd = frontend/; the fixture is shared with sdk/tests.
@@ -75,16 +81,16 @@ function commerceData() {
  *  (applicable-law), and the process-log empty-anchor skip (merchant-process). */
 function projectionCases() {
     return {
-        defaults: buildOrderAgreement(BUYER, SELLER, {
+        defaults: buildOrderAgreement(BUYER, SELLER, byKey({
             "figaro-commerce": commerceData(),
             "figaro-topology": { parentOrderHashes: [] },
             "figaro-applicable-law": { applicableLaw: "US-NY" },
-        }, specSource()),
-        processLog: buildOrderAgreement(BUYER, SELLER, {
+        }), specSource()),
+        processLog: buildOrderAgreement(BUYER, SELLER, byKey({
             "figaro-commerce": commerceData(),
             "figaro-topology": { parentOrderHashes: [] },
             "figaro-merchant-process": {},
-        }, specSource()),
+        }), specSource()),
     };
 }
 
@@ -103,7 +109,7 @@ function templateCase() {
             name: "Golden Vector Chain",
             orders,
             clausesByOrderId: {},
-            assemblyClauses: { "figaro-applicable-law": { applicableLaw: "US-NY" } },
+            assemblyClauses: byKey({ "figaro-applicable-law": { applicableLaw: "US-NY" } }),
             specs: specSource(),
         }),
     );

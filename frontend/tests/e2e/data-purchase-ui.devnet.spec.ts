@@ -45,6 +45,8 @@ import {
     waitForConnected,
     LOCAL_ANVIL,
     RPC_URL,
+    keyOf,
+    primeRegisteredClauseSpecs,
 } from './devnet-helpers';
 import { ANVIL_KEYS } from '../anvilAccounts';
 import { CORE_ABI } from '@/lib/kernel/contracts';
@@ -59,8 +61,15 @@ const DATA_SELLER = ANVIL_ACCOUNTS[32] as Hex;
 // prices. The license terms are the record owner's offer, written on the item
 // and folded into the agreement at checkout.
 const MEMBER = { name: 'Skyline Data', specialty: 'survey flights; survey records licensed onward', geohash: '9q8yyk8yu' } as const;
-const RECORD_CLAUSE = 'figaro-geolocation';
-const LICENSE_CLAUSE = 'figaro-data-license';
+let RECORD_CLAUSE: Hex;
+let LICENSE_CLAUSE: Hex;
+test.beforeAll(async () => {
+    // Clause KEYS, located by the names their specs carry over the specs the
+    // chain registered — never a hardcoded key.
+    await primeRegisteredClauseSpecs();
+    RECORD_CLAUSE = keyOf('figaro-geolocation');
+    LICENSE_CLAUSE = keyOf('figaro-data-license');
+});
 const LICENSE = {
     licenseScope: 'Aerial-survey flight records, rolling stream',
     purpose: 'Route analytics',
@@ -85,8 +94,8 @@ const PRODUCTS = [
 interface PublishedDataMember {
     bindings: string[];
     subscriptions: string[];
-    offered: Array<{ compositionHash: string; clauseId: string; posture: string }>;
-    items: Array<{ id: string; name: string; price: string; dataSold?: { compositionHash: string; clauseId: string; posture: string };
+    offered: Array<{ compositionHash: string; clauseKey: string; posture: string }>;
+    items: Array<{ id: string; name: string; price: string; dataSold?: { compositionHash: string; clauseKey: string; posture: string };
         clauseValues?: Record<string, Record<string, unknown>> }>;
 }
 
@@ -102,7 +111,7 @@ async function readPublishedDataMember(): Promise<PublishedDataMember | null> {
     return {
         bindings: ((profile.assemblyBindings ?? []) as Array<{ assemblySlug: string }>).map((b) => b.assemblySlug),
         subscriptions: ((profile.buyerAssemblies ?? []) as Array<{ compositionHash: string }>).map((s) => s.compositionHash),
-        offered: ((profile.disclosurePolicy ?? []) as Array<{ compositionHash: string; clauseId: string; posture: string; offered: boolean }>)
+        offered: ((profile.disclosurePolicy ?? []) as Array<{ compositionHash: string; clauseKey: string; posture: string; offered: boolean }>)
             .filter((e) => e.offered),
         items: (catalog.items ?? []) as PublishedDataMember['items'],
     };
@@ -115,9 +124,9 @@ async function readPublishedDataMember(): Promise<PublishedDataMember | null> {
 function isTheDataMember(p: PublishedDataMember | null, surveyHash: string, surveySlug: string, streamSlug: string): boolean {
     if (!p) return false;
     const offers = (posture: string) => p.offered.some((e) =>
-        e.compositionHash === surveyHash && e.clauseId === RECORD_CLAUSE && e.posture === posture);
+        e.compositionHash === surveyHash && e.clauseKey.toLowerCase() === RECORD_CLAUSE && e.posture === posture);
     const priced = (posture: string, scope: string) => p.items.some((i) =>
-        i.dataSold?.compositionHash === surveyHash && i.dataSold.clauseId === RECORD_CLAUSE && i.dataSold.posture === posture
+        i.dataSold?.compositionHash === surveyHash && i.dataSold.clauseKey.toLowerCase() === RECORD_CLAUSE && i.dataSold.posture === posture
         && i.clauseValues?.[LICENSE_CLAUSE]?.licenseScope === scope);
     return p.bindings.length === 2 && p.bindings.includes(surveySlug) && p.bindings.includes(streamSlug)
         && p.subscriptions.includes(surveyHash)
@@ -240,7 +249,7 @@ async function ensureDataMember(page: Page): Promise<{ streamSlug: string; itemI
     ).toBe(true);
     const published = (await readPublishedDataMember())!;
     const idOf = (posture: 'buyer' | 'seller') => published.items.find((i) =>
-        i.dataSold?.compositionHash === surveyHash && i.dataSold.clauseId === RECORD_CLAUSE && i.dataSold.posture === posture)!.id;
+        i.dataSold?.compositionHash === surveyHash && i.dataSold.clauseKey.toLowerCase() === RECORD_CLAUSE && i.dataSold.posture === posture)!.id;
     return { streamSlug, itemIds: { buyer: idOf('buyer'), seller: idOf('seller') } };
 }
 
@@ -258,7 +267,7 @@ test.describe('Buyer-side data sale through the UI (devnet)', () => {
             publicClient.readContract({ address: token, abi: ERC20_ABI, functionName: 'balanceOf', args: [who] }) as Promise<bigint>;
 
         const { streamSlug, itemIds } = await ensureDataMember(page);
-        const recordClauseId = RECORD_CLAUSE;
+        const recordClauseKey = RECORD_CLAUSE;
 
         // The data seller's bond funding (dedicated index past the mint range).
         {
@@ -288,7 +297,7 @@ test.describe('Buyer-side data sale through the UI (devnet)', () => {
             'the data-for-sale section renders the declared offers',
         ).toBeVisible({ timeout: 30000 });
         await expect(
-            page.getByTestId(`disclosure-data-${recordClauseId}-buyer`),
+            page.getByTestId(`disclosure-data-${recordClauseKey}-buyer`),
             'the buyer-side flight-record data is listed',
         ).toBeVisible();
         await expect(
@@ -307,16 +316,16 @@ test.describe('Buyer-side data sale through the UI (devnet)', () => {
         // The license terms are CATALOG-AUTHORED: checkout renders NO
         // data-license field for the buyer to type into.
         await expect(
-            page.locator('[data-testid^="checkout-field-"][data-testid*="figaro-data-license"]'),
+            page.locator(`[data-testid^="checkout-field-"][data-testid*="${LICENSE_CLAUSE}"]`),
             'license terms are folded from the item, never typed by the buyer',
         ).toHaveCount(0);
 
         // The buyer's transaction particulars: a virtual trade, an access
         // window, encrypted delivery of the access credential.
-        await page.locator('[data-testid^="checkout-field-"][data-testid$="-figaro-modalities-modality-virtual"]').first().check();
-        await page.locator('[data-testid^="checkout-field-"][data-testid$="-figaro-schedule-windowStart"]').first().fill('2026-09-01T09:00');
-        await page.locator('[data-testid^="checkout-field-"][data-testid$="-figaro-schedule-windowEnd"]').first().fill('2026-10-01T09:00');
-        await page.locator('[data-testid^="checkout-field-"][data-testid$="-figaro-content-handoff-contentHandoff-encrypted-transfer"]').first().check();
+        await page.locator(`[data-testid^="checkout-field-"][data-testid$="-${keyOf('figaro-modalities')}-modality-virtual"]`).first().check();
+        await page.locator(`[data-testid^="checkout-field-"][data-testid$="-${keyOf('figaro-schedule')}-windowStart"]`).first().fill('2026-09-01T09:00');
+        await page.locator(`[data-testid^="checkout-field-"][data-testid$="-${keyOf('figaro-schedule')}-windowEnd"]`).first().fill('2026-10-01T09:00');
+        await page.locator(`[data-testid^="checkout-field-"][data-testid$="-${keyOf('figaro-content-handoff')}-contentHandoff-encrypted-transfer"]`).first().check();
 
         const place = page.getByTestId('btn-place-order');
         await place.waitFor({ state: 'visible', timeout: 20000 });
@@ -395,7 +404,7 @@ test.describe('Buyer-side data sale through the UI (devnet)', () => {
         await page.getByTestId('member-detail-view').waitFor({ timeout: 30000 });
         await waitForConnected(page);
         await expect(
-            page.getByTestId(`disclosure-data-${recordClauseId}-seller`),
+            page.getByTestId(`disclosure-data-${recordClauseKey}-seller`),
             'the seller-side data offer is listed',
         ).toBeVisible({ timeout: 30000 });
         await expect(
@@ -414,13 +423,13 @@ test.describe('Buyer-side data sale through the UI (devnet)', () => {
         // delivered under the data-stream assembly.
         await page.getByTestId('select-method').selectOption(streamSlug);
         await expect(
-            page.locator('[data-testid^="checkout-field-"][data-testid*="figaro-data-license"]'),
+            page.locator(`[data-testid^="checkout-field-"][data-testid*="${LICENSE_CLAUSE}"]`),
             'seller-posture license terms are folded from the item too',
         ).toHaveCount(0);
-        await page.locator('[data-testid^="checkout-field-"][data-testid$="-figaro-modalities-modality-virtual"]').first().check();
-        await page.locator('[data-testid^="checkout-field-"][data-testid$="-figaro-schedule-windowStart"]').first().fill('2026-09-01T09:00');
-        await page.locator('[data-testid^="checkout-field-"][data-testid$="-figaro-schedule-windowEnd"]').first().fill('2026-10-01T09:00');
-        await page.locator('[data-testid^="checkout-field-"][data-testid$="-figaro-content-handoff-contentHandoff-encrypted-transfer"]').first().check();
+        await page.locator(`[data-testid^="checkout-field-"][data-testid$="-${keyOf('figaro-modalities')}-modality-virtual"]`).first().check();
+        await page.locator(`[data-testid^="checkout-field-"][data-testid$="-${keyOf('figaro-schedule')}-windowStart"]`).first().fill('2026-09-01T09:00');
+        await page.locator(`[data-testid^="checkout-field-"][data-testid$="-${keyOf('figaro-schedule')}-windowEnd"]`).first().fill('2026-10-01T09:00');
+        await page.locator(`[data-testid^="checkout-field-"][data-testid$="-${keyOf('figaro-content-handoff')}-contentHandoff-encrypted-transfer"]`).first().check();
         const place2 = page.getByTestId('btn-place-order');
         await expect(place2).toHaveText(/Place order/, { timeout: 20000 });
         await place2.click();

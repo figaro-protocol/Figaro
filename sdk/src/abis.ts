@@ -219,22 +219,23 @@ export const UNISWAP_V3_FEE_TIERS = [100, 500, 3000, 10000] as const;
 
 // ── ClauseRegistry ABI ──────────────────────────────────────────────────────
 
+// A clause is its spec: the key is keccak256 of the spec's pinned (canonical)
+// bytes — `computeClauseKey(spec)` — and a reader verifies a fetched spec by
+// hashing the bytes it fetched against the key.
 export const CLAUSE_REGISTRY_ABI = parseAbi([
-    "function registered(bytes32 clauseId) view returns (bool)",
-    "function contentHashOf(bytes32 idHash) view returns (bytes32)",
-    "function registerClause(string clauseId, uint64 version, bytes32 contentHash, string contentURI) external payable",
-    "function withdrawDeposit(bytes32 idHash) external",
+    "function registered(bytes32 clauseKey) view returns (bool)",
+    "function registerClause(bytes32 clauseKey, string contentURI) external payable",
+    "function withdrawDeposit(bytes32 clauseKey) external",
     "function registrationDeposit() view returns (uint256)",
-    "function depositOf(bytes32 idHash) view returns (address registeredBy, bool withdrawn)",
-    "function setMechanismClause(bytes32 idHash) external",
-    "event ClauseRegistered(string clauseId, uint64 version, bytes32 contentHash, string contentURI, address indexed registeredBy)",
-    "event DepositWithdrawn(bytes32 indexed clauseId, address indexed registeredBy, uint256 amount)",
-    "event MechanismClauseSet(address indexed mechanism, bytes32 indexed idHash)",
-    "error AlreadyRegistered(bytes32 clauseId)",
-    "error NotRegistered(bytes32 clauseId)",
-    "error EmptyClauseId()",
+    "function depositOf(bytes32 clauseKey) view returns (address registeredBy, bool withdrawn)",
+    "function setMechanismClause(bytes32 clauseKey) external",
+    "event ClauseRegistered(bytes32 indexed clauseKey, string contentURI, address indexed registeredBy)",
+    "event DepositWithdrawn(bytes32 indexed clauseKey, address indexed registeredBy, uint256 amount)",
+    "event MechanismClauseSet(address indexed mechanism, bytes32 indexed clauseKey)",
+    "error AlreadyRegistered(bytes32 clauseKey)",
+    "error NotRegistered(bytes32 clauseKey)",
+    "error ZeroClauseKey()",
     "error EmptyContentURI()",
-    "error ZeroContentHash()",
     "error WrongDeposit(uint256 provided, uint256 required)",
     "error NotRegisteredBy(address caller, address registeredBy)",
     "error AlreadyWithdrawn()",
@@ -361,18 +362,22 @@ export const USAGE_COUNTER_ABI = parseAbi([
     "function periodClosed(uint8 period) view returns (bool)",
 
     // ── Accrual ─────────────────────────────────────────────────────
-    "function accrualOf(bytes32 clauseOrAssembly, uint8 period) view returns (uint64 c, uint64 d, uint256 score)",
-    "function batchAccrualOf(bytes32 clauseOrAssembly, uint8 period) view returns (uint64 c, uint64 d, uint256 score)",
-    "function scoreOf(bytes32 clauseOrAssembly, uint8 period) view returns (uint256)",
+    // Every accrual is keyed by (kind, key): kind 0 is a clause, 1 an assembly;
+    // the two families never share a slot (UsageCounter.KIND_CLAUSE / KIND_ASSEMBLY).
+    "function KIND_CLAUSE() view returns (uint8)",
+    "function KIND_ASSEMBLY() view returns (uint8)",
+    "function accrualOf(uint8 kind, bytes32 clauseOrAssembly, uint8 period) view returns (uint64 c, uint64 d, uint256 score)",
+    "function batchAccrualOf(uint8 kind, bytes32 clauseOrAssembly, uint8 period) view returns (uint64 c, uint64 d, uint256 score)",
+    "function scoreOf(uint8 kind, bytes32 clauseOrAssembly, uint8 period) view returns (uint256)",
     "function totalScoreIn(uint8 period) view returns (uint256)",
-    "function processCounted(bytes32 clauseOrAssembly, bytes32 processId) view returns (bool)",
-    "function sellerSeen(bytes32 clauseOrAssembly, uint8 period, address seller) view returns (bool)",
+    "function processCounted(uint8 kind, bytes32 clauseOrAssembly, bytes32 processId) view returns (bool)",
+    "function sellerSeen(uint8 kind, bytes32 clauseOrAssembly, uint8 period, address seller) view returns (bool)",
     "function minSellers() view returns (uint64)",
     "function icbrt(uint256 n) pure returns (uint256)",
 
     // ── Events ──────────────────────────────────────────────────────
-    "event UsageRecorded(bytes32 indexed clauseOrAssembly, uint8 indexed period, bytes32 indexed processId, address seller, uint64 c, uint64 d, uint256 score)",
-    "event BatchUsageRecorded(bytes32 indexed clauseOrAssembly, uint8 indexed period, uint64 c, uint64 d, uint256 score)",
+    "event UsageRecorded(uint8 kind, bytes32 indexed clauseOrAssembly, uint8 indexed period, bytes32 indexed processId, address seller, uint64 c, uint64 d, uint256 score)",
+    "event BatchUsageRecorded(uint8 kind, bytes32 indexed clauseOrAssembly, uint8 indexed period, uint64 c, uint64 d, uint256 score)",
 
     // ── Errors ──────────────────────────────────────────────────────
     "error ZeroAddress()",
@@ -395,7 +400,7 @@ export const USAGE_COUNTER_ABI = parseAbi([
 ]);
 
 export const EV_USAGE_RECORDED = parseAbiItem(
-    "event UsageRecorded(bytes32 indexed clauseOrAssembly, uint8 indexed period, bytes32 indexed processId, address seller, uint64 c, uint64 d, uint256 score)",
+    "event UsageRecorded(uint8 kind, bytes32 indexed clauseOrAssembly, uint8 indexed period, bytes32 indexed processId, address seller, uint64 c, uint64 d, uint256 score)",
 );
 
 // ── RpgfMinter ABI ────────────────────────────────────────────────────────
@@ -409,8 +414,11 @@ export const EV_USAGE_RECORDED = parseAbiItem(
 // of record with a LIVE stake.
 
 export const RPGF_MINTER_ABI = parseAbi([
-    "function claim(uint8 periodId, bytes32[] clausesOrAssemblies) external",
-    "function claimable(uint8 periodId, address account, bytes32[] clausesOrAssemblies) view returns (uint256)",
+    // A claim names (kind, key) pairs; the minter reads only the registry each kind names.
+    "function KIND_CLAUSE() view returns (uint8)",
+    "function KIND_ASSEMBLY() view returns (uint8)",
+    "function claim(uint8 periodId, (uint8 kind, bytes32 key)[] clausesOrAssemblies) external",
+    "function claimable(uint8 periodId, address account, (uint8 kind, bytes32 key)[] clausesOrAssemblies) view returns (uint256)",
     "function periodAmount(uint256) view returns (uint256)",
     "function periodCount() view returns (uint256)",
     "function minted(uint8 periodId) view returns (uint256)",
@@ -426,8 +434,9 @@ export const RPGF_MINTER_ABI = parseAbi([
     "error PeriodStillAccruing(uint8 periodId)",
     "error AlreadyClaimed(uint8 periodId, address account)",
     "error NoClausesOrAssemblies()",
-    "error DuplicateClauseOrAssembly(bytes32 clauseOrAssembly)",
-    "error NotAuthorOfRecord(bytes32 clauseOrAssembly, address caller)",
+    "error DuplicateClauseOrAssembly(uint8 kind, bytes32 clauseOrAssembly)",
+    "error NotAuthorOfRecord(uint8 kind, bytes32 clauseOrAssembly, address caller)",
+    "error UnknownKind(uint8 kind)",
     "error NothingToClaim()",
     "error PeriodBudgetExceeded(uint8 periodId)",
 ]);
@@ -435,15 +444,17 @@ export const RPGF_MINTER_ABI = parseAbi([
 // ── FigaroBatchVerifier ABI ──────────────────────────────────────────────────
 // The batch-resolution verifier (proof-based scaling). settleBatch carries the
 // proof, the 8-word public values, net positions, the event data — the
-// attestations to re-emit plus the (clause key → witness-spec hash) bindings
-// the contract checks against ClauseRegistry.contentHashOf before resolving —
-// and the RPGF usage accrual, which it forwards to UsageCounter. A batch that
+// attestations to re-emit plus the (clause key, witness-spec hash) bindings —
+// the key IS the spec hash, so the contract requires the two equal and the key
+// registered on ClauseRegistry before resolving — and the RPGF usage accrual,
+// each entry naming its kind (clause 0, assembly 1), which it forwards to
+// UsageCounter. A batch that
 // credits no usage passes empty arrays; that call is a no-op, which is what
 // lets trade keep resolving after the reward's last period closes.
 
 export const BATCH_VERIFIER_ABI = parseAbi([
     // ── Batch resolution ────────────────────────────────────────────
-    "function settleBatch(bytes proof, bytes publicValues, (address token, address user, uint256 deposit, uint256 payout)[] positions, ((bytes32 orderHash, bytes32 processId, address attester, bytes32 clauseId, uint8 stage, bytes32 contentRef)[] attestations, (bytes32 clauseId, bytes32 specHash)[] specBindings) events, (uint8 period, bytes32 provenanceLeaf, (bytes32 clauseOrAssembly, uint64 c, uint64 d)[] accruals, address[] sellers) usage) external",
+    "function settleBatch(bytes proof, bytes publicValues, (address token, address user, uint256 deposit, uint256 payout)[] positions, ((bytes32 orderHash, bytes32 processId, address attester, bytes32 clauseId, uint8 stage, bytes32 contentRef)[] attestations, (bytes32 clauseId, bytes32 specHash)[] specBindings) events, (uint8 period, bytes32 provenanceLeaf, (bytes32 clauseOrAssembly, uint8 kind, uint64 c, uint64 d)[] accruals, address[] sellers) usage) external",
 
     // ── Views ────────────────────────────────────────────────────────
     "function stateRoot() view returns (bytes32)",
@@ -466,6 +477,7 @@ export const BATCH_VERIFIER_ABI = parseAbi([
     "error AttestationHashMismatch()",
     "error SpecBindingsHashMismatch()",
     "error UsageAccrualHashMismatch()",
-    "error SpecBindingMismatch(bytes32 clauseId, bytes32 anchored, bytes32 proven)",
+    "error SpecBindingMismatch(bytes32 clauseId, bytes32 proven)",
+    "error ClauseNotRegistered(bytes32 clauseId)",
     "error FeeOnTransferDetected()",
 ]);

@@ -53,7 +53,8 @@ import "../src/core/verifier/FigaroBatchVerifier.sol";
 ///      off-chain SDK / read-time concern. The BATCHED path proves content
 ///      against the registered spec in-proof (the prover's generic engine
 ///      takes the spec as witness input) and `FigaroBatchVerifier` resolves
-///      only if the spec hash matches `ClauseRegistry.contentHashOf`. Any
+///      only if the spec hash is the clause key and `ClauseRegistry.registered`
+///      holds it. Any
 ///      registered clause is attestable — and batch-resolvable — with no
 ///      per-clause on-chain code.
 ///
@@ -168,8 +169,8 @@ contract DeployMainnet is Script {
         // Clauses are NOT registered here. Their content is pinned to IPFS +
         // anchored on ClauseRegistry by frontend/scripts/populate-clauses.mjs —
         // the single clause-population path for prod/testnet/mainnet, so each
-        // on-chain (contentHash, metadataURI) points at a REAL pinned spec, not a
-        // placeholder hash. There is no per-clause on-chain validator to bind:
+        // on-chain (clauseKey, contentURI) points at a REAL pinned spec whose
+        // bytes hash to the key, not a placeholder. There is no per-clause on-chain validator to bind:
         // the chain merkle-binds and content-hash-binds attestations and does not
         // validate content shape. Run populate-clauses.mjs after broadcast.
 
@@ -206,9 +207,9 @@ contract DeployMainnet is Script {
         // `SP1_VKEY_ONLY=1 cargo run -p figaro-prove-test --release`.
         // The genesis root is DERIVED (one keccak256("") per mirror state
         // map), matching the Rust KernelState::compute_root on the empty
-        // state. ClauseRegistry anchors the witness specs: settleBatch
-        // checks each proof's (clause key → spec hash) binding against
-        // contentHashOf. Not a florin minter, never will be.
+        // state. ClauseRegistry anchors the witness specs: the clause key IS
+        // the spec hash, so settleBatch requires each proof's binding to carry
+        // one word twice and the key registered. Not a florin minter, never will be.
         require(vm.envAddress("SP1_VERIFIER_GATEWAY") != address(0), "SP1_VERIFIER_GATEWAY not set");
         require(vm.envBytes32("SP1_PROGRAM_VKEY") != bytes32(0), "SP1_PROGRAM_VKEY not set");
 

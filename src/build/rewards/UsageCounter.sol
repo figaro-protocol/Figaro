@@ -25,7 +25,7 @@ interface IMemberStake {
 ///         un-withdrawn; the binding survives withdrawal, so `registeredBy != 0`
 ///         alone is not liveness.
 interface IClauseStake {
-    function depositOf(bytes32 idHash) external view returns (address registeredBy, bool withdrawn);
+    function depositOf(bytes32 clauseKey) external view returns (address registeredBy, bool withdrawn);
 }
 
 /// @notice The AssemblyRegistry field the clause-or-assembly-side gate reads — the
@@ -105,9 +105,10 @@ contract UsageCounter {
     ///         `totalScoreIn` at gas cost, diluting every honest author. Neither
     ///         read is registry PRIOR KNOWLEDGE: both accept ANY live-staked
     ///         key, derived from the live registry, never a hardcoded set. A
-    ///         `clauseOrAssembly` is a clause idHash OR an assembly
-    ///         compositionHash; both registries are consulted because the
-    ///         families are parallel.
+    ///         `clauseOrAssembly` is a clause key OR an assembly
+    ///         compositionHash, and every count names which by its KIND
+    ///         (`KIND_CLAUSE`, `KIND_ASSEMBLY`): a clause-kind count reads
+    ///         `clauses` only, an assembly-kind count `assemblies` only.
     IClauseStake public immutable clauses;
     IAssemblyStake public immutable assemblies;
 
@@ -133,17 +134,28 @@ contract UsageCounter {
     ///         whenever the program changes.
     address public immutable batchVerifier;
 
+    /// @notice The kind of a CLAUSE count: its key is a `ClauseRegistry` clause key.
+    /// @dev    The two families are kept apart by kind, never by the bytes of a
+    ///         key: nothing on chain can tell a clause key from a compositionHash,
+    ///         and each registry takes any bytes32, so a wallet can stake one
+    ///         family's key in the other's registry. Every accrual, count and
+    ///         score is therefore keyed by (kind, key), and each kind's gate
+    ///         reads its own registry only — a stake in one family never earns
+    ///         the other family's accrual at the same bytes.
+    uint8 public constant KIND_CLAUSE = 0;
+    /// @notice The kind of an ASSEMBLY count: its key is an `AssemblyRegistry`
+    ///         compositionHash.
+    uint8 public constant KIND_ASSEMBLY = 1;
+
     /// @notice The key of the agreement format's reserved PROVENANCE leaf —
     ///         the leaf whose committed section names the assembly a process
     ///         instantiated. `keccak256("figaro-agreement-provenance")`.
     /// @dev    The link from a resolved process to its assembly is a fact of the
     ///         agreement FORMAT, never a clause: the key is a constant derived
     ///         from the format's own label, it is registered nowhere and earns
-    ///         nothing. Its preimage is a plain string, while a registered
-    ///         clause key is `keccak256(abi.encode(name, uint64 version))`, so
-    ///         the two shapes never meet — no clause registration can land on
-    ///         this key, and the clause-or-assembly stake gate refuses it on
-    ///         both paths. The leaf's section bytes are exactly
+    ///         nothing. Both registries take a key as given, so a wallet can
+    ///         stake this key in either; `_accrue` and the batch path refuse it
+    ///         whatever any registry holds. The leaf's section bytes are exactly
     ///         `{"compositionHash":"0x<64 lowercase hex>"}`, reproduced here
     ///         from the assembly claimed (`recordAssemblyUsage`). A
     ///         compositionHash is never itself a leaf key, so an assembly is
@@ -191,11 +203,12 @@ contract UsageCounter {
         uint256 score;
     }
 
-    /// @notice clause or assembly key → period → accrual. The clause or assembly key is the
-    ///         `ClauseRegistry` idHash for a clause, or the `AssemblyRegistry`
-    ///         compositionHash for an assembly — the same identity each family's
-    ///         own anchor uses, never a new identifier.
-    mapping(bytes32 => mapping(uint8 => Accrual)) public accrualOf;
+    /// @notice kind → clause or assembly key → period → accrual. The key is the
+    ///         `ClauseRegistry` clause key under `KIND_CLAUSE`, or the
+    ///         `AssemblyRegistry` compositionHash under `KIND_ASSEMBLY` — the
+    ///         same identity each family's own anchor uses, never a new
+    ///         identifier.
+    mapping(uint8 => mapping(bytes32 => mapping(uint8 => Accrual))) public accrualOf;
 
     /// @notice The same accrual for trade resolved through `FigaroBatchVerifier`
     ///         — kept in a SEPARATE slot, never merged into `accrualOf`.
@@ -219,14 +232,14 @@ contract UsageCounter {
     ///         batch-resolved process never acquires FigaroCore status, and a
     ///         FigaroCore-resolved one is never in a batch), so no PROCESS is ever
     ///         counted on both sides.
-    mapping(bytes32 => mapping(uint8 => Accrual)) public batchAccrualOf;
+    mapping(uint8 => mapping(bytes32 => mapping(uint8 => Accrual))) public batchAccrualOf;
 
     /// @notice period → summed score of every clause or assembly in it, across BOTH
     ///         resolution paths. A consumer paying pro rata divides by this; it
     ///         is final once the period ends.
     mapping(uint8 => uint256) public totalScoreIn;
 
-    /// @notice clause or assembly → processId → already counted. Idempotence is GLOBAL, not
+    /// @notice kind → clause or assembly → processId → already counted. Idempotence is GLOBAL, not
     ///         per period: a resolved process counts ONCE EVER toward a clause or assembly,
     ///         in whichever period it is first recorded.
     /// @dev    Why not per period. A resolved order stays
@@ -242,9 +255,9 @@ contract UsageCounter {
     ///         every later period at record-gas only. Counting once ever makes
     ///         each period pay for usage that is NEW to it, which is what a
     ///         fixed per-period budget schedule assumes.
-    mapping(bytes32 => mapping(bytes32 => bool)) public processCounted;
+    mapping(uint8 => mapping(bytes32 => mapping(bytes32 => bool))) public processCounted;
 
-    /// @notice clause or assembly → period → seller → has this seller already contributed
+    /// @notice kind → clause or assembly → period → seller → has this seller already contributed
     ///         to `d` in this period. Its only job is the distinct-staked-seller
     ///         count.
     /// @dev    Breadth does not count (buyer, seller) PAIRS. Pairs are
@@ -262,11 +275,12 @@ contract UsageCounter {
     ///         the shape of the score: no scoring function can separate a
     ///         fabricated counterparty from a genuine one, so the score weights
     ///         only what the stake has priced.
-    mapping(bytes32 => mapping(uint8 => mapping(address => bool))) public sellerSeen;
+    mapping(uint8 => mapping(bytes32 => mapping(uint8 => mapping(address => bool)))) public sellerSeen;
 
     // ── Events ──────────────────────────────────────────────────────
 
-    /// @param clauseOrAssembly  Clause idHash or assembly compositionHash.
+    /// @param kind      `KIND_CLAUSE` or `KIND_ASSEMBLY`.
+    /// @param clauseOrAssembly  Clause key or assembly compositionHash.
     /// @param period    The accrual period the usage landed in.
     /// @param processId The resolved process that used it.
     /// @param seller    The recorded order's seller of record (live-staked).
@@ -275,6 +289,7 @@ contract UsageCounter {
     ///                  record.
     /// @param score     The clause or assembly's score after this record.
     event UsageRecorded(
+        uint8 kind,
         bytes32 indexed clauseOrAssembly,
         uint8 indexed period,
         bytes32 indexed processId,
@@ -291,13 +306,16 @@ contract UsageCounter {
     ///         indexer summing `UsageRecorded` alone sees the direct path only
     ///         — it must fold both events, and this one REPLACES rather than
     ///         adds (the values are cumulative, not deltas).
-    /// @param clauseOrAssembly Clause idHash or assembly compositionHash.
+    /// @param kind     `KIND_CLAUSE` or `KIND_ASSEMBLY`.
+    /// @param clauseOrAssembly Clause key or assembly compositionHash.
     /// @param period   The accrual period.
     /// @param c        Cumulative distinct resolved processes, batch path.
     /// @param d        Cumulative distinct staked sellers in this period, batch
     ///                 path.
     /// @param score    The batch-path score after this write.
-    event BatchUsageRecorded(bytes32 indexed clauseOrAssembly, uint8 indexed period, uint64 c, uint64 d, uint256 score);
+    event BatchUsageRecorded(
+        uint8 kind, bytes32 indexed clauseOrAssembly, uint8 indexed period, uint64 c, uint64 d, uint256 score
+    );
 
     // ── Errors ──────────────────────────────────────────────────────
 
@@ -400,20 +418,21 @@ contract UsageCounter {
     ///         reward consumer divides by `totalScoreIn`; reading `accrualOf`
     ///         alone sees only the direct path and under-pays every clause or assembly
     ///         that scaled.
-    function scoreOf(bytes32 clauseOrAssembly, uint8 period) external view returns (uint256) {
-        return accrualOf[clauseOrAssembly][period].score + batchAccrualOf[clauseOrAssembly][period].score;
+    function scoreOf(uint8 kind, bytes32 clauseOrAssembly, uint8 period) external view returns (uint256) {
+        return accrualOf[kind][clauseOrAssembly][period].score + batchAccrualOf[kind][clauseOrAssembly][period].score;
     }
 
     // ── Recording (permissionless) ──────────────────────────────────
 
-    /// @notice Record one resolved process's use of one clause or assembly. Anyone may
+    /// @notice Count one resolved process's use of one CLAUSE, counted under
+    ///         `KIND_CLAUSE` and gated by `ClauseRegistry` alone. Anyone may
     ///         call; the proof is what is trusted, never the caller. Recording
     ///         is opt-in and gas-paid by whoever benefits — usually the clause or assembly's
     ///         author, since this is how their work is counted.
     ///
     /// @param order       The order's commitment struct, exactly as signed.
-    /// @param clauseOrAssembly    Clause idHash or assembly compositionHash — must be the
-    ///                    bytes32 key committed in the agreement's merkle leaf.
+    /// @param clauseOrAssembly    The clause key — the bytes32 key committed in the
+    ///                    agreement's merkle leaf; counted under KIND_CLAUSE.
     /// @param sectionHash `keccak256` of the clause section's committed bytes —
     ///                    the FINGERPRINT, never the preimage. The merkle leaf
     ///                    needs only this hash, so the section CONTENT never
@@ -448,7 +467,7 @@ contract UsageCounter {
         //    shared denominator at gas cost. The seller-side twin is in `_accrue`.
         if (!_clauseLive(clauseOrAssembly)) revert ClauseOrAssemblyNotRegistered(clauseOrAssembly);
 
-        _accrue(clauseOrAssembly, period, processId, order.seller);
+        _accrue(KIND_CLAUSE, clauseOrAssembly, period, processId, order.seller);
     }
 
     /// @notice Record one resolved process's use of an ASSEMBLY. Same guarantees
@@ -490,7 +509,7 @@ contract UsageCounter {
         // live AssemblyRegistry binding (registered, deposit un-withdrawn).
         if (!_assemblyLive(compositionHash)) revert ClauseOrAssemblyNotRegistered(compositionHash);
 
-        _accrue(compositionHash, period, processId, order.seller);
+        _accrue(KIND_ASSEMBLY, compositionHash, period, processId, order.seller);
     }
 
     // ── Recording (batch path, proof-gated) ─────────────────────────
@@ -503,6 +522,9 @@ contract UsageCounter {
     ///         O(records).
     struct BatchAccrual {
         bytes32 clauseOrAssembly;
+        /// @dev `KIND_CLAUSE` or `KIND_ASSEMBLY` — the family whose registry
+        ///      gates this accrual and whose slot it lands in.
+        uint8 kind;
         uint64 c;
         uint64 d;
     }
@@ -513,7 +535,7 @@ contract UsageCounter {
     ///         re-check it: every credited order is real and RESOLVED in the
     ///         batch path's state, every clause or assembly was committed in the signed
     ///         agreement (merkle inclusion against `agreementHash`), and no
-    ///         (clause-or-assembly, process) pair is counted twice — the guest's counted
+    ///         (kind, clause-or-assembly, process) triple is counted twice — the guest's counted
     ///         set rides the batch state root, so idempotence holds ACROSS
     ///         batches, not merely within one. `FigaroBatchVerifier` has
     ///         already matched these numbers against `usageAccrualHash`.
@@ -522,7 +544,8 @@ contract UsageCounter {
     ///         three are live chain state this contract owns:
     ///           1. which period is open,
     ///           2. which sellers hold a live MembersRegistry stake,
-    ///           3. which clauses and assemblies hold a live registration.
+    ///           3. which clauses and assemblies hold a live registration —
+    ///              each accrual in its own kind's registry only.
     ///         The verifier deliberately checks none of them: it owns the
     ///         proof, this contract owns the reward's gates.
     ///
@@ -579,9 +602,19 @@ contract UsageCounter {
             // names an assembly, so a claim keyed on it is skipped whatever a
             // registry holds at that key (a registry takes any bytes32).
             if (a.clauseOrAssembly == provenanceLeaf) continue;
-            if (!_clauseLive(a.clauseOrAssembly) && !_assemblyLive(a.clauseOrAssembly)) continue;
+            // Each accrual is gated by its OWN kind's registry and never the
+            // other's: a stake in one family at these bytes earns nothing of the
+            // other family's accrual. An unknown kind names no registry and is
+            // skipped.
+            if (a.kind == KIND_CLAUSE) {
+                if (!_clauseLive(a.clauseOrAssembly)) continue;
+            } else if (a.kind == KIND_ASSEMBLY) {
+                if (!_assemblyLive(a.clauseOrAssembly)) continue;
+            } else {
+                continue;
+            }
 
-            Accrual storage stored = batchAccrualOf[a.clauseOrAssembly][period];
+            Accrual storage stored = batchAccrualOf[a.kind][a.clauseOrAssembly][period];
             // Cumulative counts can only grow. The state-root check in the
             // verifier already guarantees it; asserting it costs nothing (both
             // fields share a slot already being read) and it can never reject
@@ -596,7 +629,7 @@ contract UsageCounter {
             stored.score = updated;
             totalScoreIn[period] = totalScoreIn[period] + updated - previous;
 
-            emit BatchUsageRecorded(a.clauseOrAssembly, period, a.c, a.d, updated);
+            emit BatchUsageRecorded(a.kind, a.clauseOrAssembly, period, a.c, a.d, updated);
         }
     }
 
@@ -613,11 +646,11 @@ contract UsageCounter {
         }
     }
 
-    /// @dev The counting itself, shared by both routes. Idempotent per (clause-or-assembly,
-    ///      process) — once ever, whatever the period. Every admitted process
+    /// @dev The counting itself, shared by both routes. Idempotent per (kind,
+    ///      clause-or-assembly, process) — once ever, whatever the period. Every admitted process
     ///      feeds `c`; the first from each staked seller in the period also
     ///      feeds `d`.
-    function _accrue(bytes32 clauseOrAssembly, uint8 period, bytes32 processId, address seller) internal {
+    function _accrue(uint8 kind, bytes32 clauseOrAssembly, uint8 period, bytes32 processId, address seller) internal {
         // The reserved provenance leaf never accrues: it is the agreement
         // format's own, never a registration, and no registry entry at that key
         // makes it one.
@@ -644,16 +677,16 @@ contract UsageCounter {
         // deposit AND withdrawal cooldown — that carry it.
         if (!members.registered(seller)) revert SellerNotStaked(seller);
         // Once ever, not once per period — see `processCounted`.
-        if (processCounted[clauseOrAssembly][processId]) revert AlreadyCounted();
+        if (processCounted[kind][clauseOrAssembly][processId]) revert AlreadyCounted();
 
         // Breadth is counted PER PERIOD: a seller who carries the clause or assembly
         // again in a later period is new breadth for that period's tally.
-        bool firstSeller = !sellerSeen[clauseOrAssembly][period][seller];
+        bool firstSeller = !sellerSeen[kind][clauseOrAssembly][period][seller];
 
-        processCounted[clauseOrAssembly][processId] = true;
-        if (firstSeller) sellerSeen[clauseOrAssembly][period][seller] = true;
+        processCounted[kind][clauseOrAssembly][processId] = true;
+        if (firstSeller) sellerSeen[kind][clauseOrAssembly][period][seller] = true;
 
-        Accrual storage a = accrualOf[clauseOrAssembly][period];
+        Accrual storage a = accrualOf[kind][clauseOrAssembly][period];
         unchecked {
             a.c += 1;
             if (firstSeller) a.d += 1;
@@ -665,7 +698,7 @@ contract UsageCounter {
         // O(1) maintenance — the running total moves by the delta, never a sum.
         totalScoreIn[period] = totalScoreIn[period] + updated - previous;
 
-        emit UsageRecorded(clauseOrAssembly, period, processId, seller, a.c, a.d, updated);
+        emit UsageRecorded(kind, clauseOrAssembly, period, processId, seller, a.c, a.d, updated);
     }
 
     // ── Scoring ─────────────────────────────────────────────────────

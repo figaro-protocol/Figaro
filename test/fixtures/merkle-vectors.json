@@ -3,57 +3,53 @@
     "agreements": [
         {
             "label": "three-sections",
-            "agreementHash": "0xa4938052c86adf4d94688208eed7b598bff4c5b09acd4289d3511eab9ebf7240",
+            "agreementHash": "0xa4f6950b1ed29a78ac53e37a4e8c9125944070320f653a92e3328cbe11b92d96",
             "sectionCount": 3,
             "sections": [
                 {
-                    "clause": "figaro-modalities",
-                    "version": 1,
+                    "clauseKey": "0x26dfedc69af302c56c47938b5e71f00ea2426b34f7add7ffcf73a3bac950e042",
                     "sectionData": "{\"modality\":\"delivery\"}",
-                    "leaf": "0x8fc2dbb8825e453a9be2595f9037f6ef1e7dae3c8779f2a5b03647286c8dc31d",
+                    "leaf": "0x464a25f8a976b2c06f658df8bb516cb72dfc523a89ddc49262ecb06168ef2415",
                     "proof": [
-                        "0x6dab1ef79ae4ac05eab2c72fab9cf598b67892cdc08d0b140f36a336f1b11cad"
+                        "0x724d2b1bef86c7150b94dc1899aeb2c152d9b80cbc0e46e405eaf1405285dab9",
+                        "0xf538fadf4fd4a06dc77d7b1027629170549b0f64e9c09c3a30b621a827ea9b95"
                     ]
                 },
                 {
-                    "clause": "figaro-geolocation",
-                    "version": 1,
+                    "clauseKey": "0x946558cc6a69e66bf3c49d31e96012212424ff9610caa93f3f3a8ac12f7dcaba",
                     "sectionData": "{\"hops\":2,\"origin\":\"site-7\"}",
-                    "leaf": "0x839b8d4172ae75e83507d8435282bf598a11b6fb5a3ca792e1d94b870830bc4a",
+                    "leaf": "0xf538fadf4fd4a06dc77d7b1027629170549b0f64e9c09c3a30b621a827ea9b95",
                     "proof": [
-                        "0x6879dd7993969b0b8b3a74392e5245b6af73277698ed24a578eee18d8603dfa8",
-                        "0x8fc2dbb8825e453a9be2595f9037f6ef1e7dae3c8779f2a5b03647286c8dc31d"
+                        "0xb10667666feaa1d0d32889204e9a66944a9d75f38e9805237b72251cc19842cf"
                     ]
                 },
                 {
-                    "clause": "figaro-applicable-law",
-                    "version": 1,
+                    "clauseKey": "0xf79ded2de5be2f5194b75e56a3bcd6b357bb550da2f765c20a482b4f8e368b74",
                     "sectionData": "{\"law\":\"ch\"}",
-                    "leaf": "0x6879dd7993969b0b8b3a74392e5245b6af73277698ed24a578eee18d8603dfa8",
+                    "leaf": "0x724d2b1bef86c7150b94dc1899aeb2c152d9b80cbc0e46e405eaf1405285dab9",
                     "proof": [
-                        "0x839b8d4172ae75e83507d8435282bf598a11b6fb5a3ca792e1d94b870830bc4a",
-                        "0x8fc2dbb8825e453a9be2595f9037f6ef1e7dae3c8779f2a5b03647286c8dc31d"
+                        "0x464a25f8a976b2c06f658df8bb516cb72dfc523a89ddc49262ecb06168ef2415",
+                        "0xf538fadf4fd4a06dc77d7b1027629170549b0f64e9c09c3a30b621a827ea9b95"
                     ]
                 }
             ]
         },
         {
             "label": "one-section",
-            "agreementHash": "0xeb220d75c46467df3e53c2157e41334eddf14f9060c36e66c79d2cb7ba66aa30",
+            "agreementHash": "0xc1ed485a19efef229f49e83017799b51ce166c137dd3ac294036cad8b9c9f08b",
             "sectionCount": 1,
             "sections": [
                 {
-                    "clause": "figaro-modalities",
-                    "version": 1,
+                    "clauseKey": "0x26dfedc69af302c56c47938b5e71f00ea2426b34f7add7ffcf73a3bac950e042",
                     "sectionData": "{\"modality\":\"pickup\"}",
-                    "leaf": "0xeb220d75c46467df3e53c2157e41334eddf14f9060c36e66c79d2cb7ba66aa30",
+                    "leaf": "0xc1ed485a19efef229f49e83017799b51ce166c137dd3ac294036cad8b9c9f08b",
                     "proof": []
                 }
             ]
         },
         {
             "label": "two-sections-and-a-design",
-            "agreementHash": "0xbf5c6a664c41bfdd95af985ec843235fcba0a02abc0f7eaf6ff4b7ed425d8407",
+            "agreementHash": "0xd88569ae480c06da52fe09e4eddc8d4670bc4c16b7408fc6c8c089cffb372172",
             "sectionCount": 2,
             "provenance": {
                 "leafKey": "0x26dc18a2251a8f4629ada6df88b7c98553e011c08682d28ce5bb51a441227dc6",
@@ -61,28 +57,26 @@
                 "sectionData": "{\"compositionHash\":\"0x9b3c1d2e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c\"}",
                 "leaf": "0x8d786d1590506df2f4c39210e8e62bd4d2567d69fbfecefb4435a42311689f57",
                 "proof": [
-                    "0x5ed356c023d8c67537cb631ba0910b619f383392e811ee800d2d85a43c62c413"
+                    "0x6836b6f83db97392813611ffd18d4157096175e3f3ad3fb4e4fe836c9ef120e9",
+                    "0xc9a5eee4948d8b3af7c99eb27e95efd07a528cb73eed25dc70be9fe03b935a92"
                 ]
             },
             "sections": [
                 {
-                    "clause": "figaro-commerce",
-                    "version": 1,
+                    "clauseKey": "0x87e7c774689da74878b6353c9a244d04c50765f775b64c288eef70145d3b47b9",
                     "sectionData": "{\"currency\":\"0x0000000000000000000000000000000000000000\",\"payment\":\"7\"}",
-                    "leaf": "0x61111beb6f9494099be694f0d63595e8ff78e61ee1344ce7d9d3c6af5ed9f23e",
+                    "leaf": "0xc9a5eee4948d8b3af7c99eb27e95efd07a528cb73eed25dc70be9fe03b935a92",
                     "proof": [
-                        "0x038adc5e1ccf4bddb1f55d6a3fd2ccaa2849de5295cf58eee8cb86feb692eadd",
-                        "0x8d786d1590506df2f4c39210e8e62bd4d2567d69fbfecefb4435a42311689f57"
+                        "0x29deb48892f2b3016af9f5457383836d20dd6dd99b1755631c63c512cefa4971"
                     ]
                 },
                 {
-                    "clause": "figaro-topology",
-                    "version": 1,
+                    "clauseKey": "0xd7555453daf821f5fdf852d3c1cb7d88d6cd741dbdfb631c3406114bbf2d91bc",
                     "sectionData": "{\"parentOrderHashes\":[]}",
-                    "leaf": "0x038adc5e1ccf4bddb1f55d6a3fd2ccaa2849de5295cf58eee8cb86feb692eadd",
+                    "leaf": "0x6836b6f83db97392813611ffd18d4157096175e3f3ad3fb4e4fe836c9ef120e9",
                     "proof": [
-                        "0x61111beb6f9494099be694f0d63595e8ff78e61ee1344ce7d9d3c6af5ed9f23e",
-                        "0x8d786d1590506df2f4c39210e8e62bd4d2567d69fbfecefb4435a42311689f57"
+                        "0x8d786d1590506df2f4c39210e8e62bd4d2567d69fbfecefb4435a42311689f57",
+                        "0xc9a5eee4948d8b3af7c99eb27e95efd07a528cb73eed25dc70be9fe03b935a92"
                     ]
                 }
             ]

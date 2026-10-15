@@ -131,18 +131,21 @@ the whole difference between a gated signature and a blind one.
 
 ```ts
 import { parseClauseSpec } from "@figaro-protocol/sdk/clauses";
-import { parseProjectionHints } from "@figaro-protocol/sdk";
+import { anchorClauseSpec, parseProjectionHints } from "@figaro-protocol/sdk";
 
-const specViews = [];
-for (const c of ctx.getClauses()) {                 // the synced registry catalog
-  const raw = await hydrate(c.contentURI);          // your IPFS read; skip unreachable ones
-  const parsed = parseClauseSpec(raw);
-  if (parsed.ok) specViews.push({ ...parsed.spec, hints: parseProjectionHints(raw) });
+const views = new Map();
+for (const c of ctx.getClauses()) {                 // the synced registry catalog: { clauseKey, contentURI, ... }
+  if (c.stakeWithdrawn) continue;                   // live stake only, for a new composition
+  const bytes = await hydrateBytes(c.contentURI);   // your IPFS read, the raw bytes; skip unreachable ones
+  const anchored = anchorClauseSpec(bytes, c.clauseKey); // null unless keccak256(bytes) == clauseKey
+  if (!anchored) continue;                          // other bytes are absence, never this clause
+  const parsed = parseClauseSpec(anchored);
+  if (parsed.ok) views.set(c.clauseKey.toLowerCase(),
+    { ...parsed.spec, clauseKey: c.clauseKey, hints: parseProjectionHints(anchored) });
 }
 const specs = {
-  get: (clauseId, version) => specViews.find(
-    (v) => v.clauseId === clauseId && (version === undefined || v.version === version)),
-  list: () => specViews,
+  get: (clauseKey) => views.get(clauseKey.toLowerCase()),   // a clause is read by its key
+  list: () => [...views.values()],
 };
 ```
 
@@ -193,12 +196,12 @@ composed:
 
 ```ts
 const overrides = {};
-for (const clauseId of Object.keys(template.agreements[0].clauses)) {
-  const fields = specs.get(clauseId)?.fields ?? [];
+for (const clauseKey of Object.keys(template.agreements[0].clauses)) {
+  const fields = specs.get(clauseKey)?.fields ?? [];
   if (fields.some((f) => f.name === "lineItems"))          // the commerce clause, by field
-    overrides[clauseId] = { currency, payment: payment.toString(), lineItems };
+    overrides[clauseKey] = { currency, payment: payment.toString(), lineItems };
   if (fields.some((f) => f.name === "modality"))            // a modality clause, if composed
-    overrides[clauseId] = { modality: "virtual" };          // the BUYER's request
+    overrides[clauseKey] = { modality: "virtual" };         // the BUYER's request
 }
 ```
 
@@ -299,13 +302,15 @@ README. Read the section; never reconstruct one from the ABI.
   state, so it behaves identically for receipts from either path — and the fiscal trail it
   leaves is a byproduct the owner can show anyone.
 - **Claiming what the owner's clauses and assemblies earned** — `RpgfMinter.claim`, once
-  per wallet per CLOSED period, carrying every registry key the wallet designed (a
-  duplicate entry or a key it did not design reverts): "Claiming the designer's mint".
+  per wallet per CLOSED period, carrying every `(kind, key)` pair the wallet designed —
+  `{ kind: USAGE_KIND_CLAUSE, key: clauseKey }` or `{ kind: USAGE_KIND_ASSEMBLY, key:
+  compositionHash }`, each checked against the one registry its kind names (a duplicate
+  pair or a key it did not register under that kind reverts): "Claiming the designer's mint".
 
 ## Reclaiming a registration stake — apply the K4 withdraw gate yourself
 
 If the owner registered a clause or an assembly, its stake comes back with one call
-(`ClauseRegistry.withdrawDeposit(idHash)` / `AssemblyRegistry.withdrawDeposit(compositionHash)`)
+(`ClauseRegistry.withdrawDeposit(clauseKey)` / `AssemblyRegistry.withdrawDeposit(compositionHash)`)
 — which **de-surfaces the entry for new compositions while the binding stays permanent**,
 because orders already committed against it still resolve. The rule the stake
 encodes: do not reclaim it while processes composed from that clause or assembly are still
@@ -323,7 +328,7 @@ const inFlight = deriveInFlightOrders(
 );
 // You resolve each ref's pinned agreement (the SDK does no IPFS I/O), pairing it as
 // { processId, agreement }; a null agreement is party-private and counted, never blocking.
-const gate = deriveClauseWithdrawGate("figaro-emissions", agreements);
+const gate = deriveClauseWithdrawGate(clauseKey, agreements);  // the key you registered, never a name
 if (!gate.canWithdraw) { /* report inFlightCount + unverifiedCount; do not withdraw */ }
 ```
 
@@ -437,7 +442,8 @@ deployment record's `batchVerifier` address, with `BATCH_VERIFIER_ABI` from
 
 Exactly one thing crosses the seam: the usage accrual behind designer rewards, carried by
 the proof into `UsageCounter.applyBatchAccrual` as proved numbers. So if the owner asks what
-their clauses and assemblies earned, read `scoreOf(clauseOrAssembly, period)` (it sums both
+their clauses and assemblies earned, read `scoreOf(kind, clauseOrAssembly, period)` — kind `0`
+a clause key, `1` an assembly `compositionHash` — (it sums both
 paths) — never `accrualOf` alone, and if you mirror the events off-chain, fold
 `UsageRecorded` **and** `BatchUsageRecorded` (the batch one is CUMULATIVE — it REPLACES, it
 does not add).

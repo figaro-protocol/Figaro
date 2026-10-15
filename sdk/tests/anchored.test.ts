@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { keccak256, toHex } from "viem";
+import { keccak256, toBytes, toHex } from "viem";
 import {
     anchorAgreement,
     anchorAttestationContent,
@@ -13,8 +13,10 @@ import {
     anchorTemplate,
     deriveAnchored,
 } from "../src/anchored.js";
-import { canonicalContentHash, computeAgreementHash, type Agreement } from "../src/agreement.js";
+import { canonicalContentHash, canonicalize, computeAgreementHash, type Agreement } from "../src/agreement.js";
+import { computeClauseKey } from "../src/discovery.js";
 import { templateCompositionHash, type AssemblyTemplate } from "../src/assembly.js";
+import { keyOf } from "./specFixtures.js";
 
 const OTHER = `0x${"11".repeat(32)}` as const;
 
@@ -22,30 +24,45 @@ const spec = { clauseId: "test-anchor", version: 1, title: "T", description: "D"
 
 const template = {
     name: "Editorial",
-    agreements: [{ id: "root", clauses: { "figaro-commerce": {} } }],
+    agreements: [{ id: "root", clauses: { [keyOf("figaro-commerce")]: {} } }],
 } as unknown as AssemblyTemplate;
 
 const agreement: Agreement = {
     version: "a1",
     buyer: "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
     seller: "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
-    sections: [{ clause: "figaro-modalities", version: 1, data: { modality: "pickup" } }],
+    sections: [{ clause: keyOf("figaro-modalities"), data: { modality: "pickup" } }],
 };
 
 describe("anchorClauseSpec", () => {
-    it("returns the spec its content hash names", () => {
-        expect(anchorClauseSpec(spec, canonicalContentHash(spec))).toBe(spec);
+    // The key is keccak256 of the PINNED BYTES, so the reader hashes the bytes
+    // it fetched — never a re-canonicalization of what it parsed.
+    const pinned = canonicalize(spec);
+    const key = keccak256(toBytes(pinned));
+
+    it("returns the spec parsed from the bytes its key names (text or bytes)", () => {
+        expect(anchorClauseSpec(pinned, key)).toEqual(spec);
+        expect(anchorClauseSpec(toBytes(pinned), key)).toEqual(spec);
+        expect(key).toBe(computeClauseKey(spec)); // the reference tooling pins canonical bytes
     });
-    it("matches the hash in any letter case", () => {
-        expect(anchorClauseSpec(spec, canonicalContentHash(spec).toUpperCase().replace("0X", "0x"))).toBe(spec);
+    it("matches the key in any letter case", () => {
+        expect(anchorClauseSpec(pinned, key.toUpperCase().replace("0X", "0x"))).toEqual(spec);
     });
-    it("refuses another document under the hash", () => {
-        expect(anchorClauseSpec({ ...spec, title: "Changed" }, canonicalContentHash(spec))).toBeNull();
-        expect(anchorClauseSpec(spec, OTHER)).toBeNull();
+    it("hashes the bytes as fetched: the same document in another byte form is another key", () => {
+        const pretty = JSON.stringify(spec, null, 2);
+        expect(anchorClauseSpec(pretty, key)).toBeNull();
+        expect(anchorClauseSpec(pretty, keccak256(toBytes(pretty)))).toEqual(spec);
     });
-    it("refuses nothing fetched", () => {
-        expect(anchorClauseSpec(null, canonicalContentHash(null))).toBeNull();
-        expect(anchorClauseSpec(undefined, OTHER)).toBeNull();
+    it("refuses other bytes under the key, and bytes that are not JSON", () => {
+        expect(anchorClauseSpec(canonicalize({ ...spec, title: "Changed" }), key)).toBeNull();
+        expect(anchorClauseSpec(pinned, OTHER)).toBeNull();
+        expect(anchorClauseSpec("not json", keccak256(toBytes("not json")))).toBeNull();
+    });
+    it("strips prototype-pollution keys from what it parses", () => {
+        const hostile = '{"__proto__":{"polluted":true},"clauseId":"x"}';
+        const parsed = anchorClauseSpec(hostile, keccak256(toBytes(hostile))) as Record<string, unknown>;
+        expect(parsed).toEqual({ clauseId: "x" });
+        expect(({} as Record<string, unknown>).polluted).toBeUndefined();
     });
 });
 
@@ -107,11 +124,11 @@ describe("anchorAttestationContent", () => {
 
 describe("deriveAnchored", () => {
     it("carries what is read out of an anchored document", () => {
-        const anchored = anchorClauseSpec(spec, canonicalContentHash(spec))!;
+        const anchored = anchorClauseSpec(canonicalize(spec), canonicalContentHash(spec))!;
         expect(deriveAnchored(anchored, (d) => (d as typeof spec).title)).toBe("T");
     });
     it("lets a rejecting parse throw", () => {
-        const anchored = anchorClauseSpec(spec, canonicalContentHash(spec))!;
+        const anchored = anchorClauseSpec(canonicalize(spec), canonicalContentHash(spec))!;
         expect(() => deriveAnchored(anchored, () => { throw new Error("not a clause"); })).toThrow("not a clause");
     });
 });

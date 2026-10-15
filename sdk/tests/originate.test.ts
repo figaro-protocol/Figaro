@@ -14,7 +14,7 @@ import { InProcessChannel } from "../src/agent/coordination.js";
 import { computeAgreementHash } from "../src/agreement.js";
 import { templateCompositionHash } from "../src/assembly.js";
 import type { Address } from "../src/types.js";
-import { specSourceFromFixtures } from "./specFixtures.js";
+import { keyOf, specSourceFromFixtures } from "./specFixtures.js";
 
 const SPECS = specSourceFromFixtures(["figaro-commerce", "figaro-topology"]);
 
@@ -29,9 +29,9 @@ const buyerW = createWalletClient({ account: BUYER, transport: http("http://loca
 const sellerW = createWalletClient({ account: SELLER, transport: http("http://localhost:0") });
 
 const template: AssemblyTemplate = {
-    agreements: [{ id: "order-0", clauses: { "figaro-commerce": {}, "figaro-topology": { parentOrderHashes: [] } } }],
+    agreements: [{ id: "order-0", clauses: { [keyOf("figaro-commerce")]: {}, [keyOf("figaro-topology")]: { parentOrderHashes: [] } } }],
 };
-const overrides = { "figaro-commerce": { currency: CURRENCY, payment: "1000", lineItems: [{ itemId: "x", name: "Item", quantity: 1, unitPrice: "1000" }] } };
+const overrides = { [keyOf("figaro-commerce")]: { currency: CURRENCY, payment: "1000", lineItems: [{ itemId: "x", name: "Item", quantity: 1, unitPrice: "1000" }] } };
 
 function offerParams() {
     return { template, seller: SELLER.address, currency: CURRENCY, payment: 1000n, chainId: CHAIN, core: CORE, deadline: 1_900_000_000n, overrides };
@@ -43,7 +43,7 @@ const policy: OfferPolicy = { requireRootShape: true, currencyAllowlist: [CURREN
 describe("instantiateRootAgreement", () => {
     it("merges overrides onto the template's root clause bag", () => {
         const a = instantiateRootAgreement(template, { buyer: BUYER.address, seller: SELLER.address, overrides });
-        const commerce = a.sections.find((s) => s.clause === "figaro-commerce");
+        const commerce = a.sections.find((s) => s.clause === keyOf("figaro-commerce"));
         expect(commerce?.data.payment).toBe("1000");
         expect(commerce?.data.currency).toBe(CURRENCY);
         expect(a.buyer).toBe(BUYER.address);
@@ -53,26 +53,14 @@ describe("instantiateRootAgreement", () => {
     it("picks the root agreement (no non-empty parentOrderHashes) from a multi-agreement template", () => {
         const multi: AssemblyTemplate = {
             agreements: [
-                { id: "order-1", clauses: { "figaro-topology": { parentOrderHashes: ["0xabc"] } } },
-                { id: "order-0", clauses: { "figaro-commerce": {}, "figaro-topology": { parentOrderHashes: [] } } },
+                { id: "order-1", clauses: { [keyOf("figaro-topology")]: { parentOrderHashes: ["0xabc"] } } },
+                { id: "order-0", clauses: { [keyOf("figaro-commerce")]: {}, [keyOf("figaro-topology")]: { parentOrderHashes: [] } } },
             ],
         };
         const a = instantiateRootAgreement(multi, { buyer: BUYER.address, seller: SELLER.address });
-        expect(a.sections.some((s) => s.clause === "figaro-commerce")).toBe(true);
+        expect(a.sections.some((s) => s.clause === keyOf("figaro-commerce"))).toBe(true);
     });
 
-    it("section versions come from the composed clauseVersions map, defaulting to 1", () => {
-        const pinned: AssemblyTemplate = {
-            agreements: [{
-                id: "order-0",
-                clauses: { "figaro-commerce": {}, "figaro-topology": { parentOrderHashes: [] } },
-                clauseVersions: { "figaro-commerce": 2 },
-            }],
-        };
-        const a = instantiateRootAgreement(pinned, { buyer: BUYER.address, seller: SELLER.address });
-        expect(a.sections.find((s) => s.clause === "figaro-commerce")?.version).toBe(2);
-        expect(a.sections.find((s) => s.clause === "figaro-topology")?.version).toBe(1);
-    });
 });
 
 describe("origination handshake (real signatures, no chain)", () => {
@@ -168,7 +156,7 @@ describe("origination handshake — the anti-tamper gate (security)", () => {
     it("rejects an offer whose agreement was mutated after the buyer signed", async () => {
         const offer = await buildBuyerOffer(buyerW, offerParams());
         // Tamper: change the agreement so it no longer hashes to the committed agreementHash.
-        offer.agreement.sections.find((s) => s.clause === "figaro-commerce")!.data.payment = "1";
+        offer.agreement.sections.find((s) => s.clause === keyOf("figaro-commerce"))!.data.payment = "1";
         expect(validateOffer(offer, SELLER.address).ok).toBe(false);
         await expect(counterSignOffer(sellerW, offer, { chainId: CHAIN, core: CORE })).rejects.toThrow(/agreement does not hash/i);
     });
@@ -196,7 +184,7 @@ describe("origination handshake — the anti-tamper gate (security)", () => {
         const mismatched = {
             ...offerParams(),
             overrides: {
-                "figaro-commerce": {
+                [keyOf("figaro-commerce")]: {
                     currency: BAD_CURRENCY, // the signed TERM
                     payment: "1000",
                     lineItems: [{ itemId: "x", name: "Item", quantity: 1, unitPrice: "1000" }],
@@ -224,7 +212,7 @@ describe("origination handshake — the anti-tamper gate (security)", () => {
             ...offerParams(),
             specs: SPECS,
             overrides: {
-                "figaro-commerce": {
+                [keyOf("figaro-commerce")]: {
                     currency: BAD_CURRENCY,
                     payment: "1000",
                     lineItems: [{ itemId: "x", name: "Item", quantity: 1, unitPrice: "1000" }],
@@ -241,7 +229,7 @@ describe("origination handshake — the anti-tamper gate (security)", () => {
         const mismatched = {
             ...offerParams(), // struct payment stays 1000n
             overrides: {
-                "figaro-commerce": {
+                [keyOf("figaro-commerce")]: {
                     currency: CURRENCY,
                     payment: "5", // the signed TERM disagrees
                     lineItems: [{ itemId: "x", name: "Item", quantity: 1, unitPrice: "5" }],
@@ -274,18 +262,18 @@ describe("the assembly-scope fold at root instantiation (audit hole (a), closed)
     const OTHER = "0xdddddddddddddddddddddddddddddddddddddddd" as Address;
     const pinned: AssemblyTemplate = {
         assemblyClauses: {
-            "figaro-utility-token": { currency: PIN },
+            [keyOf("figaro-utility-token")]: { currency: PIN },
         },
-        agreements: [{ id: "order-0", clauses: { "figaro-commerce": {}, "figaro-topology": { parentOrderHashes: [] } } }],
+        agreements: [{ id: "order-0", clauses: { [keyOf("figaro-commerce")]: {}, [keyOf("figaro-topology")]: { parentOrderHashes: [] } } }],
     };
 
     it("instantiateRootAgreement folds assemblyClauses into the root agreement", () => {
         const a = instantiateRootAgreement(pinned, { buyer: BUYER.address, seller: SELLER.address, overrides });
         const ids = a.sections.map((s) => s.clause);
         expect(ids).toEqual(expect.arrayContaining([
-            "figaro-utility-token", "figaro-commerce", "figaro-topology",
+            keyOf("figaro-utility-token"), keyOf("figaro-commerce"), keyOf("figaro-topology"),
         ]));
-        expect(a.sections.find((s) => s.clause === "figaro-utility-token")?.data.currency).toBe(PIN);
+        expect(a.sections.find((s) => s.clause === keyOf("figaro-utility-token"))?.data.currency).toBe(PIN);
     });
 
     it("the instantiated agreement carries the template's own composition hash as agreement.provenance", () => {
@@ -298,7 +286,7 @@ describe("the assembly-scope fold at root instantiation (audit hole (a), closed)
     it("the folded pin now REACHES the sign gate: a pin contradicting the struct refuses to sign", async () => {
         const mismatched: AssemblyTemplate = {
             ...pinned,
-            assemblyClauses: { ...pinned.assemblyClauses, "figaro-utility-token": { currency: OTHER } },
+            assemblyClauses: { ...pinned.assemblyClauses, [keyOf("figaro-utility-token")]: { currency: OTHER } },
         };
         await expect(buildBuyerOffer(buyerW, {
             template: mismatched, seller: SELLER.address, currency: CURRENCY, payment: 1000n,

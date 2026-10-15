@@ -21,9 +21,9 @@ them. Adding <code>d</code> to <code>d</code> would therefore pay for breadth no
 Scores are summed; components never are — and the minimum-support floor
 applies per path, for the same reason.</p>
 </div></section>
-<div class="tsd-signature"><span class="tsd-signature-keyword">interface</span> <span class="tsd-kind-interface">ClauseOrAssemblyAccrual</span> <span class="tsd-signature-symbol">{</span><br/>    <a class="tsd-kind-property" href="#batch">batch</a><span class="tsd-signature-symbol">:</span> <a href="index.UsageAccrual.html" class="tsd-signature-type tsd-kind-interface">UsageAccrual</a><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#direct">direct</a><span class="tsd-signature-symbol">:</span> <a href="index.UsageAccrual.html" class="tsd-signature-type tsd-kind-interface">UsageAccrual</a><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#score">score</a><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">bigint</span><span class="tsd-signature-symbol">;</span><br/><span class="tsd-signature-symbol">}</span></div><aside class="tsd-sources">
+<div class="tsd-signature"><span class="tsd-signature-keyword">interface</span> <span class="tsd-kind-interface">ClauseOrAssemblyAccrual</span> <span class="tsd-signature-symbol">{</span><br/>    <a class="tsd-kind-property" href="#batch">batch</a><span class="tsd-signature-symbol">:</span> <a href="index.UsageAccrual.html" class="tsd-signature-type tsd-kind-interface">UsageAccrual</a><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#clauseorassembly">clauseOrAssembly</a><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">`</span><span class="tsd-signature-type">0x</span><span class="tsd-signature-symbol">${</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">`</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#direct">direct</a><span class="tsd-signature-symbol">:</span> <a href="index.UsageAccrual.html" class="tsd-signature-type tsd-kind-interface">UsageAccrual</a><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#kind">kind</a><span class="tsd-signature-symbol">:</span> <a href="../types/index.UsageKind.html" class="tsd-signature-type tsd-kind-type-alias">UsageKind</a><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#score">score</a><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">bigint</span><span class="tsd-signature-symbol">;</span><br/><span class="tsd-signature-symbol">}</span></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/rpgf/index.ts#L134">rpgf/index.ts:134</a></li></ul></aside>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/rpgf/index.ts#L170">rpgf/index.ts:170</a></li></ul></aside>
 <section class="tsd-panel-group tsd-index-group">
 <section class="tsd-panel tsd-index-panel">
 <details class="tsd-index-content tsd-accordion" open><summary class="tsd-accordion-summary tsd-index-summary"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>
@@ -32,7 +32,9 @@ applies per path, for the same reason.</p>
 <section class="tsd-index-section">
 <h3 class="tsd-index-heading tsd-anchor-link" id="properties">Properties<a href="#properties" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-index-list"><a href="#batch" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>batch</span></a>
+<a href="#clauseorassembly" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>clause<wbr/>Or<wbr/>Assembly</span></a>
 <a href="#direct" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>direct</span></a>
+<a href="#kind" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>kind</span></a>
 <a href="#score" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>score</span></a>
 </div></section></div></details></section></section>
 <details class="tsd-panel-group tsd-member-group tsd-accordion" open><summary class="tsd-accordion-summary" data-key="section-Properties"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>
@@ -42,12 +44,22 @@ applies per path, for the same reason.</p>
 <h3 class="tsd-anchor-link" id="batch"><span>batch</span><a href="#batch" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">batch</span><span class="tsd-signature-symbol">:</span> <a href="index.UsageAccrual.html" class="tsd-signature-type tsd-kind-interface">UsageAccrual</a></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/rpgf/index.ts#L136">rpgf/index.ts:136</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/rpgf/index.ts#L174">rpgf/index.ts:174</a></li></ul></aside></section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="clauseorassembly"><span>clause<wbr/>Or<wbr/>Assembly</span><a href="#clauseorassembly" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<div class="tsd-signature"><span class="tsd-kind-property">clauseOrAssembly</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">`</span><span class="tsd-signature-type">0x</span><span class="tsd-signature-symbol">${</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">`</span></div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/rpgf/index.ts#L172">rpgf/index.ts:172</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="direct"><span>direct</span><a href="#direct" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">direct</span><span class="tsd-signature-symbol">:</span> <a href="index.UsageAccrual.html" class="tsd-signature-type tsd-kind-interface">UsageAccrual</a></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/rpgf/index.ts#L135">rpgf/index.ts:135</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/rpgf/index.ts#L173">rpgf/index.ts:173</a></li></ul></aside></section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="kind"><span>kind</span><a href="#kind" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<div class="tsd-signature"><span class="tsd-kind-property">kind</span><span class="tsd-signature-symbol">:</span> <a href="../types/index.UsageKind.html" class="tsd-signature-type tsd-kind-type-alias">UsageKind</a></div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/rpgf/index.ts#L171">rpgf/index.ts:171</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="score"><span>score</span><a href="#score" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">score</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">bigint</span></div>
@@ -55,7 +67,7 @@ applies per path, for the same reason.</p>
 only figure a reward calculation may divide by.</p>
 </div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/rpgf/index.ts#L139">rpgf/index.ts:139</a></li></ul></aside></section></section></details></div>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/rpgf/index.ts#L177">rpgf/index.ts:177</a></li></ul></aside></section></section></details></div>
 <div class="col-sidebar">
 <div class="page-menu">
 <div class="tsd-navigation settings">
@@ -71,7 +83,7 @@ only figure a reward calculation may divide by.</p>
 <h3>On This Page</h3></summary>
 <div class="tsd-accordion-details">
 <details open class="tsd-accordion tsd-page-navigation-section"><summary class="tsd-accordion-summary" data-key="section-Properties"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Properties</summary>
-<div><a href="#batch"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>batch</span></a><a href="#direct"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>direct</span></a><a href="#score"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>score</span></a></div></details></div></details></div>
+<div><a href="#batch"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>batch</span></a><a href="#clauseorassembly"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>clause<wbr/>Or<wbr/>Assembly</span></a><a href="#direct"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>direct</span></a><a href="#kind"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>kind</span></a><a href="#score"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>score</span></a></div></details></div></details></div>
 <div class="site-menu">
 <nav id="tsd-sidebar-links" class="tsd-navigation"><a href="/" class="tsd-nav-link">Site</a><a href="/spec" class="tsd-nav-link">Build</a></nav>
 <nav class="tsd-navigation"><a href="../modules.html">@figaro-protocol/sdk</a>

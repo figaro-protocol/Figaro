@@ -61,11 +61,12 @@ pub enum ContentKind {
 /// In-proof gates (see `kernel::validate_attestation_content`):
 ///
 ///   S. Spec identity + binding — `spec_json` parses as a `ClauseSpec`
-///      whose `keccak256(abi.encode(clauseId, version))` equals the op's
-///      `clause_id`, and `keccak256(spec_json bytes)` is committed as a
-///      `SpecBinding` public value. The on-chain verifier accepts the
-///      batch only if every binding matches
-///      `ClauseRegistry.contentHashOf(clause_id)` — the registry is the
+///      and `keccak256(spec_json bytes)`, hashed verbatim as pinned,
+///      equals the op's `clause_id` (a clause key IS its spec's hash);
+///      the pair is committed as a `SpecBinding` public value with both
+///      fields equal. The on-chain verifier accepts the batch only if
+///      every binding's fields are equal and
+///      `ClauseRegistry.registered(clause_id)` — the registry is the
 ///      trust anchor, the vkey covers the ENGINE, and a caller cannot
 ///      weaken validation with a permissive spec.
 ///   C. Content — per `content_kind` (validate + generic-encode for a
@@ -189,6 +190,24 @@ pub enum UsageClaimKind {
     Assembly,
 }
 
+/// The reward family of a clause key, as the accrual carries it.
+pub const USAGE_KIND_CLAUSE: u8 = 0;
+/// The reward family of an assembly key, as the accrual carries it.
+pub const USAGE_KIND_ASSEMBLY: u8 = 1;
+
+impl UsageClaimKind {
+    /// The family this claim credits: `USAGE_KIND_CLAUSE` or
+    /// `USAGE_KIND_ASSEMBLY`. A registry accepts any bytes32, so a clause
+    /// key and an assembly key can be the same word; every count and
+    /// accrual is keyed by (kind, key) and the two families never merge.
+    pub fn code(&self) -> u8 {
+        match self {
+            Self::Clause { .. } => USAGE_KIND_CLAUSE,
+            Self::Assembly => USAGE_KIND_ASSEMBLY,
+        }
+    }
+}
+
 /// A claim that one RESOLVED order used one clause or assembly. The guest
 /// proves it against the batch's own post-state and the order's signed
 /// `agreement_hash`; nothing here is taken on the sequencer's word.
@@ -196,8 +215,8 @@ pub enum UsageClaimKind {
 pub struct UsageClaim {
     /// The order's commitment struct, exactly as signed.
     pub order: Commitment,
-    /// Clause idHash or assembly compositionHash — the same identity
-    /// each family's own registry uses, never a new identifier.
+    /// Clause key (keccak256 of the spec's pinned bytes) or assembly
+    /// compositionHash — each family's own registry key, never a new identifier.
     pub clause_or_assembly: B256,
     pub kind: UsageClaimKind,
     /// Sorted-pair Merkle proof of the section leaf against the order's
@@ -206,13 +225,16 @@ pub struct UsageClaim {
 }
 
 /// One clause-or-assembly's accrual AFTER this batch — the CUMULATIVE
-/// `(c, d)` for the batch path in `period`, not a delta. The verifier
-/// overwrites the counter's batch-side slot with it, so the on-chain write
-/// is O(distinct clauses or assemblies in the batch) and carries no
-/// per-process storage at all.
+/// `(c, d)` for the batch path in `period`, not a delta, under its
+/// (kind, key). The verifier overwrites the counter's batch-side slot of
+/// that kind with it, so the on-chain write is O(distinct (kind, key)
+/// pairs in the batch) and carries no per-process storage at all.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct UsageAccrual {
     pub clause_or_assembly: B256,
+    /// `USAGE_KIND_CLAUSE` or `USAGE_KIND_ASSEMBLY`, from the claims'
+    /// own `UsageClaimKind`.
+    pub kind: u8,
     /// Distinct resolved processes that used this clause or assembly (batch
     /// path).
     pub c: u64,
@@ -245,16 +267,20 @@ pub struct KernelStateSnapshot {
     pub processes: Vec<(B256, ProcessState)>,
     pub order_status: Vec<(B256, u8)>,
     pub order_process_id: Vec<(B256, B256)>,
-    /// (clauseOrAssembly, processId) already counted — global, not per period,
-    /// mirroring `UsageCounter.processCounted`.
-    pub usage_counted: Vec<(B256, B256)>,
-    /// (clauseOrAssembly, period, seller) — breadth counts distinct staked
-    /// sellers PER PERIOD, mirroring `UsageCounter.sellerSeen`.
-    pub usage_seller_seen: Vec<(B256, u8, Address)>,
-    /// (clauseOrAssembly, period) → (c, d) — the running batch-path accrual the
-    /// verifier writes out.
-    pub usage_accrual: Vec<((B256, u8), (u64, u64))>,
+    /// (kind, clauseOrAssembly, processId) already counted — global, not per
+    /// period, mirroring `UsageCounter.processCounted`.
+    pub usage_counted: Vec<(u8, B256, B256)>,
+    /// (kind, clauseOrAssembly, period, seller) — breadth counts distinct
+    /// staked sellers PER PERIOD, mirroring `UsageCounter.sellerSeen`.
+    pub usage_seller_seen: Vec<(u8, B256, u8, Address)>,
+    /// (kind, clauseOrAssembly, period) → (c, d) — the running batch-path
+    /// accrual the verifier writes out.
+    pub usage_accrual: Vec<(UsageAccrualKey, (u64, u64))>,
 }
+
+/// (kind, clauseOrAssembly, period) — the key of a running batch-path
+/// accrual.
+pub type UsageAccrualKey = (u8, B256, u8);
 
 // ── SP1 I/O types ─────────────────────────────────────────────────
 
@@ -306,10 +332,10 @@ pub struct PublicValues {
     /// Hash of attestation events emitted in this batch.
     /// The on-chain verifier re-emits these events.
     pub attestation_events_hash: B256,
-    /// Hash of the deduplicated (clause key → witness-spec hash)
-    /// bindings the in-proof clause gates validated against. The
-    /// on-chain verifier checks each binding against
-    /// `ClauseRegistry.contentHashOf` before accepting the batch.
+    /// Hash of the deduplicated (clause key, witness-spec hash) bindings
+    /// the in-proof clause gates validated against — both fields equal.
+    /// The on-chain verifier checks each binding's fields are equal and
+    /// its key `ClauseRegistry.registered` before accepting the batch.
     pub spec_bindings_hash: B256,
     /// Hash of the batch's RPGF usage accrual — the period, the
     /// provenance leaf's key, the per-clause-or-assembly cumulative `(c, d)`,
@@ -401,10 +427,10 @@ pub struct AttestationEventData {
     pub content_ref: B256,
 }
 
-/// One (clause key → witness-spec hash) binding used by the batch's
-/// clause gates. `clause_id` is the on-chain key
-/// `keccak256(abi.encode(clauseId, version))`; `spec_hash` is
-/// `keccak256` of the exact witness spec bytes.
+/// One (clause key, witness-spec hash) binding used by the batch's
+/// clause gates. `spec_hash` is `keccak256` of the exact witness spec
+/// bytes and `clause_id` is the clause key, which Gate S requires to be
+/// that same hash — the two fields are equal; the layout keeps both.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct SpecBinding {
     pub clause_id: B256,
@@ -479,9 +505,8 @@ pub enum KernelError {
     /// Gate S: the witness spec is not valid JSON / not a well-formed
     /// ClauseSpec.
     ClauseSpecParseFailed(String),
-    /// Gate S: the witness spec's (clauseId, version) do not hash to the
-    /// op's `clause_id` — the caller supplied a spec for a different
-    /// clause.
+    /// Gate S: the witness spec's bytes do not hash to the op's
+    /// `clause_id` — the caller supplied the spec of a different clause.
     SpecIdentityMismatch(B256),
     /// Gate C: `content_json` (or a re-assert's `section_data`) fails
     /// the spec's validation.

@@ -16,7 +16,7 @@
 //   _hashPositions, _hashAttestations, _hashSpecBindings
 //                   — uninterpreted bytes32 return
 //   _emitAttestations — no-op (events don't affect ghost balance)
-//   clauseRegistry.contentHashOf — NONDET external view (the spec-binding
+//   clauseRegistry.registered — NONDET external view (the spec-binding
 //                   anchor check gates resolution but moves no tokens)
 //
 // Additionally we pin both event arrays (attestations, specBindings) to
@@ -63,7 +63,7 @@
 // The same holds for the event arrays (attestations, spec bindings):
 // they are summarized to NONDET and never touch the ghost, so their
 // length is irrelevant to balance-flow correctness. The spec-binding
-// anchor check (`_checkSpecBindings` → `clauseRegistry.contentHashOf`)
+// anchor check (`_checkSpecBindings` → `clauseRegistry.registered`)
 // is a view path — it can only make resolution revert, never move a
 // token, so summarizing it to NONDET is sound for balance rules.
 
@@ -82,7 +82,7 @@ methods {
 
     // ClauseRegistry anchor read — a view gate (revert-only power, no
     // token movement); NONDET is sound for balance rules.
-    function _.contentHashOf(bytes32) external => NONDET;
+    function _.registered(bytes32) external => NONDET;
 
     // Balance-irrelevant internal helpers — summarize to collapse the
     // symbolic state space. NONDET on primitive returns is safe; CVL

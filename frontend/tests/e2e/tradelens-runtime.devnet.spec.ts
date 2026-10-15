@@ -38,7 +38,8 @@ import {
     RPC_URL,
     confirmAgreementPreviews,
     discoverAnchoredAssemblies,
-    ladderLabelsFromChain,
+    ladderLabelsOf,
+    primeRegisteredClauseSpecs,
     readLocalDeploymentConfig,
     waitForConnected,
 } from './devnet-helpers';
@@ -58,6 +59,12 @@ import {
     fillTradelensCheckout,
     findTradelensAssembly,
 } from './tradelensScenario';
+
+// Clause keys (`C`) are located by the names their specs carry, over the
+// specs the chain registered — primed once per file.
+test.beforeAll(async () => {
+    await primeRegisteredClauseSpecs();
+});
 
 const ANVIL_MNEMONIC = 'test test test test test test test test test test test junk';
 const ERC20_ABI = parseAbi([
@@ -81,7 +88,6 @@ test.describe('TRADELENS RUNTIME — six sellers bond, the container story attes
         const token = config.tokenAddress as Hex;
         const core = config.figaroCore as Hex;
         const coordinator = config.attestationCoordinator as Hex;
-        const registry = config.clauseRegistry as Hex;
         const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
         const balanceOf = (who: Hex) =>
             publicClient.readContract({ address: token, abi: ERC20_ABI, functionName: 'balanceOf', args: [who] }) as Promise<bigint>;
@@ -191,14 +197,14 @@ test.describe('TRADELENS RUNTIME — six sellers bond, the container story attes
             await page.getByTestId('order-timeline-view').waitFor({ timeout: 30000 });
             await waitForConnected(page);
         };
-        const witnessCap = (clauseId: string) => page.locator(
-            `[data-testid="capability-submit-clause-attestation"][data-clause-id="${clauseId}"]`,
+        const witnessCap = (clauseKey: Hex) => page.locator(
+            `[data-testid="capability-submit-clause-attestation"][data-clause-key="${clauseKey}"]`,
         ).first();
-        const witnessInput = (clauseId: string, field: string) =>
-            page.getByTestId(`capability-input-${clauseId}-${field}`);
-        const executeWitness = async (clauseId: string, label: string) => {
+        const witnessInput = (clauseKey: Hex, field: string) =>
+            page.getByTestId(`capability-input-${clauseKey}-${field}`);
+        const executeWitness = async (clauseKey: Hex, label: string) => {
             const before = await attestationCount();
-            await witnessCap(clauseId).getByTestId('capability-execute-submit-clause-attestation').click();
+            await witnessCap(clauseKey).getByTestId('capability-execute-submit-clause-attestation').click();
             await expect.poll(attestationCount, {
                 timeout: 60000, message: `${label} lands on the AttestationCoordinator`,
             }).toBe(before + 1);
@@ -221,11 +227,11 @@ test.describe('TRADELENS RUNTIME — six sellers bond, the container story attes
         await executeWitness(C.acceptance, "the inspector's conforming outcome");
 
         // The forwarder and the customs agent walk their process ladders.
-        const merchantStages = await ladderLabelsFromChain(publicClient, registry, C.merchant);
-        const walkLadder = async (seller: Hex, clauseId: string, stages: string[], label: string) => {
+        const merchantStages = ladderLabelsOf(C.merchant);
+        const walkLadder = async (seller: Hex, clauseKey: Hex, stages: string[], label: string) => {
             await openTimeline(seller);
             const ladderBtn = page.locator(
-                `[data-testid="capability-execute-submit-clause-attestation"][data-clause-id="${clauseId}"]`,
+                `[data-testid="capability-execute-submit-clause-attestation"][data-clause-key="${clauseKey}"]`,
             );
             const attest = ladderBtn.first();
             for (const stage of stages) {

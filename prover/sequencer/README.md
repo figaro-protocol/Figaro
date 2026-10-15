@@ -411,11 +411,13 @@ of losing the batch:
   A clock that cannot be read builds nothing that tick. The host's clock is
   never read.
 - **The witness spec.** An attestation carries its clause spec's text, and
-  the verifier compares its hash with `ClauseRegistry.contentHashOf` for the
-  clause — a mismatch reverts the whole batch. The relay reads the same
-  anchor from the verifier's own registry (`clauseRegistry()`) and drops an
-  attestation whose spec is not it, so a copy of a landed attestation with
-  one byte changed costs nobody else their batch. Without `BATCH_VERIFIER_ADDRESS` (the prove-only dry run)
+  the clause key is the `keccak256` of those bytes: the guest refuses a
+  spec that does not hash to the key, and the verifier refuses a key
+  `ClauseRegistry.registered` does not hold — either reverts the whole
+  batch. The relay checks the hash itself, reads `registered` from the
+  verifier's own registry (`clauseRegistry()`), and drops an attestation
+  that fails either, so a copy of a landed attestation with one byte
+  changed costs nobody else their batch. Without `BATCH_VERIFIER_ADDRESS` (the prove-only dry run)
 nothing is read. A read failure at the door is not a verdict — the batch-time
 check decides; a read failure at batch time drops the commit conservatively.
 

@@ -3,7 +3,7 @@
  * validation. This off-chain TypeScript module (frontend form gates, SDK
  * agent-action preflight) is the reference implementation; the Rust prover mirror
  * (`prover/clause`) re-runs the same semantics in-proof on the batched path,
- * against the spec as a witness input anchored by ClauseRegistry.contentHashOf.
+ * against the spec as a witness input whose bytes hash to the clause key.
  * The DIRECT path's chain validates no content — it merkle-binds attestations
  * and content-hash-binds the evidence; well-formedness there is this layer's
  * job + a read-time concern.
@@ -152,12 +152,13 @@ export type FieldSpec =
     | ObjectFieldSpec;
 
 export interface ClauseSpec {
-    /** The bare human-readable clause name (e.g. `figaro-emissions`) — no version
-     *  suffix. The on-chain identity key is `keccak256(abi.encode(clauseId, version))`
-     *  (see `ClauseRegistry.registerClause`), so name + version together form it. */
+    /** The human-readable clause name (e.g. `figaro-emissions`) — PRESENTATION:
+     *  a title a reader shows. The clause's identity is its key, `keccak256` of
+     *  the spec's pinned bytes (`computeClauseKey`); two specs sharing a name
+     *  are two clauses. */
     clauseId: string;
-    /** Clause version — a separate field, never embedded in `clauseId`. Folded
-     *  into the on-chain key alongside `clauseId`. */
+    /** A lineage counter a human reads — PRESENTATION, a separate field never
+     *  embedded in `clauseId`. Nothing on chain or in a leaf reads it. */
     version: number;
     /** Display title. */
     title: string;
@@ -170,9 +171,9 @@ export interface ClauseSpec {
     // The `block` slice of the spec JSON (designer/runtime composition metadata)
     // is NOT parsed here — it's pure presentation the SDK never reads. The
     // frontend parses it off the same JSON (`lib/shared/clauseBlockBinding`).
-    // AUTHORS: the on-chain `contentHash` covers the RAW canonical document
-    // including `block` — pin and hash the raw JSON; re-serializing the parsed
-    // spec would silently drop `block` and change the hash.
+    // AUTHORS: the clause key covers the RAW document's pinned bytes,
+    // including `block` — pin `canonicalize(raw)`; re-serializing the parsed
+    // spec would silently drop `block` and change the key.
 }
 
 export interface SpecParseError {

@@ -128,27 +128,23 @@ export interface GraphCorpus {
 /** A published assembly in the minimal shape this read needs: its registered
  *  identity and name, plus every composed clause set the designer composed
  *  (the assembly-scoped set, where a denomination pin composes once, and each
- *  agreement's own set), each beside the template's own sparse
- *  `clauseVersions` for it (absent = version 1; for the assembly-scoped set,
- *  the template's `assemblyClauseVersions`). */
+ *  agreement's own set), each keyed by clause key. */
 interface CorpusTemplate {
     compositionHash: `0x${string}`;
     name: string;
     clauseSets: readonly {
         clauses: Record<string, Record<string, unknown>>;
-        clauseVersions?: Readonly<Record<string, number>>;
     }[];
 }
 
 /** The designer's utility-token pins across the loaded templates, each
  *  distinct address once — a designer's registered fact, never a bundled
- *  token list. Every clause is read at the version the template composed for
- *  it (`readUtilityTokenPin` over the set's own `clauseVersions`). */
+ *  token list. Every clause is read from the spec its key names. */
 export function readTemplateUtilityTokenPins(templates: readonly CorpusTemplate[], specs: SpecSource): Address[] {
     const pins: Address[] = [];
     for (const template of templates) {
-        for (const { clauses, clauseVersions } of template.clauseSets) {
-            const pin = readUtilityTokenPin(clauses, specs, clauseVersions);
+        for (const { clauses } of template.clauseSets) {
+            const pin = readUtilityTokenPin(clauses, specs);
             if (pin && !pins.includes(pin)) pins.push(pin);
         }
     }
@@ -405,14 +401,10 @@ export function useGraphCorpus(): { corpus: GraphCorpus | null; isLoading: boole
                         // design — a denomination pin lives here, not in an
                         // agreement — so both sets are read.
                         ...(a.assemblyTemplate?.assemblyClauses
-                            ? [{
-                                clauses: a.assemblyTemplate.assemblyClauses,
-                                clauseVersions: a.assemblyTemplate.assemblyClauseVersions,
-                            }]
+                            ? [{ clauses: a.assemblyTemplate.assemblyClauses }]
                             : []),
                         ...(a.assemblyTemplate?.agreements ?? []).map((agreement) => ({
                             clauses: agreement.clauses,
-                            clauseVersions: agreement.clauseVersions,
                         })),
                     ],
                 })),

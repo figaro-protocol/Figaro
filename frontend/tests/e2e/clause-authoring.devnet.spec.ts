@@ -92,15 +92,17 @@ test.describe('CLAUSE AUTHORING — register on /clauses/register, inventory rea
         const balanceOf = (who: Hex) =>
             publicClient.readContract({ address: token, abi: ERC20_ABI, functionName: 'balanceOf', args: [who] }) as Promise<bigint>;
 
-        // Per-run nonce → per-run clause id → fresh first-write-wins binding
-        // every run and every retry. The spec shape is the shared probe (a
+        // Per-run nonce → per-run spec name → different pinned bytes → a fresh
+        // clause key (first-write-wins) every run and every retry. The spec shape is the shared probe (a
         // runtime-attestable ladder carrying `block.design.article: "attestations"`,
         // so the inventory grouping renders).
         const runNonce = `${Date.now()}`;
         const CLAUSE_ID = `figaro-authored-${runNonce}`;
         const CLAUSE_TITLE = `Authored clause ${runNonce}`;
         const SPEC = makeProbeSpec(CLAUSE_ID, CLAUSE_TITLE);
-        const idHash = computeClauseKey(CLAUSE_ID, SPEC.version);
+        // The clause key: keccak256 of the spec's canonical bytes — what the
+        // register surface pins and names on chain.
+        const idHash = computeClauseKey(SPEC);
 
         // ── CTA ROUND-TRIP, OUTBOUND: the marketing /clauses page carries the
         //    "Register a clause" CTA; driving it lands the author on the
@@ -147,6 +149,7 @@ test.describe('CLAUSE AUTHORING — register on /clauses/register, inventory rea
             page.getByTestId('receipt-clause-id'),
             'the receipt names the registered clause id',
         ).toHaveText(CLAUSE_ID);
+        await expect(receiptPanel, 'the receipt states the clause key the chain registered').toContainText(idHash);
 
         // Value leg (register): the registration event from strictly after the
         // pre-click head (pattern 17), its tx receipt for the exact gas.
@@ -155,7 +158,7 @@ test.describe('CLAUSE AUTHORING — register on /clauses/register, inventory rea
             args: { registeredBy: AUTHOR }, fromBlock: registerBlockBefore + 1n,
         });
         expect(registeredEvents, 'exactly one ClauseRegistered for the author this run').toHaveLength(1);
-        expect(registeredEvents[0].args.clauseId).toBe(CLAUSE_ID);
+        expect(registeredEvents[0].args.clauseKey?.toLowerCase(), 'the registration names the key of the pinned bytes').toBe(idHash.toLowerCase());
         const registerReceipt = await publicClient.getTransactionReceipt({ hash: registeredEvents[0].transactionHash });
         expect(registerReceipt.status, 'the registration transaction succeeded').toBe('success');
         const registerGas = registerReceipt.gasUsed * registerReceipt.effectiveGasPrice;
@@ -175,7 +178,7 @@ test.describe('CLAUSE AUTHORING — register on /clauses/register, inventory rea
         //    lists the new clause under its article, no rebuild, no bundled
         //    copy. ──
         await page.goto('/registries?family=clauses&e2e=devnet', { waitUntil: 'domcontentloaded' });
-        const inventoryRow = page.locator(`#clause-${CLAUSE_ID}`);
+        const inventoryRow = page.locator(`#clause-${idHash}`);
         await expect(
             inventoryRow,
             'the just-registered clause appears in the live inventory',
@@ -202,7 +205,7 @@ test.describe('CLAUSE AUTHORING — register on /clauses/register, inventory rea
         await page.getByTestId('agreement-drawer').waitFor({ state: 'visible', timeout: 10000 });
         await page.getByTestId('drawer-tab-registry').click();
         await page.getByTestId('drawer-section-registry').waitFor({ state: 'visible', timeout: 5000 });
-        const drawerClause = page.getByTestId(`drawer-registry-clause-${CLAUSE_ID}`);
+        const drawerClause = page.getByTestId(`drawer-registry-clause-${idHash}`);
         await expect(
             drawerClause,
             'the drawer surfaces the UI-registered clause from the live registry',
@@ -403,12 +406,10 @@ test.describe('CLAUSE AUTHORING — register on /clauses/register, inventory rea
         await expect(reclaimBtnAfter).toBeDisabled();
 
         // The event, from strictly after the pre-click head (pattern 17),
-        // keyed by THIS run's clause key. (The event's indexed `clauseId`
-        // topic IS the idHash — the withdraw path keys on
-        // keccak256(abi.encode(clauseId, version)).)
+        // keyed by THIS run's clause key (the event's indexed key topic).
         const withdrawnEvents = await publicClient.getContractEvents({
             address: registry, abi: CLAUSE_REGISTRY_ABI, eventName: 'DepositWithdrawn',
-            args: { clauseId: idHash }, fromBlock: withdrawBlockBefore + 1n,
+            args: { clauseKey: idHash }, fromBlock: withdrawBlockBefore + 1n,
         });
         expect(withdrawnEvents, 'exactly one DepositWithdrawn for this binding').toHaveLength(1);
         expect((withdrawnEvents[0].args.registeredBy as string).toLowerCase()).toBe(AUTHOR.toLowerCase());

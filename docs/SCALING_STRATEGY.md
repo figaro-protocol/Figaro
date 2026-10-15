@@ -142,8 +142,9 @@ batch (all four op kinds) proves in ~1.2M cycles with the k256 SP1 precompile.
 **On-chain verifier** (`src/core/verifier/FigaroBatchVerifier.sol`):
 accepts SP1 proofs, verifies state-root continuity and chain binding,
 hash-verifies auxiliary calldata (positions, attestation events, spec
-bindings, the usage accrual), checks each (clause key → spec hash) binding
-against `ClauseRegistry.contentHashOf`, executes net token transfers, re-emits
+bindings, the usage accrual), checks each (clause key, spec hash) binding —
+the two words equal and the key `ClauseRegistry.registered` — executes net
+token transfers, re-emits
 proven `Attestation` events, and carries the batch's usage accrual to
 `UsageCounter.applyBatchAccrual`. It is not a florin minter. Uses a
 `BatchEventData` struct to avoid stack-too-deep.
@@ -159,8 +160,8 @@ the Succinct gateway ABI, and a devnet stand-in that accepts any proof.
 2. each `resolveProcess` in the batch preserved buyer dominance, atomic
    resolution, conservation, and direct transfer semantics
 3. each attestation preserved its authorization gates, and its content
-   validated against a witness spec whose bytes are bound to
-   `ClauseRegistry.contentHashOf`
+   validated against a witness spec whose bytes hash to a clause key
+   `ClauseRegistry.registered` holds
 4. the resulting state root follows from the prior state root under the
    `FigaroCore`'s rules — no transition skipped, reordered, or fabricated
 
@@ -338,12 +339,14 @@ per-clause validator contracts — is permanently rejected (`CONTRACTS.md`
 **The live architecture.** The guest holds a generic clause *engine* — parse +
 validate + encode (`prover/clause/src/spec.rs`, `validate.rs`, `encode.rs`) —
 and no clauses: no embedded spec table, no per-clause code path anywhere in
-`prover/`. The spec is a witness input, bound to its clause key by content
-hash; `ClauseRegistry` is the trust anchor — `registerClause` anchors
-`contentHash = keccak256(canonical spec JSON)`, the guest commits the
-deduplicated (clause key → witness-spec hash) bindings it validated against
-(`spec_bindings_hash`), and `settleBatch` checks each binding against
-`ClauseRegistry.contentHashOf` before accepting the batch. Adding a clause is
+`prover/`. The spec is a witness input, and its clause key IS its content
+hash: `registerClause` anchors `clauseKey = keccak256(canonical spec JSON)`,
+the guest's Gate S requires `keccak256(spec_json bytes) == clause_id` on the
+bytes it was given, canonicalizing nothing (`prover/lib/src/kernel.rs`), the
+guest commits the deduplicated (clause key, witness-spec hash) bindings it
+validated against (`spec_bindings_hash`), and `settleBatch` requires each
+binding's two words equal and `ClauseRegistry.registered(clauseKey)` before
+accepting the batch; `ClauseRegistry` is the trust anchor. Adding a clause is
 a `ClauseRegistry` transaction and nothing else: no guest rebuild, no vkey
 change, no verifier redeploy
 (`test_permissionless_newClause_settlesWithZeroVerifierChanges`). The vkey
@@ -497,7 +500,7 @@ runs node software, or buys liveness, never safety, from the network.
 publicValues, positions, events, usage)`. The verifier: verifies the proof;
 checks state-root continuity and chain binding; verifies the auxiliary
 calldata hashes against the proof's commitments; checks each spec binding
-against `ClauseRegistry.contentHashOf`; executes the net token transfers;
+(`specHash == clauseId`, `ClauseRegistry.registered(clauseId)`); executes the net token transfers;
 re-emits protocol-compatible events; forwards the usage accrual to
 `UsageCounter.applyBatchAccrual`; advances the state root.
 

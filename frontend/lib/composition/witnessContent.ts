@@ -35,12 +35,12 @@ import {
     type CappedFetchOptions,
     type IpfsService,
 } from "@/lib/shared/ipfsService";
-import { clauseIdForHash, clauseSpecForHash } from "@/lib/shared/clauseSpecSource";
+import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
 import { isBytes32Hex, isEmptyHex } from "@/lib/shared/evm";
 
 export interface PublishWitnessContentParams {
-    /** The clause attested — the on-chain clause hash
-     *  keccak256(abi.encode(clauseId, version)), which names one registration. */
+    /** The clause attested — its clause key, the hash of the pinned spec
+     *  bytes, as the Attestation event carries it. */
     clauseId: Hex;
     /** Lifecycle stage the content was encoded at — drives the same
      *  `contentFieldsFor` selection the encoder applied. */
@@ -71,10 +71,9 @@ export async function publishWitnessContent(params: PublishWitnessContentParams)
         await pinContent(content, params.ipfs, "the provenance leaf", stage);
         return;
     }
-    // The hash names the exact (name, version) attested — resolve that spec.
-    const identity = clauseIdForHash(params.clauseId);
-    const clauseId = identity ? `${identity.clauseId} v${identity.version}` : params.clauseId;
-    const spec = clauseSpecForHash(params.clauseId);
+    // The key names the exact spec attested — resolve that spec.
+    const spec = getClauseSpec(params.clauseId);
+    const clauseId = spec ? `${spec.clauseId} v${spec.version}` : params.clauseId;
     if (!spec) {
         // FAIL-CLOSED: an unknown spec is withheld (the committed-pin rule).
         // Loud, because at attest time the spec was just used to encode — a

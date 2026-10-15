@@ -29,6 +29,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 
 import { BATCH_VERIFIER_ABI } from "../src/index.js";
+import { canonicalize } from "../src/agreement.js";
 import type { SequencerClient } from "../src/agent/sequencer.js";
 
 export const ANVIL_URL = "http://127.0.0.1:8545";
@@ -62,11 +63,14 @@ function loadBytecode(contractPath: string): Hex {
     return artifact.bytecode.object as Hex;
 }
 
-// ── The witness clause: figaro-modalities, exact registered bytes ────────────
+// ── The witness clause: figaro-modalities, exact pinned bytes ────────────────
 
-export function loadSpecJson(clauseId: string): string {
+/** The bytes a clause is pinned as: the canonical serialization of
+ *  `clauses/<name>.json` (`canonicalize`) — the bytes the clause key hashes
+ *  and the guest's Gate S re-hashes. */
+export function loadSpecJson(name: string): string {
     const repoRoot = path.resolve(import.meta.dirname, "../..");
-    return fs.readFileSync(path.join(repoRoot, "clauses", `${clauseId}.json`), "utf-8");
+    return canonicalize(JSON.parse(fs.readFileSync(path.join(repoRoot, "clauses", `${name}.json`), "utf-8")));
 }
 
 // ── Genesis state root computation ──────────────────────────────────────────
@@ -120,7 +124,7 @@ type Wallet = WalletClient<Transport, Chain, Account>;
 export async function deployBatchStack(
     publicClient: PublicClient,
     deployerWallet: Wallet,
-    witness: { specJson: string; clauseId: string; version: number; clauseKey: Hex },
+    witness: { specJson: string; clauseKey: Hex },
 ): Promise<BatchStack> {
     const deployer = deployerWallet.account.address;
 
@@ -155,8 +159,8 @@ export async function deployBatchStack(
 
     const CLAUSE_REGISTRY_DEPLOY_ABI = parseAbi([
         "constructor(uint256 _registrationDeposit)",
-        "function registerClause(string clauseId, uint64 version, bytes32 contentHash, string contentURI) external payable",
-        "function contentHashOf(bytes32 idHash) view returns (bytes32)",
+        "function registerClause(bytes32 clauseKey, string contentURI) external payable",
+        "function registered(bytes32 clauseKey) view returns (bool)",
     ]);
     const registryBytecode = loadBytecode("ClauseRegistry.sol/ClauseRegistry.json");
     const regHash = await deployerWallet.deployContract({
@@ -167,24 +171,25 @@ export async function deployBatchStack(
     const regReceipt = await publicClient.waitForTransactionReceipt({ hash: regHash });
     const clauseRegistryAddress = regReceipt.contractAddress!;
 
-    // Anchor the EXACT spec bytes the witness proof will carry.
-    const specHash = keccak256(stringToHex(witness.specJson));
+    // Register the clause under the key of the EXACT bytes the witness proof
+    // will carry: the key is the hash of the pinned bytes.
+    expect(keccak256(stringToHex(witness.specJson))).toBe(witness.clauseKey);
     await deployerWallet
         .writeContract({
             address: clauseRegistryAddress,
             abi: CLAUSE_REGISTRY_DEPLOY_ABI,
             functionName: "registerClause",
-            args: [witness.clauseId, BigInt(witness.version), specHash, "ipfs://spec"],
+            args: [witness.clauseKey, "ipfs://spec"],
         })
         .then((h) => publicClient.waitForTransactionReceipt({ hash: h }));
 
-    const anchored = await publicClient.readContract({
+    const registered = await publicClient.readContract({
         address: clauseRegistryAddress,
         abi: CLAUSE_REGISTRY_DEPLOY_ABI,
-        functionName: "contentHashOf",
+        functionName: "registered",
         args: [witness.clauseKey],
     });
-    expect(anchored).toBe(specHash);
+    expect(registered).toBe(true);
 
     // ── Deploy the RPGF counter the verifier writes through ──
     // The two reference each other, so the verifier's address is predicted

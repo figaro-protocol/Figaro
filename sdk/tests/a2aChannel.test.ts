@@ -37,7 +37,7 @@ const sellerW = createWalletClient({ account: SELLER, transport: http("http://12
 const template: AssemblyTemplate = {
     agreements: [{
         id: "root",
-        clauses: { "figaro-commerce": { currency: CURRENCY, payment: PAYMENT.toString(), lineItems: [] } },
+        clauses: { [keyOf("figaro-commerce")]: { currency: CURRENCY, payment: PAYMENT.toString(), lineItems: [] } },
     }],
 };
 
@@ -191,6 +191,7 @@ describe("A2aChannel over a real socket", () => {
 
 import { didWebEndpointResolver } from "../src/agent/httpChannel.js";
 import type { DIDDocument } from "../src/agent/did.js";
+import { keyOf } from "./specFixtures.js";
 
 describe("A2aChannel + didWebEndpointResolver", () => {
     it("resolves the seller's declared A2AEndpoint and completes the handshake over it", async () => {

@@ -6,7 +6,7 @@
  */
 import { describe, expect, it, vi } from "vitest";
 import { encodePacked, keccak256, type Address, type Hex } from "viem";
-import { PROVENANCE_LEAF_KEY, computeClauseKey, provenanceContentRef, provenanceSectionBytes, type Agreement, type Commitment, type UsageClaimContext } from "@figaro-protocol/sdk";
+import { PROVENANCE_LEAF_KEY, provenanceContentRef, provenanceSectionBytes, type Agreement, type Commitment, type UsageClaimContext } from "@figaro-protocol/sdk";
 import { planUsageRecords, type UsagePlanEntry } from "@/lib/semantic/planUsageRecords";
 import { createCapabilityExecutors, type CapabilityExecutorDeps } from "@/lib/semantic/createCapabilityExecutors";
 import { OrderState, type Order } from "@/lib/kernel/store";
@@ -16,8 +16,10 @@ import { ZERO_BYTES32 } from "@/lib/shared/evm";
 // the executor are what is under test, so the restoration is the identity.
 vi.mock("@/lib/kernel/signedCommitment", () => ({ restoreSignedProcessId: (c: Commitment) => c }));
 
-const COMMERCE = computeClauseKey("figaro-commerce", 1);
-const MODALITIES = computeClauseKey("figaro-modalities", 1);
+// Clause keys are opaque 32-byte hashes here: the planner reads none of the
+// specs behind them.
+const COMMERCE = keccak256(encodePacked(["string"], ["a commerce spec's bytes"]));
+const MODALITIES = keccak256(encodePacked(["string"], ["a modalities spec's bytes"]));
 const COMPOSITION = keccak256(encodePacked(["string"], ["an-assembly"]));
 const BUYER = "0x0000000000000000000000000000000000000b0b" as Address;
 const CURRENCY = "0x00000000000000000000000000000000000007ed" as Address;
@@ -33,12 +35,12 @@ function commitment(salt: bigint, seller: Address): Commitment {
     };
 }
 
-function agreement(seller: Address, compositionHash: unknown = COMPOSITION): Agreement {
+function agreement(seller: Address, compositionHash: unknown = COMPOSITION, modalities: Hex = MODALITIES): Agreement {
     return {
         version: "a1", buyer: BUYER, seller,
         sections: [
-            { clause: "figaro-modalities", version: 1, data: { modality: "pickup" } },
-            { clause: "figaro-commerce", version: 1, data: { payment: "100", currency: CURRENCY, lineItems: [] } },
+            { clause: modalities, data: { modality: "pickup" } },
+            { clause: COMMERCE, data: { payment: "100", currency: CURRENCY, lineItems: [] } },
         ],
         provenance: compositionHash,
     } as Agreement;
@@ -93,6 +95,15 @@ describe("planUsageRecords", () => {
         const { writes, problems } = planUsageRecords([{ ...entry(1n, SELLER_A), context: foreign }]);
         expect(writes).toHaveLength(0);
         expect(problems.join("\n")).toMatch(/not the agreement format's/);
+    });
+
+    it("keeps the two families apart: a clause key with an assembly's bytes is its own (kind, key) pair", () => {
+        // A registry accepts any bytes32, so a section may carry the very
+        // bytes of the assembly's composition hash; it plans as a clause
+        // write AND the provenance plans as the assembly write.
+        const { writes } = planUsageRecords([entry(1n, SELLER_A, agreement(SELLER_A, COMPOSITION, COMPOSITION))]);
+        expect(writes.filter((w) => w.key.toLowerCase() === COMPOSITION.toLowerCase()).map((w) => w.kind).sort())
+            .toEqual(["assembly", "clause"]);
     });
 
     it("plans nothing from no entries", () => {

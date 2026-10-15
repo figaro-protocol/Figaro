@@ -41,7 +41,7 @@ describe("CapabilityRail — a choice card opens a chooser", () => {
         id: `p:o:${clauseId}-seller-reassert`,
         label: title,
         actionKind: "reassert-committed-section",
-        action: { executionType: "transaction", kind: "submit-clause-attestation", orderHash: "o", clauseId, version: 1, stage: 0, party: "seller", reasserts: true },
+        action: { executionType: "transaction", kind: "submit-clause-attestation", orderHash: "o", clauseKey: clauseId, stage: 0, party: "seller", reasserts: true },
         preconditions: [],
     } as unknown as CapabilityModel);
     const card = (choices: CapabilityModel[]): CapabilityModel => ({
@@ -63,11 +63,11 @@ describe("CapabilityRail — a choice card opens a chooser", () => {
         fireEvent.click(screen.getByTestId("capability-execute-reassert-committed-sections"));
         expect(executed).toHaveLength(0);
         const rows = screen.getAllByTestId("capability-choice-reassert-committed-section");
-        expect(rows.map((r) => r.getAttribute("data-clause-id"))).toEqual(["never-seen-a", "never-seen-b"]);
+        expect(rows.map((r) => r.getAttribute("data-clause-key"))).toEqual(["never-seen-a", "never-seen-b"]);
         expect(screen.getByText("Section A")).toBeInTheDocument();
 
         const submit = screen.getAllByTestId("capability-execute-reassert-committed-section")
-            .find((b) => b.getAttribute("data-clause-id") === "never-seen-b")!;
+            .find((b) => b.getAttribute("data-clause-key") === "never-seen-b")!;
         fireEvent.click(submit);
         expect(executed).toEqual([choices[1]]);
     });

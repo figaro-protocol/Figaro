@@ -15,8 +15,8 @@
  * At checkout every assembly-scoped section folds into EVERY agreement, so
  * every party signs it — stated in the panel copy for the designer.
  *
- * Testids: `assembly-terms-panel`, `assembly-terms-clause-<clauseId>`,
- * `assembly-terms-field-<clauseId>-<field>`.
+ * Testids: `assembly-terms-panel`, `assembly-terms-clause-<clauseKey>`,
+ * `assembly-terms-field-<clauseKey>-<field>`.
  */
 
 import { useMemo } from "react";
@@ -30,23 +30,18 @@ import {
     isLiveRegistration,
     listKnownClauses,
 } from "@/lib/shared/clauseSpecSource";
-import { templateClauseVersion } from "@/lib/shared/assemblyTemplate";
 import { FieldControl } from "@/components/runtime/FieldControl";
 
 export function AssemblyTermsPanel({
     values,
-    versions,
     onToggleClause,
     onSetClauseField,
     readOnly = false,
 }: {
-    /** clauseId → composed values (design.fills only; `{}` = selected). */
+    /** clause key → composed values (design.fills only; `{}` = selected). */
     values: Record<string, Record<string, unknown>>;
-    /** clauseId → the version composed, in the template's sparse encoding
-     *  (`assemblyClauseVersions`). */
-    versions: Readonly<Record<string, number>> | undefined;
-    onToggleClause: (clauseId: string, next: boolean, version: number) => void;
-    onSetClauseField: (clauseId: string, field: string, value: unknown) => void;
+    onToggleClause: (clauseKey: string, next: boolean) => void;
+    onSetClauseField: (clauseKey: string, field: string, value: unknown) => void;
     readOnly?: boolean;
 }) {
     const { data: registered } = useAllRegisteredClauses();
@@ -57,15 +52,15 @@ export function AssemblyTermsPanel({
     // zero code change. Withdrawn stakes de-surface exactly as in the drawer.
     const assemblyClauses = useMemo(() => {
         const live = new Set(
-            (registered ?? []).filter(isLiveRegistration).map((e) => `${e.clauseId}#${e.version}`),
+            (registered ?? []).filter(isLiveRegistration).map((e) => e.clauseKey.toLowerCase()),
         );
         // A mandatory assembly-scoped clause, when the registry holds one,
         // folds in automatically at publish — never a choice, so never
         // offered here.
         return listKnownClauses().filter(
-            (c) => live.has(`${c.clauseId}#${c.version}`)
-                && clauseIsAssemblyScoped(c.clauseId, c.version)
-                && !clauseIsMandatory(c.clauseId, c.version),
+            (c) => live.has(c.clauseKey.toLowerCase())
+                && clauseIsAssemblyScoped(c.clauseKey)
+                && !clauseIsMandatory(c.clauseKey),
         );
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [registered, specsVersion]);
@@ -80,25 +75,27 @@ export function AssemblyTermsPanel({
                 assembly&rsquo;s identity, and folded into <strong>every</strong> agreement at
                 checkout so every party signs them.
             </p>
-            {assemblyClauses.map(({ clauseId, version }) => {
-                const spec = getClauseSpec(clauseId, version);
+            {assemblyClauses.map(({ clauseKey }) => {
+                const spec = getClauseSpec(clauseKey);
                 if (!spec) return null;
-                // A term is (id, version): checked only at the version composed.
-                const selected = clauseId in values
-                    && templateClauseVersion({ clauseVersions: versions }, clauseId) === version;
-                const fills = clauseDesignFills(clauseId, version);
+                // A term is one key: checked when the composition holds it.
+                const selected = clauseKey in values;
+                const fills = clauseDesignFills(clauseKey);
                 return (
-                    <div key={`${clauseId}#${version}`} className="space-y-1.5">
+                    <div key={clauseKey} className="space-y-1.5">
                         <label className="flex items-start gap-2 cursor-pointer">
                             <input
                                 type="checkbox"
-                                data-testid={`assembly-terms-clause-${clauseId}`}
+                                data-testid={`assembly-terms-clause-${clauseKey}`}
                                 checked={selected}
                                 disabled={readOnly}
-                                onChange={(e) => onToggleClause(clauseId, e.target.checked, version)}
+                                onChange={(e) => onToggleClause(clauseKey, e.target.checked)}
                                 className="mt-0.5"
                             />
-                            <span className="text-sm text-ink-primary">{spec.title}</span>
+                            <span className="text-sm text-ink-primary">
+                                {spec.title}
+                                <span className="ml-1 font-mono text-[10px] text-ink-muted" title={clauseKey}>v{spec.version}</span>
+                            </span>
                         </label>
                         {selected && spec.fields
                             .filter((f) => fills.includes(f.name))
@@ -106,9 +103,9 @@ export function AssemblyTermsPanel({
                                 <div key={field.name} className="pl-6">
                                     <FieldControl
                                         field={field}
-                                        value={values[clauseId]?.[field.name]}
-                                        onChange={(v) => onSetClauseField(clauseId, field.name, v)}
-                                        testId={`assembly-terms-field-${clauseId}-${field.name}`}
+                                        value={values[clauseKey]?.[field.name]}
+                                        onChange={(v) => onSetClauseField(clauseKey, field.name, v)}
+                                        testId={`assembly-terms-field-${clauseKey}-${field.name}`}
                                     />
                                 </div>
                             ))}

@@ -29,6 +29,8 @@ import {
     memberProfileBindings,
     publishOrAdoptReviewed,
     waitForConnected,
+    keyOf,
+    primeRegisteredClauseSpecs,
 } from './devnet-helpers';
 import { ANVIL_ACCOUNTS } from '../anvilAccounts';
 import { geohashCentroidDistanceKm } from '@figaro-protocol/sdk/derive';
@@ -40,8 +42,15 @@ const BUYER = ANVIL_ACCOUNTS[3] as Hex; // anvil[3] — a buyer no other spec us
 const LEAD = mnemonicToAccount(ANVIL_MNEMONIC, { addressIndex: 14 }).address as Hex;
 const HAULER = mnemonicToAccount(ANVIL_MNEMONIC, { addressIndex: 15 }).address as Hex;
 
-const PROCESS_CLAUSE = 'figaro-courier-process'; // the transfer-ladder the binding keys on
-const GEO_CLAUSE = 'figaro-geolocation';
+let PROCESS_CLAUSE: Hex; // the transfer-ladder the binding keys on
+let GEO_CLAUSE: Hex;
+test.beforeAll(async () => {
+    // Clause KEYS, located by the names their specs carry over the specs the
+    // chain registered — never a hardcoded key.
+    await primeRegisteredClauseSpecs();
+    PROCESS_CLAUSE = keyOf('figaro-courier-process');
+    GEO_CLAUSE = keyOf('figaro-geolocation');
+});
 
 // The committed endpoints — design-time values on the canvas. SF → Berkeley-ish,
 // far enough apart that ceil(km) is a real multi-unit bill.
@@ -92,7 +101,7 @@ async function onboardSeller(page: Page, opts: {
     geohash: string;
     assemblySlug: string;
     product: { name: string; price: string; rate?: { unit: string; source: string } };
-    designate?: { clauseId: string; counterparty: Hex };
+    designate?: { clauseKey: Hex; counterparty: Hex };
 }) {
     await gotoAsWallet(page, opts.wallet, '/members/identity?e2e=devnet');
     await expect(page.locator('#profile-name')).toBeVisible({ timeout: 30000 });
@@ -111,7 +120,7 @@ async function onboardSeller(page: Page, opts: {
         const counterparties = page.getByTestId(`seller-assembly-counterparties-${opts.assemblySlug}`);
         await counterparties.waitFor({ state: 'visible', timeout: 30000 });
         await counterparties
-            .getByTestId(`counterparty-${opts.designate.clauseId}-input-0`)
+            .getByTestId(`counterparty-${opts.designate.clauseKey}-input-0`)
             .fill(opts.designate.counterparty);
     }
     await page.getByRole('button', { name: /^Next/ }).click();
@@ -206,7 +215,7 @@ test.describe('RATE PRICING — a contributor prices per started km of the commi
             const bindings = await memberProfileBindings(LEAD);
             const binding = bindings.find((b) => b.assemblySlug === slug);
             return !!binding && (binding.counterpartyBindings ?? []).some(
-                (cb) => cb.clauseId === PROCESS_CLAUSE
+                (cb) => cb.clauseKey.toLowerCase() === PROCESS_CLAUSE
                     && cb.addresses.some((a) => a.toLowerCase() === HAULER.toLowerCase()),
             );
         };
@@ -218,7 +227,7 @@ test.describe('RATE PRICING — a contributor prices per started km of the commi
                 geohash: ORIGIN_GEOHASH,
                 assemblySlug: slug!,
                 product: { name: 'Crate of provisions', price: '1' },
-                designate: { clauseId: PROCESS_CLAUSE, counterparty: HAULER },
+                designate: { clauseKey: PROCESS_CLAUSE, counterparty: HAULER },
             });
             await expect.poll(leadConformant, {
                 timeout: 60000, message: "the lead's pinned profile carries the binding + hauler designation",

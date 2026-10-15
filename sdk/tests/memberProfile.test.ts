@@ -5,6 +5,7 @@ import {
     projectAgentServices,
     tryParseMemberProfileDocument,
 } from "../src/memberProfile.js";
+import { keyOf } from "./specFixtures.js";
 
 describe("member profile metadata parser", () => {
     const VALID_DOC = {
@@ -139,7 +140,7 @@ describe("member profile metadata parser", () => {
             disclosurePolicy: [
                 {
                     compositionHash: HASH,
-                    clauseId: "figaro-commerce",
+                    clauseKey: keyOf("figaro-commerce"),
                     posture: "seller",
                     offered: true,
                     whitelist: ["0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"],
@@ -149,7 +150,7 @@ describe("member profile metadata parser", () => {
                     // The buyer half is first-class (ruling 7): the same
                     // structure covers records co-produced AS A BUYER.
                     compositionHash: HASH,
-                    clauseId: "figaro-commerce",
+                    clauseKey: keyOf("figaro-commerce"),
                     posture: "buyer",
                     offered: false,
                 },
@@ -162,7 +163,7 @@ describe("member profile metadata parser", () => {
             expect(result.disclosurePolicy).toHaveLength(2);
             const [seller, buyer] = result.disclosurePolicy!;
             expect(seller.compositionHash).toBe(HASH);
-            expect(seller.clauseId).toBe("figaro-commerce");
+            expect(seller.clauseKey).toBe(keyOf("figaro-commerce"));
             expect(seller.posture).toBe("seller");
             expect(seller.offered).toBe(true);
             expect(seller.whitelist).toEqual(["0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"]);
@@ -186,24 +187,31 @@ describe("member profile metadata parser", () => {
             expect(parseMemberProfileDocument(result).disclosurePolicy).toBeUndefined();
         });
 
+        it("throws when a clause is named rather than keyed — a published document carries keys", () => {
+            expect(() => parseMemberProfileDocument({
+                name: "Bob",
+                disclosurePolicy: [{ compositionHash: HASH, clauseKey: "figaro-commerce", posture: "seller", offered: true }],
+            })).toThrow(/disclosurePolicy\[0\]\.clauseKey must be a 32-byte clause key/);
+        });
+
         it("throws when posture is outside buyer|seller", () => {
             expect(() => parseMemberProfileDocument({
                 name: "Bob",
-                disclosurePolicy: [{ compositionHash: HASH, clauseId: "figaro-commerce", posture: "broker", offered: true }],
+                disclosurePolicy: [{ compositionHash: HASH, clauseKey: keyOf("figaro-commerce"), posture: "broker", offered: true }],
             })).toThrow(/disclosurePolicy\[0\]\.posture/);
         });
 
         it("throws when compositionHash is not a 32-byte hex hash", () => {
             expect(() => parseMemberProfileDocument({
                 name: "Bob",
-                disclosurePolicy: [{ compositionHash: "0x1234", clauseId: "figaro-commerce", posture: "seller", offered: true }],
+                disclosurePolicy: [{ compositionHash: "0x1234", clauseKey: keyOf("figaro-commerce"), posture: "seller", offered: true }],
             })).toThrow(/disclosurePolicy\[0\]\.compositionHash must be a 32-byte hex hash/);
         });
 
         it("throws when offered is not a boolean", () => {
             expect(() => parseMemberProfileDocument({
                 name: "Bob",
-                disclosurePolicy: [{ compositionHash: HASH, clauseId: "figaro-commerce", posture: "seller", offered: "yes" }],
+                disclosurePolicy: [{ compositionHash: HASH, clauseKey: keyOf("figaro-commerce"), posture: "seller", offered: "yes" }],
             })).toThrow(/disclosurePolicy\[0\]\.offered/);
         });
 
@@ -212,7 +220,7 @@ describe("member profile metadata parser", () => {
                 name: "Bob",
                 disclosurePolicy: [{
                     compositionHash: HASH,
-                    clauseId: "figaro-commerce",
+                    clauseKey: keyOf("figaro-commerce"),
                     posture: "seller",
                     offered: true,
                     whitelist: ["not-an-address"],

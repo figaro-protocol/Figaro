@@ -14,8 +14,8 @@
  * ETH-staked intents that stay on the direct path.
  *
  * Every batched attestation carries the full witness payload: the
- * clause's canonical spec bytes (bound on-chain to
- * `ClauseRegistry.contentHashOf` at resolution), the content, the
+ * clause's pinned spec bytes (whose keccak256 IS the clause key the
+ * verifier checks is registered at resolution), the content, the
  * committed sectionData, and the agreement inclusion proof. The batched
  * path validates everything in-proof or the batch cannot resolve.
  */
@@ -37,8 +37,8 @@ export type SequencerContentKind = "RuntimeWitness" | "ReAssert";
 /** The witness payload every batched attestation carries — mirrors the
  *  Rust `AttestationContentProof`. */
 export interface SequencerContentProof {
-    /** The clause's canonical spec JSON — EXACT registered bytes
-     *  (`keccak256` of them must equal the registry's `contentHashOf`). */
+    /** The clause's spec JSON — the EXACT pinned bytes (`keccak256` of them
+     *  is the clause key the attestation names). */
     spec_json: string;
     /** The structured content validated (and, for a RuntimeWitness,
      *  generically ABI-encoded) in-proof. */
@@ -111,7 +111,7 @@ export interface SequencerCommitment {
  */
 export interface SequencerUsageClaim {
     order: SequencerCommitment;
-    /** Clause idHash or assembly compositionHash. Field name mirrors the Rust
+    /** Clause key or assembly compositionHash. Field name mirrors the Rust
      *  guest's `UsageClaim.clause_or_assembly` (prover/lib/src/types.rs) — a
      *  wire-protocol identity; any change must land in lockstep with the Rust side. */
     clause_or_assembly: Hex;

@@ -38,11 +38,12 @@
 import { test, expect, gotoAsWallet } from './devnet-multi-test';
 import { createPublicClient, createWalletClient, defineChain, http, keccak256, parseAbi, parseEther, type Hex } from 'viem';
 import { mnemonicToAccount, privateKeyToAccount } from 'viem/accounts';
-import { readLocalDeploymentConfig, publishOrAdoptReviewed } from './devnet-helpers';
+import { readLocalDeploymentConfig, publishOrAdoptReviewed, keyOf, primeRegisteredClauseSpecs } from './devnet-helpers';
 import { ANVIL_KEYS } from '../anvilAccounts';
 import { CORE_ABI } from '@/lib/kernel/contracts';
-import { calculateBonds, ATTESTATION_COORDINATOR_ABI, CLAUSE_REGISTRY_ABI } from '@figaro-protocol/sdk';
-import { encodeContentFromSpec, parseClauseSpec } from '@figaro-protocol/sdk/clauses';
+import { calculateBonds, ATTESTATION_COORDINATOR_ABI } from '@figaro-protocol/sdk';
+import { encodeContentFromSpec } from '@figaro-protocol/sdk/clauses';
+import { getClauseSpec } from '@/lib/shared/clauseSpecSource';
 import type { Page } from '@playwright/test';
 
 const RPC_URL = 'http://127.0.0.1:8545';
@@ -55,7 +56,13 @@ const LOCAL_ANVIL = defineChain({
 const ANVIL_MNEMONIC = 'test test test test test test test test test test test junk';
 const ERC20_ABI = parseAbi(['function balanceOf(address) view returns (uint256)']);
 
-const TARGET_CLAUSE = 'figaro-content-handoff';
+let TARGET_CLAUSE: Hex;
+test.beforeAll(async () => {
+    // Clause KEYS, located by the names their specs carry over the specs the
+    // chain registered — never a hardcoded key.
+    await primeRegisteredClauseSpecs();
+    TARGET_CLAUSE = keyOf('figaro-content-handoff');
+});
 /** The seller's declared locality (profile geohash) — the value the checkout offers
  *  to every geohash-format field, and the origin the committed agreement must carry. */
 const SELLER_GEOHASH = '9q8yyk';
@@ -134,8 +141,8 @@ test.describe('CONTENT DELIVERY — the digital hand-off ceremony, encrypted to 
         // composition, so publishing collapses onto the reference's anchor —
         // this spec is the freelancer reference's named test
         // (assemblies/README.md).
-        await page.getByTestId('drawer-registry-clause-figaro-modalities').check();
-        await page.getByTestId('drawer-registry-clause-figaro-geolocation').check();
+        await page.getByTestId(`drawer-registry-clause-${keyOf('figaro-modalities')}`).check();
+        await page.getByTestId(`drawer-registry-clause-${keyOf('figaro-geolocation')}`).check();
         await page.getByTestId('designer-name-input').fill('Freelance deliverable');
         await page.getByTestId('designer-summary-input').fill('A single-order digital hand-off: the artifact travels the encrypted channel.');
         await page.getByTestId('designer-description-input').fill('Composes the content hand-off clause; the deliverable is counterparty-private and completion-evidenced by content hash.');
@@ -202,11 +209,11 @@ test.describe('CONTENT DELIVERY — the digital hand-off ceremony, encrypted to 
         // origin is the seller's own place, taken from the offer the checkout
         // makes to every geohash-format field (no device read, no code to
         // know); the destination is typed.
-        await page.locator('[data-testid^="checkout-field-"][data-testid$="-figaro-modalities-modality-virtual"]').first().check();
-        await page.locator('[data-testid^="checkout-field-"][data-testid$="-figaro-geolocation-origin-preset-0"]').first().click();
-        await expect(page.locator('[data-testid^="checkout-field-"][data-testid$="-figaro-geolocation-origin"]').first())
+        await page.locator(`[data-testid^="checkout-field-"][data-testid$="-${keyOf('figaro-modalities')}-modality-virtual"]`).first().check();
+        await page.locator(`[data-testid^="checkout-field-"][data-testid$="-${keyOf('figaro-geolocation')}-origin-preset-0"]`).first().click();
+        await expect(page.locator(`[data-testid^="checkout-field-"][data-testid$="-${keyOf('figaro-geolocation')}-origin"]`).first())
             .toHaveValue(SELLER_GEOHASH);
-        await page.locator('[data-testid^="checkout-field-"][data-testid$="-figaro-geolocation-destination"]').first().fill('u15pk4');
+        await page.locator(`[data-testid^="checkout-field-"][data-testid$="-${keyOf('figaro-geolocation')}-destination"]`).first().fill('u15pk4');
         const place = page.getByTestId('btn-place-order');
         await expect(place, 'buyer connected + order ready → "Place order"').toHaveText(/Place order/, { timeout: 20000 });
         await place.click();
@@ -257,7 +264,7 @@ test.describe('CONTENT DELIVERY — the digital hand-off ceremony, encrypted to 
         const agreement = JSON.parse(await (await fetch(
             `${agreementIpfsApi}/api/v0/cat?arg=${agreementUri!.replace(/^ipfs:\/\//, '')}`, { method: 'POST' },
         )).text()) as { sections: { clause: string; data: Record<string, unknown> }[] };
-        const geolocation = agreement.sections.find((sec) => sec.clause === 'figaro-geolocation');
+        const geolocation = agreement.sections.find((sec) => sec.clause.toLowerCase() === keyOf('figaro-geolocation'));
         expect(geolocation?.data.origin, "the committed origin is the seller's declared locality").toBe(SELLER_GEOHASH);
 
         // ── CEREMONY, buyer side: the declared interaction mounts on the
@@ -292,19 +299,10 @@ test.describe('CONTENT DELIVERY — the digital hand-off ceremony, encrypted to 
         // Out-of-band: the Attestation event landed at stage 1 with
         // contentRef = keccak of the stage-1 content encoded per the
         // REGISTERED spec (ClauseRegistered → IPFS) over the artifact hash.
-        const ipfsApi = process.env.NEXT_PUBLIC_IPFS_API_URL ?? 'http://127.0.0.1:5001';
-        const regEvents = await publicClient.getContractEvents({
-            address: config.clauseRegistry as Hex, abi: CLAUSE_REGISTRY_ABI,
-            eventName: 'ClauseRegistered', fromBlock: 0n,
-        });
-        const registration = regEvents.filter((e) => e.args.clauseId === TARGET_CLAUSE).pop();
-        expect(registration, `${TARGET_CLAUSE} is anchored on ClauseRegistry`).toBeTruthy();
-        const specCid = (registration!.args.contentURI as string).replace(/^ipfs:\/\//, '');
-        const specRaw = await (await fetch(`${ipfsApi}/api/v0/cat?arg=${specCid}`, { method: 'POST' })).json();
-        const parsed = parseClauseSpec(specRaw);
-        if (!parsed.ok) throw new Error('the registered spec failed to parse');
+        const registeredSpec = getClauseSpec(TARGET_CLAUSE);
+        expect(registeredSpec, 'the clause is anchored on ClauseRegistry and its pinned spec loads').toBeTruthy();
         const expectedRef = keccak256(
-            encodeContentFromSpec(parsed.spec, { contentHash: ARTIFACT_HASH }, { stage: 1 }),
+            encodeContentFromSpec(registeredSpec!, { contentHash: ARTIFACT_HASH }, { stage: 1 }),
         ).toLowerCase();
         await expect.poll(async () => {
             const logs = await publicClient.getContractEvents({

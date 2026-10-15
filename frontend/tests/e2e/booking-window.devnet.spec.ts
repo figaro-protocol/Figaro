@@ -29,6 +29,8 @@ import {
     memberProfileBindings,
     publishOrAdoptReviewed,
     waitForConnected,
+    keyOf,
+    primeRegisteredClauseSpecs,
 } from './devnet-helpers';
 import { ANVIL_ACCOUNTS } from '../anvilAccounts';
 import type { Page } from '@playwright/test';
@@ -41,8 +43,15 @@ const BUYER = ANVIL_ACCOUNTS[13] as Hex;
 const LEAD = mnemonicToAccount(ANVIL_MNEMONIC, { addressIndex: 20 }).address as Hex;
 const PROVIDER = mnemonicToAccount(ANVIL_MNEMONIC, { addressIndex: 21 }).address as Hex;
 
-const PROCESS_CLAUSE = 'figaro-merchant-process'; // the ladder the binding keys on
-const SCHEDULE_CLAUSE = 'figaro-schedule';
+let PROCESS_CLAUSE: Hex; // the ladder the binding keys on
+let SCHEDULE_CLAUSE: Hex;
+test.beforeAll(async () => {
+    // Clause KEYS, located by the names their specs carry over the specs the
+    // chain registered — never a hardcoded key.
+    await primeRegisteredClauseSpecs();
+    PROCESS_CLAUSE = keyOf('figaro-merchant-process');
+    SCHEDULE_CLAUSE = keyOf('figaro-schedule');
+});
 
 // The booked window — the buyer's checkout fills (templates arrive value-free).
 // datetime-local wall-clock (UTC); DatetimeFieldInput stores ISO 8601 UTC.
@@ -82,7 +91,7 @@ async function onboardSeller(page: Page, opts: {
     geohash: string;
     assemblySlug: string;
     product: { name: string; price: string; rate?: { unit: string; source: string } };
-    designate?: { clauseId: string; counterparty: Hex };
+    designate?: { clauseKey: Hex; counterparty: Hex };
 }) {
     await gotoAsWallet(page, opts.wallet, '/members/identity?e2e=devnet');
     await expect(page.locator('#profile-name')).toBeVisible({ timeout: 30000 });
@@ -101,7 +110,7 @@ async function onboardSeller(page: Page, opts: {
         const counterparties = page.getByTestId(`seller-assembly-counterparties-${opts.assemblySlug}`);
         await counterparties.waitFor({ state: 'visible', timeout: 30000 });
         await counterparties
-            .getByTestId(`counterparty-${opts.designate.clauseId}-input-0`)
+            .getByTestId(`counterparty-${opts.designate.clauseKey}-input-0`)
             .fill(opts.designate.counterparty);
     }
     await page.getByRole('button', { name: /^Next/ }).click();
@@ -191,7 +200,7 @@ test.describe('BOOKING-WINDOW PRICING — a contributor prices per started hour 
             const bindings = await memberProfileBindings(LEAD);
             const binding = bindings.find((b) => b.assemblySlug === slug);
             return !!binding && (binding.counterpartyBindings ?? []).some(
-                (cb) => cb.clauseId === PROCESS_CLAUSE
+                (cb) => cb.clauseKey.toLowerCase() === PROCESS_CLAUSE
                     && cb.addresses.some((a) => a.toLowerCase() === PROVIDER.toLowerCase()),
             );
         };
@@ -203,7 +212,7 @@ test.describe('BOOKING-WINDOW PRICING — a contributor prices per started hour 
                 geohash: '9q8yyk',
                 assemblySlug: slug!,
                 product: { name: 'Intake', price: '1' },
-                designate: { clauseId: PROCESS_CLAUSE, counterparty: PROVIDER },
+                designate: { clauseKey: PROCESS_CLAUSE, counterparty: PROVIDER },
             });
             await expect.poll(leadConformant, {
                 timeout: 60000, message: "the lead's pinned profile carries the binding + provider designation",

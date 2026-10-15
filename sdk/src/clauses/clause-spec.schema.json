@@ -10,9 +10,9 @@
         "clauseId": {
             "type": "string",
             "minLength": 1,
-            "description": "Human-readable clause name. keccak256(abi.encode(clauseId, version)) is the on-chain bytes32 id."
+            "description": "Human-readable clause name, a presentation field inside the document. The on-chain identity is the clause key, keccak256 of the spec's pinned canonical bytes; the name reaches it only as bytes like every other field, so two specs with one name are two clauses."
         },
-        "version": { "type": "integer", "minimum": 0, "description": "Clause version — an integer lineage counter, never semver." },
+        "version": { "type": "integer", "minimum": 0, "description": "Clause version — an integer lineage counter a reader sees, never semver and never part of the identity: a changed spec is a new key." },
         "title": { "type": "string", "minLength": 1 },
         "description": { "type": "string" },
         "fields": {

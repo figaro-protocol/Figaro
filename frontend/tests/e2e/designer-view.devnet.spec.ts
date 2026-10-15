@@ -36,9 +36,9 @@ test.describe('Assembly read-only inspector — /view?slug= (devnet)', () => {
 
     test('publishes an assembly, then inspects it read-only at /view?slug=', async ({ page }) => {
         // Publish a per-run-unique assembly via the REAL canvas (the nonce lives
-        // in the probe clause id, so the content-derived slug is fresh each run —
+        // in the probe clause's name, so its key and the content-derived slug is fresh each run —
         // no snapshot/revert needed; devnet is a mainnet rehearsal).
-        const { slug, name, clauseId, version } = await publishProbeAssembly(page);
+        const { slug, name, clauseKey } = await publishProbeAssembly(page);
 
         // ── The publish actually anchored, read back out-of-band ─────
         const anchored = (await discoverAnchoredAssemblies()).some((t) => t.slug === slug);
@@ -61,7 +61,7 @@ test.describe('Assembly read-only inspector — /view?slug= (devnet)', () => {
         // the designer composed, read out of the pinned template — an assembly
         // whose terms the inspector cannot state is one nobody can check.
         await expect(
-            composedClauseChip(page, clauseId, version),
+            composedClauseChip(page, clauseKey),
             'the published node states the composed clause',
         ).toHaveCount(1, { timeout: 30000 });
         await expect(

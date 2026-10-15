@@ -35,7 +35,11 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { createPublicClient, encodeAbiParameters, http, keccak256, parseAbi } from "viem";
+import { createPublicClient, http, parseAbi } from "viem";
+// The SDK's own canonical hash — the clause key is keccak256 of the spec's
+// canonical bytes, the form every pin writes. Built output: run
+// `npm run build` in sdk/ when dist/ is stale.
+import { canonicalContentHash } from "../sdk/dist/agreement.js";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const args = process.argv.slice(2);
@@ -102,13 +106,14 @@ const ABI = parseAbi([
     "function balanceOf(address) view returns (uint256)",
     "function minters(address) view returns (uint256 cap, uint256 minted)",
     "function depositOf(bytes32) view returns (address registeredBy, bool withdrawn)",
+    "function registered(bytes32) view returns (bool)",
 ]);
 const read = (address, functionName, args = []) =>
     client.readContract({ address, abi: ABI, functionName, args });
 
-/** ClauseRegistry's key for a clause id and version (sdk `computeClauseKey`). */
-const clauseKey = (id, version) =>
-    keccak256(encodeAbiParameters([{ type: "string" }, { type: "uint64" }], [id, BigInt(version)]));
+/** ClauseRegistry's key for a spec: keccak256 of its canonical bytes (sdk
+ *  `computeClauseKey(spec)` = `canonicalContentHash(spec)`). */
+const clauseKey = (spec) => canonicalContentHash(spec);
 
 // ── Compiled code ──────────────────────────────────────────────────────────
 
@@ -282,13 +287,17 @@ async function main() {
         bad("registrations", "not decided — the expectations file names no registration plan");
     } else {
         // Every spec in clauses/ is a protocol clause: the plan names an owner
-        // for some and a default for the rest.
+        // for some, by the spec's own clauseId (the maintainer's authored
+        // name), and a default for the rest. The key read on chain is derived
+        // from the spec's canonical bytes, never from the name.
         const specs = fs.readdirSync(path.join(root, "clauses")).filter((f) => f.endsWith(".json"))
             .map((f) => JSON.parse(fs.readFileSync(path.join(root, "clauses", f), "utf8")));
         for (const spec of specs) {
             const ref = `${spec.clauseId}@${spec.version}`;
             const owner = plan.byClause?.[spec.clauseId] ?? plan.default;
-            const [registeredBy, withdrawn] = await read(record.clauseRegistry, "depositOf", [clauseKey(spec.clauseId, spec.version)]);
+            const key = clauseKey(spec);
+            if (!(await read(record.clauseRegistry, "registered", [key]))) { bad(`${ref} registered`, `not registered (key ${key})`); continue; }
+            const [registeredBy, withdrawn] = await read(record.clauseRegistry, "depositOf", [key]);
             if (registeredBy === "0x0000000000000000000000000000000000000000") { bad(`${ref} registered`, "not registered"); continue; }
             if (withdrawn) { bad(`${ref} registered`, "its deposit is withdrawn"); continue; }
             await expectValue(`${ref} registered by ${owner}`, { wallet: owner }, registeredBy);

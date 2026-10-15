@@ -22,7 +22,6 @@ import { decodeEventLog } from "viem";
 import { USAGE_COUNTER_ABI } from "../abis.js";
 import type { Agreement } from "../agreement.js";
 import { PROVENANCE_LEAF_KEY, buildProvenanceInclusionProof, buildSectionInclusionProof, sectionDataHash } from "../agreement.js";
-import { computeClauseKey } from "../discovery.js";
 import { fetchLogsChunked } from "../events.js";
 import type { SequencerUsageClaim } from "../agent/sequencer.js";
 import { toSequencerCommitment } from "../agent/sequencer.js";
@@ -81,6 +80,41 @@ export function usageScore(c: bigint, d: bigint, minSellers: bigint = RPGF_MIN_S
     return icbrt(c * d * d * RPGF_SCORE_SCALE);
 }
 
+// ── The two families (kind, key) ─────────────────────────────────────
+
+/** The family a usage key belongs to — the reward's own accounting keeps the
+ *  two apart. A registry accepts any bytes32, so nothing in a key's bytes
+ *  says whether it names a clause or an assembly; every accrual, count and
+ *  claim is keyed by `(kind, key)`, and the minter reads only the registry
+ *  the kind names. Mirrors the counter's `uint8 kind`. */
+export const USAGE_KIND_CLAUSE = 0 as const;
+export const USAGE_KIND_ASSEMBLY = 1 as const;
+export type UsageKind = typeof USAGE_KIND_CLAUSE | typeof USAGE_KIND_ASSEMBLY;
+
+/** One `(kind, key)` pair — the unit the counter accrues and the minter's
+ *  claim names; the shape of `RpgfMinter.ClauseOrAssemblyKey`, so a list of
+ *  these is `claim`'s argument as it stands. */
+export interface UsageKey {
+    kind: UsageKind;
+    /** A clause key (`kind` = clause) or an assembly composition hash
+     *  (`kind` = assembly). */
+    key: Hex;
+}
+
+/** The map key this mirror files a `(kind, key)` pair under —
+ *  `"<kind>:<lowercased key>"`. */
+export function usageKeyId(kind: UsageKind, clauseOrAssembly: Hex): string {
+    return `${kind}:${clauseOrAssembly.toLowerCase()}`;
+}
+
+function asUsageKind(value: unknown): UsageKind {
+    const kind = Number(value);
+    if (kind !== USAGE_KIND_CLAUSE && kind !== USAGE_KIND_ASSEMBLY) {
+        throw new Error(`usage kind ${String(value)} is neither clause (0) nor assembly (1)`);
+    }
+    return kind;
+}
+
 // ── Usage records (the counter's event stream) ───────────────────────
 
 /** One `UsageCounter.UsageRecorded` log. `c`, `d` and `score` are the clause-or-assembly's
@@ -89,7 +123,8 @@ export function usageScore(c: bigint, d: bigint, minSellers: bigint = RPGF_MIN_S
 export interface UsageRecord {
     blockNumber: bigint;
     logIndex: number;
-    /** Clause idHash or assembly compositionHash. */
+    kind: UsageKind;
+    /** Clause key or assembly compositionHash, by `kind`. */
     clauseOrAssembly: Hex;
     period: number;
     processId: Hex;
@@ -115,6 +150,7 @@ export interface UsageAccrual {
 export interface BatchUsageRecord {
     blockNumber: bigint;
     logIndex: number;
+    kind: UsageKind;
     clauseOrAssembly: Hex;
     period: number;
     c: bigint;
@@ -132,6 +168,8 @@ export interface BatchUsageRecord {
  *  Scores are summed; components never are — and the minimum-support floor
  *  applies per path, for the same reason. */
 export interface ClauseOrAssemblyAccrual {
+    kind: UsageKind;
+    clauseOrAssembly: Hex;
     direct: UsageAccrual;
     batch: UsageAccrual;
     /** `direct.score + batch.score` — mirrors `UsageCounter.scoreOf`, and the
@@ -139,10 +177,11 @@ export interface ClauseOrAssemblyAccrual {
     score: bigint;
 }
 
-/** One period's accrual state — every clause or assembly's merged accrual plus the
- *  period total, mirroring `totalScoreIn` (which counts both paths). */
+/** One period's accrual state — every `(kind, key)`'s merged accrual (filed
+ *  under `usageKeyId`) plus the period total, mirroring `totalScoreIn` (which
+ *  counts both paths). */
 export interface UsagePeriodAccrual {
-    byClauseOrAssembly: Map<Hex, ClauseOrAssemblyAccrual>;
+    byClauseOrAssembly: Map<string, ClauseOrAssemblyAccrual>;
     totalScore: bigint;
 }
 
@@ -150,8 +189,12 @@ function emptyAccrual(): UsageAccrual {
     return { c: 0n, d: 0n, score: 0n };
 }
 
+function emptyEntry(kind: UsageKind, clauseOrAssembly: Hex): ClauseOrAssemblyAccrual {
+    return { kind, clauseOrAssembly, direct: emptyAccrual(), batch: emptyAccrual(), score: 0n };
+}
+
 /** Replay the counter's counting rules over a record stream: idempotence per
- *  (clause or assembly, process) — GLOBAL, so a process counts once ever and a later
+ *  ((kind, key), process) — GLOBAL, so a process counts once ever and a later
  *  period is never paid for an earlier period's trade — then the
  *  distinct-STAKED-SELLER count PER PERIOD (breadth counts
  *  only what a stake has priced; pairs were free to mint on the buyer side)
@@ -169,26 +212,27 @@ export function computeUsageAccruals(
     );
 
     const periods = new Map<number, UsagePeriodAccrual>();
-    const countedProcesses = new Map<Hex, Set<string>>(); // clauseOrAssembly → processIds (GLOBAL)
-    const sellersSeen = new Map<string, Set<string>>(); // clauseOrAssembly|period → sellers
+    const countedProcesses = new Map<string, Set<string>>(); // (kind, key) → processIds (GLOBAL)
+    const sellersSeen = new Map<string, Set<string>>(); // (kind, key)|period → sellers
 
     for (const record of sorted) {
         const clauseOrAssembly = record.clauseOrAssembly.toLowerCase() as Hex;
-        const scopeKey = `${clauseOrAssembly}|${record.period}`;
+        const id = usageKeyId(record.kind, clauseOrAssembly);
+        const scopeKey = `${id}|${record.period}`;
 
-        const seenProcesses = countedProcesses.get(clauseOrAssembly) ?? new Set<string>();
+        const seenProcesses = countedProcesses.get(id) ?? new Set<string>();
         if (seenProcesses.has(record.processId.toLowerCase())) continue; // AlreadyCounted
         const sellers = sellersSeen.get(scopeKey) ?? new Set<string>();
         const seller = record.seller.toLowerCase();
         const firstSeller = !sellers.has(seller);
 
         seenProcesses.add(record.processId.toLowerCase());
-        countedProcesses.set(clauseOrAssembly, seenProcesses);
+        countedProcesses.set(id, seenProcesses);
         sellers.add(seller);
         sellersSeen.set(scopeKey, sellers);
 
-        const period = periods.get(record.period) ?? { byClauseOrAssembly: new Map<Hex, ClauseOrAssemblyAccrual>(), totalScore: 0n };
-        const entry = period.byClauseOrAssembly.get(clauseOrAssembly) ?? { direct: emptyAccrual(), batch: emptyAccrual(), score: 0n };
+        const period = periods.get(record.period) ?? { byClauseOrAssembly: new Map<string, ClauseOrAssemblyAccrual>(), totalScore: 0n };
+        const entry = period.byClauseOrAssembly.get(id) ?? emptyEntry(record.kind, clauseOrAssembly);
         const accrual = entry.direct;
         accrual.c += 1n;
         if (firstSeller) accrual.d += 1n;
@@ -196,7 +240,7 @@ export function computeUsageAccruals(
         period.totalScore = period.totalScore + updated - accrual.score;
         accrual.score = updated;
         entry.score = accrual.score + entry.batch.score;
-        period.byClauseOrAssembly.set(clauseOrAssembly, entry);
+        period.byClauseOrAssembly.set(id, entry);
         periods.set(record.period, period);
     }
 
@@ -208,13 +252,14 @@ export function computeUsageAccruals(
     );
     for (const record of batchSorted) {
         const clauseOrAssembly = record.clauseOrAssembly.toLowerCase() as Hex;
-        const period = periods.get(record.period) ?? { byClauseOrAssembly: new Map<Hex, ClauseOrAssemblyAccrual>(), totalScore: 0n };
-        const entry = period.byClauseOrAssembly.get(clauseOrAssembly) ?? { direct: emptyAccrual(), batch: emptyAccrual(), score: 0n };
+        const id = usageKeyId(record.kind, clauseOrAssembly);
+        const period = periods.get(record.period) ?? { byClauseOrAssembly: new Map<string, ClauseOrAssemblyAccrual>(), totalScore: 0n };
+        const entry = period.byClauseOrAssembly.get(id) ?? emptyEntry(record.kind, clauseOrAssembly);
         const updated = usageScore(record.c, record.d, minSellers);
         period.totalScore = period.totalScore + updated - entry.batch.score;
         entry.batch = { c: record.c, d: record.d, score: updated };
         entry.score = entry.direct.score + entry.batch.score;
-        period.byClauseOrAssembly.set(clauseOrAssembly, entry);
+        period.byClauseOrAssembly.set(id, entry);
         periods.set(record.period, period);
     }
     return periods;
@@ -228,44 +273,51 @@ export interface RpgfAllocation {
     amount: bigint;
     /** The wallet's summed clause-or-assembly score for the period. */
     score: bigint;
+    /** The `(kind, key)` pairs the score sums — the list the wallet's
+     *  `RpgfMinter.claim` names, duplicate-free. */
+    claims: UsageKey[];
 }
 
 /** The payout: a period's accrual plus each clause or assembly's author of record gives
  *  every wallet's period entitlement — UNIFORM pro rata,
  *  `floor(periodAmount * score / total)`, with no cap.
  *
- *  `authorOf` maps clause-or-assembly key → author of record (each registry's `registeredBy` — clause or
- *  assembly author); a clause or assembly with no author is unclaimable and its score
+ *  `authorOf` maps `usageKeyId(kind, key)` → author of record (the `registeredBy` of
+ *  the one registry the kind names — clause or assembly author); a pair with no author
+ *  is unclaimable and its score
  *  still counts toward the denominator, exactly as on chain. Author-of-record
  *  eligibility is gated on a LIVE stake ON CHAIN (`RpgfMinter._isAuthor`); pass
  *  only live authors here to mirror it. */
 export function computeRpgfAllocations(
     period: UsagePeriodAccrual,
-    authorOf: ReadonlyMap<Hex, Address>,
+    authorOf: ReadonlyMap<string, Address>,
     periodAmount: bigint,
 ): RpgfAllocation[] {
     if (period.totalScore === 0n) return [];
 
-    const walletScores = new Map<Address, bigint>();
-    for (const [clauseOrAssembly, accrual] of period.byClauseOrAssembly) {
-        const author = authorOf.get(clauseOrAssembly.toLowerCase() as Hex);
+    const walletScores = new Map<Address, { score: bigint; claims: UsageKey[] }>();
+    for (const [id, accrual] of period.byClauseOrAssembly) {
+        const author = authorOf.get(id);
         if (!author || accrual.score === 0n) continue;
         const key = author.toLowerCase() as Address;
-        walletScores.set(key, (walletScores.get(key) ?? 0n) + accrual.score);
+        const wallet = walletScores.get(key) ?? { score: 0n, claims: [] };
+        wallet.score += accrual.score;
+        wallet.claims.push({ kind: accrual.kind, key: accrual.clauseOrAssembly });
+        walletScores.set(key, wallet);
     }
 
     // No clamp to `totalScore`: scores are summed per author over DISTINCT
-    // clauses or assemblies (`byClauseOrAssembly` is keyed by clause or assembly), so `score <= totalScore`
+    // (kind, key) pairs (`byClauseOrAssembly` is keyed by the pair), so `score <= totalScore`
     // holds structurally. The chain dropped its equivalent clamp —
     // there it was reachable via a duplicate-stuffed clause-or-assembly list, and clamping
     // silently rounded such a claim UP to the entire period budget instead of
     // rejecting it. Mirror the contract: nothing to clamp, and a violation
     // should surface, not be smoothed over.
     const allocations: RpgfAllocation[] = [];
-    for (const [account, score] of walletScores) {
+    for (const [account, { score, claims }] of walletScores) {
         const amount = (periodAmount * score) / period.totalScore;
         if (amount === 0n) continue;
-        allocations.push({ account, amount, score });
+        allocations.push({ account, amount, score, claims });
     }
     return allocations.sort((a, b) => (a.account < b.account ? -1 : 1));
 }
@@ -292,6 +344,7 @@ export async function fetchUsageRecords(
             records.push({
                 blockNumber: log.blockNumber ?? 0n,
                 logIndex: log.logIndex ?? 0,
+                kind: asUsageKind(a.kind),
                 clauseOrAssembly: a.clauseOrAssembly as Hex,
                 period: Number(a.period),
                 processId: a.processId as Hex,
@@ -332,6 +385,7 @@ export async function fetchBatchUsageRecords(
             records.push({
                 blockNumber: log.blockNumber ?? 0n,
                 logIndex: log.logIndex ?? 0,
+                kind: asUsageKind(a.kind),
                 clauseOrAssembly: a.clauseOrAssembly as Hex,
                 period: Number(a.period),
                 c: a.c as bigint,
@@ -398,7 +452,7 @@ export function buildUsageClaims(
     for (const section of agreement.sections) {
         claims.push({
             order: wireOrder,
-            clause_or_assembly: computeClauseKey(section.clause, section.version),
+            clause_or_assembly: section.clause,
             kind: { Clause: { section_hash: sectionDataHash(section) } },
             inclusion_proof: buildSectionInclusionProof(agreement, section.clause).proof,
         });

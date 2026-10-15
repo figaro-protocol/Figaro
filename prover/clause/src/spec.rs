@@ -171,10 +171,11 @@ impl FieldSpec {
 #[derive(Clone, Debug)]
 pub struct ClauseSpec {
     /// The bare human-readable clause name (e.g. `figaro-emissions`) — no
-    /// version suffix. The on-chain identity key is
-    /// `keccak256(abi.encode(clauseId, version))`.
+    /// version suffix. Presentation: the clause key is `keccak256` of the
+    /// spec's pinned bytes, and nothing keys on this name.
     pub clause_id: String,
-    /// Clause version — a separate field, never embedded in `clauseId`.
+    /// Clause version — a separate field, never embedded in `clauseId`;
+    /// presentation, like the name.
     pub version: u64,
     pub title: String,
     pub description: String,

@@ -4,8 +4,7 @@ import { Handle, Position } from "@xyflow/react";
 import { Order, OrderState } from "@/lib/kernel/store";
 import { formatToken } from "@/lib/shared/utils";
 import { truncateHex } from "@/lib/shared/formatHex";
-import { describeClause } from "@/lib/shared/clauseSpecSource";
-import { templateClauseVersion } from "@/lib/shared/assemblyTemplate";
+import { describeClause, getClauseSpec } from "@/lib/shared/clauseSpecSource";
 import { colorTokens } from "@/lib/shared/designTokenValues";
 
 // ── Visual maps ─────────────────────────────────────────────────────────────
@@ -51,14 +50,11 @@ export type OrderNodeData = Order & {
     /** Designer-mode flag. When true the node renders the click-to-edit
      *  affordance (cursor:pointer + tooltip). */
     designerMode: boolean;
-    /** Designer mode: the per-order composed clause values (clauseId → field
+    /** Designer mode: the per-order composed clause values (clause key → field
      *  values), so the node can render a derived summary of WHAT IT DOES
      *  without opening the drawer. Each clause is described generically via
      *  `describeClause` — no clause id is named here. */
     designerClauseValues?: Record<string, Record<string, unknown>>;
-    /** Designer mode: clauseId → the version composed for each chip's clause.
-     *  Supplied, each chip reads its spec at that version and names it. */
-    designerClauseVersions?: Record<string, number>;
     /** Designer click-authoring: spawn a sub-order child of this node — the
      *  single add affordance (the card "+" button). */
     onAddSubOrderClick?: (parentOrderId: string) => void;
@@ -82,12 +78,16 @@ export const OrderNode = ({ data }: { data: OrderNodeData }) => {
     // clause title). Generic via `describeClause`; no clause id is named. Makes
     // a node self-describing without opening the drawer.
     const designerChips = data.designerMode && data.designerClauseValues
-        ? Object.entries(data.designerClauseValues).map(([clauseId, vals]) => {
-            // The composition's version map is the template's sparse encoding.
-            const version = templateClauseVersion({ clauseVersions: data.designerClauseVersions }, clauseId);
-            const desc = describeClause(clauseId, vals as Record<string, unknown>, version);
+        ? Object.entries(data.designerClauseValues).map(([clauseKey, vals]) => {
+            const desc = describeClause(clauseKey, vals as Record<string, unknown>);
+            const spec = getClauseSpec(clauseKey);
             const salient = desc.fields[0]?.values;
-            return { clauseId, version, label: salient && salient.length > 0 ? salient.join(" / ") : desc.title };
+            return {
+                clauseKey,
+                name: spec?.clauseId,
+                version: spec?.version,
+                label: salient && salient.length > 0 ? salient.join(" / ") : desc.title,
+            };
         })
         : [];
 
@@ -200,10 +200,10 @@ export const OrderNode = ({ data }: { data: OrderNodeData }) => {
                     <div className="flex flex-wrap gap-1 pt-1 border-t border-default" data-testid={`node-clauses-${data.orderHash}`}>
                         {designerChips.map((c) => (
                             <span
-                                key={c.clauseId}
-                                title={`${c.clauseId} v${c.version}`}
+                                key={c.clauseKey}
+                                title={c.name === undefined ? c.clauseKey : `${c.name} v${c.version} · ${c.clauseKey}`}
                                 className="px-1.5 py-0.5 rounded bg-subtle text-ink-body text-[10px] leading-tight"
-                                data-testid={`node-clause-${data.orderHash}-${c.clauseId}-v${c.version}`}
+                                data-testid={`node-clause-${data.orderHash}-${c.clauseKey}`}
                             >
                                 {c.label}
                                 {c.version !== undefined && <span className="ml-1 font-mono text-ink-muted">v{c.version}</span>}

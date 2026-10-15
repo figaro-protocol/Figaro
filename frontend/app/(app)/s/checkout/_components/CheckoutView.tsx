@@ -39,7 +39,7 @@ import {
 } from "@/lib/checkout/checkoutDerivations";
 import { postToAgentEndpoint, useDispatchRace } from "@/lib/checkout/dispatchRace";
 import { DispatchRacePanel, type RaceStartPolicy } from "@/components/runtime/DispatchRacePanel";
-import { templateClauseVersion, templateParentOrderHashes } from "@/lib/shared/assemblyTemplate";
+import { templateParentOrderHashes } from "@/lib/shared/assemblyTemplate";
 import { CommitmentSharePanel } from "@/components/runtime/CommitmentSharePanel";
 import { SellerCatalogPicker, type SellerSelection } from "@/components/runtime/SellerCatalogPicker";
 import { useCompositionActions } from "@/lib/composition/useCompositionActions";
@@ -89,7 +89,7 @@ interface ListedPrice {
  *  standard interface, and the runtime `block.runtime.fields` the buyer fills. */
 interface OrderComposition {
     nodeId: string;
-    clauseId: string;
+    clauseKey: string;
     interface: string;
     fields: readonly FieldSpec[];
 }
@@ -150,7 +150,7 @@ export function CheckoutView({ sellerAddress }: Props) {
     // "assembly") — a term of the composition, folded into
     // every agreement at checkout; the old root-order convention is dead.
     const utilityTokenPin = pickedAssembly
-        ? readUtilityTokenPin(pickedAssembly.assemblyTemplate.assemblyClauses ?? {}, specSource(), pickedAssembly.assemblyTemplate.assemblyClauseVersions)
+        ? readUtilityTokenPin(pickedAssembly.assemblyTemplate.assemblyClauses ?? {}, specSource())
         : undefined;
     const sellerDefault = memberCatalog?.defaultTokenAddress as `0x${string}` | undefined;
     // What this surface already knows, offered to the format inputs as
@@ -210,17 +210,17 @@ export function CheckoutView({ sellerAddress }: Props) {
     // keyed by template node id then field name. Interface-agnostic: the form
     // renders whatever fields the composing clause declares, naming no clause.
     const [compositionInputs, setCompositionInputs] = useState<Record<string, Record<string, unknown>>>({});
-    // The buyer's GENERAL-clause field fills, nodeId → clauseId → values.
+    // The buyer's GENERAL-clause field fills, nodeId → clause key → values.
     // Design time is structural: general clauses arrive
     // from the template as `{}`; their transaction particulars are filled
     // here, at checkout. Spec-routed — the checkout names no clause.
     const [clauseFills, setClauseFills] = useState<Record<string, Record<string, Record<string, unknown>>>>({});
-    const setClauseFill = (nodeId: string, clauseId: string, field: string, value: unknown) =>
+    const setClauseFill = (nodeId: string, clauseKey: string, field: string, value: unknown) =>
         setClauseFills((prev) => ({
             ...prev,
             [nodeId]: {
                 ...prev[nodeId],
-                [clauseId]: { ...prev[nodeId]?.[clauseId], [field]: value },
+                [clauseKey]: { ...prev[nodeId]?.[clauseKey], [field]: value },
             },
         }));
     const setCompositionField = (nodeId: string, fieldName: string, value: unknown) =>
@@ -300,9 +300,9 @@ export function CheckoutView({ sellerAddress }: Props) {
     const assemblySections = pickedAssembly?.assemblyTemplate.assemblyClauses ?? {};
     const assemblyFills = clauseFills["assembly"] ?? {};
     const mergedAssemblyEntries = Object.fromEntries(
-        Object.keys(assemblySections).map((clauseId) => [
-            clauseId,
-            { ...assemblySections[clauseId], ...(assemblyFills[clauseId] ?? {}) },
+        (Object.keys(assemblySections) as `0x${string}`[]).map((clauseKey) => [
+            clauseKey,
+            { ...assemblySections[clauseKey], ...(assemblyFills[clauseKey] ?? {}) },
         ]),
     );
     const expandedClauseFills: typeof clauseFills = Object.fromEntries(
@@ -476,9 +476,9 @@ export function CheckoutView({ sellerAddress }: Props) {
         const out: OrderComposition[] = [];
         for (const order of pickedAssembly.assemblyTemplate.agreements) {
             for (const cid of Object.keys(order.clauses)) {
-                const block = getClauseSpec(cid, templateClauseVersion(order, cid))?.block;
+                const block = getClauseSpec(cid)?.block;
                 if (block?.design.composes && block.runtime.fields.length > 0) {
-                    out.push({ nodeId: order.id, clauseId: cid, interface: block.design.composes.interface, fields: block.runtime.fields });
+                    out.push({ nodeId: order.id, clauseKey: cid, interface: block.design.composes.interface, fields: block.runtime.fields });
                     break; // one composition per order
                 }
             }
@@ -1056,14 +1056,14 @@ export function CheckoutView({ sellerAddress }: Props) {
                                             <p className="text-[11px] font-medium text-ink-muted">{group.label}</p>
                                         )}
                                         <ul className="text-xs text-ink-body space-y-0.5">
-                                            {group.clauses.map(({ clauseId, version, values, data, fillable, mandatory }) => {
-                                                const spec = getClauseSpec(clauseId, version);
+                                            {group.clauses.map(({ clauseKey, values, data, fillable, mandatory }) => {
+                                                const spec = getClauseSpec(clauseKey);
                                                 const specFields = spec?.fields ?? [];
                                                 return (
-                                                <li key={clauseId} data-testid={`agreement-clause-${clauseId}`}>
-                                                    {spec?.title ?? clauseId}
+                                                <li key={clauseKey} data-testid={`agreement-clause-${clauseKey}`}>
+                                                    {spec?.title ?? clauseKey}
                                                     {mandatory && (
-                                                        <span className="text-ink-muted text-xs" data-testid={`agreement-clause-${clauseId}-required`}> · required by the assembly</span>
+                                                        <span className="text-ink-muted text-xs" data-testid={`agreement-clause-${clauseKey}-required`}> · required by the assembly</span>
                                                     )}
                                                     {values && <span className="text-ink-primary"> — {values}</span>}
                                                     <CredentialVerifyButton data={data} />
@@ -1073,15 +1073,15 @@ export function CheckoutView({ sellerAddress }: Props) {
                                                                 checks (`buyerAuthoredFields`), so no
                                                                 required term can be demanded without
                                                                 a control on screen. */}
-                                                            {buyerAuthoredFields(clauseId, version).map((field) => {
-                                                                const inputFormat = resolveInputFormat(field, specFields, clauseFills[group.key]?.[clauseId]);
+                                                            {buyerAuthoredFields(clauseKey).map((field) => {
+                                                                const inputFormat = resolveInputFormat(field, specFields, clauseFills[group.key]?.[clauseKey]);
                                                                 return (
                                                                 <FieldControl
                                                                     key={field.name}
                                                                     field={field}
-                                                                    value={clauseFills[group.key]?.[clauseId]?.[field.name]}
-                                                                    onChange={(v) => setClauseFill(group.key, clauseId, field.name, v)}
-                                                                    testId={`checkout-field-${group.key}-${clauseId}-${field.name}`}
+                                                                    value={clauseFills[group.key]?.[clauseKey]?.[field.name]}
+                                                                    onChange={(v) => setClauseFill(group.key, clauseKey, field.name, v)}
+                                                                    testId={`checkout-field-${group.key}-${clauseKey}-${field.name}`}
                                                                     hideLabel={field.name.toLowerCase() === (spec?.title ?? "").toLowerCase()}
                                                                     resolvedFormat={inputFormat}
                                                                     siblingFormatSource={isSiblingFormatSource(field, specFields)}

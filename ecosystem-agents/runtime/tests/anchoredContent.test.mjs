@@ -10,13 +10,17 @@ import * as fs from "node:fs";
 import * as http from "node:http";
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
-import { canonicalContentHash, templateCompositionHash } from "@figaro-protocol/sdk";
+import { keccak256, toBytes } from "viem";
+import { canonicalize, templateCompositionHash } from "@figaro-protocol/sdk";
 import { fetchAnchoredClauseSpec, fetchAnchoredTemplate } from "../anchoredContent.mjs";
 import { fetchIpfsBytes } from "../ipfsRead.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const SPEC_TEXT = fs.readFileSync(path.join(__dirname, "..", "..", "..", "clauses", "figaro-commerce.json"), "utf8");
-const SPEC = JSON.parse(SPEC_TEXT);
+// The bytes a clause is pinned as — its canonical serialization — and its key,
+// keccak256 of exactly those bytes.
+const SPEC = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "..", "..", "clauses", "figaro-commerce.json"), "utf8"));
+const SPEC_TEXT = canonicalize(SPEC);
+const SPEC_KEY = keccak256(toBytes(SPEC_TEXT));
 const TEMPLATE = {
     agreements: [{ id: "order-0", clauses: { "figaro-commerce": {}, "figaro-topology": { parentOrderHashes: [] } } }],
 };
@@ -32,10 +36,10 @@ async function gateway(bodies) {
     return { url: `http://127.0.0.1:${server.address().port}`, close: () => new Promise((r) => server.close(r)) };
 }
 
-test("a clause spec that hashes to the registry's anchor is read", async () => {
+test("a clause spec whose fetched bytes hash to its key is read", async () => {
     const gw = await gateway({ spec: SPEC_TEXT });
     try {
-        const clause = { contentURI: "ipfs://spec", contentHash: canonicalContentHash(SPEC) };
+        const clause = { contentURI: "ipfs://spec", clauseKey: SPEC_KEY };
         const hit = await fetchAnchoredClauseSpec(clause, { gateways: [gw.url] });
         assert.equal(hit.absent, undefined, hit.absent);
         assert.equal(hit.raw.clauseId, "figaro-commerce");
@@ -45,15 +49,20 @@ test("a clause spec that hashes to the registry's anchor is read", async () => {
 
 test("a clause spec a gateway substituted reads as absence", async () => {
     // One field changed: valid JSON, a valid-looking spec, not the anchored one.
-    const forged = JSON.stringify({ ...SPEC, description: "the gateway's own text" });
-    const gw = await gateway({ spec: forged, notjson: "<html>not a spec</html>" });
+    const forged = canonicalize({ ...SPEC, description: "the gateway's own text" });
+    // The same document in another byte form is other bytes: another key.
+    const reformatted = JSON.stringify(SPEC, null, 2);
+    const gw = await gateway({ spec: forged, pretty: reformatted, notjson: "<html>not a spec</html>" });
     try {
-        const clause = { contentURI: "ipfs://spec", contentHash: canonicalContentHash(SPEC) };
+        const clause = { contentURI: "ipfs://spec", clauseKey: SPEC_KEY };
         const hit = await fetchAnchoredClauseSpec(clause, { gateways: [gw.url] });
-        assert.match(hit.absent, /hashes to 0x[0-9a-f]+, the registry anchors/);
+        assert.match(hit.absent, /bytes hash to 0x[0-9a-f]+, not the clause key/);
         assert.equal(hit.raw, undefined);
+        const pretty = await fetchAnchoredClauseSpec({ ...clause, contentURI: "ipfs://pretty" }, { gateways: [gw.url] });
+        assert.match(pretty.absent, /not the clause key/);
 
-        const notJson = await fetchAnchoredClauseSpec({ ...clause, contentURI: "ipfs://notjson" }, { gateways: [gw.url] });
+        const notJsonText = "<html>not a spec</html>";
+        const notJson = await fetchAnchoredClauseSpec({ contentURI: "ipfs://notjson", clauseKey: keccak256(toBytes(notJsonText)) }, { gateways: [gw.url] });
         assert.equal(notJson.absent, "not JSON");
         const missing = await fetchAnchoredClauseSpec({ ...clause, contentURI: "ipfs://missing" }, { gateways: [gw.url] });
         assert.equal(missing.absent, "not served");

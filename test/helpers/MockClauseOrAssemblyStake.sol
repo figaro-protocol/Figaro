@@ -22,8 +22,8 @@ contract MockClauseOrAssemblyStake {
     }
 
     /// @dev `ClauseRegistry.depositOf` shape.
-    function depositOf(bytes32 idHash) external view returns (address registeredBy, bool withdrawn) {
-        if (dead[idHash]) return (address(0), false);
+    function depositOf(bytes32 clauseKey) external view returns (address registeredBy, bool withdrawn) {
+        if (dead[clauseKey]) return (address(0), false);
         return (STAKER, false);
     }
 

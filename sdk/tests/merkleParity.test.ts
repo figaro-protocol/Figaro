@@ -43,6 +43,11 @@ import {
     type Agreement,
 } from "../src/agreement.js";
 import { agreementArb } from "./propertyArbs.js";
+import { computeClauseKey } from "../src/discovery.js";
+
+const CLAUSES_DIR = path.resolve(__dirname, "../../clauses");
+/** The real key of a reference clause: the hash of its spec's canonical bytes. */
+const K = (name: string): `0x${string}` => computeClauseKey(JSON.parse(readFileSync(path.join(CLAUSES_DIR, `${name}.json`), "utf8")));
 
 const FUZZ_PATH = path.resolve(__dirname, "../../test/fixtures/streams/agreements.json");
 const FIXTURE_PATH = path.resolve(__dirname, "../../test/fixtures/merkle-vectors.json");
@@ -52,9 +57,9 @@ const THREE: Agreement = {
     buyer: "0x0376AAc07Ad725E01357B1725B5ceC61aE10473c",
     seller: "0xAd29D7a8aD3639F97798c768202F27C1dE81DC55",
     sections: [
-        { clause: "figaro-modalities", version: 1, data: { modality: "delivery" } },
-        { clause: "figaro-geolocation", version: 1, data: { hops: 2, origin: "site-7" } },
-        { clause: "figaro-applicable-law", version: 1, data: { law: "ch" } },
+        { clause: K("figaro-modalities"), data: { modality: "delivery" } },
+        { clause: K("figaro-geolocation"), data: { hops: 2, origin: "site-7" } },
+        { clause: K("figaro-applicable-law"), data: { law: "ch" } },
     ],
 };
 
@@ -62,7 +67,7 @@ const ONE: Agreement = {
     version: "a1",
     buyer: "0x0376AAc07Ad725E01357B1725B5ceC61aE10473c",
     seller: "0xAd29D7a8aD3639F97798c768202F27C1dE81DC55",
-    sections: [{ clause: "figaro-modalities", version: 1, data: { modality: "pickup" } }],
+    sections: [{ clause: K("figaro-modalities"), data: { modality: "pickup" } }],
 };
 /** Two sections and the design they were instantiated from. */
 const WITH_DESIGN: Agreement = {
@@ -70,8 +75,8 @@ const WITH_DESIGN: Agreement = {
     buyer: "0x0376AAc07Ad725E01357B1725B5ceC61aE10473c",
     seller: "0xAd29D7a8aD3639F97798c768202F27C1dE81DC55",
     sections: [
-        { clause: "figaro-commerce", version: 1, data: { currency: "0x0000000000000000000000000000000000000000", payment: "7" } },
-        { clause: "figaro-topology", version: 1, data: { parentOrderHashes: [] } },
+        { clause: K("figaro-commerce"), data: { currency: "0x0000000000000000000000000000000000000000", payment: "7" } },
+        { clause: K("figaro-topology"), data: { parentOrderHashes: [] } },
     ],
     provenance: "0x9b3c1d2e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c",
 };
@@ -97,8 +102,7 @@ function vectorFor(label: string, agreement: Agreement) {
         sections: agreement.sections.map((section) => {
             const { leaf, proof } = buildSectionInclusionProof(agreement, section.clause);
             return {
-                clause: section.clause,
-                version: section.version,
+                clauseKey: section.clause,
                 // The canonical-JSON bytes the leaf hashes: keccak256 of this
                 // string is the section hash both on-chain consumers take.
                 sectionData: canonicalize(section.data),

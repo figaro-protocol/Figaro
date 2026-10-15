@@ -188,7 +188,7 @@ export function substitutePricedValue(
     if (pricedFields.length === 0) throw new Error("substitutePricedValue: the request names no priced fields");
     let sections = agreement.sections;
     for (const field of pricedFields) {
-        const index = sections.findIndex((s) => s.clause === field.clause);
+        const index = sections.findIndex((s) => s.clause.toLowerCase() === field.clause.toLowerCase());
         if (index === -1) throw new Error(`substitutePricedValue: agreement has no "${field.clause}" section`);
         // A section's data root is an object by type, so the immutable set
         // returns an object here — the array branch only occurs mid-path.

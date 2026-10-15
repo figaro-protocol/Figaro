@@ -20,7 +20,6 @@ import { validateContent, encodeContentFromSpec, type ClauseSpec } from "../clau
 import { assertOrderFitsResolveCap } from "../gasCeilings.js";
 import { restoreSignedProcessId } from "../commitments.js";
 import type { Agreement } from "../agreement.js";
-import { computeClauseKey } from "../discovery.js";
 import { buildUsageClaims, fetchUsageClaimContext } from "../rpgf/index.js";
 import type { Hex, Address, FigaroAddresses, Commitment } from "../types.js";
 import type { ProposedAction, ResolveProcessAction } from "./proposer.js";
@@ -180,7 +179,6 @@ export async function recordProcessUsage(
         // event-reconstructed shape) must be restored exactly as the resolve
         // path restores it, or every leg reverts UnknownOrder.
         const commitment = restoreSignedProcessId(given, chainId, core);
-        const clauseOf = new Map(agreement.sections.map((s) => [computeClauseKey(s.clause, s.version).toLowerCase(), s.clause]));
         // An agreement whose leaves do not build (a malformed provenance) has
         // no provable leg at all; say so and go on to the next order.
         let claims: ReturnType<typeof buildUsageClaims>;
@@ -210,7 +208,7 @@ export async function recordProcessUsage(
                 await send("recordClauseUsage", [commitment, claim.clause_or_assembly, claim.kind.Clause.section_hash, claim.inclusion_proof]);
                 report.recorded++;
             } catch (error) {
-                report.failures.push(`${clauseOf.get(key) ?? claim.clause_or_assembly}: ${error instanceof Error ? error.message : String(error)}`);
+                report.failures.push(`clause ${claim.clause_or_assembly}: ${error instanceof Error ? error.message : String(error)}`);
             }
         }
     }
@@ -257,9 +255,8 @@ export function prepareAttestationContent(
  *               struct (root: `processId = 0`). For SAME-ORDER attestation pass
  *               the SAME commitment as both `role` and `target` — one struct in
  *               both args, not two distinct commitments.
- * @param clauseId The `computeClauseKey(clause, version)` bytes32 HASH — NOT
- *               the raw clause name that `buildSectionInclusionProof` takes as
- *               its `clauseKey`. Same value used as the merkle leaf id.
+ * @param clauseId The section's clause key (`section.clause`) — the same
+ *               bytes32 `buildSectionInclusionProof` takes and the merkle leaf id.
  * @param sectionHash The section FINGERPRINT — `sectionDataHash(section)` =
  *               `keccak256` of the committed canonical bytes, NEVER the preimage.
  *               The coordinator takes only the hash, so a `private`-disposition
@@ -326,9 +323,8 @@ async function submitAttestation(
  *               `processId = 0`), not the reconstruction-derived form whose
  *               root `processId` is the DERIVED id — the coordinator re-hashes
  *               the struct, and a derived-id root would miss.
- * @param clauseId The `computeClauseKey(clause, version)` bytes32 HASH — NOT
- *               the raw clause name that `buildSectionInclusionProof` takes as
- *               its `clauseKey`. Same value used as the merkle leaf id.
+ * @param clauseId The section's clause key (`section.clause`) — the same
+ *               bytes32 `buildSectionInclusionProof` takes and the merkle leaf id.
  */
 export async function attestAsBuyer(
     walletClient: WalletClient,
@@ -367,8 +363,8 @@ export interface ActionExecutionInputs {
          *  attestation; omit for same-order (role = target). */
         role?: Commitment;
         target: Commitment;
-        /** The `computeClauseKey(clause, version)` bytes32 HASH — NOT the raw
-         *  clause name `buildSectionInclusionProof` takes as its `clauseKey`. */
+        /** The section's clause key (`section.clause`) — the same bytes32
+         *  `buildSectionInclusionProof` takes. */
         clauseId: Hex;
         stage: number;
         /** The section FINGERPRINT — `sectionDataHash(section)` (keccak256 of the

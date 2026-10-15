@@ -165,8 +165,8 @@ Tiered, bottom to top; each tier imports only what sits below it (enforced by th
     MockDisperse, mainnet composes canonical Disperse. Surfaced by
     `components/runtime/PayoutRoutingPanel.tsx` beside what resolution paid out.
 - **`designer/`** — assembly authoring: synthetic DAG session + autosave + fork + publish (`syntheticProcess.ts`, `syntheticDesignStore.ts`, `forkAssembly.ts`, `assemblyTemplateToDraft.ts`, `draftToAssemblyTemplate.ts` — the authoring mirror of `assemblyTemplateToDraft.ts` and the ONE draft→template walk that publish, the hand-off panel, the canvas identity readout, and the review screen share (`projectSnapshotForReview` is that walk's review face: the composition a review renders comes out of the template publish anchors, never a second reading of the draft) — `publishAssembly.ts`; the template build itself — `buildAssemblyTemplate`/`serializeAssemblyTemplate` — is `@figaro-protocol/sdk`)
-  - *The designer's picks, by id and version:* `templateComposedClauses` lists each agreement's composed clauses with the version the template states (absent = 1); the review face re-keys it onto the canvas's order ids as `composedClausesByOrderId`, which the review listing, the canvas chips and the drawer read.
-  - *The mandatory fold, listed:* `templateFoldedClauses` lists every clause the template carries because its spec marks it mandatory, by id, version and the agreements carrying it, for the designer to confirm before publish.
+  - *The designer's picks, by key:* `templateComposedClauses` lists each agreement's composed clauses by clause key, each labeled with the spec's own `clauseId`, `version` and title read from the spec the key names (`composedClauseLabel` shows the name and version beside a short form of the key — two specs may share a name, never a key); the review face re-keys it onto the canvas's order ids as `composedClausesByOrderId`, which the review listing, the canvas chips and the drawer read.
+  - *The mandatory fold, listed:* `templateFoldedClauses` lists every clause the template carries because its spec marks it mandatory, by key, with its spec's label and the agreements carrying it, for the designer to confirm before publish.
 - **`handoff/`** — handoff-clause runtime TRANSPORTS + persistence: the channel factory (`channel.ts` — mock/null/XMTP chosen by DERIVED facts, never a setting: XMTP iff the wallet already has an inbox, `walletHasXmtpInbox` probe — one seam, one choreography, and no per-wallet transport setting), the transport implementations (`xmtpChannel.ts`, `mockChannel.ts`, `nullChannel.ts`), the relay adapter (`relayChannel.ts` — the handoff relay's PRE-COMMIT cell speaking the SDK's `CoordinationChannel`, so the dispatch race runs ONE choreography over every transport; also home of `relayCommitmentPayload`), per-order ECDH keypair sessionStorage (`ecdh.ts`), handoff-messaging + handoff-persistence services (`handoffMessagingService.ts`, `handoffPersistenceService.ts`). The wire protocol itself (message shapes, ECDH derivation, AES-GCM wrapping) is `@figaro-protocol/sdk/handoff`.
 - **`member/`** — the participant's own data: member-profile document family (`memberProfileMetadata.ts`, `memberProfileAdapter.ts`), branding (`memberBranding*.ts`, `useMemberBranding.ts`), the MembersRegistry write/read hooks (`useMembersRegistry.ts`, `usePublishMemberProfile.ts`, `useUpdateMemberProfile.ts`), profile geocoding (`geocode.ts`), the cached URI-fetch pipeline (`uriFetcher.ts` — a single-layer reader, so it lives here), the cached profile read path (`profileFetcher.ts`) and its erasure half (`profileErasure.ts`); the catalog family — authoring/publication/reads (`catalog*.ts`, `memberCatalogMetadata*.ts`, on the same `uriFetcher.ts` pipeline), listings + discovery (`useMemberListings.ts`, `discoveryService.ts`), the enrollment-wizard state (`onboardingState.ts` — the wizard spans profile, catalog, seller and buyer steps), and the ONE counterparty-name resolver (`memberListing.ts` `displayNameForAddress`, over any `{address, name}` collection). Both sides live here: member = what a wallet IS, seller = which side of a trade it stands on.
 - **`semantic/`** — runtime derivation from committed state: `deriveProcessModelFromRuntime.ts`, `processTopology.ts`, `processRecourse.ts`, `models.ts`, capability execution
@@ -219,13 +219,16 @@ The Designer is a DAG editor — assembly designers start blank or fork an exist
 
 - `clauseSpecSource.ts` — the module spec cache. No bundled copy and no
   preload: `useClauseSpecs` warms it chain→IPFS via
-  `loadClauseSpec(id, version, uri, contentHash)` from `ClauseRegistered` events
+  `loadClauseSpec(clauseKey, uri)` from `ClauseRegistered` events
   (the seed clauses in `clauses/` on the devnet —
   all runtime-attestable except the agreement-only `figaro-topology` —
   plus any third-party registrations);
   spec-consuming surfaces gate on its `loaded`. The cache holds
   `Anchored` specs only: a spec enters after the SDK's `anchorClauseSpec`
-  matched it to the registry's `contentHash`. The other registry reads type
+  checked that the fetched bytes hash to the clause key, re-canonicalizing
+  nothing. Every reader — `getClauseSpec`, `clauseIsMandatory`,
+  `clauseNestsUnder`, `describeClause` and the rest — takes a clause key; the
+  spec's `clauseId` and `version` are its label. The other registry reads type
   the same way — `fetchAssemblyTemplate`, `fetchAgreement` and
   `fetchWitnessContent` return `Anchored` documents, and the records built
   from them (`AssemblyChoice`, `BoundAssembly`, a published assembly's view)

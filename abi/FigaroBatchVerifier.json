@@ -223,6 +223,11 @@
                 "internalType": "bytes32"
               },
               {
+                "name": "kind",
+                "type": "uint8",
+                "internalType": "uint8"
+              },
+              {
                 "name": "c",
                 "type": "uint64",
                 "internalType": "uint64"
@@ -416,6 +421,17 @@
   },
   {
     "type": "error",
+    "name": "ClauseNotRegistered",
+    "inputs": [
+      {
+        "name": "clauseId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ]
+  },
+  {
+    "type": "error",
     "name": "FeeOnTransferDetected",
     "inputs": []
   },
@@ -462,11 +478,6 @@
     "inputs": [
       {
         "name": "clauseId",
-        "type": "bytes32",
-        "internalType": "bytes32"
-      },
-      {
-        "name": "anchored",
         "type": "bytes32",
         "internalType": "bytes32"
       },

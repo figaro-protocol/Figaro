@@ -576,8 +576,9 @@ async fn batch_loop(
             warn!(id = p.id, %reason, "Dropped commit at batch formation");
             failures.record(1, reason.clone()).await;
         }
-        // An attestation whose witness spec is not the registry's anchored
-        // one reverts the whole batch on chain: dropped here, alone.
+        // An attestation whose witness spec does not hash to its clause key,
+        // or whose key is not registered, reverts the whole batch on chain:
+        // dropped here, alone.
         let (mut valid, unanchored) = submitter::filter_anchored_attestations(funding.as_ref(), valid).await;
         for (p, reason) in &unanchored {
             warn!(id = p.id, %reason, "Dropped attestation at batch formation");

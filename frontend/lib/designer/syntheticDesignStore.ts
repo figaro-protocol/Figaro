@@ -109,21 +109,16 @@ export interface DesignSnapshot {
     nextSellerIndex: number;
     /** All orders in the design. */
     orders: Order[];
-    /** Per-order clause selection — keyed by order id, then clauseId → the
+    /** Per-order clause selection — keyed by order id, then clause key → the
      *  composed values (design.fills clauses only — consent's affix; other
      *  clauses carry `{}`). Drives the assembly template's
      *  per-order `clauses`; the build strips general values regardless. */
     clausesByOrderId?: Record<string, Record<string, Record<string, unknown>>>;
-    /** orderId → clauseId → the registered version picked in the drawer, when
-     *  it isn't 1 (sparse — mirrors the template's `clauseVersions`). */
-    clauseVersionsByOrderId?: Record<string, Record<string, number>>;
     /** ASSEMBLY-SCOPED composition — clauses declaring
      *  `design.scope: "assembly"`, composed once for the whole design
-     *  (clauseId → the designer's design.fills values; other clauses `{}`).
+     *  (clause key → the designer's design.fills values; other clauses `{}`).
      *  Drives the template's `assemblyClauses`. */
     assemblyClauses?: Record<string, Record<string, unknown>>;
-    /** clauseId → registered version for the assembly-scoped clauses. */
-    assemblyClauseVersions?: Record<string, number>;
     /** Unix ms. */
     createdAt: number;
     /** Unix ms. */

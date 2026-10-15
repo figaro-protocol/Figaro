@@ -3,9 +3,10 @@
  *
  * A clause spec and an assembly template are fetched from IPFS through
  * whatever gateway the host configured, and the registries anchor each one
- * on chain: `ClauseRegistry` stores the spec's content hash, `AssemblyRegistry`
- * keys the template by its composition hash. A gateway can serve any bytes,
- * so the bytes are recomputed against the anchor before anything reads them,
+ * on chain: `ClauseRegistry` keys a clause by the hash of its pinned spec
+ * bytes (the clause key), `AssemblyRegistry` keys the template by its
+ * composition hash. A gateway can serve any bytes, so the bytes are checked
+ * against the anchor before anything reads them,
  * by the SDK's `anchorClauseSpec` and `anchorTemplate` — the functions the
  * frontend verifies with. A
  * document that does not hash to its anchor reads as absence, never as the
@@ -18,8 +19,9 @@
  * permissionless, so it says nothing about whether the bytes are hostile.
  */
 
-import { anchorClauseSpec, anchorTemplate, canonicalContentHash, strippingReviver, templateCompositionHash } from "@figaro-protocol/sdk";
-import { cidOf, fetchIpfsText } from "./ipfsRead.mjs";
+import { keccak256 } from "viem";
+import { anchorClauseSpec, anchorTemplate, strippingReviver, templateCompositionHash } from "@figaro-protocol/sdk";
+import { cidOf, fetchIpfsBytes, fetchIpfsText } from "./ipfsRead.mjs";
 
 /** Parse untrusted JSON text; `null` when it is not JSON. */
 function parseUntrusted(text) {
@@ -31,23 +33,26 @@ function parseUntrusted(text) {
 }
 
 /**
- * A live clause's spec, verified against the registry's content hash.
+ * A live clause's spec, verified against its clause key: keccak256 of the
+ * BYTES fetched must equal the key (nothing is re-canonicalized — the key is
+ * the hash of exactly the bytes the registrant pinned).
  *
  * @param clause  a `RegisteredClause` from the discovery graph
- *                (`contentURI`, `contentHash`)
+ *                (`contentURI`, `clauseKey`)
  * @returns `{ raw, text }` (the parsed spec and its text), or `{ absent }`
- *          naming why: not served, not JSON, or not the anchored document.
+ *          naming why: not served, not the keyed bytes, or not JSON.
  *          Throws only when every gateway failed to answer.
  */
 export async function fetchAnchoredClauseSpec(clause, options = {}) {
-    const text = await fetchIpfsText(cidOf(clause.contentURI), options);
-    if (text === null) return { absent: "not served" };
-    const raw = parseUntrusted(text);
-    if (raw === null) return { absent: "not JSON" };
-    if (anchorClauseSpec(raw, clause.contentHash) === null) {
-        return { absent: `hashes to ${canonicalContentHash(raw)}, the registry anchors ${clause.contentHash}` };
+    const bytes = await fetchIpfsBytes(cidOf(clause.contentURI), options);
+    if (bytes === null) return { absent: "not served" };
+    const digest = keccak256(bytes);
+    if (digest.toLowerCase() !== clause.clauseKey.toLowerCase()) {
+        return { absent: `bytes hash to ${digest}, not the clause key ${clause.clauseKey}` };
     }
-    return { raw, text };
+    const raw = anchorClauseSpec(bytes, clause.clauseKey);
+    if (raw === null) return { absent: "not JSON" };
+    return { raw, text: new TextDecoder().decode(bytes) };
 }
 
 /**

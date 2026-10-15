@@ -733,11 +733,11 @@ describe("RegistryLifecycleFigure", () => {
         expect(text).toContain("The binding is never cleared: the key stays");
     });
 
-    it("keeps the two ID-keyed registries' keys distinct — they key by different things", () => {
+    it("names each hash-keyed registry's key on its own line — the hashes cover different things", () => {
         const { container } = render(<RegistryLifecycleFigure />);
         const text = container.textContent ?? "";
-        expect(text).toContain("ClauseRegistry — keyed by (chosen id, version)");
-        expect(text).toContain("AssemblyRegistry — by composition hash");
+        expect(text).toContain("ClauseRegistry — hash of the pinned spec");
+        expect(text).toContain("AssemblyRegistry — hash of the pinned composition");
         // Collapsing both into one "by hash" line loses the distinction.
         expect(text).not.toContain("ClauseRegistry / AssemblyRegistry — by hash");
     });
@@ -750,7 +750,7 @@ describe("RegistryLifecycleFigure", () => {
         expect(text).toContain("no composition provenance to harden the gate.");
     });
 
-    it("claims anti-displacement, never anti-squatting — a clause id is caller-chosen", () => {
+    it("claims anti-displacement, never anti-squatting — a registered binding cannot be rebound", () => {
         const { container } = render(<RegistryLifecycleFigure />);
         const text = container.textContent ?? "";
         expect(text).toContain("reverts AlreadyRegistered forever, so a");

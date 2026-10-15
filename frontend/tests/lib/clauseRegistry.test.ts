@@ -12,11 +12,11 @@ import {
 } from "@/lib/protocol/useClauseRegistry";
 
 describe("clauseRegisterRevertMessage", () => {
-    it("AlreadyRegistered names the clause id and the first-write-wins / version rule", () => {
-        const msg = clauseRegisterRevertMessage("AlreadyRegistered", undefined, "figaro-my-clause");
-        expect(msg).toMatch(/figaro-my-clause/);
+    it("AlreadyRegistered names the clause and the first-write-wins rule over the spec's key", () => {
+        const msg = clauseRegisterRevertMessage("AlreadyRegistered", undefined, "figaro-my-clause@1");
+        expect(msg).toMatch(/figaro-my-clause@1/);
         expect(msg).toMatch(/first-write-wins/i);
-        expect(msg).toMatch(/version/i);
+        expect(msg).toMatch(/hash of its spec/i);
     });
 
     it("WrongDeposit names the provided and required wei from the decoded args", () => {
@@ -32,9 +32,8 @@ describe("clauseRegisterRevertMessage", () => {
     });
 
     it("maps the field-guard reverts", () => {
-        expect(clauseRegisterRevertMessage("EmptyClauseId", undefined, "x")).toMatch(/empty clauseId/i);
+        expect(clauseRegisterRevertMessage("ZeroClauseKey", undefined, "x")).toMatch(/zero clause key/i);
         expect(clauseRegisterRevertMessage("EmptyContentURI", undefined, "x")).toMatch(/empty URI/i);
-        expect(clauseRegisterRevertMessage("ZeroContentHash", undefined, "x")).toMatch(/empty content hash/i);
     });
 
     it("returns null for an unrecognized or absent error name (falls through to the raw error)", () => {

@@ -9,6 +9,7 @@ import type { OfferHandler, CommitmentPayload } from "../src/agent/coordination.
 import { serializeCommitmentPayload } from "../src/agent/coordination.js";
 import { COMMITMENT_TYPES, buildDomain } from "../src/commitments.js";
 import type { DIDDocument } from "../src/agent/did.js";
+import { keyOf } from "./specFixtures.js";
 
 // ── Fixtures (no chain — signing is local; the socket is real) ────────────────
 
@@ -25,7 +26,7 @@ const sellerW = createWalletClient({ account: SELLER, transport: http("http://12
 const template: AssemblyTemplate = {
     agreements: [{
         id: "root",
-        clauses: { "figaro-commerce": { currency: CURRENCY, payment: PAYMENT.toString(), lineItems: [] } },
+        clauses: { [keyOf("figaro-commerce")]: { currency: CURRENCY, payment: PAYMENT.toString(), lineItems: [] } },
     }],
 };
 

@@ -17,7 +17,12 @@ of the allocation table in `docs/FLORIN_TOKEN.md`.
 
 **Designers of record.** A designer is the wallet that wrote and registered a
 clause or an assembly; it is the designer of record for as long as it holds a
-live stake against that entry in the entry's own registry. Clauses and assemblies earn on the same
+live stake against that entry in the entry's own registry. An entry is a
+(kind, key) pair — a clause key under the clause kind, an assembly's
+`compositionHash` under the assembly kind — and the meter, the claim and the
+check of the designer of record are all keyed by it, so a stake in one family never
+earns another family's usage at the same bytes (`DESIGN_DECISIONS.md` § 24).
+Clauses and assemblies earn on the same
 terms, from the same pool, through the same call — there is no seniority
 between them, and no distinction between a designer who registered one clause
 and one who registered fifty.
@@ -35,7 +40,8 @@ treasury aligns the treasury's interest with every trade (`docs/DAO.md`
 
 **Registering is the whole of the claim.** First-write-wins: whoever
 registers a clause key under their wallet is its designer of record, and the
-binding is irreversible. Competing with a better clause under one's own wallet is
+binding is irreversible. The key is the hash of the spec's pinned bytes, so
+what is registered is one exact document, never a name. Competing with a better clause under one's own wallet is
 equally permissionless and equally welcome.
 
 ---
@@ -101,8 +107,10 @@ own currency, at the moment it counts:
   scores are summed, and the same sellers on both count up to 2^(2/3) times
   their pooled score — a bounded bias, at the same live stake per seller.
 - **Designer side** — a claim rewards only entries whose registry stake is
-  live and registered by the claimant. `RpgfMinter` verifies each entry against
-  its own registry; a withdrawn stake earns nothing further.
+  live and registered by the claimant. A claim names `(kind, key)` pairs, and
+  `RpgfMinter` verifies each against the one registry its kind names —
+  `ClauseRegistry` for the clause kind, `AssemblyRegistry` for the assembly
+  kind; a withdrawn stake earns nothing further.
 
 This is a **value loop, not a cost.** The stake is reclaimable, and holding it
 is exposure to the growth of the network one's own work produces. A designer
@@ -144,9 +152,13 @@ that an end-to-end run can cross a period boundary in a single session.
 The meter is the agreement format's reserved provenance leaf, the link from a
 process to the assembly it instantiated (`CLAUSES.md` § "Every clause is a
 merkle leaf"). It is no registration: its key,
-`keccak256("figaro-agreement-provenance")`, is a constant of the format that
-no clause key meets, and `UsageCounter` refuses that key by comparison with
-the constant on both paths, whatever a registry holds at it. No other key is
+`keccak256("figaro-agreement-provenance")`, is a constant of the format,
+distinct from every clause key under keccak256's second-preimage resistance,
+and it is refused at accrual by comparison with the constant whatever a
+registry holds at it: the direct path reverts (`UsageCounter._accrue`,
+`ProvenanceLeafIsNotARegistration`), the guest refuses a batch claim keyed on
+it (`apply_usage_claims`), and the counter's batch path skips it
+(`applyBatchAccrual`). No other key is
 refused by list. The line it draws is **terms versus meter**.
 
 Commerce and topology are contract *terms* the parties agree to. A runtime that

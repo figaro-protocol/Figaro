@@ -9,11 +9,12 @@ import { recordProcessUsage } from "../src/agent/index.js";
 import { computeClauseKey } from "../src/discovery.js";
 import { PROVENANCE_LEAF_KEY, type Agreement } from "../src/agreement.js";
 import type { Commitment } from "../src/types.js";
+import { keyOf } from "./specFixtures.js";
 
 const COUNTER = "0x00000000000000000000000000000000000c0de5" as Address;
 const CORE = "0x0000000000000000000000000000000000c0ffee" as Address;
-const COMMERCE = computeClauseKey("figaro-commerce", 1);
-const MODALITIES = computeClauseKey("figaro-modalities", 1);
+const COMMERCE = keyOf("figaro-commerce");
+const MODALITIES = keyOf("figaro-modalities");
 const COMPOSITION = keccak256(encodePacked(["string"], ["an-assembly"]));
 
 function order(salt: bigint): Commitment {
@@ -35,8 +36,8 @@ function agreement(provenance: Hex = COMPOSITION): Agreement {
     return {
         version: "a1", buyer: o.buyer, seller: o.seller,
         sections: [
-            { clause: "figaro-modalities", version: 1, data: { modality: "pickup" } },
-            { clause: "figaro-commerce", version: 1, data: { payment: "100", currency: o.currency, lineItems: [] } },
+            { clause: keyOf("figaro-modalities"), data: { modality: "pickup" } },
+            { clause: keyOf("figaro-commerce"), data: { payment: "100", currency: o.currency, lineItems: [] } },
         ],
         provenance,
     };
@@ -115,7 +116,7 @@ describe("recordProcessUsage", () => {
         expect(report.attempted).toBe(2);
         expect(report.recorded).toBe(1);
         expect(report.assemblyRecorded).toBe(true);
-        expect(report.failures).toEqual(["figaro-commerce: SellerNotStaked"]);
+        expect(report.failures).toEqual([`clause ${COMMERCE}: SellerNotStaked`]);
         expect(sent.map((s) => s.functionName).sort()).toEqual(["recordAssemblyUsage", "recordClauseUsage"]);
     });
 });

@@ -149,7 +149,7 @@ export async function unpinAgreement(
  *  — the correct privacy-first direction, never a plaintext-private pin. */
 async function warmAgreementSpecs(agreement: Agreement): Promise<void> {
     const missing = agreement.sections.filter(
-        (s) => getClauseSpec(s.clause, s.version) === undefined,
+        (s) => getClauseSpec(s.clause) === undefined,
     );
     if (missing.length === 0) return;
     const addr = CONTRACTS.clauseRegistry;
@@ -171,9 +171,9 @@ async function warmAgreementSpecs(agreement: Agreement): Promise<void> {
     }
     await Promise.allSettled(
         missing.map((s) => {
-            const event = registered.find((r) => r.clauseId === s.clause && r.version === s.version);
+            const event = registered.find((r) => r.clauseKey.toLowerCase() === s.clause.toLowerCase());
             return event
-                ? loadClauseSpec(s.clause, s.version, event.contentURI, event.contentHash)
+                ? loadClauseSpec(event.clauseKey, event.contentURI)
                 : Promise.resolve(undefined);
         }),
     );

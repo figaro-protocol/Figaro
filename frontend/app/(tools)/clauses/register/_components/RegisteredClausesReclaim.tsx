@@ -9,7 +9,7 @@
  * `DepositWithdrawn` in as `stakeWithdrawn` (the wallet-scoped read KEEPS
  * withdrawn rows, flagged). The article is read from the warm clause-spec cache
  * (`block.design.article`) — never a stored field. Each row owns its own
- * `useWithdrawGate({ kind: "clause", clauseId })`, so the reclaim disables while
+ * `useWithdrawGate({ kind: "clause", clauseKey })`, so the reclaim disables while
  * VERIFIED in-flight trades compose the clause and surfaces the party-private
  * caveat otherwise — the same pattern as ViewAssemblyClient's reclaim.
  *
@@ -85,7 +85,7 @@ export function RegisteredClausesReclaim() {
         <ul className="space-y-3" data-testid="clauses-reclaim-list">
             {data.map((clause) => (
                 <ReclaimClauseRow
-                    key={`${clause.idHash}-${clause.blockNumber.toString()}`}
+                    key={`${clause.clauseKey}-${clause.blockNumber.toString()}`}
                     clause={clause}
                     onReclaimed={refetch}
                 />
@@ -102,7 +102,7 @@ function ReclaimClauseRow({
     onReclaimed: () => void;
 }) {
     const { withdraw } = useWithdrawClause();
-    const { gate } = useWithdrawGate({ kind: "clause", clauseId: clause.clauseId });
+    const { gate } = useWithdrawGate({ kind: "clause", clauseKey: clause.clauseKey });
     const [withdrawing, setWithdrawing] = useState(false);
     const [error, setError] = useState<string | null>(null);
     // Reflect a successful reclaim locally until the event refetch catches up.
@@ -111,7 +111,7 @@ function ReclaimClauseRow({
 
     // "(unclassified)" is a RESOLVED spec declaring no article; a spec the
     // gateway has not served yet is not unclassified — its article is unknown here.
-    const spec = getClauseSpec(clause.clauseId, clause.version);
+    const spec = getClauseSpec(clause.clauseKey);
     const article = spec ? spec.block?.design.article ?? "(unclassified)" : "(spec not resolved yet)";
     // Unverifiable in-flight trades are informational only (party-private terms),
     // never disabling — shown while the reclaim is still available.
@@ -121,7 +121,7 @@ function ReclaimClauseRow({
         setWithdrawing(true);
         setError(null);
         try {
-            await withdraw(clause.idHash);
+            await withdraw(clause.clauseKey);
             setLocallyWithdrawn(true);
             onReclaimed();
         } catch (err) {
@@ -134,21 +134,20 @@ function ReclaimClauseRow({
     return (
         <li
             className="rounded-lg border border-default bg-paper px-5 py-3 flex flex-col gap-2"
-            data-testid={`clause-reclaim-row-${clause.idHash}`}
+            data-testid={`clause-reclaim-row-${clause.clauseKey}`}
         >
             <div className="flex items-start gap-4">
                 <div className="flex-1 min-w-0">
                     <p className="text-base font-semibold text-ink-heading truncate">
-                        {clause.clauseId}
+                        {spec?.clauseId ?? truncateHex(clause.clauseKey, { head: 10, tail: 6 })}
                     </p>
                     <p className="text-[11px] text-ink-muted mt-1">
                         article {article}
-                        {" · version "}
-                        {clause.version}
+                        {spec && <>{" · version "}{spec.version}</>}
                         {" · "}
                         <span
                             className={withdrawn ? "text-ink-faint" : "text-success-fg"}
-                            data-testid={`clause-reclaim-state-${clause.idHash}`}
+                            data-testid={`clause-reclaim-state-${clause.clauseKey}`}
                         >
                             {withdrawn ? "stake reclaimed" : "live"}
                         </span>
@@ -185,8 +184,8 @@ function ReclaimClauseRow({
                     Reclaim failed: {error}
                 </p>
             )}
-            <p className="font-mono text-[10px] text-ink-faint" title={clause.idHash}>
-                {truncateHex(clause.idHash, { head: 10, tail: 6 })}
+            <p className="font-mono text-[10px] text-ink-faint" title={clause.clauseKey}>
+                {truncateHex(clause.clauseKey, { head: 10, tail: 6 })}
             </p>
         </li>
     );

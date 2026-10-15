@@ -45,11 +45,17 @@
 import { test, expect, gotoAsWallet } from './devnet-multi-test';
 import { createPublicClient, defineChain, http, parseAbi, type Hex } from 'viem';
 import { privateKeyToAccount, mnemonicToAccount } from 'viem/accounts';
-import { readLocalDeploymentConfig, assertPinnedInIpfs, publishOrAdoptReviewed } from './devnet-helpers';
+import { readLocalDeploymentConfig, assertPinnedInIpfs, publishOrAdoptReviewed, keyOf, primeRegisteredClauseSpecs } from './devnet-helpers';
 import { ANVIL_KEYS } from '../anvilAccounts';
 import { CORE_ABI } from '@/lib/kernel/contracts';
 import { calculateBonds } from '@figaro-protocol/sdk';
 import type { Page } from '@playwright/test';
+
+// Clause keys are located by the names their specs carry (`keyOf`), over
+// the specs the chain registered — primed once per file.
+test.beforeAll(async () => {
+    await primeRegisteredClauseSpecs();
+});
 
 const ERC20_ABI = parseAbi(['function balanceOf(address) view returns (uint256)']);
 
@@ -117,7 +123,7 @@ test.describe('CATALOG→LEAF fold — physical catalog data derives onto the ca
         await page.getByTestId('drawer-tab-registry').click();
         await page.getByTestId('drawer-section-registry').waitFor({ state: 'visible', timeout: 5000 });
         // figaro-cargo — a protocol clause; composed exactly like any other.
-        await page.getByTestId('drawer-registry-clause-figaro-cargo').check();
+        await page.getByTestId(`drawer-registry-clause-${keyOf('figaro-cargo')}`).check();
 
         // Stable editorial name: identity is the composition, not the name.
         const assemblyName = 'Cargo fold';
@@ -239,7 +245,7 @@ test.describe('CATALOG→LEAF fold — physical catalog data derives onto the ca
         //    network SSoT, not a local cache) and assert the cargo leaf carries the
         //    FOLDED physical values — mass + volume summed from the cart, the packaged
         //    dimensions written straight through (single parcel). The leaf is found by
-        //    its committed clauseId; the values are what the fold derived, not authored. ──
+        //    its committed clause key; the values are what the fold derived, not authored. ──
         const agreementUri = await page.evaluate(
             (key) => window.localStorage.getItem(key),
             `figaro:agreement-uri:${agreementHash}`,
@@ -250,7 +256,7 @@ test.describe('CATALOG→LEAF fold — physical catalog data derives onto the ca
         const ipfsApi = process.env.NEXT_PUBLIC_IPFS_API_URL ?? 'http://127.0.0.1:5001';
         const agreementJson = await (await fetch(`${ipfsApi}/api/v0/cat?arg=${agreementCid}`, { method: 'POST' })).text();
         const agreement = JSON.parse(agreementJson) as { sections: { clause: string; data: Record<string, unknown> }[] };
-        const cargo = agreement.sections.find((s) => s.clause === 'figaro-cargo');
+        const cargo = agreement.sections.find((s) => s.clause.toLowerCase() === keyOf('figaro-cargo'));
         expect(cargo, 'the committed tree carries a folded cargo leaf').toBeTruthy();
         expect(cargo!.data, 'the fold derived mass + volume + packaged dimensions onto the cargo leaf').toMatchObject({
             massGrams: MASS_G,

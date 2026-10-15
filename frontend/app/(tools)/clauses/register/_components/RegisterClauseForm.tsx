@@ -96,7 +96,7 @@ export function RegisterClauseForm() {
                 }
                 proseClassName="text-sm text-ink-body"
                 rows={[
-                    { label: "Clause key (idHash)", value: receipt.idHash },
+                    { label: "Clause key", value: receipt.clauseKey },
                     { label: "Transaction", value: receipt.hash },
                     { label: "Spec URI", value: receipt.contentURI },
                 ]}
@@ -169,7 +169,7 @@ export function RegisterClauseForm() {
             )}
             {validation.state === "valid" && (
                 <p className="text-sm text-success-fg" data-testid="clause-validation-ok">
-                    Spec is well-formed. Registering pins it to IPFS, places the stake, and anchors it on-chain — permanent per (name, version).
+                    Spec is well-formed. Registering pins it to IPFS, places the stake, and anchors it on-chain under the hash of its canonical bytes — permanent per spec.
                 </p>
             )}
 

@@ -21,15 +21,12 @@
  * silently swallowed here.
  */
 
-import { buildAssemblyTemplate, serializeAssemblyTemplate } from "@figaro-protocol/sdk";
+import { buildAssemblyTemplate, serializeAssemblyTemplate, type Hex } from "@figaro-protocol/sdk";
 import { clauseDesignFills, clauseIsMandatory, getClauseSpec, liveSpecSource } from "@/lib/shared/clauseSpecSource";
 import { isFilledValue } from "@/lib/checkout/checkoutDerivations";
-import {
-    deriveAssemblySlug,
-    templateClauseVersion,
-    type AssemblyTemplate,
-} from "@/lib/shared/assemblyTemplate";
+import { deriveAssemblySlug, type AssemblyTemplate } from "@/lib/shared/assemblyTemplate";
 import { extractErrorMessage } from "@/lib/shared/errors";
+import { truncateHex } from "@/lib/shared/formatHex";
 import type { DesignSnapshot } from "@/lib/designer/syntheticDesignStore";
 
 /** Project a design snapshot onto the canonical assembly template. Throws when
@@ -42,9 +39,7 @@ export function snapshotToAssemblyTemplate(snapshot: DesignSnapshot): AssemblyTe
         description: snapshot.description?.trim() || undefined,
         orders: snapshot.orders,
         clausesByOrderId: snapshot.clausesByOrderId ?? {},
-        clauseVersionsByOrderId: snapshot.clauseVersionsByOrderId,
         assemblyClauses: snapshot.assemblyClauses,
-        assemblyClauseVersions: snapshot.assemblyClauseVersions,
         specs: liveSpecSource(),
     });
 }
@@ -55,7 +50,7 @@ export function snapshotToAssemblyTemplate(snapshot: DesignSnapshot): AssemblyTe
  *
  *  Keyed by the template's own agreement ids (`order-<i>`). The auto-folded
  *  MANDATORY clauses are left out here: they are not the designer's picks, and
- *  `templateFoldedClauses` lists them on their own, by id and version.
+ *  `templateFoldedClauses` lists them on their own, by key.
  *  Everything shown here comes from the pinned bytes, never from a second walk
  *  over the draft — that divergence is the defect this exists to make
  *  impossible. */
@@ -66,37 +61,48 @@ export function templateComposedByAgreement(
         template.agreements.map((agreement) => [
             agreement.id,
             Object.fromEntries(
-                Object.entries(agreement.clauses).filter(
-                    ([clauseId]) =>
-                        !clauseIsMandatory(clauseId, templateClauseVersion(agreement, clauseId)),
-                ),
+                Object.entries(agreement.clauses).filter(([clauseKey]) => !clauseIsMandatory(clauseKey)),
             ),
         ]),
     );
 }
 
-/** A clause the designer picked on one agreement, by id and version. */
+/** A clause the designer picked on one agreement: its key, labeled by its
+ *  spec's own name and version when the spec is loaded. */
 export interface ComposedClause {
-    clauseId: string;
-    version: number;
-    /** The spec's title, or the id when the spec is not loaded. */
+    clauseKey: Hex;
+    /** The spec's own `clauseId` and `version` — presentation; undefined while
+     *  the spec is not loaded. */
+    clauseId?: string;
+    version?: number;
+    /** The spec's title, or the key when the spec is not loaded. */
     title: string;
 }
 
-/** The designer's picks per agreement, by id AND version — the listing face
- *  of `templateComposedByAgreement`, keyed the same way. A clause's identity
- *  is (id, version) and any version is anyone's registration, so a review
- *  names the version beside the id, read version-exact from the pinned bytes
- *  (absent = 1, the template's sparse rule). */
+/** The label of one clause key from the loaded spec: its title, name and
+ *  version, or the key itself while the spec is not loaded. */
+function clauseLabel(clauseKey: Hex): { clauseId?: string; version?: number; title: string } {
+    const spec = getClauseSpec(clauseKey);
+    return spec ? { clauseId: spec.clauseId, version: spec.version, title: spec.title } : { title: clauseKey };
+}
+
+/** How a review names one clause: the spec's own name and version beside a
+ *  short form of the key — two specs may share a name, never a key. */
+export function composedClauseLabel(clause: Pick<ComposedClause, "clauseKey" | "clauseId" | "version">): string {
+    const key = truncateHex(clause.clauseKey, { head: 10, tail: 4 });
+    return clause.clauseId === undefined ? key : `${clause.clauseId} · v${clause.version} · ${key}`;
+}
+
+/** The designer's picks per agreement, by key — the listing face of
+ *  `templateComposedByAgreement`, keyed the same way. Any spec is anyone's
+ *  registration and two specs may share a name, so a review shows the
+ *  spec's version beside its name, read from the spec the key names. */
 export function templateComposedClauses(template: AssemblyTemplate): Record<string, ComposedClause[]> {
     const byAgreement = templateComposedByAgreement(template);
     return Object.fromEntries(
         template.agreements.map((agreement) => [
             agreement.id,
-            Object.keys(byAgreement[agreement.id] ?? {}).map((clauseId) => {
-                const version = templateClauseVersion(agreement, clauseId);
-                return { clauseId, version, title: getClauseSpec(clauseId, version)?.title ?? clauseId };
-            }),
+            (Object.keys(byAgreement[agreement.id] ?? {}) as Hex[]).map((clauseKey) => ({ clauseKey, ...clauseLabel(clauseKey) })),
         ]),
     );
 }
@@ -104,38 +110,34 @@ export function templateComposedClauses(template: AssemblyTemplate): Record<stri
 /** A clause the template carries because its spec marks it mandatory, not
  *  because the designer picked it. */
 export interface FoldedClause {
-    clauseId: string;
-    version: number;
-    /** The spec's title, or the id when the spec is not loaded. */
+    clauseKey: Hex;
+    /** The spec's own `clauseId` and `version` — presentation. */
+    clauseId?: string;
+    version?: number;
+    /** The spec's title, or the key when the spec is not loaded. */
     title: string;
     /** The template agreement ids carrying it, or `["assembly"]` for an
      *  assembly-scoped term. */
     carriedBy: string[];
 }
 
-/** Every clause the template carries as MANDATORY, by id AND version — the
+/** Every clause the template carries as MANDATORY, by key — the
  *  complement of `templateComposedByAgreement`. "Mandatory" is the spec's
  *  `block.design.article`, written by whoever registered the clause and open
  *  to anyone's registration, so it confers no standing: a review lists every
  *  one of these for the designer to confirm before anchoring, never folds
- *  them out of sight. Read from the pinned bytes, version-exact. */
+ *  them out of sight. Read from the pinned bytes. */
 export function templateFoldedClauses(template: AssemblyTemplate): FoldedClause[] {
     const folded = new Map<string, FoldedClause>();
-    const note = (clauseId: string, version: number, carrier: string) => {
-        if (!clauseIsMandatory(clauseId, version)) return;
-        const key = `${clauseId}#${version}`;
-        const entry = folded.get(key)
-            ?? { clauseId, version, title: getClauseSpec(clauseId, version)?.title ?? clauseId, carriedBy: [] };
+    const note = (clauseKey: Hex, carrier: string) => {
+        if (!clauseIsMandatory(clauseKey)) return;
+        const entry = folded.get(clauseKey.toLowerCase()) ?? { clauseKey, ...clauseLabel(clauseKey), carriedBy: [] };
         entry.carriedBy.push(carrier);
-        folded.set(key, entry);
+        folded.set(clauseKey.toLowerCase(), entry);
     };
-    for (const clauseId of Object.keys(template.assemblyClauses ?? {})) {
-        note(clauseId, templateClauseVersion({ clauseVersions: template.assemblyClauseVersions }, clauseId), "assembly");
-    }
+    for (const clauseKey of Object.keys(template.assemblyClauses ?? {}) as Hex[]) note(clauseKey, "assembly");
     for (const agreement of template.agreements) {
-        for (const clauseId of Object.keys(agreement.clauses)) {
-            note(clauseId, templateClauseVersion(agreement, clauseId), agreement.id);
-        }
+        for (const clauseKey of Object.keys(agreement.clauses) as Hex[]) note(clauseKey, agreement.id);
     }
     return Array.from(folded.values());
 }
@@ -153,14 +155,14 @@ export type SnapshotReview =
         template: AssemblyTemplate;
         compositionHash: `0x${string}`;
         slug: string;
-        /** canvas order id → clauseId → composed values (mandatory folds out). */
+        /** canvas order id → clause key → composed values (mandatory folds out). */
         composedByOrderId: Record<string, Record<string, Record<string, unknown>>>;
-        /** canvas order id → the same picks by id and version, for the
+        /** canvas order id → the same picks with their labels, for the
          *  review's listing. */
         composedClausesByOrderId: Record<string, ComposedClause[]>;
         /** The assembly-scoped composition exactly as the template carries it. */
         assemblyClauses: Record<string, Record<string, unknown>>;
-        /** The mandatory clauses the template carries, by id and version — what
+        /** The mandatory clauses the template carries, by key — what
          *  the designer confirms before publish. */
         folded: FoldedClause[];
     }
@@ -226,7 +228,7 @@ export function snapshotCompositionIdentity(
 /** A required assembly term the designer has not filled: the clause and the
  *  field, named as the panel labels them. */
 export interface MissingAssemblyTerm {
-    clauseId: string;
+    clauseKey: string;
     clauseTitle: string;
     fieldLabel: string;
 }
@@ -243,14 +245,13 @@ export interface MissingAssemblyTerm {
  * required fill with a declared default (a forum's subcourt) is filled
  * from the first moment and the anchored template carries it explicitly.
  * A fill with no default (a utility token's currency) stays empty, and
- * `unfilledAssemblyTerms` names it until the designer fills it. Read at the
- * selected version — never another version of the id the registry read
- * loaded.
+ * `unfilledAssemblyTerms` names it until the designer fills it. Read from
+ * the spec the key names — never another spec of the same name.
  */
-export function assemblyClauseDefaults(clauseId: string, version: number): Record<string, unknown> {
-    const spec = getClauseSpec(clauseId, version);
+export function assemblyClauseDefaults(clauseKey: string): Record<string, unknown> {
+    const spec = getClauseSpec(clauseKey);
     if (!spec) return {};
-    const fills = clauseDesignFills(clauseId, version);
+    const fills = clauseDesignFills(clauseKey);
     const out: Record<string, unknown> = {};
     for (const field of spec.fields) {
         if (fills.includes(field.name) && field.default !== undefined) out[field.name] = field.default;
@@ -259,66 +260,45 @@ export function assemblyClauseDefaults(clauseId: string, version: number): Recor
 }
 
 /**
- * One toggle of a registered clause row at a version, on the canvas's
- * composition of one scope — the assembly terms (`assemblyClauses` +
- * `assemblyClauseVersions`) or one order's terms (`clausesByOrderId[id]` +
- * `clauseVersionsByOrderId[id]`). Both scopes call this; the rule is one.
+ * One toggle of a registered clause row — one key — on the canvas's
+ * composition of one scope: the assembly terms (`assemblyClauses`) or one
+ * order's terms (`clausesByOrderId[id]`). Both scopes call this; the rule is
+ * one.
  *
- * - Unchecking removes the clause and its version.
+ * - Unchecking removes the key.
  * - A fresh pick starts from `freshFills` (an assembly term seeds its
- *   declared defaults; an order's pick starts empty).
- * - A pick at another version than the one composed keeps the fills the new
- *   version's spec still names in `block.design.fills` and drops the rest:
- *   the designer does not retype what the new spec still asks for, and no
- *   value rides on a spec that has no fill for it (it would strip silently
- *   at publish). A version whose spec is not loaded carries nothing.
- * - Re-checking the version composed leaves its fills untouched.
- *
- * `versions` is the template's sparse encoding (only non-1 recorded).
+ *   declared defaults; an order's pick starts empty). Another version of a
+ *   clause is another key, so moving to it is a fresh pick: a value composed
+ *   under one spec never rides on another spec's composition.
+ * - Re-checking a key already composed leaves its fills untouched.
  */
-export function toggleClauseAtVersion(
+export function toggleClauseByKey(
     values: Readonly<Record<string, Record<string, unknown>>>,
-    versions: Readonly<Record<string, number>>,
-    clauseId: string,
+    clauseKey: string,
     next: boolean,
-    version: number,
     freshFills: Record<string, unknown>,
-): { values: Record<string, Record<string, unknown>>; versions: Record<string, number> } {
-    const outValues = { ...values };
-    const outVersions = { ...versions };
+): Record<string, Record<string, unknown>> {
+    const out = { ...values };
     if (!next) {
-        delete outValues[clauseId];
-        delete outVersions[clauseId];
-        return { values: outValues, versions: outVersions };
+        delete out[clauseKey];
+        return out;
     }
-    const prior = values[clauseId];
-    if (prior === undefined) {
-        outValues[clauseId] = freshFills;
-    } else if (templateClauseVersion({ clauseVersions: versions }, clauseId) !== version) {
-        // A version switch starts the clause over from the scope's seed: a value
-        // declared by one version never rides on another's composition.
-        outValues[clauseId] = freshFills;
-    }
-    if (version !== 1) outVersions[clauseId] = version;
-    else delete outVersions[clauseId];
-    return { values: outValues, versions: outVersions };
+    if (values[clauseKey] === undefined) out[clauseKey] = freshFills;
+    return out;
 }
 
 export function unfilledAssemblyTerms(
     assemblyClauses: Readonly<Record<string, Record<string, unknown>>>,
-    versions?: Readonly<Record<string, number>>,
 ): MissingAssemblyTerm[] {
     const missing: MissingAssemblyTerm[] = [];
-    for (const [clauseId, values] of Object.entries(assemblyClauses)) {
-        // The version map is the template's sparse encoding.
-        const version = templateClauseVersion({ clauseVersions: versions }, clauseId);
-        const spec = getClauseSpec(clauseId, version);
+    for (const [clauseKey, values] of Object.entries(assemblyClauses)) {
+        const spec = getClauseSpec(clauseKey);
         if (!spec) continue;
-        const fills = clauseDesignFills(clauseId, version);
+        const fills = clauseDesignFills(clauseKey);
         for (const field of spec.fields) {
             if (!field.required || !fills.includes(field.name)) continue;
             if (isFilledValue(values?.[field.name])) continue;
-            missing.push({ clauseId, clauseTitle: spec.title ?? clauseId, fieldLabel: field.label ?? field.name });
+            missing.push({ clauseKey, clauseTitle: spec.title ?? clauseKey, fieldLabel: field.label ?? field.name });
         }
     }
     return missing;

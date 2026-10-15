@@ -2052,10 +2052,10 @@ async fn state_store_without_a_path_holds_for_the_process_only() {
 
 #[tokio::test]
 async fn mempool_attest_with_other_spec_bytes_does_not_take_the_slot() {
-    // The spec's bytes are judged on chain, against the registry's anchor;
-    // admission parses them and nothing more. A copy of an attestation whose
-    // spec bytes differ (here: trailing whitespace) passes the door, would
-    // revert the batch on chain, and must not make the real one a duplicate.
+    // The clause key is the hash of the spec's bytes, and admission runs the
+    // guest's Gate S: a copy of an attestation whose spec bytes differ (here:
+    // trailing whitespace) is refused at the door and never makes the real
+    // one a duplicate.
     for index in [1usize, 2] {
         let real_op = canonical_ops()[index].clone();
         let mut copy = real_op.clone();
@@ -2066,10 +2066,14 @@ async fn mempool_attest_with_other_spec_bytes_does_not_take_the_slot() {
             other => panic!("canonical ops[{index}] is an attestation, got {other:?}"),
         }
         let mp = mempool();
-        let squat = mp.submit(copy).await.unwrap();
+        let squat = mp.submit(copy).await;
+        let err = format!(
+            "{:?}",
+            squat.expect_err("a spec that does not hash to the key is refused")
+        );
+        assert!(err.contains("SpecIdentityMismatch"), "ops[{index}]: {err}");
         let real = mp.submit(real_op).await.unwrap();
         assert!(!real.duplicate, "ops[{index}]");
-        assert_ne!(real.id, squat.id);
     }
 }
 
@@ -2157,7 +2161,7 @@ fn funding_is_allocated_across_a_wallets_commits_in_order() {
     assert_eq!(dropped.len(), 1);
 }
 
-// ── An attestation's spec is checked against the anchor before proving ──
+// ── An attestation's spec is checked against its key before proving ──
 
 #[test]
 fn the_spec_an_attestation_carries_is_what_the_registry_check_reads() {
@@ -2172,8 +2176,9 @@ fn the_spec_an_attestation_carries_is_what_the_registry_check_reads() {
             _ => unreachable!(),
         };
         assert_eq!(clause, expected_clause);
-        // The anchor the verifier compares: keccak256 of the exact bytes.
+        // keccak256 of the exact bytes, which the clause key must be.
         assert_eq!(spec_hash, keccak256(spec_json.as_bytes()));
+        assert_eq!(clause, spec_hash, "the clause key is the spec's hash");
         let mut copy = ops[index].clone();
         if let KernelOp::AttestAsSeller { proof, .. } | KernelOp::AttestAsBuyer { proof, .. } = &mut copy {
             proof.spec_json.push(' ');

@@ -76,7 +76,13 @@ after the deploy and the genesis registration, and is written BEFORE them: the
 audited guest key and the SP1 gateway the batch verifier pins, every
 parameter the contracts fix forever (registration deposits, the cooldown, the
 reward schedule, the provenance leaf key), the florin genesis, and who registers
-each clause (the genesis registration plan). `scripts/check-deployment.mjs`
+each clause (the genesis registration plan). The plan names clauses by the
+`clauseId` of their spec in `clauses/` — the maintainer's authored name, under
+`registrations.byClause`, with `registrations.default` for the rest; the check
+derives each clause's key by hashing the canonical bytes of `clauses/<name>.json`
+with the SDK's `canonicalContentHash` (from `sdk/dist`, so `npm run build` in
+`sdk/` first when it is stale) and reads `registered(key)` and `depositOf(key)`
+on `ClauseRegistry`. `scripts/check-deployment.mjs`
 reads a chain against it — and against the contracts as compiled, with
 `--artifacts` from a `forge build --via-ir` at the audit tag — and fails on
 every value that differs. A value not yet decided is written `null`, and the

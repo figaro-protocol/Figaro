@@ -4,7 +4,7 @@ import { DOCUMENT_TEMPLATES } from "@/lib/audit/documentTemplates";
 import { OrderState, type Order } from "@/lib/kernel/store";
 import type { Agreement } from "@figaro-protocol/sdk";
 import { _resetClauseSpecCache_TESTING_ONLY } from "@/lib/shared/clauseSpecSource";
-import { primeClauseSpecs } from "./primeClauseSpecs";
+import { keyOf, primeClauseSpecs } from "./primeClauseSpecs";
 
 afterEach(() => {
     _resetClauseSpecCache_TESTING_ONLY();
@@ -22,7 +22,7 @@ const mkOrder = (o: Partial<Order> & Pick<Order, "orderHash" | "seller">): Order
 });
 
 const agreement = (sections: { clause: string; data: Record<string, unknown> }[]): Agreement =>
-    ({ sections: sections.map((s) => ({ ...s, version: 1 })) } as unknown as Agreement);
+    ({ sections: sections.map((s) => ({ ...s, clause: keyOf(s.clause) })) } as unknown as Agreement);
 
 const commerce = (lineItems: { name: string; quantity: number }[]) =>
     ({ clause: "figaro-commerce", data: { currency: "0xtoken", payment: "0", lineItems } });

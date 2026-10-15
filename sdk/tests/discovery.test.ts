@@ -11,6 +11,7 @@ import {
     type DiscoveryEvents,
 } from "../src/discovery.js";
 import type { Address, FigaroAddresses, Hex } from "../src/types.js";
+import { canonicalize } from "../src/agreement.js";
 
 const MEMBER_A = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" as Address;
 const MEMBER_B = "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" as Address;
@@ -18,7 +19,8 @@ const ASM_REGISTERED_BY = "0xcccccccccccccccccccccccccccccccccccccccc" as Addres
 const CLAUSE_REGISTERED_BY = "0xdddddddddddddddddddddddddddddddddddddddd" as Address;
 const COMP_1 = "0x0000000000000000000000000000000000000000000000000000000000000011" as Hex;
 const COMP_2 = "0x0000000000000000000000000000000000000000000000000000000000000012" as Hex;
-const CONTENT_HASH = "0x0000000000000000000000000000000000000000000000000000000000000099" as Hex;
+const KEY_1 = "0x00000000000000000000000000000000000000000000000000000000000000a1" as Hex;
+const KEY_2 = "0x00000000000000000000000000000000000000000000000000000000000000a2" as Hex;
 function mkEvents(overrides: Partial<DiscoveryEvents> = {}): DiscoveryEvents {
     return {
         clauseRegistered: [],
@@ -32,56 +34,48 @@ function mkEvents(overrides: Partial<DiscoveryEvents> = {}): DiscoveryEvents {
 }
 
 describe("computeClauseKey", () => {
-    it("matches keccak256(abi.encode(name, version))", () => {
-        expect(computeClauseKey("clause-a", 1)).toBe(
-            keccak256(encodeAbiParameters([{ type: "string" }, { type: "uint64" }], ["clause-a", 1n])),
-        );
+    it("is keccak256 of the spec's canonical bytes (key order does not matter)", () => {
+        const spec = { clauseId: "clause-a", version: 1, fields: { b: 1, a: 2 } };
+        expect(computeClauseKey(spec)).toBe(keccak256(toBytes(canonicalize(spec))));
+        expect(computeClauseKey({ fields: { a: 2, b: 1 }, version: 1, clauseId: "clause-a" })).toBe(computeClauseKey(spec));
     });
 
-    it("different names produce different keys", () => {
-        expect(computeClauseKey("key-a", 1)).not.toBe(computeClauseKey("key-b", 1));
-    });
-
-    it("different versions produce different keys", () => {
-        expect(computeClauseKey("clause-a", 1)).not.toBe(computeClauseKey("clause-a", 2));
+    it("two specs with the same name and version but different bytes are two keys", () => {
+        expect(computeClauseKey({ clauseId: "clause-a", version: 1, x: 1 }))
+            .not.toBe(computeClauseKey({ clauseId: "clause-a", version: 1, x: 2 }));
     });
 });
 
 describe("DiscoveryGraph — clauses", () => {
-    it("surfaces a registered clause with its derived on-chain key", () => {
+    it("surfaces a registered clause under its key", () => {
         const g = reconstructDiscovery(mkEvents({
             clauseRegistered: [{
-                clauseId: "figaro-courier-process", version: 1,
-                contentHash: CONTENT_HASH, contentURI: "ipfs://spec", registeredBy: CLAUSE_REGISTERED_BY,
-                blockNumber: 1, logIndex: 0,
+                clauseKey: KEY_1, contentURI: "ipfs://spec", registeredBy: CLAUSE_REGISTERED_BY,
+                blockNumber: 1, logIndex: 0, transactionHash: null,
             }],
         }));
         const clauses = g.getClauses();
-        expect(clauses).toHaveLength(1);
-        expect(clauses[0].clauseId).toBe("figaro-courier-process");
-        expect(clauses[0].idHash).toBe(computeClauseKey("figaro-courier-process", 1));
-        expect(g.getClause(clauses[0].idHash)?.contentURI).toBe("ipfs://spec");
+        expect(clauses).toEqual([{ clauseKey: KEY_1, contentURI: "ipfs://spec", registeredBy: CLAUSE_REGISTERED_BY, stakeWithdrawn: false }]);
+        expect(g.getClause(KEY_1)?.contentURI).toBe("ipfs://spec");
     });
 
-    it("de-surfaces a clause once its deposit is withdrawn (withdraw keys on the idHash)", () => {
-        const idHash = computeClauseKey("figaro-emissions", 2);
+    it("de-surfaces a clause once its deposit is withdrawn (the withdrawal carries the same key)", () => {
         const g = reconstructDiscovery(mkEvents({
             clauseRegistered: [{
-                clauseId: "figaro-emissions", version: 2,
-                contentHash: CONTENT_HASH, contentURI: "ipfs://ghg", registeredBy: CLAUSE_REGISTERED_BY,
-                blockNumber: 1, logIndex: 0,
+                clauseKey: KEY_1, contentURI: "ipfs://ghg", registeredBy: CLAUSE_REGISTERED_BY,
+                blockNumber: 1, logIndex: 0, transactionHash: null,
             }],
-            clauseWithdrawn: [{ idHash, registeredBy: CLAUSE_REGISTERED_BY, blockNumber: 5, logIndex: 0 }],
+            clauseWithdrawn: [{ clauseKey: KEY_1, registeredBy: CLAUSE_REGISTERED_BY, blockNumber: 5, logIndex: 0 }],
         }));
         expect(g.getClauses()).toHaveLength(0);
-        expect(g.getClause(idHash)).toBeUndefined();
+        expect(g.getClause(KEY_1)).toBeUndefined();
     });
 
-    it("same name, different version = two distinct live clauses", () => {
+    it("two keys are two live clauses", () => {
         const g = reconstructDiscovery(mkEvents({
             clauseRegistered: [
-                { clauseId: "figaro-proximity", version: 1, contentHash: CONTENT_HASH, contentURI: "ipfs://v1", registeredBy: CLAUSE_REGISTERED_BY, blockNumber: 1, logIndex: 0 },
-                { clauseId: "figaro-proximity", version: 2, contentHash: CONTENT_HASH, contentURI: "ipfs://v2", registeredBy: CLAUSE_REGISTERED_BY, blockNumber: 2, logIndex: 0 },
+                { clauseKey: KEY_1, contentURI: "ipfs://v1", registeredBy: CLAUSE_REGISTERED_BY, blockNumber: 1, logIndex: 0, transactionHash: null },
+                { clauseKey: KEY_2, contentURI: "ipfs://v2", registeredBy: CLAUSE_REGISTERED_BY, blockNumber: 2, logIndex: 0, transactionHash: null },
             ],
         }));
         expect(g.getClauses()).toHaveLength(2);
@@ -178,18 +172,16 @@ describe("registry log parsers (decode round-trip — no chain)", () => {
             transactionIndex: 0, blockHash: "0x" as Hex, removed: false } as unknown as Log;
     }
 
-    it("parses ClauseRegistered + DepositWithdrawn with the idHash key", () => {
-        const idHash = computeClauseKey("figaro-cargo", 1);
-        const reg = mkLog("ClauseRegistered(string,uint64,bytes32,string,address)", [addrTopic(CLAUSE_REGISTERED_BY)],
-            [{ type: "string" }, { type: "uint64" }, { type: "bytes32" }, { type: "string" }],
-            ["figaro-cargo", 1n, CONTENT_HASH, "ipfs://c"], 1n, 0);
-        const wd = mkLog("DepositWithdrawn(bytes32,address,uint256)", [idHash, addrTopic(CLAUSE_REGISTERED_BY)],
+    it("parses ClauseRegistered + DepositWithdrawn under the clause key", () => {
+        const reg = mkLog("ClauseRegistered(bytes32,string,address)", [KEY_1, addrTopic(CLAUSE_REGISTERED_BY)],
+            [{ type: "string" }], ["ipfs://c"], 1n, 0);
+        const wd = mkLog("DepositWithdrawn(bytes32,address,uint256)", [KEY_1, addrTopic(CLAUSE_REGISTERED_BY)],
             [{ type: "uint256" }], [10n], 2n, 0);
         const parsed = parseClauseRegistryLogs([reg, wd]);
-        expect(parsed.registered[0].clauseId).toBe("figaro-cargo");
-        expect(parsed.registered[0].version).toBe(1);
+        expect(parsed.registered[0].clauseKey).toBe(KEY_1);
         expect(parsed.registered[0].contentURI).toBe("ipfs://c");
-        expect(parsed.withdrawn[0].idHash).toBe(idHash);
+        expect(parsed.registered[0].registeredBy.toLowerCase()).toBe(CLAUSE_REGISTERED_BY);
+        expect(parsed.withdrawn[0].clauseKey).toBe(KEY_1);
     });
 
     it("parses MemberRegistered, MemberProfileUpdated, and MemberWithdrawalRequested", () => {

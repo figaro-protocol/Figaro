@@ -15,10 +15,15 @@ use k256::ecdsa::SigningKey;
 
 use figaro_kernel::eip712::*;
 use figaro_kernel::kernel::{
-    apply_batch_with_state, clause_id_hash, compute_usage_accrual_hash, derive_commitment_ids,
-    PROVENANCE_LEAF_KEY,
+    apply_batch_with_state, compute_usage_accrual_hash, derive_commitment_ids, PROVENANCE_LEAF_KEY,
 };
 use figaro_kernel::types::*;
+
+/// A clause key: `keccak256` of a clause spec's pinned bytes. Only the leaf
+/// math matters here, so the bytes are synthetic.
+fn clause_key(spec_bytes: &[u8]) -> B256 {
+    keccak256(spec_bytes)
+}
 
 const BUYER_KEY: u64 = 0xB0B;
 const BUYER2_KEY: u64 = 0xB0C;
@@ -99,6 +104,21 @@ fn settled_order(
     section_hash: &B256,
     salt: u64,
 ) -> (Commitment, Vec<KernelOp>) {
+    settled_order_under(
+        buyer_key,
+        seller_key,
+        single_section_root(leaf_key, section_hash),
+        salt,
+    )
+}
+
+/// One commit + one resolve for `(buyer, seller)` under `agreement_hash`.
+fn settled_order_under(
+    buyer_key: &SigningKey,
+    seller_key: &SigningKey,
+    agreement_hash: B256,
+    salt: u64,
+) -> (Commitment, Vec<KernelOp>) {
     let domain = domain_separator(CHAIN_ID, CORE);
     let order = Commitment {
         process_id: B256::ZERO,
@@ -107,7 +127,7 @@ fn settled_order(
         currency: TOKEN,
         payment: U256::from(100u64),
         expected_cumulative_value: U256::from(100u64),
-        agreement_hash: single_section_root(leaf_key, section_hash),
+        agreement_hash,
         salt: U256::from(salt),
         deadline: U256::from(2000u64),
     };
@@ -169,7 +189,7 @@ fn clause_claim(order: &Commitment, clause_or_assembly: B256, section_hash: B256
 fn credits_a_process_the_same_batch_resolved() {
     let buyer = make_signing_key(BUYER_KEY);
     let seller = make_signing_key(SELLER1_KEY);
-    let clause_or_assembly = clause_id_hash("figaro-modalities", 1);
+    let clause_or_assembly = clause_key(b"{\"clauseId\":\"figaro-modalities\"}");
     let section = keccak256(b"section-bytes");
 
     let (order, ops) = settled_order(&buyer, &seller, &clause_or_assembly, &section, 1);
@@ -206,7 +226,7 @@ fn credits_a_process_the_same_batch_resolved() {
 fn rejects_a_claim_against_an_unresolved_order() {
     let buyer = make_signing_key(BUYER_KEY);
     let seller = make_signing_key(SELLER1_KEY);
-    let clause_or_assembly = clause_id_hash("figaro-modalities", 1);
+    let clause_or_assembly = clause_key(b"{\"clauseId\":\"figaro-modalities\"}");
     let section = keccak256(b"section-bytes");
 
     let (order, mut ops) = settled_order(&buyer, &seller, &clause_or_assembly, &section, 1);
@@ -231,8 +251,8 @@ fn rejects_a_claim_against_an_unresolved_order() {
 fn rejects_a_clause_or_assembly_that_is_not_in_the_agreement() {
     let buyer = make_signing_key(BUYER_KEY);
     let seller = make_signing_key(SELLER1_KEY);
-    let signed = clause_id_hash("figaro-modalities", 1);
-    let claimed = clause_id_hash("figaro-cargo", 1);
+    let signed = clause_key(b"{\"clauseId\":\"figaro-modalities\"}");
+    let claimed = clause_key(b"{\"clauseId\":\"figaro-cargo\"}");
     let section = keccak256(b"section-bytes");
 
     let (order, ops) = settled_order(&buyer, &seller, &signed, &section, 1);
@@ -254,7 +274,7 @@ fn rejects_a_clause_or_assembly_that_is_not_in_the_agreement() {
 fn a_claim_cannot_be_replayed_in_a_later_batch() {
     let buyer = make_signing_key(BUYER_KEY);
     let seller = make_signing_key(SELLER1_KEY);
-    let clause_or_assembly = clause_id_hash("figaro-modalities", 1);
+    let clause_or_assembly = clause_key(b"{\"clauseId\":\"figaro-modalities\"}");
     let section = keccak256(b"section-bytes");
 
     let (order, ops) = settled_order(&buyer, &seller, &clause_or_assembly, &section, 1);
@@ -288,7 +308,7 @@ fn a_claim_cannot_be_replayed_in_a_later_batch() {
 fn a_second_clause_or_assembly_from_the_same_process_still_counts() {
     let buyer = make_signing_key(BUYER_KEY);
     let seller = make_signing_key(SELLER1_KEY);
-    let first_clause_or_assembly = clause_id_hash("figaro-modalities", 1);
+    let first_clause_or_assembly = clause_key(b"{\"clauseId\":\"figaro-modalities\"}");
     let section = keccak256(b"section-bytes");
 
     let (order, ops) = settled_order(&buyer, &seller, &first_clause_or_assembly, &section, 1);
@@ -300,11 +320,12 @@ fn a_second_clause_or_assembly_from_the_same_process_still_counts() {
     let (_, _, _, post) = apply_batch_with_state(&input).expect("first batch applies");
 
     // What is asserted: the first clause is counted once, and the counted
-    // set holds the (clause-or-assembly, process) pair — the key that
-    // leaves a different clause or assembly from the same process countable.
+    // set holds the (kind, clause-or-assembly, process) triple — the key
+    // that leaves a different clause or assembly from the same process
+    // countable.
     let accrued = post
         .usage_accrual
-        .get(&(first_clause_or_assembly, PERIOD))
+        .get(&(USAGE_KIND_CLAUSE, first_clause_or_assembly, PERIOD))
         .copied();
     assert_eq!(
         accrued,
@@ -312,11 +333,12 @@ fn a_second_clause_or_assembly_from_the_same_process_still_counts() {
         "the first clause or assembly is counted once"
     );
     assert!(
-        post.usage_counted.contains(&(first_clause_or_assembly, {
-            let domain = domain_separator(CHAIN_ID, CORE);
-            typed_data_hash(&domain, &commitment_struct_hash(&order))
-        })),
-        "and the (clause-or-assembly, process) pair is what was recorded"
+        post.usage_counted
+            .contains(&(USAGE_KIND_CLAUSE, first_clause_or_assembly, {
+                let domain = domain_separator(CHAIN_ID, CORE);
+                typed_data_hash(&domain, &commitment_struct_hash(&order))
+            })),
+        "and the (kind, clause-or-assembly, process) triple is what was recorded"
     );
 }
 
@@ -331,7 +353,7 @@ fn many_buyers_through_one_seller_add_depth_not_breadth() {
     let buyer = make_signing_key(BUYER_KEY);
     let buyer2 = make_signing_key(BUYER2_KEY);
     let seller = make_signing_key(SELLER1_KEY);
-    let clause_or_assembly = clause_id_hash("figaro-modalities", 1);
+    let clause_or_assembly = clause_key(b"{\"clauseId\":\"figaro-modalities\"}");
     let section = keccak256(b"section-bytes");
 
     let (order_a, ops_a) = settled_order(&buyer, &seller, &clause_or_assembly, &section, 1);
@@ -361,7 +383,7 @@ fn distinct_sellers_raise_breadth() {
     let buyer = make_signing_key(BUYER_KEY);
     let seller1 = make_signing_key(SELLER1_KEY);
     let seller2 = make_signing_key(SELLER2_KEY);
-    let clause_or_assembly = clause_id_hash("figaro-modalities", 1);
+    let clause_or_assembly = clause_key(b"{\"clauseId\":\"figaro-modalities\"}");
     let section = keccak256(b"section-bytes");
 
     let (order_a, ops_a) = settled_order(&buyer, &seller1, &clause_or_assembly, &section, 1);
@@ -439,26 +461,27 @@ fn rejects_an_assembly_claim_for_an_uncommitted_composition() {
 
 // ── The hash the verifier re-derives ──────────────────────────────
 
-/// Both array lengths are in the preimage. An accrual record is 48 bytes and
-/// a seller 20, so five accruals and twelve sellers occupy the same span:
+/// Both array lengths are in the preimage. An accrual entry is 49 bytes and
+/// a seller 20, so twenty accruals and forty-nine sellers occupy the same span:
 /// without the prefixes one preimage could be re-split into a different
 /// (accruals, sellers) pair, presenting accruals whose sellers were never
 /// stake-checked. Mirrored by
 /// `FigaroBatchVerifierTest.test_usageHash_isNotReSplittableBetweenTheTwoArrays`.
 #[test]
 fn the_usage_hash_pins_the_split_between_the_two_arrays() {
-    let five: Vec<UsageAccrual> = (0..5)
+    let twenty: Vec<UsageAccrual> = (0..20)
         .map(|_| UsageAccrual {
             clause_or_assembly: B256::ZERO,
+            kind: USAGE_KIND_CLAUSE,
             c: 0,
             d: 0,
         })
         .collect();
-    let twelve: Vec<Address> = (0..12).map(|_| Address::ZERO).collect();
+    let forty_nine: Vec<Address> = (0..49).map(|_| Address::ZERO).collect();
 
-    let a = compute_usage_accrual_hash(0, &B256::ZERO, &five, &[]);
-    let b = compute_usage_accrual_hash(0, &B256::ZERO, &[], &twelve);
-    assert_ne!(a, b, "5 × 48 bytes and 12 × 20 bytes must not collide");
+    let a = compute_usage_accrual_hash(0, &B256::ZERO, &twenty, &[]);
+    let b = compute_usage_accrual_hash(0, &B256::ZERO, &[], &forty_nine);
+    assert_ne!(a, b, "20 × 49 bytes and 49 × 20 bytes must not collide");
 }
 
 /// The period and the provenance key are COMMITTED, not incidental: the
@@ -468,11 +491,20 @@ fn the_usage_hash_pins_the_split_between_the_two_arrays() {
 fn the_usage_hash_covers_the_period_and_the_provenance_key() {
     let accruals = vec![UsageAccrual {
         clause_or_assembly: keccak256(b"usage-key"),
+        kind: USAGE_KIND_CLAUSE,
         c: 2,
         d: 1,
     }];
     let sellers = vec![SELLER1];
     let base = compute_usage_accrual_hash(0, &provenance_key(), &accruals, &sellers);
+
+    let mut other_kind = accruals.clone();
+    other_kind[0].kind = USAGE_KIND_ASSEMBLY;
+    assert_ne!(
+        base,
+        compute_usage_accrual_hash(0, &provenance_key(), &other_kind, &sellers),
+        "the kind is covered"
+    );
 
     assert_ne!(
         base,
@@ -508,11 +540,13 @@ fn the_usage_hash_matches_the_solidity_vector() {
     let accruals = vec![
         UsageAccrual {
             clause_or_assembly: keccak256(b"artifact-a"),
+            kind: USAGE_KIND_CLAUSE,
             c: 4,
             d: 2,
         },
         UsageAccrual {
             clause_or_assembly: keccak256(b"artifact-b"),
+            kind: USAGE_KIND_ASSEMBLY,
             c: 1,
             d: 1,
         },
@@ -524,8 +558,107 @@ fn the_usage_hash_matches_the_solidity_vector() {
 
     assert_eq!(
         compute_usage_accrual_hash(3, &keccak256(b"prov"), &accruals, &sellers),
-        b256!("beca15eaa93af04e1ce0b2a64c02685cc52912dab5037baf19efc8f082931ecc")
+        b256!("9d3344f07a7c4ab3dc7eb5a6719feae8ae1462cb029ea2c781c6b0619261acd4")
     );
+}
+
+/// One accrual, its preimage written out byte by byte: the layout
+/// `period(1) ‖ provenanceLeaf(32) ‖ n(8) ‖ [key(32) ‖ kind(1) ‖ c(8) ‖ d(8)]
+/// ‖ m(8) ‖ [seller(20)]`, span `49 + 49n + 20m` — here 118 bytes.
+#[test]
+fn the_one_accrual_usage_hash_is_its_written_preimage() {
+    let key = keccak256(b"artifact-a");
+    let prov = keccak256(b"prov");
+    let seller = address!("0000000000000000000000000000000000000001");
+    let accruals = vec![UsageAccrual {
+        clause_or_assembly: key,
+        kind: USAGE_KIND_ASSEMBLY,
+        c: 4,
+        d: 2,
+    }];
+
+    let mut preimage = Vec::new();
+    preimage.push(3u8);
+    preimage.extend_from_slice(prov.as_slice());
+    preimage.extend_from_slice(&1u64.to_be_bytes());
+    preimage.extend_from_slice(key.as_slice());
+    preimage.push(1u8);
+    preimage.extend_from_slice(&4u64.to_be_bytes());
+    preimage.extend_from_slice(&2u64.to_be_bytes());
+    preimage.extend_from_slice(&1u64.to_be_bytes());
+    preimage.extend_from_slice(seller.as_slice());
+    assert_eq!(preimage.len(), 49 + 49 + 20);
+
+    let hash = compute_usage_accrual_hash(3, &prov, &accruals, &[seller]);
+    assert_eq!(hash, keccak256(&preimage));
+    assert_eq!(
+        hash,
+        b256!("a8f200441f17c90bdb286e38e33656d6cac7f0b7b6d4b0f1f011d76a4ba4cf3e")
+    );
+}
+
+/// A registry accepts any bytes32, so a clause key and an assembly key can be
+/// the same word. A clause claim and an assembly claim on that word, from one
+/// process, are two accruals under their own kinds — never one merged count.
+#[test]
+fn a_clause_and_an_assembly_on_the_same_key_accrue_apart() {
+    let buyer = make_signing_key(BUYER_KEY);
+    let seller = make_signing_key(SELLER1_KEY);
+    let shared = keccak256(b"one-bytes32-in-both-registries");
+    let section = keccak256(b"section-bytes");
+
+    let clause_leaf = single_section_root(&shared, &section);
+    let provenance_leaf = single_section_root(&provenance_key(), &provenance_section_hash(&shared));
+    let (lo, hi) = if clause_leaf <= provenance_leaf {
+        (clause_leaf, provenance_leaf)
+    } else {
+        (provenance_leaf, clause_leaf)
+    };
+    let mut pair = [0u8; 64];
+    pair[..32].copy_from_slice(lo.as_slice());
+    pair[32..].copy_from_slice(hi.as_slice());
+    let root = keccak256(pair);
+
+    let (order, ops) = settled_order_under(&buyer, &seller, root, 1);
+    let claims = vec![
+        UsageClaim {
+            order: order.clone(),
+            clause_or_assembly: shared,
+            kind: UsageClaimKind::Clause {
+                section_hash: section,
+            },
+            inclusion_proof: vec![provenance_leaf],
+        },
+        UsageClaim {
+            order: order.clone(),
+            clause_or_assembly: shared,
+            kind: UsageClaimKind::Assembly,
+            inclusion_proof: vec![clause_leaf],
+        },
+    ];
+
+    let (_, _, events, post) =
+        apply_batch_with_state(&batch(ops, claims, empty_snapshot())).expect("batch applies");
+
+    assert_eq!(
+        events.usage_accruals,
+        vec![
+            UsageAccrual {
+                clause_or_assembly: shared,
+                kind: USAGE_KIND_CLAUSE,
+                c: 1,
+                d: 1
+            },
+            UsageAccrual {
+                clause_or_assembly: shared,
+                kind: USAGE_KIND_ASSEMBLY,
+                c: 1,
+                d: 1
+            },
+        ],
+        "one accrual per (key, kind)"
+    );
+    assert_eq!(post.usage_counted.len(), 2, "counted once per kind");
 }
 
 /// A batch that credits nothing must still produce a well-defined hash — the
@@ -554,7 +687,7 @@ fn the_empty_usage_hash_is_the_one_the_verifier_derives() {
 fn crediting_usage_advances_the_state_root() {
     let buyer = make_signing_key(BUYER_KEY);
     let seller = make_signing_key(SELLER1_KEY);
-    let clause_or_assembly = clause_id_hash("figaro-modalities", 1);
+    let clause_or_assembly = clause_key(b"{\"clauseId\":\"figaro-modalities\"}");
     let section = keccak256(b"section-bytes");
 
     let (order, ops) = settled_order(&buyer, &seller, &clause_or_assembly, &section, 1);

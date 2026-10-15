@@ -1,15 +1,15 @@
 /**
- * Two registered versions of one clause: an agreement committed under the
- * OLDER version attests and publishes from that version's spec. A name-only
- * lookup resolves the highest loaded version, whose clause hash the signed
- * agreement never committed ("not committed in the signed agreement") and
- * whose fields may encode and disclose differently.
+ * Two registered specs of one name (versions 1 and 2) are two clause keys: an
+ * agreement committed under the OLDER spec's key attests and publishes from
+ * that spec. The other spec's key is one the signed agreement never committed,
+ * and its fields may encode and disclose differently.
  */
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { hexToBytes, type Hex } from "viem";
-import { canonicalContentHash, computeClauseKey, type Commitment } from "@figaro-protocol/sdk";
+import { type Commitment } from "@figaro-protocol/sdk";
 import { encodeContentFromSpec } from "@figaro-protocol/sdk/clauses";
-import { clauseSpecForHash, getClauseSpec, loadClauseSpec, setClauseSpecFetcher } from "@/lib/shared/clauseSpecSource";
+import { getClauseSpec, loadClauseSpec, setClauseSpecFetcher } from "@/lib/shared/clauseSpecSource";
+import { pinSpec } from "./primeClauseSpecs";
 import { createCapabilityExecutors, type CapabilityExecutorDeps } from "@/lib/semantic/createCapabilityExecutors";
 import { publishWitnessContent } from "@/lib/composition/witnessContent";
 
@@ -33,10 +33,13 @@ const SPEC_VERSION_2 = {
     stages: { "1": [{ name: "reading", type: "string", required: true, disposition: "private" }] },
 };
 
+const V1 = pinSpec(SPEC_VERSION_1);
+const V2 = pinSpec(SPEC_VERSION_2);
+
 beforeAll(async () => {
-    setClauseSpecFetcher(async (uri) => (uri === "mem://v1" ? SPEC_VERSION_1 : SPEC_VERSION_2));
-    await loadClauseSpec(CLAUSE, 1, "mem://v1", canonicalContentHash(SPEC_VERSION_1));
-    await loadClauseSpec(CLAUSE, 2, "mem://v2", canonicalContentHash(SPEC_VERSION_2));
+    setClauseSpecFetcher(async (uri) => (uri === "mem://v1" ? V1.bytes : V2.bytes));
+    await loadClauseSpec(V1.clauseKey, "mem://v1");
+    await loadClauseSpec(V2.clauseKey, "mem://v2");
 });
 
 function executors(submitAttestation: CapabilityExecutorDeps["submitAttestation"]) {
@@ -61,11 +64,12 @@ function executors(submitAttestation: CapabilityExecutorDeps["submitAttestation"
     });
 }
 
-describe("attestation under an older committed clause version", () => {
-    it("both versions are loaded, each read by name and version", () => {
-        expect(getClauseSpec(CLAUSE, 2)?.version).toBe(2);
-        expect(getClauseSpec(CLAUSE, 1)?.version).toBe(1);
-        expect(clauseSpecForHash(computeClauseKey(CLAUSE, 1))?.version).toBe(1);
+describe("attestation under the committed clause key, beside another spec of the same name", () => {
+    it("both specs are loaded, each read by its own key", () => {
+        expect(V1.clauseKey).not.toBe(V2.clauseKey);
+        expect(getClauseSpec(V2.clauseKey)?.version).toBe(2);
+        expect(getClauseSpec(V1.clauseKey)?.version).toBe(1);
+        expect(getClauseSpec(V1.clauseKey)?.clauseId).toBe(CLAUSE);
     });
 
     it("a ladder attestation keys and encodes from the committed version", async () => {
@@ -75,16 +79,15 @@ describe("attestation under an older committed clause version", () => {
             executionType: "transaction",
             kind: "submit-clause-attestation",
             orderHash: `0x${"aa".repeat(32)}`,
-            clauseId: CLAUSE,
-            version: 1,
+            clauseKey: V1.clauseKey,
             stage: 0,
             eventCode: "packed",
             ladderField: "eventType",
             party: "seller",
         });
-        const v1 = getClauseSpec(CLAUSE, 1)!;
+        const v1 = getClauseSpec(V1.clauseKey)!;
         expect(submitAttestation).toHaveBeenCalledExactlyOnceWith("seller", expect.objectContaining({
-            clauseId: computeClauseKey(CLAUSE, 1),
+            clauseId: V1.clauseKey,
             content: encodeContentFromSpec(v1, { eventType: "packed" }),
         }));
     });
@@ -96,25 +99,24 @@ describe("attestation under an older committed clause version", () => {
             executionType: "transaction",
             kind: "submit-clause-attestation",
             orderHash: `0x${"aa".repeat(32)}`,
-            clauseId: CLAUSE,
-            version: 1,
+            clauseKey: V1.clauseKey,
             stage: 1,
             party: "buyer",
         }, { reading: "4C" });
         expect(submitAttestation).toHaveBeenCalledExactlyOnceWith("buyer", expect.objectContaining({
-            clauseId: computeClauseKey(CLAUSE, 1),
+            clauseId: V1.clauseKey,
         }));
     });
 
-    it("witness content publishes by the committed version's disposition (public in v1, private in v2)", async () => {
-        const content: Hex = encodeContentFromSpec(getClauseSpec(CLAUSE, 1)!, { reading: "4C" }, { stage: 1 });
+    it("witness content publishes by the committed spec's disposition (public in v1, private in v2)", async () => {
+        const content: Hex = encodeContentFromSpec(getClauseSpec(V1.clauseKey)!, { reading: "4C" }, { stage: 1 });
         const pinKeccakRawBlock = vi.fn().mockResolvedValue("bafy-other");
         const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-        await publishWitnessContent({ clauseId: computeClauseKey(CLAUSE, 1), stage: 1, content, ipfs: { pinKeccakRawBlock } });
+        await publishWitnessContent({ clauseId: V1.clauseKey, stage: 1, content, ipfs: { pinKeccakRawBlock } });
         expect(pinKeccakRawBlock).toHaveBeenCalledExactlyOnceWith(hexToBytes(content));
         pinKeccakRawBlock.mockClear();
-        // The v2 hash withholds: its reading is private.
-        await publishWitnessContent({ clauseId: computeClauseKey(CLAUSE, 2), stage: 1, content, ipfs: { pinKeccakRawBlock } });
+        // The v2 key withholds: its reading is private.
+        await publishWitnessContent({ clauseId: V2.clauseKey, stage: 1, content, ipfs: { pinKeccakRawBlock } });
         expect(pinKeccakRawBlock).not.toHaveBeenCalled();
         warn.mockRestore();
     });

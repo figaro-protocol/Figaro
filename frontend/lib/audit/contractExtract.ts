@@ -22,15 +22,15 @@ import { ZERO_ADDRESS } from "@/lib/shared/evm";
 import type { ExtractedDocument } from "./types";
 
 /** Human-readable display label for a clause — the registered spec's title
- *  (the network-defined SSoT), falling back to the raw clauseId while the
+ *  (the network-defined SSoT), falling back to the clause key while the
  *  spec is uncached. The label set is OPEN: any registered clause labels
  *  itself; no table in code. */
-function clauseTitle(clauseId: string, version: number): string {
-    return getClauseSpec(clauseId, version)?.title ?? clauseId;
+function clauseTitle(clauseKey: string): string {
+    return getClauseSpec(clauseKey)?.title ?? clauseKey;
 }
 
 interface ContractClause {
-    /** Readable clauseId from the registry. */
+    /** The clause key the section carries. */
     clauseKey: string;
     /** Human-readable title. */
     title: string;
@@ -90,7 +90,7 @@ function clauseFromSection(section: AgreementSection): ContractClause {
     // merkle inclusion proof (@figaro-protocol/sdk), not a redacted distribution form.
     return {
         clauseKey: section.clause,
-        title: clauseTitle(section.clause, section.version),
+        title: clauseTitle(section.clause),
         body: section.data,
         leafHash: computeSectionLeaf(section),
     };

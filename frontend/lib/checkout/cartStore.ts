@@ -26,16 +26,16 @@ interface CartItem {
     /** Catalog-sourced clause values (freight class, hazmat, cold-chain,
      *  a data product's license terms, …), copied from the catalog item —
      *  the checkout fold lands them on the matching clause leaves. Keyed by
-     *  clauseId → field values. */
+     *  clause key → field values. */
     clauseValues?: Record<string, Record<string, unknown>>;
     /** Data-market context: the data this item sells
-     *  (assembly compositionHash × clauseId × the posture the seller
+     *  (assembly compositionHash × clause key × the posture the seller
      *  co-produced on), copied from the catalog item so checkout can
      *  show what is being licensed. The license TERMS ride `clauseValues`
      *  like any catalog-filled clause. */
     dataSold?: {
         compositionHash: `0x${string}`;
-        clauseId: string;
+        clauseKey: `0x${string}`;
         posture: PartyRole;
     };
 }

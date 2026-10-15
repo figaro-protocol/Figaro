@@ -55,10 +55,18 @@ import {
     resolveIpfsURI,
     LOCAL_ANVIL,
     RPC_URL,
+    keyOf,
+    primeRegisteredClauseSpecs,
 } from './devnet-helpers';
 import { ANVIL_KEYS } from '../anvilAccounts';
 import { CORE_ABI } from '@/lib/kernel/contracts';
 import type { Page } from '@playwright/test';
+
+// Clause keys are located by the names their specs carry (`keyOf`), over
+// the specs the chain registered — primed once per file.
+test.beforeAll(async () => {
+    await primeRegisteredClauseSpecs();
+});
 
 async function waitForConnected(page: Page) {
     await page.waitForFunction(
@@ -214,9 +222,9 @@ test.describe('THE UTILITY-TOKEN REFERENCE — equipment hire, denominated by de
 
         // The equipment-hire reference's transaction particulars: pickup —
         // the renter collects, origin = destination.
-        await page.locator('[data-testid^="checkout-field-"][data-testid$="-figaro-modalities-modality-pickup"]').first().check();
-        await page.locator('[data-testid^="checkout-field-"][data-testid$="-figaro-geolocation-origin"]').first().fill('9q8yyk');
-        await page.locator('[data-testid^="checkout-field-"][data-testid$="-figaro-geolocation-destination"]').first().fill('9q8yyk');
+        await page.locator(`[data-testid^="checkout-field-"][data-testid$="-${keyOf('figaro-modalities')}-modality-pickup"]`).first().check();
+        await page.locator(`[data-testid^="checkout-field-"][data-testid$="-${keyOf('figaro-geolocation')}-origin"]`).first().fill('9q8yyk');
+        await page.locator(`[data-testid^="checkout-field-"][data-testid$="-${keyOf('figaro-geolocation')}-destination"]`).first().fill('9q8yyk');
         const place = page.getByTestId('btn-place-order');
         await expect(place, 'buyer connected + order ready → "Place order"').toHaveText(/Place order/, { timeout: 20000 });
         await place.click();
@@ -301,8 +309,8 @@ test.describe('THE UTILITY-TOKEN REFERENCE — equipment hire, denominated by de
         const agreement = JSON.parse(agreementJson) as {
             sections: { clause: string; data: Record<string, unknown> }[];
         };
-        const commerceLeaf = agreement.sections.find((s) => s.clause === 'figaro-commerce');
-        const pinLeaf = agreement.sections.find((s) => s.clause === 'figaro-utility-token');
+        const commerceLeaf = agreement.sections.find((s) => s.clause.toLowerCase() === keyOf('figaro-commerce'));
+        const pinLeaf = agreement.sections.find((s) => s.clause.toLowerCase() === keyOf('figaro-utility-token'));
         expect(commerceLeaf, 'the commerce leaf is committed under agreementHash').toBeTruthy();
         expect(pinLeaf, 'the figaro-utility-token leaf is committed under agreementHash').toBeTruthy();
         expect(String(commerceLeaf!.data.currency).toLowerCase(), 'the commerce leaf carries the pinned currency')

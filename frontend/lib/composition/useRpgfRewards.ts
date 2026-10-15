@@ -15,14 +15,26 @@
  *
  * The wallet's clauses and assemblies are DISCOVERED from the two registries' own event
  * streams (both keyed by registeredBy) — the same open-world
- * read the minter's `_isAuthor` performs on chain, never a bundled list.
+ * read the minter's `_isAuthor` performs on chain, never a bundled list. Every
+ * read and the claim name a `(kind, key)` pair: a registry accepts any
+ * bytes32, so the kind — which registry the key was found in — is what keeps
+ * a clause key and an assembly composition hash of the same bytes apart.
  */
 
 import { useCallback, useEffect, useState } from "react";
 import { useAccount, useChainId, usePublicClient, useWriteContract } from "wagmi";
 import { cachedGetContractEvents } from "@/lib/kernel/eventCache";
 import { hexEqual } from "@/lib/shared/evm";
-import { computeClauseKey, RPGF_MINTER_ABI, USAGE_COUNTER_ABI } from "@figaro-protocol/sdk";
+import {
+    RPGF_MINTER_ABI,
+    USAGE_COUNTER_ABI,
+    USAGE_KIND_ASSEMBLY,
+    USAGE_KIND_CLAUSE,
+    usageKeyId,
+    type UsageKey,
+    type UsageKind,
+} from "@figaro-protocol/sdk";
+import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
 import { CONTRACTS, ASSEMBLY_REGISTRY_ABI, CLAUSE_REGISTRY_ABI } from "@/lib/kernel/contracts";
 import { getRpgfMinter, getUsageCounter } from "@/lib/composition/contracts";
 import { verifyTxSuccess } from "@/lib/shared/verifyTxSuccess";
@@ -33,9 +45,13 @@ import { truncateHex } from "@/lib/shared/formatHex";
  *  `d` = distinct staked sellers, `score` = the uniform breadth
  *  measure (`icbrt(c·d²·1e18)`) the payout divides by. */
 export interface RpgfClauseOrAssemblyAccrual {
-    /** Clause idHash or assembly compositionHash — the clause-or-assembly key. */
+    /** Clause key or assembly compositionHash — the clause-or-assembly key. */
     clauseOrAssembly: `0x${string}`;
-    /** Human label: the clause id, or the truncated hash for an assembly. */
+    /** The registry the key was found in — `USAGE_KIND_CLAUSE` or
+     *  `USAGE_KIND_ASSEMBLY`; every read and the claim name it. */
+    kind: UsageKind;
+    /** Human label: the clause spec's own name and version when it is loaded,
+     *  else the truncated key. */
     label: string;
     family: "clause" | "assembly";
     /** Distinct resolved processes, DIRECT path (`accrualOf`). */
@@ -96,7 +112,7 @@ export function useRpgfRewards(subject?: `0x${string}`) {
      *  registries' event streams. Empty (not an error) when the wallet
      *  designed nothing — resolved-empty is absence. */
     const discoverClausesAndAssemblies = useCallback(async (): Promise<
-        Array<Pick<RpgfClauseOrAssemblyAccrual, "clauseOrAssembly" | "label" | "family">>
+        Array<Pick<RpgfClauseOrAssemblyAccrual, "clauseOrAssembly" | "kind" | "label" | "family">>
     > => {
         if (!publicClient || !account) return [];
         // Through the event cache (deployment block, adaptive chunks); the
@@ -113,23 +129,28 @@ export function useRpgfRewards(subject?: `0x${string}`) {
                 eventName: "AssemblyRegistered",
             }),
         ]);
-        type ClauseArgs = { registeredBy?: string; clauseId?: string; version?: bigint };
+        type ClauseArgs = { registeredBy?: string; clauseKey?: `0x${string}` };
         type AssemblyArgs = { registeredBy?: string; compositionHash?: `0x${string}` };
         const clauseEvents = allClauseEvents.filter((l) => hexEqual(String((l.args as ClauseArgs | undefined)?.registeredBy ?? ""), account));
         const assemblyEvents = allAssemblyEvents.filter((l) => hexEqual(String((l.args as AssemblyArgs | undefined)?.registeredBy ?? ""), account));
-        const out = new Map<string, Pick<RpgfClauseOrAssemblyAccrual, "clauseOrAssembly" | "label" | "family">>();
+        const out = new Map<string, Pick<RpgfClauseOrAssemblyAccrual, "clauseOrAssembly" | "kind" | "label" | "family">>();
         for (const ev of clauseEvents) {
-            const clauseId = (ev.args as ClauseArgs | undefined)?.clauseId;
-            const version = (ev.args as ClauseArgs | undefined)?.version;
-            if (!clauseId || version === undefined) continue;
-            const clauseOrAssembly = computeClauseKey(clauseId, version);
-            out.set(clauseOrAssembly.toLowerCase(), { clauseOrAssembly, label: clauseId, family: "clause" });
+            const clauseOrAssembly = (ev.args as ClauseArgs | undefined)?.clauseKey;
+            if (!clauseOrAssembly) continue;
+            const spec = getClauseSpec(clauseOrAssembly);
+            out.set(usageKeyId(USAGE_KIND_CLAUSE, clauseOrAssembly), {
+                clauseOrAssembly,
+                kind: USAGE_KIND_CLAUSE,
+                label: spec ? `${spec.clauseId} v${spec.version}` : truncateHex(clauseOrAssembly, { head: 10, tail: 0 }),
+                family: "clause",
+            });
         }
         for (const ev of assemblyEvents) {
             const clauseOrAssembly = (ev.args as AssemblyArgs | undefined)?.compositionHash;
             if (!clauseOrAssembly) continue;
-            out.set(clauseOrAssembly.toLowerCase(), {
+            out.set(usageKeyId(USAGE_KIND_ASSEMBLY, clauseOrAssembly), {
                 clauseOrAssembly,
+                kind: USAGE_KIND_ASSEMBLY,
                 label: truncateHex(clauseOrAssembly, { head: 10, tail: 0 }),
                 family: "assembly",
             });
@@ -148,7 +169,7 @@ export function useRpgfRewards(subject?: `0x${string}`) {
                 publicClient.readContract({ ...minterBase, functionName: "periodCount" }),
                 discoverClausesAndAssemblies(),
             ]);
-            const clausesOrAssemblies = mine.map((m) => m.clauseOrAssembly);
+            const clausesOrAssemblies: UsageKey[] = mine.map((m) => ({ kind: m.kind, key: m.clauseOrAssembly }));
             const ids = Array.from({ length: Number(periodCount) }, (_, i) => i);
             const rows = await Promise.all(
                 ids.map(async (periodId) => {
@@ -200,17 +221,17 @@ export function useRpgfRewards(subject?: `0x${string}`) {
                                         publicClient.readContract({
                                             ...counterBase,
                                             functionName: "accrualOf",
-                                            args: [m.clauseOrAssembly, period],
+                                            args: [m.kind, m.clauseOrAssembly, period],
                                         }),
                                         publicClient.readContract({
                                             ...counterBase,
                                             functionName: "batchAccrualOf",
-                                            args: [m.clauseOrAssembly, period],
+                                            args: [m.kind, m.clauseOrAssembly, period],
                                         }),
                                         publicClient.readContract({
                                             ...counterBase,
                                             functionName: "scoreOf",
-                                            args: [m.clauseOrAssembly, period],
+                                            args: [m.kind, m.clauseOrAssembly, period],
                                         }),
                                     ]);
                                     return { ...m, c, d, batchC, batchD, score };
@@ -256,7 +277,7 @@ export function useRpgfRewards(subject?: `0x${string}`) {
             if (!minter) throw new Error("Designer-rewards minter unconfigured.");
             if (!account) throw new Error("Connect a wallet to claim.");
             const row = periods.find((t) => t.periodId === periodId);
-            const clausesOrAssemblies = row?.accruals.map((a) => a.clauseOrAssembly) ?? [];
+            const clausesOrAssemblies: UsageKey[] = row?.accruals.map((a) => ({ kind: a.kind, key: a.clauseOrAssembly })) ?? [];
             if (clausesOrAssemblies.length === 0) throw new Error("This wallet designed nothing that accrued in this period.");
             const call = {
                 address: minter,

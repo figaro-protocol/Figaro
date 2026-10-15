@@ -86,17 +86,18 @@ import { mnemonicToAccount } from 'viem/accounts';
 import {
     assertPinnedInIpfs,
     confirmAgreementPreviews,
-    DELIVERY_CLAUSES,
+    deliveryClauseKeys,
+    keyOf,
+    primeRegisteredClauseSpecs,
     DELIVERY_DEVICE,
     ensureDeliveryAssembly,
     fillDeliveryCheckout,
-    ladderLabelsFromChain,
+    ladderLabelsOf,
     readLocalDeploymentConfig,
     memberProfileBindings,
 } from './devnet-helpers';
 import { ANVIL_ACCOUNTS } from '../anvilAccounts';
 import { CORE_ABI } from '@/lib/kernel/contracts';
-import { computeClauseKey } from '@figaro-protocol/sdk';
 import { ATTESTATION_COORDINATOR_ABI } from '@figaro-protocol/sdk';
 import { calculateBonds, computeSectionLeaf, type AgreementSection } from '@figaro-protocol/sdk';
 import { encodeGeohash } from '@figaro-protocol/sdk/derive';
@@ -116,14 +117,29 @@ const BUYER = ANVIL_ACCOUNTS[2] as Hex; // anvil[2] — a buyer no other spec us
 const MERCHANT = mnemonicToAccount(ANVIL_MNEMONIC, { addressIndex: 7 }).address as Hex; // Meridian Books
 const COURIER = mnemonicToAccount(ANVIL_MNEMONIC, { addressIndex: 8 }).address as Hex; // Cardinal Couriers
 
-const {
-    courier: COURIER_CLAUSE,
-    merchant: MERCHANT_CLAUSE,
-    modalities: MODALITIES_CLAUSE,
-    handoff: HANDOFF_CLAUSE,
-    geo: GEO_CLAUSE,
-    proximity: PROXIMITY_CLAUSE,
-} = DELIVERY_CLAUSES;
+// The delivery composition's clause KEYS, located by name over the specs the
+// chain registered (primed before any test reads them).
+let COURIER_CLAUSE: Hex;
+let MERCHANT_CLAUSE: Hex;
+let MODALITIES_CLAUSE: Hex;
+let HANDOFF_CLAUSE: Hex;
+let GEO_CLAUSE: Hex;
+let PROXIMITY_CLAUSE: Hex;
+let COMMERCE_CLAUSE: Hex;
+let TOPOLOGY_CLAUSE: Hex;
+test.beforeAll(async () => {
+    await primeRegisteredClauseSpecs();
+    ({
+        courier: COURIER_CLAUSE,
+        merchant: MERCHANT_CLAUSE,
+        modalities: MODALITIES_CLAUSE,
+        handoff: HANDOFF_CLAUSE,
+        geo: GEO_CLAUSE,
+        proximity: PROXIMITY_CLAUSE,
+    } = deliveryClauseKeys());
+    COMMERCE_CLAUSE = keyOf('figaro-commerce');
+    TOPOLOGY_CLAUSE = keyOf('figaro-topology');
+});
 
 // The committed PUBLIC half of where the delivery goes lives in the shared
 // DELIVERY_DEVICE (the author-if-absent helper types the destination cell;
@@ -158,7 +174,7 @@ const PICKUP = {
 // The two transfer ladders' stage labels are DERIVED from the registered
 // specs at run time — ClauseRegistered → contentURI → IPFS, the same read
 // every consumer does. No stage roster lives in this file: if the spec's
-// ladder changes, the walk follows it (`ladderLabelsFromChain`, below).
+// ladder changes, the walk follows it (`ladderLabelsOf`, below).
 
 /** Wait for ClientInit's devnet auto-connect (the "Connect Wallet" button goes). */
 async function waitForConnected(page: Page) {
@@ -184,8 +200,8 @@ test.describe('LOCAL COMMERCE — item delivery: canvas → bind → order → a
 
         // The transfer ladders' stage labels, derived from the REGISTERED specs
         // (chain → IPFS) — the walk follows the network's spec, never a roster.
-        const merchantStages = await ladderLabelsFromChain(publicClient, config.clauseRegistry as Hex, MERCHANT_CLAUSE);
-        const courierStages = await ladderLabelsFromChain(publicClient, config.clauseRegistry as Hex, COURIER_CLAUSE);
+        const merchantStages = ladderLabelsOf(MERCHANT_CLAUSE);
+        const courierStages = ladderLabelsOf(COURIER_CLAUSE);
 
         // The device-location affordance (geolocation authoring + any runtime
         // fill) reads the browser Geolocation API — pin the coordinates.
@@ -210,7 +226,7 @@ test.describe('LOCAL COMMERCE — item delivery: canvas → bind → order → a
             const bindings = await memberProfileBindings(MERCHANT);
             const binding = bindings.find((b) => b.assemblySlug === deliverySlug);
             return !!binding && (binding.counterpartyBindings ?? []).some(
-                (cb) => cb.clauseId === COURIER_CLAUSE
+                (cb) => cb.clauseKey.toLowerCase() === COURIER_CLAUSE
                     && cb.addresses.some((a) => a.toLowerCase() === COURIER.toLowerCase()),
             );
         };
@@ -276,7 +292,7 @@ test.describe('LOCAL COMMERCE — item delivery: canvas → bind → order → a
         //    read as 1:1 against copy that says twice the payment. Assert the
         //    screen's own words with an EMPTY form — the state the buyer meets. ──
         const geoControl = (field: string) =>
-            page.locator(`input[data-testid^="checkout-field-"][data-testid$="-${DELIVERY_CLAUSES.geo}-${field}"]`);
+            page.locator(`input[data-testid^="checkout-field-"][data-testid$="-${GEO_CLAUSE}-${field}"]`);
 
         // The standard the endpoints are WRITTEN IN is a control, carrying its
         // spec default as the placeholder: the clause's standard axis is open,
@@ -294,7 +310,7 @@ test.describe('LOCAL COMMERCE — item delivery: canvas → bind → order → a
         // modality the assembly offers — the spec makes them unconditional, so
         // the form must say so under each choice, not only under delivery.
         const modalityOptions = page.locator(
-            `input[type="radio"][data-testid*="-${DELIVERY_CLAUSES.modalities}-modality-"]`,
+            `input[type="radio"][data-testid*="-${MODALITIES_CLAUSE}-modality-"]`,
         );
         const modalityCount = await modalityOptions.count();
         expect(modalityCount, 'the modalities clause offers its declared values').toBeGreaterThan(1);
@@ -304,7 +320,7 @@ test.describe('LOCAL COMMERCE — item delivery: canvas → bind → order → a
             for (const field of ['origin', 'destination'] as const) {
                 await expect(geoControl(field), `${field} stays editable under ${chosen}`).toBeEditable();
                 await expect(
-                    page.locator(`[data-testid^="checkout-field-"][data-testid$="-${DELIVERY_CLAUSES.geo}-${field}-required"]`),
+                    page.locator(`[data-testid^="checkout-field-"][data-testid$="-${GEO_CLAUSE}-${field}-required"]`),
                     `${field} is marked required under ${chosen}`,
                 ).toHaveCount(1);
             }
@@ -410,14 +426,14 @@ test.describe('LOCAL COMMERCE — item delivery: canvas → bind → order → a
         //    exactly the next unattested stage, labeled from the clause spec;
         //    each executed stage lands on the timeline; a finished ladder
         //    leaves the rail. Ladder buttons are targeted by their clause
-        //    (data-clause-id): the proximity WITNESS capability shares the
+        //    (data-clause-key): the proximity WITNESS capability shares the
         //    rail and — by ruling — stays offered while the order is active. ──
-        const walkLadder = async (seller: Hex, clauseId: string, stages: string[], label: string) => {
+        const walkLadder = async (seller: Hex, clauseKey: Hex, stages: string[], label: string) => {
             await gotoAsWallet(page, seller, `/orders/view?process=${processId}&e2e=devnet`);
             await page.getByTestId('order-timeline-view').waitFor({ timeout: 30000 });
             await waitForConnected(page);
             const ladderBtn = page.locator(
-                `[data-testid="capability-execute-submit-clause-attestation"][data-clause-id="${clauseId}"]`,
+                `[data-testid="capability-execute-submit-clause-attestation"][data-clause-key="${clauseKey}"]`,
             );
             const attest = ladderBtn.first();
             for (const stage of stages) {
@@ -451,7 +467,7 @@ test.describe('LOCAL COMMERCE — item delivery: canvas → bind → order → a
         //    pairing: custody is reader-derived from the composed clauses'
         //    events, and the diary stays a pure diary. ──
         const courierWitnessCap = page.locator(
-            `[data-testid="capability-submit-clause-attestation"][data-clause-id="${PROXIMITY_CLAUSE}"]`,
+            `[data-testid="capability-submit-clause-attestation"][data-clause-key="${PROXIMITY_CLAUSE}"]`,
         );
         await expect(courierWitnessCap, 'the witness capability derives for the courier').toBeVisible({ timeout: 30000 });
         await page.getByTestId(`capability-input-${PROXIMITY_CLAUSE}-band-zone-wifi`).check();
@@ -463,10 +479,10 @@ test.describe('LOCAL COMMERCE — item delivery: canvas → bind → order → a
             page.getByTestId('timeline-event-stage-1'),
             "the courier's zone witness lands on the timeline",
         ).toHaveCount(1, { timeout: 60000 });
-        // (clauseId, stage) is the on-chain discriminator: the courier LADDER's
-        // arrived-pickup is ALSO ordinal 1, so the witness filter must pin the
-        // proximity clause's id hash, not the stage alone.
-        const proximityIdHash = computeClauseKey(PROXIMITY_CLAUSE, 1).toLowerCase();
+        // (clause key, stage) is the on-chain discriminator: the courier
+        // LADDER's arrived-pickup is ALSO ordinal 1, so the witness filter
+        // must pin the proximity clause's key, not the stage alone.
+        const proximityIdHash = PROXIMITY_CLAUSE.toLowerCase();
         const proximityWitnessEvents = async () => (await publicClient.getContractEvents({
             address: config.attestationCoordinator as Hex, abi: ATTESTATION_COORDINATOR_ABI,
             eventName: 'Attestation', args: { processId }, fromBlock: 0n,
@@ -636,7 +652,7 @@ test.describe('LOCAL COMMERCE — item delivery: canvas → bind → order → a
         //    both are present, unilateral + device identifier at a dead drop).
         //    The buyer files through the rail's standalone witness form. ──
         const buyerWitnessCap = page.locator(
-            `[data-testid="capability-submit-clause-attestation"][data-clause-id="${PROXIMITY_CLAUSE}"]`,
+            `[data-testid="capability-submit-clause-attestation"][data-clause-key="${PROXIMITY_CLAUSE}"]`,
         );
         await expect(buyerWitnessCap, 'the witness capability derives for the buyer too').toBeVisible({ timeout: 30000 });
         await page.getByTestId(`capability-input-${PROXIMITY_CLAUSE}-band-zone-wifi`).check();
@@ -802,8 +818,8 @@ test.describe('LOCAL COMMERCE — item delivery: canvas → bind → order → a
         const ipfsApi = process.env.NEXT_PUBLIC_IPFS_API_URL ?? 'http://127.0.0.1:5001';
         let deliverySections: AgreementSection[] = [];
         for (const [event, label, expectedLeaves] of [
-            [merchantEvent, 'item', ['figaro-commerce', 'figaro-topology', MERCHANT_CLAUSE, MODALITIES_CLAUSE]],
-            [courierEvent, 'delivery', ['figaro-commerce', 'figaro-topology', COURIER_CLAUSE, HANDOFF_CLAUSE, GEO_CLAUSE, PROXIMITY_CLAUSE]],
+            [merchantEvent, 'item', [COMMERCE_CLAUSE, TOPOLOGY_CLAUSE, MERCHANT_CLAUSE, MODALITIES_CLAUSE]],
+            [courierEvent, 'delivery', [COMMERCE_CLAUSE, TOPOLOGY_CLAUSE, COURIER_CLAUSE, HANDOFF_CLAUSE, GEO_CLAUSE, PROXIMITY_CLAUSE]],
         ] as const) {
             const agreementHash = event.args.agreementHash as `0x${string}`;
             const agreementUri = await page.evaluate(
@@ -817,7 +833,7 @@ test.describe('LOCAL COMMERCE — item delivery: canvas → bind → order → a
             const agreement = JSON.parse(agreementJson) as { sections: AgreementSection[] };
             if (label === 'delivery') deliverySections = agreement.sections;
             expect(
-                agreement.sections.map((s) => s.clause),
+                agreement.sections.map((s) => s.clause.toLowerCase()),
                 `the ${label} merkle tree carries every committed leaf`,
             ).toEqual(expect.arrayContaining([...expectedLeaves]));
             await page.getByTestId('verify-mode-agreement').click();
@@ -838,7 +854,7 @@ test.describe('LOCAL COMMERCE — item delivery: canvas → bind → order → a
         //    implementation derives — the same leaf under the agreement root
         //    already verified against FigaroCore above. No redaction artifact;
         //    the merkle structure IS the disclosure control. ──
-        const disclosed = deliverySections.find((s) => s.clause === 'figaro-commerce');
+        const disclosed = deliverySections.find((s) => s.clause.toLowerCase() === COMMERCE_CLAUSE);
         expect(disclosed, 'the delivery agreement carries a commerce section to disclose').toBeTruthy();
         await page.getByTestId('verify-mode-section').click();
         await page.getByTestId('verify-section-input').fill(JSON.stringify(disclosed));

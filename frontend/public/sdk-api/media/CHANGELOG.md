@@ -14,6 +14,20 @@ release lives under **Unreleased**.
 
 ### Changed
 
+- **SDK: a clause is its spec — the clause key is `keccak256` of the spec's pinned
+  canonical bytes.** `computeClauseKey(spec)` replaces the name-and-version derivation; a
+  section is `{ clause: <clauseKey>, data }` with no `version`; `SpecSource.get(clauseKey)`
+  and `ProjectionSpecView.clauseKey`; templates are keyed by clause key and the sparse
+  `clauseVersions` / `assemblyClauseVersions` maps, `templateClauseVersion` and
+  `templateClauseVersionMap` are gone; `RegisteredClause` is `{ clauseKey, contentURI,
+  registeredBy, stakeWithdrawn }` from `ClauseRegistered(bytes32 indexed clauseKey, string
+  contentURI, address indexed registeredBy)`; `anchorClauseSpec(bytes, clauseKey)` hashes the
+  fetched bytes; `resolveAuthoredClauseKeys(doc, specs)` maps an authored document's clause
+  names (`name@version`) to keys before it is published, never on a read path; member documents
+  carry `clauseKey`. Designer rewards are keyed by (kind, key): `USAGE_KIND_CLAUSE`,
+  `USAGE_KIND_ASSEMBLY`, `UsageKey`, `usageKeyId`, `RpgfAllocation.claims`, and the counter's
+  and minter's ABIs carry the kind. A spec pinned in any other byte form has a different key.
+
 - **SDK: an agreement names the assembly it instantiates through one reserved leaf
   of its merkle tree, never through a clause.** `Agreement.provenance` carries the
   composition hash; `PROVENANCE_LEAF_KEY` (`keccak256("figaro-agreement-provenance")`),

@@ -34,7 +34,7 @@ import {
     snapshotToAssemblyTemplate,
 } from "@/lib/designer/draftToAssemblyTemplate";
 import { clauseDesignFills, getClauseSpec } from "@/lib/shared/clauseSpecSource";
-import { primeClauseSpecs } from "./primeClauseSpecs";
+import { keyOf, primeClauseSpecs } from "./primeClauseSpecs";
 
 describe("syntheticDesignStore round-trip", () => {
     beforeEach(async () => {
@@ -101,12 +101,14 @@ describe("syntheticDesignStore round-trip", () => {
  * regime token, so a spec that grows a fourth regime is covered automatically.
  */
 describe("design fills are the composition's identity — the disclosure regime", () => {
-    const CLAUSE = "figaro-data-terms";
+    const CLAUSE_NAME = "figaro-data-terms";
+    let CLAUSE = "0x" as `0x${string}`;
     const FIELD = "disclosure";
 
     beforeEach(async () => {
         window.localStorage.clear();
         await primeClauseSpecs();
+        CLAUSE = keyOf(CLAUSE_NAME);
     });
 
     /** A one-order draft composing the clause with the given field values. */
@@ -130,15 +132,15 @@ describe("design fills are the composition's identity — the disclosure regime"
 
     /** The regime tokens the SPEC admits — the enum the canvas control renders. */
     function regimeValues(): readonly string[] {
-        const field = getClauseSpec(CLAUSE, 1)?.fields.find((f) => f.name === FIELD);
-        expect(field?.type, `${CLAUSE}.${FIELD} is an enum`).toBe("enum");
+        const field = getClauseSpec(CLAUSE)?.fields.find((f) => f.name === FIELD);
+        expect(field?.type, `${CLAUSE_NAME}.${FIELD} is an enum`).toBe("enum");
         return field?.type === "enum" ? field.values : [];
     }
 
     it("the clause declares the regime as a DESIGN fill, with labels for every value", () => {
-        expect(clauseDesignFills(CLAUSE, 1), `${CLAUSE} names ${FIELD} in block.design.fills`)
+        expect(clauseDesignFills(CLAUSE), `${CLAUSE_NAME} names ${FIELD} in block.design.fills`)
             .toContain(FIELD);
-        const field = getClauseSpec(CLAUSE, 1)?.fields.find((f) => f.name === FIELD);
+        const field = getClauseSpec(CLAUSE)?.fields.find((f) => f.name === FIELD);
         expect(field?.type).toBe("enum");
         if (field?.type !== "enum") return;
         expect(field.values.length, "the regime offers a choice").toBeGreaterThan(1);
@@ -211,9 +213,10 @@ describe("design fills are the composition's identity — the disclosure regime"
         // design fills are stripped by the build, so they cannot move identity.
         // figaro-geolocation left this fixture role when it gained its
         // designer-filled geocoder; figaro-dimweight declares no fills.
-        const fillless = getClauseSpec("figaro-dimweight", 1);
+        const dimweight = keyOf("figaro-dimweight");
+        const fillless = getClauseSpec(dimweight);
         expect(fillless, "the fixture clause is loaded").toBeTruthy();
-        expect(clauseDesignFills("figaro-dimweight", 1)).toHaveLength(0);
+        expect(clauseDesignFills(dimweight)).toHaveLength(0);
         const session = startSyntheticSession();
         const root = createSyntheticRootOrder(session);
         const base: DesignSnapshot = {
@@ -223,25 +226,26 @@ describe("design fills are the composition's identity — the disclosure regime"
             nextOrderIndex: session.nextOrderIndex,
             nextSellerIndex: session.nextSellerIndex,
             orders: [root.order],
-            clausesByOrderId: { [root.order.orderHash]: { "figaro-dimweight": {} } },
+            clausesByOrderId: { [root.order.orderHash]: { [dimweight]: {} } },
             createdAt: 1, updatedAt: 1,
         };
         const withStrayValues: DesignSnapshot = {
             ...base,
-            clausesByOrderId: { [root.order.orderHash]: { "figaro-dimweight": { unit: "cm-kg" } } },
+            clausesByOrderId: { [root.order.orderHash]: { [dimweight]: { unit: "cm-kg" } } },
         };
         expect(snapshotCompositionIdentity(withStrayValues).compositionHash)
             .toBe(snapshotCompositionIdentity(base).compositionHash);
     });
 });
 
-describe("buildSyntheticOrder — the version a node states is the version its agreement carries", () => {
+describe("buildSyntheticOrder — the agreement carries the clause by its key", () => {
     beforeEach(async () => {
         window.localStorage.clear();
         await primeClauseSpecs();
     });
 
-    const build = (clauseVersions?: Record<string, number>) => {
+    it("a node's section names the clause key and carries no version", () => {
+        const geo = keyOf("figaro-geolocation");
         const { agreementHash } = buildSyntheticOrder({
             orderId: `0x${"01".repeat(32)}`,
             processId: `0x${"00".repeat(32)}`,
@@ -250,15 +254,11 @@ describe("buildSyntheticOrder — the version a node states is the version its a
             currency: `0x${"00".repeat(20)}`,
             payment: 1n,
             salt: 1n,
-            clauseFields: { "figaro-geolocation": {} },
-            clauseVersions,
+            clauseFields: { [geo]: {} },
         });
         const stored = JSON.parse(window.localStorage.getItem(`figaro:agreement:${agreementHash}`) ?? "null");
-        return stored.sections.find((s: { clause: string }) => s.clause === "figaro-geolocation").version;
-    };
-
-    it("an unstated version is v1; a stated one is carried", () => {
-        expect(build()).toBe(1);
-        expect(build({ "figaro-geolocation": 2 })).toBe(2);
+        const section = stored.sections.find((s: { clause: string }) => s.clause.toLowerCase() === geo.toLowerCase());
+        expect(section).toBeTruthy();
+        expect(section).not.toHaveProperty("version");
     });
 });

@@ -12,25 +12,6 @@
   },
   {
     "type": "function",
-    "name": "contentHashOf",
-    "inputs": [
-      {
-        "name": "",
-        "type": "bytes32",
-        "internalType": "bytes32"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "",
-        "type": "bytes32",
-        "internalType": "bytes32"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
     "name": "depositOf",
     "inputs": [
       {
@@ -58,17 +39,7 @@
     "name": "registerClause",
     "inputs": [
       {
-        "name": "clauseId",
-        "type": "string",
-        "internalType": "string"
-      },
-      {
-        "name": "version",
-        "type": "uint64",
-        "internalType": "uint64"
-      },
-      {
-        "name": "contentHash",
+        "name": "clauseKey",
         "type": "bytes32",
         "internalType": "bytes32"
       },
@@ -118,7 +89,7 @@
     "name": "setMechanismClause",
     "inputs": [
       {
-        "name": "idHash",
+        "name": "clauseKey",
         "type": "bytes32",
         "internalType": "bytes32"
       }
@@ -131,7 +102,7 @@
     "name": "withdrawDeposit",
     "inputs": [
       {
-        "name": "idHash",
+        "name": "clauseKey",
         "type": "bytes32",
         "internalType": "bytes32"
       }
@@ -144,21 +115,9 @@
     "name": "ClauseRegistered",
     "inputs": [
       {
-        "name": "clauseId",
-        "type": "string",
-        "indexed": false,
-        "internalType": "string"
-      },
-      {
-        "name": "version",
-        "type": "uint64",
-        "indexed": false,
-        "internalType": "uint64"
-      },
-      {
-        "name": "contentHash",
+        "name": "clauseKey",
         "type": "bytes32",
-        "indexed": false,
+        "indexed": true,
         "internalType": "bytes32"
       },
       {
@@ -181,7 +140,7 @@
     "name": "DepositWithdrawn",
     "inputs": [
       {
-        "name": "clauseId",
+        "name": "clauseKey",
         "type": "bytes32",
         "indexed": true,
         "internalType": "bytes32"
@@ -212,7 +171,7 @@
         "internalType": "address"
       },
       {
-        "name": "idHash",
+        "name": "clauseKey",
         "type": "bytes32",
         "indexed": true,
         "internalType": "bytes32"
@@ -225,7 +184,7 @@
     "name": "AlreadyRegistered",
     "inputs": [
       {
-        "name": "clauseId",
+        "name": "clauseKey",
         "type": "bytes32",
         "internalType": "bytes32"
       }
@@ -238,11 +197,6 @@
   },
   {
     "type": "error",
-    "name": "EmptyClauseId",
-    "inputs": []
-  },
-  {
-    "type": "error",
     "name": "EmptyContentURI",
     "inputs": []
   },
@@ -251,7 +205,7 @@
     "name": "NotRegistered",
     "inputs": [
       {
-        "name": "clauseId",
+        "name": "clauseKey",
         "type": "bytes32",
         "internalType": "bytes32"
       }
@@ -296,7 +250,7 @@
   },
   {
     "type": "error",
-    "name": "ZeroContentHash",
+    "name": "ZeroClauseKey",
     "inputs": []
   }
 ]

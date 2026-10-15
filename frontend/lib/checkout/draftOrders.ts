@@ -23,9 +23,6 @@ export interface DraftOrder {
     payment: bigint;
     /** The filled clause values for the seller's pinned assembly. */
     clauses: ClauseFields;
-    /** clauseId → the registered version composed (template-sourced; sparse —
-     *  absent means the loaded spec's version resolves at agreement build). */
-    clauseVersions?: Record<string, number>;
     /** Topology position, when composing a sub-order. Optional. */
     parentOrderHashes?: string[];
 }
@@ -37,7 +34,6 @@ interface StoredDraftOrder {
     currency: string;
     payment: string;
     clauses: ClauseFields;
-    clauseVersions?: Record<string, number>;
     parentOrderHashes?: string[];
 }
 
@@ -48,7 +44,6 @@ function toStored(d: DraftOrder): StoredDraftOrder {
         currency: d.currency,
         payment: d.payment.toString(),
         clauses: d.clauses,
-        ...(d.clauseVersions ? { clauseVersions: d.clauseVersions } : {}),
         ...(d.parentOrderHashes ? { parentOrderHashes: d.parentOrderHashes } : {}),
     };
 }
@@ -60,7 +55,6 @@ function fromStored(s: StoredDraftOrder): DraftOrder {
         currency: s.currency as `0x${string}`,
         payment: BigInt(s.payment),
         clauses: s.clauses,
-        ...(s.clauseVersions ? { clauseVersions: s.clauseVersions } : {}),
         ...(s.parentOrderHashes ? { parentOrderHashes: s.parentOrderHashes } : {}),
     };
 }

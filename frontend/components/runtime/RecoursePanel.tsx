@@ -150,13 +150,13 @@ export function RecoursePanel({
                         // knows no clause. A forum that integrates its own dispute UI
                         // gets a deep-link (composition); an un-integrated clause still
                         // surfaces, just without one.
-                        const desc = describeClause(r.clauseId, r.data, r.version);
-                        const forumUrl = composesForumUrl(r.clauseId, r.version);
+                        const desc = describeClause(r.clauseKey, r.data);
+                        const forumUrl = composesForumUrl(r.clauseKey);
                         return (
                             <div
-                                key={`${r.clauseId}#${r.version}`}
+                                key={r.clauseKey}
                                 className="text-xs text-ink-body"
-                                data-testid={`dispute-recourse-${r.clauseId}`}
+                                data-testid={`dispute-recourse-${r.clauseKey}`}
                             >
                                 <span className="font-medium">{desc.title}</span>
                                 {desc.fields.length > 0 && (

@@ -284,9 +284,10 @@ pub async fn filter_funded_commits(
     allocate_funding(pending, &funds)
 }
 
-/// Whether an attestation's witness spec is the one the registry anchors —
-/// the check the verifier makes on chain (`contentHashOf(clauseKey)`), which
-/// reverts the WHOLE batch. `None` for every other op.
+/// An attestation's clause key and the hash of the witness spec bytes it
+/// carries — the guest requires them equal (Gate S) and the verifier
+/// requires the key `registered(clauseKey)`; either failing reverts the
+/// WHOLE batch. `None` for every other op.
 pub fn attestation_spec(op: &KernelOp) -> Option<(alloy::primitives::B256, alloy::primitives::B256)> {
     match op {
         KernelOp::AttestAsSeller { clause_id, proof, .. } | KernelOp::AttestAsBuyer { clause_id, proof, .. } => {
@@ -296,12 +297,13 @@ pub fn attestation_spec(op: &KernelOp) -> Option<(alloy::primitives::B256, alloy
     }
 }
 
-/// Drop every attestation whose witness spec is not the registry's anchored
-/// one, before proving: one such op reverts the whole batch on chain, and
-/// anyone can copy a landed attestation with one byte of the spec changed.
-/// The registry is the verifier's own (`clauseRegistry()`), read once per
-/// batch per clause; a read failure drops conservatively. `None` (no
-/// verifier configured — a prove-only dry run) passes everything through.
+/// Drop every attestation whose witness spec does not hash to its clause
+/// key, or whose key the registry has not registered, before proving: one
+/// such op reverts the whole batch on chain, and anyone can copy a landed
+/// attestation with one byte of the spec changed. The registry is the
+/// verifier's own (`clauseRegistry()`), read once per batch per clause; a
+/// read failure drops conservatively. `None` (no verifier configured — a
+/// prove-only dry run) passes everything through.
 pub async fn filter_anchored_attestations(
     gate: Option<&FundingGate>,
     pending: Vec<PendingOp>,
@@ -312,7 +314,7 @@ pub async fn filter_anchored_attestations(
     if !pending.iter().any(|p| attestation_spec(&p.op).is_some()) {
         return (pending, Vec::new());
     }
-    let mut anchors: HashMap<alloy::primitives::B256, Option<alloy::primitives::B256>> = HashMap::new();
+    let mut anchors: HashMap<alloy::primitives::B256, Option<bool>> = HashMap::new();
     let registry = match gate.rpc_url.parse() {
         Ok(url) => {
             let provider = ProviderBuilder::new().connect_http(url);
@@ -332,26 +334,33 @@ pub async fn filter_anchored_attestations(
             valid.push(op);
             continue;
         };
+        if spec_hash != clause {
+            dropped.push((
+                op,
+                format!("witness spec {spec_hash} does not hash to clause key {clause} — the guest would refuse the batch"),
+            ));
+            continue;
+        }
         if let std::collections::hash_map::Entry::Vacant(slot) = anchors.entry(clause) {
-            let anchored = match &registry {
+            let registered = match &registry {
                 Some((address, provider)) => IClauseRegistry::new(*address, provider)
-                    .contentHashOf(clause)
+                    .registered(clause)
                     .call()
                     .await
                     .ok(),
                 None => None,
             };
-            slot.insert(anchored);
+            slot.insert(registered);
         }
         match anchors[&clause] {
-            Some(anchored) if anchored == spec_hash => valid.push(op),
-            Some(anchored) => dropped.push((
+            Some(true) => valid.push(op),
+            Some(false) => dropped.push((
                 op,
-                format!("witness spec {spec_hash} is not the registry's anchored spec {anchored} for clause {clause} — the verifier would revert the batch"),
+                format!("clause key {clause} is not registered — the verifier would revert the batch"),
             )),
             None => dropped.push((
                 op,
-                format!("the registry's spec for clause {clause} could not be read — dropped conservatively"),
+                format!("the registry's record of clause {clause} could not be read — dropped conservatively"),
             )),
         }
     }
@@ -407,6 +416,7 @@ sol! {
 
         struct BatchAccrualCall {
             bytes32 clauseOrAssembly;
+            uint8 kind;
             uint64 c;
             uint64 d;
         }
@@ -459,7 +469,7 @@ sol! {
     #[sol(rpc)]
     interface IClauseRegistry {
         function depositOf(bytes32 idHash) external view returns (address registeredBy, bool withdrawn);
-        function contentHashOf(bytes32 idHash) external view returns (bytes32);
+        function registered(bytes32 clauseKey) external view returns (bool);
     }
 }
 
@@ -788,8 +798,8 @@ pub fn settle_call_args(
             contentRef: a.content_ref,
         })
         .collect();
-    // The (clause key → witness-spec hash) bindings the proof committed —
-    // the verifier checks each against ClauseRegistry.contentHashOf.
+    // The (clause key, witness-spec hash) bindings the proof committed,
+    // both fields equal — the verifier checks each key is registered.
     let spec_bindings = events
         .spec_bindings
         .iter()
@@ -813,6 +823,7 @@ pub fn settle_call_args(
             .iter()
             .map(|a| IFigaroBatchVerifier::BatchAccrualCall {
                 clauseOrAssembly: a.clause_or_assembly,
+                kind: a.kind,
                 c: a.c,
                 d: a.d,
             })

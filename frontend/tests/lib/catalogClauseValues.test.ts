@@ -6,7 +6,11 @@ import {
 } from "@/lib/member/catalogClauseValues";
 import { _resetClauseSpecCache_TESTING_ONLY } from "@/lib/shared/clauseSpecSource";
 import type { CatalogItemMetadata } from "@/lib/member/memberCatalogMetadata";
-import { primeClauseSpecs } from "./primeClauseSpecs";
+import { authoredSpecSet, primeClauseSpecs } from "./primeClauseSpecs";
+
+/** The key of a spec in clauses/ — computed from its file, so it holds with
+ *  the cache empty too. */
+const KEY = (name: string): string => authoredSpecSet().list().find((s) => s.clauseId === name)!.clauseKey;
 
 afterEach(() => {
     _resetClauseSpecCache_TESTING_ONLY();
@@ -24,8 +28,8 @@ describe("validateCatalogClauseValues — off-chain gate, reused validator", () 
     it("passes conforming values against the registered spec", async () => {
         await primeClauseSpecs(["figaro-freight-class", "figaro-cold-chain"]);
         const errors = validateCatalogClauseValues(baseItem({
-            "figaro-freight-class": { nmfcClass: "100" },
-            "figaro-cold-chain": { tempClass: "refrigerated", tempMinC: 2, tempMaxC: 8, recordingIntervalSeconds: 900 },
+            [KEY("figaro-freight-class")]: { nmfcClass: "100" },
+            [KEY("figaro-cold-chain")]: { tempClass: "refrigerated", tempMinC: 2, tempMaxC: 8, recordingIntervalSeconds: 900 },
         }));
         expect(errors).toEqual([]);
     });
@@ -33,7 +37,7 @@ describe("validateCatalogClauseValues — off-chain gate, reused validator", () 
     it("flags a value outside the clause's enum", async () => {
         await primeClauseSpecs(["figaro-freight-class"]);
         const errors = validateCatalogClauseValues(baseItem({
-            "figaro-freight-class": { nmfcClass: "999" }, // not one of the 18 NMFC classes
+            [KEY("figaro-freight-class")]: { nmfcClass: "999" }, // not one of the 18 NMFC classes
         }));
         expect(errors.length).toBeGreaterThan(0);
         expect(errors[0]).toContain("figaro-freight-class");
@@ -42,7 +46,7 @@ describe("validateCatalogClauseValues — off-chain gate, reused validator", () 
     it("flags a missing required field", async () => {
         await primeClauseSpecs(["figaro-hazmat"]);
         const errors = validateCatalogClauseValues(baseItem({
-            "figaro-hazmat": { hazardClass: "3" }, // missing unNumber + properShippingName
+            [KEY("figaro-hazmat")]: { hazardClass: "3" }, // missing unNumber + properShippingName
         }));
         expect(errors.length).toBeGreaterThan(0);
     });
@@ -54,7 +58,7 @@ describe("validateCatalogClauseValues — off-chain gate, reused validator", () 
     it("a clause whose spec is not loaded is skipped, not failed (resolved-empty)", () => {
         // Empty cache: nothing to validate against — do not fail the seller.
         expect(validateCatalogClauseValues(baseItem({
-            "figaro-freight-class": { nmfcClass: "whatever" },
+            [KEY("figaro-freight-class")]: { nmfcClass: "whatever" },
         }))).toEqual([]);
     });
 });
@@ -67,7 +71,7 @@ describe("catalogClausesForBindings — the bindings decide which item fields ex
     it("asks for nothing before an assembly is bound", async () => {
         await primeClauseSpecs();
         expect(catalogClausesForBindings([], [
-            choice("asm-haul", ["figaro-commerce", "figaro-hazmat", "figaro-freight-class"]),
+            choice("asm-haul", [KEY("figaro-commerce"), KEY("figaro-hazmat"), KEY("figaro-freight-class")]),
         ])).toEqual([]);
     });
 
@@ -76,8 +80,8 @@ describe("catalogClausesForBindings — the bindings decide which item fields ex
         const derived = catalogClausesForBindings(
             [{ assemblySlug: "asm-haul" }],
             [
-                choice("asm-haul", ["figaro-commerce", "figaro-topology", "figaro-freight-class"]),
-                choice("asm-reefer", ["figaro-commerce", "figaro-cold-chain", "figaro-hazmat"]),
+                choice("asm-haul", [KEY("figaro-commerce"), KEY("figaro-topology"), KEY("figaro-freight-class")]),
+                choice("asm-reefer", [KEY("figaro-commerce"), KEY("figaro-cold-chain"), KEY("figaro-hazmat")]),
             ],
         );
         // figaro-commerce and figaro-topology declare no catalogueFills, so
@@ -90,7 +94,7 @@ describe("catalogClausesForBindings — the bindings decide which item fields ex
         await primeClauseSpecs();
         expect(catalogClausesForBindings(
             [{ assemblySlug: "asm-pos" }],
-            [choice("asm-pos", ["figaro-commerce", "figaro-topology"])],
+            [choice("asm-pos", [KEY("figaro-commerce"), KEY("figaro-topology")])],
         )).toEqual([]);
     });
 
@@ -99,9 +103,9 @@ describe("catalogClausesForBindings — the bindings decide which item fields ex
         const derived = catalogClausesForBindings(
             [{ assemblySlug: "asm-haul" }, { assemblySlug: "asm-reefer" }],
             [
-                choice("asm-haul", ["figaro-freight-class"]),
-                choice("asm-reefer", ["figaro-cold-chain"]),
-                choice("asm-data", ["figaro-data-license"]),
+                choice("asm-haul", [KEY("figaro-freight-class")]),
+                choice("asm-reefer", [KEY("figaro-cold-chain")]),
+                choice("asm-data", [KEY("figaro-data-license")]),
             ],
         );
         expect(derived.map((c) => c.clauseId).sort())
@@ -120,14 +124,14 @@ describe("catalogClausesForBindings — the bindings decide which item fields ex
         await primeClauseSpecs();
         expect(catalogClausesForBindings(
             [{ assemblySlug: "asm-withdrawn" }],
-            [choice("asm-haul", ["figaro-hazmat"])],
+            [choice("asm-haul", [KEY("figaro-hazmat")])],
         )).toEqual([]);
     });
 
     it("is empty while the clause specs are uncached — resolved-empty, never a guess", () => {
         expect(catalogClausesForBindings(
             [{ assemblySlug: "asm-haul" }],
-            [choice("asm-haul", ["figaro-freight-class"])],
+            [choice("asm-haul", [KEY("figaro-freight-class")])],
         )).toEqual([]);
     });
 
@@ -138,12 +142,12 @@ describe("catalogClausesForBindings — the bindings decide which item fields ex
         const everyCatalogClause = catalogClausesForBindings(
             [{ assemblySlug: "asm-everything" }],
             [choice("asm-everything", [
-                "figaro-freight-class", "figaro-hazmat", "figaro-cold-chain", "figaro-data-license",
+                KEY("figaro-freight-class"), KEY("figaro-hazmat"), KEY("figaro-cold-chain"), KEY("figaro-data-license"),
             ])],
         );
         expect(everyCatalogClause.length).toBe(4);
-        for (const { clauseId, version } of everyCatalogClause) {
-            expect(catalogFieldsOfClause(clauseId, version).length).toBeGreaterThan(0);
+        for (const { clauseKey } of everyCatalogClause) {
+            expect(catalogFieldsOfClause(clauseKey).length).toBeGreaterThan(0);
         }
     });
 });
@@ -151,7 +155,7 @@ describe("catalogClausesForBindings — the bindings decide which item fields ex
 describe("catalogFieldsOfClause — only the clause's own catalog fills", () => {
     it("returns the fields the clause assigns to the catalog, in spec order", async () => {
         await primeClauseSpecs(["figaro-freight-class"]);
-        expect(catalogFieldsOfClause("figaro-freight-class", 1).map((f) => f.name))
+        expect(catalogFieldsOfClause(KEY("figaro-freight-class")).map((f) => f.name))
             .toEqual(["nmfcClass", "nmfcItem"]);
     });
 
@@ -159,10 +163,10 @@ describe("catalogFieldsOfClause — only the clause's own catalog fills", () => 
         await primeClauseSpecs(["figaro-commerce"]);
         // The commerce clause's fields are the buyer's checkout particulars —
         // none of them is the catalog's to author.
-        expect(catalogFieldsOfClause("figaro-commerce", 1)).toEqual([]);
+        expect(catalogFieldsOfClause(KEY("figaro-commerce"))).toEqual([]);
     });
 
     it("is empty for an unloaded spec", () => {
-        expect(catalogFieldsOfClause("figaro-freight-class", 1)).toEqual([]);
+        expect(catalogFieldsOfClause(KEY("figaro-freight-class"))).toEqual([]);
     });
 });

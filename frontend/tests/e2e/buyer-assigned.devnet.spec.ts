@@ -48,7 +48,7 @@ import { createPublicClient, defineChain, http, parseAbi, type Hex } from 'viem'
 import { mnemonicToAccount } from 'viem/accounts';
 import {
     confirmAgreementPreviews,
-    DELIVERY_CLAUSES,
+    deliveryClauseKeys,
     DELIVERY_DEVICE,
     discoverMembers,
     ensureDeliveryAssembly,
@@ -111,7 +111,7 @@ test.describe('BUYER-ASSIGNED — the buyer picks the courier at checkout (devne
         // NO courier — the node is genuinely unbound.
         const binding = (await memberProfileBindings(MERCHANT)).find((b) => b.assemblySlug === deliverySlug);
         expect(
-            (binding?.counterpartyBindings ?? []).some((cb) => cb.clauseId === DELIVERY_CLAUSES.courier),
+            (binding?.counterpartyBindings ?? []).some((cb) => cb.clauseKey.toLowerCase() === deliveryClauseKeys().courier),
             'the merchant binding designates no courier (buyer-assigned adoption)',
         ).toBe(false);
 

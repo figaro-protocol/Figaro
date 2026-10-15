@@ -21,7 +21,7 @@
  * and the JSX.
  *
  * Mounted by the interactionSurfaces registry — this component knows no
- * clause; `clauseId` identifies the declaring section for the anchor and
+ * clause; `clauseKey` identifies the declaring section for the anchor and
  * the title, never a dispatch.
  */
 import { useCallback, useState } from "react";
@@ -37,13 +37,12 @@ import {
 import { useCeremonyChannel } from "@/lib/handoff/useCeremonyChannel";
 import { useAttestationCoordinatorActions } from "@/lib/composition/useAttestationCoordinatorActions";
 import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
-import { computeClauseKey } from "@figaro-protocol/sdk";
 import { hexEqual } from "@/lib/shared/evm";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import type { InteractionSurfaceProps } from "@/components/runtime/interactionSurfaces";
 import type { PartyRole } from "@/lib/kernel/walletProcessQueries";
 
-export function AddressDetailPanel({ processId, orderHash, clauseId, version, buyer, seller }: InteractionSurfaceProps) {
+export function AddressDetailPanel({ processId, orderHash, clauseKey, buyer, seller }: InteractionSurfaceProps) {
     const { address } = useAccount();
     const { data: walletClient } = useWalletClient();
     const attestationActions = useAttestationCoordinatorActions();
@@ -131,11 +130,11 @@ export function AddressDetailPanel({ processId, orderHash, clauseId, version, bu
             // hash-only, so the ciphertext never reaches calldata and stays
             // deletable on the channel; the coordinator merkle-binds the
             // section and hash-binds the content.
-            // Keyed by the committed section's own version — the clause hash
-            // the signed agreement committed.
+            // Keyed by the committed section's clause key — the one the
+            // signed agreement committed.
             const anchorArgs = {
                 orderHash: orderHash as `0x${string}`,
-                clauseId: computeClauseKey(clauseId, version),
+                clauseId: clauseKey as `0x${string}`,
                 stage: 0,
                 content: addressDetailBlobHash(blobB64),
                 failureMessage: "Anchoring the address detail failed",
@@ -147,10 +146,10 @@ export function AddressDetailPanel({ processId, orderHash, clauseId, version, bu
         } finally {
             setBusy(false);
         }
-    }, [channel, address, peerPubKey, walletClient, counterparty, orderHash, clauseId, version, form, attestationActions, role]);
+    }, [channel, address, peerPubKey, walletClient, counterparty, orderHash, clauseKey, form, attestationActions, role]);
 
     if (!role) return null;
-    const clauseTitle = getClauseSpec(clauseId, version)?.title ?? clauseId;
+    const clauseTitle = getClauseSpec(clauseKey)?.title ?? clauseKey;
     // Role-flavored copy over ONE symmetric body: what I ask for and what I
     // might share differ by seat, the ceremony does not.
     const requestLabel = role === "seller" ? "Request delivery address" : "Request pickup address";

@@ -28,7 +28,7 @@ import {
 } from "./projection.js";
 import { templateParentOrderHashes, type AssemblyTemplate, type TemplateAgreement } from "./assembly.js";
 import { topologicalOrder } from "./topology.js";
-import { isAddressHex } from "./types.js";
+import { isAddressHex, type Hex } from "./types.js";
 import type { CounterpartyBinding } from "./memberProfile.js";
 import type { CatalogItemMetadata } from "./memberCatalog.js";
 
@@ -51,15 +51,13 @@ export interface AssemblyCheckoutLineItem {
     widthMm?: number;
     heightMm?: number;
     /** Catalog-sourced clause values (freight class / hazmat / cold-chain, …)
-     *  folded onto their leaves. Keyed by clauseId → field values. */
+     *  folded onto their leaves. Keyed by clause key → field values. */
     clauseValues?: Record<string, Record<string, unknown>>;
 }
 
-/** The first composed clause whose LOADED spec, at its composed version,
- *  satisfies `predicate`. `clauseVersions` is the order's composed versions,
- *  sparse — an absent entry is version 1, never the highest loaded, since
- *  every (clauseId, version) slot is open to anyone. Undefined while the spec
- *  is unloaded — the fill degrades to a no-op, exactly as the
+/** The first composed clause whose LOADED spec satisfies `predicate` — each
+ *  composed key reads its own spec (`specs.get(clauseKey)`). Undefined while
+ *  the spec is unloaded — the fill degrades to a no-op, exactly as the
  *  registry-reading frontend does before its cache warms. The ONE lookup
  *  every spec-routed fill runs — this module's section writers, its
  *  rate-quantity resolvers and the template walk's guarded fills
@@ -68,34 +66,21 @@ export function composedClauseWhere(
     clauses: ClauseFields,
     specs: SpecSource,
     predicate: (spec: ProjectionSpecView) => boolean,
-    clauseVersions?: Readonly<Record<string, number>>,
-): string | undefined {
-    return Object.keys(clauses).find((clauseId) => {
-        const spec = composedSectionSpec(specs, clauseId, clauseVersions);
+): Hex | undefined {
+    return (Object.keys(clauses) as Hex[]).find((clauseKey) => {
+        const spec = specs.get(clauseKey);
         return spec ? predicate(spec) : false;
     });
 }
 
 /** The declared-field lookup the fills run: the first composed clause whose
- *  loaded spec, at its composed version, declares `fieldName`. */
+ *  loaded spec declares `fieldName`. */
 function composedClauseDeclaring(
     clauses: ClauseFields,
     fieldName: string,
     specs: SpecSource,
-    clauseVersions: Readonly<Record<string, number>> | undefined,
-): string | undefined {
-    return composedClauseWhere(clauses, specs, (spec) => specDeclaresField(spec, fieldName), clauseVersions);
-}
-
-/** A composed section's spec at its composed version: `clauseVersions` is
- *  sparse, the template's rule — an absent entry is version 1, never the
- *  highest loaded, since every (clauseId, version) slot is open to anyone. */
-function composedSectionSpec(
-    specs: SpecSource,
-    clauseId: string,
-    clauseVersions: Readonly<Record<string, number>> | undefined,
-): ProjectionSpecView | undefined {
-    return specs.get(clauseId, clauseVersions?.[clauseId] ?? 1);
+): Hex | undefined {
+    return composedClauseWhere(clauses, specs, (spec) => specDeclaresField(spec, fieldName));
 }
 
 /**
@@ -105,20 +90,16 @@ function composedSectionSpec(
  * fill, naming no clause; empty when no commercial section is composed
  * (nothing to quote) or the spec cache is cold. The returned paths are the
  * SAME fields `fillCommerceSection` writes, so a quote's substitution and the
- * checkout walk at the quoted price produce identical agreements. Each
- * section's spec is read at the version the section states (absent = 1).
+ * checkout walk at the quoted price produce identical agreements.
  */
 export function derivePricedFields(
-    sections: readonly { clause: string; version?: number; data?: Record<string, unknown> }[],
+    sections: readonly { clause: Hex; data?: Record<string, unknown> }[],
     specs: SpecSource,
-): { clause: string; path: string }[] {
+): { clause: Hex; path: string }[] {
     // Commercial terms are PUBLIC (never a content-withheld section), so a
     // section carrying only a fingerprint contributes no priced field.
     const clauses = Object.fromEntries(sections.map((s) => [s.clause, s.data ?? {}])) as ClauseFields;
-    const clauseVersions = Object.fromEntries(
-        sections.flatMap((s) => (s.version === undefined ? [] : [[s.clause, s.version]])),
-    ) as Record<string, number>;
-    const commerce = composedClauseDeclaring(clauses, "lineItems", specs, clauseVersions);
+    const commerce = composedClauseDeclaring(clauses, "lineItems", specs);
     if (!commerce) return [];
     const lineItems = clauses[commerce]?.lineItems;
     const count = Array.isArray(lineItems) ? lineItems.length : 0;
@@ -142,8 +123,7 @@ export function derivePricedFields(
  * TERM of the agreement, a merkle leaf under `agreementHash`, which the
  * commitment's currency field then mirrors. Written only where the
  * commerce clause declares `currency` as content, so a third-party commerce
- * clause that declares no such field keeps its closed shape. Each section's
- * spec is read at its composed version (`clauseVersions`, sparse — absent = 1).
+ * clause that declares no such field keeps its closed shape.
  */
 export function fillCommerceSection(
     clauses: ClauseFields,
@@ -151,11 +131,10 @@ export function fillCommerceSection(
     currency: `0x${string}`,
     specs: SpecSource,
     lineItems?: AssemblyCheckoutLineItem[],
-    clauseVersions?: Readonly<Record<string, number>>,
 ): ClauseFields {
-    const commerceClauseId = composedClauseDeclaring(clauses, "lineItems", specs, clauseVersions);
+    const commerceClauseId = composedClauseDeclaring(clauses, "lineItems", specs);
     if (!commerceClauseId) return clauses;
-    const spec = composedSectionSpec(specs, commerceClauseId, clauseVersions);
+    const spec = specs.get(commerceClauseId);
     return {
         ...clauses,
         [commerceClauseId]: {
@@ -182,9 +161,7 @@ export function fillCommerceSection(
  * checkout) and is never a pin, while ANY clause — including one this code
  * has never seen — declaring a `currency` design fill IS one. The pin
  * survives the value-free template build and is part of the compositionHash:
- * the assembly's one-token tailoring. Each clause's spec is read at its
- * composed version (`clauseVersions`, sparse — absent = 1; for the
- * assembly-scoped sections, the template's `assemblyClauseVersions`).
+ * the assembly's one-token tailoring.
  *
  * Undefined = unpinned (the buyer's payment-token pick, else the seller's
  * default, denominates) or spec cache cold.
@@ -192,15 +169,13 @@ export function fillCommerceSection(
 export function readUtilityTokenPin(
     clauses: ClauseFields,
     specs: SpecSource,
-    clauseVersions?: Readonly<Record<string, number>>,
 ): `0x${string}` | undefined {
-    const clauseId = composedClauseWhere(
+    const clauseKey = composedClauseWhere(
         clauses,
         specs,
         (spec) => specDeclaresDesignFill(spec, "currency"),
-        clauseVersions,
     );
-    const value = clauseId ? clauses[clauseId]?.currency : undefined;
+    const value = clauseKey ? clauses[clauseKey]?.currency : undefined;
     return isAddressHex(value) ? value : undefined;
 }
 
@@ -220,19 +195,15 @@ const MECHANICAL_FILL_FIELDS = ["currency", "payment", "lineItems", "parentOrder
  * actually declares (declared-field discovery, never a clause id). A
  * fillable surface subtracts these: rendering a buyer input the walk will
  * overwrite is a false affordance, not a fill.
- *
- * Each section's spec is read at its composed version (`clauseVersions`,
- * sparse — absent = 1), never the highest loaded.
  */
 export function mechanicallyFilledFieldNames(
     clauses: ClauseFields,
     specs: SpecSource,
-    clauseVersions?: Readonly<Record<string, number>>,
 ): Set<string> {
     return new Set(
         MECHANICAL_FILL_FIELDS.filter((field) =>
-            Object.keys(clauses).some((clauseId) => {
-                const spec = composedSectionSpec(specs, clauseId, clauseVersions);
+            (Object.keys(clauses) as Hex[]).some((clauseKey) => {
+                const spec = specs.get(clauseKey);
                 return spec ? specDeclaresField(spec, field) : false;
             }),
         ),
@@ -248,16 +219,13 @@ export function mechanicallyFilledFieldNames(
  * bytes32 shape the off-chain validator validates. The overwrite IS this writer's contract —
  * the existing value (local ids) is EXPECTED to differ from the fill (real
  * hashes), so an equality guard here would reject every legitimate call.
- * Each section's spec is read at its composed version (`clauseVersions`,
- * sparse — absent = 1).
  */
 export function writeTopologySection(
     clauses: ClauseFields,
     parentOrderHashes: `0x${string}`[],
     specs: SpecSource,
-    clauseVersions?: Readonly<Record<string, number>>,
 ): ClauseFields {
-    const topologyClauseId = composedClauseDeclaring(clauses, "parentOrderHashes", specs, clauseVersions);
+    const topologyClauseId = composedClauseDeclaring(clauses, "parentOrderHashes", specs);
     if (!topologyClauseId) return clauses;
     return {
         ...clauses,
@@ -276,16 +244,13 @@ export function writeTopologySection(
  * so they are written only when the order is a single parcel (one line, quantity
  * 1) — a multi-line order's packaged dimension is a per-order input this fold
  * does not fabricate; dimensional weight then falls back to actual mass.
- * Each section's spec is read at its composed version (`clauseVersions`,
- * sparse — absent = 1).
  */
 export function fillCargoSection(
     clauses: ClauseFields,
     lines: AssemblyCheckoutLineItem[],
     specs: SpecSource,
-    clauseVersions?: Readonly<Record<string, number>>,
 ): ClauseFields {
-    const cargoId = composedClauseDeclaring(clauses, "massGrams", specs, clauseVersions);
+    const cargoId = composedClauseDeclaring(clauses, "massGrams", specs);
     if (!cargoId) return clauses;
     const massGrams = lines.reduce((s, li) => s + (li.massGrams ?? 0) * li.quantity, 0);
     const volumeMl = lines.reduce((s, li) => s + (li.volumeMl ?? 0) * li.quantity, 0);
@@ -312,30 +277,28 @@ export function fillCargoSection(
  * DECLARED catalog-authored subset (`specCatalogFills`), the same
  * discipline as the profile fold — a homogeneous-order assumption (mixed
  * classes are a multi-ORDER concern per the aggregate model). Absent when no
- * line carries declared values for that clause. Each section's spec is read
- * at its composed version (`clauseVersions`, sparse — absent = 1): the
- * declared subset is the composed clause's own.
+ * line carries declared values for that clause. The declared subset is the
+ * composed clause's own (its spec, read by its key).
  */
 export function fillClassSections(
     clauses: ClauseFields,
     lines: AssemblyCheckoutLineItem[],
     specs: SpecSource,
-    clauseVersions?: Readonly<Record<string, number>>,
 ): ClauseFields {
     let out = clauses;
-    for (const clauseId of Object.keys(clauses)) {
-        const spec = composedSectionSpec(specs, clauseId, clauseVersions);
+    for (const clauseKey of Object.keys(clauses) as Hex[]) {
+        const spec = specs.get(clauseKey);
         if (!spec || specCatalogFills(spec).length === 0) continue;
         const line = lines.find(
-            (li) => li.clauseValues?.[clauseId] && Object.keys(li.clauseValues[clauseId]).length > 0,
+            (li) => li.clauseValues?.[clauseKey] && Object.keys(li.clauseValues[clauseKey]).length > 0,
         );
         if (!line) continue;
         const declared = specCatalogFills(spec);
         const authored = Object.fromEntries(
-            Object.entries(line.clauseValues![clauseId]).filter(([k, v]) => declared.includes(k) && v !== undefined && v !== ""),
+            Object.entries(line.clauseValues![clauseKey]).filter(([k, v]) => declared.includes(k) && v !== undefined && v !== ""),
         );
         if (Object.keys(authored).length === 0) continue;
-        out = { ...out, [clauseId]: mergeUnderTemplate(out[clauseId], authored) };
+        out = { ...out, [clauseKey]: mergeUnderTemplate(out[clauseKey], authored) };
     }
     return out;
 }
@@ -362,30 +325,28 @@ function mergeUnderTemplate(
  * DECLARED profile-authored subset (`specProfileFills`), with the template's
  * committed terms winning over authored data. Absent when the seller stores no
  * values for that clause. The seller-level sibling of `fillClassSections`
- * (catalog = what is sold, profile = who sells). Each section's spec is read
- * at its composed version (`clauseVersions`, sparse — absent = 1), never the
- * highest loaded: the declared subset is the composed clause's own.
+ * (catalog = what is sold, profile = who sells). The declared subset is the
+ * composed clause's own (its spec, read by its key).
  */
 export function fillProfileSections(
     clauses: ClauseFields,
     profileValues: Readonly<Record<string, Record<string, unknown>>> | undefined,
     specs: SpecSource,
-    clauseVersions?: Readonly<Record<string, number>>,
 ): ClauseFields {
     if (!profileValues) return clauses;
     let out = clauses;
-    for (const clauseId of Object.keys(clauses)) {
-        const spec = composedSectionSpec(specs, clauseId, clauseVersions);
+    for (const clauseKey of Object.keys(clauses) as Hex[]) {
+        const spec = specs.get(clauseKey);
         if (!spec) continue;
         const declared = specProfileFills(spec);
         if (declared.length === 0) continue;
-        const stored = profileValues[clauseId];
+        const stored = profileValues[clauseKey];
         if (!stored || Object.keys(stored).length === 0) continue;
         const authored = Object.fromEntries(
             Object.entries(stored).filter(([k, v]) => declared.includes(k) && v !== undefined && v !== ""),
         );
         if (Object.keys(authored).length === 0) continue;
-        out = { ...out, [clauseId]: mergeUnderTemplate(out[clauseId], authored) };
+        out = { ...out, [clauseKey]: mergeUnderTemplate(out[clauseKey], authored) };
     }
     return out;
 }
@@ -399,19 +360,17 @@ export function fillProfileSections(
  * just wrote onto this same leaf (the seller's shipping convention, a
  * profile-sourced value); skipped when the order composes no dimweight clause,
  * has no packaged dimensions, or the seller declares no divisor — dimensional
- * weight then simply does not apply. Each section's spec is read at its
- * composed version (`clauseVersions`, sparse — absent = 1).
+ * weight then simply does not apply.
  */
 export function fillDimweightSection(
     clauses: ClauseFields,
     specs: SpecSource,
-    clauseVersions?: Readonly<Record<string, number>>,
 ): ClauseFields {
-    const dimId = composedClauseDeclaring(clauses, "billedMassGrams", specs, clauseVersions);
+    const dimId = composedClauseDeclaring(clauses, "billedMassGrams", specs);
     if (!dimId) return clauses;
     const divisor = Number(clauses[dimId]?.divisor ?? 0);
     if (!(divisor > 0)) return clauses;
-    const cargoId = composedClauseDeclaring(clauses, "massGrams", specs, clauseVersions);
+    const cargoId = composedClauseDeclaring(clauses, "massGrams", specs);
     const cargo = cargoId ? clauses[cargoId] : undefined;
     const l = Number(cargo?.lengthMm ?? 0), w = Number(cargo?.widthMm ?? 0), h = Number(cargo?.heightMm ?? 0);
     if (!(l > 0 && w > 0 && h > 0)) return clauses;
@@ -428,30 +387,24 @@ export function fillDimweightSection(
  * (seller master data), then the derived dimweight (reads the cargo and the
  * profile-folded divisor it just wrote). Each fill is a no-op when its clause
  * isn't composed, so the same call serves the root and every sub-order.
- * `clauseVersions` (sparse — absent = 1) is the order's composed versions,
- * read by every fill.
  */
 export function fillDerivedSections(
     clauses: ClauseFields,
     lines: AssemblyCheckoutLineItem[],
     specs: SpecSource,
     profileValues?: Readonly<Record<string, Record<string, unknown>>>,
-    clauseVersions?: Readonly<Record<string, number>>,
 ): ClauseFields {
     return fillDimweightSection(
         fillProfileSections(
             fillClassSections(
-                fillCargoSection(clauses, lines, specs, clauseVersions),
+                fillCargoSection(clauses, lines, specs),
                 lines,
                 specs,
-                clauseVersions,
             ),
             profileValues,
             specs,
-            clauseVersions,
         ),
         specs,
-        clauseVersions,
     );
 }
 
@@ -464,7 +417,7 @@ export interface PricingCatalog {
     address: string;
     items: CatalogItemMetadata[];
     /** The seller's PROFILE-authored clause values (seller master data:
-     *  dimweight's divisor, a declared credential id), keyed clauseId →
+     *  dimweight's divisor, a declared credential id), keyed clause key →
      *  field → value. Folded onto composed profile-sourced leaves at
      *  checkout by `fillProfileSections`. */
     profileClauseValues?: Readonly<Record<string, Record<string, unknown>>>;
@@ -518,11 +471,12 @@ export function planSubOrderSellers(
         .map((id) => byId.get(id) as TemplateAgreement);
     const cursor = new Map<string, number>();
     return ordered.map((node) => {
-        const nodeClauses = Object.keys(node.clauses);
-        const binding = assembly.counterpartyBindings.find((cb) => nodeClauses.includes(cb.clauseId));
+        const nodeClauses = Object.keys(node.clauses).map((k) => k.toLowerCase());
+        const binding = assembly.counterpartyBindings.find((cb) => nodeClauses.includes(cb.clauseKey.toLowerCase()));
         if (!binding || binding.addresses.length === 0) return { node, seller: null };
-        const c = cursor.get(binding.clauseId) ?? 0;
-        cursor.set(binding.clauseId, c + 1);
+        const bindingKey = binding.clauseKey.toLowerCase();
+        const c = cursor.get(bindingKey) ?? 0;
+        cursor.set(bindingKey, c + 1);
         return { node, seller: binding.addresses[Math.min(c, binding.addresses.length - 1)] as `0x${string}` };
     });
 }
@@ -594,7 +548,6 @@ export function resolveSubOrderPricing(args: {
     const resolver = getRateQuantityResolver(item.rateQuantitySource);
     const units = resolver?.({
         clauses: args.node.clauses,
-        clauseVersions: args.node.clauseVersions,
         checkoutQuantity: args.checkoutQuantity,
         specs: args.specs,
     }) ?? null;
@@ -649,11 +602,6 @@ export interface RateQuantityContext {
     /** The order's clause fields (template values + checkout fills), keyed by
      *  clause id — the same map the agreement commits. */
     clauses: ClauseFields;
-    /** The order's composed versions, clauseId → version — sparse, the
-     *  template's rule: an absent entry is version 1, never the highest
-     *  loaded. A resolver reads each spec at this version
-     *  (`composedClauseWhere`). */
-    clauseVersions?: Readonly<Record<string, number>>;
     /** The buyer's entered units for this order, when the surface collected
      *  one (the "checkout-quantity" source's input). */
     checkoutQuantity?: number;
@@ -684,7 +632,6 @@ function resolveOrderGeodistance(ctx: RateQuantityContext): number | null {
         ctx.specs,
         (spec) => specDeclaresField(spec, "geocodeStandard")
             && specDeclaresField(spec, "origin") && specDeclaresField(spec, "destination"),
-        ctx.clauseVersions,
     );
     if (!geoClauseId) return null;
     const section = ctx.clauses[geoClauseId];
@@ -708,7 +655,6 @@ function resolveBookingWindowHours(ctx: RateQuantityContext): number | null {
         ctx.clauses,
         ctx.specs,
         (spec) => specDeclaresField(spec, "windowStart") && specDeclaresField(spec, "windowEnd"),
-        ctx.clauseVersions,
     );
     if (!scheduleClauseId) return null;
     const section = ctx.clauses[scheduleClauseId];

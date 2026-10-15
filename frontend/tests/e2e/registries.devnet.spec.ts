@@ -17,9 +17,9 @@
  * the reference assemblies and registers the seeded members).
  */
 import { test, expect } from '@playwright/test';
+import { keccak256 } from 'viem';
 import {
     ASSEMBLY_REGISTRY_ABI, CLAUSE_REGISTRY_ABI, MEMBERS_REGISTRY_ABI,
-    canonicalContentHash, computeClauseKey,
 } from '@figaro-protocol/sdk';
 import { deriveAssemblySlug } from '@/lib/shared/assemblyTemplate';
 import { localPublicClient, readLocalDeploymentConfig, resolveIpfsURI } from './devnet-helpers';
@@ -32,20 +32,20 @@ test.describe('Registry explorer (devnet)', () => {
             address: registry, abi: CLAUSE_REGISTRY_ABI, eventName: 'ClauseRegistered', fromBlock: 0n,
         });
         const onChain = new Set(
-            registered.map((e) => (e.args as { clauseId?: string }).clauseId).filter((id): id is string => !!id),
+            registered.map((e) => (e.args as { clauseKey?: string }).clauseKey?.toLowerCase()).filter((key): key is string => !!key),
         );
         expect(onChain.size, 'the deploy registered clauses on-chain').toBeGreaterThan(0);
 
         await page.goto('/registries?family=clauses');
-        // Rows are `<li id="clause-<clauseId>">` — the anchor a clause's permalink,
-        // `/registries#clause-<id>`, lands on. Waiting for the first row proves the event read
+        // Rows are `<li id="clause-<clauseKey>">` — the anchor a clause's permalink,
+        // `/registries#clause-<key>`, lands on. Waiting for the first row proves the event read
         // resolved (not stuck on "Reading the registry…") and rows surfaced.
         const rows = page.locator('li[id^="clause-"]');
         await rows.first().waitFor({ state: 'visible', timeout: 30_000 });
-        const renderedIds = await rows.evaluateAll((els) => els.map((e) => e.id.replace(/^clause-/, '')));
-        expect(renderedIds.length).toBeGreaterThan(0);
-        for (const id of renderedIds) {
-            expect(onChain.has(id), `surfaced clause "${id}" is registered on-chain`).toBe(true);
+        const renderedKeys = await rows.evaluateAll((els) => els.map((e) => e.id.replace(/^clause-/, '')));
+        expect(renderedKeys.length).toBeGreaterThan(0);
+        for (const key of renderedKeys) {
+            expect(onChain.has(key.toLowerCase()), `surfaced clause "${key}" is registered on-chain`).toBe(true);
         }
         // Default sort is by article: each list sits under its article heading.
         await expect(rows.first().locator('xpath=ancestor::ul[1]/preceding-sibling::h3[1]')).toBeVisible();
@@ -72,61 +72,59 @@ test.describe('Registry explorer (devnet)', () => {
 
         // DISCOVERED, never named: the most recent registration whose pinned
         // document this gateway actually serves.
-        let subject: { clauseId: string; version: number; contentURI: string; contentHash: string; text: string } | null = null;
+        let subject: { clauseKey: `0x${string}`; contentURI: string; bytes: Uint8Array; text: string } | null = null;
         for (const event of [...registered].reverse()) {
-            const args = event.args as { clauseId?: string; version?: number | bigint; contentURI?: string; contentHash?: string };
-            if (!args.clauseId || !args.contentURI || !args.contentHash) continue;
+            const args = event.args as { clauseKey?: `0x${string}`; contentURI?: string };
+            if (!args.clauseKey || !args.contentURI) continue;
             const response = await fetch(resolveIpfsURI(args.contentURI));
             if (!response.ok) continue;
+            const bytes = new Uint8Array(await response.arrayBuffer());
             subject = {
-                clauseId: args.clauseId,
-                version: Number(args.version ?? 1),
+                clauseKey: args.clauseKey.toLowerCase() as `0x${string}`,
                 contentURI: args.contentURI,
-                contentHash: args.contentHash,
-                text: await response.text(),
+                bytes,
+                text: new TextDecoder().decode(bytes),
             };
             break;
         }
         expect(subject, 'at least one registered clause spec is served by this gateway').not.toBeNull();
         const found = subject!;
 
-        // The event's digest IS what the registry answers for this clause —
-        // the value `FigaroBatchVerifier` checks a batch against.
-        const anchored = await publicClient.readContract({
-            address: registry,
-            abi: CLAUSE_REGISTRY_ABI,
-            functionName: 'contentHashOf',
-            args: [computeClauseKey(found.clauseId, found.version)],
-        }) as `0x${string}`;
-        expect(anchored.toLowerCase(), 'the event digest is the registry\'s own answer').toBe(found.contentHash.toLowerCase());
-        // And the served bytes reproduce it — canonical form, per the note.
-        expect(
-            canonicalContentHash(JSON.parse(found.text)).toLowerCase(),
-            'the pinned document hashes to the anchor out-of-band',
-        ).toBe(anchored.toLowerCase());
+        // The key IS the anchor: the registry holds a live registration under
+        // it, and the served bytes hash to it — exactly as served, nothing
+        // re-canonicalized.
+        expect(await publicClient.readContract({
+            address: registry, abi: CLAUSE_REGISTRY_ABI, functionName: 'registered', args: [found.clauseKey],
+        }), 'the event key is a live registration').toBe(true);
+        expect(keccak256(found.bytes).toLowerCase(), 'the pinned bytes hash to the clause key out-of-band')
+            .toBe(found.clauseKey);
+        const spec = JSON.parse(found.text) as { clauseId: string; version: number };
 
         await page.goto('/registries?family=clauses');
-        const row = page.locator(`li#clause-${found.clauseId}`);
+        const row = page.locator(`li#clause-${found.clauseKey}`);
         await expect(row).toBeVisible({ timeout: 30_000 });
+        // The row's identity is the key; its spec's own name and version label it.
+        await expect(row).toContainText(found.clauseKey);
+        await expect(row).toContainText(`${spec.clauseId} v${spec.version}`);
 
         // The disclosure reads nothing until it is opened.
-        await expect(page.getByTestId(`stored-json-clause-${found.clauseId}`)).toHaveCount(0);
-        await row.getByTestId(`stored-toggle-clause-${found.clauseId}`).click();
+        await expect(page.getByTestId(`stored-json-clause-${found.clauseKey}`)).toHaveCount(0);
+        await row.getByTestId(`stored-toggle-clause-${found.clauseKey}`).click();
 
-        const shown = page.getByTestId(`stored-json-clause-${found.clauseId}`);
+        const shown = page.getByTestId(`stored-json-clause-${found.clauseKey}`);
         await expect(shown, 'the pinned document renders').toBeVisible({ timeout: 30_000 });
         // VERBATIM: the screen carries the same bytes the gateway served.
         expect(await shown.innerText(), 'the document renders as stored, byte for byte').toBe(found.text);
         // The hash beside it is the chain's, and the recomputation agrees.
-        await expect(page.getByTestId(`stored-hash-clause-${found.clauseId}`)).toHaveText(anchored);
-        await expect(page.getByTestId(`stored-verdict-clause-${found.clauseId}`)).toContainText('reproduces the anchor');
-        await expect(page.getByTestId(`stored-panel-clause-${found.clauseId}`)).toContainText('keccak256');
+        await expect(page.getByTestId(`stored-hash-clause-${found.clauseKey}`)).toHaveText(new RegExp(found.clauseKey, 'i'));
+        await expect(page.getByTestId(`stored-verdict-clause-${found.clauseKey}`)).toContainText('reproduces the anchor');
+        await expect(page.getByTestId(`stored-panel-clause-${found.clauseKey}`)).toContainText('keccak256');
 
         // THE PERMALINK: the row's own URL lands on it and opens the document
-        // without a click — what a reader who typed /clauses/<id> was after.
-        await expect(row.getByTestId(`permalink-clause-${found.clauseId}`)).toHaveAttribute('href', `#clause-${found.clauseId}`);
-        await page.goto(`/registries?family=clauses#clause-${found.clauseId}`, { waitUntil: 'domcontentloaded' });
-        await expect(page.getByTestId(`stored-json-clause-${found.clauseId}`), 'the permalink opens the stored document').toBeVisible({ timeout: 30_000 });
+        // without a click — what a reader who typed /clauses/<key> was after.
+        await expect(row.getByTestId(`permalink-clause-${found.clauseKey}`)).toHaveAttribute('href', `#clause-${found.clauseKey}`);
+        await page.goto(`/registries?family=clauses#clause-${found.clauseKey}`, { waitUntil: 'domcontentloaded' });
+        await expect(page.getByTestId(`stored-json-clause-${found.clauseKey}`), 'the permalink opens the stored document').toBeVisible({ timeout: 30_000 });
     });
 
     test('assemblies: an anchored assembly discovered from chain renders its row', async ({ page }) => {
@@ -164,18 +162,18 @@ test.describe('Registry explorer (devnet)', () => {
         // Pick a clause composed by SOME but not ALL assemblies — the facet must narrow.
         const counts = new Map<string, number>();
         for (const t of templates) for (const id of t.clauses) counts.set(id, (counts.get(id) ?? 0) + 1);
-        const clauseId = [...counts.entries()].find(([, n]) => n > 0 && n < templates.length)?.[0];
-        expect(clauseId, 'a clause composed by a strict subset of the anchored assemblies').toBeTruthy();
-        const composing = templates.filter((t) => t.clauses.has(clauseId!)).map((t) => t.slug).sort();
+        const clauseKey = [...counts.entries()].find(([, n]) => n > 0 && n < templates.length)?.[0];
+        expect(clauseKey, 'a clause composed by a strict subset of the anchored assemblies').toBeTruthy();
+        const composing = templates.filter((t) => t.clauses.has(clauseKey!)).map((t) => t.slug).sort();
 
         await page.goto('/registries?family=clauses');
-        const row = page.locator(`#clause-${clauseId}`);
+        const row = page.locator(`#clause-${clauseKey}`);
         await expect(row).toBeVisible({ timeout: 30_000 });
         await row.getByRole('button', { name: 'assemblies composing it' }).click();
 
         // The URL carries the facet INTO the assemblies family (the click's promise).
-        await expect(page).toHaveURL(new RegExp(`family=assemblies.*clause=${clauseId}|clause=${clauseId}.*family=assemblies`));
-        await expect(page.getByRole('navigation', { name: 'Breadcrumb' })).toContainText(`composing ${clauseId}`);
+        await expect(page).toHaveURL(new RegExp(`family=assemblies.*clause=${clauseKey}|clause=${clauseKey}.*family=assemblies`));
+        await expect(page.getByRole('navigation', { name: 'Breadcrumb' })).toContainText(`composing ${clauseKey}`);
         // Templates resolve from the local node; the row set resolves to exactly the composing slugs.
         await expect.poll(async () => {
             const ids = await page.locator('li[id^="assembly-"]').evaluateAll((els) => els.map((e) => e.id.replace(/^assembly-/, '')));

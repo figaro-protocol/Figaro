@@ -3,10 +3,12 @@
 /**
  * useClauseRegistry — readers for `ClauseRegistry.ClauseRegistered`.
  *
- * The on-chain event carries the readable `clauseId` and a `contentURI` (the
- * IPFS locator) directly — so both the human name and the spec location come
- * straight off the chain. No preimage table, no bundled spec set. `registeredBy` is
- * indexed. (Grouping is `block.design.article` in the spec JSON — no on-chain group field.)
+ * The on-chain event carries the clause KEY — `keccak256` of the spec's pinned
+ * canonical bytes — and a `contentURI` (the IPFS locator). The chain knows no
+ * name: the spec's own `clauseId` and `version` are read from the spec itself
+ * once `loadClauseSpec` has verified its bytes against the key. No bundled
+ * spec set. `registeredBy` is indexed. (Grouping is `block.design.article` in
+ * the spec JSON — no on-chain group field.)
  *
  * Two readers:
  *   - `useRegisteredClausesByWallet` — wallet-scoped (the designer's "clauses you
@@ -18,12 +20,11 @@
  */
 
 import { type Abi, type Log } from "viem";
-import { computeClauseKey, parseClauseRegistryLogs } from "@figaro-protocol/sdk";
+import { canonicalize, computeClauseKey, parseClauseRegistryLogs } from "@figaro-protocol/sdk";
 import { useAccount, usePublicClient, useWriteContract } from "wagmi";
 import { CONTRACTS, CLAUSE_REGISTRY_ABI } from "@/lib/kernel/contracts";
 import { publicClient } from "@/lib/shared/wagmi";
 import { DEFAULT_IPFS_SERVICE } from "@/lib/shared/ipfsService";
-import { canonicalContentHash } from "@/lib/shared/canonicalJson";
 import { isValidAddress } from "@/lib/shared/evm";
 import {
     createUseWithdrawStake,
@@ -43,17 +44,12 @@ function getClauseRegistry(): `0x${string}` | null {
 }
 
 export interface RegisteredClauseEvent {
-    /** `keccak256(abi.encode(clauseId, version))` — the on-chain key the
-     *  Attestation log and the withdraw fold use. SDK vocabulary
-     *  (`RegisteredClause.idHash`). */
-    idHash: `0x${string}`;
-    /** The bare human-readable clause name, read straight from the event (e.g.
-     *  "figaro-merchant-process"). SDK vocabulary (`RegisteredClause.clauseId`). */
-    clauseId: string;
-    version: number;
-    /** keccak256 of the canonical spec JSON — integrity digest. */
-    contentHash: `0x${string}`;
-    /** IPFS locator for the spec; `loadClauseSpec` fetches the spec from here. */
+    /** The clause key — `keccak256` of the spec bytes pinned at `contentURI`;
+     *  the key every leaf, attestation, usage count and withdrawal names. SDK
+     *  vocabulary (`RegisteredClause.clauseKey`). */
+    clauseKey: `0x${string}`;
+    /** IPFS locator for the spec; `loadClauseSpec` fetches the bytes from here
+     *  and checks they hash to `clauseKey`. */
     contentURI: string;
     registeredBy: `0x${string}`;
     blockNumber: bigint;
@@ -68,25 +64,19 @@ export interface RegisteredClauseEvent {
 
 /** Decode raw registry logs through the SDK parser and shape the UI rows.
  *  Shared by both readers so the row shape can't drift between them. The
- *  withdraw fold (`DepositWithdrawn` by idHash) rides the same parse. */
+ *  withdraw fold (`DepositWithdrawn` by clause key) rides the same parse. */
 function toRegisteredClauseEvents(registeredLogs: Log[], withdrawnLogs: Log[]): RegisteredClauseEvent[] {
     const withdrawnKeys = new Set(
-        parseClauseRegistryLogs(withdrawnLogs).withdrawn.map((w) => w.idHash.toLowerCase()),
+        parseClauseRegistryLogs(withdrawnLogs).withdrawn.map((w) => w.clauseKey.toLowerCase()),
     );
-    return parseClauseRegistryLogs(registeredLogs).registered.map((row) => {
-        const idHash = computeClauseKey(row.clauseId, row.version);
-        return {
-            idHash,
-            clauseId: row.clauseId,
-            version: row.version,
-            contentHash: row.contentHash,
-            contentURI: row.contentURI,
-            registeredBy: row.registeredBy,
-            blockNumber: BigInt(row.blockNumber),
-            transactionHash: row.transactionHash ?? "0x",
-            stakeWithdrawn: withdrawnKeys.has(idHash.toLowerCase()),
-        };
-    });
+    return parseClauseRegistryLogs(registeredLogs).registered.map((row) => ({
+        clauseKey: row.clauseKey.toLowerCase() as `0x${string}`,
+        contentURI: row.contentURI,
+        registeredBy: row.registeredBy,
+        blockNumber: BigInt(row.blockNumber),
+        transactionHash: row.transactionHash ?? "0x",
+        stakeWithdrawn: withdrawnKeys.has(row.clauseKey.toLowerCase()),
+    }));
 }
 
 /** The one paired (ClauseRegistered + DepositWithdrawn) cached scan behind
@@ -137,22 +127,20 @@ export function useAllRegisteredClauses() {
 export function clauseRegisterRevertMessage(
     errorName: string | undefined,
     args: readonly unknown[] | undefined,
-    clauseId: string,
+    clauseLabel: string,
 ): string | null {
     switch (errorName) {
         case "AlreadyRegistered":
-            return `"${clauseId}" is already registered at this version. A clause's identity is (name, version) and registration is first-write-wins and immutable, so the same (name, version) always maps to one binding. Bump the spec's version to register a new one, or adopt the existing clause.`;
+            return `"${clauseLabel}" is already registered: these exact spec bytes hash to a clause key the registry holds. A clause's key is the hash of its spec and registration is first-write-wins and immutable, so the same spec always maps to one binding. Adopt the existing clause, or change the spec to register a different one.`;
         case "WrongDeposit": {
             const provided = (args?.[0] as bigint | undefined)?.toString() ?? "?";
             const required = (args?.[1] as bigint | undefined)?.toString() ?? "?";
             return `Registration stake mismatch (provided ${provided} wei, required ${required} wei). The stake amount changed between the read and the send — retry.`;
         }
-        case "EmptyClauseId":
-            return "The spec has an empty clauseId.";
+        case "ZeroClauseKey":
+            return "Computed a zero clause key — the spec document is empty or malformed.";
         case "EmptyContentURI":
             return "The IPFS pin returned an empty URI.";
-        case "ZeroContentHash":
-            return "Computed an empty content hash — the spec document is empty or malformed.";
         default:
             return null;
     }
@@ -167,9 +155,9 @@ export const clauseWithdrawRevertMessage = withdrawRevertMessage("clause");
  *  pure register-message mapper; falls through to the original error.
  *  Internal — the pure `clauseRegisterRevertMessage` above is the unit-tested
  *  surface. */
-function translateClauseRegisterRevert(err: unknown, clauseId: string): Error {
+function translateClauseRegisterRevert(err: unknown, clauseLabel: string): Error {
     return translateContractRevert(err, (errorName, args) =>
-        clauseRegisterRevertMessage(errorName, args, clauseId));
+        clauseRegisterRevertMessage(errorName, args, clauseLabel));
 }
 
 // ── Write hooks ──────────────────────────────────────────────────────────────
@@ -179,21 +167,22 @@ function translateClauseRegisterRevert(err: unknown, clauseId: string): Error {
  *  `/clauses` inventory where the clause now appears. */
 export interface RegisterClauseOutcome {
     hash: `0x${string}`;
+    /** The spec's own presentation fields — what a receipt shows. */
     clauseId: string;
     version: number;
-    /** `keccak256(abi.encode(clauseId, version))` — the on-chain key. */
-    idHash: `0x${string}`;
+    /** `keccak256` of the pinned canonical bytes — the on-chain key. */
+    clauseKey: `0x${string}`;
     contentURI: string;
 }
 
 /**
  * Register a clause on `ClauseRegistry.registerClause` (payable). Mirrors the
- * assembly publish flow (`usePublishAssembly`) for clauses: hash the RAW spec
- * document over the canonical form (INCLUDING `block` — the on-chain
- * `contentHash` covers it, so re-serializing a parsed spec would drop `block`
- * and change the hash), pin the raw document to IPFS, read the registry's
- * deposit ON DEMAND, simulate to surface a typed revert before opening the
- * wallet, send, then wait for a `success` receipt.
+ * assembly publish flow (`usePublishAssembly`) for clauses: pin the RAW spec
+ * document's CANONICAL bytes (`canonicalize` — INCLUDING `block`; re-serializing
+ * a parsed spec would drop `block` and change the bytes), take the clause key
+ * as `keccak256` of exactly those bytes (`computeClauseKey`), read the
+ * registry's stake ON DEMAND, simulate to surface a typed revert before
+ * opening the wallet, send, then wait for a `success` receipt.
  *
  * The caller validates well-formedness via `@figaro-protocol/sdk/clauses`
  * (`parseClauseSpec`) BEFORE calling this — the same off-chain gate that runs
@@ -216,14 +205,15 @@ export function useRegisterClause() {
 
         const clauseId = rawSpec.clauseId as string;
         const version = Number(rawSpec.version);
-        const idHash = computeClauseKey(clauseId, version);
 
-        // Digest over the CANONICAL form (sorted keys) of the RAW document —
-        // the convention populate-clauses.mjs anchors and loadClauseSpec
-        // verifies after fetch. Pin the raw document (verification
-        // re-canonicalizes, so the pinned byte order is irrelevant).
-        const contentHash = canonicalContentHash(rawSpec);
-        const { uri } = await DEFAULT_IPFS_SERVICE.publishJSON(rawSpec);
+        // The key is keccak256 of the bytes pinned, and a reader checks the
+        // bytes it fetches against it, so the bytes pinned are exactly the
+        // canonical form (sorted keys, no whitespace) the key is computed over
+        // — the convention populate-clauses.mjs pins too.
+        const bytes = canonicalize(rawSpec);
+        const clauseKey = computeClauseKey(rawSpec);
+        const cid = await DEFAULT_IPFS_SERVICE.pinBlob(new Blob([bytes], { type: "application/json" }));
+        const uri = DEFAULT_IPFS_SERVICE.buildURI(cid);
 
         // No reward tag is anchored: the 600M reward is UNIFORM
         // — every clause and assembly scores on its real usage
@@ -243,13 +233,13 @@ export function useRegisterClause() {
             address: registry,
             abi: CLAUSE_REGISTRY_ABI as Abi,
             functionName: "registerClause",
-            args: [clauseId, BigInt(version), contentHash, uri],
+            args: [clauseKey, uri],
             value: deposit,
             account: address,
-            translateRevert: (err) => translateClauseRegisterRevert(err, clauseId),
+            translateRevert: (err) => translateClauseRegisterRevert(err, `${clauseId}@${version}`),
             failureMessage: "The clause was not registered.",
         });
-        return { hash: txHash, clauseId, version, idHash, contentURI: uri };
+        return { hash: txHash, clauseId, version, clauseKey, contentURI: uri };
     }
 
     return { register, isPending };

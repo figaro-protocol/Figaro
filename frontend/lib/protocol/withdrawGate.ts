@@ -45,7 +45,7 @@ import { fetchAgreement } from "@/lib/kernel/agreementFetch";
 import { isValidAddress } from "@/lib/shared/evm";
 
 export type WithdrawClauseOrAssembly =
-    | { kind: "clause"; clauseId: string }
+    | { kind: "clause"; clauseKey: `0x${string}` }
     | { kind: "assembly"; template: AssemblyTemplate };
 
 /** Read every in-flight order off-chain, then resolve each to its committed
@@ -92,7 +92,7 @@ export function useWithdrawGate(clauseOrAssembly: WithdrawClauseOrAssembly | nul
     const clauseOrAssemblyKey = useMemo(() => {
         if (!clauseOrAssembly) return null;
         return clauseOrAssembly.kind === "clause"
-            ? `clause:${clauseOrAssembly.clauseId}`
+            ? `clause:${clauseOrAssembly.clauseKey}`
             : `assembly:${templateCompositionHash(clauseOrAssembly.template)}`;
     }, [clauseOrAssembly]);
 
@@ -111,7 +111,7 @@ export function useWithdrawGate(clauseOrAssembly: WithdrawClauseOrAssembly | nul
                 if (canceled) return;
                 setGate(
                     clauseOrAssembly.kind === "clause"
-                        ? deriveClauseWithdrawGate(clauseOrAssembly.clauseId, agreements)
+                        ? deriveClauseWithdrawGate(clauseOrAssembly.clauseKey, agreements)
                         : deriveAssemblyWithdrawGate(clauseOrAssembly.template, agreements),
                 );
                 setIsLoading(false);

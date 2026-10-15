@@ -16,6 +16,7 @@
 
 import {
     asAddress,
+    asClauseKey,
     asBoolean,
     asEnum,
     asOptionalNumber,
@@ -102,7 +103,7 @@ export interface CatalogItemMetadata {
     /**
      * Catalog-sourced clause values — product master data authored per item
      * for clauses that declare `block.checkout.catalogueFills` (freight class, hazmat,
-     * cold-chain, …). Keyed by clauseId → the clause's content field values
+     * cold-chain, …). Keyed by clause key → the clause's content field values
      * (the same `{clause, data}` shape as an agreement section's `data`).
      * Generic and open-world: no clause is named here; the authoring form and
      * the checkout fold both derive from the registered clause specs, so a new
@@ -114,7 +115,7 @@ export interface CatalogItemMetadata {
     /**
      * The DATA this item sells, when the item is a data-market listing —
      * one of the member's own declared data offers (assembly
-     * compositionHash × clauseId × the posture the member traded on).
+     * compositionHash × clauseKey × the posture the member traded on).
      * The disclosure policy on the profile declares the TERMS (offered,
      * to whom, from when); this reference is where that class gets its
      * PRICE, through the ordinary price fields above. Absent for every
@@ -122,7 +123,7 @@ export interface CatalogItemMetadata {
      */
     dataSold?: {
         compositionHash: `0x${string}`;
-        clauseId: string;
+        clauseKey: `0x${string}`;
         posture: "buyer" | "seller";
     };
 }
@@ -209,13 +210,13 @@ function parseOptionalDataSold(
     }
     return {
         compositionHash,
-        clauseId: asString(record.clauseId, `${path}.clauseId`),
+        clauseKey: asClauseKey(record.clauseKey, `${path}.clauseKey`),
         posture: asEnum(record.posture, DATA_SOLD_POSTURES, `${path}.posture`),
     };
 }
 
 /**
- * Parse the catalog-sourced clause-value map — a `Record<clauseId, Record<field, unknown>>`.
+ * Parse the catalog-sourced clause-value map — a `Record<clauseKey, Record<field, unknown>>`.
  * Structural only: the outer shape is a record of records; the inner field
  * values are validated against each clause's registered spec (off-chain) at
  * authoring / read time, not here (this parser has no spec cache). Field
@@ -228,8 +229,8 @@ function parseClauseValues(
     if (value === undefined) return undefined;
     const record = asRecord(value, path);
     const out: Record<string, Record<string, unknown>> = {};
-    for (const [clauseId, data] of Object.entries(record)) {
-        out[clauseId] = asRecord(data, `${path}.${clauseId}`);
+    for (const [clauseKey, data] of Object.entries(record)) {
+        out[asClauseKey(clauseKey, `${path} key ${clauseKey}`)] = asRecord(data, `${path}.${clauseKey}`);
     }
     return out;
 }

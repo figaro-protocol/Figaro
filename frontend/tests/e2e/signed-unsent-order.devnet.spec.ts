@@ -18,7 +18,13 @@
 // signed payload and its hand-off to the channel, both read from the page.
 import { test, expect } from './devnet-multi-test';
 import { mnemonicToAccount } from 'viem/accounts';
-import { holdIpfsApi, waitForConnected } from './devnet-helpers';
+import { holdIpfsApi, waitForConnected, keyOf, primeRegisteredClauseSpecs } from './devnet-helpers';
+
+// Clause keys are located by the names their specs carry (`keyOf`), over
+// the specs the chain registered — primed once per file.
+test.beforeAll(async () => {
+    await primeRegisteredClauseSpecs();
+});
 
 const ANVIL_MNEMONIC = 'test test test test test test test test test test test junk';
 const STATIONER = mnemonicToAccount(ANVIL_MNEMONIC, { addressIndex: 5 }).address;
@@ -37,9 +43,9 @@ test.describe('signed, not yet sent (devnet)', () => {
         await waitForConnected(page);
         // The point-of-sale reference's particulars: the buyer collects at the
         // counter; the geolocation endpoints carry jurisdiction, typed.
-        await page.locator('[data-testid^="checkout-field-"][data-testid$="-figaro-modalities-modality-pickup"]').first().check();
-        await page.locator('[data-testid^="checkout-field-"][data-testid$="-figaro-geolocation-origin"]').first().fill('9q8yyk');
-        await page.locator('[data-testid^="checkout-field-"][data-testid$="-figaro-geolocation-destination"]').first().fill('9q8yyk');
+        await page.locator(`[data-testid^="checkout-field-"][data-testid$="-${keyOf('figaro-modalities')}-modality-pickup"]`).first().check();
+        await page.locator(`[data-testid^="checkout-field-"][data-testid$="-${keyOf('figaro-geolocation')}-origin"]`).first().fill('9q8yyk');
+        await page.locator(`[data-testid^="checkout-field-"][data-testid$="-${keyOf('figaro-geolocation')}-destination"]`).first().fill('9q8yyk');
         const place = page.getByTestId('btn-place-order');
         await expect(place).toHaveText(/Place order/, { timeout: 30_000 });
         await place.click();

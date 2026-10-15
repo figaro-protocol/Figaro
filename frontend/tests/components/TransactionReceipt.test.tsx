@@ -17,7 +17,7 @@ describe("TransactionReceipt", () => {
                 headingClassName="text-base font-semibold"
                 prose={<>Anchored on <code data-testid="receipt-clause-id">figaro-widget</code>.</>}
                 rows={[
-                    { label: "Clause key (idHash)", value: "0xabc" },
+                    { label: "Clause key", value: "0xabc" },
                     { label: "Transaction", value: "0xdef" },
                 ]}
                 actions={<button type="button" data-testid="clause-register-again">Register another</button>}
@@ -29,7 +29,7 @@ describe("TransactionReceipt", () => {
         expect(screen.getByRole("heading", { name: "Registered." })).toBeInTheDocument();
         expect(screen.getByTestId("receipt-clause-id")).toHaveTextContent("figaro-widget");
         // Rows render as a definition list: one <dt>/<dd> pair per row.
-        expect(screen.getByText("Clause key (idHash)").tagName).toBe("DT");
+        expect(screen.getByText("Clause key").tagName).toBe("DT");
         expect(screen.getByText("0xabc").tagName).toBe("DD");
         expect(screen.getByText("Transaction").tagName).toBe("DT");
         expect(screen.getByText("0xdef").tagName).toBe("DD");

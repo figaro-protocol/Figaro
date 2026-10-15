@@ -16,6 +16,7 @@
  */
 
 import { isAddress } from "viem";
+import { isBytes32Hex } from "./types.js";
 
 export type UnknownRecord = Record<string, unknown>;
 
@@ -79,4 +80,14 @@ export function asAddress(value: unknown, path: string): `0x${string}` {
 export function asOptionalAddress(value: unknown, path: string): `0x${string}` | undefined {
     if (value === undefined) return undefined;
     return asAddress(value, path);
+}
+
+/** A clause key — the 32-byte keccak digest of the clause's pinned spec
+ *  (`computeClauseKey`). An authored document's clause NAMES resolve to keys
+ *  through `resolveAuthoredClauseKeys` before the document is published. */
+export function asClauseKey(value: unknown, path: string): `0x${string}` {
+    if (!isBytes32Hex(value)) {
+        throw new Error(`${path} must be a 32-byte clause key.`);
+    }
+    return value;
 }

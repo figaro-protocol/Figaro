@@ -44,7 +44,11 @@ contract UsageCounterHarness is UsageCounter {
     ) UsageCounter(_core, _members, _clauses, _assemblies, _batchVerifier, _minSellers, _periodEnd) {}
 
     function accrue(bytes32 clauseOrAssembly, uint8 period, bytes32 processId, address seller) external {
-        _accrue(clauseOrAssembly, period, processId, seller);
+        _accrue(KIND_CLAUSE, clauseOrAssembly, period, processId, seller);
+    }
+
+    function accrueAs(uint8 kind, bytes32 clauseOrAssembly, uint8 period, bytes32 processId, address seller) external {
+        _accrue(kind, clauseOrAssembly, period, processId, seller);
     }
 }
 
@@ -58,7 +62,8 @@ contract UsageCounterHarness is UsageCounter {
 ///         accumulate, whether the two resolution universes (direct,
 ///         proof-gated batch) combine the way `scoreOf` claims, whether a
 ///         period boundary is respected exactly, and whether one clause or assembly's
-///         bookkeeping can leak into another's. Five properties, symbolically,
+///         bookkeeping can leak into another's, or one kind's into the
+///         other's at the same key. Six properties, symbolically,
 ///         for ALL inputs in their domain — not the paths a concrete Foundry
 ///         test happened to walk:
 ///
@@ -99,6 +104,12 @@ contract UsageCounterHarness is UsageCounter {
 ///                                             unchanged, and the shared
 ///                                             `totalScoreIn` moves by EXACTLY
 ///                                             A's own score delta.
+///           6  kind isolation              — a record under the assembly
+///              (check_theKindsNeverShareASlot) kind, direct or batch, leaves
+///                                             every clause-kind slot at the
+///                                             same key empty, and the same
+///                                             process still counts once under
+///                                             the clause kind.
 ///
 ///         Halmos convention: `check_` prefix, not `test_`.
 ///
@@ -125,6 +136,11 @@ contract UsageCounterHarness is UsageCounter {
 ///         done in"). Both are deliberately isolated out via the permissive
 ///         mocks above so this file proves only the arithmetic layered on top.
 contract HalmosUsageCounter is Test {
+    /// @dev The arithmetic below is proved on the clause kind; the kinds share
+    ///      every line of it, and `check_theKindsNeverShareASlot` proves the
+    ///      two never touch each other's slots.
+    uint8 internal constant KIND_CLAUSE = 0;
+    uint8 internal constant KIND_ASSEMBLY = 1;
     bytes32 internal constant PROVENANCE_LEAF = keccak256("figaro-agreement-provenance");
     uint64 internal constant P0_END = 1_000_000;
     uint64 internal constant P1_END = 2_000_000;
@@ -199,7 +215,7 @@ contract HalmosUsageCounter is Test {
         view
         returns (Snapshot memory s)
     {
-        (s.c, s.d, s.score) = counter.accrualOf(clauseOrAssembly, period);
+        (s.c, s.d, s.score) = counter.accrualOf(KIND_CLAUSE, clauseOrAssembly, period);
         s.total = counter.totalScoreIn(period);
     }
 
@@ -226,6 +242,9 @@ contract HalmosUsageCounter is Test {
     /// is invisible to `scoreOf`, to any indexer, and to `UsageCounterTest`'s
     /// own concrete fixtures unless they happen to probe this exact sequence.
     function check_batchAccrualReplacesNeverAdds(bytes32 clauseOrAssembly, address seller, bool grow) public {
+        // The reserved provenance leaf is skipped on the batch path by design
+        // (`check_theKindsNeverShareASlot` and UsageCounterTest cover it).
+        vm.assume(clauseOrAssembly != PROVENANCE_LEAF);
         UsageCounterHarness counter = _deploy();
         vm.warp(P0_END - 1000); // deterministic: period 0 is open
 
@@ -233,12 +252,14 @@ contract HalmosUsageCounter is Test {
         sellers[0] = seller;
 
         UsageCounter.BatchAccrual[] memory first = new UsageCounter.BatchAccrual[](1);
-        first[0] = UsageCounter.BatchAccrual(clauseOrAssembly, 2, 2);
+        first[0] = UsageCounter.BatchAccrual(clauseOrAssembly, KIND_CLAUSE, 2, 2);
         counter.applyBatchAccrual(0, PROVENANCE_LEAF, first, sellers);
 
-        (uint64 c1, uint64 d1,) = counter.batchAccrualOf(clauseOrAssembly, 0);
-        assertEq(c1, 2);
-        assertEq(d1, 2);
+        {
+            (uint64 c1, uint64 d1,) = counter.batchAccrualOf(KIND_CLAUSE, clauseOrAssembly, 0);
+            assertEq(c1, 2);
+            assertEq(d1, 2);
+        }
 
         // A non-decreasing cumulative update — required by `AccrualWentBackwards`
         // — that is either equal to (grow=false) or strictly ahead of
@@ -247,10 +268,10 @@ contract HalmosUsageCounter is Test {
         uint64 d2Target = grow ? 3 : 2;
 
         UsageCounter.BatchAccrual[] memory second = new UsageCounter.BatchAccrual[](1);
-        second[0] = UsageCounter.BatchAccrual(clauseOrAssembly, c2Target, d2Target);
+        second[0] = UsageCounter.BatchAccrual(clauseOrAssembly, KIND_CLAUSE, c2Target, d2Target);
         counter.applyBatchAccrual(0, PROVENANCE_LEAF, second, sellers);
 
-        (uint64 c2, uint64 d2, uint256 score2) = counter.batchAccrualOf(clauseOrAssembly, 0);
+        (uint64 c2, uint64 d2, uint256 score2) = counter.batchAccrualOf(KIND_CLAUSE, clauseOrAssembly, 0);
 
         assertEq(c2, c2Target, "c is the cumulative value just proved, not c1 + c2Target");
         assertEq(d2, d2Target, "d is the cumulative value just proved, not d1 + d2Target");
@@ -288,15 +309,15 @@ contract HalmosUsageCounter is Test {
             address[] memory sellers = new address[](1);
             sellers[0] = seller;
             UsageCounter.BatchAccrual[] memory accr = new UsageCounter.BatchAccrual[](1);
-            accr[0] = UsageCounter.BatchAccrual(clauseOrAssembly, 3, 2);
+            accr[0] = UsageCounter.BatchAccrual(clauseOrAssembly, KIND_CLAUSE, 3, 2);
             counter.applyBatchAccrual(0, PROVENANCE_LEAF, accr, sellers);
         }
 
-        (,, uint256 directScore) = counter.accrualOf(clauseOrAssembly, 0);
-        (,, uint256 batchScore) = counter.batchAccrualOf(clauseOrAssembly, 0);
+        (,, uint256 directScore) = counter.accrualOf(KIND_CLAUSE, clauseOrAssembly, 0);
+        (,, uint256 batchScore) = counter.batchAccrualOf(KIND_CLAUSE, clauseOrAssembly, 0);
 
         assertEq(
-            counter.scoreOf(clauseOrAssembly, 0),
+            counter.scoreOf(KIND_CLAUSE, clauseOrAssembly, 0),
             directScore + batchScore,
             "the two universes only ever meet by ADDITION"
         );
@@ -340,21 +361,21 @@ contract HalmosUsageCounter is Test {
         address[] memory sellers = new address[](1);
         sellers[0] = seller;
         UsageCounter.BatchAccrual[] memory accr = new UsageCounter.BatchAccrual[](1);
-        accr[0] = UsageCounter.BatchAccrual(clauseOrAssembly, 4, 2);
+        accr[0] = UsageCounter.BatchAccrual(clauseOrAssembly, KIND_CLAUSE, 4, 2);
 
         // Claiming period 1 while period 0 is open must revert.
         (bool wrongOk,) =
             address(counter).call(abi.encodeCall(UsageCounter.applyBatchAccrual, (1, PROVENANCE_LEAF, accr, sellers)));
         assertFalse(wrongOk, "a batch cannot land in a period the chain has not opened");
 
-        (,, uint256 otherBefore) = counter.batchAccrualOf(clauseOrAssembly, 1);
+        (,, uint256 otherBefore) = counter.batchAccrualOf(KIND_CLAUSE, clauseOrAssembly, 1);
         assertEq(otherBefore, 0, "the rejected write touched nothing");
 
         // The correct period succeeds...
         counter.applyBatchAccrual(0, PROVENANCE_LEAF, accr, sellers);
 
         // ...and period 1's slot for the SAME clause or assembly is untouched.
-        (,, uint256 otherAfter) = counter.batchAccrualOf(clauseOrAssembly, 1);
+        (,, uint256 otherAfter) = counter.batchAccrualOf(KIND_CLAUSE, clauseOrAssembly, 1);
         assertEq(otherAfter, otherBefore, "recording in period 0 never touches period 1's slot");
     }
 
@@ -408,8 +429,8 @@ contract HalmosUsageCounter is Test {
         view
         returns (Isolation memory s)
     {
-        (s.bc, s.bd, s.bs) = counter.accrualOf(clauseOrAssemblyB, 0);
-        (s.bbc, s.bbd, s.bbs) = counter.batchAccrualOf(clauseOrAssemblyB, 0);
+        (s.bc, s.bd, s.bs) = counter.accrualOf(KIND_CLAUSE, clauseOrAssemblyB, 0);
+        (s.bbc, s.bbd, s.bbs) = counter.batchAccrualOf(KIND_CLAUSE, clauseOrAssemblyB, 0);
         s.total = counter.totalScoreIn(0);
     }
 
@@ -428,12 +449,52 @@ contract HalmosUsageCounter is Test {
             address[] memory sellers = new address[](1);
             sellers[0] = seller;
             UsageCounter.BatchAccrual[] memory accr = new UsageCounter.BatchAccrual[](1);
-            accr[0] = UsageCounter.BatchAccrual(clauseOrAssemblyA, 3, 2);
+            accr[0] = UsageCounter.BatchAccrual(clauseOrAssemblyA, KIND_CLAUSE, 3, 2);
             counter.applyBatchAccrual(0, PROVENANCE_LEAF, accr, sellers);
-            (,, scoreDelta) = counter.batchAccrualOf(clauseOrAssemblyA, 0); // from zero, so delta == score
+            (,, scoreDelta) = counter.batchAccrualOf(KIND_CLAUSE, clauseOrAssemblyA, 0); // from zero, so delta == score
         } else {
             counter.accrue(clauseOrAssemblyA, 0, processId, seller);
-            (,, scoreDelta) = counter.accrualOf(clauseOrAssemblyA, 0);
+            (,, scoreDelta) = counter.accrualOf(KIND_CLAUSE, clauseOrAssemblyA, 0);
         }
+    }
+
+    // ── 6. The kinds never share a slot ──────────────────────────────
+
+    /// A record under the ASSEMBLY kind — direct or batch — leaves every
+    /// CLAUSE-kind slot at the same key untouched: no count, no score, no
+    /// counted process. The same process then still counts once under the
+    /// clause kind. This is what keeps a stake in one family at an assembly's
+    /// bytes from earning the assembly's accrual.
+    function check_theKindsNeverShareASlot(bytes32 key, bytes32 processId, address seller, bool viaBatch) public {
+        vm.assume(key != PROVENANCE_LEAF);
+        vm.warp(P0_END - 1000);
+        UsageCounterHarness counter = _deploy();
+
+        if (viaBatch) {
+            address[] memory sellers = new address[](1);
+            sellers[0] = seller;
+            UsageCounter.BatchAccrual[] memory accr = new UsageCounter.BatchAccrual[](1);
+            accr[0] = UsageCounter.BatchAccrual(key, KIND_ASSEMBLY, 3, 2);
+            counter.applyBatchAccrual(0, PROVENANCE_LEAF, accr, sellers);
+        } else {
+            counter.accrueAs(KIND_ASSEMBLY, key, 0, processId, seller);
+        }
+
+        (uint64 c, uint64 d, uint256 score) = counter.accrualOf(KIND_CLAUSE, key, 0);
+        (uint64 bc, uint64 bd, uint256 bscore) = counter.batchAccrualOf(KIND_CLAUSE, key, 0);
+        assertEq(c, 0, "no clause-kind count");
+        assertEq(d, 0, "no clause-kind breadth");
+        assertEq(score, 0, "no clause-kind score");
+        assertEq(bc, 0, "no clause-kind batch count");
+        assertEq(bd, 0, "no clause-kind batch breadth");
+        assertEq(bscore, 0, "no clause-kind batch score");
+        assertEq(counter.scoreOf(KIND_CLAUSE, key, 0), 0, "the clause kind scores nothing of it");
+        assertFalse(
+            counter.processCounted(KIND_CLAUSE, key, processId), "the process is not counted for the clause kind"
+        );
+
+        counter.accrueAs(KIND_CLAUSE, key, 0, processId, seller);
+        (c,,) = counter.accrualOf(KIND_CLAUSE, key, 0);
+        assertEq(c, 1, "and the clause kind counts it on its own");
     }
 }

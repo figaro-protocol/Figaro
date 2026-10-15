@@ -22,6 +22,7 @@ import {
     resolveIpfsURI,
     seedRegisteredMember,
     memberProfileBindings,
+    keyOf,
 } from './devnet-helpers';
 import { ANVIL_ACCOUNTS, ANVIL_KEYS } from '../anvilAccounts';
 
@@ -36,7 +37,8 @@ export const CARRIER = key(18);
 export const CUSTOMS = key(20);
 export const INLAND = key(21);
 
-export const C = {
+/** The scenario's clauses by the names their specs carry. */
+const CLAUSE_NAMES = {
     cargo: 'figaro-cargo',
     incoterms: 'figaro-incoterms',
     custody: 'figaro-chain-of-custody',
@@ -54,6 +56,15 @@ export const C = {
     proximity: 'figaro-proximity-policy',
     consent: 'figaro-consent',
 } as const;
+
+/** The scenario's clause KEYS — each read locates its key by name over the
+ *  specs `primeRegisteredClauseSpecs` loaded from the chain (prime first). */
+export const C = Object.defineProperties(
+    {} as Record<keyof typeof CLAUSE_NAMES, Hex>,
+    Object.fromEntries(Object.entries(CLAUSE_NAMES).map(([role, name]) => [
+        role, { get: () => keyOf(name), enumerable: true },
+    ])),
+);
 
 /** Catalog prices per seller — fixed items; the chain total is their sum.
  *  COMMIT order (root first, then topological): shipper, inspector,
@@ -90,22 +101,22 @@ export async function findTradelensAssembly(): Promise<string | undefined> {
 }
 
 /** A checkout-view general-clause field control, suffix-matched (the testid is
- *  `checkout-field-<orderId>-<clauseId>-<field>[-<option>]`; order ids vary). */
-function checkoutFields(page: Page, clauseId: string, fieldPath: string) {
-    return page.locator(`[data-testid^="checkout-field-"][data-testid$="-${clauseId}-${fieldPath}"]`);
+ *  `checkout-field-<orderId>-<clauseKey>-<field>[-<option>]`; order ids vary). */
+function checkoutFields(page: Page, clauseKey: Hex, fieldPath: string) {
+    return page.locator(`[data-testid^="checkout-field-"][data-testid$="-${clauseKey}-${fieldPath}"]`);
 }
 
 /** Apply an action to EVERY order's control for a clause-field — several
  *  Tradelens orders share handoff/proximity/geolocation. */
 async function forEachCheckoutField(
     page: Page,
-    clauseId: string,
+    clauseKey: Hex,
     fieldPath: string,
     action: (control: Locator) => Promise<void>,
 ) {
-    const controls = checkoutFields(page, clauseId, fieldPath);
+    const controls = checkoutFields(page, clauseKey, fieldPath);
     const n = await controls.count();
-    expect(n, `at least one checkout control for ${clauseId}.${fieldPath}`).toBeGreaterThan(0);
+    expect(n, `at least one checkout control for ${clauseKey}.${fieldPath}`).toBeGreaterThan(0);
     for (let i = 0; i < n; i++) await action(controls.nth(i));
 }
 
@@ -152,7 +163,7 @@ export async function seedTradelensSellers(slug: string, token: Hex): Promise<vo
     const seed = async (
         who: { address: Hex }, keyIndex: number, name: string, itemName: string, price: string,
         itemProps?: Record<string, unknown>,
-        counterpartyBindings: Array<{ clauseId: string; addresses: string[] }> = [],
+        counterpartyBindings: Array<{ clauseKey: Hex; addresses: string[] }> = [],
     ) => {
         const { uri: catalogURI } = await pinJSONToIPFS({
             subjectAddress: who.address,
@@ -190,7 +201,7 @@ export async function seedTradelensSellers(slug: string, token: Hex): Promise<vo
     const conformant = async (): Promise<boolean> => {
         const bindings = await memberProfileBindings(SHIPPER.address as Hex);
         const b = bindings.find((x) => x.assemblySlug === slug);
-        if (!b || !(b.counterpartyBindings ?? []).some((cb) => cb.clauseId === C.merchant && cb.addresses.length === 3)) return false;
+        if (!b || !(b.counterpartyBindings ?? []).some((cb) => cb.clauseKey.toLowerCase() === C.merchant && cb.addresses.length === 3)) return false;
         // The cargo master data must ride the ITEM level (massGrams/volumeMl)
         // — the channel figaro-cargo folds from; a clauseValues copy does NOT
         // fold. Re-seed a stale catalog.
@@ -206,8 +217,8 @@ export async function seedTradelensSellers(slug: string, token: Hex): Promise<vo
     await seed(SHIPPER, 15, 'Meridian Exports', 'Containerized cargo (invoice)', PRICES.shipper,
         { massGrams: 12_000_000, volumeMl: 33_000_000 },
         [
-            { clauseId: C.merchant, addresses: [INSPECTOR.address, FORWARDER.address, CUSTOMS.address] },
-            { clauseId: C.courier, addresses: [CARRIER.address, INLAND.address] },
+            { clauseKey: C.merchant, addresses: [INSPECTOR.address, FORWARDER.address, CUSTOMS.address] },
+            { clauseKey: C.courier, addresses: [CARRIER.address, INLAND.address] },
         ]);
     await seed(INSPECTOR, 16, 'Veritas Inspection', 'Pre-shipment inspection', PRICES.inspector);
     await seed(FORWARDER, 17, 'Atlas Forwarding', 'Freight coordination', PRICES.forwarder);

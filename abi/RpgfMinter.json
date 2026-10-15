@@ -32,6 +32,32 @@
   },
   {
     "type": "function",
+    "name": "KIND_ASSEMBLY",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint8",
+        "internalType": "uint8"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "KIND_CLAUSE",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint8",
+        "internalType": "uint8"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "assemblies",
     "inputs": [],
     "outputs": [
@@ -54,8 +80,20 @@
       },
       {
         "name": "clausesOrAssemblies",
-        "type": "bytes32[]",
-        "internalType": "bytes32[]"
+        "type": "tuple[]",
+        "internalType": "struct RpgfMinter.ClauseOrAssemblyKey[]",
+        "components": [
+          {
+            "name": "kind",
+            "type": "uint8",
+            "internalType": "uint8"
+          },
+          {
+            "name": "key",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          }
+        ]
       }
     ],
     "outputs": [],
@@ -77,8 +115,20 @@
       },
       {
         "name": "clausesOrAssemblies",
-        "type": "bytes32[]",
-        "internalType": "bytes32[]"
+        "type": "tuple[]",
+        "internalType": "struct RpgfMinter.ClauseOrAssemblyKey[]",
+        "components": [
+          {
+            "name": "kind",
+            "type": "uint8",
+            "internalType": "uint8"
+          },
+          {
+            "name": "key",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          }
+        ]
       }
     ],
     "outputs": [
@@ -272,6 +322,11 @@
     "name": "DuplicateClauseOrAssembly",
     "inputs": [
       {
+        "name": "kind",
+        "type": "uint8",
+        "internalType": "uint8"
+      },
+      {
         "name": "clauseOrAssembly",
         "type": "bytes32",
         "internalType": "bytes32"
@@ -287,6 +342,11 @@
     "type": "error",
     "name": "NotAuthorOfRecord",
     "inputs": [
+      {
+        "name": "kind",
+        "type": "uint8",
+        "internalType": "uint8"
+      },
       {
         "name": "clauseOrAssembly",
         "type": "bytes32",
@@ -321,6 +381,17 @@
     "inputs": [
       {
         "name": "periodId",
+        "type": "uint8",
+        "internalType": "uint8"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "UnknownKind",
+    "inputs": [
+      {
+        "name": "kind",
         "type": "uint8",
         "internalType": "uint8"
       }

@@ -126,7 +126,7 @@ seller sign.</p>
 <div class="tsd-signature"><span class="tsd-kind-property">disclosurePolicy</span><span class="tsd-signature-symbol">?:</span> <a href="index.DisclosurePolicyEntry.html" class="tsd-signature-type tsd-kind-interface">DisclosurePolicyEntry</a><span class="tsd-signature-symbol">[]</span></div>
 <div class="tsd-comment tsd-typography"><p>Data-disclosure policy — the member's self-declared terms for the
 records they CO-PRODUCE inside bonded processes, one entry per
-(assembly compositionHash × clauseId × posture). See
+(assembly compositionHash × clauseKey × posture). See
 <code>DisclosurePolicyEntry</code> for the entry semantics.</p>
 <p>Default (field absent) is the paper-contract default: each party
 holds its own copy of a co-produced record. Absence of a policy
@@ -153,7 +153,7 @@ is NOT a policy of openness — nothing is offered, nothing breaks.</p>
 <div class="tsd-signature"><span class="tsd-kind-property">profileClauseValues</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">Record</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">,</span> <span class="tsd-signature-type">Record</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">,</span> <span class="tsd-signature-type">unknown</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">&gt;</span></div>
 <div class="tsd-comment tsd-typography"><p>PROFILE-authored clause values — the member's master data for any registered
 clause declaring <code>block.checkout.profileFills</code> (the member-level sibling of the
-catalog's per-item <code>clauseValues</code>): keyed clauseId → field → value,
+catalog's per-item <code>clauseValues</code>): keyed clauseKey → field → value,
 restricted by each spec's declared profile-authored subset. Examples:
 <code>figaro-dimweight</code>'s <code>divisor</code> (the member's shipping convention, e.g.
 ~5000 metric), <code>figaro-credential</code>'s <code>credentialId</code> (a declared license

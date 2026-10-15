@@ -133,12 +133,10 @@ export interface AttestationEvent {
 // is order-dependent within a block (see DiscoveryGraph), unlike the core
 // process events whose block-ordering suffices.
 
-/** ClauseRegistry `ClauseRegistered`. `clauseId` is the bare human name; the
- *  on-chain key is `keccak256(abi.encode(clauseId, version))` (ClauseRegistry.sol:146). */
+/** ClauseRegistry `ClauseRegistered`. `clauseKey` is the clause's identity,
+ *  `keccak256` of the spec's pinned canonical bytes (`computeClauseKey`). */
 export interface ClauseRegisteredEvent {
-    clauseId: string;
-    version: number;
-    contentHash: Hex;
+    clauseKey: Hex;
     contentURI: string;
     registeredBy: Address;
     blockNumber: number;
@@ -147,10 +145,9 @@ export interface ClauseRegisteredEvent {
     transactionHash: Hex | null;
 }
 
-/** ClauseRegistry `DepositWithdrawn`. `idHash` is the clause key, NOT the bare
- *  name — the withdraw path keys on `keccak256(abi.encode(clauseId, version))`. */
+/** ClauseRegistry `DepositWithdrawn`, keyed by the same clause key. */
 export interface ClauseWithdrawnEvent {
-    idHash: Hex;
+    clauseKey: Hex;
     registeredBy: Address;
     blockNumber: number;
     logIndex: number;
@@ -207,13 +204,13 @@ export interface AssemblyWithdrawnEvent {
 // the SDK stays viem-only and never fetches off-chain documents.
 
 export interface RegisteredClause {
-    clauseId: string;
-    version: number;
-    /** `keccak256(abi.encode(clauseId, version))` — the on-chain key. */
-    idHash: Hex;
-    contentHash: Hex;
+    /** The clause key — `keccak256` of the pinned spec bytes at `contentURI`;
+     *  a reader verifies the fetched bytes against it. */
+    clauseKey: Hex;
     contentURI: string;
     registeredBy: Address;
+    /** True once the registrant withdrew the stake (`DepositWithdrawn`). */
+    stakeWithdrawn: boolean;
 }
 
 export interface RegisteredMember {

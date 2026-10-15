@@ -45,6 +45,7 @@ import {
 } from "../src/agent/index.js";
 import type { FigaroAddresses } from "../src/types.js";
 import { ANVIL_URL, anvilReachable } from "./batchHarness.js";
+import { keyOf } from "./specFixtures.js";
 
 // ── Skip unless Anvil is reachable ──────────────────────────────────────────
 
@@ -290,18 +291,18 @@ describe.skipIf(SKIP)("SDK Integration (Anvil)", () => {
         //       ceiling; the priced fields name the buyer's OWN clause. ──
         const chainNow = (await publicClient.getBlock({ blockTag: "latest" })).timestamp;
         const template: AssemblyTemplate = {
-            agreements: [{ id: "order-0", clauses: { "figaro-commerce": {}, "figaro-topology": { parentOrderHashes: [] } } }],
+            agreements: [{ id: "order-0", clauses: { [keyOf("figaro-commerce")]: {}, [keyOf("figaro-topology")]: { parentOrderHashes: [] } } }],
         };
         const pricedFields = [
-            { clause: "figaro-commerce", path: "payment" },
-            { clause: "figaro-commerce", path: "lineItems.0.unitPrice" },
+            { clause: keyOf("figaro-commerce"), path: "payment" },
+            { clause: keyOf("figaro-commerce"), path: "lineItems.0.unitPrice" },
         ];
         const requestFor = (candidate: Address) => buildQuoteRequest({
             template, buyer: buyerAccount.address, seller: candidate, currency: tokenAddress,
             ceiling: CEILING, chainId: 31337, core: coreAddress, pricedFields,
             deadline: chainNow + 3600n,
             overrides: {
-                "figaro-commerce": {
+                [keyOf("figaro-commerce")]: {
                     currency: tokenAddress, payment: "0",
                     lineItems: [{ itemId: "job", name: "Bespoke job", quantity: 1, unitPrice: "0" }],
                 },

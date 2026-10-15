@@ -23,15 +23,15 @@
  *     substance is withheld, and the family renders FINGERPRINT-ONLY.
  *
  * Asserted, every expectation derived OUT-OF-BAND (viem event scans, token
- * contract reads, gateway round-trips, `computeClauseKey` over the REGISTERED
- * specs) — never from the screen that claims to have written it:
+ * contract reads, gateway round-trips, the REGISTERED specs loaded under their
+ * keys) — never from the screen that claims to have written it:
  *
  *   - market shape: the seeded assembly's row shows exactly the process /
  *     order / pair counts and the committed + resolved volume the chain
  *     reports for the processes whose PUBLISHED provenance decodes to its
  *     compositionHash;
- *   - overlays: the expected row keys are computed with `computeClauseKey`
- *     from the registered specs; every rendered row's key exists on chain;
+ *   - overlays: the expected row keys are the registrations' own keys (the
+ *     hash of each pinned spec, verified on load); every rendered row's key exists on chain;
  *     the geo family shows its out-of-band decoded count, the data-terms
  *     family shows fingerprint-only (its refs verified UNSERVED at the
  *     gateway);
@@ -117,7 +117,6 @@ import {
     PROVENANCE_LEAF_KEY,
     buildSectionInclusionProof,
     calculateBonds,
-    computeClauseKey,
     decodeProvenanceContent,
     generateSalt,
     provenanceLeafAttestation,
@@ -128,7 +127,8 @@ import {
     type AssemblyTemplate,
     type ReconstructedOrder,
 } from '@figaro-protocol/sdk';
-import { decodeContentFromSpec, encodeContentFromSpec, parseClauseSpec, type ClauseSpec } from '@figaro-protocol/sdk/clauses';
+import { decodeContentFromSpec, encodeContentFromSpec, type ClauseSpec } from '@figaro-protocol/sdk/clauses';
+import { getClauseSpec } from '@/lib/shared/clauseSpecSource';
 import {
     projectResolutionGraph,
     projectValueFlow,
@@ -138,7 +138,7 @@ import {
     type VenueEvent,
 } from '@figaro-protocol/sdk/derive';
 import { formatToken } from '@/lib/shared/utils';
-import { LOCAL_ANVIL, RPC_URL, localPublicClient, readLocalDeploymentConfig } from './devnet-helpers';
+import { LOCAL_ANVIL, RPC_URL, localPublicClient, readLocalDeploymentConfig, keyOf, primeRegisteredClauseSpecs } from './devnet-helpers';
 import { ANVIL_KEYS } from '../anvilAccounts';
 import { CORE_ABI } from '@/lib/kernel/contracts';
 
@@ -158,11 +158,19 @@ const SURVEYOR_KEY = keccak256(stringToHex('data-explore.devnet.spec.ts:surveyor
 const CLIENT_KEY = keccak256(stringToHex('data-explore.devnet.spec.ts:client'));
 
 // The clauses this scenario attests (seed-time authoring inputs — the
-// ASSERTIONS never name them: expected overlay keys are computed out-of-band
-// with computeClauseKey over the registered specs).
-const GEO = 'figaro-geolocation';
-const DATA_TERMS = 'figaro-data-terms';
-const CREDENTIAL = 'figaro-credential';
+// ASSERTIONS never name them: each is located by its spec's name over the
+// registered specs, and its key is the registration's own).
+let GEO: Hex;
+let DATA_TERMS: Hex;
+let CREDENTIAL: Hex;
+test.beforeAll(async () => {
+    // Clause KEYS, located by the names their specs carry over the specs the
+    // chain registered — never a hardcoded key.
+    await primeRegisteredClauseSpecs();
+    GEO = keyOf('figaro-geolocation');
+    DATA_TERMS = keyOf('figaro-data-terms');
+    CREDENTIAL = keyOf('figaro-credential');
+});
 
 // CIDv1 [raw 0x55, keccak-256 0x1b, len 32], multibase base16 — appending the
 // fingerprint's hex yields the content address any reader derives from the
@@ -305,23 +313,18 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
         expect(assemblyName, 'the anchored template carries its registered display name').not.toBe('');
 
         // ── The REGISTERED specs (ClauseRegistered → IPFS — the same read
-        //    every consumer does). The expected overlay keys are DERIVED here
-        //    with computeClauseKey, never assumed. ──
-        const registrations = await publicClient.getContractEvents({
-            address: clauseRegistry, abi: CLAUSE_REGISTRY_ABI, eventName: 'ClauseRegistered', fromBlock: 0n,
-        });
-        const registeredSpec = async (clauseId: string): Promise<ClauseSpec> => {
-            const reg = registrations.filter((e) => e.args.clauseId === clauseId).pop();
-            expect(reg, `${clauseId} is anchored on ClauseRegistry`).toBeTruthy();
-            const cid = (reg!.args.contentURI as string).replace(/^ipfs:\/\//, '');
-            const parsed = parseClauseSpec(await (await fetch(`${IPFS_API}/api/v0/cat?arg=${cid}`, { method: 'POST' })).json());
-            if (!parsed.ok) throw new Error(`the registered ${clauseId} spec failed to parse`);
-            return parsed.spec;
+        //    every consumer does, primed before the test and verified against
+        //    their keys on load). Each overlay key IS the registration's key:
+        //    the hash of the bytes it pinned. ──
+        const registeredSpec = (clauseKey: Hex): ClauseSpec => {
+            const spec = getClauseSpec(clauseKey);
+            expect(spec, `${clauseKey} is anchored on ClauseRegistry and its pinned spec loads`).toBeTruthy();
+            return spec!;
         };
-        const geoSpec = await registeredSpec(GEO);
-        const termsSpec = await registeredSpec(DATA_TERMS);
-        const geoKey = computeClauseKey(geoSpec.clauseId, geoSpec.version);
-        const termsKey = computeClauseKey(termsSpec.clauseId, termsSpec.version);
+        const geoSpec = registeredSpec(GEO);
+        const termsSpec = registeredSpec(DATA_TERMS);
+        const geoKey = GEO;
+        const termsKey = DATA_TERMS;
 
         // ── ONE bonded process through the SDK's ONE template walk: the
         //    client (buyer) books the surveyor (seller); value legs asserted
@@ -336,13 +339,13 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
                 seller: surveyor.address,
                 payment: parseEther('1'),
                 overrides: {
-                    'figaro-commerce': {
+                    [keyOf('figaro-commerce')]: {
                         currency: token,
                         payment: parseEther('1').toString(),
                         lineItems: [{ itemId: 'survey-flight', name: 'Aerial survey flight', quantity: 1, unitPrice: parseEther('1').toString() }],
                     },
-                    'figaro-modalities': { modality: 'consume-onsite' },
-                    'figaro-schedule': { windowStart: '2026-09-15T09:00:00Z', windowEnd: '2026-09-15T13:00:00Z' },
+                    [keyOf('figaro-modalities')]: { modality: 'consume-onsite' },
+                    [keyOf('figaro-schedule')]: { windowStart: '2026-09-15T09:00:00Z', windowEnd: '2026-09-15T13:00:00Z' },
                     [GEO]: { geocodeStandard: 'geohash', origin: '9q8yyk', destination: '9q8yys' },
                     [CREDENTIAL]: {
                         credentialRegisterUri: 'https://uav-register.example/registrations{/id}',
@@ -396,12 +399,13 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
         const attestSection = async (opts: {
             verb: 'attestAsBuyer' | 'attestAsSeller';
             wallet: typeof clientWallet;
+            clauseKey: Hex;
             spec: ClauseSpec;
             publish: boolean;
         }) => {
-            const section = order.agreement.sections.find((s) => s.clause === opts.spec.clauseId);
+            const section = order.agreement.sections.find((s) => s.clause.toLowerCase() === opts.clauseKey.toLowerCase());
             expect(section, `the agreement commits a ${opts.spec.clauseId} section`).toBeTruthy();
-            const clauseKey = computeClauseKey(section!.clause, section!.version);
+            const clauseKey = section!.clause as Hex;
             const stage = 1;
             const content = encodeContentFromSpec(opts.spec, section!.data as Record<string, unknown>, { stage });
             const contentRef = keccak256(content);
@@ -459,10 +463,10 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
             'the provenance leaf attestation landed under the reserved key',
         ).toBe(true);
         // The seller's geo attestation — published: the decoded overlay leg.
-        const geoAttested = await attestSection({ verb: 'attestAsSeller', wallet: surveyorWallet, spec: geoSpec, publish: true });
+        const geoAttested = await attestSection({ verb: 'attestAsSeller', wallet: surveyorWallet, clauseKey: geoKey, spec: geoSpec, publish: true });
         expect(geoAttested.clauseKey).toBe(geoKey);
         // The seller's data-terms attestation — WITHHELD: fingerprint-only.
-        const termsAttested = await attestSection({ verb: 'attestAsSeller', wallet: surveyorWallet, spec: termsSpec, publish: false });
+        const termsAttested = await attestSection({ verb: 'attestAsSeller', wallet: surveyorWallet, clauseKey: termsKey, spec: termsSpec, publish: false });
         expect(termsAttested.clauseKey).toBe(termsKey);
 
         // ── RESOLVE: net value legs from the token contract. ──
@@ -1025,7 +1029,8 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
                         { name: 'period', type: 'uint8' }, { name: 'provenanceLeaf', type: 'bytes32' },
                         {
                             name: 'accruals', type: 'tuple[]', components: [
-                                { name: 'clauseOrAssembly', type: 'bytes32' }, { name: 'c', type: 'uint64' }, { name: 'd', type: 'uint64' },
+                                { name: 'clauseOrAssembly', type: 'bytes32' }, { name: 'kind', type: 'uint8' },
+                                { name: 'c', type: 'uint64' }, { name: 'd', type: 'uint64' },
                             ],
                         },
                         { name: 'sellers', type: 'address[]' },
@@ -1053,7 +1058,8 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
         { type: 'error', name: 'UsageAccrualHashMismatch', inputs: [] },
         { type: 'error', name: 'BatchTimestampOutOfRange', inputs: [{ name: 'committed', type: 'uint64' }, { name: 'current', type: 'uint64' }] },
         { type: 'error', name: 'PublicValuesLengthMismatch', inputs: [{ name: 'expected', type: 'uint256' }, { name: 'actual', type: 'uint256' }] },
-        { type: 'error', name: 'SpecBindingMismatch', inputs: [{ name: 'clauseId', type: 'bytes32' }, { name: 'anchored', type: 'bytes32' }, { name: 'proven', type: 'bytes32' }] },
+        { type: 'error', name: 'SpecBindingMismatch', inputs: [{ name: 'clauseId', type: 'bytes32' }, { name: 'proven', type: 'bytes32' }] },
+        { type: 'error', name: 'ClauseNotRegistered', inputs: [{ name: 'clauseId', type: 'bytes32' }] },
     ] as const;
 
     test('the batch-universe leg — one mock-verified settleBatch, and the overlay row folds both universes by ADDRESS', async ({ page }) => {
@@ -1079,27 +1085,20 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
         }
 
         // The REGISTERED geo spec (registry event → IPFS — the read every
-        // consumer does); its computed key is the family the row folds under.
-        const registrations = await publicClient.getContractEvents({
-            address: clauseRegistry, abi: CLAUSE_REGISTRY_ABI, eventName: 'ClauseRegistered', fromBlock: 0n,
-        });
-        const geoReg = registrations.filter((e) => e.args.clauseId === GEO).pop();
-        expect(geoReg, `${GEO} is anchored on ClauseRegistry — run populate-test-data first`).toBeTruthy();
-        const geoCid = (geoReg!.args.contentURI as string).replace(/^ipfs:\/\//, '');
-        const geoParsed = parseClauseSpec(await (await fetch(`${IPFS_API}/api/v0/cat?arg=${geoCid}`, { method: 'POST' })).json());
-        if (!geoParsed.ok) throw new Error(`the registered ${GEO} spec failed to parse`);
-        const geoSpec = geoParsed.spec;
-        const geoKey = computeClauseKey(geoSpec.clauseId, geoSpec.version);
+        // consumer does, primed before the test); its key is the family the
+        // row folds under.
+        const geoKey = GEO;
+        const geoSpec = getClauseSpec(geoKey);
+        expect(geoSpec, 'the geo clause is anchored on ClauseRegistry — run populate-test-data first').toBeTruthy();
+        expect(await publicClient.readContract({
+            address: clauseRegistry, abi: CLAUSE_REGISTRY_ABI, functionName: 'registered', args: [geoKey],
+        }), 'the registry holds a live registration under the geo key').toBe(true);
 
-        // The verifier's open-world gate: the spec binding must be the exact
-        // document the registry anchors for this clause key — read it live.
-        const specHash = await publicClient.readContract({
-            address: clauseRegistry,
-            abi: parseAbi(['function contentHashOf(bytes32) view returns (bytes32)']),
-            functionName: 'contentHashOf',
-            args: [geoKey],
-        });
-        expect(specHash, 'the registry anchors a content hash for the geo clause').not.toBe(zeroHash);
+        // The verifier's open-world gate: the spec binding names the exact
+        // document the proof validated against — and the clause key IS the
+        // hash of that document's pinned bytes, so both words of a binding
+        // are the key.
+        const specHash = geoKey;
 
         // A BATCH-ONLY process identity, fresh each run: batch-resolved trade
         // acquires no FigaroCore status and emits no FigaroCore event — the two
@@ -1113,7 +1112,7 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
         // on-chain contentRef IS the content address.
         const stage = 1;
         const content = encodeContentFromSpec(
-            geoSpec,
+            geoSpec!,
             { geocodeStandard: 'geohash', origin: '9q8yyk', destination: '9q8yys' },
             { stage },
         );
@@ -1212,7 +1211,7 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
             const bytes = await fetchWitnessBytes(e.args.contentRef as string);
             if (bytes === null) continue;
             try {
-                decodeContentFromSpec(geoSpec, bytes, { stage: Number(e.args.stage) });
+                decodeContentFromSpec(geoSpec!, bytes, { stage: Number(e.args.stage) });
                 geoDecoded += 1;
             } catch {
                 // undecodable bytes — fingerprint-only entry

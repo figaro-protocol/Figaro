@@ -31,8 +31,8 @@
  *   NEXT_PUBLIC_CLAUSE_REGISTRY   — falls back to frontend/.env.local
  *   NEXT_PUBLIC_ASSEMBLY_REGISTRY — falls back to frontend/.env.local
  *   SCAN_FROM_BLOCK               — first block to scan (default 0)
- *   WITHDRAW_CLAUSES              — csv of clauseId[@version] (default v1):
- *                                   build the manifest from these EXPLICIT ids
+ *   WITHDRAW_CLAUSES              — csv of clause keys (bytes32 hex):
+ *                                   build the manifest from these EXPLICIT keys
  *                                   instead of the event scan (public gateways'
  *                                   log indexes are load-balanced and flaky —
  *                                   state reads are not). WITHDRAW_ASSEMBLIES
@@ -45,7 +45,7 @@
 
 import { createPublicClient, createWalletClient, encodeFunctionData, formatEther, http } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
-import { CLAUSE_REGISTRY_ABI, ASSEMBLY_REGISTRY_ABI, computeClauseKey } from '@figaro-protocol/sdk';
+import { CLAUSE_REGISTRY_ABI, ASSEMBLY_REGISTRY_ABI, isBytes32Hex } from '@figaro-protocol/sdk';
 import {
     VAULT_ABI, ledgerWalletClient, readEnvLocal, registrarAccount, resolveChain, vaultExecute,
 } from './populate-clauses.mjs';
@@ -113,24 +113,27 @@ async function main() {
     const explicitAssemblies = (process.env.WITHDRAW_ASSEMBLIES ?? '').split(',').map((s) => s.trim()).filter(Boolean);
     const explicit = explicitClauses.length || explicitAssemblies.length;
     const clauseRows = explicit
-        ? explicitClauses.map((s) => { const [id, v] = s.split('@'); return { clauseId: id, version: BigInt(v ?? 1) }; })
+        ? explicitClauses.map((s) => {
+            if (!isBytes32Hex(s)) throw new Error(`WITHDRAW_CLAUSES: "${s}" is not a clause key (bytes32 hex)`);
+            return { key: s.toLowerCase() };
+        })
         : (await scanContractEvents(publicClient, {
             address: clauseRegistry, abi: CLAUSE_REGISTRY_ABI, eventName: 'ClauseRegistered',
         }, fromBlock))
             .filter((e) => String(e.args.registeredBy ?? '').toLowerCase() === actor)
-            .map((e) => ({ clauseId: e.args.clauseId, version: BigInt(e.args.version) }));
+            .map((e) => ({ key: e.args.clauseKey }));
     for (const r of clauseRows) {
-        const key = computeClauseKey(r.clauseId, r.version);
+        const key = r.key;
         const [registeredBy, withdrawn] = await publicClient.readContract({
             address: clauseRegistry, abi: CLAUSE_REGISTRY_ABI, functionName: 'depositOf', args: [key],
         });
         // Explicit ids are still gated by state: never withdraw what the actor
         // does not hold (the contract would revert; refusing here is cheaper).
-        if (registeredBy.toLowerCase() !== actor) { console.log(`  · clause ${r.clauseId} v${r.version} — not this actor's (registeredBy ${registeredBy}), skipped`); continue; }
-        if (withdrawn) { console.log(`  · clause ${r.clauseId} v${r.version} — already withdrawn, skipped`); continue; }
+        if (registeredBy.toLowerCase() !== actor) { console.log(`  · clause ${key} — not this actor's (registeredBy ${registeredBy}), skipped`); continue; }
+        if (withdrawn) { console.log(`  · clause ${key} — already withdrawn, skipped`); continue; }
         manifest.push({
             registry: clauseRegistry, abi: CLAUSE_REGISTRY_ABI, key, stake: clauseDeposit,
-            label: `clause ${r.clauseId} v${r.version}`,
+            label: `clause ${key}`,
         });
     }
 

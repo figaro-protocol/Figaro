@@ -38,9 +38,8 @@ the SAME commitment as both <code>role</code> and <code>target</code> — one st
 both args, not two distinct commitments.</p>
 </div></li>
 <li><span><span class="tsd-kind-parameter">clauseId</span>: <span class="tsd-signature-symbol">`</span><span class="tsd-signature-type">0x</span><span class="tsd-signature-symbol">${</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">`</span></span>
-<div class="tsd-comment tsd-typography"><p>The <code>computeClauseKey(clause, version)</code> bytes32 HASH — NOT
-the raw clause name that <code>buildSectionInclusionProof</code> takes as
-its <code>clauseKey</code>. Same value used as the merkle leaf id.</p>
+<div class="tsd-comment tsd-typography"><p>The section's clause key (<code>section.clause</code>) — the same
+bytes32 <code>buildSectionInclusionProof</code> takes and the merkle leaf id.</p>
 </div></li>
 <li><span><span class="tsd-kind-parameter">stage</span>: <span class="tsd-signature-type">number</span></span></li>
 <li><span><span class="tsd-kind-parameter">sectionHash</span>: <span class="tsd-signature-symbol">`</span><span class="tsd-signature-type">0x</span><span class="tsd-signature-symbol">${</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">`</span></span>
@@ -59,7 +58,7 @@ section. Never the content preimage.</p>
 </div></li></ul></div>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/agent.TxResult.html" class="tsd-signature-type tsd-kind-interface">TxResult</a><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/agent/autonomous.ts#L272">agent/autonomous.ts:272</a></li></ul></aside></div></li></ul></section></div>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/agent/autonomous.ts#L269">agent/autonomous.ts:269</a></li></ul></aside></div></li></ul></section></div>
 <div class="col-sidebar">
 <div class="page-menu">
 <div class="tsd-navigation settings">

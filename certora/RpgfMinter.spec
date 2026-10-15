@@ -18,7 +18,7 @@
 // Summarization choices, and why:
 //
 //   • `_isAuthor` (INTERNAL to RpgfMinter) is summarized directly to a ghost
-//     boolean per (clauseOrAssembly, account), the same idiom BatchVerifierTokenOps.spec
+//     boolean per (kind, clauseOrAssembly, account), the same idiom BatchVerifierTokenOps.spec
 //     uses for FigaroBatchVerifier's own internal helpers (_hashPositions et
 //     al.): an internal-function summary on the contract UNDER VERIFICATION,
 //     not a mock of an external dependency. This is deliberately NOT a
@@ -37,7 +37,7 @@
 //     real external calls to a contract not in the scene (UsageCounter is a
 //     large, independently-verified surface), so they go through the
 //     wildcard `_.` dispatch pattern to ghost reads — same shape as
-//     BatchVerifierTokenOps.spec's `_.balanceOf` / `_.contentHashOf`.
+//     BatchVerifierTokenOps.spec's `_.balanceOf` / `_.registered`.
 //     `counter.periodCount()` is called ONLY from RpgfMinter's constructor,
 //     which no rule below executes (parametric `method f` rules range over
 //     the ABI's external/public functions, never the constructor), so it is
@@ -59,10 +59,10 @@
 // `test_claimableRejectsDuplicatesToo` exists for the same reason — this
 // generalizes it to every input, not one example).
 
-ghost mapping(bytes32 => mapping(address => bool)) g_isAuthor;
+ghost mapping(uint8 => mapping(bytes32 => mapping(address => bool))) g_isAuthor;
 ghost mapping(uint8 => bool) g_periodClosed;
 ghost mapping(uint8 => uint256) g_totalScoreIn;
-ghost mapping(bytes32 => mapping(uint8 => uint256)) g_scoreOf;
+ghost mapping(uint8 => mapping(bytes32 => mapping(uint8 => uint256))) g_scoreOf;
 
 methods {
     // RpgfMinter's own storage getters — none read msg.sender/block.*, all envfree.
@@ -72,24 +72,24 @@ methods {
     function periodAmount(uint256) external returns (uint256) envfree;
     function minted(uint8) external returns (uint256) envfree;
     function claimed(uint8, address) external returns (bool) envfree;
-    function claimable(uint8, address, bytes32[]) external returns (uint256) envfree;
+    function claimable(uint8, address, RpgfMinter.ClauseOrAssemblyKey[]) external returns (uint256) envfree;
 
     // Eligibility gate — internal-function summary on the verified contract
     // itself. See the file header for why this boundary, not the registries.
-    function _isAuthor(bytes32 clauseOrAssembly, address account) internal returns (bool) => summarizeIsAuthor(clauseOrAssembly, account);
+    function _isAuthor(uint8 kind, bytes32 clauseOrAssembly, address account) internal returns (bool) => summarizeIsAuthor(kind, clauseOrAssembly, account);
 
     // UsageCounter surface — real contract out of scene; every call wildcard-
     // dispatched to a ghost read.
     function _.periodClosed(uint8 period) external => summarizePeriodClosed(period) expect (bool);
     function _.totalScoreIn(uint8 period) external => summarizeTotalScoreIn(period) expect (uint256);
-    function _.scoreOf(bytes32 clauseOrAssembly, uint8 period) external => summarizeScoreOf(clauseOrAssembly, period) expect (uint256);
+    function _.scoreOf(uint8 kind, bytes32 clauseOrAssembly, uint8 period) external => summarizeScoreOf(kind, clauseOrAssembly, period) expect (uint256);
 
     // FlorinToken.mint — no-op summary; see file header for the CEI argument.
     function _.mint(address, uint256) external => NONDET;
 }
 
-function summarizeIsAuthor(bytes32 clauseOrAssembly, address account) returns bool {
-    return g_isAuthor[clauseOrAssembly][account];
+function summarizeIsAuthor(uint8 kind, bytes32 clauseOrAssembly, address account) returns bool {
+    return g_isAuthor[kind][clauseOrAssembly][account];
 }
 
 function summarizePeriodClosed(uint8 period) returns bool {
@@ -100,8 +100,8 @@ function summarizeTotalScoreIn(uint8 period) returns uint256 {
     return g_totalScoreIn[period];
 }
 
-function summarizeScoreOf(bytes32 clauseOrAssembly, uint8 period) returns uint256 {
-    return g_scoreOf[clauseOrAssembly][period];
+function summarizeScoreOf(uint8 kind, bytes32 clauseOrAssembly, uint8 period) returns uint256 {
+    return g_scoreOf[kind][clauseOrAssembly][period];
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -139,7 +139,7 @@ rule mintedNeverExceedsPeriodBudget(uint8 periodId, method f) {
 // RULE 2: One claim per wallet per period (no double-claim)
 // ═══════════════════════════════════════════════════════════════════
 
-rule noDoubleClaimPerWalletPerPeriod(uint8 periodId, bytes32[] clausesOrAssemblies) {
+rule noDoubleClaimPerWalletPerPeriod(uint8 periodId, RpgfMinter.ClauseOrAssemblyKey[] clausesOrAssemblies) {
     env e;
     require claimed(periodId, e.msg.sender);
 
@@ -153,7 +153,7 @@ rule noDoubleClaimPerWalletPerPeriod(uint8 periodId, bytes32[] clausesOrAssembli
 // RULE 3: No claim while the period is open (periodEnd / periodClosed gating)
 // ═══════════════════════════════════════════════════════════════════
 
-rule cannotClaimWhilePeriodOpen(uint8 periodId, bytes32[] clausesOrAssemblies) {
+rule cannotClaimWhilePeriodOpen(uint8 periodId, RpgfMinter.ClauseOrAssemblyKey[] clausesOrAssemblies) {
     require !g_periodClosed[periodId];
 
     env e;
@@ -167,14 +167,15 @@ rule cannotClaimWhilePeriodOpen(uint8 periodId, bytes32[] clausesOrAssemblies) {
 // RULE 4: A duplicate clause-or-assembly in one claim call cannot increase the payout
 //
 // Matches the contract's ACTUAL mechanism: `_entitlement`'s inner loop
-// reverts with `DuplicateClauseOrAssembly` the moment any two entries repeat, rather
+// reverts with `DuplicateClauseOrAssembly` the moment any two (kind, key) entries repeat, rather
 // than silently deduplicating or (the former bug) clamping the sum
 // up to the period total. Proved for an arbitrary repeated pair (i, j) at any
 // positions in an arbitrary-length list — not one example list.
 // ═══════════════════════════════════════════════════════════════════
 
-rule duplicateClauseOrAssemblyReverts(uint8 periodId, bytes32[] clausesOrAssemblies, uint256 i, uint256 j) {
-    require i < clausesOrAssemblies.length && j < i && clausesOrAssemblies[i] == clausesOrAssemblies[j];
+rule duplicateClauseOrAssemblyReverts(uint8 periodId, RpgfMinter.ClauseOrAssemblyKey[] clausesOrAssemblies, uint256 i, uint256 j) {
+    require i < clausesOrAssemblies.length && j < i && clausesOrAssemblies[i].kind == clausesOrAssemblies[j].kind
+        && clausesOrAssemblies[i].key == clausesOrAssemblies[j].key;
 
     env e;
     claim@withrevert(e, periodId, clausesOrAssemblies);
@@ -186,10 +187,11 @@ rule duplicateClauseOrAssemblyReverts(uint8 periodId, bytes32[] clausesOrAssembl
 // ═══════════════════════════════════════════════════════════════════
 // RULE 5: Eligibility — a withdrawn/non-author clause-or-assembly receives nothing
 //
-// `_isAuthor(clauseOrAssembly, account)` is the live-stake gate: false whenever the
+// `_isAuthor(kind, clauseOrAssembly, account)` is the live-stake gate, reading
+// the one registry the kind names: false whenever the
 // clause registrar or assembly designer has withdrawn its registration
 // deposit (or the caller was never the author of record at all). Proved
-// against the ghost directly — for ANY (clauseOrAssembly, account) pair the gate
+// against the ghost directly — for ANY (kind, clauseOrAssembly, account) the gate
 // would refuse, including one buried anywhere in an arbitrary-length list —
 // `claim` must revert rather than pay. This matches RpgfMinter's actual
 // mechanism (all-or-nothing per call, not a per-entry skip): a claim
@@ -197,10 +199,10 @@ rule duplicateClauseOrAssemblyReverts(uint8 periodId, bytes32[] clausesOrAssembl
 // whole, exactly as `NotAuthorOfRecord` is coded.
 // ═══════════════════════════════════════════════════════════════════
 
-rule ineligibleClauseOrAssemblyCannotBePaid(uint8 periodId, bytes32[] clausesOrAssemblies, uint256 i) {
+rule ineligibleClauseOrAssemblyCannotBePaid(uint8 periodId, RpgfMinter.ClauseOrAssemblyKey[] clausesOrAssemblies, uint256 i) {
     env e;
     require i < clausesOrAssemblies.length;
-    require !g_isAuthor[clausesOrAssemblies[i]][e.msg.sender];
+    require !g_isAuthor[clausesOrAssemblies[i].kind][clausesOrAssemblies[i].key][e.msg.sender];
 
     claim@withrevert(e, periodId, clausesOrAssemblies);
 
@@ -239,7 +241,7 @@ rule mintedMonotonic(uint8 periodId, method f) {
 // `test_claimableRejectsDuplicatesToo` guards one example of in Foundry).
 // ═══════════════════════════════════════════════════════════════════
 
-rule claimableRejectsDuplicatesToo(uint8 periodId, address account, bytes32[] clausesOrAssemblies, uint256 i, uint256 j) {
+rule claimableRejectsDuplicatesToo(uint8 periodId, address account, RpgfMinter.ClauseOrAssemblyKey[] clausesOrAssemblies, uint256 i, uint256 j) {
     // Two early-return paths reach the dedupe loop in `_entitlement` only
     // conditionally, and both are legitimate non-revert shapes independent of
     // the clause-or-assembly list's contents:
@@ -257,7 +259,8 @@ rule claimableRejectsDuplicatesToo(uint8 periodId, address account, bytes32[] cl
     // path enforces the same dedupe guard `claim` does.
     require !claimed(periodId, account);
     require g_totalScoreIn[periodId] != 0;
-    require i < clausesOrAssemblies.length && j < i && clausesOrAssemblies[i] == clausesOrAssemblies[j];
+    require i < clausesOrAssemblies.length && j < i && clausesOrAssemblies[i].kind == clausesOrAssemblies[j].kind
+        && clausesOrAssemblies[i].key == clausesOrAssemblies[j].key;
 
     claimable@withrevert(periodId, account, clausesOrAssemblies);
 
@@ -270,7 +273,7 @@ rule claimableRejectsDuplicatesToo(uint8 periodId, address account, bytes32[] cl
 // claimed the period — the view-side twin of rule 2.
 // ═══════════════════════════════════════════════════════════════════
 
-rule claimableReturnsZeroForAlreadyClaimedWallet(uint8 periodId, address account, bytes32[] clausesOrAssemblies) {
+rule claimableReturnsZeroForAlreadyClaimedWallet(uint8 periodId, address account, RpgfMinter.ClauseOrAssemblyKey[] clausesOrAssemblies) {
     require claimed(periodId, account);
 
     uint256 quoted = claimable@withrevert(periodId, account, clausesOrAssemblies);

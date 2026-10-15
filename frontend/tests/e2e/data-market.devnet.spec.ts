@@ -54,11 +54,9 @@ import { privateKeyToAccount } from 'viem/accounts';
 import {
     ASSEMBLY_REGISTRY_ABI,
     ATTESTATION_COORDINATOR_ABI,
-    CLAUSE_REGISTRY_ABI,
     MEMBERS_REGISTRY_ABI,
     buildSectionInclusionProof,
     calculateBonds,
-    computeClauseKey,
     generateSalt,
     reconstructOrdersFromTemplate,
     sectionDataHash,
@@ -67,8 +65,9 @@ import {
     type AssemblyTemplate,
     type ReconstructedOrder,
 } from '@figaro-protocol/sdk';
-import { encodeContentFromSpec, parseClauseSpec } from '@figaro-protocol/sdk/clauses';
-import { LOCAL_ANVIL, RPC_URL, localPublicClient, pinJSONToIPFS, readLocalDeploymentConfig } from './devnet-helpers';
+import { encodeContentFromSpec } from '@figaro-protocol/sdk/clauses';
+import { getClauseSpec } from '@/lib/shared/clauseSpecSource';
+import { LOCAL_ANVIL, RPC_URL, localPublicClient, pinJSONToIPFS, readLocalDeploymentConfig, keyOf, primeRegisteredClauseSpecs } from './devnet-helpers';
 import { ANVIL_KEYS } from '../anvilAccounts';
 import { CORE_ABI } from '@/lib/kernel/contracts';
 
@@ -86,10 +85,19 @@ const MEMBER_B_KEY = ANVIL_KEYS[37] as Hex;
 
 // The clauses this scenario proves (shape selectors over discovered templates,
 // mirrored from the reference templates — never a composition authored here).
-const DATA_TERMS = 'figaro-data-terms';
-const DATA_LICENSE = 'figaro-data-license';
-const CONTENT_HANDOFF = 'figaro-content-handoff';
-const CREDENTIAL = 'figaro-credential';
+let DATA_TERMS: Hex;
+let DATA_LICENSE: Hex;
+let CONTENT_HANDOFF: Hex;
+let CREDENTIAL: Hex;
+test.beforeAll(async () => {
+    // Clause KEYS, located by the names their specs carry over the specs the
+    // chain registered — never a hardcoded key.
+    await primeRegisteredClauseSpecs();
+    DATA_TERMS = keyOf('figaro-data-terms');
+    DATA_LICENSE = keyOf('figaro-data-license');
+    CONTENT_HANDOFF = keyOf('figaro-content-handoff');
+    CREDENTIAL = keyOf('figaro-credential');
+});
 
 // The access credential the stream seller delivers — TEST INPUT (what a
 // data seller would hand off): a small token document whose BYTES the
@@ -202,8 +210,8 @@ test.describe('DATA MARKET — dual-posture value legs over the anchored data as
                 continue; // unresolvable/garbage URI — mainnet-realistic tolerance
             }
         }
-        const singleOrderWith = (t: AssemblyTemplate, clauseId: string) =>
-            t.agreements.length === 1 && clauseId in (t.agreements[0].clauses ?? {});
+        const singleOrderWith = (t: AssemblyTemplate, clauseKey: Hex) =>
+            t.agreements.length === 1 && clauseKey in (t.agreements[0].clauses ?? {});
         const aerialSurvey = anchored.find((a) =>
             singleOrderWith(a.template, CREDENTIAL)
             && (a.template.agreements[0].clauses[DATA_TERMS] as { disclosure?: string } | undefined)?.disclosure === 'each-own');
@@ -328,31 +336,31 @@ test.describe('DATA MARKET — dual-posture value legs over the anchored data as
          *  process's ON-CHAIN committed agreementHash; a tampered section
          *  does not. Root read fresh from the OrderCommitted event. */
         const assertSelfAuthenticatingLeaf = async (
-            committed: Awaited<ReturnType<typeof commitProcess>>, clauseId: string, label: string,
+            committed: Awaited<ReturnType<typeof commitProcess>>, clauseKey: Hex, label: string,
         ) => {
             const [eventBack] = await publicClient.getContractEvents({
                 address: core, abi: CORE_ABI, eventName: 'OrderCommitted',
                 args: { buyer: committed.event.args.buyer }, fromBlock: committed.event.blockNumber,
             });
             const chainRoot = eventBack.args.agreementHash as Hex;
-            const section = committed.order.agreement.sections.find((s) => s.clause === clauseId)!;
-            expect(section, `${label}: the agreement carries the ${clauseId} section`).toBeTruthy();
-            const { leaf, proof } = buildSectionInclusionProof(committed.order.agreement, clauseId);
+            const section = committed.order.agreement.sections.find((s) => s.clause.toLowerCase() === clauseKey)!;
+            expect(section, `${label}: the agreement carries the ${clauseKey} section`).toBeTruthy();
+            const { leaf, proof } = buildSectionInclusionProof(committed.order.agreement, section.clause);
             expect(
                 leaf,
                 `${label}: the leaf is derived from the section's own dataHash — recomputable by any holder`,
-            ).toBe(keccak256(keccak256(concat([computeClauseKey(section.clause, section.version), sectionDataHash(section)]))));
+            ).toBe(keccak256(keccak256(concat([section.clause as Hex, sectionDataHash(section)]))));
             expect(
                 verifyInclusionProof(chainRoot, leaf, proof),
-                `${label}: the ${clauseId} section verifies against the ON-CHAIN agreementHash — self-authenticating`,
+                `${label}: the ${clauseKey} section verifies against the ON-CHAIN agreementHash — self-authenticating`,
             ).toBe(true);
             const tampered = keccak256(keccak256(concat([
-                computeClauseKey(section.clause, section.version),
+                section.clause as Hex,
                 sectionDataHash({ ...section, data: { ...section.data, tampered: true } }),
             ])));
             expect(
                 verifyInclusionProof(chainRoot, tampered, proof),
-                `${label}: a tampered ${clauseId} section does NOT verify — the check is not vacuous`,
+                `${label}: a tampered ${clauseKey} section does NOT verify — the check is not vacuous`,
             ).toBe(false);
             return section;
         };
@@ -367,14 +375,14 @@ test.describe('DATA MARKET — dual-posture value legs over the anchored data as
             seller: memberA, sellerWallet: walletA,
             payment: parseEther('1'),
             overrides: {
-                'figaro-commerce': {
+                [keyOf('figaro-commerce')]: {
                     currency: token,
                     payment: parseEther('1').toString(),
                     lineItems: [{ itemId: 'survey-flight', name: 'Aerial survey flight', quantity: 1, unitPrice: parseEther('1').toString() }],
                 },
-                'figaro-modalities': { modality: 'consume-onsite' },
-                'figaro-schedule': { windowStart: '2026-08-15T09:00:00Z', windowEnd: '2026-08-15T13:00:00Z' },
-                'figaro-geolocation': { geocodeStandard: 'geohash', origin: '9q8yyk', destination: '9q8yys' },
+                [keyOf('figaro-modalities')]: { modality: 'consume-onsite' },
+                [keyOf('figaro-schedule')]: { windowStart: '2026-08-15T09:00:00Z', windowEnd: '2026-08-15T13:00:00Z' },
+                [keyOf('figaro-geolocation')]: { geocodeStandard: 'geohash', origin: '9q8yyk', destination: '9q8yys' },
                 [CREDENTIAL]: {
                     credentialRegisterUri: 'https://uav-register.example/registrations{/id}',
                     credentialTitle: 'Remote pilot certificate',
@@ -405,13 +413,13 @@ test.describe('DATA MARKET — dual-posture value legs over the anchored data as
             seller: memberB, sellerWallet: walletB,
             payment: parseEther('2'),
             overrides: {
-                'figaro-commerce': {
+                [keyOf('figaro-commerce')]: {
                     currency: token,
                     payment: parseEther('2').toString(),
                     lineItems: [{ itemId: 'telemetry-stream', name: 'Flight telemetry stream — 30 days', quantity: 1, unitPrice: parseEther('2').toString() }],
                 },
-                'figaro-modalities': { modality: 'virtual' },
-                'figaro-schedule': { windowStart: '2026-09-01T00:00:00Z', windowEnd: '2026-10-01T00:00:00Z' },
+                [keyOf('figaro-modalities')]: { modality: 'virtual' },
+                [keyOf('figaro-schedule')]: { windowStart: '2026-09-01T00:00:00Z', windowEnd: '2026-10-01T00:00:00Z' },
                 [DATA_LICENSE]: {
                     licenseScope: 'Flight telemetry records of the surveyed route',
                     purpose: 'internal analytics only',
@@ -430,23 +438,18 @@ test.describe('DATA MARKET — dual-posture value legs over the anchored data as
         // REGISTERED spec (ClauseRegistered → IPFS, the same read every
         // consumer does) — over the credential bytes' hash. The chain never
         // learns the bytes; the buyer verifies by rehashing what it received.
-        const registration = (await publicClient.getContractEvents({
-            address: clauseRegistry, abi: CLAUSE_REGISTRY_ABI, eventName: 'ClauseRegistered', fromBlock: 0n,
-        })).filter((e) => e.args.clauseId === CONTENT_HANDOFF).pop();
-        expect(registration, `${CONTENT_HANDOFF} is anchored on ClauseRegistry`).toBeTruthy();
-        const specCid = (registration!.args.contentURI as string).replace(/^ipfs:\/\//, '');
-        const parsed = parseClauseSpec(await (await fetch(`${ipfsApi}/api/v0/cat?arg=${specCid}`, { method: 'POST' })).json());
-        if (!parsed.ok) throw new Error('the registered content-handoff spec failed to parse');
+        const handoffSpec = getClauseSpec(CONTENT_HANDOFF);
+        expect(handoffSpec, 'the content-handoff clause is anchored on ClauseRegistry and its pinned spec loads').toBeTruthy();
         const expectedContentRef = keccak256(
-            encodeContentFromSpec(parsed.spec, { contentHash: CREDENTIAL_HASH }, { stage: 1 }),
+            encodeContentFromSpec(handoffSpec!, { contentHash: CREDENTIAL_HASH }, { stage: 1 }),
         );
-        const handoffSection = stream.order.agreement.sections.find((s) => s.clause === CONTENT_HANDOFF)!;
-        const { proof: handoffProof } = buildSectionInclusionProof(stream.order.agreement, CONTENT_HANDOFF);
+        const handoffSection = stream.order.agreement.sections.find((s) => s.clause.toLowerCase() === CONTENT_HANDOFF)!;
+        const { proof: handoffProof } = buildSectionInclusionProof(stream.order.agreement, handoffSection.clause);
         await receipt(await walletB.writeContract({
             address: coordinator, abi: ATTESTATION_COORDINATOR_ABI, functionName: 'attestAsSeller',
             args: [
                 stream.order.commitment, stream.order.commitment,
-                computeClauseKey(handoffSection.clause, handoffSection.version), 1,
+                handoffSection.clause as Hex, 1,
                 sectionDataHash(handoffSection), handoffProof, expectedContentRef,
             ],
         }));

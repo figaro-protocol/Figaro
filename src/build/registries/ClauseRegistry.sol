@@ -8,6 +8,17 @@ pragma solidity 0.8.26;
 ///         No owner, minimal storage. Indexers reconstruct the full
 ///         registry from events.
 ///
+///         A CLAUSE IS ITS SPEC. The clause key is `keccak256` of the spec's
+///         pinned bytes — the canonical JSON the designer pins (the SDK's
+///         `computeClauseKey(spec)`, which is `canonicalContentHash(spec)`).
+///         The key is the identity and the content hash at once: a reader
+///         fetches the bytes from `contentURI` and checks
+///         `keccak256(bytes) == clauseKey`. The spec's own `clauseId` and
+///         `version` are presentation fields inside the document — a title
+///         and a lineage counter a human reads; nothing on chain reads them.
+///         Two specs that carry the same name are two clauses; a lookalike
+///         shares nothing with the original but its label.
+///
 ///         STAKED INTENT: registering requires an ETH deposit
 ///         (`registrationDeposit`, immutable at deploy) — registering IS
 ///         declaring intent to generate transactions. Surfacing derives
@@ -29,54 +40,45 @@ pragma solidity 0.8.26;
 ///
 ///         Clauses anchor the off-chain vocabulary used by agreementHash
 ///         pre-images, AttestationCoordinator attestations, and mechanism
-///         modules. The clauseId is the human-readable name (e.g.
-///         "figaro-courier-process", "figaro-emissions"); the on-chain key is
-///         keccak256(abi.encode(clauseId, version)).
+///         modules: an agreement's leaf carries the clause key, and the batch
+///         verifier accepts an in-proof clause validation only for a key
+///         registered here.
 ///
-///         Registration is permissionless — anyone can register a clause.
-///         The clauseId is self-authenticating (name-derived). Once
-///         registered, a clause cannot be removed or deactivated. Clause
-///         governance is a convention-layer concern, not enforcement.
+///         Registration is permissionless and first-write-wins on the key —
+///         anyone can register a clause, and the first registrant of a key is
+///         its designer of record. The registry takes the key as given and
+///         never sees the bytes; a key whose bytes nobody can produce is a
+///         registration no reader can verify. Once registered, a clause
+///         cannot be removed or deactivated. Clause governance is a
+///         convention-layer concern, not enforcement.
 ///
 ///         Mechanism self-declaration: any contract can emit which clause
 ///         it uses. Frontends read these events to determine encoding.
 ///
-///         Grouping: a clause's group is `block.design.article` in its off-chain spec
-///         JSON (integrity-bound by contentHash). There is NO on-chain group
-///         field and never will be — grouping is a READER concern (the drawer's
+///         Grouping: a clause's group is `block.design.article` in its spec —
+///         inside the bytes the key hashes. There is NO on-chain group field
+///         and never will be — grouping is a READER concern (the drawer's
 ///         headings), derived from the spec, never stored.
 ///
 ///         There is NO reward tag either. The 600M reward is UNIFORM:
 ///         every clause or assembly's score is its real usage alone,
 ///         with no category, tag, or weight — so the registry stores no
 ///         incentive input.
-///         (A `rpgfTag` field existed until then, as a predecessor `family` did
-///         before it — both deleted as the reward stopped privileging any class.)
 ///
-/// @dev V3's clause registry had: Ownable, Clause struct storage,
-///      activate/deactivate state machine, getters, counter. All removed.
-///      Only the dedup guard (has this clauseId been registered?) and
-///      events survive.
+/// @dev Storage is the dedup guard (has this key been registered?) and the
+///      stake state per key; everything else is the event.
 contract ClauseRegistry {
     /// @notice Deposit amount in wei required at registration. Immutable at
     ///         deploy. Sybil-resistance stake, not a fee — no party can
     ///         seize it; the registering wallet reclaims it via `withdrawDeposit`.
     uint256 public immutable registrationDeposit;
 
-    /// @notice Dedup guard — true if clauseId (by keccak256 hash) has been registered.
+    /// @notice Dedup guard — true if this clause key has been registered.
     ///         Never cleared: the binding is permanent even after the
-    ///         deposit is withdrawn.
+    ///         deposit is withdrawn. The batch verifier reads it to accept
+    ///         an in-proof clause validation: the key IS the spec hash, so a
+    ///         registered key anchors at most one document.
     mapping(bytes32 => bool) public registered;
-
-    /// @notice The integrity anchor — keccak256 of the canonical off-chain
-    ///         spec JSON, stored at registration (identity + integrity is
-    ///         this registry's whole purpose). This is the trust anchor the
-    ///         proof apparatus binds witness specs to: the batch verifier
-    ///         checks each proof's (clause key → spec-bytes hash) binding
-    ///         against this mapping, so an in-proof clause validation is
-    ///         only accepted for the exact spec the registry anchors.
-    ///         Never cleared — committed agreements reference it forever.
-    mapping(bytes32 => bytes32) public contentHashOf;
 
     /// @dev Stake accounting per clause key. `registeredBy` is the depositor
     ///      of record (the same role AssemblyRegistry records under the same
@@ -86,51 +88,44 @@ contract ClauseRegistry {
         bool withdrawn;
     }
 
-    /// @notice clause key (keccak256(abi.encode(clauseId, version))) → stake state.
+    /// @notice clause key → stake state.
     mapping(bytes32 => DepositState) public depositOf;
 
     // ── Events ──────────────────────────────────────────────────────
 
     /// @notice Emitted when a new clause is registered.
-    /// @param clauseId    Human-readable clause name (e.g. "figaro-courier-process").
-    ///                    Non-indexed so the string is recoverable from the log —
-    ///                    indexers reconstruct the clauseId without a preimage table.
-    /// @param version     Clause version number.
-    /// @param contentHash keccak256 of the canonical off-chain spec JSON — integrity.
-    /// @param contentURI  Off-chain spec document URI (IPFS, etc.). The pointer that
-    ///                    lets any reader FETCH the spec from chain state alone —
-    ///                    the same role `contentURI` plays in AssemblyRegistry. (The
-    ///                    pinned document IS the content, hence not "metadataURI" —
-    ///                    MembersRegistry keeps that name because its mutable profile
-    ///                    genuinely is metadata about a wallet-keyed identity.)
-    /// @param registeredBy   Address that registered the clause.
-    event ClauseRegistered(
-        string clauseId, uint64 version, bytes32 contentHash, string contentURI, address indexed registeredBy
-    );
+    /// @param clauseKey    keccak256 of the spec's pinned bytes — the clause's
+    ///                     identity and its content hash.
+    /// @param contentURI   Off-chain spec document URI (IPFS, etc.). The pointer that
+    ///                     lets any reader FETCH the spec from chain state alone and
+    ///                     verify it against `clauseKey` — the same role `contentURI`
+    ///                     plays in AssemblyRegistry. (The pinned document IS the
+    ///                     content, hence not "metadataURI" — MembersRegistry keeps
+    ///                     that name because its mutable profile genuinely is
+    ///                     metadata about a wallet-keyed identity.)
+    /// @param registeredBy Address that registered the clause.
+    event ClauseRegistered(bytes32 indexed clauseKey, string contentURI, address indexed registeredBy);
 
     /// @notice Emitted when the registering wallet withdraws its deposit. The clause
     ///         binding stays in place; only the stake moves — readers
     ///         de-surface the clause for NEW compositions, while committed
     ///         agreements keep resolving it.
-    /// @param clauseId  The clause key (keccak256(abi.encode(clauseId, version))).
+    /// @param clauseKey    The clause key.
     /// @param registeredBy Address that withdrew.
-    /// @param amount    Deposit returned (always equals `registrationDeposit`).
-    event DepositWithdrawn(bytes32 indexed clauseId, address indexed registeredBy, uint256 amount);
+    /// @param amount       Deposit returned (always equals `registrationDeposit`).
+    event DepositWithdrawn(bytes32 indexed clauseKey, address indexed registeredBy, uint256 amount);
 
     /// @notice Emitted when a mechanism declares which clause it uses.
     /// @param mechanism  The declaring contract address (msg.sender).
-    /// @param idHash     The declared clause's identity HASH —
-    ///                   `keccak256(abi.encode(clauseId, version))`, never
-    ///                   the raw name string.
-    event MechanismClauseSet(address indexed mechanism, bytes32 indexed idHash);
+    /// @param clauseKey  The declared clause's key.
+    event MechanismClauseSet(address indexed mechanism, bytes32 indexed clauseKey);
 
     // ── Errors ──────────────────────────────────────────────────────
 
-    error AlreadyRegistered(bytes32 clauseId);
-    error NotRegistered(bytes32 clauseId);
-    error EmptyClauseId();
+    error AlreadyRegistered(bytes32 clauseKey);
+    error NotRegistered(bytes32 clauseKey);
+    error ZeroClauseKey();
     error EmptyContentURI();
-    error ZeroContentHash();
     error WrongDeposit(uint256 provided, uint256 required);
     error NotRegisteredBy(address caller, address registeredBy);
     error AlreadyWithdrawn();
@@ -147,28 +142,21 @@ contract ClauseRegistry {
 
     /// @notice Register a clause. Anyone can call. Requires
     ///         `registrationDeposit` ETH (exact — no sweep function
-    ///         exists). Reverts if already registered.
-    /// @param clauseId    Human-readable clause name (e.g. "figaro-courier-process").
-    ///                    The on-chain key is its keccak256 hash.
-    /// @param version     Clause version number.
-    /// @param contentHash keccak256 of the canonical spec JSON (integrity).
-    /// @param contentURI  Off-chain spec document URI (IPFS) — readers FETCH the spec from it.
-    function registerClause(string calldata clauseId, uint64 version, bytes32 contentHash, string calldata contentURI)
-        external
-        payable
-    {
+    ///         exists). Reverts if the key is already registered.
+    /// @param clauseKey  keccak256 of the spec's pinned bytes (the SDK's
+    ///                   `computeClauseKey(spec)`).
+    /// @param contentURI Off-chain spec document URI (IPFS) — readers FETCH the
+    ///                   spec from it and check its hash against `clauseKey`.
+    function registerClause(bytes32 clauseKey, string calldata contentURI) external payable {
         if (msg.value != registrationDeposit) {
             revert WrongDeposit(msg.value, registrationDeposit);
         }
-        if (bytes(clauseId).length == 0) revert EmptyClauseId();
+        if (clauseKey == bytes32(0)) revert ZeroClauseKey();
         if (bytes(contentURI).length == 0) revert EmptyContentURI();
-        if (contentHash == bytes32(0)) revert ZeroContentHash();
-        bytes32 idHash = keccak256(abi.encode(clauseId, version));
-        if (registered[idHash]) revert AlreadyRegistered(idHash);
-        registered[idHash] = true;
-        contentHashOf[idHash] = contentHash;
-        depositOf[idHash] = DepositState({registeredBy: msg.sender, withdrawn: false});
-        emit ClauseRegistered(clauseId, version, contentHash, contentURI, msg.sender);
+        if (registered[clauseKey]) revert AlreadyRegistered(clauseKey);
+        registered[clauseKey] = true;
+        depositOf[clauseKey] = DepositState({registeredBy: msg.sender, withdrawn: false});
+        emit ClauseRegistered(clauseKey, contentURI, msg.sender);
     }
 
     // ── Deposit withdrawal (registeredBy-only) ──────────────────────
@@ -176,21 +164,21 @@ contract ClauseRegistry {
     /// @notice Reclaim the registration deposit. The clause binding is NOT
     ///         cleared — only the stake moves; readers de-surface the
     ///         clause for new compositions. Callable only by the recorded
-    ///         `registeredBy`, once. Version migration = withdraw the old
-    ///         version's stake + register the new version.
+    ///         `registeredBy`, once. A designer moves its stake to a new spec
+    ///         by withdrawing from the old key and registering the new one.
     /// @dev The commits == resolves gate is protocol-surface (indexer
     ///      count; see the contract notice) — the chain carries no
     ///      composition provenance to enforce it here.
-    /// @param idHash The clause key (keccak256(abi.encode(clauseId, version))).
-    function withdrawDeposit(bytes32 idHash) external {
-        DepositState storage state = depositOf[idHash];
-        if (!registered[idHash]) revert NotRegistered(idHash);
+    /// @param clauseKey The clause key.
+    function withdrawDeposit(bytes32 clauseKey) external {
+        DepositState storage state = depositOf[clauseKey];
+        if (!registered[clauseKey]) revert NotRegistered(clauseKey);
         if (msg.sender != state.registeredBy) revert NotRegisteredBy(msg.sender, state.registeredBy);
         if (state.withdrawn) revert AlreadyWithdrawn();
 
         // Checks-effects-interactions: flag THEN transfer.
         state.withdrawn = true;
-        emit DepositWithdrawn(idHash, msg.sender, registrationDeposit);
+        emit DepositWithdrawn(clauseKey, msg.sender, registrationDeposit);
 
         (bool ok,) = msg.sender.call{value: registrationDeposit}("");
         if (!ok) revert TransferFailed();
@@ -200,12 +188,9 @@ contract ClauseRegistry {
 
     /// @notice Declare which clause this mechanism uses. Any contract can call.
     ///         Reverts if the clause has not been registered.
-    /// @param idHash  A registered clause's identity HASH —
-    ///                `keccak256(abi.encode(clauseId, version))` (the SDK's
-    ///                `computeClauseKey`), NOT the raw name `registerClause`
-    ///                takes as its string parameter.
-    function setMechanismClause(bytes32 idHash) external {
-        if (!registered[idHash]) revert NotRegistered(idHash);
-        emit MechanismClauseSet(msg.sender, idHash);
+    /// @param clauseKey A registered clause's key.
+    function setMechanismClause(bytes32 clauseKey) external {
+        if (!registered[clauseKey]) revert NotRegistered(clauseKey);
+        emit MechanismClauseSet(msg.sender, clauseKey);
     }
 }

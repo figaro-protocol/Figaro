@@ -13,7 +13,7 @@
  *
  * Mounted by the interactionSurfaces registry for any clause declaring
  * `block.runtime.interaction.interface = "qr-challenge"` — this component knows
- * no clause; `clauseId` is display attribution only.
+ * no clause; `clauseKey` is display attribution only.
  */
 import { useEffect, useState } from "react";
 import Link from "@/components/shared/Link";
@@ -51,7 +51,7 @@ async function generateQRDataURL(payload: string): Promise<string> {
     });
 }
 
-export function QrChallengePanel({ processId, orderHash, clauseId, version }: InteractionSurfaceProps) {
+export function QrChallengePanel({ processId, orderHash, clauseKey }: InteractionSurfaceProps) {
     const identity = encodeIdentity({ processId, orderHash });
     const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
     const [scanned, setScanned] = useState("");
@@ -70,7 +70,7 @@ export function QrChallengePanel({ processId, orderHash, clauseId, version }: In
     const matches = decoded !== null
         && hexEqual(decoded.processId, processId)
         && hexEqual(decoded.orderHash, orderHash);
-    const clauseTitle = getClauseSpec(clauseId, version)?.title ?? clauseId;
+    const clauseTitle = getClauseSpec(clauseKey)?.title ?? clauseKey;
 
     return (
         <section

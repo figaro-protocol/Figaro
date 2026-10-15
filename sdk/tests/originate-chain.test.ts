@@ -6,7 +6,7 @@ import {
     type AssemblyTemplate, type ChainNodeSpec, type OfferPolicy,
 } from "../src/agent/originate.js";
 import { InProcessChannel } from "../src/agent/coordination.js";
-import { specSourceFromFixtures } from "./specFixtures.js";
+import { keyOf, specSourceFromFixtures } from "./specFixtures.js";
 import { buildDomain, computeCommitmentProcessId, computeOrderHash, COMMITMENT_TYPES, ZERO_PROCESS_ID } from "../src/commitments.js";
 import type { Address } from "../src/types.js";
 
@@ -24,13 +24,13 @@ const buyerW = w(BUYER);
 // A 3-order value-added chain: root (order-0) + two subs under it (like the seed chain).
 const template: AssemblyTemplate = {
     agreements: [
-        { id: "order-0", clauses: { "figaro-commerce": {}, "figaro-topology": { parentOrderHashes: [] } } },
-        { id: "order-1", clauses: { "figaro-courier-process": {}, "figaro-topology": { parentOrderHashes: ["order-0"] } } },
-        { id: "order-2", clauses: { "figaro-merchant-process": {}, "figaro-topology": { parentOrderHashes: ["order-0"] } } },
+        { id: "order-0", clauses: { [keyOf("figaro-commerce")]: {}, [keyOf("figaro-topology")]: { parentOrderHashes: [] } } },
+        { id: "order-1", clauses: { [keyOf("figaro-courier-process")]: {}, [keyOf("figaro-topology")]: { parentOrderHashes: ["order-0"] } } },
+        { id: "order-2", clauses: { [keyOf("figaro-merchant-process")]: {}, [keyOf("figaro-topology")]: { parentOrderHashes: ["order-0"] } } },
     ],
 };
 const nodes: ChainNodeSpec[] = [
-    { nodeId: "order-0", seller: S0.address, payment: 1000n, overrides: { "figaro-commerce": { currency: CURRENCY, payment: "1000", lineItems: [{ itemId: "m", name: "Meal", quantity: 1, unitPrice: "1000" }] } } },
+    { nodeId: "order-0", seller: S0.address, payment: 1000n, overrides: { [keyOf("figaro-commerce")]: { currency: CURRENCY, payment: "1000", lineItems: [{ itemId: "m", name: "Meal", quantity: 1, unitPrice: "1000" }] } } },
     { nodeId: "order-1", seller: S1.address, payment: 500n },
     { nodeId: "order-2", seller: S2.address, payment: 300n },
 ];
@@ -41,7 +41,7 @@ const params = { template, currency: CURRENCY, chainId: CHAIN, core: CORE, nodes
 const policy: OfferPolicy = { currencyAllowlist: [CURRENCY], maxValue: 10_000n };
 
 function topologyParents(offer: { agreement: { sections: { clause: string; data: Record<string, unknown> }[] } }): unknown {
-    return offer.agreement.sections.find((s) => s.clause === "figaro-topology")?.data.parentOrderHashes;
+    return offer.agreement.sections.find((s) => s.clause === keyOf("figaro-topology"))?.data.parentOrderHashes;
 }
 
 describe("buildChainOffers — the value-added chain walk", () => {
@@ -84,7 +84,7 @@ describe("buildChainOffers — the value-added chain walk", () => {
             "figaro-commerce", "figaro-topology", "figaro-courier-process", "figaro-merchant-process",
         ]);
         const offers = await buildChainOffers(buyerW, { ...params, specs: SPECS });
-        const commerce = offers[0].offer.agreement.sections.find((s) => s.clause === "figaro-commerce");
+        const commerce = offers[0].offer.agreement.sections.find((s) => s.clause === keyOf("figaro-commerce"));
         expect(commerce?.data?.currency).toBe(CURRENCY);
         expect(offers.every((o) => !!o.offer.buyerSig)).toBe(true);
         // A contradicting root override refuses to build — the walk throws
@@ -93,7 +93,7 @@ describe("buildChainOffers — the value-added chain walk", () => {
             {
                 ...nodes[0],
                 overrides: {
-                    "figaro-commerce": {
+                    [keyOf("figaro-commerce")]: {
                         currency: "0xdddddddddddddddddddddddddddddddddddddddd",
                         payment: "1000",
                         lineItems: [{ itemId: "m", name: "Meal", quantity: 1, unitPrice: "1000" }],
@@ -141,7 +141,7 @@ describe("the buyer commits only the offer it sent", () => {
         // and returned in place of the one just sent.
         const earlier = await buildBuyerOffer(buyerW, {
             ...rootParams, payment: 5000n, salt: 1n,
-            overrides: { "figaro-commerce": { currency: CURRENCY, payment: "5000", lineItems: [{ itemId: "m", name: "Meal", quantity: 1, unitPrice: "5000" }] } },
+            overrides: { [keyOf("figaro-commerce")]: { currency: CURRENCY, payment: "5000", lineItems: [{ itemId: "m", name: "Meal", quantity: 1, unitPrice: "5000" }] } },
         });
         const replay = await counterSignOffer(w(S0), earlier, { chainId: CHAIN, core: CORE }, () => true, policy);
         const channel = new InProcessChannel();

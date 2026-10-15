@@ -214,6 +214,7 @@ fn bincode_roundtrip_public_values_and_events() {
         }],
         usage_accruals: vec![UsageAccrual {
             clause_or_assembly: B256::repeat_byte(0x0c),
+            kind: USAGE_KIND_CLAUSE,
             c: 3,
             d: 2,
         }],

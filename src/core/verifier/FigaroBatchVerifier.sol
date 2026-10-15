@@ -7,9 +7,10 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "src/core/verifier/ISP1Verifier.sol";
 
 /// @notice Minimal ClauseRegistry surface the verifier reads — the
-///         integrity anchor for witness specs.
+///         anchor for witness specs. A clause key is keccak256 of the spec's
+///         pinned bytes, so a registered key anchors at most one document.
 interface IClauseRegistryAnchor {
-    function contentHashOf(bytes32 idHash) external view returns (bytes32);
+    function registered(bytes32 clauseKey) external view returns (bool);
 }
 
 /// @notice Minimal UsageCounter surface the verifier writes — the RPGF
@@ -19,6 +20,7 @@ interface IClauseRegistryAnchor {
 interface IUsageCounter {
     struct BatchAccrual {
         bytes32 clauseOrAssembly;
+        uint8 kind;
         uint64 c;
         uint64 d;
     }
@@ -49,12 +51,13 @@ interface IUsageCounter {
 ///
 ///         The spec-binding check is what makes the in-proof clause validation
 ///         OPEN-WORLD: the guest validates content against a witness spec and
-///         commits (clause key → keccak256(spec bytes)); this contract accepts
-///         the batch only if each binding equals
-///         `ClauseRegistry.contentHashOf(clauseKey)`. The program verification
-///         key covers the ENGINE, the registry anchors the constraint set —
-///         a never-seen clause resolves through the proven path with zero code
-///         changes, and a permissive-spec substitution cannot resolve.
+///         commits (clause key, keccak256(spec bytes)); the clause key IS the
+///         spec hash, so this contract accepts the batch only if the two words
+///         of each binding are equal and `ClauseRegistry.registered(clauseKey)`.
+///         The program verification key covers the ENGINE, the registry
+///         anchors the constraint set — a never-seen clause resolves through
+///         the proven path with zero code changes, and a permissive-spec
+///         substitution cannot resolve.
 ///
 ///         RPGF: a batch-resolved process never acquires FigaroCore status,
 ///         so `UsageCounter`'s direct path — which requires
@@ -125,9 +128,12 @@ contract FigaroBatchVerifier is ReentrancyGuard {
         bytes32 contentRef;
     }
 
-    /// @dev One (clause key → witness-spec hash) binding the batch's
+    /// @dev One (clause key, witness-spec hash) binding the batch's
     ///      in-proof clause gates validated against. Deduplicated and
-    ///      sorted ascending by (clauseId, specHash) in the prover.
+    ///      sorted ascending by (clauseId, specHash) in the prover. The clause
+    ///      key is keccak256 of the spec's pinned bytes, so a well-formed
+    ///      binding carries the same word in both fields; the two-field layout
+    ///      is what the guest's public values hash.
     struct SpecBinding {
         bytes32 clauseId;
         bytes32 specHash;
@@ -153,8 +159,8 @@ contract FigaroBatchVerifier is ReentrancyGuard {
         /// @dev The provenance leaf key the guest proved assembly
         ///      claims against; the counter matches it to its own.
         bytes32 provenanceLeaf;
-        /// @dev Per-clause-or-assembly CUMULATIVE (c, d) after this batch,
-        ///      sorted by clause-or-assembly key in the prover.
+        /// @dev Per-(kind, clause-or-assembly) CUMULATIVE (c, d) after this batch,
+        ///      sorted by (clause-or-assembly key, kind) in the prover.
         IUsageCounter.BatchAccrual[] accruals;
         /// @dev Distinct sellers of record behind the accruals, sorted.
         address[] sellers;
@@ -204,11 +210,13 @@ contract FigaroBatchVerifier is ReentrancyGuard {
     error UsageAccrualHashMismatch();
     error BatchTimestampOutOfRange(uint64 committed, uint64 current);
     error PublicValuesLengthMismatch(uint256 expected, uint256 actual);
-    /// @dev The proof validated content against a spec the registry does
-    ///      not anchor for this clause key — including the unregistered
-    ///      case (`contentHashOf` returns zero, which never equals a
-    ///      witness spec's hash).
-    error SpecBindingMismatch(bytes32 clauseId, bytes32 anchored, bytes32 proven);
+    /// @dev The proof validated content against a spec whose hash is not the
+    ///      clause key it names: the key IS the spec hash, so the two differ
+    ///      only when the witness is some other document.
+    error SpecBindingMismatch(bytes32 clauseId, bytes32 proven);
+    /// @dev The proof validated content against a spec whose key the
+    ///      registry has never registered.
+    error ClauseNotRegistered(bytes32 clauseId);
     error FeeOnTransferDetected();
     error ZeroVerifier();
     error VerifierNotContract();
@@ -458,13 +466,14 @@ contract FigaroBatchVerifier is ReentrancyGuard {
     }
 
     /// @dev Pack: period(1) ++ provenanceLeaf(32)
-    ///            ++ len(accruals)(8) ++ [clauseOrAssembly(32) ++ c(8) ++ d(8)]*
+    ///            ++ len(accruals)(8) ++ [clauseOrAssembly(32) ++ kind(1) ++ c(8) ++ d(8)]*
     ///            ++ len(sellers)(8)  ++ [seller(20)]*
+    ///      — span 49 + 49n + 20m bytes for n accruals and m sellers —
     ///      matching the Rust `compute_usage_accrual_hash`.
     ///
     ///      BOTH LENGTHS ARE PREFIXED, and they must be. An accrual
-    ///      record is 48 bytes and a seller 20, so five accruals and
-    ///      twelve sellers span the same 240 bytes: without the
+    ///      entry is 49 bytes and a seller 20, so twenty accruals and
+    ///      forty-nine sellers span the same 980 bytes: without the
     ///      prefixes, one preimage could be re-split into a different
     ///      (accruals, sellers) pair — letting a submitter present
     ///      accruals whose sellers were never stake-checked while the
@@ -479,7 +488,7 @@ contract FigaroBatchVerifier is ReentrancyGuard {
     function _hashUsage(BatchUsageData calldata usage) internal pure returns (bytes32) {
         uint256 accrualCount = usage.accruals.length;
         uint256 sellerCount = usage.sellers.length;
-        uint256 span = 49 + accrualCount * 48 + sellerCount * 20;
+        uint256 span = 49 + accrualCount * 49 + sellerCount * 20;
         bytes memory packed = new bytes(span + 32);
 
         uint8 period = usage.period;
@@ -494,15 +503,17 @@ contract FigaroBatchVerifier is ReentrancyGuard {
         uint256 offset = 41;
         for (uint256 i = 0; i < accrualCount; i++) {
             bytes32 clauseOrAssembly = usage.accruals[i].clauseOrAssembly;
+            uint8 kind = usage.accruals[i].kind;
             uint64 c = usage.accruals[i].c;
             uint64 d = usage.accruals[i].d;
             assembly {
                 let dst := add(add(packed, 32), offset)
                 mstore(dst, clauseOrAssembly)
-                mstore(add(dst, 32), shl(192, c))
-                mstore(add(dst, 40), shl(192, d))
+                mstore8(add(dst, 32), kind)
+                mstore(add(dst, 33), shl(192, c))
+                mstore(add(dst, 41), shl(192, d))
             }
-            offset += 48;
+            offset += 49;
         }
 
         assembly {
@@ -528,15 +539,17 @@ contract FigaroBatchVerifier is ReentrancyGuard {
     // ── Spec-binding anchor check ─────────────────────────────────
 
     /// @dev The open-world gate: each witness spec the proof validated
-    ///      against must be the exact document the registry anchors for
-    ///      that clause key. One SLOAD-backed external view call per
-    ///      distinct clause per batch (the prover deduplicates).
+    ///      against must be the exact document a registered clause key names.
+    ///      The key IS the spec hash, so the binding's two words must be equal,
+    ///      and the key must be registered. One SLOAD-backed external view call
+    ///      per distinct clause per batch (the prover deduplicates).
     function _checkSpecBindings(SpecBinding[] calldata bindings) internal view {
         for (uint256 i = 0; i < bindings.length; i++) {
-            bytes32 anchored = clauseRegistry.contentHashOf(bindings[i].clauseId);
-            if (anchored != bindings[i].specHash) {
-                revert SpecBindingMismatch(bindings[i].clauseId, anchored, bindings[i].specHash);
+            bytes32 clauseKey = bindings[i].clauseId;
+            if (bindings[i].specHash != clauseKey) {
+                revert SpecBindingMismatch(clauseKey, bindings[i].specHash);
             }
+            if (!clauseRegistry.registered(clauseKey)) revert ClauseNotRegistered(clauseKey);
         }
     }
 

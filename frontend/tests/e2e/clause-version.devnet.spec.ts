@@ -1,19 +1,24 @@
 /**
- * VERSION AXIS — a clause's identity is (name, version), end to end.
+ * LOOKALIKE — a clause is its pinned bytes; its name and version are labels.
  *
- * Registers the SAME probe clause name at v1 AND v2 (distinguishable titles),
- * then drives the real designer UI: both versions surface as co-equal drawer
- * rows; composing the v2 row publishes an assembly whose pinned template
- * records `clauseVersions: { <name>: 2 }` and whose composition identity
- * (slug) differs from the v1 composition of the same clause name.
+ * Registers a probe clause, then a LOOKALIKE: a spec carrying the SAME
+ * `clauseId`, `version` and title, differing only in its description — so
+ * different bytes, so a different key. Drives the real designer UI: both
+ * registrations surface as two drawer rows under two keys, each labeled by
+ * its spec's own title and version (the labels a reader cannot tell apart —
+ * the key is the identity); composing the lookalike's row publishes an
+ * assembly whose pinned template is keyed by the LOOKALIKE's key and never
+ * names the original's.
  *
- * Verification is out-of-band (chain event → IPFS fetch), never the test's
- * own assertions about itself. Per-run nonce in the clause name — devnet is a
- * mainnet rehearsal; state stays on-chain (no snapshot/revert).
+ * Verification is out-of-band (registry reads, chain event → IPFS fetch),
+ * never the test's own assertions about itself. Per-run nonce in the clause
+ * name — devnet is a mainnet rehearsal; state stays on-chain (no
+ * snapshot/revert) — and the name is this spec's own, so no other spec's
+ * `keyOf` ever sees two specs carrying it.
  */
 import { test, expect } from './devnet-multi-test';
 import { createPublicClient, defineChain, http, type Hex } from 'viem';
-import { ASSEMBLY_REGISTRY_ABI } from '@figaro-protocol/sdk';
+import { ASSEMBLY_REGISTRY_ABI, CLAUSE_REGISTRY_ABI } from '@figaro-protocol/sdk';
 import { deriveAssemblySlug } from '@/lib/shared/assemblyTemplate';
 import { makeProbeSpec, registerProbeClause } from './probeAssembly';
 import { readLocalDeploymentConfig, publishOrAdoptReviewed } from './devnet-helpers';
@@ -28,8 +33,8 @@ const LOCAL_ANVIL = defineChain({
 
 test.setTimeout(240_000);
 
-test.describe('clause version axis (devnet)', () => {
-    test('v1 and v2 surface as co-equal rows; composing v2 forks the composition identity', async ({ page }) => {
+test.describe('clause lookalike (devnet)', () => {
+    test('a lookalike of a registered clause is a second clause under its own key; composing it keys the template by it', async ({ page }) => {
         // Surface browser-side read failures in the test output — the loaded
         // gate turns a cold-cache publish into a disabled button, and the
         // console names WHY the registry read failed.
@@ -39,9 +44,26 @@ test.describe('clause version axis (devnet)', () => {
             }
         });
         const nonce = `${Date.now()}`;
-        const clauseId = `figaro-probe-version-${nonce}`;
-        await registerProbeClause(clauseId, makeProbeSpec(clauseId, `Version probe v1 ${nonce}`, 1), 1);
-        await registerProbeClause(clauseId, makeProbeSpec(clauseId, `Version probe v2 ${nonce}`, 2), 2);
+        const clauseId = `figaro-probe-lookalike-${nonce}`;
+        const title = `Lookalike probe ${nonce}`;
+        const original = makeProbeSpec(clauseId, title);
+        const lookalike = { ...original, description: `${original.description} (a lookalike: same name, same version, different bytes)` };
+        expect(lookalike.clauseId, 'the lookalike carries the same name').toBe(original.clauseId);
+        expect(lookalike.version, 'and the same version').toBe(original.version);
+        const originalKey = await registerProbeClause(original);
+        const lookalikeKey = await registerProbeClause(lookalike);
+        expect(lookalikeKey, 'different bytes are a different key').not.toBe(originalKey);
+
+        // Out-of-band: the registry holds BOTH, each under its own key — first
+        // write wins on a key, and the lookalike took nothing from the original.
+        const config = readLocalDeploymentConfig();
+        const pub = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
+        const clauseRegistry = (process.env.NEXT_PUBLIC_CLAUSE_REGISTRY ?? config.clauseRegistry) as Hex;
+        for (const key of [originalKey, lookalikeKey]) {
+            expect(await pub.readContract({
+                address: clauseRegistry, abi: CLAUSE_REGISTRY_ABI, functionName: 'registered', args: [key],
+            }), `${key} is a live registration`).toBe(true);
+        }
 
         await page.goto('/assemblies/designer/new?fresh=1&e2e=devnet', { waitUntil: 'domcontentloaded' });
         await page.getByTestId('designer-canvas-toolbar').waitFor({ timeout: 30000 });
@@ -51,32 +73,37 @@ test.describe('clause version axis (devnet)', () => {
         await page.getByTestId('drawer-tab-registry').click();
         await page.getByTestId('drawer-section-registry').waitFor({ state: 'visible', timeout: 5000 });
 
-        // Both registered versions render as co-equal rows, each resolving its
-        // OWN spec (distinguishable titles) — a clause is a clause.
-        const v1Row = page.getByTestId(`drawer-registry-clause-${clauseId}`);
-        const v2Row = page.getByTestId(`drawer-registry-clause-${clauseId}-v2`);
-        await expect(v1Row, 'the v1 row surfaces').toHaveCount(1, { timeout: 20000 });
-        await expect(v2Row, 'the v2 row surfaces beside it').toHaveCount(1, { timeout: 20000 });
-        await expect(page.getByText(`Version probe v2 ${nonce}`)).toBeVisible();
+        // Two registrations, two rows — each under its own key, each labeled
+        // by its OWN spec's title and version (identical labels: the key is
+        // what tells them apart, and the row carries it).
+        const originalBox = page.getByTestId(`drawer-registry-clause-${originalKey}`);
+        const lookalikeBox = page.getByTestId(`drawer-registry-clause-${lookalikeKey}`);
+        await expect(originalBox, 'the original row surfaces').toHaveCount(1, { timeout: 20000 });
+        await expect(lookalikeBox, 'the lookalike row surfaces beside it').toHaveCount(1, { timeout: 20000 });
+        for (const key of [originalKey, lookalikeKey]) {
+            const row = page.locator('label', { has: page.getByTestId(`drawer-registry-clause-${key}`) });
+            await expect(row, 'the row is labeled by its spec title').toContainText(title);
+            await expect(row, 'and its spec version').toContainText(`v${original.version}`);
+            await expect(row.locator(`[title="${key}"]`), 'and carries its own key').toHaveCount(1);
+        }
 
-        // Compose the v2 clause and publish through the real flow.
-        await v2Row.check();
-        await page.getByTestId('designer-name-input').fill(`Version probe assembly ${nonce}`);
-        await page.getByTestId('designer-summary-input').fill('Version-axis coverage: composed on v2.');
-        await page.getByTestId('designer-description-input').fill('Single-node assembly composing the v2 registration of a per-run probe clause.');
+        // Compose the LOOKALIKE and publish through the real flow.
+        await lookalikeBox.check();
+        await expect(originalBox, 'composing the lookalike leaves the original unselected').not.toBeChecked();
+        await page.getByTestId('designer-name-input').fill(`Lookalike probe assembly ${nonce}`);
+        await page.getByTestId('designer-summary-input').fill('Lookalike coverage: composed on the lookalike registration.');
+        await page.getByTestId('designer-description-input').fill('Single-node assembly composing a lookalike of a per-run probe clause.');
         await expect(page.getByTestId('designer-review')).toBeEnabled({ timeout: 5000 });
         await page.getByTestId('designer-review').click();
         await page.waitForURL(/\/assemblies\/designer\/view\/?\?slug=asm-/, { timeout: 15000 });
         const handle = page.url().match(/[?&]slug=(asm-[a-z0-9-]+)/)?.[1];
         const slug = await publishOrAdoptReviewed(page, handle!);
 
-        // Out-of-band: the anchored template records the v2 identity, and the
-        // composition hash the chain keys on derives that slug.
-        const config = readLocalDeploymentConfig();
-        const registry = (process.env.NEXT_PUBLIC_ASSEMBLY_REGISTRY ?? config.assemblyRegistry) as Hex;
-        const pub = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });
+        // Out-of-band: the anchored template is keyed by the lookalike's key,
+        // and the composition hash the chain keys on derives that slug.
+        const assemblyRegistry = (process.env.NEXT_PUBLIC_ASSEMBLY_REGISTRY ?? config.assemblyRegistry) as Hex;
         const events = await pub.getContractEvents({
-            address: registry, abi: ASSEMBLY_REGISTRY_ABI, eventName: 'AssemblyRegistered', fromBlock: 0n,
+            address: assemblyRegistry, abi: ASSEMBLY_REGISTRY_ABI, eventName: 'AssemblyRegistered', fromBlock: 0n,
         });
         const anchored = events.find(
             (e) => deriveAssemblySlug(e.args.compositionHash as `0x${string}`) === slug,
@@ -85,10 +112,10 @@ test.describe('clause version axis (devnet)', () => {
         const gateway = process.env.NEXT_PUBLIC_IPFS_GATEWAY_URL ?? 'http://127.0.0.1:8080';
         const uri = anchored!.args.contentURI as string;
         const doc = await (await fetch(`${gateway}/ipfs/${uri.slice('ipfs://'.length)}`)).json() as {
-            agreements: Array<{ clauses: Record<string, unknown>; clauseVersions?: Record<string, number> }>;
+            agreements: Array<{ clauses: Record<string, unknown> }>;
         };
-        const node = doc.agreements.find((a) => clauseId in a.clauses);
-        expect(node, 'the pinned template carries the probe clause').toBeTruthy();
-        expect(node!.clauseVersions?.[clauseId], 'the template records the composed VERSION').toBe(2);
+        const composedKeys = doc.agreements.flatMap((a) => Object.keys(a.clauses).map((k) => k.toLowerCase()));
+        expect(composedKeys, 'the pinned template is keyed by the lookalike').toContain(lookalikeKey.toLowerCase());
+        expect(composedKeys, 'and never names the original').not.toContain(originalKey.toLowerCase());
     });
 });

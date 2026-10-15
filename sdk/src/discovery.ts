@@ -24,7 +24,7 @@
  * pinned document from IPFS is the consumer's job — the SDK is viem-only.
  */
 
-import { type PublicClient, type Log, decodeEventLog, keccak256, encodeAbiParameters } from "viem";
+import { type PublicClient, type Log, decodeEventLog } from "viem";
 import {
     CLAUSE_REGISTRY_ABI,
     MEMBERS_REGISTRY_ABI,
@@ -45,22 +45,20 @@ import type {
     RegisteredMember,
     RegisteredAssembly,
 } from "./types.js";
+import { canonicalContentHash } from "./agreement.js";
 
 // ── Clause key ───────────────────────────────────────────────────────────────
 
 /**
- * The on-chain clause key: `keccak256(abi.encode(clauseId, version))`
- * (ClauseRegistry.sol:146). `ClauseRegistered` carries the bare name + version;
- * `DepositWithdrawn` carries only this key — so correlating a withdrawal to its
- * registration means recomputing it here.
+ * The on-chain clause key: `keccak256` of the spec's canonical bytes
+ * (`canonicalContentHash(spec)`) — the key `ClauseRegistry.registerClause`
+ * takes and every leaf, attestation and usage count is keyed by. A clause IS
+ * its spec: the key is the content address, so a reader verifies a fetched
+ * spec by hashing it, and the spec's `clauseId` / `version` are its own
+ * presentation fields, never part of the identity.
  */
-export function computeClauseKey(clauseId: string, version: number | bigint): Hex {
-    return keccak256(
-        encodeAbiParameters(
-            [{ type: "string" }, { type: "uint64" }],
-            [clauseId, BigInt(version)],
-        ),
-    );
+export function computeClauseKey(spec: unknown): Hex {
+    return canonicalContentHash(spec);
 }
 
 // ── Log decoders ─────────────────────────────────────────────────────────────
@@ -77,11 +75,11 @@ export function parseClauseRegistryLogs(logs: Log[]): ClauseRegistryEvents {
         try {
             const decoded = decodeEventLog({ abi: CLAUSE_REGISTRY_ABI, data: log.data, topics: log.topics });
             const a = decoded.args as Record<string, unknown>;
+            // Both clause events index the clause key first: read it from the
+            // topic, so the decode does not depend on the argument's name.
             if (decoded.eventName === "ClauseRegistered") {
                 registered.push({
-                    clauseId: a.clauseId as string,
-                    version: Number(a.version),
-                    contentHash: a.contentHash as Hex,
+                    clauseKey: log.topics[1] as Hex,
                     contentURI: a.contentURI as string,
                     registeredBy: a.registeredBy as Address,
                     blockNumber: Number(log.blockNumber ?? 0),
@@ -90,7 +88,7 @@ export function parseClauseRegistryLogs(logs: Log[]): ClauseRegistryEvents {
                 });
             } else if (decoded.eventName === "DepositWithdrawn") {
                 withdrawn.push({
-                    idHash: a.clauseId as Hex, // the withdraw event's `clauseId` IS the key hash
+                    clauseKey: log.topics[1] as Hex,
                     registeredBy: a.registeredBy as Address,
                     blockNumber: Number(log.blockNumber ?? 0),
                     logIndex: Number(log.logIndex ?? 0),
@@ -249,7 +247,6 @@ export function reconstructDiscovery(events: DiscoveryEvents): DiscoveryGraph {
 
 interface ClauseEntry {
     clause: RegisteredClause;
-    withdrawn: boolean;
 }
 
 interface AssemblyEntry {
@@ -271,7 +268,7 @@ interface MemberEntry {
  * to `Topology`. Incrementally updated as new registry events arrive.
  */
 export class DiscoveryGraph {
-    private readonly clauses = new Map<Hex, ClauseEntry>(); // key: idHash
+    private readonly clauses = new Map<string, ClauseEntry>(); // key: lowercased clause key
     private readonly assemblies = new Map<Hex, AssemblyEntry>(); // key: compositionHash
     private readonly members = new Map<string, MemberEntry>(); // key: lowercased address
 
@@ -286,7 +283,7 @@ export class DiscoveryGraph {
 
     /** All live-staked clauses. */
     getClauses(): RegisteredClause[] {
-        return [...this.clauses.values()].filter((e) => !e.withdrawn).map((e) => e.clause);
+        return [...this.clauses.values()].filter((e) => !e.clause.stakeWithdrawn).map((e) => e.clause);
     }
 
     /** All live-staked assemblies. */
@@ -301,10 +298,10 @@ export class DiscoveryGraph {
             .map((e) => ({ member: e.member, metadataURI: e.metadataURI }));
     }
 
-    /** A single clause by its on-chain key; undefined if unknown or de-surfaced. */
-    getClause(idHash: Hex): RegisteredClause | undefined {
-        const e = this.clauses.get(idHash);
-        return e && !e.withdrawn ? e.clause : undefined;
+    /** A single clause by its key; undefined if unknown or de-surfaced. */
+    getClause(clauseKey: Hex): RegisteredClause | undefined {
+        const e = this.clauses.get(clauseKey.toLowerCase());
+        return e && !e.clause.stakeWithdrawn ? e.clause : undefined;
     }
 
     /** A single assembly by compositionHash; undefined if unknown or de-surfaced. */
@@ -323,26 +320,23 @@ export class DiscoveryGraph {
 
     private applyClauseEvents(registered: ClauseRegisteredEvent[], withdrawn: ClauseWithdrawnEvent[]): void {
         for (const e of registered) {
-            const idHash = computeClauseKey(e.clauseId, e.version);
-            // Binding is permanent (registered[idHash] never cleared); a repeat is
+            const key = e.clauseKey.toLowerCase();
+            // Binding is permanent (registered[key] never cleared); a repeat is
             // impossible on-chain, so first-seen wins and later duplicates are ignored.
-            if (!this.clauses.has(idHash)) {
-                this.clauses.set(idHash, {
+            if (!this.clauses.has(key)) {
+                this.clauses.set(key, {
                     clause: {
-                        clauseId: e.clauseId,
-                        version: e.version,
-                        idHash,
-                        contentHash: e.contentHash,
+                        clauseKey: e.clauseKey,
                         contentURI: e.contentURI,
                         registeredBy: e.registeredBy,
+                        stakeWithdrawn: false,
                     },
-                    withdrawn: false,
                 });
             }
         }
         for (const w of withdrawn) {
-            const entry = this.clauses.get(w.idHash);
-            if (entry) entry.withdrawn = true; // withdraw is terminal for a clause key
+            const entry = this.clauses.get(w.clauseKey.toLowerCase());
+            if (entry) entry.clause = { ...entry.clause, stakeWithdrawn: true }; // withdraw is terminal for a clause key
         }
     }
 

@@ -30,12 +30,12 @@ export function CapabilityRail({
     // closes with it.
     const [openChooserId, setOpenChooserId] = useState<string | null>(null);
 
-    /** The readable clauseId of an attestation capability (undefined for every
-     *  other kind) — stamped as `data-clause-id` so a consumer can target one
+    /** The clause key of an attestation capability (undefined for every other
+     *  kind) — stamped as `data-clause-key` so a consumer can target one
      *  clause's capability without depending on the humanized label. */
-    const attestClauseId = (capability: CapabilityModel): string | undefined =>
+    const attestClauseKey = (capability: CapabilityModel): string | undefined =>
         capability.action?.executionType === "transaction" && capability.action.kind === "submit-clause-attestation"
-            ? capability.action.clauseId
+            ? capability.action.clauseKey
             : undefined;
 
     const executionInput = (capability: CapabilityModel): CapabilityExecutionInput | undefined => {
@@ -69,7 +69,7 @@ export function CapabilityRail({
                         key={capability.id}
                         className="rounded border border-default p-3"
                         data-testid={`capability-${capability.actionKind}`}
-                        data-clause-id={attestClauseId(capability)}
+                        data-clause-key={attestClauseKey(capability)}
                     >
                         <div className="flex items-center justify-between gap-3">
                             <p className="font-semibold text-ink-primary text-sm">{capability.label}</p>
@@ -97,7 +97,7 @@ export function CapabilityRail({
                                             key={choice.id}
                                             className="flex items-center justify-between gap-3 rounded border border-default p-3"
                                             data-testid={`capability-choice-${choice.actionKind}`}
-                                            data-clause-id={attestClauseId(choice)}
+                                            data-clause-key={attestClauseKey(choice)}
                                         >
                                             <p className="text-sm text-ink-primary">{choice.label}</p>
                                             {onExecute && (
@@ -106,7 +106,7 @@ export function CapabilityRail({
                                                     size="sm"
                                                     variant="outline"
                                                     data-testid={`capability-execute-${choice.actionKind}`}
-                                                    data-clause-id={attestClauseId(choice)}
+                                                    data-clause-key={attestClauseKey(choice)}
                                                     // A choice is executable when the card that carries it is.
                                                     disabled={!executableCapabilityIds?.has(capability.id) || !!executingCapabilityId}
                                                     onClick={() => onExecute(choice)}
@@ -136,7 +136,7 @@ export function CapabilityRail({
                                             ...prev,
                                             [capability.id]: { ...prev[capability.id], [field.name]: next },
                                         }))}
-                                        testId={`capability-input-${attestClauseId(capability) ?? capability.id}-${field.name}`}
+                                        testId={`capability-input-${attestClauseKey(capability) ?? capability.id}-${field.name}`}
                                     />
                                 ))}
                             </div>
@@ -149,7 +149,7 @@ export function CapabilityRail({
                                     variant="outline"
                                     data-testid={`capability-execute-${capability.actionKind}`}
                                     data-event-code={capability.eventCode}
-                                    data-clause-id={attestClauseId(capability)}
+                                    data-clause-key={attestClauseKey(capability)}
                                     disabled={!executableCapabilityIds?.has(capability.id) || !!executingCapabilityId || inputsIncomplete(capability)}
                                     onClick={() => capability.action?.executionType === "choice"
                                         ? setOpenChooserId(capability.id)

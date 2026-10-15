@@ -76,13 +76,13 @@ drives the deployed Sepolia SwapRouter02 (`deployments/11155111.json`
 built the documented way (the SDK's `SWAP_ROUTER_02_ABI` shape), proving the
 allowance-pull composition end to end.
 
-## Halmos (`test/`) — 4 harness files, 32 properties
+## Halmos (`test/`) — 4 harness files, 33 properties
 
 | Harness | Properties | Key invariants |
 |---|---|---|
 | `HalmosFigaroCore.t.sol` | 7 | Token conservation, bond amounts, resolution payouts, status transitions, buyer dominance, monotonicity |
 | `HalmosMembersRegistry.t.sol` | 7 | The stake mechanics the designer-reward Sybil bound assumes: solvency, no stake recycling, de-surfacing at request, the counter reads that gate |
-| `HalmosUsageCounter.t.sol` | 6 | The accrual arithmetic on top of the (already proved) stake gate: direct-path monotonicity, batch write REPLACES cumulative (c,d) never adds, `scoreOf == accrualOf.score + batchAccrualOf.score` (the only meeting point of the two paths), period bucketing ×2, isolation across clauses and assemblies. Mutation-checked: replace-not-add, score composition. |
+| `HalmosUsageCounter.t.sol` | 7 | The accrual arithmetic on top of the (already proved) stake gate: direct-path monotonicity, batch write REPLACES cumulative (c,d) never adds, `scoreOf == accrualOf.score + batchAccrualOf.score` (the only meeting point of the two paths), period bucketing ×2, isolation across clauses and assemblies, and `check_theKindsNeverShareASlot` — an assembly-kind accrual on either path leaves every clause-kind slot at the same key untouched. Mutation-checked: replace-not-add, score composition. |
 | `HalmosClauseAndAssemblyRegistries.t.sol` | 12 (6 per contract) | `HalmosClauseRegistry` + `HalmosAssemblyRegistry` — the stake machines `RpgfMinter._isAuthor` reads: solvency under arbitrary interleavings by two registering wallets, full withdrawal, first-write-wins permanence, one-shot withdrawal, eligibility ends permanently at withdraw, cross-key isolation. Mutation-checked: solvency + first-write-wins on both contracts, 4/4 counterexamples. |
 
 Run with `scripts/test-halmos.sh` (six passes). **Halmos does not model
@@ -153,6 +153,10 @@ see where the two paths meet (every other layer is per-contract).
 exact per-pool deposits, usage-score composition (`scoreOf == direct + batch`,
 the bridge write REPLACES never adds), `FigaroCore` blindness (`settleBatch` writes
 no `FigaroCore` `orderStatus`) — 10,030,087 states, ~9.5 min. Mutation-checked: 5 mutations + 7 non-vacuity witnesses, each caught.
+The model's `Artifacts` are one abstract keyspace; it does not model the
+reward's kind, so the separation of clause and assembly accruals by (kind,
+key) is held by Foundry, Halmos (`check_theKindsNeverShareASlot`) and the
+guest's `usage.rs`, never by TLC.
 Two NAMED assumptions ride as `.cfg` constants: `AssumeDomainSeparation`
 (contract-enforced — EIP-712 `verifyingContract` disjointness carries
 no-double-payout) and `AssumeAccrualGatesAligned` (NOT contract-enforced — a
@@ -213,20 +217,25 @@ by `KernelTransitionVectorsTest`, and asserts every id, bond, payout,
 accumulator and active count; the three packer vectors (`packers.rs`) and the
 Merkle leg of the agreement-tree lock (`merkle_parity.rs`), both asserted on
 the Solidity side too +
-the witness-gate suite: spec-identity substitution, content-hash mismatch,
-inclusion failure, attest-after-resolve; the usage bridge in
+the witness-gate suite: spec-identity substitution (Gate S,
+`keccak256(spec_json) == clause_id`), a lookalike spec under the same name
+refused, content-hash mismatch, inclusion failure, attest-after-resolve; the
+usage bridge in
 `prover/lib/tests/usage.rs` — same-batch credit against the post-state, cross-batch
 replay rejection (the reason the counted set rides the state root), breadth
 vs depth, the assembly leg via provenance reproduction, the reserved
 provenance leaf attestable without a spec (and refused on an uncommitted
-composition, a foreign contentRef or non-canonical bytes), and the
-usage-hash vector asserted verbatim on the Solidity side; bincode roundtrips
+composition, a foreign contentRef or non-canonical bytes), a clause and an
+assembly on the same key accruing apart, and the usage-hash vector (each
+accrual `key ‖ kind ‖ c ‖ d`) asserted verbatim on the Solidity side; bincode roundtrips
 fence the SP1 stdin landmines), `figaro-prover` (the SP1 guest program itself,
 exercised through the next crate), `figaro-prove-test` (SP1 mock-executor guest tests — the guest's committed
 bytes must equal the host's `PublicValues.abi_encode` byte-for-byte — the exact
 words the on-chain verifier hashes against the proof's digest — and decode back
 field-for-field against host `apply_batch`; in-VM Gate-S
-rejection; `SP1_REAL_PROOF=1` generates + verifies a real local Core proof),
+rejection; `SP1_REAL_PROOF=1` generates + verifies a real local Core proof;
+`prover/script/tests/clause_keys.rs` canonicalizes every `clauses/*.json` and
+asserts it hashes to the SDK's key in `test/fixtures/clause-keys.json`),
 and `figaro-sequencer` (mempool runs the mirror's own witness gates at the
 door; a dedup slot belongs to the submission that will be accepted — a
 stranger's resolve, the buyer's signature over another order list, a seller
@@ -324,6 +333,21 @@ proofs (a three-section agreement and a one-section one) into
 `AttestationCoordinator` and `UsageCounter` do and verifies every proof with
 the OpenZeppelin library they call; `prover/lib/tests/merkle_parity.rs` does
 the same through the guest's verifier. Three implementations, one fixture.
+Each section in the fixture carries its `clauseKey`, the leaf's key.
+
+**Clause keys — the two-language canonicalization lock.** A clause key is
+`keccak256` of the spec's canonical bytes, so the SDK and the guest must
+canonicalize identically. `sdk/tests/clauseKeys.test.ts` derives every
+`clauses/*.json` key with `computeClauseKey` and checks it against
+`test/fixtures/clause-keys.json` (`{ name: key }`, one entry per spec;
+`HARVEST_CLAUSE_KEYS=1` regenerates); `prover/script/tests/clause_keys.rs`
+(`figaro-prove-test`) and `prover/lib/tests/parity.rs` read the same fixture
+and assert the Rust canonicalization lands on every key. The resolver from
+written clause names to keys — a local authoring read run before a document
+is published — is covered by
+`sdk/tests/assembly.test.ts` § `resolveAuthoredClauseKeys`: a name two loaded
+specs share is refused unless written `name@version`, and every reference
+assembly in `assemblies/` resolves against `clauses/` and re-hashes.
 
 **`FigaroCore` transition vectors — the mirror replays `FigaroCore`.**
 `test/core/kernel/KernelTransitionVectorsTest.t.sol` runs six scenarios on

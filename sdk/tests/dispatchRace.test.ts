@@ -9,7 +9,7 @@ import {
     type RaceReply,
 } from "../src/agent/dispatchRace.js";
 import { InProcessChannel, type CommitmentPayload, type PricedField } from "../src/agent/coordination.js";
-import { specSourceFromFixtures } from "./specFixtures.js";
+import { keyOf, specSourceFromFixtures } from "./specFixtures.js";
 import { buildDomain, hashCommitmentStruct, COMMITMENT_TYPES } from "../src/commitments.js";
 import { computeAgreementHash } from "../src/agreement.js";
 import type { Address, Hex } from "../src/types.js";
@@ -28,7 +28,7 @@ const courierAW = createWalletClient({ account: COURIER_A, transport: http("http
 const courierBW = createWalletClient({ account: COURIER_B, transport: http("http://localhost:0") });
 
 const template: AssemblyTemplate = {
-    agreements: [{ id: "order-0", clauses: { "figaro-commerce": {}, "figaro-topology": { parentOrderHashes: [] } } }],
+    agreements: [{ id: "order-0", clauses: { [keyOf("figaro-commerce")]: {}, [keyOf("figaro-topology")]: { parentOrderHashes: [] } } }],
 };
 
 const policy: OfferPolicy = { requireRootShape: true, currencyAllowlist: [CURRENCY], maxValue: 10_000n };
@@ -40,7 +40,7 @@ const policy: OfferPolicy = { requireRootShape: true, currencyAllowlist: [CURREN
 async function draftFor(candidate: Address, payment: bigint): Promise<CommitmentPayload> {
     const offer = await buildBuyerOffer(buyerW, {
         template, seller: candidate, currency: CURRENCY, payment, chainId: CHAIN, core: CORE, deadline: 1_900_000_000n,
-        overrides: { "figaro-commerce": { currency: CURRENCY, payment: payment.toString() } },
+        overrides: { [keyOf("figaro-commerce")]: { currency: CURRENCY, payment: payment.toString() } },
     });
     const { buyerSig: _stripped, ...draft } = offer;
     return draft;
@@ -168,8 +168,8 @@ describe("selectRaceWinner", () => {
 // ── RFQ — the quote leg ──────────────────────────────────────────────────────
 
 const PRICED: readonly PricedField[] = [
-    { clause: "figaro-commerce", path: "payment" },
-    { clause: "figaro-commerce", path: "lineItems.0.unitPrice" },
+    { clause: keyOf("figaro-commerce"), path: "payment" },
+    { clause: keyOf("figaro-commerce"), path: "lineItems.0.unitPrice" },
 ];
 const CEILING = 1000n;
 
@@ -180,7 +180,7 @@ function requestFor(candidate: Address): CommitmentPayload {
         template, buyer: BUYER.address, seller: candidate, currency: CURRENCY,
         ceiling: CEILING, chainId: CHAIN, core: CORE, pricedFields: PRICED, deadline: 1_900_000_000n,
         overrides: {
-            "figaro-commerce": {
+            [keyOf("figaro-commerce")]: {
                 currency: CURRENCY,
                 payment: "0",
                 lineItems: [{ itemId: "job", name: "Bespoke job", quantity: 1, unitPrice: "0" }],
@@ -199,7 +199,7 @@ describe("buildQuoteRequest + substitutePricedValue", () => {
         expect(req.commitment.payment).toBe(CEILING);
         expect(req.commitment.expectedCumulativeValue).toBe(CEILING);
         expect(req.quoteRequest?.pricedFields).toEqual(PRICED);
-        const commerce = req.agreement.sections.find((s) => s.clause === "figaro-commerce")!;
+        const commerce = req.agreement.sections.find((s) => s.clause === keyOf("figaro-commerce"))!;
         expect(commerce.data.payment).toBe(CEILING.toString());
         expect((commerce.data.lineItems as Array<{ unitPrice: string }>)[0].unitPrice).toBe(CEILING.toString());
         expect(validateDraft(req, COURIER_A.address).ok).toBe(true);
@@ -207,10 +207,11 @@ describe("buildQuoteRequest + substitutePricedValue", () => {
 
     it("throws when a priced path does not exist — substitution never invents structure", () => {
         const req = requestFor(COURIER_A.address);
-        expect(() => substitutePricedValue(req.agreement, [{ clause: "figaro-commerce", path: "surcharge" }], 5n))
+        expect(() => substitutePricedValue(req.agreement, [{ clause: keyOf("figaro-commerce"), path: "surcharge" }], 5n))
             .toThrow(/no field "surcharge"/);
-        expect(() => substitutePricedValue(req.agreement, [{ clause: "figaro-nope", path: "payment" }], 5n))
-            .toThrow(/no "figaro-nope" section/);
+        const nope = `0x${"9e".repeat(32)}` as const;
+        expect(() => substitutePricedValue(req.agreement, [{ clause: nope, path: "payment" }], 5n))
+            .toThrow(new RegExp(`no "${nope}" section`));
     });
 });
 
@@ -221,7 +222,7 @@ describe("quoteDraft (real signatures, no chain)", () => {
         expect(reply?.sellerSig).toBeDefined();
         expect(reply?.commitment.payment).toBe(700n);
         expect(reply?.commitment.expectedCumulativeValue).toBe(700n);
-        const commerce = reply!.agreement.sections.find((s) => s.clause === "figaro-commerce")!;
+        const commerce = reply!.agreement.sections.find((s) => s.clause === keyOf("figaro-commerce"))!;
         expect(commerce.data.payment).toBe("700");
         expect((commerce.data.lineItems as Array<{ unitPrice: string }>)[0].unitPrice).toBe("700");
         expect((await verifyQuoteReply(reply!, req, CTX)).ok).toBe(true);
@@ -266,7 +267,7 @@ describe("verifyQuoteReply — the reconstruction gate", () => {
         const doctored = {
             ...agreement,
             sections: agreement.sections.map((s) =>
-                s.clause === "figaro-commerce"
+                s.clause === keyOf("figaro-commerce")
                     ? { ...s, data: { ...s.data, lineItems: [{ ...(s.data.lineItems as Array<Record<string, unknown>>)[0], quantity: 3 }] } }
                     : s),
         };
@@ -350,7 +351,7 @@ describe("the merkle-leaf seam on the race + quote legs (docs/CLAUSES.md § 'Eve
     const SPECS = specSourceFromFixtures(["figaro-commerce", "figaro-topology"]);
     const BAD_CURRENCY = "0xdddddddddddddddddddddddddddddddddddddddd" as Address;
     const fullCommerce = (currency: Address, payment: string) => ({
-        "figaro-commerce": {
+        [keyOf("figaro-commerce")]: {
             currency, payment,
             lineItems: [{ itemId: "x", name: "Item", quantity: 1, unitPrice: payment }],
         },

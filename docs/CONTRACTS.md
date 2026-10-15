@@ -34,7 +34,7 @@ AttestationCoordinator ──▶ FigaroCore ◀── WitnessSwapAndCommitCoordi
               │        │            │              (designer of record)
               ▼        ▼            ▼
        (SP1 gateway)  ClauseRegistry   FlorinToken
-                      (contentHashOf)  (registered minter at genesis, 600M cap)
+                      (registered)     (registered minter at genesis, 600M cap)
 ```
 
 - `FigaroCore` — no outbound edges: it reads no contract above it.
@@ -124,10 +124,11 @@ The proof-based path that resolves batches of processes beside the direct
 - checks state-root continuity and chain binding, and hash-verifies the
   calldata (positions, attestations, spec bindings) byte-for-byte against the
   Rust mirror's `compute_*_hash`;
-- checks every (clause key → witness-spec hash) binding against
-  `ClauseRegistry.contentHashOf` — the vkey covers the generic clause engine,
-  the registry anchors the constraint set, so a new clause never touches the
-  prover;
+- checks every spec binding: the clause key is the hash of the witness spec,
+  so the binding's two words must be equal (`SpecBindingMismatch`), and the
+  key must be `ClauseRegistry.registered` (`ClauseNotRegistered`) — the vkey
+  covers the generic clause engine, the registry anchors the constraint set,
+  so a new clause never touches the prover;
 - reconciles net token positions (pulls net deposits, pushes net payouts;
   `FeeOnTransferDetected` guard), re-emits proven `Attestation` events (same
   topic as the coordinator's — indexers filter by address), forwards the usage
@@ -139,11 +140,12 @@ The proof-based path that resolves batches of processes beside the direct
 The two paths share no state: a batch-resolved process never acquires `FigaroCore`
 status (`core.orderStatus` stays 0 for it), so every reader folds both
 streams. The usage accrual is the one thing that crosses: the guest proves each
-clause's or assembly's cumulative `(c, d)`, an eighth public value
-(`usageAccrualHash`) commits the period, the provenance leaf key, the
+clause's or assembly's cumulative `(c, d)` under its kind, an eighth public
+value (`usageAccrualHash`) commits the period, the provenance leaf key, the
 accruals and the distinct sellers behind them (both array lengths in the
-preimage), and `settleBatch` re-derives that hash from calldata before
-forwarding. What the proof cannot see — the open period, each seller's live
+preimage; each accrual packed `key(32) ‖ kind(1) ‖ c(8) ‖ d(8)`, a span of
+`49 + 49n + 20m` bytes for n accruals and m sellers), and `settleBatch`
+re-derives that hash from calldata before forwarding. What the proof cannot see — the open period, each seller's live
 stake, each clause's or assembly's live registration — is checked in the
 counter. A batch that credits no
 usage passes empty arrays; that call is a no-op, which lets trade keep
@@ -163,21 +165,30 @@ third, `MembersRegistry`, is in `src/app/`.
 
 **`src/build/registries/ClauseRegistry.sol`** — Permissionless clause
 anchoring under a stake.
-- Key: `idHash = keccak256(abi.encode(clauseId, version))`. `contentHash` is
-  keccak256 of the canonical spec JSON; `contentURI` is where readers fetch it.
-  `contentHashOf[idHash]` is never cleared — it is the anchor
-  `FigaroBatchVerifier` checks every witness-spec binding against.
-- `registerClause` — first-write-wins, immutable, `payable`, requires exactly
-  `registrationDeposit` (`WrongDeposit`); emits `ClauseRegistered`.
-- `withdrawDeposit(idHash)` — the registering wallet only, once, no time lock;
+- Key: `clauseKey = keccak256` of the spec's pinned canonical bytes (the SDK's
+  `computeClauseKey(spec)`, which is `canonicalContentHash(spec)`). The key is
+  the clause's identity and its content hash at once; the spec's `clauseId`
+  and `version` are presentation fields inside the document that nothing on
+  chain reads. `contentURI` is where readers fetch the bytes, and a reader
+  verifies them by checking `keccak256(bytes) == clauseKey`. Two specs that
+  carry one name are two clauses.
+- `registerClause(clauseKey, contentURI)` — first-write-wins on the key,
+  immutable, `payable`, requires exactly `registrationDeposit`
+  (`WrongDeposit`); refuses the zero key (`ZeroClauseKey`) and an empty URI
+  (`EmptyContentURI`); emits `ClauseRegistered(clauseKey, contentURI,
+  registeredBy)`.
+- State: `registered[clauseKey]`, never cleared — the anchor
+  `FigaroBatchVerifier` checks every spec binding against — and
+  `depositOf[clauseKey] = {registeredBy, withdrawn}`.
+- `withdrawDeposit(clauseKey)` — the registering wallet only, once, no time lock;
   refunds the stake and emits `DepositWithdrawn`. The binding stays; readers
   remove the clause from view for new compositions, and orders already
   committed against it still resolve.
-- `setMechanismClause(idHash)` — permissionless self-declaration by any
-  contract; writes no storage, emits `MechanismClauseSet(msg.sender, idHash)`,
+- `setMechanismClause(clauseKey)` — permissionless self-declaration by any
+  contract; writes no storage, emits `MechanismClauseSet(msg.sender, clauseKey)`,
   reverts `NotRegistered` on an unanchored key. It confers nothing.
-- Registration anchors a locator and a content hash only; the contract
-  validates no content. `CLAUSES.md` owns the validation model.
+- Registration anchors a key and a locator only; the registry never sees the
+  bytes and validates no content. `CLAUSES.md` owns the validation model.
 
 **`src/build/registries/AssemblyRegistry.sol`** — Permissionless assembly
 anchoring under a stake.
@@ -210,6 +221,10 @@ bonded, challenged, or adjudicated afterward.
 Constructor `(core, members, clauses, assemblies, batchVerifier, minSellers,
 periodEnd)`, every argument fixed at deploy; no setter exists.
 
+Every accrual, count and score is keyed by (kind, key), kind
+`KIND_CLAUSE = 0` or `KIND_ASSEMBLY = 1`, and each kind's gate reads only its
+own registry (`DESIGN_DECISIONS.md` § 24).
+
 Two permissionless functions and one proof-gated writer:
 - `recordClauseUsage(order, clauseOrAssembly, sectionHash, proof)` — proves
   the order is RESOLVED (`core.orderStatus == 2`) and that the clause was
@@ -217,7 +232,8 @@ Two permissionless functions and one proof-gated writer:
   `agreementHash`). Fingerprint only, never the preimage. The same check
   `AttestationCoordinator` performs, with the status gate inverted:
   attestation is evidence during an open process; usage is counted once it
-  has resolved. Recording is opt-in and gas-paid by whoever benefits.
+  has resolved. Recording is opt-in and gas-paid by whoever benefits. It
+  counts under the clause kind and checks `ClauseRegistry` only.
 - `recordAssemblyUsage(order, compositionHash, proof)` — credits an assembly.
   Agreement leaves are keyed by clause, so a `compositionHash` is never a leaf
   key; what is a leaf is the agreement format's reserved provenance leaf,
@@ -225,15 +241,17 @@ Two permissionless functions and one proof-gated writer:
   The contract derives that section hash from `compositionHash` and proves
   that one leaf; a wrong hash derives a leaf that is not in the tree. The
   leaf's key is the public constant `provenanceLeaf =
-  keccak256("figaro-agreement-provenance")`, a plain-string preimage that no
-  clause key `keccak256(abi.encode(name, uint64))` meets. An agreement that
-  names no assembly carries no provenance leaf, and no process under it
-  credits an assembly designer.
+  keccak256("figaro-agreement-provenance")`, a constant of the agreement
+  format registered nowhere. It counts under the assembly kind and checks
+  `AssemblyRegistry` only. An agreement that names no assembly carries no
+  provenance leaf, and no process under it credits an assembly designer.
 - `applyBatchAccrual(period, claimedProvenanceLeaf, accruals, sellers)` — callable
   only by `batchVerifier` (immutable). A proof-gated writer, not an admin: the
   caller has no discretion, only numbers an immutable vkey committed
-  (`DESIGN_DECISIONS.md` §16). The write overwrites the clause's or
-  assembly's cumulative `(c, d)` for the period, so the batch path keeps no
+  (`DESIGN_DECISIONS.md` §16). Each accrual is `BatchAccrual{bytes32
+  clauseOrAssembly, uint8 kind, uint64 c, uint64 d}` and is gated by its own
+  kind's registry; an unknown kind is skipped. The write overwrites the
+  clause's or assembly's cumulative `(c, d)` for the period, so the batch path keeps no
   per-process storage; counts are asserted non-decreasing
   (`AccrualWentBackwards`). The open period (`PeriodMismatch`), the proved
   leaf key against `provenanceLeaf` (`ProvenanceLeafMismatch`), and each
@@ -256,11 +274,12 @@ formula and its rationale are stated normatively in `sdk/src/rpgf/formula.json`.
   sellers have carried it; counting is never refused below the floor, and the
   score appears whole when it is crossed. The floor lives in `_score`, so both
   paths inherit it identically and per path.
-- **The provenance leaf earns nothing:** the counter refuses its key by
-  comparison with the constant on both paths, whatever a registry holds at
-  that key (a registry takes any `bytes32`) — `_accrue` reverts
-  `ProvenanceLeafIsNotARegistration` on the direct path, and
-  `applyBatchAccrual` skips the key before the registration gate. Every
+- **The provenance leaf earns nothing:** its key is refused at accrual by
+  comparison with the constant, whatever a registry holds at that key (a
+  registry takes any `bytes32`) — `_accrue` reverts
+  `ProvenanceLeafIsNotARegistration` on the direct path, the guest refuses a
+  batch claim keyed on it (`apply_usage_claims`), and `applyBatchAccrual`
+  skips the key before the registration gate. Every
   registered clause earns under the uniform
   rule, the two order-mandatory clauses (`figaro-commerce`, `figaro-topology`)
   among them, for their designer of record — the DAO treasury, which
@@ -269,7 +288,7 @@ formula and its rationale are stated normatively in `sdk/src/rpgf/formula.json`.
   `totalScoreIn(period)` is maintained as an O(1) delta on every recording. The
   contract knows nothing about budgets or who pays.
 - **Merging the two paths — sum the scores, never the components:**
-  `scoreOf(clauseOrAssembly, period) = accrualOf.score + batchAccrualOf.score`,
+  `scoreOf(kind, clauseOrAssembly, period) = accrualOf.score + batchAccrualOf.score`,
   and `totalScoreIn` counts both. Summing components would over-count breadth
   for a seller active on both paths; summing scores over-counts it too, by a
   bounded factor — a seller on both paths enters each path's `d`, and a key
@@ -281,8 +300,8 @@ formula and its rationale are stated normatively in `sdk/src/rpgf/formula.json`.
   `scoreOf`; a reader that reaches for `accrualOf` alone under-reports. The
   batch leg emits `BatchUsageRecorded` (cumulative, replaces), the direct leg
   `UsageRecorded` (adds); indexers fold them differently.
-- **Idempotence is global:** a process counts once ever per clause or
-  assembly, in whichever period it is first recorded; each period counts only
+- **Idempotence is global:** a process counts once ever per (kind, key), in
+  whichever period it is first recorded; each period counts only
   usage new to it.
 - `icbrt` binary-searches the floor cube root with its ceiling at
   `floor(cbrt(2^256−1))`, so the cube cannot overflow.
@@ -319,15 +338,18 @@ over years 1–2, 30% over 3–5, 55% over 6–9, split equally within each grou
 
 **`src/build/rewards/RpgfMinter.sol`** — `claim(periodId, clausesOrAssemblies)` mints
 `periodAmount · callerScore / totalScoreInPeriod`, once per wallet per period;
-a wallet passes every clause and assembly it designed in that one call.
+a wallet passes every clause and assembly it designed in that one call, each
+as a `ClauseOrAssemblyKey{uint8 kind, bytes32 key}`.
 - `claim` requires `counter.periodClosed(periodId)`: the numbers it reads are
   final, so there is no snapshot, checkpoint, or history walk.
-- The list must be duplicate-free (`DuplicateClauseOrAssembly`); with distinct
-  entries `score ≤ total` holds structurally.
-- Each entry is verified against its own registry with a live stake —
-  `ClauseRegistry.depositOf` (`registeredBy == caller` and not withdrawn) or
-  `AssemblyRegistry.bindings` (`registeredBy == caller` and not withdrawn);
-  both anchors are consulted because neither knows the other exists. This is
+- The list must be duplicate-free in (kind, key) (`DuplicateClauseOrAssembly`);
+  with distinct entries `score ≤ total` holds structurally.
+- `_isAuthor(kind, key, account)` verifies each entry against the one
+  registry its kind names, with a live stake — the clause kind reads
+  `ClauseRegistry.depositOf` (`registeredBy == caller` and not withdrawn), the
+  assembly kind `AssemblyRegistry.bindings` (`registeredBy == caller` and not
+  withdrawn), and an unknown kind reverts `UnknownKind`; the score is read
+  from the counter's slot for the same kind. This is
   the designer-side half of the two-sided live-stake gate; the seller-side
   half is `UsageCounter`'s.
 - Payout is uniform pro rata with no cap. The budget array is validated
@@ -490,7 +512,8 @@ addresses are deployment configuration, never code written here.
 ## What the protocol has no contract for
 
 Clause content is validated off-chain by the SDK against the spec, and in
-proof on the batch path against specs anchored by `contentHashOf`; there are
+proof on the batch path against specs whose key `ClauseRegistry.registered`
+holds; there are
 no per-clause validator contracts, and a never-seen clause is attestable and
 batch-resolvable with zero per-clause code (`CLAUSES.md`). Usage for designer
 rewards is counted as it happens; there is no posted root, no reward bond, no

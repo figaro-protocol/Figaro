@@ -16,10 +16,24 @@ import {
     type PublicClient,
 } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
-import { ASSEMBLY_REGISTRY_ABI, CLAUSE_REGISTRY_ABI, templateCompositionHash } from '@figaro-protocol/sdk';
+import {
+    ASSEMBLY_REGISTRY_ABI,
+    CLAUSE_REGISTRY_ABI,
+    canonicalize,
+    computeClauseKey,
+    resolveAuthoredClauseKeys,
+    templateCompositionHash,
+    type Hex,
+} from '@figaro-protocol/sdk';
 import { encodeGeohash } from '@figaro-protocol/sdk/derive';
 import { deriveAssemblySlug } from '@/lib/shared/assemblyTemplate';
 import { ZERO_ADDRESS } from '@/lib/shared/evm';
+import { clauseLadderField, labelEnumValue, loadClauseSpec, setClauseSpecFetcher } from '@/lib/shared/clauseSpecSource';
+import { keyOf } from '../lib/primeClauseSpecs';
+
+/** The ONE way a spec locates a clause by the name a human reads — over the
+ *  specs `primeRegisteredClauseSpecs` loaded from the chain. */
+export { keyOf };
 
 /** Which network the e2e run reads and drives: Anvil (the default; mainnet
  *  on a laptop) or Sepolia (`E2E_CHAIN=sepolia` — the public rehearsal, the
@@ -201,7 +215,7 @@ export interface SeedMemberProfile {
         bindingId: string;
         subjectAddress: `0x${string}`;
         assemblySlug: string;
-        counterpartyBindings: Array<{ clauseId: string; addresses: string[] }>;
+        counterpartyBindings: Array<{ clauseKey: string; addresses: string[] }>;
     }>;
     /** Agent service endpoints (`MemberAgentServices`) — a declared `rest`
      *  makes the wallet an AGENT candidate: race/quote drafts POST there. */
@@ -210,10 +224,10 @@ export interface SeedMemberProfile {
      *  through and monetizes records from (independent of the bindings). */
     buyerAssemblies?: Array<{ compositionHash: `0x${string}` }>;
     /** The member's data-disclosure policy — the data offered
-     *  (assembly compositionHash × clauseId × posture). */
+     *  (assembly compositionHash × clauseKey × posture). */
     disclosurePolicy?: Array<{
         compositionHash: `0x${string}`;
-        clauseId: string;
+        clauseKey: string;
         posture: 'buyer' | 'seller';
         offered: boolean;
         whitelist?: `0x${string}`[];
@@ -329,8 +343,20 @@ export async function seedRegisteredMember(opts: {
  * full onboarding wizard.
  */
 export async function pinJSONToIPFS(data: unknown): Promise<{ cid: string; uri: string }> {
+    return pinTextToIPFS(JSON.stringify(data));
+}
+
+/** Pin a clause spec the way a designer does: its CANONICAL JSON bytes
+ *  (`canonicalize`), whose `keccak256` is the clause key the registration
+ *  names. Returns the key beside the locator. */
+export async function pinClauseSpec(spec: unknown): Promise<{ clauseKey: Hex; cid: string; uri: string }> {
+    const { cid, uri } = await pinTextToIPFS(canonicalize(spec));
+    return { clauseKey: computeClauseKey(spec), cid, uri };
+}
+
+async function pinTextToIPFS(text: string): Promise<{ cid: string; uri: string }> {
     const form = new FormData();
-    form.append('file', new Blob([JSON.stringify(data)], { type: 'application/json' }));
+    form.append('file', new Blob([text], { type: 'application/json' }));
     // A public network pins through the managed pin service (the same
     // two-backend adapter `lib/shared/ipfsService.ts` and the seeding scripts
     // use); the devnet pins to local Kubo.
@@ -420,7 +446,7 @@ export interface DiscoveredMember {
     geohash?: string;
     assemblyBindings: Array<{
         assemblySlug: string;
-        counterpartyBindings?: Array<{ clauseId: string; addresses: string[] }>;
+        counterpartyBindings?: Array<{ clauseKey: string; addresses: string[] }>;
     }>;
 }
 
@@ -589,39 +615,64 @@ export interface DiscoveredAssembly {
     summary?: string;
 }
 
-/** The slug of a REFERENCE assembly identified by its IDENTITY — the
- *  compositionHash over its canonical composition, the same one
- *  populate-test-data anchors it under. An assembly IS its composition; it is
- *  never a "kind" inferred from which clauses it happens to carry, so a spec
- *  that wants a SPECIFIC template must name it by identity, never select it with
- *  a clause-shape heuristic (which is closed-world AND ambiguous — several
- *  single-order compositions share the same shape). `name` is the file in
- *  `assemblies/`. */
-export function referenceAssemblySlug(name: string): string {
-    const template = JSON.parse(
-        fs.readFileSync(path.resolve(__dirname, '../../../assemblies', name), 'utf8'),
-    );
-    return deriveAssemblySlug(templateCompositionHash(template));
+/** The specs an AUTHORED source document (`assemblies/*.json`,
+ *  `members/*.json`) names its clauses against: every `clauses/*.json` file,
+ *  each keyed by `computeClauseKey` over the RAW file — the same set the
+ *  seeding loads (`populate-clauses.mjs` `loadAuthoredSpecs`). */
+function authoredClauseSpecSet(): { list(): { clauseKey: Hex; clauseId: string; version: number }[] } {
+    const dir = path.resolve(__dirname, '../../../clauses');
+    const specs = fs.readdirSync(dir).filter((f) => f.endsWith('.json')).sort().map((file) => {
+        const spec = JSON.parse(fs.readFileSync(path.join(dir, file), 'utf8')) as { clauseId: string; version: number };
+        return { clauseKey: computeClauseKey(spec), clauseId: spec.clauseId, version: spec.version };
+    });
+    return { list: () => specs };
 }
 
-/** Identity of a reference that composes `figaro-utility-token` (the
- *  assembly-scoped designer currency pin): its checked-in
- *  copy carries the ZERO_ADDRESS sentinel (a live token address is new every
- *  fresh deploy, so `assemblies/*.json` cannot ship a real one) — mirrors
- *  `populate-test-data.mjs`'s `fillDeployTimeCurrency`, which substitutes the
- *  live deployment's token address into the sentinel BEFORE anchoring. A spec
- *  wanting such a reference's slug must hash the SUBSTITUTED template — the
- *  raw file's hash never matches what's anchored. `name` is the file in
- *  `assemblies/`. */
+/** An authored source document (a path under the repo root, e.g.
+ *  `assemblies/x.json` or `members/y.json`), its clause names resolved to keys
+ *  exactly as the seeding resolves them before publishing. */
+function readResolvedAuthored<T extends object = Record<string, unknown>>(repoRelativePath: string): T {
+    const doc = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../../..', repoRelativePath), 'utf8')) as T;
+    return resolveAuthoredClauseKeys(doc, authoredClauseSpecSet());
+}
+
+/** Substitute the live token into every assembly-scoped section whose
+ *  `currency` is the ZERO_ADDRESS sentinel — by value, never by clause name;
+ *  mirrors `populate-clauses.mjs`'s `fillDeployTimeCurrency`, which the
+ *  seeding applies BEFORE anchoring. */
+function fillSentinelCurrency<T extends { assemblyClauses?: Record<string, Record<string, unknown>> }>(template: T, tokenAddress: `0x${string}`): T {
+    const sections = template.assemblyClauses ?? {};
+    if (!Object.values(sections).some((v) => v?.currency === ZERO_ADDRESS)) return template;
+    return {
+        ...template,
+        assemblyClauses: Object.fromEntries(Object.entries(sections).map(([key, values]) => [
+            key,
+            values?.currency === ZERO_ADDRESS ? { ...values, currency: tokenAddress } : values,
+        ])),
+    };
+}
+
+/** The slug of a REFERENCE assembly identified by its IDENTITY — the
+ *  compositionHash over its canonical composition, the same one
+ *  populate-test-data anchors it under (names resolved to keys first). An
+ *  assembly IS its composition; it is never a "kind" inferred from which
+ *  clauses it happens to carry, so a spec that wants a SPECIFIC template must
+ *  name it by identity, never select it with a clause-shape heuristic.
+ *  `name` is the file in `assemblies/`. */
+export function referenceAssemblySlug(name: string): string {
+    return deriveAssemblySlug(templateCompositionHash(readResolvedAuthored(`assemblies/${name}`)));
+}
+
+/** Identity of a reference whose checked-in copy carries the ZERO_ADDRESS
+ *  currency sentinel in an assembly-scoped section (a live token address is
+ *  new every fresh deploy, so `assemblies/*.json` cannot ship a real one). The
+ *  seeding substitutes the live token into the sentinel BEFORE anchoring, so a
+ *  spec wanting such a reference's slug hashes the SUBSTITUTED, key-resolved
+ *  template — the raw file's hash never matches what's anchored. `name` is the
+ *  file in `assemblies/`. */
 export function referenceAssemblySlugWithLiveCurrency(name: string, tokenAddress: `0x${string}`): string {
-    const template = JSON.parse(
-        fs.readFileSync(path.resolve(__dirname, '../../../assemblies', name), 'utf8'),
-    );
-    const pin = template.assemblyClauses?.['figaro-utility-token'];
-    if (pin?.currency === ZERO_ADDRESS) {
-        template.assemblyClauses['figaro-utility-token'] = { ...pin, currency: tokenAddress };
-    }
-    return deriveAssemblySlug(templateCompositionHash(template));
+    const template = fillSentinelCurrency(readResolvedAuthored<{ assemblyClauses?: Record<string, Record<string, unknown>> }>(`assemblies/${name}`), tokenAddress);
+    return deriveAssemblySlug(templateCompositionHash(template as Parameters<typeof templateCompositionHash>[0]));
 }
 
 /** Every anchored assembly, discovered from chain → IPFS (AssemblyRegistered
@@ -661,29 +712,54 @@ export async function discoverAnchoredAssemblies(): Promise<DiscoveredAssembly[]
     return out;
 }
 
-/** A process-log LADDER's stage labels, read from the clause's chain-anchored
- *  spec (registry event → IPFS): the enum field's values via its valueLabels.
- *  The labels the capability rail renders — walk a ladder by asserting them
- *  in order. (Lifted from local-commerce; consumers: local-commerce,
- *  tradelens-runtime.) */
-export async function ladderLabelsFromChain(
-    publicClient: ReturnType<typeof createPublicClient>,
-    registry: `0x${string}`,
-    clauseId: string,
-): Promise<string[]> {
-    const events = await publicClient.getContractEvents({
-        address: registry, abi: CLAUSE_REGISTRY_ABI, eventName: 'ClauseRegistered', fromBlock: 0n,
+/** The pinned BYTES behind a registration's content URI: Kubo's `cat` for an
+ *  `ipfs://` locator (the gateway when the API refuses), the URL otherwise.
+ *  The key is the hash of exactly these bytes, so nothing re-encodes them. */
+async function fetchPinnedBytes(uri: string): Promise<Uint8Array> {
+    if (uri.startsWith('ipfs://')) {
+        const ipfsApi = process.env.NEXT_PUBLIC_IPFS_API_URL ?? 'http://127.0.0.1:5001';
+        const res = await fetch(`${ipfsApi}/api/v0/cat?arg=${uri.slice('ipfs://'.length)}`, { method: 'POST' }).catch(() => null);
+        if (res?.ok) return new Uint8Array(await res.arrayBuffer());
+    }
+    const res = await fetch(resolveIpfsURI(uri));
+    if (!res.ok) throw new Error(`${uri}: ${res.status}`);
+    return new Uint8Array(await res.arrayBuffer());
+}
+
+/**
+ * Prime the spec cache from the CHAIN: read every `ClauseRegistered` event of
+ * the ClauseRegistry, fetch each registration's pinned bytes, and load them
+ * under their key (the cache verifies `keccak256(bytes) == key`). A
+ * registration whose bytes fail to fetch, hash or parse is skipped — anyone
+ * can register a garbage URI. Re-callable: a re-call picks up registrations
+ * made since (loads are idempotent). After it, `keyOf(name)` locates a clause
+ * by the name its spec carries. Returns the registrations read.
+ */
+export async function primeRegisteredClauseSpecs(): Promise<{ clauseKey: Hex; contentURI: string; registeredBy: `0x${string}` }[]> {
+    const config = readLocalDeploymentConfig();
+    const registry = (process.env.NEXT_PUBLIC_CLAUSE_REGISTRY ?? config.clauseRegistry ?? '') as `0x${string}`;
+    const events = await scanContractEvents(localPublicClient() as PublicClient, {
+        address: registry, abi: CLAUSE_REGISTRY_ABI, eventName: 'ClauseRegistered',
     });
-    const reg = events.filter((e) => (e.args as { clauseId?: string }).clauseId === clauseId).pop();
-    if (!reg) throw new Error(`${clauseId} is not anchored on ClauseRegistry`);
-    const ipfsApi = process.env.NEXT_PUBLIC_IPFS_API_URL ?? 'http://127.0.0.1:5001';
-    const cid = ((reg.args as { contentURI?: string }).contentURI as string).replace(/^ipfs:\/\//, '');
-    const spec = await (await fetch(`${ipfsApi}/api/v0/cat?arg=${cid}`, { method: 'POST' })).json() as {
-        fields: { type: string; values?: string[]; valueLabels?: Record<string, string> }[];
-    };
-    const ladder = spec.fields.find((f) => f.type === 'enum');
-    if (!ladder?.values) throw new Error(`${clauseId} declares no enum ladder`);
-    return ladder.values.map((v) => ladder.valueLabels?.[v] ?? v);
+    setClauseSpecFetcher(fetchPinnedBytes);
+    const rows: { clauseKey: Hex; contentURI: string; registeredBy: `0x${string}` }[] = [];
+    for (const ev of events) {
+        const { clauseKey, contentURI, registeredBy } = ev.args as { clauseKey?: Hex; contentURI?: string; registeredBy?: `0x${string}` };
+        if (!clauseKey || !contentURI || !registeredBy) continue;
+        rows.push({ clauseKey, contentURI, registeredBy });
+        await loadClauseSpec(clauseKey, contentURI).catch(() => undefined);
+    }
+    return rows;
+}
+
+/** A process-log LADDER's stage labels, read from the clause's chain-anchored
+ *  spec (primed by `primeRegisteredClauseSpecs`): the enum ladder's values via
+ *  its valueLabels — the labels the capability rail renders. Walk a ladder by
+ *  asserting them in order. */
+export function ladderLabelsOf(clauseKey: Hex): string[] {
+    const ladder = clauseLadderField(clauseKey);
+    if (!ladder) throw new Error(`${clauseKey} declares no enum ladder (or its spec is not primed)`);
+    return ladder.values.map((v) => labelEnumValue(ladder, v));
 }
 
 /** Resolve an `ipfs://` URI to a Kubo-gateway URL. */
@@ -707,7 +783,9 @@ export function resolveIpfsURI(uri: string): string {
 // WITH a courier designation vs one WITHOUT — coordination is an adoption
 // property, not stored composition, post the figaro-coordination retirement).
 
-export const DELIVERY_CLAUSES = {
+/** The delivery composition's clauses by the names their specs carry —
+ *  resolved to keys through `deliveryClauseKeys`, never used as identities. */
+const DELIVERY_CLAUSE_NAMES = {
     merchant: 'figaro-merchant-process',
     courier: 'figaro-courier-process',
     modalities: 'figaro-modalities',
@@ -716,15 +794,23 @@ export const DELIVERY_CLAUSES = {
     proximity: 'figaro-proximity-policy',
 } as const;
 
+/** The delivery composition's clause KEYS, located by name over the specs
+ *  `primeRegisteredClauseSpecs` loaded (call it first). */
+export function deliveryClauseKeys(): Record<keyof typeof DELIVERY_CLAUSE_NAMES, Hex> {
+    return Object.fromEntries(
+        Object.entries(DELIVERY_CLAUSE_NAMES).map(([role, name]) => [role, keyOf(name)]),
+    ) as Record<keyof typeof DELIVERY_CLAUSE_NAMES, Hex>;
+}
+
 /** The Playwright-pinned device location the geolocation clause's device
  *  affordance reads at authoring time, and the typed destination cell. */
 export const DELIVERY_DEVICE = { lat: 37.7749, lon: -122.4194, destination: '9q8yyk' } as const;
 
 /** A checkout-view general-clause field control, suffix-matched — the testid
- *  is `checkout-field-<orderId>-<clauseId>-<field>[-<option>]` and the
+ *  is `checkout-field-<orderId>-<clauseKey>-<field>[-<option>]` and the
  *  template-local order id varies per assembly. */
-function checkoutField(page: Page, clauseId: string, fieldPath: string) {
-    return page.locator(`[data-testid^="checkout-field-"][data-testid$="-${clauseId}-${fieldPath}"]`).first();
+function checkoutField(page: Page, clauseKey: Hex, fieldPath: string) {
+    return page.locator(`[data-testid^="checkout-field-"][data-testid$="-${clauseKey}-${fieldPath}"]`).first();
 }
 
 /** Fill the delivery assembly's GENERAL-clause transaction particulars on the
@@ -734,6 +820,8 @@ function checkoutField(page: Page, clauseId: string, fieldPath: string) {
  *  geolocation endpoints HERE. Call after `checkout-view` renders, before
  *  placing the order. */
 export async function fillDeliveryCheckout(page: Page): Promise<void> {
+    await primeRegisteredClauseSpecs();
+    const DELIVERY_CLAUSES = deliveryClauseKeys();
     await checkoutField(page, DELIVERY_CLAUSES.modalities, 'modality-delivery').check();
     await checkoutField(page, DELIVERY_CLAUSES.handoff, 'handoff-face-to-face').check();
     await checkoutField(page, DELIVERY_CLAUSES.proximity, 'bands-zone-wifi').check();
@@ -850,6 +938,8 @@ export async function authorizeFundingToken(page: Page): Promise<void> {
  *  geolocation, AND the proximity policy (the hand-off witness). Internal —
  *  consumers go through `ensureDeliveryAssembly`. */
 async function findDeliveryAssembly(): Promise<string | undefined> {
+    await primeRegisteredClauseSpecs();
+    const DELIVERY_CLAUSES = deliveryClauseKeys();
     const templates = await discoverAnchoredAssemblies();
     return templates.find(
         (t) => t.agreements.length === 2
@@ -872,6 +962,7 @@ async function findDeliveryAssembly(): Promise<string | undefined> {
  */
 export async function ensureDeliveryAssembly(page: Page): Promise<string> {
     let deliverySlug = await findDeliveryAssembly();
+    const DELIVERY_CLAUSES = deliveryClauseKeys();
     if (!deliverySlug) {
         await page.addInitScript(() => {
             try {

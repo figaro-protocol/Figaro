@@ -41,7 +41,7 @@ import { hexEqual } from "@/lib/shared/evm";
 import { truncateHex } from "@/lib/shared/formatHex";
 import { FieldControl } from "@/components/runtime/FieldControl";
 import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
-import { getClauseSpec, memberDocumentClauseSpec } from "@/lib/shared/clauseSpecSource";
+import { getClauseSpec, type KnownClause } from "@/lib/shared/clauseSpecSource";
 import { useAssemblyChoices } from "@/lib/protocol/assemblyChoices";
 import {
     catalogClausesForBindings,
@@ -85,7 +85,7 @@ interface FormItem {
     width: string;
     height: string;
     /** Catalog-sourced clause values (freight class, hazmat, cold-chain, …),
-     *  keyed by clauseId → field values. Authored via spec-driven controls;
+     *  keyed by clause key → field values. Filled through spec-driven controls;
      *  empty entries stripped at save. */
     clauseValues: Record<string, Record<string, unknown>>;
     /** "fixed" (price = the item's price) or "rate" (price = a rate per
@@ -94,7 +94,7 @@ interface FormItem {
     rateUnit: string;
     rateQuantitySource: string;
     /** Encoded data-sold reference for a DATA-PRODUCT item —
-     *  `compositionHash|clauseId|posture` of one of the member's own
+     *  `compositionHash|clauseKey|posture` of one of the member's own
      *  declared data offers, "" for an ordinary item. The
      *  disclosure policy declares the TERMS; this item is the PRICE. */
     dataSoldKey: string;
@@ -102,15 +102,15 @@ interface FormItem {
 
 /** Encode the data reference as a stable select-option key. */
 function dataSoldKeyOf(rc: NonNullable<CatalogItemMetadata["dataSold"]>): string {
-    return [rc.compositionHash, rc.clauseId, rc.posture].join("|");
+    return [rc.compositionHash, rc.clauseKey, rc.posture].join("|");
 }
 
 function dataSoldFromKey(key: string): CatalogItemMetadata["dataSold"] {
-    const [compositionHash, clauseId, posture] = key.split("|");
-    if (!compositionHash || !clauseId || (posture !== "buyer" && posture !== "seller")) {
+    const [compositionHash, clauseKey, posture] = key.split("|");
+    if (!compositionHash || !clauseKey || (posture !== "buyer" && posture !== "seller")) {
         return undefined;
     }
-    return { compositionHash: compositionHash as `0x${string}`, clauseId, posture };
+    return { compositionHash: compositionHash as `0x${string}`, clauseKey: clauseKey as `0x${string}`, posture };
 }
 
 function uid(): string {
@@ -167,11 +167,11 @@ function clauseValuesForSave(
     values: Record<string, Record<string, unknown>>,
 ): Record<string, Record<string, unknown>> | undefined {
     const out: Record<string, Record<string, unknown>> = {};
-    for (const [clauseId, data] of Object.entries(values)) {
+    for (const [clauseKey, data] of Object.entries(values)) {
         const kept = Object.fromEntries(
             Object.entries(data).filter(([, v]) => v !== undefined && v !== "" && !(Array.isArray(v) && v.length === 0)),
         );
-        if (Object.keys(kept).length) out[clauseId] = kept;
+        if (Object.keys(kept).length) out[clauseKey] = kept;
     }
     return Object.keys(out).length ? out : undefined;
 }
@@ -514,7 +514,7 @@ interface ItemRowProps {
     unitSystem: UnitSystem;
     /** Catalog-sourced clauses to author on this item (freight class, hazmat,
      *  cold-chain, …), derived live from the registry by the parent. */
-    catalogClauses: readonly { clauseId: string; version: number }[];
+    catalogClauses: readonly KnownClause[];
     /** The member's declared data offers (offered entries) — the
      *  options a data-product item can reference for its price. */
     dataSoldOptions: readonly DisclosurePolicyEntry[];
@@ -604,8 +604,8 @@ function ItemRow({ item, index, priceSymbol, unitSystem, catalogClauses, dataSol
                     >
                         <option value="">Not a data product</option>
                         {dataSoldOptions.map((rc) => {
-                            const key = [rc.compositionHash, rc.clauseId, rc.posture].join("|");
-                            const title = memberDocumentClauseSpec(rc.clauseId)?.title ?? rc.clauseId;
+                            const key = [rc.compositionHash, rc.clauseKey, rc.posture].join("|");
+                            const title = getClauseSpec(rc.clauseKey)?.title ?? rc.clauseKey;
                             return (
                                 <option key={key} value={key}>
                                     {title} — as {rc.posture} ({truncateHex(rc.compositionHash, { head: 10, tail: 0 })})
@@ -614,7 +614,7 @@ function ItemRow({ item, index, priceSymbol, unitSystem, catalogClauses, dataSol
                         })}
                         {item.dataSoldKey &&
                             !dataSoldOptions.some(
-                                (rc) => [rc.compositionHash, rc.clauseId, rc.posture].join("|") === item.dataSoldKey,
+                                (rc) => [rc.compositionHash, rc.clauseKey, rc.posture].join("|") === item.dataSoldKey,
                             ) && (
                             <option value={item.dataSoldKey}>
                                 (no longer declared) {item.dataSoldKey.split("|")[1]}
@@ -730,23 +730,23 @@ function ItemRow({ item, index, priceSymbol, unitSystem, catalogClauses, dataSol
                     <p className="text-xs text-ink-muted">
                         Item properties the assemblies you bound ask for (all optional)
                     </p>
-                    {catalogClauses.map(({ clauseId, version }) => {
-                        const spec = getClauseSpec(clauseId, version);
+                    {catalogClauses.map(({ clauseKey }) => {
+                        const spec = getClauseSpec(clauseKey);
                         if (!spec) return null;
-                        const fields = catalogFieldsOfClause(clauseId, version);
+                        const fields = catalogFieldsOfClause(clauseKey);
                         if (fields.length === 0) return null;
-                        const data = item.clauseValues[clauseId] ?? {};
+                        const data = item.clauseValues[clauseKey] ?? {};
                         const setField = (fieldName: string, next: unknown) => {
                             const nextData = { ...data };
                             if (next === undefined) delete nextData[fieldName];
                             else nextData[fieldName] = next;
                             const nextMap = { ...item.clauseValues };
-                            if (Object.keys(nextData).length) nextMap[clauseId] = nextData;
-                            else delete nextMap[clauseId];
+                            if (Object.keys(nextData).length) nextMap[clauseKey] = nextData;
+                            else delete nextMap[clauseKey];
                             onChange("clauseValues", nextMap);
                         };
                         return (
-                            <div key={clauseId} className="space-y-2" data-testid={`${idPrefix}-clause-${clauseId}`}>
+                            <div key={clauseKey} className="space-y-2" data-testid={`${idPrefix}-clause-${clauseKey}`}>
                                 <p className="text-xs font-medium text-ink-body">{spec.title}</p>
                                 {fields.map((field) => (
                                     <FieldControl
@@ -754,7 +754,7 @@ function ItemRow({ item, index, priceSymbol, unitSystem, catalogClauses, dataSol
                                         field={field}
                                         value={data[field.name]}
                                         mode="runtime"
-                                        testId={`${idPrefix}-clause-${clauseId}-${field.name}`}
+                                        testId={`${idPrefix}-clause-${clauseKey}-${field.name}`}
                                         onChange={(next) => setField(field.name, next)}
                                     />
                                 ))}

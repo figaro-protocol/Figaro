@@ -11,16 +11,17 @@ import { agreementLeaves, computeProvenanceLeaf, templateCompositionHash } from 
 import { planAssemblyOrders } from "@/lib/checkout/assemblyCheckout";
 import type { BoundAssembly } from "@/lib/member/useMemberBoundAssemblies";
 import type { AssemblyTemplate } from "@/lib/shared/assemblyTemplate";
-import { primeClauseSpecs } from "./primeClauseSpecs";
+import { primeClauseSpecs, resolveAuthored } from "./primeClauseSpecs";
 
 vi.mock("@/lib/kernel/contracts", async (importOriginal) => {
     const actual = await importOriginal<typeof import("@/lib/kernel/contracts")>();
     return { ...actual, CONTRACTS: { ...actual.CONTRACTS, core: "0x0Dac9D673a37cEAfc220eb0B5646375A6Eb88cb5" } };
 });
 
-const template = JSON.parse(
+// The reference template as the seeding anchors it: names resolved to keys.
+const template = resolveAuthored(JSON.parse(
     readFileSync(path.resolve(process.cwd(), "../assemblies/pos.json"), "utf8"),
-) as AssemblyTemplate;
+) as AssemblyTemplate);
 const BUYER = "0x1111111111111111111111111111111111111111" as const;
 const SELLER = "0x2222222222222222222222222222222222222222" as const;
 const TOKEN = "0x3333333333333333333333333333333333333333" as const;

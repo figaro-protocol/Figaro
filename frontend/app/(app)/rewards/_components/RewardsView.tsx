@@ -163,7 +163,7 @@ export function RewardsView() {
                                         </p>
                                         <ul className="text-sm text-ink-muted space-y-1">
                                             {t.accruals.map((a) => (
-                                                <li key={a.clauseOrAssembly} className="font-mono break-all">
+                                                <li key={`${a.kind}:${a.clauseOrAssembly}`} className="font-mono break-all">
                                                     {a.label} — {(a.c + a.batchC).toString()} resolved process
                                                     {a.c + a.batchC === 1n ? "" : "es"},{" "}
                                                     {(a.d + a.batchD).toString()} distinct staked seller

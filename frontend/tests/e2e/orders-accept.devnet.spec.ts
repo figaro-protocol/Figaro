@@ -31,10 +31,18 @@ import {
     seedRegisteredMember,
     memberProfileBindings,
     holdIpfsApi,
+    keyOf,
+    primeRegisteredClauseSpecs,
 } from './devnet-helpers';
 import { ANVIL_KEYS } from '../anvilAccounts';
 import { CORE_ABI } from '@/lib/kernel/contracts';
 import type { Page } from '@playwright/test';
+
+// Clause keys are located by the names their specs carry (`keyOf`), over
+// the specs the chain registered — primed once per file.
+test.beforeAll(async () => {
+    await primeRegisteredClauseSpecs();
+});
 
 /** Wait for ClientInit's devnet auto-connect — the "Connect Wallet" header
  *  button disappears once the injected wallet connects. Without this the
@@ -175,9 +183,9 @@ test.describe('Orders consolidation — buyer orders → seller accepts on /orde
         await page.getByTestId('checkout-view').waitFor({ timeout: 20000 });
         // The pos reference's transaction particulars: the buyer takes the
         // goods at the counter — consume-onsite, origin = destination.
-        await page.locator('[data-testid^="checkout-field-"][data-testid$="-figaro-modalities-modality-consume-onsite"]').first().check();
-        await page.locator('[data-testid^="checkout-field-"][data-testid$="-figaro-geolocation-origin"]').first().fill('9q8yyk');
-        await page.locator('[data-testid^="checkout-field-"][data-testid$="-figaro-geolocation-destination"]').first().fill('9q8yyk');
+        await page.locator(`[data-testid^="checkout-field-"][data-testid$="-${keyOf('figaro-modalities')}-modality-consume-onsite"]`).first().check();
+        await page.locator(`[data-testid^="checkout-field-"][data-testid$="-${keyOf('figaro-geolocation')}-origin"]`).first().fill('9q8yyk');
+        await page.locator(`[data-testid^="checkout-field-"][data-testid$="-${keyOf('figaro-geolocation')}-destination"]`).first().fill('9q8yyk');
         const place = page.getByTestId('btn-place-order');
         await place.waitFor({ state: 'visible', timeout: 20000 });
         // The label tells the truth: "Connect wallet to order" (not connected) /

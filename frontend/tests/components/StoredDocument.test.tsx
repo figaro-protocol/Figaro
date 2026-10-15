@@ -19,13 +19,14 @@
 import React from "react";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
-import { canonicalContentHash, canonicalize, templateCompositionHash } from "@figaro-protocol/sdk";
+import { canonicalize, computeClauseKey, templateCompositionHash } from "@figaro-protocol/sdk";
+import { keccak256, stringToBytes } from "viem";
 
 const fetchCappedContentMock = vi.fn();
 const resolveFetchUrlMock = vi.fn();
 vi.mock("@/lib/shared/ipfsService", () => ({
     DEFAULT_IPFS_SERVICE: { resolveFetchUrl: (uri: string) => resolveFetchUrlMock(uri) },
-    fetchCappedContent: (url: string) => fetchCappedContentMock(url),
+    fetchCappedBinary: (url: string) => fetchCappedContentMock(url),
 }));
 
 import { StoredDocument } from "@/components/registries/StoredDocument";
@@ -37,12 +38,13 @@ const SPEC = {
     description: "The law the parties named.",
     fields: [{ name: "jurisdiction", type: "string" }],
 };
-const SPEC_JSON = JSON.stringify(SPEC, null, 2);
-const SPEC_HASH = canonicalContentHash(SPEC);
+// What the designer pins: the spec's canonical bytes; the clause key is their hash.
+const SPEC_JSON = canonicalize(SPEC);
+const SPEC_HASH = computeClauseKey(SPEC);
 const URI = "ipfs://bafyspec";
 
 function served(text: string) {
-    return { ok: true, status: 200, statusText: "OK", text: async () => text };
+    return { ok: true, status: 200, statusText: "OK", bytes: stringToBytes(text) };
 }
 
 function mount(over: Partial<React.ComponentProps<typeof StoredDocument>> = {}) {
@@ -70,8 +72,8 @@ describe("StoredDocument — the pinned document, verbatim", () => {
         screen.getByTestId("stored-toggle-clause-figaro-applicable-law").click();
 
         const pre = await screen.findByTestId("stored-json-clause-figaro-applicable-law");
-        // Byte-for-byte what the gateway served — the pinned indentation and
-        // key order intact, not a re-serialization of a parsed object.
+        // Byte-for-byte what the gateway served, not a re-serialization of a
+        // parsed object.
         expect(pre.textContent).toBe(SPEC_JSON);
         expect(pre.tagName).toBe("PRE");
         expect(screen.getByTestId("stored-hash-clause-figaro-applicable-law").textContent).toBe(SPEC_HASH);
@@ -93,7 +95,7 @@ describe("StoredDocument — the pinned document, verbatim", () => {
         expect(fetchCappedContentMock).toHaveBeenCalledTimes(1);
     });
 
-    it("states that the anchor is the keccak256 of the canonical bytes, and shows the recomputation agreeing", async () => {
+    it("states that the anchor is the keccak256 of exactly the pinned bytes, and shows the recomputation agreeing", async () => {
         mount();
         screen.getByTestId("stored-toggle-clause-figaro-applicable-law").click();
 
@@ -101,11 +103,19 @@ describe("StoredDocument — the pinned document, verbatim", () => {
         expect(verdict.textContent).toContain(SPEC_HASH);
         expect(verdict.textContent).toMatch(/reproduces the anchor/i);
         expect(screen.getByTestId("stored-panel-clause-figaro-applicable-law").textContent).toMatch(/keccak256/);
-        expect(screen.getByTestId("stored-panel-clause-figaro-applicable-law").textContent).toMatch(/canonical form/i);
+        expect(screen.getByTestId("stored-panel-clause-figaro-applicable-law").textContent).toMatch(/exactly these bytes/i);
+    });
+
+    it("the same document re-formatted is not the clause: the exact bytes are what hash", async () => {
+        fetchCappedContentMock.mockResolvedValue(served(JSON.stringify(SPEC, null, 2)));
+        mount();
+        screen.getByTestId("stored-toggle-clause-figaro-applicable-law").click();
+        const verdict = await screen.findByTestId("stored-verdict-clause-figaro-applicable-law");
+        expect(verdict.textContent).toMatch(/does NOT reproduce the anchor/i);
     });
 
     it("a document that is served but does NOT hash to the anchor is called out", async () => {
-        fetchCappedContentMock.mockResolvedValue(served(JSON.stringify({ ...SPEC, title: "Edited in place" })));
+        fetchCappedContentMock.mockResolvedValue(served(canonicalize({ ...SPEC, title: "Edited in place" })));
         mount();
         screen.getByTestId("stored-toggle-clause-figaro-applicable-law").click();
 
@@ -138,7 +148,7 @@ describe("StoredDocument — the pinned document, verbatim", () => {
         const text = `{"clauseId":"${SPEC.clauseId}","version":1,"title":"Applicable law","title":"Something else","description":"${SPEC.description}","fields":${JSON.stringify(SPEC.fields)}}`;
         const hashed = { ...SPEC, title: "Something else" };
         fetchCappedContentMock.mockResolvedValue(served(text));
-        mount({ anchoredHash: canonicalContentHash(hashed) });
+        mount({ anchoredHash: keccak256(stringToBytes(text)) });
         screen.getByTestId("stored-toggle-clause-figaro-applicable-law").click();
 
         // The served bytes stay verbatim; the difference is stated, not hidden.
@@ -164,7 +174,7 @@ describe("StoredDocument — the pinned document, verbatim", () => {
     });
 
     it("an unserved document is stated as the absence of a copy, not as a bad registration", async () => {
-        fetchCappedContentMock.mockResolvedValue({ ok: false, status: 504, statusText: "Gateway Timeout", text: async () => "" });
+        fetchCappedContentMock.mockResolvedValue({ ok: false, status: 504, statusText: "Gateway Timeout", bytes: null });
         mount();
         screen.getByTestId("stored-toggle-clause-figaro-applicable-law").click();
 

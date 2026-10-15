@@ -65,6 +65,8 @@ import {
     latestMemberProfileURI,
     readLocalDeploymentConfig,
     memberProfileBindings,
+    keyOf,
+    primeRegisteredClauseSpecs,
 } from './devnet-helpers';
 import { ANVIL_ACCOUNTS } from '../anvilAccounts';
 import { CORE_ABI } from '@/lib/kernel/contracts';
@@ -106,8 +108,15 @@ const SUPPLIER = mnemonicToAccount(ANVIL_MNEMONIC, { addressIndex: 11 }).address
 // The chain assembly's sub-order process clauses — the designation keys the
 // lead fills in the counterparty editor (scenario input, mirrored from the
 // seeded template's shape).
-const COURIER_CLAUSE = 'figaro-courier-process';
-const SUPPLIER_CLAUSE = 'figaro-merchant-process';
+let COURIER_CLAUSE: Hex;
+let SUPPLIER_CLAUSE: Hex;
+test.beforeAll(async () => {
+    // Clause KEYS, located by the names their specs carry over the specs the
+    // chain registered — never a hardcoded key.
+    await primeRegisteredClauseSpecs();
+    COURIER_CLAUSE = keyOf('figaro-courier-process');
+    SUPPLIER_CLAUSE = keyOf('figaro-merchant-process');
+});
 
 /** Wait for ClientInit's devnet auto-connect (the "Connect Wallet" button goes). */
 async function waitForConnected(page: Page) {
@@ -161,9 +170,9 @@ test.describe('VALUE-ADDED CHAIN — one buyer binds three sellers; one resolve 
         type ProfileBindings = Awaited<ReturnType<typeof memberProfileBindings>>;
         const isConformant = (bindings: ProfileBindings): boolean => {
             const chainBinding = bindings.find((b) => b.assemblySlug === chainSlug);
-            const designated = (clauseId: string, addr: Hex) =>
+            const designated = (clauseKey: Hex, addr: Hex) =>
                 (chainBinding?.counterpartyBindings ?? []).some(
-                    (cb) => cb.clauseId === clauseId
+                    (cb) => cb.clauseKey.toLowerCase() === clauseKey
                         && cb.addresses.some((a) => a.toLowerCase() === addr.toLowerCase()),
                 );
             return !!chainBinding
@@ -308,7 +317,7 @@ test.describe('VALUE-ADDED CHAIN — one buyer binds three sellers; one resolve 
 
         // The buyer's modality request — a transaction particular authored at
         // checkout (templates arrive value-free by construction).
-        await page.locator('[data-testid^="checkout-field-"][data-testid$="-figaro-modalities-modality-delivery"]').first().check();
+        await page.locator(`[data-testid^="checkout-field-"][data-testid$="-${keyOf('figaro-modalities')}-modality-delivery"]`).first().check();
 
         const place = page.getByTestId('btn-place-order');
         await expect(place, 'buyer connected + assembly picked → "Place order"').toHaveText(/Place order/, { timeout: 20000 });

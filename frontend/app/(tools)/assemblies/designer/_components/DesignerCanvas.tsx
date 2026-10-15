@@ -24,7 +24,7 @@
  * applies the seed in a mount effect — localStorage is client-only.
  */
 
-import { assemblyClauseDefaults, toggleClauseAtVersion } from "@/lib/designer/draftToAssemblyTemplate";
+import { assemblyClauseDefaults, toggleClauseByKey } from "@/lib/designer/draftToAssemblyTemplate";
 import Link from "@/components/shared/Link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -74,9 +74,7 @@ interface InitialState {
     description: string;
     slug: string | null;
     clausesByOrderId: Record<string, Record<string, Record<string, unknown>>>;
-    clauseVersionsByOrderId: Record<string, Record<string, number>>;
     assemblyClauses: Record<string, Record<string, unknown>>;
-    assemblyClauseVersions: Record<string, number>;
 }
 
 function buildBlankInitial(): InitialState {
@@ -92,9 +90,7 @@ function buildBlankInitial(): InitialState {
         description: "",
         slug: null,
         clausesByOrderId: {},
-        clauseVersionsByOrderId: {},
         assemblyClauses: {},
-        assemblyClauseVersions: {},
     };
 }
 
@@ -112,9 +108,7 @@ function snapshotToInitial(snap: DesignSnapshot): InitialState {
         description: snap.description ?? "",
         slug: snap.slug || null,
         clausesByOrderId: snap.clausesByOrderId ?? {},
-        clauseVersionsByOrderId: snap.clauseVersionsByOrderId ?? {},
         assemblyClauses: snap.assemblyClauses ?? {},
-        assemblyClauseVersions: snap.assemblyClauseVersions ?? {},
     };
 }
 
@@ -157,22 +151,15 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
     const [session] = useState<SyntheticProcessSession>(() => initial.session);
     const [orders, setOrders] = useState<Order[]>(() => initial.orders);
     // Per-order clause selection (the Registry checkboxes). Keyed by order id;
-    // values are the clauseIds picked on that order. Feeds the assembly
+    // values are the clause keys picked on that order. Feeds the assembly
     // template's per-order `clauses`, and persists into the draft snapshot.
     const [clausesByOrderId, setClausesByOrderId] = useState<
         Record<string, Record<string, Record<string, unknown>>>
     >(() => initial.clausesByOrderId);
-    // clauseId → registered version picked, per order — sparse (non-1 only);
-    // part of the clause's identity, carried into the template's clauseVersions.
+    // The assembly-scoped terms, clause key → the designer's values.
     const [assemblyClauses, setAssemblyClauses] = useState<
         Record<string, Record<string, unknown>>
     >(() => initial.assemblyClauses);
-    const [assemblyClauseVersions, setAssemblyClauseVersions] = useState<
-        Record<string, number>
-    >(() => initial.assemblyClauseVersions);
-    const [clauseVersionsByOrderId, setClauseVersionsByOrderId] = useState<
-        Record<string, Record<string, number>>
-    >(() => initial.clauseVersionsByOrderId);
     // Editorial metadata — the designer's own words (free-form, NOT a taxonomy).
     // Carried into the assembly template but EXCLUDED from the content hash, so
     // renaming never forks the slug. Blank = unnamed; display falls back to slug.
@@ -239,9 +226,7 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
             setDescription(restored.description);
             setSlug(restored.slug);
             setClausesByOrderId(restored.clausesByOrderId);
-            setClauseVersionsByOrderId(restored.clauseVersionsByOrderId);
             setAssemblyClauses(restored.assemblyClauses);
-            setAssemblyClauseVersions(restored.assemblyClauseVersions);
             setHydrated(true);
             return;
         }
@@ -256,9 +241,7 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
             setDescription(init.description);
             setSlug(init.slug);
             setClausesByOrderId(init.clausesByOrderId);
-            setClauseVersionsByOrderId(init.clauseVersionsByOrderId);
             setAssemblyClauses(init.assemblyClauses);
-            setAssemblyClauseVersions(init.assemblyClauseVersions);
         }
         setHydrated(true);
         // Mount-only; subsequent seed changes are ignored.
@@ -279,15 +262,13 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
             nextSellerIndex: session.nextSellerIndex,
             orders,
             clausesByOrderId,
-            clauseVersionsByOrderId,
             ...(Object.keys(assemblyClauses).length > 0 ? { assemblyClauses } : {}),
-            ...(Object.keys(assemblyClauseVersions).length > 0 ? { assemblyClauseVersions } : {}),
             createdAt: Date.now(),
             updatedAt: Date.now(),
         };
         saveCurrentSession(snap);
         setSavedAt(Date.now());
-    }, [hydrated, seedError, orders, clausesByOrderId, clauseVersionsByOrderId, assemblyClauses, assemblyClauseVersions, name, summary, description, slug, session.processId, session.nextOrderIndex, session.nextSellerIndex]);
+    }, [hydrated, seedError, orders, clausesByOrderId, assemblyClauses, name, summary, description, slug, session.processId, session.nextOrderIndex, session.nextSellerIndex]);
 
     // Read both chain gas ceilings (each depends on the live block gas limit, so
     // it's a runtime read; recompute when the chain changes).
@@ -305,27 +286,18 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
 
     const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
 
-    const toggleClause = useCallback((orderId: string, clauseId: string, next: boolean, version: number) => {
-        // The same toggle as the assembly terms: a pick at another version
-        // keeps only the fills that version's spec declares. An order's fresh
-        // pick starts empty.
-        const out = toggleClauseAtVersion(
-            clausesByOrderId[orderId] ?? {},
-            clauseVersionsByOrderId[orderId] ?? {},
-            clauseId,
-            next,
-            version,
-            {},
-        );
-        setClausesByOrderId((prev) => ({ ...prev, [orderId]: out.values }));
-        setClauseVersionsByOrderId((prev) => ({ ...prev, [orderId]: out.versions }));
-    }, [clausesByOrderId, clauseVersionsByOrderId]);
+    const toggleClause = useCallback((orderId: string, clauseKey: string, next: boolean) => {
+        // The same toggle as the assembly terms, by key; an order's fresh pick
+        // starts empty.
+        const out = toggleClauseByKey(clausesByOrderId[orderId] ?? {}, clauseKey, next, {});
+        setClausesByOrderId((prev) => ({ ...prev, [orderId]: out }));
+    }, [clausesByOrderId]);
 
     const setClauseField = useCallback(
-        (orderId: string, clauseId: string, field: string, value: unknown) => {
+        (orderId: string, clauseKey: string, field: string, value: unknown) => {
             setClausesByOrderId((prev) => {
                 const order = { ...(prev[orderId] ?? {}) };
-                const clause = { ...(order[clauseId] ?? {}) };
+                const clause = { ...(order[clauseKey] ?? {}) };
                 const isEmpty =
                     value === undefined ||
                     value === null ||
@@ -333,7 +305,7 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
                     (Array.isArray(value) && value.length === 0);
                 if (isEmpty) delete clause[field];
                 else clause[field] = value;
-                order[clauseId] = clause;
+                order[clauseKey] = clause;
                 return { ...prev, [orderId]: order };
             });
         },
@@ -453,9 +425,7 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
         setDescription(template.description ?? "");
         setSlug(null);
         setClausesByOrderId(restored.clausesByOrderId);
-        setClauseVersionsByOrderId(restored.clauseVersionsByOrderId);
         setAssemblyClauses(restored.assemblyClauses);
-        setAssemblyClauseVersions(restored.assemblyClauseVersions);
         setSelectedOrderId(null);
         return true;
     }, [session, orders, clausesByOrderId]);
@@ -487,14 +457,12 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
                 nextSellerIndex: session.nextSellerIndex,
                 orders,
                 clausesByOrderId,
-                clauseVersionsByOrderId,
                 ...(Object.keys(assemblyClauses).length > 0 ? { assemblyClauses } : {}),
-                ...(Object.keys(assemblyClauseVersions).length > 0 ? { assemblyClauseVersions } : {}),
                 createdAt: Date.now(),
                 updatedAt: Date.now(),
             },
         };
-    }, [slug, name, summary, description, orders, clausesByOrderId, clauseVersionsByOrderId, assemblyClauses, assemblyClauseVersions, session]);
+    }, [slug, name, summary, description, orders, clausesByOrderId, assemblyClauses, session]);
 
     function explainSnapshotReason(_reason: "empty-composition"): string {
         return "Add at least one order before publishing.";
@@ -767,25 +735,15 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
                         the two surfaces partition the registry by scope. */}
                     <AssemblyTermsPanel
                         values={assemblyClauses}
-                        versions={assemblyClauseVersions}
-                        onToggleClause={(clauseId, next, version) => {
+                        onToggleClause={(clauseKey, next) => {
                             // The same toggle as an order's terms; a fresh
                             // assembly term starts from the spec's declared defaults.
-                            const out = toggleClauseAtVersion(
-                                assemblyClauses,
-                                assemblyClauseVersions,
-                                clauseId,
-                                next,
-                                version,
-                                assemblyClauseDefaults(clauseId, version),
-                            );
-                            setAssemblyClauses(out.values);
-                            setAssemblyClauseVersions(out.versions);
+                            setAssemblyClauses(toggleClauseByKey(assemblyClauses, clauseKey, next, assemblyClauseDefaults(clauseKey)));
                         }}
-                        onSetClauseField={(clauseId, field, value) => {
+                        onSetClauseField={(clauseKey, field, value) => {
                             setAssemblyClauses((prev) => ({
                                 ...prev,
-                                [clauseId]: { ...prev[clauseId], [field]: value },
+                                [clauseKey]: { ...prev[clauseKey], [field]: value },
                             }));
                         }}
                     />
@@ -795,7 +753,6 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
                         <TopologyCanvas
                             orders={orders}
                             clauseValuesByOrderId={clausesByOrderId}
-                            clauseVersionsByOrderId={clauseVersionsByOrderId}
                             designerMode
                             onAddSubOrder={handleAddSubOrder}
                             onAddParent={handleAddParent}
@@ -817,17 +774,14 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
                     selectedClauseValues={
                         selectedOrderId ? (clausesByOrderId[selectedOrderId] ?? {}) : undefined
                     }
-                    selectedClauseVersions={
-                        selectedOrderId ? (clauseVersionsByOrderId[selectedOrderId] ?? {}) : undefined
-                    }
-                    onToggleClause={(clauseId, next, version) => {
-                        if (selectedOrderId) toggleClause(selectedOrderId, clauseId, next, version);
+                    onToggleClause={(clauseKey, next) => {
+                        if (selectedOrderId) toggleClause(selectedOrderId, clauseKey, next);
                     }}
-                    onSetClauseField={(clauseId, field, value) => {
+                    onSetClauseField={(clauseKey, field, value) => {
                         // No clause selection spawns a node — the designer draws nodes
                         // (grievance #3). There is no "delivery" activation; delivery is
                         // a second order the designer draws, not a modality side-effect.
-                        if (selectedOrderId) setClauseField(selectedOrderId, clauseId, field, value);
+                        if (selectedOrderId) setClauseField(selectedOrderId, clauseKey, field, value);
                     }}
                     embedded
                 />

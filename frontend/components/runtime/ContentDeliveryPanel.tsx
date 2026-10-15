@@ -21,7 +21,7 @@
  * stage-1 evidence shape) and the JSX.
  *
  * Mounted by the interactionSurfaces registry — this component knows no
- * clause; `clauseId` identifies the declaring section for the attestation
+ * clause; `clauseKey` identifies the declaring section for the attestation
  * and the title, never a dispatch.
  */
 import { useCallback, useRef, useState } from "react";
@@ -39,7 +39,6 @@ import {
 import { useCeremonyChannel } from "@/lib/handoff/useCeremonyChannel";
 import { useAttestationCoordinatorActions } from "@/lib/composition/useAttestationCoordinatorActions";
 import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
-import { computeClauseKey } from "@figaro-protocol/sdk";
 import { hexEqual } from "@/lib/shared/evm";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import type { InteractionSurfaceProps } from "@/components/runtime/interactionSurfaces";
@@ -48,7 +47,7 @@ import type { PartyRole } from "@/lib/kernel/walletProcessQueries";
 /** The stage the declaring clause's completion evidence files at. */
 const COMPLETION_STAGE = 1;
 
-export function ContentDeliveryPanel({ processId, orderHash, clauseId, version, buyer, seller }: InteractionSurfaceProps) {
+export function ContentDeliveryPanel({ processId, orderHash, clauseKey, buyer, seller }: InteractionSurfaceProps) {
     const { address } = useAccount();
     const { data: walletClient } = useWalletClient();
     const attestationActions = useAttestationCoordinatorActions();
@@ -78,13 +77,13 @@ export function ContentDeliveryPanel({ processId, orderHash, clauseId, version, 
     // contentRef = keccak(content)).
     const expectedAnchor = useCallback(
         (delivered: DeliveredContent) => {
-            const spec = getClauseSpec(clauseId, version);
+            const spec = getClauseSpec(clauseKey);
             if (!spec) return null;
             return keccak256(
                 encodeContentFromSpec(spec, { contentHash: delivered.contentHash }, { stage: COMPLETION_STAGE }),
             );
         },
-        [clauseId, version],
+        [clauseKey],
     );
 
     // Both parties send ECDH pubkeys on the derived content-ceremony id.
@@ -134,11 +133,11 @@ export function ContentDeliveryPanel({ processId, orderHash, clauseId, version, 
             // keccak256, encoded per the declaring clause's own stage shape
             // and merkle-bound by the coordinator. The URI field stays
             // omitted — counterparty-private transfers have no locator.
-            const spec = getClauseSpec(clauseId, version);
-            if (!spec) throw new Error(`Clause spec not loaded: ${clauseId} v${version}`);
+            const spec = getClauseSpec(clauseKey);
+            if (!spec) throw new Error(`Clause spec not loaded: ${clauseKey}`);
             const attestArgs = {
                 orderHash: orderHash as `0x${string}`,
-                clauseId: computeClauseKey(clauseId, spec.version),
+                clauseId: clauseKey as `0x${string}`,
                 stage: COMPLETION_STAGE,
                 content: encodeContentFromSpec(spec, { contentHash }, { stage: COMPLETION_STAGE }),
                 failureMessage: "Anchoring the completion evidence failed",
@@ -150,7 +149,7 @@ export function ContentDeliveryPanel({ processId, orderHash, clauseId, version, 
         } finally {
             setBusy(false);
         }
-    }, [channel, address, peerPubKey, walletClient, counterparty, orderHash, clauseId, version, attestationActions, role]);
+    }, [channel, address, peerPubKey, walletClient, counterparty, orderHash, clauseKey, attestationActions, role]);
 
     const handleDownload = useCallback(() => {
         if (!received) return;
@@ -163,7 +162,7 @@ export function ContentDeliveryPanel({ processId, orderHash, clauseId, version, 
     }, [received]);
 
     if (!role) return null;
-    const clauseTitle = getClauseSpec(clauseId, version)?.title ?? clauseId;
+    const clauseTitle = getClauseSpec(clauseKey)?.title ?? clauseKey;
     // Role-flavored copy over ONE symmetric body: the buyer asks for the
     // deliverable, a seller may ask for source materials the same way.
     const requestLabel = role === "buyer" ? "Request the deliverable" : "Request counterparty content";

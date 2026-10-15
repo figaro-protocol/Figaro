@@ -13,9 +13,10 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { activeChain } from "@/lib/shared/wagmi";
-import { clauseIsProcessLog } from "@/lib/shared/clauseSpecSource";
+import { clauseIsProcessLog, getClauseSpec } from "@/lib/shared/clauseSpecSource";
+import { truncateHex } from "@/lib/shared/formatHex";
 import type { Anchored } from "@figaro-protocol/sdk";
-import { templateClauseVersion, templateParentOrderHashes, type AssemblyTemplate } from "@/lib/shared/assemblyTemplate";
+import { templateParentOrderHashes, type AssemblyTemplate } from "@/lib/shared/assemblyTemplate";
 import { DEVNET_CHAIN_ID } from "@/lib/shared/chains";
 import { contentRetryDelayMs } from "@/lib/shared/ipfsService";
 import {
@@ -47,7 +48,7 @@ function chainIdToNetworkTarget(chainId: number): string {
 function collectAssemblyClauses(template: AssemblyTemplate): string[] {
     const set = new Set<string>();
     for (const agreement of template.agreements) {
-        for (const clauseId of Object.keys(agreement.clauses)) set.add(clauseId);
+        for (const clauseKey of Object.keys(agreement.clauses)) set.add(clauseKey);
     }
     return Array.from(set).sort();
 }
@@ -64,7 +65,7 @@ function collectAssemblyClauses(template: AssemblyTemplate): string[] {
  *  name: a runtime clause with an enum ladder that is not a companion
  *  (the runtime event-log a sub-order's seller advances). Whatever such
  *  clause the registry defines marks which kind of off-chain seller the
- *  sub-order needs. Returns the set of distinct clauseIds, sorted.
+ *  sub-order needs. Returns the set of distinct clause keys, sorted.
  *
  *  Root order is excluded — the rootBuyer is the connected wallet at
  *  checkout, not designated by the seller's profile. */
@@ -72,19 +73,19 @@ export function requiredCounterpartyClauses(template: AssemblyTemplate): string[
     const clauses = new Set<string>();
     for (const agreement of template.agreements) {
         if (templateParentOrderHashes(agreement).length === 0) continue; // root has no counterparty
-        for (const clauseId of Object.keys(agreement.clauses)) {
-            if (clauseIsProcessLog(clauseId, templateClauseVersion(agreement, clauseId))) clauses.add(clauseId);
+        for (const clauseKey of Object.keys(agreement.clauses)) {
+            if (clauseIsProcessLog(clauseKey)) clauses.add(clauseKey);
         }
     }
     return Array.from(clauses).sort();
 }
 
-/** Compact display formatting for a clause list. Strips the `figaro-`
- *  prefix and `-vN` version suffix. Shows the first three inline,
- *  summarizes the rest as `+N more`. Callers typically place the full
- *  set in the row's `title` tooltip. */
+/** Compact display formatting for a list of clause keys: each key reads as
+ *  its spec's own title (the short key while the spec is not loaded). Shows
+ *  the first three inline, summarizes the rest as `+N more`. Callers
+ *  typically place the full set in the row's `title` tooltip. */
 export function formatAssemblyClauseList(clauses: readonly string[]): string {
-    const trimmed = clauses.map((s) => s.replace(/^figaro-/, "").replace(/-v\d+$/, ""));
+    const trimmed = clauses.map((key) => getClauseSpec(key)?.title ?? truncateHex(key, { head: 10, tail: 0 }));
     if (trimmed.length <= 3) return trimmed.join(", ");
     return `${trimmed.slice(0, 3).join(", ")}, +${trimmed.length - 3} more`;
 }
@@ -119,7 +120,7 @@ export interface AssemblyChoice {
     summary: string | null;
     /** Available when state === "loaded". */
     agreementCount: number | null;
-    /** Available when state === "loaded". Sorted, deduped clauseIds. */
+    /** Available when state === "loaded". Sorted, deduped clause keys. */
     clauses: readonly string[] | null;
     /** The full assembly template when state === "loaded". Avoids re-fetching
      *  from consumers that need it (e.g. fork). Read from the registry and

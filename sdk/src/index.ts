@@ -302,16 +302,16 @@ export type {
 } from "./checkoutPlan.js";
 
 // Assembly identity (the AssemblyRegistry key + derived slug) + the template
-// shape and its accessors (topology parents, composed clause versions)
+// shape and its accessors (topology parents, composed clause keys) + the
+// authoring resolver (clause names in a source document → clause keys)
 export {
     templateCompositionHash,
     deriveAssemblySlug,
     templateParentOrderHashes,
-    templateClauseVersion,
-    templateClauseVersionMap,
-    templateComposedClauseIds,
+    templateComposedClauseKeys,
+    resolveAuthoredClauseKeys,
 } from "./assembly.js";
-export type { AssemblyTemplate, AssemblyFaqEntry, TemplateAgreement } from "./assembly.js";
+export type { AssemblyTemplate, AssemblyFaqEntry, TemplateAgreement, AuthoredSpecSet } from "./assembly.js";
 
 // Member profile document — the identity envelope pinned to
 // MembersRegistry.metadataURI (discovery hands you the URI; this is the
@@ -370,6 +370,9 @@ export {
     RPGF_SCORE_SCALE,
     RPGF_PERIOD_COUNT,
     RPGF_MIN_SELLERS,
+    USAGE_KIND_CLAUSE,
+    USAGE_KIND_ASSEMBLY,
+    usageKeyId,
 } from "./rpgf/index.js";
 export type {
     RpgfAllocation,
@@ -379,4 +382,6 @@ export type {
     ClauseOrAssemblyAccrual,
     BatchUsageRecord,
     UsageClaimContext,
+    UsageKind,
+    UsageKey,
 } from "./rpgf/index.js";

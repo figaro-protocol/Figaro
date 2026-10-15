@@ -81,24 +81,6 @@ pub fn compute_positions_hash(positions: &[NetPosition]) -> B256 {
     keccak256(&data)
 }
 
-// ── Clause identity ───────────────────────────────────────────────
-
-/// The on-chain clause key: `keccak256(abi.encode(clauseId, version))`
-/// exactly as `ClauseRegistry.registerClause` computes it.
-/// `abi.encode(string, uint64)` = [offset 0x40][version word][len][data,
-/// right-padded to a 32-byte boundary].
-pub fn clause_id_hash(clause_id: &str, version: u64) -> B256 {
-    let name = clause_id.as_bytes();
-    let padded_len = name.len().div_ceil(32) * 32;
-    let mut data = Vec::with_capacity(96 + padded_len);
-    data.extend_from_slice(&U256::from(0x40u64).to_be_bytes::<32>());
-    data.extend_from_slice(&U256::from(version).to_be_bytes::<32>());
-    data.extend_from_slice(&U256::from(name.len() as u64).to_be_bytes::<32>());
-    data.extend_from_slice(name);
-    data.resize(96 + padded_len, 0);
-    keccak256(&data)
-}
-
 // ── commit ────────────────────────────────────────────────────────
 
 /// Apply a single commit operation. Matches `FigaroCore.commit()` exactly.
@@ -398,14 +380,16 @@ fn validate_provenance_attestation(
 /// reserved provenance leaf, which the agreement format's own rule
 /// (`validate_provenance_attestation`) verifies with no spec.
 ///
-///   Gate S — spec identity: `spec_json` parses as a `ClauseSpec` whose
-///     `keccak256(abi.encode(clauseId, version))` equals the op's
-///     `clause_id`. The binding `(clause_id, keccak256(spec_json))` is
-///     returned for the public-values commitment; the on-chain verifier
-///     accepts the batch only if it matches
-///     `ClauseRegistry.contentHashOf(clause_id)` — so the constraint set
-///     is anchored by the registry, not by anything compiled in, and a
-///     caller cannot weaken validation with a permissive spec.
+///   Gate S — spec identity: `spec_json` parses as a `ClauseSpec`, and
+///     `keccak256` of its bytes, hashed verbatim as pinned, equals the
+///     op's `clause_id` — a clause key IS the hash of its spec's pinned
+///     bytes; the spec's own `clauseId` and `version` are presentation and
+///     key nothing. The binding `(clause_id, keccak256(spec_json))`, both
+///     fields equal, is returned for the public-values commitment; the
+///     on-chain verifier accepts the batch only if they are equal and
+///     `ClauseRegistry.registered(clause_id)` — so the constraint set is
+///     anchored by the registry, not by anything compiled in, and a caller
+///     cannot weaken validation with a permissive spec.
 ///   Gate C — content: for a `RuntimeWitness`, `content_json` validates
 ///     at the op's stage, the generic encoder derives canonical ABI
 ///     bytes from it (the cross-form binding — the bytes are derived
@@ -449,12 +433,13 @@ pub fn validate_attestation_content(
             return Err(KernelError::ClauseSpecParseFailed(first));
         }
     };
-    if clause_id_hash(&parsed.clause_id, parsed.version) != *clause_id {
+    let spec_hash = keccak256(proof.spec_json.as_bytes());
+    if spec_hash != *clause_id {
         return Err(KernelError::SpecIdentityMismatch(*clause_id));
     }
     let binding = SpecBinding {
         clause_id: *clause_id,
-        spec_hash: keccak256(proof.spec_json.as_bytes()),
+        spec_hash,
     };
 
     // ── Gate C: content satisfies the spec and hashes to content_ref ──
@@ -672,13 +657,13 @@ pub fn compute_spec_bindings_hash(bindings: &[SpecBinding]) -> B256 {
 ///
 /// ```text
 /// period(1) ++ provenanceLeaf(32)
-///   ++ len(accruals)(8) ++ [clauseOrAssembly(32) ++ c(8) ++ d(8)]*
+///   ++ len(accruals)(8) ++ [clauseOrAssembly(32) ++ kind(1) ++ c(8) ++ d(8)]*
 ///   ++ len(sellers)(8)  ++ [seller(20)]*
 /// ```
 ///
-/// BOTH LENGTHS ARE PREFIXED, and they must be: an accrual record is 48
-/// bytes and a seller 20, so 5 accruals and 12 sellers occupy the same
-/// span. Without the prefixes a submitter could re-split the same
+/// Span `49 + 49n + 20m` for n accruals and m sellers. BOTH LENGTHS ARE
+/// PREFIXED, and they must be: an accrual entry is 49 bytes and a seller
+/// 20, so 20 accruals and 49 sellers occupy the same span. Without the prefixes a submitter could re-split the same
 /// preimage into a different (accruals, sellers) pair — writing accruals
 /// whose sellers were never stake-checked.
 pub fn compute_usage_accrual_hash(
@@ -687,12 +672,13 @@ pub fn compute_usage_accrual_hash(
     accruals: &[UsageAccrual],
     sellers: &[Address],
 ) -> B256 {
-    let mut data = Vec::with_capacity(49 + accruals.len() * 48 + sellers.len() * 20);
+    let mut data = Vec::with_capacity(49 + accruals.len() * 49 + sellers.len() * 20);
     data.push(period);
     data.extend_from_slice(provenance_leaf.as_slice());
     data.extend_from_slice(&(accruals.len() as u64).to_be_bytes());
     for a in accruals {
         data.extend_from_slice(a.clause_or_assembly.as_slice());
+        data.push(a.kind);
         data.extend_from_slice(&a.c.to_be_bytes());
         data.extend_from_slice(&a.d.to_be_bytes());
     }
@@ -743,7 +729,9 @@ fn apply_usage_claims(
     period: u8,
     provenance_leaf: &B256,
 ) -> Result<(Vec<UsageAccrual>, Vec<Address>), KernelError> {
-    let mut touched: BTreeSet<B256> = BTreeSet::new();
+    // (key, kind): a clause claim and an assembly claim on the same bytes32
+    // are two accruals, never one.
+    let mut touched: BTreeSet<(B256, u8)> = BTreeSet::new();
     let mut sellers: BTreeSet<Address> = BTreeSet::new();
 
     for claim in claims {
@@ -757,6 +745,7 @@ fn apply_usage_claims(
         }
 
         let (order_hash, process_id) = derive_commitment_ids(domain, &claim.order);
+        let kind = claim.kind.code();
 
         // 1. RESOLVED, not merely known. Usage is what a finished process
         //    leaves behind; an open process has not yet added value.
@@ -793,7 +782,7 @@ fn apply_usage_claims(
         //    rather than being silently dropped.
         if !state
             .usage_counted
-            .insert((claim.clause_or_assembly, process_id))
+            .insert((kind, claim.clause_or_assembly, process_id))
         {
             return Err(KernelError::UsageAlreadyCounted {
                 clause_or_assembly: claim.clause_or_assembly,
@@ -808,27 +797,28 @@ fn apply_usage_claims(
         //    list, so the guest counts and the chain prices.
         let first_seller = state
             .usage_seller_seen
-            .insert((claim.clause_or_assembly, period, claim.order.seller));
+            .insert((kind, claim.clause_or_assembly, period, claim.order.seller));
 
         let entry = state
             .usage_accrual
-            .entry((claim.clause_or_assembly, period))
+            .entry((kind, claim.clause_or_assembly, period))
             .or_insert((0, 0));
         entry.0 = entry.0.checked_add(1).ok_or(KernelError::Overflow)?;
         if first_seller {
             entry.1 = entry.1.checked_add(1).ok_or(KernelError::Overflow)?;
         }
 
-        touched.insert(claim.clause_or_assembly);
+        touched.insert((claim.clause_or_assembly, kind));
         sellers.insert(claim.order.seller);
     }
 
     let accruals = touched
         .into_iter()
-        .map(|clause_or_assembly| {
-            let (c, d) = state.usage_accrual[&(clause_or_assembly, period)];
+        .map(|(clause_or_assembly, kind)| {
+            let (c, d) = state.usage_accrual[&(kind, clause_or_assembly, period)];
             UsageAccrual {
                 clause_or_assembly,
+                kind,
                 c,
                 d,
             }

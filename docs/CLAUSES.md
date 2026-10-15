@@ -3,11 +3,13 @@
 A clause is data: a JSON spec, registered publicly, that defines one term of an
 agreement. Its content is validated in one place — off-chain, by the SDK
 (`@figaro-protocol/sdk/clauses`) — against the spec. The chain registers the
-spec's identity and content hash and binds each attestation to the signed
+clause's key — `keccak256` of the spec's pinned canonical bytes, its identity
+and its content hash at once — and binds each attestation to the signed
 agreement; it validates no content shape. On the batch path, content is
 validated in proof by a generic clause engine (the Rust mirror of the SDK's
-validator, in `prover/clause`) that takes each spec as a witness input anchored
-by `ClauseRegistry.contentHashOf` — `SCALING_STRATEGY.md` owns that argument.
+validator, in `prover/clause`) that takes each spec as a witness input whose
+hash is the clause key, accepted for a key `ClauseRegistry.registered` holds —
+`SCALING_STRATEGY.md` owns that argument.
 Both paths keep the property that matters: a never-seen clause is attestable,
 and batch-resolvable, with zero per-clause on-chain code.
 
@@ -35,10 +37,15 @@ Its key is `keccak256("figaro-agreement-provenance")`
 (`0x26dc18a2251a8f4629ada6df88b7c98553e011c08682d28ce5bb51a441227dc6`), its
 committed content is exactly `{"compositionHash":"0x<64 lowercase hex>"}`,
 and its leaf follows the section convention,
-`keccak256(keccak256(key ‖ keccak256(content)))`. The key's preimage is a
-plain string, so it never meets a clause key `keccak256(abi.encode(name,
-uint64 version))`; no spec describes the leaf and `ClauseRegistry` holds
-nothing under it. Checkout fills the agreement's `provenance` from the
+`keccak256(keccak256(key ‖ keccak256(content)))`, the same convention as a
+clause section, whose leaf key is the clause key. The provenance key is a
+constant of the format, distinct from every clause key under keccak256's
+second-preimage resistance: no spec describes the leaf, it is registered
+nowhere, and it is refused at accrual whatever a registry holds at it — the
+direct path reverts (`UsageCounter._accrue`,
+`ProvenanceLeafIsNotARegistration`), the guest refuses a batch claim keyed on
+it (`apply_usage_claims` in `prover/lib/src/kernel.rs`), and the counter's
+batch path skips it (`applyBatchAccrual`). Checkout fills the agreement's `provenance` from the
 assembly's own `compositionHash`; an agreement that names no assembly carries
 no provenance leaf. The SDK owns the format (`PROVENANCE_LEAF_KEY`,
 `provenanceSectionBytes`, `computeProvenanceLeaf`, `agreementLeaves`,
@@ -112,32 +119,42 @@ events, never stored.
 
 Two touch points, and neither validates content.
 
-**Registration.** `ClauseRegistry.registerClause(clauseId, version,
-contentHash, contentURI)` — permissionless, first-write-wins, immutable, under
-a stake. The key is `keccak256(abi.encode(clauseId, version))`, `clauseId`
-being the bare human-readable name (`figaro-emissions`). Registration anchors
-identity and integrity only: no group field (grouping is `block.design.article`
+**Registration.** `ClauseRegistry.registerClause(clauseKey, contentURI)` —
+permissionless, first-write-wins on the key, immutable, under a stake. The
+key is `keccak256` of the spec's pinned canonical bytes:
+`computeClauseKey(spec) = canonicalContentHash(spec)` (`sdk/src/discovery.ts`).
+The designer pins `canonicalize(spec)` and registers the hash of exactly those
+bytes; a reader fetches the bytes from `contentURI` and checks
+`keccak256(bytes) == clauseKey` on the bytes it fetched, re-canonicalizing
+nothing (`loadClauseSpec` in `frontend/lib/shared/clauseSpecSource.ts`). A
+spec pinned in any other byte form has a different key. The spec's
+`clauseId` (`figaro-emissions`) and `version` are presentation fields inside
+the document — a title and a lineage counter a human reads; nothing on chain
+or in a leaf reads them, so two specs that carry one name are two clauses and
+a lookalike shares nothing with the original. Registration anchors identity
+and integrity in one word: no group field (grouping is `block.design.article`
 in the spec, off-chain), no reward tag (designer rewards are uniform on real
 use), no validator (a registered clause is immediately attestable). Stake,
 withdrawal, and the registry's other semantics are in `CONTRACTS.md`
 § Registries.
 
-On a public chain a registered spec is immutable — changing it means a new
-version. On a local devnet the registry is re-seeded fresh on every `devup`, so
-specs in `clauses/` are edited in place during development; `version` is not
-bumped for an edit.
+On a public chain a registered spec is immutable — a change is a new spec
+and therefore a new key. On a local devnet the registry is re-seeded fresh on
+every `devup`, so specs in `clauses/` are edited in place during development;
+`version` is not bumped for an edit.
 
-**Versioning.** `version` is an integer lineage counter, never semver. Semver
-is a compatibility promise for consumers that resolve version ranges and
-upgrade within them; here consumers pin an exact `(clauseId, version)`, every
-content change produces a different hash, and in a first-write-wins registry a
-compatibility claim is unverifiable data. Compatibility between two versions,
-if it ever matters, is derived by diffing the two immutable specs. Assemblies
-follow the same rule. The software packages (`@figaro-protocol/sdk`, the
-interface) are ordinary mutable-name software and keep semver.
+**Versioning.** A change is a new spec and a new key; `version` is a lineage
+counter a human reads, an integer and never semver. Semver is a compatibility
+promise for consumers that resolve version ranges and upgrade within them;
+here a consumer names an exact key, every content change produces a different
+key, and in a first-write-wins registry a compatibility claim is unverifiable
+data. Compatibility between two specs, if it ever matters, is derived by
+diffing the two immutable documents. Assemblies follow the same rule. The
+software packages (`@figaro-protocol/sdk`, the interface) are ordinary
+mutable-name software and keep semver.
 
 **Merkle binding.** `AttestationCoordinator` verifies an inclusion proof of
-`leaf = keccak256(keccak256(clauseId ++ sectionHash))` against the signed
+`leaf = keccak256(keccak256(clauseKey ++ sectionHash))` against the signed
 `agreementHash` and emits `Attestation` with the caller's `contentRef`. It takes
 fingerprints, never preimages — `sectionHash = keccak256(sectionData)`,
 `contentRef = keccak256(content)` — so a private section's plaintext never
@@ -152,15 +169,16 @@ resolves empty reads as absence.
 
 ## Clause-spec format
 
-A spec lives off-chain as JSON at the `contentURI` its registration emits;
-`contentHash` is its integrity. The canonical specs are in `clauses/`, the
+A spec lives off-chain as its canonical JSON bytes at the `contentURI` its
+registration emits; the clause key is their hash. The canonical specs are in `clauses/`, the
 registry's seed data; the published definition of the format is
 `sdk/src/clauses/clause-spec.schema.json`.
 
 **The spec has two halves, and the protocol ends between them.**
 
-- **Top level — the protocol**: identity (`clauseId`, `version`, `title`,
-  `description`) and the content `fields`/`stages`. Stage 0 is the committed
+- **Top level — the protocol**: the presentation names (`clauseId`,
+  `version`, `title`, `description`) a human reads, and the content
+  `fields`/`stages`. Stage 0 is the committed
   content (declared by `fields`); `stages[N≥1]` are the evidence shapes attested
   while the process is open. Every section is a merkle leaf under the signed
   `agreementHash`; the SDK validates the content against the spec off-chain, and
@@ -229,14 +247,14 @@ Two structural notes that no single spec can carry:
 - A process credits its assembly's designer through the agreement format's
   provenance leaf (§ "Every clause is a merkle leaf"), never through a clause:
   `UsageCounter.recordAssemblyUsage` proves that one leaf. The leaf earns
-  nothing itself: the counter refuses its key by comparison with the
-  constant on both paths, whatever a registry holds at that key.
+  nothing itself: it is refused at accrual by comparison with the constant,
+  whatever a registry holds at that key (above).
 
 ## When something deserves a clause — payload vs anchor
 
 A clause is an anchored definition whose meaning must stay stable across
 parties, tools, and time, anchored on-chain by a minimal reference point —
-`clauseId` + `contentHash` + `contentURI`. Not every value that flows through
+the clause key + `contentURI`. Not every value that flows through
 an order deserves one.
 
 - **Per-instance payloads** — operational values attached to one order: the
@@ -256,7 +274,8 @@ immutably, unregistered.
 parties and tools that need it, and no more. Avoid both an interface-specific
 one-off that can never become a shared concept, and a universal ontology that
 registers every document as a first-class object. Clause identity is
-append-only: new meaning is a new `clauseId`, never a mutation of an old one.
+append-only: new meaning is a new spec and a new key, never a mutation of an
+old one.
 
 ## Composition and decomposition — when to merge or split clauses
 
@@ -284,7 +303,7 @@ clause whose name is generic but whose fields name one provider's internals is
 the design smell; the tell is an "at least one of A or B" cross-field invariant
 gluing two independently composable concerns. Split along the provider seam —
 `figaro-arbitration-<provider>` beside the provider-agnostic
-`figaro-applicable-law`, sisters registering symmetrically. The `clauseId` is
+`figaro-applicable-law`, sisters registering symmetrically. The clause key is
 committed in the agreement hash, so which provider is an immutable term, not a
 payload value; a combined clause forces either a closed enum, which ends
 permissionless composition, or an open string, which ends committing to the
@@ -302,13 +321,13 @@ this concept with a different enum value? Extend its fields. (b) Does the
 concept need a runtime proof of a committed term? Carry it as a witness stage.
 (c) Do the field values name a specific provider's internals? Split along the
 provider seam. All three are cheap at design time and expensive once a
-`clauseId` is bound on a public chain.
+clause key is bound on a public chain.
 
 ## Adding a new clause — checklist
 
 A new clause is a spec plus a registration — nothing else. The proof apparatus
 needs no step: the prover's engine is generic and takes the spec as a witness
-input anchored by the registration's `contentHash`.
+input whose hash is the registered clause key.
 
 1. Write the spec at `clauses/<clause>.json` — the canonical spec and the
    registry's seed data; nothing bundles a copy.
@@ -316,8 +335,8 @@ input anchored by the registration's `contentHash`.
    `sdk/tests/clauses/` reads the new spec from `clauses/` as a fixture. The
    validator and the encoder are generic and need no per-clause case.
 3. Register: `frontend/scripts/populate-clauses.mjs` pins the spec to IPFS and
-   calls `registerClause(clauseId, version, contentHash, contentURI)` under the
-   stake. The Solidity deploy scripts deploy the registry and register no
+   calls `registerClause(clauseKey, contentURI)` under the stake, the key
+   being `computeClauseKey(spec)` over the canonical bytes it pinned. The Solidity deploy scripts deploy the registry and register no
    clauses. No validator step exists, and no interface step: the drawer, the
    `/clauses` inventory, and every other surface read the clause set live from
    `ClauseRegistry` events and each spec from IPFS.
@@ -329,6 +348,6 @@ reality — and need a sovereign event log as evidence (`figaro-merchant-process
 `commit` and `resolveProcess`, and `FigaroCore`'s events are its evidence. There
 is no buyer-process clause, because it would duplicate `FigaroCore`'s events.
 
-If the spec and the registration drift — a spec the registered `contentHash`
-does not match, or a registered `clauseId` with no pinned spec — the clause does
-not surface. Keep them in lockstep.
+If the spec and the registration drift — bytes at `contentURI` that do not
+hash to the registered key, or a registered key with no pinned spec — the
+clause does not surface. Keep them in lockstep.

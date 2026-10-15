@@ -25,7 +25,7 @@ restating the rule, so it rides wherever the block is pasted.
 npm install   # once; pulls @figaro-protocol/sdk from ../../sdk
 
 RPC_URL=… DEPLOYMENT_RECORD=…/deployments/11155111.json \
-IPFS_GATEWAY_URL=… npx figaro-fetch clause figaro-modalities
+IPFS_GATEWAY_URL=… npx figaro-fetch clause <clauseKey>
 npx figaro-fetch assembly <compositionHash>
 npx figaro-fetch profile <address>
 npx figaro-fetch ipfs <cid>
@@ -37,8 +37,9 @@ The first four resolve through the live registries (`fetchDiscoveryEvents` →
 event's `contentRef` IS the content address (a raw block multihashed with
 keccak-256), so the fingerprint is the lookup, and the bytes are verified to
 hash back to it before anything is printed. `clause` and `assembly` verify the
-same way, against the registry's anchor: a spec must hash
-(`canonicalContentHash`) to `ClauseRegistry`'s content hash and a template
+same way, against the registry's key: a clause is read by its 32-byte key, and the
+bytes fetched from its `contentURI` must hash (`keccak256`, as fetched, never
+re-canonicalized) to that clause key, and a template
 (`templateCompositionHash`) to its composition hash, so a gateway that serves
 other bytes is read as absence, never as the registry's content. `profile` and
 `ipfs` print what the gateway served, framed as untrusted, and check nothing:

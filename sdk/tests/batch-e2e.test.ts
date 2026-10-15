@@ -16,7 +16,7 @@
  *
  * Flow:
  *   1. Deploy MockERC20, MockSP1Verifier, ClauseRegistry, FigaroBatchVerifier
- *   2. Register figaro-modalities on ClauseRegistry (anchors contentHashOf)
+ *   2. Register figaro-modalities on ClauseRegistry under its key (the hash of its pinned bytes)
  *   3. Mint tokens, approve bonds to FigaroBatchVerifier
  *   4. Start sequencer as child process
  *   5. Submit Commit + AttestAsSeller (RuntimeWitness) via SequencerClient
@@ -36,7 +36,6 @@ import {
     parseAbi,
     keccak256,
     encodePacked,
-    encodeAbiParameters,
     hashTypedData,
     stringToHex,
     type Hex,
@@ -179,12 +178,8 @@ describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
         if (!r.ok) throw new Error(`spec parse failed: ${JSON.stringify(r.errors)}`);
         return r.spec;
     })();
-    const clauseKey = keccak256(
-        encodeAbiParameters(
-            [{ type: "string" }, { type: "uint64" }],
-            [parsedSpec.clauseId, BigInt(parsedSpec.version)],
-        ),
-    );
+    // The key is the hash of the pinned (canonical) bytes the witness carries.
+    const clauseKey = keccak256(stringToHex(specJson));
     const contentRef = keccak256(
         encodeContentFromSpec(parsedSpec, JSON.parse(SECTION_DATA), { stage: 0 }),
     );
@@ -214,8 +209,6 @@ describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
 
         const stack = await deployBatchStack(publicClient, deployerWallet, {
             specJson,
-            clauseId: parsedSpec.clauseId,
-            version: parsedSpec.version,
             clauseKey,
         });
         tokenAddress = stack.tokenAddress;
@@ -531,8 +524,7 @@ describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
             seller: sellerAccount.address,
             sections: [
                 {
-                    clause: parsedSpec.clauseId,
-                    version: parsedSpec.version,
+                    clause: clauseKey,
                     data: JSON.parse(SECTION_DATA),
                 },
             ],

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { isAddress } from "viem";
 import { Card } from "@/components/ui/Card";
-import { memberDocumentClauseSpec } from "@/lib/shared/clauseSpecSource";
+import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
 import type { DisclosurePolicyEntry } from "@/lib/member/memberProfileMetadata";
 import type { AssemblyChoice } from "@/lib/protocol/assemblyChoices";
 import type { PartyRole } from "@/lib/kernel/walletProcessQueries";
@@ -13,7 +13,7 @@ import type { PartyRole } from "@/lib/kernel/walletProcessQueries";
  * edited beside the assembly bindings it derives from.
  *
  * WHAT DATA each row names is DERIVED, never a stored taxonomy: the
- * pair (assembly compositionHash, clauseId) enumerated from the
+ * pair (assembly compositionHash, clause key) enumerated from the
  * assemblies the member is binding right now (the `choices` prop is
  * the live-registry selection), crossed with the two postures a member
  * holds — data co-produced AS A SELLER and AS A BUYER. The buyer
@@ -32,13 +32,13 @@ const ALL_POSTURES = ["seller", "buyer"] as const;
 function findEntry(
     entries: DisclosurePolicyEntry[],
     compositionHash: `0x${string}`,
-    clauseId: string,
+    clauseKey: `0x${string}`,
     posture: PartyRole,
 ): DisclosurePolicyEntry | undefined {
     return entries.find(
         (e) =>
             e.compositionHash === compositionHash &&
-            e.clauseId === clauseId &&
+            e.clauseKey.toLowerCase() === clauseKey.toLowerCase() &&
             e.posture === posture,
     );
 }
@@ -64,17 +64,17 @@ export function DisclosurePolicyEditor({ choices, entries, onChange, postures = 
         const rest = entries.filter(
             (e) =>
                 !(e.compositionHash === entry.compositionHash &&
-                    e.clauseId === entry.clauseId &&
+                    e.clauseKey.toLowerCase() === entry.clauseKey.toLowerCase() &&
                     e.posture === entry.posture),
         );
         onChange([...rest, entry]);
     }
 
-    function remove(compositionHash: `0x${string}`, clauseId: string, posture: PartyRole) {
+    function remove(compositionHash: `0x${string}`, clauseKey: `0x${string}`, posture: PartyRole) {
         onChange(entries.filter(
             (e) =>
                 !(e.compositionHash === compositionHash &&
-                    e.clauseId === clauseId &&
+                    e.clauseKey.toLowerCase() === clauseKey.toLowerCase() &&
                     e.posture === posture),
         ));
     }
@@ -108,27 +108,27 @@ export function DisclosurePolicyEditor({ choices, entries, onChange, postures = 
                     {choice.clauses === null ? (
                         <p className="text-xs text-ink-faint">Loading the assembly&apos;s clause set…</p>
                     ) : (
-                        choice.clauses.map((clauseId) => (
-                            <div key={clauseId} className="space-y-2 pt-2 border-t border-default">
+                        (choice.clauses as readonly `0x${string}`[]).map((clauseKey) => (
+                            <div key={clauseKey} className="space-y-2 pt-2 border-t border-default">
                                 <span className="text-xs font-semibold text-ink-heading">
-                                    {memberDocumentClauseSpec(clauseId)?.title ?? clauseId}
+                                    {getClauseSpec(clauseKey)?.title ?? clauseKey}
                                 </span>
                                 {postures.map((posture) => (
                                     <PolicyLeafRow
                                         key={posture}
                                         slug={choice.slug}
-                                        clauseId={clauseId}
+                                        clauseKey={clauseKey}
                                         posture={posture}
-                                        entry={findEntry(entries, choice.compositionHash, clauseId, posture)}
+                                        entry={findEntry(entries, choice.compositionHash, clauseKey, posture)}
                                         onOffer={(offered) =>
                                             offered
                                                 ? upsert({
                                                     compositionHash: choice.compositionHash,
-                                                    clauseId,
+                                                    clauseKey,
                                                     posture,
                                                     offered: true,
                                                 })
-                                                : remove(choice.compositionHash, clauseId, posture)}
+                                                : remove(choice.compositionHash, clauseKey, posture)}
                                         onUpdate={upsert}
                                     />
                                 ))}
@@ -145,14 +145,14 @@ export function DisclosurePolicyEditor({ choices, entries, onChange, postures = 
  *  the whitelist + resolution-embargo refinements. */
 function PolicyLeafRow({
     slug,
-    clauseId,
+    clauseKey,
     posture,
     entry,
     onOffer,
     onUpdate,
 }: {
     slug: string;
-    clauseId: string;
+    clauseKey: string;
     posture: PartyRole;
     entry: DisclosurePolicyEntry | undefined;
     onOffer: (offered: boolean) => void;
@@ -165,7 +165,7 @@ function PolicyLeafRow({
     const [whitelistText, setWhitelistText] = useState<string>(
         () => (entry?.whitelist ?? []).join(", "),
     );
-    const rowId = `disclosure-${slug}-${clauseId}-${posture}`;
+    const rowId = `disclosure-${slug}-${clauseKey}-${posture}`;
 
     function propagateWhitelist(raw: string) {
         setWhitelistText(raw);

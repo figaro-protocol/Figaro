@@ -59,11 +59,11 @@ export function tryParseCatalogItems(doc: unknown): CatalogItemMetadata[] | null
                     : r2.posture === 'seller' ? 'seller' as const : undefined;
                 return typeof r2.compositionHash === 'string'
                     && isBytes32Hex(r2.compositionHash)
-                    && typeof r2.clauseId === 'string'
+                    && isBytes32Hex(r2.clauseKey)
                     && posture
                     ? {
                         compositionHash: r2.compositionHash as `0x${string}`,
-                        clauseId: r2.clauseId,
+                        clauseKey: r2.clauseKey as `0x${string}`,
                         posture,
                     }
                     : undefined;

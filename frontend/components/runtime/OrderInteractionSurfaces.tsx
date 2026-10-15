@@ -34,22 +34,21 @@ export function OrderInteractionSurfaces({
 
     const mounts = agreement.sections
         .map((section) => {
-            const interfaceId = getClauseSpec(section.clause, section.version)?.block?.runtime.interaction?.interface;
+            const interfaceId = getClauseSpec(section.clause)?.block?.runtime.interaction?.interface;
             const Surface = getInteractionSurface(interfaceId);
-            return Surface ? { clauseId: section.clause, version: section.version, Surface } : null;
+            return Surface ? { clauseKey: section.clause, Surface } : null;
         })
         .filter((m): m is NonNullable<typeof m> => m !== null);
     if (mounts.length === 0) return null;
 
     return (
         <div className="space-y-3">
-            {mounts.map(({ clauseId, version, Surface }) => (
+            {mounts.map(({ clauseKey, Surface }) => (
                 <Surface
-                    key={clauseId}
+                    key={clauseKey}
                     processId={processId}
                     orderHash={orderHash}
-                    clauseId={clauseId}
-                    version={version}
+                    clauseKey={clauseKey}
                     buyer={buyer}
                     seller={seller}
                 />

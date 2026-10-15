@@ -296,7 +296,7 @@ definition) and `RPGF_*` constant is a **root** export.
 | `addressesFromDeploymentRecord` | root | Map a published deployment record's keys onto `FigaroAddresses` — never spread the record. |
 | `anchorAgreement` | root | An agreement as `Anchored<Agreement>` when its merkle root is the commitment's `agreementHash`; null otherwise. |
 | `anchorAttestationContent` | root | Attestation bytes as `Anchored<Hex>` when they hash to the event's `contentRef`; null otherwise. |
-| `anchorClauseSpec` | root | A fetched clause spec as `Anchored<unknown>` when it hashes to `ClauseRegistry`'s `contentHash`; null otherwise. |
+| `anchorClauseSpec` | root | The fetched spec BYTES (or exact text), parsed, as `Anchored<unknown>` when `keccak256(bytes)` is the clause key; null otherwise. |
 | `anchorTemplate` | root | A fetched template as `Anchored<AssemblyTemplate>` when its composition hashes to `AssemblyRegistry`'s `compositionHash`; null otherwise. |
 | `assertAgreementSignable` | root | The ONE pre-signature thrower: every section conforms to its spec, and the terms equal the struct. |
 | `assertApprovalCoversBond` | root | Throws when an approval is short of the full per-order bond `FigaroCore` will pull. |
@@ -316,12 +316,12 @@ definition) and `RPGF_*` constant is a **root** export.
 | `calculateRootApproval` | root | The ERC-20 approval each party needs before a ROOT commit. |
 | `calculateResolution` | root | What each party receives after `resolveProcess`: its bond back, and exactly `payment` crossing. |
 | `calculateSubOrderApproval` | root | The approval before a SUB-order commit — the FULL bond, never the increment. |
-| `canonicalContentHash` | root | `keccak256` over the canonical serialization — the digest the registries anchor. |
+| `canonicalContentHash` | root | `keccak256` over the canonical serialization — a clause's key when pinned in that form, and the assembly registry's digest. |
 | `canonicalize` | root | THE canonical-JSON convention: sorted keys at every depth, array order kept, no whitespace. |
 | `checkEndpointLogAgreement` | root | Agreement over the event sets N endpoints returned for one pinned range — pure, caller-fetched. |
 | `commit` | `/agent` | Submit `FigaroCore.commit` with both signatures; any holder of the payload may broadcast. |
 | `computeAgreementHash` | root | The agreement's merkle root over its sorted section leaves and its provenance leaf. |
-| `computeClauseKey` | root | `keccak256(abi.encode(clauseId, version))` — the registry key, and the attest calls' `clauseId`. |
+| `computeClauseKey` | root | A clause's key: `keccak256` of the spec's canonical bytes (the bytes to pin) — the registry key, every section's `clause`, and the attest calls' `clauseId`. |
 | `computeDeadline` | root | A deadline from CHAIN time; pair with `readChainTimestamp` — there is no wall-clock fallback. |
 | `computeRpgfAllocations` | root | Off-chain mirror of the 600M pro-rata split for a closed accrual period. |
 | `computeSectionLeaf` | root | One merkle leaf — double-hashed, so a leaf preimage can never be replayed as an internal node. |
@@ -380,7 +380,7 @@ definition) and `RPGF_*` constant is a **root** export.
 | `parseMemberProfileDocument` | root | Strict parse of a pinned profile document; throws on malformed input. |
 | `parseProjectionHints` | root | Read a spec's `block` projection hints — design fills, checkout fills, article. |
 | `planSubOrderSellers` | root | Topologically order an assembly's sub-orders and resolve each one's bound seller. |
-| `planTemplateOrders` | root | A template's agreements in commit order, each with its clause bag and complete version map. |
+| `planTemplateOrders` | root | A template's agreements in commit order, each with its clause bag (keyed by clause key). |
 | `profileValuesFor` | root | The profile-filled clause values a given seller publishes, read from its catalog. |
 | `projectAgentServices` | root | Read the agent service endpoints out of a profile document, tolerating partial ones. |
 | `projectProcessGraph` | `/derive` | The process graph, labeled protocol-enforced — `reconstruct()`'s topology as a first-class object. |
@@ -402,6 +402,7 @@ definition) and `RPGF_*` constant is a **root** export.
 | `requestQuotes` | `/agent` | Fan out RFQ requests, verify each reply by reconstruction, rank cheapest first. |
 | `resolveDidWeb` | `/agent` | Resolve a `did:web` identifier — https-only, no redirects, size-capped (SSRF-hardened). |
 | `resolveProcess` | `/agent` | The low-level buyer-only resolve. Does NOT restore signed root ids — prefer `executeAction`. |
+| `resolveAuthoredClauseKeys` | root | SEED-TIME authoring only: rewrite the clause NAMES in a template or member document you wrote by name to the keys of the specs you loaded (`name@version` disambiguates); never a read path. |
 | `resolveSubOrderPricing` | root | Price a sub-order live from its own contributor's catalog. |
 | `restoreSignedProcessId` | root | Turn an event-derived ROOT commitment back into the struct that was signed (`processId = 0`). |
 | `sectionByField` | root | Find the agreement section whose spec DECLARES a field — never look one up by clause name. |
@@ -411,6 +412,7 @@ definition) and `RPGF_*` constant is a **root** export.
 | `socketSignerAccount` | `/signer` | A viem account backed by the policy-signer daemon's socket. |
 | `strippingReviver` | root | A `JSON.parse` reviver that drops `__proto__`/`constructor`/`prototype` keys. |
 | `tagAttestationUniverses` | root | The pure fold under `fetchAttestationRecords`: tag two address-filtered log streams and merge in block order. |
+| `templateComposedClauseKeys` | root | Every clause key a template composes, sorted — each must be live on `ClauseRegistry` before the assembly anchors. |
 | `templateCompositionHash` | root | The `compositionHash` `AssemblyRegistry` binds — an assembly's identity IS its composition. |
 | `topologicalOrder` | root | Order ids so every node follows its parents; `throw` or degrade on a cycle. |
 | `Topology` | root | The mutable shadow state an agent keeps, updated incrementally as events arrive. |
@@ -449,7 +451,13 @@ a second route: `buildUsageClaims` turns a batch-resolved order plus its
 agreement into the claims a sequencer proves, and the mirror folds BOTH event
 streams (`fetchUsageRecords` + `fetchBatchUsageRecords`). Reading only the first
 under-reports every clause or assembly whose trade moved to batches, and the two merge as
-SCORES, never as components. The reward is UNIFORM (no tag,
+SCORES, never as components. The two families stay apart: every count,
+accrual and claim is keyed by `(kind, key)` — `kind` is `USAGE_KIND_CLAUSE`
+(0) or `USAGE_KIND_ASSEMBLY` (1), because a registry accepts any bytes32 and
+nothing in a key's bytes says which family it names; the mirror files each
+pair under `usageKeyId(kind, key)`, `computeRpgfAllocations` takes its designers
+keyed the same way, and each allocation's `claims` is the `{ kind, key }` list
+that wallet's `RpgfMinter.claim` takes. The reward is UNIFORM (no tag,
 category or weight — every clause or assembly's score is `icbrt(c·d²·10^18)`, its real
 usage alone) and UNCAPPED; the only eligibility gate is a two-sided live ETH
 stake (usage counts only for a live-staked seller of record, and a designer earns only while the clause or assembly's stake stays un-withdrawn). The mirror
@@ -928,14 +936,14 @@ const result = await executeAction(walletClient, publicClient, addresses, approv
 
 // Attest one clause end-to-end from a hydrated Agreement. Pick the clause from
 // the agreement's OWN sections — never a bundled list.
-import { buildSectionInclusionProof, sectionDataHash, computeClauseKey } from "@figaro-protocol/sdk";
+import { buildSectionInclusionProof, sectionDataHash } from "@figaro-protocol/sdk";
 import { attestAsSeller } from "@figaro-protocol/sdk/agent";
 import { parseClauseSpec, encodeContentFromSpec } from "@figaro-protocol/sdk/clauses";
 import { keccak256 } from "viem";
 
-const section = agreement.sections[0]; // e.g. { clause: "figaro-commerce", version, data }
+const section = agreement.sections[0]; // { clause: <the clause key, 0x…32 bytes>, data }
 
-// 1. Inclusion proof — buildSectionInclusionProof takes the RAW section name.
+// 1. Inclusion proof — by the section's clause key.
 const { proof } = buildSectionInclusionProof(agreement, section.clause);
 // 2. Section FINGERPRINT — keccak256 of the committed canonical bytes. The
 //    coordinator takes only the hash, never the preimage, so a `private`-
@@ -947,13 +955,13 @@ const parsed = parseClauseSpec(specJson);
 if (!parsed.ok) throw new Error(parsed.errors[0].message);
 const content = encodeContentFromSpec(parsed.spec, section.data);
 const contentRef = keccak256(content);
-// 4. Attest. `clauseId` is the bytes32 HASH — NOT the raw name from step 1.
+// 4. Attest. The coordinator's `clauseId` argument is the section's clause key.
 // `stage` vocabulary: 0 = the clause's COMMITTED content (encode with no
 // stage option); N ≥ 1 = a runtime witness whose field shape is the spec's
 // own `stages[N]` declaration (encode with `{ stage: N }`); a process-log
 // ladder attests its enum's index as the stage. The vocabulary is the
 // clause spec's data — the SDK and the chain assign it no meaning.
-const clauseId = computeClauseKey(section.clause, section.version);
+const clauseId = section.clause;
 // `roleCommitment`/`targetCommitment` are the SIGNED commitment structs (a root
 // order carries processId = 0), NOT the reconstruction-derived form. For
 // SAME-ORDER attestation pass the SAME commitment as both role and target
@@ -1102,13 +1110,15 @@ const { winner: quoted } = await requestQuotes(channel, drafts, { chainId, core 
 import { strippingReviver } from "@figaro-protocol/sdk";
 import { deserializeCommitmentPayload } from "@figaro-protocol/sdk/agent";
 
-// A document fetched from IPFS is read only after its digest is recomputed
-// against the one the chain anchors. The anchor functions are the only makers
+// A document fetched from IPFS is read only after its digest is checked
+// against the one the chain anchors. A clause spec is checked on the BYTES
+// fetched: its key is keccak256 of exactly the pinned bytes, so nothing is
+// re-canonicalized and the spec is parsed from the verified bytes. The anchor functions are the only makers
 // of `Anchored<T>`: they return the document when the digests agree and null
 // when they do not, so code that takes `Anchored<T>` cannot be handed bytes a
 // gateway served unchecked. `Anchored<T>` is a `T` wherever a `T` is taken.
 import { anchorClauseSpec, anchorTemplate, type Anchored, type AssemblyTemplate } from "@figaro-protocol/sdk";
-const spec = anchorClauseSpec(JSON.parse(specText, strippingReviver), clause.contentHash);
+const spec = anchorClauseSpec(specBytes, clause.clauseKey); // Uint8Array or the exact text
 const template: Anchored<AssemblyTemplate> | null =
     anchorTemplate(JSON.parse(templateText, strippingReviver), assembly.compositionHash);
 
@@ -1279,7 +1289,7 @@ the calling convention.
 
 ```ts
 import {
-  computeClauseKey, fetchCoreEvents, EV_ATTESTATION, parseAttestationLogs,
+  fetchCoreEvents, EV_ATTESTATION, parseAttestationLogs,
 } from "@figaro-protocol/sdk";
 import {
   filterByClause,
@@ -1303,11 +1313,11 @@ const attestationLogs = await client.getLogs({
 });
 const attestations = parseAttestationLogs(attestationLogs);
 
-// Derive the on-chain clause key (name, version), then filter for it. The SDK
-// knows no specific clause — the stage/contentRef meaning is clause-spec data
-// read at the edge, never baked in here.
-const clauseId = computeClauseKey("figaro-emissions", 1);
-const forClause = filterByClause(attestations, clauseId);
+// Filter for a clause by its key (an agreement section's `clause`, or a
+// discovery row's `clauseKey`). The SDK knows no specific clause — the
+// stage/contentRef meaning is clause-spec data read at the edge, never baked
+// in here.
+const forClause = filterByClause(attestations, clauseKey);
 
 // Witness content addressing: an attestation's `contentRef` IS the keccak-CID
 // digest of the published preimage — derive the content address from the
@@ -1331,7 +1341,7 @@ const inFlight = deriveInFlightOrders(events); // committed, process unresolved
 // is COUNTED as unverified and surfaced, but never blocks: agreement bodies are
 // party-private, and the on-chain inclusion-proof hardening doesn't lock the
 // stake on unrevealed trades either. Then:
-const clauseGate = deriveClauseWithdrawGate("figaro-emissions", agreements);
+const clauseGate = deriveClauseWithdrawGate(clauseKey, agreements);
 const assemblyGate = deriveAssemblyWithdrawGate(assemblyTemplate, agreements);
 // gate.canWithdraw === (inFlightCount === 0); unverifiedCount is a caveat
 ```
@@ -1421,8 +1431,9 @@ code.
 > On the BATCHED path the proof apparatus DOES validate
 > content in-proof: a Rust mirror of this same module validates and re-encodes
 > the content against the clause's spec supplied as a witness input, and
-> `FigaroBatchVerifier` resolves the batch only if the witness's hash matches
-> `ClauseRegistry.contentHashOf` — so never-seen clauses stay attestable AND
+> `FigaroBatchVerifier` resolves the batch only if the clause key the proof
+> committed (the hash of the witness's spec bytes) is registered on
+> `ClauseRegistry` — so never-seen clauses stay attestable AND
 > batch-resolvable with zero per-clause code. There are no per-clause validator
 > contracts, permanently. The contract catalog that states this is published
 > at `/spec`; the clause-authoring path is at `/clauses`.
@@ -1441,9 +1452,9 @@ import {
 const parsed = parseClauseSpec(specJson);
 if (!parsed.ok) throw new Error(parsed.errors[0].message);
 // NOTE: `parsed.spec` deliberately omits the spec's `block` slice — that is
-// presentation metadata the SDK does not own. The `contentHash` you register
-// on ClauseRegistry covers the RAW canonical JSON document (including
-// `block`): pin and hash the raw document; never re-serialize `parsed.spec`.
+// presentation metadata the SDK does not own. The clause key covers the RAW
+// document's pinned bytes (including `block`): pin `canonicalize(raw)`; never
+// re-serialize `parsed.spec`.
 
 // 2. Validate content against the spec (closed clauses: unknown fields rejected).
 //    Content first, spec second; pass `{ stage }` for a per-stage witness shape.
@@ -1463,52 +1474,42 @@ format `bytes32-hex` / `address-hex` / `bytes-hex` / `iso-datetime`),
 `integer`, `bigint` (decimal-string for JSON safety), `boolean`, `enum`,
 `array`, `object`. Per-stage overrides via `spec.stages[stage]`.
 
-**Before you register: `computeClauseKey` is the pre-registration collision
-check.** `ClauseRegistry.registerClause` is permissionless and
-first-write-wins (`src/build/registries/ClauseRegistry.sol:154-170`) — an
-`id`+`version` someone already registered is taken **permanently** (no
-overwrite, no version bump onto the same slot; the adding-a-clause checklist
-is `docs/CLAUSES.md`). Compute the exact key the registry hashes and read
-whether it is already live BEFORE placing the registration stake:
+**A clause IS its spec: the key is the hash of the pinned bytes.** A spec
+keeps `clauseId` and `version` as its own presentation fields (a title and a
+lineage counter a reader shows); nothing on chain or in a leaf reads them.
+The clause's identity is its KEY, `keccak256` of exactly the bytes pinned at
+its `contentURI`. The reference tooling pins `canonicalize(spec)` — sorted
+keys at every depth, array order kept, no whitespace — and `computeClauseKey(spec)`
+is `keccak256` of those bytes. **A spec pinned in any other byte form has a
+different key**: a pretty-printed pin is another clause. Two specs sharing a
+name are two clauses; a lookalike shares nothing with the original.
+
+`ClauseRegistry.registerClause(bytes32 clauseKey, string contentURI)` is
+payable, permissionless and first-write-wins on the key, under the stake
+(`docs/CLAUSES.md` holds the adding-a-clause checklist). It stores no name,
+no version and no separate content hash — the key IS the content hash — and
+emits `ClauseRegistered(bytes32 indexed clauseKey, string contentURI, address
+indexed registeredBy)`. Discovery decodes it into `RegisteredClause
+{ clauseKey, contentURI, registeredBy, stakeWithdrawn }`. The same key is
+every agreement section's `clause`, the `clauseId` argument of
+`attestAs{Seller,Buyer}`, and the key usage counts under.
 
 ```ts
-import { computeClauseKey, CLAUSE_REGISTRY_ABI } from "@figaro-protocol/sdk";
-
-const key = computeClauseKey("figaro-my-new-clause", 1); // keccak256(abi.encode(clauseId, version))
-const taken = await client.readContract({
-  address: addresses.clauseRegistry!,
-  abi: CLAUSE_REGISTRY_ABI,
-  functionName: "registered",
-  args: [key],
-});
-if (taken) throw new Error("this id+version is already registered — pick another");
-```
-
-The same `computeClauseKey` reappears later (below, and in
-`@figaro-protocol/sdk/agent`) as the `clauseId` argument to `attestAs{Seller,Buyer}` —
-one function, two moments: before registering (is this slot free?) and at
-attestation time (which registered clause does this section attest?).
-
-**Then pin and hash the RAW document — `canonicalize` and
-`canonicalContentHash` (both root exports).** These are the two calls behind
-"pin and hash the raw document" above, and getting them wrong is silent:
-`registerClause` takes whatever `bytes32` you hand it, so a spec pinned in one
-serialization and hashed in another registers fine and then fails every
-reader, because verification is always *fetch → re-canonicalize → re-hash*.
-Pin the exact bytes you hashed:
-
-```ts
-import { canonicalize, canonicalContentHash } from "@figaro-protocol/sdk";
+import { canonicalize, computeClauseKey, CLAUSE_REGISTRY_ABI } from "@figaro-protocol/sdk";
 
 // `spec` is the RAW document — the whole JSON including `block`, NOT
 // `parsed.spec` (which drops `block`; see the note in the first snippet).
-const bytes = canonicalize(spec);              // sorted keys at every depth,
-                                               // array order preserved, no whitespace
-const contentHash = canonicalContentHash(spec); // === keccak256(utf8Bytes(bytes))
+const bytes = canonicalize(spec);       // the bytes to pin
+const clauseKey = computeClauseKey(spec); // === keccak256(utf8Bytes(bytes))
+
+// Is this exact spec already registered? (Same bytes = same clause.)
+const taken = await client.readContract({
+  address: addresses.clauseRegistry!, abi: CLAUSE_REGISTRY_ABI,
+  functionName: "registered", args: [clauseKey],
+});
 
 // Pin THOSE bytes — not JSON.stringify(spec, null, 2), not a re-serialization
-// of anything you parsed. A pretty-printed pin hashes to a different value and
-// the clause never verifies for anyone.
+// of anything you parsed.
 const contentURI = await pinToIpfs(bytes);     // your node, your pin service
 
 // Deposit is a deploy-time immutable — read it, never hardcode it. Under AND
@@ -1517,21 +1518,31 @@ const deposit = await client.readContract({
   address: addresses.clauseRegistry!, abi: CLAUSE_REGISTRY_ABI,
   functionName: "registrationDeposit",
 });
-await walletClient.writeContract({
+if (!taken) await walletClient.writeContract({
   address: addresses.clauseRegistry!, abi: CLAUSE_REGISTRY_ABI,
   functionName: "registerClause",
-  args: ["figaro-my-new-clause", 1n, contentHash, contentURI], // version is uint64
+  args: [clauseKey, contentURI],
   value: deposit,
 });
 ```
 
-`canonicalize` is THE one canonical-JSON convention in the protocol — the same
-function hashes agreement sections and assembly compositions, which is why a
-reader who fetched your spec from any gateway can re-derive `contentHash`
-independently. To check your own work against a live deployment before you
-trust it, recompute the hash of a spec someone already registered and compare
-it to `ClauseRegistry.contentHashOf(key)` (in `CLAUSE_REGISTRY_ABI`).
-If your recomputation matches the anchor, your pipeline is right.
+A reader verifies a fetched spec by hashing the BYTES it fetched:
+`anchorClauseSpec(bytes, clauseKey)` returns the parsed spec only when
+`keccak256(bytes) == clauseKey`, and re-canonicalizes nothing.
+
+**Seed-time authoring: `resolveAuthoredClauseKeys(doc, specs)`.** A person
+writes an assembly template or a member document by clause NAME; a published
+document carries keys. `resolveAuthoredClauseKeys` rewrites your OWN
+file — `agreements[].clauses` and `assemblyClauses` keys in a template;
+`disclosurePolicy[].clauseId`, `assemblyBindings[].counterpartyBindings[].clauseId`
+(each becomes `clauseKey`) and `profileClauseValues` keys in a profile;
+`items[].clauseValues` keys and `items[].dataSold.clauseId` in a catalog — to
+the keys of the specs you loaded (`specs.list()`), matching each spec's
+`clauseId`, and its `version` too when you write `name@version`. It refuses a
+name two loaded specs share unless the file says which, and a name no loaded
+spec carries. It is a local authoring read at seed time over files you write,
+never a read path and never a chain read by name: on chain a clause is only
+its key, and everything pinned carries keys.
 
 ### `@figaro-protocol/sdk/handoff` — Runtime Handoff Wire Protocol
 
@@ -1732,28 +1743,30 @@ import type { SpecSource, ProjectionSpecView } from "@figaro-protocol/sdk";
 // (`figaro-merchant-process`, `figaro-courier-process` both use it, with no
 // fill list — the shape a genuine one always has); this fires only on that
 // specific fills-on-process-log combination.
-function makeSpecSource(rawSpecsByKey: Map<string, unknown>): SpecSource {
+// `rawSpecsByKey` maps each clause key to the spec parsed from the bytes
+// `anchorClauseSpec(bytes, clauseKey)` verified.
+function makeSpecSource(rawSpecsByKey: Map<Hex, unknown>): SpecSource {
   const views = new Map<string, ProjectionSpecView>();
-  for (const [key, raw] of rawSpecsByKey) {   // key = `${clauseId}@${version}`
+  for (const [clauseKey, raw] of rawSpecsByKey) {
     const parsed = parseClauseSpec(raw);
     if (!parsed.ok) throw new Error(parsed.errors[0].message);
-    views.set(key, { ...parsed.spec, hints: parseProjectionHints(raw) });
+    views.set(clauseKey.toLowerCase(), { ...parsed.spec, clauseKey, hints: parseProjectionHints(raw) });
   }
   return {
-    // A clause is (clauseId, version): every read names both.
-    get: (clauseId, version) => views.get(`${clauseId}@${version}`),
+    // A clause is its key: every read names it.
+    get: (clauseKey) => views.get(clauseKey.toLowerCase()),
     list: () => [...views.values()],
   };
 }
 ```
 
-`get` takes the clause's name AND version — the on-chain identity
-`keccak256(abi.encode(clauseId, version))` the agreement's leaf carries — and
-nothing reads a clause by name alone. `list` is the set `buildAssemblyTemplate`
+`get` takes the clause KEY — the hash of the pinned spec bytes, the key every
+agreement leaf carries — and nothing reads a clause by name; a spec's
+`clauseId` and `version` are labels. `list` returns every spec the source
+surfaces, each with its `clauseKey`, and is the set `buildAssemblyTemplate`
 folds the mandatory clauses from: pass the registrations whose stake is live
-(the surfacing rule), and the fold takes each name's one mandatory
-registration at its own version; where one name has several, it takes the
-version-1 registration, and a name with several and no version 1 does not fold.
+(the surfacing rule), and EVERY one whose spec marks `article: "mandatory"`
+folds — there is no selection among them, since two specs are two clauses.
 
 A spec that is not (yet) loaded returns `undefined` from `get`, and the
 projection degrades exactly as the registry-reading frontend does (no defaults
@@ -1762,7 +1775,7 @@ data-key presence). Consumers that need strictness gate on their cache being
 warm before projecting.
 
 **One order.** `buildOrderAgreement` takes the complete clause map
-(`{ [clauseId]: fieldValues }`), injects each spec's own declared-field defaults
+(`{ [clauseKey]: fieldValues }`), injects each spec's own declared-field defaults
 for omitted fields (the SPEC speaks; the code injects nothing of its own), sorts
 sections deterministically, and returns the `Agreement` + its merkle-root
 `agreementHash`. `assertAgreementSignable` is the single off-chain gate every
@@ -1785,12 +1798,9 @@ clause specs.
 ```ts
 import { buildOrderAgreement, assertAgreementSignable, sectionByField } from "@figaro-protocol/sdk";
 
-// clauses: clauseId → field values (design-time ∪ runtime fill); clauseVersions:
-// clauseId → the registered version composed, in the template's sparse
-// encoding (a version-1 entry is not written; every other version is stated).
-const { agreement, agreementHash } = buildOrderAgreement(
-  buyer, seller, clauses, specs, clauseVersions,
-);
+// clauses: clauseKey → field values (design-time ∪ runtime fill). Each section
+// reads the spec its key names.
+const { agreement, agreementHash } = buildOrderAgreement(buyer, seller, clauses, specs);
 // The 4th argument is the commitment's mirrored pair (currency + payment) —
 // the struct side of the leaf==struct assertion; a full Commitment satisfies
 // it. The last argument is the label used in the error.
@@ -1833,7 +1843,7 @@ const asm = graph.getAssemblies().find((a) => a.compositionHash === compositionH
 const template: AssemblyTemplate = await (await fetch(gateway(asm!.contentURI))).json();
 
 // PURE STRUCTURE for display (no parties, values, or signatures): commit-ordered
-// nodes with complete version maps + local parent edges.
+// nodes with their clause bags (keyed by clause key) + local parent edges.
 const planned = planTemplateOrders(template);
 
 // 2. The full realization. `specs` present ⇒ checkout semantics (spec-default
@@ -1844,7 +1854,7 @@ const planned = planTemplateOrders(template);
 const orders = await reconstructOrdersFromTemplate(template, {
   buyer, currency, chainId, core: addresses.core, specs,
   // One ReconstructNodeSpec per template node: who sells it, what it pays, and
-  // the per-clause checkout values (keyed by clauseId — the SDK names none).
+  // the per-clause checkout values (keyed by clause key — the SDK names none).
   nodes: (node) => ({
     seller: sellerFor(node.nodeId),
     payment: paymentFor(node.nodeId),
@@ -1854,7 +1864,7 @@ const orders = await reconstructOrdersFromTemplate(template, {
     // A pinned assembly's value comes from its denomination clause
     // (`readUtilityTokenPin` resolves it); otherwise it is the buyer's pick
     // from the seller's accepted tokens, else the seller's default.
-    overrides: { "figaro-commerce": { currency, payment: paymentFor(node.nodeId).toString(), lineItems } },
+    overrides: { [commerceKey]: { currency, payment: paymentFor(node.nodeId).toString(), lineItems } },
   }),
   // Per-node seam, invoked in commit order as each order is realized — sign,
   // pin the party-private agreement, share, or compose here. SHARING is
@@ -1963,7 +1973,7 @@ import {
 // `id` → `itemId`, `price` (human decimal) → `unitPrice` (smallest unit, via
 // viem's `parseUnits(item.price, tokenDecimals)` — see `CatalogItemMetadata.price`'s
 // doc comment), and `clauseValues` copied through UNCHANGED (same
-// `{clauseId: fieldValues}` shape `fillClassSections` reads below).
+// `{clauseKey: fieldValues}` shape `fillClassSections` reads below).
 const lineItems: AssemblyCheckoutLineItem[] = [
   { itemId: "espresso", name: "Espresso", quantity: 2, unitPrice: "150000000000000000" },
 ];
@@ -1978,10 +1988,10 @@ await reconstructOrdersFromTemplate(template, {
     // `{ ...node.clauses }` you build off a raw `template.agreements[i]` lookup.
     const filled = fillProfileSections(
       fillClassSections(
-        fillCommerceSection(planned.clauses, payment, currency, specs, lineItems, planned.clauseVersions),
-        lineItems, specs, planned.clauseVersions,
+        fillCommerceSection(planned.clauses, payment, currency, specs, lineItems),
+        lineItems, specs,
       ),
-      profileValuesFor(seller, memberCatalogs), specs, planned.clauseVersions,
+      profileValuesFor(seller, memberCatalogs), specs,
     );
     // The provenance leaf is no fill: the walk writes agreement.provenance itself.
     return { seller, payment, overrides: filled };
@@ -2003,7 +2013,7 @@ hand before running any fill:
 ```ts
 const rawNode = template.agreements.find((a) => a.id === planned.nodeId)!;
 const clauses = { ...template.assemblyClauses, ...rawNode.clauses }; // ← the pre-merge
-const filled = fillProfileSections(clauses, profileValuesFor(seller, memberCatalogs), specs, planned.clauseVersions);
+const filled = fillProfileSections(clauses, profileValuesFor(seller, memberCatalogs), specs);
 ```
 
 Skip the pre-merge and every fill finds no assembly-scoped clause in
@@ -2049,7 +2059,7 @@ registration at all.
   - `assemblyBindings` is an array of `AssemblyBindingRecord` — one entry per
     assembly the wallet participates in, each
     `{ bindingId, subjectAddress, assemblySlug, counterpartyBindings? }`. Each
-    `counterpartyBindings` entry is `{ clauseId, addresses[] }`: the wallets the
+    `counterpartyBindings` entry is `{ clauseKey, addresses[] }`: the wallets the
     seller designates for a sub-order carrying that process clause (e.g. a
     courier-process clause → the courier wallets checkout fills the courier
     sub-order from; order is significant — checkout takes the first reachable, or
@@ -2059,9 +2069,9 @@ registration at all.
   - `disclosurePolicy` is an array of `DisclosurePolicyEntry` — the member's
     self-declared terms for the data they co-produce inside bonded processes
     (the voluntary data market), each
-    `{ compositionHash, clauseId, posture, offered, whitelist?, calendar? }`. The
+    `{ compositionHash, clauseKey, posture, offered, whitelist?, calendar? }`. The
     data a row names is DERIVED, never a stored taxonomy: `compositionHash` (the
-    `AssemblyRegistry` key of an assembly the member binds) × `clauseId` (the data's leaf section) name clauses the member already composes.
+    `AssemblyRegistry` key of an assembly the member binds) × `clauseKey` (the data's leaf section) name clauses the member already composes.
     `posture: "buyer" | "seller"` says which side the member co-produced the data on — members hold both, on the same terms structure. `offered` is the
     toggle (`false` = explicit withholding); `whitelist` narrows who may buy/see
     (absent = any counterparty, once offered); `calendar` says when
@@ -2083,7 +2093,7 @@ registration at all.
   throws `…version must be a string.` on a number rather than coercing it.
   Each item requires `id`, `name`, `price`, `available`; optional are
   `description`, `category`, `image`, `dataSold` (marks a DATA-PRODUCT
-  item: `{ compositionHash, clauseId, posture }` referencing one of the
+  item: `{ compositionHash, clauseKey, posture }` referencing one of the
   member's own declared data offers — the policy declares the terms,
   this item is the price), physical measures (`massGrams`,
   `volumeMl`, `lengthMm`/`widthMm`/`heightMm`), rate pricing
@@ -2141,24 +2151,23 @@ direct-ABI callers — the exact parameter types are the function's identity, so
 a mistyped one reverts with an opaque selector mismatch, not a friendly error):
 
 ```solidity
-// ClauseRegistry.sol:156 — cast selector: registerClause(string,uint64,bytes32,string)
-function registerClause(string calldata clauseId, uint64 version, bytes32 contentHash, string calldata contentURI) external payable
+// ClauseRegistry — cast selector: registerClause(bytes32,string)
+// clauseKey = keccak256 of the spec bytes pinned at contentURI.
+function registerClause(bytes32 clauseKey, string calldata contentURI) external payable
 
 // AssemblyRegistry.sol:148 — cast selector: registerAssembly(bytes32,string)
 function registerAssembly(bytes32 compositionHash, string calldata contentURI) external payable
 
-// ClauseRegistry.sol:207 — a composed MECHANISM contract declaring which clause
-// it speaks. Permissionless, not payable, writes no storage: it only emits
-// MechanismClauseSet(msg.sender, idHash) for indexers, and reverts
-// NotRegistered(idHash) if that clause was never anchored. Note the argument is
-// the identity HASH (computeClauseKey(id, version)) — not the bare string name
-// registerClause takes.
-function setMechanismClause(bytes32 idHash) external
+// ClauseRegistry — a composed MECHANISM contract declaring which clause it
+// speaks. Permissionless, not payable, writes no storage: it only emits
+// MechanismClauseSet(msg.sender, clauseKey) for indexers, and reverts
+// NotRegistered(clauseKey) if that clause was never registered.
+function setMechanismClause(bytes32 clauseKey) external
 ```
 
-`version` is `uint64`, not the `uint256` a caller might reach for by habit; and
-`registerAssembly` takes no version parameter at all — `compositionHash` alone
-is the identity. Both registering calls are `payable`; `msg.value` must equal
+Both registries key by content: `clauseKey` is the hash of the pinned spec
+bytes, `compositionHash` the hash of the composition; neither takes a name or
+a version. Both registering calls are `payable`; `msg.value` must equal
 `registrationDeposit()` exactly (`setMechanismClause` is not — it takes no deposit).
 
 **All three registries take the same reclaimable stake.** `MembersRegistry`,
@@ -2168,7 +2177,7 @@ the registering call (`register` / `registerClause` / `registerAssembly`, all
 must equal it EXACTLY (there is no sweep). The amount is a deploy-time immutable;
 read it from the contract's `registrationDeposit()` view rather than hardcoding a
 figure. Clause and assembly deposits come back in one call —
-`withdrawDeposit(idHash | compositionHash)`, which de-surfaces the clause or assembly while
+`withdrawDeposit(clauseKey | compositionHash)`, which de-surfaces the clause or assembly while
 leaving the binding permanent, because orders already committed against them still
 resolve.
 
@@ -2198,7 +2207,7 @@ surfaced state) — it flips to `true` only once the registering wallet reclaims
 freshly registered assembly correctly reads `depositWithdrawn == false`; that false is
 "deposit still held," not "registration failed."
 
-`ClauseRegistry`'s parallel stake struct (`depositOf[idHash]`, surfaced to the SDK as
+`ClauseRegistry`'s parallel stake struct (`depositOf[clauseKey]`, surfaced to the SDK as
 `RegisteredClause.registeredBy`) spells the same field the same way — both registries
 name the registering wallet `registeredBy` (one role, one name), and
 `RpgfMinter._isAuthor` treats it as the clause-or-assembly's designer of record for reward eligibility.
@@ -2238,14 +2247,14 @@ above), each carrying exactly half of the offer:
 
 - The **profile's `disclosurePolicy`** carries the DISCLOSURE terms: one entry
   per kind of data,
-  `{ compositionHash, clauseId, posture, offered, whitelist?, calendar? }`.
+  `{ compositionHash, clauseKey, posture, offered, whitelist?, calendar? }`.
   What a row names is derived, never a stored taxonomy — the assembly you bind
   or subscribe to × the clause whose leaf holds the data × the side you traded
   on. Absence of a row is the paper-contract default (each party holds its own
   copy), **not** a policy of openness; `offered: false` is an explicit
   withholding, which is a different statement.
 - The **catalog item's `dataSold`** carries the PRICE: `{ compositionHash,
-  clauseId, posture }` pointing at one of your own declared rows, plus the
+  clauseKey, posture }` pointing at one of your own declared rows, plus the
   ordinary `price` / `pricingPolicy` fields every other item uses. Prices never
   appear in the policy, and the terms of the SALE (§2) ride the item's
   `clauseValues`, not `dataSold`.
@@ -2259,7 +2268,7 @@ import { parseMemberProfileDocument, parseMemberCatalogDocument } from "@figaro-
 // "data clauses": any leaf of any assembly you traded under can be a product.
 const dataOffer = {
   compositionHash: surveyCompositionHash,
-  clauseId: "figaro-geolocation",
+  clauseKey: flightRecordKey,         // the leaf's clause key, read off the assembly's composed clauses
   posture: "seller" as const,
 };
 
@@ -2275,8 +2284,8 @@ const catalog = {
     id: "telemetry-2026q3", name: "Flight telemetry — 2026 Q3",
     price: "50", available: true,              // HUMAN DECIMAL, like every item
     dataSold: dataOffer,                        // WHAT is sold — the policy row above
-    clauseValues: {                             // the SALE's catalog-filled terms
-      "figaro-data-license": {
+    clauseValues: {                             // the SALE's catalog-filled terms, by clause key
+      [licenseKey]: {
         licenseScope: "Flight telemetry — 2026 Q3 survey window",
         access: "stream", redistribution: "prohibited",
         sourceProcesses: [processIdA, processIdB],
@@ -2302,17 +2311,18 @@ instead, fixing the disclosure regime the parties co-sign.
 
 ```ts
 const clauses = {
-  "figaro-commerce":        { currency, payment: price.toString(), lineItems },
-  "figaro-data-license":    {
+  // Keyed by clause key — the keys of the specs your SpecSource holds.
+  [commerceKey]: { currency, payment: price.toString(), lineItems },
+  [licenseKey]:  {
     licenseScope:   "Flight telemetry — 2026 Q3 survey window",
     purpose:        "internal analytics only; model training excluded",
     access:         "stream",          // or "snapshot" — §4
     redistribution: "prohibited",      // co-signed evidence, not an on-chain block
     sourceProcesses: [processIdA, processIdB],  // the provenance anchors — §3
   },
-  "figaro-content-handoff": { contentHandoff: ["encrypted-transfer"] },
+  [handoffKey]:  { contentHandoff: ["encrypted-transfer"] },
 };
-const { agreement, agreementHash } = buildOrderAgreement(buyer, seller, clauses, specs, versions);
+const { agreement, agreementHash } = buildOrderAgreement(buyer, seller, clauses, specs);
 assertAgreementSignable(agreement, agreementHash, specs, commitment, "data sale");
 ```
 
@@ -2471,11 +2481,17 @@ and only while its registration stake is still un-withdrawn (that is the designe
 `UsageCounter`). One call per wallet per period, carrying **every** clause and assembly that wallet registered:
 
 ```ts
-import { computeClauseKey, RPGF_MINTER_ABI, USAGE_COUNTER_ABI } from "@figaro-protocol/sdk";
+import { USAGE_KIND_ASSEMBLY, USAGE_KIND_CLAUSE, RPGF_MINTER_ABI, USAGE_COUNTER_ABI } from "@figaro-protocol/sdk";
 
-// The keys are the registries' own identities: a clause is
-// computeClauseKey(id, version); an assembly IS its compositionHash.
-const mine = [computeClauseKey("figaro-my-clause", 1), myCompositionHash];
+// Each entry is a (kind, key) pair: the kind names the one registry the
+// minter checks you against, so a stake in one family never earns the
+// other's. A clause's key is the hash of its pinned spec bytes; an assembly's
+// is its compositionHash. (`computeRpgfAllocations` hands back this list per
+// wallet as `allocation.claims`.)
+const mine = [
+  { kind: USAGE_KIND_CLAUSE, key: myClauseKey },
+  { kind: USAGE_KIND_ASSEMBLY, key: myCompositionHash },
+];
 
 // A period must be CLOSED before it can be claimed (claim reverts
 // PeriodStillAccruing otherwise), and `claimable` returns 0 — not a revert —

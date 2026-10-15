@@ -14,9 +14,10 @@ import {UsageCounter} from "src/build/rewards/UsageCounter.sol";
 ///         rebuild as `keccak256(keccak256(clauseKey ‖ sectionHash))`; the batch
 ///         path verifies them in the guest (`prover/lib/tests/merkle_parity.rs`
 ///         reads the same file). This test rebuilds each leaf exactly as the two
-///         consumers do — clause key `keccak256(abi.encode(clause, uint64(version)))`
-///         as `ClauseRegistry` computes it, section hash over the canonical bytes
-///         — and verifies every frozen proof with the library the consumers call.
+///         consumers do — from the section's `clauseKey` (keccak256 of the
+///         clause spec's pinned bytes, the key `ClauseRegistry` registers) and
+///         the section hash over the canonical bytes — and verifies every frozen
+///         proof with the library the consumers call.
 ///
 ///         An agreement that instantiated an assembly carries one more leaf, the
 ///         format's reserved PROVENANCE leaf, frozen under the agreement's
@@ -49,8 +50,7 @@ contract MerkleParityTest is Test {
             new UsageCounter(address(1), address(1), address(1), address(1), address(1), 1, periods).provenanceLeaf();
     }
 
-    function _leaf(string memory clause, uint256 version, string memory sectionData) internal pure returns (bytes32) {
-        bytes32 clauseKey = keccak256(abi.encode(clause, uint64(version)));
+    function _leaf(bytes32 clauseKey, string memory sectionData) internal pure returns (bytes32) {
         bytes32 sectionHash = keccak256(bytes(sectionData));
         return keccak256(bytes.concat(keccak256(abi.encodePacked(clauseKey, sectionHash))));
     }
@@ -80,8 +80,7 @@ contract MerkleParityTest is Test {
             for (uint256 i = 0; i < sections; i++) {
                 string memory sb = string.concat(ab, ".sections[", vm.toString(i), "]");
                 bytes32 leaf = _leaf(
-                    vm.parseJsonString(json, string.concat(sb, ".clause")),
-                    vm.parseJsonUint(json, string.concat(sb, ".version")),
+                    vm.parseJsonBytes32(json, string.concat(sb, ".clauseKey")),
                     vm.parseJsonString(json, string.concat(sb, ".sectionData"))
                 );
                 assertEq(leaf, vm.parseJsonBytes32(json, string.concat(sb, ".leaf")), "the rebuilt leaf is the SDK's");

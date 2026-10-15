@@ -13,11 +13,11 @@ this directory follows; here it is narrowed to one job — a correct, user-owned
 
 **What an assembly IS.** Clauses composed into something anyone can USE and REUSE,
 anywhere, anytime — a **template** of composed agreements (an `AssemblyTemplate` from `@figaro-protocol/sdk`: one
-agreement per future `FigaroCore` order, each a `clauseId → fields` map, with topology carried
+agreement per future `FigaroCore` order, each a `clauseKey → fields` map, with topology carried
 as a clause) **plus the assembly-scoped clauses composed once for the whole design**. Its
 identity IS its composition: `compositionHash = templateCompositionHash(template)` —
 keccak256 over the canonical composition subset (the composed `agreements`, plus
-`assemblyClauses` and `assemblyClauseVersions`; editorial prose — `name`, `summary`,
+`assemblyClauses`; editorial prose — `name`, `summary`,
 `description` — excluded, so renaming never forks identity). Concretely: compose the **template** → pin it
 to IPFS (`contentURI`) → register in `AssemblyRegistry.registerAssembly(compositionHash,
 contentURI)` (permissionless, deposit, first-write-wins) under the **user's** wallet.
@@ -101,7 +101,9 @@ Do not soften — a softened anti-pattern still degrades the equilibrium.
 The published assembly document is the **exact template shape `@figaro-protocol/sdk` hashes** — not a
 canvas sketch. `templateCompositionHash(template)` is the registry key, so any other shape
 computes a hash that matches nothing and cannot be registered. The template is
-`{ name?, summary?, description?, assemblyClauses?, assemblyClauseVersions?, agreements: [...] }`.
+`{ name?, summary?, description?, faq?, assemblyClauses?, agreements: [...] }`, every clause
+map keyed by clause KEY — `keccak256` of the clause spec's pinned bytes, the `clauseKey` each
+registry row carries — never by the name a spec displays.
 
 **Build it with `buildAssemblyTemplate` (root `@figaro-protocol/sdk`), not by hand.** It takes your
 per-order clause selection (plus the assembly-scoped one) and a `SpecSource`, and it
@@ -117,11 +119,11 @@ to pin and the `compositionHash` to register.
 
 **Canonicalization asymmetry — unlike clauses.** For an assembly the pinned
 template bytes need NOT be byte-canonical: `templateCompositionHash` recomputes
-over the composition SUBSET (the agreements plus the assembly-scoped clauses and
-their versions; editorial prose excluded), so the
+over the composition SUBSET (the agreements plus the assembly-scoped clauses;
+editorial prose excluded), so the
 exact serialization you pin does not enter the hash. This is the OPPOSITE of a
-clause, where the registered `contentHash` covers the WHOLE pinned document, so
-a clause's pinned bytes MUST equal its canonical bytes. Pin readable JSON here;
+clause, whose key is `keccak256` of the WHOLE pinned document, so
+a clause's pinned bytes MUST be its canonical bytes. Pin readable JSON here;
 let `templateCompositionHash` — never a hand-rolled hash over the raw bytes —
 derive identity.
 
@@ -129,7 +131,7 @@ derive identity.
   `order-1`, …). The label is the topology reference target — stable within the template,
   not a chain id and not a party (the template is party-agnostic; addresses bind at
   runtime).
-- **Each agreement is a `clauses` map: `clauseId → design-time fields`.** An empty `{}` =
+- **Each agreement is a `clauses` map: `clauseKey → design-time fields`.** An empty `{}` =
   the clause is composed with no fields set (seller fills at first-use, buyer at checkout).
   Per-node clause choices AND the per-edge mechanism both live in this map.
 - **Topology is a clause like any other.** `figaro-topology` carries
@@ -137,7 +139,7 @@ derive identity.
   `"order-<i>"` label. There are **no** `nodes`/`edges` arrays — that is a canvas-internal
   editing form, never the published document.
 - **`assemblyClauses` is where an assembly-SCOPED clause lives** — the same
-  `clauseId → designer values` map, composed ONCE for the whole design, at the top level of
+  `clauseKey → designer values` map, composed ONCE for the whole design, at the top level of
   the template. At checkout every one of these folds into EVERY agreement, so every party
   signs the assembly-wide term inside their own agreement. A clause belongs here iff its
   spec declares `block.design.scope: "assembly"` (read it with `parseProjectionHints`);
@@ -146,12 +148,18 @@ derive identity.
   a `currency` designer fill, so an assembly denominated in a designer's own token is
   expressible ONLY through `assemblyClauses`. Once pinned, the pin is part of the assembly's
   identity: the same composition in another token is a different assembly.
-- **Versions are recorded where the clause is composed.** A clause's identity is
-  (name, version), so a per-agreement `clauseVersions` map (`clauseId → version`) records
-  WHICH registered version that agreement composed, and `assemblyClauseVersions` does the
-  same for the assembly-scoped ones. Both are SPARSE by normalization: version-1 entries are
-  never serialized, so a template composing only v1 clauses carries neither map and hashes
-  identically to a template that never knew about versions.
+- **The key IS the clause you compose.** A clause is its spec: its key is `keccak256` of the
+  spec's pinned bytes, and the spec's `clauseId` and `version` are labels. Two registrations
+  showing the same name are two clauses; the key you put in the map names exactly one
+  document, so choose it from the spec you read (fetched through `ClauseRegistry → IPFS` and
+  verified with `anchorClauseSpec(bytes, clauseKey)`), never from the label alone.
+- **Authoring by name is a seed-time step over your own file.** If the user writes the
+  template by clause NAME, `resolveAuthoredClauseKeys(doc, specs)` from `@figaro-protocol/sdk`
+  rewrites the `agreements[].clauses` and `assemblyClauses` keys to the keys of the specs in
+  `specs.list()` whose `clauseId` matches (write `name@version` to match the `version` too).
+  It refuses a name two loaded specs share unless the file says which, and a name no loaded
+  spec carries. Run it once, before pinning, over a spec set you chose and inspected; it is
+  never a read path, and the pinned template carries keys.
 
 Bond posture (buyer 2×payment, seller 2×cumulative; use real numbers) and pricing
 (a catalog concern, e.g. rate × distance) are reasoned about here but are runtime/
@@ -161,30 +169,32 @@ catalog values, not template fields.
 {
   "name": "<slug>", "summary": "<short>", "description": "<one sentence>",
   "assemblyClauses": {
-    "figaro-utility-token": { "currency": "0x<erc20>" }
+    "0x<utility-token clause key>": { "currency": "0x<erc20>" }
   },
   "agreements": [
     {
       "id": "order-0",
       "clauses": {
-        "figaro-commerce": {},
-        "figaro-topology": { "parentOrderHashes": [] }
+        "0x<commerce clause key>": {},
+        "0x<topology clause key>": { "parentOrderHashes": [] }
       }
     },
     {
       "id": "order-1",
       "clauses": {
-        "figaro-handoff": {},
-        "figaro-topology": { "parentOrderHashes": ["order-0"] }
+        "0x<handoff clause key>": {},
+        "0x<topology clause key>": { "parentOrderHashes": ["order-0"] }
       }
     }
   ]
 }
 ```
 
-`assemblyClauses` is omitted entirely when nothing assembly-scoped is composed, and
-`assemblyClauseVersions` / a per-agreement `clauseVersions` appear only for clauses composed
-at a version other than 1 — absent maps and empty maps are the same template.
+`assemblyClauses` is omitted entirely when nothing assembly-scoped is composed. The
+mandatory clauses `buildAssemblyTemplate` folds in are every spec your `SpecSource` lists
+whose `block.design.article` is `"mandatory"`, with no selection among them; liveness comes
+from the source, so build it from the registrations whose stake is live, and review every
+folded key in the template before you anchor it.
 
 No clause is composed for the link back to your assembly. Every agreement instantiated from
 the template carries its `compositionHash` as `agreement.provenance` — the agreement

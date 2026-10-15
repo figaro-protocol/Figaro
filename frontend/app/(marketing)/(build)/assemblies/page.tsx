@@ -182,9 +182,9 @@ export default function Assemblies() {
                                 <td className="py-2">A differently-termed assembly is a different assembly. (Omitted from the hash entirely when none are composed, so pre-existing hashes are unchanged.)</td>
                             </tr>
                             <tr>
-                                <td className="py-2 pr-4">clause <code>version</code> pins</td>
+                                <td className="py-2 pr-4">the clause keys composed</td>
                                 <td className="py-2 pr-4 font-semibold">Yes</td>
-                                <td className="py-2">A clause&apos;s identity is (name, version); the template records which one it composed. Sparse &mdash; version 1 is never serialized.</td>
+                                <td className="py-2">A clause&apos;s identity is its key, the hash of its pinned spec, and the template carries the keys it composed. Two clauses that share a name have two keys, so composing the other one is a different assembly.</td>
                             </tr>
                             <tr>
                                 <td className="py-2 pr-4">editorial prose &mdash; <code>name</code>, <code>summary</code>, <code>description</code></td>
@@ -194,7 +194,7 @@ export default function Assemblies() {
                             <tr>
                                 <td className="py-2 pr-4">the exact bytes you pin</td>
                                 <td className="py-2 pr-4 font-semibold">No</td>
-                                <td className="py-2"><strong>The opposite of a clause.</strong> A clause&apos;s <code>contentHash</code> covers its whole pinned document, so its bytes must be canonical. An assembly&apos;s hash is recomputed over the composition subset, so pin readable JSON &mdash; just never hand-roll the hash over raw bytes.</td>
+                                <td className="py-2"><strong>The opposite of a clause.</strong> A clause&apos;s key is the hash of its whole pinned document, so its bytes must be canonical. An assembly&apos;s hash is recomputed over the composition subset, so pin readable JSON &mdash; just never hand-roll the hash over raw bytes.</td>
                             </tr>
                         </tbody>
                     </table>

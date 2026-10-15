@@ -1,14 +1,18 @@
 /**
  * @figaro-protocol/sdk — Assembly identity
  *
- * The AssemblyRegistry keys bindings by `compositionHash`, exactly as the
- * ClauseRegistry keys clauses by `keccak256(abi.encode(name, version))`
+ * The AssemblyRegistry keys bindings by `compositionHash`, as the
+ * ClauseRegistry keys clauses by the hash of the pinned spec
  * (`computeClauseKey`). This module is that family's key derivation — pure
- * functions over the template document, no chain access.
+ * functions over the template document, no chain access — and the one
+ * authoring resolver that turns the clause NAMES a human writes in a source
+ * document into the clause keys a published document carries.
  */
 
 import type { Hex } from "./types.js";
+import { isBytes32Hex } from "./types.js";
 import { canonicalContentHash } from "./agreement.js";
+import type { ProjectionSpecView } from "./projection.js";
 
 // ── The template document (the pinned assembly, hydrated off-chain) ──────────
 
@@ -18,7 +22,7 @@ export interface TemplateAgreement {
      *  target the topology clause points at. NOT a chain id, and NOT a
      *  party — the template is party-agnostic. */
     id: string;
-    /** clauseId → the designer's composed clause map. Design time is
+    /** clauseKey → the designer's composed clause map. Design time is
      *  STRUCTURAL: a clause with no designer fills carries
      *  `{}` — the selection only; its fields are transaction particulars
      *  filled at checkout. Exactly two kinds of values exist here: the
@@ -28,13 +32,7 @@ export interface TemplateAgreement {
      *  denomination) whose values are the designer's fills.
      *  `buildAssemblyTemplate` (exported from the root `@figaro-protocol/sdk`; defined
      *  in `projection.ts`, not here) enforces this by construction. */
-    clauses: Record<string, Record<string, unknown>>;
-    /** clauseId → the registered VERSION composed, when it isn't 1. A clause's
-     *  identity is (name, version) — two live versions are two clauses; this
-     *  records WHICH one this agreement composed. SPARSE by normalization:
-     *  version-1 entries are never serialized, so a template with only v1
-     *  clauses carries no map and hashes identically to the pre-version form. */
-    clauseVersions?: Record<string, number>;
+    clauses: Record<Hex, Record<string, unknown>>;
 }
 
 /** One question a designer answers about their assembly, in plain words. */
@@ -60,15 +58,12 @@ export interface AssemblyTemplate {
     faq?: readonly AssemblyFaqEntry[];
     /** ASSEMBLY-SCOPED clause sections — clauses declaring
      *  `design.scope: "assembly"`, composed ONCE for the whole design
-     *  (clauseId → the designer's values, `design.fills` only — same
+     *  (clauseKey → the designer's values, `design.fills` only — same
      *  value-free rule as agreements). At checkout every one of these folds
      *  into EVERY agreement, so every party signs the assembly-wide term in
      *  their own agreement. Sparse: absent when none composed (the hash of an
      *  assembly without them is unchanged). */
-    assemblyClauses?: Record<string, Record<string, unknown>>;
-    /** clauseId → registered version for assembly-scoped clauses (sparse;
-     *  absent = 1, mirroring `TemplateAgreement.clauseVersions`). */
-    assemblyClauseVersions?: Record<string, number>;
+    assemblyClauses?: Record<Hex, Record<string, unknown>>;
     /** The composition: the agreements the designer composed, one per future
      *  FigaroCore order. */
     agreements: TemplateAgreement[];
@@ -89,32 +84,16 @@ export function templateParentOrderHashes(agreement: TemplateAgreement): string[
     return Array.isArray(ids) ? ids.filter((p): p is string => typeof p === "string") : [];
 }
 
-/** The registered version an agreement composed for a clause — 1 unless the
- *  sparse `clauseVersions` map says otherwise (v1 pins are never serialized).
- *  The committed section versions come from the COMPOSITION, never from
- *  whichever spec versions a registry read happens to resolve. */
-export function templateClauseVersion(agreement: Pick<TemplateAgreement, "clauseVersions">, clauseId: string): number {
-    return agreement.clauseVersions?.[clauseId] ?? 1;
-}
-
-/** The COMPLETE clauseId → version map for a template agreement (absent = 1
- *  made explicit). */
-export function templateClauseVersionMap(agreement: TemplateAgreement): Record<string, number> {
-    return Object.fromEntries(
-        Object.keys(agreement.clauses).map((c) => [c, templateClauseVersion(agreement, c)]),
-    );
-}
-
 /** Every clause a template composes — the assembly-scoped sections plus each
- *  agreement's own — as one sorted, de-duplicated id list. The registration
+ *  agreement's own — as one sorted, de-duplicated key list. The registration
  *  prerequisite of an assembly: `AssemblyRegistry` anchors a composition, so
  *  each of these must be live on `ClauseRegistry` before the anchor resolves. */
-export function templateComposedClauseIds(template: AssemblyTemplate): string[] {
-    const ids = new Set<string>(Object.keys(template.assemblyClauses ?? {}));
+export function templateComposedClauseKeys(template: AssemblyTemplate): Hex[] {
+    const keys = new Set<Hex>(Object.keys(template.assemblyClauses ?? {}) as Hex[]);
     for (const agreement of template.agreements) {
-        for (const clauseId of Object.keys(agreement.clauses)) ids.add(clauseId);
+        for (const clauseKey of Object.keys(agreement.clauses) as Hex[]) keys.add(clauseKey);
     }
-    return Array.from(ids).sort();
+    return Array.from(keys).sort();
 }
 
 /** The assembly's identity — keccak256 of the canonical COMPOSITION subset of
@@ -123,20 +102,16 @@ export function templateComposedClauseIds(template: AssemblyTemplate): string[] 
  *  hash `AssemblyRegistry` keys bindings on. Publishers anchor it; readers
  *  recompute it from a fetched document to verify integrity. */
 export function templateCompositionHash(
-    template: Pick<AssemblyTemplate, "agreements" | "assemblyClauses" | "assemblyClauseVersions">,
+    template: Pick<AssemblyTemplate, "agreements" | "assemblyClauses">,
 ): Hex {
     // Assembly-scoped sections are IDENTITY-BEARING (a differently-termed
     // assembly is a different assembly) — included in the hash whenever
-    // composed; omitted entirely when none, so every pre-existing assembly's
-    // hash is unchanged.
+    // composed; omitted entirely when none.
     const assemblyClauses = template.assemblyClauses;
     const hasAssemblyClauses = assemblyClauses && Object.keys(assemblyClauses).length > 0;
     return canonicalContentHash({
         agreements: template.agreements,
         ...(hasAssemblyClauses && { assemblyClauses }),
-        ...(hasAssemblyClauses && template.assemblyClauseVersions
-            && Object.keys(template.assemblyClauseVersions).length > 0
-            && { assemblyClauseVersions: template.assemblyClauseVersions }),
     });
 }
 
@@ -147,4 +122,120 @@ export function templateCompositionHash(
  *  slug from the event's hash. */
 export function deriveAssemblySlug(compositionHash: Hex): string {
     return `asm-${compositionHash.slice(2, 18)}`;
+}
+
+// ── Authoring: clause names → clause keys ───────────────────────────────────
+
+/** The specs an authored document's names resolve against — the specs the
+ *  caller loaded (seeding reads them from `clauses/`), each with its key. */
+export interface AuthoredSpecSet {
+    list(): readonly Pick<ProjectionSpecView, "clauseKey" | "clauseId" | "version">[];
+}
+
+/**
+ * Resolve the clause NAMES in an authored source document to clause KEYS.
+ *
+ * A human authors `assemblies/*.json` templates and `members/*.json`
+ * documents by clause name; a published document carries keys. Each name is
+ * matched against the loaded specs' own `clauseId` — written `name@version`,
+ * the spec's `version` must match too. A name two loaded specs share, written
+ * without `@version`, is refused (the document must say which), as is a name
+ * no loaded spec carries. A value that is already a 32-byte key passes
+ * through. This is a LOCAL authoring read over the caller's spec set, never a
+ * chain read by name: on chain a clause is only its key.
+ *
+ * Rewritten in a template: every `agreements[].clauses` and `assemblyClauses`
+ * key. In a member profile: `disclosurePolicy[].clauseId` and
+ * `assemblyBindings[].counterpartyBindings[].clauseId` (each becomes
+ * `clauseKey`), and the `profileClauseValues` keys. In a catalog: every
+ * `items[].clauseValues` key and `items[].dataSold.clauseId` (→ `clauseKey`).
+ * Everything else is copied unchanged. The input is not mutated.
+ */
+export function resolveAuthoredClauseKeys<T extends object>(doc: T, specs: AuthoredSpecSet): T {
+    const loaded = specs.list();
+    const resolve = (authored: string, where: string): Hex => {
+        if (isBytes32Hex(authored)) return authored.toLowerCase() as Hex;
+        const at = authored.lastIndexOf("@");
+        const name = at > 0 ? authored.slice(0, at) : authored;
+        const versionText = at > 0 ? authored.slice(at + 1) : undefined;
+        if (versionText !== undefined && !/^[1-9]\d*$/.test(versionText)) {
+            throw new Error(`${where}: "${authored}" — the version after "@" must be a positive integer`);
+        }
+        const version = versionText === undefined ? undefined : Number(versionText);
+        const matches = loaded.filter((spec) =>
+            spec.clauseId === name && (version === undefined || spec.version === version));
+        if (matches.length === 0) {
+            throw new Error(`${where}: no loaded clause spec is named "${authored}"`);
+        }
+        if (matches.length > 1) {
+            const which = matches.map((m) => `${m.clauseId}@${m.version} (${m.clauseKey})`).join(", ");
+            throw new Error(`${where}: "${authored}" names ${matches.length} loaded clause specs — write name@version to say which: ${which}`);
+        }
+        return matches[0].clauseKey.toLowerCase() as Hex;
+    };
+    const rekey = (map: unknown, where: string): unknown => {
+        if (!isPlainRecord(map)) return map;
+        const out: Record<string, unknown> = {};
+        for (const [authored, value] of Object.entries(map)) {
+            const key = resolve(authored, where);
+            if (key in out) throw new Error(`${where}: two entries resolve to clause ${key}`);
+            out[key] = value;
+        }
+        return out;
+    };
+    const renameClauseId = (entry: unknown, where: string): unknown => {
+        if (!isPlainRecord(entry) || typeof entry.clauseId !== "string") return entry;
+        const { clauseId, ...rest } = entry;
+        return { ...rest, clauseKey: resolve(clauseId, where) };
+    };
+    const mapArray = (value: unknown, fn: (entry: unknown, i: number) => unknown): unknown =>
+        Array.isArray(value) ? value.map(fn) : value;
+
+    if (!isPlainRecord(doc)) return doc;
+    const src = doc as Record<string, unknown>;
+    if ("clauseVersions" in src || "assemblyClauseVersions" in src) {
+        throw new Error("the document carries a version map — write a clause as name@version instead");
+    }
+    const out: Record<string, unknown> = { ...src };
+    if ("agreements" in src) {
+        out.agreements = mapArray(src.agreements, (agreement, i) => {
+            if (!isPlainRecord(agreement)) return agreement;
+            if ("clauseVersions" in agreement) {
+                throw new Error(`agreements[${i}] carries a version map — write a clause as name@version instead`);
+            }
+            return { ...agreement, clauses: rekey(agreement.clauses, `agreements[${i}].clauses`) };
+        });
+    }
+    if ("assemblyClauses" in src) out.assemblyClauses = rekey(src.assemblyClauses, "assemblyClauses");
+    if ("profileClauseValues" in src) out.profileClauseValues = rekey(src.profileClauseValues, "profileClauseValues");
+    if ("disclosurePolicy" in src) {
+        out.disclosurePolicy = mapArray(src.disclosurePolicy, (e, i) => renameClauseId(e, `disclosurePolicy[${i}]`));
+    }
+    if ("assemblyBindings" in src) {
+        out.assemblyBindings = mapArray(src.assemblyBindings, (binding, i) => {
+            if (!isPlainRecord(binding)) return binding;
+            return {
+                ...binding,
+                ...("counterpartyBindings" in binding && {
+                    counterpartyBindings: mapArray(binding.counterpartyBindings, (e, j) =>
+                        renameClauseId(e, `assemblyBindings[${i}].counterpartyBindings[${j}]`)),
+                }),
+            };
+        });
+    }
+    if ("items" in src) {
+        out.items = mapArray(src.items, (item, i) => {
+            if (!isPlainRecord(item)) return item;
+            return {
+                ...item,
+                ...("clauseValues" in item && { clauseValues: rekey(item.clauseValues, `items[${i}].clauseValues`) }),
+                ...("dataSold" in item && { dataSold: renameClauseId(item.dataSold, `items[${i}].dataSold`) }),
+            };
+        });
+    }
+    return out as T;
+}
+
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === "object" && value !== null && !Array.isArray(value);
 }

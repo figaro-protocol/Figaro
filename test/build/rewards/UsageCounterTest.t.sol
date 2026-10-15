@@ -40,13 +40,18 @@ contract UsageCounterTest is Test {
     address seller2;
     address seller3;
 
-    bytes32 constant GEO_KEY = keccak256(abi.encode("figaro-geolocation", uint64(1)));
-    bytes32 constant CARGO_KEY = keccak256(abi.encode("figaro-cargo", uint64(1)));
+    // Each clause key is keccak256 of a spec's pinned bytes.
+    bytes32 constant GEO_KEY = keccak256('{"clauseId":"figaro-geolocation","version":1}');
+    bytes32 constant CARGO_KEY = keccak256('{"clauseId":"figaro-cargo","version":1}');
 
     bytes32 constant ASM_KEY = keccak256("an-assembly");
 
+    /// @dev The counter's two kinds — every accrual, count and score is keyed by (kind, key).
+    uint8 constant KIND_CLAUSE = 0;
+    uint8 constant KIND_ASSEMBLY = 1;
+
     /// @dev The agreement format's reserved provenance leaf key — a plain-string
-    ///      preimage, never the `abi.encode(name, version)` shape of a clause key.
+    ///      preimage, never the canonical JSON bytes of a spec a clause key hashes.
     bytes32 constant PROVENANCE_LEAF = keccak256("figaro-agreement-provenance");
     bytes constant SECTION = hex"c0ffee";
 
@@ -208,7 +213,7 @@ contract UsageCounterTest is Test {
         CommitmentTypes.Commitment memory c = _settledOrder(CARGO_KEY, buyer, BUYER_KEY, seller1, SELLER1_KEY, 1);
         _record(c, CARGO_KEY);
 
-        (uint64 cCount, uint64 d, uint256 score) = counter.accrualOf(CARGO_KEY, 0);
+        (uint64 cCount, uint64 d, uint256 score) = counter.accrualOf(KIND_CLAUSE, CARGO_KEY, 0);
         assertEq(cCount, 1);
         assertEq(d, 1);
         // Uniform score: icbrt(1 * 1 * 1e18) = 1e6 (no weight multiplier).
@@ -221,7 +226,7 @@ contract UsageCounterTest is Test {
         // A stranger records it — the proof is what is trusted, never the caller.
         vm.prank(address(0xDEAD));
         _record(c, CARGO_KEY);
-        (uint64 cCount,,) = counter.accrualOf(CARGO_KEY, 0);
+        (uint64 cCount,,) = counter.accrualOf(KIND_CLAUSE, CARGO_KEY, 0);
         assertEq(cCount, 1);
     }
 
@@ -335,7 +340,7 @@ contract UsageCounterTest is Test {
         CommitmentTypes.Commitment memory b = _settledOrder(CARGO_KEY, buyer, BUYER_KEY, seller2, SELLER2_KEY, 2);
         _record(b, CARGO_KEY);
 
-        (uint64 cCount, uint64 d,) = counter.accrualOf(CARGO_KEY, 0);
+        (uint64 cCount, uint64 d,) = counter.accrualOf(KIND_CLAUSE, CARGO_KEY, 0);
         assertEq(cCount, 2);
         assertEq(d, 2);
     }
@@ -351,7 +356,7 @@ contract UsageCounterTest is Test {
         CommitmentTypes.Commitment memory b = _settledOrder(CARGO_KEY, buyer2, BUYER2_KEY, seller1, SELLER1_KEY, 2);
         _record(b, CARGO_KEY);
 
-        (uint64 cCount, uint64 d,) = counter.accrualOf(CARGO_KEY, 0);
+        (uint64 cCount, uint64 d,) = counter.accrualOf(KIND_CLAUSE, CARGO_KEY, 0);
         assertEq(cCount, 2, "every resolved process counts");
         assertEq(d, 1, "breadth costs a stake: n buyers through one seller are one unit");
     }
@@ -363,7 +368,7 @@ contract UsageCounterTest is Test {
         CommitmentTypes.Commitment memory b = _settledOrder(CARGO_KEY, buyer, BUYER_KEY, seller1, SELLER1_KEY, 2);
         _record(b, CARGO_KEY);
 
-        (uint64 cCount, uint64 d,) = counter.accrualOf(CARGO_KEY, 0);
+        (uint64 cCount, uint64 d,) = counter.accrualOf(KIND_CLAUSE, CARGO_KEY, 0);
         assertEq(cCount, 2);
         assertEq(d, 1);
     }
@@ -379,7 +384,7 @@ contract UsageCounterTest is Test {
                 _settledOrder(CARGO_KEY, buyer, BUYER_KEY, seller1, SELLER1_KEY, i + 1);
             _record(c, CARGO_KEY);
         }
-        (uint64 cCount, uint64 d, uint256 repeatScore) = counter.accrualOf(CARGO_KEY, 0);
+        (uint64 cCount, uint64 d, uint256 repeatScore) = counter.accrualOf(KIND_CLAUSE, CARGO_KEY, 0);
         assertEq(cCount, 8, "every resolved process counts");
         assertEq(d, 1, "one seller is one unit of breadth, however often it trades");
 
@@ -402,28 +407,31 @@ contract UsageCounterTest is Test {
     }
 
     /// The reserved leaf earns nothing as a clause: its key is a plain-string
-    /// preimage, a registered clause key is `keccak256(abi.encode(name,
-    /// version))`, so no registration ever lands on it. Recorded against REAL
-    /// registries, the leaf opens (the agreement does commit it) and the
-    /// stake gate refuses it, because the key is registered nowhere.
+    /// preimage, a clause key is keccak256 of a spec's canonical JSON bytes, so
+    /// no honest spec lands on it. Recorded against REAL registries, the leaf
+    /// opens (the agreement does commit it) and the stake gate refuses it,
+    /// because the key is registered nowhere; and a stranger who stakes the key
+    /// itself in either registry is refused by the counter's own check.
     function test_theProvenanceLeafCannotBeClaimedAsAClause() public {
         uint64[] memory periods = new uint64[](2);
         periods[0] = P0_END;
         periods[1] = P1_END;
         AssemblyRegistry assemblies_ = new AssemblyRegistry(0);
+        ClauseRegistry clauses_ = new ClauseRegistry(0);
         UsageCounter real = new UsageCounter(
-            address(core),
-            address(members),
-            address(new ClauseRegistry(0)),
-            address(assemblies_),
-            batchVerifier,
-            1,
-            periods
+            address(core), address(members), address(clauses_), address(assemblies_), batchVerifier, 1, periods
         );
 
         CommitmentTypes.Commitment memory c = _settledUnderAssembly(ASM_KEY, 1);
         bytes memory sectionData = abi.encodePacked('{"compositionHash":"', vm.toString(ASM_KEY), '"}');
         vm.expectRevert(abi.encodeWithSelector(UsageCounter.ClauseOrAssemblyNotRegistered.selector, PROVENANCE_LEAF));
+        real.recordClauseUsage(c, PROVENANCE_LEAF, keccak256(sectionData), new bytes32[](0));
+
+        // The clause registry takes the key as given, so a stranger can stake a
+        // CLAUSE at the reserved key too. The clause-side gate then passes, and
+        // the counter's own check refuses the key.
+        clauses_.registerClause(PROVENANCE_LEAF, "ipfs://a-stranger-stakes-the-reserved-key-as-a-clause");
+        vm.expectRevert(abi.encodeWithSelector(UsageCounter.ProvenanceLeafIsNotARegistration.selector, PROVENANCE_LEAF));
         real.recordClauseUsage(c, PROVENANCE_LEAF, keccak256(sectionData), new bytes32[](0));
 
         // A registry takes any bytes32, so a stranger can register an ASSEMBLY
@@ -441,22 +449,97 @@ contract UsageCounterTest is Test {
         // assembly registration live.
         vm.prank(batchVerifier);
         real.applyBatchAccrual(0, PROVENANCE_LEAF, _accrual(PROVENANCE_LEAF, 9, 9), _sellers(seller1));
-        (uint64 bc,, uint256 score) = real.batchAccrualOf(PROVENANCE_LEAF, 0);
+        (uint64 bc,, uint256 score) = real.batchAccrualOf(KIND_CLAUSE, PROVENANCE_LEAF, 0);
         assertEq(bc, 0, "the reserved key is never written");
         assertEq(score, 0, "the reserved key never scores");
         assertEq(real.totalScoreIn(0), 0, "total unchanged");
+    }
+
+    /// @dev A counter over REAL registries, an assembly at `ASM_KEY` registered
+    ///      by `designer`, and the same bytes staked as a CLAUSE by `stranger`.
+    function _counterWithASquattedAssemblyKey(address designer, address stranger)
+        internal
+        returns (UsageCounter real, AssemblyRegistry assemblies_)
+    {
+        uint64[] memory periods = new uint64[](1);
+        periods[0] = P0_END;
+        ClauseRegistry clauses_ = new ClauseRegistry(0);
+        assemblies_ = new AssemblyRegistry(0);
+        real = new UsageCounter(
+            address(core), address(members), address(clauses_), address(assemblies_), batchVerifier, 1, periods
+        );
+        vm.prank(designer);
+        assemblies_.registerAssembly(ASM_KEY, "ipfs://asm");
+        vm.prank(stranger);
+        clauses_.registerClause(ASM_KEY, "ipfs://a-stranger-stakes-the-assembly-key-as-a-clause");
+    }
+
+    /// The direct path counts an assembly's use under the ASSEMBLY kind only:
+    /// a clause stake at the same bytes shares no slot with it.
+    function test_assemblyUsageLandsUnderTheAssemblyKindOnly() public {
+        (UsageCounter real,) = _counterWithASquattedAssemblyKey(address(0xDE5), address(0x5745));
+
+        CommitmentTypes.Commitment memory c = _settledUnderAssembly(ASM_KEY, 1);
+        real.recordAssemblyUsage(c, ASM_KEY, new bytes32[](0));
+
+        (uint64 asmC,, uint256 asmScore) = real.accrualOf(KIND_ASSEMBLY, ASM_KEY, 0);
+        (uint64 clauseC,, uint256 clauseScore) = real.accrualOf(KIND_CLAUSE, ASM_KEY, 0);
+        assertEq(asmC, 1, "the assembly's use is counted under its kind");
+        assertGt(asmScore, 0);
+        assertEq(clauseC, 0, "the clause kind at the same bytes stands apart");
+        assertEq(clauseScore, 0);
+        assertEq(real.scoreOf(KIND_CLAUSE, ASM_KEY, 0), 0, "and scores nothing of it");
+        assertEq(real.scoreOf(KIND_ASSEMBLY, ASM_KEY, 0), asmScore);
+    }
+
+    /// The batch path gates each accrual by its OWN kind's registry, never
+    /// "any live registration": a clause stake at an assembly's bytes neither
+    /// joins the assembly's accrual nor keeps it alive once the assembly's own
+    /// deposit is withdrawn. An unknown kind names no registry and is skipped.
+    function test_batchAccrualGatesEachKindByItsOwnRegistry() public {
+        address designer = address(0xDE5);
+        (UsageCounter real, AssemblyRegistry assemblies_) = _counterWithASquattedAssemblyKey(designer, address(0x5745));
+
+        UsageCounter.BatchAccrual[] memory a = new UsageCounter.BatchAccrual[](3);
+        a[0] = UsageCounter.BatchAccrual(ASM_KEY, KIND_CLAUSE, 1, 1);
+        a[1] = UsageCounter.BatchAccrual(ASM_KEY, KIND_ASSEMBLY, 5, 3);
+        a[2] = UsageCounter.BatchAccrual(ASM_KEY, 7, 9, 9);
+        vm.prank(batchVerifier);
+        real.applyBatchAccrual(0, PROVENANCE_LEAF, a, _sellers(seller1));
+
+        (uint64 asmC, uint64 asmD,) = real.batchAccrualOf(KIND_ASSEMBLY, ASM_KEY, 0);
+        (uint64 clauseC, uint64 clauseD,) = real.batchAccrualOf(KIND_CLAUSE, ASM_KEY, 0);
+        (uint64 unknownC,,) = real.batchAccrualOf(7, ASM_KEY, 0);
+        assertEq(asmC, 5);
+        assertEq(asmD, 3);
+        assertEq(clauseC, 1, "the stranger's clause-kind accrual is its own");
+        assertEq(clauseD, 1);
+        assertEq(unknownC, 0, "an unknown kind is skipped");
+        assertEq(real.totalScoreIn(0), _score(5, 3) + _score(1, 1));
+
+        // The assembly's own stake is withdrawn: its kind's gate closes, and the
+        // live clause stake at the same bytes does not reopen it.
+        vm.prank(designer);
+        assemblies_.withdrawDeposit(ASM_KEY);
+        UsageCounter.BatchAccrual[] memory b = new UsageCounter.BatchAccrual[](1);
+        b[0] = UsageCounter.BatchAccrual(ASM_KEY, KIND_ASSEMBLY, 6, 4);
+        vm.prank(batchVerifier);
+        real.applyBatchAccrual(0, PROVENANCE_LEAF, b, _sellers(seller1));
+        (asmC, asmD,) = real.batchAccrualOf(KIND_ASSEMBLY, ASM_KEY, 0);
+        assertEq(asmC, 5, "skipped: the clause registry is never read for an assembly");
+        assertEq(asmD, 3);
     }
 
     function test_mandatoryClausesEarnForTheirAuthor() public {
         // figaro-commerce and figaro-topology ride on EVERY order and earn like
         // any other clause: scoring them rewards their designer of record on
         // every resolved process.
-        bytes32 commerceKey = keccak256(abi.encode("figaro-commerce", uint64(1)));
+        bytes32 commerceKey = keccak256('{"clauseId":"figaro-commerce","version":1}');
 
         CommitmentTypes.Commitment memory c = _settledOrder(commerceKey, buyer, BUYER_KEY, seller1, SELLER1_KEY, 1);
         _record(c, commerceKey);
 
-        (uint64 cCount,, uint256 score) = counter.accrualOf(commerceKey, 0);
+        (uint64 cCount,, uint256 score) = counter.accrualOf(KIND_CLAUSE, commerceKey, 0);
         assertEq(cCount, 1);
         assertGt(counter.totalScoreIn(0), 0);
         assertEq(score, counter.totalScoreIn(0));
@@ -472,8 +555,8 @@ contract UsageCounterTest is Test {
         CommitmentTypes.Commitment memory k = _settledOrder(CARGO_KEY, buyer, BUYER_KEY, seller1, SELLER1_KEY, 2);
         _record(k, CARGO_KEY);
 
-        (,, uint256 geoScore) = counter.accrualOf(GEO_KEY, 0);
-        (,, uint256 cargoScore) = counter.accrualOf(CARGO_KEY, 0);
+        (,, uint256 geoScore) = counter.accrualOf(KIND_CLAUSE, GEO_KEY, 0);
+        (,, uint256 cargoScore) = counter.accrualOf(KIND_CLAUSE, CARGO_KEY, 0);
         assertEq(geoScore, cargoScore);
     }
 
@@ -489,8 +572,8 @@ contract UsageCounterTest is Test {
         CommitmentTypes.Commitment memory b = _settledOrder(CARGO_KEY, buyer, BUYER_KEY, seller1, SELLER1_KEY, 2);
         _record(b, CARGO_KEY);
 
-        (uint64 c0,,) = counter.accrualOf(CARGO_KEY, 0);
-        (uint64 c1,,) = counter.accrualOf(CARGO_KEY, 1);
+        (uint64 c0,,) = counter.accrualOf(KIND_CLAUSE, CARGO_KEY, 0);
+        (uint64 c1,,) = counter.accrualOf(KIND_CLAUSE, CARGO_KEY, 1);
         assertEq(c0, 1);
         assertEq(c1, 1);
     }
@@ -530,8 +613,8 @@ contract UsageCounterTest is Test {
         vm.expectRevert(UsageCounter.AlreadyCounted.selector);
         _record(a, CARGO_KEY);
 
-        (uint64 c0,,) = counter.accrualOf(CARGO_KEY, 0);
-        (uint64 c1,,) = counter.accrualOf(CARGO_KEY, 1);
+        (uint64 c0,,) = counter.accrualOf(KIND_CLAUSE, CARGO_KEY, 0);
+        (uint64 c1,,) = counter.accrualOf(KIND_CLAUSE, CARGO_KEY, 1);
         assertEq(c0, 1, "counted in the period it was recorded");
         assertEq(c1, 0, "never counted again in a later period");
     }
@@ -546,7 +629,7 @@ contract UsageCounterTest is Test {
         CommitmentTypes.Commitment memory fresh = _settledOrder(CARGO_KEY, buyer2, BUYER2_KEY, seller2, SELLER2_KEY, 2);
         _record(fresh, CARGO_KEY);
 
-        (uint64 c1, uint64 d1,) = counter.accrualOf(CARGO_KEY, 1);
+        (uint64 c1, uint64 d1,) = counter.accrualOf(KIND_CLAUSE, CARGO_KEY, 1);
         assertEq(c1, 1, "only the new trade");
         assertEq(d1, 1, "and only its seller");
     }
@@ -655,8 +738,8 @@ contract UsageCounterTest is Test {
         CommitmentTypes.Commitment memory k = _settledOrder(CARGO_KEY, buyer2, BUYER2_KEY, seller2, SELLER2_KEY, 2);
         _record(k, CARGO_KEY);
 
-        (,, uint256 geoScore) = counter.accrualOf(GEO_KEY, 0);
-        (,, uint256 cargoScore) = counter.accrualOf(CARGO_KEY, 0);
+        (,, uint256 geoScore) = counter.accrualOf(KIND_CLAUSE, GEO_KEY, 0);
+        (,, uint256 cargoScore) = counter.accrualOf(KIND_CLAUSE, CARGO_KEY, 0);
         assertEq(counter.totalScoreIn(0), geoScore + cargoScore);
     }
 
@@ -685,7 +768,7 @@ contract UsageCounterTest is Test {
         _recordOn(floored, _settledOrder(CARGO_KEY, buyer, BUYER_KEY, seller1, SELLER1_KEY, 1), CARGO_KEY);
         _recordOn(floored, _settledOrder(CARGO_KEY, buyer, BUYER_KEY, seller2, SELLER2_KEY, 2), CARGO_KEY);
 
-        (uint64 c, uint64 d, uint256 score) = floored.accrualOf(CARGO_KEY, 0);
+        (uint64 c, uint64 d, uint256 score) = floored.accrualOf(KIND_CLAUSE, CARGO_KEY, 0);
         assertEq(c, 2, "counting is never refused below the floor");
         assertEq(d, 2, "breadth accrues below the floor");
         assertEq(score, 0, "but nothing scores until the floor is met");
@@ -698,7 +781,7 @@ contract UsageCounterTest is Test {
         _recordOn(floored, _settledOrder(CARGO_KEY, buyer, BUYER_KEY, seller2, SELLER2_KEY, 2), CARGO_KEY);
         _recordOn(floored, _settledOrder(CARGO_KEY, buyer, BUYER_KEY, seller3, SELLER3_KEY, 3), CARGO_KEY);
 
-        (uint64 c, uint64 d, uint256 score) = floored.accrualOf(CARGO_KEY, 0);
+        (uint64 c, uint64 d, uint256 score) = floored.accrualOf(KIND_CLAUSE, CARGO_KEY, 0);
         assertEq(c, 3);
         assertEq(d, 3);
         assertEq(score, _score(3, 3), "the third staked seller springs the FULL score");
@@ -709,13 +792,13 @@ contract UsageCounterTest is Test {
         UsageCounter floored = _flooredCounter();
         vm.startPrank(batchVerifier);
         floored.applyBatchAccrual(0, PROVENANCE_LEAF, _accrual(CARGO_KEY, 4, 2), _sellers(seller1));
-        (,, uint256 below) = floored.batchAccrualOf(CARGO_KEY, 0);
+        (,, uint256 below) = floored.batchAccrualOf(KIND_CLAUSE, CARGO_KEY, 0);
         assertEq(below, 0, "the floor is _score's, so the batch path inherits it");
         assertEq(floored.totalScoreIn(0), 0);
 
         floored.applyBatchAccrual(0, PROVENANCE_LEAF, _accrual(CARGO_KEY, 6, 3), _sellers(seller1));
         vm.stopPrank();
-        (,, uint256 above) = floored.batchAccrualOf(CARGO_KEY, 0);
+        (,, uint256 above) = floored.batchAccrualOf(KIND_CLAUSE, CARGO_KEY, 0);
         assertEq(above, _score(6, 3));
         assertEq(floored.totalScoreIn(0), above);
     }
@@ -735,7 +818,7 @@ contract UsageCounterTest is Test {
 
         // 2 direct + 2 batch is four units of d in total, but neither path
         // reached 3 on its own — so nothing scores.
-        assertEq(floored.scoreOf(CARGO_KEY, 0), 0);
+        assertEq(floored.scoreOf(KIND_CLAUSE, CARGO_KEY, 0), 0);
         assertEq(floored.totalScoreIn(0), 0);
     }
 
@@ -807,7 +890,7 @@ contract UsageCounterTest is Test {
         returns (UsageCounter.BatchAccrual[] memory a)
     {
         a = new UsageCounter.BatchAccrual[](1);
-        a[0] = UsageCounter.BatchAccrual(clauseOrAssembly, c, d);
+        a[0] = UsageCounter.BatchAccrual(clauseOrAssembly, KIND_CLAUSE, c, d);
     }
 
     function _sellers(address s) internal pure returns (address[] memory list) {
@@ -819,13 +902,13 @@ contract UsageCounterTest is Test {
         vm.prank(batchVerifier);
         counter.applyBatchAccrual(0, PROVENANCE_LEAF, _accrual(CARGO_KEY, 4, 2), _sellers(seller1));
 
-        (uint64 c, uint64 d, uint256 score) = counter.batchAccrualOf(CARGO_KEY, 0);
+        (uint64 c, uint64 d, uint256 score) = counter.batchAccrualOf(KIND_CLAUSE, CARGO_KEY, 0);
         assertEq(c, 4);
         assertEq(d, 2);
         assertEq(score, _score(4, 2));
         assertEq(counter.totalScoreIn(0), score, "the batch score joins the period total");
         // The direct slot is untouched — the two paths never share storage.
-        (uint64 dc,, uint256 dScore) = counter.accrualOf(CARGO_KEY, 0);
+        (uint64 dc,, uint256 dScore) = counter.accrualOf(KIND_CLAUSE, CARGO_KEY, 0);
         assertEq(dc, 0);
         assertEq(dScore, 0);
     }
@@ -851,8 +934,8 @@ contract UsageCounterTest is Test {
         vm.prank(batchVerifier);
         counter.applyBatchAccrual(0, PROVENANCE_LEAF, _accrual(CARGO_KEY, 1, 1), _sellers(seller1)); // batch: c=1, d=1
 
-        assertEq(counter.scoreOf(CARGO_KEY, 0), _score(1, 1) * 2, "scores add");
-        assertEq(counter.totalScoreIn(0), counter.scoreOf(CARGO_KEY, 0), "the total tracks the sum");
+        assertEq(counter.scoreOf(KIND_CLAUSE, CARGO_KEY, 0), _score(1, 1) * 2, "scores add");
+        assertEq(counter.totalScoreIn(0), counter.scoreOf(KIND_CLAUSE, CARGO_KEY, 0), "the total tracks the sum");
     }
 
     /// The score is homogeneous of degree 1 and concave, so the component
@@ -891,7 +974,7 @@ contract UsageCounterTest is Test {
         uint256 totalBefore = counter.totalScoreIn(0);
         vm.prank(batchVerifier);
         counter.applyBatchAccrual(0, PROVENANCE_LEAF, _accrual(CARGO_KEY, 9, 9), _sellers(seller1));
-        (uint64 c,, uint256 score) = counter.batchAccrualOf(CARGO_KEY, 0);
+        (uint64 c,, uint256 score) = counter.batchAccrualOf(KIND_CLAUSE, CARGO_KEY, 0);
         assertEq(c, 0, "unregistered clause or assembly not written");
         assertEq(score, 0, "unregistered clause or assembly not scored");
         assertEq(counter.totalScoreIn(0), totalBefore, "total unchanged");
@@ -899,7 +982,7 @@ contract UsageCounterTest is Test {
 
     function test_batchAccrualRejectsAForeignProvenanceLeaf() public {
         // A clause key cannot stand in for the format's reserved leaf.
-        bytes32 impostor = keccak256(abi.encode("figaro-commerce", uint64(1)));
+        bytes32 impostor = keccak256('{"clauseId":"figaro-commerce","version":1}');
         vm.prank(batchVerifier);
         vm.expectRevert(abi.encodeWithSelector(UsageCounter.ProvenanceLeafMismatch.selector, PROVENANCE_LEAF, impostor));
         counter.applyBatchAccrual(0, impostor, _accrual(CARGO_KEY, 1, 1), _sellers(seller1));
@@ -926,7 +1009,7 @@ contract UsageCounterTest is Test {
         counter.applyBatchAccrual(0, PROVENANCE_LEAF, _accrual(CARGO_KEY, 6, 4), _sellers(seller1));
         vm.stopPrank();
 
-        (uint64 c, uint64 d, uint256 score) = counter.batchAccrualOf(CARGO_KEY, 0);
+        (uint64 c, uint64 d, uint256 score) = counter.batchAccrualOf(KIND_CLAUSE, CARGO_KEY, 0);
         assertEq(c, 6);
         assertEq(d, 4);
         assertEq(score, _score(6, 4));
@@ -945,7 +1028,7 @@ contract UsageCounterTest is Test {
         vm.prank(batchVerifier);
         counter.applyBatchAccrual(0, bytes32(0), new UsageCounter.BatchAccrual[](0), new address[](0));
         // No revert, nothing written.
-        (uint64 c,,) = counter.batchAccrualOf(CARGO_KEY, 0);
+        (uint64 c,,) = counter.batchAccrualOf(KIND_CLAUSE, CARGO_KEY, 0);
         assertEq(c, 0);
     }
 

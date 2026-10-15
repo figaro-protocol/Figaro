@@ -43,9 +43,11 @@ contract FigaroBatchVerifierTest is Test {
     address buyer = address(0xB0B);
     address seller = address(0x5E11);
 
-    // The anchored clause: figaro-modalities v1 with a known spec hash.
-    string constant CLAUSE_ID = "figaro-modalities";
-    bytes32 constant SPEC_HASH = keccak256("the canonical spec bytes");
+    // The anchored clause: a spec's pinned bytes, and its key — keccak256 of
+    // exactly those bytes. The key IS the spec hash, so a binding the guest
+    // commits carries the same word twice.
+    bytes constant SPEC_BYTES = bytes('{"clauseId":"figaro-modalities","version":1}');
+    bytes32 constant SPEC_HASH = keccak256(SPEC_BYTES);
     bytes32 clauseKey;
 
     function setUp() public {
@@ -72,9 +74,9 @@ contract FigaroBatchVerifierTest is Test {
         vm.warp(PERIOD_END - 1000);
         token = new MockERC20("Mock", "MOCK");
 
-        clauseKey = keccak256(abi.encode(CLAUSE_ID, uint64(1)));
+        clauseKey = SPEC_HASH;
         vm.deal(address(this), 1 ether);
-        registry.registerClause{value: DEPOSIT}(CLAUSE_ID, 1, SPEC_HASH, "ipfs://spec");
+        registry.registerClause{value: DEPOSIT}(clauseKey, "ipfs://spec");
 
         token.mint(buyer, 1_000 ether);
         token.mint(address(verifier), 1_000 ether); // resolution liquidity for payout legs
@@ -126,7 +128,8 @@ contract FigaroBatchVerifierTest is Test {
         bytes memory packed = abi.encodePacked(u.period, u.provenanceLeaf, uint64(u.accruals.length));
         for (uint256 i = 0; i < u.accruals.length; i++) {
             packed = bytes.concat(
-                packed, abi.encodePacked(u.accruals[i].clauseOrAssembly, u.accruals[i].c, u.accruals[i].d)
+                packed,
+                abi.encodePacked(u.accruals[i].clauseOrAssembly, u.accruals[i].kind, u.accruals[i].c, u.accruals[i].d)
             );
         }
         packed = bytes.concat(packed, abi.encodePacked(uint64(u.sellers.length)));
@@ -145,7 +148,7 @@ contract FigaroBatchVerifierTest is Test {
         return keccak256(abi.encodePacked(uint8(0), bytes32(0), uint64(0), uint64(0)));
     }
 
-    /// @dev A one-clause or assembly, one-seller accrual for the open period.
+    /// @dev A one-clause, one-seller accrual for the open period.
     function _usageFor(bytes32 clauseOrAssembly, uint64 c, uint64 d)
         internal
         view
@@ -154,7 +157,7 @@ contract FigaroBatchVerifierTest is Test {
         u.period = counter.currentPeriod();
         u.provenanceLeaf = PROVENANCE_LEAF;
         u.accruals = new IUsageCounter.BatchAccrual[](1);
-        u.accruals[0] = IUsageCounter.BatchAccrual(clauseOrAssembly, c, d);
+        u.accruals[0] = IUsageCounter.BatchAccrual(clauseOrAssembly, counter.KIND_CLAUSE(), c, d);
         u.sellers = new address[](1);
         u.sellers[0] = seller;
     }
@@ -288,7 +291,8 @@ contract FigaroBatchVerifierTest is Test {
             bytes32 newRoot
         ) = _canonicalBatch();
 
-        // The proof validated against a spec the registry does not anchor.
+        // The proof validated content against some other document's bytes
+        // while naming the registered key: the binding's two words differ.
         bytes32 wrongSpecHash = keccak256("a permissive substitute spec");
         events.specBindings[0] = FigaroBatchVerifier.SpecBinding(clauseKey, wrongSpecHash);
         bytes memory pv = abi.encode(
@@ -304,9 +308,7 @@ contract FigaroBatchVerifierTest is Test {
         );
 
         vm.expectRevert(
-            abi.encodeWithSelector(
-                FigaroBatchVerifier.SpecBindingMismatch.selector, clauseKey, SPEC_HASH, wrongSpecHash
-            )
+            abi.encodeWithSelector(FigaroBatchVerifier.SpecBindingMismatch.selector, clauseKey, wrongSpecHash)
         );
         verifier.settleBatch(hex"", pv, positions, events, _emptyUsage());
     }
@@ -319,10 +321,11 @@ contract FigaroBatchVerifierTest is Test {
             bytes32 newRoot
         ) = _canonicalBatch();
 
-        // A clause key the registry never anchored: contentHashOf == 0,
-        // which can never equal a real witness spec's hash.
-        bytes32 strangerKey = keccak256(abi.encode("figaro-never-registered", uint64(1)));
-        events.specBindings[0] = FigaroBatchVerifier.SpecBinding(strangerKey, SPEC_HASH);
+        // A spec whose key the registry never registered: the binding is
+        // well-formed (specHash == clauseId) and still refused, because
+        // nothing anchors those bytes.
+        bytes32 strangerKey = keccak256(bytes('{"clauseId":"figaro-never-registered","version":1}'));
+        events.specBindings[0] = FigaroBatchVerifier.SpecBinding(strangerKey, strangerKey);
         bytes memory pv = abi.encode(
             GENESIS,
             newRoot,
@@ -335,9 +338,7 @@ contract FigaroBatchVerifierTest is Test {
             uint64(block.timestamp)
         );
 
-        vm.expectRevert(
-            abi.encodeWithSelector(FigaroBatchVerifier.SpecBindingMismatch.selector, strangerKey, bytes32(0), SPEC_HASH)
-        );
+        vm.expectRevert(abi.encodeWithSelector(FigaroBatchVerifier.ClauseNotRegistered.selector, strangerKey));
         verifier.settleBatch(hex"", pv, positions, events, _emptyUsage());
     }
 
@@ -345,10 +346,8 @@ contract FigaroBatchVerifierTest is Test {
         // Open-world by construction: anchor a never-seen clause on the
         // registry and a batch validated against it resolves — no verifier
         // redeploy, no code change anywhere.
-        string memory novelId = "acme-cold-brew-terms";
-        bytes32 novelSpecHash = keccak256("acme spec bytes");
-        registry.registerClause{value: DEPOSIT}(novelId, 1, novelSpecHash, "ipfs://acme");
-        bytes32 novelKey = keccak256(abi.encode(novelId, uint64(1)));
+        bytes32 novelKey = keccak256(bytes('{"clauseId":"acme-cold-brew-terms","version":1}'));
+        registry.registerClause{value: DEPOSIT}(novelKey, "ipfs://acme");
 
         (
             ,
@@ -356,7 +355,7 @@ contract FigaroBatchVerifierTest is Test {
             FigaroBatchVerifier.BatchEventData memory events,
             bytes32 newRoot
         ) = _canonicalBatch();
-        events.specBindings[0] = FigaroBatchVerifier.SpecBinding(novelKey, novelSpecHash);
+        events.specBindings[0] = FigaroBatchVerifier.SpecBinding(novelKey, novelKey);
         events.attestations[0].clauseId = novelKey;
         bytes memory pv = abi.encode(
             GENESIS,
@@ -831,11 +830,11 @@ contract FigaroBatchVerifierTest is Test {
 
         verifier.settleBatch(hex"", pv, positions, events, usage);
 
-        (uint64 c, uint64 d, uint256 score) = counter.batchAccrualOf(clauseKey, 0);
+        (uint64 c, uint64 d, uint256 score) = counter.batchAccrualOf(counter.KIND_CLAUSE(), clauseKey, 0);
         assertEq(c, 3, "distinct resolved processes");
         assertEq(d, 2, "distinct pairs");
         assertGt(score, 0, "and it is scored");
-        assertEq(counter.scoreOf(clauseKey, 0), score, "which is what the reward reads");
+        assertEq(counter.scoreOf(counter.KIND_CLAUSE(), clauseKey, 0), score, "which is what the reward reads");
         assertEq(counter.totalScoreIn(0), score, "and what the period total counts");
     }
 
@@ -855,22 +854,22 @@ contract FigaroBatchVerifierTest is Test {
         verifier.settleBatch(hex"", pv, positions, events, usage);
     }
 
-    /// WHY BOTH ARRAY LENGTHS ARE IN THE PREIMAGE. An accrual record is 48
-    /// bytes and a seller 20, so five accruals span exactly twelve sellers'
-    /// worth of bytes. Without the length prefixes the same byte string could
+    /// WHY BOTH ARRAY LENGTHS ARE IN THE PREIMAGE. An accrual record is 49
+    /// bytes and a seller 20, so twenty accruals span exactly forty-nine
+    /// sellers' worth of bytes. Without the length prefixes the same byte string could
     /// be re-split — presenting accruals whose sellers were never stake-checked
     /// while the hash still matched. Moving the boundary must change the hash.
     function test_usageHash_isNotReSplittableBetweenTheTwoArrays() public view {
-        FigaroBatchVerifier.BatchUsageData memory five;
-        five.accruals = new IUsageCounter.BatchAccrual[](5);
-        five.sellers = new address[](0);
+        FigaroBatchVerifier.BatchUsageData memory twenty;
+        twenty.accruals = new IUsageCounter.BatchAccrual[](20);
+        twenty.sellers = new address[](0);
 
-        FigaroBatchVerifier.BatchUsageData memory twelve;
-        twelve.accruals = new IUsageCounter.BatchAccrual[](0);
-        twelve.sellers = new address[](12);
+        FigaroBatchVerifier.BatchUsageData memory fortyNine;
+        fortyNine.accruals = new IUsageCounter.BatchAccrual[](0);
+        fortyNine.sellers = new address[](49);
 
-        // Same total span (5 × 48 == 12 × 20 == 240 bytes), all-zero contents.
-        assertTrue(_hashUsage(five) != _hashUsage(twelve), "the split must be pinned by the hash");
+        // Same total span (20 × 49 == 49 × 20 == 980 bytes), all-zero contents.
+        assertTrue(_hashUsage(twenty) != _hashUsage(fortyNine), "the split must be pinned by the hash");
     }
 
     /// THE CROSS-LANGUAGE LOCK. Both sides pack this hash by hand — assembly
@@ -893,13 +892,14 @@ contract FigaroBatchVerifierTest is Test {
         // concept: they are keccak preimages the Rust vector was generated from
         // (`prover/lib/tests/usage.rs`). Changing either side alone breaks the
         // lock — rename both together and regenerate the vector from Rust.
-        u.accruals[0] = IUsageCounter.BatchAccrual(keccak256("artifact-a"), 4, 2);
-        u.accruals[1] = IUsageCounter.BatchAccrual(keccak256("artifact-b"), 1, 1);
+        // One accrual of each kind, so the kind byte is under the lock.
+        u.accruals[0] = IUsageCounter.BatchAccrual(keccak256("artifact-a"), 0, 4, 2);
+        u.accruals[1] = IUsageCounter.BatchAccrual(keccak256("artifact-b"), 1, 1, 1);
         u.sellers = new address[](2);
         u.sellers[0] = address(1);
         u.sellers[1] = address(2);
 
-        bytes32 expected = 0xbeca15eaa93af04e1ce0b2a64c02685cc52912dab5037baf19efc8f082931ecc;
+        bytes32 expected = 0x9d3344f07a7c4ab3dc7eb5a6719feae8ae1462cb029ea2c781c6b0619261acd4;
         assertEq(_hashUsage(u), expected, "the test mirror matches the Rust vector");
 
         // And so does the contract's assembly: a batch committing `expected`
@@ -931,6 +931,27 @@ contract FigaroBatchVerifierTest is Test {
         assertEq(verifier.stateRoot(), newRoot, "resolves despite the rejected accrual");
     }
 
+    /// The one-accrual twin of the vector above, harvested from the same Rust
+    /// implementation: the preimage is 118 bytes (49 + 49 + 20), the kind byte
+    /// 0x01 sits right after the 32-byte key. Pinned against the test mirror and
+    /// the raw preimage both, so the layout is stated byte for byte here.
+    function test_usageHash_matchesTheOneAccrualRustVector() public pure {
+        FigaroBatchVerifier.BatchUsageData memory u;
+        u.period = 3;
+        u.provenanceLeaf = keccak256("prov");
+        u.accruals = new IUsageCounter.BatchAccrual[](1);
+        u.accruals[0] = IUsageCounter.BatchAccrual(keccak256("artifact-a"), 1, 4, 2);
+        u.sellers = new address[](1);
+        u.sellers[0] = address(1);
+
+        bytes memory preimage =
+            hex"03802d6204bf932870ff4b907951cbb0070a81deba751c5267793b986e642924da0000000000000001f90fbed58b3c3cd29401a81f6bc369392ef4bb88a8410888f3c879567f9ce00e010000000000000004000000000000000200000000000000010000000000000000000000000000000000000001";
+        bytes32 expected = 0xa8f200441f17c90bdb286e38e33656d6cac7f0b7b6d4b0f1f011d76a4ba4cf3e;
+        assertEq(preimage.length, 118, "span 49 + 49n + 20m at n = m = 1");
+        assertEq(keccak256(preimage), expected, "the preimage hashes to the Rust vector");
+        assertEq(_hashUsage(u), expected, "the test mirror matches the Rust vector");
+    }
+
     /// The counter's gates are the COUNTER's, and resolution is DECOUPLED from
     /// them (audit Fix 1a): a batch that trips a reward-tier gate still resolves
     /// its token positions and advances state — the accrual is dropped, never
@@ -956,7 +977,7 @@ contract FigaroBatchVerifierTest is Test {
 
         assertEq(verifier.stateRoot(), newRoot, "resolution advances despite the dropped accrual");
         assertEq(token.balanceOf(seller) - sellerBefore, 300 ether, "the seller is still paid");
-        (,, uint256 score) = counter.batchAccrualOf(clauseKey, usage.period);
+        (,, uint256 score) = counter.batchAccrualOf(counter.KIND_CLAUSE(), clauseKey, usage.period);
         assertEq(score, 0, "the accrual was dropped, not applied");
     }
 
@@ -1050,6 +1071,7 @@ contract FigaroBatchVerifierTest is Test {
                 ? acc0
                 : IUsageCounter.BatchAccrual(
                     _word(seed, "accrual", i),
+                    uint8(uint256(_word(seed, "kind", i))),
                     uint64(uint256(_word(seed, "c", i))),
                     uint64(uint256(_word(seed, "d", i)))
                 );
@@ -1067,8 +1089,8 @@ contract FigaroBatchVerifierTest is Test {
     /// public value IN ORDER, reverting with that hash's own error on the first
     /// disagreement — and only after all four agree does it anchor the spec
     /// bindings. So: hand it random inputs with the MIRROR hashes as the public
-    /// values, make the first binding one the registry does not anchor, and
-    /// require exactly that LATER revert. Reaching `SpecBindingMismatch` proves
+    /// values, make the first binding one whose spec hash is not its clause
+    /// key, and require exactly that LATER revert. Reaching `SpecBindingMismatch` proves
     /// every assembly hash equaled its mirror on this input; a packing slip in
     /// any of the four surfaces instead as the corresponding `*HashMismatch`.
     ///
@@ -1107,9 +1129,9 @@ contract FigaroBatchVerifierTest is Test {
     }
 
     function testFuzz_assemblyPackersMatchTheMirrors(PackerFuzz memory f) public {
-        // The sentinel: an unanchored key reads back a zero content hash, so
-        // the binding mismatches whenever its spec hash is non-zero.
-        vm.assume(f.b0.clauseId != clauseKey && f.b0.specHash != bytes32(0));
+        // The sentinel: a binding whose spec hash is not its clause key
+        // mismatches before any registry read.
+        vm.assume(f.b0.clauseId != f.b0.specHash);
 
         FigaroBatchVerifier.NetPosition[] memory positions = _fuzzPositions(f.seed, f.p0, f.lengths & 3);
         FigaroBatchVerifier.BatchEventData memory events = FigaroBatchVerifier.BatchEventData(
@@ -1120,9 +1142,7 @@ contract FigaroBatchVerifierTest is Test {
             _fuzzUsage(f.seed, f.acc0, f.s0, f.period, (f.lengths >> 6) & 3, uint256(f.seed) & 3);
 
         vm.expectRevert(
-            abi.encodeWithSelector(
-                FigaroBatchVerifier.SpecBindingMismatch.selector, f.b0.clauseId, bytes32(0), f.b0.specHash
-            )
+            abi.encodeWithSelector(FigaroBatchVerifier.SpecBindingMismatch.selector, f.b0.clauseId, f.b0.specHash)
         );
         verifier.settleBatch(hex"", _packerPv(positions, events, usage), positions, events, usage);
     }
@@ -1143,9 +1163,9 @@ contract FigaroBatchVerifierTest is Test {
     /// The vectors are asserted against the test mirrors AND the contract's
     /// own assembly: a batch committing exactly these three hashes gets past
     /// every hash check (each mismatch reverts with its own error, in order)
-    /// and is stopped only by the spec-binding anchor — the fixture's clause
-    /// key is unregistered, so `contentHashOf` reads zero. That
-    /// `SpecBindingMismatch` is the proof all three packers agreed.
+    /// and is stopped only by the spec-binding anchor — the fixture's spec
+    /// hash is not its clause key. That `SpecBindingMismatch` is the proof all
+    /// three packers agreed.
     function test_packerHashes_matchTheRustVectors() public {
         FigaroBatchVerifier.NetPosition[] memory positions = new FigaroBatchVerifier.NetPosition[](2);
         positions[0] = FigaroBatchVerifier.NetPosition(address(1), address(2), 200 ether, 0);
@@ -1184,7 +1204,7 @@ contract FigaroBatchVerifierTest is Test {
         );
         vm.expectRevert(
             abi.encodeWithSelector(
-                FigaroBatchVerifier.SpecBindingMismatch.selector, bindings[0].clauseId, bytes32(0), bindings[0].specHash
+                FigaroBatchVerifier.SpecBindingMismatch.selector, bindings[0].clauseId, bindings[0].specHash
             )
         );
         verifier.settleBatch(hex"", pv, positions, FigaroBatchVerifier.BatchEventData(atts, bindings), _emptyUsage());

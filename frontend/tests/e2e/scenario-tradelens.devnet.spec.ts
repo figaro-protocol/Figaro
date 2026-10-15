@@ -41,6 +41,7 @@ import {
     memberProfileBindings,
     waitForConnected,
     publishOrAdoptReviewed,
+    primeRegisteredClauseSpecs,
 } from './devnet-helpers';
 import {
     C,
@@ -58,11 +59,17 @@ import {
     seedTradelensSellers,
 } from './tradelensScenario';
 
+// Clause keys (`C`) are located by the names their specs carry, over the
+// specs the chain registered — primed once per file.
+test.beforeAll(async () => {
+    await primeRegisteredClauseSpecs();
+});
+
 const ANVIL_MNEMONIC = 'test test test test test test test test test test test junk';
 
 // Per-node clause plan, keyed by draw order (root first). Parents encode the
-// chain: 1←0, 2←0, 3←2, 4←3, 5←4.
-const NODE_PLAN: Array<{ parent: number | null; clauses: string[] }> = [
+// chain: 1←0, 2←0, 3←2, 4←3, 5←4. Clause keys read lazily (after priming).
+const nodePlan = (): Array<{ parent: number | null; clauses: Hex[] }> => [
     { parent: null, clauses: [C.cargo, C.incoterms, C.custody, C.acceptance, C.geo, C.modalities] },
     { parent: 0, clauses: [C.merchant, C.acceptance] },
     { parent: 0, clauses: [C.merchant, C.geo] },
@@ -107,8 +114,8 @@ test.describe('TRADELENS SCENARIO — six bonded value-adders, authored on the c
             // set difference, recorded so plan index i ↔ nodeIds[i].
             await orderNodes.first().click();
             await page.getByTestId('agreement-drawer').waitFor({ state: 'visible', timeout: 10000 });
-            for (let i = 1; i < NODE_PLAN.length; i++) {
-                const parentId = nodeIds[NODE_PLAN[i].parent!];
+            for (let i = 1; i < nodePlan().length; i++) {
+                const parentId = nodeIds[nodePlan()[i].parent!];
                 const before = new Set(await currentIds());
                 await page.getByTestId(`btn-add-suborder-${parentId}`).click();
                 await expect(orderNodes).toHaveCount(before.size + 1, { timeout: 10000 });
@@ -127,27 +134,27 @@ test.describe('TRADELENS SCENARIO — six bonded value-adders, authored on the c
             await page.getByTestId(`assembly-terms-field-${C.kleros}-klerosCourt-general`).check();
 
             // Compose each node's clauses through the drawer's registry tab.
-            for (let i = 0; i < NODE_PLAN.length; i++) {
+            for (let i = 0; i < nodePlan().length; i++) {
                 await page.getByTestId(`drawer-node-tab-${nodeIds[i]}`).click();
                 await page.getByTestId('drawer-tab-registry').click();
                 await page.getByTestId('drawer-section-registry').waitFor({ state: 'visible', timeout: 5000 });
-                for (const clauseId of NODE_PLAN[i].clauses) {
-                    await page.getByTestId(`drawer-registry-clause-${clauseId}`).check();
+                for (const clauseKey of nodePlan()[i].clauses) {
+                    await page.getByTestId(`drawer-registry-clause-${clauseKey}`).check();
                 }
-                if (NODE_PLAN[i].clauses.includes(C.consent)) {
+                if (nodePlan()[i].clauses.includes(C.consent)) {
                     // The customs agent's filing terms — affixed through the
                     // repeater (pin → keccak anchor; the only fill path).
-                    await page.getByTestId('drawer-field-figaro-consent-documents-add').click();
-                    await page.getByTestId('drawer-field-figaro-consent-documents-0-documentHash-affix')
+                    await page.getByTestId(`drawer-field-${C.consent}-documents-add`).click();
+                    await page.getByTestId(`drawer-field-${C.consent}-documents-0-documentHash-affix`)
                         .setInputFiles({
                             name: 'customs-filing-terms.txt',
                             mimeType: 'text/plain',
                             buffer: Buffer.from(CONSENT_DOC_TEXT),
                         });
-                    await page.getByTestId('drawer-field-figaro-consent-documents-0-documentHash')
+                    await page.getByTestId(`drawer-field-${C.consent}-documents-0-documentHash`)
                         .waitFor({ state: 'visible', timeout: 30000 });
-                    await page.getByTestId('drawer-field-figaro-consent-documents-0-documentVersion').fill('1.0');
-                    await page.getByTestId('drawer-field-figaro-consent-documents-0-documentTitle').fill('Customs filing terms');
+                    await page.getByTestId(`drawer-field-${C.consent}-documents-0-documentVersion`).fill('1.0');
+                    await page.getByTestId(`drawer-field-${C.consent}-documents-0-documentTitle`).fill('Customs filing terms');
                 }
             }
 
@@ -178,7 +185,7 @@ test.describe('TRADELENS SCENARIO — six bonded value-adders, authored on the c
         const plan = planSubOrderSellers({
             assemblyTemplate: anchored as never,
             counterpartyBindings: (shipperBindings.find((b) => b.assemblySlug === slug)?.counterpartyBindings ?? [])
-                .map((cb) => ({ clauseId: cb.clauseId, addresses: cb.addresses as `0x${string}`[] })),
+                .map((cb) => ({ clauseKey: cb.clauseKey as Hex, addresses: cb.addresses as `0x${string}`[] })),
         });
         expect(plan.map((p) => p.seller?.toLowerCase()), 'five sub-order sellers resolve in commit order').toEqual([
             INSPECTOR.address, FORWARDER.address, CARRIER.address, CUSTOMS.address, INLAND.address,
@@ -218,10 +225,10 @@ test.describe('TRADELENS SCENARIO — six bonded value-adders, authored on the c
         //    validator path ("$.acceptanceBasis: required field is missing") for
         //    fields the form never offered. The expected COUNT is derived from
         //    the anchored template, never written down here. ──
-        const composingOrders = (clauseId: string) =>
+        const composingOrders = (clauseKey: Hex) =>
             (anchored.agreements as Array<{ clauses: Record<string, unknown> }>)
-                .filter((o) => clauseId in (o.clauses ?? {})).length;
-        for (const [clauseId, field] of [
+                .filter((o) => clauseKey in (o.clauses ?? {})).length;
+        for (const [clauseKey, field] of [
             [C.acceptance, 'acceptanceBasis'],
             [C.custody, 'custodyScheme'],
             [C.incoterms, 'incotermsNamedPlace'],
@@ -233,14 +240,14 @@ test.describe('TRADELENS SCENARIO — six bonded value-adders, authored on the c
             await expect
                 .poll(
                     () => page.locator(
-                        `input[data-testid^="checkout-field-"][data-testid$="-${clauseId}-${field}"]`,
+                        `input[data-testid^="checkout-field-"][data-testid$="-${clauseKey}-${field}"]`,
                     ).count(),
                     {
                         timeout: 30000,
-                        message: `${clauseId}.${field}: one editable control per composing order`,
+                        message: `${clauseKey}.${field}: one editable control per composing order`,
                     },
                 )
-                .toBe(composingOrders(clauseId));
+                .toBe(composingOrders(clauseKey));
         }
         // Nothing filled yet ⇒ the button names the state honestly instead of
         // offering a signature the validator will refuse.

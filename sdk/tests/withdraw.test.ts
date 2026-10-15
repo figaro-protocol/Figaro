@@ -15,6 +15,7 @@ import type {
     OrderResolvedEvent,
     ProcessResolvedEvent,
 } from "../src/types.js";
+import { keyOf } from "./specFixtures.js";
 
 const BUYER = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266" as Address;
 const SELLER = "0x70997970C51812dc3A010C7d01b50e0d17dc79C8" as Address;
@@ -60,7 +61,7 @@ function agreementWith(clauses: string[]): Agreement {
         version: "a1",
         buyer: BUYER,
         seller: SELLER,
-        sections: clauses.map((clause) => ({ clause, version: 1, data: {} })),
+        sections: clauses.map((name) => ({ clause: keyOf(name), data: {} })),
     };
 }
 
@@ -91,7 +92,7 @@ describe("deriveInFlightOrders", () => {
 
 describe("deriveClauseWithdrawGate", () => {
     it("zero orders → canWithdraw true (absence, not error)", () => {
-        expect(deriveClauseWithdrawGate("figaro-emissions", [])).toEqual({
+        expect(deriveClauseWithdrawGate(keyOf("figaro-emissions"), [])).toEqual({
             canWithdraw: true,
             inFlightCount: 0,
             unverifiedCount: 0,
@@ -102,7 +103,7 @@ describe("deriveClauseWithdrawGate", () => {
         const agreements: InFlightAgreement[] = [
             { processId: PROC_A, agreement: agreementWith(["figaro-commerce", "figaro-emissions"]) },
         ];
-        expect(deriveClauseWithdrawGate("figaro-emissions", agreements)).toEqual({
+        expect(deriveClauseWithdrawGate(keyOf("figaro-emissions"), agreements)).toEqual({
             canWithdraw: false,
             inFlightCount: 1,
             unverifiedCount: 0,
@@ -113,7 +114,7 @@ describe("deriveClauseWithdrawGate", () => {
         const agreements: InFlightAgreement[] = [
             { processId: PROC_A, agreement: agreementWith(["figaro-commerce", "figaro-modalities"]) },
         ];
-        expect(deriveClauseWithdrawGate("figaro-emissions", agreements).canWithdraw).toBe(true);
+        expect(deriveClauseWithdrawGate(keyOf("figaro-emissions"), agreements).canWithdraw).toBe(true);
     });
 
     it("counts each in-flight order naming the clause", () => {
@@ -122,14 +123,14 @@ describe("deriveClauseWithdrawGate", () => {
             { processId: PROC_A, agreement: agreementWith(["figaro-emissions", "figaro-commerce"]) },
             { processId: PROC_B, agreement: agreementWith(["figaro-commerce"]) },
         ];
-        expect(deriveClauseWithdrawGate("figaro-emissions", agreements).inFlightCount).toBe(2);
+        expect(deriveClauseWithdrawGate(keyOf("figaro-emissions"), agreements).inFlightCount).toBe(2);
     });
 
     it("unverified-only (party-private terms) → surfaced as a caveat, never blocking", () => {
         const agreements: InFlightAgreement[] = [
             { processId: PROC_A, agreement: null },
         ];
-        expect(deriveClauseWithdrawGate("figaro-emissions", agreements)).toEqual({
+        expect(deriveClauseWithdrawGate(keyOf("figaro-emissions"), agreements)).toEqual({
             canWithdraw: true,
             inFlightCount: 0,
             unverifiedCount: 1,
@@ -141,7 +142,7 @@ describe("deriveClauseWithdrawGate", () => {
             { processId: PROC_A, agreement: agreementWith(["figaro-emissions"]) },
             { processId: PROC_B, agreement: null },
         ];
-        expect(deriveClauseWithdrawGate("figaro-emissions", agreements)).toEqual({
+        expect(deriveClauseWithdrawGate(keyOf("figaro-emissions"), agreements)).toEqual({
             canWithdraw: false,
             inFlightCount: 1,
             unverifiedCount: 1,
@@ -156,8 +157,8 @@ describe("deriveClauseWithdrawGate", () => {
 function template(): AssemblyTemplate {
     return {
         agreements: [
-            { id: "order-0", clauses: { "figaro-commerce": {}, "figaro-topology": {} } },
-            { id: "order-1", clauses: { "figaro-commerce": {}, "figaro-topology": {}, "figaro-courier-process": {} } },
+            { id: "order-0", clauses: { [keyOf("figaro-commerce")]: {}, [keyOf("figaro-topology")]: {} } },
+            { id: "order-1", clauses: { [keyOf("figaro-commerce")]: {}, [keyOf("figaro-topology")]: {}, [keyOf("figaro-courier-process")]: {} } },
         ],
     };
 }
@@ -213,7 +214,7 @@ describe("deriveAssemblyWithdrawGate", () => {
         // author (the bug found by assembly-withdraw.devnet.spec.ts).
         const pinned: AssemblyTemplate = {
             ...template(),
-            assemblyClauses: { "figaro-applicable-law": {}, "figaro-utility-token": {} },
+            assemblyClauses: { [keyOf("figaro-applicable-law")]: {}, [keyOf("figaro-utility-token")]: {} },
         };
         const folded: InFlightAgreement[] = [
             { processId: PROC_A, agreement: agreementWith(["figaro-applicable-law", "figaro-utility-token", "figaro-commerce", "figaro-topology"]) },
@@ -229,7 +230,7 @@ describe("deriveAssemblyWithdrawGate", () => {
     it("the fold is exact: committed sections MISSING the assembly-scoped clauses do not match a pinned template", () => {
         const pinned: AssemblyTemplate = {
             ...template(),
-            assemblyClauses: { "figaro-applicable-law": {} },
+            assemblyClauses: { [keyOf("figaro-applicable-law")]: {} },
         };
         const unfolded: InFlightAgreement[] = [
             { processId: PROC_A, agreement: agreementWith(["figaro-commerce", "figaro-topology"]) },

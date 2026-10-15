@@ -224,7 +224,7 @@ function SectionMode() {
                     value={json}
                     onChange={(e) => setJson(e.target.value)}
                     rows={8}
-                    placeholder='{"clause":"figaro-commerce","data":{"currency":"0x...","payment":"100","lineItems":[...]}}'
+                    placeholder='{"clause":"0x<clause key>","data":{"currency":"0x...","payment":"100","lineItems":[...]}}'
                     data-testid="verify-section-input"
                     className="mt-1 w-full font-mono text-xs px-3 py-2 border border-default rounded"
                 />

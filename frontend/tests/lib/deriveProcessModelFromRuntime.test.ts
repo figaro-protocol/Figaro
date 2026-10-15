@@ -1,6 +1,7 @@
 import { beforeAll, describe, it, expect } from "vitest";
 import type { Agreement } from "@figaro-protocol/sdk";
-import { PROVENANCE_LEAF_KEY, canonicalContentHash, computeClauseKey } from "@figaro-protocol/sdk";
+import { PROVENANCE_LEAF_KEY } from "@figaro-protocol/sdk";
+import { pinSpec } from "./primeClauseSpecs";
 import { loadClauseSpec, setClauseSpecFetcher } from "@/lib/shared/clauseSpecSource";
 import { deriveProcessModelFromRuntime } from "@/lib/semantic/deriveProcessModelFromRuntime";
 import { OrderState, type Order } from "@/lib/kernel/store";
@@ -10,7 +11,7 @@ import type { CapabilityModel } from "@/lib/semantic/models";
 import { truncateHex } from "@/lib/shared/formatHex";
 
 // One re-assert card per party per order. The sections are built from the
-// derivation's own input types — clause ids no spec source has loaded, so
+// derivation's own input types — clause keys no spec source has loaded, so
 // nothing here names a clause: a never-seen section is re-assertable.
 const BUYER = "0x1111111111111111111111111111111111111111";
 const SELLER = "0x2222222222222222222222222222222222222222";
@@ -20,8 +21,7 @@ const AGREEMENT_HASH = `0x${"ef".repeat(32)}`;
 const K = 3;
 
 const sections = Array.from({ length: K }, (_v, i) => ({
-    clause: `never-seen-section-${i}`,
-    version: 1,
+    clause: `0x${String(i + 1).padStart(2, "0").repeat(32)}` as `0x${string}`,
     data: { note: `committed ${i}` },
 }));
 
@@ -57,7 +57,7 @@ const summary: ProcessSummary = {
 };
 
 const reasserted = (sectionIndex: number, attester: string): RuntimeAttestation => ({
-    clauseId: computeClauseKey(sections[sectionIndex].clause, sections[sectionIndex].version),
+    clauseId: sections[sectionIndex].clause,
     orderHash: ORDER_HASH,
     stage: 0,
     attester,
@@ -82,7 +82,7 @@ const choicesOf = (card: CapabilityModel): CapabilityModel[] => {
 };
 
 const choiceClauseIds = (card: CapabilityModel): string[] =>
-    choicesOf(card).map((c) => (c.action.executionType === "transaction" && c.action.kind === "submit-clause-attestation" ? c.action.clauseId : ""));
+    choicesOf(card).map((c) => (c.action.executionType === "transaction" && c.action.kind === "submit-clause-attestation" ? c.action.clauseKey : ""));
 
 describe("re-assert committed sections — one card per party per order", () => {
     for (const [party, address] of [["seller", SELLER], ["buyer", BUYER]] as const) {
@@ -234,7 +234,7 @@ describe("re-assert committed sections — several orders in one process", () =>
 // A clause declaring a witness stage surfaces one witness card per order to
 // the buyer, who is a party to every order of its process: each card names
 // its order (position on the chain, seller), as the re-assert card does, and
-// carries the committed section's version.
+// carries the committed section's clause key.
 describe("witness-stage cards — several orders in one process", () => {
     const WITNESS_SPEC = {
         clauseId: "test-witness-reading",
@@ -257,15 +257,16 @@ describe("witness-stage cards — several orders in one process", () => {
         buyerBond: 4n,
         agreementHash: AGREEMENT_B,
     };
-    const witnessSection = { clause: WITNESS_SPEC.clauseId, version: 1, data: {} };
+    const pinned = pinSpec(WITNESS_SPEC);
+    const witnessSection = { clause: pinned.clauseKey, data: {} };
     const agreements = new Map<string, Agreement>([
         [AGREEMENT_HASH, { ...agreement, sections: [witnessSection] }],
         [AGREEMENT_B, { ...agreement, seller: SELLER_B, sections: [witnessSection] }],
     ]);
 
     beforeAll(async () => {
-        setClauseSpecFetcher(async () => WITNESS_SPEC);
-        await loadClauseSpec(WITNESS_SPEC.clauseId, 1, "mem://test-witness-reading", canonicalContentHash(WITNESS_SPEC));
+        setClauseSpecFetcher(async () => pinned.bytes);
+        await loadClauseSpec(pinned.clauseKey, "mem://test-witness-reading");
     });
 
     const witnessCards = (address: string): CapabilityModel[] =>
@@ -282,9 +283,9 @@ describe("witness-stage cards — several orders in one process", () => {
         expect(byOrder.get(ORDER_B)).toBe(`Order 2 of 2 · seller ${truncateHex(SELLER_B)}`);
     });
 
-    it("each witness card carries the committed section's version", () => {
+    it("each witness card carries the committed section's clause key", () => {
         for (const card of witnessCards(BUYER)) {
-            expect(card.action.executionType === "transaction" && card.action.kind === "submit-clause-attestation" && card.action.version).toBe(1);
+            expect(card.action.executionType === "transaction" && card.action.kind === "submit-clause-attestation" && card.action.clauseKey).toBe(pinned.clauseKey);
         }
     });
 

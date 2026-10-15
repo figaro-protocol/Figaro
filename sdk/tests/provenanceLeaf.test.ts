@@ -23,14 +23,16 @@ import {
     type Agreement,
 } from "../src/agreement.js";
 
+const K = (label: string): `0x${string}` => keccak256(toHex(label));
+
 const COMPOSITION = "0x1111111111111111111111111111111111111111111111111111111111111111" as const;
 const bare: Agreement = {
     version: "a1",
     buyer: "0x0000000000000000000000000000000000000001",
     seller: "0x0000000000000000000000000000000000000002",
     sections: [
-        { clause: "figaro-commerce", version: 1, data: { payment: "10", currency: "0x00" } },
-        { clause: "figaro-topology", version: 1, data: { parentOrderHashes: [] } },
+        { clause: K("figaro-commerce"), data: { payment: "10", currency: "0x00" } },
+        { clause: K("figaro-topology"), data: { parentOrderHashes: [] } },
     ],
 };
 const withDesign: Agreement = { ...bare, provenance: COMPOSITION };
@@ -59,7 +61,7 @@ describe("the reserved provenance leaf", () => {
         const { leaf, proof } = buildProvenanceInclusionProof(withDesign);
         expect(leaf).toBe(computeProvenanceLeaf(COMPOSITION));
         expect(verifyInclusionProof(root, leaf, proof)).toBe(true);
-        const section = buildSectionInclusionProof(withDesign, "figaro-commerce");
+        const section = buildSectionInclusionProof(withDesign, K("figaro-commerce"));
         expect(section.leaf).toBe(computeSectionLeaf(withDesign.sections[0]));
         expect(verifyInclusionProof(root, section.leaf, section.proof)).toBe(true);
     });

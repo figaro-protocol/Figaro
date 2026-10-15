@@ -18,11 +18,16 @@ import { useEffect, useState } from "react";
 import Link from "@/components/shared/Link";
 import { useAccount } from "wagmi";
 import { useRegisteredClausesByWallet } from "@/lib/protocol/useClauseRegistry";
+import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
+import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
 import { truncateHex } from "@/lib/shared/formatHex";
 
 export function ClausesList() {
     const { address } = useAccount();
     const { data, isLoading } = useRegisteredClausesByWallet(address);
+    // The chain row carries only the key; the spec's own name and version —
+    // its label — are read from the verified spec once it loads.
+    useClauseSpecs();
     const [mounted, setMounted] = useState(false);
     useEffect(() => setMounted(true), []);
 
@@ -62,28 +67,29 @@ export function ClausesList() {
 
     return (
         <ul className="space-y-3" data-testid="clauses-list">
-            {data.map((clause) => (
+            {data.map((clause) => {
+                const spec = getClauseSpec(clause.clauseKey);
+                return (
                 <li
-                    key={`${clause.idHash}-${clause.blockNumber.toString()}`}
+                    key={`${clause.clauseKey}-${clause.blockNumber.toString()}`}
                     className="rounded-lg border border-default bg-paper px-5 py-3 flex items-start gap-4"
-                    data-testid={`clause-row-${clause.idHash}`}
+                    data-testid={`clause-row-${clause.clauseKey}`}
                 >
                     <div className="flex-1 min-w-0">
                         <p className="text-base font-semibold text-ink-heading truncate">
-                            {clause.clauseId ?? <span className="font-mono">{truncateHex(clause.idHash, { head: 10, tail: 6 })}</span>}
+                            {spec?.clauseId ?? <span className="font-mono">{truncateHex(clause.clauseKey, { head: 10, tail: 6 })}</span>}
                         </p>
-                        {clause.clauseId && (
+                        {spec && (
                             <p
                                 className="font-mono text-[11px] text-ink-muted mt-0.5"
-                                title={clause.idHash}
-                                data-testid={`clause-hash-${clause.idHash}`}
+                                title={clause.clauseKey}
+                                data-testid={`clause-hash-${clause.clauseKey}`}
                             >
-                                {truncateHex(clause.idHash, { head: 10, tail: 6 })}
+                                {truncateHex(clause.clauseKey, { head: 10, tail: 6 })}
                             </p>
                         )}
                         <p className="text-[11px] text-ink-muted mt-1">
-                            version {clause.version}
-                            {" · "}
+                            {spec && <>version {spec.version}{" · "}</>}
                             <span title={clause.contentURI} className="font-mono">
                                 {clause.contentURI || "(no spec uri)"}
                             </span>
@@ -92,7 +98,8 @@ export function ClausesList() {
                         </p>
                     </div>
                 </li>
-            ))}
+                );
+            })}
         </ul>
     );
 }

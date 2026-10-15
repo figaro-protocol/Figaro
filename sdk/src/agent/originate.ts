@@ -13,7 +13,7 @@
  * `assemblyCheckout` is the reference for that walk.
  *
  * The SDK names no clause: instantiation reads the template's clause bag
- * verbatim and merges the buyer's per-clause overrides keyed by the clauseIds
+ * verbatim and merges the buyer's per-clause overrides keyed by the clause keys
  * the buyer composed. Which clause carries payment is the buyer's decision, not
  * FigaroCore's.
  */
@@ -50,7 +50,7 @@ export interface InstantiateParams {
     seller: Address;
     /** Per-clause field overrides merged onto the template's clause data — the
      *  buyer supplies its terms (typically the commerce clause's
-     *  `{ currency, payment, lineItems }`). Keyed by clauseId; the SDK names none. */
+     *  `{ currency, payment, lineItems }`). Keyed by clause key; the SDK names none. */
     overrides?: Record<string, Record<string, unknown>>;
 }
 
@@ -70,17 +70,13 @@ export function instantiateRootAgreement(template: AssemblyTemplate, params: Ins
     // the sign gate.
     const assemblyClauses = template.assemblyClauses ?? {};
     const folded = { ...assemblyClauses, ...root.clauses };
-    const assemblyVersions = Object.fromEntries(
-        Object.keys(assemblyClauses).map((c) => [c, template.assemblyClauseVersions?.[c] ?? 1]),
-    );
-    const node = { clauseVersions: { ...assemblyVersions, ...(root.clauseVersions ?? {}) } };
     const merged = mergeOverrides(folded, params.overrides);
     // The one clause-bag → Agreement builder (root and multi-order alike)
     // lives with the template walk: ../reconstructOrders.js. The agreement
     // names the design it instantiates in its provenance leaf, the same fill
     // the walk performs on every order.
     return fillWalkProvenance(
-        templateAgreementFromClauses(merged, node, params.buyer, params.seller),
+        templateAgreementFromClauses(merged, params.buyer, params.seller),
         templateCompositionHash(template),
         root.id ?? "root",
     );

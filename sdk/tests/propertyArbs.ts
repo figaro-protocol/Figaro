@@ -48,8 +48,7 @@ export const clauseDataArb: fc.Arbitrary<Record<string, unknown>> = fc.dictionar
 );
 
 export const sectionArb: fc.Arbitrary<AgreementSection> = fc.record({
-    clause: fc.string({ minLength: 1, maxLength: 24 }),
-    version: fc.integer({ min: 1, max: 9 }),
+    clause: fc.array(fc.integer({ min: 0, max: 255 }), { minLength: 32, maxLength: 32 }).map((b) => (`0x${b.map((x) => x.toString(16).padStart(2, "0")).join("")}`) as `0x${string}`),
     data: clauseDataArb,
 });
 

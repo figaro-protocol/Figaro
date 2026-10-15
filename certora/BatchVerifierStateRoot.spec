@@ -18,7 +18,7 @@
 // Summarized (none of these writes the verifier's storage):
 //   verifyProof        — the SP1 verifier; NONDET: any proof is accepted, so
 //                        the rules hold whatever the proof system admits
-//   contentHashOf      — the ClauseRegistry anchor read; a view
+//   registered         — the ClauseRegistry anchor read; a view
 //   applyBatchAccrual  — the UsageCounter write, behind try/catch
 //   SafeERC20 transfers — token moves; a token cannot write the verifier's
 //                        storage, and `nonReentrant` refuses a re-entry into
@@ -33,7 +33,7 @@ methods {
     function decodedRoots(bytes) external returns (bytes32, bytes32) envfree;
 
     function _.verifyProof(bytes32, bytes, bytes) external => NONDET;
-    function _.contentHashOf(bytes32) external => NONDET;
+    function _.registered(bytes32) external => NONDET;
     function _.applyBatchAccrual(uint8, bytes32, IUsageCounter.BatchAccrual[], address[]) external => NONDET;
 
     function SafeERC20.safeTransfer(address, address, uint256) internal => NONDET;

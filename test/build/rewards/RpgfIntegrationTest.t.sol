@@ -38,8 +38,8 @@ contract RpgfIntegrationTest is Test {
     address author = address(0xA47403);
     address designer = address(0xDE519);
 
-    string constant GEO_ID = "figaro-geolocation";
-    bytes32 constant GEO_KEY = keccak256(abi.encode("figaro-geolocation", uint64(1)));
+    // The clause key is keccak256 of the spec's pinned bytes.
+    bytes32 constant GEO_KEY = keccak256('{"clauseId":"figaro-geolocation","version":1}');
     bytes32 constant ASM = keccak256("reference-assembly");
     bytes32 constant PROVENANCE_LEAF = keccak256("figaro-agreement-provenance");
     bytes constant SECTION = hex"5eed";
@@ -66,7 +66,7 @@ contract RpgfIntegrationTest is Test {
         florin = new FlorinToken();
 
         vm.prank(author);
-        clauses.registerClause(GEO_ID, 1, keccak256("geo-spec"), "ipfs://geo");
+        clauses.registerClause(GEO_KEY, "ipfs://geo");
         vm.prank(designer);
         assemblies.registerAssembly(ASM, "ipfs://asm");
         // The seller-side live-stake gate: the seller-of-record must be staked
@@ -162,9 +162,17 @@ contract RpgfIntegrationTest is Test {
         core.resolveProcess(processId, all);
     }
 
-    function _one(bytes32 k) internal pure returns (bytes32[] memory a) {
-        a = new bytes32[](1);
-        a[0] = k;
+    uint8 constant KIND_CLAUSE = 0;
+    uint8 constant KIND_ASSEMBLY = 1;
+
+    function _clause(bytes32 k) internal pure returns (RpgfMinter.ClauseOrAssemblyKey[] memory a) {
+        a = new RpgfMinter.ClauseOrAssemblyKey[](1);
+        a[0] = RpgfMinter.ClauseOrAssemblyKey(KIND_CLAUSE, k);
+    }
+
+    function _assembly(bytes32 k) internal pure returns (RpgfMinter.ClauseOrAssemblyKey[] memory a) {
+        a = new RpgfMinter.ClauseOrAssemblyKey[](1);
+        a[0] = RpgfMinter.ClauseOrAssemblyKey(KIND_ASSEMBLY, k);
     }
 
     // ── The whole path ──────────────────────────────────────────────
@@ -179,21 +187,21 @@ contract RpgfIntegrationTest is Test {
         // Nothing is claimable while the period can still move.
         vm.prank(author);
         vm.expectRevert(abi.encodeWithSelector(RpgfMinter.PeriodStillAccruing.selector, uint8(0)));
-        minter.claim(0, _one(GEO_KEY));
+        minter.claim(0, _clause(GEO_KEY));
 
         vm.warp(P0_END + 1);
 
-        (,, uint256 clauseScore) = counter.accrualOf(GEO_KEY, 0);
-        (,, uint256 asmScore) = counter.accrualOf(ASM, 0);
+        (,, uint256 clauseScore) = counter.accrualOf(KIND_CLAUSE, GEO_KEY, 0);
+        (,, uint256 asmScore) = counter.accrualOf(KIND_ASSEMBLY, ASM, 0);
         uint256 total = counter.totalScoreIn(0);
         assertEq(total, clauseScore + asmScore);
         // Uniform scoring: equal usage ⇒ equal score, clause or assembly.
         assertEq(clauseScore, asmScore);
 
         vm.prank(author);
-        minter.claim(0, _one(GEO_KEY));
+        minter.claim(0, _clause(GEO_KEY));
         vm.prank(designer);
-        minter.claim(0, _one(ASM));
+        minter.claim(0, _assembly(ASM));
 
         // No cap: each takes its pro-rata share. Equal scores ⇒ half the period
         // budget each, and the whole budget is minted (nothing stranded by a cap).
@@ -212,7 +220,7 @@ contract RpgfIntegrationTest is Test {
         assertEq(counter.totalScoreIn(0), 0);
         vm.prank(author);
         vm.expectRevert(RpgfMinter.NothingToClaim.selector);
-        minter.claim(0, _one(GEO_KEY));
+        minter.claim(0, _clause(GEO_KEY));
     }
 
     function test_usageInALaterPeriodPaysTheLaterBudget() public {
@@ -225,9 +233,9 @@ contract RpgfIntegrationTest is Test {
 
         vm.warp(P0_END * 2 + 1);
         vm.startPrank(author);
-        minter.claim(0, _one(GEO_KEY));
+        minter.claim(0, _clause(GEO_KEY));
         uint256 afterFirst = florin.balanceOf(author);
-        minter.claim(1, _one(GEO_KEY));
+        minter.claim(1, _clause(GEO_KEY));
         vm.stopPrank();
 
         // Sole recipient in both periods → takes each period's WHOLE budget
@@ -266,7 +274,34 @@ contract RpgfIntegrationTest is Test {
         vm.warp(P0_END + 1);
 
         vm.prank(designer);
-        vm.expectRevert(abi.encodeWithSelector(RpgfMinter.NotAuthorOfRecord.selector, GEO_KEY, designer));
-        minter.claim(0, _one(GEO_KEY));
+        vm.expectRevert(abi.encodeWithSelector(RpgfMinter.NotAuthorOfRecord.selector, KIND_CLAUSE, GEO_KEY, designer));
+        minter.claim(0, _clause(GEO_KEY));
+    }
+
+    /// A registry takes any bytes32, so a stranger can stake an assembly's
+    /// composition hash as a CLAUSE key. The reward keeps the two families
+    /// apart: the assembly's accrual pays the assembly's registrant, and the
+    /// stranger's clause-kind standing on that key earns nothing of it.
+    function test_aStrangerWhoStakesAnAssemblysKeyAsAClauseTakesNothingOfIt() public {
+        address stranger = address(0x5745);
+        vm.prank(stranger);
+        clauses.registerClause(ASM, "ipfs://a-stranger-stakes-an-assembly-key-as-a-clause");
+
+        (CommitmentTypes.Commitment memory p,) = _settleUnderAssembly(ASM, 1);
+        counter.recordAssemblyUsage(p, ASM, new bytes32[](0));
+        vm.warp(P0_END + 1);
+
+        vm.prank(stranger);
+        vm.expectRevert(RpgfMinter.NothingToClaim.selector);
+        minter.claim(0, _clause(ASM));
+
+        vm.prank(stranger);
+        vm.expectRevert(abi.encodeWithSelector(RpgfMinter.NotAuthorOfRecord.selector, KIND_ASSEMBLY, ASM, stranger));
+        minter.claim(0, _assembly(ASM));
+
+        vm.prank(designer);
+        minter.claim(0, _assembly(ASM));
+        assertEq(florin.balanceOf(designer), T0, "the assembly's registrant takes the assembly's accrual");
+        assertEq(florin.balanceOf(stranger), 0, "the stranger takes nothing of it");
     }
 }

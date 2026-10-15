@@ -21,7 +21,7 @@ import { describe, expect, it } from "vitest";
 import { reconstructOrdersFromTemplate } from "../src/reconstructOrders.js";
 import { resolveSubOrderPricing, type PricingCatalog } from "../src/checkoutPlan.js";
 import type { AssemblyTemplate, TemplateAgreement } from "../src/assembly.js";
-import { specSourceFromFixtures } from "./specFixtures.js";
+import { keyOf, specSourceFromFixtures } from "./specFixtures.js";
 import { addressArb } from "./propertyArbs.js";
 
 const BUYER = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266" as const;
@@ -59,8 +59,8 @@ function templateFrom(parents: readonly number[][]): AssemblyTemplate {
         agreements: parents.map((ps, i) => ({
             id: `n${i}`,
             clauses: {
-                "figaro-commerce": {},
-                "figaro-topology": { parentOrderHashes: ps.map((p) => `n${p}`) },
+                [keyOf("figaro-commerce")]: {},
+                [keyOf("figaro-topology")]: { parentOrderHashes: ps.map((p) => `n${p}`) },
             },
         })),
     };
@@ -111,7 +111,7 @@ describe("reconstructOrdersFromTemplate — payment conservation", () => {
                     expect(order.commitment.payment).toBe(order.payment);
                     // THE MERKLE-LEAF SEAM: the commerce section's currency leaf
                     // never diverges from the commitment struct, on every order.
-                    const commerce = order.agreement.sections.find((s) => s.clause === "figaro-commerce");
+                    const commerce = order.agreement.sections.find((s) => s.clause === keyOf("figaro-commerce"));
                     expect(commerce?.data.currency).toBe(order.commitment.currency);
                 }
                 // The final order's total is the sum of ALL node payments.
@@ -139,12 +139,12 @@ describe("reconstructOrdersFromTemplate — payment conservation", () => {
                 const hashOf = new Map(orders.map((o) => [o.nodeId, o.orderHash]));
                 for (const order of orders) {
                     const i = Number(order.nodeId.slice(1));
-                    const topo = order.agreement.sections.find((s) => s.clause === "figaro-topology");
+                    const topo = order.agreement.sections.find((s) => s.clause === keyOf("figaro-topology"));
                     expect(topo?.data.parentOrderHashes).toEqual(
                         parents[i].map((p) => hashOf.get(`n${p}`)),
                     );
                     // THE MERKLE-LEAF SEAM: same guarantee on this property too.
-                    const commerce = order.agreement.sections.find((s) => s.clause === "figaro-commerce");
+                    const commerce = order.agreement.sections.find((s) => s.clause === keyOf("figaro-commerce"));
                     expect(commerce?.data.currency).toBe(order.commitment.currency);
                 }
             }),
@@ -153,7 +153,7 @@ describe("reconstructOrdersFromTemplate — payment conservation", () => {
 });
 
 describe("resolveSubOrderPricing — replay invariant", () => {
-    const node: TemplateAgreement = { id: "R", clauses: { "figaro-commerce": {} } };
+    const node: TemplateAgreement = { id: "R", clauses: { [keyOf("figaro-commerce")]: {} } };
 
     it("fixed items: payment = unitPrice, billedQuantity = 1, exactly the published price", () => {
         fc.assert(

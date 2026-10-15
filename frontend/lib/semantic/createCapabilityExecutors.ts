@@ -16,7 +16,6 @@
 import { type Hex } from "viem";
 import {
     PROVENANCE_LEAF_KEY,
-    computeClauseKey,
     provenanceSectionBytes,
     type Agreement,
     type Commitment,
@@ -126,7 +125,7 @@ export function createCapabilityExecutors(deps: CapabilityExecutorDeps) {
             let skipped = 0;
             let assemblyRecorded = false;
             for (const write of plan) {
-                const label = write.kind === "clause" ? write.clause : `assembly ${write.key}`;
+                const label = write.kind === "clause" ? (getClauseSpec(write.key)?.title ?? `clause ${write.key}`) : `assembly ${write.key}`;
                 try {
                     if (write.kind === "clause") await deps.simulateClauseUsage(write.order, write.key, write.sectionHash, write.proof);
                     else await deps.simulateAssemblyUsage(write.order, write.key, write.proof);
@@ -188,11 +187,10 @@ export function createCapabilityExecutors(deps: CapabilityExecutorDeps) {
         action: SubmitClauseAttestationCapabilityAction,
         values?: Record<string, unknown>,
     ) => {
-        // The exact spec the agreement committed (name + version): a later
-        // registered version keys a different clause hash the signed
-        // agreement never committed.
-        const spec = getClauseSpec(action.clauseId, action.version);
-        if (!spec) throw new Error(`Clause spec not loaded: ${action.clauseId} v${action.version}`);
+        // The exact spec the agreement committed — its key; another spec of
+        // the same name is another key the signed agreement never committed.
+        const spec = getClauseSpec(action.clauseKey);
+        if (!spec) throw new Error(`Clause spec not loaded: ${action.clauseKey}`);
         const isLadder = action.ladderField !== undefined && action.eventCode !== undefined;
         let content: Hex | undefined;
         if (action.reasserts) {
@@ -222,10 +220,10 @@ export function createCapabilityExecutors(deps: CapabilityExecutorDeps) {
         }
         const args: AttestationSubmitArgs = {
             orderHash: action.orderHash as Hex,
-            clauseId: computeClauseKey(action.clauseId, spec.version),
+            clauseId: action.clauseKey as Hex,
             stage: action.stage,
             content,
-            failureMessage: `${action.clauseId} ${action.eventCode ?? (action.reasserts ? "re-assert" : `stage-${action.stage}`)} attestation failed`,
+            failureMessage: `${spec.title} ${action.eventCode ?? (action.reasserts ? "re-assert" : `stage-${action.stage}`)} attestation failed`,
         };
         // Chain of custody is READER-DERIVED: a diary event is one
         // holder's own entry, and any transfer-evidence witness (e.g. the

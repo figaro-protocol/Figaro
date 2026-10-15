@@ -7,8 +7,11 @@
  * re-implemented).
  *
  * The profile document is the MEMBER's own declaration (SDK
- * `MemberProfileMetadata`; only `name` is required) and is validated with the
- * SDK parser before it is pinned. Every member registers from ITS OWN wallet
+ * `MemberProfileMetadata`; only `name` is required). It is authored by clause
+ * NAME (`name` or `name@version`); every name is resolved to the key of the
+ * spec in `clauses/` it names (`resolveAuthoredClauseKeys`) and the result is
+ * validated with the SDK parser before it is pinned, so the pinned profile
+ * carries keys. Every member registers from ITS OWN wallet
  * with ITS OWN stake (RELEASE_READINESS Task 13): the founder direct from the
  * Ledger, the DAO through its vault from the vault's balance, a stranger from
  * theirs. One registrar per invocation:
@@ -30,9 +33,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createPublicClient, createWalletClient, encodeFunctionData, http } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
-import { MEMBERS_REGISTRY_ABI, parseMemberProfileDocument } from '@figaro-protocol/sdk';
+import { MEMBERS_REGISTRY_ABI, parseMemberProfileDocument, resolveAuthoredClauseKeys } from '@figaro-protocol/sdk';
 import {
-    VAULT_ABI, ledgerWalletClient, pinJSON, pinService, readEnvLocal, registrarAccount, resolveChain, vaultExecute,
+    VAULT_ABI, ledgerWalletClient, loadAuthoredSpecs, pinJSON, pinService, readEnvLocal, registrarAccount, resolveChain, vaultExecute,
 } from './populate-clauses.mjs';
 
 const RPC_URL = process.env.RPC_URL ?? 'http://127.0.0.1:8545';
@@ -44,7 +47,9 @@ async function main() {
     if (!registry) throw new Error('NEXT_PUBLIC_MEMBERS_REGISTRY missing — deploy the contracts first.');
     const profilePath = process.env.MEMBER_PROFILE;
     if (!profilePath) throw new Error('MEMBER_PROFILE (path to the profile JSON) is required');
-    const raw = JSON.parse(fs.readFileSync(path.resolve(profilePath), 'utf8'));
+    const authored = JSON.parse(fs.readFileSync(path.resolve(profilePath), 'utf8'));
+    // Seed time: the authored clause names become the keys of the loaded specs.
+    const raw = resolveAuthoredClauseKeys(authored, loadAuthoredSpecs());
     // Strict SDK parse: a malformed profile fails HERE, not in every reader.
     const profile = parseMemberProfileDocument(raw);
 

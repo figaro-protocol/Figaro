@@ -12,9 +12,9 @@
 <li><a href="" aria-current="page">PROVENANCE_LEAF_LABEL</a></li></ul>
 <h1>Variable PROVENANCE_LEAF_LABEL<code class="tsd-tag">Const</code></h1></div>
 <div class="tsd-signature"><span class="tsd-kind-variable">PROVENANCE_LEAF_LABEL</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">&quot;figaro-agreement-provenance&quot;</span></div>
-<div class="tsd-comment tsd-typography"><p>The label the reserved leaf's key is the hash of. Not a clause id: a
-registered clause's key is <code>keccak256(abi.encode(name, version))</code>, this
-is <code>keccak256(bytes(label))</code>, and the two preimage shapes never meet.</p>
+<div class="tsd-comment tsd-typography"><p>The label the reserved leaf's key is the hash of. Not a clause: a clause's
+key is <code>keccak256</code> of its pinned spec bytes (a JSON object), this is
+<code>keccak256(bytes(label))</code> of a bare string no spec serializes to.</p>
 </div><aside class="tsd-sources">
 <ul>
 <li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/agreement.ts#L82">agreement.ts:82</a></li></ul></aside></div>

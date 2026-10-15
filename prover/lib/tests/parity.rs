@@ -8,7 +8,7 @@ use alloy_primitives::{address, b256, Address, B256, U256, keccak256};
 use k256::ecdsa::SigningKey;
 
 use figaro_kernel::eip712::*;
-use figaro_kernel::kernel::{apply_batch, clause_id_hash, compute_spec_bindings_hash};
+use figaro_kernel::kernel::{apply_batch, compute_spec_bindings_hash};
 use figaro_kernel::types::*;
 
 // ── Witness-spec helpers ──────────────────────────────────────────
@@ -22,7 +22,35 @@ fn load_spec_json(clause_id_str: &str) -> String {
     p.pop(); // repo root
     p.push("clauses");
     p.push(format!("{clause_id_str}.json"));
-    std::fs::read_to_string(&p).unwrap_or_else(|e| panic!("read {}: {e}", p.display()))
+    let raw = std::fs::read_to_string(&p).unwrap_or_else(|e| panic!("read {}: {e}", p.display()));
+    // The pinned bytes: the SDK's `canonicalize` — keys sorted at every
+    // depth (serde_json's default map is sorted), compact. The specs loaded
+    // here carry no array-index keys, which `JSON.stringify` would order
+    // first; `sdk_clause_key` pins the result to the SDK's key.
+    let value: serde_json::Value = serde_json::from_str(&raw).expect("spec JSON");
+    let canonical = serde_json::to_string(&value).expect("serialize");
+    assert_eq!(
+        keccak256(canonical.as_bytes()),
+        sdk_clause_key(clause_id_str),
+        "{clause_id_str}: the loaded bytes are the pinned bytes"
+    );
+    canonical
+}
+
+/// The SDK's key for a clause in `clauses/`, from the harvested
+/// `test/fixtures/clause-keys.json`.
+fn sdk_clause_key(clause_id_str: &str) -> B256 {
+    let mut p = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    p.pop(); // prover/
+    p.pop(); // repo root
+    p.push("test/fixtures/clause-keys.json");
+    let text = std::fs::read_to_string(&p).unwrap_or_else(|e| panic!("read {}: {e}", p.display()));
+    let keys: serde_json::Value = serde_json::from_str(&text).expect("fixture JSON");
+    keys[clause_id_str]
+        .as_str()
+        .unwrap_or_else(|| panic!("{clause_id_str} is not in the fixture"))
+        .parse()
+        .expect("bytes32")
 }
 
 fn parse_spec(spec_json: &str) -> figaro_clause::ClauseSpec {
@@ -189,25 +217,6 @@ fn test_ecdsa_recovery() {
     let digest = typed_data_hash(&domain, &struct_hash);
     let recovered = recover_signer(&digest, &sig).unwrap();
     assert_eq!(recovered, BUYER, "ECDSA recovery failed for buyer");
-}
-
-#[test]
-fn test_clause_id_hash_matches_registry() {
-    // keccak256(abi.encode("figaro-modalities", uint64(1))) — computed
-    // with Solidity abi.encode semantics; the identity key every event
-    // and the registry share.
-    let expected = {
-        // Hand-check the layout: [0x40][1][17]["figaro-modalities" padded]
-        let mut data = Vec::new();
-        data.extend_from_slice(&U256::from(0x40u64).to_be_bytes::<32>());
-        data.extend_from_slice(&U256::from(1u64).to_be_bytes::<32>());
-        data.extend_from_slice(&U256::from(17u64).to_be_bytes::<32>());
-        let mut name = b"figaro-modalities".to_vec();
-        name.resize(32, 0);
-        data.extend_from_slice(&name);
-        keccak256(&data)
-    };
-    assert_eq!(clause_id_hash("figaro-modalities", 1), expected);
 }
 
 // ── Full-batch mirror flows ───────────────────────────────────────
@@ -399,8 +408,8 @@ struct AttestFixture {
 
 fn attest_fixture() -> AttestFixture {
     let spec_json = load_spec_json("figaro-modalities");
-    let spec = parse_spec(&spec_json);
-    let clause_key = clause_id_hash(&spec.clause_id, spec.version);
+    // The clause key is keccak256 of the spec bytes the witness carries.
+    let clause_key = keccak256(spec_json.as_bytes());
     let leaf = section_leaf(&clause_key, SECTION_DATA);
 
     let root = Commitment {
@@ -519,13 +528,18 @@ fn attest_as_seller_runtime_witness_passes_all_gates() {
     assert_eq!(e.clause_id, f.clause_key);
     assert_eq!(e.content_ref, content_ref);
 
-    // The spec binding is committed for on-chain verification against
-    // ClauseRegistry.contentHashOf.
+    // The spec binding is committed for on-chain verification: both
+    // fields are the clause key, which the verifier checks is
+    // ClauseRegistry.registered.
     assert_eq!(events.spec_bindings.len(), 1);
     assert_eq!(events.spec_bindings[0].clause_id, f.clause_key);
     assert_eq!(
         events.spec_bindings[0].spec_hash,
         keccak256(f.spec_json.as_bytes())
+    );
+    assert_eq!(
+        events.spec_bindings[0].spec_hash, events.spec_bindings[0].clause_id,
+        "the clause key is the spec hash"
     );
     assert_eq!(
         pv.spec_bindings_hash,
@@ -650,6 +664,26 @@ fn attest_spec_identity_mismatch_fails() {
     let wrong_spec = load_spec_json("figaro-handoff");
     let (mut proof, content_ref) = runtime_witness_proof(&f);
     proof.spec_json = wrong_spec;
+    let seller1_key = make_signing_key(SELLER1_KEY);
+    let op = seller_attest_op(&f, proof, content_ref, &seller1_key);
+
+    match run_attest_batch(&f, op) {
+        Err(KernelError::SpecIdentityMismatch(_)) => {}
+        other => panic!("expected SpecIdentityMismatch, got {other:?}"),
+    }
+}
+
+#[test]
+fn attest_lookalike_spec_under_the_same_name_fails() {
+    // A spec carrying the same clauseId and version as the registered one,
+    // one byte apart, is another clause: its bytes hash to another key.
+    let f = attest_fixture();
+    let (mut proof, content_ref) = runtime_witness_proof(&f);
+    proof.spec_json.push('\n');
+    let lookalike = parse_spec(&proof.spec_json);
+    let original = parse_spec(&f.spec_json);
+    assert_eq!(lookalike.clause_id, original.clause_id);
+    assert_eq!(lookalike.version, original.version);
     let seller1_key = make_signing_key(SELLER1_KEY);
     let op = seller_attest_op(&f, proof, content_ref, &seller1_key);
 

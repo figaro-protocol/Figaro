@@ -1,13 +1,14 @@
 /**
  * The corpus reads each designer's utility-token pin off the loaded templates
- * at the version the template composed for the clause (`templateClauseVersion`
- * over the template's own sparse `clauseVersions` — absent = 1), never at
- * version 1 regardless: a v2 composition's pin lives in the v2 spec's fields.
+ * from the spec each composed key names: two specs of one name are two keys,
+ * and a template composed under the spec whose `currency` is a design fill
+ * carries a pin, while one composed under the spec that leaves it plain
+ * content carries none.
  */
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { PROVENANCE_LEAF_KEY, canonicalContentHash, provenanceContentRef } from "@figaro-protocol/sdk";
+import { PROVENANCE_LEAF_KEY, provenanceContentRef } from "@figaro-protocol/sdk";
 import type { OverlayGraph } from "@figaro-protocol/sdk/derive";
 import { attributionFromOverlays, readTemplateUtilityTokenPins } from "@/lib/data/graphCorpus";
 import {
@@ -16,38 +17,38 @@ import {
     setClauseSpecFetcher,
     specSource,
 } from "@/lib/shared/clauseSpecSource";
+import { pinSpec } from "./primeClauseSpecs";
 
-const UTILITY_TOKEN = "figaro-utility-token";
 const TOKEN = "0x2222222222222222222222222222222222222222" as const;
-const canonical = JSON.parse(readFileSync(path.resolve(process.cwd(), `../clauses/${UTILITY_TOKEN}.json`), "utf8"));
+const canonical = JSON.parse(readFileSync(path.resolve(process.cwd(), "../clauses/figaro-utility-token.json"), "utf8"));
 // v1 declares `currency` as plain content (no design fill), so it is never a
 // pin; v2 declares it as the designer fill, so it is one.
-const v1 = { ...canonical, version: 1, block: { ...canonical.block, design: { ...canonical.block.design, fills: [] } } };
-const v2 = { ...canonical, version: 2 };
+const V1 = pinSpec({ ...canonical, version: 1, block: { ...canonical.block, design: { ...canonical.block.design, fills: [] } } });
+const V2 = pinSpec({ ...canonical, version: 2 });
 
 type Templates = Parameters<typeof readTemplateUtilityTokenPins>[0];
-const template = (clauseVersions?: Record<string, number>): Templates[number] => ({
+const template = (clauseKey: string): Templates[number] => ({
     compositionHash: `0x${"ab".repeat(32)}`,
     name: "pinned",
-    clauseSets: [{ clauses: { [UTILITY_TOKEN]: { currency: TOKEN } }, ...(clauseVersions && { clauseVersions }) }],
+    clauseSets: [{ clauses: { [clauseKey]: { currency: TOKEN } } }],
 });
 
-describe("readTemplateUtilityTokenPins — the pin read at the composed version", () => {
+describe("readTemplateUtilityTokenPins — the pin read from the composed key's spec", () => {
     beforeAll(async () => {
         _resetClauseSpecCache_TESTING_ONLY();
-        const docs: Record<string, unknown> = { "v1.json": v1, "v2.json": v2 };
+        const docs: Record<string, string> = { "v1.json": V1.bytes, "v2.json": V2.bytes };
         setClauseSpecFetcher(async (uri) => docs[uri]);
-        await loadClauseSpec(UTILITY_TOKEN, 1, "v1.json", canonicalContentHash(v1));
-        await loadClauseSpec(UTILITY_TOKEN, 2, "v2.json", canonicalContentHash(v2));
+        await loadClauseSpec(V1.clauseKey, "v1.json");
+        await loadClauseSpec(V2.clauseKey, "v2.json");
     });
     afterAll(() => _resetClauseSpecCache_TESTING_ONLY());
 
-    it("yields the v2 pin when the template's clauseVersions names v2 for the utility-token clause", () => {
-        expect(readTemplateUtilityTokenPins([template({ [UTILITY_TOKEN]: 2 })], specSource())).toEqual([TOKEN]);
+    it("yields the pin when the template composes the key of the spec that fills currency", () => {
+        expect(readTemplateUtilityTokenPins([template(V2.clauseKey)], specSource())).toEqual([TOKEN]);
     });
 
-    it("reads the clause at v1 when the template's clauseVersions omits it, and v1 declares no pin", () => {
-        expect(readTemplateUtilityTokenPins([template()], specSource())).toEqual([]);
+    it("yields none when the template composes the key of the spec that leaves currency plain", () => {
+        expect(readTemplateUtilityTokenPins([template(V1.clauseKey)], specSource())).toEqual([]);
     });
 });
 

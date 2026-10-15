@@ -20,7 +20,7 @@ import {
 } from "@/lib/audit/signatureVerdicts";
 import { CredentialVerifyButton } from "@/components/runtime/CredentialVerifyButton";
 import { extractProcessLogs } from "@/lib/audit/processLogsExtract";
-import { clauseIdForHash, clauseWitnessStages, describeAttestation, describeWitness, getClauseSpec } from "@/lib/shared/clauseSpecSource";
+import { clauseWitnessStages, describeAttestation, describeWitness, getClauseSpec } from "@/lib/shared/clauseSpecSource";
 import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
 
 /**
@@ -198,7 +198,7 @@ export function ProcessClauseEvidence({ processId }: { processId: string }) {
     // absent — the receipt row still renders the fingerprint; a party holding
     // the preimage proves the match off-chain.
     //
-    // Keyed by (clause hash, stage, contentRef) — NEVER the fingerprint alone:
+    // Keyed by (clause key, stage, contentRef) — NEVER the fingerprint alone:
     // the same bytes decode differently under different field sets, and two
     // clauses can legitimately fingerprint identical bytes (a ladder event's
     // `(uint8 0, "")` is byte-identical to a witness's first-ordinal enum with
@@ -213,13 +213,9 @@ export function ProcessClauseEvidence({ processId }: { processId: string }) {
             for (const records of attestationsByOrder.values()) {
                 for (const att of records) {
                     if (!att.contentRef) continue;
-                    // The event carries the clause HASH, which names one
-                    // registration; spec reads key on its (clauseId, version).
-                    const identity = clauseIdForHash(att.clauseId);
-                    if (!identity) continue;
-                    const { clauseId, version } = identity;
-                    if (!clauseWitnessStages(clauseId, version).some((w) => w.stage === att.stage)) continue;
-                    const witnessSpec = getClauseSpec(clauseId, version);
+                    // The event carries the clause KEY; spec reads key on it.
+                    if (!clauseWitnessStages(att.clauseId).some((w) => w.stage === att.stage)) continue;
+                    const witnessSpec = getClauseSpec(att.clauseId);
                     if (!witnessSpec) continue;
                     const key = `${att.clauseId.toLowerCase()}:${att.stage}:${att.contentRef}`;
                     if (next.has(key)) continue;
@@ -297,7 +293,7 @@ export function ProcessClauseEvidence({ processId }: { processId: string }) {
                             {clauseData && clauseData.clauses.length > 0 && (
                                 <div className="space-y-4">
                                     {clauseData.clauses.map((clause) => (
-                                        <div key={`data-${clause.clauseId}`} className="space-y-2">
+                                        <div key={`data-${clause.clauseKey}`} className="space-y-2">
                                             <h3 className="text-sm font-semibold text-ink-heading">{clause.title}</h3>
                                             {clause.fields.length === 0 ? (
                                                 <p className="text-sm text-ink-muted">Committed with no field values.</p>
@@ -322,17 +318,17 @@ export function ProcessClauseEvidence({ processId }: { processId: string }) {
                             )}
 
                             {processLogs.logs.map((group) => (
-                                <div key={`log-${group.clauseHash}`} className="space-y-2">
+                                <div key={`log-${group.clauseKey}`} className="space-y-2">
                                     <h3 className="text-sm font-semibold text-ink-heading">{group.title}</h3>
                                     <ul className="space-y-1 text-sm">
                                         {group.events.map((event, i) => {
-                                            const decoded = witnessValues.get(`${group.clauseHash}:${event.stage}:${event.contentRef}`);
-                                            const witness = decoded ? describeWitness(group.clauseId, event.stage, decoded, group.version) : null;
+                                            const decoded = witnessValues.get(`${group.clauseKey}:${event.stage}:${event.contentRef}`);
+                                            const witness = decoded ? describeWitness(group.clauseKey, event.stage, decoded) : null;
                                             return (
-                                                <li key={`${group.clauseHash}-${i}`} className="text-ink-body">
+                                                <li key={`${group.clauseKey}-${i}`} className="text-ink-body">
                                                     <div className="flex flex-wrap gap-x-3">
                                                         <span className="text-ink-heading">
-                                                            {describeAttestation(group.clauseHash, event.stage).eventLabel}
+                                                            {describeAttestation(group.clauseKey, event.stage).eventLabel}
                                                         </span>
                                                         <span className="text-ink-muted font-mono text-xs break-all">
                                                             {event.attester}
@@ -346,7 +342,7 @@ export function ProcessClauseEvidence({ processId }: { processId: string }) {
                                                         holding the preimage proves the match off-chain. */}
                                                     <dl
                                                         className="mt-1 ml-4 grid grid-cols-[max-content_1fr] gap-x-6 gap-y-0.5 text-xs"
-                                                        data-testid={`audit-content-ref-${group.clauseId}-${event.stage}`}
+                                                        data-testid={`audit-content-ref-${group.clauseKey}-${event.stage}`}
                                                     >
                                                         <dt className="text-ink-muted">Content fingerprint</dt>
                                                         <dd className="text-ink-body font-mono break-all">{event.contentRef}</dd>
@@ -359,7 +355,7 @@ export function ProcessClauseEvidence({ processId }: { processId: string }) {
                                                     {witness && witness.fields.length > 0 && (
                                                         <dl
                                                             className="mt-1 ml-4 grid grid-cols-[max-content_1fr] gap-x-6 gap-y-0.5 text-xs"
-                                                            data-testid={`audit-witness-${group.clauseId}-${event.stage}`}
+                                                            data-testid={`audit-witness-${group.clauseKey}-${event.stage}`}
                                                         >
                                                             {witness.fields.map((field) => (
                                                                 <div key={field.name} className="contents">

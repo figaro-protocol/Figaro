@@ -17,8 +17,8 @@
  *   2. each in-flight order carries an `agreementHash`; the caller fetches the
  *      pinned, hash-verified agreement document for it (the SDK stays viem-only
  *      and does no IPFS I/O — the frontend's `fetchAgreement` is that fetch);
- *   3. the agreement NAMES the clauses it composes — `Agreement.sections[].clause`
- *      (paired with `.version` for the on-chain id). There is NO stored assembly
+ *   3. the agreement NAMES the clauses it composes — `Agreement.sections[].clause`,
+ *      each the clause's key. There is NO stored assembly
  *      reference on the committed agreement, so an assembly is attributed
  *      STRUCTURALLY: its template's per-node clause composition (the set of
  *      `TemplateAgreement.clauses` keys) is fingerprinted and matched against
@@ -118,14 +118,12 @@ function gate(inFlightCount: number, unverifiedCount: number): WithdrawGate {
 
 /**
  * Withdraw gate for a CLAUSE. A trade composes the clause iff its
- * agreement names it (`sections[].clause`). Counted per order — each committed
- * order is a distinct live commitment bound to the clause. Version-agnostic by
- * design: withdrawing a registration de-surfaces the clause for NEW
- * compositions regardless of which live version an in-flight trade pinned, and a
- * stake is reclaimable only once every trade naming that clause id has resolved.
+ * agreement names its key (`sections[].clause`). Counted per order — each
+ * committed order is a distinct live commitment bound to the clause; a stake is
+ * reclaimable only once every trade naming that key has resolved.
  */
 export function deriveClauseWithdrawGate(
-    clauseId: string,
+    clauseKey: Hex,
     agreements: readonly InFlightAgreement[],
 ): WithdrawGate {
     let inFlightCount = 0;
@@ -135,16 +133,16 @@ export function deriveClauseWithdrawGate(
             unverifiedCount += 1;
             continue;
         }
-        if (entry.agreement.sections.some((s) => s.clause === clauseId)) {
+        if (entry.agreement.sections.some((s) => s.clause.toLowerCase() === clauseKey.toLowerCase())) {
             inFlightCount += 1;
         }
     }
     return gate(inFlightCount, unverifiedCount);
 }
 
-/** The sorted clause ids one node composes — its structural signature. */
-function nodeSignature(clauseIds: readonly string[]): string {
-    return [...clauseIds].sort().join("|");
+/** The sorted clause keys one node composes — its structural signature. */
+function nodeSignature(clauseKeys: readonly string[]): string {
+    return [...new Set(clauseKeys.map((k) => k.toLowerCase()))].sort().join("|");
 }
 
 /** An assembly's structural fingerprint: the sorted multiset of its nodes'
@@ -158,11 +156,9 @@ function nodeSignature(clauseIds: readonly string[]): string {
  *  can never match a real process — which is precisely the bug this comment
  *  guards against recurring. */
 function assemblyFingerprint(template: AssemblyTemplate): string[] {
-    const assemblyClauseIds = Object.keys(template.assemblyClauses ?? {});
+    const assemblyClauseKeys = Object.keys(template.assemblyClauses ?? {});
     return template.agreements
-        .map((node) => nodeSignature([
-            ...new Set([...assemblyClauseIds, ...Object.keys(node.clauses)]),
-        ]))
+        .map((node) => nodeSignature([...assemblyClauseKeys, ...Object.keys(node.clauses)]))
         .sort();
 }
 

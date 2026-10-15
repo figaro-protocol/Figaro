@@ -8,7 +8,7 @@ import { isAddress } from "viem";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { ZERO_ADDRESS, hexEqual } from "@/lib/shared/evm";
-import { memberDocumentClauseSpec } from "@/lib/shared/clauseSpecSource";
+import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
 import { useMounted } from "@/hooks/useMounted";
 import { onboardingNextHref, onboardingPrevHref, useOnboardingState } from "@/lib/member/onboardingState";
 import type {
@@ -176,12 +176,12 @@ export function OnboardingAssembliesForm({
     }
 
     const updateCounterparties = useCallback(
-        (slug: string, clauseId: string, addresses: `0x${string}`[]) => {
+        (slug: string, clauseKey: `0x${string}`, addresses: `0x${string}`[]) => {
             setCounterpartiesBySlug((prev) => {
                 const next = new Map(prev);
-                const existing = (next.get(slug) ?? []).filter((cb) => cb.clauseId !== clauseId);
+                const existing = (next.get(slug) ?? []).filter((cb) => cb.clauseKey.toLowerCase() !== clauseKey.toLowerCase());
                 if (addresses.length > 0) {
-                    existing.push({ clauseId, addresses });
+                    existing.push({ clauseKey, addresses });
                 }
                 if (existing.length > 0) next.set(slug, existing);
                 else next.delete(slug);
@@ -264,16 +264,16 @@ export function OnboardingAssembliesForm({
                                     className="mt-4 pt-4 border-t border-default space-y-4"
                                     data-testid={`seller-assembly-counterparties-${choice.slug}`}
                                 >
-                                    {requiredClauses.map((clauseId) => {
-                                        const entry = counterparties.find((cb) => cb.clauseId === clauseId);
+                                    {requiredClauses.map((clauseKey) => {
+                                        const entry = counterparties.find((cb) => cb.clauseKey.toLowerCase() === clauseKey.toLowerCase());
                                         const addresses = entry?.addresses ?? [];
                                         return (
                                             <CounterpartyClauseEditor
-                                                key={clauseId}
-                                                clauseId={clauseId}
+                                                key={clauseKey}
+                                                clauseKey={clauseKey}
                                                 addresses={addresses}
                                                 onChange={(next) =>
-                                                    updateCounterparties(choice.slug, clauseId, next)
+                                                    updateCounterparties(choice.slug, clauseKey as `0x${string}`, next)
                                                 }
                                             />
                                         );
@@ -293,7 +293,7 @@ export function OnboardingAssembliesForm({
                 Identity, where nothing is bound yet. Stored on the profile
                 draft, which is the document they belong to. */}
             <ProfileClauseValues
-                clauseIds={[...new Set(
+                clauseKeys={[...new Set(
                     choices.filter((c) => selected.has(c.slug)).flatMap((c) => c.clauses ?? []),
                 )]}
                 values={state.profile?.profileClauseValues ?? {}}
@@ -343,15 +343,15 @@ export function OnboardingAssembliesForm({
  *  shape validation (viem `isAddress`) only; MembersRegistry-membership
  *  lookup is deferred. */
 function CounterpartyClauseEditor({
-    clauseId,
+    clauseKey,
     addresses,
     onChange,
 }: {
-    clauseId: string;
+    clauseKey: string;
     addresses: `0x${string}`[];
     onChange: (next: `0x${string}`[]) => void;
 }) {
-    const heading = memberDocumentClauseSpec(clauseId)?.title ?? clauseId;
+    const heading = getClauseSpec(clauseKey)?.title ?? clauseKey;
     // Local rows include in-progress (typed but not yet valid) entries.
     // Always pad with one trailing empty row so the user has somewhere
     // to add a new address.
@@ -426,7 +426,7 @@ function CounterpartyClauseEditor({
                                 className={`flex-1 text-xs font-mono px-2 py-1.5 rounded border min-h-9 ${
                                     valid ? "border-default" : "border-error"
                                 }`}
-                                data-testid={`counterparty-${clauseId}-input-${i}`}
+                                data-testid={`counterparty-${clauseKey}-input-${i}`}
                             />
                             {rows.length > 1 && (
                                 <button
@@ -434,7 +434,7 @@ function CounterpartyClauseEditor({
                                     onClick={() => removeRow(i)}
                                     className="text-xs text-ink-faint hover:text-error-fg px-2"
                                     aria-label={`Remove address ${i + 1}`}
-                                    data-testid={`counterparty-${clauseId}-remove-${i}`}
+                                    data-testid={`counterparty-${clauseKey}-remove-${i}`}
                                 >
                                     ×
                                 </button>
@@ -446,7 +446,7 @@ function CounterpartyClauseEditor({
                     type="button"
                     onClick={addRow}
                     className="text-xs text-ink-faint hover:text-ink-heading"
-                    data-testid={`counterparty-${clauseId}-add`}
+                    data-testid={`counterparty-${clauseKey}-add`}
                 >
                     + Add another
                 </button>

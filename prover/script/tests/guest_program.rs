@@ -119,7 +119,7 @@ async fn guest_program_rejects_corrupt_buyer_signature_on_commit() {
 async fn guest_program_rejects_substituted_witness_spec() {
     // Gate S inside the VM: swapping the witness spec for a different
     // clause's spec (a permissive-spec substitution) must kill the batch —
-    // the spec's (clauseId, version) no longer hash to the op's clause key.
+    // the spec's bytes no longer hash to the op's clause key.
     let mut input = build_canonical_batch_input();
     let wrong_spec = load_spec_json("figaro-handoff");
     match &mut input.operations[1] {

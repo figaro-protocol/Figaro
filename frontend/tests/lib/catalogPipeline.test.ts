@@ -246,7 +246,8 @@ describe("catalog parser — physical dims + clauseValues survive the round-trip
 
     it("carries the catalog-sourced clauseValues map through a parse", () => {
         const clauseValues = {
-            "figaro-hazmat": { unNumber: "UN1203", properShippingName: "Petrol", hazardClass: "3" },
+            // Keyed by clause key — the hash of the pinned spec bytes.
+            [`0x${"4a".repeat(32)}`]: { unNumber: "UN1203", properShippingName: "Petrol", hazardClass: "3" },
         };
         const parsed = parseMemberCatalogDocument({
             subjectAddress,

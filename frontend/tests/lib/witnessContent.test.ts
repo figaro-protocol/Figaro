@@ -18,9 +18,9 @@ import {
     publishWitnessContent,
     unpinWitnessContent,
 } from "@/lib/composition/witnessContent";
-import { PROVENANCE_LEAF_KEY, canonicalContentHash, computeClauseKey, provenanceSectionBytes } from "@figaro-protocol/sdk";
+import { PROVENANCE_LEAF_KEY, provenanceSectionBytes } from "@figaro-protocol/sdk";
 import { getClauseSpec, loadClauseSpec, setClauseSpecFetcher } from "@/lib/shared/clauseSpecSource";
-import { primeClauseSpecs } from "./primeClauseSpecs";
+import { keyOf, pinSpec, primeClauseSpecs } from "./primeClauseSpecs";
 
 // Kubo 0.42 golden vector: these exact bytes block/put to this exact Key.
 const GOLDEN_BYTES = new Uint8Array([0, 0, 0, 1, ...new TextEncoder().encode("hello-witness-content")]);
@@ -42,14 +42,16 @@ const PRIVATE_SPEC = {
     },
 };
 
+const PRIVATE = pinSpec(PRIVATE_SPEC);
+
 beforeAll(async () => {
     await primeClauseSpecs(["figaro-proximity-policy"]);
-    setClauseSpecFetcher(async () => PRIVATE_SPEC);
-    await loadClauseSpec("test-private-witness", 1, "mem://test-private-witness", canonicalContentHash(PRIVATE_SPEC));
+    setClauseSpecFetcher(async () => PRIVATE.bytes);
+    await loadClauseSpec(PRIVATE.clauseKey, "mem://test-private-witness");
 });
 
 function proximityContent(): Hex {
-    const spec = getClauseSpec("figaro-proximity-policy", 1);
+    const spec = getClauseSpec(keyOf("figaro-proximity-policy"));
     if (!spec) throw new Error("proximity spec not primed");
     return encodeContentFromSpec(
         spec,
@@ -63,7 +65,7 @@ describe("publishWitnessContent", () => {
         const content = proximityContent();
         const pinKeccakRawBlock = vi.fn().mockResolvedValue("f01551b20" + keccak256(content).slice(2));
         await publishWitnessContent({
-            clauseId: computeClauseKey("figaro-proximity-policy", 1),
+            clauseId: keyOf("figaro-proximity-policy"),
             stage: 1,
             content,
             ipfs: { pinKeccakRawBlock },
@@ -82,7 +84,7 @@ describe("publishWitnessContent", () => {
         expect(witnessContentCidBase32(GOLDEN_REF)).toBe(GOLDEN_KUBO_KEY);
         expect(witnessContentCid(GOLDEN_REF)).toBe("f01551b20" + GOLDEN_REF.slice(2));
         await publishWitnessContent({
-            clauseId: computeClauseKey("figaro-proximity-policy", 1),
+            clauseId: keyOf("figaro-proximity-policy"),
             stage: 1,
             content: toHex(GOLDEN_BYTES),
             ipfs: { pinKeccakRawBlock },
@@ -96,7 +98,7 @@ describe("publishWitnessContent", () => {
         const pinKeccakRawBlock = vi.fn().mockResolvedValue("bafybeisomethingelse");
         const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
         await publishWitnessContent({
-            clauseId: computeClauseKey("figaro-proximity-policy", 1),
+            clauseId: keyOf("figaro-proximity-policy"),
             stage: 1,
             content: proximityContent(),
             ipfs: { pinKeccakRawBlock },
@@ -108,7 +110,7 @@ describe("publishWitnessContent", () => {
     it("withholds private-disposition content — the pin is never attempted", async () => {
         const pinKeccakRawBlock = vi.fn();
         await publishWitnessContent({
-            clauseId: computeClauseKey("test-private-witness", 1),
+            clauseId: PRIVATE.clauseKey,
             stage: 1,
             content: "0x1234",
             ipfs: { pinKeccakRawBlock },
@@ -120,7 +122,7 @@ describe("publishWitnessContent", () => {
         const pinKeccakRawBlock = vi.fn();
         const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
         await publishWitnessContent({
-            clauseId: computeClauseKey("never-loaded-clause", 1),
+            clauseId: `0x${"ee".repeat(32)}`,
             stage: 1,
             content: "0x1234",
             ipfs: { pinKeccakRawBlock },
@@ -134,7 +136,7 @@ describe("publishWitnessContent", () => {
         const pinKeccakRawBlock = vi.fn().mockRejectedValue(new Error("node down"));
         const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
         await expect(publishWitnessContent({
-            clauseId: computeClauseKey("figaro-proximity-policy", 1),
+            clauseId: keyOf("figaro-proximity-policy"),
             stage: 1,
             content: proximityContent(),
             ipfs: { pinKeccakRawBlock },

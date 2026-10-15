@@ -2,6 +2,8 @@
  * referenceAssemblies.test.ts — conformance for the user-onboarding set
  * (`assemblies/*.json`, the sibling of `clauses/`). Each reference assembly
  * is a canonical AssemblyTemplate the populate path anchors at deploy: it
+ * is AUTHORED by clause name and resolved to clause keys over `clauses/` at
+ * seed time (`resolveAuthoredClauseKeys`); resolved, it
  * must parse, hash, resolve its topology, compose only clauses that exist,
  * carry the mandatory clauses on every order, and carry the editorial
  * identity a stranger reads first. Affixed documents must reproduce their
@@ -14,28 +16,26 @@ import { keccak256 } from "viem";
 import { planTemplateOrders, templateCompositionHash } from "@figaro-protocol/sdk";
 import { parseAssemblyTemplateJson } from "@/lib/designer/assemblyTemplateToDraft";
 import type { AssemblyTemplate } from "@/lib/shared/assemblyTemplate";
+import { authoredSpecSet, resolveAuthored } from "./primeClauseSpecs";
 
 const ASSEMBLIES_DIR = path.resolve(process.cwd(), "../assemblies");
-const CLAUSES_DIR = path.resolve(process.cwd(), "../clauses");
 const DOCUMENTS_DIR = path.join(ASSEMBLIES_DIR, "documents");
 
 const referenceFiles = readdirSync(ASSEMBLIES_DIR).filter((f) => f.endsWith(".json")).sort();
-const registeredClauseIds = new Set(
-    readdirSync(CLAUSES_DIR).filter((f) => f.endsWith(".json")).map((f) => f.replace(/\.json$/u, "")),
-);
+const authored = authoredSpecSet().list();
+const registeredClauseKeys = new Set<string>(authored.map((a) => a.clauseKey));
 // Mandatory folds at the level its scope names:
 // agreement-scoped mandatory on every ORDER; an assembly-scoped mandatory
 // clause, when the registry holds one, once in the template's assemblyClauses.
-const mandatorySpecs = readdirSync(CLAUSES_DIR)
-    .filter((f) => f.endsWith(".json"))
-    .map((f) => JSON.parse(readFileSync(path.join(CLAUSES_DIR, f), "utf8")) as { clauseId: string; block?: { design?: { article?: string; scope?: string } } })
-    .filter((s) => s.block?.design?.article === "mandatory");
-const mandatoryClauseIds = mandatorySpecs
-    .filter((s) => s.block?.design?.scope !== "assembly")
-    .map((s) => s.clauseId);
-const assemblyMandatoryClauseIds = mandatorySpecs
-    .filter((s) => s.block?.design?.scope === "assembly")
-    .map((s) => s.clauseId);
+type Design = { block?: { design?: { article?: string; scope?: string } } };
+const mandatorySpecs = authored.filter((a) => (a.spec as Design).block?.design?.article === "mandatory");
+const mandatoryClauseKeys = mandatorySpecs
+    .filter((a) => (a.spec as Design).block?.design?.scope !== "assembly")
+    .map((a) => a.clauseKey);
+const assemblyMandatoryClauseKeys = mandatorySpecs
+    .filter((a) => (a.spec as Design).block?.design?.scope === "assembly")
+    .map((a) => a.clauseKey);
+const consentKey = authored.find((a) => a.clauseId === "figaro-consent")?.clauseKey;
 
 describe("reference assemblies — the onboarding set", () => {
     it("the set exists and carries at least the four ruled scenarios", () => {
@@ -47,7 +47,9 @@ describe("reference assemblies — the onboarding set", () => {
 
     for (const file of referenceFiles) {
         describe(file, () => {
-            const raw = readFileSync(path.join(ASSEMBLIES_DIR, file), "utf8");
+            const authoredRaw = readFileSync(path.join(ASSEMBLIES_DIR, file), "utf8");
+            // The seeding's resolution: names → keys over clauses/.
+            const raw = JSON.stringify(resolveAuthored(JSON.parse(authoredRaw) as object));
 
             it("parses as a sound AssemblyTemplate and its composition hashes", () => {
                 const parsed = parseAssemblyTemplateJson(raw);
@@ -63,14 +65,14 @@ describe("reference assemblies — the onboarding set", () => {
             it("composes only clauses that exist, mandatory clauses on every order", () => {
                 const template = JSON.parse(raw) as AssemblyTemplate;
                 for (const order of template.agreements) {
-                    for (const clauseId of Object.keys(order.clauses)) {
-                        expect(registeredClauseIds.has(clauseId), `${order.id} composes unknown clause ${clauseId}`).toBe(true);
+                    for (const clauseKey of Object.keys(order.clauses)) {
+                        expect(registeredClauseKeys.has(clauseKey), `${order.id} composes unknown clause ${clauseKey}`).toBe(true);
                     }
-                    for (const mandatory of mandatoryClauseIds) {
+                    for (const mandatory of mandatoryClauseKeys) {
                         expect(order.clauses, `${order.id} carries mandatory ${mandatory}`).toHaveProperty(mandatory);
                     }
                 }
-                for (const mandatory of assemblyMandatoryClauseIds) {
+                for (const mandatory of assemblyMandatoryClauseKeys) {
                     expect(
                         (template as { assemblyClauses?: Record<string, unknown> }).assemblyClauses ?? {},
                         `the template carries assembly-mandatory ${mandatory} once, at the assembly level`,
@@ -88,8 +90,9 @@ describe("reference assemblies — the onboarding set", () => {
             it("every affixed document reproduces its committed hash from the shipped bytes", () => {
                 const template = JSON.parse(raw) as AssemblyTemplate;
                 for (const order of template.agreements) {
-                    const documents = (order.clauses["figaro-consent"] as { documents?: Array<{ documentHash?: string; documentUri?: string }> } | undefined)?.documents ?? [];
-                    for (const doc of documents) {
+                    const documents = (consentKey ? order.clauses[consentKey] : undefined) as { documents?: Array<{ documentHash?: string; documentUri?: string }> } | undefined;
+                    const consented = documents?.documents ?? [];
+                    for (const doc of consented) {
                         // The affixed bytes ship beside the set so the pin —
                         // and therefore the composition — reproduces on any
                         // network.

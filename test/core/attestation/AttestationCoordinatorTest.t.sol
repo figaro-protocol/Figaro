@@ -32,17 +32,14 @@ contract AttestationCoordinatorTest is Test {
 
     uint256 constant INITIAL_BALANCE = 10_000 ether;
 
-    string constant LIFECYCLE_CLAUSE_ID = "figaro-courier-process";
-    string constant EMISSIONS_CLAUSE_ID = "figaro-emissions-iso-14064";
-    string constant PROXIMITY_CLAUSE_ID = "figaro-proximity-proof";
-    string constant COMMERCE_CLAUSE_ID = "figaro-commerce";
-    string constant MODALITIES_CLAUSE_ID = "figaro-modalities";
-
-    bytes32 constant LIFECYCLE_CLAUSE = keccak256(abi.encode("figaro-courier-process", uint64(1)));
-    bytes32 constant EMISSIONS_CLAUSE = keccak256(abi.encode("figaro-emissions-iso-14064", uint64(1)));
-    bytes32 constant PROXIMITY_CLAUSE = keccak256(abi.encode("figaro-proximity-proof", uint64(1)));
-    bytes32 constant COMMERCE_CLAUSE = keccak256(abi.encode("figaro-commerce", uint64(1)));
-    bytes32 constant MODALITIES_CLAUSE = keccak256(abi.encode("figaro-modalities", uint64(1)));
+    // Each clause key is keccak256 of a spec's pinned bytes — the registry's one
+    // identity rule. The literals stand in for the canonical spec JSON; the
+    // clauseId/version inside them are presentation nothing here reads.
+    bytes32 constant LIFECYCLE_CLAUSE = keccak256('{"clauseId":"figaro-courier-process","version":1}');
+    bytes32 constant EMISSIONS_CLAUSE = keccak256('{"clauseId":"figaro-emissions-iso-14064","version":1}');
+    bytes32 constant PROXIMITY_CLAUSE = keccak256('{"clauseId":"figaro-proximity-proof","version":1}');
+    bytes32 constant COMMERCE_CLAUSE = keccak256('{"clauseId":"figaro-commerce","version":1}');
+    bytes32 constant MODALITIES_CLAUSE = keccak256('{"clauseId":"figaro-modalities","version":1}');
 
     /// @dev The section/content FINGERPRINT for an empty section — the coordinator
     ///      takes hashes, never preimages, so calldata never carries the plaintext.
@@ -66,13 +63,12 @@ contract AttestationCoordinatorTest is Test {
 
         // ── ClauseRegistry: register all local-commerce clauses ────────
         clauses = new ClauseRegistry(0); // zero-deposit deploy keeps this suite focused on attestation
-        bytes32 testContentHash = keccak256("spec-json");
         string memory testUri = "ipfs://figaro-test-uri";
-        clauses.registerClause(LIFECYCLE_CLAUSE_ID, 1, testContentHash, testUri);
-        clauses.registerClause(EMISSIONS_CLAUSE_ID, 1, testContentHash, testUri);
-        clauses.registerClause(PROXIMITY_CLAUSE_ID, 1, testContentHash, testUri);
-        clauses.registerClause(COMMERCE_CLAUSE_ID, 1, testContentHash, testUri);
-        clauses.registerClause(MODALITIES_CLAUSE_ID, 1, testContentHash, testUri);
+        clauses.registerClause(LIFECYCLE_CLAUSE, testUri);
+        clauses.registerClause(EMISSIONS_CLAUSE, testUri);
+        clauses.registerClause(PROXIMITY_CLAUSE, testUri);
+        clauses.registerClause(COMMERCE_CLAUSE, testUri);
+        clauses.registerClause(MODALITIES_CLAUSE, testUri);
 
         // There is no on-chain clause-content validation: the coordinator
         // merkle-binds each attestation to its signed agreement and content-hash-
@@ -685,7 +681,7 @@ contract AttestationCoordinatorTest is Test {
     // that survive — there is no clause-content validator)
     // ═══════════════════════════════════════════════════════════════
 
-    bytes32 constant UNUSED_CLAUSE = keccak256(abi.encode("figaro-never-registered", uint64(1)));
+    bytes32 constant UNUSED_CLAUSE = keccak256('{"clauseId":"figaro-never-registered","version":1}');
 
     /// @dev An attestation under a clause that is NOT a leaf of the signed
     ///      agreement fails the merkle inclusion check. This is the only

@@ -6,7 +6,7 @@
  * tagged data block (dataChannel.mjs) — never as bare text a model could
  * mistake for instructions. Errors are terse and never echo fetched bytes.
  *
- *   figaro-fetch clause <clauseId> [version]     spec via ClauseRegistry → IPFS
+ *   figaro-fetch clause <clauseKey>              spec via ClauseRegistry → IPFS
  *   figaro-fetch assembly <compositionHash>      template via AssemblyRegistry → IPFS
  *   figaro-fetch profile <address>               profile via MembersRegistry → IPFS
  *   figaro-fetch ipfs <cid>                      raw content by CID
@@ -21,7 +21,7 @@
 import * as fs from "node:fs";
 import { createPublicClient, http } from "viem";
 import {
-    fetchDiscoveryEvents, reconstructDiscovery, computeClauseKey,
+    fetchDiscoveryEvents, reconstructDiscovery,
 } from "@figaro-protocol/sdk";
 import { frame } from "./dataChannel.mjs";
 import { cidOf, fetchIpfsText } from "./ipfsRead.mjs";
@@ -92,15 +92,15 @@ async function main() {
     }
 
     if (mode === "clause") {
-        const clauseId = args[0] ?? fail("usage: figaro-fetch clause <clauseId> [version]");
-        const version = BigInt(args[1] ?? "1");
+        const clauseKey = args[0] ?? fail("usage: figaro-fetch clause <clauseKey>");
+        if (!/^0x[0-9a-fA-F]{64}$/.test(clauseKey)) fail(`a clause is read by its 32-byte key, not by name: ${clauseKey}`);
         const graph = await discovery();
-        const clause = graph.getClause(computeClauseKey(clauseId, version));
-        if (!clause) fail(`clause ${clauseId} v${version} is not live on the registry`);
-        // Verified against the registry's content hash before it is printed:
-        // a gateway can serve any bytes.
+        const clause = graph.getClause(clauseKey);
+        if (!clause) fail(`clause ${clauseKey} is not live on the registry`);
+        // Verified against the clause key (the hash of the pinned bytes)
+        // before it is printed: a gateway can serve any bytes.
         const hit = await fetchAnchoredClauseSpec(clause);
-        if (hit.absent) fail(`clause ${clauseId} v${version}: no anchored spec at ${clause.contentURI} — ${hit.absent} (absence, not the registry's content)`);
+        if (hit.absent) fail(`clause ${clauseKey}: no anchored spec at ${clause.contentURI} — ${hit.absent} (absence, not the registry's content)`);
         console.log(frame({
             source: "clause-registry", refKind: "cid", ref: cidOf(clause.contentURI), content: hit.text,
         }));

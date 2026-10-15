@@ -17,7 +17,7 @@
 <div class="tsd-signature tsd-anchor-link" id="computeusageaccruals"><span class="tsd-kind-call-signature">computeUsageAccruals</span><span class="tsd-signature-symbol">(</span><br/>    <span class="tsd-kind-parameter">records</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-keyword">readonly</span> <a href="../interfaces/index.UsageRecord.html" class="tsd-signature-type tsd-kind-interface">UsageRecord</a><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">batchRecords</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-keyword">readonly</span> <a href="../interfaces/index.BatchUsageRecord.html" class="tsd-signature-type tsd-kind-interface">BatchUsageRecord</a><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">minSellers</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">bigint</span><span class="tsd-signature-symbol">,</span><br/><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">Map</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">,</span> <a href="../interfaces/index.UsagePeriodAccrual.html" class="tsd-signature-type tsd-kind-interface">UsagePeriodAccrual</a><span class="tsd-signature-symbol">&gt;</span><a href="#computeusageaccruals" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
 <div class="tsd-description">
 <div class="tsd-comment tsd-typography"><p>Replay the counter's counting rules over a record stream: idempotence per
-(clause or assembly, process) — GLOBAL, so a process counts once ever and a later
+((kind, key), process) — GLOBAL, so a process counts once ever and a later
 period is never paid for an earlier period's trade — then the
 distinct-STAKED-SELLER count PER PERIOD (breadth counts
 only what a stake has priced; pairs were free to mint on the buyer side)
@@ -34,7 +34,7 @@ specific deployment.</p>
 <li><span><span class="tsd-kind-parameter">minSellers</span>: <span class="tsd-signature-type">bigint</span><span class="tsd-signature-symbol"> = RPGF_MIN_SELLERS</span></span></li></ul></div>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Map</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">,</span> <a href="../interfaces/index.UsagePeriodAccrual.html" class="tsd-signature-type tsd-kind-interface">UsagePeriodAccrual</a><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/rpgf/index.ts#L162">rpgf/index.ts:162</a></li></ul></aside></div></li></ul></section></div>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/rpgf/index.ts#L205">rpgf/index.ts:205</a></li></ul></aside></div></li></ul></section></div>
 <div class="col-sidebar">
 <div class="page-menu">
 <div class="tsd-navigation settings">

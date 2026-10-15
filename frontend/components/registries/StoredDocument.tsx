@@ -31,7 +31,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Disclosure } from "@/components/ui/Disclosure";
-import { DEFAULT_IPFS_SERVICE, fetchCappedContent } from "@/lib/shared/ipfsService";
+import { DEFAULT_IPFS_SERVICE, fetchCappedBinary } from "@/lib/shared/ipfsService";
 import {
     STORED_DOCUMENT_NOTE,
     storedDocument,
@@ -76,15 +76,16 @@ export function StoredDocument({ id, contentURI, anchoredHash, anchor }: StoredD
                 return;
             }
             try {
-                const response = await fetchCappedContent(url);
+                // Byte-exact: a clause key is the hash of the pinned bytes
+                // themselves, so the verdict is computed over what was served.
+                const response = await fetchCappedBinary(url);
                 if (canceled) return;
-                if (!response.ok) {
+                if (!response.ok || response.bytes === null) {
                     setRead({ state: "unreachable", detail: `${response.status} ${response.statusText}` });
                     return;
                 }
-                const text = await response.text();
-                if (canceled) return;
-                setRead({ state: "read", text, verdict: storedDocument(text, anchoredHash, anchor) });
+                const text = new TextDecoder().decode(response.bytes);
+                setRead({ state: "read", text, verdict: storedDocument(response.bytes, anchoredHash, anchor) });
             } catch (err) {
                 if (!canceled) setRead({ state: "unreachable", detail: err instanceof Error ? err.message : String(err) });
             }

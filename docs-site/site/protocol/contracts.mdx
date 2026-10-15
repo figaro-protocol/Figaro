@@ -85,27 +85,31 @@ struct Commitment {
 
 ## ClauseRegistry — anchoring a clause
 
-Permissionless, first-write-wins clause anchoring under a stake (`src/build/registries/ClauseRegistry.sol`). It anchors a locator and a content hash only; it validates no content shape — a registered clause is immediately attestable and batch-resolvable.
+Permissionless, first-write-wins clause anchoring under a stake (`src/build/registries/ClauseRegistry.sol`). It anchors a clause key and a locator only; it validates no content shape — a registered clause is immediately attestable and batch-resolvable.
 
 ```solidity
-function registerClause(string calldata clauseId, uint64 version, bytes32 contentHash, string calldata contentURI)
-    external payable;                          // src/build/registries/ClauseRegistry.sol:156
-function withdrawDeposit(bytes32 idHash) external;        // :185
-function setMechanismClause(bytes32 idHash) external;     // :207
+function registerClause(bytes32 clauseKey, string calldata contentURI)
+    external payable;                          // src/build/registries/ClauseRegistry.sol:150
+function withdrawDeposit(bytes32 clauseKey) external;     // :173
+function setMechanismClause(bytes32 clauseKey) external;  // :192
+function registered(bytes32 clauseKey) external view returns (bool);                        // :81
+function depositOf(bytes32 clauseKey) external view returns (address registeredBy, bool withdrawn);  // :92
 ```
 
-The key is `idHash = keccak256(abi.encode(clauseId, version))` — pass the bare name to `registerClause`, the hash to the other two. `contentHash` is keccak256 of the canonical spec JSON; `contentHashOf(idHash) → bytes32` is never cleared, because it is the anchor `FigaroBatchVerifier` checks every witness spec against. `withdrawDeposit` is caller-only, once, no time lock: it refunds the stake and de-surfaces the clause for new compositions, but the binding is permanent and orders already committed against it still resolve. `setMechanismClause` is permissionless self-declaration that writes no storage and confers nothing — it emits `MechanismClauseSet(msg.sender, idHash)` so indexers can see which clause a composed mechanism speaks.
+The key is `clauseKey = keccak256` of the spec's pinned bytes — the SDK's `computeClauseKey(spec)`, over the canonical JSON `canonicalize(spec)` you pin at `contentURI` (`:146-149`). The key is the clause's identity and its content hash at once; the registry stores no name, no version and no separate hash, and a reader verifies a fetched spec by checking `keccak256(bytes) == clauseKey` on the bytes it fetched (`:11-20`). `registered(clauseKey)` is never cleared, because it is what `FigaroBatchVerifier` checks every witness spec's key against. `withdrawDeposit` is caller-only, once, no time lock: it refunds the stake and de-surfaces the clause for new compositions, but the binding is permanent and orders already committed against it still resolve. `setMechanismClause` is permissionless self-declaration that writes no storage and confers nothing — it emits `MechanismClauseSet(msg.sender, clauseKey)` so indexers can see which clause a composed mechanism speaks.
 
-`registrationDeposit()` is a deploy-time immutable — **read it live and send exactly it**; over-payment reverts too, because there is no sweep (`src/build/registries/ClauseRegistry.sol:64`).
+`registrationDeposit()` is a deploy-time immutable — **read it live and send exactly it**; over-payment reverts too, because there is no sweep (`src/build/registries/ClauseRegistry.sol:74`).
 
-**Errors** (`:129-137`): `AlreadyRegistered(clauseId)`, `NotRegistered(clauseId)`, `EmptyClauseId`, `EmptyContentURI`, `ZeroContentHash`, `WrongDeposit(provided, required)`, `NotRegisteredBy(caller, registeredBy)`, `AlreadyWithdrawn`, `TransferFailed`. **Events:** `ClauseRegistered`, `DepositWithdrawn`, `MechanismClauseSet`.
+**Errors** (`:125-132`): `AlreadyRegistered(clauseKey)`, `NotRegistered(clauseKey)`, `ZeroClauseKey`, `EmptyContentURI`, `WrongDeposit(provided, required)`, `NotRegisteredBy(caller, registeredBy)`, `AlreadyWithdrawn`, `TransferFailed`. **Events:** `ClauseRegistered(bytes32 indexed clauseKey, string contentURI, address indexed registeredBy)`, `DepositWithdrawn(clauseKey, registeredBy, amount)`, `MechanismClauseSet(mechanism, clauseKey)` (`:107-121`).
 
 ```bash
+# CLAUSE_KEY = computeClauseKey(spec); CID = the pin of canonicalize(spec), exactly those bytes
+cast call $CLAUSE_REGISTRY "registered(bytes32)(bool)" $CLAUSE_KEY --rpc-url $RPC
 # read the required stake, then register (deposit is deploy-time; never assume a number)
 cast call $CLAUSE_REGISTRY "registrationDeposit()(uint256)" --rpc-url $RPC
 cast send $CLAUSE_REGISTRY \
-  "registerClause(string,uint64,bytes32,string)" \
-  "figaro-my-clause" 1 $CONTENT_HASH "ipfs://$CID" \
+  "registerClause(bytes32,string)" \
+  $CLAUSE_KEY "ipfs://$CID" \
   --value $DEPOSIT --rpc-url $RPC --private-key $PK
 ```
 
@@ -189,14 +193,14 @@ Resolves batches of `FigaroCore` operations beside the direct path, under one SP
 function settleBatch(
     bytes calldata proof, bytes calldata publicValues,
     NetPosition[] calldata positions, BatchEventData calldata events, BatchUsageData calldata usage
-) external;                                    // :261  (nonReentrant, external, no caller gate)
+) external;                                    // :275  (nonReentrant, external, no caller gate)
 ```
 
-`settleBatch` verifies the proof against the immutable `programVKey`, checks state-root continuity and chain binding, hash-verifies the calldata byte-for-byte, checks every `(clause key → witness-spec hash)` binding against `ClauseRegistry.contentHashOf` — the vkey covers the generic clause engine, the registry anchors the constraint set, so a new clause never touches the prover — then moves each net token position with at most one transfer (pulls `deposit − payout` from a position that owes, pushes `payout − deposit` to one that is owed, nothing when the two are equal), re-emits proven `Attestation` events, and forwards usage accrual to `UsageCounter.applyBatchAccrual`. Public state is `stateRoot() → bytes32` and `batchCount() → uint64`, advanced per `BatchSettled`.
+`settleBatch` verifies the proof against the immutable `programVKey`, checks state-root continuity and chain binding, hash-verifies the calldata byte-for-byte, checks every spec binding — the guest commits `(clause key, keccak256(witness-spec bytes))` for each spec it validated content against, and the verifier requires the two words equal and `ClauseRegistry.registered(clauseKey)` (`:546-555`); the vkey covers the generic clause engine, the registry anchors the constraint set, so a new clause never touches the prover — then moves each net token position with at most one transfer (pulls `deposit − payout` from a position that owes, pushes `payout − deposit` to one that is owed, nothing when the two are equal), re-emits proven `Attestation` events, and forwards usage accrual to `UsageCounter.applyBatchAccrual`. Public state is `stateRoot() → bytes32` and `batchCount() → uint64`, advanced per `BatchSettled`.
 
-**The public values are nine 32-byte words** (`src/core/verifier/FigaroBatchVerifier.sol:70-79`): `prevStateRoot`, `newStateRoot`, `chainId`, `verifyingContract`, `tokenOpsHash`, `attestationEventsHash`, `specBindingsHash`, `usageAccrualHash`, and word 8 **`blockTimestamp`** (uint64). That last word is bounded: `settleBatch` reverts unless `blockTimestamp <= block.timestamp` and `block.timestamp - blockTimestamp <= MAX_BATCH_STALENESS`, where `MAX_BATCH_STALENESS = 1 hours` (`:98`, `:289`). It pins the clock the guest checked deadlines against to reality — a batch is proven then submitted, so a few minutes of lag is normal — while stopping a caller from picking an arbitrary past time to bond an already-expired commitment.
+**The public values are nine 32-byte words** (`src/core/verifier/FigaroBatchVerifier.sol:73-82`): `prevStateRoot`, `newStateRoot`, `chainId`, `verifyingContract`, `tokenOpsHash`, `attestationEventsHash`, `specBindingsHash`, `usageAccrualHash`, and word 8 **`blockTimestamp`** (uint64). That last word is bounded: `settleBatch` reverts unless `blockTimestamp <= block.timestamp` and `block.timestamp - blockTimestamp <= MAX_BATCH_STALENESS`, where `MAX_BATCH_STALENESS = 1 hours` (`:101`, `:307`). It pins the clock the guest checked deadlines against to reality — a batch is proven then submitted, so a few minutes of lag is normal — while stopping a caller from picking an arbitrary past time to bond an already-expired commitment.
 
-**Errors** (`:198-212`): `PublicValuesLengthMismatch(expected, actual)` — the public values are not the 288 bytes of nine words, refused before the proof is read; `StateRootMismatch(expected, actual)`, `ChainIdMismatch(expected, actual)`, `VerifyingContractMismatch(expected, actual)`, `PositionHashMismatch`, `AttestationHashMismatch`, `SpecBindingsHashMismatch`, `UsageAccrualHashMismatch`, `BatchTimestampOutOfRange(committed, current)`, `SpecBindingMismatch(clauseId, anchored, proven)`, `FeeOnTransferDetected`. **Events:** `BatchSettled(batchId, prevStateRoot, newStateRoot, positionCount)`, `BatchAccrualSkipped(batchId, reason)`, and `Attestation` — which **shares its topic hash with the coordinator's, so filter by contract address, not by topic** (`:180`).
+**Errors** (`:204-224`): `PublicValuesLengthMismatch(expected, actual)` — the public values are not the 288 bytes of nine words, refused before the proof is read; `StateRootMismatch(expected, actual)`, `ChainIdMismatch(expected, actual)`, `VerifyingContractMismatch(expected, actual)`, `PositionHashMismatch`, `AttestationHashMismatch`, `SpecBindingsHashMismatch`, `UsageAccrualHashMismatch`, `BatchTimestampOutOfRange(committed, current)`, `SpecBindingMismatch(clauseId, proven)` (a witness spec whose hash is not the key it names), `ClauseNotRegistered(clauseId)` (a key the registry never registered), `FeeOnTransferDetected`. **Events:** `BatchSettled(batchId, prevStateRoot, newStateRoot, positionCount)`, `BatchAccrualSkipped(batchId, reason)`, and `Attestation` — which **shares its topic hash with the coordinator's, so filter by contract address, not by topic** (`:191`).
 
 ### The two paths share no state
 
@@ -210,8 +214,8 @@ Running your own relay, as opposed to using one, is the one advanced path that i
 | Is this order resolved? | `orderStatus(bytes32) == 2` | no per-order flag; the transfers under `stateRoot()` are the proof — ask a relay for the per-order answer, verify against the chain |
 | Resolution event | `OrderResolved` · `ProcessResolved` | `BatchSettled` |
 | Per-order evidence | `Attestation` from the coordinator | `Attestation` re-emitted by the verifier (same topic — filter by address) |
-| Designer-reward credit | `UsageRecorded` / `accrualOf` | `BatchUsageRecorded` / `batchAccrualOf` |
-| Total usage score | `UsageCounter.scoreOf(clauseOrAssembly, period)` — sums both paths | same |
+| Designer-reward credit | `UsageRecorded` / `accrualOf(kind, key, period)` | `BatchUsageRecorded` / `batchAccrualOf(kind, key, period)` |
+| Total usage score | `UsageCounter.scoreOf(kind, clauseOrAssembly, period)` — sums both paths | same |
 
 ## UsageCounter — verified clause and assembly usage
 
@@ -219,21 +223,28 @@ Counts how much real trade a clause or assembly carried, on chain, at the moment
 
 ```solidity
 function recordClauseUsage(CommitmentTypes.Commitment calldata order, bytes32 clauseOrAssembly,
-    bytes32 sectionHash, bytes32[] calldata proof) external;                     // :421
+    bytes32 sectionHash, bytes32[] calldata proof) external;                     // :444  (kind 0, clause)
 function recordAssemblyUsage(CommitmentTypes.Commitment calldata order, bytes32 compositionHash,
-    bytes32[] calldata proof) external;                                          // :462
+    bytes32[] calldata proof) external;                                          // :485  (kind 1, assembly)
 function applyBatchAccrual(uint8 period, bytes32 claimedProvenanceLeaf,
-    BatchAccrual[] calldata accruals, address[] calldata sellers) external;      // :534  (batchVerifier only)
-function provenanceLeaf() external view returns (bytes32);                       // :155  (constant)
-function scoreOf(bytes32 clauseOrAssembly, uint8 period) external view returns (uint256);  // :399
-function currentPeriod() external view returns (uint8);                          // :380
-function periodClosed(uint8 period) external view returns (bool);                // :390
-function periodCount() external view returns (uint256);                          // :375
+    BatchAccrual[] calldata accruals, address[] calldata sellers) external;      // :561  (batchVerifier only)
+// struct BatchAccrual { bytes32 clauseOrAssembly; uint8 kind; uint64 c; uint64 d; }  // :523
+function provenanceLeaf() external view returns (bytes32);                       // :167  (constant)
+function KIND_CLAUSE() external view returns (uint8);                            // :145  (constant 0)
+function KIND_ASSEMBLY() external view returns (uint8);                          // :148  (constant 1)
+function scoreOf(uint8 kind, bytes32 clauseOrAssembly, uint8 period) external view returns (uint256);  // :421
+function accrualOf(uint8 kind, bytes32 clauseOrAssembly, uint8 period)
+    external view returns (uint64 c, uint64 d, uint256 score);                   // :211  (direct path)
+function currentPeriod() external view returns (uint8);                          // :402
+function periodClosed(uint8 period) external view returns (bool);                // :412
+function periodCount() external view returns (uint256);                          // :397
 ```
 
-`recordClauseUsage` proves from state the chain already holds that the order is RESOLVED (`orderStatus == 2`) and that the clause was merkle-committed in the signed `agreementHash` — the same leaf shape the coordinator checks, with the status gate inverted. `recordAssemblyUsage` takes no section hash: it rebuilds the agreement's provenance leaf from the `compositionHash` it is given — key `provenanceLeaf()` = `keccak256("figaro-agreement-provenance")`, bytes `{"compositionHash":"0x<64 lowercase hex>"}` — proves it against `agreementHash`, and requires a live `AssemblyRegistry` binding (`:462-490`; the leaf is on [Clauses and agreements](/protocol/clauses/)). Every committed clause key earns, the mandatory ones included; the reserved key is registered nowhere, so a clause claim naming it fails the liveness gate like any unregistered key. Anyone may call; the proof is trusted, never the caller. Per clause or assembly per period it keeps `c` (distinct resolved processes), `d` (distinct live-staked sellers of record), and `score = icbrt(c·d²·1e18)` when `d ≥ minSellers`, else zero. Uniform — no tag, category, or weight. Usage counts only for a live-staked seller of record; a process counts once ever. Read `scoreOf`, which sums both paths' scores — `accrualOf` alone under-reports any key whose trade moved to batches.
+Every accrual, count and score is keyed by `(kind, key)`: kind `0` is a clause key, kind `1` an assembly `compositionHash` (`:137-148`). A registry takes any bytes32 and nothing in a key's bytes names its family, so each kind's gate reads its own registry only — `recordClauseUsage` checks `ClauseRegistry`, `recordAssemblyUsage` checks `AssemblyRegistry`, and a batch accrual is gated by the registry its `kind` names (`:609-615`). A wallet that registers an assembly's `compositionHash` as a clause key earns nothing of that assembly's accrual.
 
-**Runtime errors** (`:309-319`): `ClauseOrAssemblyNotRegistered(clauseOrAssembly)` (on the batch path an un-live key is skipped, never reverted, so the batch's resolution still lands — `:573`), `AccrualClosed` (`currentPeriod()` reverts once the last period ends — the revert is the answer), `UnknownOrder`, `OrderNotResolved`, `AlreadyCounted`, `InvalidInclusionProof`, `SellerNotStaked(seller)`, `NotBatchVerifier`, `PeriodMismatch(open, claimed)`, `ProvenanceLeafMismatch(expected, claimed)` (the batch's claimed provenance leaf key is not `provenanceLeaf()`), `AccrualWentBackwards(clauseOrAssembly)`. **Events:** `UsageRecorded` (adds), `BatchUsageRecorded` (cumulative, replaces) — indexers fold them differently.
+`recordClauseUsage` proves from state the chain already holds that the order is RESOLVED (`orderStatus == 2`) and that the clause was merkle-committed in the signed `agreementHash` — the same leaf shape the coordinator checks, with the status gate inverted. `recordAssemblyUsage` takes no section hash: it rebuilds the agreement's provenance leaf from the `compositionHash` it is given — key `provenanceLeaf()` = `keccak256("figaro-agreement-provenance")`, bytes `{"compositionHash":"0x<64 lowercase hex>"}` — proves it against `agreementHash`, and requires a live `AssemblyRegistry` binding (`:485-513`; the leaf is on [Clauses and agreements](/protocol/clauses/)). Every committed clause key earns, the mandatory ones included. The reserved key earns nothing whatever a registry holds at it: the direct path reverts `ProvenanceLeafIsNotARegistration` (`:657`), and the batch path skips it (`:604`). Anyone may call; the proof is trusted, never the caller. Per clause or assembly per period it keeps `c` (distinct resolved processes), `d` (distinct live-staked sellers of record), and `score = icbrt(c·d²·1e18)` when `d ≥ minSellers`, else zero. Uniform — no tag, category, or weight. Usage counts only for a live-staked seller of record; a process counts once ever. Read `scoreOf`, which sums both paths' scores — `accrualOf` alone under-reports any key whose trade moved to batches.
+
+**Runtime errors** (`:322-341`): `ClauseOrAssemblyNotRegistered(clauseOrAssembly)` (on the batch path an un-live key is skipped, never reverted, so the batch's resolution still lands — `:592-615`), `AccrualClosed` (`currentPeriod()` reverts once the last period ends — the revert is the answer), `UnknownOrder`, `OrderNotResolved`, `AlreadyCounted`, `InvalidInclusionProof`, `SellerNotStaked(seller)`, `NotBatchVerifier`, `PeriodMismatch(open, claimed)`, `ProvenanceLeafMismatch(expected, claimed)` (the batch's claimed provenance leaf key is not `provenanceLeaf()`), `ProvenanceLeafIsNotARegistration(key)`, `AccrualWentBackwards(clauseOrAssembly)`. **Events:** `UsageRecorded` (adds), `BatchUsageRecorded` (cumulative, replaces) — both carry the `kind`, and indexers fold them differently.
 
 ## FlorinToken — the unit
 
@@ -252,12 +263,15 @@ function renounceDeployerMint() external;                         // :79
 Rewards designers of record from a 600M-florin reserve, pro rata to real recorded usage (`src/build/rewards/RpgfMinter.sol`). One state-changing entry point:
 
 ```solidity
-function claim(uint8 periodId, bytes32[] calldata clausesOrAssemblies) external;  // :172
+struct ClauseOrAssemblyKey { uint8 kind; bytes32 key; }                                    // :103
+function claim(uint8 periodId, ClauseOrAssemblyKey[] calldata clausesOrAssemblies) external;  // :192
+function claimable(uint8 periodId, address account, ClauseOrAssemblyKey[] calldata clausesOrAssemblies)
+    external view returns (uint256);                                                       // :170
 ```
 
-`claim` mints `periodAmount · callerScore / totalScoreInPeriod`, once per wallet per period, and requires the period closed — so a share is score-over-total against numbers that stopped moving, no snapshot or history walk. A wallet passes every clause and assembly it designed in one duplicate-free call; each entry is verified against its own registry with a live stake (`ClauseRegistry.depositOf` or `AssemblyRegistry.bindings`, `registeredBy == caller` and not withdrawn). This is the designer-side half of a two-sided live-stake gate; the seller-side half is `UsageCounter`'s.
+`claim` mints `periodAmount · callerScore / totalScoreInPeriod`, once per wallet per period, and requires the period closed — so a share is score-over-total against numbers that stopped moving, no snapshot or history walk. A wallet passes every clause and assembly it designed in one call, as `(kind, key)` pairs duplicate-free in `(kind, key)`: kind `0` (`KIND_CLAUSE`) with a clause key, kind `1` (`KIND_ASSEMBLY`) with a `compositionHash`. Each entry is verified against the one registry its kind names and never the other (`ClauseRegistry.depositOf` for kind 0, `AssemblyRegistry.bindings` for kind 1; `registeredBy == caller` and not withdrawn; `:270-280`), and its score is read from the counter's slot for that kind. The SDK exports the pair as `UsageKey` and the kinds as `USAGE_KIND_CLAUSE` / `USAGE_KIND_ASSEMBLY`; `computeRpgfAllocations` returns each wallet's list as `allocation.claims`. This is the designer-side half of a two-sided live-stake gate; the seller-side half is `UsageCounter`'s.
 
-**Errors** (`:112-120`): `UnknownPeriod(periodId)`, `PeriodStillAccruing(periodId)`, `AlreadyClaimed(periodId, account)`, `NoClausesOrAssemblies`, `DuplicateClauseOrAssembly(key)`, `NotAuthorOfRecord(clauseOrAssembly, caller)`, `NothingToClaim`, `PeriodBudgetExceeded(periodId)`. The schedule and formula are on [Designer rewards](/token/designer-rewards/); this page states the surface, not the schedule.
+**Errors** (`:128-138`): `UnknownPeriod(periodId)`, `PeriodStillAccruing(periodId)`, `AlreadyClaimed(periodId, account)`, `NoClausesOrAssemblies`, `DuplicateClauseOrAssembly(kind, clauseOrAssembly)`, `NotAuthorOfRecord(kind, clauseOrAssembly, caller)`, `UnknownKind(kind)`, `NothingToClaim`, `PeriodBudgetExceeded(periodId)`. The schedule and formula are on [Designer rewards](/token/designer-rewards/); this page states the surface, not the schedule.
 
 ## Composed, not owned
 

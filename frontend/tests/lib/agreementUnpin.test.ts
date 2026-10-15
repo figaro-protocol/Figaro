@@ -15,7 +15,7 @@ const AGREEMENT: Agreement = {
     version: "a1",
     buyer: "0x23618e81E3f5cdF7f54C3d65f7FBc0aBf5B21E8f",
     seller: "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
-    sections: [{ clause: "figaro-commerce", version: 1, data: { payment: "1" } }],
+    sections: [{ clause: `0x${"0c".repeat(32)}`, data: { payment: "1" } }],
 };
 
 function seedTransport(cid: string) {

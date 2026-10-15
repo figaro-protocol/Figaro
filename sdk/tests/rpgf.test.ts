@@ -11,6 +11,10 @@ import {
     type ClauseOrAssemblyAccrual,
     type BatchUsageRecord,
     type UsageRecord,
+    type UsageKind,
+    USAGE_KIND_CLAUSE,
+    USAGE_KIND_ASSEMBLY,
+    usageKeyId,
     buildUsageClaims,
     fetchUsageRecords,
     fetchBatchUsageRecords,
@@ -24,8 +28,8 @@ import {
     verifyInclusionProof,
     type Agreement,
 } from "../src/agreement.js";
-import { computeClauseKey } from "../src/discovery.js";
 import type { Commitment } from "../src/types.js";
+import { keyOf } from "./specFixtures.js";
 
 // ── Integer math ─────────────────────────────────────────────────────
 
@@ -95,6 +99,10 @@ describe("usageScore", () => {
 const CLAUSE_A = "0x00000000000000000000000000000000000000000000000000000000000000a1" as Hex;
 const CLAUSE_B = "0x00000000000000000000000000000000000000000000000000000000000000b2" as Hex;
 const ASSEMBLY = "0x00000000000000000000000000000000000000000000000000000000000000c3" as Hex;
+/** The fixtures' kind: ASSEMBLY is an assembly key, every other a clause key. */
+const kindOf = (key: Hex): UsageKind => (key === ASSEMBLY ? USAGE_KIND_ASSEMBLY : USAGE_KIND_CLAUSE);
+/** The mirror's map key for a fixture key under its own kind. */
+const id = (key: Hex): string => usageKeyId(kindOf(key), key);
 
 const AUTHOR_A = "0x1000000000000000000000000000000000000001" as Address;
 const AUTHOR_B = "0x2000000000000000000000000000000000000002" as Address;
@@ -116,6 +124,7 @@ function record(
     return {
         blockNumber: 100n,
         logIndex: logCounter++,
+        kind: kindOf(clauseOrAssembly),
         clauseOrAssembly,
         period: 0,
         processId: seed(processId),
@@ -137,8 +146,8 @@ describe("computeUsageAccruals", () => {
             record(CLAUSE_B, "p1", s1),
         ], [], 1n);
         const period = accruals.get(0)!;
-        expect(period.byClauseOrAssembly.get(CLAUSE_A)!.direct).toMatchObject({ c: 2n, d: 2n });
-        expect(period.byClauseOrAssembly.get(CLAUSE_B)!.direct).toMatchObject({ c: 1n, d: 1n });
+        expect(period.byClauseOrAssembly.get(id(CLAUSE_A))!.direct).toMatchObject({ c: 2n, d: 2n });
+        expect(period.byClauseOrAssembly.get(id(CLAUSE_B))!.direct).toMatchObject({ c: 1n, d: 1n });
         expect(period.totalScore).toBe(usageScore(2n, 2n, 1n) + usageScore(1n, 1n, 1n));
     });
 
@@ -152,14 +161,14 @@ describe("computeUsageAccruals", () => {
             record(CLAUSE_A, "q2", s1),
             record(CLAUSE_A, "q3", s1),
         ], [], 1n);
-        expect(accruals.get(0)!.byClauseOrAssembly.get(CLAUSE_A)!.direct).toMatchObject({ c: 3n, d: 1n });
+        expect(accruals.get(0)!.byClauseOrAssembly.get(id(CLAUSE_A))!.direct).toMatchObject({ c: 3n, d: 1n });
     });
 
     it("is idempotent per (clause or assembly, process) — a replay adds nothing", () => {
         const s1 = sellerOf("seller1");
         const once = computeUsageAccruals([record(CLAUSE_A, "p1", s1)], [], 1n);
         const twice = computeUsageAccruals([record(CLAUSE_A, "p1", s1), record(CLAUSE_A, "p1", s1)], [], 1n);
-        expect(twice.get(0)!.byClauseOrAssembly.get(CLAUSE_A)).toEqual(once.get(0)!.byClauseOrAssembly.get(CLAUSE_A));
+        expect(twice.get(0)!.byClauseOrAssembly.get(id(CLAUSE_A))).toEqual(once.get(0)!.byClauseOrAssembly.get(id(CLAUSE_A)));
     });
 
     it("counts a process ONCE EVER — re-recording it in a later period adds nothing", () => {
@@ -171,8 +180,8 @@ describe("computeUsageAccruals", () => {
             record(CLAUSE_A, "px-0", s1, { period: 0 }),
             record(CLAUSE_A, "px-0", s1, { period: 1 }),
         ], [], 1n);
-        expect(accruals.get(0)!.byClauseOrAssembly.get(CLAUSE_A)!.direct).toMatchObject({ c: 1n, d: 1n });
-        expect(accruals.get(1)?.byClauseOrAssembly.get(CLAUSE_A)).toBeUndefined();
+        expect(accruals.get(0)!.byClauseOrAssembly.get(id(CLAUSE_A))!.direct).toMatchObject({ c: 1n, d: 1n });
+        expect(accruals.get(1)?.byClauseOrAssembly.get(id(CLAUSE_A))).toBeUndefined();
     });
 
     it("a later period counts only trade that is NEW to it", () => {
@@ -181,7 +190,7 @@ describe("computeUsageAccruals", () => {
             record(CLAUSE_A, "py-old", sellerOf("seller1"), { period: 1 }),
             record(CLAUSE_A, "py-new", sellerOf("seller2"), { period: 1 }),
         ], [], 1n);
-        expect(accruals.get(1)!.byClauseOrAssembly.get(CLAUSE_A)!.direct).toMatchObject({ c: 1n, d: 1n });
+        expect(accruals.get(1)!.byClauseOrAssembly.get(id(CLAUSE_A))!.direct).toMatchObject({ c: 1n, d: 1n });
     });
 
     it("counts every repeat process into c, but a seller is one unit of d", () => {
@@ -193,7 +202,7 @@ describe("computeUsageAccruals", () => {
             [],
             1n,
         );
-        expect(accruals.get(0)!.byClauseOrAssembly.get(CLAUSE_A)!.direct).toEqual({
+        expect(accruals.get(0)!.byClauseOrAssembly.get(id(CLAUSE_A))!.direct).toEqual({
             c: 8n,
             d: 1n,
             score: usageScore(8n, 1n, 1n),
@@ -209,7 +218,7 @@ describe("computeUsageAccruals", () => {
             ...Array.from({ length: 7 }, (_, i) => record(CLAUSE_A, `pe-${i}`, repeat)),
             record(CLAUSE_A, "pe-fresh", fresh),
         ], [], 1n);
-        expect(accruals.get(0)!.byClauseOrAssembly.get(CLAUSE_A)!.direct).toMatchObject({
+        expect(accruals.get(0)!.byClauseOrAssembly.get(id(CLAUSE_A))!.direct).toMatchObject({
             c: 8n,
             d: 2n,
         });
@@ -221,8 +230,8 @@ describe("computeUsageAccruals", () => {
             record(CLAUSE_A, "pf-0", s1, { period: 0 }),
             record(CLAUSE_A, "pf-1", s1, { period: 1 }),
         ], [], 1n);
-        expect(accruals.get(0)!.byClauseOrAssembly.get(CLAUSE_A)!.direct).toMatchObject({ c: 1n, d: 1n });
-        expect(accruals.get(1)!.byClauseOrAssembly.get(CLAUSE_A)!.direct).toMatchObject({ c: 1n, d: 1n });
+        expect(accruals.get(0)!.byClauseOrAssembly.get(id(CLAUSE_A))!.direct).toMatchObject({ c: 1n, d: 1n });
+        expect(accruals.get(1)!.byClauseOrAssembly.get(id(CLAUSE_A))!.direct).toMatchObject({ c: 1n, d: 1n });
     });
 
     it("scores uniformly — equal usage gives equal score, clause or assembly", () => {
@@ -232,7 +241,7 @@ describe("computeUsageAccruals", () => {
             1n,
         );
         const period = accruals.get(0)!;
-        expect(period.byClauseOrAssembly.get(CLAUSE_A)!.score).toBe(period.byClauseOrAssembly.get(CLAUSE_B)!.score);
+        expect(period.byClauseOrAssembly.get(id(CLAUSE_A))!.score).toBe(period.byClauseOrAssembly.get(id(CLAUSE_B))!.score);
     });
 
     it("reproduces the running score the chain emitted", () => {
@@ -244,7 +253,7 @@ describe("computeUsageAccruals", () => {
             record(CLAUSE_A, "ph-0", s1, { c: 1n, d: 1n, score: usageScore(1n, 1n, 1n) }),
             record(CLAUSE_A, "ph-1", s2, { c: 2n, d: 2n, score: usageScore(2n, 2n, 1n) }),
         ];
-        const accrual = computeUsageAccruals(emitted, [], 1n).get(0)!.byClauseOrAssembly.get(CLAUSE_A)!.direct;
+        const accrual = computeUsageAccruals(emitted, [], 1n).get(0)!.byClauseOrAssembly.get(id(CLAUSE_A))!.direct;
         const last = emitted[emitted.length - 1];
         expect(accrual).toEqual({ c: last.c, d: last.d, score: last.score });
     });
@@ -260,6 +269,7 @@ describe("computeUsageAccruals", () => {
         return {
             blockNumber: 200n,
             logIndex: 0,
+            kind: kindOf(clauseOrAssembly),
             clauseOrAssembly,
             period: 0,
             c,
@@ -271,7 +281,7 @@ describe("computeUsageAccruals", () => {
 
     it("folds batch-resolved usage into the same period", () => {
         const period = computeUsageAccruals([], [batchRecord(CLAUSE_A, 4n, 2n)], 1n).get(0)!;
-        const entry = period.byClauseOrAssembly.get(CLAUSE_A)!;
+        const entry = period.byClauseOrAssembly.get(id(CLAUSE_A))!;
         expect(entry.batch).toEqual({ c: 4n, d: 2n, score: usageScore(4n, 2n, 1n) });
         expect(entry.direct).toEqual({ c: 0n, d: 0n, score: 0n });
         expect(entry.score).toBe(usageScore(4n, 2n, 1n));
@@ -287,7 +297,7 @@ describe("computeUsageAccruals", () => {
             [batchRecord(CLAUSE_A, 1n, 1n)], // batch:  c=1, d=1
             1n,
         ).get(0)!;
-        const entry = period.byClauseOrAssembly.get(CLAUSE_A)!;
+        const entry = period.byClauseOrAssembly.get(id(CLAUSE_A))!;
 
         expect(entry.score).toBe(usageScore(1n, 1n, 1n) * 2n);
         expect(entry.score).toBeLessThanOrEqual(usageScore(2n, 2n, 1n));
@@ -306,7 +316,7 @@ describe("computeUsageAccruals", () => {
             ],
             1n,
         ).get(0)!;
-        expect(period.byClauseOrAssembly.get(CLAUSE_A)!.batch).toEqual({ c: 5n, d: 3n, score: usageScore(5n, 3n, 1n) });
+        expect(period.byClauseOrAssembly.get(id(CLAUSE_A))!.batch).toEqual({ c: 5n, d: 3n, score: usageScore(5n, 3n, 1n) });
         expect(period.totalScore).toBe(usageScore(5n, 3n, 1n));
     });
 
@@ -317,7 +327,7 @@ describe("computeUsageAccruals", () => {
         );
         const forward = computeUsageAccruals(records, [], 1n).get(0)!;
         const reversed = computeUsageAccruals([...records].reverse(), [], 1n).get(0)!;
-        expect(reversed.byClauseOrAssembly.get(CLAUSE_A)).toEqual(forward.byClauseOrAssembly.get(CLAUSE_A));
+        expect(reversed.byClauseOrAssembly.get(id(CLAUSE_A))).toEqual(forward.byClauseOrAssembly.get(id(CLAUSE_A)));
         expect(reversed.totalScore).toBe(forward.totalScore);
     });
 
@@ -328,7 +338,7 @@ describe("computeUsageAccruals", () => {
             record(CLAUSE_A, "pf-a", sellerOf("s1")),
             record(CLAUSE_A, "pf-b", sellerOf("s2")),
         ]); // default minSellers = 3 (the formula reference)
-        expect(below.get(0)!.byClauseOrAssembly.get(CLAUSE_A)!.direct).toMatchObject({ c: 2n, d: 2n, score: 0n });
+        expect(below.get(0)!.byClauseOrAssembly.get(id(CLAUSE_A))!.direct).toMatchObject({ c: 2n, d: 2n, score: 0n });
         expect(below.get(0)!.totalScore).toBe(0n);
 
         const crossed = computeUsageAccruals([
@@ -336,7 +346,7 @@ describe("computeUsageAccruals", () => {
             record(CLAUSE_A, "pf-b", sellerOf("s2")),
             record(CLAUSE_A, "pf-c", sellerOf("s3")),
         ]);
-        expect(crossed.get(0)!.byClauseOrAssembly.get(CLAUSE_A)!.direct.score).toBe(usageScore(3n, 3n));
+        expect(crossed.get(0)!.byClauseOrAssembly.get(id(CLAUSE_A))!.direct.score).toBe(usageScore(3n, 3n));
         expect(crossed.get(0)!.totalScore).toBe(usageScore(3n, 3n));
     });
 
@@ -346,9 +356,9 @@ describe("computeUsageAccruals", () => {
         // own. Conservative by design, like the score merge itself.
         const period = computeUsageAccruals(
             [record(CLAUSE_A, "pp-a", sellerOf("s1")), record(CLAUSE_A, "pp-b", sellerOf("s2"))],
-            [{ blockNumber: 200n, logIndex: 0, clauseOrAssembly: CLAUSE_A, period: 0, c: 2n, d: 2n, score: 0n }],
+            [{ blockNumber: 200n, logIndex: 0, kind: USAGE_KIND_CLAUSE, clauseOrAssembly: CLAUSE_A, period: 0, c: 2n, d: 2n, score: 0n }],
         ).get(0)!;
-        expect(period.byClauseOrAssembly.get(CLAUSE_A)!.score).toBe(0n);
+        expect(period.byClauseOrAssembly.get(id(CLAUSE_A))!.score).toBe(0n);
         expect(period.totalScore).toBe(0n);
     });
 });
@@ -356,10 +366,12 @@ describe("computeUsageAccruals", () => {
 // ── The payout (RpgfMinter.claim, mirrored) ──────────────────────────
 
 function periodOf(entries: Array<[Hex, bigint]>): UsagePeriodAccrual {
-    const byClauseOrAssembly = new Map<Hex, ClauseOrAssemblyAccrual>();
+    const byClauseOrAssembly = new Map<string, ClauseOrAssemblyAccrual>();
     let totalScore = 0n;
     for (const [clauseOrAssembly, score] of entries) {
-        byClauseOrAssembly.set(clauseOrAssembly, {
+        byClauseOrAssembly.set(id(clauseOrAssembly), {
+            kind: kindOf(clauseOrAssembly),
+            clauseOrAssembly,
             direct: { c: 1n, d: 1n, score },
             batch: { c: 0n, d: 0n, score: 0n },
             score,
@@ -370,10 +382,10 @@ function periodOf(entries: Array<[Hex, bigint]>): UsagePeriodAccrual {
 }
 
 describe("computeRpgfAllocations", () => {
-    const authors = new Map<Hex, Address>([
-        [CLAUSE_A, AUTHOR_A],
-        [CLAUSE_B, AUTHOR_B],
-        [ASSEMBLY, DESIGNER],
+    const authors = new Map<string, Address>([
+        [id(CLAUSE_A), AUTHOR_A],
+        [id(CLAUSE_B), AUTHOR_B],
+        [id(ASSEMBLY), DESIGNER],
     ]);
 
     it("splits a period budget pro rata over the period's total score", () => {
@@ -383,8 +395,8 @@ describe("computeRpgfAllocations", () => {
             (_, i) => `0x${(i + 1).toString(16).padStart(64, "0")}` as Hex,
         );
         const period = periodOf(clausesOrAssemblies.map((clauseOrAssembly) => [clauseOrAssembly, 100n] as [Hex, bigint]));
-        const tenAuthors = new Map<Hex, Address>(
-            clausesOrAssemblies.map((clauseOrAssembly, i) => [clauseOrAssembly, `0x${(i + 1).toString(16).padStart(40, "0")}` as Address]),
+        const tenAuthors = new Map<string, Address>(
+            clausesOrAssemblies.map((clauseOrAssembly, i) => [id(clauseOrAssembly), `0x${(i + 1).toString(16).padStart(40, "0")}` as Address]),
         );
         const out = computeRpgfAllocations(period, tenAuthors, 10_000n);
         expect(out.length).toBe(10);
@@ -399,10 +411,10 @@ describe("computeRpgfAllocations", () => {
             [ASSEMBLY, 50n],
             [CLAUSE_B, 900n],
         ]);
-        const merged = new Map<Hex, Address>([
-            [CLAUSE_A, AUTHOR_A],
-            [ASSEMBLY, AUTHOR_A],
-            [CLAUSE_B, AUTHOR_B],
+        const merged = new Map<string, Address>([
+            [id(CLAUSE_A), AUTHOR_A],
+            [id(ASSEMBLY), AUTHOR_A],
+            [id(CLAUSE_B), AUTHOR_B],
         ]);
         const out = computeRpgfAllocations(period, merged, 1_000_000n);
         const a = out.find((x) => x.account === (AUTHOR_A.toLowerCase() as Address))!;
@@ -430,13 +442,42 @@ describe("computeRpgfAllocations", () => {
             [CLAUSE_A, 100n],
             [CLAUSE_B, 900n],
         ]);
-        const onlyA = new Map<Hex, Address>([[CLAUSE_A, AUTHOR_A]]);
+        const onlyA = new Map<string, Address>([[id(CLAUSE_A), AUTHOR_A]]);
         const out = computeRpgfAllocations(period, onlyA, 1_000_000n);
         // The unauthored clause or assembly's 900 stays in the denominator: A takes
         // 100/1000, not 100/100.
         expect(out).toEqual([
-            { account: AUTHOR_A.toLowerCase() as Address, amount: 100_000n, score: 100n },
+            {
+                account: AUTHOR_A.toLowerCase() as Address, amount: 100_000n, score: 100n,
+                claims: [{ kind: USAGE_KIND_CLAUSE, key: CLAUSE_A }],
+            },
         ]);
+    });
+
+    it("keeps the two families apart: the same bytes under each kind are two accruals, each paid to its own author", () => {
+        // A registry accepts any bytes32, so a stranger can register an
+        // assembly's composition hash as a clause key. The accrual is keyed by
+        // (kind, key), so the squatter's clause earns only what its own kind
+        // accrued, and the assembly's designer keeps the assembly's score.
+        const SQUATTER = "0x4000000000000000000000000000000000000004" as Address;
+        const accruals = computeUsageAccruals([
+            record(ASSEMBLY, "asm-1", sellerOf("s1")),
+            record(ASSEMBLY, "asm-2", sellerOf("s2")),
+            { ...record(ASSEMBLY, "clause-1", sellerOf("s1")), kind: USAGE_KIND_CLAUSE },
+        ], [], 1n).get(0)!;
+        const asAssembly = accruals.byClauseOrAssembly.get(usageKeyId(USAGE_KIND_ASSEMBLY, ASSEMBLY))!;
+        const asClause = accruals.byClauseOrAssembly.get(usageKeyId(USAGE_KIND_CLAUSE, ASSEMBLY))!;
+        expect(asAssembly.direct).toMatchObject({ c: 2n, d: 2n });
+        expect(asClause.direct).toMatchObject({ c: 1n, d: 1n });
+        const out = computeRpgfAllocations(accruals, new Map([
+            [usageKeyId(USAGE_KIND_ASSEMBLY, ASSEMBLY), DESIGNER],
+            [usageKeyId(USAGE_KIND_CLAUSE, ASSEMBLY), SQUATTER],
+        ]), 1_000_000n);
+        const byAccount = new Map(out.map((x) => [x.account, x]));
+        expect(byAccount.get(DESIGNER.toLowerCase() as Address)!.score).toBe(asAssembly.score);
+        expect(byAccount.get(DESIGNER.toLowerCase() as Address)!.claims).toEqual([{ kind: USAGE_KIND_ASSEMBLY, key: ASSEMBLY }]);
+        expect(byAccount.get(SQUATTER.toLowerCase() as Address)!.score).toBe(asClause.score);
+        expect(asClause.score).toBeLessThan(asAssembly.score);
     });
 
     it("returns nothing for a period with no score", () => {
@@ -477,10 +518,9 @@ describe("buildUsageClaims", () => {
         return { version: "a1", buyer: order.buyer, seller: order.seller, sections, ...(provenance ? { provenance } : {}) };
     }
 
-    const modalities = { clause: "figaro-modalities", version: 1, data: { modality: "pickup" } };
+    const modalities = { clause: keyOf("figaro-modalities"), data: { modality: "pickup" } };
     const commerce = {
-        clause: "figaro-commerce",
-        version: 1,
+        clause: keyOf("figaro-commerce"),
         data: { payment: "100", currency: order.currency, lineItems: [] },
     };
 
@@ -490,7 +530,7 @@ describe("buildUsageClaims", () => {
 
         expect(claims).toHaveLength(2);
         const modalityClaim = claims.find(
-            (c) => c.clause_or_assembly === computeClauseKey("figaro-modalities", 1),
+            (c) => c.clause_or_assembly === keyOf("figaro-modalities"),
         )!;
         expect(modalityClaim.kind).toEqual({
             Clause: { section_hash: sectionDataHash(modalities) },
@@ -522,7 +562,7 @@ describe("buildUsageClaims", () => {
     // claim and, on the batch path, the whole batch with it.
     it("refuses a counter whose provenance leaf is not the agreement format's", () => {
         expect(() => buildUsageClaims(order, agreementWith([modalities], COMPOSITION), {
-            provenanceLeaf: computeClauseKey("figaro-modalities", 1),
+            provenanceLeaf: keyOf("figaro-modalities"),
         })).toThrow(/provenance leaf/);
         // Case does not matter.
         expect(buildUsageClaims(order, agreementWith([modalities], COMPOSITION), {
@@ -541,7 +581,7 @@ describe("buildUsageClaims", () => {
                 claim.kind === "Assembly"
                     ? computeProvenanceLeaf(COMPOSITION)
                     : computeSectionLeaf(agreement.sections.find(
-                          (s) => computeClauseKey(s.clause, s.version) === claim.clause_or_assembly,
+                          (s) => s.clause === claim.clause_or_assembly,
                       )!);
             expect(
                 verifyInclusionProof(root, leaf, claim.inclusion_proof),

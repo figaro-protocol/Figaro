@@ -18,7 +18,7 @@ structurally).</p>
 </div></section>
 <div class="tsd-signature"><span class="tsd-signature-keyword">interface</span> <span class="tsd-kind-interface">PricingCatalog</span> <span class="tsd-signature-symbol">{</span><br/>    <a class="tsd-kind-property" href="#address">address</a><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#items">items</a><span class="tsd-signature-symbol">:</span> <a href="index.CatalogItemMetadata.html" class="tsd-signature-type tsd-kind-interface">CatalogItemMetadata</a><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#profileclausevalues">profileClauseValues</a><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">Readonly</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">Record</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">,</span> <span class="tsd-signature-type">Record</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">,</span> <span class="tsd-signature-type">unknown</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">;</span><br/><span class="tsd-signature-symbol">}</span></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/checkoutPlan.ts#L463">checkoutPlan.ts:463</a></li></ul></aside>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/checkoutPlan.ts#L416">checkoutPlan.ts:416</a></li></ul></aside>
 <section class="tsd-panel-group tsd-index-group">
 <section class="tsd-panel tsd-index-panel">
 <details class="tsd-index-content tsd-accordion" open><summary class="tsd-accordion-summary tsd-index-summary"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>
@@ -37,22 +37,22 @@ structurally).</p>
 <h3 class="tsd-anchor-link" id="address"><span>address</span><a href="#address" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">address</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/checkoutPlan.ts#L464">checkoutPlan.ts:464</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/checkoutPlan.ts#L417">checkoutPlan.ts:417</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="items"><span>items</span><a href="#items" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">items</span><span class="tsd-signature-symbol">:</span> <a href="index.CatalogItemMetadata.html" class="tsd-signature-type tsd-kind-interface">CatalogItemMetadata</a><span class="tsd-signature-symbol">[]</span></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/checkoutPlan.ts#L465">checkoutPlan.ts:465</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/checkoutPlan.ts#L418">checkoutPlan.ts:418</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="profileclausevalues"><code class="tsd-tag">Optional</code><span>profile<wbr/>Clause<wbr/>Values</span><a href="#profileclausevalues" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">profileClauseValues</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">Readonly</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">Record</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">,</span> <span class="tsd-signature-type">Record</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">,</span> <span class="tsd-signature-type">unknown</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">&gt;</span></div>
 <div class="tsd-comment tsd-typography"><p>The seller's PROFILE-authored clause values (seller master data:
-dimweight's divisor, a declared credential id), keyed clauseId →
+dimweight's divisor, a declared credential id), keyed clause key →
 field → value. Folded onto composed profile-sourced leaves at
 checkout by <code>fillProfileSections</code>.</p>
 </div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/checkoutPlan.ts#L470">checkoutPlan.ts:470</a></li></ul></aside></section></section></details></div>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/checkoutPlan.ts#L423">checkoutPlan.ts:423</a></li></ul></aside></section></section></details></div>
 <div class="col-sidebar">
 <div class="page-menu">
 <div class="tsd-navigation settings">

@@ -67,6 +67,8 @@ import {
     resolveIpfsURI,
     seedRegisteredMember,
     waitForConnected,
+    keyOf,
+    primeRegisteredClauseSpecs,
 } from './devnet-helpers';
 import { formatToken } from '@/lib/shared/utils';
 import { CORE_ABI } from '@/lib/kernel/contracts';
@@ -75,7 +77,13 @@ import { ANVIL_ACCOUNTS, ANVIL_KEYS } from '../anvilAccounts';
 import type { Page } from '@playwright/test';
 
 const ANVIL_MNEMONIC = 'test test test test test test test test test test test junk';
-const CONTENT_CLAUSE = 'figaro-content-handoff';
+let CONTENT_CLAUSE: Hex;
+test.beforeAll(async () => {
+    // Clause KEYS, located by the names their specs carry over the specs the
+    // chain registered — never a hardcoded key.
+    await primeRegisteredClauseSpecs();
+    CONTENT_CLAUSE = keyOf('figaro-content-handoff');
+});
 const ERC20_ABI = parseAbi([
     'function balanceOf(address) view returns (uint256)',
     'function transfer(address, uint256) returns (bool)',
@@ -150,7 +158,7 @@ async function seedChainSellers(
                     subjectAddress: s.address,
                     assemblySlug: slug,
                     counterpartyBindings: s.label === 'lead'
-                        ? [{ clauseId: CONTENT_CLAUSE, addresses: contributors.map((c) => c.address) }]
+                        ? [{ clauseKey: CONTENT_CLAUSE, addresses: contributors.map((c) => c.address) }]
                         : [],
                 }],
             },
@@ -163,7 +171,7 @@ async function seedChainSellers(
  *  modality; encrypted transfer + jurisdiction geohashes on EVERY
  *  deliverable. */
 async function fillChainCheckout(page: Page) {
-    await page.locator('[data-testid^="checkout-field-"][data-testid$="-figaro-modalities-modality-virtual"]').first().check();
+    await page.locator(`[data-testid^="checkout-field-"][data-testid$="-${keyOf('figaro-modalities')}-modality-virtual"]`).first().check();
     const everyField = async (fieldPath: string, action: (c: ReturnType<typeof page.locator>) => Promise<void>) => {
         const controls = page.locator(`[data-testid^="checkout-field-"][data-testid$="-${fieldPath}"]`);
         const n = await controls.count();
@@ -171,8 +179,8 @@ async function fillChainCheckout(page: Page) {
         for (let i = 0; i < n; i++) await action(controls.nth(i));
     };
     await everyField(`${CONTENT_CLAUSE}-contentHandoff-encrypted-transfer`, (c) => c.check());
-    await everyField('figaro-geolocation-origin', (c) => c.fill('9q8yyk'));
-    await everyField('figaro-geolocation-destination', (c) => c.fill('u15pk4'));
+    await everyField(`${keyOf('figaro-geolocation')}-origin`, (c) => c.fill('9q8yyk'));
+    await everyField(`${keyOf('figaro-geolocation')}-destination`, (c) => c.fill('u15pk4'));
 }
 
 /** THE SHAPE: exactly three orders, every one composing the content

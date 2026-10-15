@@ -11,12 +11,12 @@ interface IUsageCounter {
     /// @dev BOTH resolution paths, summed as SCORES — never `accrualOf`,
     ///      which sees the direct path only and would under-pay every clause
     ///      or assembly whose trade moved to batches.
-    function scoreOf(bytes32 clauseOrAssembly, uint8 period) external view returns (uint256);
+    function scoreOf(uint8 kind, bytes32 clauseOrAssembly, uint8 period) external view returns (uint256);
 }
 
 /// @notice Author of record for a clause — `ClauseRegistry.depositOf`.
 interface IClauseAuthor {
-    function depositOf(bytes32 idHash) external view returns (address registeredBy, bool withdrawn);
+    function depositOf(bytes32 clauseKey) external view returns (address registeredBy, bool withdrawn);
 }
 
 /// @notice Author of record for an assembly — `AssemblyRegistry.bindings`.
@@ -88,6 +88,23 @@ contract RpgfMinter {
     IClauseAuthor public immutable clauses;
     IAssemblyAuthor public immutable assemblies;
 
+    /// @notice The kind of a clause entry — `UsageCounter.KIND_CLAUSE`; its key
+    ///         is a `ClauseRegistry` clause key.
+    uint8 public constant KIND_CLAUSE = 0;
+    /// @notice The kind of an assembly entry — `UsageCounter.KIND_ASSEMBLY`; its
+    ///         key is an `AssemblyRegistry` compositionHash.
+    uint8 public constant KIND_ASSEMBLY = 1;
+
+    /// @notice One entry of a claim: the family a key belongs to and the key.
+    /// @dev    The kind decides which registry names the designer of record and
+    ///         which of the counter's slots the score is read from. Each
+    ///         registry takes any bytes32, so the same bytes can stand in both;
+    ///         the kind keeps a stake in one family from earning the other's.
+    struct ClauseOrAssemblyKey {
+        uint8 kind;
+        bytes32 key;
+    }
+
     /// @notice Florin budget per accrual period — one entry per `UsageCounter`
     ///         period, fixed at deploy and validated against the counter's own
     ///         schedule, so the two cannot drift. The reference values encode
@@ -114,8 +131,9 @@ contract RpgfMinter {
     error PeriodStillAccruing(uint8 periodId);
     error AlreadyClaimed(uint8 periodId, address account);
     error NoClausesOrAssemblies();
-    error DuplicateClauseOrAssembly(bytes32 clauseOrAssembly);
-    error NotAuthorOfRecord(bytes32 clauseOrAssembly, address caller);
+    error DuplicateClauseOrAssembly(uint8 kind, bytes32 clauseOrAssembly);
+    error NotAuthorOfRecord(uint8 kind, bytes32 clauseOrAssembly, address caller);
+    error UnknownKind(uint8 kind);
     error NothingToClaim();
     error PeriodBudgetExceeded(uint8 periodId);
 
@@ -149,7 +167,7 @@ contract RpgfMinter {
     /// @notice What `account` could claim for `periodId` with
     ///         `clausesOrAssemblies`, without sending a transaction. Zero once
     ///         claimed.
-    function claimable(uint8 periodId, address account, bytes32[] calldata clausesOrAssemblies)
+    function claimable(uint8 periodId, address account, ClauseOrAssemblyKey[] calldata clausesOrAssemblies)
         external
         view
         returns (uint256)
@@ -165,11 +183,13 @@ contract RpgfMinter {
     /// @notice Mint your share of a closed period. Once per wallet per period;
     ///         pass every clause and assembly you authored in one call.
     /// @param periodId  The accrual period being claimed.
-    /// @param clausesOrAssemblies Clause idHashes and/or assembly
-    ///                  compositionHashes the caller is author of record for.
-    ///                  Each is verified against its own registry — the caller's
-    ///                  list is a lookup key, never a claim of ownership.
-    function claim(uint8 periodId, bytes32[] calldata clausesOrAssemblies) external {
+    /// @param clausesOrAssemblies (kind, key) pairs — clause keys under
+    ///                  `KIND_CLAUSE`, assembly compositionHashes under
+    ///                  `KIND_ASSEMBLY` — the caller is designer of record for.
+    ///                  Each is verified against the one registry its kind
+    ///                  names — the caller's list is a lookup key, never a claim
+    ///                  of ownership.
+    function claim(uint8 periodId, ClauseOrAssemblyKey[] calldata clausesOrAssemblies) external {
         if (periodId >= periodAmount.length) revert UnknownPeriod(periodId);
         if (!counter.periodClosed(periodId)) revert PeriodStillAccruing(periodId);
         if (claimed[periodId][msg.sender]) revert AlreadyClaimed(periodId, msg.sender);
@@ -196,7 +216,7 @@ contract RpgfMinter {
     ///      The reward tracks real usage directly, and the fixed 600M pool is one
     ///      a farmer DILUTES, never inflates.
     ///
-    ///      THE LIST MUST BE DUPLICATE-FREE, and that is enforced here rather
+    ///      THE LIST MUST BE DUPLICATE-FREE in (kind, key), and that is enforced here rather
     ///      than assumed. A loop that summed each entry as given
     ///      and then CLAMPED `score` to `total` would let an author of record for any
     ///      clause or assembly with a non-zero score repeat it until the
@@ -209,7 +229,7 @@ contract RpgfMinter {
     ///      structurally (`totalScoreIn` is the sum over ALL clauses and
     ///      assemblies, of which the caller's are a subset), so there is nothing
     ///      left to clamp.
-    function _entitlement(uint8 periodId, address account, bytes32[] calldata clausesOrAssemblies)
+    function _entitlement(uint8 periodId, address account, ClauseOrAssemblyKey[] calldata clausesOrAssemblies)
         internal
         view
         returns (uint256 amount, uint256 score)
@@ -218,23 +238,26 @@ contract RpgfMinter {
         if (total == 0) return (0, 0);
 
         for (uint256 i = 0; i < clausesOrAssemblies.length; ++i) {
-            bytes32 clauseOrAssembly = clausesOrAssemblies[i];
+            uint8 kind = clausesOrAssemblies[i].kind;
+            bytes32 clauseOrAssembly = clausesOrAssemblies[i].key;
             for (uint256 j = 0; j < i; ++j) {
-                if (clausesOrAssemblies[j] == clauseOrAssembly) revert DuplicateClauseOrAssembly(clauseOrAssembly);
+                if (clausesOrAssemblies[j].kind == kind && clausesOrAssemblies[j].key == clauseOrAssembly) {
+                    revert DuplicateClauseOrAssembly(kind, clauseOrAssembly);
+                }
             }
-            if (!_isAuthor(clauseOrAssembly, account)) revert NotAuthorOfRecord(clauseOrAssembly, account);
-            score += counter.scoreOf(clauseOrAssembly, periodId);
+            if (!_isAuthor(kind, clauseOrAssembly, account)) revert NotAuthorOfRecord(kind, clauseOrAssembly, account);
+            score += counter.scoreOf(kind, clauseOrAssembly, periodId);
         }
         if (score == 0) return (0, 0);
 
         amount = (periodAmount[periodId] * score) / total;
     }
 
-    /// @dev Author of record with a LIVE stake — the wallet each registry
-    ///      records as `registeredBy`, only while its registration deposit is
-    ///      un-withdrawn. A key is one or the other; both registries are
-    ///      consulted because the families are parallel and neither knows the
-    ///      other exists.
+    /// @dev Designer of record with a LIVE stake — the wallet the registry the
+    ///      KIND names as its `registeredBy`, only while its registration
+    ///      deposit is un-withdrawn. The other registry is never read: the
+    ///      families are parallel, neither knows the other exists, and a stake
+    ///      in one at the same bytes is no designer's claim on the other.
     ///
     ///      The `!withdrawn` requirement is the AUTHOR-SIDE half of the two-sided
     ///      live-ETH-stake gate (its seller-side half lives in `UsageCounter`):
@@ -244,10 +267,15 @@ contract RpgfMinter {
     ///      upside (more trade → more base-currency demand → ETH appreciates for
     ///      every registry staker), not a cost, so keeping it live is the honest
     ///      author's default.
-    function _isAuthor(bytes32 clauseOrAssembly, address account) internal view returns (bool) {
-        (address registeredBy, bool withdrawn) = clauses.depositOf(clauseOrAssembly);
-        if (registeredBy != address(0)) return registeredBy == account && !withdrawn;
-        (address assemblyRegisteredBy,, bool depositWithdrawn,) = assemblies.bindings(clauseOrAssembly);
-        return assemblyRegisteredBy != address(0) && assemblyRegisteredBy == account && !depositWithdrawn;
+    function _isAuthor(uint8 kind, bytes32 clauseOrAssembly, address account) internal view returns (bool) {
+        if (kind == KIND_CLAUSE) {
+            (address registeredBy, bool withdrawn) = clauses.depositOf(clauseOrAssembly);
+            return registeredBy != address(0) && registeredBy == account && !withdrawn;
+        }
+        if (kind == KIND_ASSEMBLY) {
+            (address assemblyRegisteredBy,, bool depositWithdrawn,) = assemblies.bindings(clauseOrAssembly);
+            return assemblyRegisteredBy != address(0) && assemblyRegisteredBy == account && !depositWithdrawn;
+        }
+        revert UnknownKind(kind);
     }
 }

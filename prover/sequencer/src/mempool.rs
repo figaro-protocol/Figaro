@@ -183,7 +183,7 @@ impl Mempool {
     /// The key covers every input the proof or the verifier judges and
     /// admission cannot: a resolve's signer and its order list, a seller
     /// attestation's role order, an attestation's witness spec bytes (the
-    /// verifier checks them against the registry's anchor). Two submissions
+    /// guest requires them to hash to the clause key). Two submissions
     /// share a slot only when both are accepted or both are refused, so one
     /// that will be refused never makes the one that will be accepted a
     /// duplicate.

@@ -27,10 +27,16 @@ import { mnemonicToAccount } from 'viem/accounts';
 // identity (compositionHash + slug). Nothing is re-implemented here.
 import { MEMBERS_REGISTRY_ABI, ERC20_ABI } from '@figaro-protocol/sdk';
 import {
-    ASSEMBLIES_DIR, CLAUSES_DIR, LOCAL_ANVIL, anchorAssembly, fillDeployTimeCurrency, pinFile, pinJSON,
+    ASSEMBLIES_DIR, LOCAL_ANVIL, anchorAssembly, fillDeployTimeCurrency, loadAuthoredSpecs, pinFile, pinJSON,
+    readResolvedTemplate,
     populateClauses, populateReferenceAssemblies, readEnvLocal, registrarAccount,
 } from './populate-clauses.mjs';
-import { templateCompositionHash, deriveAssemblySlug } from '@figaro-protocol/sdk';
+import { templateCompositionHash, deriveAssemblySlug, resolveAuthoredClauseKeys } from '@figaro-protocol/sdk';
+
+// The specs in clauses/, each with its key — the set every authored clause
+// NAME below resolves against at seed time (`resolveAuthoredClauseKeys`);
+// everything pinned carries keys.
+const AUTHORED = loadAuthoredSpecs();
 
 const RPC_URL = process.env.RPC_URL ?? 'http://127.0.0.1:8545';
 const ANVIL_MNEMONIC = 'test test test test test test test test test test test junk';
@@ -63,8 +69,8 @@ const SELLERS = [
  *  template AFTER the deploy-time currency fill — the same hash
  *  populateReferenceAssemblies anchored, never the raw file's. */
 function referenceSlug(file, tokenAddress) {
-    const raw = JSON.parse(fs.readFileSync(path.join(ASSEMBLIES_DIR, file), 'utf8'));
-    return deriveAssemblySlug(templateCompositionHash(fillDeployTimeCurrency(raw, tokenAddress)));
+    const template = readResolvedTemplate(path.join(ASSEMBLIES_DIR, file), AUTHORED);
+    return deriveAssemblySlug(templateCompositionHash(fillDeployTimeCurrency(template, tokenAddress)));
 }
 
 const slugifyId = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
@@ -89,8 +95,7 @@ const isAlreadyRegistered = (err) => /AlreadyRegistered/i.test(err instanceof Er
 function mandatoryClauseFold(parents = []) {
     const bag = { parentOrderHashes: parents };
     const out = {};
-    for (const file of fs.readdirSync(CLAUSES_DIR).filter((f) => f.endsWith('.json')).sort()) {
-        const spec = JSON.parse(fs.readFileSync(path.join(CLAUSES_DIR, file), 'utf8'));
+    for (const { spec, clauseKey } of AUTHORED.specs) {
         if (spec.block?.design?.article !== 'mandatory') continue;
         // Mandatory folds at the level its scope names: an assembly-scoped
         // mandatory clause is a template-level fold, not a per-agreement one.
@@ -99,7 +104,7 @@ function mandatoryClauseFold(parents = []) {
         for (const field of spec.fields ?? []) {
             if (field.name in bag) data[field.name] = bag[field.name];
         }
-        out[spec.clauseId] = data;
+        out[clauseKey] = data;
     }
     if (Object.keys(out).length === 0) throw new Error('no mandatory clauses found in clauses/*.json');
     return out;
@@ -128,7 +133,7 @@ function seedTemplateBlank() {
  *  byte-for-byte), exactly like the member roster above. Counterparties are
  *  NOT seeded — the lead binds + designates them through the real UI flow. */
 function seedTemplateChain() {
-    return {
+    return resolveAuthoredClauseKeys({
         name: 'Devnet delivery chain',
         summary: 'Three-order value-added chain: merchant, courier, supplier.',
         description: 'A delivery chain for the multi-order e2e: the buyer sees the full decomposition at checkout, each contributor is bond-secured, and the single resolve pays every party.',
@@ -158,7 +163,7 @@ function seedTemplateChain() {
                 },
             },
         ],
-    };
+    }, AUTHORED);
 }
 
 async function main() {
@@ -251,7 +256,8 @@ async function main() {
         };
         const catalogURI = await pinJSON(ipfsApiUrl, JSON.stringify(catalog));
 
-        const profile = {
+        // Authored with the courier clause's NAME; resolved to its key here.
+        const profile = resolveAuthoredClauseKeys({
             subjectAddress: account.address,
             name: s.name,
             specialty: s.specialty,
@@ -267,7 +273,7 @@ async function main() {
                     ? []
                     : [{ clauseId: COURIER_CLAUSE, addresses: [mnemonicToAccount(ANVIL_MNEMONIC, { addressIndex: s.courierIndex }).address] }],
             }],
-        };
+        }, AUTHORED);
         const metadataURI = await pinJSON(ipfsApiUrl, JSON.stringify(profile));
 
         try {

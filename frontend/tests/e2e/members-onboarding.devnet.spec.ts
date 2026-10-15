@@ -240,17 +240,17 @@ async function onboardViaWizard(
     const composed = new Set(assembly.agreements.flatMap((a) => Object.keys(a.clauses ?? {})));
     // The clause GROUPS are the direct children of the item's clause section;
     // the field controls nest below them.
-    const renderedClauseIds = await page
+    const renderedClauseKeys = await page
         .locator('[data-testid^="item-"][data-testid$="-clauses"] > [data-testid]')
         .evaluateAll((nodes) =>
             nodes
                 .map((n) => (n.getAttribute("data-testid") ?? "").split("-clause-")[1])
-                .filter((id): id is string => !!id),
+                .filter((key): key is string => !!key),
         );
-    for (const clauseId of renderedClauseIds) {
+    for (const clauseKey of renderedClauseKeys) {
         expect(
-            composed.has(clauseId),
-            `the catalog asks for "${clauseId}", which the bound assembly does not compose`,
+            composed.has(clauseKey),
+            `the catalog asks for "${clauseKey}", which the bound assembly does not compose`,
         ).toBe(true);
     }
 
@@ -259,7 +259,7 @@ async function onboardViaWizard(
     const unboundClause = (await discoverAnchoredAssemblies())
         .filter((a) => a.slug !== assemblySlug)
         .flatMap((a) => a.agreements.flatMap((ag) => Object.keys(ag.clauses ?? {})))
-        .find((clauseId) => !composed.has(clauseId));
+        .find((clauseKey) => !composed.has(clauseKey));
     if (unboundClause) {
         await expect(page.locator(`[data-testid$="-clause-${unboundClause}"]`)).toHaveCount(0);
     }

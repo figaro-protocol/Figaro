@@ -23,8 +23,8 @@
  * members-onboarding do, importing no closed-world scenario apparatus (no
  * pre-computed slugs, no UI-bypassing place/accept shortcuts); the only
  * non-UI step is the documented permissionless
- * clause registration (ClauseRegistry.registerClause — a single contentHash +
- * metadata URI, NO merkle tree, NO per-clause validator, no on-chain content
+ * clause registration (ClauseRegistry.registerClause — the clause key, which
+ * is the hash of the pinned spec bytes, + their URI, NO merkle tree, NO per-clause validator, no on-chain content
  * validation) — network seeding, the same path the protocol's own clauses use,
  * NOT a bypass. That a never-seen clause attests with zero per-clause on-chain
  * code IS the open-world property, now structural: there is no validator to register.
@@ -42,12 +42,18 @@ import {
     createPublicClient, defineChain, http, parseAbi, type Hex,
 } from 'viem';
 import { privateKeyToAccount, mnemonicToAccount } from 'viem/accounts';
-import { readLocalDeploymentConfig, assertPinnedInIpfs, publishOrAdoptReviewed, waitForConnected } from './devnet-helpers';
+import { readLocalDeploymentConfig, assertPinnedInIpfs, publishOrAdoptReviewed, waitForConnected, keyOf, primeRegisteredClauseSpecs } from './devnet-helpers';
 import { makeProbeSpec, makeProbeWitnessSpec, registerProbeClause } from './probeAssembly';
 import { ANVIL_KEYS } from '../anvilAccounts';
 import { CORE_ABI } from '@/lib/kernel/contracts';
 import { calculateBonds } from '@figaro-protocol/sdk';
 import type { Page } from '@playwright/test';
+
+// Clause keys are located by the names their specs carry (`keyOf`), over
+// the specs the chain registered — primed once per file.
+test.beforeAll(async () => {
+    await primeRegisteredClauseSpecs();
+});
 
 const RPC_URL = 'http://127.0.0.1:8545';
 const LOCAL_ANVIL = defineChain({
@@ -114,8 +120,10 @@ test.describe('PERMISSIONLESS CLAUSE — the definition of green (devnet)', () =
         // ── SETUP: register the novel clauses permissionlessly (no UI for clause
         //    registration exists — this is the documented registration path; no
         //    validator to bind, the chain validates no clause content) ──
-        await registerProbeClause(NOVEL_CLAUSE_ID, NOVEL_SPEC);
-        await registerProbeClause(WITNESS_CLAUSE_ID, WITNESS_SPEC);
+        // Each registration pins the spec's canonical bytes and names their
+        // hash — the clause key every surface below locates it by.
+        const NOVEL_KEY = await registerProbeClause(NOVEL_SPEC);
+        const WITNESS_KEY = await registerProbeClause(WITNESS_SPEC);
 
         // ── DRAWER: author an assembly carrying the novel clause, via the REAL
         //    designer. The clause appears ONLY because the drawer read it from
@@ -136,7 +144,7 @@ test.describe('PERMISSIONLESS CLAUSE — the definition of green (devnet)', () =
         await page.getByTestId('agreement-drawer').waitFor({ state: 'visible', timeout: 10000 });
         await page.getByTestId('drawer-tab-registry').click();
         await page.getByTestId('drawer-section-registry').waitFor({ state: 'visible', timeout: 5000 });
-        const novel = page.getByTestId(`drawer-registry-clause-${NOVEL_CLAUSE_ID}`);
+        const novel = page.getByTestId(`drawer-registry-clause-${NOVEL_KEY}`);
         await expect(
             novel,
             'the drawer surfaces the NEVER-SEEN clause from the live registry (drawer leg)',
@@ -144,7 +152,7 @@ test.describe('PERMISSIONLESS CLAUSE — the definition of green (devnet)', () =
         await novel.check();
         // Compose the never-seen WITNESS clause beside it and fill its committed
         // policy — the required scalar the drawer captures at design time.
-        const witnessNovel = page.getByTestId(`drawer-registry-clause-${WITNESS_CLAUSE_ID}`);
+        const witnessNovel = page.getByTestId(`drawer-registry-clause-${WITNESS_KEY}`);
         await expect(
             witnessNovel,
             'the drawer surfaces the never-seen WITNESS clause from the live registry',
@@ -237,7 +245,7 @@ test.describe('PERMISSIONLESS CLAUSE — the definition of green (devnet)', () =
         // The NEVER-SEEN witness clause's required committed policy is filled
         // on the generic checkout fill surface — spec-routed, zero per-clause
         // code (templates arrive value-free by construction).
-        await page.locator(`[data-testid^="checkout-field-"][data-testid$="-${WITNESS_CLAUSE_ID}-probePolicy"]`).first()
+        await page.locator(`[data-testid^="checkout-field-"][data-testid$="-${WITNESS_KEY}-probePolicy"]`).first()
             .fill('probe-policy-token');
         const place = page.getByTestId('btn-place-order');
         await expect(place, 'buyer connected + order ready → "Place order"').toHaveText(/Place order/, { timeout: 20000 });
@@ -334,13 +342,13 @@ test.describe('PERMISSIONLESS CLAUSE — the definition of green (devnet)', () =
         //    derives its capability, renders its form from the declared
         //    fields, and files the record — zero per-clause code anywhere. ──
         const witnessCap = page.locator(
-            `[data-testid="capability-submit-clause-attestation"][data-clause-id="${WITNESS_CLAUSE_ID}"]`,
+            `[data-testid="capability-submit-clause-attestation"][data-clause-key="${WITNESS_KEY}"]`,
         );
         await expect(
             witnessCap,
             "the rail derives the never-seen clause's witness capability from its declaration",
         ).toBeVisible({ timeout: 30000 });
-        await page.getByTestId(`capability-input-${WITNESS_CLAUSE_ID}-probeReading`).fill('42');
+        await page.getByTestId(`capability-input-${WITNESS_KEY}-probeReading`).fill('42');
         await witnessCap.getByTestId('capability-execute-submit-clause-attestation').click();
         const witnessRow = page.getByTestId('timeline-event-stage-1').first();
         await expect(
@@ -438,7 +446,7 @@ test.describe('PERMISSIONLESS CLAUSE — the definition of green (devnet)', () =
             evidence.getByText(WITNESS_TITLE).first(),
             'the never-seen witness clause surfaces by its spec title',
         ).toBeVisible({ timeout: 15000 });
-        const witnessDl = evidence.locator(`[data-testid="audit-witness-${WITNESS_CLAUSE_ID}-1"]`);
+        const witnessDl = evidence.locator(`[data-testid="audit-witness-${WITNESS_KEY}-1"]`);
         await expect(
             witnessDl,
             "the witness record decodes from calldata against the never-seen clause's declared stage",
@@ -476,9 +484,9 @@ test.describe('PERMISSIONLESS CLAUSE — the definition of green (devnet)', () =
         const ipfsApi = process.env.NEXT_PUBLIC_IPFS_API_URL ?? 'http://127.0.0.1:5001';
         const agreementJson = await (await fetch(`${ipfsApi}/api/v0/cat?arg=${agreementCid}`, { method: 'POST' })).text();
         const agreement = JSON.parse(agreementJson) as { sections: { clause: string }[] };
-        const leafClauses = agreement.sections.map((s) => s.clause);
+        const leafClauses = agreement.sections.map((s) => s.clause.toLowerCase());
         expect(leafClauses, 'the committed merkle tree carries all four leaves')
-            .toEqual(expect.arrayContaining(['figaro-commerce', 'figaro-topology', NOVEL_CLAUSE_ID, WITNESS_CLAUSE_ID]));
+            .toEqual(expect.arrayContaining([keyOf('figaro-commerce'), keyOf('figaro-topology'), NOVEL_KEY, WITNESS_KEY]));
 
         await page.getByTestId('verify-mode-agreement').click();
         await page.getByTestId('verify-agreement-input').fill(agreementJson);

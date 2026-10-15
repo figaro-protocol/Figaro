@@ -5,8 +5,9 @@
 //! `test/core/attestation/MerkleParityTest.t.sol` verifies them with the
 //! OpenZeppelin library the direct path calls; this file verifies them with
 //! `merkle::verify_inclusion`, the batch path's verifier, from a leaf rebuilt
-//! the way the guest rebuilds it for a usage claim — clause key
-//! `clause_id_hash(clause, version)`, section hash over the canonical bytes,
+//! the way the guest rebuilds it for a usage claim — the section's
+//! `clauseKey` (the `keccak256` of the clause spec's pinned bytes, carried
+//! as the key itself), section hash over the canonical bytes,
 //! `keccak256(keccak256(key ‖ sectionHash))`.
 //!
 //! An agreement that instantiates an assembly carries the reserved
@@ -25,7 +26,7 @@ use std::str::FromStr;
 
 use alloy_primitives::{keccak256, B256};
 
-use figaro_kernel::kernel::{clause_id_hash, provenance_section_bytes};
+use figaro_kernel::kernel::provenance_section_bytes;
 use figaro_kernel::merkle::verify_inclusion;
 
 fn generated() -> bool {
@@ -46,10 +47,6 @@ fn fixture() -> serde_json::Value {
 
 fn b256(v: &serde_json::Value) -> B256 {
     B256::from_str(v.as_str().expect("hex string")).expect("bytes32")
-}
-
-fn leaf(clause: &str, version: u64, section_data: &str) -> B256 {
-    leaf_under(clause_id_hash(clause, version), section_data)
 }
 
 fn leaf_under(key: B256, section_data: &str) -> B256 {
@@ -79,9 +76,8 @@ fn every_frozen_proof_opens_against_the_rebuilt_leaf() {
             opens_the_provenance_leaf(provenance, root);
         }
         for section in sections {
-            let rebuilt = leaf(
-                section["clause"].as_str().unwrap(),
-                section["version"].as_u64().unwrap(),
+            let rebuilt = leaf_under(
+                b256(&section["clauseKey"]),
                 section["sectionData"].as_str().unwrap(),
             );
             assert_eq!(

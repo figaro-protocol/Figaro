@@ -29,25 +29,25 @@ test.describe('PUBLIC REGISTRIES — the explorer shows exactly what the chain h
 
         // ── Truth: the three event streams, from the deployment block ──
         const clauseEvents = await scanContractEvents(publicClient, { address: config.clauseRegistry as `0x${string}`, abi: CLAUSE_REGISTRY_ABI, eventName: 'ClauseRegistered' });
-        const clauseIds = new Set(clauseEvents.map((e) => String((e.args as { clauseId?: string }).clauseId ?? '')).filter(Boolean));
+        const clauseKeys = new Set(clauseEvents.map((e) => String((e.args as { clauseKey?: string }).clauseKey ?? '').toLowerCase()).filter(Boolean));
         const assemblyEvents = await scanContractEvents(publicClient, { address: config.assemblyRegistry as `0x${string}`, abi: ASSEMBLY_REGISTRY_ABI, eventName: 'AssemblyRegistered' });
         const slugs = new Set(assemblyEvents.map((e) => deriveAssemblySlug((e.args as { compositionHash: `0x${string}` }).compositionHash)));
         const memberEvents = await scanContractEvents(publicClient, { address: config.membersRegistry as `0x${string}`, abi: MEMBERS_REGISTRY_ABI, eventName: 'MemberRegistered' });
         const members = new Set(memberEvents.map((e) => String((e.args as { member?: string }).member ?? '').toLowerCase()).filter(Boolean));
-        expect(clauseIds.size, 'the registry holds clauses').toBeGreaterThan(0);
+        expect(clauseKeys.size, 'the registry holds clauses').toBeGreaterThan(0);
         expect(slugs.size, 'the registry holds assemblies').toBeGreaterThan(0);
         expect(members.size, 'the registry holds members').toBeGreaterThan(0);
 
         // ── Clauses: the row set is the chain's; every spec resolved; every heading a real article ──
         await page.goto('/registries?family=clauses');
         const clauseRows = page.locator('li[id^="clause-"]');
-        await expect.poll(async () => (await clauseRows.evaluateAll((els) => els.map((e) => e.id.replace(/^clause-/, '')))).sort(), { timeout: 60_000 })
-            .toEqual([...clauseIds].sort());
+        await expect.poll(async () => (await clauseRows.evaluateAll((els) => els.map((e) => e.id.replace(/^clause-/, '').toLowerCase()))).sort(), { timeout: 60_000 })
+            .toEqual([...clauseKeys].sort());
         await expect(page.getByTestId('content-resolving')).toHaveCount(0, { timeout: RESOLVE_TIMEOUT });
         await expect(page.getByTestId('content-unavailable')).toHaveCount(0);
         const headings = await page.getByRole('heading', { level: 3 }).allTextContents();
         for (const h of headings) expect(h, 'a heading is an article, not a content state').not.toMatch(/content (not served|unavailable)/);
-        await expect(page.getByTestId('registry-count')).toContainText(`${clauseIds.size} of ${clauseIds.size} clauses`);
+        await expect(page.getByTestId('registry-count')).toContainText(`${clauseKeys.size} of ${clauseKeys.size} clauses`);
 
         // ── Assemblies: every anchored composition, each named from its resolved template ──
         await page.goto('/registries?family=assemblies');

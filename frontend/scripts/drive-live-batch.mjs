@@ -43,8 +43,9 @@
  *   SETTLEMENT_TOKEN      — ERC-20 the order resolves in (defaults to Circle's
  *                           Sepolia USDC when the record says 11155111)
  *   PAYMENT               — payment in the token's base units (default 1000000)
- *   WITNESS_CLAUSE        — clause id for the witness attestation
- *                           (default figaro-modalities)
+ *   WITNESS_CLAUSE        — the file in clauses/ the witness attestation's
+ *                           spec is read from (default figaro-modalities);
+ *                           its key is the hash of its canonical bytes
  *   BATCH_WAIT_TIMEOUT_MS — per-batch resolve timeout (default 7200000 — a
  *                           local CPU Groth16 proof takes minutes to tens of
  *                           minutes)
@@ -63,7 +64,7 @@ import { randomBytes } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import {
     createPublicClient, createWalletClient, defineChain, http,
-    keccak256, hashTypedData, toHex, parseAbi,
+    keccak256, hashTypedData, toHex,
 } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import {
@@ -71,7 +72,7 @@ import {
     MEMBERS_REGISTRY_ABI, USAGE_COUNTER_ABI,
     buildCommitment, buildDomain, calculateBonds, computeOrderHash,
     computeAgreementHash, computeClauseKey, canonicalize,
-    fetchUsageClaimContext, buildUsageClaims,
+    fetchUsageClaimContext, buildUsageClaims, USAGE_KIND_CLAUSE,
 } from '@figaro-protocol/sdk';
 import { parseClauseSpec, encodeContentFromSpec } from '@figaro-protocol/sdk/clauses';
 import { SequencerClient } from '@figaro-protocol/sdk/agent';
@@ -127,15 +128,10 @@ const sequencer = new SequencerClient({ url: SEQUENCER_URL });
 const verifier = record.batchVerifier;
 const bonds = calculateBonds(PAYMENT, PAYMENT);
 
-// The spec-binding anchor read; not part of the SDK's CLAUSE_REGISTRY_ABI.
-const CONTENT_HASH_ABI = parseAbi([
-    'function contentHashOf(bytes32 idHash) view returns (bytes32)',
-]);
-
-// ── The witness clause: canonical bytes, exactly as anchored ────────────────
-// The registry anchors `canonicalContentHash(spec)` — keccak over the
-// CANONICAL serialization, not the raw file bytes — so the witness proof must
-// carry that same canonical string for the guest's hash to meet the anchor.
+// ── The witness clause: canonical bytes, exactly as registered ──────────────
+// The clause key IS keccak over the spec's CANONICAL serialization (the bytes
+// the seeding pinned), so the witness proof carries that same canonical
+// string for the guest's hash to meet the key.
 
 const specObject = JSON.parse(fs.readFileSync(
     path.resolve(__dirname, `../../clauses/${WITNESS_CLAUSE}.json`), 'utf-8'));
@@ -146,7 +142,9 @@ if (!parseResult.ok) {
     process.exit(1);
 }
 const spec = parseResult.spec;
-const clauseKey = computeClauseKey(spec.clauseId, spec.version);
+// Over the raw document (block included), as the seeding pins it — never the
+// parsed spec, which drops the presentation slice.
+const clauseKey = computeClauseKey(specObject);
 
 const sectionObject = { modality: 'delivery' };
 const sectionData = canonicalize(sectionObject);
@@ -156,7 +154,7 @@ const agreement = {
     version: 'a1',
     buyer: buyerAccount.address,
     seller: sellerAccount.address,
-    sections: [{ clause: spec.clauseId, version: spec.version, data: sectionObject }],
+    sections: [{ clause: clauseKey, data: sectionObject }],
 };
 const agreementHash = computeAgreementHash(agreement);
 
@@ -188,11 +186,11 @@ try {
     process.exit(1);
 }
 
-const [stateRoot, batchCount, anchored, deposit, sellerRegistered,
+const [stateRoot, batchCount, clauseRegistered, deposit, sellerRegistered,
     currentPeriod, minSellers, tokenDecimals, tokenSymbol] = await Promise.all([
     read(verifier, BATCH_VERIFIER_ABI, 'stateRoot'),
     read(verifier, BATCH_VERIFIER_ABI, 'batchCount'),
-    read(record.clauseRegistry, CONTENT_HASH_ABI, 'contentHashOf', [clauseKey]),
+    read(record.clauseRegistry, CLAUSE_REGISTRY_ABI, 'registered', [clauseKey]),
     read(record.clauseRegistry, CLAUSE_REGISTRY_ABI, 'depositOf', [clauseKey]),
     read(record.membersRegistry, MEMBERS_REGISTRY_ABI, 'registered', [sellerAccount.address]),
     read(record.usageCounter, USAGE_COUNTER_ABI, 'currentPeriod'),
@@ -201,9 +199,11 @@ const [stateRoot, batchCount, anchored, deposit, sellerRegistered,
     read(TOKEN, ERC20_ABI, 'symbol'),
 ]);
 
-const specHash = keccak256(toHex(specJson));
-if (anchored !== specHash) {
-    gaps.push(`witness spec drift: registry anchors ${anchored}, canonical local bytes hash ${specHash}`);
+if (keccak256(toHex(specJson)) !== clauseKey) {
+    gaps.push(`witness spec bytes do not hash to the clause key ${clauseKey}`);
+}
+if (!clauseRegistered) {
+    gaps.push(`${WITNESS_CLAUSE} (key ${clauseKey}) is not registered — the local spec differs from every registered one, or it was never seeded`);
 }
 if (deposit[1] === true || deposit[0] === '0x0000000000000000000000000000000000000000') {
     gaps.push(`${WITNESS_CLAUSE} has no live registry deposit — the usage pre-filter drops the claim`);
@@ -418,7 +418,7 @@ const claims = buildUsageClaims(commitment, agreement, claimContext);
 if (claims.length !== 1 || claims[0].clause_or_assembly !== clauseKey) {
     throw new Error(`expected one usage claim for ${clauseKey}, got ${JSON.stringify(claims)}`);
 }
-const accrualBefore = await read(record.usageCounter, USAGE_COUNTER_ABI, 'batchAccrualOf', [clauseKey, currentPeriod]);
+const accrualBefore = await read(record.usageCounter, USAGE_COUNTER_ABI, 'batchAccrualOf', [USAGE_KIND_CLAUSE, clauseKey, currentPeriod]);
 await sequencer.submitUsageClaim(claims[0]);
 console.log(`submitted usage claim for ${spec.clauseId} (period ${currentPeriod})`);
 
@@ -434,7 +434,7 @@ const [buyerFinal, sellerFinal, verifierFinal, finalRoot, finalCount, accrualAft
         read(TOKEN, ERC20_ABI, 'balanceOf', [verifier]),
         read(verifier, BATCH_VERIFIER_ABI, 'stateRoot'),
         read(verifier, BATCH_VERIFIER_ABI, 'batchCount'),
-        read(record.usageCounter, USAGE_COUNTER_ABI, 'batchAccrualOf', [clauseKey, currentPeriod]),
+        read(record.usageCounter, USAGE_COUNTER_ABI, 'batchAccrualOf', [USAGE_KIND_CLAUSE, clauseKey, currentPeriod]),
     ]);
 
 const checks = [

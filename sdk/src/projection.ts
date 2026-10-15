@@ -40,7 +40,7 @@ import {
 } from "./agreement.js";
 import { templateCompositionHash, type AssemblyTemplate } from "./assembly.js";
 import { validateContent, type ClauseSpec } from "./clauses/index.js";
-import { isAddressHex } from "./types.js";
+import { isAddressHex, type Hex } from "./types.js";
 
 // ── The spec seam ───────────────────────────────────────────────────────────
 
@@ -75,17 +75,17 @@ export interface ProjectionHints {
 
 /** A clause spec as the projection sees it: the off-chain spec plus the
  *  hash-load-bearing hints. */
-export type ProjectionSpecView = ClauseSpec & { hints?: ProjectionHints };
+export type ProjectionSpecView = ClauseSpec & { clauseKey: Hex; hints?: ProjectionHints };
 
 /**
  * The consumer's window onto its loaded clause specs (ClauseRegistry → IPFS).
- * A clause's identity is (clauseId, version) — the on-chain key
- * keccak256(abi.encode(clauseId, version)) — so `get` reads one registration
- * by both and nothing reads a clause by name alone; `list` returns every
- * spec the source surfaces (one entry per clauseId+version).
+ * A clause's identity is its KEY, `keccak256` of the spec's pinned bytes
+ * (`computeClauseKey`), so `get` reads one registration by key and nothing
+ * reads a clause by name; `list` returns every spec the source surfaces, each
+ * carrying its key. A spec's `clauseId` and `version` are presentation.
  */
 export interface SpecSource {
-    get(clauseId: string, version: number): ProjectionSpecView | undefined;
+    get(clauseKey: Hex): ProjectionSpecView | undefined;
     list(): readonly ProjectionSpecView[];
 }
 
@@ -192,7 +192,7 @@ export function publicForm(agreement: Agreement, specs: SpecSource): Agreement {
         ...agreement,
         sections: agreement.sections.map((section) => {
             if (section.data === undefined) return section; // already withheld
-            const spec = specs.get(section.clause, section.version);
+            const spec = specs.get(section.clause);
             const isPrivate = spec ? specHasPrivateField(spec) : true;
             return isPrivate ? withholdSectionContent(section) : section;
         }),
@@ -206,8 +206,9 @@ export function publicForm(agreement: Agreement, specs: SpecSource): Agreement {
  *
  *  The article is read from the spec's `block`, which whoever registered the
  *  clause wrote: it confers no protocol standing. A surface that shows a
- *  composition before it is anchored or signed lists the clauses this marks
- *  by id and version, never leaves them out. */
+ *  composition before it is anchored or signed lists every clause this
+ *  marks (by key, labeled with the spec's own `clauseId`), never leaves
+ *  them out. */
 export function specIsMandatory(spec: ProjectionSpecView): boolean {
     return spec.hints?.article === "mandatory";
 }
@@ -315,11 +316,10 @@ export interface OrderAgreement {
  *  empty anchor at commit and stays untouched. */
 function withSpecDefaults(
     specs: SpecSource,
-    clause: string,
+    clauseKey: Hex,
     data: Record<string, unknown>,
-    version: number,
 ): Record<string, unknown> {
-    const spec = specs.get(clause, version);
+    const spec = specs.get(clauseKey);
     if (!spec || specIsProcessLog(spec)) return data;
     let out = data;
     for (const field of spec.fields ?? []) {
@@ -333,7 +333,7 @@ function withSpecDefaults(
 
 /**
  * Build the order's agreement and merkle tree from its complete clause map.
- * `clauses` is `{ [clauseId]: fieldValues }` — the pinned assembly's clauses,
+ * `clauses` is `{ [clauseKey]: fieldValues }` — the pinned assembly's clauses,
  * valued for this order. Sections are sorted by clause key so the pinned JSON
  * is deterministic; the merkle root sorts its own leaves, so order never
  * affects the hash.
@@ -342,40 +342,32 @@ function withSpecDefaults(
  * The ONE spec-driven step: each clause spec's own declared field defaults
  * fill fields the composing input omitted — the SPEC speaks, the code
  * injects nothing of its own.
- *
- * `clauseVersions`: clauseId → the registered version composed — sparse,
- * the template's rule: an absent entry is version 1, never the highest
- * loaded, since every (clauseId, version) slot is open to anyone. A caller
- * composing any other version states it here.
  */
 export function buildOrderAgreement(
     buyer: `0x${string}`,
     seller: `0x${string}`,
-    clauses: Readonly<Record<string, Record<string, unknown>>>,
+    clauses: Readonly<Record<Hex, Record<string, unknown>>>,
     specs: SpecSource,
-    clauseVersions?: Readonly<Record<string, number>>,
 ): OrderAgreement {
-    const sections: AgreementSection[] = Object.keys(clauses)
-        .map((clause) => {
-            const version = clauseVersions?.[clause] ?? 1;
-            return {
-                clause,
-                version,
-                data: withSpecDefaults(specs, clause, clauses[clause] ?? {}, version),
-            };
-        })
+    const sections: AgreementSection[] = (Object.keys(clauses) as Hex[])
+        .map((clause) => ({ clause, data: withSpecDefaults(specs, clause, clauses[clause] ?? {}) }))
         .sort((a, b) => (a.clause < b.clause ? -1 : a.clause > b.clause ? 1 : 0));
 
     const agreement: Agreement = { version: "a1", buyer, seller, sections };
     return { agreement, agreementHash: computeAgreementHash(agreement) };
 }
 
-/** A single off-chain validation issue found before signing: which clause, which field path
- *  (or "(merkle)"), and what's wrong. */
+/** A single off-chain validation issue found before signing: which clause (its key, or
+ *  "(merkle)"), which field path, and what's wrong. */
 export interface CommitmentAgreementIssue {
     clause: string;
     path: string;
     message: string;
+}
+
+/** A clause's human label — the loaded spec's own `clauseId`, else the key. */
+function sectionLabel(clause: string, specs: SpecSource): string {
+    return /^0x[0-9a-fA-F]{64}$/.test(clause) ? (specs.get(clause as Hex)?.clauseId ?? clause) : clause;
 }
 
 /** An address-valued leaf, or undefined when the section carries none (a
@@ -404,7 +396,7 @@ function commerceCurrencySection(
     specs: SpecSource,
 ): AgreementSection | undefined {
     return agreement.sections.find((s) => {
-        const spec = specs.get(s.clause, s.version);
+        const spec = specs.get(s.clause);
         return !!spec && specDeclaresField(spec, "payment") && specDeclaresContentField(spec, "currency");
     });
 }
@@ -416,7 +408,7 @@ function currencyPinSection(
     specs: SpecSource,
 ): AgreementSection | undefined {
     return agreement.sections.find((s) => {
-        const spec = specs.get(s.clause, s.version);
+        const spec = specs.get(s.clause);
         return !!spec && specDeclaresDesignFill(spec, "currency");
     });
 }
@@ -469,7 +461,7 @@ export function validateCommitmentAgreement(
             });
             continue;
         }
-        const spec = specs.get(section.clause, section.version);
+        const spec = specs.get(section.clause);
         if (!spec) continue;
         // A runtime-lifecycle clause is an empty anchor at commit — its content
         // is attested later, so there is nothing to validate here.
@@ -569,7 +561,7 @@ export function assertAgreementSignable(
     if (!check.ok) {
         throw new Error(
             `${label} isn't valid to sign yet: ${check.issues
-                .map((i) => `${i.clause} ${i.path}: ${i.message}`)
+                .map((i) => `${sectionLabel(i.clause, specs)} ${i.path}: ${i.message}`)
                 .join("; ")}`,
         );
     }
@@ -587,7 +579,7 @@ export function sectionsByField(
     specs: SpecSource,
 ): AgreementSection[] {
     return agreement.sections.filter((s) => {
-        const spec = specs.get(s.clause, s.version);
+        const spec = specs.get(s.clause);
         return spec
             ? specDeclaresField(spec, fieldName)
             : Object.prototype.hasOwnProperty.call(s.data ?? {}, fieldName);
@@ -623,19 +615,19 @@ export interface TemplateOrderNode {
 function composeMandatoryClauses(
     mandatorySpecs: readonly ProjectionSpecView[],
     parents: string[],
-): Record<string, Record<string, unknown>> {
+): Record<Hex, Record<string, unknown>> {
     // The design-time value bag. Checkout-time values (commerce's
     // currency/payment/lineItems) are deliberately absent — filled downstream.
     const bag: Record<string, unknown> = {
         parentOrderHashes: parents,
     };
-    const out: Record<string, Record<string, unknown>> = {};
+    const out: Record<Hex, Record<string, unknown>> = {};
     for (const spec of mandatorySpecs) {
         const data: Record<string, unknown> = {};
         for (const field of spec.fields ?? []) {
             if (field.name in bag) data[field.name] = bag[field.name];
         }
-        out[spec.clauseId] = data;
+        out[spec.clauseKey] = data;
     }
     return out;
 }
@@ -654,103 +646,77 @@ function designFillValues(
     return Object.fromEntries(Object.entries(values).filter(([field]) => fills.includes(field)));
 }
 
+/** A clause's label for a build error: the spec's own `clauseId` beside its
+ *  key when the spec is loaded, the key alone otherwise. */
+function clauseLabel(clauseKey: string, spec: ProjectionSpecView | undefined): string {
+    return spec ? `${spec.clauseId} (${clauseKey})` : clauseKey;
+}
+
 /** Build the no-hash assembly template from the design's orders + the per-order
- *  clause selection: one template AGREEMENT per canvas order. The MANDATORY
- *  clauses (commerce + topology) fold in automatically on every
- *  agreement — they are not designer choices. */
+ *  clause selection: one template AGREEMENT per canvas order, every clause
+ *  keyed by its clause key. The MANDATORY clauses (commerce + topology) fold
+ *  in automatically on every agreement — they are not designer choices. */
 export function buildAssemblyTemplate(args: {
     name?: string;
     summary?: string;
     description?: string;
     orders: readonly TemplateOrderNode[];
-    clausesByOrderId: Readonly<Record<string, Readonly<Record<string, Record<string, unknown>>>>>;
-    /** orderId → clauseId → the registered version the designer composed.
-     *  Optional; absent entries mean version 1 — never the highest loaded,
-     *  since every (clauseId, version) slot is open to anyone. */
-    clauseVersionsByOrderId?: Readonly<Record<string, Readonly<Record<string, number>>>>;
+    /** orderId → clauseKey → the designer's composed values. */
+    clausesByOrderId: Readonly<Record<string, Readonly<Record<Hex, Record<string, unknown>>>>>;
     /** ASSEMBLY-SCOPED composition — clauses declaring
      *  `block.design.scope: "assembly"`, composed ONCE for the whole design
-     *  (clauseId → the designer's values). Optional; absent = none. */
-    assemblyClauses?: Readonly<Record<string, Record<string, unknown>>>;
-    /** clauseId → registered version for the assembly-scoped clauses.
-     *  Optional; absent entries mean version 1, as for the orders. */
-    assemblyClauseVersions?: Readonly<Record<string, number>>;
+     *  (clauseKey → the designer's values). Optional; absent = none. */
+    assemblyClauses?: Readonly<Record<Hex, Record<string, unknown>>>;
     specs: SpecSource;
 }): AssemblyTemplate {
-    const { name, summary, description, orders, clausesByOrderId, clauseVersionsByOrderId,
-        assemblyClauses, assemblyClauseVersions, specs } = args;
+    const { name, summary, description, orders, clausesByOrderId, assemblyClauses, specs } = args;
     // SCOPE VERIFICATION: a clause binds where its spec
     // declares — an assembly-scoped clause composed on an order (or an
     // agreement-scoped clause composed at assembly level) is a build error,
     // never a silent no-op. Duplicates across levels are impossible once both
-    // directions are refused.
-    //
-    // A composed clause is the (clauseId, version) the draft states, and an
-    // absent version is 1 — the template's sparse rule. Every slot is open to
-    // anyone, so the highest loaded version may be anyone's registration: a
-    // pick never resolves to it, and a stated version whose spec is not
-    // loaded is a build error, never a silent swap.
-    const orderPick = (orderId: string, clauseId: string): ProjectionSpecView => {
-        const version = clauseVersionsByOrderId?.[orderId]?.[clauseId] ?? 1;
-        const spec = specs.get(clauseId, version);
+    // directions are refused. A composed key whose spec is not loaded is a
+    // build error too: the build never composes a clause it cannot read.
+    const composedSpec = (clauseKey: Hex, level: string): ProjectionSpecView => {
+        const spec = specs.get(clauseKey);
         if (!spec) {
-            throw new Error(`${clauseId} v${version} is composed on an order but its spec is not loaded`);
+            throw new Error(`clause ${clauseKey} is composed ${level} but its spec is not loaded`);
         }
         return spec;
     };
-    for (const [orderId, clauseMap] of Object.entries(clausesByOrderId)) {
-        for (const clauseId of Object.keys(clauseMap)) {
-            const spec = orderPick(orderId, clauseId);
+    for (const clauseMap of Object.values(clausesByOrderId)) {
+        for (const clauseKey of Object.keys(clauseMap) as Hex[]) {
+            const spec = composedSpec(clauseKey, "on an order");
             if (specIsAssemblyScoped(spec)) {
                 throw new Error(
-                    `${clauseId} declares design.scope "assembly" — compose it once at the assembly level, not on an order`,
+                    `${clauseLabel(clauseKey, spec)} declares design.scope "assembly" — compose it once at the assembly level, not on an order`,
                 );
             }
         }
     }
-    for (const clauseId of Object.keys(assemblyClauses ?? {})) {
-        const version = assemblyClauseVersions?.[clauseId] ?? 1;
-        const spec = specs.get(clauseId, version);
-        if (!spec) {
-            throw new Error(`${clauseId} v${version} is composed at the assembly level but its spec is not loaded`);
-        }
+    for (const clauseKey of Object.keys(assemblyClauses ?? {}) as Hex[]) {
+        const spec = composedSpec(clauseKey, "at the assembly level");
         if (!specIsAssemblyScoped(spec)) {
             throw new Error(
-                `${clauseId} does not declare design.scope "assembly" — compose it on an order, not at the assembly level`,
+                `${clauseLabel(clauseKey, spec)} does not declare design.scope "assembly" — compose it on an order, not at the assembly level`,
             );
         }
     }
-    // The fold wants each mandatory clause once. A MANDATORY clause folds AT
-    // THE LEVEL ITS SCOPE NAMES: agreement-scoped mandatory (commerce,
-    // topology) folds into every agreement; an assembly-scoped mandatory
-    // clause folds into every published assembly's terms below.
-    //
-    // The fold draws from `specs.list()` — the registrations the caller
-    // surfaces, a live-stake source for a new composition — and takes, per
-    // name, the one registration whose spec marks it mandatory. When one
-    // name has more than one such registration, the fold takes the version-1
-    // registration, and a name none of whose mandatory registrations is
-    // version 1 does not fold. The fold never overrides a version the draft
-    // states (below), and every folded clause is in the template, where a
-    // review shows it by id and version before anchoring.
-    const mandatoryByName = new Map<string, ProjectionSpecView[]>();
+    // The fold: EVERY registration the source surfaces whose spec marks it
+    // mandatory folds, with no selection among them — a clause is its spec,
+    // so two mandatory specs are two clauses and both fold. A MANDATORY
+    // clause folds AT THE LEVEL ITS SCOPE NAMES: agreement-scoped mandatory
+    // (commerce, topology) folds into every agreement; an assembly-scoped
+    // mandatory clause folds into the assembly's terms below. The source is
+    // the registrations the caller surfaces (a live-stake source for a new
+    // composition), and every folded clause is in the template, where a
+    // review shows it before anchoring.
+    const mandatorySpecs: ProjectionSpecView[] = [];
+    const assemblyMandatory: ProjectionSpecView[] = [];
     for (const spec of specs.list()) {
         if (!specIsMandatory(spec)) continue;
-        const registrations = mandatoryByName.get(spec.clauseId);
-        if (registrations) registrations.push(spec);
-        else mandatoryByName.set(spec.clauseId, [spec]);
+        (specIsAssemblyScoped(spec) ? assemblyMandatory : mandatorySpecs).push(spec);
     }
-    const mandatory = new Map<string, ProjectionSpecView>();
-    const assemblyMandatory = new Map<string, ProjectionSpecView>();
-    for (const [clauseId, registrations] of mandatoryByName) {
-        const spec = registrations.length === 1
-            ? registrations[0]
-            : registrations.find((r) => r.version === 1);
-        if (spec === undefined) continue;
-        const target = specIsAssemblyScoped(spec) ? assemblyMandatory : mandatory;
-        target.set(clauseId, spec);
-    }
-    if (mandatory.size === 0) {
+    if (mandatorySpecs.length === 0) {
         // Without the chain→IPFS spec set the mandatory clauses cannot be
         // resolved — refuse loudly rather than emit a template missing them.
         // Consumers gate on their spec cache being warm before building.
@@ -758,7 +724,6 @@ export function buildAssemblyTemplate(args: {
             "clause specs not loaded: no mandatory clauses in the SpecSource — warm the spec cache before building templates",
         );
     }
-    const mandatorySpecs = Array.from(mandatory.values());
     // Re-label each design-time (synthetic) order id to a clean local label
     // naming the future order slot. The template carries no chain ids
     // and no party addresses — only the clauses (the mandatory ones among
@@ -768,27 +733,16 @@ export function buildAssemblyTemplate(args: {
     // only design.fills values survive into the template. Assembly-scoped
     // MANDATORY clauses fold in automatically first (empty sections, filled
     // at checkout); the designer's own composition merges over them.
-    const assemblySelection: Record<string, Record<string, unknown>> = {};
-    const assemblyVersions: Record<string, number> = {};
-    for (const spec of assemblyMandatory.values()) {
-        // A mandatory clause the draft already composes (a fork of a
-        // published template carries it) keeps the draft's version below.
-        if (assemblyClauses !== undefined && spec.clauseId in assemblyClauses) continue;
-        assemblySelection[spec.clauseId] = {};
-        if (spec.version !== 1) assemblyVersions[spec.clauseId] = spec.version;
-    }
-    for (const [clauseId, values] of Object.entries(assemblyClauses ?? {})) {
-        // The sparse version map reads absent as 1 (verified loaded above).
-        const v = assemblyClauseVersions?.[clauseId] ?? 1;
-        assemblySelection[clauseId] = designFillValues(specs.get(clauseId, v), values);
-        if (v !== 1) assemblyVersions[clauseId] = v;
+    const assemblySelection: Record<Hex, Record<string, unknown>> = {};
+    for (const spec of assemblyMandatory) assemblySelection[spec.clauseKey] = {};
+    for (const [clauseKey, values] of Object.entries(assemblyClauses ?? {}) as [Hex, Record<string, unknown>][]) {
+        assemblySelection[clauseKey] = designFillValues(specs.get(clauseKey), values);
     }
     return {
         ...(name ? { name } : {}),
         ...(summary ? { summary } : {}),
         ...(description ? { description } : {}),
         ...(Object.keys(assemblySelection).length > 0 ? { assemblyClauses: assemblySelection } : {}),
-        ...(Object.keys(assemblyVersions).length > 0 ? { assemblyClauseVersions: assemblyVersions } : {}),
         agreements: orders.map((order, i) => {
             // Design time is STRUCTURAL: the template keeps
             // the designer's clause SELECTION, but a clause's field values are
@@ -798,40 +752,19 @@ export function buildAssemblyTemplate(args: {
             // composed values; everything else strips to `{}` here, so
             // templates are value-free by construction, not by convention.
             const composed = clausesByOrderId[order.orderHash] ?? {};
-            const orderVersions = clauseVersionsByOrderId?.[order.orderHash];
-            const selection: Record<string, Record<string, unknown>> = {};
-            for (const [clauseId, values] of Object.entries(composed)) {
-                selection[clauseId] = designFillValues(orderPick(order.orderHash, clauseId), values);
-            }
-            // The fold never overrides a version the draft states: a mandatory
-            // clause the draft already composes (a fork of a published
-            // template carries commerce and topology) folds at the draft's
-            // version — absent = 1, the template's sparse rule — never at
-            // whichever version of that id was registered since.
-            const foldSpecs = mandatorySpecs.map((spec) =>
-                spec.clauseId in composed ? orderPick(order.orderHash, spec.clauseId) : spec);
-            const foldedVersion = new Map(foldSpecs.map((spec) => [spec.clauseId, spec.version]));
-            const clauses = {
-                ...selection,
-                ...composeMandatoryClauses(
-                    foldSpecs,
-                    (order.parentOrderHashes ?? []).map((p) => idToLocal.get(p) ?? p),
-                ),
-            };
-            // Record each composed clause's registered version — the designer's
-            // pick for selected clauses (absent = 1), the folded spec's version
-            // for the mandatory ones. NORMALIZED SPARSE: v1 entries are
-            // dropped and an empty map is omitted, so templates composed
-            // entirely from v1 clauses hash identically to the pre-version form.
-            const versions: Record<string, number> = {};
-            for (const clauseId of Object.keys(clauses)) {
-                const v = orderVersions?.[clauseId] ?? foldedVersion.get(clauseId) ?? 1;
-                if (v !== 1) versions[clauseId] = v;
+            const selection: Record<Hex, Record<string, unknown>> = {};
+            for (const [clauseKey, values] of Object.entries(composed) as [Hex, Record<string, unknown>][]) {
+                selection[clauseKey] = designFillValues(specs.get(clauseKey), values);
             }
             return {
                 id: `order-${i}`,
-                clauses,
-                ...(Object.keys(versions).length > 0 ? { clauseVersions: versions } : {}),
+                clauses: {
+                    ...selection,
+                    ...composeMandatoryClauses(
+                        mandatorySpecs,
+                        (order.parentOrderHashes ?? []).map((p) => idToLocal.get(p) ?? p),
+                    ),
+                },
             };
         }),
     };

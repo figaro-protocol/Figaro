@@ -72,16 +72,19 @@ export function RegistryExplorer() {
     const rows = useMemo<Array<ExplorerRow & RowText>>(() => {
         const out: Array<ExplorerRow & RowText> = [];
         for (const e of clauseEvents ?? []) {
-            const spec = getClauseSpec(e.clauseId, e.version);
+            // A row is one registration, keyed and anchored by its clause key;
+            // the spec's own name and version are its label. Two specs that
+            // share a name are two rows with two anchors.
+            const spec = getClauseSpec(e.clauseKey);
             const article = spec?.block?.design?.article ?? "";
-            const name = spec?.title ?? e.clauseId;
+            const name = spec ? `${spec.title} · ${spec.clauseId} v${spec.version}` : truncateHex(e.clauseKey, { head: 10, tail: 4 });
             const description = spec?.description ?? "";
-            const content = spec ? "resolved" : getClauseSpecLoadError(e.clauseId, e.version) ? "unavailable" : "resolving";
+            const content = spec ? "resolved" : getClauseSpecLoadError(e.clauseKey) ? "unavailable" : "resolving";
             out.push({
-                family: "clauses", key: `clause-${e.clauseId}`, id: e.clauseId, name, article, description, content,
+                family: "clauses", key: `clause-${e.clauseKey}`, id: e.clauseKey, name, article, description, content,
                 registeredBy: e.registeredBy, blockNumber: e.blockNumber, stakeWithdrawn: e.stakeWithdrawn, clauses: [],
-                contentURI: e.contentURI, anchoredHash: e.contentHash,
-                text: [e.clauseId, name, description, article, e.registeredBy].join(" "),
+                contentURI: e.contentURI, anchoredHash: e.clauseKey,
+                text: [e.clauseKey, spec?.clauseId ?? "", name, description, article, e.registeredBy].join(" "),
             });
         }
         for (const a of assemblies ?? []) {
@@ -91,7 +94,8 @@ export function RegistryExplorer() {
                 content: a.state === "loaded" ? "resolved" : "resolving",
                 registeredBy: a.registeredBy, blockNumber: a.blockNumber, stakeWithdrawn: a.stakeWithdrawn, clauses: a.clauses ?? [],
                 contentURI: a.contentURI, anchoredHash: a.compositionHash,
-                text: [a.slug, a.name, description, a.registeredBy, ...(a.clauses ?? [])].join(" "),
+                text: [a.slug, a.name, description, a.registeredBy, ...(a.clauses ?? []),
+                    ...(a.clauses ?? []).map((k) => getClauseSpec(k)?.clauseId ?? "")].join(" "),
             });
         }
         for (const m of members ?? []) {
@@ -231,7 +235,7 @@ export function RegistryExplorer() {
 
 /** Clauses grouped by article when sorted by article (the reading order the
  *  `/clauses` inventory had), otherwise one flat list. Row ids are
- *  `clause-<clauseId>`, so `/registries#clause-<id>` is a clause's permalink:
+ *  `clause-<clauseKey>`, so `/registries#clause-<key>` is a clause's permalink:
  *  it lands on the row and opens the document as stored (StoredDocument). */
 function ClauseRows({ rows, state, onFacet }: { rows: Array<ExplorerRow & RowText>; state: ExplorerQuery; onFacet: (p: Partial<ExplorerQuery>) => void }) {
     if (rows.length === 0) return <Empty family="clauses" />;
@@ -256,7 +260,7 @@ function ClauseRows({ rows, state, onFacet }: { rows: Array<ExplorerRow & RowTex
                     <ul className="space-y-3">
                         {g.items.map((r) => (
                             <li key={r.key} id={r.key} className="flex flex-col sm:flex-row gap-1 sm:gap-3 scroll-mt-24">
-                                <span className="font-mono text-xs text-ink-muted sm:w-56 sm:shrink-0">{r.id}</span>
+                                <span className="font-mono text-xs text-ink-muted sm:w-56 sm:shrink-0 break-all">{r.id}</span>
                                 <span className="text-sm text-ink-body">
                                     {r.name !== r.id ? <span className="text-ink-heading">{r.name}. </span> : null}
                                     {r.description ? <>{r.description} </> : null}

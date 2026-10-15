@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { canonicalContentHash, canonicalize, templateCompositionHash } from "@figaro-protocol/sdk";
+import { canonicalContentHash, canonicalize, computeClauseKey, templateCompositionHash } from "@figaro-protocol/sdk";
+import { keccak256, stringToBytes } from "viem";
 import {
     parseExplorerQuery, serializeExplorerQuery, selectRows, facetValues, explorerBreadcrumb,
     anchorForFamily, storedDocument, STORED_DOCUMENT_NOTE,
@@ -74,8 +75,9 @@ describe("facetValues + explorerBreadcrumb", () => {
 });
 
 describe("the document as stored — the reader re-derives the anchor themselves", () => {
-    // A clause spec's anchor covers the WHOLE document; an assembly's covers
-    // its composition slice alone. Both fixtures are hashed with the SAME
+    // A clause's key is the hash of its exact pinned bytes (the canonical
+    // form the designer pins); an assembly's anchor covers its composition
+    // slice alone. Both fixtures are hashed with the SAME
     // functions the loaders use, so the test cannot drift from the chain's
     // arithmetic by restating it.
     const SPEC = {
@@ -98,31 +100,35 @@ describe("the document as stored — the reader re-derives the anchor themselves
 
     it("every anchor has the one-line note that says what it covers", () => {
         expect(STORED_DOCUMENT_NOTE["content-hash"]).toMatch(/keccak256/);
-        expect(STORED_DOCUMENT_NOTE["content-hash"]).toMatch(/canonical/i);
+        expect(STORED_DOCUMENT_NOTE["content-hash"]).toMatch(/exactly these bytes/i);
         expect(STORED_DOCUMENT_NOTE["composition-hash"]).toMatch(/keccak256/);
     });
 
-    it("a clause's served bytes reproduce ClauseRegistry's contentHash", () => {
-        const anchored = canonicalContentHash(SPEC);
-        const v = storedDocument(JSON.stringify(SPEC), anchored, "content-hash");
+    it("a clause's served canonical bytes reproduce its clause key", () => {
+        const anchored = computeClauseKey(SPEC);
+        const v = storedDocument(canonicalize(SPEC), anchored, "content-hash");
         expect(v.matches).toBe(true);
         expect(v.recomputed).toBe(anchored);
         expect(v.anchor).toBe("content-hash");
+        // Bytes or their exact text — one verdict.
+        expect(storedDocument(stringToBytes(canonicalize(SPEC)), anchored, "content-hash").matches).toBe(true);
     });
 
-    it("the check is on the CANONICAL form, so pinned whitespace and key order do not matter", () => {
-        const anchored = canonicalContentHash(SPEC);
+    it("the check is on the EXACT bytes: the same document reformatted is not the clause", () => {
+        const anchored = computeClauseKey(SPEC);
         const reordered = JSON.stringify(
             { version: 1, title: "Applicable law", fields: SPEC.fields, clauseId: SPEC.clauseId },
             null,
             4,
         );
-        expect(storedDocument(reordered, anchored, "content-hash").matches).toBe(true);
+        const v = storedDocument(reordered, anchored, "content-hash");
+        expect(v.matches).toBe(false);
+        expect(v.recomputed).toBe(keccak256(stringToBytes(reordered)));
     });
 
     it("a drifted pin does NOT match, and says what it hashed to", () => {
-        const anchored = canonicalContentHash(SPEC);
-        const drifted = JSON.stringify({ ...SPEC, title: "Applicable law (edited)" });
+        const anchored = computeClauseKey(SPEC);
+        const drifted = canonicalize({ ...SPEC, title: "Applicable law (edited)" });
         const v = storedDocument(drifted, anchored, "content-hash");
         expect(v.matches).toBe(false);
         expect(v.recomputed).not.toBeNull();
@@ -165,7 +171,7 @@ describe("the document as stored — the reader re-derives the anchor themselves
             '"title":"Applicable law","title":"Something else"',
         );
         const hashed = { ...SPEC, title: "Something else" };
-        const v = storedDocument(text, canonicalContentHash(hashed), "content-hash");
+        const v = storedDocument(text, keccak256(stringToBytes(text)), "content-hash");
         expect(v.matches).toBe(true);
         expect(v.differences).toEqual(["repeated-key"]);
         expect(v.parsedCanonical).toBe(canonicalize(hashed));
@@ -179,7 +185,7 @@ describe("the document as stored — the reader re-derives the anchor themselves
 
     it("a key the parse DROPS is named, and the hashed value carries none of it", () => {
         const text = JSON.stringify(SPEC).replace("{", '{"__proto__":{"admin":true},');
-        const v = storedDocument(text, canonicalContentHash(SPEC), "content-hash");
+        const v = storedDocument(text, keccak256(stringToBytes(text)), "content-hash");
         expect(v.matches).toBe(true);
         expect(v.differences).toEqual(["dropped-key"]);
         expect(v.parsedCanonical).not.toContain("admin");
@@ -192,7 +198,7 @@ describe("the document as stored — the reader re-derives the anchor themselves
     });
 
     it("compares hashes case-insensitively — hex casing is not a mismatch", () => {
-        const anchored = canonicalContentHash(SPEC);
-        expect(storedDocument(JSON.stringify(SPEC), anchored.toUpperCase(), "content-hash").matches).toBe(true);
+        const anchored = computeClauseKey(SPEC);
+        expect(storedDocument(canonicalize(SPEC), anchored.toUpperCase(), "content-hash").matches).toBe(true);
     });
 });

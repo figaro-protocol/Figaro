@@ -24,7 +24,7 @@
  * by FIELD NAME, never clause id).
  */
 
-import { templateClauseVersion, templateParentOrderHashes, templateCompositionHash } from "./assembly.js";
+import { templateParentOrderHashes, templateCompositionHash } from "./assembly.js";
 import type { AssemblyTemplate, TemplateAgreement } from "./assembly.js";
 import { computeAgreementHash, type Agreement, type AgreementSection } from "./agreement.js";
 import {
@@ -51,13 +51,9 @@ import type { Address, Commitment, Hex } from "./types.js";
 export interface PlannedTemplateOrder {
     /** Template node id (matches `template.agreements[].id`). */
     nodeId: string;
-    /** The node's clause bag, verbatim from the template (parents still
-     *  template-local). */
+    /** The node's clause bag (clauseKey → values), verbatim from the
+     *  template (parents still template-local). */
     clauses: Record<string, Record<string, unknown>>;
-    /** clauseId → composed version (COMPLETE — absent template entries resolve
-     *  to 1, so downstream never falls back to a registry read: the template
-     *  pinned WHICH clause it composed). */
-    clauseVersions: Record<string, number>;
     /** Template-local parent node ids (empty on the root). */
     parentLocalIds: string[];
     /** Position in commit order — 0 is the root. */
@@ -66,7 +62,7 @@ export interface PlannedTemplateOrder {
 
 /**
  * The template's agreements in commit order (parents before children, root
- * first), each with its clause bag and COMPLETE version map. Throws on a
+ * first), each with its clause bag. Throws on a
  * cyclic topology; a template whose first node has parents (a sub-order with
  * no root) is rejected by the realization layer.
  */
@@ -83,41 +79,29 @@ export function planTemplateOrders(template: AssemblyTemplate): PlannedTemplateO
     // so every agreement carries them and every party signs them. Mechanical:
     // neither the designer nor any party repeats anything.
     const assemblyClauses = template.assemblyClauses ?? {};
-    const assemblyVersions = Object.fromEntries(
-        Object.keys(assemblyClauses).map((c) => [c, template.assemblyClauseVersions?.[c] ?? 1]),
-    );
     return orderedIds.map((id, index) => {
         const node = byId.get(id) as TemplateAgreement;
-        const clauseVersions: Record<string, number> = { ...assemblyVersions };
-        for (const clauseId of Object.keys(node.clauses)) {
-            clauseVersions[clauseId] = templateClauseVersion(node, clauseId);
-        }
         return {
             nodeId: id,
             clauses: { ...assemblyClauses, ...node.clauses },
-            clauseVersions,
             parentLocalIds: [...templateParentOrderHashes(node)],
             index,
         };
     });
 }
 
-/** Build an Agreement from a template node's clause bag: each clauseId → a
- *  section, caller overrides merged in. Section versions come from the
- *  COMPOSITION (`node.clauseVersions`, sparse — absent = 1), never from a
- *  registry read: the template pinned WHICH clause it composed, and two live
- *  versions are two clauses. */
+/** Build an Agreement from a template node's clause bag: each clause key → a
+ *  section, caller overrides merged in. The key is the clause's identity, so
+ *  the template pinned WHICH clause it composed and no registry read is made. */
 export function templateAgreementFromClauses(
     clauses: Record<string, Record<string, unknown>>,
-    node: Pick<TemplateAgreement, "clauseVersions">,
     buyer: Address,
     seller: Address,
     overrides?: Record<string, Record<string, unknown>>,
 ): Agreement {
-    const sections: AgreementSection[] = Object.entries(clauses).map(([clauseId, data]) => ({
-        clause: clauseId,
-        version: templateClauseVersion(node, clauseId),
-        data: { ...data, ...(overrides?.[clauseId] ?? {}) },
+    const sections: AgreementSection[] = Object.entries(clauses).map(([clauseKey, data]) => ({
+        clause: clauseKey as Hex,
+        data: { ...data, ...(overrides?.[clauseKey] ?? {}) },
     }));
     return { version: "a1", buyer, seller, sections };
 }
@@ -134,7 +118,7 @@ export interface ReconstructNodeSpec {
     payment: bigint;
     /** Per-clause field values merged onto the template's clause data (e.g.
      *  the commerce clause's `{ currency, payment, lineItems }`). Keyed by
-     *  clauseId; the SDK names none. */
+     *  clause key; the SDK names none. */
     overrides?: Record<string, Record<string, unknown>>;
 }
 
@@ -167,8 +151,6 @@ export interface ReconstructParams {
      * that forgets — it refuses to sign a leaf that disagrees with the struct
      * — but this walk cannot fill or check the leaf itself with no spec to
      * find it by.
-     *
-     * Either way the section versions come from the composition.
      */
     specs?: SpecSource;
     /** Optional deterministic salt per node (testing). */
@@ -247,14 +229,11 @@ export async function reconstructOrdersFromTemplate(
                       params.currency,
                       params.specs,
                       node.nodeId,
-                      node.clauseVersions,
                   ),
                   params.specs,
-                  node.clauseVersions,
               ).agreement
             : templateAgreementFromClauses(
                   clauses,
-                  { clauseVersions: sparseVersions(node.clauseVersions) },
                   params.buyer,
                   spec.seller,
                   spec.overrides,
@@ -327,8 +306,7 @@ function withRealParents(
 }
 
 /** The ONE guarded walk fill: write a derived `field` value onto the composed
- *  clause whose loaded spec, at its composed version (`clauseVersions`,
- *  sparse — absent = 1), satisfies `predicate` — the same spec-routed lookup
+ *  clause whose loaded spec satisfies `predicate` — the same spec-routed lookup
  *  the checkout fills run (`composedClauseWhere`); no clause is ever
  *  named. No match (nothing composed, or a cold spec cache) is a no-op,
  *  matching every other spec-routed fill in this SDK. An existing value is
@@ -343,19 +321,18 @@ function fillWalkField(
     value: string,
     specs: SpecSource,
     nodeId: string,
-    clauseVersions: Readonly<Record<string, number>> | undefined,
     opts: {
         predicate: (spec: ProjectionSpecView) => boolean;
         contradiction: (existing: string) => string;
     },
 ): Record<string, Record<string, unknown>> {
-    const clauseId = composedClauseWhere(clauses, specs, opts.predicate, clauseVersions);
-    if (!clauseId) return clauses;
-    const existing = clauses[clauseId]?.[field];
+    const clauseKey = composedClauseWhere(clauses, specs, opts.predicate);
+    if (!clauseKey) return clauses;
+    const existing = clauses[clauseKey]?.[field];
     if (typeof existing === "string" && existing.length > 0 && existing.toLowerCase() !== value.toLowerCase()) {
         throw new Error(`node "${nodeId}": ${opts.contradiction(existing)}`);
     }
-    return { ...clauses, [clauseId]: { ...clauses[clauseId], [field]: value } };
+    return { ...clauses, [clauseKey]: { ...clauses[clauseKey], [field]: value } };
 }
 
 /** Write the process's denomination into the commerce section BEFORE
@@ -371,9 +348,8 @@ function fillWalkCurrency(
     currency: Address,
     specs: SpecSource,
     nodeId: string,
-    clauseVersions: Readonly<Record<string, number>>,
 ): Record<string, Record<string, unknown>> {
-    return fillWalkField(clauses, "currency", currency, specs, nodeId, clauseVersions, {
+    return fillWalkField(clauses, "currency", currency, specs, nodeId, {
         predicate: (spec) => specDeclaresField(spec, "payment") && specDeclaresContentField(spec, "currency"),
         contradiction: (existing) =>
             `override names commerce currency ${existing}, which contradicts this process's ` +
@@ -416,11 +392,4 @@ export function mergeOverrides(
         out[cid] = { ...(out[cid] ?? {}), ...data };
     }
     return out;
-}
-
-/** The sparse form `templateAgreementFromClauses` reads (v1 entries dropped). */
-function sparseVersions(complete: Record<string, number>): Record<string, number> | undefined {
-    const sparse: Record<string, number> = {};
-    for (const [cid, v] of Object.entries(complete)) if (v !== 1) sparse[cid] = v;
-    return Object.keys(sparse).length > 0 ? sparse : undefined;
 }

@@ -27,7 +27,7 @@ import {
     type ProjectionSpecView,
     type SpecSource,
 } from "../src/index.js";
-import { specSourceFromFixtures, specSourceWithRegistrations } from "./specFixtures.js";
+import { keyOf, rawSpecOf, specSourceFromFixtures, specSourceOf, specSourceWithRegistrations, viewOf } from "./specFixtures.js";
 
 const BUYER = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266" as const;
 const SELLER = "0x2546BcD3c84621e976D8185a91A922aE77ECEc30" as const;
@@ -60,14 +60,14 @@ function commerceData() {
 describe("assertAgreementSignable — the shared sign gate", () => {
     it("passes a conforming agreement whose hash matches its merkle root", () => {
         const { agreement, agreementHash } = buildOrderAgreement(BUYER, SELLER, {
-            "figaro-commerce": commerceData(),
-            "figaro-applicable-law": { applicableLaw: "US-NY" },
+            [keyOf("figaro-commerce")]: commerceData(),
+            [keyOf("figaro-applicable-law")]: { applicableLaw: "US-NY" },
         }, SPECS);
         expect(() => assertAgreementSignable(agreement, agreementHash, SPECS, STRUCT)).not.toThrow();
     });
 
     it("signs the provenance leaf under the root and refuses a provenance that is not a 32-byte hash", () => {
-        const { agreement } = buildOrderAgreement(BUYER, SELLER, { "figaro-commerce": commerceData() }, SPECS);
+        const { agreement } = buildOrderAgreement(BUYER, SELLER, { [keyOf("figaro-commerce")]: commerceData() }, SPECS);
         const named = { ...agreement, provenance: `0x${"5e".repeat(32)}` as const };
         expect(() => assertAgreementSignable(named, computeAgreementHash(named), SPECS, STRUCT)).not.toThrow();
         // The root without the provenance leaf is not this agreement's.
@@ -81,8 +81,8 @@ describe("assertAgreementSignable — the shared sign gate", () => {
         // Prose fails applicable-law's jurisdiction-token pattern — the exact
         // shape a counter-signer must refuse even when the hash matches.
         const { agreement, agreementHash } = buildOrderAgreement(BUYER, SELLER, {
-            "figaro-commerce": commerceData(),
-            "figaro-applicable-law": { applicableLaw: "State of New York, USA" },
+            [keyOf("figaro-commerce")]: commerceData(),
+            [keyOf("figaro-applicable-law")]: { applicableLaw: "State of New York, USA" },
         }, SPECS);
         expect(() => assertAgreementSignable(agreement, agreementHash, SPECS, STRUCT))
             .toThrow(/figaro-applicable-law \$\.applicableLaw/);
@@ -90,7 +90,7 @@ describe("assertAgreementSignable — the shared sign gate", () => {
 
     it("throws when the hash being signed is not the agreement's merkle root", () => {
         const { agreement } = buildOrderAgreement(BUYER, SELLER, {
-            "figaro-commerce": commerceData(),
+            [keyOf("figaro-commerce")]: commerceData(),
         }, SPECS);
         const wrongHash = `0x${"ab".repeat(32)}` as `0x${string}`;
         expect(() => assertAgreementSignable(agreement, wrongHash, SPECS, STRUCT))
@@ -99,8 +99,8 @@ describe("assertAgreementSignable — the shared sign gate", () => {
 
     it("reports every issue through validateCommitmentAgreement, not just the first", () => {
         const { agreement, agreementHash } = buildOrderAgreement(BUYER, SELLER, {
-            "figaro-commerce": commerceData(),
-            "figaro-applicable-law": {
+            [keyOf("figaro-commerce")]: commerceData(),
+            [keyOf("figaro-applicable-law")]: {
                 applicableLaw: "State of New York, USA",
                 language: "not-a-language-code!",
             },
@@ -114,19 +114,19 @@ describe("assertAgreementSignable — the shared sign gate", () => {
 
     it("refuses a section carrying BOTH data and dataHash — the what-you-see-is-what-you-sign invariant", () => {
         const { agreement } = buildOrderAgreement(BUYER, SELLER, {
-            "figaro-commerce": commerceData(),
-            "figaro-applicable-law": { applicableLaw: "US-NY" },
+            [keyOf("figaro-commerce")]: commerceData(),
+            [keyOf("figaro-applicable-law")]: { applicableLaw: "US-NY" },
         }, SPECS);
         // The attack: keep the benign `data` a review renders, and ALSO attach a
         // `dataHash` fingerprint of hidden content, which the merkle leaf would
         // sign verbatim — sign one thing, show another.
         const sections = agreement.sections.map((s) =>
-            s.clause === "figaro-applicable-law"
+            s.clause === keyOf("figaro-applicable-law")
                 ? { ...s, dataHash: `0x${"ee".repeat(32)}` as `0x${string}` }
                 : s,
         );
         const evil = { ...agreement, sections };
-        const dual = sections.find((s) => s.clause === "figaro-applicable-law");
+        const dual = sections.find((s) => s.clause === keyOf("figaro-applicable-law"));
         // Refused at the hashing locus …
         expect(() => sectionDataHash(dual!)).toThrow(/both plaintext data and a dataHash/);
         // … and at the sign gate, structurally, regardless of the hash presented.
@@ -147,19 +147,19 @@ describe("the sign gate's denomination chain — pin == leaf == struct", () => {
         buildOrderAgreement(BUYER, SELLER, clauses, SPECS);
 
     it("passes when the commerce leaf equals the commitment's currency", () => {
-        const { agreement, agreementHash } = build({ "figaro-commerce": commerceData() });
+        const { agreement, agreementHash } = build({ [keyOf("figaro-commerce")]: commerceData() });
         expect(() => assertAgreementSignable(agreement, agreementHash, SPECS, STRUCT)).not.toThrow();
     });
 
     it("throws when the leaf and the struct name different tokens", () => {
-        const { agreement, agreementHash } = build({ "figaro-commerce": commerceData() });
+        const { agreement, agreementHash } = build({ [keyOf("figaro-commerce")]: commerceData() });
         expect(() => assertAgreementSignable(agreement, agreementHash, SPECS, OTHER_STRUCT))
             .toThrow(/figaro-commerce currency: the signed term names .* contradicts it/);
     });
 
     it("compares the leaf case-insensitively — an address is not a string", () => {
         const { agreement, agreementHash } = build({
-            "figaro-commerce": { ...commerceData(), currency: "0x000000000000000000000000000000000000000A" },
+            [keyOf("figaro-commerce")]: { ...commerceData(), currency: "0x000000000000000000000000000000000000000A" },
         });
         expect(() => assertAgreementSignable(
             agreement, agreementHash, SPECS, { currency: "0x000000000000000000000000000000000000000a", payment: 1n },
@@ -168,8 +168,8 @@ describe("the sign gate's denomination chain — pin == leaf == struct", () => {
 
     it("passes an unpinned assembly: the commerce leaf alone carries the term", () => {
         const { agreement, agreementHash } = build({
-            "figaro-commerce": commerceData(),
-            "figaro-topology": { parentOrderHashes: [] },
+            [keyOf("figaro-commerce")]: commerceData(),
+            [keyOf("figaro-topology")]: { parentOrderHashes: [] },
         });
         const check = validateCommitmentAgreement(agreement, agreementHash, SPECS, STRUCT);
         expect(check.ok).toBe(true);
@@ -177,23 +177,23 @@ describe("the sign gate's denomination chain — pin == leaf == struct", () => {
 
     it("passes a pinned assembly whose pin, leaf and struct all match", () => {
         const { agreement, agreementHash } = build({
-            "figaro-commerce": commerceData(),
-            "figaro-utility-token": { currency: CURRENCY },
+            [keyOf("figaro-commerce")]: commerceData(),
+            [keyOf("figaro-utility-token")]: { currency: CURRENCY },
         });
         expect(() => assertAgreementSignable(agreement, agreementHash, SPECS, STRUCT)).not.toThrow();
     });
 
     it("throws when the pin contradicts the commerce leaf", () => {
         const { agreement, agreementHash } = build({
-            "figaro-commerce": commerceData(),
-            "figaro-utility-token": { currency: OTHER_TOKEN },
+            [keyOf("figaro-commerce")]: commerceData(),
+            [keyOf("figaro-utility-token")]: { currency: OTHER_TOKEN },
         });
         expect(() => assertAgreementSignable(agreement, agreementHash, SPECS, STRUCT))
             .toThrow(/figaro-utility-token currency: this assembly is denominated by design/);
     });
 
     it("throws when the payment leaf and the struct disagree — payment mirrors like currency", () => {
-        const { agreement, agreementHash } = build({ "figaro-commerce": commerceData() });
+        const { agreement, agreementHash } = build({ [keyOf("figaro-commerce")]: commerceData() });
         expect(() => assertAgreementSignable(
             agreement, agreementHash, SPECS, { currency: CURRENCY, payment: 1000n },
         )).toThrow(/figaro-commerce payment: the signed term names 1 as the payment; the commitment payment 1000 contradicts it/);
@@ -201,7 +201,7 @@ describe("the sign gate's denomination chain — pin == leaf == struct", () => {
 
     it("reports a malformed payment leaf as its own spec failure, never a mismatch", () => {
         const { agreement, agreementHash } = build({
-            "figaro-commerce": { ...commerceData(), payment: "not-a-number" },
+            [keyOf("figaro-commerce")]: { ...commerceData(), payment: "not-a-number" },
         });
         const check = validateCommitmentAgreement(agreement, agreementHash, SPECS, STRUCT);
         expect(check.ok).toBe(false);
@@ -210,7 +210,7 @@ describe("the sign gate's denomination chain — pin == leaf == struct", () => {
 
     it("reports a missing leaf as the ordinary required-field failure, not a mismatch", () => {
         const { agreement, agreementHash } = build({
-            "figaro-commerce": { payment: "1", lineItems: [] },
+            [keyOf("figaro-commerce")]: { payment: "1", lineItems: [] },
         });
         const check = validateCommitmentAgreement(agreement, agreementHash, SPECS, STRUCT);
         expect(check.ok).toBe(false);
@@ -232,9 +232,9 @@ describe("projection — golden-vector byte-exactness", () => {
 
     it("spec-default injection reproduces the frozen agreement + hash", () => {
         const { agreement, agreementHash } = buildOrderAgreement(BUYER, SELLER, {
-            "figaro-commerce": commerceData(),
-            "figaro-topology": { parentOrderHashes: [] },
-            "figaro-applicable-law": { applicableLaw: "US-NY" },
+            [keyOf("figaro-commerce")]: commerceData(),
+            [keyOf("figaro-topology")]: { parentOrderHashes: [] },
+            [keyOf("figaro-applicable-law")]: { applicableLaw: "US-NY" },
         }, SPECS);
         expect(canonicalize(agreement)).toBe(vectors.agreementProjection.defaults.canonicalAgreement);
         expect(agreementHash).toBe(vectors.agreementProjection.defaults.agreementHash);
@@ -242,9 +242,9 @@ describe("projection — golden-vector byte-exactness", () => {
 
     it("the process-log empty anchor reproduces the frozen agreement + hash", () => {
         const { agreement, agreementHash } = buildOrderAgreement(BUYER, SELLER, {
-            "figaro-commerce": commerceData(),
-            "figaro-topology": { parentOrderHashes: [] },
-            "figaro-merchant-process": {},
+            [keyOf("figaro-commerce")]: commerceData(),
+            [keyOf("figaro-topology")]: { parentOrderHashes: [] },
+            [keyOf("figaro-merchant-process")]: {},
         }, SPECS);
         expect(canonicalize(agreement)).toBe(
             vectors.agreementProjection.processLog.canonicalAgreement,
@@ -265,7 +265,7 @@ describe("projection — golden-vector byte-exactness", () => {
                     { orderHash: "synthetic-child", parentOrderHashes: ["synthetic-root"] },
                 ],
                 clausesByOrderId: {},
-                assemblyClauses: { "figaro-applicable-law": { applicableLaw: "US-NY" } },
+                assemblyClauses: { [keyOf("figaro-applicable-law")]: { applicableLaw: "US-NY" } },
                 specs: SPECS,
             }),
         );
@@ -278,38 +278,41 @@ describe("projection — golden-vector byte-exactness", () => {
         // silent no-op…
         expect(() => buildAssemblyTemplate({
             orders: [{ orderHash: "synthetic-root", parentOrderHashes: [] }],
-            clausesByOrderId: { "synthetic-root": { "figaro-applicable-law": {} } },
+            clausesByOrderId: { "synthetic-root": { [keyOf("figaro-applicable-law")]: {} } },
             specs: SPECS,
         })).toThrow(/design\.scope "assembly"/);
         // …and an agreement-scoped clause at the assembly level likewise.
         expect(() => buildAssemblyTemplate({
             orders: [{ orderHash: "synthetic-root", parentOrderHashes: [] }],
             clausesByOrderId: {},
-            assemblyClauses: { "figaro-geolocation": {} },
+            assemblyClauses: { [keyOf("figaro-geolocation")]: {} },
             specs: SPECS,
         })).toThrow(/does not declare design\.scope "assembly"/);
     });
 
     it("sectionByField reads by declared field, with data-key fallback while unloaded", () => {
         const { agreement } = buildOrderAgreement(BUYER, SELLER, {
-            "figaro-commerce": commerceData(),
-            "figaro-topology": { parentOrderHashes: ["0xabc"] },
+            [keyOf("figaro-commerce")]: commerceData(),
+            [keyOf("figaro-topology")]: { parentOrderHashes: ["0xabc"] },
         }, SPECS);
-        expect(sectionByField(agreement, "parentOrderHashes", SPECS)?.clause).toBe(
-            "figaro-topology",
-        );
+        expect(sectionByField(agreement, "parentOrderHashes", SPECS)?.clause).toBe(keyOf("figaro-topology"));
         // The uncached path: an empty SpecSource falls back to data-key presence.
         const empty: SpecSource = { get: () => undefined, list: () => [] };
-        expect(sectionByField(agreement, "parentOrderHashes", empty)?.clause).toBe(
-            "figaro-topology",
-        );
+        expect(sectionByField(agreement, "parentOrderHashes", empty)?.clause).toBe(keyOf("figaro-topology"));
     });
 });
 
 describe("publicForm — the public/private disposition seam", () => {
     // A minimal SpecSource: one all-public clause, one clause with a private field.
+    const KEYS: Record<string, `0x${string}`> = {
+        "pub-clause": `0x${"a1".repeat(32)}`,
+        "priv-clause": `0x${"a2".repeat(32)}`,
+        "unknown-clause": `0x${"a3".repeat(32)}`,
+        x: `0x${"a4".repeat(32)}`,
+    };
     const specView = (clauseId: string, dispositions: (string | undefined)[]): ProjectionSpecView => ({
         clauseId,
+        clauseKey: KEYS[clauseId],
         version: 1,
         fields: dispositions.map((d, i) => ({
             name: `f${i}`,
@@ -318,32 +321,27 @@ describe("publicForm — the public/private disposition seam", () => {
             ...(d !== undefined && { disposition: d as "public" | "private" }),
         })),
     });
-    const specs: SpecSource = {
-        get: (clauseId) =>
-            clauseId === "pub-clause"
-                ? specView("pub-clause", ["public", undefined])
-                : clauseId === "priv-clause"
-                  ? specView("priv-clause", ["private"])
-                  : undefined,
-        list: () => [],
-    };
+    const specs: SpecSource = specSourceOf([
+        specView("pub-clause", ["public", undefined]),
+        specView("priv-clause", ["private"]),
+    ]);
     const agreement = {
         version: "a1" as const,
         buyer: BUYER,
         seller: SELLER,
         sections: [
-            { clause: "pub-clause", version: 1, data: { f0: "open", f1: "map" } },
-            { clause: "priv-clause", version: 1, data: { f0: "secret-coordinate" } },
+            { clause: KEYS["pub-clause"], data: { f0: "open", f1: "map" } },
+            { clause: KEYS["priv-clause"], data: { f0: "secret-coordinate" } },
         ],
     };
 
     it("withholds a private section, keeps a public one plaintext", () => {
         const withheld = publicForm(agreement, specs);
-        const pub = withheld.sections.find((s) => s.clause === "pub-clause")!;
-        const priv = withheld.sections.find((s) => s.clause === "priv-clause")!;
+        const pub = withheld.sections.find((s) => s.clause === KEYS["pub-clause"])!;
+        const priv = withheld.sections.find((s) => s.clause === KEYS["priv-clause"])!;
         expect(pub.data).toBeDefined(); // public coordination commons stays open
         expect(priv.data).toBeUndefined(); // paid-edge plaintext removed
-        expect(priv.dataHash).toBe(sectionDataHash({ clause: "priv-clause", version: 1, data: { f0: "secret-coordinate" } }));
+        expect(priv.dataHash).toBe(sectionDataHash({ clause: KEYS["priv-clause"], data: { f0: "secret-coordinate" } }));
     });
 
     it("leaves the agreementHash unchanged — the withheld leaf is identical", () => {
@@ -353,7 +351,7 @@ describe("publicForm — the public/private disposition seam", () => {
     it("withholds a section whose clause spec is not loaded (fail-closed)", () => {
         const unknown = {
             ...agreement,
-            sections: [{ clause: "unknown-clause", version: 1, data: { f0: "could-be-private" } }],
+            sections: [{ clause: KEYS["unknown-clause"], data: { f0: "could-be-private" } }],
         };
         // Unknown spec → WITHHELD: a permissionlessly-registered clause could be a
         // PRIVATE one, and keeping it plaintext would leak on any cold-cache pin
@@ -363,7 +361,7 @@ describe("publicForm — the public/private disposition seam", () => {
         const projected = publicForm(unknown, specs).sections[0];
         expect(projected.data).toBeUndefined();
         expect(projected.dataHash).toBe(
-            sectionDataHash({ clause: "unknown-clause", version: 1, data: { f0: "could-be-private" } }),
+            sectionDataHash({ clause: KEYS["unknown-clause"], data: { f0: "could-be-private" } }),
         );
     });
 
@@ -437,235 +435,114 @@ describe("warnProcessLogFillsTrap — the reserved 'attestations' article trap",
     });
 
     it("matches the real shipped process-log fixtures exactly (via parseProjectionHints)", () => {
-        const merchant = specSourceFromFixtures(["figaro-merchant-process"]).get("figaro-merchant-process", 1)!;
+        const merchant = specSourceFromFixtures(["figaro-merchant-process"]).get(keyOf("figaro-merchant-process"))!;
         expect(warnProcessLogFillsTrap(merchant)).toEqual([]);
     });
 });
 
-describe("buildAssemblyTemplate — the mandatory fold under a stranger's registration", () => {
-    // The article "mandatory" is the spec's `block`, written by whoever
-    // registered it, and every (clauseId, version) slot is open to anyone. A
-    // registration marking a new version of a mandatory clause mandatory must not
-    // displace the version a design states or the one the fold already took.
-    // An assembly-scoped clause whose registration marks it mandatory — the
-    // generic assembly-level fold, named by no code path.
-    const FLOOR = "stranger-assembly-floor";
-    const law = specSourceFromFixtures(["figaro-applicable-law"]).get("figaro-applicable-law", 1)!;
-    const floor: ProjectionSpecView = { ...law, clauseId: FLOOR, hints: { ...law.hints, article: "mandatory", designFills: [] } };
-    const fixtures = specSourceFromFixtures(["figaro-commerce", "figaro-topology"]);
-    const base = specSourceWithRegistrations(fixtures, [floor]);
-    const forged = (clauseId: string, version: number): ProjectionSpecView => {
-        const real = base.get(clauseId, 1);
-        if (!real) throw new Error(`fixture ${clauseId} missing`);
-        return { ...real, version, title: `${clauseId} v${version} (a stranger's registration)` };
-    };
-    const withRegistrations = (extra: readonly ProjectionSpecView[]): SpecSource => {
-        const views = [...base.list(), ...extra];
-        return {
-            get: (clauseId, version) => views.find((v) => v.clauseId === clauseId && v.version === version),
-            list: () => views,
-        };
-    };
+describe("buildAssemblyTemplate — a clause is its spec: the fold folds every mandatory registration", () => {
+    // A clause's key is the hash of its pinned bytes, so a registration that
+    // reuses a name and version with other bytes is ANOTHER clause: it never
+    // displaces the clause a design composed, and nothing selects among
+    // registrations — every live registration marking itself mandatory folds.
     const ORDERS = [
         { orderHash: "synthetic-root", parentOrderHashes: [] },
         { orderHash: "synthetic-child", parentOrderHashes: ["synthetic-root"] },
     ];
+    const base = specSourceFromFixtures(["figaro-commerce", "figaro-topology", "figaro-geolocation", "figaro-applicable-law"]);
+    /** A stranger's registration: the named spec's bytes with a changed title
+     *  (and any further edits) — same clauseId and version, a different key. */
+    const lookalike = (name: string, edit: (raw: Record<string, unknown>) => Record<string, unknown> = (r) => r): ProjectionSpecView =>
+        viewOf(edit({ ...rawSpecOf(name), title: `${name} (a stranger's registration)` }));
 
-    it("a higher version marked mandatory does not replace the version a new design folds", () => {
-        const specs = withRegistrations([forged("figaro-commerce", 99), forged(FLOOR, 99)]);
-        const template = buildAssemblyTemplate({ orders: ORDERS, clausesByOrderId: {}, specs });
+    it("a lookalike of a mandatory clause is another clause: both fold, the real key unchanged", () => {
+        const fake = lookalike("figaro-commerce");
+        expect(fake.clauseKey).not.toBe(keyOf("figaro-commerce"));
+        expect(fake.clauseId).toBe("figaro-commerce");
+        const template = buildAssemblyTemplate({ orders: ORDERS, clausesByOrderId: {}, specs: specSourceWithRegistrations(base, [fake]) });
         for (const agreement of template.agreements) {
-            expect(agreement.clauses).toHaveProperty("figaro-commerce");
-            expect(agreement.clauseVersions?.["figaro-commerce"]).toBeUndefined(); // v1
+            expect(agreement.clauses).toHaveProperty(keyOf("figaro-commerce"));
+            expect(agreement.clauses).toHaveProperty(fake.clauseKey);
+            expect(agreement.clauses).toHaveProperty(keyOf("figaro-topology"));
         }
-        expect(template.assemblyClauseVersions?.[FLOOR]).toBeUndefined(); // v1
-        // The same template as before the registration: the composition hash holds.
-        expect(serializeAssemblyTemplate(template).compositionHash).toBe(
-            serializeAssemblyTemplate(buildAssemblyTemplate({ orders: ORDERS, clausesByOrderId: {}, specs: base }))
-                .compositionHash,
-        );
     });
 
-    it("a stranger's v0 and v2 beside the real v1 leave the fold at v1", () => {
-        const specs = withRegistrations([
-            forged("figaro-commerce", 0), forged("figaro-commerce", 2),
-            forged("figaro-topology", 0), forged("figaro-topology", 2),
-            forged(FLOOR, 0), forged(FLOOR, 2),
-        ]);
-        const template = buildAssemblyTemplate({ orders: ORDERS, clausesByOrderId: {}, specs });
-        for (const agreement of template.agreements) {
-            expect(agreement.clauses).toHaveProperty("figaro-commerce");
-            expect(agreement.clauses).toHaveProperty("figaro-topology");
-            expect(agreement.clauseVersions).toBeUndefined(); // every fold at v1
-        }
-        expect(template.assemblyClauses).toHaveProperty(FLOOR);
-        expect(template.assemblyClauseVersions).toBeUndefined(); // v1
-        expect(serializeAssemblyTemplate(template).compositionHash).toBe(
-            serializeAssemblyTemplate(buildAssemblyTemplate({ orders: ORDERS, clausesByOrderId: {}, specs: base }))
-                .compositionHash,
-        );
+    it("with no registration added the template is the same — the fold reads only what the source surfaces", () => {
+        const once = serializeAssemblyTemplate(buildAssemblyTemplate({ orders: ORDERS, clausesByOrderId: {}, specs: base }));
+        const twice = serializeAssemblyTemplate(buildAssemblyTemplate({ orders: ORDERS, clausesByOrderId: {}, specs: base }));
+        expect(twice.compositionHash).toBe(once.compositionHash);
     });
 
-    it("an id marked mandatory only above or below v1 does not fold", () => {
-        const at = (version: number): ProjectionSpecView => ({ ...forged("figaro-commerce", version), clauseId: "stranger-term" });
+    it("an assembly-scoped registration marking itself mandatory folds into the assembly's terms", () => {
+        const floor = lookalike("figaro-applicable-law", (r) => ({
+            ...r,
+            clauseId: "stranger-assembly-floor",
+            block: { ...(r.block as Record<string, unknown>), design: { ...((r.block as { design?: object }).design ?? {}), article: "mandatory", scope: "assembly" } },
+        }));
+        const template = buildAssemblyTemplate({ orders: [ORDERS[0]], clausesByOrderId: {}, specs: specSourceWithRegistrations(base, [floor]) });
+        expect(template.assemblyClauses).toEqual({ [floor.clauseKey]: {} });
+        expect(template.agreements[0].clauses).not.toHaveProperty(floor.clauseKey);
+    });
+
+    it("composes the key the design names, whatever else shares its name", () => {
+        const fake = lookalike("figaro-geolocation");
+        const specs = specSourceWithRegistrations(base, [fake]);
         const template = buildAssemblyTemplate({
             orders: [ORDERS[0]],
-            clausesByOrderId: {},
-            specs: withRegistrations([at(0), at(2)]),
-        });
-        expect(template.agreements[0].clauses).not.toHaveProperty("stranger-term");
-    });
-
-    it("a fork stating version 0 of a mandatory clause keeps it", () => {
-        const specs = withRegistrations([forged("figaro-commerce", 0), forged("figaro-commerce", 2)]);
-        const template = buildAssemblyTemplate({
-            orders: [ORDERS[0]],
-            clausesByOrderId: { "synthetic-root": { "figaro-commerce": {} } },
-            clauseVersionsByOrderId: { "synthetic-root": { "figaro-commerce": 0 } },
+            clausesByOrderId: { "synthetic-root": { [keyOf("figaro-geolocation")]: {} } },
             specs,
         });
-        expect(template.agreements[0].clauseVersions?.["figaro-commerce"]).toBe(0);
+        expect(template.agreements[0].clauses).toHaveProperty(keyOf("figaro-geolocation"));
+        expect(template.agreements[0].clauses).not.toHaveProperty(fake.clauseKey);
     });
 
-    it("a fork keeps the mandatory versions its template states", () => {
-        // A fork of a published template carries commerce and topology at v1
-        // (sparse map: absent = 1) and the assembly-level mandatory clause.
-        const fork = {
-            orders: ORDERS,
-            clausesByOrderId: {
-                "synthetic-root": { "figaro-commerce": {}, "figaro-topology": { parentOrderHashes: [] } },
-                "synthetic-child": { "figaro-commerce": {}, "figaro-topology": { parentOrderHashes: ["order-0"] } },
-            },
-            assemblyClauses: { [FLOOR]: {} },
-        };
-        const before = buildAssemblyTemplate({ ...fork, specs: base });
-        const after = buildAssemblyTemplate({
-            ...fork,
-            specs: withRegistrations([forged("figaro-commerce", 99), forged("figaro-topology", 99), forged(FLOOR, 99)]),
-        });
-        expect(after).toEqual(before);
-        for (const agreement of after.agreements) expect(agreement.clauseVersions).toBeUndefined();
-        expect(after.assemblyClauseVersions).toBeUndefined();
-    });
-
-    it("a version the fork states explicitly is the version it folds", () => {
-        const specs = withRegistrations([forged("figaro-commerce", 2)]);
-        const template = buildAssemblyTemplate({
-            orders: [ORDERS[0]],
-            clausesByOrderId: { "synthetic-root": { "figaro-commerce": {} } },
-            clauseVersionsByOrderId: { "synthetic-root": { "figaro-commerce": 2 } },
-            specs,
-        });
-        expect(template.agreements[0].clauseVersions?.["figaro-commerce"]).toBe(2);
-    });
-
-    it("a stated mandatory version whose spec is not loaded is a build error, never a silent swap", () => {
+    it("a composed key whose spec is not loaded is a build error, on an order and at the assembly level", () => {
+        const unloaded = `0x${"77".repeat(32)}` as const;
         expect(() => buildAssemblyTemplate({
             orders: [ORDERS[0]],
-            clausesByOrderId: { "synthetic-root": { "figaro-commerce": {} } },
-            clauseVersionsByOrderId: { "synthetic-root": { "figaro-commerce": 7 } },
+            clausesByOrderId: { "synthetic-root": { [unloaded]: {} } },
             specs: base,
-        })).toThrow(/figaro-commerce v7 is composed on an order but its spec is not loaded/);
-    });
-
-    it("a pick with no recorded version builds v1, never the highest loaded", () => {
-        // The canvas records only non-1 versions, so a v1 pick arrives with no
-        // version; a later v2 of the same id is anyone's registration.
-        const v1 = specSourceFromFixtures(["figaro-geolocation"]).get("figaro-geolocation", 1)!;
-        const v2: ProjectionSpecView = { ...v1, version: 2, title: "figaro-geolocation v2 (a stranger's registration)" };
-        const specs = withRegistrations([v1, v2]);
-        const template = buildAssemblyTemplate({
-            orders: [ORDERS[0]],
-            clausesByOrderId: { "synthetic-root": { "figaro-geolocation": {} } },
-            specs,
-        });
-        expect(template.agreements[0].clauses).toHaveProperty("figaro-geolocation");
-        expect(template.agreements[0].clauseVersions?.["figaro-geolocation"]).toBeUndefined(); // v1
-        // Stating 2 is the only way to compose v2.
-        const picked = buildAssemblyTemplate({
-            orders: [ORDERS[0]],
-            clausesByOrderId: { "synthetic-root": { "figaro-geolocation": {} } },
-            clauseVersionsByOrderId: { "synthetic-root": { "figaro-geolocation": 2 } },
-            specs,
-        });
-        expect(picked.agreements[0].clauseVersions?.["figaro-geolocation"]).toBe(2);
-    });
-
-    it("an assembly-level pick with no recorded version builds v1, never the highest loaded", () => {
-        const v1 = specSourceFromFixtures(["figaro-applicable-law"]).get("figaro-applicable-law", 1)!;
-        const v2: ProjectionSpecView = { ...v1, version: 2, title: "figaro-applicable-law v2 (a stranger's registration)" };
-        const template = buildAssemblyTemplate({
-            orders: [ORDERS[0]],
-            clausesByOrderId: {},
-            assemblyClauses: { "figaro-applicable-law": { applicableLaw: "US-NY" } },
-            specs: withRegistrations([v1, v2]),
-        });
-        expect(template.assemblyClauses?.["figaro-applicable-law"]).toEqual({ applicableLaw: "US-NY" });
-        expect(template.assemblyClauseVersions).toBeUndefined(); // the law at v1
-    });
-
-    it("a pick with no recorded version whose v1 is not loaded is a build error, never the version loaded", () => {
-        const v1 = specSourceFromFixtures(["figaro-geolocation"]).get("figaro-geolocation", 1)!;
-        expect(() => buildAssemblyTemplate({
-            orders: [ORDERS[0]],
-            clausesByOrderId: { "synthetic-root": { "figaro-geolocation": {} } },
-            specs: withRegistrations([{ ...v1, version: 2 }]),
-        })).toThrow(/figaro-geolocation v1 is composed on an order but its spec is not loaded/);
-        const law = specSourceFromFixtures(["figaro-applicable-law"]).get("figaro-applicable-law", 1)!;
+        })).toThrow(new RegExp(`clause ${unloaded} is composed on an order but its spec is not loaded`));
         expect(() => buildAssemblyTemplate({
             orders: [ORDERS[0]],
             clausesByOrderId: {},
-            assemblyClauses: { "figaro-applicable-law": {} },
-            specs: withRegistrations([{ ...law, version: 2 }]),
-        })).toThrow(/figaro-applicable-law v1 is composed at the assembly level but its spec is not loaded/);
+            assemblyClauses: { [unloaded]: {} },
+            specs: base,
+        })).toThrow(new RegExp(`clause ${unloaded} is composed at the assembly level but its spec is not loaded`));
     });
 
-    it("the one mandatory registration of a name folds at its own version", () => {
-        // Version 1 of commerce is not among the surfaced registrations (its
-        // stake withdrawn); the one surfaced mandatory registration is v2.
-        const onlyV2: SpecSource = {
-            get: (clauseId, version) => base.get(clauseId, version) ?? (clauseId === "figaro-commerce" && version === 2 ? forged("figaro-commerce", 2) : undefined),
-            list: () => [...base.list().filter((v) => v.clauseId !== "figaro-commerce"), forged("figaro-commerce", 2)],
-        };
-        const template = buildAssemblyTemplate({ orders: [ORDERS[0]], clausesByOrderId: {}, specs: onlyV2 });
-        expect(template.agreements[0].clauses).toHaveProperty("figaro-commerce");
-        expect(template.agreements[0].clauseVersions?.["figaro-commerce"]).toBe(2);
-    });
-
-    it("a new clause id marked mandatory folds into the template, where a review reads it", () => {
-        const stranger: ProjectionSpecView = { ...forged("figaro-commerce", 1), clauseId: "stranger-term" };
-        const template = buildAssemblyTemplate({ orders: [ORDERS[0]], clausesByOrderId: {}, specs: withRegistrations([stranger]) });
-        expect(template.agreements[0].clauses).toHaveProperty("stranger-term");
+    it("refuses a template build with no mandatory clause loaded", () => {
+        expect(() => buildAssemblyTemplate({
+            orders: [ORDERS[0]],
+            clausesByOrderId: {},
+            specs: specSourceFromFixtures(["figaro-geolocation"]),
+        })).toThrow(/no mandatory clauses/);
     });
 });
 
-describe("buildOrderAgreement — an unstated version is v1", () => {
-    // Every (clauseId, version) slot is open to anyone: a v2 of a clause the
-    // composition picked at v1 may be a stranger's registration, and the
-    // registry read with no version returns it.
-    const v1 = specSourceFromFixtures(["figaro-applicable-law"]).get("figaro-applicable-law", 1)!;
-    const v2: ProjectionSpecView = {
-        ...v1,
-        version: 2,
-        title: "figaro-applicable-law v2 (a stranger's registration)",
-        fields: v1.fields.map((f) => (f.name === "language" ? { ...f, default: "xx" } : f)),
-    };
-    const specs = specSourceWithRegistrations(specSourceFromFixtures(["figaro-applicable-law"]), [v2]);
-    const clauses = { "figaro-applicable-law": { applicableLaw: "US-NY" } };
+describe("buildOrderAgreement — every section reads the spec its key names", () => {
+    // A lookalike shares a name and version with the real clause and declares
+    // another default; the real key's section never takes it.
+    const fake = viewOf({
+        ...rawSpecOf("figaro-applicable-law"),
+        title: "a stranger's registration",
+        fields: (rawSpecOf("figaro-applicable-law").fields as { name: string }[]).map((f) =>
+            (f.name === "language" ? { ...f, default: "xx" } : f)),
+    });
+    const real = specSourceFromFixtures(["figaro-applicable-law"]);
+    const specs = specSourceWithRegistrations(real, [fake]);
 
-    it("an unstated pick with v2 loaded signs v1, with v1's defaults", () => {
-        expect(specs.get("figaro-applicable-law", 2)?.version).toBe(2); // v2 is registered
+    it("the real key signs the real spec's defaults, whatever else is loaded", () => {
+        const clauses = { [keyOf("figaro-applicable-law")]: { applicableLaw: "US-NY" } };
         const { agreement, agreementHash } = buildOrderAgreement(BUYER, SELLER, clauses, specs);
-        const section = agreement.sections.find((s) => s.clause === "figaro-applicable-law")!;
-        expect(section.version).toBe(1);
+        const section = agreement.sections.find((s) => s.clause === keyOf("figaro-applicable-law"))!;
         expect(section.data?.language).not.toBe("xx");
-        expect(agreementHash).toBe(buildOrderAgreement(BUYER, SELLER, clauses, specSourceFromFixtures(["figaro-applicable-law"])).agreementHash);
+        expect(agreementHash).toBe(buildOrderAgreement(BUYER, SELLER, clauses, real).agreementHash);
     });
 
-    it("a stated version is the version signed", () => {
-        const { agreement } = buildOrderAgreement(BUYER, SELLER, clauses, specs, { "figaro-applicable-law": 2 });
-        const section = agreement.sections.find((s) => s.clause === "figaro-applicable-law")!;
-        expect(section.version).toBe(2);
-        expect(section.data?.language).toBe("xx");
+    it("the lookalike's key signs the lookalike's defaults", () => {
+        const { agreement } = buildOrderAgreement(BUYER, SELLER, { [fake.clauseKey]: { applicableLaw: "US-NY" } }, specs);
+        expect(agreement.sections[0].clause).toBe(fake.clauseKey);
+        expect(agreement.sections[0].data?.language).toBe("xx");
     });
 });

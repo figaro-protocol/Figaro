@@ -6,12 +6,12 @@
  * section) is a leaf; inclusion proofs let runtime attestations prove their
  * content was committed to at contract-signing time.
  *
- * Leaf format: `keccak256(keccak256(clauseId || sectionDataHash))` (double-hashed
+ * Leaf format: `keccak256(keccak256(clauseKey || sectionDataHash))` (double-hashed
  * for leaf/node domain separation) where
- *   - `clauseId` = `computeClauseKey(clause, version)` =
- *      `keccak256(abi.encode(clause, version))` — the on-chain bytes32 id,
- *      used DIRECTLY as the leaf id (it is NOT hashed again). This same value
- *      is the `clauseId` argument passed to the attest* calls.
+ *   - `clauseKey` = the clause's on-chain identity, `keccak256` of the spec's
+ *      pinned canonical bytes (`computeClauseKey(spec)` in discovery.ts, the
+ *      key `ClauseRegistry` registers), used DIRECTLY as the leaf id. The
+ *      reserved provenance leaf uses `PROVENANCE_LEAF_KEY` the same way.
  *   - `sectionDataHash` = `keccak256(canonicalJSON(section.data))`
  *
  * Merkle tree: OpenZeppelin-style sorted-pair hashing. Leaves are sorted
@@ -21,7 +21,6 @@
  */
 
 import { keccak256, toHex, concat, type Hex } from "viem";
-import { computeClauseKey } from "./discovery.js";
 import { ZERO_BYTES32 } from "./commitments.js";
 
 // ── Core types ──────────────────────────────────────────────────────────────
@@ -42,10 +41,11 @@ import { ZERO_BYTES32 } from "./commitments.js";
  * Exactly one of `data` / `dataHash` is set.
  */
 export interface AgreementSection {
-    clause: string;
-    /** Clause version — paired with `clause` to form the on-chain id
-     *  keccak256(abi.encode(clause, version)). Sourced from the clause spec. */
-    version: number;
+    /** The clause KEY — the 32-byte hex identity `ClauseRegistry` registers,
+     *  `keccak256` of the spec's pinned canonical bytes (`computeClauseKey`).
+     *  Never a name: a spec's `clauseId` and `version` are its own
+     *  presentation fields, read from the spec the key resolves to. */
+    clause: Hex;
     /** The clause content, canonical-JSON-hashed into the merkle leaf. Absent
      *  for a content-withheld section (see `dataHash`). */
     data?: Record<string, unknown>;
@@ -76,9 +76,9 @@ export interface Agreement {
 
 // ── The provenance leaf — the agreement format's own, not a clause ──────────
 
-/** The label the reserved leaf's key is the hash of. Not a clause id: a
- *  registered clause's key is `keccak256(abi.encode(name, version))`, this
- *  is `keccak256(bytes(label))`, and the two preimage shapes never meet. */
+/** The label the reserved leaf's key is the hash of. Not a clause: a clause's
+ *  key is `keccak256` of its pinned spec bytes (a JSON object), this is
+ *  `keccak256(bytes(label))` of a bare string no spec serializes to. */
 export const PROVENANCE_LEAF_LABEL = "figaro-agreement-provenance";
 
 /** The reserved leaf key, fixed by the agreement format and mirrored in
@@ -146,18 +146,21 @@ function sortedReplacer(_key: string, value: unknown): unknown {
 /**
  * Deterministic JSON serialization: sorted object keys at every depth,
  * preserved array order, no whitespace. THE one canonical-JSON convention —
- * agreement sections, clause specs (`ClauseRegistry.contentHash`), and
- * assembly compositions (`AssemblyRegistry.compositionHash`) all hash this
- * form, so any reader verifies a fetched document by re-canonicalizing the
- * parsed JSON. The serialized value must carry no bigints.
+ * agreement sections and assembly compositions (`AssemblyRegistry.compositionHash`)
+ * hash this form, and it is the byte form the reference tooling PINS a clause
+ * spec in, so the clause key (`computeClauseKey`, keccak256 of the pinned
+ * bytes) is the hash of this form. A clause reader hashes the bytes it
+ * fetched (`anchorClauseSpec`), never a re-canonicalization: a spec pinned in
+ * any other byte form has a different key. The serialized value must carry
+ * no bigints.
  */
 export function canonicalize(value: unknown): string {
     return JSON.stringify(value, sortedReplacer);
 }
 
-/** keccak256 over the canonical serialization — the digest the registries
- *  anchor (`contentHash` for clause specs, `compositionHash` for assembly
- *  compositions). Publishers hash with it; readers verify with it after fetch. */
+/** keccak256 over the canonical serialization — a clause spec's key when it
+ *  is pinned in this form (`computeClauseKey`), and the digest the assembly
+ *  registry anchors (`compositionHash`, over the composition subset). */
 export function canonicalContentHash(value: unknown): Hex {
     return keccak256(toHex(canonicalize(value)));
 }
@@ -216,7 +219,7 @@ export function sectionDataHash(section: AgreementSection): Hex {
  * (the paid-edge data) off every public surface.
  */
 export function withholdSectionContent(section: AgreementSection): AgreementSection {
-    return { clause: section.clause, version: section.version, dataHash: sectionDataHash(section) };
+    return { clause: section.clause, dataHash: sectionDataHash(section) };
 }
 
 /**
@@ -230,11 +233,10 @@ export function withholdSectionContent(section: AgreementSection): AgreementSect
  * reconstruction during inclusion-proof verification.
  */
 export function computeSectionLeaf(section: AgreementSection): Hex {
-    return keccak256(
-        keccak256(
-            concat([computeClauseKey(section.clause, section.version), sectionDataHash(section)]),
-        ),
-    );
+    if (!/^0x[0-9a-fA-F]{64}$/.test(section.clause)) {
+        throw new Error(`Section clause is not a 32-byte clause key: ${section.clause}`);
+    }
+    return keccak256(keccak256(concat([section.clause, sectionDataHash(section)])));
 }
 
 function hashPair(a: Hex, b: Hex): Hex {
@@ -271,7 +273,7 @@ export function computeAgreementHash(agreement: Agreement): Hex {
  *  section, plus the reserved provenance leaf when the agreement names the
  *  design it instantiates. */
 export function agreementLeaves(agreement: Agreement): Hex[] {
-    const keys = agreement.sections.map((s) => s.clause);
+    const keys = agreement.sections.map((s) => s.clause.toLowerCase());
     const dupes = keys.filter((k, i) => keys.indexOf(k) !== i);
     if (dupes.length > 0) {
         throw new Error(`Duplicate clause keys in agreement: ${[...new Set(dupes)].join(", ")}`);
@@ -287,17 +289,15 @@ export function agreementLeaves(agreement: Agreement): Hex[] {
  * sibling hashes walking the tree toward the root. Throws if the section is
  * absent from the agreement.
  *
- * @param clauseKey The RAW clause section name — `section.clause`, e.g.
- *        "figaro-commerce". This is NOT the `computeClauseKey(clause, version)`
- *        bytes32 hash that the attest calls (`attestAsSeller`/`attestAsBuyer`)
- *        take as their `clauseId`; passing that hash here throws
- *        "Section not found: 0x…".
+ * @param clauseKey The section's clause KEY — `section.clause`, the same bytes32
+ *        the attest calls (`attestAsSeller`/`attestAsBuyer`) take as their
+ *        `clauseId`. Compared case-insensitively.
  */
 export function buildSectionInclusionProof(
     agreement: Agreement,
-    clauseKey: string,
+    clauseKey: Hex,
 ): { leaf: Hex; proof: Hex[] } {
-    const section = agreement.sections.find((s) => s.clause === clauseKey);
+    const section = agreement.sections.find((s) => s.clause.toLowerCase() === clauseKey.toLowerCase());
     if (!section) {
         throw new Error(`Section not found: ${clauseKey}`);
     }

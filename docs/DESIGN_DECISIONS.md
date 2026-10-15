@@ -199,17 +199,19 @@ receive the resolved process's complete, closed evidentiary data as input.
 
 ## 8. ClauseRegistry is fully permissionless
 
-**Pattern**: Anyone can call `registerClause` with any `clauseId`, `version`,
-`contentHash`, and `contentURI`, placing the fixed registration stake
+**Pattern**: Anyone can call `registerClause(clauseKey, contentURI)` with any
+key and any URI, placing the fixed registration stake
 (`registrationDeposit`, immutable at deploy). There is no approval and no identity check.
-First write wins per `(clauseId, version)` (`AlreadyRegistered` revert) and
+First write wins per key (`AlreadyRegistered` revert) and
 the binding is permanent — `withdrawDeposit` returns the stake without
 clearing it; readers de-surface a withdrawn clause for new compositions.
+The key is `keccak256` of the spec's pinned canonical bytes
+(`computeClauseKey(spec)`); the spec's `clauseId` and `version` are
+presentation fields inside the document.
 
-**Why it looks wrong**: Permissionless registration enables namespace
-squatting and spam. The clause names are public, human-readable strings, so
-a squatter can register a well-known name (or the next version of one)
-before its designer does — nothing about the id is secret.
+**Why it looks wrong**: Permissionless registration looks like it enables
+namespace squatting and spam: a well-known clause name is public, so a
+squatter could seem to claim it before its designer does.
 
 **Why it is correct**: The layers are hard boundaries in a permissionless
 system. Anyone may use the Core alone, the Core with the registries and the
@@ -218,9 +220,12 @@ a withdrawn clause for new compositions because that is how it chose to read
 the registry; another frontend may keep surfacing it and its users may keep
 composing it, so the registry clears nothing on any frontend's account. The
 same permanence is what every committed agreement and the batch verifier read:
-integrity routes through `agreementHash` and `contentHash`, never through the
-registry, so a squatted or garbage entry can pollute discovery only, and the
-stake prices that. A squatter buys one dead `(name, version)` slot, not the name.
+integrity routes through `agreementHash` and the clause key, never through
+the registry, so a garbage entry can pollute discovery only, and the stake
+prices that. There is nothing to squat but bytes: the registry holds no name,
+a reader verifies a fetched spec by checking `keccak256(bytes) == clauseKey`,
+two specs with one name are two clauses, and a lookalike shares nothing with
+the original but its label.
 
 Clause governance — which clauses are authoritative — is a convention-layer
 concern resolved off-chain, consistent with the event-sourced architecture.
@@ -229,16 +234,17 @@ concern resolved off-chain, consistent with the event-sourced architecture.
 once designer rewards reach designers, the registering wallet is also the reward CLAIMANT key
 (`RpgfMinter._isAuthor`), so a front-runner who copies an in-flight registration
 captures its future reward, not just a discovery slot. This was weighed and the
-first-write-wins design KEPT, for two reasons. First, the shared flat clause
-namespace IS the coordination commons — namespacing ids under the designer's address
+first-write-wins design KEPT, for two reasons. First, the shared flat keyspace
+IS the coordination commons — namespacing keys under the designer's address
 (the structural fix) would fragment it, and signature-based registration breaks the designer-is-staker assumption the reward's live-stake gate rests on. Second, reward
 follows real USAGE (network truth): a squatted key earns nothing unless the
 ecosystem actually composes it, which the squatter cannot force, and the stake still prices the attempt. The reactive-front-run window is already minimal —
 registration pins the spec to the designer's OWN node and registers in one atomic UI
 action, so nothing is publicly observable before the register tx hits the mempool.
-The residual (mempool front-run of that tx; proactive squatting of a guessable
-name) is the accepted, deposit-priced cost. Assemblies are unaffected — their id is
-content-derived, not a guessable name. Revisit only if reward-capture griefing is
+The residual — a mempool front-run of that tx — is the accepted,
+stake-priced cost; neither registry has a guessable id to claim in advance,
+since a clause key and an assembly's `compositionHash` are both derived from
+content. Revisit only if reward-capture griefing is
 observed in the wild; the fallback is commit-reveal on `AssemblyRegistry` alone.
 
 ---
@@ -730,6 +736,53 @@ keys are revoked.
 
 ---
 
+## 24. The reward keys every accrual by (kind, key) — the registries have no edge between them
+
+**Pattern**: `UsageCounter` keys every accrual, count, counted process and
+score by `(kind, key)`, kind `KIND_CLAUSE = 0` or `KIND_ASSEMBLY = 1`
+(`accrualOf[kind][key][period]`, `batchAccrualOf`, `processCounted`,
+`scoreOf(kind, key, period)`). `recordClauseUsage` counts under the clause
+kind and checks `ClauseRegistry` only; `recordAssemblyUsage` counts under the
+assembly kind and checks `AssemblyRegistry` only; `applyBatchAccrual` gates
+each `BatchAccrual{clauseOrAssembly, kind, c, d}` by its own kind's registry
+and skips an unknown kind. `RpgfMinter.claim(period, (kind, key)[])` reads
+the counter's slot for each kind, and `_isAuthor(kind, key, account)` reads
+the one registry the kind names, reverting `UnknownKind` on any other.
+`FigaroBatchVerifier._hashUsage` packs `key(32) ‖ kind(1) ‖ c(8) ‖ d(8)` per
+accrual, so the proof commits the kind.
+
+**Why it looks wrong**: The registry families are parallel and carry no
+edge between them (CLAUDE.md § "Separation of Concerns"), so a discriminator
+that names which registry a key belongs to looks like the reward reaching
+across the boundary — and both registries already key by content, so the
+bytes look like they should suffice.
+
+**Why it is correct**: Each registry takes any `bytes32`, so a stranger can
+register an existing assembly's `compositionHash` as a clause key. Nothing on
+chain tells a clause key from an assembly key by its bytes, and neither
+registry knows the other exists, so the separation cannot live in a registry;
+it lives in the reward's own accounting. With one keyspace, the stranger's
+clause registration at the assembly's bytes would make them a designer of record
+for the assembly's accrual. With the kind, a stake in one family
+earns only what accrues under that family: the stranger's clause-kind slot at
+that key holds only what processes committing a clause leaf under that key
+accrue, priced by the seller stake and the floor like any squatted key
+(§ 8, § 17). The registries still reference nothing; the counter and the
+minter each read both, and the kind says which one
+answers for a given key. The reserved provenance leaf is refused at accrual
+whatever either registry holds at it: the direct path reverts
+(`ProvenanceLeafIsNotARegistration`), the guest refuses a batch claim keyed
+on it, and the counter's batch path skips it.
+
+**Tests**: `test_aStrangerWhoStakesAnAssemblysKeyAsAClauseTakesNothingOfIt`
+(`test/build/rewards/RpgfIntegrationTest.t.sol`) — the stranger claims
+nothing under the clause kind and is refused under the assembly kind, and the
+assembly's registrant takes the accrual; `check_theKindsNeverShareASlot`
+(`test/build/rewards/HalmosUsageCounter.t.sol`) — an assembly-kind accrual on
+either path leaves every clause-kind slot at the same key untouched.
+
+---
+
 ## Summary Table
 
 | # | Pattern | Blast radius | Looks wrong because | Is correct because |
@@ -741,7 +794,7 @@ keys are revoked.
 | 5 | Buyer key loss is terminal | Core-critical | No stuck-fund recovery | Timeout = escape hatch = breaks MAD equilibrium |
 | 6 | No prevrandao salt | Core-critical | Missing on-chain entropy | Validators predict prevrandao; party-chosen salt sufficient |
 | 7 | Attestation reverts on resolved orders | evidence-layer | Rejecting legitimate late evidence | Evidence window closes with the institution; forums get the closed data |
-| 8 | Permissionless clause registry | registry/discovery | Namespace squatting | Integrity routes through contentHash, never the registry; squatting pollutes discovery only, priced by the stake |
+| 8 | Permissionless clause registry | registry/discovery | Namespace squatting | The key is the hash of the spec's pinned bytes: there is nothing to squat but bytes, two specs with one name are two clauses; integrity routes through the key, never the registry; garbage pollutes discovery only, priced by the stake |
 | 9 | No competitive-pricing contract | — | A market protocol without a price primitive looks unfinished | Mid-chain unknown price or counterparty is incompatible with the exact-match accumulator; pricing is a catalog concern |
 | 10 | Strict token compatibility rejection | Core-critical | Overly restrictive | Bond math requires exact amounts; wrapping is the solution |
 | 11 | Single currency per process | Core-critical | Can't do multi-token commerce | 2:1 bond ratio is Nash-stable only in one currency; multi-token lives at composition layer (process / wallet swap / Level-3 bundler) |
@@ -757,3 +810,4 @@ keys are revoked.
 | 21 | Member-stake gate on the seller of record is retroactive | reward-path | A withdrawal makes resolved-but-unrecorded trades unrecordable — looks like a grief hole | Chain can't see resolve time (`FigaroCore` stores none), so the gate is record-time only; record-at-resolution closes the normal window; residual grief is self-limiting (griefer forfeits own eligibility through period end) |
 | 22 | Batch resolve: nonce-less, deadline-less `ResolveProcess` signature | batch-path | The canonical EIP-712 replay shape | Resolution is terminal and single-shot — the guest's root-chained state rejects a second resolve; the domain pins chain + verifier so the signature travels nowhere; the message authorizes one time-invariant transition, leaving nothing for a nonce to price |
 | 23 | Pinata pin key in the public site bundle | site/pinning | A credential in a public bundle reads as a leaked secret | The testnet key is pin-only (dashboard-confirmed: unpin, list, data and every V3 resource inactive) and disposable; every registry read is digest-checked against the on-chain anchor, so a hostile pin never verifies; testnet only — per-party pinning at mainnet, the keys revoked at the account split |
+| 24 | Reward keyed by (kind, key) | reward-path | A family discriminator looks like the reward crossing the registries' boundary | Each registry takes any bytes32 and nothing tells the families apart by bytes; without the kind a stranger staking an assembly's hash as a clause would take its reward; the kind keeps a stake in one family from earning the other's |

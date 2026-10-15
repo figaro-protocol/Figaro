@@ -5,7 +5,7 @@ import { deriveOrderTopology } from "@/lib/semantic/processTopology";
 import type { PartyRole, ProcessSummary } from "@/lib/kernel/walletProcessQueries";
 import type { RuntimeAttestation } from "@/lib/composition/indexer";
 import { clauseIsProcessLog, clauseLadderField, clauseWitnessStages, getClauseSpec, labelEnumValue, specSource } from "@/lib/shared/clauseSpecSource";
-import { PROVENANCE_LEAF_KEY, computeClauseKey } from "@figaro-protocol/sdk";
+import { PROVENANCE_LEAF_KEY } from "@figaro-protocol/sdk";
 import { ZERO_BYTES32, hexEqual } from "@/lib/shared/evm";
 import { truncateHex } from "@/lib/shared/formatHex";
 import {
@@ -113,30 +113,29 @@ function roleCapabilities(
     if (agreement) {
         const orderAttestations = indexes.attestationsByOrder.get(orderIdStr) ?? [];
         for (const section of agreement.sections) {
-            const clauseId = section.clause;
-            if (!clauseIsProcessLog(clauseId, section.version)) continue; // only attestations-article ladders are lifecycles
-            const ladder = clauseLadderField(clauseId, section.version);
+            const clauseKey = section.clause;
+            if (!clauseIsProcessLog(clauseKey)) continue; // only attestations-article ladders are lifecycles
+            const ladder = clauseLadderField(clauseKey);
             if (!ladder) continue;                                     // process-log clause without a declared ladder yet → nothing to advance
-            const clauseIdHash = computeClauseKey(clauseId, section.version).toLowerCase();
             const parties: Array<PartyRole> = ["seller"];
 
             for (const party of parties) {
                 if (party === "seller" ? !isSeller : !isBuyer) continue;
                 const mine = orderAttestations.filter(
-                    (a) => hexEqual(a.clauseId, clauseIdHash)
+                    (a) => hexEqual(a.clauseId, clauseKey)
                         && hexEqual(a.attester, party === "seller" ? order.seller : order.buyer),
                 );
                 const seen = new Set(mine.map((a) => a.stage));
                 const stage = ladder.values.findIndex((_v, i) => !seen.has(i));
                 if (stage < 0) continue;                               // ladder fully attested
                 const eventCode = ladder.values[stage];
-                const capId = `${order.processId}:${orderIdStr}:${clauseId}-${party}-${eventCode}`;
+                const capId = `${order.processId}:${orderIdStr}:${clauseKey}-${party}-${eventCode}`;
                 // The ladder's COMPANION fields (every declared field that
                 // isn't the ladder enum itself — an evidence pointer, a note)
                 // ride the same generic form the witness stages use: the spec
                 // declares, the rail renders, the fill lands in the encoded
                 // content beside the event code. No field is named here.
-                const companions = getClauseSpec(clauseId, section.version)
+                const companions = getClauseSpec(clauseKey)
                     ?.fields.filter((f) => f.name !== ladder.name) ?? [];
                 out.push({
                     id: capId,
@@ -147,8 +146,7 @@ function roleCapabilities(
                         executionType: "transaction",
                         kind: "submit-clause-attestation",
                         orderHash: orderIdStr,
-                        clauseId,
-                        version: section.version,
+                        clauseKey,
                         stage,
                         eventCode,
                         ladderField: ladder.name,
@@ -161,7 +159,7 @@ function roleCapabilities(
                     preconditions: [party === "seller" ? "seller-of-active-order" : "buyer-of-active-order"],
                     riskLabel: "standard",
                     uiPriority: party === "buyer" ? 76 : 75,
-                    source: runtimeSource(`${party} attests ${clauseId} ${eventCode}`, capId),
+                    source: runtimeSource(`${party} attests ${clauseKey} ${eventCode}`, capId),
                 });
             }
         }
@@ -183,13 +181,13 @@ function roleCapabilities(
         // together, so one clause's witness card repeats once per order.
         const orderLabel = `Order ${indexes.positionByOrder.get(orderIdStr)} of ${indexes.positionByOrder.size} · seller ${truncateHex(order.seller)}`;
         for (const section of agreement.sections) {
-            const clauseId = section.clause;
-            if (clauseIsProcessLog(clauseId, section.version)) continue; // a ladder's stage overrides shape its content, not a witness
-            for (const witness of clauseWitnessStages(clauseId, section.version)) {
-                const title = getClauseSpec(clauseId, section.version)?.title ?? clauseId;
+            const clauseKey = section.clause;
+            if (clauseIsProcessLog(clauseKey)) continue; // a ladder's stage overrides shape its content, not a witness
+            for (const witness of clauseWitnessStages(clauseKey)) {
+                const title = getClauseSpec(clauseKey)?.title ?? clauseKey;
                 for (const party of ["seller", "buyer"] as const) {
                     if (party === "seller" ? !isSeller : !isBuyer) continue;
-                    const capId = `${order.processId}:${orderIdStr}:${clauseId}-${party}-stage-${witness.stage}`;
+                    const capId = `${order.processId}:${orderIdStr}:${clauseKey}-${party}-stage-${witness.stage}`;
                     out.push({
                         id: capId,
                         label: title,
@@ -200,8 +198,7 @@ function roleCapabilities(
                             executionType: "transaction",
                             kind: "submit-clause-attestation",
                             orderHash: orderIdStr,
-                            clauseId,
-                            version: section.version,
+                            clauseKey,
                             stage: witness.stage,
                             party,
                         },
@@ -212,7 +209,7 @@ function roleCapabilities(
                         preconditions: [party === "seller" ? "seller-of-active-order" : "buyer-of-active-order"],
                         riskLabel: "standard",
                         uiPriority: party === "buyer" ? 66 : 65,
-                        source: runtimeSource(`${party} witnesses ${clauseId} stage ${witness.stage}`, capId),
+                        source: runtimeSource(`${party} witnesses ${clauseKey} stage ${witness.stage}`, capId),
                     });
                 }
             }
@@ -237,17 +234,16 @@ function roleCapabilities(
             if (party === "seller" ? !isSeller : !isBuyer) continue;
             const choices: CapabilityModel[] = [];
             for (const section of agreement.sections) {
-                const clauseId = section.clause;
-                if (clauseIsProcessLog(clauseId, section.version)) continue;
-                if (clauseWitnessStages(clauseId, section.version).some((w) => w.stage === 0)) continue;
-                const clauseIdHash = computeClauseKey(clauseId, section.version).toLowerCase();
-                const already = orderAttestations.some(
-                    (a) => hexEqual(a.clauseId, clauseIdHash) && a.stage === 0
+                const clauseKey = section.clause;
+                if (clauseIsProcessLog(clauseKey)) continue;
+                if (clauseWitnessStages(clauseKey).some((w) => w.stage === 0)) continue;
+                    const already = orderAttestations.some(
+                    (a) => hexEqual(a.clauseId, clauseKey) && a.stage === 0
                         && hexEqual(a.attester, party === "seller" ? order.seller : order.buyer),
                 );
                 if (already) continue;
-                const title = getClauseSpec(clauseId, section.version)?.title ?? clauseId;
-                const capId = `${order.processId}:${orderIdStr}:${clauseId}-${party}-reassert`;
+                const title = getClauseSpec(clauseKey)?.title ?? clauseKey;
+                const capId = `${order.processId}:${orderIdStr}:${clauseKey}-${party}-reassert`;
                 choices.push({
                     id: capId,
                     label: title,
@@ -256,8 +252,7 @@ function roleCapabilities(
                         executionType: "transaction",
                         kind: "submit-clause-attestation",
                         orderHash: orderIdStr,
-                        clauseId,
-                        version: section.version,
+                        clauseKey,
                         stage: 0,
                         party,
                         reasserts: true,
@@ -267,7 +262,7 @@ function roleCapabilities(
                     scopeId: orderIdStr,
                     preconditions: [party === "seller" ? "seller-of-active-order" : "buyer-of-active-order"],
                     riskLabel: "standard",
-                    source: runtimeSource(`${party} re-asserts ${clauseId}`, capId),
+                    source: runtimeSource(`${party} re-asserts ${clauseKey}`, capId),
                 });
             }
             // The agreement FORMAT's provenance leaf — the link from this

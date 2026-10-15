@@ -43,7 +43,7 @@ import { createPublicClient, createWalletClient, defineChain, http, parseAbi, pa
 import { privateKeyToAccount, mnemonicToAccount } from 'viem/accounts';
 import {
     confirmAgreementPreviews,
-    DELIVERY_CLAUSES,
+    deliveryClauseKeys,
     DELIVERY_DEVICE,
     ensureDeliveryAssembly,
     fillDeliveryCheckout,
@@ -117,7 +117,7 @@ test.describe('DISPATCH RACE — countersign-first market formation, zero contra
         }
         const binding = (await memberProfileBindings(MERCHANT)).find((b) => b.assemblySlug === deliverySlug);
         expect(
-            (binding?.counterpartyBindings ?? []).some((cb) => cb.clauseId === DELIVERY_CLAUSES.courier),
+            (binding?.counterpartyBindings ?? []).some((cb) => cb.clauseKey.toLowerCase() === deliveryClauseKeys().courier),
             'the merchant binding designates no courier — the node is genuinely unbound',
         ).toBe(false);
 

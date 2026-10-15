@@ -26,8 +26,8 @@ function orderFor(agreement: Agreement): Order {
 const base: Agreement = {
     version: "a1", buyer: BUYER, seller: SELLER,
     sections: [
-        { clause: "never-seen-a", version: 1, data: { note: "a" } },
-        { clause: "never-seen-b", version: 1, data: { note: "b" } },
+        { clause: `0x${"0a".repeat(32)}`, data: { note: "a" } },
+        { clause: `0x${"0b".repeat(32)}`, data: { note: "b" } },
     ],
 };
 

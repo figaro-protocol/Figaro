@@ -29,6 +29,7 @@
 
 import {
     asAddress,
+    asClauseKey,
     asBoolean,
     asEnum,
     asOptionalAddress,
@@ -93,7 +94,7 @@ interface MemberLocation {
  * this assembly's sub-orders, keyed by the sub-order's process clause.
  *
  * Example: a member bound to `local-commerce-merchant-delivery` has
- * a `counterpartyBindings[{ clauseId: "figaro-courier-process",
+ * a `counterpartyBindings[{ clauseKey: <the courier-process clause's key>,
  * addresses: [0xA, 0xB] }]` entry. At checkout, the cart fills the
  * courier sub-order's seller field from this list. Without this field
  * the cart has nowhere to read the counterparty's wallet from — the
@@ -101,11 +102,10 @@ interface MemberLocation {
  * to concrete wallets.
  */
 export interface CounterpartyBinding {
-    /** Process clause anchored on the sub-order this binding targets
-     *  (e.g. a courier-process clause). The clauseId is the
-     *  structural marker for what kind of off-chain seller the
-     *  sub-order needs. */
-    clauseId: string;
+    /** Key of the process clause anchored on the sub-order this binding
+     *  targets (e.g. a courier-process clause) — the structural marker for
+     *  what kind of off-chain seller the sub-order needs. */
+    clauseKey: `0x${string}`;
     /** Wallets the member is willing to designate. Order is
      *  significant — checkout picks the first reachable one (or
      *  surfaces the list to the buyer). */
@@ -151,7 +151,7 @@ export interface DisclosureCalendar {
  * One row of the member's data-disclosure policy — one kind of DATA.
  *
  * WHAT DATA a row names is derived, never a stored taxonomy: the pair
- * (assembly `compositionHash`, `clauseId`) — the data of the trades a
+ * (assembly `compositionHash`, `clauseKey`) — the data of the trades a
  * member trades in comes from its own assembly lists: the BINDINGS for
  * the seller side, the buyer's SUBSCRIPTIONS (`buyerAssemblies`) for
  * the buyer side. Any UI enumerates candidates from those lists, never
@@ -172,9 +172,9 @@ export interface DisclosurePolicyEntry {
     /** `AssemblyRegistry` compositionHash of the assembly whose
      *  co-produced records this row governs. */
     compositionHash: `0x${string}`;
-    /** Clause id of the record's leaf section within that assembly's
+    /** Clause key of the record's leaf section within that assembly's
      *  agreements (the clause-section half of the pair). */
-    clauseId: string;
+    clauseKey: `0x${string}`;
     /** Which posture the member held when co-producing the record. */
     posture: "buyer" | "seller";
     /** Toggle: is this co-produced data offered for
@@ -237,7 +237,7 @@ export interface MemberProfileMetadata {
     /**
      * PROFILE-authored clause values — the member's master data for any registered
      * clause declaring `block.checkout.profileFills` (the member-level sibling of the
-     * catalog's per-item `clauseValues`): keyed clauseId → field → value,
+     * catalog's per-item `clauseValues`): keyed clauseKey → field → value,
      * restricted by each spec's declared profile-authored subset. Examples:
      * `figaro-dimweight`'s `divisor` (the member's shipping convention, e.g.
      * ~5000 metric), `figaro-credential`'s `credentialId` (a declared license
@@ -264,7 +264,7 @@ export interface MemberProfileMetadata {
     /**
      * Data-disclosure policy — the member's self-declared terms for the
      * records they CO-PRODUCE inside bonded processes, one entry per
-     * (assembly compositionHash × clauseId × posture). See
+     * (assembly compositionHash × clauseKey × posture). See
      * `DisclosurePolicyEntry` for the entry semantics.
      *
      * Default (field absent) is the paper-contract default: each party
@@ -278,7 +278,7 @@ export interface MemberProfileMetadata {
     catalogURI?: string;
 }
 
-/** Parse the profile-authored clause-values map (clauseId → field → value).
+/** Parse the profile-authored clause-values map (clauseKey → field → value).
  *  Shape-checked only — per-clause content validity is the off-chain
  *  validator's job at the points that consume the values. */
 function parseProfileClauseValues(
@@ -288,8 +288,8 @@ function parseProfileClauseValues(
     if (value === undefined) return undefined;
     const record = asRecord(value, path);
     const out: Record<string, Record<string, unknown>> = {};
-    for (const [clauseId, fields] of Object.entries(record)) {
-        out[clauseId] = asRecord(fields, `${path}.${clauseId}`);
+    for (const [clauseKey, fields] of Object.entries(record)) {
+        out[asClauseKey(clauseKey, `${path} key ${clauseKey}`)] = asRecord(fields, `${path}.${clauseKey}`);
     }
     return out;
 }
@@ -311,7 +311,7 @@ function parseCounterpartyBindingArray(value: unknown, path: string): Counterpar
             asAddress(addr, `${path}[${index}].addresses[${j}]`),
         );
         return {
-            clauseId: asString(record.clauseId, `${path}[${index}].clauseId`),
+            clauseKey: asClauseKey(record.clauseKey, `${path}[${index}].clauseKey`),
             addresses,
         };
     });
@@ -356,7 +356,7 @@ function parseDisclosurePolicyEntry(value: unknown, path: string): DisclosurePol
     const record = asRecord(value, path);
     return {
         compositionHash: asCompositionHash(record.compositionHash, `${path}.compositionHash`),
-        clauseId: asString(record.clauseId, `${path}.clauseId`),
+        clauseKey: asClauseKey(record.clauseKey, `${path}.clauseKey`),
         posture: asEnum(record.posture, DISCLOSURE_POSTURES, `${path}.posture`),
         offered: asBoolean(record.offered, `${path}.offered`),
         whitelist: parseDisclosureWhitelist(record.whitelist, `${path}.whitelist`),

@@ -32,14 +32,16 @@ export type RegistryLifecycleFigureProps = BaseFigureProps;
  * `src/build/registries/ClauseRegistry.sol` + `AssemblyRegistry.sol`
  *  - `registerClause(...)` / `registerAssembly(...)` take the exact deposit
  *    (`WrongDeposit`), keep `registeredBy`, and are first-write-wins:
- *    `AlreadyRegistered(clauseId)` / `CompositionAlreadyRegistered(hash)`.
- *    First-write-wins is anti-DISPLACEMENT, NOT anti-squatting: a clause key is
- *    `keccak256(abi.encode(clauseId, version))` over a CALLER-CHOSEN name, so a
- *    name can be taken first by someone else. What the registry guarantees is
- *    that a binding, once made, cannot be rebound. (An assembly key is the
- *    composition hash, which is why /assemblies can say nothing is squattable
- *    THERE — no caller-chosen name exists. The two must not be conflated, and
- *    that is why this panel's subheading takes two lines.)
+ *    `AlreadyRegistered(clauseKey)` / `CompositionAlreadyRegistered(hash)`.
+ *    First-write-wins is anti-DISPLACEMENT: a clause key is `keccak256` of the
+ *    spec's pinned canonical bytes, so there is nothing to squat but bytes — a
+ *    lookalike spec of the same name is another key. What the registry
+ *    guarantees is that a binding, once made, cannot be rebound. (An assembly
+ *    key is the composition hash of its pinned document, so both families key
+ *    by the hash of what was pinned and neither has a caller-chosen name. They
+ *    differ in what the hash covers — every byte of a clause spec, the
+ *    composition subset of an assembly document — and that is why this
+ *    panel's subheading names each family's key on its own line.)
  *  - The withdraw gate lives at the PROTOCOL SURFACE, not in the contract:
  *    "SDK/frontend refuse while commits > resolves", because the usage count is
  *    the indexer's and "FigaroCore carries no composition
@@ -47,8 +49,8 @@ export type RegistryLifecycleFigureProps = BaseFigureProps;
  *  - `withdrawDeposit(key)` is callable ONLY by the recorded `registeredBy`
  *    (`NotRegisteredBy`), exactly once (`AlreadyWithdrawn`), with no cooldown
  *    of any kind — one call, no waiting.
- *  - The binding is NOT cleared by that call: `registered[idHash]` and
- *    `contentHashOf[idHash]` are never cleared ("the binding is permanent even
+ *  - The binding is NOT cleared by that call: `registered[clauseKey]` is never
+ *    cleared ("the binding is permanent even
  *    after the deposit is withdrawn"), so orders already committed still resolve
  *    while readers de-surface the entry for NEW compositions.
  *
@@ -106,8 +108,8 @@ const MEMBER: Machine = {
 const CLAUSE: Machine = {
     heading: "A clause or an assembly",
     subheading: [
-        "ClauseRegistry — keyed by (chosen id, version)",
-        "AssemblyRegistry — by composition hash",
+        "ClauseRegistry — hash of the pinned spec",
+        "AssemblyRegistry — hash of the pinned composition",
     ],
     states: [
         { label: "unregistered", note: "nothing anchored under the key" },
@@ -125,9 +127,8 @@ const CLAUSE: Machine = {
     ],
     closing: [
         "The binding is never cleared: the key stays",
-        "registered and its content hash stays anchored,",
-        "so orders already committed against it still",
-        "resolve.",
+        "registered, so orders already committed",
+        "against it still resolve.",
         "",
         "One call — but the protocol surface refuses",
         "while commits outnumber resolves. That count",
@@ -181,8 +182,8 @@ export function RegistryLifecycleFigure({
                     requested, and releases the deposit only after a cooldown
                     fixed at deployment; re-registering is open immediately and
                     costs a second deposit while the first stays locked. A
-                    clause, keyed by the hash of its chosen id and version, or an
-                    assembly, keyed by its composition hash, moves from
+                    clause, keyed by the hash of its pinned spec, or an assembly,
+                    keyed by the composition hash of its pinned document, moves from
                     unregistered to live on the same kind of deposit, and its
                     author can withdraw that deposit in a single call with no
                     cooldown — though the protocol surface refuses while commits
