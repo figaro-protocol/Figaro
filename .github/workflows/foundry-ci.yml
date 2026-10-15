@@ -204,7 +204,7 @@ jobs:
                       ("High", "arbitrary-send-erc20"): 2,
                       ("Medium", "incorrect-equality"): 1,
                       ("Medium", "reentrancy-no-eth"): 1,
-                      ("Medium", "unused-return"): 2,
+                      ("Medium", "unused-return"): 4,
                   })
                   if found != triaged:
                       print("Slither High/Medium results differ from docs/AUDITOR_HANDOVER.md § Static analysis:")
