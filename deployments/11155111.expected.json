@@ -8,7 +8,7 @@
         "daoVault": { "record": "daoTreasury" }
     },
     "batchVerifier": {
-        "programVKey": "0x002586491e868c547e067fd932ea70d0068d96fbcecebcf4c14385336daf6fe9",
+        "programVKey": "0x00d74a88d7c774fb211bc2ade8ed502fbd33c42b64d081b1bb4bea66d9c31e39",
         "verifier": "0x397A5f7f3dBd538f23DE225B51f532c34448dA9B"
     },
     "registries": {

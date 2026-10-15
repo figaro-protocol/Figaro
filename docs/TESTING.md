@@ -536,7 +536,9 @@ select only the other projects, and `E2E_CHAIN=sepolia`, pass through silently.
   `frontend/tests/e2e/live-order.sepolia.spec.ts` — one trade through
   the real UI against the live Sepolia deployment (wizard registration → discover →
   order → accept/commit → resolve → audit), every step asserted out-of-band from
-  Sepolia. `E2E_CHAIN=sepolia SMOKE_SELLER_KEY=… SMOKE_BUYER_KEY=… npx playwright
+  Sepolia; the resolved order's committed agreement, fetched from IPFS and verified
+  against its `agreementHash`, carries a provenance leaf that decodes to
+  `{ agreementKey, compositionHash }`, each bound on its own registry. `E2E_CHAIN=sepolia SMOKE_SELLER_KEY=… SMOKE_BUYER_KEY=… npx playwright
   test --project=sepolia` builds the site from the committed deployment record
   (`deployments/11155111.json`, publicnode RPC, test helpers on, dist
   `.next-e2e-sepolia`, port 3200) and drives it with the local-key signer bridge
@@ -546,10 +548,12 @@ select only the other projects, and `E2E_CHAIN=sepolia`, pass through silently.
   `E2E_CHAIN=sepolia` the SAME spec rehearses on the devnet with throwaway keys
   (self-funded) — the devnet rehearsal of the bridge. The project's second
   spec, `registries.sepolia.spec.ts`, is the WALLETLESS half — no key, no
-  stake: it discovers every registered clause / anchored assembly / registered
-  member from the chain and holds the `/registries` explorer to exactly that
-  row set with every row's pinned content RESOLVED through the site's gateway
-  chain (pass `NEXT_PUBLIC_IPFS_GATEWAY_URL` + `NEXT_PUBLIC_IPFS_FALLBACK_GATEWAY_URL`
+  stake: it discovers every registered clause / registered agreement / anchored
+  assembly / registered member from the chain and holds the `/registries`
+  explorer to exactly that row set with every row's pinned content RESOLVED
+  through the site's gateway chain; each agreement's pinned document re-keys to
+  its registry key (`agreementKeyOf`) and its row names that key and its
+  designer of record (pass `NEXT_PUBLIC_IPFS_GATEWAY_URL` + `NEXT_PUBLIC_IPFS_FALLBACK_GATEWAY_URL`
   as the deploy bakes them). Free to run after every nudge. The project's third spec,
   `swap-funded-order.sepolia.spec.ts` — the on-ramp: a buyer holding none of the
   denomination pays for their bond from another token the seller accepts, through

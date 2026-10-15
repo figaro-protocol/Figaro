@@ -708,6 +708,20 @@ export async function readAgreementBinding(agreementKey: Hex): Promise<{ registe
     return registeredAt > 0n ? { registeredBy, stakeWithdrawn, contentURI } : null;
 }
 
+/** A registered agreement read out of band: its binding BY KEY (any stake
+ *  state), and the document at the binding's `contentURI` fetched through the
+ *  gateway chain and parsed — unverified here, so the caller asserts the key
+ *  itself (`agreementKeyOf(document) === agreementKey`). Null when unbound. */
+export async function readRegisteredAgreementDocument(agreementKey: Hex): Promise<{
+    binding: { registeredBy: `0x${string}`; stakeWithdrawn: boolean; contentURI: string };
+    document: { name?: string; clauses: Record<Hex, Record<string, unknown>> };
+} | null> {
+    const binding = await readAgreementBinding(agreementKey);
+    if (!binding) return null;
+    const bytes = await fetchPinnedBytes(binding.contentURI);
+    return { binding, document: JSON.parse(new TextDecoder().decode(bytes)) };
+}
+
 /** Hydrate a template out of band: each order slot's agreement read by key
  *  from `AgreementRegistry` (whatever its stake) and fetched from IPFS — the
  *  SDK verifies each against its key. Null when any is absent. */

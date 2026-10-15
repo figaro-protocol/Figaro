@@ -13,8 +13,10 @@
  *   5. the buyer resolves on `/orders/view` (buyer dominance);
  *   6. `/audit/view` renders the record.
  * Every step is asserted OUT-OF-BAND from the chain (MemberRegistered,
- * OrderCommitted, exact ERC-20 bond/payment deltas, ProcessResolved) — never
- * from the screen that claims to have written it.
+ * OrderCommitted, exact ERC-20 bond/payment deltas, ProcessResolved, the
+ * resolved order's provenance leaf decoded to its registered agreement and
+ * assembly, each bound on its registry) — never from the screen that claims
+ * to have written it.
  *
  * TWO NETWORKS, ONE SPEC (`E2E_CHAIN`, tests/e2e/devnet-helpers.ts):
  *   - devnet (default): the REHEARSAL — throwaway keys the node does not
@@ -33,10 +35,20 @@ import path from 'path';
 import { chromium, expect, test, type BrowserContext, type Page } from '@playwright/test';
 import { createPublicClient, createWalletClient, formatUnits, http, parseAbi, parseUnits, type Hex } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
-import { calculateBonds, MEMBERS_REGISTRY_ABI } from '@figaro-protocol/sdk';
+import {
+    ASSEMBLY_REGISTRY_ABI,
+    agreementLeaves,
+    anchorAgreement,
+    calculateBonds,
+    computeProvenanceLeaf,
+    decodeProvenanceContent,
+    deriveAssemblySlug,
+    MEMBERS_REGISTRY_ABI,
+    provenanceSectionBytes,
+} from '@figaro-protocol/sdk';
 import { CORE_ABI, ERC20_ABI } from '@/lib/kernel/contracts';
 import {
-    E2E_CHAIN, LOCAL_ANVIL, RPC_URL, assertPinnedInIpfs, readLocalDeploymentConfig, referenceAssemblySlug, scanContractEvents, waitForConnected,
+    E2E_CHAIN, LOCAL_ANVIL, RPC_URL, assertPinnedInIpfs, readAgreementBinding, readLocalDeploymentConfig, referenceAssemblySlug, resolveIpfsURI, scanContractEvents, waitForConnected,
     keyOf,
     primeRegisteredClauseSpecs,
 } from './devnet-helpers';
@@ -293,6 +305,30 @@ test.describe('LIVE ORDER — a public deployment traded through the real UI', (
             expect(buyerT0 - buyerT2, 'buyer net paid exactly the payment').toBe(event.args.payment!);
             expect(sellerT2 - sellerT0, 'seller net earned exactly the payment').toBe(event.args.payment!);
             expect(coreT2, 'escrow back to baseline').toBe(coreT0);
+
+            // ═══ 5b. PROVENANCE — the resolved order names its registered
+            //    agreement and its assembly, each bound on its registry ═══════
+            // The committed agreement, fetched through the gateway at the URI
+            // the buyer's app pinned it under and verified against the
+            // commitment's agreementHash; its provenance leaf is one of the
+            // tree's leaves, and the leaf's bytes decode back to both keys.
+            const agreementHash = event.args.agreementHash as Hex;
+            const agreementUri = await page.evaluate((key) => window.localStorage.getItem(key), `figaro:agreement-uri:${agreementHash}`);
+            expect(agreementUri, 'the committed agreement has a network (IPFS) locator').toMatch(/^ipfs:\/\//);
+            const committedAgreement = anchorAgreement(await (await fetch(resolveIpfsURI(agreementUri!))).json(), agreementHash);
+            expect(committedAgreement, 'the pinned agreement hashes to the committed agreementHash').not.toBeNull();
+            const provenance = committedAgreement!.provenance;
+            expect(provenance, 'the order names the assembly it instantiates').toBeTruthy();
+            expect(agreementLeaves(committedAgreement!), 'the provenance leaf is a leaf of the committed tree')
+                .toContain(computeProvenanceLeaf(provenance!.agreementKey, provenance!.compositionHash));
+            const decoded = decodeProvenanceContent(provenanceSectionBytes(provenance!.agreementKey, provenance!.compositionHash));
+            expect(decoded, 'the provenance leaf decodes to both keys').toEqual(provenance);
+            expect(deriveAssemblySlug(decoded!.compositionHash), 'the assembly is the bound pos reference').toBe(posSlug);
+            expect(await readAgreementBinding(decoded!.agreementKey), 'the agreement key is registered on the AgreementRegistry').not.toBeNull();
+            const [, assemblyRegisteredAt] = await publicClient.readContract({
+                address: config.assemblyRegistry as Hex, abi: ASSEMBLY_REGISTRY_ABI, functionName: 'bindings', args: [decoded!.compositionHash],
+            }) as readonly [Hex, bigint, boolean, string];
+            expect(assemblyRegisteredAt, 'the composition root is registered on the AssemblyRegistry').toBeGreaterThan(0n);
 
             // ═══ 6. AUDIT — the record renders ════════════════════════════════
             await page.goto(`/audit/view?process=${processId}&e2e=devnet`, { waitUntil: 'domcontentloaded' });

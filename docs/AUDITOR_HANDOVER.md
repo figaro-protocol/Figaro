@@ -20,7 +20,7 @@ the review's is its own.
 | Configuration in scope | `foundry.toml`, the `Cargo.toml` files and `Cargo.lock`, the Rust toolchain pin (§ "In scope — configuration") |
 | Trusted, not reviewed | SP1 (the zkVM, its crates, its on-chain verifier gateway), OpenZeppelin Contracts, Permit2, Uniswap SwapRouter02 |
 | Out of scope | mocks, fuzz harnesses, tests and formal specs, the proving harness crate, the Sepolia deploy script, `frontend/`, `sdk/` |
-| Deployed | Sepolia only: the baseline's contracts, the verifier pinning an earlier guest's key (§ "What is deployed"); nothing on mainnet |
+| Deployed | Sepolia only: the baseline's contracts, the verifier pinning the baseline's own guest key (§ "What is deployed"); nothing on mainnet |
 | Upgrade path | none: no admin, no proxy, no pause, in any contract |
 
 Lines of code are counted with comments, NatSpec and blank lines removed —
@@ -424,8 +424,8 @@ new key, and a new key is a new verifier at a new address.
 
 | | |
 |---|---|
-| Guest ELF, SHA-256, at the baseline | re-derived at the next guest build |
-| Verification key, at the baseline | re-derived at the next guest build |
+| Guest ELF, SHA-256, at the baseline | `e98d22aed98ea087f9c34a5115d2cf3364328ed6c128580b8531bb34f4ca9ac7` |
+| Verification key, at the baseline | `0x00d74a88d7c774fb211bc2ade8ed502fbd33c42b64d081b1bb4bea66d9c31e39` |
 | Guest ELF, SHA-256, at `cf6ba4ab` | `1015f99f61f0a362fdffa6f96b8f48ba050fccc0862d9a9d018b1e142dca5fcc` |
 | Verification key, at `cf6ba4ab` | `0x005f16f47c211b066a9cd85fb78295ae76df7f888f2e4962871f25636a0b3452` |
 
@@ -442,9 +442,11 @@ the guest's graph (`cargo tree -p figaro-prover --locked` lists the same 189
 crates at both), so the guest at `cf6ba4ab` is that build's. The guest at the
 baseline changes code in `prover/lib/src/kernel.rs` and `types.rs`
 (§ "The baseline commit"), as the guests at `e800bfb2` and `c53bdaeb` did
-before it, so its ELF and key are new; they are re-derived by
-`scripts/prover-box/build-guest.sh` at the next guest build, and a verifier
-deployed with that key is the one that accepts its proofs. The ELF does not reproduce across operating systems,
+before it, so its ELF and key are new. They are the ones named at the
+baseline above, built by SP1's pinned docker image on a fresh prover host
+(`scripts/prover-box/provision.sh`, then `scripts/prover-box/build-guest.sh`);
+the relay built beside it reports the same key through `sequencer --vkey`,
+and the Sepolia verifier pins it (§ "What is deployed"). The ELF does not reproduce across operating systems,
 so the image's build is the one that counts. The relay derives the key from
 the guest it embeds (`sequencer --vkey`) and refuses to start when the deployed
 `programVKey()` differs.
@@ -454,30 +456,25 @@ the guest it embeds (`sequencer --vkey`) and refuses to start when the deployed
 Nothing is deployed on mainnet.
 
 Sepolia carries the baseline's full stack, recorded in
-`deployments/11155111.json` from block 11,922,078, every contract verified
+`deployments/11155111.json` from block 11,922,698, every contract verified
 on Etherscan: `FigaroCore`, `AttestationCoordinator`, `ClauseRegistry`,
 `AssemblyRegistry`, `AgreementRegistry`
-(`0xf971DF5b82fb7ae0Fc583067859ec0189b4A6983`), `MembersRegistry`,
+(`0x7C5ff9b17BD9d05B0d7290F649443b3a91d1FEA4`), `MembersRegistry`,
 `UsageCounter` and `RpgfMinter` with the three-kind constructors,
 `FigaroBatchVerifier`, `WitnessSwapAndCommitCoordinator`, and a
 `FlorinToken` deployed beside the minter, whose genesis mint and
 `renounceDeployerMint` ran in the same broadcast. The verifier pins
-`programVKey` `0x002586491e868c547e067fd932ea70d0068d96fbcecebcf4c14385336daf6fe9`,
-the key of the previous canonical guest build, read from the credential
-file. The baseline's guest changes code (§ "The guest and its verification
-key"), so a batch it proves does not verify on Sepolia until its key is
-derived on a prover host and the counter↔verifier pair is redeployed with it
-(`script/DeploySepoliaPair.s.sol`, which reads the deployed registries as
-`EXISTING_*`, `EXISTING_AGREEMENT_REGISTRY` among them). A redeploy of the
-batch path is the two together, since each holds the other's address as an
-immutable. The registries hold no registration until the genesis
+`programVKey` `0x00d74a88d7c774fb211bc2ade8ed502fbd33c42b64d081b1bb4bea66d9c31e39`,
+the baseline's own canonical guest key (§ "The guest and its verification
+key"). The registries hold no registration until the genesis
 registration: the DAO's mandatory clauses and the founder's
 (`deployments/11155111.expected.json` names who registers which). No
 contract has an upgrade path. Mainnet deploys every contract once, from
-`DeployMainnet.s.sol`. This is the second stack deployed from the baseline:
-the first was retired because a founder run registered the mandatory clause
-`figaro-commerce` before the DAO vault could, and the first write wins, so the
-stack was redeployed to register in the right order; the registration script
+`DeployMainnet.s.sol`. This is the third stack deployed from the baseline,
+and the one that stands: the first was retired because a founder run
+registered the mandatory clause `figaro-commerce` before the DAO vault could,
+and the first write wins; the second because its verifier carried the
+previous guest's key. The registration script
 (`frontend/scripts/populate-clauses.mjs`) skips the mandatory clauses on a
 Ledger-driven founder run unless `SEED_CLAUSES` names one by hand.
 
@@ -485,8 +482,8 @@ Sepolia runs Glamsterdam, whose state-creation repricing makes a contract
 creation cost about seven times forge's own simulation of it. The deploy
 wrappers (`scripts/deploy-sepolia.sh`, `scripts/deploy-mainnet.sh`) take
 `FORGE_GAS_MULTIPLIER`, a percentage passed to forge as
-`--gas-estimate-multiplier`, and print forge's output when it fails. This
-stack landed at 740; its largest creation, `UsageCounter`, used about 15.5M
+`--gas-estimate-multiplier`, and print forge's output when it fails. A
+multiplier of 740 landed each of these stacks; its largest creation, `UsageCounter`, used about 15.5M
 gas, under the chain's cap of 16,777,216 on one transaction. The two
 creations that failed before it cost their gas and deployed nothing.
 
