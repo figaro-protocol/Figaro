@@ -106,10 +106,14 @@ const sellerUrl = `http://127.0.0.1:${server.address().port}/offer`;
 check("seller HTTP endpoint is listening", !!server.address().port);
 
 // ── Buyer discovers the network (the ctx synced above) ────────────────────────
-let chosen = null, assembly = null;
+// The single-order assembly with the fewest clauses: the mandatory-only blank the harness
+// seeds, whatever else the genesis holds — no hardcoded id, no order of anchoring.
+let chosen = null, assembly = null, fewest = Infinity;
 for (const a of ctx.getAssemblies()) {
     const h = await hydrate(a);
-    if (h && h.template.agreements.length === 1) { chosen = a; assembly = h; break; }
+    if (!h || h.template.agreements.length !== 1) continue;
+    const n = Object.keys(slotClauses(h, h.template.agreements[0])).length;
+    if (n < fewest) { chosen = a; assembly = h; fewest = n; }
 }
 check("discovered a single-order seed assembly", !!chosen);
 if (!chosen) { server.close(); process.exit(1); }

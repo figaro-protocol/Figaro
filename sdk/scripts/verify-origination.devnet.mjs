@@ -89,11 +89,15 @@ const hydrate = async (a) => {
     });
 };
 
-// Pick a single-order assembly by hydrating templates — no hardcoded id; skip un-hydratable ones.
-let chosen = null, assembly = null;
+// Pick the single-order assembly with the fewest clauses by hydrating templates — the
+// mandatory-only blank the harness seeds, whatever else the genesis holds; no hardcoded
+// id, no order of anchoring; skip un-hydratable ones.
+let chosen = null, assembly = null, fewest = Infinity;
 for (const a of ctx.getAssemblies()) {
     const h = await hydrate(a);
-    if (h && h.template.agreements.length === 1) { chosen = a; assembly = h; break; }
+    if (!h || h.template.agreements.length !== 1) continue;
+    const n = Object.keys(slotClauses(h, h.template.agreements[0])).length;
+    if (n < fewest) { chosen = a; assembly = h; fewest = n; }
 }
 check("discovered a single-order seed assembly", !!chosen);
 if (!chosen) process.exit(1);

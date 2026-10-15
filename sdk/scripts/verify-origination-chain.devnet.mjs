@@ -86,10 +86,14 @@ const hydrate = async (a) => {
     });
 };
 
-let chosen = null, assembly = null;
+// The three-order assembly with the fewest clauses across its order slots: the delivery chain
+// the harness seeds, whatever else the genesis holds — no hardcoded id, no order of anchoring.
+let chosen = null, assembly = null, fewest = Infinity;
 for (const a of ctx.getAssemblies()) {
     const h = await hydrate(a);
-    if (h && h.template.agreements.length === 3) { chosen = a; assembly = h; break; }
+    if (!h || h.template.agreements.length !== 3) continue;
+    const n = h.template.agreements.reduce((sum, s) => sum + Object.keys(slotClauses(h, s)).length, 0);
+    if (n < fewest) { chosen = a; assembly = h; fewest = n; }
 }
 check("discovered the 3-order seed chain", !!assembly);
 if (!assembly) process.exit(1);
