@@ -13,10 +13,10 @@ the review's is its own.
 | | |
 |---|---|
 | Repository | https://github.com/figaro-protocol/Figaro |
-| Baseline commit | `c53bdaeb` (§ "The baseline commit"); no tag names a commit under audit — one is placed when an audit is engaged |
+| Baseline commit | `e800bfb2` (§ "The baseline commit"); no tag names a commit under audit — one is placed when an audit is engaged |
 | Languages in scope | Solidity (`src/`, three deploy scripts) and Rust (`prover/`, four crates) |
-| Solidity in scope | 13 contract files, 1,272 lines of code (3,132 physical); 3 deploy scripts, 397 lines of code (824 physical) |
-| Rust in scope | 4 crates, 21 files under `src/`, 6,326 lines of code (8,821 physical) net of their inline test modules |
+| Solidity in scope | 13 contract files, 1,294 lines of code (3,191 physical); 3 deploy scripts, 397 lines of code (825 physical) |
+| Rust in scope | 4 crates, 21 files under `src/`, 6,343 lines of code (8,854 physical) net of their inline test modules |
 | Configuration in scope | `foundry.toml`, the `Cargo.toml` files and `Cargo.lock`, the Rust toolchain pin (§ "In scope — configuration") |
 | Trusted, not reviewed | SP1 (the zkVM, its crates, its on-chain verifier gateway), OpenZeppelin Contracts, Permit2, Uniswap SwapRouter02 |
 | Out of scope | mocks, fuzz harnesses, tests and formal specs, the proving harness crate, the Sepolia deploy script, `frontend/`, `sdk/` |
@@ -32,7 +32,7 @@ test, and the Rust figures leave them out (413 physical lines, 347 of code).
 
 ```bash
 git clone --recurse-submodules https://github.com/figaro-protocol/Figaro.git
-cd Figaro && git checkout c53bdaeb461edb36c48b7a10cb3acc8398346fec
+cd Figaro && git checkout e800bfb2ce11d7a1a3ed5afc01b98a837a94e2dd
 foundryup --version v1.5.1
 forge build --via-ir                 # the deployed pipeline; the default profile fails on stack depth
 cd prover && cargo build --locked    # Rust at the pin in rust-toolchain.toml; SP1's toolchain (sp1up) at the release Cargo.lock names
@@ -202,7 +202,7 @@ review SP1.
 | In scope: the project's use of SP1 | Where |
 |---|---|
 | The interface the verifier calls | `src/core/verifier/ISP1Verifier.sol` |
-| The one proof check, and everything `settleBatch` does with the public values after it | `FigaroBatchVerifier.sol:279` |
+| The one proof check, and everything `settleBatch` does with the public values after it | `FigaroBatchVerifier.sol:287` |
 | The guest's three SP1 calls: entry point, input read, public-values commit | `prover/program/src/main.rs` |
 | The verification key: derived from the guest, pinned at construction, immutable | `FigaroBatchVerifier` constructor; `sequencer --vkey` |
 | The choice of the patched `k256` for signature recovery inside the zkVM | `prover/Cargo.toml` `[patch.crates-io]` |
@@ -237,7 +237,7 @@ came from the program with that key. The other external dependencies are in
 ## The baseline commit
 
 **Every figure in this document stands for the code at commit
-`c53bdaeb`**, the baseline, which covers the
+`e800bfb2`**, the baseline, which covers the
 whole scope, Solidity and Rust together. A figure is measured at the baseline,
 or at a commit whose in-scope code equals the baseline's once comments and
 NatSpec are stripped — the comparison `scripts/frozen-scope.sh` makes — and a
@@ -246,10 +246,57 @@ engaged, so no tag names a commit under audit; when one is engaged, a tag is
 placed at the commit it reviews and this section names it.
 
 ```bash
-git show --no-patch c53bdaeb
+git show --no-patch e800bfb2
 ```
 
-The baseline differs from the previous baseline, `cf6ba4ab`, in the link
+The baseline differs from the previous baseline, `c53bdaeb`, in the
+clause's identity and in the reward's accounting. `scripts/frozen-scope.sh`
+prints these scope files as differing in code:
+`src/build/registries/ClauseRegistry.sol`,
+`src/build/rewards/UsageCounter.sol`, `src/build/rewards/RpgfMinter.sol`,
+`src/core/verifier/FigaroBatchVerifier.sol`, `prover/lib/src/kernel.rs`,
+`prover/lib/src/state.rs`, `prover/lib/src/types.rs` and
+`prover/sequencer/src/submitter.rs`; the deploy scripts differ in comments
+only.
+- `ClauseRegistry`: the clause key is `keccak256` of the spec's pinned
+  canonical bytes; `registerClause(bytes32 clauseKey, string contentURI)`
+  takes no name, version or separate content hash, refuses the zero key
+  (`ZeroClauseKey`), and emits `ClauseRegistered(clauseKey, contentURI,
+  registeredBy)`; `contentHashOf` is gone, and the storage is `registered`
+  and `depositOf`.
+- `FigaroBatchVerifier._checkSpecBindings` requires each binding's
+  `specHash == clauseId` (`SpecBindingMismatch(clauseId, proven)`) and
+  `clauseRegistry.registered(clauseId)` (`ClauseNotRegistered`); the
+  `SpecBinding` struct and the bindings-hash layout are unchanged. The
+  accrual struct gains `uint8 kind`, and `_hashUsage` packs
+  `key(32) ‖ kind(1) ‖ c(8) ‖ d(8)` per accrual: a span of
+  `49 + 49n + 20m` bytes for n accruals and m sellers, where it was
+  `49 + 48n + 20m`.
+- `UsageCounter` keys every accrual, count, counted process and score by
+  (kind, key), kind `KIND_CLAUSE = 0` or `KIND_ASSEMBLY = 1`;
+  `recordClauseUsage` checks `ClauseRegistry` only, `recordAssemblyUsage`
+  `AssemblyRegistry` only, and `applyBatchAccrual` gates each accrual by its
+  own kind's registry and skips an unknown kind; `scoreOf(kind, key,
+  period)`; both events carry the kind.
+- `RpgfMinter.claim(period, (uint8 kind, bytes32 key)[])`;
+  `_isAuthor(kind, key, account)` reads the one registry the kind names and
+  reverts `UnknownKind` on any other.
+- The guest: Gate S is `keccak256(spec_json bytes) == clause_id`, with no
+  canonicalization in the guest (`kernel.rs`); usage claims accrue per
+  (kind, key) from the claim's own kind, `compute_usage_accrual_hash`
+  mirrors the verifier's packing, and the kind enters the usage sets the
+  state root hashes (`state.rs`, `hash_usage`; `types.rs`,
+  `UsageAccrualKey`).
+- The relay (`submitter.rs`) checks an attestation's spec hash against its
+  clause key itself and reads `registered(key)` from the verifier's registry
+  before proving, and encodes the kind in each accrual.
+
+The reserved provenance leaf is unchanged and still refused at accrual. The
+guest's bytes changed, so its verification key moves again (§ "The guest and
+its verification key"). The layers re-run at the baseline are the ones § "The
+gate" names at it; every other figure names the commit it stands at.
+
+`c53bdaeb` differs from its previous baseline, `cf6ba4ab`, in the link
 from a resolved process to the assembly it instantiated, which is a fact of
 the agreement format: one reserved merkle leaf (§ "Behaviors to surface").
 In `src/build/rewards/UsageCounter.sol` its key is the public constant
@@ -258,19 +305,17 @@ set, and the contract holds no exclusion list; `applyBatchAccrual` takes
 `claimedProvenanceLeaf` and reverts `ProvenanceLeafMismatch`; `_accrue`
 reverts `ProvenanceLeafIsNotARegistration` and `applyBatchAccrual` skips the
 reserved key. In `src/core/verifier/FigaroBatchVerifier.sol` the usage
-field is `provenanceLeaf`, names and comments only; `_hashUsage`'s layout is
-unchanged. `script/Deploy.s.sol` and `script/DeployMainnet.s.sol` drop the
+field is `provenanceLeaf`, names and comments only; `_hashUsage`'s layout was
+unchanged at `c53bdaeb` (the baseline adds the kind byte, above). `script/Deploy.s.sol` and `script/DeployMainnet.s.sol` drop the
 two constructor arguments. In the guest, `prover/lib/src/kernel.rs` and
 `prover/lib/src/types.rs` add `PROVENANCE_LEAF_KEY`, verify an attestation on
 it with no spec, and refuse a usage claim on it; the relay
 (`prover/sequencer/src/assembler.rs`, `main.rs`, `prover.rs`,
 `submitter.rs`) reads `provenanceLeaf()` from the counter and drops a claim
-on the reserved key before proving. The guest's bytes changed, so its
-verification key moves (§ "The guest and its verification key"). The layers
-re-run at the baseline are the ones § "The gate" names at it; every other
-figure stands at the previous baseline `cf6ba4ab`, or at `f62b71cf`, whose
-Solidity, deploy scripts and guest crates equal `cf6ba4ab`'s, and names
-which. `cf6ba4ab` differs from `f62b71cf` only in the relay and in
+on the reserved key before proving. The guest's bytes changed at
+`c53bdaeb` too. A figure that stands at `c53bdaeb`, at `cf6ba4ab`, or at
+`f62b71cf` (whose Solidity, deploy scripts and guest crates equal
+`cf6ba4ab`'s) names which. `cf6ba4ab` differs from `f62b71cf` only in the relay and in
 `prover/Cargo.lock`, in one crate outside the guest's graph.
 
 This prints every scope file whose code differs between two commits, and
@@ -307,7 +352,7 @@ lines changed in place; their code is byte-identical to the baseline. The
 diff prints as two renames whose every hunk is a comment:
 
 ```bash
-git diff -M c7f85d0d c53bdaeb -- src/kernel/ src/core/kernel/
+git diff -M c7f85d0d e800bfb2 -- src/kernel/ src/core/kernel/
 ```
 
 ### Toolchains
@@ -348,8 +393,9 @@ comment edit does not change the ELF (measured: the same hash before and
 after one), and `prover/Cargo.lock` at `cf6ba4ab` moves one crate outside
 the guest's graph (`cargo tree -p figaro-prover --locked` lists the same 189
 crates at both), so the guest at `cf6ba4ab` is that build's. The guest at the
-baseline changes code in `prover/lib/src/kernel.rs` and `types.rs` (§ "The
-baseline commit"), so its ELF and key are new; they are re-derived by
+baseline changes code in `prover/lib/src/kernel.rs`, `state.rs` and
+`types.rs` (§ "The baseline commit"), as the guest at `c53bdaeb` did before
+it, so its ELF and key are new; they are re-derived by
 `scripts/prover-box/build-guest.sh` at the next guest build, and a verifier
 deployed with that key is the one that accepts its proofs. The ELF does not reproduce across operating systems,
 so the image's build is the one that counts. The relay derives the key from
@@ -359,6 +405,14 @@ the guest it embeds (`sequencer --vkey`) and refuses to start when the deployed
 ### What is deployed
 
 Nothing is deployed on mainnet.
+
+Sepolia runs the previous `ClauseRegistry`, `UsageCounter`, `RpgfMinter` and
+`FigaroBatchVerifier`: a clause there is registered under a name and a
+version with a separate content hash, and the reward there holds one
+keyspace with no kind. The baseline's registry, counter and verifier are redeployed at
+the next sitting with the baseline's guest key; the baseline's minter claims by (kind, key)
+and Sepolia's florin has renounced its minter registry, so a minter with the baseline's
+surface on Sepolia comes with a florin deployed beside it, or Sepolia keeps the first minter.
 
 Sepolia carries a full stack, recorded in `deployments/11155111.json`. Its
 batch verifier and usage counter were deployed as a pair at `a4a34e91`; the
@@ -440,16 +494,16 @@ The constants and constructor arguments the mainnet deploy fixes
 | Parameter | Value | Where |
 |---|---|---|
 | Bond multiple | 2× payment (buyer), 2× cumulative value (seller) | `FigaroCore.sol:208-209` |
-| `MAX_BATCH_STALENESS` | 1 hour: the batch timestamp may trail the block by this much (accepted risk 4) | `FigaroBatchVerifier.sol:98` |
-| `PUBLIC_VALUES_LENGTH` | 288 bytes, nine words; any other length is refused by name | `FigaroBatchVerifier.sol:103` |
+| `MAX_BATCH_STALENESS` | 1 hour: the batch timestamp may trail the block by this much (accepted risk 4) | `FigaroBatchVerifier.sol:101` |
+| `PUBLIC_VALUES_LENGTH` | 288 bytes, nine words; any other length is refused by name | `FigaroBatchVerifier.sol:106` |
 | `MAX_BATCH_OPS` | the relay's bound on what the prover finishes in one sitting, 100 operations by default; an operator's environment variable | `prover/sequencer/src/main.rs:121` |
 | The batch's gas budget | 95 percent of the latest block's gas limit, read at every tick, under the chain's cap on one transaction (`SETTLE_GAS_CAP`, EIP-7825's 2^24 by default, the bound a batch-path process is admitted under; below a one-order settle's 590,096, or at or past 95 percent of the block limit read at startup, the relay refuses to start); the settle's cost is planned per item from ceilings measured on the pre-fork EVM with a stated allowance (at least twice the cold measurement for every item that writes state, at least half again for events and registry reads) and the proof's verification read from live receipts | `prover/sequencer/src/gas.rs`; `test/core/verifier/BatchGasCeilingTest.t.sol` |
 | Re-queue bound | an operation re-queued after a transient submission failure is re-queued at most three times, then dead-lettered | `prover/sequencer/README.md` |
-| Clause and assembly registration stake | 0.05 ETH per registration, no cooldown, withdrawable once; the binding stays | `DeployMainnet.s.sol:157`, `:164` |
-| Member stake | 0.05 ETH, 28-day withdrawal cooldown | `DeployMainnet.s.sol:197` |
-| Minimum-support floor | 3 distinct staked sellers before a clause or assembly scores | `DeployMainnet.s.sol:269` |
-| Reward periods | nine annual periods from `RPGF_GENESIS` | `DeployMainnet.s.sol:246-248` |
-| Period budgets | 45M, 45M, 60M, 60M, 60M, 82.5M, 82.5M, 82.5M, 82.5M florins: 600M, the `RpgfMinter` cap | `DeployMainnet.s.sol:291-299` |
+| Clause and assembly registration stake | 0.05 ETH per registration, no cooldown, withdrawable once; the binding stays | `DeployMainnet.s.sol:158`, `:165` |
+| Member stake | 0.05 ETH, 28-day withdrawal cooldown | `DeployMainnet.s.sol:198` |
+| Minimum-support floor | 3 distinct staked sellers before a clause or assembly scores | `DeployMainnet.s.sol:258` |
+| Reward periods | nine annual periods from `RPGF_GENESIS` | `DeployMainnet.s.sol:247-249` |
+| Period budgets | 45M, 45M, 60M, 60M, 60M, 82.5M, 82.5M, 82.5M, 82.5M florins: 600M, the `RpgfMinter` cap | `DeployMainnet.s.sol:280-288` |
 | Florin supply | 1B cap; at genesis 70M to the founders' wallet, 30M to the supporters' wallet, 300M to the DAO treasury, and the 600M minter registered; the deployer's minting renounced in the same broadcast | `FlorinToken.sol:26`, `DeployMainnet.s.sol:63-66` |
 
 ### Entry points
@@ -621,7 +675,7 @@ read it first.
   effect. Accepted (the buyer chose the token and the seller), a token-choice
   concern, not a kernel escape hatch. On the batch path the same class reverts one
   batch, not the protocol: a payout the token refuses reverts `settleBatch` in
-  `_executePositions` (`FigaroBatchVerifier.sol:566`), and the batch's
+  `_executePositions` (`FigaroBatchVerifier.sol:579`), and the batch's
   operations are dead-lettered and re-submittable; a process open on the batch
   path resolves on the batch path only. The relay reads each party's balance and
   allowance before it submits (`prover/sequencer/src/submitter.rs`), and a batch
@@ -644,6 +698,61 @@ read it first.
   no shape; the batch path validates content against the clause spec inside the
   proof. Per-clause validator contracts do not exist (`CONTRACTS.md`
   § "What the protocol has no contract for").
+- A clause is its spec. The clause key is `keccak256` of the spec's pinned
+  canonical bytes (`computeClauseKey(spec) = canonicalContentHash(spec)`,
+  `sdk/src/discovery.ts:60-62`); `ClauseRegistry.registerClause(clauseKey,
+  contentURI)` is first-write-wins on the key and never sees the bytes
+  (`ClauseRegistry.sol:150-160`). The spec's `clauseId` and `version` are
+  presentation inside the document: two specs with one name are two clauses
+  (`test_twoSpecsWithOneNameAreTwoClauses`,
+  `test/build/registries/ClauseRegistryTest.t.sol`), and a reader verifies
+  fetched bytes by hashing them, re-canonicalizing nothing. A spec pinned in
+  any other byte form has a different key. The SDK and the guest
+  canonicalize alike: `test/fixtures/clause-keys.json` holds every
+  `clauses/*.json` key, harvested by `sdk/tests/clauseKeys.test.ts` and
+  asserted by `prover/script/tests/clause_keys.rs` and
+  `prover/lib/tests/parity.rs`.
+- The verifier accepts an in-proof clause validation only for a registered
+  key whose spec the proof validated. The guest's Gate S requires
+  `keccak256(spec_json bytes) == clause_id` (`prover/lib/src/kernel.rs:436-438`)
+  and commits the binding with both words; `_checkSpecBindings` requires
+  `specHash == clauseId` (`SpecBindingMismatch`) and
+  `clauseRegistry.registered(clauseId)` (`ClauseNotRegistered`)
+  (`FigaroBatchVerifier.sol:546-554`). Tests:
+  `test_settleBatch_revertsOnSpecBindingMismatch`,
+  `test_settleBatch_revertsOnUnregisteredClauseBinding`,
+  `test_permissionless_newClause_settlesWithZeroVerifierChanges`
+  (`test/core/verifier/FigaroBatchVerifierTest.t.sol`);
+  `attest_spec_identity_mismatch_fails`,
+  `attest_lookalike_spec_under_the_same_name_fails`
+  (`prover/lib/tests/parity.rs`).
+- The reward keeps the clause and assembly families apart by kind
+  (`KIND_CLAUSE = 0`, `KIND_ASSEMBLY = 1`). Each registry takes any
+  `bytes32`, so a stranger can register an existing assembly's
+  `compositionHash` as a clause key; nothing on chain tells the families
+  apart by bytes. `UsageCounter` keys every accrual, count, counted process
+  and score by (kind, key); `recordClauseUsage` checks `ClauseRegistry` only,
+  `recordAssemblyUsage` `AssemblyRegistry` only, and `applyBatchAccrual`
+  gates each `BatchAccrual{clauseOrAssembly, kind, c, d}` by its own kind's
+  registry (`UsageCounter.sol:605-615`). `RpgfMinter.claim(period,
+  (kind, key)[])` reads the counter's slot for each kind, and
+  `_isAuthor(kind, key, account)` reads the one registry the kind names
+  (`RpgfMinter.sol:270-280`). The verifier's `_hashUsage` packs
+  `key(32) ‖ kind(1) ‖ c(8) ‖ d(8)` per accrual, span `49 + 49n + 20m`
+  (`FigaroBatchVerifier.sol:488-516`), and the guest's
+  `compute_usage_accrual_hash` mirrors it. `DESIGN_DECISIONS.md` § 24 states
+  the pattern. Tests:
+  `test_aStrangerWhoStakesAnAssemblysKeyAsAClauseTakesNothingOfIt`
+  (`test/build/rewards/RpgfIntegrationTest.t.sol`),
+  `test_assemblyUsageLandsUnderTheAssemblyKindOnly`,
+  `test_batchAccrualGatesEachKindByItsOwnRegistry`
+  (`test/build/rewards/UsageCounterTest.t.sol`),
+  `test_eachKindReadsOnlyItsOwnRegistry`, `test_revertsOnUnknownKind`
+  (`test/build/rewards/RpgfMinterTest.t.sol`),
+  `check_theKindsNeverShareASlot`
+  (`test/build/rewards/HalmosUsageCounter.t.sol`), and
+  `a_clause_and_an_assembly_on_the_same_key_accrue_apart`
+  (`prover/lib/tests/usage.rs`).
 - A clause's `pattern` is a regex in the portable core (`CLAUSES.md`): the
   constructs JavaScript's regex library and Rust's read alike. A pattern that
   exhibits the nested-quantifier shape, or an input over 4,096 UTF-16 units, is
@@ -667,24 +776,27 @@ read it first.
   (`test_provenanceLeafIsAConstantOfTheFormat`,
   `test/build/rewards/UsageCounterTest.t.sol`). `recordAssemblyUsage`
   reproduces the bytes from the claimed `compositionHash` and proves that
-  one leaf. The key's preimage is a plain string and a `ClauseRegistry` key is
-  `keccak256(abi.encode(clauseId, version))`, so no clause registration lands
-  on it. `MerkleParityTest` (`test/core/attestation/MerkleParityTest.t.sol`,
+  one leaf. `ClauseRegistry` accepts any non-zero key, so a wallet can
+  register a clause at the provenance key; the key is distinct from every
+  honest clause key under keccak256's second-preimage resistance, and it is
+  refused at accrual whatever a registry holds (the next item).
+  `MerkleParityTest` (`test/core/attestation/MerkleParityTest.t.sol`,
   `_assertProvenanceLeaf`, `test_theFixturePinsAProvenanceLeaf`) holds the
   SDK's key, bytes, leaf and proof equal to the counter's on the third
   agreement of `test/fixtures/merkle-vectors.json`; `merkle_parity.rs` holds
   the guest's side of the same fixture.
 - The reserved key never accrues, whatever a registry holds at it: a
-  registry takes any `bytes32`, so a stranger can register an assembly at
-  the key for one stake. The counter refuses the key by comparison with the
-  constant on both paths — `_accrue` reverts `ProvenanceLeafIsNotARegistration`
-  (`UsageCounter.sol:624`), and `applyBatchAccrual` skips the key before the
-  registration gate (`UsageCounter.sol:581`). The guest refuses a usage claim
-  on the key (`prover/lib/src/kernel.rs:755-756`, `apply_usage_claims`), and
-  the relay drops such a claim before proving (`submitter.rs`,
+  registry takes any `bytes32`, so a stranger can register a clause or an
+  assembly at the key for one stake. The direct path reverts: `_accrue`
+  reverts `ProvenanceLeafIsNotARegistration` (`UsageCounter.sol:657`). The
+  guest refuses a batch claim keyed on it (`prover/lib/src/kernel.rs:743-744`,
+  `apply_usage_claims`). The counter's batch path skips it:
+  `applyBatchAccrual` continues past the key before the registration gate
+  (`UsageCounter.sol:604`). The relay drops such a claim before proving
+  (`submitter.rs`,
   `drops_a_claim_keyed_on_the_provenance_leaf_without_touching_the_chain`).
-  `test_theProvenanceLeafCannotBeClaimedAsAClause` registers an assembly at
-  the key and proves both on-chain refusals;
+  `test_theProvenanceLeafCannotBeClaimedAsAClause` registers a clause and an
+  assembly at the key and proves the direct-path revert and the batch-path skip;
   `a_clause_claim_keyed_on_the_provenance_leaf_is_refused` and
   `an_assembly_claim_keyed_on_the_provenance_leaf_is_refused`
   (`prover/lib/tests/usage.rs`) prove the guest's.
@@ -776,10 +888,11 @@ read it first.
   singly and revert `settleBatch` as a sum (`submitter.rs`,
   `allocate_funding`, `filter_funded_commits`;
   `funding_is_allocated_across_a_wallets_commits_in_order`).
-- An attestation's witness spec is checked against
-  `ClauseRegistry.contentHashOf`, read from the verifier's own registry,
-  before proving; one that fails is dropped alone, since the verifier would
-  revert the whole batch on it (`submitter.rs`, `attestation_spec`,
+- An attestation's witness spec is checked before proving: the relay
+  requires the keccak of the spec bytes it carries to equal its clause key,
+  and reads `ClauseRegistry.registered(clauseKey)` from the verifier's own
+  registry; one that fails is dropped alone, since the verifier would
+  revert the whole batch on it (`submitter.rs:289-359`, `attestation_spec`,
   `filter_anchored_attestations`;
   `the_spec_an_attestation_carries_is_what_the_registry_check_reads`).
 - The state behind the verifier's root is written to disk before the batch is
@@ -827,7 +940,7 @@ read it first.
 
 Every other function in the Solidity in scope is at 6 or below.
 
-**The one `unchecked` block** (`UsageCounter.sol:657-660`) increments two
+**The one `unchecked` block** (`UsageCounter.sol:690-693`) increments two
 `uint64` counters by one: `c`, the distinct processes counted for a key, and
 `d`, the distinct sellers. Each process is counted once ever
 (`processCounted`), so `c` cannot exceed the number of resolved processes on
@@ -847,7 +960,7 @@ Current design realities accepted by the protocol surface, not accidental defect
 1. buyer key loss is terminal for an active process because the kernel has no timeout or admin recovery path
 2. very large processes are gas-bounded, so institution design should compose across processes instead of pushing single-process fanout toward the ceiling
 3. fee-on-transfer tokens are unsupported by design and are rejected explicitly by the kernel; rebasing tokens are unsupported and NOT detected (`_pullExact` sees only the delta inside its own transfer call — `DESIGN_DECISIONS.md` #10 states the consequence); a token with an issuer blocklist holds any process a blocked party sits in until the issuer relents, since resolution is atomic (`WeirdTokenTest`; the same entry)
-4. a commitment can be bonded on the batch path up to one hour after its deadline: `settleBatch` accepts a batch timestamp up to `MAX_BATCH_STALENESS` (one hour, `FigaroBatchVerifier.sol:98`, checked at `:299`) behind its block, from any prover, and the guest checks deadlines against that timestamp; the kernel refuses an expired commitment at once. Both parties signed the commitment and both fund its bonds, so nothing moves that they did not agree to; a party that needs a hard cut-off signs a deadline one hour earlier. Closing it is a verifier change, so a new key and a new deployment
+4. a commitment can be bonded on the batch path up to one hour after its deadline: `settleBatch` accepts a batch timestamp up to `MAX_BATCH_STALENESS` (one hour, `FigaroBatchVerifier.sol:101`, checked at `:307`) behind its block, from any prover, and the guest checks deadlines against that timestamp; the Core refuses an expired commitment at once. Both parties signed the commitment and both fund its bonds, so nothing moves that they did not agree to; a party that needs a hard cut-off signs a deadline one hour earlier. Closing it is a verifier change, so a new key and a new deployment
 
 ## Known limitations
 
@@ -921,8 +1034,8 @@ Stated so the review does not spend hours finding them.
 ## Verification evidence
 
 A figure in this section was measured at the baseline unless its row names
-another commit; a row that names `cf6ba4ab` or `f62b71cf` was not re-run at
-the baseline (§ "The baseline commit" states the rule).
+another commit; a row that names `c53bdaeb`, `cf6ba4ab` or `f62b71cf` was
+not re-run at the baseline (§ "The baseline commit" states the rule).
 Which invariant each layer carries is `VERIFICATION_MAP.md`; the inventory of
 tests is `TESTING.md`.
 
@@ -930,14 +1043,14 @@ tests is `TESTING.md`.
 
 | Layer | Result |
 |---|---|
-| Foundry | at the baseline: 377 passed, 0 failed, 3 skipped (forge's count of 380, the batch gas-ceiling suite's inherited harness tests among them; 346 test functions); the three skipped are the fork tests (mainnet's Permit2, Sepolia's SwapRouter02), run without `MAINNET_RPC_URL` and `SEPOLIA_RPC_URL`. At `f62b71cf`, the fork tests included: 381 passed, 0 failed, 0 skipped |
-| Halmos | 32 of 32 properties proved: `FigaroCore` 7, `MembersRegistry` 7 and `UsageCounter` 6 at the baseline; `ClauseRegistry` 6 and `AssemblyRegistry` 6 at `f62b71cf` |
-| Certora | 7 of 7 specs, every rule verified, at `f62b71cf` |
+| Foundry | at the baseline, default profile: 384 passed, 0 failed, 3 skipped (352 test functions, the batch gas-ceiling suite's inherited harness tests counted in forge's figure); the three skipped are the fork tests (mainnet's Permit2, Sepolia's SwapRouter02), run without `MAINNET_RPC_URL` and `SEPOLIA_RPC_URL`. At `f62b71cf`, the fork tests included: 381 passed, 0 failed, 0 skipped |
+| Halmos | at the baseline: 33 of 33 properties proved — `FigaroCore` 7, `MembersRegistry` 7, `UsageCounter` 7, `ClauseRegistry` 6, `AssemblyRegistry` 6 |
+| Certora | 7 of 7 specs, every rule verified, at `f62b71cf`; not re-run at `c53bdaeb` or at the baseline. `certora/RpgfMinter.spec`, `BatchVerifierTokenOps.spec`, `BatchVerifierStateRoot.spec` and `token-ops.inventory` are edited for the baseline's (kind, key) claim and `registered` read; they have not been run against it |
 | Echidna | 15 properties, every one held on both harnesses, at `f62b71cf` |
-| TLA+ | 5 models, 54 invariants, no error. `ResolutionUniverses` (20 invariants) re-run at the baseline: 10,030,087 states, no error. The other four models' figures stand at `cf6ba4ab`: `FigaroCore` 8,380,329 states generated, 6,087,113 distinct; `RelayState` (the relay's state lifecycle, 7 invariants + 1 action property) 10,837,227 generated, 1,959,944 distinct; the models' defect switches are their mutation checks (`TESTING.md` § TLA+) |
-| Rust (`cargo test`, five crates) | at the baseline: 242 passed, 0 failed; 2 ignored by design, run by the fuzz script |
+| TLA+ | 5 models, 54 invariants, no error; not re-run at the baseline, whose change the models do not reach (`ResolutionUniverses` models one abstract artifact keyspace and does not model the kind). `ResolutionUniverses` (20 invariants) at `c53bdaeb`: 10,030,087 states, no error. The other four models' figures stand at `cf6ba4ab`: `FigaroCore` 8,380,329 states generated, 6,087,113 distinct; `RelayState` (the relay's state lifecycle, 7 invariants + 1 action property) 10,837,227 generated, 1,959,944 distinct; the models' defect switches are their mutation checks (`TESTING.md` § TLA+) |
+| Rust (`cargo test --locked`) | at the baseline: 245 passed, 0 failed, `figaro-prove-test` among them with `clause_keys`; 2 ignored by design, run by the fuzz script |
 | Differential fuzz | at `cf6ba4ab`: one round at seed 1791923560, no divergence: 400 Core operations (298 accepted, 102 rejected, 94 processes), the agreement vectors, 6,352 clause cases (1,850 encoded byte-for-byte, 3,318 rejected, 1,184 specs refused); CI runs four rounds on every push |
-| SDK (Vitest) | at the baseline: 931 passed, 62 files |
+| SDK (Vitest) | at the baseline: 931 passed, 63 files |
 | Batch end-to-end (SDK → relay → verifier) | passed at `cf6ba4ab` |
 
 Certora reports, each "No errors found by Prover" at `f62b71cf`:
@@ -965,7 +1078,8 @@ over the eleven contracts in scope that hold code, measured at `f62b71cf`:
 
 What is uncovered, line by line: `FigaroCore.sol:204`, the
 `DuplicateCommitment` guard, and `:288-289`, the `CumulativeValueOverflow`
-revert, both unreachable (§ "Behaviors to surface"); `RpgfMinter.sol:228`, an
+revert, both unreachable (§ "Behaviors to surface"); `RpgfMinter.sol:228`
+(`:251` at the baseline), an
 early return whose arithmetic yields the same result without it;
 `FlorinToken.sol:72`, a supply-cap check behind per-minter caps that already
 bound the supply. These four are also the lines whose mutants survive below:
@@ -1018,8 +1132,8 @@ The eight survivors, each read against the source:
 |---|---|---|
 | `FigaroCore.sol:204`, two mutants | Remove or disable the `DuplicateCommitment` guard | Every replay is refused earlier: a repeated root by `ProcessAlreadyExists`, a repeated extension by `CumulativeValueMismatch`, since the accumulator has moved. `FigaroCoreRevertBranchTest` pins each preempting error |
 | `FigaroCore.sol:288` | Disable the `CumulativeValueOverflow` guard | An order with such a value cannot be committed while the token keeps the Core's balance: the process's bonds already in it total at least four times the value (§ "Behaviors to surface") |
-| `UsageCounter.sol:664` at `f62b71cf` (`:654` at the baseline) | Write the seller-seen flag unconditionally | When the seller was seen before the flag is already true; the breadth count two lines below keeps its own condition |
-| `RpgfMinter.sol:228`, two mutants | Remove or disable `if (score == 0) return (0, 0)` | The next line computes `amount × 0 / total`, which is 0; the return only saves the arithmetic |
+| `UsageCounter.sol:664` at `f62b71cf` (`:687` at the baseline) | Write the seller-seen flag unconditionally | When the seller was seen before the flag is already true; the breadth count two lines below keeps its own condition |
+| `RpgfMinter.sol:228` at `f62b71cf` (`:251` at the baseline), two mutants | Remove or disable `if (score == 0) return (0, 0)` | The next line computes `amount × 0 / total`, which is 0; the return only saves the arithmetic |
 | `FlorinToken.sol:72`, two mutants | Remove or disable the `MAX_SUPPLY` check in `mint` | Tokens are created in `mint` alone, each minter is held to its cap on the line above, and `registerMinter` refuses a cap that would take the sum of caps past `MAX_SUPPLY` |
 
 ### Mutation testing, Rust
@@ -1143,7 +1257,7 @@ serves; without them those tests skip, and CI's `fork` job fails on a skip.
 | Command | Expected |
 |---|---|
 | `MAINNET_RPC_URL=<rpc> SEPOLIA_RPC_URL=<rpc> forge test --via-ir` | 0 failed, 0 skipped |
-| `./scripts/test-halmos.sh` | `✅ All 32 Halmos properties proved (7 FigaroCore + 7 MembersRegistry + 6 UsageCounter + 6 ClauseRegistry + 6 AssemblyRegistry).` |
+| `./scripts/test-halmos.sh` | `✅ All 33 Halmos properties proved (7 FigaroCore + 7 MembersRegistry + 7 UsageCounter + 6 ClauseRegistry + 6 AssemblyRegistry).` |
 | `CERTORAKEY=<key> CERTORA_WAIT=1 ./scripts/test-certora.sh` | all 6 specs green (FigaroCore, AttestationCoordinator, TokenOpsVerification, FlorinToken, BatchVerifierTokenOps, RpgfMinter). `CERTORA_WAIT=1` blocks until the cloud's verdict; without it the script only dispatches. `Failed on rule_not_vacuous` alone is the vacuity heuristic, not a rule failure; the results table is the authority. The script first checks `certora/token-ops.inventory` against every token-moving call site and refuses to run on a stale line |
 | `./scripts/test-echidna.sh` | every property holds on both harnesses (kernel + FlorinToken) |
 | `./scripts/test-tla.sh` | all five models verify every invariant, TLC exit 0. `ResolutionUniverses.cfg` ships both named assumptions TRUE; flipping either to FALSE is a deliberate experiment that is EXPECTED to fail, not a gate regression |
