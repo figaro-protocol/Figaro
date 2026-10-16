@@ -13,7 +13,7 @@ the review's is its own.
 | | |
 |---|---|
 | Repository | https://github.com/figaro-protocol/Figaro |
-| Baseline commit | `d934e032` (§ "The baseline commit"); no tag names a commit under audit — one is placed when an audit is engaged |
+| Baseline commit | `28489848` (§ "The baseline commit"); no tag names a commit under audit — one is placed when an audit is engaged |
 | Languages in scope | Solidity (`src/`, three deploy scripts) and Rust (`prover/`, four crates) |
 | Solidity in scope | 14 contract files, 1,423 lines of code (3,544 physical); 3 deploy scripts, 401 lines of code (840 physical) |
 | Rust in scope | 4 crates, 21 files under `src/`, 6,423 lines of code (8,990 physical) net of their inline test modules |
@@ -248,7 +248,7 @@ came from the program with that key. The other external dependencies are in
 ## The baseline commit
 
 **Every figure in this document stands for the code at commit
-`d934e032`**, the baseline, which covers the
+`28489848`**, the baseline, which covers the
 whole scope, Solidity and Rust together. A figure is measured at the baseline,
 or at a commit whose in-scope code equals the baseline's once comments and
 NatSpec are stripped — the comparison `scripts/frozen-scope.sh` makes — and a
@@ -257,10 +257,21 @@ engaged, so no tag names a commit under audit; when one is engaged, a tag is
 placed at the commit it reviews and this section names it.
 
 ```bash
-git show --no-patch d934e032
+git show --no-patch 28489848
 ```
 
-The baseline differs from the previous baseline, `0cfded15`, in the guest's
+The baseline differs from the previous baseline, `d934e032`, in comments
+alone: the NatSpec of `AssemblyRegistry`, `AgreementRegistry` and
+`UsageCounter`, a comment in `script/Deploy.s.sol` and one in the relay's
+`submitter.rs` say agreement and registered agreement, the lexicon's nouns,
+where they said the words the lexicon retired; the guest's test files and
+the parity fixtures' per-leaf keys say clause (`clauseData`,
+`clauseDataHash`, `clauseCount`), every hex value in the fixtures
+unchanged; no statement, no ABI and no crate source moved, so every figure
+measured at `0cfded15` stands and names it, and `figaro-kernel`'s tests pass
+at `28489848`.
+
+`d934e032` differs from `0cfded15` in the guest's
 test files alone (`prover/lib/tests/`: the test names, the variables and the
 parity fixture's `agreements[]` and `agreementBytes` keys say agreement, the
 lexicon's noun), in no contract and in no crate source; every figure
