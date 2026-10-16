@@ -20,7 +20,7 @@ adding one. The list of clauses is the directory `clauses/`; each spec's
 
 ## Every clause is a merkle leaf
 
-Every term of an agreement is a clause section, and every clause section is a
+Every term of an agreement is a clause, and every clause is a
 merkle leaf under `agreementHash`. A datum that is not a leaf is not a term of
 the agreement. The commitment struct's fields (`currency`, `payment`,
 `expectedCumulativeValue`, `deadline`) are execution data — what `FigaroCore`
@@ -39,7 +39,7 @@ committed content is exactly the canonical JSON
 `{"agreementKey":"0x<64 lowercase hex>","compositionHash":"0x<64 lowercase hex>"}`,
 and its leaf follows the section convention,
 `keccak256(keccak256(key ‖ keccak256(content)))`, the same convention as a
-clause section, whose leaf key is the clause key. The provenance key is a
+clause, whose leaf key is the clause key. The provenance key is a
 constant of the format, distinct from every clause key under keccak256's
 second-preimage resistance: no spec describes the leaf, it is registered
 nowhere, and it is refused at accrual whatever a registry holds at it — the
@@ -50,7 +50,7 @@ batch path skips it (`applyBatchAccrual`). Checkout writes the leaf from the
 agreement the order instantiates — the agreement's `agreementKey` and the assembly's
 `compositionHash`; an agreement that names no assembly carries no provenance
 leaf. The SDK owns the format (`PROVENANCE_LEAF_KEY`,
-`provenanceSectionBytes`, `computeProvenanceLeaf`, `agreementLeaves`,
+`provenanceLeafBytes`, `computeProvenanceLeaf`, `agreementLeaves`,
 `buildProvenanceInclusionProof`, `provenanceLeafAttestation` in
 `sdk/src/agreement.ts`); `UsageCounter.provenanceLeaf` and the guest's
 `PROVENANCE_LEAF_KEY` hold the same constant, and the guest verifies an
@@ -78,7 +78,7 @@ any agreement of any assembly. Its key is the merkle root over one leaf per
 composed clause, each leaf `keccak256(keccak256(clauseKey ‖ keccak256(fills)))`
 under the agreement format's own leaf convention (`agreementKeyOf(doc)` in the
 SDK; a one-clause agreement's key is its leaf), so a clause's membership in a
-registered agreement is a merkle proof (`buildClauseInclusionProof`); the
+registered agreement is a merkle proof (`buildRegisteredClauseInclusionProof`); the
 editorial fields are excluded from it. The designer pins the document and registers the key with
 `AgreementRegistry.registerAgreement(agreementKey, contentURI)` under a stake.
 The design-time `agreementKey` is never the runtime `agreementHash`: the first
@@ -238,10 +238,10 @@ software packages (`@figaro-protocol/sdk`, the interface) are ordinary
 mutable-name software and keep semver.
 
 **Merkle binding.** `AttestationCoordinator` verifies an inclusion proof of
-`leaf = keccak256(keccak256(clauseKey ++ sectionHash))` against the signed
+`leaf = keccak256(keccak256(clauseKey ++ clauseDataHash))` against the signed
 `agreementHash` and emits `Attestation` with the caller's `contentRef`. It takes
-fingerprints, never preimages — `sectionHash = keccak256(sectionData)`,
-`contentRef = keccak256(content)` — so a private section's plaintext never
+fingerprints, never preimages — `clauseDataHash = keccak256(clauseData)`,
+`contentRef = keccak256(content)` — so a private clause's plaintext never
 touches the chain. A clause not committed at signing cannot be attested (the
 proof will not open); any committed clause attests with zero per-clause code.
 Public content is fingerprint-addressed: the attesting party pins the exact
@@ -264,7 +264,7 @@ registry's seed data; the published definition of the format is
   `version`, `title`, `description`) a human reads, and the content
   `fields`/`stages`. Stage 0 is the committed
   content (declared by `fields`); `stages[N≥1]` are the evidence shapes attested
-  while the process is open. Every section is a merkle leaf under the signed
+  while the process is open. Every clause is a merkle leaf under the signed
   `agreementHash`; the SDK validates the content against the spec off-chain, and
   the bonds secure what was signed. The chain registers clauses and binds
   attestations to the signed agreement; it reads no content shape.
@@ -374,7 +374,7 @@ decision as a physical hand-off point; two honest clauses beat a merge that has
 to be undone.
 
 **A runtime witness is a stage on the committed clause, never a sister
-clause.** Every section — a committed term or a runtime witness — is a merkle
+clause.** Every clause — a committed term or a runtime witness — is a merkle
 leaf under the same `agreementHash`; what differs is *when* the content is
 supplied. A clause commits its terms at signing, fixed for the order's life;
 any runtime proof of those terms is filed during the process as an attestation

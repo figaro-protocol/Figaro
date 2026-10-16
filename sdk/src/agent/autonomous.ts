@@ -138,9 +138,9 @@ export interface UsageRecordingReport {
  *
  * The legs are PLANNED before anything is sent, with the same two helpers the
  * batch path uses (`fetchUsageClaimContext` + `buildUsageClaims`): every
- * committed section gets a CLAUSE leg (`UsageCounter.recordClauseUsage` —
- * only the section FINGERPRINT reaches calldata, never plaintext, so private
- * sections stay off-chain), and the agreement's provenance leaf
+ * committed clause gets a CLAUSE leg (`UsageCounter.recordClauseUsage` —
+ * only the clause FINGERPRINT reaches calldata, never plaintext, so private
+ * clauses stay off-chain), and the agreement's provenance leaf
  * (`Agreement.provenance`, the registered agreement and the assembly it
  * instantiated) gets the INDEPENDENT AGREEMENT leg (`recordAgreementUsage`)
  * and ASSEMBLY leg (`recordAssemblyUsage`, with the agreement's membership
@@ -279,16 +279,16 @@ export function prepareAttestationContent(
  *               struct (root: `processId = 0`). For SAME-ORDER attestation pass
  *               the SAME commitment as both `role` and `target` — one struct in
  *               both args, not two distinct commitments.
- * @param clauseId The section's clause key (`section.clause`) — the same
- *               bytes32 `buildSectionInclusionProof` takes and the merkle leaf id.
- * @param sectionHash The section FINGERPRINT — `sectionDataHash(section)` =
+ * @param clauseId The clause key (`clauseEntry.clause`) — the same
+ *               bytes32 `buildSignedClauseInclusionProof` takes and the merkle leaf id.
+ * @param clauseDataHash The clause FINGERPRINT — `hashClauseData(clause)` =
  *               `keccak256` of the committed canonical bytes, NEVER the preimage.
  *               The coordinator takes only the hash, so a `private`-disposition
- *               section's plaintext never touches public calldata.
- * @param proof  Merkle inclusion proof produced by `buildSectionInclusionProof`.
+ *               clause's plaintext never touches public calldata.
+ * @param proof  Merkle inclusion proof produced by `buildSignedClauseInclusionProof`.
  * @param contentRef The content FINGERPRINT — `keccak256(content)` (the content
- *                lives off-chain), or `sectionHash` to RE-ASSERT the committed
- *                section. Never the content preimage.
+ *                lives off-chain), or `clauseDataHash` to RE-ASSERT the committed
+ *                clause. Never the content preimage.
  */
 export async function attestAsSeller(
     walletClient: WalletClient,
@@ -297,11 +297,11 @@ export async function attestAsSeller(
     target: Commitment,
     clauseId: Hex,
     stage: number,
-    sectionHash: Hex,
+    clauseDataHash: Hex,
     proof: readonly Hex[],
     contentRef: Hex,
 ): Promise<TxResult> {
-    return submitAttestation(walletClient, coordinatorAddress, role, target, clauseId, stage, sectionHash, proof, contentRef);
+    return submitAttestation(walletClient, coordinatorAddress, role, target, clauseId, stage, clauseDataHash, proof, contentRef);
 }
 
 /** The ONE coordinator submit both attest roles share. The role commitment
@@ -315,7 +315,7 @@ async function submitAttestation(
     target: Commitment,
     clauseId: Hex,
     stage: number,
-    sectionHash: Hex,
+    clauseDataHash: Hex,
     proof: readonly Hex[],
     contentRef: Hex,
 ): Promise<TxResult> {
@@ -329,12 +329,12 @@ async function submitAttestation(
         ? await walletClient.writeContract({
               ...base,
               functionName: "attestAsSeller",
-              args: [role, target, clauseId, stage, sectionHash, proof, contentRef],
+              args: [role, target, clauseId, stage, clauseDataHash, proof, contentRef],
           })
         : await walletClient.writeContract({
               ...base,
               functionName: "attestAsBuyer",
-              args: [target, clauseId, stage, sectionHash, proof, contentRef],
+              args: [target, clauseId, stage, clauseDataHash, proof, contentRef],
           });
     return { hash };
 }
@@ -347,8 +347,8 @@ async function submitAttestation(
  *               `processId = 0`), not the reconstruction-derived form whose
  *               root `processId` is the DERIVED id — the coordinator re-hashes
  *               the struct, and a derived-id root would miss.
- * @param clauseId The section's clause key (`section.clause`) — the same
- *               bytes32 `buildSectionInclusionProof` takes and the merkle leaf id.
+ * @param clauseId The clause key (`clauseEntry.clause`) — the same
+ *               bytes32 `buildSignedClauseInclusionProof` takes and the merkle leaf id.
  */
 export async function attestAsBuyer(
     walletClient: WalletClient,
@@ -356,11 +356,11 @@ export async function attestAsBuyer(
     target: Commitment,
     clauseId: Hex,
     stage: number,
-    sectionHash: Hex,
+    clauseDataHash: Hex,
     proof: readonly Hex[],
     contentRef: Hex,
 ): Promise<TxResult> {
-    return submitAttestation(walletClient, coordinatorAddress, undefined, target, clauseId, stage, sectionHash, proof, contentRef);
+    return submitAttestation(walletClient, coordinatorAddress, undefined, target, clauseId, stage, clauseDataHash, proof, contentRef);
 }
 
 // ── Action-based execution ──────────────────────────────────────────────────
@@ -381,22 +381,22 @@ export interface ActionExecutionInputs {
     buyerSig?: Hex;
     sellerSig?: Hex;
     /** attest-as-seller / attest-as-buyer: the merkle-bound payload the agent
-     *  builds from its hydrated agreement (proof + content + section bytes). */
+     *  builds from its hydrated agreement (proof + content + clause bytes). */
     attestation?: {
         /** seller-attest only: distinct role commitment for cross-order
          *  attestation; omit for same-order (role = target). */
         role?: Commitment;
         target: Commitment;
-        /** The section's clause key (`section.clause`) — the same bytes32
-         *  `buildSectionInclusionProof` takes. */
+        /** The clause key (`clauseEntry.clause`) — the same bytes32
+         *  `buildSignedClauseInclusionProof` takes. */
         clauseId: Hex;
         stage: number;
-        /** The section FINGERPRINT — `sectionDataHash(section)` (keccak256 of the
+        /** The clause FINGERPRINT — `hashClauseData(clause)` (keccak256 of the
          *  committed bytes), never the preimage. */
-        sectionHash: Hex;
+        clauseDataHash: Hex;
         proof: readonly Hex[];
         /** The content FINGERPRINT — `keccak256(content)` (content lives
-         *  off-chain), or `sectionHash` to re-assert. Never the preimage. */
+         *  off-chain), or `clauseDataHash` to re-assert. Never the preimage. */
         contentRef: Hex;
     };
 }
@@ -460,7 +460,7 @@ export async function executeAction(
             if (!at) {
                 throw new Error(
                     `${action.type}: requires inputs.attestation ` +
-                    `{ target, clauseId, stage, sectionHash, proof, contentRef } built from the hydrated agreement.`,
+                    `{ target, clauseId, stage, clauseDataHash, proof, contentRef } built from the hydrated agreement.`,
                 );
             }
             if (!addresses.attestationCoordinator) {
@@ -469,11 +469,11 @@ export async function executeAction(
             return action.type === "attest-as-seller"
                 ? attestAsSeller(
                     walletClient, addresses.attestationCoordinator,
-                    at.role ?? at.target, at.target, at.clauseId, at.stage, at.sectionHash, at.proof, at.contentRef,
+                    at.role ?? at.target, at.target, at.clauseId, at.stage, at.clauseDataHash, at.proof, at.contentRef,
                 )
                 : attestAsBuyer(
                     walletClient, addresses.attestationCoordinator,
-                    at.target, at.clauseId, at.stage, at.sectionHash, at.proof, at.contentRef,
+                    at.target, at.clauseId, at.stage, at.clauseDataHash, at.proof, at.contentRef,
                 );
         }
         default:

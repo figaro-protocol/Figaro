@@ -25,9 +25,9 @@
  *     process 1 AND buyer of process 2; wallet B the mirror — the
  *     MembersRegistry migration's point (members, not "sellers").
  *   - LEAF DISCLOSURE (the thing this market sells): the data-terms
- *     section of process 1 and the data-license section of process 2 are
+ *     clause of process 1 and the data-license clause of process 2 are
  *     SELF-AUTHENTICATING — their inclusion proofs verify against the
- *     on-chain committed agreementHash, and a tampered section does NOT.
+ *     on-chain committed agreementHash, and a tampered clause does NOT.
  *   - Both members hold LIVE MembersRegistry stakes (registered if absent,
  *     idempotent — the rpgf-rewards pattern).
  *   - The open-record sibling (disclosure `open`) is anchored under a
@@ -54,11 +54,11 @@ import { privateKeyToAccount } from 'viem/accounts';
 import {
     ATTESTATION_COORDINATOR_ABI,
     MEMBERS_REGISTRY_ABI,
-    buildSectionInclusionProof,
+    buildSignedClauseInclusionProof,
     calculateBonds,
     generateSalt,
     reconstructOrdersFromAssembly,
-    sectionDataHash,
+    hashClauseData,
     assemblyCompositionHash,
     verifyInclusionProof,
     type ReconstructedOrder,
@@ -315,8 +315,8 @@ test.describe('DATA MARKET — dual-posture value legs over the anchored data as
         };
 
         /** The self-authenticating leaf — what this market SELLS: the
-         *  disclosed section + its inclusion proof verify against the
-         *  process's ON-CHAIN committed agreementHash; a tampered section
+         *  disclosed clause + its inclusion proof verify against the
+         *  process's ON-CHAIN committed agreementHash; a tampered clause
          *  does not. Root read fresh from the OrderCommitted event. */
         const assertSelfAuthenticatingLeaf = async (
             committed: Awaited<ReturnType<typeof commitProcess>>, clauseKey: Hex, label: string,
@@ -326,26 +326,26 @@ test.describe('DATA MARKET — dual-posture value legs over the anchored data as
                 args: { buyer: committed.event.args.buyer }, fromBlock: committed.event.blockNumber,
             });
             const chainRoot = eventBack.args.agreementHash as Hex;
-            const section = committed.order.agreement.sections.find((s) => s.clause.toLowerCase() === clauseKey)!;
-            expect(section, `${label}: the agreement carries the ${clauseKey} section`).toBeTruthy();
-            const { leaf, proof } = buildSectionInclusionProof(committed.order.agreement, section.clause);
+            const clauseEntry = committed.order.agreement.sections.find((s) => s.clause.toLowerCase() === clauseKey)!;
+            expect(clauseEntry, `${label}: the agreement carries the ${clauseKey} clauseEntry`).toBeTruthy();
+            const { leaf, proof } = buildSignedClauseInclusionProof(committed.order.agreement, clauseEntry.clause);
             expect(
                 leaf,
-                `${label}: the leaf is derived from the section's own dataHash — recomputable by any holder`,
-            ).toBe(keccak256(keccak256(concat([section.clause as Hex, sectionDataHash(section)]))));
+                `${label}: the leaf is derived from the clause's own dataHash — recomputable by any holder`,
+            ).toBe(keccak256(keccak256(concat([clauseEntry.clause as Hex, hashClauseData(clauseEntry)]))));
             expect(
                 verifyInclusionProof(chainRoot, leaf, proof),
-                `${label}: the ${clauseKey} section verifies against the ON-CHAIN agreementHash — self-authenticating`,
+                `${label}: the ${clauseKey} clause verifies against the ON-CHAIN agreementHash — self-authenticating`,
             ).toBe(true);
             const tampered = keccak256(keccak256(concat([
-                section.clause as Hex,
-                sectionDataHash({ ...section, data: { ...section.data, tampered: true } }),
+                clauseEntry.clause as Hex,
+                hashClauseData({ ...clauseEntry, data: { ...clauseEntry.data, tampered: true } }),
             ])));
             expect(
                 verifyInclusionProof(chainRoot, tampered, proof),
-                `${label}: a tampered ${clauseKey} section does NOT verify — the check is not vacuous`,
+                `${label}: a tampered ${clauseKey} clause does NOT verify — the check is not vacuous`,
             ).toBe(false);
-            return section;
+            return clauseEntry;
         };
 
         // ── PROCESS 1 — the flight: A (seller) flies for B (buyer) under the
@@ -376,9 +376,9 @@ test.describe('DATA MARKET — dual-posture value legs over the anchored data as
             label: 'flight',
         });
         // The assembly's design fill survived reconstruction into the signed
-        // section (the regime is the DESIGNER's term, not this spec's input).
-        const dataTermsSection = await assertSelfAuthenticatingLeaf(flight, DATA_TERMS, 'flight');
-        const committedTerms = (dataTermsSection.data ?? {}) as { disclosure?: string; buyerDisclosure?: string };
+        // clause (the regime is the DESIGNER's term, not this spec's input).
+        const dataTermsClause = await assertSelfAuthenticatingLeaf(flight, DATA_TERMS, 'flight');
+        const committedTerms = (dataTermsClause.data ?? {}) as { disclosure?: string; buyerDisclosure?: string };
         expect(committedTerms.disclosure, 'the each-own regime rode in from the assembly design fill')
             .toBe('each-own');
         expect(committedTerms.buyerDisclosure, "the buyer's per-order consent is committed, never inferred")
@@ -426,14 +426,14 @@ test.describe('DATA MARKET — dual-posture value legs over the anchored data as
         const expectedContentRef = keccak256(
             encodeContentFromSpec(handoffSpec!, { contentHash: CREDENTIAL_HASH }, { stage: 1 }),
         );
-        const handoffSection = stream.order.agreement.sections.find((s) => s.clause.toLowerCase() === CONTENT_HANDOFF)!;
-        const { proof: handoffProof } = buildSectionInclusionProof(stream.order.agreement, handoffSection.clause);
+        const handoffClause = stream.order.agreement.sections.find((s) => s.clause.toLowerCase() === CONTENT_HANDOFF)!;
+        const { proof: handoffProof } = buildSignedClauseInclusionProof(stream.order.agreement, handoffClause.clause);
         await receipt(await walletB.writeContract({
             address: coordinator, abi: ATTESTATION_COORDINATOR_ABI, functionName: 'attestAsSeller',
             args: [
                 stream.order.commitment, stream.order.commitment,
-                handoffSection.clause as Hex, 1,
-                sectionDataHash(handoffSection), handoffProof, expectedContentRef,
+                handoffClause.clause as Hex, 1,
+                hashClauseData(handoffClause), handoffProof, expectedContentRef,
             ],
         }));
         const handoffEvents = await publicClient.getContractEvents({
@@ -450,9 +450,9 @@ test.describe('DATA MARKET — dual-posture value legs over the anchored data as
 
         // The license leaf is self-authenticating, and its committed data
         // carries the provenance anchor to process 1's resolved processId.
-        const licenseSection = await assertSelfAuthenticatingLeaf(stream, DATA_LICENSE, 'stream');
+        const licenseClause = await assertSelfAuthenticatingLeaf(stream, DATA_LICENSE, 'stream');
         expect(
-            (((licenseSection.data ?? {}) as { sourceProcesses?: string[] }).sourceProcesses ?? [])[0],
+            (((licenseClause.data ?? {}) as { sourceProcesses?: string[] }).sourceProcesses ?? [])[0],
             "the committed license anchors process 1's resolved processId — chain-verifiable provenance",
         ).toBe(flightProcessId);
         await resolveProcess(stream, walletA, memberA, memberB, 'stream');

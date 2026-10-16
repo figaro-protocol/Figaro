@@ -33,10 +33,10 @@ export function OrderInteractionSurfaces({
     if (!agreement) return null;
 
     const mounts = agreement.sections
-        .map((section) => {
-            const interfaceId = getClauseSpec(section.clause)?.block?.runtime.interaction?.interface;
+        .map((clauseEntry) => {
+            const interfaceId = getClauseSpec(clauseEntry.clause)?.block?.runtime.interaction?.interface;
             const Surface = getInteractionSurface(interfaceId);
-            return Surface ? { clauseKey: section.clause, Surface } : null;
+            return Surface ? { clauseKey: clauseEntry.clause, Surface } : null;
         })
         .filter((m): m is NonNullable<typeof m> => m !== null);
     if (mounts.length === 0) return null;

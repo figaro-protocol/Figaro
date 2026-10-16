@@ -172,8 +172,8 @@ export interface DisclosurePolicyEntry {
     /** `AssemblyRegistry` compositionHash of the assembly whose
      *  co-produced records this row governs. */
     compositionHash: `0x${string}`;
-    /** Clause key of the record's leaf section within that assembly's
-     *  agreements (the clause-section half of the pair). */
+    /** Clause key of the record's leaf clause within that assembly's
+     *  agreements (the clause half of the pair). */
     clauseKey: `0x${string}`;
     /** Which posture the member held when co-producing the record. */
     posture: "buyer" | "seller";

@@ -90,7 +90,7 @@ export function assemblyToDraft(
         orders,
         clausesByOrderId,
         ...(Object.keys(registeredByOrderId).length > 0 ? { registeredByOrderId } : {}),
-        // Assembly-scoped sections travel as their own level — never smeared
+        // Assembly-scoped clauses travel as their own level — never smeared
         // onto an order (scope placement is verified at build/publish).
         ...(assembly.assemblyClauses && Object.keys(assembly.assemblyClauses).length > 0
             ? { assemblyClauses: assembly.assemblyClauses }

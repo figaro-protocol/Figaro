@@ -212,7 +212,7 @@ describe("buildQuoteRequest + substitutePricedValue", () => {
             .toThrow(/no field "surcharge"/);
         const nope = `0x${"9e".repeat(32)}` as const;
         expect(() => substitutePricedValue(req.agreement, [{ clause: nope, path: "payment" }], 5n))
-            .toThrow(new RegExp(`no "${nope}" section`));
+            .toThrow(new RegExp(`no "${nope}" clauseEntry`));
     });
 });
 

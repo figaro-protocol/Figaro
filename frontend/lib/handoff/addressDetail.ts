@@ -26,7 +26,7 @@
  *      derives the ECDH shared secret, AES-GCM-encrypts the addressee block,
  *      and sends their public key + the encrypted blob back. The buyer also
  *      anchors keccak256(blob) on-chain as a buyer attestation on the
- *      geolocation section — the HASH is the attestation content, so the
+ *      geolocation clause — the HASH is the attestation content, so the
  *      chain (event AND calldata) never carries the ciphertext; the channel
  *      is its only carrier and it stays deletable after key purge
  *      (crypto-shredding survives the anchor). Tamper-evidence for disputes;

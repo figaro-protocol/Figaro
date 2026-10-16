@@ -84,7 +84,7 @@ export type OrderFlowStep =
     | "error";
 
 /** Project a funding quote to the confirm-gate's swap summary (null passes
- *  through — no swap leg, no swap section in the modal). */
+ *  through — no swap leg, no swap clause in the modal). */
 function swapDetails(
     quote: { inputToken: string; currency: string; maxInput: bigint } | null,
 ): SwapConfirmationDetails | null {
@@ -130,7 +130,7 @@ export function useOrderCommitmentFlow() {
     ): Promise<Hex> => {
         assertSigningDomain(CONTRACTS.core, chainId);
         // Off-chain validation — the FULL gate at the sign step, so no caller can bypass
-        // it: every section conforms to its clause spec AND the agreement's
+        // it: every clause conforms to its clause spec AND the agreement's
         // recomputed merkle root equals the hash being signed. The /orders
         // accept card, /sign, and the buyer's checkout sign all route through
         // here — both sides of the bilateral commit get the same check.

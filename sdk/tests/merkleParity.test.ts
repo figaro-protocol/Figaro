@@ -3,7 +3,7 @@
  * agreement tree.
  *
  * The SDK builds the agreement's merkle root (`agreementHash`) and each
- * section's inclusion proof; `AttestationCoordinator` and `UsageCounter`
+ * clause's inclusion proof; `AttestationCoordinator` and `UsageCounter`
  * verify those proofs on the direct path through OpenZeppelin `MerkleProof`,
  * and the guest verifies them on the batch path through
  * `prover/lib/src/merkle.rs`. Each of the three has its own tests; none of
@@ -11,13 +11,13 @@
  *
  * This file freezes SDK-built roots, leaves and proofs into
  * `test/fixtures/merkle-vectors.json`. `test/core/attestation/MerkleParityTest.t.sol`
- * rebuilds every leaf from its clause key and section bytes the way the two
+ * rebuilds every leaf from its clause key and clause bytes the way the two
  * consumers do and verifies every proof with OpenZeppelin;
  * `prover/lib/tests/merkle_parity.rs` does the same through the guest's
  * verifier. The EIP-712 lock (`eip712Parity.test.ts`) is the sibling.
  *
- * Three agreements: three sections (an odd leaf count, so one node is promoted
- * unpaired), one section (an empty proof, leaf == root), and two sections plus
+ * Three agreements: three clauses (an odd leaf count, so one node is promoted
+ * unpaired), one clause (an empty proof, leaf == root), and two clauses plus
  * the reserved provenance leaf (the agreement format's own leaf, keyed by
  * `PROVENANCE_LEAF_KEY` and reproduced from the two keys it names — the
  * registered agreement and the assembly, taken from the third assembly of
@@ -38,10 +38,10 @@ import { describe, expect, it } from "vitest";
 import {
     PROVENANCE_LEAF_KEY,
     buildProvenanceInclusionProof,
-    buildSectionInclusionProof,
+    buildSignedClauseInclusionProof,
     canonicalize,
     computeAgreementHash,
-    provenanceSectionBytes,
+    provenanceLeafBytes,
     type Agreement,
 } from "../src/agreement.js";
 import { agreementArb } from "./propertyArbs.js";
@@ -68,7 +68,7 @@ const ONE: Agreement = {
     seller: "0xAd29D7a8aD3639F97798c768202F27C1dE81DC55",
     sections: [{ clause: K("figaro-modalities"), data: { modality: "pickup" } }],
 };
-/** Two sections and the design they were instantiated from. */
+/** Two clauses and the design they were instantiated from. */
 const WITH_DESIGN: Agreement = {
     version: "a1",
     buyer: "0x0376AAc07Ad725E01357B1725B5ceC61aE10473c",
@@ -85,12 +85,12 @@ function vectorFor(label: string, agreement: Agreement) {
         const { leaf, proof } = buildProvenanceInclusionProof(agreement);
         return {
             // The reserved key and the bytes the leaf hashes: both consumers
-            // rebuild the leaf from these two, exactly as for a section.
+            // rebuild the leaf from these two, exactly as for a clause.
             leafKey: PROVENANCE_LEAF_KEY,
             agreementKey: agreement.provenance.agreementKey,
             compositionHash: agreement.provenance.compositionHash,
-            sectionData: Buffer.from(
-                provenanceSectionBytes(agreement.provenance.agreementKey, agreement.provenance.compositionHash).slice(2),
+            clauseData: Buffer.from(
+                provenanceLeafBytes(agreement.provenance.agreementKey, agreement.provenance.compositionHash).slice(2),
                 "hex",
             ).toString("utf8"),
             leaf,
@@ -100,15 +100,15 @@ function vectorFor(label: string, agreement: Agreement) {
     return {
         label,
         agreementHash: computeAgreementHash(agreement),
-        sectionCount: agreement.sections.length,
+        clauseCount: agreement.sections.length,
         ...(provenance ? { provenance } : {}),
-        sections: agreement.sections.map((section) => {
-            const { leaf, proof } = buildSectionInclusionProof(agreement, section.clause);
+        sections: agreement.sections.map((clauseEntry) => {
+            const { leaf, proof } = buildSignedClauseInclusionProof(agreement, clauseEntry.clause);
             return {
-                clauseKey: section.clause,
+                clauseKey: clauseEntry.clause,
                 // The canonical-JSON bytes the leaf hashes: keccak256 of this
-                // string is the section hash both on-chain consumers take.
-                sectionData: canonicalize(section.data),
+                // string is the clause data hash both on-chain consumers take.
+                clauseData: canonicalize(clauseEntry.data),
                 leaf,
                 proof,
             };
@@ -119,11 +119,11 @@ function vectorFor(label: string, agreement: Agreement) {
 function build() {
     return {
         agreementCount: 3,
-        agreements: [vectorFor("three-sections", THREE), vectorFor("one-section", ONE), vectorFor("two-sections-and-a-design", WITH_DESIGN)],
+        agreements: [vectorFor("three-clauses", THREE), vectorFor("one-clause", ONE), vectorFor("two-clauses-and-a-design", WITH_DESIGN)],
     };
 }
 
-/** Generated agreements, one to six sections each, in the fixture's format. */
+/** Generated agreements, one to six clauses each, in the fixture's format. */
 function buildGenerated(seed: number, count: number) {
     const agreements = fc.sample(agreementArb(1), { seed, numRuns: count });
     return {

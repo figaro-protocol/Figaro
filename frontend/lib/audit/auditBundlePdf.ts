@@ -100,7 +100,7 @@ export async function buildAuditBundlePdfBlob(
             continue;
         }
         // Agreements are cleartext end to end (the IPFS body carries every
-        // section in full). No redacted distribution form.
+        // clause in full). No redacted distribution form.
         const agreement = cleartextAgreement;
 
         let attestations: readonly AttestationRecord[] = [];

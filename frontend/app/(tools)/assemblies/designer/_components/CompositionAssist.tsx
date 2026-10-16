@@ -101,7 +101,7 @@ export function CompositionAssist({ getSnapshot, onImportAssembly }: Composition
             setImportText("");
             setOpen(false);
         } catch (cause) {
-            // Hydration projects every section through the chain-loaded clause
+            // Hydration projects every clause through the chain-loaded clause
             // specs — a clause this network's ClauseRegistry doesn't carry
             // fails here, before any state is replaced.
             setImportError(extractErrorMessage(

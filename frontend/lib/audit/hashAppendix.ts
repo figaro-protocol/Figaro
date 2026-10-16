@@ -6,8 +6,8 @@
  *
  * Verification path:
  *
- *   1. Each agreement section's `body` (in the contract document) hashes
- *      to its `leafHash` via `computeSectionLeaf(section)`; the agreement's
+ *   1. Each agreement clause's `body` (in the contract document) hashes
+ *      to its `leafHash` via `computeClauseLeaf(clause)`; the agreement's
  *      `provenance`, when it names its assembly, hashes to the format's
  *      reserved leaf via `computeProvenanceLeaf(provenance)`.
  *   2. The leaves combine into the merkle root = `agreementHash`.
@@ -22,7 +22,7 @@
  * each step independently.
  */
 
-import { type Agreement, computeProvenanceLeaf, computeSectionLeaf } from "@figaro-protocol/sdk";
+import { type Agreement, computeProvenanceLeaf, computeClauseLeaf } from "@figaro-protocol/sdk";
 import type { Order } from "@/lib/kernel/store";
 import type { AttestationRecord } from "@/lib/composition/indexer";
 import type { ExtractedDocument } from "./types";
@@ -30,7 +30,7 @@ import { truncateHex } from "@/lib/shared/formatHex";
 
 type HashAnchorKind =
     | "agreement-root"
-    | "agreement-section-leaf"
+    | "agreement-clause-leaf"
     | "agreement-provenance-leaf"
     | "attestation-content-ref"
     | "transaction-hash"
@@ -82,17 +82,17 @@ export function buildHashAppendix(
         kind: "agreement-root",
         label: "Agreement merkle root",
         hash: order.agreementHash ?? "0x",
-        sourceLocation: "OrderCommitted.agreementHash (matches keccak256 of canonical agreement JSON, computed as merkle root over section leaves and the provenance leaf)",
+        sourceLocation: "OrderCommitted.agreementHash (matches keccak256 of canonical agreement JSON, computed as merkle root over clause leaves and the provenance leaf)",
     });
 
-    // 3. Each agreement section's leaf — every section is cleartext (the IPFS
+    // 3. Each agreement clause's leaf — every clause is cleartext (the IPFS
     //    body carries them in full), so the leaf is recomputed on the fly.
-    for (const section of agreement.sections) {
+    for (const clauseEntry of agreement.sections) {
         anchors.push({
-            kind: "agreement-section-leaf",
-            label: `Section leaf — ${section.clause}`,
-            hash: computeSectionLeaf(section),
-            sourceLocation: `Merkle leaf under agreementHash root. Reader recomputes via computeSectionLeaf({clause: "${section.clause}", data}) and verifies inclusion in the agreementHash tree.`,
+            kind: "agreement-clause-leaf",
+            label: `Clause leaf — ${clauseEntry.clause}`,
+            hash: computeClauseLeaf(clauseEntry),
+            sourceLocation: `Merkle leaf under agreementHash root. Reader recomputes via computeClauseLeaf({clause: "${clauseEntry.clause}", data}) and verifies inclusion in the agreementHash tree.`,
         });
     }
 

@@ -15,16 +15,16 @@ import {
     assemblyLeaves,
     assemblyParentOrderHashes,
     agreementClauseLeaves,
-    buildClauseInclusionProof,
+    buildRegisteredClauseInclusionProof,
 } from "../src/assembly.js";
 import type { Assembly, ComposedAgreement } from "../src/assembly.js";
-import { PROVENANCE_LEAF_KEY, buildMerkleRoot, canonicalize, computeSectionLeaf, sortLeaves, verifyInclusionProof } from "../src/agreement.js";
+import { PROVENANCE_LEAF_KEY, buildMerkleRoot, canonicalize, computeClauseLeaf, sortLeaves, verifyInclusionProof } from "../src/agreement.js";
 import { assembleAuthored, composeAuthoredAgreement } from "../src/projection.js";
 import { hydrateAuthored } from "./hydrate.js";
 import { keyOf, rawSpecOf, specSourceOf, viewOf } from "./specFixtures.js";
 
 describe("assemblyComposedClauseKeys", () => {
-    it("unions the assembly-scoped sections with every agreement's clauses, sorted and de-duplicated", () => {
+    it("unions the assembly-scoped clauses with every agreement's clauses, sorted and de-duplicated", () => {
         const { assembly, agreements } = hydrateAuthored({
             assemblyClauses: { [keyOf("figaro-applicable-law")]: {} },
             agreements: [
@@ -37,7 +37,7 @@ describe("assemblyComposedClauseKeys", () => {
         );
     });
 
-    it("tolerates a assembly without assembly-scoped sections, and refuses an agreement it cannot read", () => {
+    it("tolerates a assembly without assembly-scoped clauseEntries, and refuses an agreement it cannot read", () => {
         const { assembly, agreements } = hydrateAuthored({
             agreements: [{ id: "order-0", clauses: { [keyOf("figaro-commerce")]: {} } }],
         });
@@ -51,7 +51,7 @@ describe("the registered agreement key", () => {
 
     it("is the merkle root over one leaf per composed clause, editorial prose excluded", () => {
         const leaves = Object.entries(composed.clauses).map(([clauseKey, fills]) =>
-            computeSectionLeaf({ clause: clauseKey as Hex, data: fills }),
+            computeClauseLeaf({ clause: clauseKey as Hex, data: fills }),
         );
         expect(agreementKeyOf(composed)).toBe(buildMerkleRoot(sortLeaves(leaves)));
         expect(agreementClauseLeaves(composed)).toEqual(sortLeaves(leaves));
@@ -60,18 +60,18 @@ describe("the registered agreement key", () => {
 
     it("a one-clause agreement's key is its clause's leaf", () => {
         const one = { clauses: { [keyOf("figaro-commerce")]: { x: 1 } } };
-        expect(agreementKeyOf(one)).toBe(computeSectionLeaf({ clause: keyOf("figaro-commerce"), data: { x: 1 } }));
+        expect(agreementKeyOf(one)).toBe(computeClauseLeaf({ clause: keyOf("figaro-commerce"), data: { x: 1 } }));
     });
 
     it("every composed clause opens under the key, and under no other agreement's key", () => {
         for (const clauseKey of Object.keys(composed.clauses) as Hex[]) {
-            const { leaf, proof, fillsHash } = buildClauseInclusionProof(composed, clauseKey);
+            const { leaf, proof, fillsHash } = buildRegisteredClauseInclusionProof(composed, clauseKey);
             expect(fillsHash).toBe(keccak256(toHex(canonicalize(composed.clauses[clauseKey]))));
-            expect(leaf).toBe(computeSectionLeaf({ clause: clauseKey, dataHash: fillsHash }));
+            expect(leaf).toBe(computeClauseLeaf({ clause: clauseKey, dataHash: fillsHash }));
             expect(verifyInclusionProof(agreementKeyOf(composed), leaf, proof)).toBe(true);
             expect(verifyInclusionProof(agreementKeyOf({ clauses: { [clauseKey]: {} } }), leaf, proof)).toBe(false);
         }
-        expect(() => buildClauseInclusionProof(composed, keyOf("figaro-handoff"))).toThrow(/not composed/);
+        expect(() => buildRegisteredClauseInclusionProof(composed, keyOf("figaro-handoff"))).toThrow(/not composed/);
     });
 
     it("refuses a duplicate clause key and a reserved format key", () => {
@@ -104,11 +104,11 @@ describe("the composition tree", () => {
         expect(proof).toEqual([]);
         expect(assemblyCompositionHash(one)).toBe(leaf);
         expect(slotContentHash).toBe(keccak256(agreementLeafBytes({ clauses: {} }, 0)));
-        expect(leaf).toBe(computeSectionLeaf({ clause: A, dataHash: slotContentHash }));
+        expect(leaf).toBe(computeClauseLeaf({ clause: A, dataHash: slotContentHash }));
         const termed = { ...one, assemblyClauses: { [keyOf("figaro-applicable-law")]: { law: "x" } } };
         expect(assemblyLeaves(termed)).toHaveLength(2);
         expect(assemblyLeaves(termed)).toContain(
-            computeSectionLeaf({ clause: ASSEMBLY_TERMS_LEAF_KEY, data: termed.assemblyClauses }),
+            computeClauseLeaf({ clause: ASSEMBLY_TERMS_LEAF_KEY, data: termed.assemblyClauses }),
         );
         expect(assemblyCompositionHash(termed)).not.toBe(assemblyCompositionHash(one));
         // Empty terms are no leaf.
@@ -254,7 +254,7 @@ describe("resolveAuthoredClauseKeys (seed-time authoring resolver)", () => {
     const specs = specSourceOf(["figaro-commerce", "figaro-topology", "figaro-applicable-law", "figaro-data-license"]
         .map((n) => viewOf(rawSpecOf(n))));
 
-    it("rewrites a name-keyed assembly's agreements and assembly-scoped sections to keys", () => {
+    it("rewrites a name-keyed assembly's agreements and assembly-scoped clauses to keys", () => {
         const authored = {
             name: "editorial",
             assemblyClauses: { "figaro-applicable-law": { law: "x" } },

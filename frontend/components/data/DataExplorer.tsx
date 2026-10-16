@@ -281,7 +281,7 @@ function MarketView({ corpus, state, onQuery }: { corpus: GraphCorpus; state: Da
             <p className="text-xs text-ink-muted leading-relaxed max-w-3xl">
                 Chain shapes are FigaroCore&apos;s own LINEAR view &mdash; a chain of commits against a
                 monotonic accumulator. How orders relate as a DAG is declared in each
-                agreement&apos;s topology section, which is committed rather than attested, so it is
+                agreement&apos;s topology clause, which is committed rather than attested, so it is
                 not recoverable from public events here.
             </p>
         </div>

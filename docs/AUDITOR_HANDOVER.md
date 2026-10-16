@@ -81,7 +81,7 @@ ones this document uses; `docs/LEXICON.md` defines every other.
   `AssemblyRegistry`. A **designer** is the wallet that registers a clause, a
   registered agreement or an assembly, under a registration stake.
 - An **attestation** is a signed statement a party makes about an open order,
-  bound by merkle proof to a section of the agreement: on the direct path
+  bound by merkle proof to a clause of the agreement: on the direct path
   through `AttestationCoordinator`, on the batch path inside the proof. A
   **witness spec** is the clause spec supplied to the proof as input; the
   verifier checks its hash against the registry's.
@@ -852,7 +852,7 @@ read it first.
   not succeed; the batch path's `KernelOp` carries only the two.
 - The link from a resolved process to the registered agreement and the
   assembly it instantiated is a fact of the agreement format, not a clause:
-  one reserved merkle leaf beside the clause sections, keyed by
+  one reserved merkle leaf beside the clause leaves, keyed by
   `keccak256("figaro-agreement-provenance")` (`0x26dc18a2…7dc6`), whose
   committed bytes are exactly
   `{"agreementKey":"0x<64 lowercase hex>","compositionHash":"0x<64 lowercase hex>"}`

@@ -124,7 +124,7 @@ export function OrderTimelineView({ processId }: Props) {
                 {processModel.rootModality && (
                     // The committed modality, shown as the clause's own
                     // code (the agreement is the source) — read off the builder's
-                    // model, never a clause section or a frontend label map.
+                    // model, never a clause or a frontend label map.
                     <p className="text-xs text-ink-body" data-testid="order-modality">
                         Modality: <span className="font-medium text-ink-primary">{processModel.rootModality}</span>
                     </p>

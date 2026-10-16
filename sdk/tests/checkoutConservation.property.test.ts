@@ -7,7 +7,7 @@
  *     `cumulativeValue` is the exact prefix sum in commit order, the final
  *     order's equals the sum of ALL node payments (what FigaroCore's
  *     `expectedCumulativeValue` check enforces), and every sub-order's
- *     topology section carries its parents' REAL order hashes.
+ *     topology clause carries its parents' REAL order hashes.
  *   - `resolveSubOrderPricing` (live contributor pricing): the replay
  *     invariant the module promises — `payment = unitPrice × billedQuantity`,
  *     with rate items billed per STARTED unit (max(1, ceil(units))).
@@ -110,7 +110,7 @@ describe("reconstructOrdersFromAssembly — payment conservation", () => {
                     // …and it is exactly what the signed struct names.
                     expect(order.commitment.expectedCumulativeValue).toBe(order.cumulativeValue);
                     expect(order.commitment.payment).toBe(order.payment);
-                    // THE MERKLE-LEAF SEAM: the commerce section's currency leaf
+                    // THE MERKLE-LEAF SEAM: the commerce clause's currency leaf
                     // never diverges from the commitment struct, on every order.
                     const commerce = order.agreement.sections.find((s) => s.clause === keyOf("figaro-commerce"));
                     expect(commerce?.data.currency).toBe(order.commitment.currency);
@@ -122,7 +122,7 @@ describe("reconstructOrdersFromAssembly — payment conservation", () => {
         );
     });
 
-    it("every sub-order's topology section carries its parents' REAL order hashes", async () => {
+    it("every sub-order's topology clause carries its parents' REAL order hashes", async () => {
         await fc.assert(
             fc.asyncProperty(chainArb, async ({ payments, parents }) => {
                 const assembly = assemblyFrom(parents);

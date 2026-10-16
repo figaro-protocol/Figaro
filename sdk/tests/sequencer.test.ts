@@ -117,7 +117,7 @@ describe("SequencerClient.toRustEnum", () => {
 
     it("converts an AttestAsSeller op with its witness proof", () => {
         // The batched attestation carries the full witness payload —
-        // spec bytes, content, sectionData, inclusion proof, content kind.
+        // spec bytes, content, clauseData, inclusion proof, content kind.
         const op: SequencerOp = {
             type: "AttestAsSeller",
             role: toSequencerCommitment(testCommitment),

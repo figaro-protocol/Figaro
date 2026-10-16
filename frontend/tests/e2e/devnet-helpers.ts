@@ -675,16 +675,16 @@ export function referenceAssemblyBuilt(name: string): BuiltAssembly {
     return assembleAuthored(doc, authoredAgreementsBuilt(), authoredSpecSource());
 }
 
-/** Substitute the live token into every assembly-scoped section whose
+/** Substitute the live token into every assembly-scoped clause whose
  *  `currency` is the ZERO_ADDRESS sentinel — by value, never by clause name;
  *  mirrors `populate-clauses.mjs`'s `fillDeployTimeCurrency`, which the
  *  seeding applies BEFORE anchoring. */
 function fillSentinelCurrency<T extends { assemblyClauses?: Record<string, Record<string, unknown>> }>(assembly: T, tokenAddress: `0x${string}`): T {
-    const sections = assembly.assemblyClauses ?? {};
-    if (!Object.values(sections).some((v) => v?.currency === ZERO_ADDRESS)) return assembly;
+    const clauseEntries = assembly.assemblyClauses ?? {};
+    if (!Object.values(clauseEntries).some((v) => v?.currency === ZERO_ADDRESS)) return assembly;
     return {
         ...assembly,
-        assemblyClauses: Object.fromEntries(Object.entries(sections).map(([key, values]) => [
+        assemblyClauses: Object.fromEntries(Object.entries(clauseEntries).map(([key, values]) => [
             key,
             values?.currency === ZERO_ADDRESS ? { ...values, currency: tokenAddress } : values,
         ])),
@@ -703,7 +703,7 @@ export function referenceAssemblySlug(name: string): string {
 }
 
 /** Identity of a reference whose checked-in copy carries the ZERO_ADDRESS
- *  currency sentinel in an assembly-scoped section (a live token address is
+ *  currency sentinel in an assembly-scoped clause (a live token address is
  *  new every fresh deploy, so `assemblies/*.json` cannot ship a real one). The
  *  seeding substitutes the live token into the sentinel BEFORE anchoring, so a
  *  spec wanting such a reference's slug hashes the SUBSTITUTED, key-resolved

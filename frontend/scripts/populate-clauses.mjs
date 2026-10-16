@@ -540,17 +540,17 @@ export async function populateClauses({ publicClient, walletClient, account, reg
 export const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
 
 /** Fill the deploy-time currency pin on a RESOLVED assembly: every
- *  assembly-scoped section whose `currency` is the ZERO_ADDRESS sentinel (a
+ *  assembly-scoped clause whose `currency` is the ZERO_ADDRESS sentinel (a
  *  denomination pin the checked-in file cannot fill) gets the live token
  *  address substituted before anchoring. Read by the sentinel value, never by
- *  a clause name; a assembly with no such section passes through unchanged. */
+ *  a clause name; a assembly with no such clause passes through unchanged. */
 export function fillDeployTimeCurrency(assembly, tokenAddress) {
-    const sections = assembly.assemblyClauses ?? {};
-    const pinned = Object.keys(sections).filter((key) => sections[key]?.currency === ZERO_ADDRESS);
+    const clauseEntries = assembly.assemblyClauses ?? {};
+    const pinned = Object.keys(clauseEntries).filter((key) => clauseEntries[key]?.currency === ZERO_ADDRESS);
     if (pinned.length === 0) return assembly;
     return {
         ...assembly,
-        assemblyClauses: Object.fromEntries(Object.entries(sections).map(([key, values]) => [
+        assemblyClauses: Object.fromEntries(Object.entries(clauseEntries).map(([key, values]) => [
             key,
             pinned.includes(key) ? { ...values, currency: tokenAddress } : values,
         ])),

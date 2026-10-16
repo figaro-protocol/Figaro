@@ -91,7 +91,7 @@ where a caller signs (<code>order.typedData</code>), shares, or composes.</p>
 (<code>buildOrderAgreement</code> — checkout semantics: registry-declared defaults
 fill omitted fields, process-log clauses stay empty anchors), and the
 walk ALSO fills <code>currency</code> (matched by declared field, never clause id)
-into the commerce section of EVERY realized order — the one term that
+into the commerce clause of EVERY realized order — the one term that
 must equal the commitment struct's <code>currency</code> field
 (docs/CLAUSES.md § &quot;Every clause is a merkle leaf&quot;). A caller override
 that already names a currency is accepted only when it matches; a
@@ -100,7 +100,7 @@ leaf that disagrees with its struct.</p>
 <p>Without <code>specs</code>, the raw override-merge (<code>agreementFromClauses</code>)
 applies — the agent-origination semantics — and currency-leaf routing is
 impossible (no spec to find the commerce clause by declared field). A
-spec-less caller OWNS that leaf: it must supply the commerce section's
+spec-less caller OWNS that leaf: it must supply the commerce clause's
 <code>currency</code> itself, via <code>ReconstructNodeSpec.overrides</code>, equal to the
 <code>currency</code> this walk is called with. The sign gate
 (<code>assertAgreementSignable</code>) is the net that catches a spec-less caller

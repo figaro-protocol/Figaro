@@ -367,7 +367,7 @@ function ContractPage({ contract }: { contract: AuditBundle["contract"] }) {
             </View>
             <Text style={styles.note}>
                 Each clause leaf hash is a node in the merkle tree under
-                agreementHash. Reader recomputes via computeSectionLeaf and
+                agreementHash. Reader recomputes via computeClauseLeaf and
                 verifies inclusion.
             </Text>
         </AuditPage>
@@ -626,8 +626,8 @@ function HashAppendixPage({ appendix }: { appendix: AuditBundle["hashAppendix"] 
             <Text style={styles.note}>
                 Reader recomputes each hash from the cited content / location and
                 verifies against chain. agreementHash = merkle root over section
-                leaves and the provenance leaf. Each section leaf =
-                computeSectionLeaf(section); the provenance leaf =
+                leaves and the provenance leaf. Each clause leaf =
+                computeClauseLeaf(section); the provenance leaf =
                 computeProvenanceLeaf(agreementKey, compositionHash). Each
                 attestation contentRef = keccak256(content) where content sits
                 in the transaction calldata.

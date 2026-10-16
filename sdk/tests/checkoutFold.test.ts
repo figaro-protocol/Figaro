@@ -1,6 +1,6 @@
 /**
- * The fill-where-composed section writers (checkoutPlan) — cargo measure,
- * catalog-sourced class leaves, derived dimensional weight. Sections are
+ * The fill-where-composed clause writers (checkoutPlan) — cargo measure,
+ * catalog-sourced class leaves, derived dimensional weight. Clauses are
  * found by declared field / spec hints through the SpecSource, never by
  * clause id. Migrated from the frontend's assemblyCheckoutFold suite when the
  * fills promoted to the SDK.
@@ -8,17 +8,17 @@
 import { describe, expect, it } from "vitest";
 import {
     derivePricedFields,
-    fillCargoSection,
-    fillClassSections,
-    fillCommerceSection,
-    fillDerivedSections,
-    fillDimweightSection,
-    fillProfileSections,
+    fillCargoClause,
+    fillClassClauses,
+    fillCommerceClause,
+    fillDerivedClauses,
+    fillDimweightClause,
+    fillProfileClauses,
     getRateQuantityResolver,
     mechanicallyFilledFieldNames,
     readUtilityTokenPin,
     resolveSubOrderPricing,
-    writeTopologySection,
+    writeTopologyClause,
     type AssemblyCheckoutLineItem,
 } from "../src/checkoutPlan.js";
 import { fillWalkProvenance } from "../src/reconstructOrders.js";
@@ -36,9 +36,9 @@ const COMMERCE = specSourceFromFixtures(["figaro-commerce"]);
 const FREIGHT = specSourceFromFixtures(["figaro-freight-class"]);
 const CARGO_DIM = specSourceFromFixtures(["figaro-cargo", "figaro-dimweight"]);
 
-describe("fillCargoSection — physical measure folded by declared field", () => {
+describe("fillCargoClause — physical measure folded by declared field", () => {
     it("sums mass + volume across lines × quantity", () => {
-        const out = fillCargoSection({ [keyOf("figaro-cargo")]: {} }, [
+        const out = fillCargoClause({ [keyOf("figaro-cargo")]: {} }, [
             line({ massGrams: 500, volumeMl: 1000, quantity: 2 }),
             line({ massGrams: 100, volumeMl: 200, quantity: 1 }),
         ], CARGO);
@@ -46,14 +46,14 @@ describe("fillCargoSection — physical measure folded by declared field", () =>
     });
 
     it("writes packaged dims only for a single parcel (1 line, qty 1)", () => {
-        const single = fillCargoSection({ [keyOf("figaro-cargo")]: {} }, [
+        const single = fillCargoClause({ [keyOf("figaro-cargo")]: {} }, [
             line({ massGrams: 500, lengthMm: 300, widthMm: 200, heightMm: 150 }),
         ], CARGO);
         expect(single[keyOf("figaro-cargo")]).toMatchObject({ lengthMm: 300, widthMm: 200, heightMm: 150 });
     });
 
     it("omits dims when the order is multi-line (dims don't sum)", () => {
-        const multi = fillCargoSection({ [keyOf("figaro-cargo")]: {} }, [
+        const multi = fillCargoClause({ [keyOf("figaro-cargo")]: {} }, [
             line({ massGrams: 500, lengthMm: 300, widthMm: 200, heightMm: 150 }),
             line({ massGrams: 100, lengthMm: 100, widthMm: 100, heightMm: 100 }),
         ], CARGO);
@@ -64,7 +64,7 @@ describe("fillCargoSection — physical measure folded by declared field", () =>
 
     it("no-ops when no cargo clause is composed (services → absence)", () => {
         const clauses: ClauseFields = { [keyOf("figaro-commerce")]: {} };
-        expect(fillCargoSection(clauses, [line({ massGrams: 500 })], COMMERCE)).toEqual(clauses);
+        expect(fillCargoClause(clauses, [line({ massGrams: 500 })], COMMERCE)).toEqual(clauses);
     });
 });
 
@@ -73,14 +73,14 @@ const OTHER_TOKEN = "0x000000000000000000000000000000000000000b" as const;
 const COMMERCE_AND_PIN = specSourceFromFixtures(["figaro-commerce", "figaro-utility-token"]);
 const PIN_ONLY = specSourceFromFixtures(["figaro-utility-token"]);
 
-describe("fillCommerceSection — the order's resolution terms, written by declared field", () => {
+describe("fillCommerceClause — the order's resolution terms, written by declared field", () => {
     it("writes the resolved currency beside the payment — both are TERMS, both are leaves", () => {
-        const out = fillCommerceSection({ [keyOf("figaro-commerce")]: {} }, 1000n, TOKEN, COMMERCE);
+        const out = fillCommerceClause({ [keyOf("figaro-commerce")]: {} }, 1000n, TOKEN, COMMERCE);
         expect(out[keyOf("figaro-commerce")]).toMatchObject({ currency: TOKEN, payment: "1000" });
     });
 
-    it("writes line items when supplied, stripped to the section's closed shape", () => {
-        const out = fillCommerceSection({ [keyOf("figaro-commerce")]: {} }, 1000n, TOKEN, COMMERCE, [
+    it("writes line items when supplied, stripped to the clause's closed shape", () => {
+        const out = fillCommerceClause({ [keyOf("figaro-commerce")]: {} }, 1000n, TOKEN, COMMERCE, [
             line({ itemId: "burger-001", name: "Cheeseburger", quantity: 2, unitPrice: "500", massGrams: 400 }),
         ]);
         expect(out[keyOf("figaro-commerce")].lineItems).toEqual([
@@ -90,7 +90,7 @@ describe("fillCommerceSection — the order's resolution terms, written by decla
 
     it("no-ops when no commerce clause is composed", () => {
         const clauses: ClauseFields = { [keyOf("figaro-cargo")]: {} };
-        expect(fillCommerceSection(clauses, 1000n, TOKEN, CARGO)).toEqual(clauses);
+        expect(fillCommerceClause(clauses, 1000n, TOKEN, CARGO)).toEqual(clauses);
     });
 });
 
@@ -129,9 +129,9 @@ describe("readUtilityTokenPin — routed on the DESIGN FILL, never on first matc
     });
 });
 
-describe("fillClassSections — catalog-sourced values folded onto their leaves", () => {
+describe("fillClassClauses — catalog-sourced values folded onto their leaves", () => {
     it("folds a line's authored freight-class value", () => {
-        const out = fillClassSections({ [keyOf("figaro-freight-class")]: {} }, [
+        const out = fillClassClauses({ [keyOf("figaro-freight-class")]: {} }, [
             line({ clauseValues: { [keyOf("figaro-freight-class")]: { nmfcClass: "100" } } }),
         ], FREIGHT);
         expect(out[keyOf("figaro-freight-class")]).toMatchObject({ nmfcClass: "100" });
@@ -139,11 +139,11 @@ describe("fillClassSections — catalog-sourced values folded onto their leaves"
 
     it("no-ops when the composed clause isn't catalog-sourced", () => {
         const clauses: ClauseFields = { [keyOf("figaro-commerce")]: {} };
-        expect(fillClassSections(clauses, [line({ clauseValues: { [keyOf("figaro-commerce")]: { x: 1 } } })], COMMERCE)).toEqual(clauses);
+        expect(fillClassClauses(clauses, [line({ clauseValues: { [keyOf("figaro-commerce")]: { x: 1 } } })], COMMERCE)).toEqual(clauses);
     });
 
     it("assembly's committed value WINS over the catalog's (terms outrank master data)", () => {
-        const out = fillClassSections({ [keyOf("figaro-freight-class")]: { nmfcClass: "70" } }, [
+        const out = fillClassClauses({ [keyOf("figaro-freight-class")]: { nmfcClass: "70" } }, [
             line({ clauseValues: { [keyOf("figaro-freight-class")]: { nmfcClass: "100", nmfcItem: "156600" } } }),
         ], FREIGHT);
         // The pinned class survives; the un-pinned item number fills from the catalog.
@@ -151,7 +151,7 @@ describe("fillClassSections — catalog-sourced values folded onto their leaves"
     });
 
     it("folds ONLY the spec's declared catalogueFills — an undeclared key never reaches the leaf", () => {
-        const out = fillClassSections({ [keyOf("figaro-freight-class")]: {} }, [
+        const out = fillClassClauses({ [keyOf("figaro-freight-class")]: {} }, [
             line({ clauseValues: { [keyOf("figaro-freight-class")]: { nmfcClass: "100", rate: "0.01" } } }),
         ], FREIGHT);
         expect(out[keyOf("figaro-freight-class")]).toMatchObject({ nmfcClass: "100" });
@@ -159,7 +159,7 @@ describe("fillClassSections — catalog-sourced values folded onto their leaves"
     });
 
     it("an empty-string assembly entry is not a pin — the catalog value fills it", () => {
-        const out = fillClassSections({ [keyOf("figaro-freight-class")]: { nmfcClass: "" } }, [
+        const out = fillClassClauses({ [keyOf("figaro-freight-class")]: { nmfcClass: "" } }, [
             line({ clauseValues: { [keyOf("figaro-freight-class")]: { nmfcClass: "100" } } }),
         ], FREIGHT);
         expect(out[keyOf("figaro-freight-class")]).toMatchObject({ nmfcClass: "100" });
@@ -169,9 +169,9 @@ describe("fillClassSections — catalog-sourced values folded onto their leaves"
 const CREDENTIAL = specSourceFromFixtures(["figaro-credential"]);
 const REGISTER = "https://data.cityofnewyork.us/resource/xjfq-wh2d.json?license_number={id}";
 
-describe("fillProfileSections — member profile master data folded onto their leaves", () => {
+describe("fillProfileClauses — member profile master data folded onto their leaves", () => {
     it("folds the declared profile-authored subset onto a composed leaf", () => {
-        const out = fillProfileSections(
+        const out = fillProfileClauses(
             { [keyOf("figaro-credential")]: { credentialRegisterUri: REGISTER } },
             { [keyOf("figaro-credential")]: { credentialId: "500458" } },
             CREDENTIAL,
@@ -183,7 +183,7 @@ describe("fillProfileSections — member profile master data folded onto their l
     });
 
     it("folds ONLY the spec's declared subset — stored values outside it never land", () => {
-        const out = fillProfileSections(
+        const out = fillProfileClauses(
             { [keyOf("figaro-credential")]: { credentialRegisterUri: REGISTER } },
             // The register pin is the DESIGNER's field; a profile-stored copy is
             // outside `profileFills: ["credentialId"]` and must not fold.
@@ -195,10 +195,10 @@ describe("fillProfileSections — member profile master data folded onto their l
 
     it("no-ops for clauses that are not profile-sourced, absent stores, and undeclared fields", () => {
         const clauses: ClauseFields = { [keyOf("figaro-commerce")]: {} };
-        expect(fillProfileSections(clauses, { [keyOf("figaro-commerce")]: { x: 1 } }, COMMERCE)).toEqual(clauses);
+        expect(fillProfileClauses(clauses, { [keyOf("figaro-commerce")]: { x: 1 } }, COMMERCE)).toEqual(clauses);
         const credential: ClauseFields = { [keyOf("figaro-credential")]: { credentialRegisterUri: REGISTER } };
-        expect(fillProfileSections(credential, undefined, CREDENTIAL)).toEqual(credential);
-        expect(fillProfileSections(credential, {}, CREDENTIAL)).toEqual(credential);
+        expect(fillProfileClauses(credential, undefined, CREDENTIAL)).toEqual(credential);
+        expect(fillProfileClauses(credential, {}, CREDENTIAL)).toEqual(credential);
     });
 });
 
@@ -217,17 +217,17 @@ describe("the profile fill and the mechanical field set read the spec each key n
     const stored = { [keyOf("figaro-credential")]: values, [fakeCredential.clauseKey]: values };
 
     it("the real key folds the real spec's declared subset, whatever else is loaded", () => {
-        const out = fillProfileSections({ [keyOf("figaro-credential")]: {} }, stored, credentials);
+        const out = fillProfileClauses({ [keyOf("figaro-credential")]: {} }, stored, credentials);
         expect(out[keyOf("figaro-credential")]).toEqual({ credentialId: "500458" });
     });
 
     it("the lookalike's key folds the lookalike's declared subset", () => {
-        const out = fillProfileSections({ [fakeCredential.clauseKey]: {} }, stored, credentials);
+        const out = fillProfileClauses({ [fakeCredential.clauseKey]: {} }, stored, credentials);
         expect(out[fakeCredential.clauseKey]).toMatchObject({ credentialRegisterUri: "https://evil.example/{id}" });
     });
 
-    it("fillDerivedSections reads each section by its key", () => {
-        expect(fillDerivedSections({ [keyOf("figaro-credential")]: {} }, [], credentials, stored)[keyOf("figaro-credential")])
+    it("fillDerivedClauses reads each clause by its key", () => {
+        expect(fillDerivedClauses({ [keyOf("figaro-credential")]: {} }, [], credentials, stored)[keyOf("figaro-credential")])
             .toEqual({ credentialId: "500458" });
     });
 
@@ -247,11 +247,11 @@ describe("the profile fill and the mechanical field set read the spec each key n
     });
 });
 
-describe("fillDimweightSection — derived billed weight (divisor from the profile-folded leaf)", () => {
+describe("fillDimweightClause — derived billed weight (divisor from the profile-folded leaf)", () => {
     it("computes billed = max(gross, volumetric) with per-dimension round-up", () => {
         // 305×200×150 mm → round each up to the next cm → 310×200×150 = 9,300,000 mm³
         // ÷ 5000 = 1860 g volumetric > 1000 g gross → billed 1860.
-        const out = fillDimweightSection(
+        const out = fillDimweightClause(
             { [keyOf("figaro-cargo")]: { massGrams: 1000, lengthMm: 305, widthMm: 200, heightMm: 150 }, [keyOf("figaro-dimweight")]: { divisor: 5000 } },
             CARGO_DIM,
         );
@@ -259,7 +259,7 @@ describe("fillDimweightSection — derived billed weight (divisor from the profi
     });
 
     it("uses gross mass when it exceeds the volumetric weight", () => {
-        const out = fillDimweightSection(
+        const out = fillDimweightClause(
             { [keyOf("figaro-cargo")]: { massGrams: 9000, lengthMm: 300, widthMm: 200, heightMm: 150 }, [keyOf("figaro-dimweight")]: { divisor: 5000 } },
             CARGO_DIM,
         );
@@ -268,15 +268,15 @@ describe("fillDimweightSection — derived billed weight (divisor from the profi
 
     it("no-ops without a divisor on the leaf, without dims, or without the dimweight clause", () => {
         const withDims = { [keyOf("figaro-cargo")]: { massGrams: 1000, lengthMm: 300, widthMm: 200, heightMm: 150 }, [keyOf("figaro-dimweight")]: {} };
-        expect(fillDimweightSection(withDims, CARGO_DIM)).toEqual(withDims); // no divisor folded
+        expect(fillDimweightClause(withDims, CARGO_DIM)).toEqual(withDims); // no divisor folded
         const noDims = { [keyOf("figaro-cargo")]: { massGrams: 1000 }, [keyOf("figaro-dimweight")]: { divisor: 5000 } };
-        expect(fillDimweightSection(noDims, CARGO_DIM)).toEqual(noDims); // no dims
+        expect(fillDimweightClause(noDims, CARGO_DIM)).toEqual(noDims); // no dims
         const noClause = { [keyOf("figaro-cargo")]: { massGrams: 1000, lengthMm: 300, widthMm: 200, heightMm: 150 } };
-        expect(fillDimweightSection(noClause, CARGO_DIM)).toEqual(noClause); // no dimweight clause
+        expect(fillDimweightClause(noClause, CARGO_DIM)).toEqual(noClause); // no dimweight clause
     });
 
-    it("derives end to end through fillDerivedSections: profile divisor → folded leaf → billed", () => {
-        const out = fillDerivedSections(
+    it("derives end to end through fillDerivedClauses: profile divisor → folded leaf → billed", () => {
+        const out = fillDerivedClauses(
             { [keyOf("figaro-cargo")]: {}, [keyOf("figaro-dimweight")]: {} },
             [line({ massGrams: 500, lengthMm: 300, widthMm: 200, heightMm: 150 })],
             CARGO_DIM,
@@ -318,20 +318,20 @@ describe("every spec-routed fill reads the spec each composed key names", () => 
     const REAL = keyOf(GEO);
     const HASH = `0x${"ab".repeat(32)}` as const;
 
-    it("fillCommerceSection", () => {
+    it("fillCommerceClause", () => {
         const { specs, fake } = lookalike([GEO], GEO, ["lineItems", "payment"]);
-        expect(fillCommerceSection({ [REAL]: {} }, 1000n, TOKEN, specs)).toEqual({ [REAL]: {} });
-        expect(fillCommerceSection({ [fake]: {} }, 1000n, TOKEN, specs)[fake]).toMatchObject({ payment: "1000" });
+        expect(fillCommerceClause({ [REAL]: {} }, 1000n, TOKEN, specs)).toEqual({ [REAL]: {} });
+        expect(fillCommerceClause({ [fake]: {} }, 1000n, TOKEN, specs)[fake]).toMatchObject({ payment: "1000" });
     });
 
-    it("fillCommerceSection writes currency only where the composed key's spec declares it as content", () => {
+    it("fillCommerceClause writes currency only where the composed key's spec declares it as content", () => {
         const { specs, fake } = lookalike(["figaro-commerce"], "figaro-commerce", [], { design: { fills: ["currency"] } });
-        expect(fillCommerceSection({ [keyOf("figaro-commerce")]: {} }, 1000n, TOKEN, specs)[keyOf("figaro-commerce")])
+        expect(fillCommerceClause({ [keyOf("figaro-commerce")]: {} }, 1000n, TOKEN, specs)[keyOf("figaro-commerce")])
             .toMatchObject({ currency: TOKEN, payment: "1000" });
-        expect(fillCommerceSection({ [fake]: {} }, 1000n, TOKEN, specs)[fake]).not.toHaveProperty("currency");
+        expect(fillCommerceClause({ [fake]: {} }, 1000n, TOKEN, specs)[fake]).not.toHaveProperty("currency");
     });
 
-    it("derivePricedFields reads each section by its key", () => {
+    it("derivePricedFields reads each clause by its key", () => {
         const { specs, fake } = lookalike([GEO], GEO, ["lineItems"]);
         const data = { lineItems: [{ itemId: "i" }] };
         expect(derivePricedFields([{ clause: REAL, data }], specs)).toEqual([]);
@@ -363,35 +363,35 @@ describe("every spec-routed fill reads the spec each composed key names", () => 
             .toThrow(/refusing to claim a different provenance/);
     });
 
-    it("writeTopologySection", () => {
+    it("writeTopologyClause", () => {
         const { specs, fake } = lookalike([GEO], GEO, ["parentOrderHashes"]);
-        expect(writeTopologySection({ [REAL]: {} }, [HASH], specs)).toEqual({ [REAL]: {} });
-        expect(writeTopologySection({ [fake]: {} }, [HASH], specs)[fake]).toEqual({ parentOrderHashes: [HASH] });
+        expect(writeTopologyClause({ [REAL]: {} }, [HASH], specs)).toEqual({ [REAL]: {} });
+        expect(writeTopologyClause({ [fake]: {} }, [HASH], specs)[fake]).toEqual({ parentOrderHashes: [HASH] });
     });
 
-    it("fillCargoSection", () => {
+    it("fillCargoClause", () => {
         const { specs, fake } = lookalike([GEO], GEO, ["massGrams"]);
-        expect(fillCargoSection({ [REAL]: {} }, [line({ massGrams: 500 })], specs)).toEqual({ [REAL]: {} });
-        expect(fillCargoSection({ [fake]: {} }, [line({ massGrams: 500 })], specs)[fake]).toEqual({ massGrams: 500 });
+        expect(fillCargoClause({ [REAL]: {} }, [line({ massGrams: 500 })], specs)).toEqual({ [REAL]: {} });
+        expect(fillCargoClause({ [fake]: {} }, [line({ massGrams: 500 })], specs)[fake]).toEqual({ massGrams: 500 });
     });
 
-    it("fillClassSections", () => {
+    it("fillClassClauses", () => {
         const { specs, fake } = lookalike([GEO], GEO, ["hazmatClass"], { checkout: { catalogueFills: ["hazmatClass"] } });
         const lines = [line({ clauseValues: { [REAL]: { hazmatClass: "3" }, [fake]: { hazmatClass: "3" } } })];
-        expect(fillClassSections({ [REAL]: {} }, lines, specs)).toEqual({ [REAL]: {} });
-        expect(fillClassSections({ [fake]: {} }, lines, specs)[fake]).toEqual({ hazmatClass: "3" });
+        expect(fillClassClauses({ [REAL]: {} }, lines, specs)).toEqual({ [REAL]: {} });
+        expect(fillClassClauses({ [fake]: {} }, lines, specs)[fake]).toEqual({ hazmatClass: "3" });
     });
 
-    it("fillDimweightSection, and fillDerivedSections reaching every fill", () => {
+    it("fillDimweightClause, and fillDerivedClauses reaching every fill", () => {
         const { specs, fake } = lookalike(["figaro-cargo", GEO], GEO, ["billedMassGrams", "divisor"]);
         const cargo = { massGrams: 500, lengthMm: 300, widthMm: 200, heightMm: 150 };
         const real = { [keyOf("figaro-cargo")]: cargo, [REAL]: { divisor: 5000 } };
-        expect(fillDimweightSection(real, specs)).toEqual(real);
-        expect(fillDimweightSection({ [keyOf("figaro-cargo")]: cargo, [fake]: { divisor: 5000 } }, specs)[fake])
+        expect(fillDimweightClause(real, specs)).toEqual(real);
+        expect(fillDimweightClause({ [keyOf("figaro-cargo")]: cargo, [fake]: { divisor: 5000 } }, specs)[fake])
             .toMatchObject({ billedMassGrams: 1800 });
         const massLookalike = lookalike([GEO], GEO, ["massGrams"]);
-        expect(fillDerivedSections({ [REAL]: {} }, [line({ massGrams: 500 })], massLookalike.specs)).toEqual({ [REAL]: {} });
-        expect(fillDerivedSections({ [massLookalike.fake]: {} }, [line({ massGrams: 500 })], massLookalike.specs)[massLookalike.fake])
+        expect(fillDerivedClauses({ [REAL]: {} }, [line({ massGrams: 500 })], massLookalike.specs)).toEqual({ [REAL]: {} });
+        expect(fillDerivedClauses({ [massLookalike.fake]: {} }, [line({ massGrams: 500 })], massLookalike.specs)[massLookalike.fake])
             .toEqual({ massGrams: 500 });
     });
 

@@ -165,15 +165,15 @@ contract AttestationCoordinatorTest is Test {
     }
 
     /// @dev Shortcut: commit a root order whose agreement is a single clause
-    ///      under `clauseId` with `sectionData`. The resulting commitment's
-    ///      `agreementHash` equals `leafFor(clauseId, sectionData)`, which is
-    ///      a valid single-leaf merkle tree — attestations use `sectionData`
+    ///      under `clauseId` with `clauseData`. The resulting commitment's
+    ///      `agreementHash` equals `leafFor(clauseId, clauseData)`, which is
+    ///      a valid single-leaf merkle tree — attestations use `clauseData`
     ///      plus an empty proof.
-    function _commitRootSingle(uint256 payment, uint256 salt, bytes32 clauseIdLocal, bytes memory sectionData)
+    function _commitRootSingle(uint256 payment, uint256 salt, bytes32 clauseIdLocal, bytes memory clauseData)
         internal
         returns (bytes32 processId, bytes32 orderHash, CommitmentTypes.Commitment memory c)
     {
-        return _commitRoot(payment, salt, AgreementTestHelper.singleSectionRoot(clauseIdLocal, sectionData));
+        return _commitRoot(payment, salt, AgreementTestHelper.singleClauseRoot(clauseIdLocal, clauseData));
     }
 
     /// @dev Shortcut: commit a sub-order whose agreement is a single clause.
@@ -185,7 +185,7 @@ contract AttestationCoordinatorTest is Test {
         uint256 sellerKey,
         uint256 salt,
         bytes32 clauseIdLocal,
-        bytes memory sectionData
+        bytes memory clauseData
     ) internal returns (bytes32 orderHash, CommitmentTypes.Commitment memory c) {
         return _commitSub(
             processId,
@@ -194,7 +194,7 @@ contract AttestationCoordinatorTest is Test {
             expectedCum,
             sellerKey,
             salt,
-            AgreementTestHelper.singleSectionRoot(clauseIdLocal, sectionData)
+            AgreementTestHelper.singleClauseRoot(clauseIdLocal, clauseData)
         );
     }
 
@@ -291,7 +291,7 @@ contract AttestationCoordinatorTest is Test {
         // Root and sub-order each commit under a single-section LIFECYCLE
         // agreement so a lifecycle attestation against either has a valid
         // inclusion proof from the respective commitment.
-        bytes32 agHash = AgreementTestHelper.singleSectionRoot(LIFECYCLE_CLAUSE, "");
+        bytes32 agHash = AgreementTestHelper.singleClauseRoot(LIFECYCLE_CLAUSE, "");
         (bytes32 processId,, CommitmentTypes.Commitment memory rootC) = _commitRoot(10 ether, 1, agHash);
         (, CommitmentTypes.Commitment memory subC) =
             _commitSub(processId, seller2, 20 ether, 30 ether, SELLER2_KEY, 2, agHash);
@@ -306,7 +306,7 @@ contract AttestationCoordinatorTest is Test {
     // ═══════════════════════════════════════════════════════════════
 
     function test_crossOrderAttestation_crossProcess_reverts() public {
-        bytes32 agHash = AgreementTestHelper.singleSectionRoot(LIFECYCLE_CLAUSE, "");
+        bytes32 agHash = AgreementTestHelper.singleClauseRoot(LIFECYCLE_CLAUSE, "");
         (, bytes32 rootHashA, CommitmentTypes.Commitment memory rootA) = _commitRoot(10 ether, 1, agHash);
         (, bytes32 rootHashB, CommitmentTypes.Commitment memory rootB) = _commitRoot(20 ether, 2, agHash);
 
@@ -549,7 +549,7 @@ contract AttestationCoordinatorTest is Test {
             currency: address(token),
             payment: 25 ether,
             expectedCumulativeValue: 25 ether,
-            agreementHash: AgreementTestHelper.singleSectionRoot(LIFECYCLE_CLAUSE, ""),
+            agreementHash: AgreementTestHelper.singleClauseRoot(LIFECYCLE_CLAUSE, ""),
             salt: 2,
             deadline: block.timestamp + 1 hours
         });
@@ -701,7 +701,7 @@ contract AttestationCoordinatorTest is Test {
         coordinator.attestAsSeller(c, c, UNUSED_CLAUSE, 1, EMPTY, _emptyProof(), EMPTY);
     }
 
-    /// @dev Same merkle gate from the buyer path: wrong sectionData (or wrong
+    /// @dev Same merkle gate from the buyer path: wrong clauseData (or wrong
     ///      clause) breaks inclusion.
     function test_attestAsBuyer_revertsOnSectionDataMismatch() public {
         (,, CommitmentTypes.Commitment memory c) = _commitRootSingle(1 ether, 2, LIFECYCLE_CLAUSE, "");
@@ -711,7 +711,7 @@ contract AttestationCoordinatorTest is Test {
                 AttestationCoordinator.InvalidInclusionProof.selector, c.agreementHash, LIFECYCLE_CLAUSE
             )
         );
-        // Signed sectionData was "" — attesting with non-empty sectionData
+        // Signed clauseData was "" — attesting with non-empty clauseData
         // recomputes a different leaf that won't open against the root.
         coordinator.attestAsBuyer(c, LIFECYCLE_CLAUSE, 1, keccak256("tampered"), _emptyProof(), EMPTY);
     }

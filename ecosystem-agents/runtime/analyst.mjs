@@ -33,7 +33,7 @@ import {
     parseProjectionHints,
     reconstructDiscovery,
     readUtilityTokenPin,
-    sectionByField,
+    clauseByField,
 } from "@figaro-protocol/sdk";
 import { parseClauseSpec } from "@figaro-protocol/sdk/clauses";
 import {
@@ -419,7 +419,7 @@ export async function syncCorpus({
  * Assembly attribution from the agreements the operator actually holds: the
  * agreement's provenance leaf (`agreement.provenance`, the registered
  * agreement and the composition hash of the assembly it instantiated) — the
- * agreement format's own field, never a clause section. A process with no held agreement is `undefined` — counted
+ * agreement format's own field, never a clause. A process with no held agreement is `undefined` — counted
  * as unattributed, never binned under a fabricated key. That is the honest
  * public picture: the resolution skeleton is public, the body that says WHICH
  * assembly produced it is party-private until someone discloses or sells it.
@@ -436,7 +436,7 @@ function assemblyAttribution(corpus) {
 }
 
 /**
- * Parent edges from held agreements' topology sections, found by the declared
+ * Parent edges from held agreements' topology clauses, found by the declared
  * `parentOrderHashes` field. Returns `undefined` when NO held agreement
  * carries edges — the caller then omits the argument and `marketShape` reports
  * FigaroCore's own linear view rather than a fabricated DAG.
@@ -444,8 +444,8 @@ function assemblyAttribution(corpus) {
 function parentEdges(corpus) {
     const byOrder = new Map();
     for (const { agreement, order } of corpus.held.byHash.values()) {
-        const section = sectionByField(agreement, "parentOrderHashes", corpus.specs);
-        const parents = section?.data?.parentOrderHashes;
+        const clauseEntry = clauseByField(agreement, "parentOrderHashes", corpus.specs);
+        const parents = clauseEntry?.data?.parentOrderHashes;
         if (Array.isArray(parents)) byOrder.set(order.orderHash.toLowerCase(), parents);
     }
     if (byOrder.size === 0) return undefined;

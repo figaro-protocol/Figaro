@@ -177,7 +177,7 @@ export function selectRaceWinner(replies: readonly RaceReply[]): RaceReply | nul
  * sides share (the candidate builds the counter-draft with it; the buyer
  * rebuilds the expectation with it). Each priced field — named by the BUYER
  * in the request; the SDK names no clause — is set to the quote's decimal
- * string in raw token units. Throws on a missing section or path: a request
+ * string in raw token units. Throws on a missing clause or path: a request
  * pricing a field the agreement doesn't carry is malformed.
  */
 export function substitutePricedValue(
@@ -186,16 +186,16 @@ export function substitutePricedValue(
     value: bigint,
 ): Agreement {
     if (pricedFields.length === 0) throw new Error("substitutePricedValue: the request names no priced fields");
-    let sections = agreement.sections;
+    let clauseEntries = agreement.sections;
     for (const field of pricedFields) {
-        const index = sections.findIndex((s) => s.clause.toLowerCase() === field.clause.toLowerCase());
-        if (index === -1) throw new Error(`substitutePricedValue: agreement has no "${field.clause}" section`);
-        // A section's data root is an object by type, so the immutable set
+        const index = clauseEntries.findIndex((s) => s.clause.toLowerCase() === field.clause.toLowerCase());
+        if (index === -1) throw new Error(`substitutePricedValue: agreement has no "${field.clause}" clauseEntry`);
+        // A clause's data root is an object by type, so the immutable set
         // returns an object here — the array branch only occurs mid-path.
-        const data = setAtPath(sections[index].data, field.path.split("."), value.toString()) as Record<string, unknown>;
-        sections = sections.map((s, i) => (i === index ? { ...s, data } : s));
+        const data = setAtPath(clauseEntries[index].data, field.path.split("."), value.toString()) as Record<string, unknown>;
+        clauseEntries = clauseEntries.map((s, i) => (i === index ? { ...s, data } : s));
     }
-    return { ...agreement, sections };
+    return { ...agreement, sections: clauseEntries };
 }
 
 /** Immutable set at a dotted path (numeric segments index arrays). Throws if

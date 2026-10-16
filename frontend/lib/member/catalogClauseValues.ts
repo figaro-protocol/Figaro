@@ -41,7 +41,7 @@ export function validateCatalogClauseValues(item: CatalogItemMetadata): string[]
 }
 
 /**
- * The catalog-filled clause sections a member's items actually offer:
+ * The catalog-filled clauses a member's items actually offer:
  * every registered clause with `block.checkout.catalogueFills` that one of the
  * assemblies this member has BOUND composes. Two derivations, one direction —
  * the bindings decide the clauses, the clauses decide the fields; the

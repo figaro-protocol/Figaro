@@ -137,10 +137,10 @@ export async function unpinAgreement(
     forgetAgreementUri(agreementHash);
 }
 
-/** Warm the clause specs the agreement's sections reference into the module
+/** Warm the clause specs the agreement's clauses reference into the module
  *  cache before `publicForm` decides what to withhold. `publicForm` is
  *  FAIL-CLOSED (an unknown clause is withheld), so a COLD private spec at pin
- *  time would over-redact a PUBLIC section — and, without this warm step on the
+ *  time would over-redact a PUBLIC clause — and, without this warm step on the
  *  RECEIVER re-pin leg (a wallet that never composed the agreement, so never
  *  loaded the clause through a disposition-aware input), a cold spec is the norm.
  *  Reads the registry once and loads only the specs actually missing (the common
@@ -186,10 +186,10 @@ export async function publishAgreement(
 ): Promise<PublishedAgreement> {
     const agreementHash = computeAgreementHash(agreement);
     const t = transport(options);
-    // Withhold every `private`-disposition section from the PUBLIC pin — a paid-
+    // Withhold every `private`-disposition clause from the PUBLIC pin — a paid-
     // edge value's plaintext never lands on public IPFS or in a shareable audit
     // bundle. The withheld leaf is identical, so `agreementHash` is unchanged and
-    // any reader still verifies the root + every public section. The signed and
+    // any reader still verifies the root + every public clause. The signed and
     // counterparty-relayed forms keep plaintext; only this standalone pin is
     // redacted. Warm the specs first so the FAIL-CLOSED projection is exact —
     // otherwise a cold private spec (common on the receiver re-pin) would leak.

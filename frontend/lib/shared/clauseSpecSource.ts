@@ -303,7 +303,7 @@ export function clauseDesignFills(clauseKey: string): readonly string[] {
 /** The content fields (by name) filled per-item on the member's CATALOG
  *  (item master data: freight class, hazmat, cold-chain), read from the
  *  clause's own `block.checkout.catalogueFills`. Generic surfaces render a
- *  spec-driven authoring section per such clause on the catalog item and
+ *  spec-driven authoring clause per such clause on the catalog item and
  *  fold the stored values onto the matching leaf at checkout. Empty for
  *  clauses with no catalog-filled fields — and while the spec is
  *  uncached. ANY registered clause declaring fills participates — including
@@ -313,7 +313,7 @@ export function clauseCatalogFills(clauseKey: string): readonly string[] {
 }
 
 /** Every loaded clause identity with catalog-filled fields — the set a
- *  catalog item's authoring section iterates. Derived from the live registry
+ *  catalog item's authoring clause iterates. Derived from the live registry
  *  cache, never a bundled list; a newly registered product-property clause
  *  appears here with zero code change. */
 export function listCatalogSourcedClauses(): readonly KnownClause[] {
@@ -334,7 +334,7 @@ export function clauseProfileFills(clauseKey: string): readonly string[] {
 }
 
 /** Every loaded clause identity with profile-filled fields — the set the
- *  member-profile authoring section iterates. Derived from the live registry
+ *  member-profile authoring clause iterates. Derived from the live registry
  *  cache, never a bundled list. */
 export function listProfileSourcedClauses(): readonly KnownClause[] {
     return listKnownClauses().filter((c) => clauseProfileFills(c.clauseKey).length > 0);

@@ -4,24 +4,24 @@
  * HashVerifier — in-browser hash verification for the audit-bundle pipeline.
  *
  * Phase E of the financial-statements deliverable. Auditors / reviewers
- * paste content (an Agreement JSON, a single section, or a raw hash) and
+ * paste content (an Agreement JSON, a single clause, or a raw hash) and
  * see what it anchors to:
  *
  *   • Mode A — Agreement: paste a full Agreement JSON, recompute its
  *     merkle root, optionally compare to an expected `agreementHash`.
  *
- *   • Mode B — Section: paste a single `AgreementSection` JSON, recompute
+ *   • Mode B — Clause: paste a single `AgreementClause` JSON, recompute
  *     its leaf hash, optionally compare to an expected leaf.
  *
  *   • Mode C — Search: paste any hex hash (e.g. from the audit-bundle
  *     PDF's hash appendix); the component searches the locally-loaded
- *     orders + agreements and reports which event field / section / leaf
+ *     orders + agreements and reports which event field / clause / leaf
  *     matches it. Used both standalone (auditor with a hash but no
  *     process) and inside `/audit/view?process=<processId>` (search scoped to the
  *     wallet's visible orders, including the current process).
  *
  * No server round-trip; all computation is client-side via the same
- * `computeAgreementHash` / `computeSectionLeaf` SDK functions the protocol
+ * `computeAgreementHash` / `computeClauseLeaf` SDK functions the protocol
  * uses internally — verifiability follows from using the canonical
  * functions, not a re-implementation.
  */
@@ -29,16 +29,16 @@ import { useState, useMemo } from "react";
 import {
     computeAgreementHash,
     computeProvenanceLeaf,
-    computeSectionLeaf,
+    computeClauseLeaf,
     type Agreement,
-    type AgreementSection,
+    type AgreementClause,
 } from "@figaro-protocol/sdk";
 import { useWalletOrders } from "@/hooks/useProcessOrders";
 import { useProcessAgreements } from "@/hooks/useProcessAgreements";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import { hexEqual } from "@/lib/shared/evm";
 
-type Mode = "agreement" | "section" | "search";
+type Mode = "agreement" | "clause" | "search";
 
 export function HashVerifier() {
     const [mode, setMode] = useState<Mode>("agreement");
@@ -59,7 +59,7 @@ export function HashVerifier() {
             </header>
 
             <nav className="flex gap-2 border-b border-default" data-testid="verify-mode-tabs">
-                {(["agreement", "section", "search"] as const).map((m) => (
+                {(["agreement", "clause", "search"] as const).map((m) => (
                     <button
                         key={m}
                         type="button"
@@ -71,13 +71,13 @@ export function HashVerifier() {
                                 : "border-transparent text-ink-muted hover:text-ink-primary"
                         }`}
                     >
-                        {m === "agreement" ? "A. Agreement" : m === "section" ? "B. Section" : "C. Search"}
+                        {m === "agreement" ? "A. Agreement" : m === "clause" ? "B. Clause" : "C. Search"}
                     </button>
                 ))}
             </nav>
 
             {mode === "agreement" && <AgreementMode />}
-            {mode === "section" && <SectionMode />}
+            {mode === "clause" && <ClauseMode />}
             {mode === "search" && <SearchMode />}
         </div>
     );
@@ -132,14 +132,14 @@ function AgreementMode() {
         try {
             const parsed = JSON.parse(json) as Agreement;
             if (!parsed || typeof parsed !== "object" || !Array.isArray(parsed.sections)) {
-                return { kind: "error" as const, message: "Parsed JSON is not an Agreement (missing sections array)." };
+                return { kind: "error" as const, message: "Parsed JSON is not an Agreement (missing clauses array)." };
             }
-            // Every section is cleartext ({ clause, data }) — the IPFS body
+            // Every clause is cleartext ({ clause, data }) — the IPFS body
             // carries them all. Selective disclosure is a merkle inclusion proof,
             // not a redacted agreement form.
-            for (const s of parsed.sections as AgreementSection[]) {
+            for (const s of parsed.sections as AgreementClause[]) {
                 if (!s || typeof s !== "object" || typeof s.clause !== "string") {
-                    return { kind: "error" as const, message: "Each section must have a string `clause` field." };
+                    return { kind: "error" as const, message: "Each clause must have a string `clause` field." };
                 }
                 if (typeof s.data !== "object") {
                     return { kind: "error" as const, message: `Section "${s.clause}" missing data field.` };
@@ -188,23 +188,23 @@ function AgreementMode() {
     );
 }
 
-// ── Mode B — Section leaf ──────────────────────────────────────────────────
+// ── Mode B — Clause leaf ──────────────────────────────────────────────────
 
-function SectionMode() {
+function ClauseMode() {
     const [json, setJson] = useState("");
     const [expected, setExpected] = useState("");
 
     const result = useMemo(() => {
         if (!json.trim()) return { kind: "idle" as const };
         try {
-            const parsed = JSON.parse(json) as AgreementSection;
+            const parsed = JSON.parse(json) as AgreementClause;
             if (!parsed || typeof parsed !== "object" || typeof parsed.clause !== "string" || typeof parsed.data !== "object") {
                 return {
                     kind: "error" as const,
-                    message: "Parsed JSON is not a single AgreementSection ({ clause: string, data: object }).",
+                    message: "Parsed JSON is not a single AgreementClause ({ clause: string, data: object }).",
                 };
             }
-            return { kind: "ok" as const, hash: computeSectionLeaf(parsed) };
+            return { kind: "ok" as const, hash: computeClauseLeaf(parsed) };
         } catch (e) {
             return { kind: "error" as const, message: extractErrorMessage(e, "JSON parse failed.") };
         }
@@ -213,9 +213,9 @@ function SectionMode() {
     return (
         <div className="space-y-4" data-testid="verify-section-mode">
             <p className="text-xs text-ink-body">
-                Paste a single `AgreementSection` JSON (one clause from an
-                agreement, e.g. a commerce section). The recomputed
-                leaf hash is shown below — compare to the section&apos;s leaf in
+                Paste a single `AgreementClause` JSON (one clause from an
+                agreement, e.g. a commerce clauseEntry). The recomputed
+                leaf hash is shown below — compare to the clause&apos;s leaf in
                 the audit-bundle hash appendix.
             </p>
             <label className="block text-xs font-semibold text-ink-body">
@@ -241,7 +241,7 @@ function SectionMode() {
             </label>
             {result.kind === "error" && <ErrorBox message={result.message} />}
             {result.kind === "ok" && (
-                <HashResult computed={result.hash} expected={expected.trim()} label="Recomputed section leaf hash" />
+                <HashResult computed={result.hash} expected={expected.trim()} label="Recomputed clause leaf hash" />
             )}
         </div>
     );
@@ -250,7 +250,7 @@ function SectionMode() {
 // ── Mode C — Hash search ───────────────────────────────────────────────────
 
 interface HashHit {
-    kind: "agreementHash" | "section-leaf" | "provenance-leaf" | "orderHash" | "processId";
+    kind: "agreementHash" | "clause-leaf" | "provenance-leaf" | "orderHash" | "processId";
     label: string;
     location: string;
 }
@@ -291,22 +291,22 @@ function SearchMode() {
                     location: `OrderCommitted.agreementHash event field`,
                 });
             }
-            // Walk each order's hydrated agreement and see if any section leaf matches.
+            // Walk each order's hydrated agreement and see if any clause leaf matches.
             const agreement = order.agreementHash
                 ? (agreements.get(order.agreementHash) ?? null)
                 : null;
             if (agreement) {
-                for (const section of agreement.sections) {
-                    if (hexEqual(computeSectionLeaf(section), target)) {
+                for (const clauseEntry of agreement.sections) {
+                    if (hexEqual(computeClauseLeaf(clauseEntry), target)) {
                         found.push({
-                            kind: "section-leaf",
-                            label: `Section leaf — ${section.clause}`,
+                            kind: "clause-leaf",
+                            label: `Clause leaf — ${clauseEntry.clause}`,
                             location: `Merkle leaf under agreementHash ${order.agreementHash} (order ${order.orderHash})`,
                         });
                     }
                 }
                 // The agreement format's provenance leaf — a leaf of the same
-                // tree, under the reserved key, never a clause section.
+                // tree, under the reserved key, never a clause.
                 if (agreement.provenance !== undefined
                     && hexEqual(computeProvenanceLeaf(agreement.provenance.agreementKey, agreement.provenance.compositionHash), target)) {
                     found.push({

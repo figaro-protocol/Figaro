@@ -21,8 +21,8 @@ const mkOrder = (o: Partial<Order> & Pick<Order, "orderHash" | "seller">): Order
     sellerBond: 0n, buyerBond: 0n, salt: 0n, deadline: 0n, ...o,
 });
 
-const agreement = (sections: { clause: string; data: Record<string, unknown> }[]): Agreement =>
-    ({ sections: sections.map((s) => ({ ...s, clause: keyOf(s.clause) })) } as unknown as Agreement);
+const agreement = (clauseEntries: { clause: string; data: Record<string, unknown> }[]): Agreement =>
+    ({ sections: clauseEntries.map((s) => ({ ...s, clause: keyOf(s.clause) })) } as unknown as Agreement);
 
 const commerce = (lineItems: { name: string; quantity: number }[]) =>
     ({ clause: "figaro-commerce", data: { currency: "0xtoken", payment: "0", lineItems } });
@@ -71,8 +71,8 @@ describe("projectDocuments — generic engine over declared assemblies", () => {
         const bol = bols[0];
         expect(bol.header.find((h) => h.label === "Carrier")!.value).toBe("0xCOURIER");
         expect(bol.header.find((h) => h.label === "Destination (geohash)")!.value).toBe("9q8yyk8yu");
-        const cargoSection = bol.leafSections!.find((s) => s.label === "Cargo")!;
-        expect(cargoSection.entries).toEqual(expect.arrayContaining([
+        const cargoClause = bol.leafSections!.find((s) => s.label === "Cargo")!;
+        expect(cargoClause.entries).toEqual(expect.arrayContaining([
             { key: "massGrams", value: "500" },
             { key: "volumeMl", value: "1000" },
         ]));
@@ -123,7 +123,7 @@ const withBonds = (o: Partial<Order> & Pick<Order, "orderHash" | "seller">): Ord
 };
 
 describe("projectFinancialStatements — the 3 statements AS a document (no duplicate invoice)", () => {
-    it("emits balance sheet + income statement sections and a cash-flow table; identity holds", () => {
+    it("emits balance sheet + income statement clauses and a cash-flow table; identity holds", () => {
         const doc = projectFinancialStatements(
             [withBonds({ orderHash: "0xA", seller: "0xS", payment: 100n, cumulativeValue: 100n })],
             "process", "0xPROC",

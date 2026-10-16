@@ -297,12 +297,12 @@ export function CheckoutView({ sellerAddress }: Props) {
     // Assembly-level fills (the "assembly" review group) apply to EVERY
     // node: expand them under each assembly order id, designer values under
     // buyer values, so the walk and the price preview see one merged map.
-    const assemblySections = pickedAssembly?.hydratedAssembly.assembly.assemblyClauses ?? {};
+    const assemblyClauseFills = pickedAssembly?.hydratedAssembly.assembly.assemblyClauses ?? {};
     const assemblyFills = clauseFills["assembly"] ?? {};
     const mergedAssemblyEntries = Object.fromEntries(
-        (Object.keys(assemblySections) as `0x${string}`[]).map((clauseKey) => [
+        (Object.keys(assemblyClauseFills) as `0x${string}`[]).map((clauseKey) => [
             clauseKey,
-            { ...assemblySections[clauseKey], ...(assemblyFills[clauseKey] ?? {}) },
+            { ...assemblyClauseFills[clauseKey], ...(assemblyFills[clauseKey] ?? {}) },
         ]),
     );
     const expandedClauseFills: typeof clauseFills = Object.fromEntries(

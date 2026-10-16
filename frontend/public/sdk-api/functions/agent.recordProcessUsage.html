@@ -24,9 +24,9 @@ a deferred record is permanently refusable). A buyer agent that resolves
 without calling this credits no clause author and no assembly designer.</p>
 <p>The legs are PLANNED before anything is sent, with the same two helpers the
 batch path uses (<code>fetchUsageClaimContext</code> + <code>buildUsageClaims</code>): every
-committed section gets a CLAUSE leg (<code>UsageCounter.recordClauseUsage</code> —
-only the section FINGERPRINT reaches calldata, never plaintext, so private
-sections stay off-chain), and the agreement's provenance leaf
+committed clause gets a CLAUSE leg (<code>UsageCounter.recordClauseUsage</code> —
+only the clause FINGERPRINT reaches calldata, never plaintext, so private
+clauses stay off-chain), and the agreement's provenance leaf
 (<code>Agreement.provenance</code>, the registered agreement and the assembly it
 instantiated) gets the INDEPENDENT AGREEMENT leg (<code>recordAgreementUsage</code>)
 and ASSEMBLY leg (<code>recordAssemblyUsage</code>, with the agreement's membership

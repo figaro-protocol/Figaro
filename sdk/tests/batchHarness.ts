@@ -84,7 +84,7 @@ export function computeGenesisRoot(): Hex {
     const emptyHash = keccak256("0x"); // keccak256("") = 0xc5d2460186...
     // The fourth leg is the RPGF usage state — the counted set, the per-period
     // pair set, and the running accrual. Each is length-prefixed, so on the
-    // empty state the leg is keccak over three zero-length sections.
+    // empty state the leg is keccak over three zero-length clauses.
     const emptyUsage = keccak256(encodePacked(["uint64", "uint64", "uint64"], [0n, 0n, 0n]));
     const packed = encodePacked(
         ["bytes32", "bytes32", "bytes32", "bytes32"],
@@ -258,7 +258,7 @@ export async function deployBatchStack(
             predictedVerifier,
             // minSellers = 1: this fixture drives ONE seller end to end and
             // proves the bridge's plumbing; the floor's own behavior is
-            // proven in UsageCounterTest's floor section and driven at the
+            // proven in UsageCounterTest's floor clause and driven at the
             // mainnet value by rpgf-rewards.devnet.spec.ts.
             1n,
             [BigInt(Math.floor(Date.now() / 1000) + 3600)],

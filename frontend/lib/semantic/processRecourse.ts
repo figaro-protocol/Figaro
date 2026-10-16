@@ -36,7 +36,7 @@ export interface RecourseClause {
 
 /**
  * Derive the dispute-resolution clause(s) a process's orders carry —
- * array-aware, deduped. Reads every order's committed sections and keeps those
+ * array-aware, deduped. Reads every order's committed clauses and keeps those
  * whose clause declares the dispute-resolution article. A designer may compose
  * more than one (e.g. a decentralized-ADR clause + an applicable-law clause),
  * so every distinct one is returned in first-seen order. Named `derive`, not
@@ -51,13 +51,13 @@ export function deriveProcessRecourse(
     for (const order of orders) {
         const agreement = order.agreementHash ? agreements.get(order.agreementHash) : undefined;
         if (!agreement) continue;
-        for (const section of agreement.sections) {
-            if (getClauseSpec(section.clause)?.block?.design.article !== RECOURSE_ARTICLE) continue;
-            const data = ((section as { data?: Record<string, unknown> }).data) ?? {};
-            const key = `${section.clause.toLowerCase()}:${JSON.stringify(data)}`;
+        for (const clauseEntry of agreement.sections) {
+            if (getClauseSpec(clauseEntry.clause)?.block?.design.article !== RECOURSE_ARTICLE) continue;
+            const data = ((clauseEntry as { data?: Record<string, unknown> }).data) ?? {};
+            const key = `${clauseEntry.clause.toLowerCase()}:${JSON.stringify(data)}`;
             if (seen.has(key)) continue;
             seen.add(key);
-            out.push({ clauseKey: section.clause, data });
+            out.push({ clauseKey: clauseEntry.clause, data });
         }
     }
     return out;

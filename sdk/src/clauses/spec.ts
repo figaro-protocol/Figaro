@@ -49,9 +49,9 @@ export type StringFormat =
  *     coordination possible — topology, denominations, standards, localities.
  *     Published in the open (plaintext IPFS), indexable.
  *   - "private": the scarce edge an agent PAYS to learn from. Published only
- *     behind the fingerprint (encrypted IPFS, or a content-withheld section);
+ *     behind the fingerprint (encrypted IPFS, or a content-withheld clause);
  *     the merkle leaf still binds it, but the plaintext is never public.
- * The chain carries only the section HASH either way (calldata never holds a
+ * The chain carries only the clause data hash either way (calldata never holds a
  * preimage — enforced at the contract tier). Disposition governs HOW a
  * frontend/SDK publishes the value, and per-field grain policy (see
  * figaro-geolocation's grain cap). Absent ⇒ "public": the commons is the norm,
@@ -507,8 +507,8 @@ export function parseClauseSpec(raw: unknown): ParseClauseSpecResult {
             if (child !== null) parsedFields.push(child);
         }
     }
-    // A section commits a clause's content fields as ONE merkle leaf, and the
-    // leaf model withholds a WHOLE section, never a single field (agreement.ts).
+    // A clause commits a clause's content fields as ONE merkle leaf, and the
+    // leaf model withholds a WHOLE clause, never a single field (agreement.ts).
     // So a clause whose content fields MIX public and private dispositions cannot
     // be published safely: withholding it for a public pin over-redacts its
     // public fields, and NOT withholding leaks its private ones. Author private
@@ -519,7 +519,7 @@ export function parseClauseSpec(raw: unknown): ParseClauseSpecResult {
         if (anyPrivate && anyPublic) {
             errors.push({
                 path: "$.fields",
-                message: "a clause may not mix public and private field dispositions — a section is withheld as a whole; author private fields as their own clause",
+                message: "a clause may not mix public and private field dispositions — a clause is withheld as a whole; author private fields as their own clause",
             });
         }
     }

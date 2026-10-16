@@ -11,7 +11,7 @@
  *   encode  → composing it (a selection or nested sub-clause tick at design
  *             time; values from the checkout fill surface, the catalog, or
  *             a designer-fills affix — design time is STRUCTURAL)
- *             carries its section into the committed agreement,
+ *             carries its clause into the committed agreement,
  *             past the off-chain validation sign gate
  *   commit  → a real bilateral order commits that agreement on-chain, and the
  *             asymmetric bonds actually move in the payment token
@@ -122,7 +122,7 @@ interface ClauseRung {
     /** Assertions on the committed leaf's data, from the pinned agreement —
      *  async so a rung can verify out-of-band effects the leaf points at
      *  (e.g. the affixed document's IPFS pin). The second arg is every
-     *  committed section, for a rung whose assertion spans more than one
+     *  committed clause, for a rung whose assertion spans more than one
      *  leaf (e.g. the utility-token pin vs. the commerce leaf's currency —
      *  the provenance pair). */
     leaf: (data: Record<string, unknown>, sections: { clause: string; data: Record<string, unknown> }[]) => void | Promise<void>;
@@ -258,7 +258,7 @@ const RUNGS: ClauseRung[] = [
         // compositionHash. Generic: the clause names no token and carries no
         // economics. Checkout resolves the process currency from the pin,
         // ahead of the buyer's payment-token pick and the seller default; the
-        // committed root's commerce section carries the SAME currency — the
+        // committed root's commerce clause carries the SAME currency — the
         // match is the provenance the pin exists to record.
         clauseId: 'figaro-utility-token',
         design: async (page) => {
@@ -266,13 +266,13 @@ const RUNGS: ClauseRung[] = [
             await page.getByTestId(`assembly-terms-field-${keyOf('figaro-utility-token')}-currency`).fill(token);
         },
         auditTexts: ['Utility token'],
-        leaf: (data, sections) => {
+        leaf: (data, clauseEntries) => {
             const token = readLocalDeploymentConfig().tokenAddress as string;
             expect(String(data.currency).toLowerCase(), 'the committed pin is the designer\'s token').toBe(token.toLowerCase());
             // The provenance pair: the commerce leaf's currency matches the
             // pin — proving the denomination was designer-determined, not a
             // buyer/seller checkout-time choice that happens to coincide.
-            const commerce = sections.find((s) => s.clause.toLowerCase() === keyOf('figaro-commerce'));
+            const commerce = clauseEntries.find((s) => s.clause.toLowerCase() === keyOf('figaro-commerce'));
             expect(commerce, 'the commerce leaf is committed alongside the pin').toBeTruthy();
             expect(
                 String(commerce!.data.currency).toLowerCase(),
@@ -325,7 +325,7 @@ const RUNGS: ClauseRung[] = [
         clauseId: 'figaro-dimweight',
         composeFirst: ['figaro-cargo'],
         // The divisor is PROFILE-SOURCED master data — authored in the generic
-        // profile clause-values section (spec-driven, from the live registry).
+        // profile clause-values clause (spec-driven, from the live registry).
         profile: async (page) => page.getByTestId(`profile-clause-${keyOf('figaro-dimweight')}-divisor`).fill('5000'),
         catalog: async (page) => {
             await page.locator('[id^="item-"][id$="-mass"]').first().fill('500');
@@ -617,7 +617,7 @@ test.describe('PER-CLAUSE COVERAGE — every protocol clause flows the generic p
             await expect(page.getByRole('heading', { name: /Registered\.|Profile updated/i })).toBeVisible({ timeout: 60000 });
 
             // ── COMMIT: buyer orders, signs (the off-chain validator validates the
-            //    target clause's section here), relays; seller accepts. ──
+            //    target clause's leaf here), relays; seller accepts. ──
             const committedBefore = (await publicClient.getContractEvents({
                 address: core, abi: CORE_ABI, eventName: 'OrderCommitted', args: { buyer: BUYER }, fromBlock: 0n,
             })).length;
@@ -757,14 +757,14 @@ test.describe('PER-CLAUSE COVERAGE — every protocol clause flows the generic p
                 }, { timeout: 60000, message: 'the witness Attestation event lands at the declared stage' }).toBe(true);
             }
 
-            // ── RE-ASSERT (derived, never enumerated): every committed section
+            // ── RE-ASSERT (derived, never enumerated): every committed clause
             //    without a declared stage-0 witness offers the generic
             //    re-assert capability — an attestation whose content IS the
-            //    committed sectionData (the coordinator's omit-content
+            //    committed clauseData (the coordinator's omit-content
             //    default). The seller's ONE card for this order opens a
-            //    chooser of its not-yet-re-asserted sections; drive the target
+            //    chooser of its not-yet-re-asserted clauses; drive the target
             //    clause's row and certify ON THE WIRE, from the tx calldata
-            //    the UI sent, that content === sectionData. ──
+            //    the UI sent, that content === clauseData. ──
             if (!declaredStages.includes(0)) {
                 const reassertBaseline = (await publicClient.getContractEvents({
                     address: config.attestationCoordinator as Hex, abi: ATTESTATION_COORDINATOR_ABI,
@@ -775,33 +775,33 @@ test.describe('PER-CLAUSE COVERAGE — every protocol clause flows the generic p
                 await waitForConnected(page);
                 // One card per party per order: this rung's process carries
                 // one order, so the seller sees exactly one.
-                const reassertCard = page.getByTestId('capability-reassert-committed-sections');
+                const reassertCard = page.getByTestId('capability-reassert-committed-clauses');
                 await expect(
                     reassertCard,
                     'the rail derives ONE re-assert card for the seller on this order',
                 ).toHaveCount(1, { timeout: 30000 });
-                const reassertOpen = reassertCard.getByTestId('capability-execute-reassert-committed-sections');
+                const reassertOpen = reassertCard.getByTestId('capability-execute-reassert-committed-clauses');
                 const cardLabel = (await reassertOpen.textContent()) ?? '';
-                const countMatch = /^Re-assert committed sections \((\d+)\)$/.exec(cardLabel.trim());
+                const countMatch = /^Re-assert committed clauses \((\d+)\)$/.exec(cardLabel.trim());
                 expect(countMatch, `the card states its count of sections: "${cardLabel}"`).toBeTruthy();
                 const reassertCountBefore = Number(countMatch![1]);
                 await reassertOpen.click();
 
-                const chooser = page.getByTestId('capability-chooser-reassert-committed-sections');
+                const chooser = page.getByTestId('capability-chooser-reassert-committed-clauses');
                 await expect(chooser, 'the card opens its chooser').toBeVisible({ timeout: 15000 });
                 await expect(
-                    chooser.getByTestId('capability-choice-reassert-committed-section'),
-                    'the chooser lists one row per section the card counts',
+                    chooser.getByTestId('capability-choice-reassert-committed-clause'),
+                    'the chooser lists one row per clause the card counts',
                 ).toHaveCount(reassertCountBefore);
                 const reassertRow = chooser.locator(
-                    `[data-testid="capability-choice-reassert-committed-section"][data-clause-key="${rungKey}"]`,
+                    `[data-testid="capability-choice-reassert-committed-clause"][data-clause-key="${rungKey}"]`,
                 );
                 await expect(
                     reassertRow,
-                    `the chooser lists ${rung.clauseId} (committed section, no stage-0 witness)`,
+                    `the chooser lists ${rung.clauseId} (committed clauseEntry, no stage-0 witness)`,
                 ).toBeVisible({ timeout: 15000 });
                 await chooser.locator(
-                    `[data-testid="capability-execute-reassert-committed-section"][data-clause-key="${rungKey}"]`,
+                    `[data-testid="capability-execute-reassert-committed-clause"][data-clause-key="${rungKey}"]`,
                 ).click();
 
                 // Out-of-band: THIS clause's stage-0 Attestation, attested by
@@ -822,31 +822,31 @@ test.describe('PER-CLAUSE COVERAGE — every protocol clause flows the generic p
                 }, { timeout: 60000, message: 'the re-assert Attestation lands at stage 0' }).toBe(true);
 
                 // The wire truth: decode the transaction the UI sent —
-                // attest args carry (…, sectionData, proof, content); the
-                // re-assert's content IS the committed sectionData bytes.
+                // attest args carry (…, clauseData, proof, content); the
+                // re-assert's content IS the committed clauseData bytes.
                 const reassertTx = await publicClient.getTransaction({ hash: reassertTxHash! });
                 const decoded = decodeFunctionData({ abi: ATTESTATION_COORDINATOR_ABI, data: reassertTx.input });
                 const dArgs = decoded.args as readonly unknown[];
-                const sectionDataArg = dArgs[dArgs.length - 3] as Hex;
+                const clauseDataArg = dArgs[dArgs.length - 3] as Hex;
                 const contentArg = dArgs[dArgs.length - 1] as Hex;
-                expect(sectionDataArg.length > 2, 'the committed sectionData is non-empty').toBe(true);
-                expect(contentArg, 're-assert on the wire: content IS the committed sectionData').toBe(sectionDataArg);
+                expect(clauseDataArg.length > 2, 'the committed clauseData is non-empty').toBe(true);
+                expect(contentArg, 're-assert on the wire: content IS the committed clauseData').toBe(clauseDataArg);
 
-                // Once per party per section: a repeat adds nothing (same
-                // bytes, same contentRef) — the section leaves the chooser and
+                // Once per party per clauseEntry: a repeat adds nothing (same
+                // bytes, same contentRef) — the clause leaves the chooser and
                 // the card's count falls by one; at zero the card, and its
                 // chooser with it, is gone.
                 if (reassertCountBefore > 1) {
                     await expect(
                         reassertRow,
-                        'the re-asserted section leaves the chooser',
+                        'the re-asserted clause leaves the chooser',
                     ).toHaveCount(0, { timeout: 30000 });
                     await expect(
                         reassertOpen,
                         'the card\'s count falls by one',
-                    ).toHaveText(`Re-assert committed sections (${reassertCountBefore - 1})`, { timeout: 30000 });
+                    ).toHaveText(`Re-assert committed clauseEntries (${reassertCountBefore - 1})`, { timeout: 30000 });
                 } else {
-                    await expect(reassertCard, 'the last section re-asserted retires the card').toHaveCount(0, { timeout: 30000 });
+                    await expect(reassertCard, 'the last clause re-asserted retires the card').toHaveCount(0, { timeout: 30000 });
                     await expect(chooser, 'the chooser closes with its card').toHaveCount(0);
                 }
             }
@@ -905,7 +905,7 @@ test.describe('PER-CLAUSE COVERAGE — every protocol clause flows the generic p
                     ...(rung.composeFirst ?? []).map((name) => keyOf(name)), rungKey,
                 ]));
             const targetLeaf = agreement.sections.find((s) => s.clause.toLowerCase() === rungKey);
-            expect(targetLeaf, `the ${rung.clauseId} section is a committed leaf`).toBeTruthy();
+            expect(targetLeaf, `the ${rung.clauseId} clause is a committed leaf`).toBeTruthy();
             await rung.leaf(targetLeaf!.data, agreement.sections);
 
             await page.getByTestId('verify-mode-agreement').click();

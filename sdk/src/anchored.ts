@@ -44,8 +44,8 @@ declare const ANCHORED: unique symbol;
  *  It vouches for what the digest covers, and no more. `Anchored<ComposedAgreement>`
  *  and `Anchored<Assembly>` cover their composition, never the
  *  editorial prose beside it. `Anchored<Agreement>`
- *  covers the `sections` and the `provenance`: `computeAgreementHash` is the
- *  merkle root over the section leaves and the reserved provenance leaf, so
+ *  covers the `clauses` and the `provenance`: `computeAgreementHash` is the
+ *  merkle root over the clause leaves and the reserved provenance leaf, so
  *  the top-level `buyer` and `seller` (and the format tag `version`) are NOT
  *  under the hash. Whoever served the document could
  *  have written any addresses there; a reader checks them against the
@@ -159,7 +159,7 @@ export function anchorAssembly(raw: unknown, compositionHash: Hex | string): Anc
 }
 
 /** An agreement, verified against the commitment's `agreementHash`: the
- *  merkle root over its section leaves and its provenance leaf is the hash. A
+ *  merkle root over its clause leaves and its provenance leaf is the hash. A
  *  document whose leaves do not hash (malformed, duplicated clause keys, a
  *  `provenance` that is not two 32-byte hex keys) is not the agreement. The
  *  top-level `buyer` and `seller` are outside the hash and pass unchecked

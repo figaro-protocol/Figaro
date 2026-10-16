@@ -104,7 +104,7 @@ export interface CatalogItemMetadata {
      * Catalog-sourced clause values — product master data authored per item
      * for clauses that declare `block.checkout.catalogueFills` (freight class, hazmat,
      * cold-chain, …). Keyed by clause key → the clause's content field values
-     * (the same `{clause, data}` shape as an agreement section's `data`).
+     * (the same `{clause, data}` shape as an agreement clause's `data`).
      * Generic and open-world: no clause is named here; the authoring form and
      * the checkout fold both derive from the registered clause specs, so a new
      * product-property clause participates with zero change to this type.

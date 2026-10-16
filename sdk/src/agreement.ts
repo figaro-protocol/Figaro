@@ -3,16 +3,16 @@
  *
  * An Agreement is the off-chain semantic layer whose merkle root becomes the
  * on-chain `agreementHash` in the signed Commitment struct. Each clause (clause
- * section) is a leaf; inclusion proofs let runtime attestations prove their
+ * clause) is a leaf; inclusion proofs let runtime attestations prove their
  * content was committed to at contract-signing time.
  *
- * Leaf format: `keccak256(keccak256(clauseKey || sectionDataHash))` (double-hashed
+ * Leaf format: `keccak256(keccak256(clauseKey || hashClauseData))` (double-hashed
  * for leaf/node domain separation) where
  *   - `clauseKey` = the clause's on-chain identity, `keccak256` of the spec's
  *      pinned canonical bytes (`computeClauseKey(spec)` in discovery.ts, the
  *      key `ClauseRegistry` registers), used DIRECTLY as the leaf id. The
  *      reserved provenance leaf uses `PROVENANCE_LEAF_KEY` the same way.
- *   - `sectionDataHash` = `keccak256(canonicalJSON(section.data))`
+ *   - `hashClauseData` = `keccak256(canonicalJSON(clause.data))`
  *
  * Merkle tree: OpenZeppelin-style sorted-pair hashing. Leaves are sorted
  * lexicographically; pair hash = `keccak256(min(a,b) || max(a,b))`. Odd leaves
@@ -29,40 +29,40 @@ import { ZERO_BYTES32 } from "./commitments.js";
  * A single clause in the agreement. The clause key identifies the vocabulary
  * (registered in ClauseRegistry); data is the clause content per that clause.
  *
- * A section is one of two forms, and the merkle leaf is identical either way
- * (`computeSectionLeaf` needs only the data FINGERPRINT):
+ * A clause is one of two forms, and the merkle leaf is identical either way
+ * (`computeClauseLeaf` needs only the data FINGERPRINT):
  *   - PLAINTEXT — `data` is present. The normal form; used for `public`
- *     sections (the free coordination commons) and by whoever authored a
+ *     clauses (the free coordination commons) and by whoever authored a
  *     private one.
  *   - CONTENT-WITHHELD — `dataHash` is present instead of `data`. A `private`
- *     section's plaintext (the paid edge) stays off every public surface; a
+ *     clause's plaintext (the paid edge) stays off every public surface; a
  *     party carrying only the fingerprint can still build and verify the
- *     agreement root. Produce one with `withholdSectionContent`.
+ *     agreement root. Produce one with `withholdClauseContent`.
  * Exactly one of `data` / `dataHash` is set.
  */
-export interface AgreementSection {
+export interface AgreementClause {
     /** The clause KEY — the 32-byte hex identity `ClauseRegistry` registers,
      *  `keccak256` of the spec's pinned canonical bytes (`computeClauseKey`).
      *  Never a name: a spec's `clauseId` and `version` are its own
      *  presentation fields, read from the spec the key resolves to. */
     clause: Hex;
     /** The clause content, canonical-JSON-hashed into the merkle leaf. Absent
-     *  for a content-withheld section (see `dataHash`). */
+     *  for a content-withheld clause (see `dataHash`). */
     data?: Record<string, unknown>;
-    /** The section's data FINGERPRINT (`keccak256` of its canonical-JSON bytes),
-     *  carried in place of `data` for a content-withheld `private` section. */
+    /** The clause's data FINGERPRINT (`keccak256` of its canonical-JSON bytes),
+     *  carried in place of `data` for a content-withheld `private` clause. */
     dataHash?: Hex;
 }
 
 /**
- * The signed agreement. Parties compose sections from registered clauses, sort
+ * The signed agreement. Parties compose clauses from registered clauses, sort
  * by clause key, and sign the merkle root of the leaves.
  */
 export interface Agreement {
     version: "a1";
     buyer: `0x${string}`;
     seller: `0x${string}`;
-    sections: AgreementSection[];
+    sections: AgreementClause[];
     /** Where this agreement came from at design time: the registered
      *  agreement (`agreementKey`, the `AgreementRegistry` key) the order's
      *  entry binds, and the registered assembly (`compositionHash`, the
@@ -104,7 +104,7 @@ const BYTES32_RE = /^0x[0-9a-fA-F]{64}$/;
  *  exactly what the counter reproduces from the claimed keys
  *  (`UsageCounter.recordAgreementUsage` / `recordAssemblyUsage`) and the
  *  guest reproduces for a batch claim. */
-export function provenanceSectionBytes(agreementKey: Hex, compositionHash: Hex): Hex {
+export function provenanceLeafBytes(agreementKey: Hex, compositionHash: Hex): Hex {
     if (!BYTES32_RE.test(agreementKey)) {
         throw new Error(`provenance agreementKey is not a 32-byte hex hash: ${agreementKey}`);
     }
@@ -117,21 +117,21 @@ export function provenanceSectionBytes(agreementKey: Hex, compositionHash: Hex):
     })));
 }
 
-/** The provenance leaf: the section-leaf convention over the reserved key. */
+/** The provenance leaf: the clause-leaf convention over the reserved key. */
 export function computeProvenanceLeaf(agreementKey: Hex, compositionHash: Hex): Hex {
     return keccak256(keccak256(concat([PROVENANCE_LEAF_KEY, provenanceContentRef(agreementKey, compositionHash)])));
 }
 
-/** The provenance leaf's fingerprint — `keccak256(provenanceSectionBytes(…))`:
- *  the leaf's section hash, and the `contentRef` of an attestation that
+/** The provenance leaf's fingerprint — `keccak256(provenanceLeafBytes(…))`:
+ *  the leaf's clause data hash, and the `contentRef` of an attestation that
  *  re-asserts it. A reader links a provenance attestation to its agreement
  *  and assembly by computing this for a registered pair and comparing. */
 export function provenanceContentRef(agreementKey: Hex, compositionHash: Hex): Hex {
-    return keccak256(provenanceSectionBytes(agreementKey, compositionHash));
+    return keccak256(provenanceLeafBytes(agreementKey, compositionHash));
 }
 
 /** The two keys a provenance leaf's bytes name, or null when the bytes are
- *  not the format's own (`provenanceSectionBytes` of two 32-byte hashes,
+ *  not the format's own (`provenanceLeafBytes` of two 32-byte hashes,
  *  byte for byte). The leaf has no clause spec; this is its one decoder. */
 export function decodeProvenanceContent(content: Hex): AgreementProvenance | null {
     if (!/^0x([0-9a-fA-F]{2})*$/.test(content)) return null;
@@ -148,7 +148,7 @@ export function decodeProvenanceContent(content: Hex): AgreementProvenance | nul
     if (!match) return null;
     const agreementKey = match[1] as Hex;
     const compositionHash = match[2] as Hex;
-    return provenanceSectionBytes(agreementKey, compositionHash).toLowerCase() === content.toLowerCase()
+    return provenanceLeafBytes(agreementKey, compositionHash).toLowerCase() === content.toLowerCase()
         ? { agreementKey, compositionHash }
         : null;
 }
@@ -170,7 +170,7 @@ function sortedReplacer(_key: string, value: unknown): unknown {
 /**
  * Deterministic JSON serialization: sorted object keys at every depth,
  * preserved array order, no whitespace. THE one canonical-JSON convention —
- * agreement sections, agreement documents (`agreementKeyOf`) and the
+ * agreement clauses, agreement documents (`agreementKeyOf`) and the
  * assembly's entry and terms leaves hash this form, and it is the byte form the reference tooling PINS a clause
  * spec in, so the clause key (`computeClauseKey`, keccak256 of the pinned
  * bytes) is the hash of this form. A clause reader hashes the bytes it
@@ -191,75 +191,75 @@ export function canonicalContentHash(value: unknown): Hex {
 // ── Merkle primitives ───────────────────────────────────────────────────────
 
 /**
- * Return the on-chain `sectionData` bytes for an agreement section: the
- * canonical JSON of the section data. The chain merkle-binds the section HASH
+ * Return the on-chain `clauseData` bytes for an agreement clauseEntry: the
+ * canonical JSON of the clause data. The chain merkle-binds the clause data hash
  * and never sees these bytes, but they are what a party pins to IPFS (plaintext
- * for a public section, encrypted for a private one) and what
- * `sectionDataHash` fingerprints. No clause spec is consulted — specs live ONLY
+ * for a public clause, encrypted for a private one) and what
+ * `hashClauseData` fingerprints. No clause spec is consulted — specs live ONLY
  * in `ClauseRegistry` (→ IPFS), never bundled into the SDK. A never-seen clause
- * hashes the same way as any other. Throws for a content-withheld section: its
+ * hashes the same way as any other. Throws for a content-withheld clauseEntry: its
  * plaintext is not available, only its `dataHash`.
  */
-export function getSectionDataBytes(section: AgreementSection): Hex {
-    if (section.data === undefined) {
+export function getClauseDataBytes(clauseEntry: AgreementClause): Hex {
+    if (clauseEntry.data === undefined) {
         throw new Error(
-            `Section ${section.clause} is content-withheld (dataHash only) — its plaintext bytes are not available`,
+            `Clause ${clauseEntry.clause} is content-withheld (dataHash only) — its plaintext bytes are not available`,
         );
     }
-    return toHex(new TextEncoder().encode(canonicalize(section.data)));
+    return toHex(new TextEncoder().encode(canonicalize(clauseEntry.data)));
 }
 
 /**
- * The section's data FINGERPRINT — `keccak256` of its canonical-JSON bytes.
- * This is the ONLY thing the merkle leaf (and the on-chain `sectionHash`
- * argument to `recordClauseUsage` / the attest calls) needs, so a `private` section's
+ * The clause's data FINGERPRINT — `keccak256` of its canonical-JSON bytes.
+ * This is the ONLY thing the merkle leaf (and the on-chain `clauseDataHash`
+ * argument to `recordClauseUsage` / the attest calls) needs, so a `private` clause's
  * plaintext never has to be present to build or verify the agreement root. For
- * a content-withheld section the fingerprint is carried directly (`dataHash`);
+ * a content-withheld clause the fingerprint is carried directly (`dataHash`);
  * otherwise it is computed from the plaintext.
  */
-export function sectionDataHash(section: AgreementSection): Hex {
-    if (section.dataHash !== undefined) {
-        // A section carries EITHER plaintext `data` OR a content-withheld
+export function hashClauseData(clauseEntry: AgreementClause): Hex {
+    if (clauseEntry.dataHash !== undefined) {
+        // A clause carries EITHER plaintext `data` OR a content-withheld
         // `dataHash` — never both. The merkle leaf uses `dataHash` verbatim
-        // while a review surface renders `data`, so a section carrying both
+        // while a review surface renders `data`, so a clause carrying both
         // would sign one thing and show another. Refuse it at the hashing
         // locus, so no consumer (leaf, root, sign gate) can pass it.
-        if (section.data !== undefined) {
+        if (clauseEntry.data !== undefined) {
             throw new Error(
-                `Section ${section.clause} carries both plaintext data and a dataHash fingerprint — exactly one is allowed`,
+                `Clause ${clauseEntry.clause} carries both plaintext data and a dataHash fingerprint — exactly one is allowed`,
             );
         }
-        return section.dataHash;
+        return clauseEntry.dataHash;
     }
-    return keccak256(getSectionDataBytes(section));
+    return keccak256(getClauseDataBytes(clauseEntry));
 }
 
 /**
- * Convert a section to its CONTENT-WITHHELD form: replace the plaintext `data`
- * with its fingerprint `dataHash`. The withheld section contributes the exact
+ * Convert a clause to its CONTENT-WITHHELD form: replace the plaintext `data`
+ * with its fingerprint `dataHash`. The withheld clause contributes the exact
  * same merkle leaf, so the agreement root is unchanged — a party can publish or
- * verify the agreement's structure while keeping a `private` section's plaintext
+ * verify the agreement's structure while keeping a `private` clause's plaintext
  * (the paid-edge data) off every public surface.
  */
-export function withholdSectionContent(section: AgreementSection): AgreementSection {
-    return { clause: section.clause, dataHash: sectionDataHash(section) };
+export function withholdClauseContent(clauseEntry: AgreementClause): AgreementClause {
+    return { clause: clauseEntry.clause, dataHash: hashClauseData(clauseEntry) };
 }
 
 /**
  * Compute one merkle leaf:
- * `keccak256(keccak256(clauseId || sectionDataHash))` — the inner hash binds the
- * section, the outer hash DOMAIN-SEPARATES leaves from internal nodes (OZ
+ * `keccak256(keccak256(clauseId || hashClauseData))` — the inner hash binds the
+ * clause, the outer hash DOMAIN-SEPARATES leaves from internal nodes (OZ
  * double-hash convention: a leaf preimage is 32 bytes, an internal node's is 64,
- * so no internal node can ever be replayed as a leaf). Uses `sectionDataHash`,
- * so a plaintext and a content-withheld section for the same content produce the
+ * so no internal node can ever be replayed as a leaf). Uses `hashClauseData`,
+ * so a plaintext and a content-withheld clause for the same content produce the
  * identical leaf, and leaves computed off-chain match the coordinator's
  * reconstruction during inclusion-proof verification.
  */
-export function computeSectionLeaf(section: AgreementSection): Hex {
-    if (!/^0x[0-9a-fA-F]{64}$/.test(section.clause)) {
-        throw new Error(`Section clause is not a 32-byte clause key: ${section.clause}`);
+export function computeClauseLeaf(clauseEntry: AgreementClause): Hex {
+    if (!/^0x[0-9a-fA-F]{64}$/.test(clauseEntry.clause)) {
+        throw new Error(`Clause key is not 32 bytes: ${clauseEntry.clause}`);
     }
-    return keccak256(keccak256(concat([section.clause, sectionDataHash(section)])));
+    return keccak256(keccak256(concat([clauseEntry.clause, hashClauseData(clauseEntry)])));
 }
 
 function hashPair(a: Hex, b: Hex): Hex {
@@ -295,7 +295,7 @@ export function buildMerkleRoot(leaves: readonly Hex[]): Hex {
 
 /**
  * Compute the `agreementHash` for an Agreement: merkle root over sorted
- * section leaves. The agreement hash IS the merkle root — there is no separate
+ * clause leaves. The agreement hash IS the merkle root — there is no separate
  * "root" object. Empty agreements return bytes32(0).
  */
 export function computeAgreementHash(agreement: Agreement): Hex {
@@ -303,7 +303,7 @@ export function computeAgreementHash(agreement: Agreement): Hex {
 }
 
 /** Every leaf of the agreement, sorted as the tree is built: one per clause
- *  section, plus the reserved provenance leaf when the agreement names the
+ *  clause, plus the reserved provenance leaf when the agreement names the
  *  design it instantiates. */
 export function agreementLeaves(agreement: Agreement): Hex[] {
     const keys = agreement.sections.map((s) => s.clause.toLowerCase());
@@ -311,7 +311,7 @@ export function agreementLeaves(agreement: Agreement): Hex[] {
     if (dupes.length > 0) {
         throw new Error(`Duplicate clause keys in agreement: ${[...new Set(dupes)].join(", ")}`);
     }
-    const leaves = agreement.sections.map(computeSectionLeaf);
+    const leaves = agreement.sections.map(computeClauseLeaf);
     if (agreement.provenance !== undefined) {
         leaves.push(computeProvenanceLeaf(agreement.provenance.agreementKey, agreement.provenance.compositionHash));
     }
@@ -319,23 +319,23 @@ export function agreementLeaves(agreement: Agreement): Hex[] {
 }
 
 /**
- * Build an inclusion proof for a given section. Returns the leaf and the
- * sibling hashes walking the tree toward the root. Throws if the section is
+ * Build an inclusion proof for a given clause. Returns the leaf and the
+ * sibling hashes walking the tree toward the root. Throws if the clause is
  * absent from the agreement.
  *
- * @param clauseKey The section's clause KEY — `section.clause`, the same bytes32
+ * @param clauseKey The clause KEY — `clauseEntry.clause`, the same bytes32
  *        the attest calls (`attestAsSeller`/`attestAsBuyer`) take as their
  *        `clauseId`. Compared case-insensitively.
  */
-export function buildSectionInclusionProof(
+export function buildSignedClauseInclusionProof(
     agreement: Agreement,
     clauseKey: Hex,
 ): { leaf: Hex; proof: Hex[] } {
-    const section = agreement.sections.find((s) => s.clause.toLowerCase() === clauseKey.toLowerCase());
-    if (!section) {
-        throw new Error(`Section not found: ${clauseKey}`);
+    const clauseEntry = agreement.sections.find((s) => s.clause.toLowerCase() === clauseKey.toLowerCase());
+    if (!clauseEntry) {
+        throw new Error(`Clause not found: ${clauseKey}`);
     }
-    return buildLeafInclusionProof(agreementLeaves(agreement), computeSectionLeaf(section));
+    return buildLeafInclusionProof(agreementLeaves(agreement), computeClauseLeaf(clauseEntry));
 }
 
 /**
@@ -356,7 +356,7 @@ export function buildProvenanceInclusionProof(agreement: Agreement): { leaf: Hex
  * The attestation inputs of the provenance leaf, in the shape the attest
  * helpers take (`attestAsBuyer` / `executeAction`'s `inputs.attestation`,
  * beside the caller's `target`): the reserved key where a clause key goes,
- * the leaf's fingerprint as both `sectionHash` and `contentRef` (the
+ * the leaf's fingerprint as both `clauseDataHash` and `contentRef` (the
  * attestation re-asserts the committed leaf), its inclusion proof, and stage
  * 0. The buyer files it while the process is open, as every attestation is; the data corpus links the process
  * to its registered agreement and assembly through that attestation. Throws if the agreement names no
@@ -365,14 +365,14 @@ export function buildProvenanceInclusionProof(agreement: Agreement): { leaf: Hex
 export function provenanceLeafAttestation(agreement: Agreement): {
     clauseId: Hex;
     stage: number;
-    sectionHash: Hex;
+    clauseDataHash: Hex;
     proof: Hex[];
     contentRef: Hex;
 } {
     const { proof } = buildProvenanceInclusionProof(agreement);
     const { agreementKey, compositionHash } = agreement.provenance as AgreementProvenance;
-    const sectionHash = provenanceContentRef(agreementKey, compositionHash);
-    return { clauseId: PROVENANCE_LEAF_KEY, stage: 0, sectionHash, proof, contentRef: sectionHash };
+    const clauseDataHash = provenanceContentRef(agreementKey, compositionHash);
+    return { clauseId: PROVENANCE_LEAF_KEY, stage: 0, clauseDataHash, proof, contentRef: clauseDataHash };
 }
 
 /** The sorted-pair inclusion proof of `targetLeaf` among leaves already in

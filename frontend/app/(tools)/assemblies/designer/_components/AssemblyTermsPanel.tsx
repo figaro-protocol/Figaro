@@ -12,7 +12,7 @@
  * `buildAssembly` re-verifies at draft/publish for imported or
  * hand-written compositions).
  *
- * At checkout every assembly-scoped section folds into EVERY agreement, so
+ * At checkout every assembly-scoped clause folds into EVERY agreement, so
  * every party signs it — stated in the panel copy for the designer.
  *
  * Read-only surfaces (the review and `/view`) also pass the composition: its

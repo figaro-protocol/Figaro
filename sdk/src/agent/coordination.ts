@@ -57,11 +57,11 @@ export interface CommitmentPayload {
 }
 
 /** A field of the agreement that carries the transaction figure — named by
- *  the BUYER in their quote request. `path` is dotted into the section's
+ *  the BUYER in their quote request. `path` is dotted into the clause's
  *  `data` (numeric segments index arrays, e.g. `lineItems.0.unitPrice`); the
  *  substituted value is the quote's decimal string in raw token units. */
 export interface PricedField {
-    /** The priced section's clause key. */
+    /** The priced clause key. */
     clause: Hex;
     path: string;
 }

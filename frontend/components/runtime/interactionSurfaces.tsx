@@ -28,7 +28,7 @@ export interface InteractionSurfaceProps {
     processId: string;
     orderHash: string;
     /** The clause that declared the interaction — for display attribution
-     *  and section anchoring, never for dispatch. */
+     *  and clause anchoring, never for dispatch. */
     clauseKey: string;
     buyer: `0x${string}`;
     seller: `0x${string}`;

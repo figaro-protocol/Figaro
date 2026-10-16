@@ -156,7 +156,7 @@ describe("anchorAgreement", () => {
         const changed = { ...agreement, sections: [{ ...agreement.sections[0]!, data: { modality: "delivery" } }] };
         expect(anchorAgreement(changed, computeAgreementHash(agreement))).toBeNull();
     });
-    it("refuses an agreement whose sections do not hash", () => {
+    it("refuses an agreement whose clauses do not hash", () => {
         const duplicated = { ...agreement, sections: [agreement.sections[0]!, agreement.sections[0]!] };
         expect(anchorAgreement(duplicated, OTHER)).toBeNull();
         expect(anchorAgreement({ sections: "none" }, OTHER)).toBeNull();

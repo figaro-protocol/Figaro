@@ -17,7 +17,7 @@
  */
 
 export interface ExtractedDocument {
-    /** Display title at the top of the rendered section. */
+    /** Display title at the top of the rendered clause. */
     title: string;
     /** orderHash this document corresponds to. */
     orderHash: string;

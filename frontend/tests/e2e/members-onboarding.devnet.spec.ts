@@ -12,7 +12,7 @@
  * Assemblies precede Catalog because the bindings decide which clauses the
  * seller's trades carry, and those clauses decide which item fields the
  * catalog asks for. The walk asserts that direction: on the catalog step,
- * every clause section rendered belongs to a clause the BOUND assembly
+ * every clause rendered belongs to a clause the BOUND assembly
  * composes, and a catalog-authored clause from an unbound assembly is
  * absent.
  *
@@ -218,13 +218,13 @@ async function onboardViaWizard(
     await page.getByRole("button", { name: /^Next/ }).click();
     await expect(page).toHaveURL(/\/members\/catalog/);
 
-    // Catalog: one product. The clause sections on an item derive from the
+    // Catalog: one product. The clauses on an item derive from the
     // assemblies bound on the Sell through step, so a member who binds none sees none.
     await page.locator('[id^="item-"][id$="-name"]').first().fill(SELLER.product.name);
     await page.locator('[id^="item-"][id$="-price"]').first().fill(SELLER.product.price);
 
     // The items survive a reload too. The restored values also mean the step
-    // has hydrated, so the clause sections below are read after the assembly
+    // has hydrated, so the clauses below are read after the assembly
     // assemblies have had their chance to resolve.
     await draftCarries(page, SELLER.product.name);
     await page.reload({ waitUntil: "domcontentloaded" });
@@ -233,12 +233,12 @@ async function onboardViaWizard(
     await expect(page.locator('[id^="item-"][id$="-price"]').first())
         .toHaveValue(SELLER.product.price);
 
-    // Every clause section on the item belongs to a clause the BOUND assembly
+    // Every clause on the item belongs to a clause the BOUND assembly
     // composes — computed from the anchored assembly, never a name list. A
     // seller of one item bound to a counter-sale assembly is asked for no
     // freight class, no hazmat number, no cold-chain range.
     const composed = new Set(assembly.agreements.flatMap((a) => Object.keys(a.clauses ?? {})));
-    // The clause GROUPS are the direct children of the item's clause section;
+    // The clause GROUPS are the direct children of the item's clause;
     // the field controls nest below them.
     const renderedClauseKeys = await page
         .locator('[data-testid^="item-"][data-testid$="-clauses"] > [data-testid]')
@@ -255,7 +255,7 @@ async function onboardViaWizard(
     }
 
     // And the filter BITES: a catalog-authored clause composed by some OTHER
-    // anchored assembly, but not by this one, has no section here.
+    // anchored assembly, but not by this one, has no clause here.
     const unboundClause = (await discoverAnchoredAssemblies())
         .filter((a) => a.slug !== assemblySlug)
         .flatMap((a) => a.agreements.flatMap((ag) => Object.keys(ag.clauses ?? {})))

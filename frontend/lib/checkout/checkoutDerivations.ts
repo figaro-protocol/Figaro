@@ -7,7 +7,7 @@
  * commits; the view memoizes the calls.
  */
 import {
-    fillProfileSections,
+    fillProfileClauses,
     mechanicallyFilledFieldNames,
     planSubOrderSellers,
     profileValuesFor,
@@ -139,10 +139,10 @@ export function deriveKitBreakdown(args: {
 export interface AgreementGroup {
     key: string;
     label: string;
-    /** `clauseKey` is the key the assembly composed for the section — every
-     *  spec read the row makes is keyed on it. `mandatory` marks a section the assembly folded in because its spec's
+    /** `clauseKey` is the key the assembly composed for the clause — every
+     *  spec read the row makes is keyed on it. `mandatory` marks a clause the assembly folded in because its spec's
      *  article is "mandatory" (commerce, topology, or anyone's
-     *  registration so marked): it is listed like every other section, since
+     *  registration so marked): it is listed like every other clause, since
      *  the buyer signs it, and is never fillable — the checkout walk fills it. */
     clauses: Array<{ clauseKey: string; values: string; data: Record<string, unknown>; fillable: boolean; mandatory: boolean }>;
 }
@@ -150,15 +150,15 @@ export interface AgreementGroup {
 /**
  * The per-order agreement review rows: every order in the assembly — root +
  * sub-orders — surfaced for review, each clause rendering its COMPOSED
- * values, spec-driven. Every section the agreement carries is listed, the
+ * values, spec-driven. Every clause the agreement carries is listed, the
  * mandatory ones (folded by the assembly, filled by the checkout walk) marked
  * `mandatory` and never fillable: the spec's article is anyone's to write, so
- * a section the buyer signs is never left off the list. The profile fold and
+ * a clause the buyer signs is never left off the list. The profile fold and
  * the mechanical-fill subtraction are the SAME ones the order build applies,
  * so the buyer reviews what will actually commit. Every spec read is EXACT —
- * the spec the section's key names, never another spec of the same name: a
+ * the spec the clause's key names, never another spec of the same name: a
  * stranger's spec of the same name declares nothing about this assembly's
- * section.
+ * clause.
  */
 export function deriveAgreementGroups(args: {
     pickedAssembly: PlanAssembly | undefined;
@@ -175,16 +175,16 @@ export function deriveAgreementGroups(args: {
         try { plan = planSubOrderSellers(pickedAssembly); } catch { plan = []; }
     }
     const sellerOf = new Map(plan.map(({ node, seller }) => [node.nodeId, seller]));
-    // ASSEMBLY TERMS first — the assembly's assembly-scoped sections (a
+    // ASSEMBLY TERMS first — the assembly's assembly-scoped clauses (a
     // denomination pin, a dispute forum), reviewed and buyer-filled ONCE;
     // the checkout walk folds them into every agreement, so every party
     // signs them. Same fillable rules as per-order clauses; keyed by the
     // reserved group key "assembly" (never a assembly order id).
-    const assemblySections: Record<string, Record<string, unknown>> = hydrated.assembly.assemblyClauses ?? {};
-    const assemblyGroup: AgreementGroup[] = Object.keys(assemblySections).length === 0 ? [] : [{
+    const assemblyClauseFills: Record<string, Record<string, unknown>> = hydrated.assembly.assemblyClauses ?? {};
+    const assemblyGroup: AgreementGroup[] = Object.keys(assemblyClauseFills).length === 0 ? [] : [{
         key: "assembly",
         label: "Assembly terms (every agreement)",
-        clauses: Object.entries(assemblySections)
+        clauses: Object.entries(assemblyClauseFills)
             .map(([clauseKey, fields]) => {
             const specFields = getClauseSpec(clauseKey)?.fields ?? [];
             const mandatory = clauseIsMandatory(clauseKey);
@@ -216,7 +216,7 @@ export function deriveAgreementGroups(args: {
         // the same fold the order build applies, so the buyer reviews
         // what will actually commit (and can Verify a declared
         // credential before placing the order).
-        const previewClauses = fillProfileSections(
+        const previewClauses = fillProfileClauses(
             Object.fromEntries(Object.entries(order.clauses).filter(
                 ([clauseKey]) => !clauseIsMandatory(clauseKey))),
             assigned ? profileValuesFor(assigned, sellerCatalogs) : undefined,
@@ -231,7 +231,7 @@ export function deriveAgreementGroups(args: {
         return {
             key: String(order.id ?? i),
             label: assigned ? nameOf(assigned) : "(to be assigned)",
-            // The assembly's own section order; a mandatory section is listed
+            // The assembly's own clause order; a mandatory clause is listed
             // with the values the assembly composed for it, never fillable.
             clauses: (Object.keys(order.clauses) as `0x${string}`[])
                 .map((clauseKey) => {
@@ -256,10 +256,10 @@ export function deriveAgreementGroups(args: {
                         // the buyer fills here. Not fillable: designer-fills
                         // values (the designer's tailoring, from the assembly),
                         // process-log anchors (attested at runtime, empty at
-                        // commit), catalog-sourced sections (the seller's
-                        // items fill them), profile-sourced sections (the
+                        // commit), catalog-sourced clauses (the seller's
+                        // items fill them), profile-sourced clauses (the
                         // seller's standing declarations fill them), and
-                        // sections whose every field the walk fills
+                        // clauses whose every field the walk fills
                         // mechanically. A COMPOSING clause's content fields
                         // ARE fillable — the composition surface collects
                         // only its block.runtime.fields runtime params, never its
@@ -280,7 +280,7 @@ export function deriveAgreementGroups(args: {
  * fields minus the designer's tailoring (`block.design.fills`, already valued on
  * the assembly). ONE list — the form renders it and the place-order gate below
  * checks it, so the sign gate can never demand a term the form never offered.
- * Read from the EXACT spec the section's key names: another spec of the same
+ * Read from the EXACT spec the clause's key names: another spec of the same
  * name changes no field offered here.
  */
 export function buyerAuthoredFields(clauseKey: string): readonly FieldSpec[] {

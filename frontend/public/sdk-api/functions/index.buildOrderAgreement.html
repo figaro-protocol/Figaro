@@ -18,7 +18,7 @@
 <div class="tsd-description">
 <div class="tsd-comment tsd-typography"><p>Build the order's agreement and merkle tree from its complete clause map.
 <code>clauses</code> is <code>{ [clauseKey]: fieldValues }</code> — the pinned assembly's clauses,
-valued for this order. Sections are sorted by clause key so the pinned JSON
+valued for this order. Clauses are sorted by clause key so the pinned JSON
 is deterministic; the merkle root sorts its own leaves, so order never
 affects the hash.</p>
 <p>It names no clause, special-cases nothing, and re-implements no hashing.

@@ -20,8 +20,8 @@ import {
     canonicalize,
     computeAgreementHash,
     publicForm,
-    sectionByField,
-    sectionDataHash,
+    clauseByField,
+    hashClauseData,
     serializeAssembly,
     specHasPrivateField,
     validateCommitmentAgreement,
@@ -79,7 +79,7 @@ describe("assertAgreementSignable — the shared sign gate", () => {
             .toThrow(/32-byte/);
     });
 
-    it("throws on a section violating its clause spec, naming clause + path", () => {
+    it("throws on a clause violating its clause spec, naming clause + path", () => {
         // Prose fails applicable-law's jurisdiction-token pattern — the exact
         // shape a counter-signer must refuse even when the hash matches.
         const { agreement, agreementHash } = buildOrderAgreement(BUYER, SELLER, {
@@ -114,7 +114,7 @@ describe("assertAgreementSignable — the shared sign gate", () => {
         expect(paths.some((p) => p.includes("language"))).toBe(true);
     });
 
-    it("refuses a section carrying BOTH data and dataHash — the what-you-see-is-what-you-sign invariant", () => {
+    it("refuses a clause carrying BOTH data and dataHash — the what-you-see-is-what-you-sign invariant", () => {
         const { agreement } = buildOrderAgreement(BUYER, SELLER, {
             [keyOf("figaro-commerce")]: commerceData(),
             [keyOf("figaro-applicable-law")]: { applicableLaw: "US-NY" },
@@ -122,15 +122,15 @@ describe("assertAgreementSignable — the shared sign gate", () => {
         // The attack: keep the benign `data` a review renders, and ALSO attach a
         // `dataHash` fingerprint of hidden content, which the merkle leaf would
         // sign verbatim — sign one thing, show another.
-        const sections = agreement.sections.map((s) =>
+        const clauseEntries = agreement.sections.map((s) =>
             s.clause === keyOf("figaro-applicable-law")
                 ? { ...s, dataHash: `0x${"ee".repeat(32)}` as `0x${string}` }
                 : s,
         );
-        const evil = { ...agreement, sections };
-        const dual = sections.find((s) => s.clause === keyOf("figaro-applicable-law"));
+        const evil = { ...agreement, sections: clauseEntries };
+        const dual = clauseEntries.find((s) => s.clause === keyOf("figaro-applicable-law"));
         // Refused at the hashing locus …
-        expect(() => sectionDataHash(dual!)).toThrow(/both plaintext data and a dataHash/);
+        expect(() => hashClauseData(dual!)).toThrow(/both plaintext data and a dataHash/);
         // … and at the sign gate, structurally, regardless of the hash presented.
         const anyHash = `0x${"00".repeat(32)}` as `0x${string}`;
         const check = validateCommitmentAgreement(evil, anyHash, SPECS, STRUCT);
@@ -293,15 +293,15 @@ describe("projection — golden-vector byte-exactness", () => {
         })).toThrow(/does not declare design\.scope "assembly"/);
     });
 
-    it("sectionByField reads by declared field, with data-key fallback while unloaded", () => {
+    it("clauseByField reads by declared field, with data-key fallback while unloaded", () => {
         const { agreement } = buildOrderAgreement(BUYER, SELLER, {
             [keyOf("figaro-commerce")]: commerceData(),
             [keyOf("figaro-topology")]: { parentOrderHashes: ["0xabc"] },
         }, SPECS);
-        expect(sectionByField(agreement, "parentOrderHashes", SPECS)?.clause).toBe(keyOf("figaro-topology"));
+        expect(clauseByField(agreement, "parentOrderHashes", SPECS)?.clause).toBe(keyOf("figaro-topology"));
         // The uncached path: an empty SpecSource falls back to data-key presence.
         const empty: SpecSource = { get: () => undefined, list: () => [] };
-        expect(sectionByField(agreement, "parentOrderHashes", empty)?.clause).toBe(keyOf("figaro-topology"));
+        expect(clauseByField(agreement, "parentOrderHashes", empty)?.clause).toBe(keyOf("figaro-topology"));
     });
 });
 
@@ -338,20 +338,20 @@ describe("publicForm — the public/private disposition seam", () => {
         ],
     };
 
-    it("withholds a private section, keeps a public one plaintext", () => {
+    it("withholds a private clauseEntry, keeps a public one plaintext", () => {
         const withheld = publicForm(agreement, specs);
         const pub = withheld.sections.find((s) => s.clause === KEYS["pub-clause"])!;
         const priv = withheld.sections.find((s) => s.clause === KEYS["priv-clause"])!;
         expect(pub.data).toBeDefined(); // public coordination commons stays open
         expect(priv.data).toBeUndefined(); // paid-edge plaintext removed
-        expect(priv.dataHash).toBe(sectionDataHash({ clause: KEYS["priv-clause"], data: { f0: "secret-coordinate" } }));
+        expect(priv.dataHash).toBe(hashClauseData({ clause: KEYS["priv-clause"], data: { f0: "secret-coordinate" } }));
     });
 
     it("leaves the agreementHash unchanged — the withheld leaf is identical", () => {
         expect(computeAgreementHash(publicForm(agreement, specs))).toBe(computeAgreementHash(agreement));
     });
 
-    it("withholds a section whose clause spec is not loaded (fail-closed)", () => {
+    it("withholds a clause whose clause spec is not loaded (fail-closed)", () => {
         const unknown = {
             ...agreement,
             sections: [{ clause: KEYS["unknown-clause"], data: { f0: "could-be-private" } }],
@@ -364,7 +364,7 @@ describe("publicForm — the public/private disposition seam", () => {
         const projected = publicForm(unknown, specs).sections[0];
         expect(projected.data).toBeUndefined();
         expect(projected.dataHash).toBe(
-            sectionDataHash({ clause: KEYS["unknown-clause"], data: { f0: "could-be-private" } }),
+            hashClauseData({ clause: KEYS["unknown-clause"], data: { f0: "could-be-private" } }),
         );
     });
 
@@ -563,9 +563,9 @@ describe("buildAssembly — a clause is its spec: the fold folds every mandatory
     });
 });
 
-describe("buildOrderAgreement — every section reads the spec its key names", () => {
+describe("buildOrderAgreement — every clause reads the spec its key names", () => {
     // A lookalike shares a name and version with the real clause and declares
-    // another default; the real key's section never takes it.
+    // another default; the real key's clause never takes it.
     const fake = viewOf({
         ...rawSpecOf("figaro-applicable-law"),
         title: "a stranger's registration",
@@ -578,8 +578,8 @@ describe("buildOrderAgreement — every section reads the spec its key names", (
     it("the real key signs the real spec's defaults, whatever else is loaded", () => {
         const clauses = { [keyOf("figaro-applicable-law")]: { applicableLaw: "US-NY" } };
         const { agreement, agreementHash } = buildOrderAgreement(BUYER, SELLER, clauses, specs);
-        const section = agreement.sections.find((s) => s.clause === keyOf("figaro-applicable-law"))!;
-        expect(section.data?.language).not.toBe("xx");
+        const clauseEntry = agreement.sections.find((s) => s.clause === keyOf("figaro-applicable-law"))!;
+        expect(clauseEntry.data?.language).not.toBe("xx");
         expect(agreementHash).toBe(buildOrderAgreement(BUYER, SELLER, clauses, real).agreementHash);
     });
 

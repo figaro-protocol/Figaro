@@ -94,7 +94,7 @@ bonding, challenge, and forum apparatus this mechanism does without. So the
 fact is recorded at the moment it occurs, or it is permanently deniable: a
 seller can unstake, a period can close, and a late claim is refusable.
 
-Only the section fingerprint reaches calldata, so a private section's plaintext
+Only the clause's data hash reaches calldata, so a private clause's plaintext
 never becomes public in the counting.
 
 ---

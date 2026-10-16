@@ -29,8 +29,8 @@ export function extractClauseData(
     order: Order,
     agreement: Agreement,
 ): ClauseDataDocument {
-    const clauses = agreement.sections.map((section) =>
-        describeClause(section.clause, (section as { data?: Record<string, unknown> }).data),
+    const clauses = agreement.sections.map((clauseEntry) =>
+        describeClause(clauseEntry.clause, (clauseEntry as { data?: Record<string, unknown> }).data),
     );
     return {
         title: "Clause data",

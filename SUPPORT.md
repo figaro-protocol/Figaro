@@ -14,7 +14,7 @@ look and how to ask.
 
 ## Asking
 
-- **A bug** — open an issue with the bug-report assembly.
+- **A bug** — open an issue with the bug-report issue form.
 - **A protocol or design question** — open a GitHub discussion, or a regular
   issue if discussions are not enabled.
 - **A security vulnerability** — do not open an issue. Follow `SECURITY.md`.

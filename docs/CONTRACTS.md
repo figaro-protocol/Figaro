@@ -93,18 +93,18 @@ reasoning.
 attestation, merkle-only, bound to the signed `agreementHash`. Two modes, and
 a party attests for itself:
 - `attestAsSeller(Commitment role, Commitment target, bytes32 clauseId, uint8
-  stage, bytes32 sectionHash, bytes32[] proof, bytes32 contentRef)` — role and
+  stage, bytes32 clauseDataHash, bytes32[] proof, bytes32 contentRef)` — role and
   target commitments; the same commitment twice for same-order attestation,
   distinct commitments for cross-order attestation within a process.
 - `attestAsBuyer(Commitment target, bytes32 clauseId, uint8 stage, bytes32
-  sectionHash, bytes32[] proof, bytes32 contentRef)` — caller must equal
+  clauseDataHash, bytes32[] proof, bytes32 contentRef)` — caller must equal
   `target.buyer`.
 
-The call carries fingerprints, never preimages: `sectionHash =
-keccak256(sectionData)`, `contentRef = keccak256(content)`; a private section's
+The call carries fingerprints, never preimages: `clauseDataHash =
+keccak256(clauseData)`, `contentRef = keccak256(content)`; a private clause's
 plaintext never touches the chain. For every call the coordinator verifies an
 OpenZeppelin-style merkle inclusion proof of `leaf =
-keccak256(keccak256(clauseId || sectionHash))` (double-hashed for leaf/node
+keccak256(keccak256(clauseId || clauseDataHash))` (double-hashed for leaf/node
 domain separation) against `target.agreementHash`, then emits
 `Attestation(orderHash, processId, attester, clauseId, stage, contentRef)`.
 `_requireKnownCommitment` checks the caller-supplied commitment against a
@@ -198,7 +198,7 @@ designer composes an assembly from.
 - Identity is the composition: `agreementKey` is the merkle root over one leaf
   per composed clause, `keccak256(keccak256(clauseKey ‖ keccak256(fills)))`
   under the agreement format's leaf convention (the SDK's `agreementKeyOf(doc)`;
-  a clause's membership is proved by `buildClauseInclusionProof`), where
+  a clause's membership is proved by `buildRegisteredClauseInclusionProof`), where
   `clauses` maps each clause key to
   the designer's fills for ONE agreement — value-free, the topology clause
   composed with `{}` because who follows whom belongs to the agreement. The
@@ -281,7 +281,7 @@ Every accrual, count and score is keyed by (kind, key), kind
 gate reads only its own registry (`DESIGN_DECISIONS.md` § 24).
 
 Three permissionless functions and one proof-gated writer:
-- `recordClauseUsage(order, clauseOrAssembly, sectionHash, proof)` — proves
+- `recordClauseUsage(order, clauseOrAssembly, clauseDataHash, proof)` — proves
   the order is RESOLVED (`core.orderStatus == 2`) and that the clause was
   committed in that order's signed agreement (merkle inclusion against
   `agreementHash`). Fingerprint only, never the preimage. The same check

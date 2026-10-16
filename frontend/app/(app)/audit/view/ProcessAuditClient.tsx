@@ -44,7 +44,7 @@ function ProcessDisputeSection({ processId }: { processId: string }) {
     );
 }
 
-/** The batch universe's own section: relay provenance and the per-check
+/** The batch universe's own clauseEntry: relay provenance and the per-check
  *  verdict for every order it published. Separate from the panels above
  *  because that data is RELAY-sourced and verified, never chain-read. */
 function BatchUniverseSection({ processId }: { processId: string }) {

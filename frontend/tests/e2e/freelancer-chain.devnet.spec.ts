@@ -315,7 +315,7 @@ test.describe('FREELANCE VALUE CHAIN — three bonded deliverables over the encr
         const expectedOrderLabels = processOrders
             .map((e, i) => `Order ${i + 1} of 3 · seller ${truncateHex(e.args.seller!)}`)
             .sort();
-        const reassertOrderLabels = page.getByTestId('capability-reassert-committed-sections')
+        const reassertOrderLabels = page.getByTestId('capability-reassert-committed-clauses')
             .getByTestId('capability-order-label');
         await expect(reassertOrderLabels, 'one re-assert card per order of the process').toHaveCount(3, { timeout: 30000 });
         expect((await reassertOrderLabels.allTextContents()).sort(),

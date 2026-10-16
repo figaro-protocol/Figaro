@@ -90,7 +90,7 @@ these five and nothing else:
 | Hint | Reaches | Effect |
 |---|---|---|
 | `block.design.article: "mandatory"` | `agreementKey` + `agreementHash` | auto-folds the clause into EVERY new agreement, chosen or not; a registered agreement that lacks it cannot fill an agreement of a new assembly |
-| `block.design.article: "attestations"` | `agreementHash` | the section is committed as an EMPTY anchor, filled by attestation later; field `default`s are NOT applied |
+| `block.design.article: "attestations"` | `agreementHash` | the clause is committed as an EMPTY anchor, filled by attestation later; field `default`s are NOT applied |
 | `block.design.scope: "assembly"` | `compositionHash` + `agreementHash` | composed ONCE for the whole design, folded into EVERY agreement at checkout; composing it on one order is a build error |
 | `block.design.fills` | `agreementKey` | names the fields whose DESIGN-TIME values survive into a agreement; name nothing and the agreement carries `{}` |
 | `block.checkout.catalogueFills` / `profileFills` | `agreementHash` | names which fields the seller's catalog / profile folds write onto the leaf at checkout |
@@ -107,7 +107,7 @@ a new spec, which is a new key and a new registration.
 **The fills-on-process-log trap — the SDK will tell you.** There is one combination that
 never makes sense: declaring content pins (`design.fills`, or
 `checkout.catalogueFills`/`profileFills`) on a clause whose article marks it a process-log
-(`"attestations"`). A process-log section is committed as an unvalidated empty anchor —
+(`"attestations"`). A process-log clause is committed as an unvalidated empty anchor —
 content validation is SKIPPED for it and field defaults are never filled — so a pin declared
 there is content the author believes is checked and that in fact never is. Run
 `warnProcessLogFillsTrap(spec)` from `@figaro-protocol/sdk` on the finished spec and read back what
@@ -121,7 +121,7 @@ only on that specific combination.
 **And one field attribute is mis-typed as UI metadata: `default`.** A field's `default`
 is documented as composition metadata, but it is NOT inert — when the composing input
 omits the field, the spec's own `default` fills it, and that value lands in the signed
-section, changing the merkle leaf and the `agreementHash` both parties sign. Declare a
+clause, changing the merkle leaf and the `agreementHash` both parties sign. Declare a
 default only where the user would be content for a stranger to sign it having never seen
 it. Show them: `buildOrderAgreement(buyer, seller, { [clauseKey]: {} }, specs)` and inspect
 `agreement.sections[0].data`.

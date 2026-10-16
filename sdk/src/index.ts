@@ -198,24 +198,24 @@ export type { ProcessResolveCapacity, ResolveCapReader } from "./gasCeilings.js"
 export {
     canonicalize,
     canonicalContentHash,
-    computeSectionLeaf,
+    computeClauseLeaf,
     computeAgreementHash,
     agreementLeaves,
-    buildSectionInclusionProof,
+    buildSignedClauseInclusionProof,
     buildProvenanceInclusionProof,
     computeProvenanceLeaf,
-    provenanceSectionBytes,
+    provenanceLeafBytes,
     provenanceContentRef,
     provenanceLeafAttestation,
     decodeProvenanceContent,
     PROVENANCE_LEAF_KEY,
     PROVENANCE_LEAF_LABEL,
     verifyInclusionProof,
-    getSectionDataBytes,
-    sectionDataHash,
-    withholdSectionContent,
+    getClauseDataBytes,
+    hashClauseData,
+    withholdClauseContent,
 } from "./agreement.js";
-export type { Agreement, AgreementProvenance, AgreementSection } from "./agreement.js";
+export type { Agreement, AgreementProvenance, AgreementClause } from "./agreement.js";
 
 // Prototype-pollution defense for parsed envelopes
 export { strippingReviver } from "./safeJson.js";
@@ -240,8 +240,8 @@ export {
     buildOrderAgreement,
     parseProjectionHints,
     publicForm,
-    sectionByField,
-    sectionsByField,
+    clauseByField,
+    clausesByField,
     serializeAssembly,
     composeAuthoredAgreement,
     assembleAuthored,
@@ -284,25 +284,25 @@ export type {
 } from "./reconstructOrders.js";
 export { topologicalOrder, depthsOverParents } from "./topology.js";
 
-// Checkout planning — fill-where-composed section writers, the sub-order
+// Checkout planning — fill-where-composed clause writers, the sub-order
 // seller plan, live contributor pricing, the rate-quantity-source registry
 export {
     profileValuesFor,
-    fillCargoSection,
+    fillCargoClause,
     derivePricedFields,
-    fillClassSections,
-    fillProfileSections,
-    fillCommerceSection,
+    fillClassClauses,
+    fillProfileClauses,
+    fillCommerceClause,
     readUtilityTokenPin,
-    fillDerivedSections,
-    fillDimweightSection,
+    fillDerivedClauses,
+    fillDimweightClause,
     getRateQuantityResolver,
     listRateQuantitySources,
     mechanicallyFilledFieldNames,
     planSubOrderSellers,
     registerRateQuantitySource,
     resolveSubOrderPricing,
-    writeTopologySection,
+    writeTopologyClause,
 } from "./checkoutPlan.js";
 export type {
     AssemblyCheckoutLineItem,
@@ -323,7 +323,7 @@ export {
     assemblyComposedClauseKeys,
     agreementKeyOf,
     agreementClauseLeaves,
-    buildClauseInclusionProof,
+    buildRegisteredClauseInclusionProof,
     boundAgreement,
     agreementClauses,
     agreementLeafBytes,

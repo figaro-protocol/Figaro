@@ -6,7 +6,7 @@
  * a registered agreement by `agreementKeyOf(composed)` — the root over one
  * leaf per composed clause (the clause key and the designer's fills), so
  * membership of a clause in a registered agreement is a merkle proof
- * (`buildClauseInclusionProof`). `AssemblyRegistry` keys an assembly by
+ * (`buildRegisteredClauseInclusionProof`). `AssemblyRegistry` keys an assembly by
  * `compositionHash` — the root over its agreements (each a registered
  * agreement key and the agreement's own fills) and its assembly-scoped
  * terms, so membership of an agreement in an assembly is a merkle proof
@@ -24,7 +24,7 @@ import {
     buildLeafInclusionProof,
     buildMerkleRoot,
     canonicalize,
-    computeSectionLeaf,
+    computeClauseLeaf,
     PROVENANCE_LEAF_KEY,
     sortLeaves,
 } from "./agreement.js";
@@ -50,11 +50,11 @@ export interface ComposedAgreement {
 
 /** One composed clause's leaf — the agreement format's leaf convention with
  *  the clause key as the key and the canonical bytes of the designer's fills
- *  as the section data: `keccak256(keccak256(clauseKey ‖ keccak256(fills)))`.
+ *  as the clause data: `keccak256(keccak256(clauseKey ‖ keccak256(fills)))`.
  *  Throws for a reserved format key, which no clause can be. */
 function composedClauseLeaf(clauseKey: Hex, fills: Record<string, unknown>): Hex {
     assertNotReservedKey(clauseKey, "composed clause key");
-    return computeSectionLeaf({ clause: clauseKey, data: fills });
+    return computeClauseLeaf({ clause: clauseKey, data: fills });
 }
 
 /** Every leaf of a registered agreement's tree, sorted as the tree is built:
@@ -74,7 +74,7 @@ export function agreementClauseLeaves(doc: ComposedAgreement): Hex[] {
  *  key `AgreementRegistry.registerAgreement` takes. Editorial prose is
  *  excluded, so renaming never forks the key. A reader recomputes it from a
  *  fetched document (`anchorComposedAgreement`); a clause's membership in it
- *  is a proof under it (`buildClauseInclusionProof`). */
+ *  is a proof under it (`buildRegisteredClauseInclusionProof`). */
 export function agreementKeyOf(doc: ComposedAgreement): Hex {
     return buildMerkleRoot(agreementClauseLeaves(doc));
 }
@@ -83,7 +83,7 @@ export function agreementKeyOf(doc: ComposedAgreement): Hex {
  *  leaf, its sorted-pair proof, and `fillsHash` = `keccak256` of the canonical
  *  bytes of the designer's fills for it. Throws for a clause the agreement
  *  does not compose. The clause key is compared case-insensitively. */
-export function buildClauseInclusionProof(
+export function buildRegisteredClauseInclusionProof(
     doc: ComposedAgreement,
     clauseKey: Hex,
 ): { leaf: Hex; proof: Hex[]; fillsHash: Hex } {
@@ -136,7 +136,7 @@ export interface Assembly {
      *  assembly's entries from the registry at runtime. Excluded from the
      *  composition hash like the rest of the editorial prose. */
     faq?: readonly AssemblyFaqEntry[];
-    /** ASSEMBLY-SCOPED clause sections — clauses declaring
+    /** ASSEMBLY-SCOPED clauses — clauses declaring
      *  `design.scope: "assembly"`, composed ONCE for the whole design
      *  (clauseKey → the designer's values, `design.fills` only — same
      *  value-free rule as agreements). At checkout every one of these folds
@@ -202,7 +202,7 @@ export function assemblyParentOrderHashes(entry: Pick<AssemblyAgreement, "clause
     return Array.isArray(ids) ? ids.filter((p): p is string => typeof p === "string") : [];
 }
 
-/** Every clause a hydrated assembly composes — the assembly-scoped sections
+/** Every clause a hydrated assembly composes — the assembly-scoped clauses
  *  plus each agreement's — as one sorted, de-duplicated key list: each of these must be live on `ClauseRegistry` for the design to
  *  check out. */
 export function assemblyComposedClauseKeys(
@@ -247,10 +247,10 @@ export function assertNotReservedKey(agreementKey: Hex, where = "agreementKey"):
 
 /** An agreement's leaf — the agreement leaf convention with the agreement
  *  own `agreementKey` as the key and `keccak256(agreementLeafBytes)` as the
- *  section hash. Throws for a reserved key. */
+ *  clause data hash. Throws for a reserved key. */
 function agreementLeaf(entry: AssemblyAgreement, i: number): Hex {
     assertNotReservedKey(entry.agreementKey, `agreement ${i} agreementKey`);
-    return computeSectionLeaf({ clause: entry.agreementKey, dataHash: keccak256(agreementLeafBytes(entry, i)) });
+    return computeClauseLeaf({ clause: entry.agreementKey, dataHash: keccak256(agreementLeafBytes(entry, i)) });
 }
 
 /** Every leaf of the composition tree, sorted as the tree is built: one per
@@ -260,7 +260,7 @@ export function assemblyLeaves(assembly: Assembly): Hex[] {
     const leaves = assembly.agreements.map((entry, i) => agreementLeaf(entry, i));
     const terms = assembly.assemblyClauses;
     if (terms && Object.keys(terms).length > 0) {
-        leaves.push(computeSectionLeaf({ clause: ASSEMBLY_TERMS_LEAF_KEY, data: terms }));
+        leaves.push(computeClauseLeaf({ clause: ASSEMBLY_TERMS_LEAF_KEY, data: terms }));
     }
     return sortLeaves(leaves);
 }

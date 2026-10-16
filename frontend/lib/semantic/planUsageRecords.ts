@@ -6,7 +6,7 @@
  * (`fetchUsageClaimContext` — the counter's provenance and assembly-terms
  * leaf keys), and the per-order claims come from the SDK's
  * `buildUsageClaims`, the same builder the headless `recordProcessUsage` and
- * the batch path use: one claim per clause section, and — when the agreement
+ * the batch path use: one claim per clause, and — when the agreement
  * names its provenance (`Agreement.provenance`: the registered agreement it
  * instantiated and its assembly's composition root) — the agreement claim and
  * the assembly claim, the latter carrying the agreement's membership proof
@@ -91,7 +91,7 @@ export function planUsageRecords(entries: readonly UsagePlanEntry[]): UsagePlan 
                     orderHash,
                     order: commitment,
                     key: claim.clause_or_assembly,
-                    sectionHash: kind.Clause.section_hash,
+                    clauseDataHash: kind.Clause.section_hash,
                     proof: claim.inclusion_proof,
                 });
             } else if ("Agreement" in kind) {

@@ -10,9 +10,9 @@ import type { RuntimeAttestation } from "@/lib/composition/indexer";
 import type { CapabilityModel } from "@/lib/semantic/models";
 import { truncateHex } from "@/lib/shared/formatHex";
 
-// One re-assert card per party per order. The sections are built from the
+// One re-assert card per party per order. The clauses are built from the
 // derivation's own input types — clause keys no spec source has loaded, so
-// nothing here names a clause: a never-seen section is re-assertable.
+// nothing here names a clause: a never-seen clause is re-assertable.
 const BUYER = "0x1111111111111111111111111111111111111111";
 const SELLER = "0x2222222222222222222222222222222222222222";
 const PROCESS = `0x${"ab".repeat(32)}`;
@@ -20,7 +20,7 @@ const ORDER_HASH = `0x${"cd".repeat(32)}`;
 const AGREEMENT_HASH = `0x${"ef".repeat(32)}`;
 const K = 3;
 
-const sections = Array.from({ length: K }, (_v, i) => ({
+const clauseEntries = Array.from({ length: K }, (_v, i) => ({
     clause: `0x${String(i + 1).padStart(2, "0").repeat(32)}` as `0x${string}`,
     data: { note: `committed ${i}` },
 }));
@@ -29,7 +29,7 @@ const agreement: Agreement = {
     version: "a1",
     buyer: BUYER,
     seller: SELLER,
-    sections,
+    sections: clauseEntries,
 };
 
 const order: Order = {
@@ -56,8 +56,8 @@ const summary: ProcessSummary = {
     orders: [],
 };
 
-const reasserted = (sectionIndex: number, attester: string): RuntimeAttestation => ({
-    clauseId: sections[sectionIndex].clause,
+const reasserted = (clauseIndex: number, attester: string): RuntimeAttestation => ({
+    clauseId: clauseEntries[clauseIndex].clause,
     orderHash: ORDER_HASH,
     stage: 0,
     attester,
@@ -73,7 +73,7 @@ const reassertCards = (address: string, attestations: RuntimeAttestation[] = [])
         undefined,
         attestations,
     );
-    return model.orders.flatMap((o) => o.capabilities).filter((c) => c.actionKind === "reassert-committed-sections");
+    return model.orders.flatMap((o) => o.capabilities).filter((c) => c.actionKind === "reassert-committed-clauses");
 };
 
 const choicesOf = (card: CapabilityModel): CapabilityModel[] => {
@@ -84,17 +84,17 @@ const choicesOf = (card: CapabilityModel): CapabilityModel[] => {
 const choiceClauseIds = (card: CapabilityModel): string[] =>
     choicesOf(card).map((c) => (c.action.executionType === "transaction" && c.action.kind === "submit-clause-attestation" ? c.action.clauseKey : ""));
 
-describe("re-assert committed sections — one card per party per order", () => {
+describe("re-assert committed clauses — one card per party per order", () => {
     for (const [party, address] of [["seller", SELLER], ["buyer", BUYER]] as const) {
-        it(`${party}: K committed sections, none re-asserted → one card, N = K, K choices`, () => {
+        it(`${party}: K committed clauseEntries, none re-asserted → one card, N = K, K choices`, () => {
             const cards = reassertCards(address);
             expect(cards).toHaveLength(1);
-            expect(cards[0].label).toBe(`Re-assert committed sections (${K})`);
+            expect(cards[0].label).toBe(`Re-assert committed clauseEntries (${K})`);
             expect(choicesOf(cards[0])).toHaveLength(K);
-            expect(choiceClauseIds(cards[0])).toEqual(sections.map((s) => s.clause));
+            expect(choiceClauseIds(cards[0])).toEqual(clauseEntries.map((s) => s.clause));
             for (const choice of choicesOf(cards[0])) {
                 // Each choice is exactly the single-section re-assert action.
-                expect(choice.actionKind).toBe("reassert-committed-section");
+                expect(choice.actionKind).toBe("reassert-committed-clause");
                 expect(choice.action).toMatchObject({
                     executionType: "transaction",
                     kind: "submit-clause-attestation",
@@ -106,21 +106,21 @@ describe("re-assert committed sections — one card per party per order", () => 
             }
         });
 
-        it(`${party}: one section re-asserted → N = K-1 and that section absent`, () => {
+        it(`${party}: one clause re-asserted → N = K-1 and that clause absent`, () => {
             const cards = reassertCards(address, [reasserted(1, address)]);
             expect(cards).toHaveLength(1);
-            expect(cards[0].label).toBe(`Re-assert committed sections (${K - 1})`);
-            expect(choiceClauseIds(cards[0])).toEqual([sections[0].clause, sections[2].clause]);
+            expect(cards[0].label).toBe(`Re-assert committed clauseEntries (${K - 1})`);
+            expect(choiceClauseIds(cards[0])).toEqual([clauseEntries[0].clause, clauseEntries[2].clause]);
         });
 
-        it(`${party}: every section re-asserted → no card`, () => {
-            const cards = reassertCards(address, sections.map((_s, i) => reasserted(i, address)));
+        it(`${party}: every clause re-asserted → no card`, () => {
+            const cards = reassertCards(address, clauseEntries.map((_s, i) => reasserted(i, address)));
             expect(cards).toHaveLength(0);
         });
     }
 
     it("the other party's re-assertion leaves this party's count whole", () => {
-        const cards = reassertCards(BUYER, sections.map((_s, i) => reasserted(i, SELLER)));
+        const cards = reassertCards(BUYER, clauseEntries.map((_s, i) => reasserted(i, SELLER)));
         expect(cards).toHaveLength(1);
         expect(choicesOf(cards[0])).toHaveLength(K);
     });
@@ -136,9 +136,9 @@ describe("re-assert committed sections — one card per party per order", () => 
 });
 
 // The agreement format's provenance leaf: the buyer attests it while the
-// process is open, beside the committed sections, from its own choice. It is
-// the format's leaf, never a clause section: it is keyed by the reserved key.
-describe("re-assert committed sections — the provenance leaf", () => {
+// process is open, beside the committed clauses, from its own choice. It is
+// the format's leaf, never a clauseEntry: it is keyed by the reserved key.
+describe("re-assert committed clauses — the provenance leaf", () => {
     const COMPOSITION = `0x${"9a".repeat(32)}` as `0x${string}`;
     const AGREEMENT_KEY = `0x${"8b".repeat(32)}` as `0x${string}`;
     const withProvenance: Agreement = { ...agreement, provenance: { agreementKey: AGREEMENT_KEY, compositionHash: COMPOSITION } };
@@ -150,7 +150,7 @@ describe("re-assert committed sections — the provenance leaf", () => {
             address,
             undefined,
             attestations,
-        ).orders.flatMap((o) => o.capabilities).filter((c) => c.actionKind === "reassert-committed-sections");
+        ).orders.flatMap((o) => o.capabilities).filter((c) => c.actionKind === "reassert-committed-clauses");
     const provenanceChoices = (cards: CapabilityModel[]) =>
         cards.flatMap(choicesOf).filter((c) => c.actionKind === "reassert-provenance-leaf");
 
@@ -191,7 +191,7 @@ describe("re-assert committed sections — the provenance leaf", () => {
 
 // A buyer is a party to every order of its process, so it holds one card per
 // order; each card names its order (position on the chain, seller).
-describe("re-assert committed sections — several orders in one process", () => {
+describe("re-assert committed clauses — several orders in one process", () => {
     const SELLER_B = "0x5555555555555555555555555555555555555555" as const;
     const ORDER_B = `0x${"0b".repeat(32)}`;
     const AGREEMENT_B = `0x${"0e".repeat(32)}`;
@@ -215,7 +215,7 @@ describe("re-assert committed sections — several orders in one process", () =>
         // orderB first in the input: the position comes from the chain, not the array.
         deriveProcessModelFromRuntime(summary, [orderB, order], agreements, address, undefined, attestations)
             .orders.flatMap((o) => o.capabilities)
-            .filter((c) => c.actionKind === "reassert-committed-sections");
+            .filter((c) => c.actionKind === "reassert-committed-clauses");
 
     it("two orders → two buyer cards whose sub-lines differ and name each order's seller", () => {
         const cards = cardsFor(BUYER);
@@ -236,7 +236,7 @@ describe("re-assert committed sections — several orders in one process", () =>
 // A clause declaring a witness stage surfaces one witness card per order to
 // the buyer, who is a party to every order of its process: each card names
 // its order (position on the chain, seller), as the re-assert card does, and
-// carries the committed section's clause key.
+// carries the committed clause key.
 describe("witness-stage cards — several orders in one process", () => {
     const WITNESS_SPEC = {
         clauseId: "test-witness-reading",
@@ -260,10 +260,10 @@ describe("witness-stage cards — several orders in one process", () => {
         agreementHash: AGREEMENT_B,
     };
     const pinned = pinSpec(WITNESS_SPEC);
-    const witnessSection = { clause: pinned.clauseKey, data: {} };
+    const witnessClause = { clause: pinned.clauseKey, data: {} };
     const agreements = new Map<string, Agreement>([
-        [AGREEMENT_HASH, { ...agreement, sections: [witnessSection] }],
-        [AGREEMENT_B, { ...agreement, seller: SELLER_B, sections: [witnessSection] }],
+        [AGREEMENT_HASH, { ...agreement, sections: [witnessClause] }],
+        [AGREEMENT_B, { ...agreement, seller: SELLER_B, sections: [witnessClause] }],
     ]);
 
     beforeAll(async () => {
@@ -285,7 +285,7 @@ describe("witness-stage cards — several orders in one process", () => {
         expect(byOrder.get(ORDER_B)).toBe(`Order 2 of 2 · seller ${truncateHex(SELLER_B)}`);
     });
 
-    it("each witness card carries the committed section's clause key", () => {
+    it("each witness card carries the committed clause's clause key", () => {
         for (const card of witnessCards(BUYER)) {
             expect(card.action.executionType === "transaction" && card.action.kind === "submit-clause-attestation" && card.action.clauseKey).toBe(pinned.clauseKey);
         }

@@ -7,7 +7,7 @@
  *
  *   drawer   → the event-driven designer drawer surfaces it (read from the live
  *              ClauseRegistry → IPFS, never a bundled list)
- *   encode   → composing it into an assembly carries its section into the
+ *   encode   → composing it into an assembly carries its clause into the
  *              published agreement
  *   commit   → a real bilateral order commits that agreement on-chain
  *   runtime  → the order's seller advances the clause's lifecycle through the

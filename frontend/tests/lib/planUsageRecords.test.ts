@@ -1,7 +1,7 @@
 /**
  * The buyer's at-resolution usage writes: planned before the confirm from the
  * counter's own facts (one per distinct (kind, key) across the process: every
- * clause section, and from the agreement's provenance leaf the registered
+ * clause, and from the agreement's provenance leaf the registered
  * agreement and the assembly, the latter with its agreement's membership
  * proof from the assembly), each simulated before it is sent. Mirrors sdk/tests/recordProcessUsage.test.ts for the frontend path.
  */
@@ -13,7 +13,7 @@ import {
     agreementKeyOf,
     buildAgreementInclusionProof,
     provenanceContentRef,
-    provenanceSectionBytes,
+    provenanceLeafBytes,
     assemblyCompositionHash,
     type Agreement,
     type Assembly,
@@ -72,7 +72,7 @@ function entry(salt: bigint, seller: Address, a: Agreement = agreement(seller)):
 }
 
 describe("planUsageRecords", () => {
-    it("plans every clause section, and the provenance leaf only as the agreement and assembly writes", () => {
+    it("plans every clauseEntry, and the provenance leaf only as the agreement and assembly writes", () => {
         const { writes } = planUsageRecords([entry(1n, SELLER_A)]);
         expect(writes.map((w) => w.key.toLowerCase())).not.toContain(PROVENANCE_LEAF_KEY.toLowerCase());
         expect(writes.filter((w) => w.kind === "clause").map((w) => w.key.toLowerCase()).sort())
@@ -134,7 +134,7 @@ describe("planUsageRecords", () => {
     });
 
     it("keeps the families apart: a clause key with an assembly's bytes is its own (kind, key) pair", () => {
-        // A registry accepts any bytes32, so a section may carry the very
+        // A registry accepts any bytes32, so a clause may carry the very
         // bytes of the assembly's composition hash; it plans as a clause
         // write AND the provenance plans as the assembly write.
         const provenance = { agreementKey: AGREEMENT_KEY, compositionHash: COMPOSITION };
@@ -249,8 +249,8 @@ describe("createCapabilityExecutors — the provenance leaf attestation", () => 
             orderHash: "order-1",
             clauseId: PROVENANCE_LEAF_KEY,
             stage: 0,
-            content: provenanceSectionBytes(AGREEMENT_KEY, COMPOSITION),
+            content: provenanceLeafBytes(AGREEMENT_KEY, COMPOSITION),
         }));
-        expect(keccak256(provenanceSectionBytes(AGREEMENT_KEY, COMPOSITION))).toBe(provenanceContentRef(AGREEMENT_KEY, COMPOSITION));
+        expect(keccak256(provenanceLeafBytes(AGREEMENT_KEY, COMPOSITION))).toBe(provenanceContentRef(AGREEMENT_KEY, COMPOSITION));
     });
 });

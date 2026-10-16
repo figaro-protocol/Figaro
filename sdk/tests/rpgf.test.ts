@@ -25,8 +25,8 @@ import {
     PROVENANCE_LEAF_KEY,
     computeAgreementHash,
     computeProvenanceLeaf,
-    computeSectionLeaf,
-    sectionDataHash,
+    computeClauseLeaf,
+    hashClauseData,
     verifyInclusionProof,
     type Agreement,
 } from "../src/agreement.js";
@@ -549,8 +549,8 @@ describe("buildUsageClaims", () => {
         deadline: 2n,
     };
 
-    function agreementWith(sections: Agreement["sections"], provenance?: Agreement["provenance"]): Agreement {
-        return { version: "a1", buyer: order.buyer, seller: order.seller, sections, ...(provenance ? { provenance } : {}) };
+    function agreementWith(clauseEntries: Agreement["sections"], provenance?: Agreement["provenance"]): Agreement {
+        return { version: "a1", buyer: order.buyer, seller: order.seller, sections: clauseEntries, ...(provenance ? { provenance } : {}) };
     }
 
     const modalities = { clause: keyOf("figaro-modalities"), data: { modality: "pickup" } };
@@ -559,7 +559,7 @@ describe("buildUsageClaims", () => {
         data: { payment: "100", currency: order.currency, lineItems: [] },
     };
 
-    it("claims every section, and carries the section FINGERPRINT not the preimage", () => {
+    it("claims every clauseEntry, and carries the clause FINGERPRINT not the preimage", () => {
         const agreement = agreementWith([modalities, commerce]);
         const claims = buildUsageClaims(order, agreement, CONTEXT);
 
@@ -568,7 +568,7 @@ describe("buildUsageClaims", () => {
             (c) => c.clause_or_assembly === keyOf("figaro-modalities"),
         )!;
         expect(modalityClaim.kind).toEqual({
-            Clause: { section_hash: sectionDataHash(modalities) },
+            Clause: { section_hash: hashClauseData(modalities) },
         });
         expect(usageClaimKindCode(modalityClaim)).toBe(USAGE_KIND_CLAUSE);
         // Wire shape: snake_case, string-encoded bigints — what Rust deserializes.
@@ -577,7 +577,7 @@ describe("buildUsageClaims", () => {
     });
 
     // The two designer credits ride the agreement format's provenance leaf,
-    // not a section: every section still earns its clause leg, the agreement
+    // not a clauseEntry: every clause still earns its clause leg, the agreement
     // leg credits the agreement key, and the assembly leg credits the
     // compositionHash with the agreement's membership proof — never the
     // reserved leaf key.
@@ -605,7 +605,7 @@ describe("buildUsageClaims", () => {
         const { agreement_key, slot_content_hash, membership_proof } = (assembly.kind as {
             Assembly: { agreement_key: Hex; slot_content_hash: Hex; membership_proof: Hex[] };
         }).Assembly;
-        const leaf = computeSectionLeaf({ clause: agreement_key, dataHash: slot_content_hash });
+        const leaf = computeClauseLeaf({ clause: agreement_key, dataHash: slot_content_hash });
         expect(verifyInclusionProof(COMPOSITION, leaf, membership_proof)).toBe(true);
         const other = assemblyCompositionHash({ agreements: [...ASSEMBLY.agreements].reverse() });
         expect(verifyInclusionProof(other, leaf, membership_proof)).toBe(false);
@@ -656,7 +656,7 @@ describe("buildUsageClaims", () => {
         for (const claim of claims) {
             const leaf =
                 "Clause" in claim.kind
-                    ? computeSectionLeaf(agreement.sections.find((s) => s.clause === claim.clause_or_assembly)!)
+                    ? computeClauseLeaf(agreement.sections.find((s) => s.clause === claim.clause_or_assembly)!)
                     : computeProvenanceLeaf(AGREEMENT_KEY, COMPOSITION);
             expect(
                 verifyInclusionProof(root, leaf, claim.inclusion_proof),

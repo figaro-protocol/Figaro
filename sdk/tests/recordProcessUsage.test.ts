@@ -1,6 +1,6 @@
 /**
  * recordProcessUsage — the headless at-resolution usage recording. Every
- * committed section earns a clause leg, the agreement's provenance leaf
+ * committed clause earns a clause leg, the agreement's provenance leaf
  * earns the agreement leg and the assembly leg (with the agreement's
  * membership proof), and a key is sent once per process.
  */
@@ -77,7 +77,7 @@ function clients(opts: { failOn?: Hex } = {}) {
 }
 
 describe("recordProcessUsage", () => {
-    it("sends every section's clause leg, and the agreement and assembly legs from the agreement's provenance leaf", async () => {
+    it("sends every clause's clause leg, and the agreement and assembly legs from the agreement's provenance leaf", async () => {
         const { publicClient, walletClient, sent } = clients();
         const report = await recordProcessUsage(walletClient, publicClient, COUNTER, [{ commitment: order(1n), agreement: agreement(), assembly: ASSEMBLY }]);
 

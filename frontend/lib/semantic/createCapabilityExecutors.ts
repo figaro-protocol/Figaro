@@ -16,7 +16,7 @@
 import { type Hex } from "viem";
 import {
     PROVENANCE_LEAF_KEY,
-    provenanceSectionBytes,
+    provenanceLeafBytes,
     type Agreement,
     type Assembly,
     type Commitment,
@@ -109,7 +109,7 @@ export function createCapabilityExecutors(deps: CapabilityExecutorDeps) {
         // ── USAGE RECORDING, PLANNED BEFORE THE BUYER IS ASKED: the buyer's
         // app holds every agreement and proof at the moment of resolve, so it
         // plans the usage writes first (`planUsageRecords` — one per distinct
-        // key across the process: every clause section, and the registered
+        // key across the process: every clause, and the registered
         // agreement and the assembly from each agreement's provenance leaf)
         // and the confirm says how many the wallet signs after.
         // Under the e2e mock there is no chain: nothing is planned or sent.
@@ -205,7 +205,7 @@ export function createCapabilityExecutors(deps: CapabilityExecutorDeps) {
         let content: Hex | undefined;
         if (action.reasserts) {
             // RE-ASSERT: content stays OMITTED — the coordinator
-            // defaults it to the committed sectionData, the exact
+            // defaults it to the committed clauseData, the exact
             // bytes under the agreementHash merkle binding.
             content = undefined;
         } else if (isLadder) {
@@ -245,7 +245,7 @@ export function createCapabilityExecutors(deps: CapabilityExecutorDeps) {
 
     // The agreement FORMAT's provenance leaf, attested by the buyer while the
     // process is open: the reserved key where a clause key goes, stage 0, and
-    // the leaf's own bytes as the content — their hash is the leaf's section
+    // the leaf's own bytes as the content — their hash is the leaf's clause
     // hash, so the content reference equals it and the bytes publish at it.
     // No spec: the bytes are the format's, reproducible from the hash.
     const attestProvenanceLeaf = async (action: AttestProvenanceLeafCapabilityAction) =>
@@ -253,7 +253,7 @@ export function createCapabilityExecutors(deps: CapabilityExecutorDeps) {
             orderHash: action.orderHash as Hex,
             clauseId: PROVENANCE_LEAF_KEY,
             stage: 0,
-            content: provenanceSectionBytes(action.agreementKey, action.compositionHash),
+            content: provenanceLeafBytes(action.agreementKey, action.compositionHash),
             failureMessage: "provenance attestation failed",
         });
 

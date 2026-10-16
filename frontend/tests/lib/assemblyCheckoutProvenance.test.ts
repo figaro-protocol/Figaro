@@ -2,7 +2,7 @@
  * assemblyCheckoutProvenance.test.ts — the link from a realized order to the
  * assembly it instantiates is the agreement FORMAT's provenance leaf, set by
  * the checkout walk from the agreement's registered agreement key and the
- * assembly's own composition root; no clause section carries it.
+ * assembly's own composition root; no clause carries it.
  */
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { agreementLeaves, computeProvenanceLeaf, assemblyCompositionHash } from "@figaro-protocol/sdk";
@@ -56,8 +56,8 @@ describe("assembly checkout — the provenance leaf", () => {
             const entry = assembly.agreements.find((s) => s.id === order.nodeId)!;
             expect(order.agreement.provenance).toEqual({ agreementKey: entry.agreementKey, compositionHash });
             expect(agreementLeaves(order.agreement)).toContain(computeProvenanceLeaf(entry.agreementKey, compositionHash));
-            for (const section of order.agreement.sections) {
-                expect(JSON.stringify(section.data)).not.toContain(compositionHash.slice(2));
+            for (const clauseEntry of order.agreement.sections) {
+                expect(JSON.stringify(clauseEntry.data)).not.toContain(compositionHash.slice(2));
             }
         }
     });

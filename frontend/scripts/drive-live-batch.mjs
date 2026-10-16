@@ -146,22 +146,22 @@ const spec = parseResult.spec;
 // parsed spec, which drops the presentation slice.
 const clauseKey = computeClauseKey(specObject);
 
-const sectionObject = { modality: 'delivery' };
-const sectionData = canonicalize(sectionObject);
-const contentRef = keccak256(encodeContentFromSpec(spec, sectionObject, { stage: 0 }));
+const clauseObject = { modality: 'delivery' };
+const clauseData = canonicalize(clauseObject);
+const contentRef = keccak256(encodeContentFromSpec(spec, clauseObject, { stage: 0 }));
 
 const agreement = {
     version: 'a1',
     buyer: buyerAccount.address,
     seller: sellerAccount.address,
-    sections: [{ clause: clauseKey, data: sectionObject }],
+    sections: [{ clause: clauseKey, data: clauseObject }],
 };
 const agreementHash = computeAgreementHash(agreement);
 
 const witnessProof = {
     spec_json: specJson,
-    content_json: sectionData,
-    section_data: sectionData,
+    content_json: clauseData,
+    section_data: clauseData,
     inclusion_proof: [],
     content_kind: 'RuntimeWitness',
 };
@@ -342,7 +342,7 @@ const attestSig = await sellerWallet.signTypedData({
     message: { orderHash, clauseId: clauseKey, stage: 0, contentRef },
 });
 saveRecord({
-    attestation: { clauseId: clauseKey, stage: 0, contentRef, sectionData, sellerSig: attestSig },
+    attestation: { clauseId: clauseKey, stage: 0, contentRef, clauseData, sellerSig: attestSig },
 });
 const attestResult = await sequencer.submitAttestAsSeller({
     role: commitment, target: commitment,

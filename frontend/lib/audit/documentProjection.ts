@@ -83,7 +83,7 @@ export interface RenderedDocument {
 
 // ── Resolution ─────────────────────────────────────────────────────────────────
 
-/** A committed section's data, found by a declared field — never by clause id. */
+/** A committed clause's data, found by a declared field — never by clause id. */
 function leafByField(agreement: Agreement | undefined, fieldName: string): Record<string, unknown> | undefined {
     const section = agreement?.sections.find((s) => clauseDeclaresField(s.clause, fieldName));
     return section?.data as Record<string, unknown> | undefined;

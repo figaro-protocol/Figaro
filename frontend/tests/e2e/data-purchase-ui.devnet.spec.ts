@@ -23,7 +23,7 @@
  * from the screen that claims to have written it.
  *
  * A data buyer then walks the ordinary UI end to end, once per posture:
- * /s/view (the records-offered section + the data-product badge) → cart →
+ * /s/view (the records-offered clause + the data-product badge) → cart →
  * checkout (the buyer picks the data-stream assembly; NO data-license fields
  * rendered; the folded scope is visible in the pre-sign preview) → sign +
  * relay → the data-selling member accepts on /orders → commit (bond deltas
@@ -288,13 +288,13 @@ test.describe('Buyer-side data sale through the UI (devnet)', () => {
             balanceOf(DATA_BUYER), balanceOf(DATA_SELLER), balanceOf(core),
         ]);
 
-        // ── DISCOVERY: the records-offered section and the data-product badge ──
+        // ── DISCOVERY: the records-offered clause and the data-product badge ──
         await gotoAsWallet(page, DATA_BUYER, `/s/view?seller=${DATA_SELLER}&e2e=devnet`);
         await page.getByTestId('member-detail-view').waitFor({ timeout: 30000 });
         await waitForConnected(page);
         await expect(
             page.getByTestId('seller-disclosure-policy'),
-            'the data-for-sale section renders the declared offers',
+            'the data-for-sale clause renders the declared offers',
         ).toBeVisible({ timeout: 30000 });
         await expect(
             page.getByTestId(`disclosure-data-${recordClauseKey}-buyer`),

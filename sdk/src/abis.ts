@@ -108,11 +108,11 @@ export const EV_PROCESS_RESOLVED = parseAbiItem(
 export const ATTESTATION_COORDINATOR_ABI = parseAbi([
     "function core() view returns (address)",
     // Both paths take the full Commitment(s) so the coordinator can
-    // recover `agreementHash` without new FigaroCore state, and carry the section
+    // recover `agreementHash` without new FigaroCore state, and carry the clause
     // FINGERPRINT `sectionHash` (`keccak256(sectionData)`) + merkle `proof` so
     // the clause is provably part of the signed agreement. The content
     // FINGERPRINT `contentRef` (`keccak256(content)`) is supplied too — never the
-    // preimage, so a `private` section's plaintext never touches public calldata;
+    // preimage, so a `private` clause's plaintext never touches public calldata;
     // it lives off-chain (encrypted IPFS) bound to this hash. There is no on-chain
     // clause-content validator. Matches the batched path's bytes32 convention.
     `function attestAsSeller(${COMMITMENT_TUPLE} role, ${COMMITMENT_TUPLE} target, bytes32 clauseId, uint8 stage, bytes32 sectionHash, bytes32[] proof, bytes32 contentRef) external`,
@@ -353,10 +353,10 @@ export const FLORIN_TOKEN_ABI = parseAbi([
 // Verified clause-or-assembly usage, counted when it happens. `recordClauseUsage` is
 // permissionless: it proves the order is RESOLVED (`core.orderStatus == 2`)
 // and that the clause or assembly is merkle-included in the signed `agreementHash` —
-// the same leaf shape `computeSectionLeaf` builds. It carries only the section
+// the same leaf shape `computeClauseLeaf` builds. It carries only the clause
 // FINGERPRINT `sectionHash` (`keccak256` of the committed bytes), never the
-// preimage, so a `private` section's plaintext never touches public calldata.
-// `recordAgreementUsage` and `recordAssemblyUsage` take no section at all —
+// preimage, so a `private` clause's plaintext never touches public calldata.
+// `recordAgreementUsage` and `recordAssemblyUsage` take no clause at all —
 // the content of the agreement format's reserved provenance leaf
 // (`provenanceLeaf`) is fully determined by the two keys it names
 // (`agreementKey`, `compositionHash`), so the contract derives it; the

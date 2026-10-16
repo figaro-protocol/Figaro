@@ -44,7 +44,7 @@ describe("clause-spec.schema.json <-> parseClauseSpec conformance", () => {
     // `block` is presentation metadata the SDK parser does NOT own (see spec.ts) —
     // it is validated by this schema and the frontend's clauseBlockBinding, never by
     // parseClauseSpec. So a malformed block (e.g. missing the required design
-    // section, or a design without its article) is a SCHEMA-level rejection only;
+    // clause, or a design without its article) is a SCHEMA-level rejection only;
     // the parser is silent on block by design.
     it("rejects a block missing the required design.article at the schema (the parser does not own block)", () => {
         const noDesign = { clauseId: "x", version: 1, title: "T", description: "D", fields: [], block: {} };

@@ -23,7 +23,7 @@ export interface Order {
      *  data of its topology clause. Set by the designer when edges
      *  are drawn, so topology is read straight from the order and never
      *  recovered by loading its agreement. Undefined for runtime/chain orders,
-     *  whose topology lives in the committed agreement's topology section
+     *  whose topology lives in the committed agreement's topology clause
      *  (reconstructed off-chain by the indexer). */
     parentOrderHashes?: string[];
     cumulativeValue: bigint;

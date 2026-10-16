@@ -72,9 +72,9 @@ fn encode_content(spec_json: &str, content: &serde_json::Value, stage: u8) -> Ve
 }
 
 /// The agreement Merkle leaf for a clause section:
-/// `keccak256(keccak256(clauseId ++ keccak256(sectionData)))` — double-hashed
+/// `keccak256(keccak256(clauseId ++ keccak256(clauseData)))` — double-hashed
 /// for leaf/node domain separation.
-fn section_leaf(clause_key: &B256, section_data: &str) -> B256 {
+fn clause_leaf(clause_key: &B256, section_data: &str) -> B256 {
     let mut preimage = [0u8; 64];
     preimage[..32].copy_from_slice(clause_key.as_slice());
     preimage[32..].copy_from_slice(keccak256(section_data.as_bytes()).as_slice());
@@ -410,7 +410,7 @@ fn attest_fixture() -> AttestFixture {
     let spec_json = load_spec_json("figaro-modalities");
     // The clause key is keccak256 of the spec bytes the witness carries.
     let clause_key = keccak256(spec_json.as_bytes());
-    let leaf = section_leaf(&clause_key, SECTION_DATA);
+    let leaf = clause_leaf(&clause_key, SECTION_DATA);
 
     let root = Commitment {
         agreement_hash: leaf,
@@ -441,7 +441,7 @@ fn runtime_witness_proof(f: &AttestFixture) -> (AttestationContentProof, B256) {
     )
 }
 
-/// A ReAssert content proof: the content IS the committed sectionData.
+/// A ReAssert content proof: the content IS the committed clauseData.
 fn re_assert_proof(f: &AttestFixture) -> (AttestationContentProof, B256) {
     let content_ref = keccak256(SECTION_DATA.as_bytes());
     (
@@ -1174,7 +1174,7 @@ fn every_vector_agreement_credits_its_agreement_and_its_assembly() {
 fn a_vector_membership_proof_from_another_assembly_is_refused() {
     let fx = assembly_vectors();
     let assemblies = fx["assemblies"].as_array().unwrap();
-    // `two-entries` order-1 and `one-entry` order-0 both bind the one-section agreement.
+    // `two-entries` order-1 and `one-entry` order-0 both bind the one-clause agreement.
     let two = &assemblies[1];
     let one = &assemblies[0];
     let entry = &two["agreements"][1];
@@ -1241,7 +1241,7 @@ fn the_vector_terms_leaf_never_passes_as_an_agreement() {
     preimage[..32].copy_from_slice(keccak256(b"figaro-agreement-provenance").as_slice());
     preimage[32..].copy_from_slice(keccak256(&bytes).as_slice());
     let (order, ops) = resolved_order_under(keccak256(keccak256(preimage)), 1);
-    let claim = kind1(&order, composition, terms_key, hex32(&terms["sectionHash"]), proof);
+    let claim = kind1(&order, composition, terms_key, hex32(&terms["clauseDataHash"]), proof);
     match apply_batch(&claims_batch(ops, vec![claim])).map(|_| ()) {
         Err(KernelError::ReservedKeyIsNotARegistration(k)) => assert_eq!(k, terms_key),
         other => panic!("expected ReservedKeyIsNotARegistration, got {other:?}"),

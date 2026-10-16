@@ -6,7 +6,7 @@
  * golden vectors and the EIP-712 parity hard gate.
  */
 import fc from "fast-check";
-import type { Agreement, AgreementSection } from "../src/agreement.js";
+import type { Agreement, AgreementClause } from "../src/agreement.js";
 import type { Assembly, ComposedAgreement, AssemblyAgreement } from "../src/assembly.js";
 import type { Commitment } from "../src/types.js";
 
@@ -37,7 +37,7 @@ const jsonLeafArb = fc.oneof(
     fc.constant(null),
 );
 
-/** A clause section's `data`: a JSON-safe record, one level of nesting. */
+/** A clause's `data`: a JSON-safe record, one level of nesting. */
 export const clauseDataArb: fc.Arbitrary<Record<string, unknown>> = fc.dictionary(
     safeKeyArb,
     fc.oneof(
@@ -48,21 +48,21 @@ export const clauseDataArb: fc.Arbitrary<Record<string, unknown>> = fc.dictionar
     { maxKeys: 4 },
 );
 
-export const sectionArb: fc.Arbitrary<AgreementSection> = fc.record({
+export const clauseArb: fc.Arbitrary<AgreementClause> = fc.record({
     clause: fc.array(fc.integer({ min: 0, max: 255 }), { minLength: 32, maxLength: 32 }).map((b) => (`0x${b.map((x) => x.toString(16).padStart(2, "0")).join("")}`) as `0x${string}`),
     data: clauseDataArb,
 });
 
 /** A valid Agreement: unique clause keys (computeAgreementHash rejects
  *  duplicates), any wallet as buyer/seller. */
-export function agreementArb(minSections: number): fc.Arbitrary<Agreement> {
+export function agreementArb(minClauses: number): fc.Arbitrary<Agreement> {
     return fc.record({
         version: fc.constant("a1" as const),
         buyer: addressArb,
         seller: addressArb,
-        sections: fc.uniqueArray(sectionArb, {
+        sections: fc.uniqueArray(clauseArb, {
             selector: (s) => s.clause,
-            minLength: minSections,
+            minLength: minClauses,
             maxLength: 6,
         }),
     });
@@ -85,8 +85,8 @@ export const commitmentArb: fc.Arbitrary<Commitment> = fc.record({
 /** A registered agreement's composed document: unique clause keys, JSON-safe
  *  values, and optional editorial prose (outside the key). */
 export const composedAgreementArb: fc.Arbitrary<ComposedAgreement> = fc.record({
-    clauses: fc.uniqueArray(sectionArb, { selector: (s) => s.clause, minLength: 1, maxLength: 5 })
-        .map((sections) => Object.fromEntries(sections.map((s) => [s.clause, s.data ?? {}])) as ComposedAgreement["clauses"]),
+    clauses: fc.uniqueArray(clauseArb, { selector: (s) => s.clause, minLength: 1, maxLength: 5 })
+        .map((clauseEntries) => Object.fromEntries(clauseEntries.map((s) => [s.clause, s.data ?? {}])) as ComposedAgreement["clauses"]),
     name: fc.option(fc.string({ maxLength: 12 }), { nil: undefined }),
     summary: fc.option(fc.string({ maxLength: 12 }), { nil: undefined }),
 }).map(({ name, summary, clauses }) => ({

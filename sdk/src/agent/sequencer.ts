@@ -16,7 +16,7 @@
  * Every batched attestation carries the full witness payload: the
  * clause's pinned spec bytes (whose keccak256 IS the clause key the
  * verifier checks is registered at resolution), the content, the
- * committed sectionData, and the agreement inclusion proof. The batched
+ * committed clauseData, and the agreement inclusion proof. The batched
  * path validates everything in-proof or the batch cannot resolve.
  */
 
@@ -43,10 +43,10 @@ export interface SequencerContentProof {
     /** The structured content validated (and, for a RuntimeWitness,
      *  generically ABI-encoded) in-proof. */
     content_json: string;
-    /** Canonical-JSON sectionData bytes — the committed agreement
-     *  section this attestation declares against. */
+    /** Canonical-JSON clauseData bytes — the committed agreement
+     *  clause this attestation declares against. */
     section_data: string;
-    /** Sorted-pair Merkle proof binding the section leaf to the target
+    /** Sorted-pair Merkle proof binding the clause leaf to the target
      *  order's signed agreementHash. Empty for a single-section agreement. */
     inclusion_proof: Hex[];
     content_kind: SequencerContentKind;
@@ -101,7 +101,7 @@ export interface SequencerCommitment {
 /**
  * A claim that one RESOLVED BATCH order used one clause, registered agreement
  * or assembly — the wire form of the Rust guest's `UsageClaim`. Build these
- * with `buildUsageClaims` (rpgf), which proves each clause from its section,
+ * with `buildUsageClaims` (rpgf), which proves each clause from its clause,
  * the agreement from the agreement's provenance leaf, and the assembly from
  * the same leaf plus the agreement's membership proof; never hand-roll one.
  *
@@ -125,7 +125,7 @@ export interface SequencerUsageClaim {
     /** serde's externally-tagged encoding of the Rust `UsageClaimKind`;
      *  codes 0 / 2 / 1 (`usageClaimKindCode`). */
     kind: SequencerUsageClaimKind;
-    /** Sorted-pair proof against the order's `agreement_hash`: of the section
+    /** Sorted-pair proof against the order's `agreement_hash`: of the clause
      *  leaf (Clause) or of the provenance leaf (Agreement, Assembly). */
     inclusion_proof: Hex[];
 }

@@ -16,7 +16,7 @@ export const metadata: Metadata = withOg({
  *   - Process financials (invoice-style: balance sheet + income statement
  *     + per-order line items + cash-flow log; balance-sheet identity check)
  *   - Audit-bundle PDF download (the resolve receipt)
- *   - Hash verification (three modes — agreement / section / search;
+ *   - Hash verification (three modes — agreement / clause / search;
  *     search runs against the wallet's visible orders, including this
  *     process)
  *   - Dispute escalation: a process-scoped `<RecoursePanel>` mounted

@@ -494,7 +494,7 @@ test.describe('VALUE-ADDED CHAIN — one buyer binds three sellers; one resolve 
         //    timeline — every seller advances its own process ladder through the
         //    ONE generic capability rail (no clause named on the page). This is
         //    the evidentiary record; the audit's clause-evidence renders a
-        //    process clause's section from these attestation events. ──
+        //    process clause's leaf from these attestation events. ──
         const attestAs = async (
             seller: Hex, stageLabel: string, expectedOnTimeline: number, label: string,
         ) => {

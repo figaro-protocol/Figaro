@@ -22,7 +22,7 @@ const distDir = join(process.cwd(), process.env.NEXT_DISTDIR || ".next");
 
 // Block-level closing tags safe to break inside (`</p\n>` parses as `</p>`).
 const BLOCK_CLOSERS =
-    /<\/(p|h[1-6]|section|article|li|ul|ol|table|thead|tbody|tr|blockquote|figure|main|header|footer|nav|aside|title|head|script|style)>/g;
+    /<\/(p|h[1-6]|clauseEntry|article|li|ul|ol|table|thead|tbody|tr|blockquote|figure|main|header|footer|nav|aside|title|head|script|style)>/g;
 
 function* htmlFiles(dir) {
     for (const entry of readdirSync(dir)) {

@@ -3,7 +3,7 @@
  *
  * The inbox→orders→badge CONSOLIDATION, end to end. A buyer orders from a seller
  * bound to a published assembly and relays the commitment over the coordination
- * channel; the SELLER then sees it in the "Your turn" section on `/orders` (the
+ * channel; the SELLER then sees it in the "Your turn" clause on `/orders` (the
  * surface that replaced the separate inbox), accepts it THERE, and the order
  * commits on-chain and moves to "In progress". No inbox, no notification feed,
  * no toast — one actor-neutral orders surface carrying the action.

@@ -15,9 +15,9 @@ import { hexEqual } from "@/lib/shared/evm";
 import { truncateHex } from "@/lib/shared/formatHex";
 import {
     PROVENANCE_LEAF_KEY,
-    buildSectionInclusionProof,
+    buildSignedClauseInclusionProof,
     provenanceLeafAttestation,
-    sectionDataHash,
+    hashClauseData,
     type Commitment,
 } from "@figaro-protocol/sdk";
 import { publishWitnessContent } from "@/lib/composition/witnessContent";
@@ -32,10 +32,10 @@ type AttestationInput = {
     stage: number;
     /**
      * ABI-encoded content per the clause's encoding. Omit to default to the
-     * committed `sectionData` — correct when the attestation RE-ASSERTS the
-     * committed section (content == sectionData; e.g. handoff, geo, modality,
+     * committed `clauseData` — correct when the attestation RE-ASSERTS the
+     * committed clause (content == clauseData; e.g. handoff, geo, modality,
      * emissions-disclosure). Supply an explicit value when the runtime witness DIFFERS
-     * from the committed section (merchant-process / courier-process ladders,
+     * from the committed clause (merchant-process / courier-process ladders,
      * proximity proof, measurement). Either way the attestation is merkle-bound
      * to the committed clause under `agreementHash` — that binding is the check,
      * uniform across both; there is no "cross-checked" vs "runtime" clause tier.
@@ -97,12 +97,12 @@ export function useAttestationCoordinatorActions() {
     }, [publicClient]);
 
     /**
-     * Build the `sectionHash` + inclusion `proof` arguments for an attestation
+     * Build the `clauseDataHash` + inclusion `proof` arguments for an attestation
      * against a target order's `agreementHash`. Reads the signed agreement
      * (from localStorage or IPFS), finds the clause for `clauseId`,
      * and produces the merkle inclusion proof the coordinator verifies. Returns
-     * the section FINGERPRINT (`keccak256` of its canonical bytes), never the
-     * preimage — the coordinator takes only the hash, so a private section's
+     * the clause FINGERPRINT (`keccak256` of its canonical bytes), never the
+     * preimage — the coordinator takes only the hash, so a private clause's
      * plaintext never touches calldata.
      */
     const buildReceipt = useCallback(async (targetAgreementHash: Hex, clauseId: Hex) => {
@@ -121,20 +121,20 @@ export function useAttestationCoordinatorActions() {
                 setError(message);
                 throw new Error(message);
             }
-            const { sectionHash, proof } = provenanceLeafAttestation(agreement);
-            return { sectionHash, proof };
+            const { clauseDataHash, proof } = provenanceLeafAttestation(agreement);
+            return { clauseDataHash, proof };
         }
         // The clauseId here is a runtime value (the clause being attested), not a
-        // hardcoded literal — find its section by matching the on-chain id.
-        const section = agreement.sections.find((s) => hexEqual(s.clause, clauseId));
-        if (!section) {
+        // hardcoded literal — find its clause by matching the on-chain id.
+        const clauseEntry = agreement.sections.find((s) => hexEqual(s.clause, clauseId));
+        if (!clauseEntry) {
             const message = `Clause ${truncateHex(clauseId, { head: 10, tail: 0 })} not committed in the signed agreement`;
             setError(message);
             throw new Error(message);
         }
-        const sectionHash = sectionDataHash(section);
-        const { proof } = buildSectionInclusionProof(agreement, section.clause);
-        return { sectionHash, proof };
+        const clauseDataHash = hashClauseData(clauseEntry);
+        const { proof } = buildSignedClauseInclusionProof(agreement, clauseEntry.clause);
+        return { clauseDataHash, proof };
     }, []);
 
     /** File one attestation as either party — the coordinator entry point
@@ -151,11 +151,11 @@ export function useAttestationCoordinatorActions() {
         setError("");
         try {
             const target = await loadCommitment(orderHash);
-            const { sectionHash, proof } = await buildReceipt(target.agreementHash as Hex, clauseId);
-            // Re-assert (content omitted) ⇒ contentRef IS the committed section's
+            const { clauseDataHash, proof } = await buildReceipt(target.agreementHash as Hex, clauseId);
+            // Re-assert (content omitted) ⇒ contentRef IS the committed clause's
             // fingerprint; otherwise bind the runtime content by its hash. The
             // content preimage lives off-chain, never in calldata.
-            const contentRef = content ? keccak256(content) : sectionHash;
+            const contentRef = content ? keccak256(content) : clauseDataHash;
 
             // Public-disposition content publishes at its fingerprint-derived
             // keccak-CID so any audit reader can resolve the values; private or
@@ -166,7 +166,7 @@ export function useAttestationCoordinatorActions() {
             // mid-flight. Best-effort: a pin failure never blocks the
             // attestation (an unattested orphan pin is public content, erasable).
             // Re-asserts publish nothing: their preimage is the committed
-            // section, already in the agreement pin.
+            // clause, already in the agreement pin.
             if (content) await publishWitnessContent({ clauseId, stage, content });
 
             return await writeContractAsync({
@@ -175,11 +175,11 @@ export function useAttestationCoordinatorActions() {
                 ...(role === "seller"
                     ? {
                         functionName: "attestAsSeller" as const,
-                        args: [target, target, clauseId, stage, sectionHash, proof, contentRef] as const,
+                        args: [target, target, clauseId, stage, clauseDataHash, proof, contentRef] as const,
                     }
                     : {
                         functionName: "attestAsBuyer" as const,
-                        args: [target, clauseId, stage, sectionHash, proof, contentRef] as const,
+                        args: [target, clauseId, stage, clauseDataHash, proof, contentRef] as const,
                     }),
                 account,
                 chain,

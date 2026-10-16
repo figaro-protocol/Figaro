@@ -62,7 +62,7 @@ export default function Attestations() {
                     methodology cannot later file a reading under a different one; the
                     proof simply will not open. The chain itself keeps only a
                     fingerprint of what was filed: a keccak256 of the content, and a
-                    keccak256 of the clause section it opens against. The content
+                    keccak256 of the clause&apos;s data it opens against. The content
                     itself &mdash; the plaintext of a reading, a photo, a signed note
                     &mdash; lives off-chain, public or sealed at the filer&apos;s own
                     choice, verified against that fingerprint by whoever reads it.

@@ -1,8 +1,8 @@
 {
-    "shape": "agreements[]: { label, agreementKey, clauses[] } — clauses[j]: { clauseKey, fillsBytes, fillsHash, leaf, membershipProof }: fillsBytes is the canonical JSON of the designer's fills for that clause, fillsHash = keccak256(fillsBytes), leaf = keccak256(keccak256(clauseKey ‖ fillsHash)), membershipProof is the sorted-pair proof of leaf under agreementKey, and agreementKey is the sorted-pair merkle root over every clause leaf (a one-clause agreement's key is its leaf). assemblies[]: { label, compositionHash, entries[], terms|null }. slots[i]: { id, agreementKey, agreementBytes, slotContentHash, leaf, membershipProof, provenance } — agreementBytes is the canonical JSON {\"clauses\":{…},\"slot\":i}, slotContentHash = keccak256(agreementBytes), leaf = keccak256(keccak256(agreementKey ‖ slotContentHash)), membershipProof is the sorted-pair proof of leaf under compositionHash. terms: { leafKey (keccak256(\"figaro-assembly-terms\")), termsBytes (canonical JSON of assemblyClauses), sectionHash, leaf } or null when no assembly-scoped clause is composed. provenance: { leafKey (keccak256(\"figaro-agreement-provenance\")), agreementKey, compositionHash, sectionData (canonical JSON {\"agreementKey\":\"0x…\",\"compositionHash\":\"0x…\"}, lowercase hex), sectionHash = keccak256(sectionData), leaf = keccak256(keccak256(leafKey ‖ sectionHash)) }. compositionHash is the sorted-pair merkle root over every entry leaf and the terms leaf; a one-leaf tree's root is its leaf.",
+    "shape": "agreements[]: { label, agreementKey, clauses[] } — clauses[j]: { clauseKey, fillsBytes, fillsHash, leaf, membershipProof }: fillsBytes is the canonical JSON of the designer's fills for that clause, fillsHash = keccak256(fillsBytes), leaf = keccak256(keccak256(clauseKey ‖ fillsHash)), membershipProof is the sorted-pair proof of leaf under agreementKey, and agreementKey is the sorted-pair merkle root over every clause leaf (a one-clause agreement's key is its leaf). assemblies[]: { label, compositionHash, entries[], terms|null }. slots[i]: { id, agreementKey, agreementBytes, slotContentHash, leaf, membershipProof, provenance } — agreementBytes is the canonical JSON {\"clauses\":{…},\"slot\":i}, slotContentHash = keccak256(agreementBytes), leaf = keccak256(keccak256(agreementKey ‖ slotContentHash)), membershipProof is the sorted-pair proof of leaf under compositionHash. terms: { leafKey (keccak256(\"figaro-assembly-terms\")), termsBytes (canonical JSON of assemblyClauses), clauseDataHash, leaf } or null when no assembly-scoped clause is composed. provenance: { leafKey (keccak256(\"figaro-agreement-provenance\")), agreementKey, compositionHash, clauseData (canonical JSON {\"agreementKey\":\"0x…\",\"compositionHash\":\"0x…\"}, lowercase hex), clauseDataHash = keccak256(clauseData), leaf = keccak256(keccak256(leafKey ‖ clauseDataHash)) }. compositionHash is the sorted-pair merkle root over every entry leaf and the terms leaf; a one-leaf tree's root is its leaf.",
     "agreements": [
         {
-            "label": "three-sections",
+            "label": "three-clauses",
             "agreementKey": "0xa4f6950b1ed29a78ac53e37a4e8c9125944070320f653a92e3328cbe11b92d96",
             "clauses": [
                 {
@@ -37,7 +37,7 @@
             ]
         },
         {
-            "label": "one-section",
+            "label": "one-clause",
             "agreementKey": "0xc1ed485a19efef229f49e83017799b51ce166c137dd3ac294036cad8b9c9f08b",
             "clauses": [
                 {
@@ -50,7 +50,7 @@
             ]
         },
         {
-            "label": "two-sections-and-a-design",
+            "label": "two-clauses-and-a-design",
             "agreementKey": "0x9f5abdd07a94decfaac002ba4237cfc02b50307ce3bae12e5c23b70de294b08a",
             "clauses": [
                 {
@@ -90,8 +90,8 @@
                         "leafKey": "0x26dc18a2251a8f4629ada6df88b7c98553e011c08682d28ce5bb51a441227dc6",
                         "agreementKey": "0xc1ed485a19efef229f49e83017799b51ce166c137dd3ac294036cad8b9c9f08b",
                         "compositionHash": "0xcc488a8d21e075e1d463c1ab9cc73774816f3aa0a992fc1576f98f7be0ff19b1",
-                        "sectionData": "{\"agreementKey\":\"0xc1ed485a19efef229f49e83017799b51ce166c137dd3ac294036cad8b9c9f08b\",\"compositionHash\":\"0xcc488a8d21e075e1d463c1ab9cc73774816f3aa0a992fc1576f98f7be0ff19b1\"}",
-                        "sectionHash": "0x7a272df3612cbccd54e1395d2cb999bbc039249bc32af92c8590162fbd9eb5d2",
+                        "clauseData": "{\"agreementKey\":\"0xc1ed485a19efef229f49e83017799b51ce166c137dd3ac294036cad8b9c9f08b\",\"compositionHash\":\"0xcc488a8d21e075e1d463c1ab9cc73774816f3aa0a992fc1576f98f7be0ff19b1\"}",
+                        "clauseDataHash": "0x7a272df3612cbccd54e1395d2cb999bbc039249bc32af92c8590162fbd9eb5d2",
                         "leaf": "0xe573d9f45453aa636f70982cacbc00bd38582df8f5a7471ec84025f9a8b93ef9"
                     }
                 }
@@ -115,8 +115,8 @@
                         "leafKey": "0x26dc18a2251a8f4629ada6df88b7c98553e011c08682d28ce5bb51a441227dc6",
                         "agreementKey": "0xa4f6950b1ed29a78ac53e37a4e8c9125944070320f653a92e3328cbe11b92d96",
                         "compositionHash": "0x75b8addfd372d4758c090083fd7a391d488dc2148c366ded3b32753140a7c321",
-                        "sectionData": "{\"agreementKey\":\"0xa4f6950b1ed29a78ac53e37a4e8c9125944070320f653a92e3328cbe11b92d96\",\"compositionHash\":\"0x75b8addfd372d4758c090083fd7a391d488dc2148c366ded3b32753140a7c321\"}",
-                        "sectionHash": "0x032383dcb38f8444133a5f9730661428f5702e6b9ead2c39d0de2ce51acf678a",
+                        "clauseData": "{\"agreementKey\":\"0xa4f6950b1ed29a78ac53e37a4e8c9125944070320f653a92e3328cbe11b92d96\",\"compositionHash\":\"0x75b8addfd372d4758c090083fd7a391d488dc2148c366ded3b32753140a7c321\"}",
+                        "clauseDataHash": "0x032383dcb38f8444133a5f9730661428f5702e6b9ead2c39d0de2ce51acf678a",
                         "leaf": "0x8fa3bce7e35079acd8c70131f863934f75b309e42639722714f4acbdb4bc89c0"
                     }
                 },
@@ -133,8 +133,8 @@
                         "leafKey": "0x26dc18a2251a8f4629ada6df88b7c98553e011c08682d28ce5bb51a441227dc6",
                         "agreementKey": "0xc1ed485a19efef229f49e83017799b51ce166c137dd3ac294036cad8b9c9f08b",
                         "compositionHash": "0x75b8addfd372d4758c090083fd7a391d488dc2148c366ded3b32753140a7c321",
-                        "sectionData": "{\"agreementKey\":\"0xc1ed485a19efef229f49e83017799b51ce166c137dd3ac294036cad8b9c9f08b\",\"compositionHash\":\"0x75b8addfd372d4758c090083fd7a391d488dc2148c366ded3b32753140a7c321\"}",
-                        "sectionHash": "0x9d7dd452027d7bd908f0c0823a4327385fce014a5a4995ecfd44c0d9e65ad0a4",
+                        "clauseData": "{\"agreementKey\":\"0xc1ed485a19efef229f49e83017799b51ce166c137dd3ac294036cad8b9c9f08b\",\"compositionHash\":\"0x75b8addfd372d4758c090083fd7a391d488dc2148c366ded3b32753140a7c321\"}",
+                        "clauseDataHash": "0x9d7dd452027d7bd908f0c0823a4327385fce014a5a4995ecfd44c0d9e65ad0a4",
                         "leaf": "0x156d6365d1c2cb5e1d9fa41b7616f277f67531e865ddfb823372d3b5575110dc"
                     }
                 }
@@ -159,8 +159,8 @@
                         "leafKey": "0x26dc18a2251a8f4629ada6df88b7c98553e011c08682d28ce5bb51a441227dc6",
                         "agreementKey": "0x9f5abdd07a94decfaac002ba4237cfc02b50307ce3bae12e5c23b70de294b08a",
                         "compositionHash": "0xda4448979192ed5345e6c16eb93f511eb24ab2ad960ddfd155d64fdf1cef960f",
-                        "sectionData": "{\"agreementKey\":\"0x9f5abdd07a94decfaac002ba4237cfc02b50307ce3bae12e5c23b70de294b08a\",\"compositionHash\":\"0xda4448979192ed5345e6c16eb93f511eb24ab2ad960ddfd155d64fdf1cef960f\"}",
-                        "sectionHash": "0x4ded80066335657169f7a67057f818ef193f9aa00ed4b4adfd0d5c2af9ffa2c9",
+                        "clauseData": "{\"agreementKey\":\"0x9f5abdd07a94decfaac002ba4237cfc02b50307ce3bae12e5c23b70de294b08a\",\"compositionHash\":\"0xda4448979192ed5345e6c16eb93f511eb24ab2ad960ddfd155d64fdf1cef960f\"}",
+                        "clauseDataHash": "0x4ded80066335657169f7a67057f818ef193f9aa00ed4b4adfd0d5c2af9ffa2c9",
                         "leaf": "0xf38540eb4af855ea2510acdddfb2e29a79663fee6b142e0fda6a7c79d7b4149b"
                     }
                 },
@@ -178,8 +178,8 @@
                         "leafKey": "0x26dc18a2251a8f4629ada6df88b7c98553e011c08682d28ce5bb51a441227dc6",
                         "agreementKey": "0x9f5abdd07a94decfaac002ba4237cfc02b50307ce3bae12e5c23b70de294b08a",
                         "compositionHash": "0xda4448979192ed5345e6c16eb93f511eb24ab2ad960ddfd155d64fdf1cef960f",
-                        "sectionData": "{\"agreementKey\":\"0x9f5abdd07a94decfaac002ba4237cfc02b50307ce3bae12e5c23b70de294b08a\",\"compositionHash\":\"0xda4448979192ed5345e6c16eb93f511eb24ab2ad960ddfd155d64fdf1cef960f\"}",
-                        "sectionHash": "0x4ded80066335657169f7a67057f818ef193f9aa00ed4b4adfd0d5c2af9ffa2c9",
+                        "clauseData": "{\"agreementKey\":\"0x9f5abdd07a94decfaac002ba4237cfc02b50307ce3bae12e5c23b70de294b08a\",\"compositionHash\":\"0xda4448979192ed5345e6c16eb93f511eb24ab2ad960ddfd155d64fdf1cef960f\"}",
+                        "clauseDataHash": "0x4ded80066335657169f7a67057f818ef193f9aa00ed4b4adfd0d5c2af9ffa2c9",
                         "leaf": "0xf38540eb4af855ea2510acdddfb2e29a79663fee6b142e0fda6a7c79d7b4149b"
                     }
                 },
@@ -197,8 +197,8 @@
                         "leafKey": "0x26dc18a2251a8f4629ada6df88b7c98553e011c08682d28ce5bb51a441227dc6",
                         "agreementKey": "0xa4f6950b1ed29a78ac53e37a4e8c9125944070320f653a92e3328cbe11b92d96",
                         "compositionHash": "0xda4448979192ed5345e6c16eb93f511eb24ab2ad960ddfd155d64fdf1cef960f",
-                        "sectionData": "{\"agreementKey\":\"0xa4f6950b1ed29a78ac53e37a4e8c9125944070320f653a92e3328cbe11b92d96\",\"compositionHash\":\"0xda4448979192ed5345e6c16eb93f511eb24ab2ad960ddfd155d64fdf1cef960f\"}",
-                        "sectionHash": "0x72e8aa7408c2972e25e16cbfa9913355153b694bb95fbe5ef2a467cdd59b0a41",
+                        "clauseData": "{\"agreementKey\":\"0xa4f6950b1ed29a78ac53e37a4e8c9125944070320f653a92e3328cbe11b92d96\",\"compositionHash\":\"0xda4448979192ed5345e6c16eb93f511eb24ab2ad960ddfd155d64fdf1cef960f\"}",
+                        "clauseDataHash": "0x72e8aa7408c2972e25e16cbfa9913355153b694bb95fbe5ef2a467cdd59b0a41",
                         "leaf": "0xd4a052d8f092e41f40060f33a7c299ee7863f296211de1fbe475e6903e0dd8b2"
                     }
                 }
@@ -206,7 +206,7 @@
             "terms": {
                 "leafKey": "0xefe0eaa5bce6c7b996059fedd6d0e4827f99c474563f43ff55e6e593e5915860",
                 "termsBytes": "{\"0xf79ded2de5be2f5194b75e56a3bcd6b357bb550da2f765c20a482b4f8e368b74\":{\"applicableLaw\":\"ch\",\"forum\":\"Zurich\",\"language\":\"en\"}}",
-                "sectionHash": "0x7a153abc70c1f4ba6079e730f98264c9113c226c0098e2fa52f8e6454d5ac0bc",
+                "clauseDataHash": "0x7a153abc70c1f4ba6079e730f98264c9113c226c0098e2fa52f8e6454d5ac0bc",
                 "leaf": "0xedeb4288cb9c20baa520f3f39764888d891bfe4aa6440c320cbb8e4dc79a8f36"
             }
         }

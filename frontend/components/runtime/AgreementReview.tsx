@@ -7,20 +7,20 @@
  *
  * The wallet prompt shows only the 32-byte agreementHash; this component
  * renders the terms that hash to it — parties, payment, line items,
- * consent documents, every clause section — next to the hash itself, so
+ * consent documents, every clause — next to the hash itself, so
  * the reviewer can verify "the hash I'm about to bind to corresponds to
  * the agreement in front of me."
  *
  * Consumers: the pre-sign/pre-commit confirm gate (`AgreementPreviewModal`
  * via `CommitmentSignPreviewProvider`) and the `/sign` counter-party page.
- * Rendering here is identity-blind — sections are read structurally
+ * Rendering here is identity-blind — clauses are read structurally
  * (`lineItems` array) or by the spec's own `block.design.article`, never by
  * clause name, so a never-seen third-party clause gets the same surface.
  */
 
 import { formatToken } from "@/lib/shared/utils";
 import useTokenDecimals from "@/hooks/useTokenDecimals";
-import type { Commitment, Agreement, AgreementSection } from "@figaro-protocol/sdk";
+import type { Commitment, Agreement, AgreementClause } from "@figaro-protocol/sdk";
 import { formatBlockTimestamp } from "@/lib/shared/formatTimestamp";
 import { describeClause, getClauseSpec } from "@/lib/shared/clauseSpecSource";
 import { resolveContentUri } from "@/lib/shared/ipfsService";
@@ -49,9 +49,9 @@ export function commerceLineItems(agreement: Agreement | null): Array<{
     unitPrice: string;
 }> {
     if (!agreement) return [];
-    // Structural, not nominal: the line-item table renders from EVERY section
+    // Structural, not nominal: the line-item table renders from EVERY clause
     // that carries a `lineItems` array — no clause is named, so a third-party
-    // commerce-equivalent clause gets the same rendering. All such sections are
+    // commerce-equivalent clause gets the same rendering. All such clauses are
     // flattened (not just the first): the table is a readability layer, and the
     // exhaustive JSON dump below is what guarantees nothing signed is hidden.
     return agreement.sections.flatMap((s) => {
@@ -71,25 +71,25 @@ export function commerceLineItems(agreement: Agreement | null): Array<{
 }
 
 /**
- * EVERY section, dumped in full as canonical JSON — the exhaustive rendering
+ * EVERY clause, dumped in full as canonical JSON — the exhaustive rendering
  * that closes the "sign what you didn't see" gap. The pretty line-item table
  * and the consent-terms block are additive readability layers ON TOP of this;
  * this dump is the guarantee that no author-controlled key (an extra field on
- * a commerce section, a second `lineItems`-bearing section) can suppress
- * merkle-committed content from the review. Do NOT filter by section shape:
- * the whole `section.data` is bound into `agreementHash`
- * (`getSectionDataBytes` hashes every key), so the whole `section.data` is
+ * a commerce clause, a second `lineItems`-bearing clause) can suppress
+ * merkle-committed content from the review. Do NOT filter by clause shape:
+ * the whole `clauseEntry.data` is bound into `agreementHash`
+ * (`getClauseDataBytes` hashes every key), so the whole `clauseEntry.data` is
  * shown.
  */
-export function fullDumpSections(agreement: Agreement | null): AgreementSection[] {
+export function fullDumpClauses(agreement: Agreement | null): AgreementClause[] {
     if (!agreement) return [];
     return agreement.sections;
 }
 
-/** Sections whose clause declares the `consent` ARTICLE — the spec's own
+/** Clauses whose clause declares the `consent` ARTICLE — the spec's own
  *  classification, never a clause name; a never-seen consent-article clause
  *  gets the same notice. */
-function consentSections(agreement: Agreement | null): AgreementSection[] {
+function consentClauses(agreement: Agreement | null): AgreementClause[] {
     if (!agreement) return [];
     return agreement.sections.filter((s) => getClauseSpec(s.clause)?.block?.design.article === "consent");
 }
@@ -109,8 +109,8 @@ function ConsentValueToken({ token }: { token: string }) {
 export function AgreementReview({ commitment, agreement }: Props) {
     const { decimals } = useTokenDecimals(commitment.currency as `0x${string}` | undefined);
     const lineItems = commerceLineItems(agreement);
-    const dumpedSections = fullDumpSections(agreement);
-    const consented = consentSections(agreement);
+    const dumpedClauses = fullDumpClauses(agreement);
+    const consented = consentClauses(agreement);
     const hasAgreement = agreement !== null;
 
     return (
@@ -185,10 +185,10 @@ export function AgreementReview({ commitment, agreement }: Props) {
                             off-chain; the chain keeps only fingerprints.
                         </p>
                         <ul className="space-y-1" data-testid="preview-consent-documents">
-                            {consented.flatMap((section) =>
-                                describeClause(section.clause, section.data as Record<string, unknown>).fields.flatMap((field) =>
+                            {consented.flatMap((clauseEntry) =>
+                                describeClause(clauseEntry.clause, clauseEntry.data as Record<string, unknown>).fields.flatMap((field) =>
                                     field.values.map((line, i) => (
-                                        <li key={`${section.clause}-${field.name}-${i}`} className="font-mono break-all text-ink-primary">
+                                        <li key={`${clauseEntry.clause}-${field.name}-${i}`} className="font-mono break-all text-ink-primary">
                                             {line.split(" · ").map((token, j) => (
                                                 <span key={j}>
                                                     {j > 0 && <span className="text-ink-faint"> · </span>}
@@ -202,18 +202,18 @@ export function AgreementReview({ commitment, agreement }: Props) {
                 </section>
             )}
 
-            {/* Every agreement section, dumped in full — the exhaustive view
+            {/* Every agreement clauseEntry, dumped in full — the exhaustive view
                 that makes the readability layers above safe: no committed key
                 can be hidden from what the signer binds. */}
-            {dumpedSections.length > 0 && (
+            {dumpedClauses.length > 0 && (
                 <section>
                     <h3 className="text-xs font-semibold text-ink-muted mb-2">Clauses</h3>
                     <ul className="space-y-2 text-xs" data-testid="preview-clauses">
-                        {dumpedSections.map((section) => (
-                            <li key={section.clause} className="border border-default rounded px-3 py-2">
-                                <p className="font-mono text-ink-muted mb-1">{section.clause}</p>
+                        {dumpedClauses.map((clauseEntry) => (
+                            <li key={clauseEntry.clause} className="border border-default rounded px-3 py-2">
+                                <p className="font-mono text-ink-muted mb-1">{clauseEntry.clause}</p>
                                 <pre className="text-ink-primary whitespace-pre-wrap break-words">
-                                    {JSON.stringify(section.data, null, 2)}
+                                    {JSON.stringify(clauseEntry.data, null, 2)}
                                 </pre>
                             </li>
                         ))}

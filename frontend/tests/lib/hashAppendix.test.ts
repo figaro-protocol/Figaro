@@ -1,7 +1,7 @@
 /**
  * hashAppendix.test.ts — the appendix lists every leaf under the agreement
  * root, so a reader rebuilds the root from the listed leaves alone: the
- * clause sections and, when the agreement names its provenance (its
+ * clauses and, when the agreement names its provenance (its
  * registered agreement and its assembly's composition root), the agreement
  * format's provenance leaf.
  */
@@ -35,10 +35,10 @@ const base: Agreement = {
 
 const leavesOf = (agreement: Agreement) =>
     buildHashAppendix(orderFor(agreement), agreement, []).anchors
-        .filter((a) => a.kind === "agreement-section-leaf" || a.kind === "agreement-provenance-leaf");
+        .filter((a) => a.kind === "agreement-clause-leaf" || a.kind === "agreement-provenance-leaf");
 
 describe("buildHashAppendix — every leaf under the root", () => {
-    it("lists the provenance leaf beside the sections — the listed leaves are the tree's leaves", () => {
+    it("lists the provenance leaf beside the clauses — the listed leaves are the tree's leaves", () => {
         const agreement: Agreement = { ...base, provenance: { agreementKey: AGREEMENT_KEY, compositionHash: COMPOSITION } };
         const leaves = leavesOf(agreement);
         expect(leaves.filter((a) => a.kind === "agreement-provenance-leaf").map((a) => a.hash))

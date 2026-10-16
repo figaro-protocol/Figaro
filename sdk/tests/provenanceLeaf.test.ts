@@ -12,11 +12,11 @@ import {
     PROVENANCE_LEAF_LABEL,
     agreementLeaves,
     buildProvenanceInclusionProof,
-    buildSectionInclusionProof,
+    buildSignedClauseInclusionProof,
     computeAgreementHash,
     computeProvenanceLeaf,
-    computeSectionLeaf,
-    provenanceSectionBytes,
+    computeClauseLeaf,
+    provenanceLeafBytes,
     provenanceContentRef,
     provenanceLeafAttestation,
     decodeProvenanceContent,
@@ -46,11 +46,11 @@ describe("the reserved provenance leaf", () => {
 
     it("commits exactly the bytes the counter reproduces: both keys, lowercase, canonical JSON", () => {
         const upper = (h: string) => h.toUpperCase().replace("0X", "0x") as `0x${string}`;
-        expect(provenanceSectionBytes(upper(AGREEMENT), upper(COMPOSITION))).toBe(
+        expect(provenanceLeafBytes(upper(AGREEMENT), upper(COMPOSITION))).toBe(
             toHex(new TextEncoder().encode(`{"agreementKey":"${AGREEMENT}","compositionHash":"${COMPOSITION}"}`)),
         );
         expect(computeProvenanceLeaf(AGREEMENT, COMPOSITION)).toBe(
-            keccak256(keccak256(concat([PROVENANCE_LEAF_KEY, keccak256(provenanceSectionBytes(AGREEMENT, COMPOSITION))]))),
+            keccak256(keccak256(concat([PROVENANCE_LEAF_KEY, keccak256(provenanceLeafBytes(AGREEMENT, COMPOSITION))]))),
         );
         // The two keys are not interchangeable.
         expect(computeProvenanceLeaf(COMPOSITION, AGREEMENT)).not.toBe(computeProvenanceLeaf(AGREEMENT, COMPOSITION));
@@ -62,21 +62,21 @@ describe("the reserved provenance leaf", () => {
         expect(agreementLeaves(withDesign)).toContain(computeProvenanceLeaf(AGREEMENT, COMPOSITION));
     });
 
-    it("is provable under the signed root, beside every section's own proof", () => {
+    it("is provable under the signed root, beside every clause's own proof", () => {
         const root = computeAgreementHash(withDesign);
         const { leaf, proof } = buildProvenanceInclusionProof(withDesign);
         expect(leaf).toBe(computeProvenanceLeaf(AGREEMENT, COMPOSITION));
         expect(verifyInclusionProof(root, leaf, proof)).toBe(true);
         // A wrong agreement key in the provenance bytes derives a leaf that is not in the tree.
         expect(verifyInclusionProof(root, computeProvenanceLeaf(`0x${"33".repeat(32)}`, COMPOSITION), proof)).toBe(false);
-        const section = buildSectionInclusionProof(withDesign, K("figaro-commerce"));
-        expect(section.leaf).toBe(computeSectionLeaf(withDesign.sections[0]));
-        expect(verifyInclusionProof(root, section.leaf, section.proof)).toBe(true);
+        const clauseEntry = buildSignedClauseInclusionProof(withDesign, K("figaro-commerce"));
+        expect(clauseEntry.leaf).toBe(computeClauseLeaf(withDesign.sections[0]));
+        expect(verifyInclusionProof(root, clauseEntry.leaf, clauseEntry.proof)).toBe(true);
     });
 
     it("refuses a provenance key that is not 32 bytes, as the counter's bytes32 does", () => {
-        expect(() => provenanceSectionBytes("0x1234", COMPOSITION)).toThrow(/agreementKey is not a 32-byte/);
-        expect(() => provenanceSectionBytes(AGREEMENT, "0x1234")).toThrow(/compositionHash is not a 32-byte/);
+        expect(() => provenanceLeafBytes("0x1234", COMPOSITION)).toThrow(/agreementKey is not a 32-byte/);
+        expect(() => provenanceLeafBytes(AGREEMENT, "0x1234")).toThrow(/compositionHash is not a 32-byte/);
         expect(() => computeAgreementHash({ ...bare, provenance: { agreementKey: AGREEMENT, compositionHash: "0xzz" } })).toThrow(/32-byte/);
     });
 
@@ -89,12 +89,12 @@ describe("attesting the provenance leaf", () => {
     it("hands the existing attest helpers the reserved key, the leaf's fingerprint, its proof and its content ref", () => {
         const inputs = provenanceLeafAttestation(withDesign);
         expect(inputs.clauseId).toBe(PROVENANCE_LEAF_KEY);
-        expect(inputs.sectionHash).toBe(keccak256(provenanceSectionBytes(AGREEMENT, COMPOSITION)));
-        expect(inputs.contentRef).toBe(inputs.sectionHash);
+        expect(inputs.clauseDataHash).toBe(keccak256(provenanceLeafBytes(AGREEMENT, COMPOSITION)));
+        expect(inputs.contentRef).toBe(inputs.clauseDataHash);
         expect(inputs.contentRef).toBe(provenanceContentRef(AGREEMENT, COMPOSITION));
         expect(inputs.stage).toBe(0);
-        // The coordinator's leaf shape over (clauseId, sectionHash) opens against the signed root.
-        const leaf = keccak256(keccak256(concat([inputs.clauseId, inputs.sectionHash])));
+        // The coordinator's leaf shape over (clauseId, clauseDataHash) opens against the signed root.
+        const leaf = keccak256(keccak256(concat([inputs.clauseId, inputs.clauseDataHash])));
         expect(verifyInclusionProof(computeAgreementHash(withDesign), leaf, inputs.proof)).toBe(true);
     });
 
@@ -103,7 +103,7 @@ describe("attesting the provenance leaf", () => {
     });
 
     it("decodes the leaf's bytes back to both keys only when they are the format's bytes exactly", () => {
-        expect(decodeProvenanceContent(provenanceSectionBytes(AGREEMENT, COMPOSITION)))
+        expect(decodeProvenanceContent(provenanceLeafBytes(AGREEMENT, COMPOSITION)))
             .toEqual({ agreementKey: AGREEMENT, compositionHash: COMPOSITION });
         const enc = (text: string) => toHex(new TextEncoder().encode(text));
         expect(decodeProvenanceContent(enc(`{ "agreementKey": "${AGREEMENT}", "compositionHash": "${COMPOSITION}" }`))).toBeNull();

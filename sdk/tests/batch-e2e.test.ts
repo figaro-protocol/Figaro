@@ -171,7 +171,7 @@ describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
     const SEQUENCER_URL = `http://127.0.0.1:${SEQUENCER_PORT}`;
 
     // The witness clause, prepared once: exact spec bytes, clause key,
-    // content_ref (canonical ABI encoding at stage 0), and the section
+    // content_ref (canonical ABI encoding at stage 0), and the clause
     // leaf that becomes the single-section agreementHash.
     const specJson = loadSpecJson("figaro-modalities");
     const parsedSpec = (() => {
@@ -185,8 +185,8 @@ describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
         encodeContentFromSpec(parsedSpec, JSON.parse(SECTION_DATA), { stage: 0 }),
     );
     // Double-hashed leaf (leaf/node domain separation) — must mirror
-    // computeSectionLeaf / the coordinator / the prover's Gate I.
-    const sectionLeaf = keccak256(
+    // computeClauseLeaf / the coordinator / the prover's Gate I.
+    const clauseLeaf = keccak256(
         keccak256(
             encodePacked(["bytes32", "bytes32"], [clauseKey, keccak256(stringToHex(SECTION_DATA))]),
         ),
@@ -329,7 +329,7 @@ describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
         if (!alive || !hasBinary) return;
 
         // ── 1. Build commitment ─────────────────────────────────
-        // The single-section agreement: agreementHash IS the section
+        // The single-section agreement: agreementHash IS the clause
         // leaf, so the attestation's inclusion proof is empty.
 
         const domain = buildDomain(31337, batchVerifierAddress);
@@ -342,7 +342,7 @@ describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
                 currency: tokenAddress,
                 payment: PAYMENT,
                 expectedCumulativeValue: PAYMENT,
-                agreementHash: sectionLeaf,
+                agreementHash: clauseLeaf,
                 salt: 42n,
                 deadline: BigInt(Math.floor(Date.now() / 1000) + 3600),
             },
@@ -533,7 +533,7 @@ describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
         // The SDK's agreement hash must equal the leaf this test signed by hand;
         // if it did not, the inclusion proof below would be proving a different
         // agreement than the one on chain.
-        expect(computeAgreementHash(agreement)).toBe(sectionLeaf);
+        expect(computeAgreementHash(agreement)).toBe(clauseLeaf);
 
         const claimContext = await fetchUsageClaimContext(publicClient, usageCounterAddress);
         const claims = buildUsageClaims(commitment, agreement, claimContext);

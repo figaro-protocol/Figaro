@@ -36,7 +36,7 @@ describe("parseBlockBinding — clause block-binding (sectioned UI half)", () =>
         expect(errors.some((e) => e.path === "$.block.design")).toBe(true);
     });
 
-    it("rejects a design section missing article (the one required declaration)", () => {
+    it("rejects a design clause missing article (the one required declaration)", () => {
         const { block, errors } = parse({ design: {} });
         expect(block).toBeNull();
         expect(errors.some((e) => e.path === "$.block.design.article")).toBe(true);

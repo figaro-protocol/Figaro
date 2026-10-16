@@ -16,15 +16,15 @@
 <li class="">
 <div class="tsd-signature tsd-anchor-link" id="publicform"><span class="tsd-kind-call-signature">publicForm</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">agreement</span><span class="tsd-signature-symbol">:</span> <a href="../interfaces/index.Agreement.html" class="tsd-signature-type tsd-kind-interface">Agreement</a><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">specs</span><span class="tsd-signature-symbol">:</span> <a href="../interfaces/index.SpecSource.html" class="tsd-signature-type tsd-kind-interface">SpecSource</a><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <a href="../interfaces/index.Agreement.html" class="tsd-signature-type tsd-kind-interface">Agreement</a><a href="#publicform" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
 <div class="tsd-description">
-<div class="tsd-comment tsd-typography"><p>The PUBLIC-pin form of an agreement: every section whose clause declares a
+<div class="tsd-comment tsd-typography"><p>The PUBLIC-pin form of an agreement: every clause whose clause declares a
 <code>private</code>-disposition field is content-WITHHELD (its plaintext <code>data</code> replaced
 by the <code>dataHash</code> fingerprint), so a paid-edge value never lands on public
-IPFS or in a shareable audit bundle. The withheld section contributes the
+IPFS or in a shareable audit bundle. The withheld clause contributes the
 IDENTICAL merkle leaf, so <code>agreementHash</code> is unchanged and any reader still
-verifies the root and every public section. Sections whose clause is entirely
+verifies the root and every public clause. Clauses whose clause is entirely
 public pass through as plaintext — that is the free coordination commons.</p>
-<p>Withholding is FAIL-CLOSED on the spec: a section is kept as plaintext ONLY
-when its spec is loaded AND declares no private field; a section whose spec is
+<p>Withholding is FAIL-CLOSED on the spec: a clause is kept as plaintext ONLY
+when its spec is loaded AND declares no private field; a clause whose spec is
 NOT loaded is withheld. This is the safe direction — an unknown clause could be
 a permissionlessly-registered PRIVATE one, and positive-knowledge withholding
 (keep-unless-known-private) leaks its plaintext whenever the async spec cache
@@ -34,7 +34,7 @@ spec through a disposition-aware input), and an offline-delivered payload fires
 the re-pin at app boot when the background spec loader has not completed. So the
 CALLER must WARM the specs for the agreement's clauses before projecting (see
 <code>warmAgreementSpecs</code> in <code>agreementFetch.publishAgreement</code>); with the cache warm
-this fail-closed form is EXACT — private sections withheld, public sections
+this fail-closed form is EXACT — private clauses withheld, public clauses
 kept — and the over-redaction that fail-closed would otherwise cause for cold
 public clauses (topology, commerce) does not occur. If warming fails, the
 fail-closed default over-redacts (a public reader sees fingerprints) rather

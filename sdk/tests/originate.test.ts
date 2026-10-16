@@ -282,7 +282,7 @@ describe("the assembly-scope fold at root instantiation (audit hole (a), closed)
             agreementKey: pinned.assembly.agreements[0].agreementKey,
             compositionHash: assemblyCompositionHash(pinned.assembly),
         });
-        // The provenance leaf is the format's, not a clause: no section carries it.
+        // The provenance leaf is the format's, not a clause: no clause carries it.
         expect(a.sections.some((s) => "compositionHash" in (s.data ?? {}))).toBe(false);
     });
 

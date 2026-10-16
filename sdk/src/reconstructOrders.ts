@@ -20,7 +20,7 @@
  *
  * A DAG of orders under one root: FigaroCore sees a LINEAR sequence of
  * commits updating a monotonic cumulative-value accumulator; DAG topology is
- * off-chain (each order's parents recorded in its topology section, matched
+ * off-chain (each order's parents recorded in its topology clause, matched
  * by FIELD NAME, never clause id).
  */
 
@@ -30,7 +30,7 @@ import {
     computeAgreementHash,
     type Agreement,
     type AgreementProvenance,
-    type AgreementSection,
+    type AgreementClause,
 } from "./agreement.js";
 import {
     buildCommitment,
@@ -59,7 +59,7 @@ export interface PlannedAssemblyOrder {
     /** The registered agreement the agreement binds. */
     agreementKey: Hex;
     /** The agreement's clause bag (clauseKey → values): the assembly-scoped
-     *  sections, the registered agreement's clauses and the agreement's own
+     *  clauses, the registered agreement's clauses and the agreement's own
      *  fills over them (parents still assembly-local). */
     clauses: Record<string, Record<string, unknown>>;
     /** Assembly-local parent node ids (empty on the root). */
@@ -84,7 +84,7 @@ export function planAssemblyOrders(hydrated: HydratedAssembly): PlannedAssemblyO
         "throw",
     );
     // THE ASSEMBLY-SCOPE FOLD: the assembly's
-    // assembly-scoped sections — terms of the composition itself (a
+    // assembly-scoped clauses — terms of the composition itself (a
     // denomination pin, a dispute forum) — fold into EVERY node's clause bag,
     // so every agreement carries them and every party signs them. Mechanical:
     // neither the designer nor any party repeats anything.
@@ -102,7 +102,7 @@ export function planAssemblyOrders(hydrated: HydratedAssembly): PlannedAssemblyO
 }
 
 /** Build an Agreement from a assembly node's clause bag: each clause key → a
- *  section, caller overrides merged in. The key is the clause's identity, so
+ *  clause, caller overrides merged in. The key is the clause's identity, so
  *  the assembly pinned WHICH clause it composed and no registry read is made. */
 export function agreementFromClauses(
     clauses: Record<string, Record<string, unknown>>,
@@ -110,11 +110,11 @@ export function agreementFromClauses(
     seller: Address,
     overrides?: Record<string, Record<string, unknown>>,
 ): Agreement {
-    const sections: AgreementSection[] = Object.entries(clauses).map(([clauseKey, data]) => ({
+    const clauseEntries: AgreementClause[] = Object.entries(clauses).map(([clauseKey, data]) => ({
         clause: clauseKey as Hex,
         data: { ...data, ...(overrides?.[clauseKey] ?? {}) },
     }));
-    return { version: "a1", buyer, seller, sections };
+    return { version: "a1", buyer, seller, sections: clauseEntries };
 }
 
 // ── Layer 2: full realization ───────────────────────────────────────────────
@@ -145,7 +145,7 @@ export interface ReconstructParams {
      * (`buildOrderAgreement` — checkout semantics: registry-declared defaults
      * fill omitted fields, process-log clauses stay empty anchors), and the
      * walk ALSO fills `currency` (matched by declared field, never clause id)
-     * into the commerce section of EVERY realized order — the one term that
+     * into the commerce clause of EVERY realized order — the one term that
      * must equal the commitment struct's `currency` field
      * (docs/CLAUSES.md § "Every clause is a merkle leaf"). A caller override
      * that already names a currency is accepted only when it matches; a
@@ -155,7 +155,7 @@ export interface ReconstructParams {
      * Without `specs`, the raw override-merge (`agreementFromClauses`)
      * applies — the agent-origination semantics — and currency-leaf routing is
      * impossible (no spec to find the commerce clause by declared field). A
-     * spec-less caller OWNS that leaf: it must supply the commerce section's
+     * spec-less caller OWNS that leaf: it must supply the commerce clause's
      * `currency` itself, via `ReconstructNodeSpec.overrides`, equal to the
      * `currency` this walk is called with. The sign gate
      * (`assertAgreementSignable`) is the net that catches a spec-less caller
@@ -347,11 +347,11 @@ function fillWalkField(
     return { ...clauses, [clauseKey]: { ...clauses[clauseKey], [field]: value } };
 }
 
-/** Write the process's denomination into the commerce section BEFORE
+/** Write the process's denomination into the commerce clause BEFORE
  *  hashing, so the leaf every party signs never diverges from the commitment
  *  struct's `currency` field (docs/CLAUSES.md § "Every clause is a merkle
- *  leaf"). The commerce section is found the same way
- *  `checkoutPlan.fillCommerceSection` finds it: the composed clause whose
+ *  leaf"). The commerce clause is found the same way
+ *  `checkoutPlan.fillCommerceClause` finds it: the composed clause whose
  *  loaded spec declares `payment` and declares `currency` as plain content
  *  (never a design-fill denomination pin — that is a different clause, a
  *  different term). */
@@ -372,7 +372,7 @@ function fillWalkCurrency(
 /** Write the order's provenance — the registered agreement its agreement
  *  binds and the instantiated assembly's OWN composition hash — into the
  *  agreement's provenance leaf (`Agreement.provenance`) BEFORE hashing: the
- *  agreement format's own field, never a clause section; neither hash can
+ *  agreement format's own field, never a clause; neither hash can
  *  appear inside the composition it hashes, so it fills at instantiation,
  *  never at design. An agreement already naming the SAME pair passes
  *  (case-insensitive); one naming a DIFFERENT key or hash throws — an

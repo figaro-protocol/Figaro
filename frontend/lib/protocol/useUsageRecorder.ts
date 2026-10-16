@@ -33,16 +33,16 @@ type Hex = `0x${string}`;
 
 /** One usage write, by the family it credits — the counter's three entry
  *  points. `proof` is the provenance leaf's (agreement, assembly) or the
- *  section leaf's (clause) sorted-pair proof under the order's agreementHash. */
+ *  clause leaf's (clause) sorted-pair proof under the order's agreementHash. */
 export type UsageWrite =
     | {
           kind: "clause";
           order: Commitment;
-          /** The clause key the section carries. */
+          /** The clause key the clause carries. */
           key: Hex;
-          /** The section FINGERPRINT — only it reaches calldata, never the
-           *  plaintext, so a private section stays off-chain. */
-          sectionHash: Hex;
+          /** The clause FINGERPRINT — only it reaches calldata, never the
+           *  plaintext, so a private clause stays off-chain. */
+          clauseDataHash: Hex;
           proof: readonly Hex[];
       }
     | {
@@ -95,7 +95,7 @@ export function useUsageRecorder() {
         const base = { address: requireCounter(), abi: USAGE_COUNTER_ABI, account } as const;
         switch (write.kind) {
             case "clause":
-                return { ...base, functionName: "recordClauseUsage" as const, args: [write.order, write.key, write.sectionHash, [...write.proof]] as const };
+                return { ...base, functionName: "recordClauseUsage" as const, args: [write.order, write.key, write.clauseDataHash, [...write.proof]] as const };
             case "agreement":
                 return { ...base, functionName: "recordAgreementUsage" as const, args: [write.order, write.key, write.compositionHash, [...write.proof]] as const };
             case "assembly":

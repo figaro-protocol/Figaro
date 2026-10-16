@@ -383,7 +383,7 @@ export function useDispatchRace() {
                 if (args.quote) {
                     const pricedFields = derivePricedFields(order.agreement.sections, specs);
                     if (pricedFields.length === 0) {
-                        throw new Error("This order composes no commercial section to quote against.");
+                        throw new Error("This order composes no commercial clause to quote against.");
                     }
                     payload = { ...payload, quoteRequest: { pricedFields } };
                 }

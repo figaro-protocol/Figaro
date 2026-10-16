@@ -114,14 +114,14 @@ import {
     ATTESTATION_COORDINATOR_ABI,
     CLAUSE_REGISTRY_ABI,
     PROVENANCE_LEAF_KEY,
-    buildSectionInclusionProof,
+    buildSignedClauseInclusionProof,
     calculateBonds,
     decodeProvenanceContent,
     generateSalt,
     provenanceLeafAttestation,
-    provenanceSectionBytes,
+    provenanceLeafBytes,
     reconstructOrdersFromAssembly,
-    sectionDataHash,
+    hashClauseData,
     assemblyCompositionHash,
     type ReconstructedOrder,
 } from '@figaro-protocol/sdk';
@@ -383,20 +383,20 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
         expect(core1 - core0, 'FigaroCore escrow holds both bonds').toBe(buyerBond + sellerBond);
 
         // ── THREE attestations, two substance postures. Content is the
-        //    committed section's own values, ABI-encoded per the REGISTERED
+        //    committed clause's own values, ABI-encoded per the REGISTERED
         //    spec — decodable by any reader that recovers the bytes. ──
-        const attestSection = async (opts: {
+        const attestClause = async (opts: {
             verb: 'attestAsBuyer' | 'attestAsSeller';
             wallet: typeof clientWallet;
             clauseKey: Hex;
             spec: ClauseSpec;
             publish: boolean;
         }) => {
-            const section = order.agreement.sections.find((s) => s.clause.toLowerCase() === opts.clauseKey.toLowerCase());
-            expect(section, `the agreement commits a ${opts.spec.clauseId} section`).toBeTruthy();
-            const clauseKey = section!.clause as Hex;
+            const clauseEntry = order.agreement.sections.find((s) => s.clause.toLowerCase() === opts.clauseKey.toLowerCase());
+            expect(clauseEntry, `the agreement commits a ${opts.spec.clauseId} clauseEntry`).toBeTruthy();
+            const clauseKey = clauseEntry!.clause as Hex;
             const stage = 1;
-            const content = encodeContentFromSpec(opts.spec, section!.data as Record<string, unknown>, { stage });
+            const content = encodeContentFromSpec(opts.spec, clauseEntry!.data as Record<string, unknown>, { stage });
             const contentRef = keccak256(content);
             if (opts.publish) {
                 await pinWitnessBytes(content);
@@ -404,17 +404,17 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
                 expect(await fetchWitnessBytes(contentRef), 'the published substance resolves from its own fingerprint')
                     .toBe(content);
             }
-            const { proof } = buildSectionInclusionProof(order.agreement, section!.clause);
-            const sectionHash = sectionDataHash(section!);
+            const { proof } = buildSignedClauseInclusionProof(order.agreement, clauseEntry!.clause);
+            const clauseDataHash = hashClauseData(clauseEntry!);
             if (opts.verb === 'attestAsSeller') {
                 await receipt(await opts.wallet.writeContract({
                     address: coordinator, abi: ATTESTATION_COORDINATOR_ABI, functionName: 'attestAsSeller',
-                    args: [order.commitment, order.commitment, clauseKey, stage, sectionHash, proof, contentRef],
+                    args: [order.commitment, order.commitment, clauseKey, stage, clauseDataHash, proof, contentRef],
                 }));
             } else {
                 await receipt(await opts.wallet.writeContract({
                     address: coordinator, abi: ATTESTATION_COORDINATOR_ABI, functionName: 'attestAsBuyer',
-                    args: [order.commitment, clauseKey, stage, sectionHash, proof, contentRef],
+                    args: [order.commitment, clauseKey, stage, clauseDataHash, proof, contentRef],
                 }));
             }
             const landed = await publicClient.getContractEvents({
@@ -433,14 +433,14 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
         // the agreement format's leaf under its reserved key, its own bytes
         // published at their fingerprint, filed while the process is open.
         const prov = provenanceLeafAttestation(order.agreement);
-        const provBytes = provenanceSectionBytes(aerialAgreementKey, aerial!.compositionHash);
+        const provBytes = provenanceLeafBytes(aerialAgreementKey, aerial!.compositionHash);
         expect(keccak256(provBytes), "the leaf's content reference is its bytes' hash").toBe(prov.contentRef);
         await pinWitnessBytes(provBytes);
         expect(await fetchWitnessBytes(prov.contentRef), 'the published provenance resolves from its own fingerprint')
             .toBe(provBytes);
         await receipt(await clientWallet.writeContract({
             address: coordinator, abi: ATTESTATION_COORDINATOR_ABI, functionName: 'attestAsBuyer',
-            args: [order.commitment, prov.clauseId, prov.stage, prov.sectionHash, prov.proof, prov.contentRef],
+            args: [order.commitment, prov.clauseId, prov.stage, prov.clauseDataHash, prov.proof, prov.contentRef],
         }));
         expect(
             (await publicClient.getContractEvents({
@@ -452,10 +452,10 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
             'the provenance leaf attestation landed under the reserved key',
         ).toBe(true);
         // The seller's geo attestation — published: the decoded overlay leg.
-        const geoAttested = await attestSection({ verb: 'attestAsSeller', wallet: surveyorWallet, clauseKey: geoKey, spec: geoSpec, publish: true });
+        const geoAttested = await attestClause({ verb: 'attestAsSeller', wallet: surveyorWallet, clauseKey: geoKey, spec: geoSpec, publish: true });
         expect(geoAttested.clauseKey).toBe(geoKey);
         // The seller's data-terms attestation — WITHHELD: fingerprint-only.
-        const termsAttested = await attestSection({ verb: 'attestAsSeller', wallet: surveyorWallet, clauseKey: termsKey, spec: termsSpec, publish: false });
+        const termsAttested = await attestClause({ verb: 'attestAsSeller', wallet: surveyorWallet, clauseKey: termsKey, spec: termsSpec, publish: false });
         expect(termsAttested.clauseKey).toBe(termsKey);
 
         // ── RESOLVE: net value legs from the token contract. ──
@@ -1097,7 +1097,7 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
         const orderHash = keccak256(encodePacked(['string', 'bytes32'], ['data-explore.devnet.spec.ts:batch-order', salt]));
 
         // PUBLISHED substance, same witness seam as the direct universe: the
-        // section's ABI encoding per the registered spec, pinned so the
+        // clause's ABI encoding per the registered spec, pinned so the
         // on-chain contentRef IS the content address.
         const stage = 1;
         const content = encodeContentFromSpec(

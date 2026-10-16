@@ -26,7 +26,7 @@ export type OriginationSequenceFigureProps = BaseFigureProps;
  *    HYDRATED from its `contentURI`, and the commerce clause is located by the
  *    field it declares — no hardcoded clause id.
  *  - Buyer gate: `assertAgreementSignable(agreement, expectedHash, specs,
- *    struct)` — every section conforms to its clause spec AND the currency /
+ *    struct)` — every clause conforms to its spec AND the currency /
  *    payment TERMS equal the commitment struct's mirrors.
  *  - Deadline: `computeDeadline(await readChainTimestamp(client))` — chain
  *    time, never the machine clock.
@@ -91,7 +91,7 @@ const ROWS: readonly Row[] = [
         from: "buyer",
         label: "validate — assertAgreementSignable()",
         detail: [
-            "Every section conforms to its clause spec, and the currency and payment",
+            "Every clause conforms to its spec, and the currency and payment",
             "TERMS equal the commitment struct's mirrors.",
         ],
         exit: [

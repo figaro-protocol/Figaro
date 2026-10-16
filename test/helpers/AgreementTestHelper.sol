@@ -28,7 +28,7 @@ library AgreementTestHelper {
     ///      agreement an order instantiates and the assembly it came from,
     ///      both as 0x-prefixed lowercase hex (keys sorted, as canonical JSON
     ///      sorts them).
-    function provenanceSection(bytes32 agreementKey, bytes32 compositionHash) internal pure returns (bytes memory) {
+    function provenanceLeaf(bytes32 agreementKey, bytes32 compositionHash) internal pure returns (bytes memory) {
         return abi.encodePacked(
             '{"agreementKey":"', VM.toString(agreementKey), '","compositionHash":"', VM.toString(compositionHash), '"}'
         );
@@ -42,8 +42,8 @@ library AgreementTestHelper {
     }
 
     /// @dev Compute the merkle leaf for one clause clause.
-    function leafFor(bytes32 clauseId, bytes memory sectionData) internal pure returns (bytes32) {
-        return keccak256(bytes.concat(keccak256(abi.encodePacked(clauseId, keccak256(sectionData)))));
+    function leafFor(bytes32 clauseId, bytes memory clauseData) internal pure returns (bytes32) {
+        return keccak256(bytes.concat(keccak256(abi.encodePacked(clauseId, keccak256(clauseData)))));
     }
 
     /// @dev Compute the agreement merkle root for an ordered list of leaves.
@@ -92,8 +92,8 @@ library AgreementTestHelper {
 
     /// @dev Convenience: for a single-section agreement (one clause clause),
     ///      the merkle root equals the leaf and the proof is empty.
-    function singleSectionRoot(bytes32 clauseId, bytes memory sectionData) internal pure returns (bytes32) {
-        return leafFor(clauseId, sectionData);
+    function singleClauseRoot(bytes32 clauseId, bytes memory clauseData) internal pure returns (bytes32) {
+        return leafFor(clauseId, clauseData);
     }
 
     // ── internals ───────────────────────────────────────────────────────────

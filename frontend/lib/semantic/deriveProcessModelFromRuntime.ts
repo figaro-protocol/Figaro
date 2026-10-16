@@ -1,6 +1,6 @@
 import { Order, OrderState } from "@/lib/kernel/store";
 import type { Agreement } from "@figaro-protocol/sdk";
-import { sectionByField } from "@figaro-protocol/sdk";
+import { clauseByField } from "@figaro-protocol/sdk";
 import { deriveOrderTopology } from "@/lib/semantic/processTopology";
 import type { PartyRole, ProcessSummary } from "@/lib/kernel/walletProcessQueries";
 import type { RuntimeAttestation } from "@/lib/composition/indexer";
@@ -17,7 +17,7 @@ import {
 } from "@/lib/semantic/models";
 
 // Rootness is a TOPOLOGY concept (no parent edges in the committed topology
-// section) — never derived from bond arithmetic. Bonding is Core-layer,
+// clause) — never derived from bond arithmetic. Bonding is Core-layer,
 // linear, and has nothing to do with topology.
 
 function runtimeSource(sourceLabel: string, referenceId?: string) {
@@ -112,8 +112,8 @@ function roleCapabilities(
     // classifying by "has an enum" fabricated seller capabilities for them.
     if (agreement) {
         const orderAttestations = indexes.attestationsByOrder.get(orderIdStr) ?? [];
-        for (const section of agreement.sections) {
-            const clauseKey = section.clause;
+        for (const clauseEntry of agreement.sections) {
+            const clauseKey = clauseEntry.clause;
             if (!clauseIsProcessLog(clauseKey)) continue; // only attestations-article ladders are lifecycles
             const ladder = clauseLadderField(clauseKey);
             if (!ladder) continue;                                     // process-log clause without a declared ladder yet → nothing to advance
@@ -180,8 +180,8 @@ function roleCapabilities(
         // every order of its process and the rail lists every order's cards
         // together, so one clause's witness card repeats once per order.
         const orderLabel = `Order ${indexes.positionByOrder.get(orderIdStr)} of ${indexes.positionByOrder.size} · seller ${truncateHex(order.seller)}`;
-        for (const section of agreement.sections) {
-            const clauseKey = section.clause;
+        for (const clauseEntry of agreement.sections) {
+            const clauseKey = clauseEntry.clause;
             if (clauseIsProcessLog(clauseKey)) continue; // a ladder's stage overrides shape its content, not a witness
             for (const witness of clauseWitnessStages(clauseKey)) {
                 const title = getClauseSpec(clauseKey)?.title ?? clauseKey;
@@ -215,26 +215,26 @@ function roleCapabilities(
             }
         }
 
-        // GENERIC re-assert: any OTHER committed section can be affirmed
+        // GENERIC re-assert: any OTHER committed clause can be affirmed
         // on-chain as an attestation whose content IS the committed
-        // sectionData (the coordinator's omit-content default) — the act that
+        // clauseData (the coordinator's omit-content default) — the act that
         // turns committed content into a timestamped runtime event (geo and
         // modality are instances — no clause is named here). Offered to BOTH
-        // parties, once each per section (a repeat adds nothing: same bytes,
+        // parties, once each per clause (a repeat adds nothing: same bytes,
         // same contentRef). Process-log ladders advance instead — their
         // lifecycle IS their attestation — and a clause declaring witness
         // stage 0 owns that entry with its own form.
         //
-        // ONE card per party per order, opening a chooser of the sections
-        // that party has not yet re-asserted. Each choice is one section's
-        // own attestation: the coordinator attests one section per call, so
+        // ONE card per party per order, opening a chooser of the clauses
+        // that party has not yet re-asserted. Each choice is one clause's
+        // own attestation: the coordinator attests one clause per call, so
         // an "all" act would be N wallet prompts that can stop half-way. The
-        // card is absent once every section is re-asserted.
+        // card is absent once every clause is re-asserted.
         for (const party of ["seller", "buyer"] as const) {
             if (party === "seller" ? !isSeller : !isBuyer) continue;
             const choices: CapabilityModel[] = [];
-            for (const section of agreement.sections) {
-                const clauseKey = section.clause;
+            for (const clauseEntry of agreement.sections) {
+                const clauseKey = clauseEntry.clause;
                 if (clauseIsProcessLog(clauseKey)) continue;
                 if (clauseWitnessStages(clauseKey).some((w) => w.stage === 0)) continue;
                     const already = orderAttestations.some(
@@ -247,7 +247,7 @@ function roleCapabilities(
                 choices.push({
                     id: capId,
                     label: title,
-                    actionKind: "reassert-committed-section",
+                    actionKind: "reassert-committed-clause",
                     action: {
                         executionType: "transaction",
                         kind: "submit-clause-attestation",
@@ -267,7 +267,7 @@ function roleCapabilities(
             }
             // The agreement FORMAT's provenance leaf — the link from this
             // order to the assembly it instantiated — is the buyer's to
-            // attest, beside the sections, keyed by the reserved key (a
+            // attest, beside the clauses, keyed by the reserved key (a
             // format rule, never a clause name).
             if (party === "buyer" && agreement.provenance !== undefined) {
                 const already = orderAttestations.some(
@@ -297,16 +297,16 @@ function roleCapabilities(
                 }
             }
             if (choices.length === 0) continue;
-            const cardId = `${order.processId}:${orderIdStr}:${party}-reassert-committed-sections`;
+            const cardId = `${order.processId}:${orderIdStr}:${party}-reassert-committed-clauses`;
             out.push({
                 id: cardId,
-                label: `Re-assert committed sections (${choices.length})`,
+                label: `Re-assert committed clauseEntries (${choices.length})`,
                 orderLabel,
                 // Its OWN actionKind (→ its own `capability-*` testid): the
                 // rail renders many attestation cards per order, and the
                 // re-assert card must never collide with a ladder/witness
                 // card's locator, nor with one of its own choices.
-                actionKind: "reassert-committed-sections",
+                actionKind: "reassert-committed-clauses",
                 action: {
                     executionType: "choice",
                     kind: "choose-capability",
@@ -318,7 +318,7 @@ function roleCapabilities(
                 preconditions: [party === "seller" ? "seller-of-active-order" : "buyer-of-active-order"],
                 riskLabel: "standard",
                 uiPriority: party === "buyer" ? 56 : 55,
-                source: runtimeSource(`${party} re-asserts committed sections`, cardId),
+                source: runtimeSource(`${party} re-asserts committed clauseEntries`, cardId),
             });
         }
     }
@@ -493,10 +493,10 @@ export function deriveProcessModelFromRuntime(
     const rootOrderId = semanticOrders.find((order) => order.parentOrderHashes.length === 0)?.orderId ?? semanticOrders[0]?.orderId ?? "";
     const rootOrder = processOrders.find((order) => order.orderHash.toString() === rootOrderId);
     const rootAgreement = rootOrder?.agreementHash ? agreements.get(rootOrder.agreementHash) : undefined;
-    // The modality section is found by its declared field, never by name.
+    // The modality clause is found by its declared field, never by name.
     // Single-select: one scalar value per order.
     const rootModality = rootAgreement
-        ? ((sectionByField(rootAgreement, "modality", specSource())?.data as { modality?: string } | undefined)?.modality ?? null)
+        ? ((clauseByField(rootAgreement, "modality", specSource())?.data as { modality?: string } | undefined)?.modality ?? null)
         : null;
     return {
         processId: summary.processId,

@@ -47,7 +47,7 @@ export interface CommitmentPayloadRelay {
  * channel (NOT a public IPFS pin), keyed by the commitment's on-chain order
  * hash. The public-verification copy is the WITHHELD standalone agreement pin;
  * this delivers the plaintext the counterparty needs — including any
- * `private`-disposition section — without it ever touching a public surface
+ * `private`-disposition clause — without it ever touching a public surface
  * (audit F Arm 2). Returns that order hash.
  */
 export async function shareSignedOrder(params: {
@@ -65,7 +65,7 @@ export async function shareSignedOrder(params: {
     } = params;
 
     // Pin the agreement body STANDALONE — WITHHELD of any private-disposition
-    // section (publishAgreement → publicForm) — and remember its witnessed-URI
+    // clause (publishAgreement → publicForm) — and remember its witnessed-URI
     // pointer, so the SENDER's own order/audit pages hydrate its PUBLIC shape by
     // hash after a fresh navigation, and anyone can verify the root. The private
     // plaintext is NOT here; it rides the channel below.

@@ -40,14 +40,14 @@ describe("CapabilityRail — a choice card opens a chooser", () => {
     const choice = (clauseId: string, title: string): CapabilityModel => ({
         id: `p:o:${clauseId}-seller-reassert`,
         label: title,
-        actionKind: "reassert-committed-section",
+        actionKind: "reassert-committed-clause",
         action: { executionType: "transaction", kind: "submit-clause-attestation", orderHash: "o", clauseKey: clauseId, stage: 0, party: "seller", reasserts: true },
         preconditions: [],
     } as unknown as CapabilityModel);
     const card = (choices: CapabilityModel[]): CapabilityModel => ({
-        id: "p:o:seller-reassert-committed-sections",
+        id: "p:o:seller-reassert-committed-clauses",
         label: `Re-assert committed sections (${choices.length})`,
-        actionKind: "reassert-committed-sections",
+        actionKind: "reassert-committed-clauses",
         action: { executionType: "choice", kind: "choose-capability", choices },
         preconditions: [],
     } as unknown as CapabilityModel);
@@ -57,29 +57,29 @@ describe("CapabilityRail — a choice card opens a chooser", () => {
         const c = card(choices);
         const executed: CapabilityModel[] = [];
         render(<CapabilityRail capabilities={[c]} executableCapabilityIds={new Set([c.id])} onExecute={(x) => { executed.push(x); }} />);
-        expect(screen.getByTestId("capability-reassert-committed-sections")).toBeInTheDocument();
-        expect(screen.queryByTestId("capability-chooser-reassert-committed-sections")).not.toBeInTheDocument();
+        expect(screen.getByTestId("capability-reassert-committed-clauses")).toBeInTheDocument();
+        expect(screen.queryByTestId("capability-chooser-reassert-committed-clauses")).not.toBeInTheDocument();
 
-        fireEvent.click(screen.getByTestId("capability-execute-reassert-committed-sections"));
+        fireEvent.click(screen.getByTestId("capability-execute-reassert-committed-clauses"));
         expect(executed).toHaveLength(0);
-        const rows = screen.getAllByTestId("capability-choice-reassert-committed-section");
+        const rows = screen.getAllByTestId("capability-choice-reassert-committed-clause");
         expect(rows.map((r) => r.getAttribute("data-clause-key"))).toEqual(["never-seen-a", "never-seen-b"]);
         expect(screen.getByText("Section A")).toBeInTheDocument();
 
-        const submit = screen.getAllByTestId("capability-execute-reassert-committed-section")
+        const submit = screen.getAllByTestId("capability-execute-reassert-committed-clause")
             .find((b) => b.getAttribute("data-clause-key") === "never-seen-b")!;
         fireEvent.click(submit);
         expect(executed).toEqual([choices[1]]);
     });
 
     it("renders each card's order under its label, on the card and in its chooser", () => {
-        const a = { ...card([choice("never-seen-a", "Section A")]), id: "p:a:buyer-reassert-committed-sections", orderLabel: "Order 1 of 2 · seller 0x2222…2222" };
-        const b = { ...card([choice("never-seen-a", "Section A")]), id: "p:b:buyer-reassert-committed-sections", orderLabel: "Order 2 of 2 · seller 0x5555…5555" };
+        const a = { ...card([choice("never-seen-a", "Section A")]), id: "p:a:buyer-reassert-committed-clauses", orderLabel: "Order 1 of 2 · seller 0x2222…2222" };
+        const b = { ...card([choice("never-seen-a", "Section A")]), id: "p:b:buyer-reassert-committed-clauses", orderLabel: "Order 2 of 2 · seller 0x5555…5555" };
         render(<CapabilityRail capabilities={[a, b]} executableCapabilityIds={new Set([a.id, b.id])} onExecute={() => {}} />);
         expect(screen.getAllByTestId("capability-order-label").map((p) => p.textContent))
             .toEqual(["Order 1 of 2 · seller 0x2222…2222", "Order 2 of 2 · seller 0x5555…5555"]);
-        fireEvent.click(screen.getAllByTestId("capability-execute-reassert-committed-sections")[1]);
-        expect(screen.getByTestId("capability-chooser-reassert-committed-sections"))
+        fireEvent.click(screen.getAllByTestId("capability-execute-reassert-committed-clauses")[1]);
+        expect(screen.getByTestId("capability-chooser-reassert-committed-clauses"))
             .toHaveTextContent("Order 2 of 2 · seller 0x5555…5555");
     });
 
@@ -92,9 +92,9 @@ describe("CapabilityRail — a choice card opens a chooser", () => {
     it("closes when the card is no longer derived", () => {
         const c = card([choice("never-seen-a", "Section A")]);
         const { rerender } = render(<CapabilityRail capabilities={[c]} executableCapabilityIds={new Set([c.id])} onExecute={() => {}} />);
-        fireEvent.click(screen.getByTestId("capability-execute-reassert-committed-sections"));
-        expect(screen.getByTestId("capability-chooser-reassert-committed-sections")).toBeInTheDocument();
+        fireEvent.click(screen.getByTestId("capability-execute-reassert-committed-clauses"));
+        expect(screen.getByTestId("capability-chooser-reassert-committed-clauses")).toBeInTheDocument();
         rerender(<CapabilityRail capabilities={[]} executableCapabilityIds={new Set()} onExecute={() => {}} />);
-        expect(screen.queryByTestId("capability-chooser-reassert-committed-sections")).not.toBeInTheDocument();
+        expect(screen.queryByTestId("capability-chooser-reassert-committed-clauses")).not.toBeInTheDocument();
     });
 });

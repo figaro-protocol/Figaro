@@ -8,7 +8,7 @@
 //! the way the guest rebuilds it for a usage claim — the section's
 //! `clauseKey` (the `keccak256` of the clause spec's pinned bytes, carried
 //! as the key itself), section hash over the canonical bytes,
-//! `keccak256(keccak256(key ‖ sectionHash))`.
+//! `keccak256(keccak256(key ‖ clauseDataHash))`.
 //!
 //! An agreement that instantiates an assembly carries the reserved
 //! provenance leaf (the vector's optional `provenance` entry): its key is a
@@ -71,7 +71,7 @@ fn every_frozen_proof_opens_against_the_rebuilt_leaf() {
         let sections = agreement["sections"].as_array().expect("sections");
         assert_eq!(
             sections.len() as u64,
-            agreement["sectionCount"].as_u64().unwrap()
+            agreement["clauseCount"].as_u64().unwrap()
         );
         if let Some(provenance) = agreement.get("provenance") {
             opens_the_provenance_leaf(provenance, root);
@@ -79,7 +79,7 @@ fn every_frozen_proof_opens_against_the_rebuilt_leaf() {
         for section in sections {
             let rebuilt = leaf_under(
                 b256(&section["clauseKey"]),
-                section["sectionData"].as_str().unwrap(),
+                section["clauseData"].as_str().unwrap(),
             );
             assert_eq!(
                 rebuilt,
@@ -117,7 +117,7 @@ fn opens_the_provenance_leaf(provenance: &serde_json::Value, root: B256) {
         keccak256(b"figaro-agreement-provenance"),
         "the provenance leaf's key is the agreement format's constant"
     );
-    let section_data = provenance["sectionData"].as_str().unwrap();
+    let section_data = provenance["clauseData"].as_str().unwrap();
     let agreement = b256(&provenance["agreementKey"]);
     let composition = b256(&provenance["compositionHash"]);
     assert_eq!(
@@ -175,13 +175,13 @@ fn the_fixture_carries_a_provenance_leaf() {
 }
 
 #[test]
-fn a_single_section_root_is_the_leaf() {
+fn a_single_clause_root_is_the_leaf() {
     if generated() {
         return; // the pinned case is the fixture's
     }
     let fx = fixture();
     let one = &fx["agreements"][1];
-    assert_eq!(one["sectionCount"].as_u64().unwrap(), 1);
+    assert_eq!(one["clauseCount"].as_u64().unwrap(), 1);
     assert_eq!(
         b256(&one["agreementHash"]),
         b256(&one["sections"][0]["leaf"])
@@ -284,10 +284,10 @@ fn every_agreement_s_provenance_leaf_is_the_guest_s_reproduction() {
             assert_eq!(b256(&p["agreementKey"]), b256(&entry["agreementKey"]));
             assert_eq!(b256(&p["compositionHash"]), b256(&assembly["compositionHash"]));
             let bytes = provenance_section_bytes(&b256(&p["agreementKey"]), &b256(&p["compositionHash"]));
-            assert_eq!(bytes, p["sectionData"].as_str().unwrap().as_bytes());
-            assert_eq!(keccak256(&bytes), b256(&p["sectionHash"]));
+            assert_eq!(bytes, p["clauseData"].as_str().unwrap().as_bytes());
+            assert_eq!(keccak256(&bytes), b256(&p["clauseDataHash"]));
             assert_eq!(
-                leaf_under(PROVENANCE_LEAF_KEY, p["sectionData"].as_str().unwrap()),
+                leaf_under(PROVENANCE_LEAF_KEY, p["clauseData"].as_str().unwrap()),
                 b256(&p["leaf"])
             );
         }
@@ -306,7 +306,7 @@ fn the_terms_leaf_is_keyed_on_the_reserved_terms_key() {
         carriers += 1;
         assert_eq!(b256(&terms["leafKey"]), ASSEMBLY_TERMS_LEAF_KEY);
         let bytes = terms["termsBytes"].as_str().unwrap();
-        assert_eq!(keccak256(bytes.as_bytes()), b256(&terms["sectionHash"]));
+        assert_eq!(keccak256(bytes.as_bytes()), b256(&terms["clauseDataHash"]));
         assert_eq!(leaf_under(ASSEMBLY_TERMS_LEAF_KEY, bytes), b256(&terms["leaf"]));
     }
     assert!(carriers >= 1, "the lock covers the terms leaf");

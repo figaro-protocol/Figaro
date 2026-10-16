@@ -10,11 +10,11 @@ import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import {
     agreementKeyOf,
-    buildClauseInclusionProof,
+    buildRegisteredClauseInclusionProof,
     buildAgreementInclusionProof,
     assemblyCompositionHash,
 } from "../src/assembly.js";
-import { decodeProvenanceContent, provenanceSectionBytes, verifyInclusionProof } from "../src/agreement.js";
+import { decodeProvenanceContent, provenanceLeafBytes, verifyInclusionProof } from "../src/agreement.js";
 import { bytes32Arb, composedAgreementArb, assemblyArb } from "./propertyArbs.js";
 
 describe("the composition tree", () => {
@@ -50,7 +50,7 @@ describe("the agreement key", () => {
         fc.assert(fc.property(composedAgreementArb, (doc) => {
             const key = agreementKeyOf(doc);
             for (const clauseKey of Object.keys(doc.clauses) as `0x${string}`[]) {
-                const { leaf, proof } = buildClauseInclusionProof(doc, clauseKey);
+                const { leaf, proof } = buildRegisteredClauseInclusionProof(doc, clauseKey);
                 expect(verifyInclusionProof(key, leaf, proof)).toBe(true);
             }
         }));
@@ -62,7 +62,7 @@ describe("the agreement key", () => {
             const keyB = agreementKeyOf(b);
             fc.pre(keyA !== keyB);
             const [first] = Object.keys(a.clauses) as `0x${string}`[];
-            const { leaf, proof } = buildClauseInclusionProof(a, first);
+            const { leaf, proof } = buildRegisteredClauseInclusionProof(a, first);
             expect(verifyInclusionProof(keyB, leaf, proof)).toBe(false);
         }));
     });
@@ -85,7 +85,7 @@ describe("the agreement key", () => {
 describe("the two-key provenance bytes", () => {
     it("decode back to the two keys they name", () => {
         fc.assert(fc.property(bytes32Arb, bytes32Arb, (agreementKey, compositionHash) => {
-            expect(decodeProvenanceContent(provenanceSectionBytes(agreementKey, compositionHash)))
+            expect(decodeProvenanceContent(provenanceLeafBytes(agreementKey, compositionHash)))
                 .toEqual({ agreementKey, compositionHash });
         }));
     });

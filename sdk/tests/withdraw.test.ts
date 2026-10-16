@@ -55,7 +55,7 @@ function coreEvents(overrides: Partial<CoreEvents> = {}): CoreEvents {
 }
 
 /** An agreement composing exactly the given clause ids (data is irrelevant to
- *  the gate — it keys on `section.clause`). */
+ *  the gate — it keys on `clauseEntry.clause`). */
 function agreementWith(clauses: string[]): Agreement {
     return {
         version: "a1",

@@ -248,7 +248,7 @@ describe("buildSyntheticOrder — the agreement carries the clause by its key", 
         await primeClauseSpecs();
     });
 
-    it("a node's section names the clause key and carries no version", () => {
+    it("a node's clause names the clause key and carries no version", () => {
         const geo = keyOf("figaro-geolocation");
         const { agreementHash } = buildSyntheticOrder({
             orderId: `0x${"01".repeat(32)}`,
@@ -261,8 +261,8 @@ describe("buildSyntheticOrder — the agreement carries the clause by its key", 
             clauseFields: { [geo]: {} },
         });
         const stored = JSON.parse(window.localStorage.getItem(`figaro:agreement:${agreementHash}`) ?? "null");
-        const section = stored.sections.find((s: { clause: string }) => s.clause.toLowerCase() === geo.toLowerCase());
-        expect(section).toBeTruthy();
-        expect(section).not.toHaveProperty("version");
+        const clauseEntry = stored.sections.find((s: { clause: string }) => s.clause.toLowerCase() === geo.toLowerCase());
+        expect(clauseEntry).toBeTruthy();
+        expect(clauseEntry).not.toHaveProperty("version");
     });
 });

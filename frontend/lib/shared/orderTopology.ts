@@ -6,7 +6,7 @@
  * topological sort lives in `@figaro-protocol/sdk` (`topologicalOrder`) — the ONE home
  * the assembly walk, the sub-order plan, and the depth derivation below all
  * order by. Reading a COMMITTED order's edges out of its agreement's
- * mandatory topology section is a runtime concern and lives in
+ * mandatory topology clause is a runtime concern and lives in
  * `lib/semantic/processTopology.ts`.
  */
 

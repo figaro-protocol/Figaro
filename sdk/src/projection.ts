@@ -9,7 +9,7 @@
  * the consumer's window onto the live ClauseRegistry→IPFS spec set. A spec
  * that is not (yet) loaded returns `undefined` from `get`, and the
  * projection degrades exactly as the registry-reading frontend does: no
- * defaults injected, validation skipped for that section, field lookups
+ * defaults injected, validation skipped for that clause, field lookups
  * fall back to data-key presence. Consumers that need strictness gate on
  * their cache being warm before projecting.
  *
@@ -23,20 +23,20 @@
  * DESIGNER composes into the assembly — the tailoring; every other clause's
  * assembly values are `{}` and the fields fill at checkout →
  * compositionHash), and the `checkout` fills (`catalogueFills` /
- * `profileFills` — which sections the catalog and member-profile folds
+ * `profileFills` — which clauses the catalog and member-profile folds
  * write → agreementHash). `parseProjectionHints` extracts exactly those from
  * a raw spec document; everything else in `block` remains presentation the
  * SDK never reads. (A field's `default` is the sixth thing that reaches a
  * hash without living in `block`: `withSpecDefaults` fills omitted fields
- * from the spec, so the default lands in the signed section → agreementHash.)
+ * from the spec, so the default lands in the signed clause → agreementHash.)
  */
 
 import {
     canonicalize,
     computeAgreementHash,
-    withholdSectionContent,
+    withholdClauseContent,
     type Agreement,
-    type AgreementSection,
+    type AgreementClause,
 } from "./agreement.js";
 import {
     agreementKeyOf,
@@ -159,10 +159,10 @@ export function specDeclaresDesignFill(spec: ProjectionSpecView, fieldName: stri
     return specDesignFills(spec).includes(fieldName);
 }
 
-/** Whether a clause spec declares ANY field as `private`-disposition. A section
+/** Whether a clause spec declares ANY field as `private`-disposition. A clause
  *  committing such a clause carries paid-edge plaintext that must never reach a
- *  public surface. Because the merkle leaf model withholds a WHOLE section (never
- *  one field), a section is treated as private if ANY of its fields is — the
+ *  public surface. Because the merkle leaf model withholds a WHOLE clause (never
+ *  one field), a clause is treated as private if ANY of its fields is — the
  *  conservative direction (protect the private value; over-redact co-located
  *  public fields). Off-chain validation refuses to register a clause that mixes
  *  dispositions, so in practice this only ever fires on a fully-private clause. */
@@ -170,16 +170,16 @@ export function specHasPrivateField(spec: ProjectionSpecView): boolean {
     return spec.fields.some((f) => f.disposition === "private");
 }
 
-/** The PUBLIC-pin form of an agreement: every section whose clause declares a
+/** The PUBLIC-pin form of an agreement: every clause whose clause declares a
  *  `private`-disposition field is content-WITHHELD (its plaintext `data` replaced
  *  by the `dataHash` fingerprint), so a paid-edge value never lands on public
- *  IPFS or in a shareable audit bundle. The withheld section contributes the
+ *  IPFS or in a shareable audit bundle. The withheld clause contributes the
  *  IDENTICAL merkle leaf, so `agreementHash` is unchanged and any reader still
- *  verifies the root and every public section. Sections whose clause is entirely
+ *  verifies the root and every public clause. Clauses whose clause is entirely
  *  public pass through as plaintext — that is the free coordination commons.
  *
- *  Withholding is FAIL-CLOSED on the spec: a section is kept as plaintext ONLY
- *  when its spec is loaded AND declares no private field; a section whose spec is
+ *  Withholding is FAIL-CLOSED on the spec: a clause is kept as plaintext ONLY
+ *  when its spec is loaded AND declares no private field; a clause whose spec is
  *  NOT loaded is withheld. This is the safe direction — an unknown clause could be
  *  a permissionlessly-registered PRIVATE one, and positive-knowledge withholding
  *  (keep-unless-known-private) leaks its plaintext whenever the async spec cache
@@ -189,7 +189,7 @@ export function specHasPrivateField(spec: ProjectionSpecView): boolean {
  *  the re-pin at app boot when the background spec loader has not completed. So the
  *  CALLER must WARM the specs for the agreement's clauses before projecting (see
  *  `warmAgreementSpecs` in `agreementFetch.publishAgreement`); with the cache warm
- *  this fail-closed form is EXACT — private sections withheld, public sections
+ *  this fail-closed form is EXACT — private clauses withheld, public clauses
  *  kept — and the over-redaction that fail-closed would otherwise cause for cold
  *  public clauses (topology, commerce) does not occur. If warming fails, the
  *  fail-closed default over-redacts (a public reader sees fingerprints) rather
@@ -198,11 +198,11 @@ export function specHasPrivateField(spec: ProjectionSpecView): boolean {
 export function publicForm(agreement: Agreement, specs: SpecSource): Agreement {
     return {
         ...agreement,
-        sections: agreement.sections.map((section) => {
-            if (section.data === undefined) return section; // already withheld
-            const spec = specs.get(section.clause);
+        sections: agreement.sections.map((clauseEntry) => {
+            if (clauseEntry.data === undefined) return clauseEntry; // already withheld
+            const spec = specs.get(clauseEntry.clause);
             const isPrivate = spec ? specHasPrivateField(spec) : true;
-            return isPrivate ? withholdSectionContent(section) : section;
+            return isPrivate ? withholdClauseContent(clauseEntry) : clauseEntry;
         }),
     };
 }
@@ -274,7 +274,7 @@ export function specProfileFills(spec: ProjectionSpecView): readonly string[] {
  *
  *  Process-log clauses are runtime event ladders — content arrives via
  *  LATER attestation submissions, never the initial agreement — so
- *  `validateCommitmentAgreement` SKIPS content validation for every section
+ *  `validateCommitmentAgreement` SKIPS content validation for every clause
  *  of such a clause (its `specIsProcessLog` short-circuit) and
  *  `withSpecDefaults` never fills its omitted fields. A fill declared on
  *  such a clause is therefore content the author believes is pinned and
@@ -294,7 +294,7 @@ export function warnProcessLogFillsTrap(spec: ProjectionSpecView): readonly stri
             `${spec.clauseId}: block.design.article is "attestations" (a process-log clause — ` +
             `content arrives via later runtime attestations, never the initial agreement) but the ` +
             `spec also declares block.design.fills. The pinned fields will never be validated — ` +
-            `validateCommitmentAgreement skips content validation entirely for process-log sections. ` +
+            `validateCommitmentAgreement skips content validation entirely for process-log clauseEntries. ` +
             `If this clause's content should be committed and checked at design time, use a ` +
             `different article; "attestations" is reserved for runtime event ladders.`,
         );
@@ -305,7 +305,7 @@ export function warnProcessLogFillsTrap(spec: ProjectionSpecView): readonly stri
             `content arrives via later runtime attestations, never the initial agreement) but the ` +
             `spec also declares block.checkout.catalogueFills or profileFills. That checkout-authored ` +
             `content will never be validated — validateCommitmentAgreement skips content validation ` +
-            `entirely for process-log sections. "attestations" is reserved for runtime event ladders ` +
+            `entirely for process-log clauseEntries. "attestations" is reserved for runtime event ladders ` +
             `whose content arrives later, not checkout-time fills.`,
         );
     }
@@ -342,7 +342,7 @@ function withSpecDefaults(
 /**
  * Build the order's agreement and merkle tree from its complete clause map.
  * `clauses` is `{ [clauseKey]: fieldValues }` — the pinned assembly's clauses,
- * valued for this order. Sections are sorted by clause key so the pinned JSON
+ * valued for this order. Clauses are sorted by clause key so the pinned JSON
  * is deterministic; the merkle root sorts its own leaves, so order never
  * affects the hash.
  *
@@ -357,11 +357,11 @@ export function buildOrderAgreement(
     clauses: Readonly<Record<Hex, Record<string, unknown>>>,
     specs: SpecSource,
 ): OrderAgreement {
-    const sections: AgreementSection[] = (Object.keys(clauses) as Hex[])
+    const clauseEntries: AgreementClause[] = (Object.keys(clauses) as Hex[])
         .map((clause) => ({ clause, data: withSpecDefaults(specs, clause, clauses[clause] ?? {}) }))
         .sort((a, b) => (a.clause < b.clause ? -1 : a.clause > b.clause ? 1 : 0));
 
-    const agreement: Agreement = { version: "a1", buyer, seller, sections };
+    const agreement: Agreement = { version: "a1", buyer, seller, sections: clauseEntries };
     return { agreement, agreementHash: computeAgreementHash(agreement) };
 }
 
@@ -374,47 +374,47 @@ export interface CommitmentAgreementIssue {
 }
 
 /** A clause's human label — the loaded spec's own `clauseId`, else the key. */
-function sectionLabel(clause: string, specs: SpecSource): string {
+function clauseIdOrKey(clause: string, specs: SpecSource): string {
     return /^0x[0-9a-fA-F]{64}$/.test(clause) ? (specs.get(clause as Hex)?.clauseId ?? clause) : clause;
 }
 
-/** An address-valued leaf, or undefined when the section carries none (a
- *  withheld section, an unloaded spec, a malformed value — each already an
+/** An address-valued leaf, or undefined when the clause carries none (a
+ *  withheld clause, an unloaded spec, a malformed value — each already an
  *  off-chain validation failure of its own where the field is required). */
-function addressLeaf(section: AgreementSection | undefined, field: string): `0x${string}` | undefined {
-    const value = section?.data?.[field];
+function addressLeaf(clauseEntry: AgreementClause | undefined, field: string): `0x${string}` | undefined {
+    const value = clauseEntry?.data?.[field];
     return isAddressHex(value) ? value : undefined;
 }
 
 /** A bigint-valued leaf (stored as its canonical decimal string), or undefined
- *  when the section carries none or the value is malformed — the malformed
+ *  when the clause carries none or the value is malformed — the malformed
  *  case is already an off-chain validation failure of its own. */
-function bigintLeaf(section: AgreementSection | undefined, field: string): bigint | undefined {
-    const value = section?.data?.[field];
+function bigintLeaf(clauseEntry: AgreementClause | undefined, field: string): bigint | undefined {
+    const value = clauseEntry?.data?.[field];
     return typeof value === "string" && /^\d+$/.test(value) ? BigInt(value) : undefined;
 }
 
-/** The section carrying the ORDER's denomination: the composed clause
+/** The clause carrying the ORDER's denomination: the composed clause
  *  declaring `payment` and declaring `currency` as plain content. Spec-routed,
  *  naming no clause — a second commerce clause anyone registers participates
  *  identically, and a denomination pin (whose `currency` is a designer fill)
  *  is excluded by construction. */
-function commerceCurrencySection(
+function commerceCurrencyClause(
     agreement: Agreement,
     specs: SpecSource,
-): AgreementSection | undefined {
+): AgreementClause | undefined {
     return agreement.sections.find((s) => {
         const spec = specs.get(s.clause);
         return !!spec && specDeclaresField(spec, "payment") && specDeclaresContentField(spec, "currency");
     });
 }
 
-/** The section carrying the COMPOSITION's denomination pin: the composed
+/** The clause carrying the COMPOSITION's denomination pin: the composed
  *  clause declaring `currency` as a designer fill. */
-function currencyPinSection(
+function currencyPinClause(
     agreement: Agreement,
     specs: SpecSource,
-): AgreementSection | undefined {
+): AgreementClause | undefined {
     return agreement.sections.find((s) => {
         const spec = specs.get(s.clause);
         return !!spec && specDeclaresDesignFill(spec, "currency");
@@ -424,13 +424,13 @@ function currencyPinSection(
 /**
  * The off-chain layer of the verification stack, run on BOTH sides of the bilateral commit
  * (buyer before initiating, seller before counter-signing) so neither party
- * signs an invalid agreement. Three checks: every present section conforms to
+ * signs an invalid agreement. Three checks: every present clause conforms to
  * its clause spec (validateContent; process-log clauses are presence-markers,
  * skipped); the denomination AND payment the parties are about to sign
  * as TERMS equal the ones they are about to sign as EXECUTION data
  * (leaf == struct for both mirrored fields, and where a denomination pin is
  * composed, pin == leaf); and the `agreementHash` about to be signed equals
- * the merkle root recomputed from the sections. Catches a malformed agreement
+ * the merkle root recomputed from the clauses. Catches a malformed agreement
  * before a chain round-trip.
  *
  * `struct` is the commitment's mirrored pair — the struct side of the
@@ -455,29 +455,29 @@ export function validateCommitmentAgreement(
 ): { ok: boolean; issues: CommitmentAgreementIssue[] } {
     const issues: CommitmentAgreementIssue[] = [];
 
-    for (const section of agreement.sections) {
+    for (const clauseEntry of agreement.sections) {
         // Structural, before any spec lookup (an attacker can withhold the spec
-        // by naming an unregistered clause id): a section carries EITHER
+        // by naming an unregistered clause id): a clause carries EITHER
         // plaintext `data` OR a content-withheld `dataHash`, never both. The
         // signed merkle leaf uses `dataHash` verbatim while the review renders
-        // `data`, so a section carrying both signs one thing and shows another.
-        if (section.data !== undefined && section.dataHash !== undefined) {
+        // `data`, so a clause carrying both signs one thing and shows another.
+        if (clauseEntry.data !== undefined && clauseEntry.dataHash !== undefined) {
             issues.push({
-                clause: section.clause,
+                clause: clauseEntry.clause,
                 path: "dataHash",
-                message: `section carries both plaintext data and a dataHash fingerprint — exactly one is allowed (the signed leaf uses dataHash while the review shows data)`,
+                message: `clauseEntry carries both plaintext data and a dataHash fingerprint — exactly one is allowed (the signed leaf uses dataHash while the review shows data)`,
             });
             continue;
         }
-        const spec = specs.get(section.clause);
+        const spec = specs.get(clauseEntry.clause);
         if (!spec) continue;
         // A runtime-lifecycle clause is an empty anchor at commit — its content
         // is attested later, so there is nothing to validate here.
         if (specIsProcessLog(spec)) continue;
-        const result = validateContent(section.data, spec);
+        const result = validateContent(clauseEntry.data, spec);
         if (!result.ok) {
             for (const e of result.errors) {
-                issues.push({ clause: section.clause, path: e.path, message: e.message });
+                issues.push({ clause: clauseEntry.clause, path: e.path, message: e.message });
             }
         }
     }
@@ -487,30 +487,30 @@ export function validateCommitmentAgreement(
     // clause is already reported above (the field is required by its spec), so
     // there is nothing extra to say here — this compares the values that ARE
     // present, and each comparison is skipped when its clause isn't composed.
-    const leafSection = commerceCurrencySection(agreement, specs);
-    const leaf = addressLeaf(leafSection, "currency");
-    if (leafSection && leaf && leaf.toLowerCase() !== struct.currency.toLowerCase()) {
+    const leafClause = commerceCurrencyClause(agreement, specs);
+    const leaf = addressLeaf(leafClause, "currency");
+    if (leafClause && leaf && leaf.toLowerCase() !== struct.currency.toLowerCase()) {
         issues.push({
-            clause: leafSection.clause,
+            clause: leafClause.clause,
             path: "currency",
             message: `the signed term names ${leaf} as the denomination; the commitment currency ${struct.currency} contradicts it`,
         });
     }
-    // The payment mirror, from the SAME section: the commerce clause's
+    // The payment mirror, from the SAME clauseEntry: the commerce clause's
     // `payment` leaf is the term the commitment struct's `payment` mirrors
     // (both homes, by the same ruling as currency). Same posture — compare the
     // value that IS present; a missing/malformed leaf already failed its spec.
-    const leafPayment = bigintLeaf(leafSection, "payment");
-    if (leafSection && leafPayment !== undefined && leafPayment !== struct.payment) {
+    const leafPayment = bigintLeaf(leafClause, "payment");
+    if (leafClause && leafPayment !== undefined && leafPayment !== struct.payment) {
         issues.push({
-            clause: leafSection.clause,
+            clause: leafClause.clause,
             path: "payment",
             message: `the signed term names ${leafPayment} as the payment; the commitment payment ${struct.payment} contradicts it`,
         });
     }
-    const pinSection = currencyPinSection(agreement, specs);
-    const pin = addressLeaf(pinSection, "currency");
-    if (pinSection && pin) {
+    const pinClause = currencyPinClause(agreement, specs);
+    const pin = addressLeaf(pinClause, "currency");
+    if (pinClause && pin) {
         // Against the leaf when a commerce clause is composed, else against
         // the struct directly — the chain is transitive, so the pin is
         // asserted either way.
@@ -518,7 +518,7 @@ export function validateCommitmentAgreement(
         const againstLabel = leaf ? "the order's committed currency" : "the commitment currency";
         if (pin.toLowerCase() !== against.toLowerCase()) {
             issues.push({
-                clause: pinSection.clause,
+                clause: pinClause.clause,
                 path: "currency",
                 message: `this assembly is denominated by design (${pin}); ${againstLabel} ${against} contradicts the pinned term`,
             });
@@ -551,7 +551,7 @@ export function validateCommitmentAgreement(
 /**
  * The ONE off-chain validation thrower every signature routes through — buyer sign, seller
  * counter-sign, and the checkout's early pre-wallet check all call this, so no
- * path signs an agreement whose sections violate their clause specs, whose
+ * path signs an agreement whose clauses violate their clause specs, whose
  * denomination or payment differs between the signed term and the
  * signed struct, or whose hash doesn't match its recomputed merkle root.
  *
@@ -569,23 +569,23 @@ export function assertAgreementSignable(
     if (!check.ok) {
         throw new Error(
             `${label} isn't valid to sign yet: ${check.issues
-                .map((i) => `${sectionLabel(i.clause, specs)} ${i.path}: ${i.message}`)
+                .map((i) => `${clauseIdOrKey(i.clause, specs)} ${i.path}: ${i.message}`)
                 .join("; ")}`,
         );
     }
 }
 
-// ── Reading sections BY FIELD NAME, never by clause id ─────────────────────
+// ── Reading clauses BY FIELD NAME, never by clause id ─────────────────────
 
-/** Every section whose registered spec declares a top-level field named
+/** Every clause whose registered spec declares a top-level field named
  *  `fieldName`. Falls back to data-key presence only when the spec isn't
  *  loaded (a clause registered but not yet hydrated) — still keyed on the
  *  field, never on the clause id. */
-export function sectionsByField(
+export function clausesByField(
     agreement: Agreement,
     fieldName: string,
     specs: SpecSource,
-): AgreementSection[] {
+): AgreementClause[] {
     return agreement.sections.filter((s) => {
         const spec = specs.get(s.clause);
         return spec
@@ -594,13 +594,13 @@ export function sectionsByField(
     });
 }
 
-/** The first section declaring `fieldName`, or undefined. */
-export function sectionByField(
+/** The first clause declaring `fieldName`, or undefined. */
+export function clauseByField(
     agreement: Agreement,
     fieldName: string,
     specs: SpecSource,
-): AgreementSection | undefined {
-    return sectionsByField(agreement, fieldName, specs)[0];
+): AgreementClause | undefined {
+    return clausesByField(agreement, fieldName, specs)[0];
 }
 
 // ── Assembly building (design-time projection) ─────────────────────────────
@@ -813,9 +813,9 @@ export function buildAssembly(args: {
     // naming the future agreement. The assembly carries no chain ids and no
     // party addresses.
     const idToLocal = new Map(orders.map((o, i) => [o.orderHash, `order-${i}`]));
-    // Assembly-scoped sections keep the same value-free rule as agreements:
+    // Assembly-scoped clauses keep the same value-free rule as agreements:
     // only design.fills values survive into the assembly. Assembly-scoped
-    // MANDATORY clauses fold in automatically first (empty sections, filled
+    // MANDATORY clauses fold in automatically first (empty clauses, filled
     // at checkout); the designer's own composition merges over them.
     const assemblySelection: Record<Hex, Record<string, unknown>> = {};
     for (const spec of mandatory.assembly) assemblySelection[spec.clauseKey] = {};

@@ -1,9 +1,9 @@
 /**
- * deriveAgreementGroups reads each section's spec by the KEY the assembly
+ * deriveAgreementGroups reads each clause's spec by the KEY the assembly
  * composed — never another spec of the same name. A stranger may register a
  * `figaro-consent` lookalike (version 99) marked mandatory; it is another key,
- * and the assembly's own consent section is still an ordinary, buyer-filled
- * section. Every section the agreement carries is listed: a section composed
+ * and the assembly's own consent clause is still an ordinary, buyer-filled
+ * clause. Every clause the agreement carries is listed: a clause composed
  * under a mandatory key is listed too, marked `mandatory` and never fillable,
  * since the buyer signs it.
  */
@@ -57,26 +57,26 @@ describe("deriveAgreementGroups — spec reads by key", () => {
         expect(clauseIsMandatory(V99.clauseKey)).toBe(true);
     });
 
-    it("keeps an agreement's consent section in the review, ordinary", () => {
+    it("keeps an agreement's consent clause in the review, ordinary", () => {
         const groups = groupsFor({ agreements: [{ id: "order-0", clauses: { [SPEC_V1.clauseKey]: DOCUMENTS } }] });
         expect(reviewed(groups, "order-0")).toEqual([SPEC_V1.clauseKey]);
         expect(rowOf(groups, "order-0", SPEC_V1.clauseKey)?.mandatory).toBe(false);
     });
 
-    it("lists the section composed under the mandatory lookalike's key, marked mandatory and not fillable", () => {
+    it("lists the clause composed under the mandatory lookalike's key, marked mandatory and not fillable", () => {
         const groups = groupsFor({ agreements: [{ id: "order-0", clauses: { [V99.clauseKey]: DOCUMENTS } }] });
         expect(reviewed(groups, "order-0")).toEqual([V99.clauseKey]);
         expect(rowOf(groups, "order-0", V99.clauseKey)).toMatchObject({ mandatory: true, fillable: false, data: DOCUMENTS });
         expect(unfilledRequiredFills(groups, {})).toEqual([]);
     });
 
-    it("keeps an assembly-scoped consent section in the assembly terms", () => {
+    it("keeps an assembly-scoped consent clause in the assembly terms", () => {
         const groups = groupsFor({ assemblyClauses: { [SPEC_V1.clauseKey]: DOCUMENTS }, agreements: [{ id: "order-0", clauses: {} }] });
         expect(reviewed(groups, "assembly")).toEqual([SPEC_V1.clauseKey]);
         expect(rowOf(groups, "assembly", SPEC_V1.clauseKey)?.mandatory).toBe(false);
     });
 
-    it("lists an assembly-scoped section under the mandatory key, marked mandatory and not fillable", () => {
+    it("lists an assembly-scoped clause under the mandatory key, marked mandatory and not fillable", () => {
         const groups = groupsFor({
             assemblyClauses: { [V99.clauseKey]: DOCUMENTS },
             agreements: [{ id: "order-0", clauses: {} }],
@@ -85,11 +85,11 @@ describe("deriveAgreementGroups — spec reads by key", () => {
         expect(rowOf(groups, "assembly", V99.clauseKey)).toMatchObject({ mandatory: true, fillable: false });
     });
 
-    it("lists every section the agreement carries, in the assembly's order", () => {
+    it("lists every clause the agreement carries, in the assembly's order", () => {
         const groups = groupsFor({
             agreements: [{ id: "order-0", clauses: { [V99.clauseKey]: DOCUMENTS, [UNLOADED]: {} } }],
         });
-        // An unloaded spec is not mandatory: listed, read as an ordinary section.
+        // An unloaded spec is not mandatory: listed, read as an ordinary clause.
         expect(reviewed(groups, "order-0")).toEqual([V99.clauseKey, UNLOADED]);
         expect(groups[0].clauses.map((c) => c.mandatory)).toEqual([true, false]);
     });
@@ -98,7 +98,7 @@ describe("deriveAgreementGroups — spec reads by key", () => {
 /**
  * The buyer's form reads the same key. A lookalike of the same name that drops
  * the designer's fill and adds a required term (v50 here) changes neither the
- * fields the checkout offers for the assembly's section nor the terms the
+ * fields the checkout offers for the assembly's clause nor the terms the
  * place-order gate demands of it.
  */
 describe("buyerAuthoredFields — the offered fields are the composed key's", () => {
@@ -119,7 +119,7 @@ describe("buyerAuthoredFields — the offered fields are the composed key's", ()
         expect(buyerAuthoredFields(SPEC_V50.clauseKey).map((f) => f.name)).toEqual(["documents", "witnessName"]);
     });
 
-    it("the original's section offers no field and demands no term", () => {
+    it("the original's clause offers no field and demands no term", () => {
         const groups = groupsFor({ agreements: [{ id: "order-0", clauses: { [SPEC_V1.clauseKey]: DOCUMENTS } }] });
         const row = groups.find((g) => g.key === "order-0")?.clauses[0];
         expect(row?.clauseKey).toBe(SPEC_V1.clauseKey);
@@ -127,7 +127,7 @@ describe("buyerAuthoredFields — the offered fields are the composed key's", ()
         expect(unfilledRequiredFills(groups, {})).toEqual([]);
     });
 
-    it("a section composed under the lookalike's key offers and demands its own terms (its empty documents included)", () => {
+    it("a clause composed under the lookalike's key offers and demands its own terms (its empty documents included)", () => {
         const groups = groupsFor({ agreements: [{ id: "order-0", clauses: { [SPEC_V50.clauseKey]: DOCUMENTS } }] });
         const row = groups.find((g) => g.key === "order-0")?.clauses[0];
         expect(row?.clauseKey).toBe(SPEC_V50.clauseKey);

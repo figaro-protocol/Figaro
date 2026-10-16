@@ -144,7 +144,7 @@ contract RpgfIntegrationTest is Test {
             currency: address(token),
             payment: 100 ether,
             expectedCumulativeValue: 100 ether,
-            agreementHash: AgreementTestHelper.singleSectionRoot(clauseOrAssembly, SECTION),
+            agreementHash: AgreementTestHelper.singleClauseRoot(clauseOrAssembly, SECTION),
             salt: salt,
             deadline: block.timestamp + 1 hours
         });
@@ -161,11 +161,11 @@ contract RpgfIntegrationTest is Test {
     ///      leaves are keyed by clause and neither key is ever a leaf key.
     function _settleUnderAssembly(bytes32 compositionHash, uint256 salt)
         internal
-        returns (CommitmentTypes.Commitment memory c, bytes memory sectionData)
+        returns (CommitmentTypes.Commitment memory c, bytes memory clauseData)
     {
         // Sections commit as CANONICAL JSON bytes — the same convention the
         // runtime's agreements use (the merkle leaf hashes exactly these).
-        sectionData = AgreementTestHelper.provenanceSection(AGR, compositionHash);
+        clauseData = AgreementTestHelper.provenanceLeaf(AGR, compositionHash);
         c = CommitmentTypes.Commitment({
             processId: bytes32(0),
             buyer: buyer,
@@ -173,7 +173,7 @@ contract RpgfIntegrationTest is Test {
             currency: address(token),
             payment: 100 ether,
             expectedCumulativeValue: 100 ether,
-            agreementHash: AgreementTestHelper.singleSectionRoot(PROVENANCE_LEAF, sectionData),
+            agreementHash: AgreementTestHelper.singleClauseRoot(PROVENANCE_LEAF, clauseData),
             salt: salt,
             deadline: block.timestamp + 1 hours
         });

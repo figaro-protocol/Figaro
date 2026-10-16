@@ -345,7 +345,7 @@ test.describe('The stranger: the blind visitor', () => {
             ...NAV_LINKS_APP_PRIMARY,
             ...NAV_LINKS_APP_DRAWER,
             ...NAV_LINKS_MARKETING_DRAWER,
-            ...MARKETING_MAP.flatMap((section) => section.links),
+            ...MARKETING_MAP.flatMap((clauseEntry) => clauseEntry.links),
         ]) {
             const c = classify(link.href, origin);
             if (c.kind === 'route') enqueue(c.route);

@@ -64,7 +64,7 @@ export function instantiateRootAgreement(hydrated: HydratedAssembly, params: Ins
     const root = assembly.agreements.find(isRootEntry) ?? assembly.agreements[0];
     if (!root) throw new Error("assembly has no agreements to instantiate");
     // THE ASSEMBLY-SCOPE FOLD, exactly as the walk performs
-    // it: the assembly's assembly-scoped sections — terms of the composition
+    // it: the assembly's assembly-scoped clauses — terms of the composition
     // itself (a denomination pin, a dispute forum) — fold into the root
     // clause bag, so the agreement carries them and every party signs them.
     // Skipping the fold was the audit-confirmed parity hole: the pin escaped
@@ -177,7 +177,7 @@ export interface OfferPolicy {
  *
  * With `specs` supplied, ALSO runs the merkle-leaf seam
  * (`assertAgreementSignable` — docs/CLAUSES.md § "Every clause is a merkle
- * leaf"): every section conforms to its clause spec, and the offer's
+ * leaf"): every clause conforms to its clause spec, and the offer's
  * denomination TERM (the commerce clause leaf, and any composed
  * denomination pin) equals the currency the seller is about to bond against —
  * the commitment struct's `currency` field. This is off-chain validation run on the
@@ -459,7 +459,7 @@ export function makeSellerOfferHandler(
 //
 // A DAG of orders under one root. FigaroCore sees a LINEAR sequence of commits
 // updating a monotonic cumulative-value accumulator; DAG topology is off-chain
-// (each order's parents recorded in its topology section). Beyond the root case:
+// (each order's parents recorded in its topology clause). Beyond the root case:
 //   - parents: a sub-order's topology field carries its parents' REAL EIP-712
 //     order hashes, not the assembly-local ids — so orders are built in
 //     dependency order and each order's hash is fed to its children.

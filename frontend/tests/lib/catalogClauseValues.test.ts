@@ -85,7 +85,7 @@ describe("catalogClausesForBindings — the bindings decide which item fields ex
             ],
         );
         // figaro-commerce and figaro-topology declare no catalogueFills, so
-        // they contribute no section; the UNBOUND reefer assembly's cold-chain
+        // they contribute no clause; the UNBOUND reefer assembly's cold-chain
         // and hazmat stay out of a haul seller's catalog entirely.
         expect(derived.map((c) => c.clauseId)).toEqual(["figaro-freight-class"]);
     });

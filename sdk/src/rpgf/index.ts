@@ -21,7 +21,7 @@ import type { Address, Hex, PublicClient } from "viem";
 import { decodeEventLog } from "viem";
 import { USAGE_COUNTER_ABI } from "../abis.js";
 import type { Agreement } from "../agreement.js";
-import { PROVENANCE_LEAF_KEY, buildProvenanceInclusionProof, buildSectionInclusionProof, sectionDataHash } from "../agreement.js";
+import { PROVENANCE_LEAF_KEY, buildProvenanceInclusionProof, buildSignedClauseInclusionProof, hashClauseData } from "../agreement.js";
 import {
     ASSEMBLY_TERMS_LEAF_KEY,
     assertNotReservedKey,
@@ -434,7 +434,7 @@ export interface UsageClaimContext {
  *
  * THREE INDEPENDENT LEGS:
  *
- *  - the CLAUSE leg emits one claim per agreement section — every committed
+ *  - the CLAUSE leg emits one claim per agreement clause — every committed
  *    clause earns, the mandatory ones included.
  *  - the AGREEMENT leg credits the registered agreement's designer from the
  *    agreement's provenance leaf (`Agreement.provenance`), proved with
@@ -448,7 +448,7 @@ export interface UsageClaimContext {
  *    `agreementKey` is the provenance's (every such agreement proves the
  *    same membership).
  *
- * The provenance leaf is the agreement format's, not a section, so the
+ * The provenance leaf is the agreement format's, not a clause, so the
  * clause leg never sees it. An agreement naming no provenance has neither
  * of the last two legs.
  *
@@ -482,12 +482,12 @@ export function buildUsageClaims(
     const claims: SequencerUsageClaim[] = [];
 
     // ── Clause leg ──
-    for (const section of agreement.sections) {
+    for (const clauseEntry of agreement.sections) {
         claims.push({
             order: wireOrder,
-            clause_or_assembly: section.clause,
-            kind: { Clause: { section_hash: sectionDataHash(section) } },
-            inclusion_proof: buildSectionInclusionProof(agreement, section.clause).proof,
+            clause_or_assembly: clauseEntry.clause,
+            kind: { Clause: { section_hash: hashClauseData(clauseEntry) } },
+            inclusion_proof: buildSignedClauseInclusionProof(agreement, clauseEntry.clause).proof,
         });
     }
 

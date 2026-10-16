@@ -21,7 +21,7 @@
 without a client. <code>fetchUsageClaimContext</code> gets them.</p>
 <p>THREE INDEPENDENT LEGS:</p>
 <ul>
-<li>the CLAUSE leg emits one claim per agreement section — every committed
+<li>the CLAUSE leg emits one claim per agreement clause — every committed
 clause earns, the mandatory ones included.</li>
 <li>the AGREEMENT leg credits the registered agreement's designer from the
 agreement's provenance leaf (<code>Agreement.provenance</code>), proved with
@@ -35,7 +35,7 @@ keyed by the composition hash. The agreement proved is the first whose
 <code>agreementKey</code> is the provenance's (every such agreement proves the
 same membership).</li>
 </ul>
-<p>The provenance leaf is the agreement format's, not a section, so the
+<p>The provenance leaf is the agreement format's, not a clause, so the
 clause leg never sees it. An agreement naming no provenance has neither
 of the last two legs.</p>
 <p>Throws when the counter's reserved keys are not the format's (every

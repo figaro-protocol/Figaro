@@ -41,9 +41,9 @@ const {
     buildDomain,
     computeAgreementHash,
     computeOrderHash,
-    computeSectionLeaf,
+    computeClauseLeaf,
     hashCommitmentStruct,
-    sectionDataHash,
+    hashClauseData,
     verifyCommitmentSignature,
 } = await import(join(repoRoot, "sdk", "dist", "index.js"));
 
@@ -121,12 +121,12 @@ const lower = (h) => String(h).toLowerCase();
 
 // ── 1+2. Per-section leaves + recomputed agreement root ─────────────────────
 
-console.log("Agreement sections — the leaves the agreementHash commits to:");
-for (const section of agreement.sections) {
-    const withheld = section.data === undefined;
-    console.log(`  ${section.clause}@${section.version}${withheld ? "  (content-withheld: fingerprint only)" : ""}`);
-    console.log(`    data hash: ${sectionDataHash(section)}`);
-    console.log(`    leaf:      ${computeSectionLeaf(section)}`);
+console.log("Agreement clauses — the leaves the agreementHash commits to:");
+for (const clauseEntry of agreement.sections) {
+    const withheld = clauseEntry.data === undefined;
+    console.log(`  ${clauseEntry.clause}@${clauseEntry.version}${withheld ? "  (content-withheld: fingerprint only)" : ""}`);
+    console.log(`    data hash: ${hashClauseData(clauseEntry)}`);
+    console.log(`    leaf:      ${computeClauseLeaf(clauseEntry)}`);
 }
 
 const recomputedHash = computeAgreementHash(agreement);

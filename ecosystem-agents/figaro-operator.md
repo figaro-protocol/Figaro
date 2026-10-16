@@ -226,12 +226,12 @@ the registered agreement its agreement holds and `assemblyCompositionHash(assemb
 agreement format's reserved provenance leaf (key `PROVENANCE_LEAF_KEY`,
 `keccak256("figaro-agreement-provenance")`; bytes
 `{"agreementKey":"0x<lowercase hex>","compositionHash":"0x<lowercase hex>"}`), a leaf of the
-agreement and never a clause section. Do not hand-write provenance: an agreement naming a
+agreement and never a clause. Do not hand-write provenance: an agreement naming a
 different pair than the agreement you instantiated is a claim to a different design, and the
 SDK throws on it. Instantiation adds and drops no clause: it fills values and writes the
 topology.
 While the process is OPEN you may attest that leaf as the buyer —
-`attestAsBuyer(walletClient, coordinator, target, p.clauseId, p.stage, p.sectionHash,
+`attestAsBuyer(walletClient, coordinator, target, p.clauseId, p.stage, p.clauseDataHash,
 p.proof, p.contentRef)` with `p = provenanceLeafAttestation(agreement)` — which makes the
 process-to-design link public: a reader matches the attestation's `contentRef` against
 `provenanceContentRef(agreementKey, compositionHash)` for a registered agreement and assembly. The coordinator refuses
@@ -253,8 +253,8 @@ const report = await recordProcessUsage(walletClient, publicClient, addresses.us
 Usage is counted **at resolution or it is permanently deniable** (`docs/DESIGN_DECISIONS.md`
 §21 — a seller can unstake, a period can close, and a late claim is refusable). A buyer
 agent that resolves without this credits no clause, agreement or assembly designer, and
-the 600M reward's uniformity across actors is exactly this call. Only the section FINGERPRINT
-reaches calldata, so a private section's plaintext never becomes public. Read the report,
+the 600M reward's uniformity across actors is exactly this call. Only the clause FINGERPRINT
+reaches calldata, so a private clause's plaintext never becomes public. Read the report,
 not the absence of an exception. **Every clause EARNS**, the mandatory ones included:
 commerce and topology ride on every order and are scored for their designer of record like
 any other, and `recordProcessUsage` sends one clause leg per distinct clause key the
@@ -295,7 +295,7 @@ does not have.
 Five things an owner asks for that are already written down and executable in the SDK
 README. Read the section; never reconstruct one from the ABI.
 
-- **Writing an attestation** — inclusion proof → section fingerprint → content
+- **Writing an attestation** — inclusion proof → clause fingerprint → content
   fingerprint → `attestAsSeller` / `attestAsBuyer`: `@figaro-protocol/sdk/agent` — Agent Coordination.
 - **The encrypted hand-off ceremony** — a per-order ephemeral keypair and the
   DIRECTIONAL ECDH derivation (the two sides call different halves; the reverse pairing
@@ -355,7 +355,7 @@ the enforcement, or there is none.
 ## Verify before you sign — the hash is the whole of what you agree to
 
 `FigaroCore` verifies both EIP-712 signatures itself, over a struct whose `agreementHash` is
-the **merkle root** of the agreement's sections. So resolution is independent of any UI —
+the **merkle root** of the agreement's clauses. So resolution is independent of any UI —
 but **what you were SHOWN is not**. Whoever hands you an agreement (a page, a channel
 message, a counterparty's payload) can present document *D* while the struct binds
 `hash(D′)`, and nothing in the signing flow catches it. Your wallet sees 32 bytes.
@@ -367,7 +367,7 @@ root `@figaro-protocol/sdk` exports and the document you were handed:
 2. Compare, case-insensitively, against `commitment.agreementHash` in the struct you are
    about to sign. **Not equal ⇒ REFUSE and tell the owner.** This is not an advisory
    check; it is the only moment the substitution is catchable.
-3. `sectionDataHash(section)` / `computeSectionLeaf(section)` per section when you need to
+3. `hashClauseData(clause)` / `computeClauseLeaf(clause)` per clause when you need to
    show the owner *what each hash covers* (HITL review context).
 4. After the fact — yours or a counterparty's — `verifyCommitmentSignature(commitment,
    sig, address, { chainId, core })` answers "did this address really sign this struct?".
@@ -378,8 +378,8 @@ against, or omit a term the clause requires. `assertAgreementSignable(agreement,
 agreementHash, specs, commitment, label)` is the one off-chain gate every signature in the
 SDK routes through, and it refuses three things the hash comparison cannot see:
 
-- **A section that violates its own clause spec** — including a MISSING REQUIRED term. An
-  agreement can carry a section the designer composed and the buyer never filled; the gate
+- **A clause that violates its own clause spec** — including a MISSING REQUIRED term. An
+  agreement can carry a clause the designer composed and the buyer never filled; the gate
   refuses to sign it rather than committing an empty term.
 - **A leaf that contradicts the struct, on BOTH mirrored terms.** `currency` and `payment`
   live in two places at once: as merkle leaves under `agreementHash` (the commerce clause's
@@ -398,7 +398,7 @@ a forged signature — treat it as tamper, not as a decline.
 The counterparty's counter-signature deserves the same treatment: `verifyRaceReply` /
 `requestQuotes` already verify replies by struct-hash equality and reconstruction, so
 prefer those over checking a relayed payload by eye. And never sign an agreement whose
-sections you could not fetch — a withheld-content section is a fingerprint by design, but
+clauses you could not fetch — a withheld-content clause is a fingerprint by design, but
 an *unfetchable* one is an unknown.
 
 Struct-level legibility in the wallet is a `FigaroCore` question and is deliberately out:
@@ -594,10 +594,10 @@ sentence is something to get RIGHT in front of an owner who arrives with platfor
 - **The evidence already exists — the process data IS the bundle.** The commitment
   payloads carried by `OrderCommitted` (both parties' signed terms, the agreement root,
   the deadline), the merkle-bound attestations each side filed, and the agreement's own
-  sections. Any SINGLE term is provable to an outsider without revealing the rest:
-  disclose that section with `buildSectionInclusionProof` + `verifyInclusionProof`
-  against the committed `agreementHash`, and put every other section into its
-  content-withheld form with `withholdSectionContent` — same root, plaintext never
+  clauses. Any SINGLE term is provable to an outsider without revealing the rest:
+  disclose that clause with `buildSignedClauseInclusionProof` + `verifyInclusionProof`
+  against the committed `agreementHash`, and put every other clause into its
+  content-withheld form with `withholdClauseContent` — same root, plaintext never
   travels (the worked recipe is the SDK README's data-products section, step 3). A
   counterparty cannot deny a term that verifies against the root they signed. Walletless
   per-order verdicts for the owner: `/audit/view?process=`.

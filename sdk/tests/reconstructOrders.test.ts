@@ -93,15 +93,15 @@ describe("reconstructOrdersFromAssembly — realization", () => {
         // The sub-order's signed struct names the ROOT's derived process id.
         expect(sub.commitment.processId).toBe(root.processId);
         expect(sub.processId).toBe(root.processId);
-        // The sub's topology section carries the root's REAL order hash.
+        // The sub's topology clause carries the root's REAL order hash.
         const topo = sub.agreement.sections.find((s) => s.clause === keyOf("figaro-topology"));
         expect(topo?.data.parentOrderHashes).toEqual([root.orderHash]);
         // THE MERKLE-LEAF SEAM: with specs supplied, the walk fills the
-        // commerce section's currency leaf to match the commitment struct —
+        // commerce clause's currency leaf to match the commitment struct —
         // on EVERY realized order, root and sub alike.
         for (const order of orders) {
-            const commerceSection = order.agreement.sections.find((s) => s.clause === keyOf("figaro-commerce"));
-            expect(commerceSection?.data.currency).toBe(order.commitment.currency);
+            const commerceClause = order.agreement.sections.find((s) => s.clause === keyOf("figaro-commerce"));
+            expect(commerceClause?.data.currency).toBe(order.commitment.currency);
         }
     });
 

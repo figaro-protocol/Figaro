@@ -65,9 +65,9 @@ export interface SubmitClauseAttestationCapabilityAction {
     eventCode?: string;
     /** LADDER mode only: the spec field holding the enum ladder. */
     ladderField?: string;
-    /** RE-ASSERT mode: the attestation re-asserts the committed section —
+    /** RE-ASSERT mode: the attestation re-asserts the committed clause —
      *  content is OMITTED on the wire so the coordinator's `content ??
-     *  sectionData` default applies (the exact committed bytes; contentRef =
+     *  clauseData` default applies (the exact committed bytes; contentRef =
      *  keccak of them). No form, no ladder. */
     reasserts?: boolean;
     /** WHICH party attests. Ladders surface seller-side; witness stages
@@ -77,8 +77,8 @@ export interface SubmitClauseAttestationCapabilityAction {
 }
 
 /** The buyer's attestation of the agreement FORMAT's provenance leaf — the
- *  reserved key (`PROVENANCE_LEAF_KEY`), not a clause: its section data is
- *  `provenanceSectionBytes(agreementKey, compositionHash)` and its content
+ *  reserved key (`PROVENANCE_LEAF_KEY`), not a clause: its clause data is
+ *  `provenanceLeafBytes(agreementKey, compositionHash)` and its content
  *  reference their hash. Filed while the process is open, like every
  *  attestation. */
 export interface AttestProvenanceLeafCapabilityAction {
@@ -94,8 +94,8 @@ export interface AttestProvenanceLeafCapabilityAction {
 
 /** A capability that opens a chooser of complete capabilities, each executed
  *  on its own by its own submit — the card is never executed itself. One
- *  party's re-assert card on one order carries a choice per committed section
- *  that party has not yet re-asserted: the coordinator attests one section
+ *  party's re-assert card on one order carries a choice per committed clause
+ *  that party has not yet re-asserted: the coordinator attests one clause
  *  per call, so each choice is one deliberate transaction. */
 interface ChooseCapabilityAction {
     executionType: "choice";
@@ -213,7 +213,7 @@ export interface ProcessModel {
     currency?: `0x${string}`;
     /** The root order's committed modality code (the modality clause's
      *  single-select `modality` value), surfaced by the builder so the order
-     *  page can show it without reading a clause section itself. Null when
+     *  page can show it without reading a clause itself. Null when
      *  uncommitted. */
     rootModality?: string | null;
     orders: OrderNodeModel[];

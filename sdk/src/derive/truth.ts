@@ -31,7 +31,7 @@ export const TRUTH_BOUNDARY_GLOSS: Record<TruthBoundary, string> = {
     "institution-declared":
         "the runtime encodes it, the protocol never validates it (declared agreement-body data — e.g. a geohash field's substance); " + DECLARATION_BACKING,
     "protocol-derived":
-        "the anchoring is on-chain (merkle-bound sections, timestamped attestations) while the content behind the fingerprint lives off-chain — referential integrity, not substantive accuracy (attestation overlays, provenance links); " + ATTESTATION_BACKING,
+        "the anchoring is on-chain (merkle-bound clauseEntries, timestamped attestations) while the content behind the fingerprint lives off-chain — referential integrity, not substantive accuracy (attestation overlays, provenance links); " + ATTESTATION_BACKING,
     "composition-derived":
         "read from a composed venue's own events — a swap pool, a multisender, a forum — true per that contract's rules, outside FigaroCore's guarantees (the fifth-noun trail).",
 };

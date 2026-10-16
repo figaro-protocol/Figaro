@@ -24,7 +24,7 @@ at DESIGN or CHECKOUT time (<code>design.fills</code> / <code>checkout.catalogue
 (<code>specIsProcessLog</code>).</p>
 <p>Process-log clauses are runtime event ladders — content arrives via
 LATER attestation submissions, never the initial agreement — so
-<code>validateCommitmentAgreement</code> SKIPS content validation for every section
+<code>validateCommitmentAgreement</code> SKIPS content validation for every clause
 of such a clause (its <code>specIsProcessLog</code> short-circuit) and
 <code>withSpecDefaults</code> never fills its omitted fields. A fill declared on
 such a clause is therefore content the author believes is pinned and

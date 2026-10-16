@@ -10,7 +10,7 @@
  *   2. CommitmentPayload serialization (lib/kernel/signedCommitment.ts —
  *      bigint→hex replacer + prototype-pollution stripping on deserialize),
  *   3. agreement projection → agreementHash (since Phase 3: @figaro-protocol/sdk
- *      projection — spec-default injection, process-log skip, section sort),
+ *      projection — spec-default injection, process-log skip, clause sort),
  *   4. assembly composition → compositionHash (since Phase 3: @figaro-protocol/sdk
  *      projection — mandatory auto-fold, sparse-version normalization,
  *      editorial exclusion).

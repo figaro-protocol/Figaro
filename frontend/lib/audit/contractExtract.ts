@@ -6,16 +6,16 @@
  * The "contract" in Figaro is the off-chain document referenced by
  * `agreementHash`. Both parties signed an EIP-712 commitment that bound
  * them to its byte-exact content. This extractor produces a structured
- * view of that document — parties, monetary terms, every clause section
+ * view of that document — parties, monetary terms, every clause
  * with its merkle-leaf hash anchor.
  */
 
 import {
     type Agreement,
-    type AgreementSection,
-    computeSectionLeaf,
+    type AgreementClause,
+    computeClauseLeaf,
 } from "@figaro-protocol/sdk";
-import { sectionByField } from "@figaro-protocol/sdk";
+import { clauseByField } from "@figaro-protocol/sdk";
 import { getClauseSpec, specSource } from "@/lib/shared/clauseSpecSource";
 import type { Order } from "@/lib/kernel/store";
 import { ZERO_ADDRESS } from "@/lib/shared/evm";
@@ -30,15 +30,15 @@ function clauseTitle(clauseKey: string): string {
 }
 
 interface ContractClause {
-    /** The clause key the section carries. */
+    /** The clause key the clause carries. */
     clauseKey: string;
     /** Human-readable title. */
     title: string;
     /** The clause's data payload — clause-specific structure. Absent for a
-     *  content-withheld (`private`) section: only its fingerprint is public,
+     *  content-withheld (`private`) clauseEntry: only its fingerprint is public,
      *  so there is no cleartext body to show; the `leafHash` still binds it. */
     body?: Record<string, unknown>;
-    /** Merkle leaf hash of this section under the agreementHash root.
+    /** Merkle leaf hash of this clause under the agreementHash root.
      *  Auditor recomputes this from the body and verifies it appears in
      *  the agreementHash merkle tree. */
     leafHash: `0x${string}`;
@@ -55,7 +55,7 @@ export interface ContractDocument extends ExtractedDocument {
     /** EIP-712 commitment salt + deadline (for full reconstruction). */
     salt: bigint;
     deadline: bigint;
-    /** Each clause section in the agreement, in canonical (sorted-by-clause) order. */
+    /** Each clause in the agreement, in canonical (sorted-by-clause) order. */
     clauses: ContractClause[];
     /** Optional jurisdiction summary if a jurisdiction clause is present. */
     jurisdiction?: {
@@ -84,24 +84,24 @@ export interface ContractDocument extends ExtractedDocument {
     committedAtBlock?: number;
 }
 
-function clauseFromSection(section: AgreementSection): ContractClause {
-    // Agreements are cleartext: the IPFS body carries every section in full and
+function contractClauseFrom(clauseEntry: AgreementClause): ContractClause {
+    // Agreements are cleartext: the IPFS body carries every clause in full and
     // the audit recomputes each leaf. Selective disclosure, if ever needed, is a
     // merkle inclusion proof (@figaro-protocol/sdk), not a redacted distribution form.
     return {
-        clauseKey: section.clause,
-        title: clauseTitle(section.clause),
-        body: section.data,
-        leafHash: computeSectionLeaf(section),
+        clauseKey: clauseEntry.clause,
+        title: clauseTitle(clauseEntry.clause),
+        body: clauseEntry.data,
+        leafHash: computeClauseLeaf(clauseEntry),
     };
 }
 
 function extractJurisdictionSummary(agreement: Agreement) {
-    const applicableLaw = sectionByField(agreement, "applicableLaw", specSource());
+    const applicableLaw = clauseByField(agreement, "applicableLaw", specSource());
     if (!applicableLaw) return undefined;
-    // `data` is undefined on a content-WITHHELD section (a private-disposition
+    // `data` is undefined on a content-WITHHELD clause (a private-disposition
     // clause on the public pin) — guard like the sibling extractors below, so a
-    // redacted jurisdiction section reads as absence, not a crash.
+    // redacted jurisdiction clause reads as absence, not a crash.
     const data = applicableLaw.data as { applicableLaw?: string; forum?: string; language?: string } | undefined;
     if (!data?.applicableLaw || typeof data.applicableLaw !== "string") return undefined;
     return {
@@ -112,7 +112,7 @@ function extractJurisdictionSummary(agreement: Agreement) {
 }
 
 function extractTopology(agreement: Agreement) {
-    const topology = sectionByField(agreement, "parentOrderHashes", specSource());
+    const topology = clauseByField(agreement, "parentOrderHashes", specSource());
     const data = topology?.data as { parentOrderHashes?: unknown } | undefined;
     const parentOrderHashes = Array.isArray(data?.parentOrderHashes)
         ? (data.parentOrderHashes.filter((p) => typeof p === "string") as string[])
@@ -121,13 +121,13 @@ function extractTopology(agreement: Agreement) {
 }
 
 function extractMethodSummary(agreement: Agreement) {
-    // The modality section is found by its declared FIELD, never by clause
+    // The modality clause is found by its declared FIELD, never by clause
     // name. Single-select scalar; the raw value flows through verbatim — an
     // unseen modality the registry defines must NOT fall into an undefined hole
     // (open-world). There is no coordination field: the courier-edge fill
     // mechanism is derived (binding state),
     // not stored, so it never appears in the canonical method.
-    const modalityData = sectionByField(agreement, "modality", specSource())?.data as
+    const modalityData = clauseByField(agreement, "modality", specSource())?.data as
         | { modality?: unknown }
         | undefined;
     return typeof modalityData?.modality === "string" ? modalityData.modality : undefined;
@@ -139,10 +139,10 @@ export function extractContract(
 ): ContractDocument {
     // Currency: prefer the agreement's commerce-section currency (signed by both
     // parties) over the order's currency field (which is event-derived, normally
-    // identical, but the commerce section is the authoritative party-signed
-    // source). When the commerce section is absent, fall back to order.currency
+    // identical, but the commerce clause is the authoritative party-signed
+    // source). When the commerce clause is absent, fall back to order.currency
     // — FigaroCore emits the commitment's currency regardless.
-    const commerce = sectionByField(agreement, "lineItems", specSource());
+    const commerce = clauseByField(agreement, "lineItems", specSource());
     const commerceCurrency = (commerce?.data as { currency?: string } | undefined)?.currency;
 
     return {
@@ -158,7 +158,7 @@ export function extractContract(
         cumulativeValue: order.cumulativeValue,
         salt: order.salt,
         deadline: order.deadline,
-        clauses: agreement.sections.map(clauseFromSection),
+        clauses: agreement.sections.map(contractClauseFrom),
         jurisdiction: extractJurisdictionSummary(agreement),
         topology: extractTopology(agreement),
         method: extractMethodSummary(agreement),

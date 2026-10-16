@@ -1,4 +1,4 @@
-<!DOCTYPE html><html class="default" lang="en" data-base="../"><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>getSectionDataBytes | @figaro-protocol/sdk</title><meta name="description" content="Documentation for @figaro-protocol/sdk"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => window.app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar">
+<!DOCTYPE html><html class="default" lang="en" data-base="../"><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>hashClauseData | @figaro-protocol/sdk</title><meta name="description" content="Documentation for @figaro-protocol/sdk"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => window.app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar">
 <div class="tsd-toolbar-contents container"><a href="../index.html" class="title">@figaro-protocol/sdk</a>
 <div id="tsd-toolbar-links"><a href="/">Site</a><a href="/spec">Build</a></div><button id="tsd-search-trigger" class="tsd-widget" aria-label="Search"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></button><dialog id="tsd-search" aria-label="Search"><input role="combobox" id="tsd-search-input" aria-controls="tsd-search-results" aria-autocomplete="list" aria-expanded="true" autocapitalize="off" autocomplete="off" placeholder="Search the docs" maxLength="100"/>
 <ul role="listbox" id="tsd-search-results"></ul>
@@ -9,29 +9,27 @@
 <div class="tsd-page-title">
 <ul class="tsd-breadcrumb" aria-label="Breadcrumb">
 <li><a href="../modules/index.html">index</a></li>
-<li><a href="" aria-current="page">getSectionDataBytes</a></li></ul>
-<h1>Function getSectionDataBytes</h1></div>
+<li><a href="" aria-current="page">hashClauseData</a></li></ul>
+<h1>Function hashClauseData</h1></div>
 <section class="tsd-panel">
 <ul class="tsd-signatures">
 <li class="">
-<div class="tsd-signature tsd-anchor-link" id="getsectiondatabytes"><span class="tsd-kind-call-signature">getSectionDataBytes</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">section</span><span class="tsd-signature-symbol">:</span> <a href="../interfaces/index.AgreementSection.html" class="tsd-signature-type tsd-kind-interface">AgreementSection</a><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">`</span><span class="tsd-signature-type">0x</span><span class="tsd-signature-symbol">${</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">`</span><a href="#getsectiondatabytes" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-signature tsd-anchor-link" id="hashclausedata"><span class="tsd-kind-call-signature">hashClauseData</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">clauseEntry</span><span class="tsd-signature-symbol">:</span> <a href="../interfaces/index.AgreementClause.html" class="tsd-signature-type tsd-kind-interface">AgreementClause</a><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">`</span><span class="tsd-signature-type">0x</span><span class="tsd-signature-symbol">${</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">`</span><a href="#hashclausedata" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
 <div class="tsd-description">
-<div class="tsd-comment tsd-typography"><p>Return the on-chain <code>sectionData</code> bytes for an agreement section: the
-canonical JSON of the section data. The chain merkle-binds the section HASH
-and never sees these bytes, but they are what a party pins to IPFS (plaintext
-for a public section, encrypted for a private one) and what
-<code>sectionDataHash</code> fingerprints. No clause spec is consulted — specs live ONLY
-in <code>ClauseRegistry</code> (→ IPFS), never bundled into the SDK. A never-seen clause
-hashes the same way as any other. Throws for a content-withheld section: its
-plaintext is not available, only its <code>dataHash</code>.</p>
+<div class="tsd-comment tsd-typography"><p>The clause's data FINGERPRINT — <code>keccak256</code> of its canonical-JSON bytes.
+This is the ONLY thing the merkle leaf (and the on-chain <code>clauseDataHash</code>
+argument to <code>recordClauseUsage</code> / the attest calls) needs, so a <code>private</code> clause's
+plaintext never has to be present to build or verify the agreement root. For
+a content-withheld clause the fingerprint is carried directly (<code>dataHash</code>);
+otherwise it is computed from the plaintext.</p>
 </div>
 <div class="tsd-parameters">
 <h4 class="tsd-parameters-title">Parameters</h4>
 <ul class="tsd-parameter-list">
-<li><span><span class="tsd-kind-parameter">section</span>: <a href="../interfaces/index.AgreementSection.html" class="tsd-signature-type tsd-kind-interface">AgreementSection</a></span></li></ul></div>
+<li><span><span class="tsd-kind-parameter">clauseEntry</span>: <a href="../interfaces/index.AgreementClause.html" class="tsd-signature-type tsd-kind-interface">AgreementClause</a></span></li></ul></div>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-symbol">`</span><span class="tsd-signature-type">0x</span><span class="tsd-signature-symbol">${</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">`</span></h4><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/agreement.ts#L203">agreement.ts:203</a></li></ul></aside></div></li></ul></section></div>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/agreement.ts#L220">agreement.ts:220</a></li></ul></aside></div></li></ul></section></div>
 <div class="col-sidebar">
 <div class="page-menu">
 <div class="tsd-navigation settings">

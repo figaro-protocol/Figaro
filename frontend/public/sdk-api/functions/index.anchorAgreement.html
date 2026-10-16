@@ -17,7 +17,7 @@
 <div class="tsd-signature tsd-anchor-link" id="anchoragreement"><span class="tsd-kind-call-signature">anchorAgreement</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">raw</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">unknown</span><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">agreementHash</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <a href="../types/index.Anchored.html" class="tsd-signature-type tsd-kind-type-alias">Anchored</a><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/index.Agreement.html" class="tsd-signature-type tsd-kind-interface">Agreement</a><span class="tsd-signature-symbol">&gt;</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">null</span><a href="#anchoragreement" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
 <div class="tsd-description">
 <div class="tsd-comment tsd-typography"><p>An agreement, verified against the commitment's <code>agreementHash</code>: the
-merkle root over its section leaves and its provenance leaf is the hash. A
+merkle root over its clause leaves and its provenance leaf is the hash. A
 document whose leaves do not hash (malformed, duplicated clause keys, a
 <code>provenance</code> that is not two 32-byte hex keys) is not the agreement. The
 top-level <code>buyer</code> and <code>seller</code> are outside the hash and pass unchecked

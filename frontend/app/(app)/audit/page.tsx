@@ -7,7 +7,7 @@ import { withOg } from "@/lib/shared/pageMetadata";
  * The auditor case: someone with a hash from an audit-bundle PDF but no
  * specific process id wants to chase the hash to its on-chain source. The
  * `<HashVerifier>` component's search mode walks every order + agreement
- * the connected wallet can see; the agreement and section modes are
+ * the connected wallet can see; the agreement and clause modes are
  * standalone (paste the JSON, get the hash).
  *
  * For process-bound audit (financials + audit bundle + verify scoped to

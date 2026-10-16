@@ -160,7 +160,7 @@ contract UsageCounterTest is Test {
             currency: address(token),
             payment: 100 ether,
             expectedCumulativeValue: 100 ether,
-            agreementHash: AgreementTestHelper.singleSectionRoot(clauseOrAssembly, SECTION),
+            agreementHash: AgreementTestHelper.singleClauseRoot(clauseOrAssembly, SECTION),
             salt: salt,
             deadline: block.timestamp + 1 hours
         });
@@ -181,7 +181,7 @@ contract UsageCounterTest is Test {
             currency: address(token),
             payment: 100 ether,
             expectedCumulativeValue: 100 ether,
-            agreementHash: AgreementTestHelper.singleSectionRoot(clauseOrAssembly, SECTION),
+            agreementHash: AgreementTestHelper.singleClauseRoot(clauseOrAssembly, SECTION),
             salt: salt,
             deadline: block.timestamp + 1 hours
         });
@@ -207,7 +207,7 @@ contract UsageCounterTest is Test {
         bytes32[] memory leaves = new bytes32[](2);
         leaves[0] = AgreementTestHelper.leafFor(CARGO_KEY, SECTION);
         leaves[1] = AgreementTestHelper.leafFor(
-            PROVENANCE_LEAF, AgreementTestHelper.provenanceSection(agreementKey, compositionHash)
+            PROVENANCE_LEAF, AgreementTestHelper.provenanceLeaf(agreementKey, compositionHash)
         );
         provenanceProof = AgreementTestHelper.proofFor(leaves, 1);
         c = CommitmentTypes.Commitment({
@@ -311,7 +311,7 @@ contract UsageCounterTest is Test {
             currency: address(token),
             payment: 1 ether,
             expectedCumulativeValue: 1 ether,
-            agreementHash: AgreementTestHelper.singleSectionRoot(CARGO_KEY, SECTION),
+            agreementHash: AgreementTestHelper.singleClauseRoot(CARGO_KEY, SECTION),
             salt: 999,
             deadline: block.timestamp + 1 hours
         });
@@ -522,16 +522,16 @@ contract UsageCounterTest is Test {
 
         bytes32 root = _asmRoot();
         (CommitmentTypes.Commitment memory c, bytes32[] memory proof) = _settledUnderAgreement(AGR_KEY, root, 1);
-        bytes32 sectionHash = keccak256(AgreementTestHelper.provenanceSection(AGR_KEY, root));
+        bytes32 clauseDataHash = keccak256(AgreementTestHelper.provenanceLeaf(AGR_KEY, root));
         vm.expectRevert(abi.encodeWithSelector(UsageCounter.ClauseOrAssemblyNotRegistered.selector, PROVENANCE_LEAF));
-        real.recordClauseUsage(c, PROVENANCE_LEAF, sectionHash, proof);
+        real.recordClauseUsage(c, PROVENANCE_LEAF, clauseDataHash, proof);
 
         // The clause registry takes the key as given, so a stranger can stake a
         // CLAUSE at the reserved key too. The clause-side gate then passes, and
         // the counter's own check refuses the key.
         clauses_.registerClause(PROVENANCE_LEAF, "ipfs://a-stranger-stakes-the-reserved-key-as-a-clause");
         vm.expectRevert(abi.encodeWithSelector(UsageCounter.ReservedKeyIsNotARegistration.selector, PROVENANCE_LEAF));
-        real.recordClauseUsage(c, PROVENANCE_LEAF, sectionHash, proof);
+        real.recordClauseUsage(c, PROVENANCE_LEAF, clauseDataHash, proof);
 
         // A registry takes any bytes32, so a stranger can register an ASSEMBLY
         // at the reserved key for one stake, and an order can name it in its

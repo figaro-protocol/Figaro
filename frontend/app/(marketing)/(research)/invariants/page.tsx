@@ -93,7 +93,7 @@ export default function Invariants() {
                             accessibleDesc="The agreement's parts as leaves, hashed pair by pair down to the single root the chain holds."
                         />
                         <figcaption className="text-sm text-ink-muted mt-2 max-w-prose">
-                            Every clause section of the agreement is a leaf; pairs are hashed together, level by level, down to one root &mdash; the fingerprint. The chain holds only the root.
+                            Every clause of the agreement is a leaf; pairs are hashed together, level by level, down to one root &mdash; the fingerprint. The chain holds only the root.
                         </figcaption>
                     </figure>
                     <p>

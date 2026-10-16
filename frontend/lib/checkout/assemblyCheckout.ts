@@ -4,7 +4,7 @@
  * The protocol algorithm lives in `@figaro-protocol/sdk`: `reconstructOrdersFromAssembly`
  * is the ONE assembly→orders walk (real parent hashes, running cumulative
  * value, root-derived processId), and the checkout planning vocabulary
- * (fill-where-composed section writers, the sub-order seller plan, live
+ * (fill-where-composed clause writers, the sub-order seller plan, live
  * contributor pricing) is `checkoutPlan`. This module is the thin frontend
  * wrapper that drives the walk with THIS surface's inputs and UX sequencing:
  *
@@ -28,8 +28,8 @@ import {
     assertAgreementSignable,
     hashCommitmentStruct,
     profileValuesFor,
-    fillCommerceSection,
-    fillDerivedSections,
+    fillCommerceClause,
+    fillDerivedClauses,
     generateSalt,
     planSubOrderSellers,
     reconstructOrdersFromAssembly,
@@ -314,14 +314,14 @@ function checkoutNodes(
         const entry = hydrated.assembly.agreements.find((a) => a.id === planned.nodeId)!;
         const node = { clauses: agreementClauses(hydrated, entry) };
         if (planned.nodeId === rootId) {
-            // The root's clause map: the derived LOGISTICS sections (cargo /
+            // The root's clause map: the derived LOGISTICS clauses (cargo /
             // class leaves / dimweight) filled from the cart — wherever
             // composed, by declared field, never by clause name — then the
             // denomination terms. `currency` is the ONE process currency (the
             // FigaroCore enforces single-denomination, FigaroCore
             // CurrencyMismatch), never a per-order input.
-            const filled = fillCommerceSection(
-                fillDerivedSections(
+            const filled = fillCommerceClause(
+                fillDerivedClauses(
                     { ...node.clauses, ...(params.clauseFills?.[planned.nodeId] ?? {}) },
                     lineItems, specs,
                     profileValuesFor(leadSellerAddress, sellerCatalogs),
@@ -367,7 +367,7 @@ function checkoutNodes(
             : translatedUnit !== undefined
                 ? translatedUnit * BigInt(pricing!.billedQuantity)
                 : pricing!.payment;
-        // The sub-order's commerce section states WHAT the payment buys: the
+        // The sub-order's commerce clause states WHAT the payment buys: the
         // contributor's resolved catalog item (the same item the payment
         // was priced from), or the buyer's picked item on the unbound path.
         // The commerce clause requires lineItems on EVERY order, subs
@@ -394,10 +394,10 @@ function checkoutNodes(
         // logistics leaves (cargo / class / dimweight) from its own
         // catalog item + its own seller's profile values. A no-op for orders
         // composing none (e.g. a service leg) → G7 absence. The topology
-        // section is the WALK's to complete (assembly-local parent ids →
+        // clause is the WALK's to complete (assembly-local parent ids →
         // real order hashes), so it is never in the overrides.
-        const filled = fillCommerceSection(
-            fillDerivedSections(
+        const filled = fillCommerceClause(
+            fillDerivedClauses(
                 { ...nodeClauses },
                 subLineItems ?? [], specs,
                 profileValuesFor(subSeller, sellerCatalogs),

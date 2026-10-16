@@ -43,7 +43,7 @@ the single mistake that makes an analyst wrong about a market it has never seen.
   every bond and payout is on chain and checked by contract invariants.
 - **OVERLAYS are spec-derived, one per attestable clause family in USE.** Geo and GHG are
   the two named instances, and they are instances, not the set. An overlay exists because
-  some assembly composed a clause whose sections get attested; a family registered
+  some assembly composed a clause that gets attested; a family registered
   yesterday produces its overlay with zero code on your side, because the grouping key is
   the attestation's on-chain clause key — held opaque — and the content decodes through
   the spec you loaded from the registry. Truth boundary: **protocol-derived**. The

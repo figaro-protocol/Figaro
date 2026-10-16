@@ -10,7 +10,7 @@
  *
  * Usage:
  *
- *   // Inline gate inside a section's empty-state fallback:
+ *   // Inline gate inside a clause's empty-state fallback:
  *   <WalletGate hint="Connect a wallet to place orders and track active processes.">
  *     <p>No active processes found for this wallet.</p>
  *   </WalletGate>
@@ -61,7 +61,7 @@ export interface WalletGateProps {
     /**
      * Visual variant.
      *  - "inline" (default): rounded panel matching list/empty-state UI.
-     *    Suited for in-page gates inside a section.
+     *    Suited for in-page gates inside a clause.
      *  - "standalone": centered card with a prominent title, suited for
      *    page-entry gates (e.g. an onboarding step).
      */

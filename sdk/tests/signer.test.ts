@@ -575,7 +575,7 @@ describe("daemon rolling ceiling under pipelined requests", () => {
         // The gate reads the spend window, then AWAITS the signature, then
         // records — so two requests dispatched before either records once let
         // both pass the same empty window. The daemon serializes the critical
-        // section; this pins that. perPeriod admits one commitment's 2×payment
+        // clause; this pins that. perPeriod admits one commitment's 2×payment
         // bond (1_000_000) but not two.
         const net = await import("node:net");
         const { wireStringify } = await import("../src/signer/wire.js");

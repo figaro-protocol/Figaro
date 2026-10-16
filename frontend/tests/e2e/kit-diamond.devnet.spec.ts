@@ -41,7 +41,7 @@
  *              restated here; the DAG lives in the topology clause, never in
  *              FigaroCore).
  *   diamond  → the leaf's PINNED agreement commits BOTH parents' real order
- *              hashes in its topology section — the join, merkle-bound.
+ *              hashes in its topology clause — the join, merkle-bound.
  *   resolve  → ONE signature resolves all four orders atomically.
  *   audit    → financials render one statement per seller (all four) + the
  *              consolidation; the cash-flow log carries every FigaroCore transfer
@@ -419,7 +419,7 @@ test.describe('KIT DIAMOND — a DAG join: one buyer, four orders, two parents o
         expect((await queryCommitted()).length, 'exactly four orders committed').toBe(committedBefore + 4);
 
         // ── THE DIAMOND, merkle-bound: the leaf's pinned agreement commits
-        //    BOTH parents' REAL order hashes in its topology section. ──
+        //    BOTH parents' REAL order hashes in its topology clause. ──
         await gotoAsWallet(page, BUYER, `/orders/view?process=${processId}&e2e=devnet`);
         await page.getByTestId('order-timeline-view').waitFor({ timeout: 30000 });
         const dAgreementUri = await page.evaluate(
@@ -433,8 +433,8 @@ test.describe('KIT DIAMOND — a DAG join: one buyer, four orders, two parents o
         const dAgreement = await (await fetch(`${ipfsApi}/api/v0/cat?arg=${dCid}`, { method: 'POST' })).json() as {
             sections: { clause: string; data: Record<string, unknown> }[];
         };
-        const topoSection = dAgreement.sections.find((s) => s.clause === TOPOLOGY_CLAUSE);
-        const parents = ((topoSection?.data.parentOrderHashes ?? []) as string[]).map((h) => h.toLowerCase());
+        const topoClause = dAgreement.sections.find((s) => s.clause === TOPOLOGY_CLAUSE);
+        const parents = ((topoClause?.data.parentOrderHashes ?? []) as string[]).map((h) => h.toLowerCase());
         expect(parents, 'the leaf commits exactly TWO parents').toHaveLength(2);
         expect(
             parents.sort(),

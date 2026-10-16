@@ -21,7 +21,7 @@
  * stage-1 evidence shape) and the JSX.
  *
  * Mounted by the interactionSurfaces registry — this component knows no
- * clause; `clauseKey` identifies the declaring section for the attestation
+ * clause; `clauseKey` identifies the declaring clause for the attestation
  * and the title, never a dispatch.
  */
 import { useCallback, useRef, useState } from "react";

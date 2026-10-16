@@ -1,12 +1,12 @@
 /**
  * checkoutPlan.ts — the buyer-side checkout planning vocabulary: the
- * fill-where-composed section writers, the sub-order seller plan (the
+ * fill-where-composed clause writers, the sub-order seller plan (the
  * per-clause binding cursor), live contributor pricing, and the open
  * rate-quantity-source registry.
  *
- * Everything here shapes COMMITTED bytes (the agreement sections the merkle
+ * Everything here shapes COMMITTED bytes (the agreement clauses the merkle
  * root hashes) or the payment figures the commitments sign, so a second
- * frontend must reproduce it exactly. No clause is ever named: sections are
+ * frontend must reproduce it exactly. No clause is ever named: clauses are
  * found by their DECLARED FIELDS (`lineItems`, `parentOrderHashes`,
  * `massGrams`, `billedMassGrams`) or their spec hints (`catalogueFills`)
  * through the caller's `SpecSource` — ANY registered clause carrying the
@@ -59,7 +59,7 @@ export interface AssemblyCheckoutLineItem {
  *  composed key reads its own spec (`specs.get(clauseKey)`). Undefined while
  *  the spec is unloaded — the fill degrades to a no-op, exactly as the
  *  registry-reading frontend does before its cache warms. The ONE lookup
- *  every spec-routed fill runs — this module's section writers, its
+ *  every spec-routed fill runs — this module's clause writers, its
  *  rate-quantity resolvers and the assembly walk's guarded fills
  *  (`reconstructOrders.ts` `fillWalkField`) alike. */
 export function composedClauseWhere(
@@ -85,20 +85,20 @@ function composedClauseDeclaring(
 
 /**
  * The RFQ's priced fields, DERIVED from an agreement by declared field — the
- * section that carries the commercial terms (declared `lineItems`) prices at
+ * clause that carries the commercial terms (declared `lineItems`) prices at
  * `payment` and each committed line's `unitPrice`. Spec-routed like every
- * fill, naming no clause; empty when no commercial section is composed
+ * fill, naming no clause; empty when no commercial clause is composed
  * (nothing to quote) or the spec cache is cold. The returned paths are the
- * SAME fields `fillCommerceSection` writes, so a quote's substitution and the
+ * SAME fields `fillCommerceClause` writes, so a quote's substitution and the
  * checkout walk at the quoted price produce identical agreements.
  */
 export function derivePricedFields(
-    sections: readonly { clause: Hex; data?: Record<string, unknown> }[],
+    clauseEntries: readonly { clause: Hex; data?: Record<string, unknown> }[],
     specs: SpecSource,
 ): { clause: Hex; path: string }[] {
-    // Commercial terms are PUBLIC (never a content-withheld section), so a
-    // section carrying only a fingerprint contributes no priced field.
-    const clauses = Object.fromEntries(sections.map((s) => [s.clause, s.data ?? {}])) as ClauseFields;
+    // Commercial terms are PUBLIC (never a content-withheld clause), so a
+    // clause carrying only a fingerprint contributes no priced field.
+    const clauses = Object.fromEntries(clauseEntries.map((s) => [s.clause, s.data ?? {}])) as ClauseFields;
     const commerce = composedClauseDeclaring(clauses, "lineItems", specs);
     if (!commerce) return [];
     const lineItems = clauses[commerce]?.lineItems;
@@ -110,11 +110,11 @@ export function derivePricedFields(
 }
 
 /**
- * Write the order's resolution terms into the commerce section, found by its
+ * Write the order's resolution terms into the commerce clause, found by its
  * declared `lineItems` field (never by clause id; gracefully skipped when the
  * assembly composes no commerce clause). `payment` is stored as the clause
  * spec wants it (decimal string); `lineItems` is supplied only for the root
- * (the buyer's cart) and stripped to the commerce section's closed shape —
+ * (the buyer's cart) and stripped to the commerce clause's closed shape —
  * the cart's physical attributes belong to the cargo collapse, not here.
  *
  * `currency` — the RESOLVED denomination (the assembly's utility-token
@@ -125,7 +125,7 @@ export function derivePricedFields(
  * commerce clause declares `currency` as content, so a third-party commerce
  * clause that declares no such field keeps its closed shape.
  */
-export function fillCommerceSection(
+export function fillCommerceClause(
     clauses: ClauseFields,
     payment: bigint,
     currency: `0x${string}`,
@@ -181,9 +181,9 @@ export function readUtilityTokenPin(
 
 /** The field names this module's fills write MECHANICALLY — derived or
  *  rewritten by the checkout walk regardless of any buyer input: the
- *  commercial terms (`fillCommerceSection`), the topology rewrite
- *  (`writeTopologySection`), and the dimweight derivation
- *  (`fillDimweightSection`). ONE list, owned beside the fills it describes.
+ *  commercial terms (`fillCommerceClause`), the topology rewrite
+ *  (`writeTopologyClause`), and the dimweight derivation
+ *  (`fillDimweightClause`). ONE list, owned beside the fills it describes.
  *  The instantiated assembly's composition hash is no field here: it is the
  *  agreement format's provenance leaf (`Agreement.provenance`), which the
  *  assembly walk writes, never a clause. */
@@ -211,7 +211,7 @@ export function mechanicallyFilledFieldNames(
 }
 
 /**
- * Write the REAL parent-order hashes into the topology section, found by its
+ * Write the REAL parent-order hashes into the topology clause, found by its
  * declared `parentOrderHashes` field (never by clause id). The assembly's
  * topology data carries assembly-LOCAL order ids ("order-0"); the committed
  * agreement must carry the actual EIP-712 order hashes — they are the DAG
@@ -220,7 +220,7 @@ export function mechanicallyFilledFieldNames(
  * the existing value (local ids) is EXPECTED to differ from the fill (real
  * hashes), so an equality guard here would reject every legitimate call.
  */
-export function writeTopologySection(
+export function writeTopologyClause(
     clauses: ClauseFields,
     parentOrderHashes: `0x${string}`[],
     specs: SpecSource,
@@ -245,7 +245,7 @@ export function writeTopologySection(
  * 1) — a multi-line order's packaged dimension is a per-order input this fold
  * does not fabricate; dimensional weight then falls back to actual mass.
  */
-export function fillCargoSection(
+export function fillCargoClause(
     clauses: ClauseFields,
     lines: AssemblyCheckoutLineItem[],
     specs: SpecSource,
@@ -280,7 +280,7 @@ export function fillCargoSection(
  * line carries declared values for that clause. The declared subset is the
  * composed clause's own (its spec, read by its key).
  */
-export function fillClassSections(
+export function fillClassClauses(
     clauses: ClauseFields,
     lines: AssemblyCheckoutLineItem[],
     specs: SpecSource,
@@ -324,11 +324,11 @@ function mergeUnderAssembly(
  * never by name), write the seller's stored values — restricted to the spec's
  * DECLARED profile-authored subset (`specProfileFills`), with the assembly's
  * committed terms winning over authored data. Absent when the seller stores no
- * values for that clause. The seller-level sibling of `fillClassSections`
+ * values for that clause. The seller-level sibling of `fillClassClauses`
  * (catalog = what is sold, profile = who sells). The declared subset is the
  * composed clause's own (its spec, read by its key).
  */
-export function fillProfileSections(
+export function fillProfileClauses(
     clauses: ClauseFields,
     profileValues: Readonly<Record<string, Record<string, unknown>>> | undefined,
     specs: SpecSource,
@@ -362,7 +362,7 @@ export function fillProfileSections(
  * has no packaged dimensions, or the seller declares no divisor — dimensional
  * weight then simply does not apply.
  */
-export function fillDimweightSection(
+export function fillDimweightClause(
     clauses: ClauseFields,
     specs: SpecSource,
 ): ClauseFields {
@@ -382,22 +382,22 @@ export function fillDimweightSection(
 }
 
 /**
- * Fill every derivable LOGISTICS section on an order, wherever composed — cargo
+ * Fill every derivable LOGISTICS clause on an order, wherever composed — cargo
  * (physical measure), the class leaves (catalog-sourced), the profile leaves
  * (seller master data), then the derived dimweight (reads the cargo and the
  * profile-folded divisor it just wrote). Each fill is a no-op when its clause
  * isn't composed, so the same call serves the root and every sub-order.
  */
-export function fillDerivedSections(
+export function fillDerivedClauses(
     clauses: ClauseFields,
     lines: AssemblyCheckoutLineItem[],
     specs: SpecSource,
     profileValues?: Readonly<Record<string, Record<string, unknown>>>,
 ): ClauseFields {
-    return fillDimweightSection(
-        fillProfileSections(
-            fillClassSections(
-                fillCargoSection(clauses, lines, specs),
+    return fillDimweightClause(
+        fillProfileClauses(
+            fillClassClauses(
+                fillCargoClause(clauses, lines, specs),
                 lines,
                 specs,
             ),
@@ -419,7 +419,7 @@ export interface PricingCatalog {
     /** The seller's PROFILE-authored clause values (seller master data:
      *  dimweight's divisor, a declared credential id), keyed clause key →
      *  field → value. Folded onto composed profile-sourced leaves at
-     *  checkout by `fillProfileSections`. */
+     *  checkout by `fillProfileClauses`. */
     profileClauseValues?: Readonly<Record<string, Record<string, unknown>>>;
 }
 
@@ -632,11 +632,11 @@ function resolveOrderGeodistance(ctx: RateQuantityContext): number | null {
             && specDeclaresField(spec, "origin") && specDeclaresField(spec, "destination"),
     );
     if (!geoClauseId) return null;
-    const section = ctx.clauses[geoClauseId];
-    const standard = section?.geocodeStandard;
+    const clauseEntry = ctx.clauses[geoClauseId];
+    const standard = clauseEntry?.geocodeStandard;
     if (typeof standard === "string" && standard !== "" && standard !== "geohash") return null;
-    const origin = section?.origin;
-    const destination = section?.destination;
+    const origin = clauseEntry?.origin;
+    const destination = clauseEntry?.destination;
     if (typeof origin !== "string" || typeof destination !== "string" || !origin || !destination) {
         return null;
     }
@@ -655,9 +655,9 @@ function resolveBookingWindowHours(ctx: RateQuantityContext): number | null {
         (spec) => specDeclaresField(spec, "windowStart") && specDeclaresField(spec, "windowEnd"),
     );
     if (!scheduleClauseId) return null;
-    const section = ctx.clauses[scheduleClauseId];
-    const start = section?.windowStart;
-    const end = section?.windowEnd;
+    const clauseEntry = ctx.clauses[scheduleClauseId];
+    const start = clauseEntry?.windowStart;
+    const end = clauseEntry?.windowEnd;
     if (typeof start !== "string" || typeof end !== "string" || !start || !end) {
         return null;
     }

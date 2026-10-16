@@ -341,13 +341,13 @@ agreement.
 
 **Merkle parity — the three-way agreement-tree lock.**
 `sdk/tests/merkleParity.test.ts` freezes SDK-built roots, leaves and inclusion
-proofs (a three-section agreement and a one-section one) into
+proofs (a three-section agreement and a one-clause one) into
 `test/fixtures/merkle-vectors.json` (`HARVEST_MERKLE_VECTORS=1` regenerates).
 `test/core/attestation/MerkleParityTest.t.sol` rebuilds every leaf the way
 `AttestationCoordinator` and `UsageCounter` do and verifies every proof with
 the OpenZeppelin library they call; `prover/lib/tests/merkle_parity.rs` does
 the same through the guest's verifier. Three implementations, one fixture.
-Each section in the fixture carries its `clauseKey`, the leaf's key, and its
+Each clause in the fixture carries its `clauseKey`, the leaf's key, and its
 provenance entries carry the two-key bytes
 (`{"agreementKey":…,"compositionHash":…}`).
 

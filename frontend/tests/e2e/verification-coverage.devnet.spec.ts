@@ -11,7 +11,7 @@
  *              the process's on-chain timeline — the commit and the runtime
  *              attestation this walk produced
  *   verify   → the /audit hash verifier's uncovered modes: B (section-leaf
- *              recompute matches the SDK's own computeSectionLeaf) and C
+ *              recompute matches the SDK's own computeClauseLeaf) and C
  *              (hash search resolves the REAL committed agreementHash to its
  *              OrderCommitted anchor, and a junk hash reports no-hits — not
  *              a false match)
@@ -33,7 +33,7 @@ import { privateKeyToAccount } from 'viem/accounts';
 import { readLocalDeploymentConfig, keyOf, primeRegisteredClauseSpecs } from './devnet-helpers';
 import { ANVIL_KEYS } from '../anvilAccounts';
 import { CORE_ABI } from '@/lib/kernel/contracts';
-import { calculateBonds, computeSectionLeaf } from '@figaro-protocol/sdk';
+import { calculateBonds, computeClauseLeaf } from '@figaro-protocol/sdk';
 import type { Page } from '@playwright/test';
 
 // Clause keys are located by the names their specs carry (`keyOf`), over
@@ -192,15 +192,15 @@ test.describe('VERIFICATION COVERAGE — FigaroCore-revert path, evidence reader
         await waitForConnected(page);
 
         // Mode B — section-leaf recompute: the page's computation must equal
-        // the SDK's own computeSectionLeaf for the same section.
-        // The section names its clause by KEY (the hash of the clause's
+        // the SDK's own computeClauseLeaf for the same clause.
+        // The clause names its clause by KEY (the hash of the clause's
         // pinned spec), and the leaf is keccak over that key ++ the data
         // hash — the pasted JSON carries the key, nothing else identifies it.
-        const section = { clause: keyOf('figaro-topology'), data: { parentOrderHashes: [] as string[] } };
-        const expectedLeaf = computeSectionLeaf(section);
+        const clauseEntry = { clause: keyOf('figaro-topology'), data: { parentOrderHashes: [] as string[] } };
+        const expectedLeaf = computeClauseLeaf(clauseEntry);
         await page.getByTestId('verify-mode-section').click();
         await page.getByTestId('verify-section-mode').waitFor({ state: 'visible', timeout: 10000 });
-        await page.getByTestId('verify-section-input').fill(JSON.stringify(section));
+        await page.getByTestId('verify-section-input').fill(JSON.stringify(clauseEntry));
         await page.getByTestId('verify-section-expected').fill(expectedLeaf);
         await expect(page.getByTestId('verify-result-computed'), 'the page recomputes the SDK leaf')
             .toHaveText(expectedLeaf, { timeout: 10000 });

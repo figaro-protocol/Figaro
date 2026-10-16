@@ -8,7 +8,7 @@ import { computeClauseKey } from "../src/discovery.js";
 import type { SpecSource, ProjectionSpecView } from "../src/projection.js";
 import type { UniverseAttestationEvent } from "../src/events.js";
 import type { Hex, Address } from "../src/types.js";
-import { PROVENANCE_LEAF_KEY, provenanceSectionBytes, provenanceContentRef } from "../src/agreement.js";
+import { PROVENANCE_LEAF_KEY, provenanceLeafBytes, provenanceContentRef } from "../src/agreement.js";
 
 const ATTESTER = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" as Address;
 const PID = "0x0000000000000000000000000000000000000000000000000000000000000001" as Hex;
@@ -180,7 +180,7 @@ describe("extractOverlays — the agreement's provenance leaf", () => {
         const [graph] = extractOverlays(
             [{
                 event: mkEvent(PROVENANCE_LEAF_KEY, { contentRef: provenanceContentRef(AGREEMENT, COMPOSITION) }),
-                content: provenanceSectionBytes(AGREEMENT, COMPOSITION),
+                content: provenanceLeafBytes(AGREEMENT, COMPOSITION),
             }],
             specSourceOf([]),
         );

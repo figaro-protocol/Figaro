@@ -21,7 +21,7 @@
  *      each the clause's key — and, in its provenance leaf
  *      (`Agreement.provenance`, under the same hash), the registered agreement
  *      and the assembly it instantiated. A clause is attributed by its key
- *      among the sections; an agreement and an assembly by the provenance's
+ *      among the clauses; an agreement and an assembly by the provenance's
  *      `agreementKey` and `compositionHash`.
  *
  * `canWithdraw(clauseOrAssembly) == (inFlightCount === 0)`.
@@ -113,7 +113,7 @@ function gate(inFlightCount: number, unverifiedCount: number): WithdrawGate {
 
 /**
  * Withdraw gate for a CLAUSE. A trade composes the clause iff its
- * agreement names its key (`sections[].clause`). Counted per order — each
+ * agreement names its key (`clauses[].clause`). Counted per order — each
  * committed order is a distinct live commitment bound to the clause; a stake is
  * reclaimable only once every trade naming that key has resolved.
  */

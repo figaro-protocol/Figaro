@@ -42,11 +42,11 @@ import {
     assertAgreementSignable,
     buildCommitment,
     buildDomain,
-    buildSectionInclusionProof,
+    buildSignedClauseInclusionProof,
     calculateBonds,
     computeAgreementHash,
     generateSalt,
-    sectionDataHash,
+    hashClauseData,
     USAGE_KIND_CLAUSE,
     type Agreement,
 } from '@figaro-protocol/sdk';
@@ -222,10 +222,10 @@ test.describe('designer rewards — usage accrues, the UI reads it (devnet)', ()
             });
             const processId = committed[committed.length - 1].args.processId as Hex;
 
-            const section = agreement.sections.find((s) => s.clause === USED_CLAUSE)!;
-            const { proof } = buildSectionInclusionProof(agreement, USED_CLAUSE);
-            // Only the section FINGERPRINT reaches calldata — never the preimage.
-            const sectionHash = sectionDataHash(section);
+            const clauseEntry = agreement.sections.find((s) => s.clause === USED_CLAUSE)!;
+            const { proof } = buildSignedClauseInclusionProof(agreement, USED_CLAUSE);
+            // Only the clause FINGERPRINT reaches calldata — never the preimage.
+            const clauseDataHash = hashClauseData(clauseEntry);
 
             // 4. The buyer attests the clause (evidence DURING the open process —
             //    the mirror-image gate to the one usage counting uses). Once is
@@ -233,7 +233,7 @@ test.describe('designer rewards — usage accrues, the UI reads it (devnet)', ()
             if (attest) {
                 await receipt(await buyerWallet.writeContract({
                     address: coordinator, abi: ATTESTATION_COORDINATOR_ABI, functionName: 'attestAsBuyer',
-                    args: [commitment, clauseKey, 0, sectionHash, proof, sectionHash],
+                    args: [commitment, clauseKey, 0, clauseDataHash, proof, clauseDataHash],
                 }));
             }
 
@@ -248,7 +248,7 @@ test.describe('designer rewards — usage accrues, the UI reads it (devnet)', ()
             //    the record must SUCCEED.
             await receipt(await buyerWallet.writeContract({
                 address: counter, abi: USAGE_COUNTER_ABI, functionName: 'recordClauseUsage',
-                args: [commitment, clauseKey, sectionHash, proof],
+                args: [commitment, clauseKey, clauseDataHash, proof],
             }));
         }
 

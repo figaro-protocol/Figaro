@@ -6,7 +6,7 @@
  * the same one-order shape as the POS reference (commerce + topology +
  * modalities + geolocation), PLUS `figaro-utility-token` composed at ASSEMBLY
  * scope: the designer's own ERC-20 pin. When a composition carries that pin,
- * checkout writes it straight into the commerce section's currency and no
+ * checkout writes it straight into the commerce clause's currency and no
  * token picker renders — even for a seller who accepts more than one token —
  * and the commitment mirrors it. The provenance the clause exists to
  * record: the commerce leaf and the pin leaf, both committed under the same

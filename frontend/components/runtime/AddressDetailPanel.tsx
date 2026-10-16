@@ -11,7 +11,7 @@
  * and either may ANSWER (the addressee block — name, street, floor/door,
  * delivery instructions, notify-party lines, handling marks —
  * ECDH-encrypted to the counterparty and hash-anchored
- * on-chain as that party's attestation on the declaring clause's section;
+ * on-chain as that party's attestation on the declaring clause's leaf;
  * tamper-evidence, corrections supersede). The courier requests the buyer's
  * drop-off door; in a private transaction the buyer requests the seller's
  * precise pickup point the same way. The chain never learns the plaintext.
@@ -21,7 +21,7 @@
  * and the JSX.
  *
  * Mounted by the interactionSurfaces registry — this component knows no
- * clause; `clauseKey` identifies the declaring section for the anchor and
+ * clause; `clauseKey` identifies the declaring clause for the anchor and
  * the title, never a dispatch.
  */
 import { useCallback, useState } from "react";
@@ -129,8 +129,8 @@ export function AddressDetailPanel({ processId, orderHash, clauseKey, buyer, sel
             // Anchor keccak256(blob) on-chain AS the attestation content —
             // hash-only, so the ciphertext never reaches calldata and stays
             // deletable on the channel; the coordinator merkle-binds the
-            // section and hash-binds the content.
-            // Keyed by the committed section's clause key — the one the
+            // clause and hash-binds the content.
+            // Keyed by the committed clause key — the one the
             // signed agreement committed.
             const anchorArgs = {
                 orderHash: orderHash as `0x${string}`,

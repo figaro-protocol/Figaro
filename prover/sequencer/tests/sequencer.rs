@@ -210,7 +210,7 @@ async fn mempool_rejects_content_hash_mismatch() {
 }
 
 #[tokio::test]
-async fn mempool_rejects_corrupt_section_data() {
+async fn mempool_rejects_corrupt_clause_data() {
     // section_data is not under the signature either; corrupting it
     // breaks the agreement-inclusion leaf (Gate I).
     let mut ops = canonical_ops();

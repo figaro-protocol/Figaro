@@ -99,7 +99,7 @@ import {
 import { ANVIL_ACCOUNTS } from '../anvilAccounts';
 import { CORE_ABI } from '@/lib/kernel/contracts';
 import { ATTESTATION_COORDINATOR_ABI } from '@figaro-protocol/sdk';
-import { calculateBonds, computeSectionLeaf, type AgreementSection } from '@figaro-protocol/sdk';
+import { calculateBonds, computeClauseLeaf, type AgreementClause } from '@figaro-protocol/sdk';
 import { encodeGeohash } from '@figaro-protocol/sdk/derive';
 import type { Page } from '@playwright/test';
 
@@ -597,7 +597,7 @@ test.describe('LOCAL COMMERCE — item delivery: canvas → bind → order → a
         //    ephemeral pubkey is already on the channel (it rode the answer),
         //    so the COURIER — this order's SELLER — shares ITS precise pickup
         //    point, encrypted to the buyer, its fingerprint anchored as a
-        //    SELLER attestation on the same geolocation section. One
+        //    SELLER attestation on the same geolocation clause. One
         //    role-neutral panel drives both directions. ──
         const sellerAnchorsBefore = (await publicClient.getContractEvents({
             address: config.attestationCoordinator as Hex, abi: ATTESTATION_COORDINATOR_ABI,
@@ -816,7 +816,7 @@ test.describe('LOCAL COMMERCE — item delivery: canvas → bind → order → a
         //    verifier recomputes each merkle root over EVERY leaf to match the
         //    agreementHash FigaroCore stored — for BOTH orders. ──
         const ipfsApi = process.env.NEXT_PUBLIC_IPFS_API_URL ?? 'http://127.0.0.1:5001';
-        let deliverySections: AgreementSection[] = [];
+        let deliveryClauses: AgreementClause[] = [];
         for (const [event, label, expectedLeaves] of [
             [merchantEvent, 'item', [COMMERCE_CLAUSE, TOPOLOGY_CLAUSE, MERCHANT_CLAUSE, MODALITIES_CLAUSE]],
             [courierEvent, 'delivery', [COMMERCE_CLAUSE, TOPOLOGY_CLAUSE, COURIER_CLAUSE, HANDOFF_CLAUSE, GEO_CLAUSE, PROXIMITY_CLAUSE]],
@@ -830,8 +830,8 @@ test.describe('LOCAL COMMERCE — item delivery: canvas → bind → order → a
             const agreementCid = agreementUri!.replace(/^ipfs:\/\//, '');
             await assertPinnedInIpfs(agreementCid);
             const agreementJson = await (await fetch(`${ipfsApi}/api/v0/cat?arg=${agreementCid}`, { method: 'POST' })).text();
-            const agreement = JSON.parse(agreementJson) as { sections: AgreementSection[] };
-            if (label === 'delivery') deliverySections = agreement.sections;
+            const agreement = JSON.parse(agreementJson) as { sections: AgreementClause[] };
+            if (label === 'delivery') deliveryClauses = agreement.sections;
             expect(
                 agreement.sections.map((s) => s.clause.toLowerCase()),
                 `the ${label} merkle tree carries every committed leaf`,
@@ -846,22 +846,22 @@ test.describe('LOCAL COMMERCE — item delivery: canvas → bind → order → a
         }
 
         // ── SELECTIVE DISCLOSURE (Mode B — the privacy model under the
-        //    cleartext rule): a party reveals ONE section of a
+        //    cleartext rule): a party reveals ONE clause of a
         //    signed agreement and proves it belongs to the on-chain commitment,
         //    disclosing nothing else. Disclose only the delivery order's
-        //    commerce section: the verifier recomputes its leaf hash from the
-        //    pasted section alone and it matches the leaf the reference
+        //    commerce clauseEntry: the verifier recomputes its leaf hash from the
+        //    pasted clause alone and it matches the leaf the reference
         //    implementation derives — the same leaf under the agreement root
         //    already verified against FigaroCore above. No redaction artifact;
         //    the merkle structure IS the disclosure control. ──
-        const disclosed = deliverySections.find((s) => s.clause.toLowerCase() === COMMERCE_CLAUSE);
-        expect(disclosed, 'the delivery agreement carries a commerce section to disclose').toBeTruthy();
+        const disclosed = deliveryClauses.find((s) => s.clause.toLowerCase() === COMMERCE_CLAUSE);
+        expect(disclosed, 'the delivery agreement carries a commerce clause to disclose').toBeTruthy();
         await page.getByTestId('verify-mode-section').click();
         await page.getByTestId('verify-section-input').fill(JSON.stringify(disclosed));
-        await page.getByTestId('verify-section-expected').fill(computeSectionLeaf(disclosed!));
+        await page.getByTestId('verify-section-expected').fill(computeClauseLeaf(disclosed!));
         await expect(
             page.getByTestId('verify-result-status'),
-            'the disclosed section alone proves against its committed leaf',
+            'the disclosed clause alone proves against its committed leaf',
         ).toHaveText(/Matches expected hash/, { timeout: 15000 });
 
         // ── THE PDFs: (1) the audit-bundle PDF builds in-browser and

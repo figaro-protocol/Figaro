@@ -44,7 +44,7 @@ import {
     decodeProvenanceContent,
     deriveAssemblySlug,
     MEMBERS_REGISTRY_ABI,
-    provenanceSectionBytes,
+    provenanceLeafBytes,
 } from '@figaro-protocol/sdk';
 import { CORE_ABI, ERC20_ABI } from '@/lib/kernel/contracts';
 import {
@@ -321,7 +321,7 @@ test.describe('LIVE ORDER — a public deployment traded through the real UI', (
             expect(provenance, 'the order names the assembly it instantiates').toBeTruthy();
             expect(agreementLeaves(committedAgreement!), 'the provenance leaf is a leaf of the committed tree')
                 .toContain(computeProvenanceLeaf(provenance!.agreementKey, provenance!.compositionHash));
-            const decoded = decodeProvenanceContent(provenanceSectionBytes(provenance!.agreementKey, provenance!.compositionHash));
+            const decoded = decodeProvenanceContent(provenanceLeafBytes(provenance!.agreementKey, provenance!.compositionHash));
             expect(decoded, 'the provenance leaf decodes to both keys').toEqual(provenance);
             expect(deriveAssemblySlug(decoded!.compositionHash), 'the assembly is the bound pos reference').toBe(posSlug);
             expect(await readAgreementBinding(decoded!.agreementKey), 'the agreement key is registered on the AgreementRegistry').not.toBeNull();

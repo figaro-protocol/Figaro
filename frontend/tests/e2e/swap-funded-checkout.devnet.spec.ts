@@ -186,8 +186,8 @@ test.describe('THE PAYMENT TOKEN — the pick is the denomination; the invariant
     }
 
     /** Place the order and relay it over the channel. `expectSwap` asserts the
-     *  confirm modal's funding-leg section (the Permit2 leg's maxInput) is
-     *  surfaced before the approval; when false, that section is absent. */
+     *  confirm modal's funding-leg clause (the Permit2 leg's maxInput) is
+     *  surfaced before the approval; when false, that clause is absent. */
     async function placeAndShare(page: Page, { expectSwap = false }: { expectSwap?: boolean } = {}) {
         const place = page.getByTestId('btn-place-order');
         await expect(place, 'buyer connected + order ready → "Place order"')
@@ -198,7 +198,7 @@ test.describe('THE PAYMENT TOKEN — the pick is the denomination; the invariant
             await expect(page.getByTestId('preview-swap'), 'the funding leg is surfaced in the confirm').toBeVisible();
             await expect(page.getByTestId('preview-swap-max-input'), 'the authorized maxInput is shown').not.toBeEmpty();
         } else {
-            await expect(page.getByTestId('preview-swap'), 'no funding leg ⇒ no swap section').toHaveCount(0);
+            await expect(page.getByTestId('preview-swap'), 'no funding leg ⇒ no swap clause').toHaveCount(0);
         }
         await page.getByTestId('preview-confirm').click();
         await page.getByTestId('buyer-share-panel').waitFor({ timeout: 60000 });
@@ -476,7 +476,7 @@ test.describe('THE PAYMENT TOKEN — the pick is the denomination; the invariant
             await expect(counterSign).toBeEnabled({ timeout: 60000 });
             await counterSign.click();
             await page.getByTestId('agreement-preview-modal').waitFor({ state: 'visible', timeout: 30000 });
-            await expect(page.getByTestId('preview-swap'), 'no funding leg ⇒ no swap section').toHaveCount(0);
+            await expect(page.getByTestId('preview-swap'), 'no funding leg ⇒ no swap clause').toHaveCount(0);
             await page.getByTestId('preview-confirm').click();
 
             const { event, receipt, payment, buyerBond, sellerBond } = await committedEvent(committedBefore);

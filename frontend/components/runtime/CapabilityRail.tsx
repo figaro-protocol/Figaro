@@ -90,7 +90,7 @@ export function CapabilityRail({
                                 {capability.orderLabel && (
                                     <p className="mt-1 text-xs text-ink-muted">{capability.orderLabel}</p>
                                 )}
-                                <p className="mt-1 mb-3 text-xs text-ink-muted">Choose a section to re-assert. Each is its own transaction.</p>
+                                <p className="mt-1 mb-3 text-xs text-ink-muted">Choose a clause to re-assert. Each is its own transaction.</p>
                                 <ul className="space-y-2">
                                     {capability.action.choices.map((choice) => (
                                         <li

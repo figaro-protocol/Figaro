@@ -77,7 +77,7 @@ export interface EcdhWrappedKeyMessage {
  *  (`@figaro-protocol/sdk/agent`) carried INLINE over the coordination channel, which is
  *  end-to-end encrypted (XMTP). Carrying it here rather than pinning it to
  *  public IPFS is the paid-edge seam's transport half: a `private`-disposition
- *  section's plaintext reaches only the counterparty, never a public surface
+ *  clause's plaintext reaches only the counterparty, never a public surface
  *  (audit F Arm 2). The public-verification copy is the WITHHELD standalone
  *  agreement pin (`publishAgreement`); this delivers the plaintext the
  *  counterparty needs to sign. */
@@ -153,7 +153,7 @@ export interface HandoffChannel {
 
     /** Deliver a JSON-serialized commitment payload INLINE for dual-signature
      *  collection. Carried over the E2E-encrypted channel, not pinned to public
-     *  IPFS, so a `private`-disposition section's plaintext never leaves the
+     *  IPFS, so a `private`-disposition clause's plaintext never leaves the
      *  parties (audit F Arm 2). */
     sendCommitmentPayload(params: {
         recipientAddress: string;
