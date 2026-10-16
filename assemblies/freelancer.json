@@ -19,15 +19,7 @@
     "agreements": [
         {
             "id": "order-0",
-            "clauses": {
-                "figaro-commerce": {},
-                "figaro-topology": {
-                    "parentOrderHashes": []
-                },
-                "figaro-modalities": {},
-                "figaro-content-handoff": {},
-                "figaro-geolocation": {}
-            }
+            "agreement": "freelance-deliverable"
         }
     ]
 }

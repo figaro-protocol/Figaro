@@ -1,21 +1,28 @@
 # Reference assemblies — the onboarding set
 
 Each file here is a real-world composition a newcomer can recognize, fork, and
-bind to on day one, written in the readable shape: `agreements[].clauses` per
-order, keyed by clause name (`name@version`), with the topology clause carrying
-its parents as `order-<j>` labels. The files keep that shape; the populate path
-derives the registered shape from it at deploy (`slotsFromAuthoredAgreements`
-in the SDK): it resolves each name to its clause key, lifts the topology's
-parents into the order slot's own fill (the agreement composes the topology
-clause as `{}`), folds the live mandatory clauses, keys each composed agreement
-(`agreementKey`), pins and registers each DISTINCT agreement once on
-`AgreementRegistry` (one stake each; a key already registered is skipped), then
-builds the template — one order slot per order, naming its `agreementKey` — and
-registers it on `AssemblyRegistry`. Identity is content-derived on both
-registries (the `agreementKey`; the `compositionHash`, a merkle root over the
-order slots), first-write-wins, so re-anchoring is a no-op and independently
-composing the same design collapses onto the same on-chain bindings. This directory is `clauses/`' sibling: clauses are the
-vocabulary, these are worked sentences.
+bind to on day one, written in the readable shape: one order slot per order
+(`agreements[]`), each naming the written agreement it binds (`agreement`, a
+file in `agreements/`, the sibling directory) and carrying its own topology
+(`parentOrderHashes`, `order-<j>` labels); `assemblyClauses` by clause name
+(`name@version`) for the terms composed once for the whole design. The
+agreements are written first and reused: `agreements/counter-sale.json` is
+bound by `pos.json` and `equipment-hire.json`, `freelance-deliverable.json` by
+`freelancer.json` and the root of `freelancer-value-chain.json`. The files keep
+that shape; the populate path builds the registered shape from it at deploy:
+`composeAuthoredAgreement` (in the SDK) composes each written agreement —
+names resolved to keys, the mandatory clauses folded, the key derived — and
+`assembleAuthored` builds each assembly over the agreements its order slots
+name (the slot binds the agreement's key; its fill is the topology clause's
+parents), then the seeding pins and registers each DISTINCT agreement once on
+`AgreementRegistry` (one stake each; a key already registered is skipped) and
+registers the template on `AssemblyRegistry`. Identity is content-derived on
+both registries (the `agreementKey`, a merkle root over the composed clauses;
+the `compositionHash`, a merkle root over the order slots), first-write-wins,
+so re-anchoring is a no-op and independently composing the same design
+collapses onto the same on-chain bindings. This directory and `agreements/`
+are `clauses/`' siblings: clauses are the vocabulary, agreements the terms of one
+order, these the worked sentences.
 
 **This is a user-onboarding surface, distinct from the e2e scenario machinery**
 (which exists to prove the frontend generic). Every reference scenario is also
@@ -51,11 +58,12 @@ over the SUBSTITUTED template, never the sentinel. A spec that wants this
 reference's slug hashes the substituted template too
 (`referenceAssemblySlugWithLiveCurrency`, `devnet-helpers.ts`), not the raw file.
 
-Conformance: `frontend/tests/lib/referenceAssemblies.test.ts` — every template
-parses, hashes, resolves its topology, composes only registered clauses,
-carries the mandatory clauses on every order, carries its editorial identity
-(the name/summary/description a stranger reads first), and every affixed
-document reproduces its committed hash from the shipped bytes.
+Conformance: `frontend/tests/lib/referenceAssemblies.test.ts` — every written
+agreement names itself, says what it is and is bound by a reference assembly;
+every template parses, hashes, resolves its topology, composes only registered
+clauses, carries the mandatory clauses on every order, carries its editorial
+identity (the name/summary/description a stranger reads first), and every
+affixed document reproduces its committed hash from the shipped bytes.
 
 Each document may carry a `faq`: the questions a party to that assembly asks and
 the designer's answers (where orders come from, what a party needs in hand, how
@@ -64,5 +72,6 @@ and the users' FAQ renders every published assembly's entries from the registry 
 runtime — the site never lists them.
 
 Editorial prose here is audience-owned (the general-public register). Adding a
-reference: compose it (the designer canvas or by hand), verify with the
-conformance test, and give it the story a newcomer would recognize.
+reference: write its agreements in `agreements/` (or name ones already there),
+compose the assembly over them (the designer canvas or by hand), verify with
+the conformance test, and give it the story a newcomer would recognize.

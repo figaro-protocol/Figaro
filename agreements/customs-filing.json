@@ -1,0 +1,17 @@
+{
+    "clauses": {
+        "figaro-consent": {
+            "documents": [
+                {
+                    "documentHash": "0xe49094a6583b4935f7d53541c4683012f64610a2b3cb6083e98f3bb8314a403a",
+                    "documentTitle": "Customs filing terms",
+                    "documentUri": "ipfs://QmaHowCLmAoND656D3q9aoQ6CVDjLsNXiCyyPMGqSi7KJj",
+                    "documentVersion": "1.0"
+                }
+            ]
+        },
+        "figaro-merchant-process": {}
+    },
+    "name": "Customs filing",
+    "summary": "The customs filing, made under the affixed filing terms the parties consented to."
+}

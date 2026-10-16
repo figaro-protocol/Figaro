@@ -314,8 +314,9 @@ export interface AuthoredSpecSet {
 /**
  * Resolve the clause NAMES in an authored source document to clause KEYS.
  *
- * A human authors `assemblies/*.json` templates and `members/*.json`
- * documents by clause name; a published document carries keys. Each name is
+ * A human authors `agreements/*.json` composed agreements, `assemblies/*.json`
+ * templates and `members/*.json` documents by clause name; a published
+ * document carries keys. Each name is
  * matched against the loaded specs' own `clauseId` — written `name@version`,
  * the spec's `version` must match too. A name two loaded specs share, written
  * without `@version`, is refused (the document must say which), as is a name
@@ -323,8 +324,9 @@ export interface AuthoredSpecSet {
  * through. This is a LOCAL authoring read over the caller's spec set, never a
  * chain read by name: on chain a clause is only its key.
  *
- * Rewritten in a template: every `agreements[].clauses` and `assemblyClauses`
- * key. In a member profile: `disclosurePolicy[].clauseId` and
+ * Rewritten in an authored agreement: the top-level `clauses` keys. In a
+ * template: every `agreements[].clauses` and `assemblyClauses` key. In a
+ * member profile: `disclosurePolicy[].clauseId` and
  * `assemblyBindings[].counterpartyBindings[].clauseId` (each becomes
  * `clauseKey`), and the `profileClauseValues` keys. In a catalog: every
  * `items[].clauseValues` key and `items[].dataSold.clauseId` (→ `clauseKey`).
@@ -376,6 +378,7 @@ export function resolveAuthoredClauseKeys<T extends object>(doc: T, specs: Autho
         throw new Error("the document carries a version map — write a clause as name@version instead");
     }
     const out: Record<string, unknown> = { ...src };
+    if ("clauses" in src) out.clauses = rekey(src.clauses, "clauses");
     if ("agreements" in src) {
         out.agreements = mapArray(src.agreements, (agreement, i) => {
             if (!isPlainRecord(agreement)) return agreement;

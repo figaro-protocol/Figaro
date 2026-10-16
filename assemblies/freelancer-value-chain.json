@@ -5,41 +5,21 @@
     "agreements": [
         {
             "id": "order-0",
-            "clauses": {
-                "figaro-commerce": {},
-                "figaro-topology": {
-                    "parentOrderHashes": []
-                },
-                "figaro-modalities": {},
-                "figaro-content-handoff": {},
-                "figaro-geolocation": {}
-            }
+            "agreement": "freelance-deliverable"
         },
         {
             "id": "order-1",
-            "clauses": {
-                "figaro-commerce": {},
-                "figaro-topology": {
-                    "parentOrderHashes": [
-                        "order-0"
-                    ]
-                },
-                "figaro-content-handoff": {},
-                "figaro-geolocation": {}
-            }
+            "agreement": "freelance-contribution",
+            "parentOrderHashes": [
+                "order-0"
+            ]
         },
         {
             "id": "order-2",
-            "clauses": {
-                "figaro-commerce": {},
-                "figaro-topology": {
-                    "parentOrderHashes": [
-                        "order-0"
-                    ]
-                },
-                "figaro-content-handoff": {},
-                "figaro-geolocation": {}
-            }
+            "agreement": "freelance-contribution",
+            "parentOrderHashes": [
+                "order-0"
+            ]
         }
     ]
 }

@@ -26,10 +26,12 @@ import {
     hydrateAssembly,
     parseProjectionHints,
     slotClauses,
-    slotsFromAuthoredAgreements,
+    assembleAuthored,
+    composeAuthoredAgreement,
     templateCompositionHash,
     type AssemblyTemplate,
     type BuiltAssemblyTemplate,
+    type ComposedAgreement,
     type Hex,
     type HydratedAssembly,
     type ProjectionSpecView,
@@ -379,6 +381,7 @@ async function pinTextToIPFS(text: string): Promise<{ cid: string; uri: string }
         const api = (process.env.IPFS_PIN_SERVICE_API ?? 'https://api.pinata.cloud').replace(/\/$/, '');
         const res = await fetch(`${api}/pinning/pinFileToIPFS`, { method: 'POST', headers: { Authorization: `Bearer ${jwt}` }, body: form });
         if (!res.ok) throw new Error(`pin service pin failed: ${res.status} ${res.statusText}`);
+        // eslint-disable-next-line no-restricted-syntax -- the harness's own local Kubo API, never a network-fetched document
         const result = await res.json() as { IpfsHash?: string };
         if (typeof result.IpfsHash !== 'string' || !result.IpfsHash) throw new Error('pin service returned no CID');
         return { cid: result.IpfsHash, uri: `ipfs://${result.IpfsHash}` };
@@ -388,6 +391,7 @@ async function pinTextToIPFS(text: string): Promise<{ cid: string; uri: string }
     if (!res.ok) {
         throw new Error(`IPFS pin failed: ${res.status} ${res.statusText}`);
     }
+    // eslint-disable-next-line no-restricted-syntax -- the harness's own local Kubo API, never a network-fetched document
     const result = await res.json() as { Hash?: string };
     if (typeof result.Hash !== 'string' || !result.Hash) {
         throw new Error('IPFS pin returned no CID');
@@ -425,6 +429,7 @@ export async function assertPinnedInIpfs(cid: string): Promise<void> {
             `IPFS pin/ls failed for ${cid}: ${res.status} ${res.statusText} — not pinned in the local Kubo node`,
         );
     }
+    // eslint-disable-next-line no-restricted-syntax -- the harness's own local Kubo API, never a network-fetched document
     const body = await res.json() as { Keys?: Record<string, { Type?: string }> };
     expect(body.Keys?.[cid], `CID ${cid} must be pinned in the local Kubo node`).toBeTruthy();
 }
@@ -651,12 +656,23 @@ function authoredSpecSource(): SpecSource {
     return { get: (k) => byKey.get(k.toLowerCase()), list: () => views };
 }
 
-/** A reference assembly (`assemblies/<name>`) derived exactly as the seeding
- *  derives it before registering: order slots keyed, each distinct agreement
- *  beside the template (`slotsFromAuthoredAgreements`). */
+/** The authored agreements (`agreements/*.json`) composed by name over the
+ *  authored specs — what the seeding registers. */
+function authoredAgreementsBuilt(): Record<string, ComposedAgreement> {
+    const dir = path.resolve(__dirname, '../../../agreements');
+    const byName: Record<string, ComposedAgreement> = {};
+    for (const file of fs.readdirSync(dir).filter((f) => f.endsWith('.json')).sort()) {
+        byName[file.replace(/\.json$/, '')] = composeAuthoredAgreement(JSON.parse(fs.readFileSync(path.join(dir, file), 'utf8')), authoredSpecSource()).document;
+    }
+    return byName;
+}
+
+/** A reference assembly (`assemblies/<name>`) built exactly as the seeding
+ *  builds it before registering: over the authored agreements its order
+ *  slots name, each distinct agreement beside the template (`assembleAuthored`). */
 export function referenceAssemblyBuilt(name: string): BuiltAssemblyTemplate {
     const doc = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../../../assemblies', name), 'utf8')) as object;
-    return slotsFromAuthoredAgreements(doc, authoredSpecSource());
+    return assembleAuthored(doc, authoredAgreementsBuilt(), authoredSpecSource());
 }
 
 /** Substitute the live token into every assembly-scoped section whose

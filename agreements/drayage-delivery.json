@@ -1,0 +1,11 @@
+{
+    "clauses": {
+        "figaro-courier-process": {},
+        "figaro-freight-class": {},
+        "figaro-geolocation": {},
+        "figaro-handoff": {},
+        "figaro-proximity-policy": {}
+    },
+    "name": "Drayage delivery",
+    "summary": "The last leg by road from the port to the consignee, by freight class, the hand-off recorded."
+}

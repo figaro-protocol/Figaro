@@ -174,14 +174,16 @@ derive identity.
   showing the same name are two clauses; the key you put in the map names exactly one
   document, so choose it from the spec you read (fetched through `ClauseRegistry → IPFS` and
   verified with `anchorClauseSpec(bytes, clauseKey)`), never from the label alone.
-- **Writing by name is a seed-time step over your own file.** If the user writes the
-  design by clause NAME — `agreements[].clauses` per order, the topology clause carrying its
-  parents — `slotsFromAuthoredAgreements(doc, specs)` from `@figaro-protocol/sdk` resolves the
-  names (`resolveAuthoredClauseKeys`: the keys of the specs in `specs.list()` whose `clauseId`
-  matches; write `name@version` to match the `version` too), lifts each topology clause's
-  parents into its order slot, folds the live mandatory clauses, and returns `{ template,
-  agreements }` with each DISTINCT composed agreement once. It refuses a name two loaded specs
-  share unless the file says which, and a name no loaded spec carries. Run it once, before
+- **Writing by name is a seed-time step over your own files.** If the user writes the
+  design by clause NAME — each agreement as its own document (`clauses` by name with the
+  designer's fills), the assembly as order slots naming those agreements and carrying their
+  own `parentOrderHashes` — `composeAuthoredAgreement(doc, specs)` from `@figaro-protocol/sdk`
+  resolves the names (`resolveAuthoredClauseKeys`: the keys of the specs in `specs.list()` whose
+  `clauseId` matches; write `name@version` to match the `version` too), folds the live
+  mandatory clauses and keys the agreement, and `assembleAuthored(doc, agreementsByName, specs)`
+  binds each slot to the named agreement's key and returns `{ template, agreements }` with each
+  DISTINCT composed agreement once. They refuse a name two loaded specs share unless the file
+  says which, and a name no loaded spec carries. Run them once, before
   pinning, over a spec set you chose and inspected; it is never a read path, and the pinned
   documents carry keys.
 

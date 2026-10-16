@@ -15,12 +15,13 @@
  * AUTHORED by clause name (`name` or `name@version`); every name is resolved
  * to the key of the loaded spec it names (`resolveAuthoredClauseKeys`) here,
  * at seed time, before anything is pinned — everything pinned carries keys.
- * Each reference assembly's order slots are derived from its authored file
- * (`slotsFromAuthoredAgreements`: the topology parents lifted into the order
- * slot, the mandatory clauses folded, each order slot's agreement keyed);
- * every DISTINCT agreement is pinned and registered once on AgreementRegistry
- * (a key the registry already binds is skipped), then the assembly is
- * registered on AssemblyRegistry.
+ * Each authored agreement (`agreements/*.json`) is composed over the specs
+ * (`composeAuthoredAgreement`: the mandatory clauses folded, keyed), each
+ * reference assembly is built over the agreements its order slots name
+ * (`assembleAuthored`: the slot binds the named agreement's key and carries
+ * its own topology parents); every DISTINCT agreement is pinned and
+ * registered once on AgreementRegistry (a key the registry already binds is
+ * skipped), then the assembly is registered on AssemblyRegistry.
  *
  * No deploy script anchors a placeholder hash, and no clause spec ships bundled
  * in the frontend: `clauses/*.json` pinned to IPFS and anchored here is the only
@@ -115,7 +116,7 @@ import { mnemonicToAccount, privateKeyToAccount } from 'viem/accounts';
 import {
     CLAUSE_REGISTRY_ABI, ASSEMBLY_REGISTRY_ABI, AGREEMENT_REGISTRY_ABI, computeClauseKey, canonicalize,
     templateCompositionHash, deriveAssemblySlug, parseProjectionHints,
-    templateComposedClauseKeys, resolveAuthoredClauseKeys, slotsFromAuthoredAgreements,
+    templateComposedClauseKeys, resolveAuthoredClauseKeys, composeAuthoredAgreement, assembleAuthored,
 } from '@figaro-protocol/sdk';
 import { parseClauseSpec } from '@figaro-protocol/sdk/clauses';
 
@@ -123,6 +124,10 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // Canonical Layer-A specs / ClauseRegistry seed data — the single origin,
 // pinned to IPFS and anchored on-chain. Nothing bundles a copy.
 export const CLAUSES_DIR = path.resolve(__dirname, '../../clauses');
+/** The authored agreements (`agreements/*.json`, clause names with the
+ *  designer's fills) the reference assemblies' order slots name. */
+export const AGREEMENTS_DIR = path.resolve(__dirname, '../../agreements');
+
 /** The reference assemblies — the user-onboarding set, `clauses/`' sibling:
  *  authored assemblies whose order slots' agreements register on
  *  AgreementRegistry and whose templates anchor on AssemblyRegistry at
@@ -406,11 +411,24 @@ export function resolveAuthoredClauseNames(names, authored = loadAuthoredSpecs()
     return Object.keys(doc.assemblyClauses);
 }
 
-/** An authored reference assembly (`assemblies/<file>`) derived into its
- *  order slots: `{ template, agreements }` — the template seeding anchors and
- *  the agreements its order slots bind, keyed. Seed time only. */
-export function readBuiltAssembly(file, authored = loadAuthoredSpecs()) {
-    return slotsFromAuthoredAgreements(JSON.parse(fs.readFileSync(file, 'utf8')), authored);
+/** Every authored agreement (`agreements/*.json`) composed over the loaded
+ *  specs, by its name (the file's basename): the document the seeding pins
+ *  and the key it registers under (`composeAuthoredAgreement`). */
+export function loadAuthoredAgreements(authored = loadAuthoredSpecs()) {
+    const byName = {};
+    for (const file of fs.readdirSync(AGREEMENTS_DIR).filter((f) => f.endsWith('.json')).sort()) {
+        const { document } = composeAuthoredAgreement(JSON.parse(fs.readFileSync(path.join(AGREEMENTS_DIR, file), 'utf8')), authored);
+        byName[path.basename(file, '.json')] = document;
+    }
+    return byName;
+}
+
+/** An authored reference assembly (`assemblies/<file>`) built over the
+ *  authored agreements its order slots name: `{ template, agreements }` —
+ *  the template seeding anchors and the agreements its order slots bind,
+ *  keyed (`assembleAuthored`). Seed time only. */
+export function readBuiltAssembly(file, authored = loadAuthoredSpecs(), agreementsByName = loadAuthoredAgreements(authored)) {
+    return assembleAuthored(JSON.parse(fs.readFileSync(file, 'utf8')), agreementsByName, authored);
 }
 
 /**
@@ -671,6 +689,7 @@ export async function populateReferenceAssemblies({ publicClient, walletClient, 
     // SEED_LIMIT counts NEW anchors only — already-anchored skips are free.
     let anchored = 0;
     const authored = loadAuthoredSpecs();
+    const agreementsByName = loadAuthoredAgreements(authored);
     const files = fs.readdirSync(ASSEMBLIES_DIR).filter((f) => f.endsWith('.json')).sort()
         .filter((f) => !only || only.has(path.basename(f, '.json')));
     for (const file of files) {
@@ -678,7 +697,7 @@ export async function populateReferenceAssemblies({ publicClient, walletClient, 
             log(`  · SEED_LIMIT ${limit} reached — remaining reference assemblies deferred to a later run`);
             break;
         }
-        const built = readBuiltAssembly(path.join(ASSEMBLIES_DIR, file), authored);
+        const built = readBuiltAssembly(path.join(ASSEMBLIES_DIR, file), authored, agreementsByName);
         const template = fillDeployTimeCurrency(built.template, tokenAddress);
         const result = await anchorBuiltAssembly({
             built: { template, agreements: built.agreements }, agreementRegistry,
@@ -735,10 +754,12 @@ async function main() {
     if (process.env.SEED_ASSEMBLIES) {
         onlyAssemblies = new Set(process.env.SEED_ASSEMBLIES.split(',').map((s) => s.trim()).filter(Boolean));
         onlyClauses = new Set();
+        const authoredSpecs = loadAuthoredSpecs();
+        const agreementsByName = loadAuthoredAgreements(authoredSpecs);
         for (const name of onlyAssemblies) {
             const file = path.join(ASSEMBLIES_DIR, `${name}.json`);
             if (!fs.existsSync(file)) throw new Error(`SEED_ASSEMBLIES names "${name}" but ${file} does not exist`);
-            const built = readBuiltAssembly(file);
+            const built = readBuiltAssembly(file, authoredSpecs, agreementsByName);
             for (const key of templateComposedClauseKeys(built.template, built.agreements)) onlyClauses.add(key);
         }
         console.log(`SEED_ASSEMBLIES ${[...onlyAssemblies].join(', ')} → clause set ${[...onlyClauses].sort().join(', ')}`);

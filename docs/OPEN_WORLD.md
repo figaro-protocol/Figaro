@@ -94,8 +94,8 @@ Three legitimately bundled categories (do NOT flag):
    commitment is the pattern, not a copy. The SET stays event-driven; the per-item
    CONTENT resolves from the committed pointer. A clause's committed pointer is
    its key — `keccak256` of the spec's pinned canonical bytes — and a reader
-   checks the fetched bytes against it. The reference `assemblies/*.json` and
-   `members/*.json` are the maintainer's written source and name clauses by
+   checks the fetched bytes against it. The reference `agreements/*.json`,
+   `assemblies/*.json` and `members/*.json` are the maintainer's written source and name clauses by
    name; `resolveAuthoredClauseKeys` (`sdk/src/assembly.ts`) maps each name to
    a key over the specs the caller loaded — a local authoring read run before
    a document is published (`sdk/src/documentParse.ts` `asClauseKey`), never

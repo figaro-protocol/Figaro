@@ -1,0 +1,8 @@
+{
+    "clauses": {
+        "figaro-content-handoff": {},
+        "figaro-geolocation": {}
+    },
+    "name": "Freelance contribution",
+    "summary": "A contributor's part of a larger deliverable, handed to the lead over the encrypted channel."
+}

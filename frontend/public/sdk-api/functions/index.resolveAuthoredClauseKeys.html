@@ -17,16 +17,18 @@
 <div class="tsd-signature tsd-anchor-link" id="resolveauthoredclausekeys"><span class="tsd-kind-call-signature">resolveAuthoredClauseKeys</span><span class="tsd-signature-symbol">&lt;</span><a class="tsd-signature-type tsd-kind-type-parameter" href="#resolveauthoredclausekeyst">T</a> <span class="tsd-signature-keyword">extends</span> <span class="tsd-signature-type">object</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">doc</span><span class="tsd-signature-symbol">:</span> <a class="tsd-signature-type tsd-kind-type-parameter" href="#resolveauthoredclausekeyst">T</a><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">specs</span><span class="tsd-signature-symbol">:</span> <a href="../interfaces/index.AuthoredSpecSet.html" class="tsd-signature-type tsd-kind-interface">AuthoredSpecSet</a><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <a class="tsd-signature-type tsd-kind-type-parameter" href="#resolveauthoredclausekeyst">T</a><a href="#resolveauthoredclausekeys" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
 <div class="tsd-description">
 <div class="tsd-comment tsd-typography"><p>Resolve the clause NAMES in an authored source document to clause KEYS.</p>
-<p>A human authors <code>assemblies/*.json</code> templates and <code>members/*.json</code>
-documents by clause name; a published document carries keys. Each name is
+<p>A human authors <code>agreements/*.json</code> composed agreements, <code>assemblies/*.json</code>
+templates and <code>members/*.json</code> documents by clause name; a published
+document carries keys. Each name is
 matched against the loaded specs' own <code>clauseId</code> — written <code>name@version</code>,
 the spec's <code>version</code> must match too. A name two loaded specs share, written
 without <code>@version</code>, is refused (the document must say which), as is a name
 no loaded spec carries. A value that is already a 32-byte key passes
 through. This is a LOCAL authoring read over the caller's spec set, never a
 chain read by name: on chain a clause is only its key.</p>
-<p>Rewritten in a template: every <code>agreements[].clauses</code> and <code>assemblyClauses</code>
-key. In a member profile: <code>disclosurePolicy[].clauseId</code> and
+<p>Rewritten in an authored agreement: the top-level <code>clauses</code> keys. In a
+template: every <code>agreements[].clauses</code> and <code>assemblyClauses</code> key. In a
+member profile: <code>disclosurePolicy[].clauseId</code> and
 <code>assemblyBindings[].counterpartyBindings[].clauseId</code> (each becomes
 <code>clauseKey</code>), and the <code>profileClauseValues</code> keys. In a catalog: every
 <code>items[].clauseValues</code> key and <code>items[].dataSold.clauseId</code> (→ <code>clauseKey</code>).
@@ -43,7 +45,7 @@ Everything else is copied unchanged. The input is not mutated.</p>
 <li><span><span class="tsd-kind-parameter">specs</span>: <a href="../interfaces/index.AuthoredSpecSet.html" class="tsd-signature-type tsd-kind-interface">AuthoredSpecSet</a></span></li></ul></div>
 <h4 class="tsd-returns-title">Returns <a class="tsd-signature-type tsd-kind-type-parameter" href="#resolveauthoredclausekeyst">T</a></h4><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/assembly.ts#L333">assembly.ts:333</a></li></ul></aside></div></li></ul></section></div>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/assembly.ts#L335">assembly.ts:335</a></li></ul></aside></div></li></ul></section></div>
 <div class="col-sidebar">
 <div class="page-menu">
 <div class="tsd-navigation settings">

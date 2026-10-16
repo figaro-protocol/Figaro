@@ -1,0 +1,13 @@
+{
+    "clauses": {
+        "figaro-chain-of-custody": {},
+        "figaro-cold-chain": {},
+        "figaro-courier-process": {},
+        "figaro-emissions": {},
+        "figaro-geolocation": {},
+        "figaro-handoff": {},
+        "figaro-proximity-policy": {}
+    },
+    "name": "Reefer carriage",
+    "summary": "A refrigerated carrier's leg: cold chain, chain of custody, emissions and the hand-off, each attested."
+}

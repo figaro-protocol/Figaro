@@ -9,101 +9,43 @@
     },
     "agreements": [
         {
-            "clauses": {
-                "figaro-acceptance-criteria": {},
-                "figaro-cargo": {},
-                "figaro-chain-of-custody": {},
-                "figaro-commerce": {},
-                "figaro-geolocation": {},
-                "figaro-incoterms": {},
-                "figaro-modalities": {},
-                "figaro-topology": {
-                    "parentOrderHashes": []
-                }
-            },
-            "id": "order-0"
+            "id": "order-0",
+            "agreement": "shipper-consignment"
         },
         {
-            "clauses": {
-                "figaro-acceptance-criteria": {},
-                "figaro-commerce": {},
-                "figaro-merchant-process": {},
-                "figaro-topology": {
-                    "parentOrderHashes": [
-                        "order-0"
-                    ]
-                }
-            },
-            "id": "order-1"
+            "id": "order-1",
+            "agreement": "cargo-inspection",
+            "parentOrderHashes": [
+                "order-0"
+            ]
         },
         {
-            "clauses": {
-                "figaro-commerce": {},
-                "figaro-geolocation": {},
-                "figaro-merchant-process": {},
-                "figaro-topology": {
-                    "parentOrderHashes": [
-                        "order-0"
-                    ]
-                }
-            },
-            "id": "order-2"
+            "id": "order-2",
+            "agreement": "freight-forwarding",
+            "parentOrderHashes": [
+                "order-0"
+            ]
         },
         {
-            "clauses": {
-                "figaro-chain-of-custody": {},
-                "figaro-cold-chain": {},
-                "figaro-commerce": {},
-                "figaro-courier-process": {},
-                "figaro-emissions": {},
-                "figaro-geolocation": {},
-                "figaro-handoff": {},
-                "figaro-proximity-policy": {},
-                "figaro-topology": {
-                    "parentOrderHashes": [
-                        "order-2"
-                    ]
-                }
-            },
-            "id": "order-3"
+            "id": "order-3",
+            "agreement": "reefer-carriage",
+            "parentOrderHashes": [
+                "order-2"
+            ]
         },
         {
-            "clauses": {
-                "figaro-commerce": {},
-                "figaro-consent": {
-                    "documents": [
-                        {
-                            "documentHash": "0xe49094a6583b4935f7d53541c4683012f64610a2b3cb6083e98f3bb8314a403a",
-                            "documentTitle": "Customs filing terms",
-                            "documentUri": "ipfs://QmaHowCLmAoND656D3q9aoQ6CVDjLsNXiCyyPMGqSi7KJj",
-                            "documentVersion": "1.0"
-                        }
-                    ]
-                },
-                "figaro-merchant-process": {},
-                "figaro-topology": {
-                    "parentOrderHashes": [
-                        "order-3"
-                    ]
-                }
-            },
-            "id": "order-4"
+            "id": "order-4",
+            "agreement": "customs-filing",
+            "parentOrderHashes": [
+                "order-3"
+            ]
         },
         {
-            "clauses": {
-                "figaro-commerce": {},
-                "figaro-courier-process": {},
-                "figaro-freight-class": {},
-                "figaro-geolocation": {},
-                "figaro-handoff": {},
-                "figaro-proximity-policy": {},
-                "figaro-topology": {
-                    "parentOrderHashes": [
-                        "order-4"
-                    ]
-                }
-            },
-            "id": "order-5"
+            "id": "order-5",
+            "agreement": "drayage-delivery",
+            "parentOrderHashes": [
+                "order-4"
+            ]
         }
     ],
     "description": "A containerized import moved end to end without a platform sitting between the parties: shipper, pre-shipment inspection, freight forwarder, reefer ocean carrier, customs agent, and destination drayage. Each is bonded for more than its own leg is worth, so each has every reason to perform. The importer of record resolves the entire chain with a single signature.",

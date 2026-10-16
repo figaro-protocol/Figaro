@@ -29,15 +29,16 @@ import { mnemonicToAccount } from 'viem/accounts';
 import { MEMBERS_REGISTRY_ABI, ERC20_ABI } from '@figaro-protocol/sdk';
 import {
     ASSEMBLIES_DIR, LOCAL_ANVIL, anchorBuiltAssembly, fillDeployTimeCurrency, loadAuthoredSpecs, pinFile, pinJSON,
-    readBuiltAssembly,
+    loadAuthoredAgreements, readBuiltAssembly,
     populateClauses, populateReferenceAssemblies, readEnvLocal, registrarAccount,
 } from './populate-clauses.mjs';
-import { templateCompositionHash, deriveAssemblySlug, resolveAuthoredClauseKeys, slotsFromAuthoredAgreements } from '@figaro-protocol/sdk';
+import { templateCompositionHash, deriveAssemblySlug, resolveAuthoredClauseKeys, composeAuthoredAgreement, assembleAuthored } from '@figaro-protocol/sdk';
 
 // The specs in clauses/, each with its key — the set every authored clause
 // NAME below resolves against at seed time (`resolveAuthoredClauseKeys`);
 // everything pinned carries keys.
 const AUTHORED = loadAuthoredSpecs();
+const AUTHORED_AGREEMENTS = loadAuthoredAgreements(AUTHORED);
 
 const RPC_URL = process.env.RPC_URL ?? 'http://127.0.0.1:8545';
 const ANVIL_MNEMONIC = 'test test test test test test test test test test test junk';
@@ -70,7 +71,7 @@ const SELLERS = [
  *  template AFTER the deploy-time currency fill — the same hash
  *  populateReferenceAssemblies anchored, never the raw file's. */
 function referenceSlug(file, tokenAddress) {
-    const { template } = readBuiltAssembly(path.join(ASSEMBLIES_DIR, file), AUTHORED);
+    const { template } = readBuiltAssembly(path.join(ASSEMBLIES_DIR, file), AUTHORED, AUTHORED_AGREEMENTS);
     return deriveAssemblySlug(templateCompositionHash(fillDeployTimeCurrency(template, tokenAddress)));
 }
 
@@ -84,32 +85,26 @@ const isAlreadyRegistered = (err) => /AlreadyRegistered/i.test(err instanceof Er
 // so an empty AssemblyRegistry means zero surfaced members). Seeding is
 // PRE-POPULATION, exactly like clauses and sellers above — never a test
 // (the scenario-era build-order coupling is the cautionary tale). Each seed is
-// authored like a reference assembly and derived through the same
-// `slotsFromAuthoredAgreements` walk: its agreements register on
-// AgreementRegistry, then its template anchors — identity (agreement keys,
-// compositionHash + slug) and canonical JSON come from the SDK.
+// authored like a reference: its agreements composed by clause name
+// (`composeAuthoredAgreement` — the mandatory clauses fold in, so a seed
+// writes only what it selects), then the assembly built over them by name
+// (`assembleAuthored`): its agreements register on AgreementRegistry, then
+// its template anchors — identity (agreement keys, compositionHash + slug)
+// and canonical JSON come from the SDK.
 
-/** Fold the MANDATORY clauses (block.design.article === "mandatory",
- *  read from the canonical Layer-A specs — derived, never named) onto an
- *  order: each takes the subset of the design-time bag it declares. Parents
- *  are LOCAL template ids — mirrors the designer's composeStructuralClauses. */
-function mandatoryClauseFold(parents = []) {
-    const bag = { parentOrderHashes: parents };
-    const out = {};
-    for (const { spec, clauseKey } of AUTHORED.specs) {
-        if (spec.block?.design?.article !== 'mandatory') continue;
-        // Mandatory folds at the level its scope names: an assembly-scoped
-        // mandatory clause is a template-level fold, not a per-agreement one.
-        if (spec.block?.design?.scope === 'assembly') continue;
-        const data = {};
-        for (const field of spec.fields ?? []) {
-            if (field.name in bag) data[field.name] = bag[field.name];
-        }
-        out[clauseKey] = data;
-    }
-    if (Object.keys(out).length === 0) throw new Error('no mandatory clauses found in clauses/*.json');
-    return out;
-}
+/** The seeds' authored agreements, composed once, by name. Design time is
+ *  STRUCTURAL: a clause is SELECTED; its values are the buyer's at checkout. */
+const SEED_AGREEMENTS = Object.fromEntries(Object.entries({
+    // The blank agreement: the mandatory clauses alone.
+    blank: { clauses: {} },
+    // A root merchant agreement: the merchant process and the modality the
+    // buyer picks at checkout.
+    merchant: { clauses: { 'figaro-merchant-process': {}, 'figaro-modalities': {} } },
+    // A courier sub-agreement.
+    courier: { clauses: { 'figaro-courier-process': {} } },
+    // A supplier sub-agreement: the merchant process alone.
+    supplier: { clauses: { 'figaro-merchant-process': {} } },
+}).map(([name, authored]) => [name, composeAuthoredAgreement(authored, AUTHORED).document]));
 
 // The zero-address sentinel, the currency fill, and the anchoring itself all
 // live in populate-clauses.mjs now — the ONE reference-assembly population
@@ -119,52 +114,32 @@ function mandatoryClauseFold(parents = []) {
 /** The blank single-agreement composition: mandatory clauses only — the
  *  minimal bindable assembly the single-order specs run against. */
 function seedBlank() {
-    return slotsFromAuthoredAgreements({
+    return assembleAuthored({
         name: 'Devnet seed',
         summary: 'Pre-populated bindable assembly for the e2e suite.',
         description: 'A blank single-agreement composition (mandatory clauses only), anchored by populate-test-data so sellers can bind before any spec runs.',
-        agreements: [{ id: 'order-0', clauses: mandatoryClauseFold() }],
-    }, AUTHORED);
+        agreements: [{ id: 'order-0', agreement: 'blank' }],
+    }, SEED_AGREEMENTS, AUTHORED);
 }
 
 /** The multi-order value-added CHAIN — the externalized P&L the multi-order
  *  e2e runs end-to-end: a root merchant agreement (merchant process, delivery
- *  modality) plus courier and supplier sub-agreements. Which clauses compose
- *  which agreement is scenario DATA (a designed assembly this seed reproduces
- *  byte-for-byte), exactly like the member roster above. Counterparties are
- *  NOT seeded — the lead binds + designates them through the real UI flow. */
+ *  modality) plus courier and supplier sub-agreements. Which agreements
+ *  compose which order slot is scenario DATA (a designed assembly this seed
+ *  reproduces byte-for-byte), exactly like the member roster above.
+ *  Counterparties are NOT seeded — the lead binds + designates them through
+ *  the real UI flow. */
 function seedChain() {
-    return slotsFromAuthoredAgreements({
+    return assembleAuthored({
         name: 'Devnet delivery chain',
         summary: 'Three-order value-added chain: merchant, courier, supplier.',
         description: 'A delivery chain for the multi-order e2e: the buyer sees the full decomposition at checkout, each contributor is bond-secured, and the single resolve pays every party.',
         agreements: [
-            {
-                id: 'order-0',
-                clauses: {
-                    'figaro-merchant-process': {},
-                    // Design time is STRUCTURAL: the clause
-                    // is SELECTED; the modality is the buyer's checkout pick.
-                    'figaro-modalities': {},
-                    ...mandatoryClauseFold([]),
-                },
-            },
-            {
-                id: 'order-1',
-                clauses: {
-                    'figaro-courier-process': {},
-                    ...mandatoryClauseFold(['order-0']),
-                },
-            },
-            {
-                id: 'order-2',
-                clauses: {
-                    'figaro-merchant-process': {},
-                    ...mandatoryClauseFold(['order-0']),
-                },
-            },
+            { id: 'order-0', agreement: 'merchant' },
+            { id: 'order-1', agreement: 'courier', parentOrderHashes: ['order-0'] },
+            { id: 'order-2', agreement: 'supplier', parentOrderHashes: ['order-0'] },
         ],
-    }, AUTHORED);
+    }, SEED_AGREEMENTS, AUTHORED);
 }
 
 async function main() {

@@ -17,9 +17,9 @@ import {
     agreementClauseLeaves,
     buildClauseInclusionProof,
 } from "../src/assembly.js";
-import type { AssemblyTemplate } from "../src/assembly.js";
+import type { AssemblyTemplate, ComposedAgreement } from "../src/assembly.js";
 import { PROVENANCE_LEAF_KEY, buildMerkleRoot, canonicalize, computeSectionLeaf, sortLeaves, verifyInclusionProof } from "../src/agreement.js";
-import { slotsFromAuthoredAgreements } from "../src/projection.js";
+import { assembleAuthored, composeAuthoredAgreement } from "../src/projection.js";
 import { hydrateAuthored } from "./hydrate.js";
 import { keyOf, rawSpecOf, specSourceOf, viewOf } from "./specFixtures.js";
 
@@ -172,41 +172,81 @@ describe("an order slot's clauses at checkout", () => {
     });
 });
 
-describe("slotsFromAuthoredAgreements (seed-time derivation)", () => {
+describe("composeAuthoredAgreement + assembleAuthored (seed-time derivation)", () => {
     const names = ["figaro-commerce", "figaro-topology", "figaro-applicable-law", "figaro-handoff"];
     const specs = specSourceOf(names.map((n) => viewOf(rawSpecOf(n))));
 
-    it("lifts the topology parents into the order slot, composes topology {}, folds the mandatory clauses, de-duplicates", () => {
-        const { template, agreements } = slotsFromAuthoredAgreements({
+    it("composes an authored agreement by name: the fold adds the mandatory clauses, the words ride beside the clauses, outside the key", () => {
+        const { document, agreementKey } = composeAuthoredAgreement(
+            { name: "A hand-off", summary: "one hand-off", clauses: { "figaro-handoff": {} } },
+            specs,
+        );
+        expect(document.clauses).toEqual({ [keyOf("figaro-handoff")]: {}, [keyOf("figaro-commerce")]: {}, [keyOf("figaro-topology")]: {} });
+        expect(document.name).toBe("A hand-off");
+        expect(agreementKey).toBe(agreementKeyOf({ clauses: document.clauses }));
+        expect(agreementKeyOf(document)).toBe(agreementKey);
+        // Written with or without the mandatory clauses, the same agreement.
+        expect(composeAuthoredAgreement({ clauses: { "figaro-handoff": {}, "figaro-commerce": {} } }, specs).agreementKey).toBe(agreementKey);
+        expect(() => composeAuthoredAgreement({ name: "none" }, specs)).toThrow(/no clauses/);
+    });
+
+    it("assembles an authored assembly over named agreements: the slot binds the agreement's key and carries its own parents", () => {
+        const handoff = composeAuthoredAgreement({ clauses: { "figaro-handoff": {} } }, specs).document;
+        const bare = composeAuthoredAgreement({ clauses: {} }, specs).document;
+        const { template, agreements } = assembleAuthored({
             name: "editorial",
             assemblyClauses: { "figaro-applicable-law": { applicableLaw: "ch" } },
             agreements: [
-                { id: "order-0", clauses: { "figaro-commerce": {}, "figaro-topology": { parentOrderHashes: [] } } },
-                { id: "order-1", clauses: { "figaro-topology": { parentOrderHashes: ["order-0"] } } },
+                { id: "order-0", agreement: "bare" },
+                { id: "order-1", agreement: "bare", parentOrderHashes: ["order-0"] },
+                { id: "order-2", agreement: "handoff", parentOrderHashes: ["order-0"] },
             ],
-        }, specs);
+        }, { bare, handoff }, specs);
         expect(template.name).toBe("editorial");
         expect(template.assemblyClauses).toEqual({ [keyOf("figaro-applicable-law")]: { applicableLaw: "ch" } });
-        // order-1 omitted commerce; the fold adds it, so both order slots bind one agreement.
-        expect(Object.keys(agreements)).toHaveLength(1);
-        const [key] = Object.keys(agreements) as Hex[];
-        expect(agreements[key].clauses).toEqual({ [keyOf("figaro-commerce")]: {}, [keyOf("figaro-topology")]: {} });
-        expect(template.agreements.map((s) => s.agreementKey)).toEqual([key, key]);
+        // Two order slots bind one agreement; the set holds each distinct one once.
+        expect(Object.keys(agreements)).toHaveLength(2);
+        expect(template.agreements[0].agreementKey).toBe(template.agreements[1].agreementKey);
+        expect(template.agreements[0].agreementKey).toBe(agreementKeyOf(bare));
+        expect(template.agreements[2].agreementKey).toBe(agreementKeyOf(handoff));
+        expect(template.agreements[0].clauses).toEqual({ [keyOf("figaro-topology")]: { parentOrderHashes: [] } });
         expect(template.agreements[1].clauses).toEqual({ [keyOf("figaro-topology")]: { parentOrderHashes: ["order-0"] } });
-        expect(agreementKeyOf(agreements[key])).toBe(key);
+        for (const slot of template.agreements) expect(agreementKeyOf(agreements[slot.agreementKey])).toBe(slot.agreementKey);
     });
 
-    it("derives every reference assembly in assemblies/ against clauses/", () => {
+    it("refuses a slot that names no agreement, an unknown one, inline clauses, or an agreement short of a mandatory clause", () => {
+        const bare = composeAuthoredAgreement({ clauses: {} }, specs).document;
+        expect(() => assembleAuthored({ agreements: [{ id: "o" }] }, { bare }, specs)).toThrow(/names no agreement/);
+        expect(() => assembleAuthored({ agreements: [{ id: "o", agreement: "nope" }] }, { bare }, specs)).toThrow(/not among the authored agreements/);
+        expect(() => assembleAuthored({ agreements: [{ id: "o", agreement: "bare", clauses: {} }] }, { bare }, specs)).toThrow(/inline/);
+        const short = { clauses: { [keyOf("figaro-handoff")]: {} } };
+        expect(() => assembleAuthored({ agreements: [{ id: "o", agreement: "short" }] }, { short }, specs)).toThrow(/lacks the live mandatory/);
+        expect(() => assembleAuthored({ agreements: [] }, { bare }, specs)).toThrow(/no order slots/);
+    });
+
+    it("derives every reference assembly in assemblies/ over agreements/ against clauses/, each agreement file used", () => {
         const clausesDir = path.resolve(__dirname, "../../clauses");
         const all = specSourceOf(readdirSync(clausesDir).filter((f) => f.endsWith(".json"))
             .map((f) => viewOf(JSON.parse(readFileSync(path.join(clausesDir, f), "utf8")))));
+        const agreementsDir = path.resolve(__dirname, "../../agreements");
+        const byName: Record<string, ComposedAgreement> = {};
+        for (const file of readdirSync(agreementsDir).filter((f) => f.endsWith(".json"))) {
+            const { document, agreementKey } = composeAuthoredAgreement(JSON.parse(readFileSync(path.join(agreementsDir, file), "utf8")), all);
+            expect(document.name, `${file} carries its name`).toBeTruthy();
+            expect(agreementKeyOf(document)).toBe(agreementKey);
+            byName[file.replace(/\.json$/, "")] = document;
+        }
+        const used = new Set<string>();
         const dir = path.resolve(__dirname, "../../assemblies");
         for (const file of readdirSync(dir).filter((f) => f.endsWith(".json"))) {
-            const { template, agreements } = slotsFromAuthoredAgreements(JSON.parse(readFileSync(path.join(dir, file), "utf8")), all);
+            const authored = JSON.parse(readFileSync(path.join(dir, file), "utf8")) as { agreements: { agreement: string }[] };
+            for (const slot of authored.agreements) used.add(slot.agreement);
+            const { template, agreements } = assembleAuthored(authored, byName, all);
             for (const key of templateComposedClauseKeys(template, agreements)) expect(all.get(key), `${file} ${key}`).toBeDefined();
             expect(templateCompositionHash(template)).toMatch(/^0x[0-9a-f]{64}$/);
             for (const slot of template.agreements) expect(agreements[slot.agreementKey], `${file} ${slot.id}`).toBeDefined();
         }
+        for (const name of Object.keys(byName)) expect(used.has(name), `agreements/${name}.json is bound by a reference assembly`).toBe(true);
     });
 });
 
@@ -271,18 +311,23 @@ describe("resolveAuthoredClauseKeys (seed-time authoring resolver)", () => {
             .toThrow(/version map/);
     });
 
-    it("resolves every reference assembly in assemblies/ against clauses/", () => {
+    it("resolves every authored agreement in agreements/ and every reference assembly's assembly-scoped clauses against clauses/", () => {
         const clausesDir = path.resolve(__dirname, "../../clauses");
         const all = specSourceOf(readdirSync(clausesDir).filter((f) => f.endsWith(".json"))
             .map((f) => viewOf(JSON.parse(readFileSync(path.join(clausesDir, f), "utf8")))));
+        const agreementsDir = path.resolve(__dirname, "../../agreements");
+        for (const file of readdirSync(agreementsDir).filter((f) => f.endsWith(".json"))) {
+            const resolved = resolveAuthoredClauseKeys(JSON.parse(readFileSync(path.join(agreementsDir, file), "utf8")), all) as {
+                clauses: Record<string, unknown>;
+            };
+            for (const key of Object.keys(resolved.clauses)) expect(all.get(key as Hex), `${file} ${key}`).toBeDefined();
+        }
         const dir = path.resolve(__dirname, "../../assemblies");
         for (const file of readdirSync(dir).filter((f) => f.endsWith(".json"))) {
             const resolved = resolveAuthoredClauseKeys(JSON.parse(readFileSync(path.join(dir, file), "utf8")), all) as {
-                agreements: { clauses: Record<string, unknown> }[];
+                assemblyClauses?: Record<string, unknown>;
             };
-            for (const agreement of resolved.agreements) {
-                for (const key of Object.keys(agreement.clauses)) expect(all.get(key as Hex), `${file} ${key}`).toBeDefined();
-            }
+            for (const key of Object.keys(resolved.assemblyClauses ?? {})) expect(all.get(key as Hex), `${file} ${key}`).toBeDefined();
         }
     });
 });

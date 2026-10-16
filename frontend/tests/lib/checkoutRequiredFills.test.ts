@@ -18,10 +18,8 @@
  * No clause is named as a rule — the clause ids below are the fixtures the
  * reference assemblies compose, read from `clauses/` and `assemblies/`.
  */
-import { readFileSync } from "node:fs";
-import path from "node:path";
 import { beforeAll, describe, expect, it } from "vitest";
-import { hydrateAuthored, keyOf, primeClauseSpecs } from "./primeClauseSpecs";
+import { keyOf, primeClauseSpecs, referenceAssembly } from "./primeClauseSpecs";
 import {
     buyerAuthoredFields,
     deriveAgreementGroups,
@@ -31,13 +29,12 @@ import {
 import { isSiblingFormatSource } from "@/components/runtime/fieldFormatInputs";
 import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
 
-const ASSEMBLIES_DIR = path.resolve(process.cwd(), "../assemblies");
 const LEAD = "0x1111111111111111111111111111111111111111" as const;
 
 /** A reference assembly as the seeding registers it: authored names resolved
  *  to keys, order slots derived, every order slot's agreement beside the template. */
 const hydrated = (file: string) =>
-    hydrateAuthored(JSON.parse(readFileSync(path.join(ASSEMBLIES_DIR, file), "utf8")));
+    referenceAssembly(file);
 
 const groupsFor = (file: string) =>
     deriveAgreementGroups({

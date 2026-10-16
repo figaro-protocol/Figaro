@@ -867,20 +867,61 @@ export function buildAssemblyTemplate(args: {
 }
 
 /**
- * Derive a reference assembly's registered agreements and order slots from
- * its AUTHORED file (`assemblies/*.json`: `agreements[].clauses` by clause
- * name, the topology clause carrying its parents as `order-<j>` labels).
- * Seed time only. For each authored agreement: resolve clause names to keys
- * (`resolveAuthoredClauseKeys`), lift the `parentOrderHashes` values out of
- * the agreement into the order slot's own fill (the clause stays composed,
- * with `{}`), fold the live agreement-scoped mandatory specs the agreement
- * does not carry, and key the result (`agreementKeyOf`). Returns each
- * DISTINCT agreement once (two order slots composing the same clauses share
- * one registration) and the template binding them; editorial fields and the
- * assembly-scoped clauses carry over unchanged.
+ * An authored composed agreement (`agreements/<name>.json`): the clauses a
+ * designer selected for one order slot, written by clause NAME with the
+ * designer's fills, beside the designer's own words. The mandatory clauses
+ * need not be written: the fold adds them. Seed time only.
  */
-export function slotsFromAuthoredAgreements(
+export interface AuthoredAgreement {
+    name?: string;
+    summary?: string;
+    description?: string;
+    clauses: Record<string, Record<string, unknown>>;
+}
+
+/**
+ * Compose an AUTHORED agreement (`agreements/*.json`, clause names) into the
+ * registered agreement it names: the names resolved to keys
+ * (`resolveAuthoredClauseKeys`), then the one composition rule
+ * (`composeOrderAgreement`: the scope check, the value-free rule, the
+ * mandatory fold). Returns the document the seeding pins — the designer's
+ * words beside the composed clauses — and its key. Seed time only.
+ */
+export function composeAuthoredAgreement(
     authored: object,
+    specs: SpecSource,
+): { document: ComposedAgreement; agreementKey: Hex } {
+    const doc = resolveAuthoredClauseKeys(authored, specs) as Partial<AuthoredAgreement> & {
+        clauses?: Record<Hex, Record<string, unknown>>;
+    };
+    if (!doc.clauses || typeof doc.clauses !== "object") {
+        throw new Error("the authored agreement has no clauses");
+    }
+    const { composed, agreementKey } = composeOrderAgreement({ clauses: doc.clauses, specs });
+    const document: ComposedAgreement = {
+        ...(doc.name !== undefined ? { name: doc.name } : {}),
+        ...(doc.summary !== undefined ? { summary: doc.summary } : {}),
+        ...(doc.description !== undefined ? { description: doc.description } : {}),
+        clauses: composed.clauses,
+    };
+    return { document, agreementKey };
+}
+
+/**
+ * Build an AUTHORED assembly (`assemblies/*.json`) over authored agreements:
+ * each order slot names the agreement it binds (`agreements[].agreement`,
+ * the authored agreement's name) and carries its own topology as
+ * `parentOrderHashes` (`order-<j>` labels); `assemblyClauses` are written by
+ * clause name. The slot binds the named agreement's key — the same key
+ * whether a designer registers that agreement on its own or this seeding
+ * registers it — and its fill is the topology clause's parents
+ * (`slotTopologyFills`); a bound agreement lacking a live mandatory spec is
+ * refused, as the designer's drawer refuses it. Returns the template and
+ * each DISTINCT agreement once, keyed. Seed time only.
+ */
+export function assembleAuthored(
+    authored: object,
+    agreementsByName: Readonly<Record<string, ComposedAgreement>>,
     specs: SpecSource,
 ): BuiltAssemblyTemplate {
     const doc = resolveAuthoredClauseKeys(authored, specs) as {
@@ -889,26 +930,36 @@ export function slotsFromAuthoredAgreements(
         description?: string;
         faq?: AssemblyTemplate["faq"];
         assemblyClauses?: Record<Hex, Record<string, unknown>>;
-        agreements?: { id?: string; clauses?: Record<Hex, Record<string, unknown>> }[];
+        agreements?: { id?: string; agreement?: string; parentOrderHashes?: string[]; clauses?: unknown }[];
     };
     if (!Array.isArray(doc.agreements) || doc.agreements.length === 0) {
-        throw new Error("the authored assembly has no agreements");
+        throw new Error("the authored assembly has no order slots");
     }
     const mandatory = mandatorySpecsByScope(specs);
     const agreements: Record<Hex, ComposedAgreement> = {};
     const slots: TemplateSlot[] = doc.agreements.map((entry, i) => {
         const id = entry.id ?? `order-${i}`;
-        const composed: Record<Hex, Record<string, unknown>> = {};
-        const fills: Record<Hex, Record<string, unknown>> = {};
-        for (const [clauseKey, values] of Object.entries(entry.clauses ?? {}) as [Hex, Record<string, unknown>][]) {
-            const { parentOrderHashes, ...rest } = values ?? {};
-            composed[clauseKey] = rest;
-            if (Array.isArray(parentOrderHashes)) fills[clauseKey] = { parentOrderHashes: [...parentOrderHashes] };
+        if (typeof entry.agreement !== "string" || entry.agreement.length === 0) {
+            throw new Error(`${id} names no agreement — write the authored agreement's name as "agreement"`);
         }
-        const clauses = foldMandatoryClauses(composed, mandatory.agreement);
-        const agreementKey = agreementKeyOf({ clauses });
-        agreements[agreementKey] = { clauses };
-        return { id, agreementKey, clauses: fills };
+        if (entry.clauses !== undefined) {
+            throw new Error(`${id} writes clauses inline — compose them as an authored agreement and name it`);
+        }
+        const bound = agreementsByName[entry.agreement];
+        if (!bound) throw new Error(`${id} names agreement "${entry.agreement}", which is not among the authored agreements`);
+        const agreementKey = agreementKeyOf(bound);
+        assertNotReservedKey(agreementKey, `${id} agreementKey`);
+        const carried = new Set(Object.keys(bound.clauses).map((k) => k.toLowerCase()));
+        const missing = mandatory.agreement.filter((spec) => !carried.has(spec.clauseKey.toLowerCase()));
+        if (missing.length > 0) {
+            throw new Error(
+                `${id}: agreement "${entry.agreement}" lacks the live mandatory ` +
+                `${missing.map((spec) => clauseLabel(spec.clauseKey, spec)).join(", ")}`,
+            );
+        }
+        const parents = Array.isArray(entry.parentOrderHashes) ? [...entry.parentOrderHashes] : [];
+        agreements[agreementKey] = { clauses: bound.clauses };
+        return { id, agreementKey, clauses: slotTopologyFills(bound.clauses, parents, specs) };
     });
     return {
         template: {

@@ -1,0 +1,10 @@
+{
+    "clauses": {
+        "figaro-courier-process": {},
+        "figaro-geolocation": {},
+        "figaro-handoff": {},
+        "figaro-proximity-policy": {}
+    },
+    "name": "Courier delivery",
+    "summary": "A courier carries one order from the merchant to the buyer's door, the hand-off recorded at arrival."
+}

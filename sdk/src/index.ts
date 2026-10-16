@@ -243,7 +243,8 @@ export {
     sectionByField,
     sectionsByField,
     serializeAssemblyTemplate,
-    slotsFromAuthoredAgreements,
+    composeAuthoredAgreement,
+    assembleAuthored,
     specDeclaresField,
     specDeclaresContentField,
     specDeclaresDesignFill,
@@ -266,6 +267,7 @@ export type {
     SpecSource,
     TemplateOrderNode,
     BuiltAssemblyTemplate,
+    AuthoredAgreement,
 } from "./projection.js";
 
 // The ONE template → orders walk (+ the generic topology math under it)

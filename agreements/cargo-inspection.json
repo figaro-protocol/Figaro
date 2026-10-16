@@ -1,0 +1,8 @@
+{
+    "clauses": {
+        "figaro-acceptance-criteria": {},
+        "figaro-merchant-process": {}
+    },
+    "name": "Cargo inspection",
+    "summary": "An inspection of the consignment against the shipper's acceptance criteria."
+}

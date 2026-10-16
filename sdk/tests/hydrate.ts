@@ -3,9 +3,9 @@
  * (`agreements[].clauses` keyed by clause key, the topology clause carrying
  * its parents as `order-<j>` labels). Each authored agreement becomes a
  * registered agreement with the `parentOrderHashes` values lifted into its
- * order slot's own fill (the clause stays composed, with `{}`), exactly as
- * `slotsFromAuthoredAgreements` derives them — without the mandatory fold, so
- * a test's clause set is the one it wrote.
+ * order slot's own fill (the clause stays composed, with `{}`), as the seeding
+ * derives a reference assembly (`composeAuthoredAgreement`, `assembleAuthored`)
+ * — without the mandatory fold, so a test's clause set is the one it wrote.
  */
 import type { Hex } from "viem";
 import { agreementKeyOf, type ComposedAgreement, type HydratedAssembly, type TemplateSlot } from "../src/assembly.js";

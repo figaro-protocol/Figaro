@@ -4,22 +4,19 @@
  * the checkout walk from the order slot's registered agreement key and the
  * template's own composition root; no clause section carries it.
  */
-import { readFileSync } from "node:fs";
-import path from "node:path";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { agreementLeaves, computeProvenanceLeaf, templateCompositionHash } from "@figaro-protocol/sdk";
 import { planAssemblyOrders } from "@/lib/checkout/assemblyCheckout";
 import type { BoundAssembly } from "@/lib/member/useMemberBoundAssemblies";
-import { hydrateAuthored, primeClauseSpecs } from "./primeClauseSpecs";
+import { referenceAssembly, primeClauseSpecs } from "./primeClauseSpecs";
 
 vi.mock("@/lib/kernel/contracts", async (importOriginal) => {
     const actual = await importOriginal<typeof import("@/lib/kernel/contracts")>();
     return { ...actual, CONTRACTS: { ...actual.CONTRACTS, core: "0x0Dac9D673a37cEAfc220eb0B5646375A6Eb88cb5" } };
 });
 
-// The reference assembly as the seeding registers it: order slots derived,
-// each order slot's agreement beside the template.
-const authored = JSON.parse(readFileSync(path.resolve(process.cwd(), "../assemblies/pos.json"), "utf8"));
+// The reference assembly as the seeding registers it: built over the authored
+// agreements its order slots name, each order slot's agreement beside the template.
 const BUYER = "0x1111111111111111111111111111111111111111" as const;
 const SELLER = "0x2222222222222222222222222222222222222222" as const;
 const TOKEN = "0x3333333333333333333333333333333333333333" as const;
@@ -30,7 +27,7 @@ describe("assembly checkout — the provenance leaf", () => {
     });
 
     it("every realized order names its order slot's agreement key and the composition root as its provenance, in no clause section", async () => {
-        const hydratedAssembly = hydrateAuthored(authored);
+        const hydratedAssembly = referenceAssembly("pos.json");
         const template = hydratedAssembly.template;
         const assembly: BoundAssembly = {
             slug: "asm-test",

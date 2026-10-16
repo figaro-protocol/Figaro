@@ -5,19 +5,7 @@
     "agreements": [
         {
             "id": "order-0",
-            "clauses": {
-                "figaro-commerce": {},
-                "figaro-topology": {
-                    "parentOrderHashes": []
-                },
-                "figaro-modalities": {},
-                "figaro-schedule": {},
-                "figaro-geolocation": {},
-                "figaro-credential": {},
-                "figaro-data-terms": {
-                    "disclosure": "each-own"
-                }
-            }
+            "agreement": "aerial-survey-flight"
         }
     ]
 }

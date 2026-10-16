@@ -431,7 +431,8 @@ definition) and `RPGF_*` constant is a **root** export.
 | `tagAttestationUniverses` | root | The pure fold under `fetchAttestationRecords`: tag two address-filtered log streams and merge in block order. |
 | `serializeAssemblyTemplate` | root | The pinned template's canonical JSON beside its `compositionHash`. |
 | `slotClauses` | root | The clauses an order slot instantiates: its registered agreement's, with the order slot's own fills over them. |
-| `slotsFromAuthoredAgreements` | root | SEED-TIME only: a reference assembly file written by clause name → its registered agreements and the template of order slots binding them. |
+| `composeAuthoredAgreement` | root | SEED-TIME only: a written agreement file (`agreements/*.json`, clause names, the designer's fills) → the document the seeding pins and its key. |
+| `assembleAuthored` | root | SEED-TIME only: a written assembly (`assemblies/*.json`, order slots naming their agreements) over the composed written agreements → the template and each distinct agreement once. |
 | `templateComposedClauseKeys` | root | Every clause key a hydrated assembly composes, sorted — each must be live on `ClauseRegistry` for the design to check out. |
 | `templateCompositionHash` | root | The `compositionHash` `AssemblyRegistry` binds — the merkle root over the order slots and the assembly terms. |
 | `topologicalOrder` | root | Order ids so every node follows its parents; `throw` or degrade on a cycle. |
@@ -1567,7 +1568,7 @@ A reader verifies a fetched spec by hashing the BYTES it fetched:
 **Seed-time authoring: `resolveAuthoredClauseKeys(doc, specs)`.** A person
 writes an assembly template or a member document by clause NAME; a published
 document carries keys. `resolveAuthoredClauseKeys` rewrites your OWN
-file — `agreements[].clauses` and `assemblyClauses` keys in a template;
+file — the `clauses` keys in a written agreement, `assemblyClauses` keys in a template;
 `disclosurePolicy[].clauseId`, `assemblyBindings[].counterpartyBindings[].clauseId`
 (each becomes `clauseKey`) and `profileClauseValues` keys in a profile;
 `items[].clauseValues` keys and `items[].dataSold.clauseId` in a catalog — to
@@ -1925,12 +1926,15 @@ const clauses = slotClauses(assembly, assembly.template.agreements[i]);
 const { leaf, proof, slotContentHash } = buildSlotInclusionProof(assembly.template, i);
 ```
 
-`slotsFromAuthoredAgreements(authored, specs)` is the SEED-TIME derivation for
-a reference assembly file written by hand (`assemblies/*.json`, clause names, the topology
-carrying its parents): it resolves the names (`resolveAuthoredClauseKeys`),
-lifts the parents into each order slot, composes the topology `{}`, folds the
-live mandatory specs, and returns each DISTINCT agreement once beside the
-template. It never runs on a read path.
+`composeAuthoredAgreement(doc, specs)` and `assembleAuthored(doc, agreementsByName, specs)`
+are the SEED-TIME derivation for the reference set written by hand: an agreement file (`agreements/*.json`, clause names with the
+designer's fills) resolves its names (`resolveAuthoredClauseKeys`) and composes
+through the one composition rule (`composeOrderAgreement`: the scope check, the
+value-free rule, the mandatory fold) into the document the seeding pins and its
+key; an assembly file (`assemblies/*.json`, order slots naming their agreements
+and carrying their own `parentOrderHashes`) binds each named agreement's key
+and takes the topology parents as the slot's fill, returning each DISTINCT
+agreement once beside the template. Neither runs on a read path.
 
 ## From Adopted Assembly to Signed Agreement — the ONE walk
 

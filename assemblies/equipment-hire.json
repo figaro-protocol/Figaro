@@ -10,14 +10,7 @@
     "agreements": [
         {
             "id": "order-0",
-            "clauses": {
-                "figaro-commerce": {},
-                "figaro-topology": {
-                    "parentOrderHashes": []
-                },
-                "figaro-modalities": {},
-                "figaro-geolocation": {}
-            }
+            "agreement": "counter-sale"
         }
     ]
 }

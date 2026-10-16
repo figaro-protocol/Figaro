@@ -1,0 +1,12 @@
+{
+    "clauses": {
+        "figaro-acceptance-criteria": {},
+        "figaro-cargo": {},
+        "figaro-chain-of-custody": {},
+        "figaro-geolocation": {},
+        "figaro-incoterms": {},
+        "figaro-modalities": {}
+    },
+    "name": "Shipper consignment",
+    "summary": "The shipper's consignment: the cargo, its chain of custody, the delivery terms and what counts as accepted."
+}

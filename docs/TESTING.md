@@ -466,7 +466,7 @@ three hash checks and stops at the spec-binding anchor.
 ## Playwright — the project model (`playwright.config.ts`)
 
 `npm run test:e2e:devnet` (preflight → populate-test-data (clauses + two inline
-test-scaffolding templates + every reference assembly from `assemblies/*.json` +
+test-scaffolding templates + every reference assembly from `assemblies/*.json` over `agreements/*.json` +
 sellers; seeding is pre-population, never a test; the clauses and reference
 assemblies are already the deploy's genesis, so it skips them) → run) and
 `npm run test:e2e:mobile`.

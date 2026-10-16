@@ -17,7 +17,8 @@ import {
     computeClauseKey,
     resolveAuthoredClauseKeys,
     agreementKeyOf,
-    slotsFromAuthoredAgreements,
+    assembleAuthored,
+    composeAuthoredAgreement,
     type AssemblyTemplate,
     type ComposedAgreement,
     type Hex,
@@ -72,7 +73,7 @@ export function keyOf(name: string, version?: number): Hex {
 
 /** The specs in `clauses/` as the seeding's authored spec set — each with the
  *  key its canonical bytes hash to — for tests that load the maintainer's
- *  name-authored `assemblies/*.json` / `members/*.json`. */
+ *  name-authored `agreements/*.json` / `assemblies/*.json` / `members/*.json`. */
 export function authoredSpecSet(): { list(): { clauseKey: Hex; clauseId: string; version: number; spec: Record<string, unknown> }[] } {
     const specs = readdirSync(EXAMPLES_DIR)
         .filter((f) => f.endsWith(".json"))
@@ -90,21 +91,61 @@ export function resolveAuthored<T extends object>(doc: T): T {
     return resolveAuthoredClauseKeys(doc, authoredSpecSet());
 }
 
-/** A hydrated assembly from the AUTHORED shape a test writes
+/** The reference assemblies' authored agreements (`agreements/*.json`),
+ *  composed over the primed specs by name — what the seeding registers. */
+export function authoredAgreements(): Record<string, ComposedAgreement> {
+    const dir = path.resolve(process.cwd(), "../agreements");
+    const byName: Record<string, ComposedAgreement> = {};
+    for (const file of readdirSync(dir).filter((f) => f.endsWith(".json")).sort()) {
+        byName[file.replace(/\.json$/, "")] = composeAuthoredAgreement(JSON.parse(readFileSync(path.join(dir, file), "utf8")), specSource()).document;
+    }
+    return byName;
+}
+
+/** A reference assembly (`assemblies/<name>`) built exactly as the seeding
+ *  builds it: over the authored agreements its order slots name
+ *  (`assembleAuthored`), every registered agreement beside the template,
+ *  keyed by lowercased key, as a registry read hands them to checkout. */
+export function referenceAssembly(name: string): HydratedAssembly {
+    const authored = JSON.parse(readFileSync(path.resolve(process.cwd(), "../assemblies", name), "utf8")) as object;
+    const { template, agreements } = assembleAuthored(authored, authoredAgreements(), specSource());
+    const byKey: Record<Hex, ComposedAgreement> = {};
+    for (const [key, doc] of Object.entries(agreements)) byKey[key.toLowerCase() as Hex] = doc;
+    return { template, agreements: byKey };
+}
+
+/** A hydrated assembly from the INLINE shape a test writes
  *  (`agreements[].clauses` by clause key or name, the topology clause
  *  carrying its parents as `order-<j>` labels): each order slot's parents
  *  lifted into its own fill (the clause stays composed, with `{}`) and each
  *  order slot's agreement keyed — every registered agreement beside the
  *  template, keyed by lowercased key, as a registry read hands them to
- *  checkout. By default derived exactly as the seeding derives it
- *  (`slotsFromAuthoredAgreements` over the primed specs, the mandatory
- *  clauses folded — prime the specs first); `{ fold: false }` keys each
- *  authored clause set as written, for a test whose spec set carries no
+ *  checkout. By default each inline agreement composes as the seeding
+ *  composes an authored one (`composeAuthoredAgreement` over the primed
+ *  specs, the mandatory clauses folded — prime the specs first) and the
+ *  assembly builds over them (`assembleAuthored`); `{ fold: false }` keys
+ *  each inline clause set as written, for a test whose spec set carries no
  *  mandatory clause. */
 export function hydrateAuthored(authored: object, opts: { fold?: boolean } = {}): HydratedAssembly {
     const byKey: Record<Hex, ComposedAgreement> = {};
     if (opts.fold !== false) {
-        const { template, agreements } = slotsFromAuthoredAgreements(authored, specSource());
+        const { agreements: entries, ...rest } = authored as {
+            agreements: { id?: string; clauses: Record<string, Record<string, unknown>> }[];
+        } & Record<string, unknown>;
+        const byName: Record<string, ComposedAgreement> = {};
+        const slots = entries.map((entry, i) => {
+            const id = entry.id ?? `order-${i}`;
+            const clauses: Record<string, Record<string, unknown>> = {};
+            let parents: string[] | undefined;
+            for (const [key, values] of Object.entries(entry.clauses)) {
+                const { parentOrderHashes, ...composed } = values ?? {};
+                clauses[key] = composed;
+                if (Array.isArray(parentOrderHashes)) parents = [...parentOrderHashes] as string[];
+            }
+            byName[id] = composeAuthoredAgreement({ clauses }, specSource()).document;
+            return { id, agreement: id, ...(parents ? { parentOrderHashes: parents } : {}) };
+        });
+        const { template, agreements } = assembleAuthored({ ...rest, agreements: slots }, byName, specSource());
         for (const [key, doc] of Object.entries(agreements)) byKey[key.toLowerCase() as Hex] = doc;
         return { template, agreements: byKey };
     }

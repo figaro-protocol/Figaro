@@ -1,14 +1,16 @@
 /**
  * referenceAssemblies.test.ts — conformance for the user-onboarding set
- * (`assemblies/*.json`, the sibling of `clauses/`). Each reference assembly
- * is AUTHORED by clause name and derived at seed time into its order slots
- * (`slotsFromAuthoredAgreements` over `clauses/`: names resolved to keys,
- * parents lifted into each order slot, the mandatory clauses folded, each
- * order slot's agreement keyed); derived, it must parse, hash, resolve its
- * topology, compose only clauses that exist, carry the mandatory clauses on
- * every order, and carry the editorial
- * identity a stranger reads first. Affixed documents must reproduce their
- * committed keccak from the shipped bytes.
+ * (`agreements/*.json` and `assemblies/*.json`, the siblings of `clauses/`).
+ * Each authored agreement is written by clause name and composed at seed
+ * time (`composeAuthoredAgreement` over `clauses/`: names resolved to keys,
+ * the mandatory clauses folded, keyed); each reference assembly names the
+ * agreements its order slots bind and is built over them (`assembleAuthored`:
+ * the slot binds the agreement's key and carries its own parents). Built, it
+ * must parse, hash, resolve its topology, compose only clauses that exist,
+ * carry the mandatory clauses on every order, and carry the editorial
+ * identity a stranger reads first; every authored agreement must be bound
+ * by at least one assembly and carry its own words. Affixed documents must
+ * reproduce their committed keccak from the shipped bytes.
  */
 import { readdirSync, readFileSync, existsSync } from "node:fs";
 import path from "node:path";
@@ -16,12 +18,14 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { keccak256 } from "viem";
 import { canonicalize, planTemplateOrders, slotClauses, templateCompositionHash, type HydratedAssembly } from "@figaro-protocol/sdk";
 import { parseAssemblyTemplateJson } from "@/lib/designer/assemblyTemplateToDraft";
-import { authoredSpecSet, hydrateAuthored, primeClauseSpecs } from "./primeClauseSpecs";
+import { authoredAgreements, authoredSpecSet, primeClauseSpecs, referenceAssembly } from "./primeClauseSpecs";
 
 const ASSEMBLIES_DIR = path.resolve(process.cwd(), "../assemblies");
+const AGREEMENTS_DIR = path.resolve(process.cwd(), "../agreements");
 const DOCUMENTS_DIR = path.join(ASSEMBLIES_DIR, "documents");
 
 const referenceFiles = readdirSync(ASSEMBLIES_DIR).filter((f) => f.endsWith(".json")).sort();
+const agreementFiles = readdirSync(AGREEMENTS_DIR).filter((f) => f.endsWith(".json")).sort();
 const authored = authoredSpecSet().list();
 const registeredClauseKeys = new Set<string>(authored.map((a) => a.clauseKey));
 // Mandatory folds at the level its scope names:
@@ -47,11 +51,29 @@ describe("reference assemblies — the onboarding set", () => {
         }
     });
 
+    it("every authored agreement carries its own words and is bound by at least one reference assembly", () => {
+        const bound = new Set<string>();
+        for (const file of referenceFiles) {
+            const authored = JSON.parse(readFileSync(path.join(ASSEMBLIES_DIR, file), "utf8")) as { agreements: { agreement: string }[] };
+            for (const slot of authored.agreements) bound.add(slot.agreement);
+        }
+        expect(agreementFiles.length).toBeGreaterThan(0);
+        for (const file of agreementFiles) {
+            const doc = JSON.parse(readFileSync(path.join(AGREEMENTS_DIR, file), "utf8")) as { name?: string; summary?: string; clauses?: object };
+            expect((doc.name ?? "").trim().length, `${file} names itself`).toBeGreaterThan(0);
+            expect((doc.summary ?? "").trim().length, `${file} says what it is`).toBeGreaterThan(0);
+            expect(doc.clauses, `${file} composes clauses`).toBeTypeOf("object");
+            expect(bound.has(file.replace(/\.json$/, "")), `${file} is bound by a reference assembly`).toBe(true);
+        }
+        // The shared ones are shared: a name bound by two assemblies keys once.
+        const keys = new Map(Object.entries(authoredAgreements()).map(([name, doc]) => [name, doc.clauses]));
+        expect(keys.size).toBe(agreementFiles.length);
+    });
+
     for (const file of referenceFiles) {
         describe(file, () => {
-            const authoredRaw = readFileSync(path.join(ASSEMBLIES_DIR, file), "utf8");
-            // The seeding's derivation: names → keys over clauses/, order slots keyed.
-            const hydrated = (): HydratedAssembly => hydrateAuthored(JSON.parse(authoredRaw) as object);
+            // The seeding's build: the authored agreements composed by name over clauses/, the order slots keyed.
+            const hydrated = (): HydratedAssembly => referenceAssembly(file);
 
             it("parses as a sound AssemblyTemplate and its composition hashes", () => {
                 const { template, agreements } = hydrated();
