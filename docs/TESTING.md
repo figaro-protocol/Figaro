@@ -359,7 +359,7 @@ membership proof, and the provenance bytes and leaf for each slot's two keys
 into `test/fixtures/assembly-vectors.json` (`HARVEST_ASSEMBLY_VECTORS=1`
 regenerates); it also asserts a membership proof does not verify under
 another assembly's root. `test/core/attestation/MerkleParityTest.t.sol`
-(`test_everyAgreementKeyIsTheHashOfItsKeyBytes`,
+(`test_everyAgreementKeyIsTheRootOverItsClauseLeaves`,
 `test_everyAssemblyVectorOpensUnderItsRoot`) rebuilds them the way
 `UsageCounter` does; `prover/lib/tests/merkle_parity.rs`
 (`every_order_slot_opens_under_its_own_root_and_no_other`, the terms leaf on

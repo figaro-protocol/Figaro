@@ -183,8 +183,7 @@ export function canonicalize(value: unknown): string {
 }
 
 /** keccak256 over the canonical serialization — a clause spec's key when it
- *  is pinned in this form (`computeClauseKey`), and a registered agreement's
- *  key (`agreementKeyOf`, over the `{ clauses }` subset). */
+ *  is pinned in this form (`computeClauseKey`). */
 export function canonicalContentHash(value: unknown): Hex {
     return keccak256(toHex(canonicalize(value)));
 }

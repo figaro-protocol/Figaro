@@ -68,6 +68,11 @@ interface Props {
     boundAgreementKey?: `0x${string}`;
     /** Bind a registered agreement to this order slot, or unbind (`null`). */
     onBindAgreement?: (agreementKey: `0x${string}` | null) => void;
+    /** Register this order's composed agreement on its own — pin, stake and
+     *  register it on `AgreementRegistry` now, without publishing an
+     *  assembly — and bind the order slot to the registered key. Resolves to
+     *  the key; rejects with the reason the registration did not happen. */
+    onRegisterAgreement?: () => Promise<`0x${string}`>;
 }
 
 export function AgreementDrawer({
@@ -82,6 +87,7 @@ export function AgreementDrawer({
     onSetClauseField,
     boundAgreementKey,
     onBindAgreement,
+    onRegisterAgreement,
 }: Props) {
     const [openSection, setOpenSection] = useState<string | null>(null);
     const [minimized, setMinimized] = useState(false);
@@ -331,6 +337,8 @@ export function AgreementDrawer({
                         <RegisteredAgreementsPanel
                             boundAgreementKey={boundAgreementKey}
                             onBindAgreement={onBindAgreement}
+                            onRegisterAgreement={onRegisterAgreement}
+                            composedClauseCount={Object.keys(selectedClauseValues ?? {}).length}
                             readOnly={readOnly}
                         />
                     )}
@@ -362,13 +370,20 @@ export function AgreementDrawer({
 function RegisteredAgreementsPanel({
     boundAgreementKey,
     onBindAgreement,
+    onRegisterAgreement,
+    composedClauseCount,
     readOnly,
 }: {
     boundAgreementKey?: `0x${string}`;
     onBindAgreement?: (agreementKey: `0x${string}` | null) => void;
+    onRegisterAgreement?: () => Promise<`0x${string}`>;
+    /** How many clauses the order composes — the register action needs one. */
+    composedClauseCount: number;
     readOnly: boolean;
 }) {
-    const { data: liveAgreements } = usePublishedAgreements(undefined);
+    const [registering, setRegistering] = useState(false);
+    const [registerError, setRegisterError] = useState<string | null>(null);
+    const { data: liveAgreements, refetch: refetchAgreements } = usePublishedAgreements(undefined);
     // Re-renders as each document is read and verified (the labels read the
     // session cache).
     useComposedAgreementsVersion();
@@ -416,10 +431,40 @@ function RegisteredAgreementsPanel({
                         )}
                     </div>
                 ) : (
-                    <p className="text-xs text-ink-body" data-testid="drawer-composed-agreement">
-                        A new agreement, composed from the clauses on the registry tab. Publishing
-                        registers it on the <code className="font-mono">AgreementRegistry</code> first.
-                    </p>
+                    <div className="space-y-2">
+                        <p className="text-xs text-ink-body" data-testid="drawer-composed-agreement">
+                            A new agreement, composed from the clauses on the registry tab. Publishing
+                            registers it on the <code className="font-mono">AgreementRegistry</code> first,
+                            or register it now on its own: one stake, reusable in any assembly.
+                        </p>
+                        {!readOnly && onRegisterAgreement && (
+                            <button
+                                type="button"
+                                disabled={registering || composedClauseCount === 0}
+                                onClick={() => {
+                                    setRegistering(true);
+                                    setRegisterError(null);
+                                    onRegisterAgreement()
+                                        // The list is the live registry: re-read it so the
+                                        // registration just made is offered at once.
+                                        .then(() => refetchAgreements())
+                                        .catch((err: unknown) => {
+                                            setRegisterError(err instanceof Error ? err.message : String(err));
+                                        })
+                                        .finally(() => setRegistering(false));
+                                }}
+                                data-testid="drawer-register-agreement"
+                                className="text-xs px-2 py-1 rounded border border-default bg-paper text-ink-body hover:border-default-strong disabled:opacity-50"
+                            >
+                                {registering ? "Registering\u2026" : "Register this agreement on its own"}
+                            </button>
+                        )}
+                        {registerError && (
+                            <p className="text-xs text-danger-fg" role="alert" data-testid="drawer-register-agreement-error">
+                                {registerError}
+                            </p>
+                        )}
+                    </div>
                 )}
             </div>
             {!readOnly && (

@@ -311,7 +311,7 @@ export const ASSEMBLY_REGISTRY_ABI = parseAbi([
 
 // ── AgreementRegistry ABI ─────────────────────────────────────────────────
 // AssemblyRegistry's shape, keyed by `agreementKey` (`agreementKeyOf`, the
-// canonical hash of the clauses composed for one order slot). Parallel to the
+// merkle root over the clauses composed for one order slot). Parallel to the
 // clause and assembly registries: no edge to either.
 
 export const AGREEMENT_REGISTRY_ABI = parseAbi([

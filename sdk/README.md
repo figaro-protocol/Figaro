@@ -304,7 +304,9 @@ definition) and `RPGF_*` constant is a **root** export.
 | `anchorAgreement` | root | An agreement as `Anchored<Agreement>` when its merkle root is the commitment's `agreementHash`; null otherwise. |
 | `anchorAttestationContent` | root | Attestation bytes as `Anchored<Hex>` when they hash to the event's `contentRef`; null otherwise. |
 | `anchorClauseSpec` | root | The fetched spec BYTES (or exact text), parsed, as `Anchored<unknown>` when `keccak256(bytes)` is the clause key; null otherwise. |
-| `agreementKeyOf` | root | A registered agreement's key — the canonical hash of its `{ clauses }` (editorial prose excluded); the key `AgreementRegistry` binds. |
+| `agreementKeyOf` | root | A registered agreement's key — the merkle root over one leaf per composed clause (the clause key and the designer's fills; editorial prose excluded); the key `AgreementRegistry` binds. |
+| `agreementClauseLeaves` | root | The sorted leaves of a registered agreement's tree, one per composed clause. |
+| `buildClauseInclusionProof` | root | A composed clause's membership proof under `agreementKeyOf`: its leaf, its sorted-pair proof, and the hash of the designer's fills for it. |
 | `anchorComposedAgreement` | root | A fetched registered agreement as `Anchored<ComposedAgreement>` when `agreementKeyOf` of it is the key; null (absence) otherwise. |
 | `anchorTemplate` | root | A fetched template as `Anchored<AssemblyTemplate>` when its merkle root over the order slots and terms is `AssemblyRegistry`'s `compositionHash`; null otherwise. |
 | `assertAgreementSignable` | root | The ONE pre-signature thrower: every section conforms to its spec, and the terms equal the struct. |
@@ -317,6 +319,7 @@ definition) and `RPGF_*` constant is a **root** export.
 | `buildOrderAgreement` | root | Build one order's agreement document and its merkle tree from its clause map. |
 | `buildQuoteRequest` | `/agent` | Build an UNSIGNED RFQ draft, priced at the buyer's ceiling. |
 | `buildAssemblyTemplate` | root | Design time: the template of order slots plus the newly composed agreements to register; binds a registered agreement as is or composes a new one with the mandatory clauses folded in. |
+| `composeOrderAgreement` | root | ONE order slot's registered agreement from the clauses a designer selected for it — the scope check, the value-free rule, the mandatory fold — and its `agreementKey`; `buildAssemblyTemplate` composes every new order slot through it, and a designer registers one on its own through it. |
 | `buildProvenanceInclusionProof` | root | Merkle proof that the agreement's provenance leaf sits under a signed `agreementHash`. |
 | `buildSlotInclusionProof` | root | An order slot's membership proof under `compositionHash`, with its `slotContentHash` — what the assembly reward claim carries. |
 | `buildSectionInclusionProof` | root | Merkle proof that one clause section sits under a signed `agreementHash`. |
@@ -1854,7 +1857,8 @@ Three design-time objects are kept apart, each in its own registry family. A
 bytes). A **registered agreement** is the clauses composed for ONE order slot,
 value-free, with the designer's fills — the topology clause composed with
 `{}`, since who follows whom is the assembly's fact — keyed by
-`agreementKeyOf(composed)` = the canonical hash of its `{ clauses }`
+`agreementKeyOf(composed)` = the merkle root over one leaf per composed clause
+(`buildClauseInclusionProof` proves a clause's membership)
 (`AgreementRegistry`, `AGREEMENT_REGISTRY_ABI`). An **assembly** is ordered
 order slots, each binding a registered agreement by key and carrying the
 order slot's own fills (today the topology's `{ parentOrderHashes:
@@ -2293,7 +2297,7 @@ function setMechanismClause(bytes32 clauseKey) external
 ```
 
 The three registries key by content: `clauseKey` is the hash of the pinned spec
-bytes, `agreementKey` the hash of an agreement's `{ clauses }`,
+bytes, `agreementKey` the merkle root over an agreement's composed clauses,
 `compositionHash` the merkle root of the composition; none takes a name or
 a version. The registering calls are `payable`; `msg.value` must equal
 `registrationDeposit()` exactly (`setMechanismClause` is not — it takes no deposit).

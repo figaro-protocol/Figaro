@@ -212,15 +212,33 @@ fn proof_of(v: &serde_json::Value) -> Vec<B256> {
 }
 
 #[test]
-fn every_agreement_key_is_the_hash_of_its_key_bytes() {
+fn every_agreement_key_is_the_root_over_its_clause_leaves() {
     let fx = assembly_fixture();
-    for agreement in fx["agreements"].as_array().unwrap() {
-        assert_eq!(
-            keccak256(agreement["keyBytes"].as_str().unwrap().as_bytes()),
-            b256(&agreement["agreementKey"]),
-            "{}",
-            agreement["label"]
-        );
+    let agreements = fx["agreements"].as_array().unwrap();
+    let keys: Vec<B256> = agreements.iter().map(|a| b256(&a["agreementKey"])).collect();
+    for (i, agreement) in agreements.iter().enumerate() {
+        let key = keys[i];
+        let clauses = agreement["clauses"].as_array().unwrap();
+        assert!(!clauses.is_empty(), "{}: an agreement composes at least one clause", agreement["label"]);
+        for clause in clauses {
+            let fills = clause["fillsBytes"].as_str().unwrap();
+            assert_eq!(keccak256(fills.as_bytes()), b256(&clause["fillsHash"]), "fillsHash = keccak256(fillsBytes)");
+            let leaf = leaf_under(b256(&clause["clauseKey"]), fills);
+            assert_eq!(leaf, b256(&clause["leaf"]), "the rebuilt clause leaf is the SDK's");
+            let proof = proof_of(&clause["membershipProof"]);
+            assert!(verify_inclusion(&proof, key, leaf), "the clause proof opens under the agreement key");
+            for (j, other) in keys.iter().enumerate() {
+                if j != i {
+                    assert!(
+                        !verify_inclusion(&proof, *other, leaf),
+                        "the clause proof opens under no other agreement's key"
+                    );
+                }
+            }
+        }
+        if clauses.len() == 1 {
+            assert_eq!(key, b256(&clauses[0]["leaf"]), "a one-clause agreement's key is its leaf");
+        }
     }
 }
 

@@ -195,8 +195,11 @@ anchoring under a stake.
 **`src/build/registries/AgreementRegistry.sol`** — Permissionless agreement
 anchoring under a stake: the registered agreement, the reusable unit a
 designer composes an assembly from.
-- Identity is the composition: `agreementKey = canonicalContentHash({ clauses })`
-  (the SDK's `agreementKeyOf(doc)`), where `clauses` maps each clause key to
+- Identity is the composition: `agreementKey` is the merkle root over one leaf
+  per composed clause, `keccak256(keccak256(clauseKey ‖ keccak256(fills)))`
+  under the agreement format's leaf convention (the SDK's `agreementKeyOf(doc)`;
+  a clause's membership is proved by `buildClauseInclusionProof`), where
+  `clauses` maps each clause key to
   the designer's fills for ONE order slot — value-free, the topology clause
   composed with `{}` because who follows whom belongs to the order slot. The
   pinned document is the composed agreement (`ComposedAgreement { name?,

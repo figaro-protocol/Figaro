@@ -699,6 +699,48 @@ export interface BuiltAssemblyTemplate {
     agreements: Record<Hex, ComposedAgreement>;
 }
 
+/** Compose ONE order slot's agreement from the clauses a designer selected
+ *  for it: the scope check (an assembly-scoped clause never composes on an
+ *  order; a composed key's spec must be loaded), the value-free rule (only
+ *  `block.design.fills` values survive), and the mandatory fold (every
+ *  agreement-scoped mandatory spec the source lists folds in). The result is
+ *  the registered agreement's document and its key — what `AgreementRegistry`
+ *  takes, whether the designer registers it on its own or an assembly's
+ *  publish registers it for an order slot. `buildAssemblyTemplate` composes
+ *  every newly composed order slot through this one function. */
+export function composeOrderAgreement(args: {
+    /** clauseKey → the designer's composed values for this order. */
+    clauses: Readonly<Record<Hex, Record<string, unknown>>>;
+    specs: SpecSource;
+}): { composed: ComposedAgreement; agreementKey: Hex } {
+    const { clauses: composedClauses, specs } = args;
+    for (const clauseKey of Object.keys(composedClauses) as Hex[]) {
+        const spec = specs.get(clauseKey);
+        if (!spec) {
+            throw new Error(`clause ${clauseKey} is composed on an order but its spec is not loaded`);
+        }
+        if (specIsAssemblyScoped(spec)) {
+            throw new Error(
+                `${clauseLabel(clauseKey, spec)} declares design.scope "assembly" — compose it once at the assembly level, not on an order`,
+            );
+        }
+    }
+    const mandatory = mandatorySpecsByScope(specs);
+    // Design time is STRUCTURAL: the agreement keeps the designer's clause
+    // SELECTION, but a clause's field values are transaction particulars —
+    // filled at checkout, never composed. Only clauses declaring designer
+    // fills (block.design.fills — the designer's tailoring, consent's
+    // affixed documents) keep their composed values; everything else
+    // strips to `{}` here, so agreements are value-free by construction.
+    const selection: Record<Hex, Record<string, unknown>> = {};
+    for (const [clauseKey, values] of Object.entries(composedClauses) as [Hex, Record<string, unknown>][]) {
+        selection[clauseKey] = designFillValues(specs.get(clauseKey), values);
+    }
+    const clauses = foldMandatoryClauses(selection, mandatory.agreement);
+    const composed: ComposedAgreement = { clauses };
+    return { composed, agreementKey: agreementKeyOf(composed) };
+}
+
 /** Build the assembly template from the design's orders. Each canvas order
  *  becomes one order slot binding a registered agreement: EITHER a
  *  registered agreement bound as is (`registeredByOrderId`), OR the clauses
@@ -801,20 +843,15 @@ export function buildAssemblyTemplate(args: {
             }
             return { id, agreementKey, clauses: slotTopologyFills(bound.clauses, parents, specs) };
         }
-        // Design time is STRUCTURAL: the agreement keeps the designer's clause
-        // SELECTION, but a clause's field values are transaction particulars —
-        // filled at checkout, never composed. Only clauses declaring designer
-        // fills (block.design.fills — the designer's tailoring, consent's
-        // affixed documents) keep their composed values; everything else
-        // strips to `{}` here, so agreements are value-free by construction.
-        const composed = clausesByOrderId[order.orderHash] ?? {};
-        const selection: Record<Hex, Record<string, unknown>> = {};
-        for (const [clauseKey, values] of Object.entries(composed) as [Hex, Record<string, unknown>][]) {
-            selection[clauseKey] = designFillValues(specs.get(clauseKey), values);
-        }
-        const clauses = foldMandatoryClauses(selection, mandatory.agreement);
-        const agreementKey = agreementKeyOf({ clauses });
-        agreements[agreementKey] = { clauses };
+        // The one composition rule (`composeOrderAgreement`): the designer's
+        // clause SELECTION, value-free but for design fills, the mandatory
+        // clauses folded in.
+        const { composed: composedAgreement, agreementKey } = composeOrderAgreement({
+            clauses: clausesByOrderId[order.orderHash] ?? {},
+            specs,
+        });
+        const { clauses } = composedAgreement;
+        agreements[agreementKey] = composedAgreement;
         return { id, agreementKey, clauses: slotTopologyFills(clauses, parents, specs) };
     });
     return {

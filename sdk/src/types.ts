@@ -198,7 +198,7 @@ export interface AssemblyWithdrawnEvent {
 }
 
 /** AgreementRegistry `AgreementRegistered`. Identity IS `agreementKey`
- *  (`agreementKeyOf`, the canonical hash of the clauses composed for one
+ *  (`agreementKeyOf`, the merkle root over the clauses composed for one
  *  order slot). */
 export interface AgreementRegisteredEvent {
     agreementKey: Hex;

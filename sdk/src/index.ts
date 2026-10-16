@@ -236,6 +236,7 @@ export {
 export {
     assertAgreementSignable,
     buildAssemblyTemplate,
+    composeOrderAgreement,
     buildOrderAgreement,
     parseProjectionHints,
     publicForm,
@@ -319,6 +320,8 @@ export {
     templateParentOrderHashes,
     templateComposedClauseKeys,
     agreementKeyOf,
+    agreementClauseLeaves,
+    buildClauseInclusionProof,
     slotAgreement,
     slotClauses,
     slotSectionBytes,

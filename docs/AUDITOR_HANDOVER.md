@@ -73,7 +73,9 @@ ones this document uses; `docs/LEXICON.md` defines every other.
   order, every field filled; its merkle root is what the commitment carries.
   A **registered agreement** is the clauses composed for one order slot with
   the designer's fills, value-free, registered in `AgreementRegistry` under
-  its **agreementKey** (the canonical content hash of its `clauses`). An
+  its **agreementKey** (the merkle root over one leaf per composed clause, the
+  clause key and the designer's fills, under the agreement format's leaf
+  convention). An
   **assembly** is registered agreements composed into a reusable design, its
   `compositionHash` the merkle root over its order slots, registered in
   `AssemblyRegistry`. A **designer** is the wallet that registers a clause, a
@@ -872,7 +874,7 @@ read it first.
   with its own bytes only (`test_aSlotLeafWithAnotherSlotsBytesFails`).
   `test/fixtures/assembly-vectors.json` carries three agreements and three
   assemblies (keys, slot leaves, terms leaf, roots, membership proofs and
-  provenance bytes); `test_everyAgreementKeyIsTheHashOfItsKeyBytes` and
+  provenance bytes); `test_everyAgreementKeyIsTheRootOverItsClauseLeaves` and
   `test_everyAssemblyVectorOpensUnderItsRoot` (`MerkleParityTest`) and the
   `merkle_parity.rs` and `parity.rs` vector tests hold the counter and the
   guest to it.

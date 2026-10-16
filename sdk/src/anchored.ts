@@ -72,8 +72,8 @@ export function anchorClauseSpec(fetched: Uint8Array | string, clauseKey: Hex | 
 }
 
 /** A registered agreement's pinned document, verified against its
- *  `AgreementRegistry` key: `agreementKeyOf` of the parsed document (its
- *  `{ clauses }` subset — the editorial fields are outside the key) equals
+ *  `AgreementRegistry` key: `agreementKeyOf` of the parsed document (the root
+ *  over its composed clauses — the editorial fields are outside the key) equals
  *  the key, exactly as `anchorTemplate` recomputes the composition root.
  *  Takes the fetched bytes or text (parsed with prototype-pollution keys
  *  stripped) or an already-parsed value. A failed parse, a document with no

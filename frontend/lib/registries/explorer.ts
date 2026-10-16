@@ -164,7 +164,7 @@ function compareRows(a: ExplorerRow, b: ExplorerRow, sort: RegistrySort): number
  *   re-canonicalized — must reproduce it.
  *
  *   `agreement-key` — registered agreements. `AgreementRegistry`'s key is the
- *   canonical content hash of the document's `{ clauses }` alone
+ *   merkle root over the document's composed clauses alone
  *   (`agreementKeyOf`); the designer's editorial fields ride in the same
  *   document outside the key.
  *

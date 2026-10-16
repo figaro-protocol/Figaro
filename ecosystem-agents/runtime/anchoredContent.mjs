@@ -65,8 +65,8 @@ export async function fetchAnchoredClauseSpec(clause, options = {}) {
 
 /**
  * A registered agreement's document, verified against its agreement key:
- * `agreementKeyOf` of the parsed document (its `{ clauses }` subset — the
- * editorial fields are outside the key) must equal the key. Read from the
+ * `agreementKeyOf` of the parsed document (the root over its composed
+ * clauses — the editorial fields are outside the key) must equal the key. Read from the
  * binding whatever its stake: a binding is never cleared, so an assembly
  * composed from a withdrawn agreement still hydrates.
  *

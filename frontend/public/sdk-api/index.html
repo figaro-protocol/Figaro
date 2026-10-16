@@ -311,7 +311,17 @@ definition) and <code>RPGF_*</code> constant is a <strong>root</strong> export.<
 <tr>
 <td><code>agreementKeyOf</code></td>
 <td>root</td>
-<td>A registered agreement's key — the canonical hash of its <code>{ clauses }</code> (editorial prose excluded); the key <code>AgreementRegistry</code> binds.</td>
+<td>A registered agreement's key — the merkle root over one leaf per composed clause (the clause key and the designer's fills; editorial prose excluded); the key <code>AgreementRegistry</code> binds.</td>
+</tr>
+<tr>
+<td><code>agreementClauseLeaves</code></td>
+<td>root</td>
+<td>The sorted leaves of a registered agreement's tree, one per composed clause.</td>
+</tr>
+<tr>
+<td><code>buildClauseInclusionProof</code></td>
+<td>root</td>
+<td>A composed clause's membership proof under <code>agreementKeyOf</code>: its leaf, its sorted-pair proof, and the hash of the designer's fills for it.</td>
 </tr>
 <tr>
 <td><code>anchorComposedAgreement</code></td>
@@ -372,6 +382,11 @@ definition) and <code>RPGF_*</code> constant is a <strong>root</strong> export.<
 <td><code>buildAssemblyTemplate</code></td>
 <td>root</td>
 <td>Design time: the template of order slots plus the newly composed agreements to register; binds a registered agreement as is or composes a new one with the mandatory clauses folded in.</td>
+</tr>
+<tr>
+<td><code>composeOrderAgreement</code></td>
+<td>root</td>
+<td>ONE order slot's registered agreement from the clauses a designer selected for it — the scope check, the value-free rule, the mandatory fold — and its <code>agreementKey</code>; <code>buildAssemblyTemplate</code> composes every new order slot through it, and a designer registers one on its own through it.</td>
 </tr>
 <tr>
 <td><code>buildProvenanceInclusionProof</code></td>
@@ -1664,7 +1679,8 @@ clause specs.</p>
 bytes). A <strong>registered agreement</strong> is the clauses composed for ONE order slot,
 value-free, with the designer's fills — the topology clause composed with
 <code>{}</code>, since who follows whom is the assembly's fact — keyed by
-<code>agreementKeyOf(composed)</code> = the canonical hash of its <code>{ clauses }</code>
+<code>agreementKeyOf(composed)</code> = the merkle root over one leaf per composed clause
+(<code>buildClauseInclusionProof</code> proves a clause's membership)
 (<code>AgreementRegistry</code>, <code>AGREEMENT_REGISTRY_ABI</code>). An <strong>assembly</strong> is ordered
 order slots, each binding a registered agreement by key and carrying the
 order slot's own fills (today the topology's <code>{ parentOrderHashes: [&quot;order-&lt;j&gt;&quot;, …] }</code>), plus the assembly-scoped terms; its <code>compositionHash</code> is
@@ -1915,7 +1931,7 @@ function setMechanismClause(bytes32 clauseKey) external
 </code><button type="button">Copy</button></pre>
 
 <p>The three registries key by content: <code>clauseKey</code> is the hash of the pinned spec
-bytes, <code>agreementKey</code> the hash of an agreement's <code>{ clauses }</code>,
+bytes, <code>agreementKey</code> the merkle root over an agreement's composed clauses,
 <code>compositionHash</code> the merkle root of the composition; none takes a name or
 a version. The registering calls are <code>payable</code>; <code>msg.value</code> must equal
 <code>registrationDeposit()</code> exactly (<code>setMechanismClause</code> is not — it takes no deposit).</p>

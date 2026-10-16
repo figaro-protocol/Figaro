@@ -74,9 +74,12 @@ from. Its document, `ComposedAgreement`, is `{ name?, summary?, description?,
 clauses }`, where `clauses` maps each clause key to the designer's fills —
 value-free, and the topology clause composed with `{}`, because who follows
 whom belongs to the order slot; one registered agreement can therefore sit in
-any order slot of any assembly. Its key is `agreementKey = canonicalContentHash({
-clauses })` (`agreementKeyOf(doc)` in the SDK); the editorial fields are
-excluded from it. The designer pins the document and registers the key with
+any order slot of any assembly. Its key is the merkle root over one leaf per
+composed clause, each leaf `keccak256(keccak256(clauseKey ‖ keccak256(fills)))`
+under the agreement format's own leaf convention (`agreementKeyOf(doc)` in the
+SDK; a one-clause agreement's key is its leaf), so a clause's membership in a
+registered agreement is a merkle proof (`buildClauseInclusionProof`); the
+editorial fields are excluded from it. The designer pins the document and registers the key with
 `AgreementRegistry.registerAgreement(agreementKey, contentURI)` under a stake.
 The design-time `agreementKey` is never the runtime `agreementHash`: the first
 names the value-free composition, the second is the merkle root of one filled

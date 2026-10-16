@@ -1,14 +1,16 @@
 /**
  * @figaro-protocol/sdk — Assembly and agreement identity
  *
- * Two design-time registry families key by content. `AgreementRegistry`
- * keys a registered agreement by `agreementKeyOf(composed)` — the canonical
- * hash of the clauses composed for one order slot. `AssemblyRegistry` keys
- * an assembly by `compositionHash` — the merkle ROOT over its order slots
- * (each a registered agreement key and the order slot's own fills) and its
- * assembly-scoped terms,
- * built with the agreement format's own leaf convention, so membership of an
- * agreement in an assembly is a merkle proof (`buildSlotInclusionProof`).
+ * Two design-time registry families key by content, each a merkle ROOT built
+ * with the agreement format's own leaf convention. `AgreementRegistry` keys
+ * a registered agreement by `agreementKeyOf(composed)` — the root over one
+ * leaf per composed clause (the clause key and the designer's fills), so
+ * membership of a clause in a registered agreement is a merkle proof
+ * (`buildClauseInclusionProof`). `AssemblyRegistry` keys an assembly by
+ * `compositionHash` — the root over its order slots (each a registered
+ * agreement key and the order slot's own fills) and its assembly-scoped
+ * terms, so membership of an agreement in an assembly is a merkle proof
+ * (`buildSlotInclusionProof`).
  * This module is both families' key derivation — pure functions over the
  * documents, no chain access — and the one authoring resolver that turns the
  * clause NAMES a human writes in a source document into the clause keys a
@@ -21,7 +23,6 @@ import { isBytes32Hex } from "./types.js";
 import {
     buildLeafInclusionProof,
     buildMerkleRoot,
-    canonicalContentHash,
     canonicalize,
     computeSectionLeaf,
     PROVENANCE_LEAF_KEY,
@@ -47,12 +48,51 @@ export interface ComposedAgreement {
     clauses: Record<Hex, Record<string, unknown>>;
 }
 
-/** A registered agreement's key — `canonicalContentHash({ clauses })`, the
+/** One composed clause's leaf — the agreement format's leaf convention with
+ *  the clause key as the key and the canonical bytes of the designer's fills
+ *  as the section data: `keccak256(keccak256(clauseKey ‖ keccak256(fills)))`.
+ *  Throws for a reserved format key, which no clause can be. */
+function composedClauseLeaf(clauseKey: Hex, fills: Record<string, unknown>): Hex {
+    assertNotReservedKey(clauseKey, "composed clause key");
+    return computeSectionLeaf({ clause: clauseKey, data: fills });
+}
+
+/** Every leaf of a registered agreement's tree, sorted as the tree is built:
+ *  one per composed clause. */
+export function agreementClauseLeaves(doc: ComposedAgreement): Hex[] {
+    const keys = Object.keys(doc.clauses).map((k) => k.toLowerCase());
+    const dupes = keys.filter((k, i) => keys.indexOf(k) !== i);
+    if (dupes.length > 0) {
+        throw new Error(`Duplicate clause keys in composed agreement: ${[...new Set(dupes)].join(", ")}`);
+    }
+    return sortLeaves(Object.entries(doc.clauses).map(([clauseKey, fills]) => composedClauseLeaf(clauseKey as Hex, fills)));
+}
+
+/** A registered agreement's key — the merkle root over its composed clause
+ *  leaves (`agreementClauseLeaves`), built by the agreement format's own tree
+ *  (`buildMerkleRoot`): a one-clause agreement's key is its leaf. This is the
  *  key `AgreementRegistry.registerAgreement` takes. Editorial prose is
  *  excluded, so renaming never forks the key. A reader recomputes it from a
- *  fetched document (`anchorComposedAgreement`). */
+ *  fetched document (`anchorComposedAgreement`); a clause's membership in it
+ *  is a proof under it (`buildClauseInclusionProof`). */
 export function agreementKeyOf(doc: ComposedAgreement): Hex {
-    return canonicalContentHash({ clauses: doc.clauses });
+    return buildMerkleRoot(agreementClauseLeaves(doc));
+}
+
+/** The membership proof of one composed clause under `agreementKeyOf`: its
+ *  leaf, its sorted-pair proof, and `fillsHash` = `keccak256` of the canonical
+ *  bytes of the designer's fills for it. Throws for a clause the agreement
+ *  does not compose. The clause key is compared case-insensitively. */
+export function buildClauseInclusionProof(
+    doc: ComposedAgreement,
+    clauseKey: Hex,
+): { leaf: Hex; proof: Hex[]; fillsHash: Hex } {
+    const entry = Object.entries(doc.clauses).find(([k]) => k.toLowerCase() === clauseKey.toLowerCase());
+    if (!entry) throw new Error(`clause ${clauseKey} is not composed in this agreement`);
+    const [key, fills] = entry;
+    const fillsHash = keccak256(toHex(canonicalize(fills)));
+    const { leaf, proof } = buildLeafInclusionProof(agreementClauseLeaves(doc), composedClauseLeaf(key as Hex, fills));
+    return { leaf, proof, fillsHash };
 }
 
 // ── The template document (the pinned assembly, hydrated off-chain) ──────────

@@ -51,6 +51,7 @@ import {
     type DesignSnapshot,
 } from "@/lib/designer/syntheticDesignStore";
 import { AgreementDrawer } from "./AgreementDrawer";
+import { usePublishAgreement } from "@/lib/designer/publishAssembly";
 import { AssemblyTermsPanel } from "./AssemblyTermsPanel";
 import { CompositionAssist } from "./CompositionAssist";
 import { CompositionIdentity } from "./CompositionIdentity";
@@ -329,6 +330,28 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
             return next;
         });
     }, []);
+
+    /** Register one order's composed agreement on its own (the drawer's
+     *  action): the order's clauses compose through the SDK's one rule, pin,
+     *  stake and register on `AgreementRegistry`; then the order slot binds
+     *  the registered key and its composed clauses clear — a slot binds OR
+     *  composes, never both. */
+    const { publishAgreement } = usePublishAgreement();
+    type ComposedClauses = Parameters<typeof publishAgreement>[0]["clauses"];
+    const registerOrderAgreement = useCallback(async (orderId: string): Promise<`0x${string}`> => {
+        const index = orders.findIndex((o) => o.orderHash === orderId);
+        const { agreementKey } = await publishAgreement({
+            clauses: (clausesByOrderId[orderId] ?? {}) as ComposedClauses,
+            ...(name ? { name: `${name} · order ${index + 1}` } : {}),
+        });
+        setClausesByOrderId((prev) => {
+            const next = { ...prev };
+            delete next[orderId];
+            return next;
+        });
+        bindAgreement(orderId, agreementKey);
+        return agreementKey;
+    }, [orders, clausesByOrderId, name, publishAgreement, bindAgreement]);
 
     const setClauseField = useCallback(
         (orderId: string, clauseKey: string, field: string, value: unknown) => {
@@ -842,6 +865,9 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
                     onBindAgreement={(agreementKey) => {
                         if (selectedOrderId) bindAgreement(selectedOrderId, agreementKey);
                     }}
+                    onRegisterAgreement={
+                        selectedOrderId ? () => registerOrderAgreement(selectedOrderId) : undefined
+                    }
                     onSetClauseField={(clauseKey, field, value) => {
                         // No clause selection spawns a node — the designer draws nodes
                         // (grievance #3). There is no "delivery" activation; delivery is

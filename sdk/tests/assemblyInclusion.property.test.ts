@@ -1,13 +1,16 @@
 /**
  * Property tests for the composition tree and the agreement key: every order
  * slot's membership proof verifies under its own assembly's root and under
- * no other; the agreement key ignores editorial prose and moves with any
- * clause value; the two-key provenance bytes decode back to their keys.
+ * no other; every composed clause's proof verifies under its own agreement
+ * key and under no other; the agreement key ignores editorial prose and
+ * moves with any clause value; the two-key provenance bytes decode back to
+ * their keys.
  */
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import {
     agreementKeyOf,
+    buildClauseInclusionProof,
     buildSlotInclusionProof,
     templateCompositionHash,
 } from "../src/assembly.js";
@@ -43,6 +46,27 @@ describe("the composition tree", () => {
 });
 
 describe("the agreement key", () => {
+    it("every composed clause's membership proof verifies under the agreement key", () => {
+        fc.assert(fc.property(composedAgreementArb, (doc) => {
+            const key = agreementKeyOf(doc);
+            for (const clauseKey of Object.keys(doc.clauses) as `0x${string}`[]) {
+                const { leaf, proof } = buildClauseInclusionProof(doc, clauseKey);
+                expect(verifyInclusionProof(key, leaf, proof)).toBe(true);
+            }
+        }));
+    });
+
+    it("a clause's proof does not verify under a different agreement's key", () => {
+        fc.assert(fc.property(composedAgreementArb, composedAgreementArb, (a, b) => {
+            const keyA = agreementKeyOf(a);
+            const keyB = agreementKeyOf(b);
+            fc.pre(keyA !== keyB);
+            const [first] = Object.keys(a.clauses) as `0x${string}`[];
+            const { leaf, proof } = buildClauseInclusionProof(a, first);
+            expect(verifyInclusionProof(keyB, leaf, proof)).toBe(false);
+        }));
+    });
+
     it("ignores the editorial fields", () => {
         fc.assert(fc.property(composedAgreementArb, fc.string(), (doc, description) => {
             expect(agreementKeyOf({ ...doc, description, name: `${doc.name ?? ""}!` })).toBe(agreementKeyOf({ clauses: doc.clauses }));

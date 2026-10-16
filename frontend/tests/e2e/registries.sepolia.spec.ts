@@ -37,6 +37,15 @@ test.describe('PUBLIC REGISTRIES — the explorer shows exactly what the chain h
         const agreementKeys = new Set(agreementEvents.map((e) => String((e.args as { agreementKey?: string }).agreementKey ?? '').toLowerCase()).filter(Boolean));
         const assemblyEvents = await scanContractEvents(publicClient, { address: config.assemblyRegistry as `0x${string}`, abi: ASSEMBLY_REGISTRY_ABI, eventName: 'AssemblyRegistered' });
         const slugs = new Set(assemblyEvents.map((e) => deriveAssemblySlug((e.args as { compositionHash: `0x${string}` }).compositionHash)));
+        // A registration whose stake was withdrawn is retired: its binding stays
+        // readable (a row in the explorer, never cleared), but nothing about its
+        // content is asserted here — on the public network a retired
+        // registration may predate the key format in force, so its document
+        // no longer keys to it and an assembly over it no longer hydrates.
+        const withdrawnAgreements = new Set((await scanContractEvents(publicClient, { address: config.agreementRegistry as `0x${string}`, abi: AGREEMENT_REGISTRY_ABI, eventName: 'DepositWithdrawn' }))
+            .map((e) => String((e.args as { agreementKey?: string }).agreementKey ?? '').toLowerCase()).filter(Boolean));
+        const withdrawnSlugs = new Set((await scanContractEvents(publicClient, { address: config.assemblyRegistry as `0x${string}`, abi: ASSEMBLY_REGISTRY_ABI, eventName: 'DepositWithdrawn' }))
+            .map((e) => deriveAssemblySlug((e.args as { compositionHash: `0x${string}` }).compositionHash)));
         const memberEvents = await scanContractEvents(publicClient, { address: config.membersRegistry as `0x${string}`, abi: MEMBERS_REGISTRY_ABI, eventName: 'MemberRegistered' });
         const members = new Set(memberEvents.map((e) => String((e.args as { member?: string }).member ?? '').toLowerCase()).filter(Boolean));
         expect(clauseKeys.size, 'the registry holds clauses').toBeGreaterThan(0);
@@ -65,6 +74,7 @@ test.describe('PUBLIC REGISTRIES — the explorer shows exactly what the chain h
         for (const key of agreementKeys) {
             const read = await readRegisteredAgreementDocument(key as `0x${string}`);
             expect(read, `${key} is bound on the AgreementRegistry`).not.toBeNull();
+            if (withdrawnAgreements.has(key)) continue; // retired: the binding stands, its content is not held to the key
             expect(agreementKeyOf(read!.document).toLowerCase(), `the document pinned for ${key} keys to it`).toBe(key);
             agreementBindings.set(key, read!.binding.registeredBy);
         }
@@ -86,6 +96,7 @@ test.describe('PUBLIC REGISTRIES — the explorer shows exactly what the chain h
             .toEqual([...slugs].sort());
         await expect(page.getByTestId('content-resolving')).toHaveCount(0, { timeout: RESOLVE_TIMEOUT });
         for (const slug of slugs) {
+            if (withdrawnSlugs.has(slug)) continue; // retired: the row stands, its template is not held to resolve
             const name = (await page.getByTestId(`assembly-view-${slug}`).textContent())?.trim();
             expect(name, `${slug} is named from its template, not by its slug`).not.toBe(slug);
         }

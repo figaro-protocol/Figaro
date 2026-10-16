@@ -14,9 +14,11 @@ import {
     templateCompositionHash,
     templateLeaves,
     templateParentOrderHashes,
+    agreementClauseLeaves,
+    buildClauseInclusionProof,
 } from "../src/assembly.js";
 import type { AssemblyTemplate } from "../src/assembly.js";
-import { PROVENANCE_LEAF_KEY, canonicalize, computeSectionLeaf, verifyInclusionProof } from "../src/agreement.js";
+import { PROVENANCE_LEAF_KEY, buildMerkleRoot, canonicalize, computeSectionLeaf, sortLeaves, verifyInclusionProof } from "../src/agreement.js";
 import { slotsFromAuthoredAgreements } from "../src/projection.js";
 import { hydrateAuthored } from "./hydrate.js";
 import { keyOf, rawSpecOf, specSourceOf, viewOf } from "./specFixtures.js";
@@ -47,9 +49,35 @@ describe("templateComposedClauseKeys", () => {
 describe("the registered agreement key", () => {
     const composed = { clauses: { [keyOf("figaro-commerce")]: {}, [keyOf("figaro-topology")]: {} } };
 
-    it("is the canonical hash of the { clauses } subset, editorial prose excluded", () => {
-        expect(agreementKeyOf(composed)).toBe(keccak256(toHex(canonicalize({ clauses: composed.clauses }))));
+    it("is the merkle root over one leaf per composed clause, editorial prose excluded", () => {
+        const leaves = Object.entries(composed.clauses).map(([clauseKey, fills]) =>
+            computeSectionLeaf({ clause: clauseKey as Hex, data: fills }),
+        );
+        expect(agreementKeyOf(composed)).toBe(buildMerkleRoot(sortLeaves(leaves)));
+        expect(agreementClauseLeaves(composed)).toEqual(sortLeaves(leaves));
         expect(agreementKeyOf({ ...composed, name: "A", summary: "B", description: "C" })).toBe(agreementKeyOf(composed));
+    });
+
+    it("a one-clause agreement's key is its clause's leaf", () => {
+        const one = { clauses: { [keyOf("figaro-commerce")]: { x: 1 } } };
+        expect(agreementKeyOf(one)).toBe(computeSectionLeaf({ clause: keyOf("figaro-commerce"), data: { x: 1 } }));
+    });
+
+    it("every composed clause opens under the key, and under no other agreement's key", () => {
+        for (const clauseKey of Object.keys(composed.clauses) as Hex[]) {
+            const { leaf, proof, fillsHash } = buildClauseInclusionProof(composed, clauseKey);
+            expect(fillsHash).toBe(keccak256(toHex(canonicalize(composed.clauses[clauseKey]))));
+            expect(leaf).toBe(computeSectionLeaf({ clause: clauseKey, dataHash: fillsHash }));
+            expect(verifyInclusionProof(agreementKeyOf(composed), leaf, proof)).toBe(true);
+            expect(verifyInclusionProof(agreementKeyOf({ clauses: { [clauseKey]: {} } }), leaf, proof)).toBe(false);
+        }
+        expect(() => buildClauseInclusionProof(composed, keyOf("figaro-handoff"))).toThrow(/not composed/);
+    });
+
+    it("refuses a duplicate clause key and a reserved format key", () => {
+        const k = keyOf("figaro-commerce");
+        expect(() => agreementKeyOf({ clauses: { [k]: {}, [k.toUpperCase().replace("0X", "0x") as Hex]: {} } })).toThrow(/Duplicate/);
+        expect(() => agreementKeyOf({ clauses: { [ASSEMBLY_TERMS_LEAF_KEY]: {} } })).toThrow(/reserved/);
     });
 
     it("moves with any clause or value", () => {

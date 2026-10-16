@@ -12,6 +12,13 @@
  *
  *   REACTION (UI): the publish receipt names the agreement it registered.
  *
+ *   A second test registers an agreement ON ITS OWN from the drawer — no
+ *   assembly published: ACTION (UI) compose a probe clause on the root
+ *   order and press "Register this agreement on its own"; REACTION (UI) the
+ *   order slot now binds the registered key and the agreements tab lists it;
+ *   CHAIN FACT the registry binds that key to the publishing wallet, and the
+ *   pinned document hashes to it (the mandatory clauses folded in).
+ *
  *   CHAIN FACTS, read out of band: the anchored template's root slot binds
  *   the registered agreement's key and its sub slot a key the registry now
  *   binds to the publishing wallet; a process walked from the hydrated
@@ -28,6 +35,7 @@ import {
     USAGE_KIND_AGREEMENT,
     USAGE_KIND_ASSEMBLY,
     USAGE_KIND_CLAUSE,
+    agreementKeyOf,
     calculateBonds,
     generateSalt,
     reconstructOrdersFromTemplate,
@@ -48,9 +56,11 @@ import {
     readAgreementBinding,
     readLocalDeploymentConfig,
     referenceAssemblyBuilt,
+    readRegisteredAgreementDocument,
+    waitForConnected,
 } from './devnet-helpers';
 import { makeProbeSpec, registerProbeClause } from './probeAssembly';
-import { ANVIL_KEYS } from '../anvilAccounts';
+import { ANVIL_ACCOUNTS, ANVIL_KEYS } from '../anvilAccounts';
 
 // The buyer is anvil[0] (the minter); the seller is the data-market member
 // A wallet (36) — registered if absent, never re-profiled, so the overlap is
@@ -231,5 +241,56 @@ test.describe('AGREEMENTS — bind a registered agreement, compose a new one, pu
             .toEqual([registeredKey.toLowerCase(), subSlot!.agreementKey.toLowerCase()].sort());
         expect(keysOf(USAGE_KIND_ASSEMBLY), 'the assembly is recorded under the assembly kind')
             .toEqual([anchored!.compositionHash.toLowerCase()]);
+    });
+    test('a designer registers an agreement on its own from the drawer, and any assembly can bind it', async ({ page }) => {
+        page.on('dialog', (dialog) => { void dialog.accept().catch(() => {}); });
+        await primeRegisteredClauseSpecs();
+        const nonce = `${Date.now()}`;
+        const probeKey = await registerProbeClause(makeProbeSpec(`figaro-probe-alone-${nonce}`, `Alone probe ${nonce}`));
+
+        // ── ACTION: compose the probe clause on the root order, then register
+        //    the agreement on its own — no assembly is published. ──
+        await page.goto('/assemblies/designer/new?fresh=1&e2e=devnet', { waitUntil: 'domcontentloaded' });
+        await page.getByTestId('designer-canvas-toolbar').waitFor({ timeout: 30000 });
+        await page.getByTestId('designer-saved-hint').waitFor({ timeout: 15000 });
+        await waitForConnected(page);
+        const orderNodes = page.locator('[data-testid^="order-node-"]:not([data-testid$="-delete"])');
+        await expect(orderNodes).toHaveCount(1, { timeout: 10000 });
+        await orderNodes.first().click();
+        await page.getByTestId('agreement-drawer').waitFor({ state: 'visible', timeout: 10000 });
+        // One order on the canvas: the drawer is already on it (the per-order
+        // tab row renders only with two or more orders).
+        await page.getByTestId('drawer-tab-registry').click();
+        await page.getByTestId('drawer-section-registry').waitFor({ state: 'visible', timeout: 5000 });
+        await page.getByTestId(`drawer-registry-clause-${probeKey}`).check();
+        await page.getByTestId('designer-name-input').fill(`Alone ${nonce}`);
+
+        await page.getByTestId('drawer-tab-agreements').click();
+        await page.getByTestId('drawer-section-agreements').waitFor({ state: 'visible', timeout: 5000 });
+        const register = page.getByTestId('drawer-register-agreement');
+        await expect(register, 'the composed order offers to register its agreement on its own').toBeEnabled({ timeout: 10000 });
+        await register.click();
+
+        // ── REACTION: the order slot binds the registered key. ──
+        const boundKey = page.getByTestId('drawer-bound-agreement-key');
+        await expect(boundKey, 'the order slot binds the agreement it just registered').toBeVisible({ timeout: 60000 });
+        const agreementKey = (await boundKey.getAttribute('title')) as Hex;
+        expect(agreementKey).toMatch(/^0x[0-9a-f]{64}$/i);
+        await expect(page.getByTestId('drawer-register-agreement-error')).toHaveCount(0);
+        await expect(page.getByTestId(`drawer-agreement-${agreementKey}`), 'the live registry list now offers it to any assembly')
+            .toBeVisible({ timeout: 30000 });
+
+        // ── CHAIN FACTS: the registry binds the key to the publishing wallet,
+        //    and the pinned document hashes to it with the mandatory fold. ──
+        const read = await readRegisteredAgreementDocument(agreementKey);
+        expect(read, 'AgreementRegistry binds the key').not.toBeNull();
+        expect(read!.binding.registeredBy.toLowerCase()).toBe(ANVIL_ACCOUNTS[0].toLowerCase());
+        expect(read!.binding.stakeWithdrawn).toBe(false);
+        expect(agreementKeyOf(read!.document).toLowerCase(), 'the pinned document keys to the registry key').toBe(agreementKey.toLowerCase());
+        const composedKeys = Object.keys(read!.document.clauses).map((k) => k.toLowerCase());
+        expect(composedKeys, 'the probe clause is composed').toContain(probeKey.toLowerCase());
+        expect(composedKeys, 'the mandatory commerce clause folded in').toContain(keyOf('figaro-commerce').toLowerCase());
+        expect(composedKeys, 'the mandatory topology clause folded in').toContain(keyOf('figaro-topology').toLowerCase());
+        expect(read!.document.name, 'the document carries the designer\'s name for it').toBe(`Alone ${nonce} · order 1`);
     });
 });

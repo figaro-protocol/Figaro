@@ -15,6 +15,7 @@ import {
     agreementKeyOf,
     assertAgreementSignable,
     buildAssemblyTemplate,
+    composeOrderAgreement,
     buildOrderAgreement,
     canonicalize,
     computeAgreementHash,
@@ -586,5 +587,33 @@ describe("buildOrderAgreement — every section reads the spec its key names", (
         const { agreement } = buildOrderAgreement(BUYER, SELLER, { [fake.clauseKey]: { applicableLaw: "US-NY" } }, specs);
         expect(agreement.sections[0].clause).toBe(fake.clauseKey);
         expect(agreement.sections[0].data?.language).toBe("xx");
+    });
+});
+
+describe("composeOrderAgreement — one order slot's registered agreement, on its own", () => {
+    it("keys exactly what buildAssemblyTemplate keys for the same composed clauses", () => {
+        const clauses = { [keyOf("figaro-geolocation")]: { ignored: "transaction particular" } };
+        const alone = composeOrderAgreement({ clauses, specs: SPECS });
+        const built = buildAssemblyTemplate({
+            orders: [{ orderHash: "synthetic-root", parentOrderHashes: [] }],
+            clausesByOrderId: { "synthetic-root": clauses },
+            specs: SPECS,
+        });
+        expect(built.template.agreements[0].agreementKey).toBe(alone.agreementKey);
+        expect(built.agreements[alone.agreementKey]).toEqual(alone.composed);
+    });
+
+    it("folds every agreement-scoped mandatory clause and keeps the composition value-free", () => {
+        const { composed } = composeOrderAgreement({ clauses: { [keyOf("figaro-geolocation")]: { origin: "u4pru" } }, specs: SPECS });
+        expect(Object.keys(composed.clauses)).toContain(keyOf("figaro-commerce"));
+        expect(Object.keys(composed.clauses)).toContain(keyOf("figaro-topology"));
+        expect(composed.clauses[keyOf("figaro-geolocation")]).toEqual({});
+    });
+
+    it("refuses an assembly-scoped clause and a clause whose spec is not loaded", () => {
+        expect(() => composeOrderAgreement({ clauses: { [keyOf("figaro-applicable-law")]: {} }, specs: SPECS }))
+            .toThrow(/design\.scope "assembly"/);
+        expect(() => composeOrderAgreement({ clauses: { [`0x${"ab".repeat(32)}`]: {} }, specs: SPECS }))
+            .toThrow(/spec is not loaded/);
     });
 });

@@ -6,7 +6,7 @@ Nouns and their definitions. One name per thing.
 
 **agreement** — The clauses composed for one order, every field filled: the terms of the contract every trade is, and the parties' document. Its merkle root is what the commitment carries. Filled at checkout from a registered agreement; never the composed agreement itself, which holds no values.
 
-**agreement key** — The hash that names a composed agreement: the canonical content hash of the clauses it composes and the designer's fills, value-free; a registered agreement is registered under it. A design-time key, never the merkle root an order's commitment carries.
+**agreement key** — The hash that names a composed agreement: the merkle root over one leaf per clause it composes, each leaf the clause key and the designer's fills, value-free, so a clause's membership in the agreement is a merkle proof; a registered agreement is registered under it. A design-time key, never the merkle root an order's commitment carries.
 
 **arbitration forum** — An outside body a designer composes into an assembly to rule on disputes about a process, using the process's data as evidence. A forum rules; the buyer resolves.
 

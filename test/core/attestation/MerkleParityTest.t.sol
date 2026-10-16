@@ -170,19 +170,45 @@ contract MerkleParityTest is Test {
         return keccak256(bytes.concat(keccak256(abi.encodePacked(key, sectionHash))));
     }
 
-    /// Every registered agreement's key is the hash of its key bytes, the
-    /// canonical JSON of its `clauses`.
-    function test_everyAgreementKeyIsTheHashOfItsKeyBytes() public view {
+    /// Every registered agreement's key is the merkle root over one leaf per
+    /// composed clause — the clause key and the hash of the designer's fills,
+    /// under the one leaf convention — and every clause's frozen membership
+    /// proof opens under the key with the library the counter calls.
+    function test_everyAgreementKeyIsTheRootOverItsClauseLeaves() public view {
         string memory json = vm.readFile(ASSEMBLY_FIXTURE);
         uint256 n = _count(json, ".agreements");
         assertGt(n, 0, "fixture carries agreements");
         for (uint256 a = 0; a < n; a++) {
             string memory ab = string.concat(".agreements[", vm.toString(a), "]");
-            assertEq(
-                keccak256(bytes(vm.parseJsonString(json, string.concat(ab, ".keyBytes")))),
-                vm.parseJsonBytes32(json, string.concat(ab, ".agreementKey")),
-                "agreementKey = keccak256(keyBytes)"
-            );
+            bytes32 key = vm.parseJsonBytes32(json, string.concat(ab, ".agreementKey"));
+            uint256 clauses = _count(json, string.concat(ab, ".clauses"));
+            assertGt(clauses, 0, "an agreement composes at least one clause");
+            bytes32[] memory leaves = new bytes32[](clauses);
+            for (uint256 c = 0; c < clauses; c++) {
+                string memory cb = string.concat(ab, ".clauses[", vm.toString(c), "]");
+                bytes32 fillsHash = keccak256(bytes(vm.parseJsonString(json, string.concat(cb, ".fillsBytes"))));
+                assertEq(
+                    fillsHash,
+                    vm.parseJsonBytes32(json, string.concat(cb, ".fillsHash")),
+                    "fillsHash = keccak256(fillsBytes)"
+                );
+                bytes32 clauseKey = vm.parseJsonBytes32(json, string.concat(cb, ".clauseKey"));
+                leaves[c] = _leafOf(clauseKey, fillsHash);
+                assertEq(
+                    leaves[c],
+                    vm.parseJsonBytes32(json, string.concat(cb, ".leaf")),
+                    "the rebuilt clause leaf is the SDK's"
+                );
+                bytes32[] memory proof = vm.parseJsonBytes32Array(json, string.concat(cb, ".membershipProof"));
+                assertTrue(
+                    MerkleProof.verify(proof, key, leaves[c]), "the frozen clause proof opens under the agreement key"
+                );
+                assertFalse(
+                    MerkleProof.verify(proof, key, _leafOf(clauseKey ^ bytes32(uint256(1)), fillsHash)),
+                    "a tampered clause key does not open"
+                );
+            }
+            assertEq(AgreementTestHelper.rootFor(leaves), key, "the root over every clause leaf is the agreementKey");
         }
     }
 

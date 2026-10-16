@@ -49,17 +49,16 @@
         },
         {
             "label": "two-sections-and-a-design",
-            "agreementHash": "0x936ed2ce067b05573f474d59e71c6eec8017427d359249e57cd91d0f6c6f02b6",
+            "agreementHash": "0xc4b3bea138afa3b03f5baa5ea34c59f013f76246acab86c42f1c33e45995ffe8",
             "sectionCount": 2,
             "provenance": {
                 "leafKey": "0x26dc18a2251a8f4629ada6df88b7c98553e011c08682d28ce5bb51a441227dc6",
-                "agreementKey": "0xbb3c9da739fcfd48102f1d1cec1a9534ed7c492f0522bbc963fe07058adc7555",
-                "compositionHash": "0x39e28370449706ac735f207566a4761906cf3dc8b9f7203a350204385003646e",
-                "sectionData": "{\"agreementKey\":\"0xbb3c9da739fcfd48102f1d1cec1a9534ed7c492f0522bbc963fe07058adc7555\",\"compositionHash\":\"0x39e28370449706ac735f207566a4761906cf3dc8b9f7203a350204385003646e\"}",
-                "leaf": "0x35406631847ae82a30b9446b5385b58a1f89a3c62c0991784fa2d65139fdd6ce",
+                "agreementKey": "0x9f5abdd07a94decfaac002ba4237cfc02b50307ce3bae12e5c23b70de294b08a",
+                "compositionHash": "0xda4448979192ed5345e6c16eb93f511eb24ab2ad960ddfd155d64fdf1cef960f",
+                "sectionData": "{\"agreementKey\":\"0x9f5abdd07a94decfaac002ba4237cfc02b50307ce3bae12e5c23b70de294b08a\",\"compositionHash\":\"0xda4448979192ed5345e6c16eb93f511eb24ab2ad960ddfd155d64fdf1cef960f\"}",
+                "leaf": "0xf38540eb4af855ea2510acdddfb2e29a79663fee6b142e0fda6a7c79d7b4149b",
                 "proof": [
-                    "0x6836b6f83db97392813611ffd18d4157096175e3f3ad3fb4e4fe836c9ef120e9",
-                    "0xc9a5eee4948d8b3af7c99eb27e95efd07a528cb73eed25dc70be9fe03b935a92"
+                    "0xff096ba87d03488f56080c7cfc49123acec5af8ab419b967789d0474f8674124"
                 ]
             },
             "sections": [
@@ -68,7 +67,8 @@
                     "sectionData": "{\"currency\":\"0x0000000000000000000000000000000000000000\",\"payment\":\"7\"}",
                     "leaf": "0xc9a5eee4948d8b3af7c99eb27e95efd07a528cb73eed25dc70be9fe03b935a92",
                     "proof": [
-                        "0x8cc2d53b4306057a56fddb4127ccac2a175dd90629220b184ba49b31d9736767"
+                        "0x6836b6f83db97392813611ffd18d4157096175e3f3ad3fb4e4fe836c9ef120e9",
+                        "0xf38540eb4af855ea2510acdddfb2e29a79663fee6b142e0fda6a7c79d7b4149b"
                     ]
                 },
                 {
@@ -76,8 +76,8 @@
                     "sectionData": "{\"parentOrderHashes\":[]}",
                     "leaf": "0x6836b6f83db97392813611ffd18d4157096175e3f3ad3fb4e4fe836c9ef120e9",
                     "proof": [
-                        "0x35406631847ae82a30b9446b5385b58a1f89a3c62c0991784fa2d65139fdd6ce",
-                        "0xc9a5eee4948d8b3af7c99eb27e95efd07a528cb73eed25dc70be9fe03b935a92"
+                        "0xc9a5eee4948d8b3af7c99eb27e95efd07a528cb73eed25dc70be9fe03b935a92",
+                        "0xf38540eb4af855ea2510acdddfb2e29a79663fee6b142e0fda6a7c79d7b4149b"
                     ]
                 }
             ]

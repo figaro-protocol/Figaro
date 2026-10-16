@@ -192,7 +192,11 @@ The Designer is a DAG editor — assembly designers start blank or fork an exist
   `AgreementRegistry` registration, labeled by its document's name with the key
   shown, bind/unbind; a withdrawn one stays hydratable for the assemblies already
   composed from it but is not offered), or the clause tabs compose a new
-  agreement for that order slot. `DesignSnapshot.registeredByOrderId` holds the
+  agreement for that order slot, and "Register this agreement on its own" pins,
+  stakes and registers that composed agreement now (`usePublishAgreement` →
+  `registerComposedAgreement`, the same path an assembly's publish takes per
+  order slot) with no assembly published, then binds the order slot to the
+  registered key. `DesignSnapshot.registeredByOrderId` holds the
   bound key per order slot. Publish pins and registers each new agreement
   (`registerAgreement`, one stake per distinct new agreement, a receipt row per
   registration) before the assembly. The review lists each order slot's

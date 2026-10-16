@@ -37,8 +37,9 @@ import type { Abi } from "viem";
 import { publishTail } from "@/lib/protocol/publishTail";
 import { DEFAULT_IPFS_SERVICE } from "@/lib/shared/ipfsService";
 import type { DesignSnapshot } from "@/lib/designer/syntheticDesignStore";
-import { AGREEMENT_REGISTRY_ABI, canonicalize, serializeAssemblyTemplate, type ComposedAgreement } from "@figaro-protocol/sdk";
+import { AGREEMENT_REGISTRY_ABI, canonicalize, composeOrderAgreement, serializeAssemblyTemplate, type ComposedAgreement } from "@figaro-protocol/sdk";
 import { snapshotToAssemblyTemplate } from "@/lib/designer/draftToAssemblyTemplate";
+import { liveSpecSource } from "@/lib/shared/clauseSpecSource";
 import { deriveAssemblySlug } from "@/lib/shared/assemblyTemplate";
 import { hexEqual } from "@/lib/shared/evm";
 import { maxOrdersResolvablePerProcess } from "@/lib/shared/chainGasCeilings";
@@ -53,6 +54,100 @@ import {
     translatePublishRevert,
     type PublishOutcome,
 } from "@/lib/protocol/useAssemblyRegistry";
+
+/** The client a registration needs: the stake read, the simulation and the receipt. */
+type RegistrationClient = Parameters<typeof publishTail>[0]["client"] & {
+    readContract(args: { address: `0x${string}`; abi: Abi; functionName: string }): Promise<unknown>;
+};
+
+export interface RegisteredAgreementOutcome {
+    agreementKey: `0x${string}`;
+    /** The registration's transaction and pinned document, or null when the
+     *  registry already bound the key (first write wins; nothing was sent). */
+    hash: `0x${string}` | null;
+    ipfsURI: string | null;
+}
+
+/**
+ * Pin ONE composed agreement and register it on `AgreementRegistry` under its
+ * key with the registry's stake — the one registration path, whether a
+ * designer registers an agreement on its own from the drawer or an assembly's
+ * publish registers each order slot's new agreement. A key the registry
+ * already binds is skipped and reported as such: the same clauses always key
+ * to one registration. Every check (the pin, the simulation) passes before
+ * the wallet opens; the write waits for a `success` receipt.
+ */
+export async function registerComposedAgreement(args: {
+    client: RegistrationClient;
+    writeContractAsync: Parameters<typeof publishTail>[0]["writeContractAsync"];
+    address: `0x${string}`;
+    doc: ComposedAgreement;
+    agreementKey: `0x${string}`;
+    ipfs?: Pick<typeof DEFAULT_IPFS_SERVICE, "publishJSON">;
+    readBinding?: typeof readAgreementBinding;
+}): Promise<RegisteredAgreementOutcome> {
+    const { client, writeContractAsync, address, doc, agreementKey } = args;
+    const ipfs = args.ipfs ?? DEFAULT_IPFS_SERVICE;
+    const readBinding = args.readBinding ?? readAgreementBinding;
+    const agreementRegistry = getAgreementRegistry();
+    if (!agreementRegistry) {
+        throw new Error("AgreementRegistry address not configured (NEXT_PUBLIC_AGREEMENT_REGISTRY).");
+    }
+    if (await readBinding(agreementKey, client as never)) {
+        return { agreementKey, hash: null, ipfsURI: null };
+    }
+    const agreementDeposit = (await client.readContract({
+        address: agreementRegistry,
+        abi: AGREEMENT_REGISTRY_ABI as Abi,
+        functionName: "registrationDeposit",
+    })) as bigint;
+    // The pinned document carries the designer's words beside the clauses;
+    // the key is over the clauses alone.
+    const pinned = await ipfs.publishJSON(JSON.parse(canonicalize(doc)));
+    const hash = await publishTail({
+        client,
+        writeContractAsync,
+        address: agreementRegistry,
+        abi: AGREEMENT_REGISTRY_ABI as Abi,
+        functionName: "registerAgreement",
+        args: [agreementKey, pinned.uri],
+        value: agreementDeposit,
+        account: address,
+        translateRevert: (err) => translateAgreementRegisterRevert(err, agreementKey),
+        failureMessage: "The agreement registration was not created.",
+    });
+    return { agreementKey, hash, ipfsURI: pinned.uri };
+}
+
+/**
+ * Register ONE order's composed agreement on its own, from the drawer: the
+ * clauses the designer selected for the order compose through the SDK's one
+ * composition rule (`composeOrderAgreement` — the mandatory fold, value-free
+ * but for design fills, the scope check), then `registerComposedAgreement`.
+ * The registered key is what the order slot then binds, and what any other
+ * assembly's drawer offers from the live registry.
+ */
+export function usePublishAgreement() {
+    const client = usePublicClient();
+    const { address } = useAccount();
+    const { writeContractAsync, isPending } = useWriteContract();
+
+    async function publishAgreement(args: {
+        clauses: Readonly<Record<`0x${string}`, Record<string, unknown>>>;
+        name?: string;
+    }): Promise<RegisteredAgreementOutcome> {
+        if (!client) throw new Error("No public client available to read the registration stake.");
+        if (!address) throw new Error("Connect a wallet before registering an agreement.");
+        if (Object.keys(args.clauses).length === 0) {
+            throw new Error("Compose at least one clause on this order before registering its agreement.");
+        }
+        const { composed, agreementKey } = composeOrderAgreement({ clauses: args.clauses, specs: liveSpecSource() });
+        const doc: ComposedAgreement = { ...(args.name ? { name: args.name } : {}), ...composed };
+        return registerComposedAgreement({ client: client as never, writeContractAsync, address, doc, agreementKey });
+    }
+
+    return { publishAgreement, isPending };
+}
 
 export function usePublishAssembly() {
     const client = usePublicClient();
