@@ -26,7 +26,7 @@ import {
     A2aChannel, makeA2aOfferResponder,
 } from "@figaro-protocol/sdk/agent";
 import {
-    anchorAssembly, computeDeadline, hydrateAssembly, parseProjectionHints, readChainTimestamp, slotClauses,
+    anchorAssembly, computeDeadline, hydrateAssembly, parseProjectionHints, readChainTimestamp, agreementClauses,
 } from "@figaro-protocol/sdk";
 import { parseClauseSpec } from "@figaro-protocol/sdk/clauses";
 
@@ -112,13 +112,13 @@ let chosen = null, assembly = null, fewest = Infinity;
 for (const a of ctx.getAssemblies()) {
     const h = await hydrate(a);
     if (!h || h.assembly.agreements.length !== 1) continue;
-    const n = Object.keys(slotClauses(h, h.assembly.agreements[0])).length;
+    const n = Object.keys(agreementClauses(h, h.assembly.agreements[0])).length;
     if (n < fewest) { chosen = a; assembly = h; fewest = n; }
 }
 check("discovered a single-order seed assembly", !!chosen);
 if (!chosen) { server.close(); process.exit(1); }
 
-const commerceClauseId = Object.keys(slotClauses(assembly, assembly.assembly.agreements[0]))
+const commerceClauseId = Object.keys(agreementClauses(assembly, assembly.assembly.agreements[0]))
     .find((cid) => (specs.get(cid)?.fields ?? []).some((f) => f.name === "lineItems")) ?? null;
 check("located the commerce clause by its declared field", !!commerceClauseId);
 

@@ -19,7 +19,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 import { FigaroContext, originateChain, makeSellerOfferHandler, InProcessChannel } from "@figaro-protocol/sdk/agent";
 import {
-    anchorAssembly, computeDeadline, hydrateAssembly, parseProjectionHints, readChainTimestamp, slotClauses,
+    anchorAssembly, computeDeadline, hydrateAssembly, parseProjectionHints, readChainTimestamp, agreementClauses,
 } from "@figaro-protocol/sdk";
 import { parseClauseSpec } from "@figaro-protocol/sdk/clauses";
 
@@ -92,15 +92,15 @@ let chosen = null, assembly = null, fewest = Infinity;
 for (const a of ctx.getAssemblies()) {
     const h = await hydrate(a);
     if (!h || h.assembly.agreements.length !== 3) continue;
-    const n = h.assembly.agreements.reduce((sum, s) => sum + Object.keys(slotClauses(h, s)).length, 0);
+    const n = h.assembly.agreements.reduce((sum, s) => sum + Object.keys(agreementClauses(h, s)).length, 0);
     if (n < fewest) { chosen = a; assembly = h; fewest = n; }
 }
 check("discovered the 3-order seed chain", !!assembly);
 if (!assembly) process.exit(1);
-const slotClausesById = new Map(assembly.assembly.agreements.map((s) => [s.id, slotClauses(assembly, s)]));
+const agreementClausesById = new Map(assembly.assembly.agreements.map((s) => [s.id, agreementClauses(assembly, s)]));
 
 // Commerce clause by declared field (lineItems) — open-world, once for the chain.
-const commerceClauseId = [...new Set([...slotClausesById.values()].flatMap((c) => Object.keys(c)))]
+const commerceClauseId = [...new Set([...agreementClausesById.values()].flatMap((c) => Object.keys(c)))]
     .find((cid) => (specs.get(cid)?.fields ?? []).some((f) => f.name === "lineItems")) ?? null;
 check("located the commerce clause by its declared field", !!commerceClauseId);
 
@@ -124,7 +124,7 @@ channel.register(SELLERS[1].address, makeSellerOfferHandler(sellerW[1], pub, add
 }));
 
 // ── Buyer LOOP: originate the whole chain ─────────────────────────────────────
-const parentsOf = (id) => Object.values(slotClausesById.get(id) ?? {}).find((d) => Array.isArray(d.parentOrderHashes))?.parentOrderHashes ?? [];
+const parentsOf = (id) => Object.values(agreementClausesById.get(id) ?? {}).find((d) => Array.isArray(d.parentOrderHashes))?.parentOrderHashes ?? [];
 const orderedIds = [
     ...assembly.assembly.agreements.filter((a) => parentsOf(a.id).length === 0),
     ...assembly.assembly.agreements.filter((a) => parentsOf(a.id).length > 0),
@@ -135,7 +135,7 @@ const orderedIds = [
 // gate (engaged via `specs`) refuses to sign while any required term is
 // missing.
 const rootParticulars = (agreementId) => {
-    const clauses = slotClausesById.get(agreementId) ?? {};
+    const clauses = agreementClausesById.get(agreementId) ?? {};
     const fill = {};
     for (const cid of Object.keys(clauses)) {
         const fields = specs.get(cid)?.fields ?? [];
