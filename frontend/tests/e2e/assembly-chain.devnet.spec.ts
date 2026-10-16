@@ -41,7 +41,7 @@
  *              and the clause-evidence documents
  *
  * Everything the spec consumes is DISCOVERED from chain + IPFS (the anchored
- * assemblies by their template shape, the lead's profile by its registry
+ * assemblies by their assembly shape, the lead's profile by its registry
  * events) — never a bundled roster. The lead's own identity + counterparty
  * designations are this test's INPUT DATA (an authoring act), exactly as
  * members-onboarding's wizard member is. anvil[15] is used by no other spec;
@@ -107,7 +107,7 @@ const SUPPLIER = mnemonicToAccount(ANVIL_MNEMONIC, { addressIndex: 11 }).address
 
 // The chain assembly's sub-order process clauses — the designation keys the
 // lead fills in the counterparty editor (scenario input, mirrored from the
-// seeded template's shape).
+// seeded assembly's shape).
 let COURIER_CLAUSE: Hex;
 let SUPPLIER_CLAUSE: Hex;
 test.beforeAll(async () => {
@@ -148,7 +148,7 @@ test.describe('VALUE-ADDED CHAIN — one buyer binds three sellers; one resolve 
             publicClient.readContract({ address: permitToken, abi: ERC20_ABI, functionName: 'balanceOf', args: [who] }) as Promise<bigint>;
 
         // ── DISCOVER from chain + IPFS (never a roster): resolve every anchored
-        //    assembly's template and pick the two seeds by SHAPE — the
+        //    assembly's assembly and pick the two seeds by SHAPE — the
         //    multi-order chain (a sub-order carrying the courier process
         //    clause) and the blank single-order composition. ──
         const { chain, blank: single } = await discoverSeedAssemblies();
@@ -199,7 +199,7 @@ test.describe('VALUE-ADDED CHAIN — one buyer binds three sellers; one resolve 
 
             // Designate the chain counterparties — the wallets the lead trusts to
             // fill the courier + supplier sub-orders. The editor surfaces per
-            // required process clause once the chain row is checked (its template
+            // required process clause once the chain row is checked (its assembly
             // resolved from IPFS).
             const counterparties = page.getByTestId(`seller-assembly-counterparties-${chainSlug}`);
             await counterparties.waitFor({ state: 'visible', timeout: 30000 });
@@ -310,7 +310,7 @@ test.describe('VALUE-ADDED CHAIN — one buyer binds three sellers; one resolve 
             .toHaveText(/^6(\.0*)?$/, { timeout: 15000 });
 
         // The buyer's modality request — a transaction particular authored at
-        // checkout (templates arrive value-free by construction).
+        // checkout (assemblies arrive value-free by construction).
         await page.locator(`[data-testid^="checkout-field-"][data-testid$="-${keyOf('figaro-modalities')}-modality-delivery"]`).first().check();
 
         const place = page.getByTestId('btn-place-order');

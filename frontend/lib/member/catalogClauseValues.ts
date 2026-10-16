@@ -49,7 +49,7 @@ export function validateCatalogClauseValues(item: CatalogItemMetadata): string[]
  *
  * Empty until an assembly is bound, and empty for a member whose bound
  * assemblies compose no product-property clause (the member of one mug sees no
- * hazmat class). A bound assembly whose template has not resolved yet
+ * hazmat class). A bound assembly whose assembly has not resolved yet
  * contributes nothing rather than everything — absence, read at the edge.
  *
  * `choices` is the live registry projection (`useAssemblyChoices`); nothing

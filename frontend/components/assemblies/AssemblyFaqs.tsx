@@ -3,12 +3,12 @@
 import { useEffect, useState } from "react";
 import Link from "@/components/shared/Link";
 import { MarketingSection } from "@/components/marketing/MarketingSection";
-import { useAllPublishedAssemblies, fetchAssemblyTemplate } from "@/lib/protocol/useAssemblyRegistry";
+import { useAllPublishedAssemblies, fetchAssembly } from "@/lib/protocol/useAssemblyRegistry";
 import type { AssemblyFaqEntry } from "@figaro-protocol/sdk";
 
 /**
  * The questions a party to a trade asks, answered by each published assembly's
- * designer in its own document (`AssemblyTemplate.faq`). Read from the
+ * designer in its own document (`Assembly.faq`). Read from the
  * AssemblyRegistry → IPFS at runtime: the users' FAQ never lists assemblies;
  * it renders whatever the registry carries, today's and any published later.
  * An assembly with no `faq` is absent here; an empty registry renders nothing.
@@ -24,9 +24,9 @@ export function AssemblyFaqs() {
         let live = true;
         Promise.all(
             data.map(async (row) => {
-                const template = await fetchAssemblyTemplate(row.contentURI, row.compositionHash);
-                if (!template?.faq?.length) return null;
-                return { slug: row.slug, name: template.name ?? row.slug, faq: template.faq } satisfies Group;
+                const assembly = await fetchAssembly(row.contentURI, row.compositionHash);
+                if (!assembly?.faq?.length) return null;
+                return { slug: row.slug, name: assembly.name ?? row.slug, faq: assembly.faq } satisfies Group;
             }),
         ).then((found) => {
             if (live) setGroups(found.filter((g): g is Group => g !== null));

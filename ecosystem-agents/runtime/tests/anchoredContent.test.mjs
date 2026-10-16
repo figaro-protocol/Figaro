@@ -11,8 +11,8 @@ import * as http from "node:http";
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
 import { keccak256, toBytes } from "viem";
-import { agreementKeyOf, canonicalize, templateCompositionHash } from "@figaro-protocol/sdk";
-import { fetchAnchoredClauseSpec, fetchAnchoredComposedAgreement, fetchAnchoredTemplate } from "../anchoredContent.mjs";
+import { agreementKeyOf, canonicalize, assemblyCompositionHash } from "@figaro-protocol/sdk";
+import { fetchAnchoredClauseSpec, fetchAnchoredComposedAgreement, fetchAnchoredAssembly } from "../anchoredContent.mjs";
 import { fetchIpfsBytes } from "../ipfsRead.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -24,7 +24,7 @@ const SPEC_KEY = keccak256(toBytes(SPEC_TEXT));
 const COMMERCE = SPEC_KEY;
 const TOPOLOGY = `0x${"7c".repeat(32)}`;
 const COMPOSED = { name: "One order", clauses: { [COMMERCE]: {}, [TOPOLOGY]: {} } };
-const TEMPLATE = {
+const ASSEMBLY = {
     agreements: [{ id: "order-0", agreementKey: agreementKeyOf(COMPOSED), clauses: { [TOPOLOGY]: { parentOrderHashes: [] } } }],
 };
 
@@ -72,19 +72,19 @@ test("a clause spec a gateway substituted reads as absence", async () => {
     } finally { await gw.close(); }
 });
 
-test("a template that hashes to its composition hash is read; a substituted one is absence", async () => {
-    const forged = { agreements: [{ ...TEMPLATE.agreements[0], clauses: { [TOPOLOGY]: { parentOrderHashes: ["order-9"] } } }] };
-    const gw = await gateway({ t: JSON.stringify(TEMPLATE), forged: JSON.stringify(forged), notTemplate: "{\"x\":1}" });
+test("a assembly that hashes to its composition hash is read; a substituted one is absence", async () => {
+    const forged = { agreements: [{ ...ASSEMBLY.agreements[0], clauses: { [TOPOLOGY]: { parentOrderHashes: ["order-9"] } } }] };
+    const gw = await gateway({ t: JSON.stringify(ASSEMBLY), forged: JSON.stringify(forged), notAssembly: "{\"x\":1}" });
     try {
-        const assembly = { contentURI: "ipfs://t", compositionHash: templateCompositionHash(TEMPLATE) };
-        const hit = await fetchAnchoredTemplate(assembly, { gateways: [gw.url] });
+        const assembly = { contentURI: "ipfs://t", compositionHash: assemblyCompositionHash(ASSEMBLY) };
+        const hit = await fetchAnchoredAssembly(assembly, { gateways: [gw.url] });
         assert.equal(hit.absent, undefined, hit.absent);
-        assert.deepEqual(hit.template.agreements[0].id, "order-0");
+        assert.deepEqual(hit.assembly.agreements[0].id, "order-0");
 
-        const swapped = await fetchAnchoredTemplate({ ...assembly, contentURI: "ipfs://forged" }, { gateways: [gw.url] });
+        const swapped = await fetchAnchoredAssembly({ ...assembly, contentURI: "ipfs://forged" }, { gateways: [gw.url] });
         assert.match(swapped.absent, /the registry anchors/);
-        const notTemplate = await fetchAnchoredTemplate({ ...assembly, contentURI: "ipfs://notTemplate" }, { gateways: [gw.url] });
-        assert.equal(notTemplate.absent, "not an assembly template");
+        const notAssembly = await fetchAnchoredAssembly({ ...assembly, contentURI: "ipfs://notAssembly" }, { gateways: [gw.url] });
+        assert.equal(notAssembly.absent, "not an assembly");
     } finally { await gw.close(); }
 });
 
@@ -113,18 +113,18 @@ test("a registered agreement whose { clauses } key to its agreement key is read,
 
 test("the parse strips prototype keys from an anchored document", async () => {
     // The anchor proves the registrant published these bytes, not that they
-    // are harmless: a hostile template anchored under its own hash still
+    // are harmless: a hostile assembly anchored under its own hash still
     // reaches no prototype.
     const hostileText = '{"agreements":[],"__proto__":{"polluted":true}}';
     const hostile = JSON.parse(hostileText);
     const gw = await gateway({ h: hostileText });
     try {
-        const hit = await fetchAnchoredTemplate(
-            { contentURI: "ipfs://h", compositionHash: templateCompositionHash(hostile) },
+        const hit = await fetchAnchoredAssembly(
+            { contentURI: "ipfs://h", compositionHash: assemblyCompositionHash(hostile) },
             { gateways: [gw.url] },
         );
         assert.equal(({}).polluted, undefined);
-        if (!hit.absent) assert.equal(Object.prototype.hasOwnProperty.call(hit.template, "__proto__"), false);
+        if (!hit.absent) assert.equal(Object.prototype.hasOwnProperty.call(hit.assembly, "__proto__"), false);
     } finally { await gw.close(); }
 });
 

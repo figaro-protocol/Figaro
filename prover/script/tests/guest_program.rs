@@ -166,10 +166,10 @@ fn sorted_pair(a: B256, b: B256) -> B256 {
 }
 
 /// One order whose agreement's lone leaf is the provenance leaf naming
-/// order slot 0 of a two-order-slot assembly; committed and resolved in the
+/// agreement 0 of a two-agreement assembly; committed and resolved in the
 /// batch, then claimed for the agreement (kind 2) and the assembly (kind 1).
 /// With `membership_root_is_the_claimed_one` false, the assembly claim's
-/// membership proof opens order slot 0 under another assembly's root.
+/// membership proof opens agreement 0 under another assembly's root.
 fn provenance_batch(membership_root_is_the_claimed_one: bool) -> BatchInput {
     let buyer_key = make_signing_key(BUYER_KEY);
     let seller_key = make_signing_key(SELLER1_KEY);

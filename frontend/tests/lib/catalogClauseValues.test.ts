@@ -112,7 +112,7 @@ describe("catalogClausesForBindings — the bindings decide which item fields ex
             .toEqual(["figaro-cold-chain", "figaro-freight-class"]);
     });
 
-    it("a bound assembly whose template has not resolved contributes nothing, not everything", async () => {
+    it("a bound assembly whose assembly has not resolved contributes nothing, not everything", async () => {
         await primeClauseSpecs();
         expect(catalogClausesForBindings(
             [{ assemblySlug: "asm-haul" }],

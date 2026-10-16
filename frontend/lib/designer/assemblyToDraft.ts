@@ -1,11 +1,11 @@
 /**
- * assemblyTemplateToDraft — hydrates a `DesignSnapshot` from a HYDRATED
- * assembly (the template pinned on AssemblyRegistry beside every agreement's
+ * assemblyToDraft — hydrates a `DesignSnapshot` from a HYDRATED
+ * assembly (the assembly pinned on AssemblyRegistry beside every agreement's
  * registered agreement, each verified). Powers the "Fork" button: a published
  * assembly is read, this helper turns it into a localStorage draft under a
  * new slug, and the canvas opens at /assemblies/designer/edit?slug=<new-slug>.
  *
- * The template carries structure (agreements + the topology parents in each
+ * The assembly carries structure (agreements + the topology parents in each
  * agreement's own fill) and, per agreement, the registered agreement it binds —
  * no payment (payment is a runtime value). Each agreement is reconstructed
  * into a display Order with a synthetic agreement (built from its clauses +
@@ -20,14 +20,14 @@ import {
     anchorComposedAgreement,
     hydrateAssembly,
     isBytes32Hex,
-    planTemplateOrders,
+    planAssemblyOrders,
     boundAgreement,
     type ComposedAgreement,
     type Hex,
     type HydratedAssembly,
 } from "@figaro-protocol/sdk";
 import { ZERO_ADDRESS } from "@/lib/shared/evm";
-import { templateCompositionHash, type AssemblyTemplate } from "@/lib/shared/assemblyTemplate";
+import { assemblyCompositionHash, type Assembly } from "@/lib/shared/assembly";
 import { fetchComposedAgreement } from "@/lib/protocol/useAgreementRegistry";
 import { safeJsonParse } from "@/lib/shared/safeJson";
 import type { ClauseFields } from "@/lib/shared/clauseFields";
@@ -36,24 +36,24 @@ import type { DesignSnapshot } from "./syntheticDesignStore";
 import { Order } from "@/lib/kernel/store";
 import { buildSyntheticOrder, syntheticAddress } from "./syntheticProcess";
 
-/** 1.0 — display-only payment; the template itself carries none. */
+/** 1.0 — display-only payment; the assembly itself carries none. */
 const DISPLAY_PAYMENT = 1_000_000_000_000_000_000n;
 const SYNTHETIC_PROCESS_ID = `0x${"00".repeat(32)}` as `0x${string}`;
 
 /**
- * Reconstruct displayable orders from a template: each template order → a
+ * Reconstruct displayable orders from a assembly: each assembly order → a
  * synthetic agreement (from its clauses + topology parents) seeded into the store
  * so the canvas resolves it by hash. Used by the fork path and the read-only
  * `/view` resolver.
  */
-export function templateToOrders(hydrated: HydratedAssembly): Order[] {
-    // The template is party-agnostic. For DISPLAY (fork / read-only /view) we
+export function assemblyToOrders(hydrated: HydratedAssembly): Order[] {
+    // The assembly is party-agnostic. For DISPLAY (fork / read-only /view) we
     // reconstruct synthetic parties — one shared synthetic buyer (rootBuyer) +
     // a distinct synthetic seller per order. Real parties bind at
-    // adoption/checkout, never from the template. The nodes come from the ONE
-    // template walk (`planTemplateOrders` — commit order, local parent edges);
+    // adoption/checkout, never from the assembly. The nodes come from the ONE
+    // assembly walk (`planAssemblyOrders` — commit order, local parent edges);
     // per-order build→hash→save→assemble is the shared `buildSyntheticOrder`.
-    return planTemplateOrders(hydrated).map((planned) =>
+    return planAssemblyOrders(hydrated).map((planned) =>
         buildSyntheticOrder({
             orderId: planned.nodeId as `0x${string}`,
             processId: SYNTHETIC_PROCESS_ID,
@@ -68,16 +68,16 @@ export function templateToOrders(hydrated: HydratedAssembly): Order[] {
     );
 }
 
-export function assemblyTemplateToDraft(
+export function assemblyToDraft(
     hydrated: HydratedAssembly,
     options: { slug: string; name?: string; composeKeys?: ReadonlySet<string> },
 ): DesignSnapshot {
-    const { template } = hydrated;
-    const orders = templateToOrders(hydrated);
+    const { assembly } = hydrated;
+    const orders = assemblyToOrders(hydrated);
     const compose = (key: Hex) => options.composeKeys?.has(key.toLowerCase()) ?? false;
     const registeredByOrderId: Record<string, Hex> = {};
     const clausesByOrderId: Record<string, Record<string, Record<string, unknown>>> = {};
-    for (const entry of template.agreements) {
+    for (const entry of assembly.agreements) {
         if (compose(entry.agreementKey)) clausesByOrderId[entry.id] = { ...boundAgreement(hydrated, entry).clauses };
         else registeredByOrderId[entry.id] = entry.agreementKey;
     }
@@ -92,8 +92,8 @@ export function assemblyTemplateToDraft(
         ...(Object.keys(registeredByOrderId).length > 0 ? { registeredByOrderId } : {}),
         // Assembly-scoped sections travel as their own level — never smeared
         // onto an order (scope placement is verified at build/publish).
-        ...(template.assemblyClauses && Object.keys(template.assemblyClauses).length > 0
-            ? { assemblyClauses: template.assemblyClauses }
+        ...(assembly.assemblyClauses && Object.keys(assembly.assemblyClauses).length > 0
+            ? { assemblyClauses: assembly.assemblyClauses }
             : {}),
         createdAt: Date.now(),
         updatedAt: Date.now(),
@@ -101,8 +101,8 @@ export function assemblyTemplateToDraft(
 }
 
 /** Result of reading pasted composition JSON (the composition-assist import). */
-export type ParsedTemplateResult =
-    | { ok: true; template: AssemblyTemplate; agreements: Record<string, unknown> }
+export type ParsedAssemblyResult =
+    | { ok: true; assembly: Assembly; agreements: Record<string, unknown> }
     | { ok: false; error: string };
 
 /**
@@ -110,27 +110,27 @@ export type ParsedTemplateResult =
  * surface, where the JSON comes from the designer's own agent rather than a
  * chain-anchored URI (so there is no compositionHash to check integrity
  * against; soundness is the bar). Accepts the handoff shape
- * `{ template, agreements }` (the template and the agreements newly composed
- * for it, keyed by agreement key) or a bare template. Shape-checks the order
- * entries, then probes the composition through `templateCompositionHash` — the
+ * `{ assembly, agreements }` (the assembly and the agreements newly composed
+ * for it, keyed by agreement key) or a bare assembly. Shape-checks the order
+ * entries, then probes the composition through `assemblyCompositionHash` — the
  * same walk the registry key uses — so anything it cannot hash is rejected
  * here with a message instead of failing later at publish.
  */
-export function parseAssemblyTemplateJson(text: string): ParsedTemplateResult {
+export function parseAssemblyJson(text: string): ParsedAssemblyResult {
     const parsed = safeJsonParse<unknown>(text);
     if (parsed === null) return { ok: false, error: "Not valid JSON." };
     if (typeof parsed !== "object" || Array.isArray(parsed)) {
-        return { ok: false, error: "A composition is a JSON object: `{ template, agreements }`, or a template with an `agreements` array." };
+        return { ok: false, error: "A composition is a JSON object: `{ assembly, agreements }`, or a assembly with an `agreements` array." };
     }
-    const bundle = parsed as { template?: unknown; agreements?: unknown };
-    const isBundle = typeof bundle.template === "object" && bundle.template !== null && !Array.isArray(bundle.agreements);
-    const candidate = (isBundle ? bundle.template : parsed) as { agreements?: unknown; assemblyClauses?: unknown };
+    const bundle = parsed as { assembly?: unknown; agreements?: unknown };
+    const isBundle = typeof bundle.assembly === "object" && bundle.assembly !== null && !Array.isArray(bundle.agreements);
+    const candidate = (isBundle ? bundle.assembly : parsed) as { agreements?: unknown; assemblyClauses?: unknown };
     const agreementDocs = isBundle && typeof bundle.agreements === "object" && bundle.agreements !== null
         ? bundle.agreements as Record<string, unknown>
         : {};
     const entries = candidate.agreements;
     if (!Array.isArray(entries) || entries.length === 0) {
-        return { ok: false, error: "A template carries a non-empty `agreements` array — one agreement per order." };
+        return { ok: false, error: "A assembly carries a non-empty `agreements` array — one agreement per order." };
     }
     for (const entry of entries) {
         const id = (entry as { id?: unknown } | null)?.id;
@@ -150,13 +150,13 @@ export function parseAssemblyTemplateJson(text: string): ParsedTemplateResult {
         || Object.keys(assemblyClauses).some((k) => !isBytes32Hex(k)))) {
         return { ok: false, error: "`assemblyClauses` maps clause keys (the 32-byte hash of each pinned spec) to the designer's values." };
     }
-    const template = candidate as AssemblyTemplate;
+    const assembly = candidate as Assembly;
     try {
-        templateCompositionHash(template);
+        assemblyCompositionHash(assembly);
     } catch (cause) {
-        return { ok: false, error: `The composition does not hash: ${extractErrorMessage(cause, "malformed template")}` };
+        return { ok: false, error: `The composition does not hash: ${extractErrorMessage(cause, "malformed assembly")}` };
     }
-    return { ok: true, template, agreements: agreementDocs };
+    return { ok: true, assembly, agreements: agreementDocs };
 }
 
 /**
@@ -168,8 +168,8 @@ export function parseAssemblyTemplateJson(text: string): ParsedTemplateResult {
  * entry the paste names only by key binds that registered agreement. An
  * `error` says an agreement's agreement is absent from both.
  */
-export async function hydrateImportedTemplate(
-    parsed: Extract<ParsedTemplateResult, { ok: true }>,
+export async function hydrateImportedAssembly(
+    parsed: Extract<ParsedAssemblyResult, { ok: true }>,
 ): Promise<{ hydrated: HydratedAssembly; composeKeys: Set<string> } | { error: string }> {
     const pasted = new Map<string, ComposedAgreement>();
     for (const [key, raw] of Object.entries(parsed.agreements)) {
@@ -178,7 +178,7 @@ export async function hydrateImportedTemplate(
         if (doc) pasted.set(key.toLowerCase(), doc);
     }
     const composeKeys = new Set<string>();
-    const hydrated = await hydrateAssembly(parsed.template, async (agreementKey) => {
+    const hydrated = await hydrateAssembly(parsed.assembly, async (agreementKey) => {
         const key = agreementKey.toLowerCase();
         const local = pasted.get(key);
         if (local) {

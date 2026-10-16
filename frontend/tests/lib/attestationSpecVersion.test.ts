@@ -51,7 +51,7 @@ function executors(submitAttestation: CapabilityExecutorDeps["submitAttestation"
         processAgreements: new Map(),
         resolveProcess: unused,
         fetchUsageClaimContext: unused,
-        readAssemblyTemplate: unused,
+        readAssembly: unused,
         simulateUsage: unused,
         recordUsage: unused,
         submitAttestation,

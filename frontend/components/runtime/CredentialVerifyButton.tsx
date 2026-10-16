@@ -3,7 +3,7 @@
 /**
  * CredentialVerifyButton — the reader's verification affordance for a DECLARED
  * credential leaf. Renders for any clause data declaring BOTH
- * `credentialRegisterUri` (the authority's public register, a URI template
+ * `credentialRegisterUri` (the authority's public register, a URI assembly
  * with an `{id}` placeholder) and `credentialId` (the declared identifier) —
  * discovered by declared field, never by clause id, so a never-seen clause
  * declaring the same fields participates.
@@ -15,10 +15,10 @@
  */
 
 export function CredentialVerifyButton({ data }: { data: Record<string, unknown> }) {
-    const template = data.credentialRegisterUri;
+    const assembly = data.credentialRegisterUri;
     const id = data.credentialId;
-    if (typeof template !== "string" || typeof id !== "string" || !template || !id) return null;
-    const href = template.replace("{id}", encodeURIComponent(id));
+    if (typeof assembly !== "string" || typeof id !== "string" || !assembly || !id) return null;
+    const href = assembly.replace("{id}", encodeURIComponent(id));
     if (!href.startsWith("https://")) return null;
     return (
         <a

@@ -7,7 +7,7 @@
  *
  * - Market-shape: per-assembly aggregates over the process graph. Assembly
  *   attribution is CALLER-SUPPLIED (a provenance-overlay decode, or the
- *   structural template fingerprint the withdraw gate uses) — the query never
+ *   structural assembly fingerprint the withdraw gate uses) — the query never
  *   guesses, and an unattributed process is counted as such, never binned
  *   under a fabricated key. Chain shapes come from caller-supplied parent
  *   edges (decoded topology sections) via `depthsOverParents`; without them

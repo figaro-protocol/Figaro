@@ -1,8 +1,8 @@
 /**
  * assemblyCheckout — the buyer-side commit sequencing for a bound assembly.
  *
- * The protocol algorithm lives in `@figaro-protocol/sdk`: `reconstructOrdersFromTemplate`
- * is the ONE template→orders walk (real parent hashes, running cumulative
+ * The protocol algorithm lives in `@figaro-protocol/sdk`: `reconstructOrdersFromAssembly`
+ * is the ONE assembly→orders walk (real parent hashes, running cumulative
  * value, root-derived processId), and the checkout planning vocabulary
  * (fill-where-composed section writers, the sub-order seller plan, live
  * contributor pricing) is `checkoutPlan`. This module is the thin frontend
@@ -32,12 +32,12 @@ import {
     fillDerivedSections,
     generateSalt,
     planSubOrderSellers,
-    reconstructOrdersFromTemplate,
+    reconstructOrdersFromAssembly,
     resolveSubOrderPricing,
     agreementClauses,
-    templateParentOrderHashes,
+    assemblyParentOrderHashes,
     type AssemblyCheckoutLineItem,
-    type PlannedTemplateOrder,
+    type PlannedAssemblyOrder,
     type ReconstructNodeSpec,
     type ReconstructedOrder,
     type SpecSource,
@@ -57,10 +57,10 @@ import type { MemberCatalog } from "@/lib/member/types";
 export interface AssemblyCheckoutDeps {
     chainId: number;
     /** Read the chain's per-process resolve ceiling (`maxOrdersResolvablePerProcess`).
-     *  Checkout refuses a template that couldn't resolve in one atomic
+     *  Checkout refuses a assembly that couldn't resolve in one atomic
      *  `resolveProcess` — the same ceiling the designer canvas and
      *  `publishAssembly` enforce. This copy covers foreign hand-anchored
-     *  templates the permissionless registry admits. */
+     *  assemblies the permissionless registry admits. */
     readResolveCap: () => Promise<number>;
     /** Sign the root and surface its payload to the share panel (no auto-relay). */
     signRoot: (preview: OrderPreview) => Promise<CommitmentPayload>;
@@ -89,7 +89,7 @@ function assertValidToSign(preview: OrderPreview, label: string): void {
 }
 
 /** The entries the fills actually CHANGED — passed to the walk as overrides so
- *  the untouched clauses (topology above all, whose template-local parent ids
+ *  the untouched clauses (topology above all, whose assembly-local parent ids
  *  the walk itself rewrites to real hashes) stay the walk's to complete. */
 function changedClauses(filled: ClauseFields, original: ClauseFields): ClauseFields {
     const out: ClauseFields = {};
@@ -114,7 +114,7 @@ export interface AssemblyCheckoutParams {
      *  own seller's catalog). */
     sellerCatalogs: MemberCatalog[];
     tokenDecimals: number;
-    /** The buyer's checkout-time counterparty choices, keyed by template
+    /** The buyer's checkout-time counterparty choices, keyed by assembly
      *  node id — fills sub-orders the adopting seller's profile leaves
      *  unbound (buyer-assigned coordination). The price is the picker's
      *  resolved figure and `item` the picked catalog item (it becomes
@@ -125,26 +125,26 @@ export interface AssemblyCheckoutParams {
         price: string;
         item: { id: string; name: string };
     }>;
-    /** On-network compositions (the sixth noun) keyed by template node id:
+    /** On-network compositions (the sixth noun) keyed by assembly node id:
      *  the composing clause's `interface` (from `block.design.composes`) plus the
      *  buyer's `block.runtime.fields` values collected at checkout. The composition
      *  runs alongside the order's normal commit. Interface-agnostic — the
      *  walk names no clause. */
     subOrderCompositions?: Record<string, { interface: string; fieldValues: Record<string, unknown> }>;
-    /** The buyer's checkout-entered units per template node id — the
+    /** The buyer's checkout-entered units per assembly node id — the
      *  "checkout-quantity" rate source's input (hours, seats, …). Only
      *  read for a node whose contributor prices by such a rate. */
     subOrderQuantities?: Record<string, number>;
     /** The buyer's amount per unit, in the process denomination, for a bound
      *  sub-order whose seller lists its catalog item in another token, keyed
-     *  by template node id: it replaces the listed unit price, the billed
+     *  by assembly node id: it replaces the listed unit price, the billed
      *  quantity stands, and the payment is their product. */
     subOrderUnitPrices?: Record<string, bigint>;
     /** The buyer's checkout-time GENERAL-clause field fills, keyed by
-     *  template node id → clause key → field values. Design time is
+     *  assembly node id → clause key → field values. Design time is
      *  structural: a general clause arrives from the
-     *  template as `{}` and its transaction particulars are filled
-     *  HERE. Specific-T&C values (consent's affix) come from the template
+     *  assembly as `{}` and its transaction particulars are filled
+     *  HERE. Specific-T&C values (consent's affix) come from the assembly
      *  and are never overridden by this map. Spec-routed — no clause is
      *  named. */
     clauseFills?: Record<string, Record<string, Record<string, unknown>>>;
@@ -158,7 +158,7 @@ export interface AssemblyCheckoutParams {
     /** Walk-wide deadline override — fixed at draft time by the race for the
      *  same reproduction reason. Omit to take a fresh chain deadline. */
     deadline?: bigint;
-    /** The dispatch race's collected artifacts, keyed by template node id:
+    /** The dispatch race's collected artifacts, keyed by assembly node id:
      *  the drafted struct's hash and the winning candidate's
      *  countersignature. At realization the walk asserts the rebuilt struct
      *  hashes to EXACTLY the drafted one — a silent mismatch would discard
@@ -171,18 +171,18 @@ export async function executeAssemblyCheckout(
     params: AssemblyCheckoutParams,
     deps: AssemblyCheckoutDeps,
 ): Promise<void> {
-    const { buyer, currency, assembly } = params;
+    const { buyer, currency, assembly: bound } = params;
     const { signRoot, signAndShare } = deps;
     const specs = specSource();
-    const hydrated = assembly.hydratedAssembly;
-    const template = hydrated.template;
+    const hydrated = bound.hydratedAssembly;
+    const assembly = hydrated.assembly;
 
     // UTILITY-TOKEN PIN VERIFICATION: when the assembly pins
     // its denomination (an assembly-scoped term, part of the
     // compositionHash), the commitment currency MUST be that token — refuse
     // before any signature rather than let the signed struct contradict the
     // signed term.
-    const pin = readUtilityTokenPin(template.assemblyClauses ?? {}, specs);
+    const pin = readUtilityTokenPin(assembly.assemblyClauses ?? {}, specs);
     if (pin && !hexEqual(pin, currency)) {
         throw new Error(
             `this assembly is denominated by design (${pin}); the commitment currency ${currency} contradicts the pinned term`,
@@ -196,10 +196,10 @@ export async function executeAssemblyCheckout(
 
     // Resolve-ceiling refusal BEFORE any signature: a process grown past the
     // chain's atomic-resolve cap can never resolve, so the buyer must not bond
-    // into one. Publish-side already refuses over-cap templates composed here;
-    // this catches templates anchored by other clients (the registry is
+    // into one. Publish-side already refuses over-cap assemblies composed here;
+    // this catches assemblies anchored by other clients (the registry is
     // permissionless).
-    const orderCount = template.agreements.length;
+    const orderCount = assembly.agreements.length;
     const resolveCap = await deps.readResolveCap();
     if (orderCount > resolveCap) {
         throw new Error(
@@ -210,15 +210,15 @@ export async function executeAssemblyCheckout(
     }
 
     const rootId =
-        template.agreements.find((o) => templateParentOrderHashes(o).length === 0)?.id ??
-        template.agreements[0]?.id;
+        assembly.agreements.find((o) => assemblyParentOrderHashes(o).length === 0)?.id ??
+        assembly.agreements[0]?.id;
     if (rootId === undefined) throw new Error("This assembly has no root order.");
 
     // A profile binding designates each sub-order's counterparty (the
     // per-clause cursor); a node the profile leaves unbound takes the buyer's
     // checkout-time choice.
     const boundSellerByNode = new Map(
-        planSubOrderSellers(assembly).map(({ node, seller }) => [node.nodeId, seller]),
+        planSubOrderSellers(bound).map(({ node, seller }) => [node.nodeId, seller]),
     );
 
     // Per-node state the realization callbacks share: the sub's line items are
@@ -234,7 +234,7 @@ export async function executeAssemblyCheckout(
         commitment: order.commitment,
     });
 
-    await reconstructOrdersFromTemplate(hydrated, {
+    await reconstructOrdersFromAssembly(hydrated, {
         buyer,
         currency,
         chainId: deps.chainId,
@@ -303,7 +303,7 @@ function checkoutNodes(
         compositionByNode: Map<string, { interface: string; fieldValues: Record<string, unknown> }>;
         specs: SpecSource;
     },
-): (planned: PlannedTemplateOrder) => ReconstructNodeSpec {
+): (planned: PlannedAssemblyOrder) => ReconstructNodeSpec {
     const { rootId, boundSellerByNode, compositionByNode, specs } = ctx;
     const { leadSellerAddress, currency, payment, lineItems, sellerCatalogs, tokenDecimals, subOrderSelections } = params;
     const hydrated = params.assembly.hydratedAssembly;
@@ -311,7 +311,7 @@ function checkoutNodes(
         // The agreement's own clauses — its registered agreement's, with the
         // agreement's fills merged over them — never the assembly-scoped
         // terms the walk folds into every order.
-        const entry = hydrated.template.agreements.find((a) => a.id === planned.nodeId)!;
+        const entry = hydrated.assembly.agreements.find((a) => a.id === planned.nodeId)!;
         const node = { clauses: agreementClauses(hydrated, entry) };
         if (planned.nodeId === rootId) {
             // The root's clause map: the derived LOGISTICS sections (cargo /
@@ -345,7 +345,7 @@ function checkoutNodes(
         }
         // The buyer's checkout fills join the node's clauses BEFORE pricing:
         // a rate quantity source (e.g. order-geodistance) derives from the
-        // clause content, and the template arrives value-free by
+        // clause content, and the assembly arrives value-free by
         // construction — the fills ARE the content.
         const nodeClauses = { ...node.clauses, ...(params.clauseFills?.[planned.nodeId] ?? {}) };
         const pricing = selection
@@ -394,7 +394,7 @@ function checkoutNodes(
         // logistics leaves (cargo / class / dimweight) from its own
         // catalog item + its own seller's profile values. A no-op for orders
         // composing none (e.g. a service leg) → G7 absence. The topology
-        // section is the WALK's to complete (template-local parent ids →
+        // section is the WALK's to complete (assembly-local parent ids →
         // real order hashes), so it is never in the overrides.
         const filled = fillCommerceSection(
             fillDerivedSections(
@@ -428,16 +428,16 @@ export async function planAssemblyOrders(
         throw new Error("Core contract address is not configured, so orders cannot be built.");
     }
     const hydrated = params.assembly.hydratedAssembly;
-    const template = hydrated.template;
+    const assembly = hydrated.assembly;
     const rootId =
-        template.agreements.find((o) => templateParentOrderHashes(o).length === 0)?.id ??
-        template.agreements[0]?.id;
+        assembly.agreements.find((o) => assemblyParentOrderHashes(o).length === 0)?.id ??
+        assembly.agreements[0]?.id;
     if (rootId === undefined) throw new Error("This assembly has no root order.");
     const boundSellerByNode = new Map(
         planSubOrderSellers(params.assembly).map(({ node, seller }) => [node.nodeId, seller]),
     );
     const specs = specSource();
-    return reconstructOrdersFromTemplate(hydrated, {
+    return reconstructOrdersFromAssembly(hydrated, {
         buyer: params.buyer,
         currency: params.currency,
         chainId: opts.chainId,

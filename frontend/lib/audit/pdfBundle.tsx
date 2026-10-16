@@ -662,7 +662,7 @@ interface AuditBundlePdfData {
     /** Per-order extractor outputs. One entry per order in the process. */
     perOrderBundles: AuditBundle[];
     /** Every recognizable document — invoice, BoL, financial statements — projected
-     *  from declared templates / statement projectors over the committed record by
+     *  from declared assemblies / statement projectors over the committed record by
      *  the generic engine. One generic page each; no genre code. */
     documents: readonly RenderedDocument[];
     /**
@@ -677,10 +677,10 @@ interface AuditBundlePdfData {
 
 /**
  * ONE generic renderer for EVERY recognizable document. It knows no genre — it
- * draws whatever the generic engine produced from a declared template (header
+ * draws whatever the generic engine produced from a declared assembly (header
  * rows, an optional line table with a total, generic whole-leaf sections, a
- * note). A new document genre (invoice, BoL, packing list, …) is a new template
- * in `documentTemplates.ts`; this renderer never changes.
+ * note). A new document genre (invoice, BoL, packing list, …) is a new assembly
+ * in `documentLayouts.ts`; this renderer never changes.
  */
 function DocumentPage({ document }: { document: RenderedDocument }) {
     return (
@@ -766,7 +766,7 @@ export function AuditBundlePdf({ data }: { data: AuditBundlePdfData }) {
             ))}
             {/* Every recognizable document — invoice per seller, BoL per carriage
                 leg, financial statements per seller + consolidated — one generic
-                page each, from declared templates / statement projectors. No genre code. */}
+                page each, from declared assemblies / statement projectors. No genre code. */}
             {data.documents.map((document, i) => (
                 <DocumentPage key={`document-${document.genre}-${i}`} document={document} />
             ))}

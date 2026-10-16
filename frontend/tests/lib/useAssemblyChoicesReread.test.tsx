@@ -16,11 +16,11 @@ import { useAssemblyChoices } from "@/lib/protocol/assemblyChoices";
 const EVENT = {
     slug: "asm-fresh", registeredBy: "0xA", compositionHash: "0x1", contentURI: "ipfs://fresh", blockNumber: 2n,
 };
-const TEMPLATE = { template: { name: "Containerized import chain", agreements: [], assemblyClauses: {} }, agreements: {} };
+const ASSEMBLY = { assembly: { name: "Containerized import chain", agreements: [], assemblyClauses: {} }, agreements: {} };
 
 const flush = () => act(async () => { await Promise.resolve(); await Promise.resolve(); await Promise.resolve(); });
 
-describe("useAssemblyChoices — a template the gateway has not served yet is re-read, not abandoned", () => {
+describe("useAssemblyChoices — a assembly the gateway has not served yet is re-read, not abandoned", () => {
     beforeEach(() => {
         vi.useFakeTimers();
         publishedMock.mockReturnValue({ data: [EVENT], isLoading: false, refetch: vi.fn() });
@@ -31,7 +31,7 @@ describe("useAssemblyChoices — a template the gateway has not served yet is re
     afterEach(() => { vi.useRealTimers(); });
 
     it("shows the slug while unserved, then names itself from the re-read without a reload", async () => {
-        fetchHydratedAssemblyMock.mockResolvedValueOnce(null).mockResolvedValueOnce(TEMPLATE);
+        fetchHydratedAssemblyMock.mockResolvedValueOnce(null).mockResolvedValueOnce(ASSEMBLY);
         const { result } = renderHook(() => useAssemblyChoices());
         await flush();
         expect(result.current.data?.[0]).toMatchObject({ state: "error", name: "asm-fresh" });
@@ -48,9 +48,9 @@ describe("useAssemblyChoices — a template the gateway has not served yet is re
         expect(fetchHydratedAssemblyMock).toHaveBeenCalledTimes(2);
     });
 
-    it("a template that was served and is not the one its root anchors is never re-read — the row stays in error", async () => {
+    it("a assembly that was served and is not the one its root anchors is never re-read — the row stays in error", async () => {
         fetchHydratedAssemblyMock.mockResolvedValue(null);
-        loadErrorMock.mockReturnValue("integrity failure at ipfs://fresh: the document is not the template the root anchors");
+        loadErrorMock.mockReturnValue("integrity failure at ipfs://fresh: the document is not the assembly the root anchors");
         const { result } = renderHook(() => useAssemblyChoices());
         await flush();
         expect(result.current.data?.[0]).toMatchObject({ state: "error", name: "asm-fresh" });

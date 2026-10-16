@@ -18,7 +18,7 @@ import {
     PROVENANCE_LEAF_KEY,
     provenanceSectionBytes,
     type Agreement,
-    type AssemblyTemplate,
+    type Assembly,
     type Commitment,
     type UsageClaimContext,
 } from "@figaro-protocol/sdk";
@@ -56,10 +56,10 @@ export interface CapabilityExecutorDeps {
      *  — count usage when it happens. Each write is simulated first and sent
      *  only if the simulation passes. */
     fetchUsageClaimContext: () => Promise<UsageClaimContext>;
-    /** The template of the assembly a provenance names, read from
+    /** The assembly of the assembly a provenance names, read from
      *  `AssemblyRegistry` by its composition root (whatever its stake) and
      *  verified against it; null when absent. */
-    readAssemblyTemplate: (compositionHash: Hex) => Promise<AssemblyTemplate | null>;
+    readAssembly: (compositionHash: Hex) => Promise<Assembly | null>;
     simulateUsage: (write: UsageWrite) => Promise<void>;
     recordUsage: (write: UsageWrite) => Promise<Hex | undefined>;
     submitAttestation: (role: "buyer" | "seller", args: AttestationSubmitArgs) => Promise<Hex | undefined>;
@@ -167,7 +167,7 @@ export function createCapabilityExecutors(deps: CapabilityExecutorDeps) {
             return [];
         }
         // Each assembly a provenance names, read once by its composition root.
-        const templates = new Map<string, AssemblyTemplate | null>();
+        const assemblies = new Map<string, Assembly | null>();
         const entries: UsagePlanEntry[] = [];
         for (let i = 0; i < activeOrders.length; i++) {
             const { orderHash, agreementHash } = activeOrders[i];
@@ -176,13 +176,13 @@ export function createCapabilityExecutors(deps: CapabilityExecutorDeps) {
                 console.error(`[usage-recording] no hydrated agreement for order ${orderHash} (hash ${agreementHash}) — skipping its clauses and assemblies`);
                 continue;
             }
-            let template: AssemblyTemplate | undefined;
+            let assembly: Assembly | undefined;
             if (agreement.provenance && isBytes32Hex(agreement.provenance.compositionHash)) {
                 const key = agreement.provenance.compositionHash.toLowerCase();
-                if (!templates.has(key)) templates.set(key, await deps.readAssemblyTemplate(agreement.provenance.compositionHash).catch(() => null));
-                template = templates.get(key) ?? undefined;
+                if (!assemblies.has(key)) assemblies.set(key, await deps.readAssembly(agreement.provenance.compositionHash).catch(() => null));
+                assembly = assemblies.get(key) ?? undefined;
             }
-            entries.push({ orderHash, commitment: commitments[i], agreement, context, template });
+            entries.push({ orderHash, commitment: commitments[i], agreement, context, assembly });
         }
         const { writes, problems } = planUsageRecords(entries);
         for (const problem of problems) console.error(`[usage-recording] ${problem}`);

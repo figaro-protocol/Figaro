@@ -1,6 +1,6 @@
 /**
  * projection.ts — from composed clauses to the canonical Agreement, and from
- * a design's orders to the assembly template. The deterministic projection
+ * a design's orders to the assembly. The deterministic projection
  * rules BOTH parties (and any second frontend) must reproduce byte-exactly,
  * because their outputs are hashed: `agreementHash` (the merkle root the
  * commitment signs) and `compositionHash` (assembly identity).
@@ -20,8 +20,8 @@
  * commit → agreementHash), `design.scope: "assembly"` (composed once for the
  * whole design, folded into EVERY agreement at checkout → compositionHash +
  * agreementHash), `design.fills` (the fields whose values the
- * DESIGNER composes into the template — the tailoring; every other clause's
- * template values are `{}` and the fields fill at checkout →
+ * DESIGNER composes into the assembly — the tailoring; every other clause's
+ * assembly values are `{}` and the fields fill at checkout →
  * compositionHash), and the `checkout` fills (`catalogueFills` /
  * `profileFills` — which sections the catalog and member-profile folds
  * write → agreementHash). `parseProjectionHints` extracts exactly those from
@@ -42,8 +42,8 @@ import {
     agreementKeyOf,
     assertNotReservedKey,
     resolveAuthoredClauseKeys,
-    templateCompositionHash,
-    type AssemblyTemplate,
+    assemblyCompositionHash,
+    type Assembly,
     type ComposedAgreement,
     type AssemblyAgreement,
 } from "./assembly.js";
@@ -54,7 +54,7 @@ import { isAddressHex, type Hex } from "./types.js";
 
 /** The hash-load-bearing slice of a clause spec's `block` — the few
  *  phase-section attributes whose values decide what ends up committed
- *  (template values, checkout folds), lifted out of the sectioned block. */
+ *  (assembly values, checkout folds), lifted out of the sectioned block. */
 export interface ProjectionHints {
     /** The spec's `block.design.article` (e.g. `"mandatory"`, `"attestations"`). */
     article?: string;
@@ -65,9 +65,9 @@ export interface ProjectionHints {
      *  per-order, a term of one relationship. */
     scope?: string;
     /** The spec's `block.design.fills` — the content fields (by name) the
-     *  DESIGNER authors into the template (the tailoring: a pinned consent
+     *  DESIGNER authors into the assembly (the tailoring: a pinned consent
      *  document, a pinned denomination); their values survive into the
-     *  published template. Absent/empty = the designer only selects the
+     *  published assembly. Absent/empty = the designer only selects the
      *  clause. */
     designFills?: readonly string[];
     /** The spec's `block.checkout.catalogueFills` — the content fields (by
@@ -144,7 +144,7 @@ export function specDeclaresField(spec: ProjectionSpecView, fieldName: string): 
  *  `specDeclaresField` for a field name two clauses legitimately share: an
  *  order's denomination `currency` is plain content on the commerce clause
  *  (written at checkout, one term of one order), and a DESIGNER FILL on a
- *  denomination-pin clause (authored into the template, a term of the
+ *  denomination-pin clause (authored into the assembly, a term of the
  *  composition). Same field name, two different terms — so surfaces that mean
  *  one of them route on the declaration, never on a clause id. */
 export function specDeclaresContentField(spec: ProjectionSpecView, fieldName: string): boolean {
@@ -223,10 +223,10 @@ export function specIsMandatory(spec: ProjectionSpecView): boolean {
 
 /** The DESIGNER-authored field names of a clause (`block.design.fills`) —
  *  the tailoring that adapts a generic clause to a specific application
- *  (a pinned consent document, a pinned denomination). The template
+ *  (a pinned consent document, a pinned denomination). The assembly
  *  keeps the designer's values for a clause declaring fills; every other
  *  clause's fields are transaction particulars, filled at checkout — the
- *  template carries `{}` for it. Empty for clauses the designer only
+ *  assembly carries `{}` for it. Empty for clauses the designer only
  *  selects. */
 export function specDesignFills(spec: ProjectionSpecView): readonly string[] {
     return spec.hints?.designFills ?? [];
@@ -603,17 +603,17 @@ export function sectionByField(
     return sectionsByField(agreement, fieldName, specs)[0];
 }
 
-// ── Template building (design-time projection) ─────────────────────────────
+// ── Assembly building (design-time projection) ─────────────────────────────
 
-/** The DAG slice of a design-time order the template build reads:
+/** The DAG slice of a design-time order the assembly build reads:
  *  its (synthetic) hash and its parent edges. */
-export interface TemplateOrderNode {
+export interface AssemblyOrderNode {
     orderHash: string;
     parentOrderHashes?: readonly string[];
 }
 
 /** The agreement's own fills for a composed clause map — the design-time
- *  values the ORDER SLOT carries rather than the registered agreement: each
+ *  values the ASSEMBLY'S AGREEMENT carries rather than the registered agreement: each
  *  composed clause whose loaded spec declares `parentOrderHashes` (the
  *  topology, matched by declared field, never by clause id) gets
  *  `{ parentOrderHashes: parents }` (root = []). The registered agreement
@@ -663,17 +663,17 @@ function mandatorySpecsByScope(specs: SpecSource): { agreement: ProjectionSpecVi
     }
     if (agreement.length === 0) {
         throw new Error(
-            "clause specs not loaded: no mandatory clauses in the SpecSource — warm the spec cache before building templates",
+            "clause specs not loaded: no mandatory clauses in the SpecSource — warm the spec cache before building assemblies",
         );
     }
     return { agreement, assembly };
 }
 
-/** Only the values a clause's `design.fills` declares survive into a template
+/** Only the values a clause's `design.fills` declares survive into a assembly
  *  — FIELD-granular, so a stray non-fill value on a fills-declaring clause
  *  strips like any other transaction particular instead of riding its
- *  neighbor's declaration (the pasted-template corner: the UI editors gate
- *  per-field, but a template arriving whole must strip here too). */
+ *  neighbor's declaration (the pasted-assembly corner: the UI editors gate
+ *  per-field, but a assembly arriving whole must strip here too). */
 function designFillValues(
     spec: ProjectionSpecView | undefined,
     values: Record<string, unknown>,
@@ -689,13 +689,13 @@ function clauseLabel(clauseKey: string, spec: ProjectionSpecView | undefined): s
     return spec ? `${spec.clauseId} (${clauseKey})` : clauseKey;
 }
 
-/** What a design-time build produces: the template (one agreement per
+/** What a design-time build produces: the assembly (one agreement per
  *  canvas order, each binding a registered agreement by key) and the
  *  agreements newly composed for it, keyed by `agreementKeyOf` — the ones to
  *  pin and register on `AgreementRegistry` (one stake each; a key already
  *  registered is skipped) before the assembly is registered. */
-export interface BuiltAssemblyTemplate {
-    template: AssemblyTemplate;
+export interface BuiltAssembly {
+    assembly: Assembly;
     agreements: Record<Hex, ComposedAgreement>;
 }
 
@@ -706,7 +706,7 @@ export interface BuiltAssemblyTemplate {
  *  agreement-scoped mandatory spec the source lists folds in). The result is
  *  the registered agreement's document and its key — what `AgreementRegistry`
  *  takes, whether the designer registers it on its own or an assembly's
- *  publish registers it for an agreement. `buildAssemblyTemplate` composes
+ *  publish registers it for an agreement. `buildAssembly` composes
  *  every newly agreement through this one function. */
 export function composeOrderAgreement(args: {
     /** clauseKey → the designer's composed values for this order. */
@@ -741,7 +741,7 @@ export function composeOrderAgreement(args: {
     return { composed, agreementKey: agreementKeyOf(composed) };
 }
 
-/** Build the assembly template from the design's orders. Each canvas order
+/** Build the assembly from the design's orders. Each canvas order
  *  becomes one agreement binding a registered agreement: EITHER a
  *  registered agreement bound as is (`registeredByOrderId`), OR the clauses
  *  the designer composed for it (`clausesByOrderId`), which become a new
@@ -750,11 +750,11 @@ export function composeOrderAgreement(args: {
  *  parents are the agreement's own fill. A bound agreement that lacks a
  *  live mandatory spec at its scope is refused: the designer composes a new
  *  agreement for that agreement instead. */
-export function buildAssemblyTemplate(args: {
+export function buildAssembly(args: {
     name?: string;
     summary?: string;
     description?: string;
-    orders: readonly TemplateOrderNode[];
+    orders: readonly AssemblyOrderNode[];
     /** orderId → clauseKey → the designer's composed values. */
     clausesByOrderId: Readonly<Record<string, Readonly<Record<Hex, Record<string, unknown>>>>>;
     /** orderId → the registered agreement (hydrated and verified against
@@ -766,7 +766,7 @@ export function buildAssemblyTemplate(args: {
      *  (clauseKey → the designer's values). Optional; absent = none. */
     assemblyClauses?: Readonly<Record<Hex, Record<string, unknown>>>;
     specs: SpecSource;
-}): BuiltAssemblyTemplate {
+}): BuiltAssembly {
     const { name, summary, description, orders, clausesByOrderId, registeredByOrderId, assemblyClauses, specs } = args;
     // SCOPE VERIFICATION: a clause binds where its spec
     // declares — an assembly-scoped clause composed on an order (or an
@@ -810,11 +810,11 @@ export function buildAssemblyTemplate(args: {
     // output, where a review shows it before anchoring.
     const mandatory = mandatorySpecsByScope(specs);
     // Re-label each design-time (synthetic) order id to a clean local label
-    // naming the future agreement. The template carries no chain ids and no
+    // naming the future agreement. The assembly carries no chain ids and no
     // party addresses.
     const idToLocal = new Map(orders.map((o, i) => [o.orderHash, `order-${i}`]));
     // Assembly-scoped sections keep the same value-free rule as agreements:
-    // only design.fills values survive into the template. Assembly-scoped
+    // only design.fills values survive into the assembly. Assembly-scoped
     // MANDATORY clauses fold in automatically first (empty sections, filled
     // at checkout); the designer's own composition merges over them.
     const assemblySelection: Record<Hex, Record<string, unknown>> = {};
@@ -855,7 +855,7 @@ export function buildAssemblyTemplate(args: {
         return { id, agreementKey, clauses: agreementTopologyFills(clauses, parents, specs) };
     });
     return {
-        template: {
+        assembly: {
             ...(name ? { name } : {}),
             ...(summary ? { summary } : {}),
             ...(description ? { description } : {}),
@@ -916,19 +916,19 @@ export function composeAuthoredAgreement(
  * whether a designer registers that agreement on its own or this seeding
  * registers it — and its fill is the topology clause's parents
  * (`agreementTopologyFills`); a bound agreement lacking a live mandatory spec is
- * refused, as the designer's drawer refuses it. Returns the template and
+ * refused, as the designer's drawer refuses it. Returns the assembly and
  * each DISTINCT agreement once, keyed. Seed time only.
  */
 export function assembleAuthored(
     authored: object,
     agreementsByName: Readonly<Record<string, ComposedAgreement>>,
     specs: SpecSource,
-): BuiltAssemblyTemplate {
+): BuiltAssembly {
     const doc = resolveAuthoredClauseKeys(authored, specs) as {
         name?: string;
         summary?: string;
         description?: string;
-        faq?: AssemblyTemplate["faq"];
+        faq?: Assembly["faq"];
         assemblyClauses?: Record<Hex, Record<string, unknown>>;
         agreements?: { id?: string; agreement?: string; parentOrderHashes?: string[]; clauses?: unknown }[];
     };
@@ -962,7 +962,7 @@ export function assembleAuthored(
         return { id, agreementKey, clauses: agreementTopologyFills(bound.clauses, parents, specs) };
     });
     return {
-        template: {
+        assembly: {
             ...(doc.name !== undefined ? { name: doc.name } : {}),
             ...(doc.summary !== undefined ? { summary: doc.summary } : {}),
             ...(doc.description !== undefined ? { description: doc.description } : {}),
@@ -974,7 +974,7 @@ export function assembleAuthored(
     };
 }
 
-export function serializeAssemblyTemplate(template: AssemblyTemplate): {
+export function serializeAssembly(assembly: Assembly): {
     json: string;
     compositionHash: `0x${string}`;
 } {
@@ -983,7 +983,7 @@ export function serializeAssemblyTemplate(template: AssemblyTemplate): {
     // anchor) derives from the COMPOSITION ONLY, so editorial edits never
     // fork identity: identical compositions collapse to one binding regardless
     // of their prose.
-    const json = canonicalize(template);
-    const compositionHash = templateCompositionHash(template);
+    const json = canonicalize(assembly);
+    const compositionHash = assemblyCompositionHash(assembly);
     return { json, compositionHash };
 }

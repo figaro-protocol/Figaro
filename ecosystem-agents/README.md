@@ -45,7 +45,7 @@ the whole model first.
   `ClauseRegistry` registration under the user's wallet. No on-chain code.
 - **`figaro-assembly-designer`** — compose a new assembly, or **fork** an existing one, from
   registered agreements (registering a new `ComposedAgreement` on `AgreementRegistry` only
-  when none fits): an `AssemblyTemplate` → IPFS → a permissionless `AssemblyRegistry`
+  when none fits): an `Assembly` → IPFS → a permissionless `AssemblyRegistry`
   registration under the user's wallet.
 - **`figaro-analyst`** — *read and analyze* a market's public graphs (`@figaro-protocol/sdk/derive`):
   it holds no key and signs nothing; substance it was not given it BUYS as an ordinary
@@ -75,7 +75,7 @@ Registration is the whole act. A UI surfaces clauses and assemblies *from the re
 events*, so registering makes a clause or assembly discoverable everywhere that reads the registry —
 there is no frontend binding to meet. MOST `block` attributes shape how a UI *presents* an
 entry and affect neither validity nor discoverability — **but never say that unqualified:
-five hints inside `block` are hash-load-bearing and change what a designer's template and a
+five hints inside `block` are hash-load-bearing and change what a designer's assembly and a
 party's signed agreement actually CONTAIN** (a reserved `design.article`, `design.scope`,
 `design.fills`, and the two `checkout` fill lists — `figaro-clause-author` § "The five
 hash-load-bearing `block` hints" is the owner of that list, and it bans the unqualified
@@ -100,7 +100,7 @@ three habits recur across more than one of them, and belong here once rather tha
 several separate voices — each prompt points back here instead of restating them:
 
 - **Catch yourself mid-edit.** The moment you find yourself editing a file inside this
-  repo — anything other than the user's own spec, template, or workspace — the line
+  repo — anything other than the user's own spec, assembly, or workspace — the line
   between the user's work and the protocol's has blurred. Stop.
 - **Traditional commercial and legal vocabulary imports assumptions Figaro's Core does
   not share.** INCO Terms, GAAP, insurance-policy clauses, regulatory accounting — verify

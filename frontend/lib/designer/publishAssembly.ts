@@ -1,20 +1,20 @@
 /**
  * lib/designer/publishAssembly.ts — AUTHORING: pin + anchor an assembly.
  *
- * Designer-tier only. Builds the off-chain assembly template from a design
+ * Designer-tier only. Builds the off-chain assembly from a design
  * snapshot, registers each newly agreement on `AgreementRegistry`,
- * pins the template to IPFS, and registers it on `AssemblyRegistry`.
+ * pins the assembly to IPFS, and registers it on `AssemblyRegistry`.
  * READING published assemblies (the `AssemblyChoice` enrichment) lives in
  * `@/lib/protocol/assemblyChoices` — design is design; reading is everyone's.
  *
  * Publish flow:
- *   1. Build the template from the snapshot — one agreement per canvas
+ *   1. Build the assembly from the snapshot — one agreement per canvas
  *      order, each binding a registered agreement by key (one the designer
  *      bound, or one newly composed from the order's clauses), the topology
  *      parents in the agreement's own fill — plus prose.
  *   2. Compute the composition root (the merkle root over the agreements
  *      and the assembly terms — the assembly's identity).
- *   3. Pin the template to IPFS and simulate
+ *   3. Pin the assembly to IPFS and simulate
  *      AssemblyRegistry.registerAssembly(compositionHash, contentURI); pin
  *      each newly agreement no registry binds yet and simulate its
  *      AgreementRegistry.registerAgreement(key, uri). Every check passes
@@ -37,10 +37,10 @@ import type { Abi } from "viem";
 import { publishTail } from "@/lib/protocol/publishTail";
 import { DEFAULT_IPFS_SERVICE } from "@/lib/shared/ipfsService";
 import type { DesignSnapshot } from "@/lib/designer/syntheticDesignStore";
-import { AGREEMENT_REGISTRY_ABI, canonicalize, composeOrderAgreement, serializeAssemblyTemplate, type ComposedAgreement } from "@figaro-protocol/sdk";
-import { snapshotToAssemblyTemplate } from "@/lib/designer/draftToAssemblyTemplate";
+import { AGREEMENT_REGISTRY_ABI, canonicalize, composeOrderAgreement, serializeAssembly, type ComposedAgreement } from "@figaro-protocol/sdk";
+import { snapshotToAssembly } from "@/lib/designer/draftToAssembly";
 import { liveSpecSource } from "@/lib/shared/clauseSpecSource";
-import { deriveAssemblySlug } from "@/lib/shared/assemblyTemplate";
+import { deriveAssemblySlug } from "@/lib/shared/assembly";
 import { hexEqual } from "@/lib/shared/evm";
 import { maxOrdersResolvablePerProcess } from "@/lib/shared/chainGasCeilings";
 import { ASSEMBLY_REGISTRY_ABI } from "@/lib/kernel/contracts";
@@ -156,8 +156,8 @@ export function usePublishAssembly() {
         useWriteContract();
     const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
 
-    /** Build the template from the snapshot, register each newly composed
-     *  agreement, pin the template to IPFS, fetch the registry's stake amount,
+    /** Build the assembly from the snapshot, register each newly composed
+     *  agreement, pin the assembly to IPFS, fetch the registry's stake amount,
      *  simulate to catch reverts (composition already anchored, wrong stake)
      *  BEFORE opening the wallet, send the transaction, then wait for the
      *  receipt and verify status is `success`. Returns the transaction hash +
@@ -189,7 +189,7 @@ export function usePublishAssembly() {
         // Hard cap = the resolve ceiling: every order must resolve in one atomic
         // resolveProcess within a block. Same ceiling the designer canvas gates
         // node addition on, so an assembly designed there never trips this — the
-        // guard catches forked / hand-crafted templates. (Commit landing rate is
+        // guard catches forked / hand-crafted assemblies. (Commit landing rate is
         // a checkout-time signal, not a size cap; see chainGasCeilings.)
         const perProcessCap = await maxOrdersResolvablePerProcess(client);
         if (snapshot.orders.length > perProcessCap) {
@@ -202,18 +202,18 @@ export function usePublishAssembly() {
             abi: ASSEMBLY_REGISTRY_ABI,
             functionName: "registrationDeposit",
         });
-        // Publish the no-hash assembly template: per order, who's bound, its
+        // Publish the no-hash assembly: per order, who's bound, its
         // topology parents, and the selected clauses. The fingerprint forms later
         // at checkout when the parties fill the clause fields.
-        // The ONE draft→template walk (`draftToAssemblyTemplate`), shared with
+        // The ONE draft→assembly walk (`draftToAssembly`), shared with
         // the hand-off panel and the canvas identity readout. It VERIFIES scope
         // placement: an assembly-scoped clause on an order,
         // or an agreement-scoped one at assembly level, throws here — publish
         // refuses, never a silent no-op.
-        const built = snapshotToAssemblyTemplate(snapshot);
-        const { template } = built;
-        const { json, compositionHash } = serializeAssemblyTemplate(template);
-        // One template, one hash: refuse before the pin and before the wallet
+        const built = snapshotToAssembly(snapshot);
+        const { assembly } = built;
+        const { json, compositionHash } = serializeAssembly(assembly);
+        // One assembly, one hash: refuse before the pin and before the wallet
         // when this build is not the composition the caller reviewed.
         if (reviewedCompositionHash && !hexEqual(compositionHash, reviewedCompositionHash)) {
             throw new Error(
@@ -249,7 +249,7 @@ export function usePublishAssembly() {
 
         // The agreements newly composed for this assembly: each one no
         // registry binds yet is pinned and simulated now, and registered
-        // FIRST below (one stake each), so every agreement the template names
+        // FIRST below (one stake each), so every agreement the assembly names
         // is readable the moment the assembly anchors. A key the registry
         // already binds is skipped — the same clauses always key to one
         // registration.
@@ -268,11 +268,11 @@ export function usePublishAssembly() {
             });
             for (const agreementKey of newKeys) {
                 if (await readAgreementBinding(agreementKey, client)) continue;
-                const index = template.agreements.findIndex((s) => hexEqual(s.agreementKey, agreementKey));
+                const index = assembly.agreements.findIndex((s) => hexEqual(s.agreementKey, agreementKey));
                 // The pinned document carries the designer's words beside the
                 // clauses; the key is over the clauses alone.
                 const doc: ComposedAgreement = {
-                    ...(template.name ? { name: `${template.name} · order ${index + 1}` } : {}),
+                    ...(assembly.name ? { name: `${assembly.name} · order ${index + 1}` } : {}),
                     clauses: built.agreements[agreementKey].clauses,
                 };
                 const pinned = await DEFAULT_IPFS_SERVICE.publishJSON(JSON.parse(canonicalize(doc)));

@@ -49,7 +49,7 @@ function activeIpfsGatewayUrls(): string[] {
  * Delay before the n-th RE-READ of pinned content no gateway has served yet:
  * 10 s, 20 s, 40 s, then every 60 s for as long as the reader is mounted. A
  * public gateway finds a fresh pin minutes after it is made (measured on
- * ipfs.io: minutes for a profile, ~30 min for a template), so a surface that
+ * ipfs.io: minutes for a profile, ~30 min for a assembly), so a surface that
  * read once and gave up shows an identity in place of a name until the user
  * reloads. Readers keep asking on this schedule instead; the content arrives
  * without a reload. Permanent failures (integrity mismatch, unparseable

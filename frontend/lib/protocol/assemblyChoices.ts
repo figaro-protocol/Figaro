@@ -3,7 +3,7 @@
  *
  * The enrichment layer over the on-chain `AssemblyRegistry` hooks
  * (`@/lib/protocol/useAssemblyRegistry`): every published assembly, enriched with
- * its lazily-fetched template (name, agreement count, clause set), projected into
+ * its lazily-fetched assembly (name, agreement count, clause set), projected into
  * the selectable/inspectable `AssemblyChoice` shape. Consumed by every
  * reading surface — the designer's published list, the member-profile
  * assembly picker, the marketing `/assemblies` inventory. AUTHORING (build /
@@ -15,8 +15,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { activeChain } from "@/lib/shared/wagmi";
 import { clauseIsProcessLog, getClauseSpec } from "@/lib/shared/clauseSpecSource";
 import { truncateHex } from "@/lib/shared/formatHex";
-import { agreementClauses, templateComposedClauseKeys, type HydratedAssembly } from "@figaro-protocol/sdk";
-import { templateParentOrderHashes } from "@/lib/shared/assemblyTemplate";
+import { agreementClauses, assemblyComposedClauseKeys, type HydratedAssembly } from "@figaro-protocol/sdk";
+import { assemblyParentOrderHashes } from "@/lib/shared/assembly";
 import { DEVNET_CHAIN_ID } from "@/lib/shared/chains";
 import { contentRetryDelayMs } from "@/lib/shared/ipfsService";
 import {
@@ -60,8 +60,8 @@ function chainIdToNetworkTarget(chainId: number): string {
  *  checkout, not designated by the seller's profile. */
 export function requiredCounterpartyClauses(hydrated: HydratedAssembly): string[] {
     const clauses = new Set<string>();
-    for (const entry of hydrated.template.agreements) {
-        if (templateParentOrderHashes(entry).length === 0) continue; // root has no counterparty
+    for (const entry of hydrated.assembly.agreements) {
+        if (assemblyParentOrderHashes(entry).length === 0) continue; // root has no counterparty
         for (const clauseKey of Object.keys(agreementClauses(hydrated, entry))) {
             if (clauseIsProcessLog(clauseKey)) clauses.add(clauseKey);
         }
@@ -80,18 +80,18 @@ export function formatAssemblyClauseList(clauses: readonly string[]): string {
 }
 
 /**
- * A published assembly enriched with template-derived fields, suitable
+ * A published assembly enriched with assembly-derived fields, suitable
  * for surfacing to a user as a selectable / inspectable choice.
  *
- * The read is lazy per-row: the template, then every agreement's registered
+ * The read is lazy per-row: the assembly, then every agreement's registered
  * agreement (`fetchHydratedAssembly`); `state` tracks the lifecycle. While
  * `state === "loading"`, `name` falls back to `slug` so the UI can
  * render the row immediately. When `state === "loaded"`, all
- * template-derived fields are populated. An assembly whose template or any
+ * assembly-derived fields are populated. An assembly whose assembly or any
  * agreement's agreement is absent stays in `"error"` — not offered.
  */
 /** Per-assembly read state: requested, succeeded, or failed. */
-type AssemblyTemplateFetchState = "loading" | "loaded" | "error";
+type AssemblyFetchState = "loading" | "loaded" | "error";
 
 export interface AssemblyChoice {
     slug: string;
@@ -100,20 +100,20 @@ export interface AssemblyChoice {
     contentURI: string;
     blockNumber: bigint;
     networkTargets: readonly string[];
-    state: AssemblyTemplateFetchState;
-    /** Display name from the template; falls back to `slug` until loaded. */
+    state: AssemblyFetchState;
+    /** Display name from the assembly; falls back to `slug` until loaded. */
     name: string;
     /** The designer's own one-liner for what this assembly is for, from the
-     *  pinned template's editorial prose (`summary`, or `description` when the
-     *  designer wrote only that). `null` until the template loads, and for a
-     *  template that carries neither — a reader gets the slug and the shape,
+     *  pinned assembly's editorial prose (`summary`, or `description` when the
+     *  designer wrote only that). `null` until the assembly loads, and for a
+     *  assembly that carries neither — a reader gets the slug and the shape,
      *  never invented words. */
     summary: string | null;
     /** Available when state === "loaded". */
     agreementCount: number | null;
     /** Available when state === "loaded". Sorted, deduped clause keys. */
     clauses: readonly string[] | null;
-    /** The hydrated assembly when state === "loaded": the template verified
+    /** The hydrated assembly when state === "loaded": the assembly verified
      *  against `compositionHash` and every agreement's registered agreement
      *  verified against its key. Avoids re-fetching from consumers that need
      *  it (e.g. fork). */
@@ -125,7 +125,7 @@ export interface AssemblyChoice {
 
 /**
  * Lists every published assembly (optionally filtered to one registering wallet)
- * enriched with template data — name, order count, clause set.
+ * enriched with assembly data — name, order count, clause set.
  *
  * Composes `usePublishedAssemblies` (event log) with a lazy per-row
  * hydrated read. Both `PublishedList` (designer index) and the
@@ -143,20 +143,20 @@ export function useAssemblyChoices(
     // — and undefined on the marketing tier where no provider is mounted.
     const chainId = activeChain.id;
     const [hydratedState, setHydratedState] = useState<
-        Map<string, { state: AssemblyTemplateFetchState; hydratedAssembly: HydratedAssembly | null }>
+        Map<string, { state: AssemblyFetchState; hydratedAssembly: HydratedAssembly | null }>
     >(new Map());
     /** Hashes whose fetch has already been kicked off. A ref (not state)
      *  because we want to guard against double-fetch without retriggering
      *  the effect every time we add an entry. */
     const inFlightRef = useRef<Set<string>>(new Set());
-    /** Re-read timers for templates no gateway has served yet — cleared on
+    /** Re-read timers for assemblies no gateway has served yet — cleared on
      *  unmount so a departed surface never sets state. */
     const retryTimersRef = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
 
     useEffect(() => {
         if (!events || events.length === 0) return;
         const timers = retryTimersRef.current;
-        /** Fetch one template; on a miss, re-read on `contentRetryDelayMs`'s
+        /** Fetch one assembly; on a miss, re-read on `contentRetryDelayMs`'s
          *  schedule (a public gateway finds a fresh pin minutes after the
          *  anchor — the row shows its slug until then, then names itself
          *  without a reload). `fetchHydratedAssembly` reports a mismatched
@@ -231,7 +231,7 @@ export function useAssemblyChoices(
             const entry = hydratedState.get(event.compositionHash);
             const state = entry?.state ?? "loading";
             const hydratedAssembly = entry?.hydratedAssembly ?? null;
-            const template = hydratedAssembly?.template ?? null;
+            const assembly = hydratedAssembly?.assembly ?? null;
             return {
                 slug: event.slug,
                 registeredBy: event.registeredBy,
@@ -241,12 +241,12 @@ export function useAssemblyChoices(
                 stakeWithdrawn: event.stakeWithdrawn,
                 networkTargets: [networkTarget],
                 state,
-                // The editorial name from the pinned template once it loads;
+                // The editorial name from the pinned assembly once it loads;
                 // the content-derived slug is the fallback (and the identity).
-                name: template?.name ?? event.slug,
-                summary: template?.summary ?? template?.description ?? null,
-                agreementCount: template ? template.agreements.length : null,
-                clauses: hydratedAssembly ? templateComposedClauseKeys(hydratedAssembly.template, hydratedAssembly.agreements) : null,
+                name: assembly?.name ?? event.slug,
+                summary: assembly?.summary ?? assembly?.description ?? null,
+                agreementCount: assembly ? assembly.agreements.length : null,
+                clauses: hydratedAssembly ? assemblyComposedClauseKeys(hydratedAssembly.assembly, hydratedAssembly.agreements) : null,
                 hydratedAssembly,
             };
         });

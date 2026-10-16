@@ -4,8 +4,8 @@
  * per the separation-of-concerns doctrine.
  *
  * This is the thin on-chain layer: the ABI, registry-address resolution, the
- * event-derived read hooks, the revert translator, and the IPFS template
- * fetch. The publish-build + template-enrichment orchestration lives one
+ * event-derived read hooks, the revert translator, and the IPFS assembly
+ * fetch. The publish-build + assembly-enrichment orchestration lives one
  * layer up in `@/lib/protocol/assemblyChoices`; the member-profile
  * resolution lives in `@/lib/member/useMemberBoundAssemblies`. This file
  * imports only viem / wagmi / `@/lib/shared/*` / `@/lib/kernel/*`.
@@ -13,7 +13,7 @@
 
 import { useMemo } from "react";
 import { isValidAddress } from "@/lib/shared/evm";
-import { anchorTemplate, parseAssemblyRegistryLogs, type Anchored, type HydratedAssembly } from "@figaro-protocol/sdk";
+import { anchorAssembly, parseAssemblyRegistryLogs, type Anchored, type HydratedAssembly } from "@figaro-protocol/sdk";
 import { ASSEMBLY_REGISTRY_ABI, CONTRACTS } from "@/lib/kernel/contracts";
 import { DEFAULT_IPFS_SERVICE, fetchCappedContent } from "@/lib/shared/ipfsService";
 import { safeJsonParse } from "@/lib/shared/safeJson";
@@ -24,11 +24,11 @@ import {
 } from "@/lib/protocol/useWithdrawStake";
 import { createRegistryEventScan } from "@/lib/protocol/registryEventScan";
 import { publicClient } from "@/lib/shared/wagmi";
-import { hydrateAssemblyTemplate, getComposedAgreementLoadError } from "@/lib/protocol/useAgreementRegistry";
+import { hydrateAnchoredAssembly, getComposedAgreementLoadError } from "@/lib/protocol/useAgreementRegistry";
 import {
     deriveAssemblySlug,
-    type AssemblyTemplate,
-} from "@/lib/shared/assemblyTemplate";
+    type Assembly,
+} from "@/lib/shared/assembly";
 
 // Per-process gas ceiling lives in `@/lib/shared/chainGasCeilings`
 // (`maxOrdersResolvablePerProcess`) — the ceiling depends on the active
@@ -91,7 +91,7 @@ export function translatePublishRevert(err: unknown, attemptedSlug: string): Err
             case "EmptyContentURI":
                 return "The IPFS pin returned an empty URI.";
             case "ZeroCompositionHash":
-                return "Computed an empty composition hash — likely a template-builder bug.";
+                return "Computed an empty composition hash — likely a assembly-builder bug.";
             default:
                 return null;
         }
@@ -194,7 +194,7 @@ export function useAllPublishedAssemblies() {
 }
 
 /**
- * Fetch the IPFS-pinned template at `contentURI` and VERIFY it
+ * Fetch the IPFS-pinned assembly at `contentURI` and VERIFY it
  * against the anchored identity: the fetched document's recomputed
  * composition hash must equal the on-chain `compositionHash`. A document
  * that fails verification is treated exactly like an unreachable one —
@@ -202,7 +202,7 @@ export function useAllPublishedAssemblies() {
  * content). Returns null on gateway failure, malformed JSON, or hash
  * mismatch.
  */
-/** PERMANENT failures, by composition root: the template the binding points
+/** PERMANENT failures, by composition root: the assembly the binding points
  *  at was served and is not the one the root anchors, or an agreement's
  *  registered agreement failed permanently (`getComposedAgreementLoadError`).
  *  A gateway miss keeps nothing and is read again; this is never re-read. */
@@ -213,10 +213,10 @@ export function getAssemblyLoadError(compositionHash: string): string | undefine
     return loadErrors.get(compositionHash.toLowerCase());
 }
 
-export async function fetchAssemblyTemplate(
+export async function fetchAssembly(
     contentURI: string,
     expectedCompositionHash: `0x${string}`,
-): Promise<Anchored<AssemblyTemplate> | null> {
+): Promise<Anchored<Assembly> | null> {
     const url = DEFAULT_IPFS_SERVICE.resolveFetchUrl(contentURI);
     if (!url) return null;
     try {
@@ -226,43 +226,43 @@ export async function fetchAssemblyTemplate(
         if (!response.ok) return null;
         // Reviver-backed parse: the compositionHash proves DESIGNER-integrity,
         // not prototype-pollution safety — the registering wallet is untrusted (the
-        // AssemblyRegistry is permissionless), so a hostile template can be
+        // AssemblyRegistry is permissionless), so a hostile assembly can be
         // anchored under its own hash and pass verification.
         // Matches the clause-spec path; strips __proto__/constructor/prototype.
         const fetched = safeJsonParse<unknown>(await response.text());
-        const template = anchorTemplate(fetched, expectedCompositionHash);
-        if (template === null) {
-            loadErrors.set(expectedCompositionHash.toLowerCase(), `integrity failure at ${contentURI}: the document is not the template the root anchors`);
+        const assembly = anchorAssembly(fetched, expectedCompositionHash);
+        if (assembly === null) {
+            loadErrors.set(expectedCompositionHash.toLowerCase(), `integrity failure at ${contentURI}: the document is not the assembly the root anchors`);
             console.warn(
-                `[fetchAssemblyTemplate] integrity failure at ${contentURI}: the document is not the template whose composition the chain anchors (${expectedCompositionHash}) — dropping`,
+                `[fetchAssembly] integrity failure at ${contentURI}: the document is not the assembly whose composition the chain anchors (${expectedCompositionHash}) — dropping`,
             );
             return null;
         }
-        return template;
+        return assembly;
     } catch {
         return null;
     }
 }
 
 /**
- * The assembly a checkout, a view or a member profile consumes: the template
- * read and verified against its composition root (`fetchAssemblyTemplate`),
+ * The assembly a checkout, a view or a member profile consumes: the assembly
+ * read and verified against its composition root (`fetchAssembly`),
  * then every agreement's registered agreement read from `AgreementRegistry`
- * by key and verified against it (`hydrateAssemblyTemplate`). Null when the
- * template or any agreement's agreement is absent — the assembly is not
+ * by key and verified against it (`hydrateAnchoredAssembly`). Null when the
+ * assembly or any agreement's agreement is absent — the assembly is not
  * offered, and nothing falls back to a bundled copy.
  */
 export async function fetchHydratedAssembly(
     contentURI: string,
     expectedCompositionHash: `0x${string}`,
 ): Promise<HydratedAssembly | null> {
-    const template = await fetchAssemblyTemplate(contentURI, expectedCompositionHash);
-    if (!template) return null;
-    const hydrated = await hydrateAssemblyTemplate(template);
+    const assembly = await fetchAssembly(contentURI, expectedCompositionHash);
+    if (!assembly) return null;
+    const hydrated = await hydrateAnchoredAssembly(assembly);
     if (hydrated === null) {
         // Absence that can never resolve: an agreement's agreement was served
         // and is not the agreement its key names.
-        const failed = template.agreements.find((entry) => getComposedAgreementLoadError(entry.agreementKey));
+        const failed = assembly.agreements.find((entry) => getComposedAgreementLoadError(entry.agreementKey));
         if (failed) {
             loadErrors.set(
                 expectedCompositionHash.toLowerCase(),
@@ -274,14 +274,14 @@ export async function fetchHydratedAssembly(
 }
 
 /**
- * The template an `AssemblyRegistry` binding names, read BY ITS COMPOSITION
+ * The assembly an `AssemblyRegistry` binding names, read BY ITS COMPOSITION
  * ROOT (whatever the stake: bindings are never cleared) and verified against
  * it — what the usage planner needs for an agreement's membership proof.
- * Null when unbound, unreachable or not the template the root names.
+ * Null when unbound, unreachable or not the assembly the root names.
  */
-export async function fetchAssemblyTemplateByHash(
+export async function fetchAssemblyByHash(
     compositionHash: `0x${string}`,
-): Promise<Anchored<AssemblyTemplate> | null> {
+): Promise<Anchored<Assembly> | null> {
     const registry = getAssemblyRegistry();
     if (!registry) return null;
     try {
@@ -292,7 +292,7 @@ export async function fetchAssemblyTemplateByHash(
             args: [compositionHash],
         })) as readonly [`0x${string}`, bigint, boolean, string];
         if (registeredAt === 0n || !contentURI) return null;
-        return fetchAssemblyTemplate(contentURI, compositionHash);
+        return fetchAssembly(contentURI, compositionHash);
     } catch {
         return null;
     }

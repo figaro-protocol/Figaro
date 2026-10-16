@@ -9,7 +9,7 @@ import 'katex/dist/katex.min.css';
 
 export const metadata: Metadata = {
     title: {
-        template: '%s — Figaro Protocol docs',
+        assembly: '%s — Figaro Protocol docs',
         default: 'Figaro Protocol docs',
     },
     description: "The Figaro Protocol's own documents, rendered for builders from the repository they live in.",

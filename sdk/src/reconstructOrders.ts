@@ -1,19 +1,19 @@
 /**
- * reconstructOrders.ts — ONE walk from an assembly template to its orders.
+ * reconstructOrders.ts — ONE walk from an assembly to its orders.
  *
- * Every consumer that turns a template into FigaroCore orders — an agent
+ * Every consumer that turns a assembly into FigaroCore orders — an agent
  * originating a chain (`@figaro-protocol/sdk/agent` `buildChainOffers`), a checkout
  * realizing a bound assembly, a designer displaying a draft — performs the
- * same walk: order the template agreements so parents precede children,
- * detect the root, replace template-local parent ids with real EIP-712 order
+ * same walk: order the registered agreements so parents precede children,
+ * detect the root, replace assembly-local parent ids with real EIP-712 order
  * hashes, accumulate cumulative value, and derive each order's hash and the
  * process id from the root. This module is that walk's single home.
  *
  * Two layers:
- *   - `planTemplateOrders` — the PURE STRUCTURE: commit-ordered nodes with
+ *   - `planAssemblyOrders` — the PURE STRUCTURE: commit-ordered nodes with
  *     their clause bags and local parent edges. No parties, no values, no
  *     signatures. Display paths consume this directly.
- *   - `reconstructOrdersFromTemplate` — the FULL REALIZATION: agreements,
+ *   - `reconstructOrdersFromAssembly` — the FULL REALIZATION: agreements,
  *     hashes, commitments, and typed data per node, against the running
  *     cumulative value. The SDK never fabricates signatures — the caller
  *     signs each node's `typedData` (and may do so per-node via `onOrder`).
@@ -24,7 +24,7 @@
  * by FIELD NAME, never clause id).
  */
 
-import { agreementClauses, templateParentOrderHashes, templateCompositionHash } from "./assembly.js";
+import { agreementClauses, assemblyParentOrderHashes, assemblyCompositionHash } from "./assembly.js";
 import type { HydratedAssembly, AssemblyAgreement } from "./assembly.js";
 import {
     computeAgreementHash,
@@ -53,58 +53,58 @@ import type { Address, Commitment, Hex } from "./types.js";
 // ── Layer 1: pure structure ─────────────────────────────────────────────────
 
 /** One agreement, in commit order. */
-export interface PlannedTemplateOrder {
-    /** Agreement id (matches `template.agreements[].id`). */
+export interface PlannedAssemblyOrder {
+    /** Agreement id (matches `assembly.agreements[].id`). */
     nodeId: string;
     /** The registered agreement the agreement binds. */
     agreementKey: Hex;
     /** The agreement's clause bag (clauseKey → values): the assembly-scoped
      *  sections, the registered agreement's clauses and the agreement's own
-     *  fills over them (parents still template-local). */
+     *  fills over them (parents still assembly-local). */
     clauses: Record<string, Record<string, unknown>>;
-    /** Template-local parent node ids (empty on the root). */
+    /** Assembly-local parent node ids (empty on the root). */
     parentLocalIds: string[];
     /** Position in commit order — 0 is the root. */
     index: number;
 }
 
 /**
- * The template's agreements in commit order (parents before children, root
+ * The assembly's agreements in commit order (parents before children, root
  * first), each with its clause bag read from its hydrated registered
  * agreement. Throws on a cyclic topology and on an agreement whose agreement
- * is not hydrated; a template whose first node has parents (a sub-order with
+ * is not hydrated; a assembly whose first node has parents (a sub-order with
  * no root) is rejected by the realization layer.
  */
-export function planTemplateOrders(hydrated: HydratedAssembly): PlannedTemplateOrder[] {
-    const { template } = hydrated;
-    const byId = new Map(template.agreements.map((a) => [a.id, a]));
+export function planAssemblyOrders(hydrated: HydratedAssembly): PlannedAssemblyOrder[] {
+    const { assembly } = hydrated;
+    const byId = new Map(assembly.agreements.map((a) => [a.id, a]));
     const orderedIds = topologicalOrder(
-        template.agreements.map((a) => a.id),
-        (id) => [...templateParentOrderHashes(byId.get(id) as AssemblyAgreement)],
+        assembly.agreements.map((a) => a.id),
+        (id) => [...assemblyParentOrderHashes(byId.get(id) as AssemblyAgreement)],
         "throw",
     );
-    // THE ASSEMBLY-SCOPE FOLD: the template's
+    // THE ASSEMBLY-SCOPE FOLD: the assembly's
     // assembly-scoped sections — terms of the composition itself (a
     // denomination pin, a dispute forum) — fold into EVERY node's clause bag,
     // so every agreement carries them and every party signs them. Mechanical:
     // neither the designer nor any party repeats anything.
-    const assemblyClauses = template.assemblyClauses ?? {};
+    const assemblyClauses = assembly.assemblyClauses ?? {};
     return orderedIds.map((id, index) => {
         const entry = byId.get(id) as AssemblyAgreement;
         return {
             nodeId: id,
             agreementKey: entry.agreementKey,
             clauses: { ...assemblyClauses, ...agreementClauses(hydrated, entry) },
-            parentLocalIds: [...templateParentOrderHashes(entry)],
+            parentLocalIds: [...assemblyParentOrderHashes(entry)],
             index,
         };
     });
 }
 
-/** Build an Agreement from a template node's clause bag: each clause key → a
+/** Build an Agreement from a assembly node's clause bag: each clause key → a
  *  section, caller overrides merged in. The key is the clause's identity, so
- *  the template pinned WHICH clause it composed and no registry read is made. */
-export function templateAgreementFromClauses(
+ *  the assembly pinned WHICH clause it composed and no registry read is made. */
+export function agreementFromClauses(
     clauses: Record<string, Record<string, unknown>>,
     buyer: Address,
     seller: Address,
@@ -127,7 +127,7 @@ export interface ReconstructNodeSpec {
     seller: Address;
     /** This node's payment (the value it adds). */
     payment: bigint;
-    /** Per-clause field values merged onto the template's clause data (e.g.
+    /** Per-clause field values merged onto the assembly's clause data (e.g.
      *  the commerce clause's `{ currency, payment, lineItems }`). Keyed by
      *  clause key; the SDK names none. */
     overrides?: Record<string, Record<string, unknown>>;
@@ -138,8 +138,8 @@ export interface ReconstructParams {
     currency: Address;
     chainId: number;
     core: Address;
-    /** One spec per template node id. */
-    nodes: (planned: PlannedTemplateOrder) => ReconstructNodeSpec;
+    /** One spec per assembly node id. */
+    nodes: (planned: PlannedAssemblyOrder) => ReconstructNodeSpec;
     /**
      * When supplied, agreements build through the spec-default projection
      * (`buildOrderAgreement` — checkout semantics: registry-declared defaults
@@ -152,7 +152,7 @@ export interface ReconstructParams {
      * CONTRADICTING override throws before hashing, so the walk never signs a
      * leaf that disagrees with its struct.
      *
-     * Without `specs`, the raw override-merge (`templateAgreementFromClauses`)
+     * Without `specs`, the raw override-merge (`agreementFromClauses`)
      * applies — the agent-origination semantics — and currency-leaf routing is
      * impossible (no spec to find the commerce clause by declared field). A
      * spec-less caller OWNS that leaf: it must supply the commerce section's
@@ -204,31 +204,31 @@ export interface ReconstructedOrder {
  * be SUBMITTED in the returned order (root first) so FigaroCore sees a
  * consistent running total.
  */
-export async function reconstructOrdersFromTemplate(
+export async function reconstructOrdersFromAssembly(
     hydrated: HydratedAssembly,
     params: ReconstructParams,
 ): Promise<ReconstructedOrder[]> {
-    const planned = planTemplateOrders(hydrated);
+    const planned = planAssemblyOrders(hydrated);
     const domain = buildDomain(params.chainId, params.core);
 
     const realHash = new Map<string, Hex>();
     let rootProcessId: Hex | null = null;
     let cumulative = 0n;
-    // The template's OWN composition hash — every realized order carries it,
+    // The assembly's OWN composition hash — every realized order carries it,
     // beside its agreement's agreement key, as the agreement's provenance
     // leaf (see fillWalkProvenance).
-    const compositionHash = templateCompositionHash(hydrated.template);
+    const compositionHash = assemblyCompositionHash(hydrated.assembly);
     const out: ReconstructedOrder[] = [];
 
     for (const node of planned) {
         const spec = params.nodes(node);
         const isRoot = node.index === 0;
         if (!isRoot && rootProcessId === null) {
-            throw new Error("template has a sub-order but no root");
+            throw new Error("assembly has a sub-order but no root");
         }
 
         cumulative += spec.payment;
-        // Template-local parent ids → the REAL order hashes built for those
+        // Assembly-local parent ids → the REAL order hashes built for those
         // nodes (root's empty parents pass through unchanged). Matched by
         // FIELD NAME on every clause carrying `parentOrderHashes`.
         const clauses = withRealParents(node.clauses, realHash);
@@ -244,7 +244,7 @@ export async function reconstructOrdersFromTemplate(
                   ),
                   params.specs,
               ).agreement
-            : templateAgreementFromClauses(
+            : agreementFromClauses(
                   clauses,
                   params.buyer,
                   spec.seller,
@@ -294,7 +294,7 @@ export async function reconstructOrdersFromTemplate(
     return out;
 }
 
-/** Replace a node's template-local parent ids with the REAL order hashes built
+/** Replace a node's assembly-local parent ids with the REAL order hashes built
  *  for those nodes. Root (empty parents) passes through unchanged. */
 function withRealParents(
     clauses: Record<string, Record<string, unknown>>,
@@ -370,7 +370,7 @@ function fillWalkCurrency(
 }
 
 /** Write the order's provenance — the registered agreement its agreement
- *  binds and the instantiated template's OWN composition hash — into the
+ *  binds and the instantiated assembly's OWN composition hash — into the
  *  agreement's provenance leaf (`Agreement.provenance`) BEFORE hashing: the
  *  agreement format's own field, never a clause section; neither hash can
  *  appear inside the composition it hashes, so it fills at instantiation,

@@ -77,7 +77,7 @@
  *   SEED_ASSEMBLIES       — comma-separated reference-assembly names (the
  *                           `assemblies/<name>.json` basenames): anchor ONLY
  *                           these, and register ONLY the clauses they compose
- *                           (`templateComposedClauseKeys`) — a nudge is a
+ *                           (`assemblyComposedClauseKeys`) — a nudge is a
  *                           usable assembly plus its prerequisites, not an
  *                           alphabetical prefix of the clause set. Unset =
  *                           everything.
@@ -115,8 +115,8 @@ import { mnemonicToAccount, privateKeyToAccount } from 'viem/accounts';
 // key, and the canonical-JSON convention. Nothing is re-implemented here.
 import {
     CLAUSE_REGISTRY_ABI, ASSEMBLY_REGISTRY_ABI, AGREEMENT_REGISTRY_ABI, computeClauseKey, canonicalize,
-    templateCompositionHash, deriveAssemblySlug, parseProjectionHints,
-    templateComposedClauseKeys, resolveAuthoredClauseKeys, composeAuthoredAgreement, assembleAuthored,
+    assemblyCompositionHash, deriveAssemblySlug, parseProjectionHints,
+    assemblyComposedClauseKeys, resolveAuthoredClauseKeys, composeAuthoredAgreement, assembleAuthored,
 } from '@figaro-protocol/sdk';
 import { parseClauseSpec } from '@figaro-protocol/sdk/clauses';
 
@@ -130,7 +130,7 @@ export const AGREEMENTS_DIR = path.resolve(__dirname, '../../agreements');
 
 /** The reference assemblies — the user-onboarding set, `clauses/`' sibling:
  *  authored assemblies whose agreements' agreements register on
- *  AgreementRegistry and whose templates anchor on AssemblyRegistry at
+ *  AgreementRegistry and whose assemblies anchor on AssemblyRegistry at
  *  populate time (affixed documents in `assemblies/documents/`). */
 export const ASSEMBLIES_DIR = path.resolve(__dirname, '../../assemblies');
 const RPC_URL = process.env.RPC_URL ?? 'http://127.0.0.1:8545';
@@ -424,8 +424,8 @@ export function loadAuthoredAgreements(authored = loadAuthoredSpecs()) {
 }
 
 /** An authored reference assembly (`assemblies/<file>`) built over the
- *  authored agreements its agreements name: `{ template, agreements }` —
- *  the template seeding anchors and the agreements its agreements bind,
+ *  authored agreements its agreements name: `{ assembly, agreements }` —
+ *  the assembly seeding anchors and the agreements its agreements bind,
  *  keyed (`assembleAuthored`). Seed time only. */
 export function readBuiltAssembly(file, authored = loadAuthoredSpecs(), agreementsByName = loadAuthoredAgreements(authored)) {
     return assembleAuthored(JSON.parse(fs.readFileSync(file, 'utf8')), agreementsByName, authored);
@@ -539,17 +539,17 @@ export async function populateClauses({ publicClient, walletClient, account, reg
  *  the live deployment's token at anchor time. */
 export const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
 
-/** Fill the deploy-time currency pin on a RESOLVED template: every
+/** Fill the deploy-time currency pin on a RESOLVED assembly: every
  *  assembly-scoped section whose `currency` is the ZERO_ADDRESS sentinel (a
  *  denomination pin the checked-in file cannot fill) gets the live token
  *  address substituted before anchoring. Read by the sentinel value, never by
- *  a clause name; a template with no such section passes through unchanged. */
-export function fillDeployTimeCurrency(template, tokenAddress) {
-    const sections = template.assemblyClauses ?? {};
+ *  a clause name; a assembly with no such section passes through unchanged. */
+export function fillDeployTimeCurrency(assembly, tokenAddress) {
+    const sections = assembly.assemblyClauses ?? {};
     const pinned = Object.keys(sections).filter((key) => sections[key]?.currency === ZERO_ADDRESS);
-    if (pinned.length === 0) return template;
+    if (pinned.length === 0) return assembly;
     return {
-        ...template,
+        ...assembly,
         assemblyClauses: Object.fromEntries(Object.entries(sections).map(([key, values]) => [
             key,
             pinned.includes(key) ? { ...values, currency: tokenAddress } : values,
@@ -603,32 +603,32 @@ export async function registerComposedAgreement({ publicClient, walletClient, ac
  *  entry order; the document pinned is the written agreement's own — its name
  *  and summary beside its clauses — and a document written without a name
  *  is named after the assembly and the first agreement binding it), then
- *  anchor its template. */
+ *  anchor its assembly. */
 export async function anchorBuiltAssembly({ built, agreementRegistry, ...args }) {
-    const { template, agreements } = built;
-    for (const [i, entry] of template.agreements.entries()) {
+    const { assembly, agreements } = built;
+    for (const [i, entry] of assembly.agreements.entries()) {
         const doc = agreements[entry.agreementKey];
-        if (!doc || template.agreements.findIndex((s) => s.agreementKey === entry.agreementKey) !== i) continue;
+        if (!doc || assembly.agreements.findIndex((s) => s.agreementKey === entry.agreementKey) !== i) continue;
         await registerComposedAgreement({
             ...args,
             registry: agreementRegistry,
             agreementKey: entry.agreementKey,
             document: doc.name
                 ? doc
-                : { ...(template.name ? { name: `${template.name} · ${entry.id}` } : {}), clauses: doc.clauses },
+                : { ...(assembly.name ? { name: `${assembly.name} · ${entry.id}` } : {}), clauses: doc.clauses },
         });
     }
-    return anchorAssembly({ ...args, template });
+    return anchorAssembly({ ...args, assembly });
 }
 
-/** Anchor one AssemblyTemplate (idempotent — compositionHash is content-derived,
+/** Anchor one Assembly (idempotent — compositionHash is content-derived,
  *  first-write-wins). In vault mode the multisig is msg.sender, so the DAO
  *  becomes the assembly's designer of record. */
-export async function anchorAssembly({ publicClient, walletClient, account, registry, ipfsApiUrl, template, vault, ownerClients, log = console.log }) {
+export async function anchorAssembly({ publicClient, walletClient, account, registry, ipfsApiUrl, assembly, vault, ownerClients, log = console.log }) {
     // Composition hash over the COMPOSITION ONLY (editorial excluded); the slug
     // is presentation, derived off-chain. Both from the SDK single home — the
     // registry keys bindings by compositionHash.
-    const compositionHash = templateCompositionHash(template);
+    const compositionHash = assemblyCompositionHash(assembly);
     const slug = deriveAssemblySlug(compositionHash);
 
     // Idempotency via STATE, not an event scan: `bindings[hash].registeredAt`
@@ -643,7 +643,7 @@ export async function anchorAssembly({ publicClient, walletClient, account, regi
         return { slug, anchored: false };
     }
 
-    const contentURI = await pinJSON(ipfsApiUrl, canonicalize(template));
+    const contentURI = await pinJSON(ipfsApiUrl, canonicalize(assembly));
     const deposit = await publicClient.readContract({
         address: registry, abi: ASSEMBLY_REGISTRY_ABI, functionName: 'registrationDeposit',
     });
@@ -673,7 +673,7 @@ export async function anchorAssembly({ publicClient, walletClient, account, regi
         });
         await publicClient.waitForTransactionReceipt({ hash });
     }
-    log(`  ✓ ${slug} — anchored; template ${contentURI}`);
+    log(`  ✓ ${slug} — anchored; assembly ${contentURI}`);
     return { slug, anchored: true };
 }
 
@@ -702,9 +702,9 @@ export async function populateReferenceAssemblies({ publicClient, walletClient, 
             break;
         }
         const built = readBuiltAssembly(path.join(ASSEMBLIES_DIR, file), authored, agreementsByName);
-        const template = fillDeployTimeCurrency(built.template, tokenAddress);
+        const assembly = fillDeployTimeCurrency(built.assembly, tokenAddress);
         const result = await anchorBuiltAssembly({
-            built: { template, agreements: built.agreements }, agreementRegistry,
+            built: { assembly, agreements: built.agreements }, agreementRegistry,
             publicClient, walletClient, account, registry, ipfsApiUrl, vault, ownerClients, log,
         });
         if (result.anchored) anchored += 1;
@@ -751,7 +751,7 @@ async function main() {
     }
 
     // SEED_ASSEMBLIES: a nudge = named reference assemblies + exactly the
-    // clauses they compose. Resolved from the templates themselves, so the
+    // clauses they compose. Resolved from the assemblies themselves, so the
     // prerequisite set can never drift from the composition.
     let onlyAssemblies;
     let onlyClauses;
@@ -764,7 +764,7 @@ async function main() {
             const file = path.join(ASSEMBLIES_DIR, `${name}.json`);
             if (!fs.existsSync(file)) throw new Error(`SEED_ASSEMBLIES names "${name}" but ${file} does not exist`);
             const built = readBuiltAssembly(file, authoredSpecs, agreementsByName);
-            for (const key of templateComposedClauseKeys(built.template, built.agreements)) onlyClauses.add(key);
+            for (const key of assemblyComposedClauseKeys(built.assembly, built.agreements)) onlyClauses.add(key);
         }
         console.log(`SEED_ASSEMBLIES ${[...onlyAssemblies].join(', ')} → clause set ${[...onlyClauses].sort().join(', ')}`);
     }

@@ -308,7 +308,7 @@ export function ProcessClauseEvidence({ processId }: { processId: string }) {
                                                 </dl>
                                             )}
                                             {/* The reader's verification affordance — renders only for a
-                                                leaf declaring a register template + declared id. */}
+                                                leaf declaring a register assembly + declared id. */}
                                             <CredentialVerifyButton
                                                 data={Object.fromEntries(clause.fields.map((f) => [f.name, f.values[0]]))}
                                             />

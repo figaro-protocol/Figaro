@@ -18,7 +18,7 @@
 <div class="tsd-description">
 <div class="tsd-comment tsd-typography"><p>Resolve the clause NAMES in an authored source document to clause KEYS.</p>
 <p>A human authors <code>agreements/*.json</code> agreements, <code>assemblies/*.json</code>
-templates and <code>members/*.json</code> documents by clause name; a published
+assemblies and <code>members/*.json</code> documents by clause name; a published
 document carries keys. Each name is
 matched against the loaded specs' own <code>clauseId</code> — written <code>name@version</code>,
 the spec's <code>version</code> must match too. A name two loaded specs share, written
@@ -27,7 +27,7 @@ no loaded spec carries. A value that is already a 32-byte key passes
 through. This is a LOCAL authoring read over the caller's spec set, never a
 chain read by name: on chain a clause is only its key.</p>
 <p>Rewritten in an authored agreement: the top-level <code>clauses</code> keys. In a
-template: every <code>agreements[].clauses</code> and <code>assemblyClauses</code> key. In a
+assembly: every <code>agreements[].clauses</code> and <code>assemblyClauses</code> key. In a
 member profile: <code>disclosurePolicy[].clauseId</code> and
 <code>assemblyBindings[].counterpartyBindings[].clauseId</code> (each becomes
 <code>clauseKey</code>), and the <code>profileClauseValues</code> keys. In a catalog: every

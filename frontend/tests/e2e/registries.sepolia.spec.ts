@@ -17,7 +17,7 @@
 import { test, expect } from '@playwright/test';
 import { createPublicClient, http } from 'viem';
 import { AGREEMENT_REGISTRY_ABI, ASSEMBLY_REGISTRY_ABI, CLAUSE_REGISTRY_ABI, MEMBERS_REGISTRY_ABI, agreementKeyOf } from '@figaro-protocol/sdk';
-import { deriveAssemblySlug } from '@/lib/shared/assemblyTemplate';
+import { deriveAssemblySlug } from '@/lib/shared/assembly';
 import { E2E_CHAIN, LOCAL_ANVIL, RPC_URL, readLocalDeploymentConfig, readRegisteredAgreementDocument, scanContractEvents } from './devnet-helpers';
 
 test.describe('PUBLIC REGISTRIES — the explorer shows exactly what the chain holds, content resolved', () => {
@@ -89,7 +89,7 @@ test.describe('PUBLIC REGISTRIES — the explorer shows exactly what the chain h
             await expect(row, `${key} names its designer of record`).toContainText(new RegExp(registeredBy.slice(0, 6), 'i'));
         }
 
-        // ── Assemblies: every anchored composition, each named from its resolved template ──
+        // ── Assemblies: every anchored composition, each named from its resolved assembly ──
         // Every anchored composition, the retired ones included: the row set is the chain's.
         await page.goto('/registries?family=assemblies&stake=all');
         const assemblyRows = page.locator('li[id^="assembly-"]');
@@ -97,9 +97,9 @@ test.describe('PUBLIC REGISTRIES — the explorer shows exactly what the chain h
             .toEqual([...slugs].sort());
         await expect(page.getByTestId('content-resolving')).toHaveCount(0, { timeout: RESOLVE_TIMEOUT });
         for (const slug of slugs) {
-            if (withdrawnSlugs.has(slug)) continue; // retired: the row stands, its template is not held to resolve
+            if (withdrawnSlugs.has(slug)) continue; // retired: the row stands, its assembly is not held to resolve
             const name = (await page.getByTestId(`assembly-view-${slug}`).textContent())?.trim();
-            expect(name, `${slug} is named from its template, not by its slug`).not.toBe(slug);
+            expect(name, `${slug} is named from its assembly, not by its slug`).not.toBe(slug);
         }
 
         // ── Members: every registered wallet, each profile resolved. The count

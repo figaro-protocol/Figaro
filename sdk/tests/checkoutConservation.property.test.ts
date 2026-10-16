@@ -2,8 +2,8 @@
  * Property-based checkout conservation (fast-check) — the payment figures the
  * commitments sign always add up:
  *
- *   - `reconstructOrdersFromTemplate` (the ONE template → orders walk): for
- *     any acyclic template and any per-node payments, each order's
+ *   - `reconstructOrdersFromAssembly` (the ONE assembly → orders walk): for
+ *     any acyclic assembly and any per-node payments, each order's
  *     `cumulativeValue` is the exact prefix sum in commit order, the final
  *     order's equals the sum of ALL node payments (what FigaroCore's
  *     `expectedCumulativeValue` check enforces), and every sub-order's
@@ -18,7 +18,7 @@
 import fc from "fast-check";
 import { parseUnits } from "viem";
 import { describe, expect, it } from "vitest";
-import { reconstructOrdersFromTemplate } from "../src/reconstructOrders.js";
+import { reconstructOrdersFromAssembly } from "../src/reconstructOrders.js";
 import { resolveSubOrderPricing, type PricingCatalog } from "../src/checkoutPlan.js";
 import type { HydratedAssembly } from "../src/assembly.js";
 import { hydrateAuthored } from "./hydrate.js";
@@ -55,7 +55,7 @@ const chainArb = fc.integer({ min: 1, max: 6 }).chain((n) =>
     }),
 );
 
-function templateFrom(parents: readonly number[][]): HydratedAssembly {
+function assemblyFrom(parents: readonly number[][]): HydratedAssembly {
     return hydrateAuthored({
         agreements: parents.map((ps, i) => ({
             id: `n${i}`,
@@ -85,13 +85,13 @@ const priceArb = fc
 
 // ── Properties ──────────────────────────────────────────────────────────────
 
-describe("reconstructOrdersFromTemplate — payment conservation", () => {
+describe("reconstructOrdersFromAssembly — payment conservation", () => {
     it("cumulativeValue is the exact prefix sum; the final order carries the total of all node payments", async () => {
         await fc.assert(
             fc.asyncProperty(chainArb, async ({ payments, parents }) => {
-                const template = templateFrom(parents);
+                const assembly = assemblyFrom(parents);
                 const paymentOf = new Map(payments.map((p, i) => [`n${i}`, p]));
-                const orders = await reconstructOrdersFromTemplate(template, {
+                const orders = await reconstructOrdersFromAssembly(assembly, {
                     buyer: BUYER,
                     currency: CURRENCY,
                     chainId: 31337,
@@ -125,9 +125,9 @@ describe("reconstructOrdersFromTemplate — payment conservation", () => {
     it("every sub-order's topology section carries its parents' REAL order hashes", async () => {
         await fc.assert(
             fc.asyncProperty(chainArb, async ({ payments, parents }) => {
-                const template = templateFrom(parents);
+                const assembly = assemblyFrom(parents);
                 const paymentOf = new Map(payments.map((p, i) => [`n${i}`, p]));
-                const orders = await reconstructOrdersFromTemplate(template, {
+                const orders = await reconstructOrdersFromAssembly(assembly, {
                     buyer: BUYER,
                     currency: CURRENCY,
                     chainId: 31337,

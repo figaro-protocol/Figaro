@@ -43,7 +43,7 @@ import { usePublishMemberProfile } from "@/lib/member/usePublishMemberProfile";
 
 interface DraftSummary {
     /** Profile shape before the catalogURI is pinned. Submit fills in `catalogURI`. */
-    profileTemplate: Omit<MemberProfileMetadata, "catalogURI">;
+    profileMetadata: Omit<MemberProfileMetadata, "catalogURI">;
 }
 
 function buildDraft(state: ReturnType<typeof useOnboardingState>["state"], wallet: `0x${string}`): DraftSummary | { error: string } {
@@ -57,7 +57,7 @@ function buildDraft(state: ReturnType<typeof useOnboardingState>["state"], walle
     const items = state.catalog?.items ?? [];
     if (items.length === 0) return { error: `${onboardingStepLabel("catalog")} is incomplete: add at least one item before publishing.` };
 
-    const profileTemplate: Omit<MemberProfileMetadata, "catalogURI"> = {
+    const profileMetadata: Omit<MemberProfileMetadata, "catalogURI"> = {
         subjectAddress: wallet,
         name: state.profile.name,
         description: state.profile.description,
@@ -91,7 +91,7 @@ function buildDraft(state: ReturnType<typeof useOnboardingState>["state"], walle
         services: state.services,
     };
 
-    return { profileTemplate };
+    return { profileMetadata };
 }
 
 export function OnboardingReview() {
@@ -148,7 +148,7 @@ export function OnboardingReview() {
         setPinError(null);
         try {
             const outcome = await publish({
-                profileTemplate: draft.profileTemplate,
+                profileMetadata: draft.profileMetadata,
                 items,
                 unitSystem: state.catalog?.unitSystem,
                 wallet: address,
@@ -235,7 +235,7 @@ export function OnboardingReview() {
         );
     }
 
-    const profile = "profileTemplate" in draft ? draft.profileTemplate : undefined;
+    const profile = "profileMetadata" in draft ? draft.profileMetadata : undefined;
     const items = state.catalog?.items ?? [];
     const acceptedTokens = profile?.acceptedTokens ?? [];
     const bindings = profile?.assemblyBindings ?? [];

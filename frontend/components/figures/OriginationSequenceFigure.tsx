@@ -22,7 +22,7 @@ export type OriginationSequenceFigureProps = BaseFigureProps;
  * STEP SEMANTICS verified against `sdk/README.md` § "Your first commit" step 4
  * (the runnable form is `sdk/scripts/verify-origination.devnet.mjs`) and the
  * shipped signatures in `sdk/dist/agent/originate.d.ts`:
- *  - Discovery: `ctx.sync()` folds the registry event streams; the template is
+ *  - Discovery: `ctx.sync()` folds the registry event streams; the assembly is
  *    HYDRATED from its `contentURI`, and the commerce clause is located by the
  *    field it declares — no hardcoded clause id.
  *  - Buyer gate: `assertAgreementSignable(agreement, expectedHash, specs,
@@ -73,7 +73,7 @@ const ROWS: readonly Row[] = [
         label: "discover — ctx.sync()",
         detail: [
             "The registry event streams fold into a live catalog, and the chosen",
-            "template hydrates from its contentURI. The commerce clause is located",
+            "assembly hydrates from its contentURI. The commerce clause is located",
             "by the field it DECLARES, never by clause name.",
         ],
     },
@@ -83,7 +83,7 @@ const ROWS: readonly Row[] = [
         label: "instantiate the root agreement",
         detail: [
             "originateProcess() applies the buyer's overrides to the discovered",
-            "template. Terms, not yet a signature.",
+            "assembly. Terms, not yet a signature.",
         ],
     },
     {
@@ -254,7 +254,7 @@ export function OriginationSequenceFigure({
                 <>
                     A sequence across four columns — buyer, channel, seller, and
                     the chain. The buyer discovers the network, instantiates the
-                    root agreement from a template, validates it against every
+                    root agreement from a assembly, validates it against every
                     clause spec, and signs an EIP-712 commitment over a
                     chain-time deadline. The offer crosses a coordination
                     channel to the seller, who re-hashes the agreement against

@@ -1,18 +1,18 @@
 import { describe, expect, it } from "vitest";
-import { agreementKeyOf, serializeAssemblyTemplate } from "@figaro-protocol/sdk";
-import { deriveAssemblySlug, type AssemblyTemplate } from "@/lib/shared/assemblyTemplate";
+import { agreementKeyOf, serializeAssembly } from "@figaro-protocol/sdk";
+import { deriveAssemblySlug, type Assembly } from "@/lib/shared/assembly";
 
-// Construct templates directly (no spec cache needed) to test the
+// Construct assemblies directly (no spec cache needed) to test the
 // serialize → compositionHash → slug pipeline in isolation. The clause keys
 // are opaque 32-byte hashes: the pipeline reads none of the specs behind them.
 // Each agreement binds the agreement those clauses key to.
 const CLAUSE = `0x${"c1".repeat(32)}` as const;
 const LOOKALIKE = `0x${"c2".repeat(32)}` as const;
-const composition = (x: number, clauseKey: `0x${string}` = CLAUSE): AssemblyTemplate => ({
+const composition = (x: number, clauseKey: `0x${string}` = CLAUSE): Assembly => ({
     agreements: [{ id: "order-0", agreementKey: agreementKeyOf({ clauses: { [clauseKey]: { x } } }), clauses: {} }],
 });
 
-const slugOf = (t: AssemblyTemplate) => deriveAssemblySlug(serializeAssemblyTemplate(t).compositionHash);
+const slugOf = (t: Assembly) => deriveAssemblySlug(serializeAssembly(t).compositionHash);
 
 describe("content-derived assembly slug", () => {
     it("identical compositions → identical slug (the dedup property)", () => {
@@ -25,9 +25,9 @@ describe("content-derived assembly slug", () => {
 
     it("slug is stable under object-key reordering (canonicalization)", () => {
         const agreementKey = composition(1).agreements[0].agreementKey;
-        const ordered: AssemblyTemplate = { agreements: [{ id: "order-0", agreementKey, clauses: { [CLAUSE]: { a: 1, b: 2 } } }] };
-        const reordered = { agreements: [{ clauses: { [CLAUSE]: { b: 2, a: 1 } }, agreementKey, id: "order-0" }] } as AssemblyTemplate;
-        expect(serializeAssemblyTemplate(ordered).compositionHash).toBe(serializeAssemblyTemplate(reordered).compositionHash);
+        const ordered: Assembly = { agreements: [{ id: "order-0", agreementKey, clauses: { [CLAUSE]: { a: 1, b: 2 } } }] };
+        const reordered = { agreements: [{ clauses: { [CLAUSE]: { b: 2, a: 1 } }, agreementKey, id: "order-0" }] } as Assembly;
+        expect(serializeAssembly(ordered).compositionHash).toBe(serializeAssembly(reordered).compositionHash);
     });
 
     it("format: asm- prefix + 16 hex", () => {
@@ -38,13 +38,13 @@ describe("content-derived assembly slug", () => {
     // NOT enter the content hash — renaming an assembly never forks its slug.
     it("editorial fields (name/summary/description) do not change the slug", () => {
         const plain = composition(1);
-        const titled: AssemblyTemplate = { ...plain, name: "Direct Sale", summary: "One-node on-site sale", description: "A buyer and a café, face to face." };
+        const titled: Assembly = { ...plain, name: "Direct Sale", summary: "One-node on-site sale", description: "A buyer and a café, face to face." };
         expect(slugOf(titled)).toBe(slugOf(plain));
     });
 
     it("but the pinned document DOES carry the editorial prose", () => {
-        const titled: AssemblyTemplate = { ...composition(1), name: "Direct Sale" };
-        expect(JSON.parse(serializeAssemblyTemplate(titled).json).name).toBe("Direct Sale");
+        const titled: Assembly = { ...composition(1), name: "Direct Sale" };
+        expect(JSON.parse(serializeAssembly(titled).json).name).toBe("Direct Sale");
     });
 
     // A clause is its spec: another version of a clause — or a lookalike that

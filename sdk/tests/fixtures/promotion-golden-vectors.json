@@ -22,7 +22,7 @@
       "agreementHash": "0x82f12a6cf1b113db2fe4cba432190cc3a81ac756f62a5ee2852925f28ab67fbd"
     }
   },
-  "assemblyTemplate": {
+  "assembly": {
     "canonicalJson": "{\"agreements\":[{\"agreementKey\":\"0x5d5ea95b1919a8c926400c1481391e284f2c0c5b5b4cbf4f7dcaa84027867a9f\",\"clauses\":{\"0xd7555453daf821f5fdf852d3c1cb7d88d6cd741dbdfb631c3406114bbf2d91bc\":{\"parentOrderHashes\":[]}},\"id\":\"order-0\"},{\"agreementKey\":\"0x5d5ea95b1919a8c926400c1481391e284f2c0c5b5b4cbf4f7dcaa84027867a9f\",\"clauses\":{\"0xd7555453daf821f5fdf852d3c1cb7d88d6cd741dbdfb631c3406114bbf2d91bc\":{\"parentOrderHashes\":[\"order-0\"]}},\"id\":\"order-1\"}],\"assemblyClauses\":{\"0xf79ded2de5be2f5194b75e56a3bcd6b357bb550da2f765c20a482b4f8e368b74\":{\"applicableLaw\":\"US-NY\"}},\"name\":\"Golden Vector Chain\"}",
     "compositionHash": "0xb1515e9ccb575c89573a64150ea8de67c67c36b2f6cba373a0e56f2098c07efd",
     "agreements": {

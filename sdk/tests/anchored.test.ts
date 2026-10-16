@@ -11,13 +11,13 @@ import {
     anchorAttestationContent,
     anchorClauseSpec,
     anchorComposedAgreement,
-    anchorTemplate,
+    anchorAssembly,
     deriveAnchored,
     hydrateAssembly,
 } from "../src/anchored.js";
 import { PROVENANCE_LEAF_KEY, canonicalContentHash, canonicalize, computeAgreementHash, type Agreement } from "../src/agreement.js";
 import { computeClauseKey } from "../src/discovery.js";
-import { ASSEMBLY_TERMS_LEAF_KEY, agreementKeyOf, templateCompositionHash, type AssemblyTemplate } from "../src/assembly.js";
+import { ASSEMBLY_TERMS_LEAF_KEY, agreementKeyOf, assemblyCompositionHash, type Assembly } from "../src/assembly.js";
 import { keyOf } from "./specFixtures.js";
 
 const OTHER = `0x${"11".repeat(32)}` as const;
@@ -26,7 +26,7 @@ const spec = { clauseId: "test-anchor", version: 1, title: "T", description: "D"
 
 const composed = { name: "Editorial", clauses: { [keyOf("figaro-commerce")]: {}, [keyOf("figaro-topology")]: {} } };
 
-const template: AssemblyTemplate = {
+const assembly: Assembly = {
     name: "Editorial",
     agreements: [{ id: "order-0", agreementKey: agreementKeyOf(composed), clauses: { [keyOf("figaro-topology")]: { parentOrderHashes: [] } } }],
 };
@@ -70,26 +70,26 @@ describe("anchorClauseSpec", () => {
     });
 });
 
-describe("anchorTemplate", () => {
-    it("returns the template its composition hash names, editorial prose aside", () => {
-        const hash = templateCompositionHash(template);
-        expect(anchorTemplate(template, hash)).toBe(template);
-        const renamed = { ...template, name: "Renamed" };
-        expect(anchorTemplate(renamed, hash)).toBe(renamed);
+describe("anchorAssembly", () => {
+    it("returns the assembly its composition hash names, editorial prose aside", () => {
+        const hash = assemblyCompositionHash(assembly);
+        expect(anchorAssembly(assembly, hash)).toBe(assembly);
+        const renamed = { ...assembly, name: "Renamed" };
+        expect(anchorAssembly(renamed, hash)).toBe(renamed);
     });
     it("refuses a changed composition", () => {
-        const changed = { ...template, agreements: [{ ...template.agreements[0], clauses: {} }] };
-        expect(anchorTemplate(changed, templateCompositionHash(template))).toBeNull();
+        const changed = { ...assembly, agreements: [{ ...assembly.agreements[0], clauses: {} }] };
+        expect(anchorAssembly(changed, assemblyCompositionHash(assembly))).toBeNull();
     });
     it("refuses an agreement whose key is malformed or reserved", () => {
         for (const agreementKey of ["0x1234", PROVENANCE_LEAF_KEY, ASSEMBLY_TERMS_LEAF_KEY]) {
-            expect(anchorTemplate({ agreements: [{ id: "order-0", agreementKey, clauses: {} }] }, OTHER)).toBeNull();
+            expect(anchorAssembly({ agreements: [{ id: "order-0", agreementKey, clauses: {} }] }, OTHER)).toBeNull();
         }
     });
-    it("refuses a document that is not a template", () => {
-        expect(anchorTemplate({ name: "no agreements" }, OTHER)).toBeNull();
-        expect(anchorTemplate("text", OTHER)).toBeNull();
-        expect(anchorTemplate(null, OTHER)).toBeNull();
+    it("refuses a document that is not a assembly", () => {
+        expect(anchorAssembly({ name: "no agreements" }, OTHER)).toBeNull();
+        expect(anchorAssembly("text", OTHER)).toBeNull();
+        expect(anchorAssembly(null, OTHER)).toBeNull();
     });
 });
 
@@ -126,9 +126,9 @@ describe("anchorComposedAgreement", () => {
 
 describe("hydrateAssembly", () => {
     const key = agreementKeyOf(composed);
-    const two: AssemblyTemplate = {
+    const two: Assembly = {
         agreements: [
-            template.agreements[0],
+            assembly.agreements[0],
             { id: "order-1", agreementKey: key, clauses: { [keyOf("figaro-topology")]: { parentOrderHashes: ["order-0"] } } },
         ],
     };
@@ -137,7 +137,7 @@ describe("hydrateAssembly", () => {
         const reads: string[] = [];
         const hydrated = await hydrateAssembly(two, async (k) => { reads.push(k); return JSON.stringify(composed); });
         expect(reads).toEqual([key]);
-        expect(hydrated?.template).toBe(two);
+        expect(hydrated?.assembly).toBe(two);
         expect(hydrated?.agreements[key.toLowerCase() as `0x${string}`]).toEqual(composed);
     });
 

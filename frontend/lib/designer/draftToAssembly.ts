@@ -1,9 +1,9 @@
 /**
- * lib/designer/draftToAssemblyTemplate.ts — the AUTHORING direction of the
- * draft ↔ template bridge; the mirror of `assemblyTemplateToDraft.ts`.
+ * lib/designer/draftToAssembly.ts — the AUTHORING direction of the
+ * draft ↔ assembly bridge; the mirror of `assemblyToDraft.ts`.
  *
  * ONE walk from a `DesignSnapshot` (what the canvas holds) to the canonical
- * `AssemblyTemplate` (what gets pinned + anchored). Publish, the composition
+ * `Assembly` (what gets pinned + anchored). Publish, the composition
  * hand-off panel, the canvas's identity readout, and the REVIEW screen all go
  * through it, so the hash a designer SEES while composing is by construction
  * the hash publish anchors — a readout derived by a second, near-identical
@@ -14,7 +14,7 @@
  * irreversible anchor are the terms in the bytes, not a parallel reading of
  * the draft that can silently fall out of step with them.
  *
- * The walk itself is `buildAssemblyTemplate` (`@figaro-protocol/sdk`), fed by the
+ * The walk itself is `buildAssembly` (`@figaro-protocol/sdk`), fed by the
  * live-cache `liveSpecSource()` adapter, whose fold set holds only the
  * registrations whose stake is live (the drawer's surfacing rule), and by the
  * registered agreements the designer bound to agreements, read from
@@ -26,10 +26,10 @@
  */
 
 import {
-    buildAssemblyTemplate,
-    serializeAssemblyTemplate,
+    buildAssembly,
+    serializeAssembly,
     agreementClauses,
-    type BuiltAssemblyTemplate,
+    type BuiltAssembly,
     type ComposedAgreement,
     type Hex,
     type HydratedAssembly,
@@ -37,7 +37,7 @@ import {
 import { getComposedAgreement } from "@/lib/protocol/useAgreementRegistry";
 import { clauseDesignFills, clauseIsMandatory, getClauseSpec, liveSpecSource } from "@/lib/shared/clauseSpecSource";
 import { isFilledValue } from "@/lib/checkout/checkoutDerivations";
-import { deriveAssemblySlug, type AssemblyTemplate } from "@/lib/shared/assemblyTemplate";
+import { deriveAssemblySlug, type Assembly } from "@/lib/shared/assembly";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import { truncateHex } from "@/lib/shared/formatHex";
 import type { DesignSnapshot } from "@/lib/designer/syntheticDesignStore";
@@ -57,14 +57,14 @@ function boundAgreements(snapshot: DesignSnapshot): Record<string, ComposedAgree
     return out;
 }
 
-/** Project a design snapshot onto the canonical assembly template and the
+/** Project a design snapshot onto the canonical assembly and the
  *  agreements newly composed for it (the ones publish registers before the
  *  assembly). Throws when the spec cache is cold (no mandatory clauses
  *  resolvable), a clause is composed at the wrong scope, an agreement both
  *  binds and composes, or a bound agreement is unread or lacks a live
  *  mandatory clause — the SDK's own refusals, and this file's one. */
-export function snapshotToAssemblyTemplate(snapshot: DesignSnapshot): BuiltAssemblyTemplate {
-    return buildAssemblyTemplate({
+export function snapshotToAssembly(snapshot: DesignSnapshot): BuiltAssembly {
+    return buildAssembly({
         name: snapshot.name.trim() || undefined,
         summary: snapshot.summary?.trim() || undefined,
         description: snapshot.description?.trim() || undefined,
@@ -76,18 +76,18 @@ export function snapshotToAssemblyTemplate(snapshot: DesignSnapshot): BuiltAssem
     });
 }
 
-/** A built template beside every agreement its agreements bind — the newly
+/** A built assembly beside every agreement its agreements bind — the newly
  *  composed ones and the registered ones the designer bound — keyed by
  *  lowercased key, as checkout reads a hydrated assembly. */
-function builtToHydrated(built: BuiltAssemblyTemplate): HydratedAssembly {
+function builtToHydrated(built: BuiltAssembly): HydratedAssembly {
     const agreements: Record<Hex, ComposedAgreement> = {};
     for (const [key, doc] of Object.entries(built.agreements)) agreements[key.toLowerCase() as Hex] = doc;
-    for (const entry of built.template.agreements) {
+    for (const entry of built.assembly.agreements) {
         const key = entry.agreementKey.toLowerCase() as Hex;
         const doc = agreements[key] ?? getComposedAgreement(key);
         if (doc) agreements[key] = doc;
     }
-    return { template: built.template, agreements };
+    return { assembly: built.assembly, agreements };
 }
 
 /** The clauses an assembly states per AGREEMENT — the read side of the one
@@ -95,17 +95,17 @@ function builtToHydrated(built: BuiltAssemblyTemplate): HydratedAssembly {
  *  publish (review) or has already published (`/view`): each agreement's
  *  registered agreement with the agreement's own fills merged over it.
  *
- *  Keyed by the template's own agreement ids (`order-<i>`). The auto-folded
+ *  Keyed by the assembly's own agreement ids (`order-<i>`). The auto-folded
  *  MANDATORY clauses are left out here: they are not the designer's picks, and
- *  `templateFoldedClauses` lists them on their own, by key.
+ *  `assemblyFoldedClauses` lists them on their own, by key.
  *  Everything shown here comes from the pinned bytes, never from a second walk
  *  over the draft — that divergence is the defect this exists to make
  *  impossible. */
-export function templateComposedByAgreement(
+export function assemblyComposedByAgreement(
     hydrated: HydratedAssembly,
 ): Record<string, Record<string, Record<string, unknown>>> {
     return Object.fromEntries(
-        hydrated.template.agreements.map((entry) => [
+        hydrated.assembly.agreements.map((entry) => [
             entry.id,
             Object.fromEntries(
                 Object.entries(agreementClauses(hydrated, entry)).filter(([clauseKey]) => !clauseIsMandatory(clauseKey)),
@@ -141,20 +141,20 @@ export function composedClauseLabel(clause: Pick<ComposedClause, "clauseKey" | "
 }
 
 /** The designer's picks per agreement, by key — the listing face of
- *  `templateComposedByAgreement`, keyed the same way. Any spec is anyone's
+ *  `assemblyComposedByAgreement`, keyed the same way. Any spec is anyone's
  *  registration and two specs may share a name, so a review shows the
  *  spec's version beside its name, read from the spec the key names. */
-export function templateComposedClauses(hydrated: HydratedAssembly): Record<string, ComposedClause[]> {
-    const byAgreement = templateComposedByAgreement(hydrated);
+export function assemblyComposedClauses(hydrated: HydratedAssembly): Record<string, ComposedClause[]> {
+    const byAgreement = assemblyComposedByAgreement(hydrated);
     return Object.fromEntries(
-        hydrated.template.agreements.map((agreement) => [
+        hydrated.assembly.agreements.map((agreement) => [
             agreement.id,
             (Object.keys(byAgreement[agreement.id] ?? {}) as Hex[]).map((clauseKey) => ({ clauseKey, ...clauseLabel(clauseKey) })),
         ]),
     );
 }
 
-/** A clause the template carries because its spec marks it mandatory, not
+/** A clause the assembly carries because its spec marks it mandatory, not
  *  because the designer picked it. */
 export interface FoldedClause {
     clauseKey: Hex;
@@ -168,14 +168,14 @@ export interface FoldedClause {
     carriedBy: string[];
 }
 
-/** Every clause the template carries as MANDATORY, by key — the
- *  complement of `templateComposedByAgreement`. "Mandatory" is the spec's
+/** Every clause the assembly carries as MANDATORY, by key — the
+ *  complement of `assemblyComposedByAgreement`. "Mandatory" is the spec's
  *  `block.design.article`, written by whoever registered the clause and open
  *  to anyone's registration, so it confers no standing: a review lists every
  *  one of these for the designer to confirm before anchoring, never folds
  *  them out of sight. Read from the pinned bytes. */
-export function templateFoldedClauses(hydrated: HydratedAssembly): FoldedClause[] {
-    const { template } = hydrated;
+export function assemblyFoldedClauses(hydrated: HydratedAssembly): FoldedClause[] {
+    const { assembly } = hydrated;
     const folded = new Map<string, FoldedClause>();
     const note = (clauseKey: Hex, carrier: string) => {
         if (!clauseIsMandatory(clauseKey)) return;
@@ -183,8 +183,8 @@ export function templateFoldedClauses(hydrated: HydratedAssembly): FoldedClause[
         entry.carriedBy.push(carrier);
         folded.set(clauseKey.toLowerCase(), entry);
     };
-    for (const clauseKey of Object.keys(template.assemblyClauses ?? {}) as Hex[]) note(clauseKey, "assembly");
-    for (const entry of template.agreements) {
+    for (const clauseKey of Object.keys(assembly.assemblyClauses ?? {}) as Hex[]) note(clauseKey, "assembly");
+    for (const entry of assembly.agreements) {
         for (const clauseKey of Object.keys(agreementClauses(hydrated, entry)) as Hex[]) note(clauseKey, entry.id);
     }
     return Array.from(folded.values());
@@ -192,22 +192,22 @@ export function templateFoldedClauses(hydrated: HydratedAssembly): FoldedClause[
 
 /** A draft projected onto the bytes that publish anchors, plus the readout
  *  those bytes produce — the ONE object a review screen renders and the
- *  publish call sends. `composedByOrderId` is re-keyed from the template's
+ *  publish call sends. `composedByOrderId` is re-keyed from the assembly's
  *  local agreement ids back onto the canvas's own order ids (the build labels
  *  agreements `order-<i>` in the snapshot's own order, so the mapping is
  *  positional), so a node on the review canvas reads its own composition out
- *  of the published template rather than out of the draft a second time. */
+ *  of the published assembly rather than out of the draft a second time. */
 export type SnapshotReview =
     | {
         ok: true;
-        template: AssemblyTemplate;
-        /** The template beside every agreement its agreements bind. */
+        assembly: Assembly;
+        /** The assembly beside every agreement its agreements bind. */
         hydrated: HydratedAssembly;
         /** The agreements newly composed for this assembly, by key — the
          *  ones publish registers (one stake each, a key already bound is
          *  skipped) before the assembly. */
         newAgreements: Record<Hex, ComposedAgreement>;
-        /** Per agreement, in template order: the canvas order id, the
+        /** Per agreement, in assembly order: the canvas order id, the
          *  agreement key it binds, and whether that agreement was bound as
          *  registered or composed here. */
         entries: { orderId: string; agreementKey: Hex; bound: boolean }[];
@@ -218,9 +218,9 @@ export type SnapshotReview =
         /** canvas order id → the same picks with their labels, for the
          *  review's listing. */
         composedClausesByOrderId: Record<string, ComposedClause[]>;
-        /** The assembly-scoped composition exactly as the template carries it. */
+        /** The assembly-scoped composition exactly as the assembly carries it. */
         assemblyClauses: Record<string, Record<string, unknown>>;
-        /** The mandatory clauses the template carries, by key — what
+        /** The mandatory clauses the assembly carries, by key — what
          *  the designer confirms before publish. */
         folded: FoldedClause[];
     }
@@ -228,41 +228,41 @@ export type SnapshotReview =
 
 /** Project a draft for review. Never throws: a cold spec cache or a
  *  mis-scoped clause comes back as `{ ok: false, error }` — a review screen
- *  that cannot build the template must say so and refuse to publish, never
+ *  that cannot build the assembly must say so and refuse to publish, never
  *  render an empty composition. */
 export function projectSnapshotForReview(snapshot: DesignSnapshot): SnapshotReview {
     try {
-        const built = snapshotToAssemblyTemplate(snapshot);
-        const { template } = built;
+        const built = snapshotToAssembly(snapshot);
+        const { assembly } = built;
         const hydrated = builtToHydrated(built);
-        const { compositionHash } = serializeAssemblyTemplate(template);
-        const byAgreement = templateComposedByAgreement(hydrated);
-        const clausesByAgreement = templateComposedClauses(hydrated);
+        const { compositionHash } = serializeAssembly(assembly);
+        const byAgreement = assemblyComposedByAgreement(hydrated);
+        const clausesByAgreement = assemblyComposedClauses(hydrated);
         const boundIds = new Set(Object.keys(snapshot.registeredByOrderId ?? {}));
         const composedByOrderId: Record<string, Record<string, Record<string, unknown>>> = {};
         const composedClausesByOrderId: Record<string, ComposedClause[]> = {};
         snapshot.orders.forEach((order, index) => {
-            const agreementId = template.agreements[index]?.id;
+            const agreementId = assembly.agreements[index]?.id;
             if (agreementId === undefined) return;
             composedByOrderId[order.orderHash] = byAgreement[agreementId] ?? {};
             composedClausesByOrderId[order.orderHash] = clausesByAgreement[agreementId] ?? [];
         });
         return {
             ok: true,
-            template,
+            assembly,
             hydrated,
             newAgreements: built.agreements,
             entries: snapshot.orders.map((order, index) => ({
                 orderId: order.orderHash,
-                agreementKey: template.agreements[index].agreementKey,
+                agreementKey: assembly.agreements[index].agreementKey,
                 bound: boundIds.has(order.orderHash),
             })),
             compositionHash,
             slug: deriveAssemblySlug(compositionHash),
             composedByOrderId,
             composedClausesByOrderId,
-            assemblyClauses: template.assemblyClauses ?? {},
-            folded: templateFoldedClauses(hydrated),
+            assemblyClauses: assembly.assemblyClauses ?? {},
+            folded: assemblyFoldedClauses(hydrated),
         };
     } catch (cause) {
         return {
@@ -312,7 +312,7 @@ export interface MissingAssemblyTerm {
  * The design fills a clause declares defaults for, as the values a fresh
  * selection starts from: toggling an assembly term on seeds them, so a
  * required fill with a declared default (a forum's subcourt) is filled
- * from the first moment and the anchored template carries it explicitly.
+ * from the first moment and the anchored assembly carries it explicitly.
  * A fill with no default (a utility token's currency) stays empty, and
  * `unfilledAssemblyTerms` names it until the designer fills it. Read from
  * the spec the key names — never another spec of the same name.

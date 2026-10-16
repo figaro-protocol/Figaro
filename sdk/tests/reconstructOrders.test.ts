@@ -1,17 +1,17 @@
 /**
- * reconstructOrders — the ONE template → orders walk. Structure via
- * `planTemplateOrders` (commit order, clause bags, local parents)
- * and realization via `reconstructOrdersFromTemplate` (real parent hashes,
+ * reconstructOrders — the ONE assembly → orders walk. Structure via
+ * `planAssemblyOrders` (commit order, clause bags, local parents)
+ * and realization via `reconstructOrdersFromAssembly` (real parent hashes,
  * running cumulative value, root-derived processId, onOrder seam ordering).
  * The behavioral reference is the untouched originate-chain suite, which now
  * runs THROUGH this walk.
  */
 import { describe, expect, it } from "vitest";
 import {
-    planTemplateOrders,
-    reconstructOrdersFromTemplate,
+    planAssemblyOrders,
+    reconstructOrdersFromAssembly,
 } from "../src/reconstructOrders.js";
-import { templateCompositionHash } from "../src/assembly.js";
+import { assemblyCompositionHash } from "../src/assembly.js";
 import { computeAgreementHash, buildProvenanceInclusionProof, verifyInclusionProof } from "../src/agreement.js";
 import { keyOf, rawSpecOf, specSourceFromFixtures, specSourceWithRegistrations, viewOf } from "./specFixtures.js";
 import { hydrateAuthored } from "./hydrate.js";
@@ -25,7 +25,7 @@ const CURRENCY = "0x0000000000000000000000000000000000000001" as const;
 const CORE = "0x00000000000000000000000000000000000000c0" as const;
 
 /** Child listed FIRST to prove commit order comes from topology, not input. */
-const template = hydrateAuthored({
+const assembly = hydrateAuthored({
     agreements: [
         {
             id: "courier",
@@ -41,9 +41,9 @@ const template = hydrateAuthored({
     ],
 });
 
-describe("planTemplateOrders — pure structure", () => {
-    it("orders nodes root-first with local parents and the template's clause bags", () => {
-        const planned = planTemplateOrders(template);
+describe("planAssemblyOrders — pure structure", () => {
+    it("orders nodes root-first with local parents and the assembly's clause bags", () => {
+        const planned = planAssemblyOrders(assembly);
         expect(planned.map((p) => p.nodeId)).toEqual(["merchant", "courier"]);
         expect(planned[0].parentLocalIds).toEqual([]);
         expect(planned[1].parentLocalIds).toEqual(["merchant"]);
@@ -59,14 +59,14 @@ describe("planTemplateOrders — pure structure", () => {
                 { id: "b", clauses: { [keyOf("figaro-topology")]: { parentOrderHashes: ["a"] } } },
             ],
         });
-        expect(() => planTemplateOrders(cyclic)).toThrow(/cycle/);
+        expect(() => planAssemblyOrders(cyclic)).toThrow(/cycle/);
     });
 });
 
-describe("reconstructOrdersFromTemplate — realization", () => {
+describe("reconstructOrdersFromAssembly — realization", () => {
     it("realizes the chain: real parent hashes, running cumulative, root-derived processId", async () => {
         const seen: string[] = [];
-        const orders = await reconstructOrdersFromTemplate(template, {
+        const orders = await reconstructOrdersFromAssembly(assembly, {
             buyer: BUYER,
             currency: CURRENCY,
             chainId: 31337,
@@ -105,9 +105,9 @@ describe("reconstructOrdersFromTemplate — realization", () => {
         }
     });
 
-    it("every realized order carries the template's own composition hash as agreement.provenance, under its signed root", async () => {
+    it("every realized order carries the assembly's own composition hash as agreement.provenance, under its signed root", async () => {
         for (const specs of [SPECS, undefined]) {
-            const orders = await reconstructOrdersFromTemplate(template, {
+            const orders = await reconstructOrdersFromAssembly(assembly, {
                 buyer: BUYER,
                 currency: CURRENCY,
                 chainId: 31337,
@@ -121,10 +121,10 @@ describe("reconstructOrdersFromTemplate — realization", () => {
                 deadline: 1770000000n,
             });
             for (const order of orders) {
-                const entry = template.template.agreements.find((a) => a.id === order.nodeId)!;
+                const entry = assembly.assembly.agreements.find((a) => a.id === order.nodeId)!;
                 expect(order.agreement.provenance).toEqual({
                     agreementKey: entry.agreementKey,
-                    compositionHash: templateCompositionHash(template.template),
+                    compositionHash: assemblyCompositionHash(assembly.assembly),
                 });
                 expect(order.agreementHash).toBe(computeAgreementHash(order.agreement));
                 expect(order.commitment.agreementHash).toBe(order.agreementHash);
@@ -134,14 +134,14 @@ describe("reconstructOrdersFromTemplate — realization", () => {
         }
     });
 
-    it("rejects a template whose commit order starts with a parented node", async () => {
+    it("rejects a assembly whose commit order starts with a parented node", async () => {
         const dangling = hydrateAuthored({
             agreements: [
                 { id: "only", clauses: { [keyOf("figaro-topology")]: { parentOrderHashes: ["ghost"] } } },
             ],
         });
         await expect(
-            reconstructOrdersFromTemplate(dangling, {
+            reconstructOrdersFromAssembly(dangling, {
                 buyer: BUYER,
                 currency: CURRENCY,
                 chainId: 31337,
@@ -152,10 +152,10 @@ describe("reconstructOrdersFromTemplate — realization", () => {
     });
 });
 
-describe("reconstructOrdersFromTemplate — the walk's fills read the spec each key names", () => {
+describe("reconstructOrdersFromAssembly — the walk's fills read the spec each key names", () => {
     // A lookalike of the commerce clause (same clauseId and version, other
     // bytes) that declares `currency` as a DESIGN FILL — a pin, not content.
-    // It is another clause: a template composing the real key fills the real
+    // It is another clause: a assembly composing the real key fills the real
     // currency leaf, and only one composing the lookalike's key reads it.
     const raw = rawSpecOf("figaro-commerce");
     const lookalike = viewOf({
@@ -176,7 +176,7 @@ describe("reconstructOrdersFromTemplate — the walk's fills read the spec each 
     };
 
     it("the real key fills the real currency leaf", async () => {
-        const [root] = await reconstructOrdersFromTemplate(
+        const [root] = await reconstructOrdersFromAssembly(
             hydrateAuthored({ agreements: [{ id: "only", clauses: { [keyOf("figaro-commerce")]: {} } }] }),
             params,
         );
@@ -185,7 +185,7 @@ describe("reconstructOrdersFromTemplate — the walk's fills read the spec each 
     });
 
     it("the lookalike's key is read as the lookalike, whose currency is no content leaf", async () => {
-        const [root] = await reconstructOrdersFromTemplate(
+        const [root] = await reconstructOrdersFromAssembly(
             hydrateAuthored({ agreements: [{ id: "only", clauses: { [lookalike.clauseKey]: {} } }] }),
             params,
         );

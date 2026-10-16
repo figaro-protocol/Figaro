@@ -13,7 +13,7 @@ const fetchCappedContentMock = vi.hoisted(() => vi.fn());
 // Stable references: the hook's effect keys on the registry reads' identity.
 const reads = vi.hoisted(() => ({
     published: {
-        data: [{ slug: "asm-anchored", contentURI: "ipfs://QmTemplate", compositionHash: "0x01" }],
+        data: [{ slug: "asm-anchored", contentURI: "ipfs://QmAssembly", compositionHash: "0x01" }],
         isLoading: false,
     },
     profile: { data: [""] as [string], isLoading: false },
@@ -28,7 +28,7 @@ vi.mock("@/lib/member/useMembersRegistry", () => ({
 vi.mock("@/lib/protocol/useAssemblyRegistry", () => ({
     getAssemblyLoadError: () => undefined,
     useAllPublishedAssemblies: () => reads.published,
-    fetchHydratedAssembly: async () => ({ template: { name: "Anchored", agreements: [] }, agreements: {} }),
+    fetchHydratedAssembly: async () => ({ assembly: { name: "Anchored", agreements: [] }, agreements: {} }),
 }));
 vi.mock("@/lib/shared/ipfsService", async (importOriginal) => ({
     ...(await importOriginal<typeof import("@/lib/shared/ipfsService")>()),

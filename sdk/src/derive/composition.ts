@@ -63,7 +63,7 @@ export interface ValueFlowNode {
      *  of resolved orders' payments (net transfer == payment). */
     settledVolume: bigint;
     /** True when the caller found a designer's utility-token pin for this
-     *  token (via `readUtilityTokenPin` over its loaded templates). */
+     *  token (via `readUtilityTokenPin` over its loaded assemblies). */
     pinned: boolean;
 }
 

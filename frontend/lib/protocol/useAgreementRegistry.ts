@@ -10,7 +10,7 @@
  * the binding BY KEY (whatever its stake: bindings are never cleared, so an
  * assembly composed from an agreement keeps working after its stake is
  * reclaimed), fetches the pinned document from IPFS, and verifies it against
- * the key (`anchorComposedAgreement`). `hydrateAssemblyTemplate` runs the SDK's
+ * the key (`anchorComposedAgreement`). `hydrateAnchoredAssembly` runs the SDK's
  * `hydrateAssembly` over that reader: an assembly is offered only when every
  * agreement's agreement reads and verifies — any absence is the assembly's
  * absence, never a fallback to another copy.
@@ -23,7 +23,7 @@ import {
     hydrateAssembly,
     parseAgreementRegistryLogs,
     type Anchored,
-    type AssemblyTemplate,
+    type Assembly,
     type ComposedAgreement,
     type HydratedAssembly,
 } from "@figaro-protocol/sdk";
@@ -175,7 +175,7 @@ function noteVerified(): void {
 }
 
 /** The registered agreement for a key, when this tab has read and verified it
- *  — the synchronous face the design-time build reads (`snapshotToAssemblyTemplate`),
+ *  — the synchronous face the design-time build reads (`snapshotToAssembly`),
  *  as the clause build reads the warm spec cache. Undefined while unread. */
 export function getComposedAgreement(agreementKey: string): Anchored<ComposedAgreement> | undefined {
     return verified.get(agreementKey.toLowerCase());
@@ -256,11 +256,11 @@ export async function fetchComposedAgreement(
     return run;
 }
 
-/** Hydrate an anchored template: every agreement's registered agreement read
+/** Hydrate an anchored assembly: every agreement's registered agreement read
  *  through `fetchComposedAgreement` and verified against its key. Null when
  *  any agreement's agreement is absent — the assembly is not offered. */
-export function hydrateAssemblyTemplate(
-    template: Anchored<AssemblyTemplate> | AssemblyTemplate,
+export function hydrateAnchoredAssembly(
+    assembly: Anchored<Assembly> | Assembly,
 ): Promise<HydratedAssembly | null> {
-    return hydrateAssembly(template, (agreementKey) => fetchComposedAgreement(agreementKey));
+    return hydrateAssembly(assembly, (agreementKey) => fetchComposedAgreement(agreementKey));
 }

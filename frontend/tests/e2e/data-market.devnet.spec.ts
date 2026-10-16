@@ -34,9 +34,9 @@
  *     DISTINCT compositionHash — regime variants are sibling assemblies.
  *
  * Everything consumed is DISCOVERED from chain + IPFS (AssemblyRegistered
- * events → pinned template docs, selected by SHAPE; integrity re-hashed via
- * templateCompositionHash) and realized through the SDK's ONE template walk
- * (reconstructOrdersFromTemplate) — never a hand-coded composition.
+ * events → pinned assembly docs, selected by SHAPE; integrity re-hashed via
+ * assemblyCompositionHash) and realized through the SDK's ONE assembly walk
+ * (reconstructOrdersFromAssembly) — never a hand-coded composition.
  *
  * Wallets: DEDICATED anvil indices 36 (member A) and 37 (member B), inside
  * the anvil account count (one number, owned by
@@ -57,9 +57,9 @@ import {
     buildSectionInclusionProof,
     calculateBonds,
     generateSalt,
-    reconstructOrdersFromTemplate,
+    reconstructOrdersFromAssembly,
     sectionDataHash,
-    templateCompositionHash,
+    assemblyCompositionHash,
     verifyInclusionProof,
     type ReconstructedOrder,
 } from '@figaro-protocol/sdk';
@@ -81,8 +81,8 @@ const ERC20_ABI = parseAbi([
 const MEMBER_A_KEY = ANVIL_KEYS[36] as Hex;
 const MEMBER_B_KEY = ANVIL_KEYS[37] as Hex;
 
-// The clauses this scenario proves (shape selectors over discovered templates,
-// mirrored from the reference templates — never a composition authored here).
+// The clauses this scenario proves (shape selectors over discovered assemblies,
+// mirrored from the reference assemblies — never a composition authored here).
 let DATA_TERMS: Hex;
 let DATA_LICENSE: Hex;
 let CONTENT_HANDOFF: Hex;
@@ -107,10 +107,10 @@ const CREDENTIAL_BYTES = Buffer.from(JSON.stringify({
 }));
 const CREDENTIAL_HASH = keccak256(new Uint8Array(CREDENTIAL_BYTES));
 
-/** One anchored assembly, hydrated: the template (assemblyClauses included,
- *  which `reconstructOrdersFromTemplate` needs) and every agreement's
+/** One anchored assembly, hydrated: the assembly (assemblyClauses included,
+ *  which `reconstructOrdersFromAssembly` needs) and every agreement's
  *  registered agreement, each verified. */
-type AnchoredTemplate = DiscoveredAssembly;
+type AnchoredAssembly = DiscoveredAssembly;
 
 test.describe('DATA MARKET — dual-posture value legs over the anchored data assemblies (devnet)', () => {
     test.setTimeout(300_000);
@@ -187,12 +187,12 @@ test.describe('DATA MARKET — dual-posture value legs over the anchored data as
             ).toBe(true);
         }
 
-        // ── ADOPT from chain + IPFS: every anchored template resolved in
+        // ── ADOPT from chain + IPFS: every anchored assembly resolved in
         //    full — each agreement's agreement read by key from
         //    AgreementRegistry and verified — then selected by SHAPE — never
         //    a hardcoded slug, never a composition authored in the spec. ──
-        const anchored: AnchoredTemplate[] = await discoverAnchoredAssemblies();
-        const singleOrderWith = (a: AnchoredTemplate, clauseKey: Hex) =>
+        const anchored: AnchoredAssembly[] = await discoverAnchoredAssemblies();
+        const singleOrderWith = (a: AnchoredAssembly, clauseKey: Hex) =>
             a.agreements.length === 1 && clauseKey in a.agreements[0].clauses;
         const aerialSurvey = anchored.find((a) =>
             singleOrderWith(a, CREDENTIAL)
@@ -209,7 +209,7 @@ test.describe('DATA MARKET — dual-posture value legs over the anchored data as
         // mismatch FAILS instead of being skipped as unresolvable): the
         // adopted documents re-hash to their anchored identities.
         for (const adopted of [aerialSurvey!, aerialOpen!, dataStream!]) {
-            expect(templateCompositionHash(adopted.hydrated.template), 'the pinned template re-hashes to its anchored identity')
+            expect(assemblyCompositionHash(adopted.hydrated.assembly), 'the pinned assembly re-hashes to its anchored identity')
                 .toBe(adopted.compositionHash);
         }
         expect(
@@ -218,13 +218,13 @@ test.describe('DATA MARKET — dual-posture value legs over the anchored data as
         ).not.toBe(aerialSurvey!.compositionHash);
 
         // ── One bonded single-order process, chain-driven end to end:
-        //    reconstruct through the SDK's ONE template walk, both parties
+        //    reconstruct through the SDK's ONE assembly walk, both parties
         //    sign, bond, commit — value legs asserted from the token
         //    contract at every step. Resolve is separate (process 2 attests
         //    its hand-off while the order is live). ──
         const chainId = LOCAL_ANVIL.id;
         const commitProcess = async (opts: {
-            adopted: AnchoredTemplate;
+            adopted: AnchoredAssembly;
             buyer: typeof memberA; buyerWallet: typeof walletA;
             seller: typeof memberA; sellerWallet: typeof walletA;
             payment: bigint;
@@ -232,7 +232,7 @@ test.describe('DATA MARKET — dual-posture value legs over the anchored data as
             label: string;
         }) => {
             const chainNow = (await publicClient.getBlock({ blockTag: 'latest' })).timestamp;
-            const orders = await reconstructOrdersFromTemplate(opts.adopted.hydrated, {
+            const orders = await reconstructOrdersFromAssembly(opts.adopted.hydrated, {
                 buyer: opts.buyer.address,
                 currency: token,
                 chainId,
@@ -351,7 +351,7 @@ test.describe('DATA MARKET — dual-posture value legs over the anchored data as
         // ── PROCESS 1 — the flight: A (seller) flies for B (buyer) under the
         //    adopted aerial-survey assembly. The window, route, credential,
         //    and disclosure terms are the buyer's checkout fills; the regime
-        //    itself (`each-own`) rides in from the template's design fill. ──
+        //    itself (`each-own`) rides in from the assembly's design fill. ──
         const flight = await commitProcess({
             adopted: aerialSurvey!,
             buyer: memberB, buyerWallet: walletB,
@@ -375,11 +375,11 @@ test.describe('DATA MARKET — dual-posture value legs over the anchored data as
             },
             label: 'flight',
         });
-        // The template's design fill survived reconstruction into the signed
+        // The assembly's design fill survived reconstruction into the signed
         // section (the regime is the DESIGNER's term, not this spec's input).
         const dataTermsSection = await assertSelfAuthenticatingLeaf(flight, DATA_TERMS, 'flight');
         const committedTerms = (dataTermsSection.data ?? {}) as { disclosure?: string; buyerDisclosure?: string };
-        expect(committedTerms.disclosure, 'the each-own regime rode in from the template design fill')
+        expect(committedTerms.disclosure, 'the each-own regime rode in from the assembly design fill')
             .toBe('each-own');
         expect(committedTerms.buyerDisclosure, "the buyer's per-order consent is committed, never inferred")
             .toBe('permit');

@@ -8,7 +8,7 @@
  * profile, walks the assembly's own topology + clauses, computes the bond,
  * validates the off-chain spec, runs the bilateral / multi-order commit, and redirects to
  * `/orders/view?process=<processId>`. Every order's clauses come straight from the assembly
- * template; every sub-order's seller is resolved generically from the assembly's
+ * assembly; every sub-order's seller is resolved generically from the assembly's
  * `counterpartyBindings`. No courier picker, no modality taxonomy, no
  * buyer-set pricing — those are the assembly's concerns, not the checkout's.
  *
@@ -39,7 +39,7 @@ import {
 } from "@/lib/checkout/checkoutDerivations";
 import { postToAgentEndpoint, useDispatchRace } from "@/lib/checkout/dispatchRace";
 import { DispatchRacePanel, type RaceStartPolicy } from "@/components/runtime/DispatchRacePanel";
-import { templateParentOrderHashes } from "@/lib/shared/assemblyTemplate";
+import { assemblyParentOrderHashes } from "@/lib/shared/assembly";
 import { CommitmentSharePanel } from "@/components/runtime/CommitmentSharePanel";
 import { SellerCatalogPicker, type SellerSelection } from "@/components/runtime/SellerCatalogPicker";
 import { useCompositionActions } from "@/lib/composition/useCompositionActions";
@@ -146,11 +146,11 @@ export function CheckoutView({ sellerAddress }: Props) {
     // what the commitment carries), else the seller's declared default (the
     // unit of account the catalog quotes in). None ⇒ undefined — never a
     // coined default (resolved-empty = absence); ordering is gated off below.
-    // The pin lives at the ASSEMBLY level of the template (design.scope:
+    // The pin lives at the ASSEMBLY level of the assembly (design.scope:
     // "assembly") — a term of the composition, folded into
     // every agreement at checkout; the old root-order convention is dead.
     const utilityTokenPin = pickedAssembly
-        ? readUtilityTokenPin(pickedAssembly.hydratedAssembly.template.assemblyClauses ?? {}, specSource())
+        ? readUtilityTokenPin(pickedAssembly.hydratedAssembly.assembly.assemblyClauses ?? {}, specSource())
         : undefined;
     const sellerDefault = memberCatalog?.defaultTokenAddress as `0x${string}` | undefined;
     // What this surface already knows, offered to the format inputs as
@@ -207,12 +207,12 @@ export function CheckoutView({ sellerAddress }: Props) {
     } = useCheckout(currency);
     // Runtime inputs for any order that composes an on-network contract — the
     // clause's `block.runtime.fields`, filled at checkout (like the cart line items),
-    // keyed by template node id then field name. Interface-agnostic: the form
+    // keyed by assembly node id then field name. Interface-agnostic: the form
     // renders whatever fields the composing clause declares, naming no clause.
     const [compositionInputs, setCompositionInputs] = useState<Record<string, Record<string, unknown>>>({});
     // The buyer's GENERAL-clause field fills, nodeId → clause key → values.
     // Design time is structural: general clauses arrive
-    // from the template as `{}`; their transaction particulars are filled
+    // from the assembly as `{}`; their transaction particulars are filled
     // here, at checkout. Spec-routed — the checkout names no clause.
     const [clauseFills, setClauseFills] = useState<Record<string, Record<string, Record<string, unknown>>>>({});
     const setClauseFill = (nodeId: string, clauseKey: string, field: string, value: unknown) =>
@@ -277,7 +277,7 @@ export function CheckoutView({ sellerAddress }: Props) {
     // the winner + the reproduction inputs (salts, deadline).
     const race = useDispatchRace();
     const raceOutcome = race.result;
-    // Buyer-entered units per template node id — the "checkout-quantity" rate
+    // Buyer-entered units per assembly node id — the "checkout-quantity" rate
     // source's input (hours, seats, …). Read by the SAME pricing call the
     // commit walk makes, so the shown figure equals what commits.
     const [subOrderQuantities, setSubOrderQuantities] = useState<Record<string, number>>({});
@@ -295,9 +295,9 @@ export function CheckoutView({ sellerAddress }: Props) {
     // read-only here (edited on the browse page).
     const cartItems = items.filter((it) => it.sellerId === sellerAddressLower);
     // Assembly-level fills (the "assembly" review group) apply to EVERY
-    // node: expand them under each template order id, designer values under
+    // node: expand them under each assembly order id, designer values under
     // buyer values, so the walk and the price preview see one merged map.
-    const assemblySections = pickedAssembly?.hydratedAssembly.template.assemblyClauses ?? {};
+    const assemblySections = pickedAssembly?.hydratedAssembly.assembly.assemblyClauses ?? {};
     const assemblyFills = clauseFills["assembly"] ?? {};
     const mergedAssemblyEntries = Object.fromEntries(
         (Object.keys(assemblySections) as `0x${string}`[]).map((clauseKey) => [
@@ -306,13 +306,13 @@ export function CheckoutView({ sellerAddress }: Props) {
         ]),
     );
     const expandedClauseFills: typeof clauseFills = Object.fromEntries(
-        (pickedAssembly?.hydratedAssembly.template.agreements ?? []).map((o, i) => {
+        (pickedAssembly?.hydratedAssembly.assembly.agreements ?? []).map((o, i) => {
             const nodeId = String(o.id ?? i);
             return [nodeId, { ...mergedAssemblyEntries, ...(clauseFills[nodeId] ?? {}) }];
         }),
     );
     const subOrderPlan = (() => {
-        if (!pickedAssembly || pickedAssembly.hydratedAssembly.template.agreements.length <= 1) return [];
+        if (!pickedAssembly || pickedAssembly.hydratedAssembly.assembly.agreements.length <= 1) return [];
         try {
             return planSubOrderSellers(pickedAssembly);
         } catch {
@@ -474,7 +474,7 @@ export function CheckoutView({ sellerAddress }: Props) {
     const orderCompositions = ((): OrderComposition[] => {
         if (!pickedAssembly) return [];
         const out: OrderComposition[] = [];
-        for (const order of pickedAssembly.hydratedAssembly.template.agreements) {
+        for (const order of pickedAssembly.hydratedAssembly.assembly.agreements) {
             for (const cid of Object.keys(agreementClauses(pickedAssembly.hydratedAssembly, order))) {
                 const block = getClauseSpec(cid)?.block;
                 if (block?.design.composes && block.runtime.fields.length > 0) {
@@ -509,8 +509,8 @@ export function CheckoutView({ sellerAddress }: Props) {
     // order; the final per-order sign confirmation is the shared agreement-preview
     // gate (the same one the seller's accept uses).
     const pickedRoot = pickedAssembly
-        ? (pickedAssembly.hydratedAssembly.template.agreements.find((o) => templateParentOrderHashes(o).length === 0)
-            ?? pickedAssembly.hydratedAssembly.template.agreements[0])
+        ? (pickedAssembly.hydratedAssembly.assembly.agreements.find((o) => assemblyParentOrderHashes(o).length === 0)
+            ?? pickedAssembly.hydratedAssembly.assembly.agreements[0])
         : undefined;
     const cartUnitAmount = (item: (typeof cartItems)[number]) =>
         unitAmountFor(`line:${item.catalogItemId}`, item.price) ?? 0n;

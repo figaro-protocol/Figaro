@@ -32,7 +32,7 @@ import {
     loadAuthoredAgreements, readBuiltAssembly,
     populateClauses, populateReferenceAssemblies, readEnvLocal, registrarAccount,
 } from './populate-clauses.mjs';
-import { templateCompositionHash, deriveAssemblySlug, resolveAuthoredClauseKeys, composeAuthoredAgreement, assembleAuthored } from '@figaro-protocol/sdk';
+import { assemblyCompositionHash, deriveAssemblySlug, resolveAuthoredClauseKeys, composeAuthoredAgreement, assembleAuthored } from '@figaro-protocol/sdk';
 
 // The specs in clauses/, each with its key — the set every authored clause
 // NAME below resolves against at seed time (`resolveAuthoredClauseKeys`);
@@ -68,11 +68,11 @@ const SELLERS = [
 ];
 
 /** The slug a reference assembly is anchored under: the composition hash of the
- *  template AFTER the deploy-time currency fill — the same hash
+ *  assembly AFTER the deploy-time currency fill — the same hash
  *  populateReferenceAssemblies anchored, never the raw file's. */
 function referenceSlug(file, tokenAddress) {
-    const { template } = readBuiltAssembly(path.join(ASSEMBLIES_DIR, file), AUTHORED, AUTHORED_AGREEMENTS);
-    return deriveAssemblySlug(templateCompositionHash(fillDeployTimeCurrency(template, tokenAddress)));
+    const { assembly } = readBuiltAssembly(path.join(ASSEMBLIES_DIR, file), AUTHORED, AUTHORED_AGREEMENTS);
+    return deriveAssemblySlug(assemblyCompositionHash(fillDeployTimeCurrency(assembly, tokenAddress)));
 }
 
 const slugifyId = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
@@ -89,7 +89,7 @@ const isAlreadyRegistered = (err) => /AlreadyRegistered/i.test(err instanceof Er
 // (`composeAuthoredAgreement` — the mandatory clauses fold in, so a seed
 // writes only what it selects), then the assembly built over them by name
 // (`assembleAuthored`): its agreements register on AgreementRegistry, then
-// its template anchors — identity (agreement keys, compositionHash + slug)
+// its assembly anchors — identity (agreement keys, compositionHash + slug)
 // and canonical JSON come from the SDK.
 
 /** The seeds' authored agreements, composed once, by name. Design time is
@@ -168,12 +168,12 @@ async function main() {
     //  set, the sibling of `clauses/`) are the deploy's genesis
     //  (`scripts/deploy-local.sh` registers them through populate-clauses,
     //  with this same token), so the call below finds each one's agreements
-    //  and template already bound and skips them: compositionHash and every
+    //  and assembly already bound and skips them: compositionHash and every
     //  agreement key are content-derived, the registries' `bindings` read is
     //  the already-registered test, and first write wins whoever the
     //  registrar. It still anchors them on a registry that lacks them. Their
     //  affixed documents (`assemblies/documents/*`) pin beforehand so every
-    //  in-template ipfs:// reference resolves. The two inline templates are
+    //  in-assembly ipfs:// reference resolves. The two inline assemblies are
     //  devnet TEST SCAFFOLDING, not references; specs recognize them by shape
     //  (`discoverSeedAssemblies` in tests/e2e/devnet-helpers.ts), never by
     //  registration order — the references are anchored before them.

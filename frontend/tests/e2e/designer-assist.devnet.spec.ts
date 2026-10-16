@@ -5,17 +5,17 @@
  * COMPOSITION-ASSIST — the canvas's hand-off surface to the designer's own
  * agent (punch-list block 9). The world is the public ecosystem seam
  * (`figaro-assembly-designer` runs in the USER's runtime, for the user's
- * wallet); the canvas's job is the round-trip assembly template: export the current
- * draft as the canonical AssemblyTemplate JSON, and import a template back
+ * wallet); the canvas's job is the round-trip assembly: export the current
+ * draft as the canonical Assembly JSON, and import a assembly back
  * onto the live canvas as ordinary unsaved state.
  *
  * This spec proves the round-trip through the UI on both ends: compose a
  * two-order draft with a clause selection, export it from the assist panel,
- * reset the canvas blank, paste the exported template back, and watch the
+ * reset the canvas blank, paste the exported assembly back, and watch the
  * composition — nodes, clause selection, editorial name — return. The
- * exported JSON stands in for the agent leg: the template IS the interface,
+ * exported JSON stands in for the agent leg: the assembly IS the interface,
  * so a round-tripped export exercises exactly what an agent-composed
- * template exercises.
+ * assembly exercises.
  */
 import { test, expect } from './devnet-multi-test';
 import type { Hex } from 'viem';
@@ -29,7 +29,7 @@ test.beforeAll(async () => {
     PROCESS_CLAUSE = keyOf('figaro-merchant-process');
 });
 
-test.describe('COMPOSITION-ASSIST — export the draft, import a template, composing stays the designer\'s act (devnet)', () => {
+test.describe('COMPOSITION-ASSIST — export the draft, import a assembly, composing stays the designer\'s act (devnet)', () => {
     test.setTimeout(180_000);
 
     test('a composed draft round-trips through the assist panel', async ({ page }) => {
@@ -69,28 +69,28 @@ test.describe('COMPOSITION-ASSIST — export the draft, import a template, compo
         // ── EXPORT: the assist panel serializes the live draft. ──
         await page.getByTestId('designer-assist-open').click();
         await page.getByTestId('designer-assist-panel').waitFor({ state: 'visible', timeout: 10000 });
-        const exported = await page.getByTestId('designer-assist-template').inputValue();
-        // The handoff is the template (one agreement per drawn order, each
+        const exported = await page.getByTestId('designer-assist-assembly').inputValue();
+        // The handoff is the assembly (one agreement per drawn order, each
         // binding an agreement by key) beside the agreements composed for it.
-        const { template, agreements } = JSON.parse(exported) as {
-            template: { name?: string; agreements: Array<{ id: string; agreementKey: string }> };
+        const { assembly, agreements } = JSON.parse(exported) as {
+            assembly: { name?: string; agreements: Array<{ id: string; agreementKey: string }> };
             agreements: Record<string, { clauses: Record<string, unknown> }>;
         };
-        expect(template.name, 'the editorial name rides the template').toBe('Assist round trip');
-        expect(template.agreements, 'one agreement per drawn order').toHaveLength(2);
+        expect(assembly.name, 'the editorial name rides the assembly').toBe('Assist round trip');
+        expect(assembly.agreements, 'one agreement per drawn order').toHaveLength(2);
         expect(
-            template.agreements.some((entry) => PROCESS_CLAUSE in (agreements[entry.agreementKey]?.clauses ?? {})),
+            assembly.agreements.some((entry) => PROCESS_CLAUSE in (agreements[entry.agreementKey]?.clauses ?? {})),
             'the drawer selection lands in the exported composition',
         ).toBe(true);
 
         // Close the panel, then RESET the canvas to blank — the import must
-        // rebuild the composition from the template alone.
+        // rebuild the composition from the assembly alone.
         await page.keyboard.press('Escape');
         await page.getByTestId('designer-reset').click();
         await expect(orderNodes).toHaveCount(1, { timeout: 10000 });
         await expect(page.getByTestId('designer-name-input')).toHaveValue('');
 
-        // ── IMPORT: paste the exported template back (the agent-leg stand-in). ──
+        // ── IMPORT: paste the exported assembly back (the agent-leg stand-in). ──
         await page.getByTestId('designer-assist-open').click();
         await page.getByTestId('designer-assist-panel').waitFor({ state: 'visible', timeout: 10000 });
         await page.getByTestId('designer-assist-import-input').fill(exported);
@@ -98,7 +98,7 @@ test.describe('COMPOSITION-ASSIST — export the draft, import a template, compo
 
         // The panel closes; the composition is back on the canvas.
         await expect(page.getByTestId('designer-assist-panel')).toHaveCount(0, { timeout: 10000 });
-        await expect(orderNodes, 'both orders return from the template').toHaveCount(2, { timeout: 10000 });
+        await expect(orderNodes, 'both orders return from the assembly').toHaveCount(2, { timeout: 10000 });
         await expect(page.getByTestId('designer-name-input')).toHaveValue('Assist round trip');
 
         // The clause selection survived: the non-root node's registry tab

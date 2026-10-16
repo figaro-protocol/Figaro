@@ -70,10 +70,10 @@ function defaultNodeClauseFields(): ClauseFields {
  * order's clauses + topology parents, hash it, persist it to the agreement store (so
  * the canvas + topology derivation resolve it by hash), and assemble the display
  * `Order`. Every synthetic-Order producer — the canvas node-spawn paths here
- * and the template fork/`/view` reconstruction in `assemblyTemplateToDraft` —
+ * and the assembly fork/`/view` reconstruction in `assemblyToDraft` —
  * routes through this one builder.
  *
- * Designer drafts are VALUE-FREE: the published template carries no amounts
+ * Designer drafts are VALUE-FREE: the published assembly carries no amounts
  * (commerce values are checkout-time fills) and designer-mode nodes render no
  * amounts, so no cumulative value or bond is derived here — those exist only
  * on runtime orders, where the chain is the source. The value fields the
@@ -137,9 +137,9 @@ export function buildSyntheticOrder(params: {
 export function createSyntheticRootOrder(
     session: SyntheticProcessSession,
     /** Per-root clause-field overrides. Merged onto defaultNodeClauseFields().
-     *  Used by `assemblyTemplateToDraft` to seed a pinned assembly's own clause
+     *  Used by `assemblyToDraft` to seed a pinned assembly's own clause
      *  fields into the new draft's root — whatever fields it composed, read
-     *  from the template; no clause is named here. */
+     *  from the assembly; no clause is named here. */
     clauseFieldOverrides?: ClauseFields,
 ): CreatedOrder {
     const orderIndex = session.nextOrderIndex++;

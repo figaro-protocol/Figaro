@@ -37,7 +37,7 @@ export interface InitiateProcessAction extends BaseAction {
     type: "initiate-process";
     /** The buyer that would originate — the agent's own address. */
     buyer: Address;
-    /** The discovered assembly template being instantiated. Identity IS the hash. */
+    /** The discovered assembly being instantiated. Identity IS the hash. */
     compositionHash: Hex;
     /** Pointer to the assembly document; the agent hydrates it (off-SDK) to
      *  build the agreement(s) the parties sign. */
@@ -158,7 +158,7 @@ export function proposeActions(process: Process, myAddress: Address): ProposedAc
         });
 
         // NO runtime compose verb: composition is the DESIGNER's act — the
-        // buyer selects an assembly and originates from its template
+        // buyer selects an assembly and originates from its assembly
         // (`originateChain`), never extends a live process ad hoc. Never add
         // a "commit-sub-order" arm here — a runtime compose verb is an
         // authority violation.

@@ -118,7 +118,7 @@ export {
     originateChain,
 } from "./originate.js";
 export type {
-    AssemblyTemplate,
+    Assembly,
     HydratedAssembly,
     AssemblyAgreement,
     InstantiateParams,

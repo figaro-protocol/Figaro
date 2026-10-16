@@ -24,8 +24,8 @@ import {
     buildClauseInclusionProof,
     buildAgreementInclusionProof,
     agreementLeafBytes,
-    templateCompositionHash,
-    type AssemblyTemplate,
+    assemblyCompositionHash,
+    type Assembly,
     type ComposedAgreement,
 } from "../src/assembly.js";
 import {
@@ -74,24 +74,24 @@ function agreementVector(label: string, composed: ComposedAgreement) {
     };
 }
 
-function assemblyVector(label: string, template: AssemblyTemplate) {
-    const compositionHash = templateCompositionHash(template);
-    const terms = template.assemblyClauses && Object.keys(template.assemblyClauses).length > 0
+function assemblyVector(label: string, assembly: Assembly) {
+    const compositionHash = assemblyCompositionHash(assembly);
+    const terms = assembly.assemblyClauses && Object.keys(assembly.assemblyClauses).length > 0
         ? (() => {
-            const termsBytes = canonicalize(template.assemblyClauses);
+            const termsBytes = canonicalize(assembly.assemblyClauses);
             return {
                 leafKey: ASSEMBLY_TERMS_LEAF_KEY,
                 termsBytes,
                 sectionHash: keccak256(toHex(termsBytes)),
-                leaf: computeSectionLeaf({ clause: ASSEMBLY_TERMS_LEAF_KEY, data: template.assemblyClauses }),
+                leaf: computeSectionLeaf({ clause: ASSEMBLY_TERMS_LEAF_KEY, data: assembly.assemblyClauses }),
             };
         })()
         : null;
     return {
         label,
         compositionHash,
-        agreements: template.agreements.map((entry, i) => {
-            const { leaf, proof, slotContentHash } = buildAgreementInclusionProof(template, i);
+        agreements: assembly.agreements.map((entry, i) => {
+            const { leaf, proof, slotContentHash } = buildAgreementInclusionProof(assembly, i);
             const sectionData = utf8(provenanceSectionBytes(entry.agreementKey, compositionHash));
             return {
                 id: entry.id,
@@ -174,9 +174,9 @@ describe("Assembly parity vectors — the composition tree's lock", () => {
     });
 
     it("a membership proof does not verify under another assembly's root", () => {
-        const two = templateCompositionHash(ASSEMBLY_TWO);
+        const two = assemblyCompositionHash(ASSEMBLY_TWO);
         const { leaf, proof } = buildAgreementInclusionProof(ASSEMBLY_THREE, 2);
-        expect(verifyInclusionProof(templateCompositionHash(ASSEMBLY_THREE), leaf, proof)).toBe(true);
+        expect(verifyInclusionProof(assemblyCompositionHash(ASSEMBLY_THREE), leaf, proof)).toBe(true);
         expect(verifyInclusionProof(two, leaf, proof)).toBe(false);
     });
 });

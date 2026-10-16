@@ -1,19 +1,19 @@
 /**
  * Generic document engine — recognizable trade documents (invoice, bill of
- * lading, packing list, …) as DECLARED templates over committed leaves, produced
+ * lading, packing list, …) as DECLARED layouts over committed leaves, produced
  * by ONE generic projector and rendered by ONE generic renderer.
  *
  * This is the open-world answer to "we need documents": a document is not a
  * hand-rolled genre (a `projectInvoice` + a bespoke PDF page) but a COMPOSITION —
- * a declared template that says which committed leaves/kernel facts to present
- * and how. A new genre is a new `DocumentTemplate` (data), zero engine or renderer
+ * a declared layout that says which committed leaves/kernel facts to present
+ * and how. A new genre is a new `DocumentLayout` (data), zero engine or renderer
  * code. Every reference resolves by DECLARED FIELD, never by clause id, so a
- * template projects identically over an assembly this codebase has never seen.
+ * layout projects identically over an assembly this codebase has never seen.
  *
- * The templates are a hardcoded array in `documentTemplates.ts`. Per maintainer
+ * The layouts are a hardcoded array in `documentLayouts.ts`. Per maintainer
  * decision they stay there — NO on-chain document registry at this
- * time. The engine only knows templates + committed data, so this is open-world
- * regardless: no template carries clause-specific knowledge.
+ * time. The engine only knows layouts + committed data, so this is open-world
+ * regardless: no layout carries clause-specific knowledge.
  */
 
 import { calculateResolution } from "@figaro-protocol/sdk";
@@ -24,11 +24,11 @@ import { clauseDeclaresField, clauseIsProcessLog } from "@/lib/shared/clauseSpec
 import { ZERO_ADDRESS } from "@/lib/shared/evm";
 import type { PartyRole } from "@/lib/kernel/walletProcessQueries";
 
-// ── Template DSL (declared data) ───────────────────────────────────────────────
+// ── Layout DSL (declared data) ───────────────────────────────────────────────
 
 /** A value drawn from the committed data — resolved by the engine, never
  *  naming a clause (leaves are found by their DECLARED FIELD). @public — the
- *  template DSL vocabulary a document template is written against. */
+ *  layout DSL vocabulary a document layout is written against. */
 export type ValueRef =
     | { const: string }
     | { orderHash: true }
@@ -48,7 +48,7 @@ export type Predicate =
 /** @public — a header/line row: label → value reference. */
 export interface DocumentRow { label: string; ref: ValueRef }
 
-export interface DocumentTemplate {
+export interface DocumentLayout {
     /** Genre id, e.g. "commercial-invoice", "bill-of-lading". */
     genre: string;
     /** Human title, e.g. "Commercial invoice (EN 16931 core)". */
@@ -132,46 +132,46 @@ function appliesTo(pred: Predicate, agreement: Agreement | undefined): boolean {
     return hasParents && agreement.sections.some((s) => clauseIsProcessLog(s.clause));
 }
 
-function render(template: DocumentTemplate, unit: Unit): RenderedDocument {
-    const header = template.header.map((r) => ({ label: r.label, value: resolve(r.ref, unit.primary, unit) }));
-    const doc: RenderedDocument = { genre: template.genre, title: template.title, header };
-    if (template.lines) {
-        const columns = template.lines.fields.map((f) => f.label);
-        const rows = unit.orders.map((o) => template.lines!.fields.map((f) => resolve(f.ref, o, unit)));
-        const total = template.lines.total
-            ? { label: template.lines.total.label, value: resolve(template.lines.total.ref, unit.primary, unit) }
+function render(layout: DocumentLayout, unit: Unit): RenderedDocument {
+    const header = layout.header.map((r) => ({ label: r.label, value: resolve(r.ref, unit.primary, unit) }));
+    const doc: RenderedDocument = { genre: layout.genre, title: layout.title, header };
+    if (layout.lines) {
+        const columns = layout.lines.fields.map((f) => f.label);
+        const rows = unit.orders.map((o) => layout.lines!.fields.map((f) => resolve(f.ref, o, unit)));
+        const total = layout.lines.total
+            ? { label: layout.lines.total.label, value: resolve(layout.lines.total.ref, unit.primary, unit) }
             : undefined;
         doc.lines = { columns, rows, ...(total && { total }) };
     }
-    if (template.leafSections) {
-        doc.leafSections = template.leafSections
+    if (layout.leafSections) {
+        doc.leafSections = layout.leafSections
             .map((s) => ({ label: s.label, data: leafByField(unit.agreement, s.byField) }))
             .filter((s): s is { label: string; data: Record<string, unknown> } => s.data !== undefined)
             .map((s) => ({ label: s.label, entries: Object.entries(s.data).map(([key, v]) => ({ key, value: String(v) })) }));
     }
-    if (template.note) doc.note = template.note;
+    if (layout.note) doc.note = layout.note;
     return doc;
 }
 
 /**
  * Project every applicable document for a process from its committed data.
  * `orders` are the process's orders; `agreements` maps agreementHash → agreement.
- * Order-scoped templates emit one document per matching order; seller-scoped emit
- * one per seller (orders grouped by seller). Templates are applied in catalog
- * order; genres are added by adding a template, never engine code.
+ * Order-scoped layouts emit one document per matching order; seller-scoped emit
+ * one per seller (orders grouped by seller). Layouts are applied in catalog
+ * order; genres are added by adding a layout, never engine code.
  */
 export function projectDocuments(
-    templates: readonly DocumentTemplate[],
+    layouts: readonly DocumentLayout[],
     orders: readonly Order[],
     agreements: ReadonlyMap<string, Agreement>,
 ): RenderedDocument[] {
     const out: RenderedDocument[] = [];
-    for (const template of templates) {
-        if (template.scope === "order") {
+    for (const layout of layouts) {
+        if (layout.scope === "order") {
             for (const order of orders) {
                 const agreement = agreementOf(order, agreements);
-                if (appliesTo(template.appliesWhen, agreement)) {
-                    out.push(render(template, { primary: order, agreement, orders: [order], agreements }));
+                if (appliesTo(layout.appliesWhen, agreement)) {
+                    out.push(render(layout, { primary: order, agreement, orders: [order], agreements }));
                 }
             }
         } else {
@@ -183,8 +183,8 @@ export function projectDocuments(
             for (const group of bySeller.values()) {
                 const primary = group[0];
                 const agreement = agreementOf(primary, agreements);
-                if (appliesTo(template.appliesWhen, agreement)) {
-                    out.push(render(template, { primary, agreement, orders: group, agreements }));
+                if (appliesTo(layout.appliesWhen, agreement)) {
+                    out.push(render(layout, { primary, agreement, orders: group, agreements }));
                 }
             }
         }

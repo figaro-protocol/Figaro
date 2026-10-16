@@ -17,7 +17,7 @@
 <div class="tsd-signature tsd-anchor-link" id="buildchainoffers"><span class="tsd-kind-call-signature">buildChainOffers</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">wallet</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">{}</span><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">params</span><span class="tsd-signature-symbol">:</span> <a href="../interfaces/agent.BuildChainParams.html" class="tsd-signature-type tsd-kind-interface">BuildChainParams</a><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/agent.ChainOffer.html" class="tsd-signature-type tsd-kind-interface">ChainOffer</a><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">&gt;</span><a href="#buildchainoffers" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
 <div class="tsd-description">
 <div class="tsd-comment tsd-typography"><p>Build the whole chain's buyer-signed offers, in commit order. Walks the
-template through the ONE walk (<code>reconstructOrdersFromTemplate</code>): the root
+assembly through the ONE walk (<code>reconstructOrdersFromAssembly</code>): the root
 signs <code>processId = 0</code>; sub-orders name the root's derived processId, carry
 their parents' real order hashes, and commit against the running cumulative
 value. Every order is signed by the buyer here (in the walk's <code>onOrder</code>

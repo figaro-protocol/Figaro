@@ -24,7 +24,7 @@ import type {
     MemberRegisteredEvent,
 } from "@/lib/audit/membersRegistryExtract";
 import { projectDocuments, projectAllFinancialStatements } from "@/lib/audit/documentProjection";
-import { DOCUMENT_TEMPLATES } from "@/lib/audit/documentTemplates";
+import { DOCUMENT_LAYOUTS } from "@/lib/audit/documentLayouts";
 import type { AttestationRecord } from "@/lib/composition/indexer";
 import {
     buildProcessTimeline,
@@ -126,7 +126,7 @@ export async function buildAuditBundlePdfBlob(
     // statements per seller + consolidated — is the SAME RenderedDocument shape
     // from the SAME generic engine. No genre code, no bespoke financials page.
     const documents = [
-        ...projectDocuments(DOCUMENT_TEMPLATES, orders, agreements),
+        ...projectDocuments(DOCUMENT_LAYOUTS, orders, agreements),
         ...projectAllFinancialStatements(orders, processId),
     ];
     const buyer = orders[0]?.buyer;

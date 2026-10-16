@@ -95,15 +95,15 @@ export function buildClauseInclusionProof(
     return { leaf, proof, fillsHash };
 }
 
-// ── The template document (the pinned assembly, hydrated off-chain) ──────────
+// ── The assembly document (the pinned assembly, hydrated off-chain) ──────────
 
 /** One agreement of an assembly: the registered agreement it binds and the
  *  agreement's own fills over it. */
 export interface AssemblyAgreement {
     /** Local label for the agreement — `order-<index>`, stable within the
-     *  template; the reference target the topology clause's
+     *  assembly; the reference target the topology clause's
      *  `parentOrderHashes` names. NOT a chain id, and NOT a party — the
-     *  template is party-agnostic. */
+     *  assembly is party-agnostic. */
     id: string;
     /** The registered agreement this agreement binds (`AgreementRegistry`
      *  key). */
@@ -121,7 +121,7 @@ export interface AssemblyFaqEntry {
     answer: string;
 }
 
-export interface AssemblyTemplate {
+export interface Assembly {
     /** EDITORIAL — the designer's own words, for legibility (the content-derived
      *  slug is opaque at scale). Free-form prose, NOT a taxonomy. Pinned in the
      *  document but EXCLUDED from the composition hash — identity stays
@@ -145,16 +145,16 @@ export interface AssemblyTemplate {
      *  one leaf of the composition tree (`ASSEMBLY_TERMS_LEAF_KEY`). */
     assemblyClauses?: Record<Hex, Record<string, unknown>>;
     /** The composition: one agreement per future FigaroCore order, in
-     *  template order — each a registered agreement and its own fills. */
+     *  assembly order — each a registered agreement and its own fills. */
     agreements: AssemblyAgreement[];
 }
 
-/** An assembly template with every agreement's registered agreement
+/** An assembly with every agreement's registered agreement
  *  beside it, keyed by lowercased `agreementKey` — what checkout plans from.
  *  Each document is read from the agreement registry's binding and verified
  *  against its key (`anchorComposedAgreement`) before it lands here. */
 export interface HydratedAssembly {
-    template: AssemblyTemplate;
+    assembly: Assembly;
     agreements: Record<Hex, ComposedAgreement>;
 }
 
@@ -194,7 +194,7 @@ export function agreementClauses(hydrated: HydratedAssembly, entry: AssemblyAgre
  *  clause holds at runtime: the parent orders' FigaroCore order hashes; at
  *  design time the values are sibling `order-<i>` labels), so reading needs
  *  no spec cache and tolerates any registry-defined topology clause. */
-export function templateParentOrderHashes(entry: Pick<AssemblyAgreement, "clauses">): string[] {
+export function assemblyParentOrderHashes(entry: Pick<AssemblyAgreement, "clauses">): string[] {
     const fill = Object.values(entry.clauses ?? {}).find(
         (fields) => Array.isArray((fields as { parentOrderHashes?: unknown } | undefined)?.parentOrderHashes),
     );
@@ -205,13 +205,13 @@ export function templateParentOrderHashes(entry: Pick<AssemblyAgreement, "clause
 /** Every clause a hydrated assembly composes — the assembly-scoped sections
  *  plus each agreement's — as one sorted, de-duplicated key list: each of these must be live on `ClauseRegistry` for the design to
  *  check out. */
-export function templateComposedClauseKeys(
-    template: AssemblyTemplate,
+export function assemblyComposedClauseKeys(
+    assembly: Assembly,
     agreements: Readonly<Record<Hex, ComposedAgreement>>,
 ): Hex[] {
-    const hydrated: HydratedAssembly = { template, agreements: agreements as Record<Hex, ComposedAgreement> };
-    const keys = new Set<Hex>(Object.keys(template.assemblyClauses ?? {}) as Hex[]);
-    for (const entry of template.agreements) {
+    const hydrated: HydratedAssembly = { assembly, agreements: agreements as Record<Hex, ComposedAgreement> };
+    const keys = new Set<Hex>(Object.keys(assembly.assemblyClauses ?? {}) as Hex[]);
+    for (const entry of assembly.agreements) {
         for (const clauseKey of Object.keys(agreementClauses(hydrated, entry)) as Hex[]) keys.add(clauseKey);
     }
     return Array.from(keys).sort();
@@ -230,7 +230,7 @@ export const ASSEMBLY_TERMS_LEAF_KEY: Hex = keccak256(toHex(ASSEMBLY_TERMS_LEAF_
 /** An agreement leaf's committed bytes — canonical JSON
  *  `{"clauses":{…},"slot":i}` (`slot`, the wire name for the agreement's index) of the agreement's own fills (object keys
  *  sorted, arrays in authored order). `i` is the agreement's 0-based
- *  position in the template. */
+ *  position in the assembly. */
 export function agreementLeafBytes(entry: Pick<AssemblyAgreement, "clauses">, i: number): Hex {
     if (!Number.isSafeInteger(i) || i < 0) throw new Error(`entry index is not a non-negative integer: ${i}`);
     return toHex(new TextEncoder().encode(canonicalize({ clauses: entry.clauses ?? {}, slot: i })));
@@ -256,9 +256,9 @@ function agreementLeaf(entry: AssemblyAgreement, i: number): Hex {
 /** Every leaf of the composition tree, sorted as the tree is built: one per
  *  agreement, plus the assembly-terms leaf when any assembly-scoped clause is
  *  composed. */
-export function templateLeaves(template: AssemblyTemplate): Hex[] {
-    const leaves = template.agreements.map((entry, i) => agreementLeaf(entry, i));
-    const terms = template.assemblyClauses;
+export function assemblyLeaves(assembly: Assembly): Hex[] {
+    const leaves = assembly.agreements.map((entry, i) => agreementLeaf(entry, i));
+    const terms = assembly.assemblyClauses;
     if (terms && Object.keys(terms).length > 0) {
         leaves.push(computeSectionLeaf({ clause: ASSEMBLY_TERMS_LEAF_KEY, data: terms }));
     }
@@ -266,31 +266,31 @@ export function templateLeaves(template: AssemblyTemplate): Hex[] {
 }
 
 /** The assembly's identity — the merkle root over its agreement leaves and its
- *  assembly-terms leaf (`templateLeaves`), built by the agreement format's
+ *  assembly-terms leaf (`assemblyLeaves`), built by the agreement format's
  *  own tree (`buildMerkleRoot`): a one-leaf tree's root is its leaf.
  *  Editorial prose is excluded, so renaming never forks identity. This is
  *  the hash `AssemblyRegistry` keys bindings on. Publishers anchor it;
  *  readers recompute it from a fetched document to verify integrity. */
-export function templateCompositionHash(
-    template: AssemblyTemplate,
+export function assemblyCompositionHash(
+    assembly: Assembly,
 ): Hex {
-    return buildMerkleRoot(templateLeaves(template));
+    return buildMerkleRoot(assemblyLeaves(assembly));
 }
 
-/** The membership proof of agreement `i` under `templateCompositionHash`:
+/** The membership proof of agreement `i` under `assemblyCompositionHash`:
  *  its leaf, its sorted-pair proof, and `slotContentHash` =
  *  `keccak256(agreementLeafBytes(entry, i))` — what
  *  `UsageCounter.recordAssemblyUsage` and the batch path's assembly claim
  *  take beside the agreement's agreement key. Throws for an index outside
- *  the template. */
+ *  the assembly. */
 export function buildAgreementInclusionProof(
-    template: AssemblyTemplate,
+    assembly: Assembly,
     i: number,
 ): { leaf: Hex; proof: Hex[]; slotContentHash: Hex } {
-    const entry = template.agreements[i];
-    if (!entry) throw new Error(`agreement ${i} is not in the template (${template.agreements.length} agreements)`);
+    const entry = assembly.agreements[i];
+    if (!entry) throw new Error(`agreement ${i} is not in the assembly (${assembly.agreements.length} agreements)`);
     const slotContentHash = keccak256(agreementLeafBytes(entry, i));
-    const { leaf, proof } = buildLeafInclusionProof(templateLeaves(template), agreementLeaf(entry, i));
+    const { leaf, proof } = buildLeafInclusionProof(assemblyLeaves(assembly), agreementLeaf(entry, i));
     return { leaf, proof, slotContentHash };
 }
 
@@ -315,7 +315,7 @@ export interface AuthoredSpecSet {
  * Resolve the clause NAMES in an authored source document to clause KEYS.
  *
  * A human authors `agreements/*.json` agreements, `assemblies/*.json`
- * templates and `members/*.json` documents by clause name; a published
+ * assemblies and `members/*.json` documents by clause name; a published
  * document carries keys. Each name is
  * matched against the loaded specs' own `clauseId` — written `name@version`,
  * the spec's `version` must match too. A name two loaded specs share, written
@@ -325,7 +325,7 @@ export interface AuthoredSpecSet {
  * chain read by name: on chain a clause is only its key.
  *
  * Rewritten in an authored agreement: the top-level `clauses` keys. In a
- * template: every `agreements[].clauses` and `assemblyClauses` key. In a
+ * assembly: every `agreements[].clauses` and `assemblyClauses` key. In a
  * member profile: `disclosurePolicy[].clauseId` and
  * `assemblyBindings[].counterpartyBindings[].clauseId` (each becomes
  * `clauseKey`), and the `profileClauseValues` keys. In a catalog: every

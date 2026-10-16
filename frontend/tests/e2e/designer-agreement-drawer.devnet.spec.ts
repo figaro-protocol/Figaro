@@ -29,7 +29,7 @@
  * Review button performs, with no reload to re-hydrate anything: same chips,
  * same ticks, same composition identity as the canvas. The regression it
  * guards is a review that showed every order as "No terms yet" while the
- * draft — and the template publish would have anchored — carried them.
+ * draft — and the assembly publish would have anchored — carried them.
  *
  * A second test covers what a design fill's VALUE does to the composition:
  * the enum options render through the spec's own valueLabels (a labeled
@@ -312,7 +312,7 @@ test.describe('Designer AgreementDrawer (devnet)', () => {
             ).toBeChecked({ timeout: 20000 });
         }
 
-        // One template, one hash: the identity reviewed is the identity composed.
+        // One assembly, one hash: the identity reviewed is the identity composed.
         await expect(
             page.getByTestId('designer-composition-hash'),
             'the review carries the canvas composition, byte for byte',

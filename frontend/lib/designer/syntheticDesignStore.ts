@@ -80,20 +80,20 @@ function deserializeOrder(s: SerializedOrder): Order {
  *    addressable by slug.
  *  - **named draft** — a snapshot the user explicitly "Save"d, stored by
  *    slug via `saveNamedDraft`. Survives across canvas resets.
- *  - **published `AssemblyTemplate`** (`lib/protocol/useAssemblyRegistry`)
+ *  - **published `Assembly`** (`lib/protocol/useAssemblyRegistry`)
  *    — the IPFS-pinned, published version: one agreement per order, each
- *    binding a registered agreement by key. `assemblyTemplateToDraft`
+ *    binding a registered agreement by key. `assemblyToDraft`
  *    re-hydrates it (with its agreements) back into a `DesignSnapshot` for
  *    the editor.
  *
- * No "snapshot vs draft vs template" type duality — same shape, three
+ * No "snapshot vs draft vs assembly" type duality — same shape, three
  * persistence states.
  */
 export interface DesignSnapshot {
     /** URL-safe identifier; the user picks this when saving a named draft. */
     slug: string;
     /** Editorial name — the designer's own words (free-form prose, NOT a
-     *  taxonomy). Carried into the assembly template but EXCLUDED from the
+     *  taxonomy). Carried into the assembly but EXCLUDED from the
      *  content hash, so the slug stays composition-derived. Empty = unnamed
      *  (display falls back to the slug). */
     name: string;
@@ -111,7 +111,7 @@ export interface DesignSnapshot {
     orders: Order[];
     /** Per-order clause selection — keyed by order id, then clause key → the
      *  composed values (design.fills clauses only — consent's affix; other
-     *  clauses carry `{}`). Drives the assembly template's
+     *  clauses carry `{}`). Drives the assembly's
      *  per-order `clauses`; the build strips general values regardless. */
     clausesByOrderId?: Record<string, Record<string, Record<string, unknown>>>;
     /** Per-order REGISTERED agreement — keyed by order id, the
@@ -122,7 +122,7 @@ export interface DesignSnapshot {
     /** ASSEMBLY-SCOPED composition — clauses declaring
      *  `design.scope: "assembly"`, composed once for the whole design
      *  (clause key → the designer's design.fills values; other clauses `{}`).
-     *  Drives the template's `assemblyClauses`. */
+     *  Drives the assembly's `assemblyClauses`. */
     assemblyClauses?: Record<string, Record<string, unknown>>;
     /** Unix ms. */
     createdAt: number;

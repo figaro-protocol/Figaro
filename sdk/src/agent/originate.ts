@@ -1,7 +1,7 @@
 /**
  * @figaro-protocol/sdk/agent — Assembly instantiation + origination handshake
  *
- * Turns a DISCOVERED assembly (its template, hydrated off-SDK from the
+ * Turns a DISCOVERED assembly (its assembly, hydrated off-SDK from the
  * registry's contentURI) into a signable root order, and drives the two-party
  * offer/accept that originates the process. The buyer builds and signs its half;
  * the seller VALIDATES the terms and counter-signs; the buyer submits via
@@ -12,7 +12,7 @@
  * cumulative value through its own link) is the documented extension; the frontend's
  * `assemblyCheckout` is the reference for that walk.
  *
- * The SDK names no clause: instantiation reads the template's clause bag
+ * The SDK names no clause: instantiation reads the assembly's clause bag
  * verbatim and merges the buyer's per-clause overrides keyed by the clause keys
  * the buyer composed. Which clause carries payment is the buyer's decision, not
  * FigaroCore's.
@@ -27,27 +27,27 @@ import { ERC20_ABI } from "../abis.js";
 import { commit, type TxResult } from "./autonomous.js";
 import type { Hex, Address, Commitment, FigaroAddresses } from "../types.js";
 import type { CommitmentPayload, CoordinationChannel, OfferHandler } from "./coordination.js";
-import { agreementClauses, templateCompositionHash, templateParentOrderHashes } from "../assembly.js";
-import type { AssemblyTemplate, HydratedAssembly, AssemblyAgreement } from "../assembly.js";
-import { reconstructOrdersFromTemplate, templateAgreementFromClauses, mergeOverrides, fillWalkProvenance } from "../reconstructOrders.js";
+import { agreementClauses, assemblyCompositionHash, assemblyParentOrderHashes } from "../assembly.js";
+import type { Assembly, HydratedAssembly, AssemblyAgreement } from "../assembly.js";
+import { reconstructOrdersFromAssembly, agreementFromClauses, mergeOverrides, fillWalkProvenance } from "../reconstructOrders.js";
 
-// ── Assembly template (the pinned document, hydrated off-SDK) ─────────────────
+// ── Assembly (the pinned document, hydrated off-SDK) ─────────────────
 // The shapes' single home is ../assembly.js; re-exported here so the /agent
 // subpath keeps offering them alongside instantiate/originate.
 
-export type { AssemblyTemplate, HydratedAssembly, AssemblyAgreement };
+export type { Assembly, HydratedAssembly, AssemblyAgreement };
 
 /** An agreement is a ROOT if its topology fill names no parent —
  *  `parentOrderHashes`, the mandatory topology clause's field, matched by
  *  name not by clause id (open-world). */
 function isRootEntry(entry: AssemblyAgreement): boolean {
-    return templateParentOrderHashes(entry).length === 0;
+    return assemblyParentOrderHashes(entry).length === 0;
 }
 
 export interface InstantiateParams {
     buyer: Address;
     seller: Address;
-    /** Per-clause field overrides merged onto the template's clause data — the
+    /** Per-clause field overrides merged onto the assembly's clause data — the
      *  buyer supplies its terms (typically the commerce clause's
      *  `{ currency, payment, lineItems }`). Keyed by clause key; the SDK names none. */
     overrides?: Record<string, Record<string, unknown>>;
@@ -60,25 +60,25 @@ export interface InstantiateParams {
  * merkle root becomes the commitment's `agreementHash`.
  */
 export function instantiateRootAgreement(hydrated: HydratedAssembly, params: InstantiateParams): Agreement {
-    const { template } = hydrated;
-    const root = template.agreements.find(isRootEntry) ?? template.agreements[0];
-    if (!root) throw new Error("assembly template has no agreements to instantiate");
+    const { assembly } = hydrated;
+    const root = assembly.agreements.find(isRootEntry) ?? assembly.agreements[0];
+    if (!root) throw new Error("assembly has no agreements to instantiate");
     // THE ASSEMBLY-SCOPE FOLD, exactly as the walk performs
-    // it: the template's assembly-scoped sections — terms of the composition
+    // it: the assembly's assembly-scoped sections — terms of the composition
     // itself (a denomination pin, a dispute forum) — fold into the root
     // clause bag, so the agreement carries them and every party signs them.
     // Skipping the fold was the audit-confirmed parity hole: the pin escaped
     // the sign gate.
-    const assemblyClauses = template.assemblyClauses ?? {};
+    const assemblyClauses = assembly.assemblyClauses ?? {};
     const folded = { ...assemblyClauses, ...agreementClauses(hydrated, root) };
     const merged = mergeOverrides(folded, params.overrides);
     // The one clause-bag → Agreement builder (root and multi-order alike)
-    // lives with the template walk: ../reconstructOrders.js. The agreement
+    // lives with the assembly walk: ../reconstructOrders.js. The agreement
     // names the registered agreement and the design it instantiates in its
     // provenance leaf, the same fill the walk performs on every order.
     return fillWalkProvenance(
-        templateAgreementFromClauses(merged, params.buyer, params.seller),
-        { agreementKey: root.agreementKey, compositionHash: templateCompositionHash(template) },
+        agreementFromClauses(merged, params.buyer, params.seller),
+        { agreementKey: root.agreementKey, compositionHash: assemblyCompositionHash(assembly) },
         root.id ?? "root",
     );
 }
@@ -87,7 +87,7 @@ export function instantiateRootAgreement(hydrated: HydratedAssembly, params: Ins
 
 export interface BuildOfferParams extends InstantiateParams {
     /** The discovered assembly, each agreement's registered agreement
-     *  hydrated beside its template. */
+     *  hydrated beside its assembly. */
     assembly: HydratedAssembly;
     currency: Address;
     /** The root order's payment (== the process's opening cumulative value). */
@@ -461,17 +461,17 @@ export function makeSellerOfferHandler(
 // updating a monotonic cumulative-value accumulator; DAG topology is off-chain
 // (each order's parents recorded in its topology section). Beyond the root case:
 //   - parents: a sub-order's topology field carries its parents' REAL EIP-712
-//     order hashes, not the template-local ids — so orders are built in
+//     order hashes, not the assembly-local ids — so orders are built in
 //     dependency order and each order's hash is fed to its children.
 //   - cumulative value: each order commits against the running total (root's
 //     payment, then + each sub's), which FigaroCore matches exactly — so commits
 //     are SUBMITTED in that same order (root first).
 //   - N counterparties: each order's own seller counter-signs its own order.
-// The walk's single home is `../reconstructOrders.js` (`planTemplateOrders` +
-// `reconstructOrdersFromTemplate`); this module supplies the signing seam.
+// The walk's single home is `../reconstructOrders.js` (`planAssemblyOrders` +
+// `reconstructOrdersFromAssembly`); this module supplies the signing seam.
 
 export interface ChainNodeSpec {
-    /** Template node id (matches `template.agreements[].id`). */
+    /** Assembly node id (matches `assembly.agreements[].id`). */
     nodeId: string;
     /** The seller for this node — the buyer's counterparty choice. A single
      *  seller across multiple nodes is fine: bond approval is additive. */
@@ -484,19 +484,19 @@ export interface ChainNodeSpec {
 
 export interface BuildChainParams {
     /** The discovered assembly, each agreement's registered agreement
-     *  hydrated beside its template. */
+     *  hydrated beside its assembly. */
     assembly: HydratedAssembly;
     currency: Address;
     chainId: number;
     core: Address;
-    /** One spec per template agreement (root + subs). */
+    /** One spec per registered agreement (root + subs). */
     nodes: ChainNodeSpec[];
     /** Optional deterministic salt per node (testing). */
     salt?: (nodeId: string) => bigint | undefined;
     /** CHAIN-time deadline (readChainTimestamp) — never the machine clock. */
     deadline: bigint;
     /** The clause-spec source. With it, the walk's currency-leaf fill engages
-     *  (`reconstructOrdersFromTemplate` writes the commerce leaf from the same
+     *  (`reconstructOrdersFromAssembly` writes the commerce leaf from the same
      *  figure the struct signs, and THROWS on a contradicting override) and
      *  every order passes the merkle-leaf sign gate before the buyer signs.
      *  WITHOUT it, the walk is the documented spec-less caller-owns-the-leaf
@@ -513,7 +513,7 @@ export interface ChainOffer {
 
 /**
  * Build the whole chain's buyer-signed offers, in commit order. Walks the
- * template through the ONE walk (`reconstructOrdersFromTemplate`): the root
+ * assembly through the ONE walk (`reconstructOrdersFromAssembly`): the root
  * signs `processId = 0`; sub-orders name the root's derived processId, carry
  * their parents' real order hashes, and commit against the running cumulative
  * value. Every order is signed by the buyer here (in the walk's `onOrder`
@@ -525,7 +525,7 @@ export async function buildChainOffers(wallet: WalletClient, params: BuildChainP
     const buyer = account.address;
     const specByNode = new Map(params.nodes.map((n) => [n.nodeId, n]));
     const out: ChainOffer[] = [];
-    await reconstructOrdersFromTemplate(params.assembly, {
+    await reconstructOrdersFromAssembly(params.assembly, {
         buyer,
         currency: params.currency,
         chainId: params.chainId,
@@ -533,7 +533,7 @@ export async function buildChainOffers(wallet: WalletClient, params: BuildChainP
         specs: params.specs,
         nodes: (planned) => {
             const spec = specByNode.get(planned.nodeId);
-            if (!spec) throw new Error(`no seller/payment spec for template node "${planned.nodeId}"`);
+            if (!spec) throw new Error(`no seller/payment spec for assembly node "${planned.nodeId}"`);
             return spec;
         },
         salt: params.salt,

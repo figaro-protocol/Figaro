@@ -224,7 +224,7 @@ test.describe('TRADELENS SCENARIO — six bonded value-adders, authored on the c
         //    against a half-warm cache, so "Place order" then came back as a
         //    validator path ("$.acceptanceBasis: required field is missing") for
         //    fields the form never offered. The expected COUNT is derived from
-        //    the anchored template, never written down here. ──
+        //    the anchored assembly, never written down here. ──
         const composingOrders = (clauseKey: Hex) =>
             (anchored.agreements as Array<{ clauses: Record<string, unknown> }>)
                 .filter((o) => clauseKey in (o.clauses ?? {})).length;

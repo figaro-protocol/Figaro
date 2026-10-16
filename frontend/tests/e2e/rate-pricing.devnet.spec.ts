@@ -74,15 +74,15 @@ const EXPECTED_TOTAL = parseEther('1') + EXPECTED_SUB_PAYMENT; // lead item 1 + 
  *  exactly these committed endpoints (content-addressing makes re-runs land
  *  on the same slug). */
 async function findRateAssembly(): Promise<string | undefined> {
-    const templates = await discoverAnchoredAssemblies();
-    // Discovery is STRUCTURAL (templates are value-free by
+    const assemblies = await discoverAnchoredAssemblies();
+    // Discovery is STRUCTURAL (assemblies are value-free by
     // construction — the geohashes are the buyer's checkout fills, so no
     // anchored value can identify the assembly). The rate shape: a two-node
     // chain whose hauled leg composes process + geo and NOTHING else beyond
     // the two mandatory folds (the delivery assembly's courier leg also
     // carries handoff + proximity → 6 keys, and its root carries merchant +
     // modalities → 4 keys; this shape is 4 and 2).
-    return templates.find((t) => {
+    return assemblies.find((t) => {
         if (t.agreements.length !== 2) return false;
         const keysets = t.agreements.map((o) => Object.keys(o.clauses ?? {}));
         const sub = keysets.find((k) => k.includes(PROCESS_CLAUSE) && k.includes(GEO_CLAUSE));
@@ -275,7 +275,7 @@ test.describe('RATE PRICING — a contributor prices per started km of the commi
 
         await expect(page.getByTestId('cart-contributor-breakdown'), 'checkout shows the two-contributor P&L')
             .toBeVisible({ timeout: 30000 });
-        // The buyer authors the committed endpoints HERE (templates arrive
+        // The buyer authors the committed endpoints HERE (assemblies arrive
         // value-free); the rate derivation prices from these fills.
         await page.locator(`[data-testid^="checkout-field-"][data-testid$="-${GEO_CLAUSE}-origin"]`).first().fill(ORIGIN_GEOHASH);
         await page.locator(`[data-testid^="checkout-field-"][data-testid$="-${GEO_CLAUSE}-destination"]`).first().fill(DESTINATION_GEOHASH);

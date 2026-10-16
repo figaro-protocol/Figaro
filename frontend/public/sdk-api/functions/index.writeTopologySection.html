@@ -17,8 +17,8 @@
 <div class="tsd-signature tsd-anchor-link" id="writetopologysection"><span class="tsd-kind-call-signature">writeTopologySection</span><span class="tsd-signature-symbol">(</span><br/>    <span class="tsd-kind-parameter">clauses</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">ClauseFields</span><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">parentOrderHashes</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">`</span><span class="tsd-signature-type">0x</span><span class="tsd-signature-symbol">${</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">`</span><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">specs</span><span class="tsd-signature-symbol">:</span> <a href="../interfaces/index.SpecSource.html" class="tsd-signature-type tsd-kind-interface">SpecSource</a><span class="tsd-signature-symbol">,</span><br/><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">ClauseFields</span><a href="#writetopologysection" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
 <div class="tsd-description">
 <div class="tsd-comment tsd-typography"><p>Write the REAL parent-order hashes into the topology section, found by its
-declared <code>parentOrderHashes</code> field (never by clause id). The template's
-topology data carries template-LOCAL order ids (&quot;order-0&quot;); the committed
+declared <code>parentOrderHashes</code> field (never by clause id). The assembly's
+topology data carries assembly-LOCAL order ids (&quot;order-0&quot;); the committed
 agreement must carry the actual EIP-712 order hashes — they are the DAG
 edges every off-chain reader (audit, derive) reconstructs from, and the
 bytes32 shape the off-chain validator validates. The overwrite IS this writer's contract —

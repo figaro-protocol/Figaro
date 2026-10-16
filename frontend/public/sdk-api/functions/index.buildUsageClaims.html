@@ -14,7 +14,7 @@
 <section class="tsd-panel">
 <ul class="tsd-signatures">
 <li class="">
-<div class="tsd-signature tsd-anchor-link" id="buildusageclaims"><span class="tsd-kind-call-signature">buildUsageClaims</span><span class="tsd-signature-symbol">(</span><br/>    <span class="tsd-kind-parameter">order</span><span class="tsd-signature-symbol">:</span> <a href="../interfaces/index.Commitment.html" class="tsd-signature-type tsd-kind-interface">Commitment</a><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">agreement</span><span class="tsd-signature-symbol">:</span> <a href="../interfaces/index.Agreement.html" class="tsd-signature-type tsd-kind-interface">Agreement</a><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">context</span><span class="tsd-signature-symbol">:</span> <a href="../interfaces/index.UsageClaimContext.html" class="tsd-signature-type tsd-kind-interface">UsageClaimContext</a><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">template</span><span class="tsd-signature-symbol">?:</span> <a href="../interfaces/index.AssemblyTemplate.html" class="tsd-signature-type tsd-kind-interface">AssemblyTemplate</a><span class="tsd-signature-symbol">,</span><br/><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <a href="../interfaces/agent.SequencerUsageClaim.html" class="tsd-signature-type tsd-kind-interface">SequencerUsageClaim</a><span class="tsd-signature-symbol">[]</span><a href="#buildusageclaims" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-signature tsd-anchor-link" id="buildusageclaims"><span class="tsd-kind-call-signature">buildUsageClaims</span><span class="tsd-signature-symbol">(</span><br/>    <span class="tsd-kind-parameter">order</span><span class="tsd-signature-symbol">:</span> <a href="../interfaces/index.Commitment.html" class="tsd-signature-type tsd-kind-interface">Commitment</a><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">agreement</span><span class="tsd-signature-symbol">:</span> <a href="../interfaces/index.Agreement.html" class="tsd-signature-type tsd-kind-interface">Agreement</a><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">context</span><span class="tsd-signature-symbol">:</span> <a href="../interfaces/index.UsageClaimContext.html" class="tsd-signature-type tsd-kind-interface">UsageClaimContext</a><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">assembly</span><span class="tsd-signature-symbol">?:</span> <a href="../interfaces/index.Assembly.html" class="tsd-signature-type tsd-kind-interface">Assembly</a><span class="tsd-signature-symbol">,</span><br/><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <a href="../interfaces/agent.SequencerUsageClaim.html" class="tsd-signature-type tsd-kind-interface">SequencerUsageClaim</a><span class="tsd-signature-symbol">[]</span><a href="#buildusageclaims" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
 <div class="tsd-description">
 <div class="tsd-comment tsd-typography"><p>Build every usage claim a resolved order supports.</p>
 <p>PURE — takes the chain facts as input so it can be tested and reasoned about
@@ -29,7 +29,7 @@ agreement's provenance leaf (<code>Agreement.provenance</code>), proved with
 keyed by the agreement key.</li>
 <li>the ASSEMBLY leg credits the assembly's designer from the same leaf
 plus the agreement's membership proof under the composition hash
-(<code>buildAgreementInclusionProof</code> over <code>template</code>, the instantiated template):
+(<code>buildAgreementInclusionProof</code> over <code>assembly</code>, the instantiated assembly):
 kind <code>{ Assembly: { agreement_key, slot_content_hash, membership_proof } }</code>
 keyed by the composition hash. The agreement proved is the first whose
 <code>agreementKey</code> is the provenance's (every such agreement proves the
@@ -40,7 +40,7 @@ clause leg never sees it. An agreement naming no provenance has neither
 of the last two legs.</p>
 <p>Throws when the counter's reserved keys are not the format's (every
 agreement and assembly claim against it would revert); when the agreement
-names a provenance but no <code>template</code> is given, the template does not hash
+names a provenance but no <code>assembly</code> is given, the assembly does not hash
 to the provenance's composition hash, or no agreement binds its agreement
 key; when the provenance's agreement key is a reserved key; and when the
 agreement's leaves do not build — no leg of such an agreement can be
@@ -52,7 +52,7 @@ proved.</p>
 <li><span><span class="tsd-kind-parameter">order</span>: <a href="../interfaces/index.Commitment.html" class="tsd-signature-type tsd-kind-interface">Commitment</a></span></li>
 <li><span><span class="tsd-kind-parameter">agreement</span>: <a href="../interfaces/index.Agreement.html" class="tsd-signature-type tsd-kind-interface">Agreement</a></span></li>
 <li><span><span class="tsd-kind-parameter">context</span>: <a href="../interfaces/index.UsageClaimContext.html" class="tsd-signature-type tsd-kind-interface">UsageClaimContext</a></span></li>
-<li><span><code class="tsd-tag">Optional</code><span class="tsd-kind-parameter">template</span>: <a href="../interfaces/index.AssemblyTemplate.html" class="tsd-signature-type tsd-kind-interface">AssemblyTemplate</a></span></li></ul></div>
+<li><span><code class="tsd-tag">Optional</code><span class="tsd-kind-parameter">assembly</span>: <a href="../interfaces/index.Assembly.html" class="tsd-signature-type tsd-kind-interface">Assembly</a></span></li></ul></div>
 <h4 class="tsd-returns-title">Returns <a href="../interfaces/agent.SequencerUsageClaim.html" class="tsd-signature-type tsd-kind-interface">SequencerUsageClaim</a><span class="tsd-signature-symbol">[]</span></h4><aside class="tsd-sources">
 <ul>
 <li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/rpgf/index.ts#L463">rpgf/index.ts:463</a></li></ul></aside></div></li></ul></section></div>

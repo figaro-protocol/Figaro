@@ -17,10 +17,10 @@ import { hydrateAuthored } from "./hydrate.js";
 // The kit-assembly diamond: A (lead, root) → B, A → C, B → D, C → D.
 // B + D carry proximity-policy, C carries emissions. Proximity is bound
 // to [Swift, Mercato], so the per-clause cursor hands B→Swift, D→Mercato by
-// commit order. Structure + clauses come straight off the template agreements —
+// commit order. Structure + clauses come straight off the registered agreements —
 // party-agnostic, no baked payment. Parents live INSIDE the topology clause
-// (the real template shape — planSubOrderSellers reads them via
-// templateParentOrderHashes; a node-level parentOrderHashes field is the
+// (the real assembly shape — planSubOrderSellers reads them via
+// assemblyParentOrderHashes; a node-level parentOrderHashes field is the
 // retired pre-topology-clause shape and is never read).
 const MERCATO = "0x23618e81E3f5cdF7f54C3d65f7FBc0aBf5B21E8f" as const;
 const SWIFT = "0x14dC79964da2C08b23698B3D3cc7Ca32193d9955" as const;

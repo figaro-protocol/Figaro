@@ -11,8 +11,8 @@ pragma solidity 0.8.26;
 ///         doctrine, and this contract reads none of them.
 ///
 ///         A registered agreement is the clauses composed for ONE order
-///         slot with the designer's fills, value-free: a reusable unit a
-///         designer binds into any slot of any assembly as is. Its identity
+///         with the designer's fills, value-free: a reusable unit a
+///         designer binds into any assembly, in any position, as is. Its identity
 ///         IS its composition: agreementKey is the canonical content hash of
 ///         `{ clauses }` — the clause keys and the fills the designer gave
 ///         them, the topology clause composed with `{}` (who follows whom is

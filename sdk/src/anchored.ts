@@ -4,7 +4,7 @@
  * Five kinds of document live off chain and are anchored on it by a digest:
  * a clause spec (its clause key, the digest of its pinned bytes), a
  * registered agreement (`AgreementRegistry`'s `agreementKey`), an assembly
- * template (`AssemblyRegistry`'s `compositionHash`), an agreement (the commitment's
+ * assembly (`AssemblyRegistry`'s `compositionHash`), an agreement (the commitment's
  * `agreementHash`) and attestation content (the `contentRef` an
  * `Attestation` event carries). A gateway can serve any bytes, so a reader
  * recomputes the digest before reading the document.
@@ -29,8 +29,8 @@ import { strippingReviver } from "./safeJson.js";
 import {
     agreementKeyOf,
     assertNotReservedKey,
-    templateCompositionHash,
-    type AssemblyTemplate,
+    assemblyCompositionHash,
+    type Assembly,
     type ComposedAgreement,
     type HydratedAssembly,
 } from "./assembly.js";
@@ -42,7 +42,7 @@ declare const ANCHORED: unique symbol;
  *  by the `anchor*` functions here, or derived from one by `deriveAnchored`.
  *
  *  It vouches for what the digest covers, and no more. `Anchored<ComposedAgreement>`
- *  and `Anchored<AssemblyTemplate>` cover their composition, never the
+ *  and `Anchored<Assembly>` cover their composition, never the
  *  editorial prose beside it. `Anchored<Agreement>`
  *  covers the `sections` and the `provenance`: `computeAgreementHash` is the
  *  merkle root over the section leaves and the reserved provenance leaf, so
@@ -74,7 +74,7 @@ export function anchorClauseSpec(fetched: Uint8Array | string, clauseKey: Hex | 
 /** A registered agreement's pinned document, verified against its
  *  `AgreementRegistry` key: `agreementKeyOf` of the parsed document (the root
  *  over its composed clauses — the editorial fields are outside the key) equals
- *  the key, exactly as `anchorTemplate` recomputes the composition root.
+ *  the key, exactly as `anchorAssembly` recomputes the composition root.
  *  Takes the fetched bytes or text (parsed with prototype-pollution keys
  *  stripped) or an already-parsed value. A failed parse, a document with no
  *  `clauses` object, a reserved key or a mismatch returns null — ABSENCE:
@@ -112,7 +112,7 @@ export function anchorComposedAgreement(
 }
 
 /**
- * Hydrate an anchored template: read each DISTINCT agreement's registered
+ * Hydrate an anchored assembly: read each DISTINCT agreement's registered
  * agreement through the caller's `readAgreement` (the SDK does no I/O — the
  * caller resolves the key to the registry binding's `contentURI`, whatever
  * its stake, and fetches it; null when it cannot) and verify every document
@@ -121,11 +121,11 @@ export function anchorComposedAgreement(
  * assembly is offered only when every agreement can be read.
  */
 export async function hydrateAssembly(
-    template: Anchored<AssemblyTemplate> | AssemblyTemplate,
+    assembly: Anchored<Assembly> | Assembly,
     readAgreement: (agreementKey: Hex) => Promise<Uint8Array | string | unknown | null>,
 ): Promise<HydratedAssembly | null> {
     const agreements: Record<Hex, ComposedAgreement> = {};
-    for (const entry of template.agreements) {
+    for (const entry of assembly.agreements) {
         const key = entry.agreementKey.toLowerCase() as Hex;
         if (agreements[key]) continue;
         let raw: unknown;
@@ -139,23 +139,23 @@ export async function hydrateAssembly(
         if (composed === null) return null;
         agreements[key] = composed;
     }
-    return { template, agreements };
+    return { assembly, agreements };
 }
 
-/** An assembly template, verified against `AssemblyRegistry`'s
+/** An assembly, verified against `AssemblyRegistry`'s
  *  `compositionHash`: the merkle root over its agreement leaves and its
  *  assembly-terms leaf is the hash. A document with no `agreements` array
- *  carries no composition and is not a template; an agreement whose key is
+ *  carries no composition and is not a assembly; an agreement whose key is
  *  malformed or reserved does not hash. */
-export function anchorTemplate(raw: unknown, compositionHash: Hex | string): Anchored<AssemblyTemplate> | null {
+export function anchorAssembly(raw: unknown, compositionHash: Hex | string): Anchored<Assembly> | null {
     if (raw === null || typeof raw !== "object" || !Array.isArray((raw as { agreements?: unknown }).agreements)) return null;
     let recomputed: Hex;
     try {
-        recomputed = templateCompositionHash(raw as AssemblyTemplate);
+        recomputed = assemblyCompositionHash(raw as Assembly);
     } catch {
         return null;
     }
-    return sameHex(recomputed, compositionHash) ? (raw as Anchored<AssemblyTemplate>) : null;
+    return sameHex(recomputed, compositionHash) ? (raw as Anchored<Assembly>) : null;
 }
 
 /** An agreement, verified against the commitment's `agreementHash`: the

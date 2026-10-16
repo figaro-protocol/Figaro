@@ -49,7 +49,7 @@ import { readLocalDeploymentConfig, waitForConnected } from './devnet-helpers';
 import { publishProbeAssembly } from './probeAssembly';
 import { calculateBonds, ASSEMBLY_REGISTRY_ABI } from '@figaro-protocol/sdk';
 import { CORE_ABI } from '@/lib/kernel/contracts';
-import { deriveAssemblySlug } from '@/lib/shared/assemblyTemplate';
+import { deriveAssemblySlug } from '@/lib/shared/assembly';
 
 const ERC20_ABI = parseAbi(['function balanceOf(address) view returns (uint256)']);
 

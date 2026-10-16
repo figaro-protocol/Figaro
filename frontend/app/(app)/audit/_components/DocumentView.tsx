@@ -9,7 +9,7 @@
  * legend of what each label means, a note.
  * Invoice, bill of lading, financial statements: all the same
  * `RenderedDocument` shape, all this one component. A new genre is a new
- * template / projector in `lib/audit/` — this renderer never changes.
+ * assembly / projector in `lib/audit/` — this renderer never changes.
  */
 
 import type { RenderedDocument } from "@/lib/audit/documentProjection";

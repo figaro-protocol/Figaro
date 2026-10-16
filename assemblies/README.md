@@ -16,7 +16,7 @@ names resolved to keys, the mandatory clauses folded, the key derived — and
 name (each binds the agreement's key; its fill is the topology clause's
 parents), then the seeding pins and registers each DISTINCT agreement once on
 `AgreementRegistry` (one stake each; a key already registered is skipped) and
-registers the template on `AssemblyRegistry`. Identity is content-derived on
+registers the assembly on `AssemblyRegistry`. Identity is content-derived on
 both registries (the `agreementKey`, a merkle root over the composed clauses;
 the `compositionHash`, a merkle root over the agreements), first-write-wins,
 so re-anchoring is a no-op and independently composing the same design
@@ -42,7 +42,7 @@ asserted from chain:
 | `data-stream-subscription.json` | 1 order | A window of licensed access to another member's live data — credential over the encrypted hand-off, every entry a leaf provable against the resolved agreement that produced it; gas is paid once per subscription, never per data point | `data-market.devnet.spec.ts` (full cycle: license anchored to the resolved flight process, encrypted hand-off evidence, self-authenticating license leaf) |
 | `equipment-hire.json` | 1 order | A renter books equipment straight from its owner — the same shape as the point-of-sale reference, plus the designer's own denomination pinned once for the whole composition, so no token picker ever appears at checkout | `equipment-hire.devnet.spec.ts` (full cycle: no picker, the pin drives the commitment and every value leg, the commerce/pin provenance pair asserted from the committed agreement) |
 
-`documents/` ships the raw bytes of every document a template affixes (consent
+`documents/` ships the raw bytes of every document a assembly affixes (consent
 anchors commit the document's keccak256 and `ipfs://` locator INSIDE the
 agreement — the bytes must pin byte-identical on any network for the
 `agreementKey`, and so the composition hash, to reproduce; the populate path
@@ -54,13 +54,13 @@ clause's `currency` is a live ERC-20 address, new on every fresh deploy, so the
 checked-in file carries the zero address as a sentinel and the populate path
 (`populate-clauses.mjs`'s `fillDeployTimeCurrency`) substitutes the real
 deployment's token address before anchoring — the anchored compositionHash is
-over the SUBSTITUTED template, never the sentinel. A spec that wants this
-reference's slug hashes the substituted template too
+over the SUBSTITUTED assembly, never the sentinel. A spec that wants this
+reference's slug hashes the substituted assembly too
 (`referenceAssemblySlugWithLiveCurrency`, `devnet-helpers.ts`), not the raw file.
 
 Conformance: `frontend/tests/lib/referenceAssemblies.test.ts` — every written
 agreement names itself, says what it is and is bound by a reference assembly;
-every template parses, hashes, resolves its topology, composes only registered
+every assembly parses, hashes, resolves its topology, composes only registered
 clauses, carries the mandatory clauses on every order, carries its editorial
 identity (the name/summary/description a stranger reads first), and every
 affixed document reproduces its committed hash from the shipped bytes.

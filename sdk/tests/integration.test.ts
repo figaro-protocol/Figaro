@@ -290,7 +290,7 @@ describe.skipIf(SKIP)("SDK Integration (Anvil)", () => {
         // ── 1. The buyer drafts one quote request per candidate at their
         //       ceiling; the priced fields name the buyer's OWN clause. ──
         const chainNow = (await publicClient.getBlock({ blockTag: "latest" })).timestamp;
-        const template = hydrateAuthored({
+        const assembly = hydrateAuthored({
             agreements: [{ id: "order-0", clauses: { [keyOf("figaro-commerce")]: {}, [keyOf("figaro-topology")]: { parentOrderHashes: [] } } }],
         });
         const pricedFields = [
@@ -298,7 +298,7 @@ describe.skipIf(SKIP)("SDK Integration (Anvil)", () => {
             { clause: keyOf("figaro-commerce"), path: "lineItems.0.unitPrice" },
         ];
         const requestFor = (candidate: Address) => buildQuoteRequest({
-            assembly: template, buyer: buyerAccount.address, seller: candidate, currency: tokenAddress,
+            assembly: assembly, buyer: buyerAccount.address, seller: candidate, currency: tokenAddress,
             ceiling: CEILING, chainId: 31337, core: coreAddress, pricedFields,
             deadline: chainNow + 3600n,
             overrides: {

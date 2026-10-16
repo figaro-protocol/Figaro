@@ -5,7 +5,7 @@
  * Member-domain composition: reads the member's profile (MembersRegistry →
  * IPFS), intersects the profile's `assemblyBindings[].assemblySlug` with the
  * published assembly events, and reads each matched assembly hydrated — the
- * template and every agreement's registered agreement, each verified. The
+ * assembly and every agreement's registered agreement, each verified. The
  * on-chain reads come from `@/lib/protocol/useAssemblyRegistry` (a legal
  * downward arrow); the member-profile parsing stays intra-seller.
  */
@@ -27,9 +27,9 @@ import {
 /** A member's on-chain bound assembly, hydrated. */
 export interface BoundAssembly {
     slug: string;
-    /** Display name from the assembly template; falls back to the slug. */
+    /** Display name from the assembly; falls back to the slug. */
     name: string;
-    /** The template verified against its composition hash, beside every
+    /** The assembly verified against its composition hash, beside every
      *  agreement's registered agreement verified against its key. */
     hydratedAssembly: HydratedAssembly;
     /** The member's designated counterparty wallets for this assembly,
@@ -128,7 +128,7 @@ export function useMemberBoundAssemblies(
 
                 // matchedEvents and hydratedAssemblies are index-aligned (Promise.all
                 // over a .map preserves order). Pair them into BoundAssembly,
-                // dropping any assembly whose template or agreements are absent.
+                // dropping any assembly whose assembly or agreements are absent.
                 const assemblies: BoundAssembly[] = [];
                 hydratedAssemblies.forEach((m, i) => {
                     if (!m) return;

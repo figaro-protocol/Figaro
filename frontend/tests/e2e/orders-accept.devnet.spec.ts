@@ -80,7 +80,7 @@ async function findPosAssembly(): Promise<string> {
     // Identify pos.json by IDENTITY (its compositionHash → slug), NOT by a
     // clause-shape heuristic. The old filter (single-order + has-modalities +
     // no-content-handoff) is closed-world AND ambiguous — it also matched other
-    // single-order compositions (e.g. the aerial-survey templates), so `.find()`
+    // single-order compositions (e.g. the aerial-survey assemblies), so `.find()`
     // could seed + order the WRONG assembly, one whose required fields this POS
     // checkout flow does not fill.
     const slug = referenceAssemblySlug('pos.json');

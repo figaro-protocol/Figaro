@@ -20,7 +20,7 @@ import { validateContent, encodeContentFromSpec, type ClauseSpec } from "../clau
 import { assertOrderFitsResolveCap } from "../gasCeilings.js";
 import { restoreSignedProcessId } from "../commitments.js";
 import type { Agreement } from "../agreement.js";
-import type { AssemblyTemplate } from "../assembly.js";
+import type { Assembly } from "../assembly.js";
 import { buildUsageClaims, fetchUsageClaimContext, usageClaimKindCode, usageKeyId } from "../rpgf/index.js";
 import type { Hex, Address, FigaroAddresses, Commitment } from "../types.js";
 import type { ProposedAction, ResolveProcessAction } from "./proposer.js";
@@ -104,12 +104,12 @@ export async function resolveProcess(
 
 /** One resolved order's inputs for usage recording: the ORIGINAL commitment
  *  struct (the counter re-verifies it against FigaroCore), its hydrated
- *  agreement (the leaves whose usage is being claimed), and the template the
+ *  agreement (the leaves whose usage is being claimed), and the assembly the
  *  agreement's provenance names (the assembly leg's membership proof). */
 export interface UsageRecordingEntry {
     commitment: Commitment;
     agreement: Agreement;
-    template?: AssemblyTemplate;
+    assembly?: Assembly;
 }
 
 export interface UsageRecordingReport {
@@ -179,7 +179,7 @@ export async function recordProcessUsage(
     // Once ever per (key, process): `processCounted` in the counter. Every
     // entry here belongs to the one process just resolved.
     const sent = new Set<string>();
-    for (const { commitment: given, agreement, template } of entries) {
+    for (const { commitment: given, agreement, assembly } of entries) {
         // The counter re-hashes the SIGNED struct to find the order — a root
         // signed processId 0, so a derived-id commitment (the proposer's
         // event-reconstructed shape) must be restored exactly as the resolve
@@ -189,7 +189,7 @@ export async function recordProcessUsage(
         // no provable leg at all; say so and go on to the next order.
         let claims: ReturnType<typeof buildUsageClaims>;
         try {
-            claims = buildUsageClaims(commitment, agreement, context, template);
+            claims = buildUsageClaims(commitment, agreement, context, assembly);
         } catch (error) {
             report.failures.push(`agreement: ${error instanceof Error ? error.message : String(error)}`);
             continue;
@@ -413,7 +413,7 @@ export interface ActionExecutionInputs {
  *     gathered off-SDK; without it this throws rather than fabricate one.
  *     (There is NO runtime compose verb — extending a live process ad hoc was
  *     the deleted commit-sub-order arm; multi-order processes originate from
- *     an assembly template.)
+ *     an assembly.)
  *   - attest-as-seller / attest-as-buyer — pass `inputs.attestation` (the
  *     merkle-bound payload built from the hydrated agreement).
  *

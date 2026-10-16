@@ -23,7 +23,7 @@ const w = (acc: typeof BUYER) => createWalletClient({ account: acc, transport: h
 const buyerW = w(BUYER);
 
 // A 3-order value-added chain: root (order-0) + two subs under it (like the seed chain).
-const template = hydrateAuthored({
+const assembly = hydrateAuthored({
     agreements: [
         { id: "order-0", clauses: { [keyOf("figaro-commerce")]: {}, [keyOf("figaro-topology")]: { parentOrderHashes: [] } } },
         { id: "order-1", clauses: { [keyOf("figaro-courier-process")]: {}, [keyOf("figaro-topology")]: { parentOrderHashes: ["order-0"] } } },
@@ -35,7 +35,7 @@ const nodes: ChainNodeSpec[] = [
     { nodeId: "order-1", seller: S1.address, payment: 500n },
     { nodeId: "order-2", seller: S2.address, payment: 300n },
 ];
-const params = { assembly: template, currency: CURRENCY, chainId: CHAIN, core: CORE, nodes, salt: () => 42n, deadline: 1_900_000_000n };
+const params = { assembly: assembly, currency: CURRENCY, chainId: CHAIN, core: CORE, nodes, salt: () => 42n, deadline: 1_900_000_000n };
 
 // A chain-tolerant operator policy: no requireRootShape (sub-orders carry the
 // running cumulative value), the chain's currency, cap above the 1800 total.
@@ -62,7 +62,7 @@ describe("buildChainOffers — the value-added chain walk", () => {
         expect(offers[2].offer.commitment.processId).toBe(derived);
     });
 
-    it("wires each sub-order's topology to its parent's REAL order hash (not the template id)", async () => {
+    it("wires each sub-order's topology to its parent's REAL order hash (not the assembly id)", async () => {
         const offers = await buildChainOffers(buyerW, params);
         const rootHash = computeOrderHash(offers[0].offer.commitment, CHAIN, CORE);
         expect(topologyParents(offers[0].offer)).toEqual([]);
@@ -76,7 +76,7 @@ describe("buildChainOffers — the value-added chain walk", () => {
         expect(offers.every((o) => !!o.offer.buyerSig)).toBe(true);
     });
 
-    it("throws when a template node has no seller/payment spec", async () => {
+    it("throws when a assembly node has no seller/payment spec", async () => {
         await expect(buildChainOffers(buyerW, { ...params, nodes: nodes.slice(0, 2) })).rejects.toThrow(/no seller\/payment spec/i);
     });
 
@@ -131,7 +131,7 @@ describe("the buyer commits only the offer it sent", () => {
         readContract: () => { throw new Error("chain must not be touched on a bad reply"); },
     } as unknown as PublicClient;
     const rootParams = {
-        assembly: { ...template, template: { agreements: [template.template.agreements[0]] } },
+        assembly: { ...assembly, assembly: { agreements: [assembly.assembly.agreements[0]] } },
         currency: CURRENCY, payment: 1000n, chainId: CHAIN, core: CORE,
         buyer: BUYER.address, seller: S0.address,
         overrides: nodes[0].overrides, salt: 7n, deadline: 1_900_000_000n,

@@ -140,7 +140,7 @@ contract Deploy is Script {
 
         // ── AgreementRegistry ───────────────────────────────────────
         // Permissionless first-write-wins anchor for registered agreements:
-        // the clauses composed for one order slot, a reusable unit any
+        // the clauses composed for one order, a reusable unit any
         // assembly binds. Its own family beside ClauseRegistry and
         // AssemblyRegistry, with the same reclaimable stake and the same
         // devnet value.

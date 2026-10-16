@@ -50,7 +50,7 @@ describe("RegistryCountLink — one component owns the registry scaffolding all 
         }
     });
 
-    it("assemblies: the same template, its own registry and its own repository directory", () => {
+    it("assemblies: the same assembly, its own registry and its own repository directory", () => {
         render(<RegistryCountLink family="assemblies" />);
         expect(screen.getByTestId("registry-count-assemblies").textContent).toContain("1 assembly is registered");
         const body = document.body.textContent ?? "";

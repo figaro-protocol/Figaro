@@ -276,7 +276,7 @@ export function sortLeaves(leaves: readonly Hex[]): Hex[] {
 
 /** The sorted-pair merkle root over leaves already in `sortLeaves` order —
  *  the one tree builder: an agreement's root (`computeAgreementHash`) and an
- *  assembly's (`templateCompositionHash`) are both this function. A one-leaf
+ *  assembly's (`assemblyCompositionHash`) are both this function. A one-leaf
  *  tree's root is its leaf; an empty tree's is bytes32(0). */
 export function buildMerkleRoot(leaves: readonly Hex[]): Hex {
     if (leaves.length === 0) return ZERO_BYTES32;

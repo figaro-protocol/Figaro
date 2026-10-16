@@ -2,7 +2,7 @@
  * lib/shared/canonicalJson.ts — the one canonical-JSON convention.
  *
  * Both hash-anchored families (clause specs on `ClauseRegistry`,
- * assembly templates on `AssemblyRegistry`) hash the SAME canonical form:
+ * assemblies on `AssemblyRegistry`) hash the SAME canonical form:
  * sorted object keys at every depth, no whitespace. One convention means a
  * reader can verify any fetched document by re-canonicalizing the parsed
  * JSON — no dependence on the pinned byte formatting or the transport.

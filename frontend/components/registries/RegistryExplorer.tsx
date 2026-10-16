@@ -45,7 +45,7 @@ const FAMILY_LABEL: Record<RegistryFamily, string> = { clauses: "Clauses", agree
 const SORT_LABEL: Record<(typeof REGISTRY_SORTS)[number], string> = { article: "Article", name: "Name", block: "Most recent", registeredBy: "Registered by" };
 const STAKE_LABEL: Record<(typeof STAKE_VIEWS)[number], string> = { live: "Live stake", withdrawn: "Stake withdrawn", all: "All" };
 
-/** Row descriptions — the spec's / template's / profile's own short words. */
+/** Row descriptions — the spec's / assembly's / profile's own short words. */
 type RowText = { description: string };
 
 export function RegistryExplorer() {
@@ -117,7 +117,7 @@ export function RegistryExplorer() {
             });
         }
         for (const a of assemblies ?? []) {
-            const description = a.hydratedAssembly?.template.summary ?? a.hydratedAssembly?.template.description ?? "";
+            const description = a.hydratedAssembly?.assembly.summary ?? a.hydratedAssembly?.assembly.description ?? "";
             out.push({
                 family: "assemblies", key: `assembly-${a.slug}`, id: a.slug, name: a.name, article: "", description,
                 content: a.state === "loaded" ? "resolved" : getAssemblyLoadError(a.compositionHash) ? "unavailable" : "resolving",

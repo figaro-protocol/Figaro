@@ -90,8 +90,8 @@ export const DEVICE = { lat: 51.9244, lon: 4.4777, destination: 'u15pk4' } as co
  *  slug: exactly six orders, one composing BOTH cold-chain AND
  *  chain-of-custody (the reefer carrier — no other anchored assembly does). */
 export async function findTradelensAssembly(): Promise<string | undefined> {
-    const templates = await discoverAnchoredAssemblies();
-    return templates.find((t) =>
+    const assemblies = await discoverAnchoredAssemblies();
+    return assemblies.find((t) =>
         t.agreements.length === 6
         && t.agreements.some((o) => {
             const clauses = Object.keys(o.clauses ?? {});
@@ -121,7 +121,7 @@ async function forEachCheckoutField(
 }
 
 /** The buyer's transaction particulars — every general-clause fill the
- *  six-order chain needs (templates arrive value-free; catalog-sourced
+ *  six-order chain needs (assemblies arrive value-free; catalog-sourced
  *  cargo/cold-chain/freight-class values fold from the items, never here). */
 export async function fillTradelensCheckout(page: Page): Promise<void> {
     await checkoutFields(page, C.modalities, 'modality-delivery').first().check();

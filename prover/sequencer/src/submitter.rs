@@ -1293,8 +1293,8 @@ mod tests {
     }
 
     // The format's two reserved keys are dropped before any chain read,
-    // whether a claim is keyed on one or an assembly claim's order slot
-    // names one as its agreementKey (the terms leaf is not an order slot).
+    // whether a claim is keyed on one or an assembly claim's agreement
+    // names one as its agreementKey (the terms leaf is not an agreement).
     // Pure: the rpc here is unreachable.
     #[tokio::test]
     async fn drops_claims_naming_either_reserved_key_without_touching_the_chain() {

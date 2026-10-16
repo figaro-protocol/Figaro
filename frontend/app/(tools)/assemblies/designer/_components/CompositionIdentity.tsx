@@ -18,7 +18,7 @@
  * canvas that looks unchanged. This makes the fork visible at the moment of the
  * edit.
  *
- * Derived, never stored: the same `draftToAssemblyTemplate` walk publish uses,
+ * Derived, never stored: the same `draftToAssembly` walk publish uses,
  * recomputed from the draft on every change. Names no clause and reads no
  * field — any composed clause moves it.
  *
@@ -28,7 +28,7 @@
 
 import { useMemo } from "react";
 import type { DesignSnapshot } from "@/lib/designer/syntheticDesignStore";
-import { snapshotCompositionIdentity } from "@/lib/designer/draftToAssemblyTemplate";
+import { snapshotCompositionIdentity } from "@/lib/designer/draftToAssembly";
 import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
 import { useComposedAgreementsVersion } from "@/lib/protocol/useAgreementRegistry";
 import { truncateHex } from "@/lib/shared/formatHex";
@@ -38,7 +38,7 @@ export function CompositionIdentity({ snapshot }: { snapshot: DesignSnapshot | n
     // it), so a warm — or a clause registered mid-session — re-runs it. The
     // canvas already gates its render on `loaded`, so the error branch below
     // is for a genuinely unbuildable composition (a mis-scoped clause from an
-    // imported template), not for a cold cache.
+    // imported assembly), not for a cold cache.
     const { version: specsVersion } = useClauseSpecs();
     // The registered agreements an agreement binds are an input too: the
     // build reads them once the registry read verifies them.

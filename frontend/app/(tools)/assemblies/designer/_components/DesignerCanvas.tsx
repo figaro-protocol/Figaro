@@ -24,7 +24,7 @@
  * applies the seed in a mount effect — localStorage is client-only.
  */
 
-import { assemblyClauseDefaults, toggleClauseByKey } from "@/lib/designer/draftToAssemblyTemplate";
+import { assemblyClauseDefaults, toggleClauseByKey } from "@/lib/designer/draftToAssembly";
 import Link from "@/components/shared/Link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -55,7 +55,7 @@ import { usePublishAgreement } from "@/lib/designer/publishAssembly";
 import { AssemblyTermsPanel } from "./AssemblyTermsPanel";
 import { CompositionAssist } from "./CompositionAssist";
 import { CompositionIdentity } from "./CompositionIdentity";
-import { assemblyTemplateToDraft } from "@/lib/designer/assemblyTemplateToDraft";
+import { assemblyToDraft } from "@/lib/designer/assemblyToDraft";
 import type { HydratedAssembly } from "@figaro-protocol/sdk";
 import { clauseIsMandatory } from "@/lib/shared/clauseSpecSource";
 import {
@@ -162,7 +162,7 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
     const [orders, setOrders] = useState<Order[]>(() => initial.orders);
     // Per-order clause selection (the Registry checkboxes). Keyed by order id;
     // values are the clause keys picked on that order. Feeds the assembly
-    // template's per-order `clauses`, and persists into the draft snapshot.
+    // assembly's per-order `clauses`, and persists into the draft snapshot.
     const [clausesByOrderId, setClausesByOrderId] = useState<
         Record<string, Record<string, Record<string, unknown>>>
     >(() => initial.clausesByOrderId);
@@ -183,7 +183,7 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
         Record<string, Record<string, unknown>>
     >(() => initial.assemblyClauses);
     // Editorial metadata — the designer's own words (free-form, NOT a taxonomy).
-    // Carried into the assembly template but EXCLUDED from the content hash, so
+    // Carried into the assembly but EXCLUDED from the content hash, so
     // renaming never forks the slug. Blank = unnamed; display falls back to slug.
     const [name, setName] = useState<string>(initial.name);
     const [summary, setSummary] = useState<string>(() => initial.summary);
@@ -460,34 +460,34 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
         clearCurrentSession();
     }, [session]);
 
-    /** Apply a template imported through composition-assist to the live
+    /** Apply a assembly imported through composition-assist to the live
      *  canvas — the same hydration the draft seed and the fork bridge use.
      *  Replaces the current composition (confirmed when it's non-trivial);
      *  the result is ordinary unsaved canvas state, so review/edit/publish
-     *  stay the designer's act. Throws on a template the chain-loaded specs
+     *  stay the designer's act. Throws on a assembly the chain-loaded specs
      *  can't project — the assist panel surfaces it before state is touched.
      *  Returns false when the designer declines the replace-confirmation. */
-    const handleImportTemplate = useCallback((hydratedImport: HydratedAssembly, composeKeys: ReadonlySet<string>): boolean => {
-        const template = hydratedImport.template;
+    const handleImportAssembly = useCallback((hydratedImport: HydratedAssembly, composeKeys: ReadonlySet<string>): boolean => {
+        const assembly = hydratedImport.assembly;
         // Hydrate FIRST — a throw here (unregistered clause, bad topology)
         // must leave the canvas untouched.
-        const draft = assemblyTemplateToDraft(hydratedImport, { slug: "", name: template.name ?? "", composeKeys });
+        const draft = assemblyToDraft(hydratedImport, { slug: "", name: assembly.name ?? "", composeKeys });
         const nonTrivial = orders.length > 1
             || Object.values(clausesByOrderId).some((c) => Object.keys(c).length > 0);
         if (nonTrivial) {
             const ok = typeof window === "undefined"
                 ? true
-                : window.confirm("Replace the current canvas with the imported template? The current state stays autosaved until then.");
+                : window.confirm("Replace the current canvas with the imported assembly? The current state stays autosaved until then.");
             if (!ok) return false;
         }
         const restored = snapshotToInitial(draft);
         Object.assign(session, restored.session);
         setOrders(restored.orders);
-        // The agent fills the editorial identity per the template shape —
+        // The agent fills the editorial identity per the assembly shape —
         // carry it; blanks fall back exactly like a hand-typed draft.
-        setName(template.name ?? "");
-        setSummary(template.summary ?? "");
-        setDescription(template.description ?? "");
+        setName(assembly.name ?? "");
+        setSummary(assembly.summary ?? "");
+        setDescription(assembly.description ?? "");
         setSlug(null);
         setClausesByOrderId(restored.clausesByOrderId);
         setRegisteredByOrderId(restored.registeredByOrderId);
@@ -675,7 +675,7 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
                         const result = buildSnapshot();
                         return result.ok ? result.snapshot : null;
                     }}
-                    onImportTemplate={handleImportTemplate}
+                    onImportAssembly={handleImportAssembly}
                 />
                 {savedHint && (
                     <span className="ml-auto text-[11px] text-ink-muted truncate" data-testid="designer-saved-hint">

@@ -323,7 +323,7 @@ jobs:
                   fi
                   echo "rust_pin=${pins#rust_pin=}" >> "$GITHUB_OUTPUT"
 
-            # The template lives in this workflow so it ships with every release and
+            # The assembly lives in this workflow so it ships with every release and
             # cannot drift from the job that publishes it. Placeholders are
             # substituted afterwards rather than interpolated by the shell: the body
             # is dense with backticks, and a QUOTED heredoc keeps them literal

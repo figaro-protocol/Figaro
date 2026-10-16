@@ -35,7 +35,7 @@ import {
     seedRegisteredMember,
 } from './devnet-helpers';
 import { ASSEMBLY_REGISTRY_ABI, MEMBERS_REGISTRY_ABI } from '@figaro-protocol/sdk';
-import { deriveAssemblySlug } from '@/lib/shared/assemblyTemplate';
+import { deriveAssemblySlug } from '@/lib/shared/assembly';
 import { ANVIL_KEYS } from '../anvilAccounts';
 
 const RPC_URL = 'http://127.0.0.1:8545';
@@ -257,7 +257,7 @@ test.describe('Seller edit UI surfaces (devnet)', () => {
         //    a fresh slug per run burns a deposit and squats a permanent
         //    slug on the persisted devnet (mainnet rehearsal). The
         //    devnet-authoring project anchored the scenario assemblies
-        //    (template pinned to IPFS, AssemblyRegistered on-chain) before
+        //    (assembly pinned to IPFS, AssemblyRegistered on-chain) before
         //    this project runs — exactly what `useAssemblyChoices` needs
         //    to render the row.
         const publicClient = createPublicClient({ chain: LOCAL_ANVIL, transport: http(RPC_URL) });

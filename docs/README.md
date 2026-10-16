@@ -28,7 +28,7 @@ content. (This is the instruction-system form of "derive, don't store.")
 | Clause table, validation architecture, adding-a-clause | `CLAUSES.md` |
 | The agreement registry — the registered agreement, its key, the assembly's merkle root over its agreements, the membership proof, the fold | `CLAUSES.md` § "The registered agreement and the assembly — units above the clause" (the contract surface: `CONTRACTS.md` § Registries) |
 | Route catalog, lib map, designer surface | `FRONTEND.md` |
-| Wire formats, agreement/template projection, the template→orders walk, checkout planning | `sdk/README.md` (+ the `sdk/dist` docblocks after `npm --prefix sdk run build`) |
+| Wire formats, agreement/assembly projection, the assembly→orders walk, checkout planning | `sdk/README.md` (+ the `sdk/dist` docblocks after `npm --prefix sdk run build`) |
 | Test-harness inventory, layer boundaries | `TESTING.md` |
 | Guard scripts — each guard's rule, rationale, and ruling | maintainer-private build tooling (not shipped in a public clone; TESTING.md inventories test harnesses, not guards) |
 | Commands, env vars, services, deploy scripts | `LOCAL_DEV.md` |

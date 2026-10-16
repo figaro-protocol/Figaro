@@ -53,7 +53,7 @@ test.beforeAll(async () => {
     SCHEDULE_CLAUSE = keyOf('figaro-schedule');
 });
 
-// The booked window — the buyer's checkout fills (templates arrive value-free).
+// The booked window — the buyer's checkout fills (assemblies arrive value-free).
 // datetime-local wall-clock (UTC); DatetimeFieldInput stores ISO 8601 UTC.
 // 09:00 → 12:30 = 3.5 h → billed 4 started hours.
 const WINDOW_START = '2026-07-22T09:00';
@@ -71,8 +71,8 @@ const EXPECTED_TOTAL = parseEther('1') + EXPECTED_SUB_PAYMENT; // fixed lead 1 +
  *  the sub-order carrying the process ladder AND figaro-schedule (the schedule
  *  clause is unique to this assembly — no seeded assembly composes it). */
 async function findBookingAssembly(): Promise<string | undefined> {
-    const templates = await discoverAnchoredAssemblies();
-    return templates.find((t) => {
+    const assemblies = await discoverAnchoredAssemblies();
+    return assemblies.find((t) => {
         if (t.agreements.length !== 2) return false;
         const keysets = t.agreements.map((o) => Object.keys(o.clauses ?? {}));
         const sub = keysets.find((k) => k.includes(PROCESS_CLAUSE) && k.includes(SCHEDULE_CLAUSE));

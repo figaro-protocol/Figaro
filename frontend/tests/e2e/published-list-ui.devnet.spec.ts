@@ -5,8 +5,8 @@
  * No devnet spec touched its two row actions before.
  *
  * The spec publishes a real assembly through the canvas (the only way
- * to get a genuinely valid assemblyTemplate — publish derives it from a
- * live design snapshot, so hand-rolling the assemblyTemplate JSON
+ * to get a genuinely valid assembly — publish derives it from a
+ * live design snapshot, so hand-rolling the assembly JSON
  * would test fork/inspect against a shape the designer never emits),
  * then exercises both `PublishedList` controls:
  *
@@ -43,9 +43,9 @@ test.describe('PublishedList fork + inspect (devnet)', () => {
         await page.goto('/assemblies/designer?e2e=devnet', { waitUntil: 'domcontentloaded' });
         await page.getByTestId(`published-row-${slug}`).waitFor({ timeout: 30000 });
 
-        // Fork is disabled until the assemblyTemplate fetch resolves
+        // Fork is disabled until the assembly fetch resolves
         // (`choice.state === "loaded"`). Waiting for it enabled proves
-        // the IPFS-pinned assemblyTemplate was fetched and parsed.
+        // the IPFS-pinned assembly was fetched and parsed.
         await expect(page.getByTestId(`published-fork-${slug}`)).toBeEnabled({ timeout: 30000 });
 
         // ── Inspect → /assemblies/designer/view?slug=<slug> ─────────────────

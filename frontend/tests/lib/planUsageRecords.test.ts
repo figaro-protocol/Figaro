@@ -3,7 +3,7 @@
  * counter's own facts (one per distinct (kind, key) across the process: every
  * clause section, and from the agreement's provenance leaf the registered
  * agreement and the assembly, the latter with its agreement's membership
- * proof from the template), each simulated before it is sent. Mirrors sdk/tests/recordProcessUsage.test.ts for the frontend path.
+ * proof from the assembly), each simulated before it is sent. Mirrors sdk/tests/recordProcessUsage.test.ts for the frontend path.
  */
 import { describe, expect, it, vi } from "vitest";
 import { encodePacked, keccak256, type Address, type Hex } from "viem";
@@ -14,9 +14,9 @@ import {
     buildAgreementInclusionProof,
     provenanceContentRef,
     provenanceSectionBytes,
-    templateCompositionHash,
+    assemblyCompositionHash,
     type Agreement,
-    type AssemblyTemplate,
+    type Assembly,
     type Commitment,
     type UsageClaimContext,
 } from "@figaro-protocol/sdk";
@@ -34,11 +34,11 @@ vi.mock("@/lib/kernel/signedCommitment", () => ({ restoreSignedProcessId: (c: Co
 // specs behind them.
 const COMMERCE = keccak256(encodePacked(["string"], ["a commerce spec's bytes"]));
 const MODALITIES = keccak256(encodePacked(["string"], ["a modalities spec's bytes"]));
-// The registered agreement the agreement binds, and the one-entry template
+// The registered agreement the agreement binds, and the one-entry assembly
 // whose root is the composition hash the provenance names.
 const AGREEMENT_KEY = agreementKeyOf({ clauses: { [COMMERCE]: {}, [MODALITIES]: {} } });
-const TEMPLATE: AssemblyTemplate = { agreements: [{ id: "order-0", agreementKey: AGREEMENT_KEY, clauses: {} }] };
-const COMPOSITION = templateCompositionHash(TEMPLATE);
+const ASSEMBLY: Assembly = { agreements: [{ id: "order-0", agreementKey: AGREEMENT_KEY, clauses: {} }] };
+const COMPOSITION = assemblyCompositionHash(ASSEMBLY);
 const BUYER = "0x0000000000000000000000000000000000000b0b" as Address;
 const CURRENCY = "0x00000000000000000000000000000000000007ed" as Address;
 const PROCESS = ZERO_BYTES32 as Hex;
@@ -68,7 +68,7 @@ const SELLER_A = "0x0000000000000000000000000000000000005e11" as Address;
 const SELLER_B = "0x0000000000000000000000000000000000005e12" as Address;
 
 function entry(salt: bigint, seller: Address, a: Agreement = agreement(seller)): UsagePlanEntry {
-    return { orderHash: `order-${salt}`, commitment: commitment(salt, seller), agreement: a, context: CONTEXT, template: TEMPLATE };
+    return { orderHash: `order-${salt}`, commitment: commitment(salt, seller), agreement: a, context: CONTEXT, assembly: ASSEMBLY };
 }
 
 describe("planUsageRecords", () => {
@@ -84,14 +84,14 @@ describe("planUsageRecords", () => {
     it("carries the agreement's membership proof on the assembly write", () => {
         const { writes } = planUsageRecords([entry(1n, SELLER_A)]);
         const assembly = writes.find((w) => w.kind === "assembly");
-        const { proof, slotContentHash } = buildAgreementInclusionProof(TEMPLATE, 0);
+        const { proof, slotContentHash } = buildAgreementInclusionProof(ASSEMBLY, 0);
         expect(assembly).toMatchObject({ key: COMPOSITION, agreementKey: AGREEMENT_KEY, slotContentHash, membershipProof: proof });
     });
 
-    it("says a provenance with no template out loud and plans nothing for that order", () => {
-        const { writes, problems } = planUsageRecords([{ ...entry(1n, SELLER_A), template: undefined }]);
+    it("says a provenance with no assembly out loud and plans nothing for that order", () => {
+        const { writes, problems } = planUsageRecords([{ ...entry(1n, SELLER_A), assembly: undefined }]);
         expect(writes).toHaveLength(0);
-        expect(problems.join("\n")).toMatch(/template/);
+        expect(problems.join("\n")).toMatch(/assembly/);
     });
 
     it("plans no agreement or assembly write for an agreement that names no provenance", () => {
@@ -168,7 +168,7 @@ function deps(overrides: Partial<CapabilityExecutorDeps> = {}) {
         processAgreements: agreements,
         resolveProcess: vi.fn(async () => `0x${"11".repeat(32)}` as Hex),
         fetchUsageClaimContext: vi.fn(async () => CONTEXT),
-        readAssemblyTemplate: vi.fn(async () => TEMPLATE),
+        readAssembly: vi.fn(async () => ASSEMBLY),
         simulateUsage: vi.fn(async () => undefined),
         recordUsage: vi.fn(async (write: UsageWrite) => { sent.push(write.key); return `0x${"22".repeat(32)}` as Hex; }),
         submitAttestation: vi.fn(async () => undefined),
@@ -189,10 +189,10 @@ describe("createCapabilityExecutors — resolve with usage writes", () => {
         await createCapabilityExecutors(d).executorCallbacks.resolveProcess(PROCESS);
         expect(d.confirmResolve).toHaveBeenCalledWith(4);
         // One counter read serves every order the process resolves, and one
-        // template read every order of the same assembly.
+        // assembly read every order of the same assembly.
         expect(d.fetchUsageClaimContext).toHaveBeenCalledTimes(1);
-        expect(d.readAssemblyTemplate).toHaveBeenCalledTimes(1);
-        expect(d.readAssemblyTemplate).toHaveBeenCalledWith(COMPOSITION);
+        expect(d.readAssembly).toHaveBeenCalledTimes(1);
+        expect(d.readAssembly).toHaveBeenCalledWith(COMPOSITION);
         expect((d.confirmResolve as ReturnType<typeof vi.fn>).mock.invocationCallOrder[0])
             .toBeLessThan((d.resolveProcess as ReturnType<typeof vi.fn>).mock.invocationCallOrder[0]);
         errors.mockRestore();

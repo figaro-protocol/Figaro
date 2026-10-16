@@ -25,7 +25,7 @@ Pre-defined agents are **maintainer-facing by default** — they act on this rep
 
 - **Public ecosystem agents** (this document's subject; any user, acting for their own wallet, never the repo) are prompt definitions in `ecosystem-agents/`, one per capacity:
   - **`figaro-operator`** — *operate* a wallet: sign every transaction on the owner's behalf (accept, resolve, originate, attest) using `@figaro-protocol/sdk/agent`, guided by the owner's policy (HITL by default; refuse-all until a rule is set). Role is read from process state, so the same operator is buyer in one process and seller in another.
-  - **`figaro-clause-author` / `figaro-assembly-designer`** — write or **fork** a clause/assembly and register it on the permissionless registries (an off-chain `ClauseSpec` / a `ComposedAgreement` / an `AssemblyTemplate` → IPFS → `ClauseRegistry`/`AgreementRegistry`/`AssemblyRegistry`, under the **user's** key). The designer composes an assembly from registered agreements and registers a new one only when none fits. The clause, agreement or assembly belongs to the user, and designer rewards follow its use.
+  - **`figaro-clause-author` / `figaro-assembly-designer`** — write or **fork** a clause/assembly and register it on the permissionless registries (an off-chain `ClauseSpec` / a `ComposedAgreement` / an `Assembly` → IPFS → `ClauseRegistry`/`AgreementRegistry`/`AssemblyRegistry`, under the **user's** key). The designer composes an assembly from registered agreements and registers a new one only when none fits. The clause, agreement or assembly belongs to the user, and designer rewards follow its use.
   - **`figaro-analyst`** — *read and analyze* a market's public graphs with `@figaro-protocol/sdk/derive` (base graphs from the must-have clauses, overlays spec-derived per attestable clause family in use, composition graphs from discovered venues). It holds **no key and signs nothing**; substance it was not given it BUYS as an ordinary data-market buyer, through the operator; and it sells **analyses**, never the corpus. Reference runnable: `ecosystem-agents/runtime/figaro-analyst.mjs` — a service, not a script: six HTTP routes (`GET /status`, `GET /graphs`, three `GET /queries/*`, and a key-gated `POST /prompt`), CORS answered so browsers read it directly, with opt-in cross-checking against extra RPC endpoints via `FIGARO_ANALYST_CROSSCHECK_RPC_URLS`.
 - **Maintainer-facing repo agents** (the subagents that build THIS repo, acting only for the maintainer): their definitions are NOT in the public tree — the build side of the seam is private, and `ecosystem-agents/` is the whole public set. They touch the repo, which is their job; nothing in this document applies to them.
 
@@ -229,8 +229,8 @@ assembly credit with the agreement's membership proof under the root — and `fi
 leaves under `agreementHash`, so a provenance claim is verifiable by inclusion proof
 against the on-chain root instead of trusted from an index. That supports asking
 which processes instantiated a given assembly and how their orders relate. It does
-not support "template compliance": nothing on chain compares a live agreement
-against the template it came from. What IS enforced is that every composed section
+not support "assembly compliance": nothing on chain compares a live agreement
+against the assembly it came from. What IS enforced is that every composed section
 validates against its clause spec before a signature is emitted
 (`assertAgreementSignable`) and, on the batched path, inside the proof.
 
@@ -360,7 +360,7 @@ composes.
 - **Assembly designer** — `AgreementRegistry.registerAgreement(agreementKey, contentURI)`
   for each agreement no registration already carries, then
   `AssemblyRegistry.registerAssembly(compositionHash, contentURI)` over a published
-  template whose agreements name registered agreements. Composition is the designer's act and happens only there,
+  assembly whose agreements name registered agreements. Composition is the designer's act and happens only there,
   never mid-checkout and never mid-process (`OPEN_WORLD.md` §1, pattern 1); the prompt is
   `ecosystem-agents/figaro-assembly-designer.md`.
 - **Composition** — dispatched from the spec, never from a table the agent carries: a
@@ -428,7 +428,7 @@ sits anywhere a shell can read it.
 `ecosystem-agents/runtime/`: `dataChannel.mjs` (`makeEnvelope` / `renderEnvelope` /
 `frame`) renders a typed envelope with a per-render BOUNDARY NONCE, so content cannot
 close its own block and speak as instructions, and a fixed untrusted-data notice rides
-inside the frame. `figaro-fetch` has five modes — clause spec, assembly template,
+inside the frame. `figaro-fetch` has five modes — clause spec, assembly,
 member profile, raw CID, attestation witness — the registry-addressed modes resolving
 through the live registries and the rest by content address, each emitted as ONE
 framed block. A forged closing delimiter cannot escape the frame. F4 is structural at

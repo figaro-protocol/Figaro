@@ -13,7 +13,7 @@
  * agreementHash, carrying the SAME address.
  *
  *   discover → the reference is identified by IDENTITY (compositionHash →
- *              slug), computed from the checked-in template with its
+ *              slug), computed from the checked-in assembly with its
  *              ZERO_ADDRESS currency sentinel substituted for the live
  *              deployment's token address — the exact substitution
  *              populate-test-data performs before anchoring (the sentinel
@@ -94,7 +94,7 @@ const SELLER = privateKeyToAccount(ANVIL_KEYS[22] as Hex).address as Hex;
 async function findEquipmentHireAssembly(tokenAddress: Hex): Promise<string> {
     // Identity, never a clause-shape heuristic (several single-order
     // compositions share the pos/freelancer/equipment-hire shape) — the
-    // slug is hashed from the SUBSTITUTED template, mirroring exactly what
+    // slug is hashed from the SUBSTITUTED assembly, mirroring exactly what
     // populate-test-data anchored under.
     const slug = referenceAssemblySlugWithLiveCurrency('equipment-hire.json', tokenAddress);
     const anchored = (await discoverAnchoredAssemblies()).some((t) => t.slug === slug);

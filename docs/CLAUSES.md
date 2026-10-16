@@ -87,7 +87,7 @@ order.
 
 **Hydration.** A reader fetches the document from the binding's `contentURI`,
 parses it, and requires `agreementKeyOf(doc)` to equal the registered key
-(`anchorComposedAgreement(raw, agreementKey)`, as `anchorTemplate` recomputes
+(`anchorComposedAgreement(raw, agreementKey)`, as `anchorAssembly` recomputes
 an assembly's root). The check is on the key, not the raw bytes, because the
 editorial fields sit outside the key. A failed fetch, a failed parse or a
 mismatch is absence: the agreement, and so the assembly, is not offered, and
@@ -96,7 +96,7 @@ so a withdrawn stake leaves the agreement hydratable — an assembly composed
 from it keeps working — while the drawer offers only live agreements for a new
 composition, and the agreement earns only while its stake is live.
 
-**The assembly.** The template document is `{ name?, summary?, description?,
+**The assembly.** The assembly document is `{ name?, summary?, description?,
 faq?, assemblyClauses?, agreements: [{ id: "order-<i>", agreementKey,
 clauses }] }`. Each entry of `agreements` is an agreement (`AssemblyAgreement`):
 a position that holds one registered agreement and the fills that belong to
@@ -104,18 +104,18 @@ the position — the topology clause's `{ "parentOrderHashes": ["order-<j>",
 …] }`, naming the agreements it follows. The topology stays a clause: at design
 time in the assembly's agreement, at runtime in the signed agreement. The
 assembly's key, `compositionHash`, is the merkle root built with the section
-convention above over one leaf per agreement `i` (0-based, template order) — key
+convention above over one leaf per agreement `i` (0-based, assembly order) — key
 the agreement's `agreementKey`, content the canonical JSON `{"clauses":{…},"slot":i}`
-(object keys sorted, arrays in template order) — and, when any
+(object keys sorted, arrays in assembly order) — and, when any
 assembly-scoped clauses are composed, one assembly terms leaf, key
 `ASSEMBLY_TERMS_LEAF_KEY = keccak256("figaro-assembly-terms")`, content the
 canonical JSON of `assemblyClauses`. A one-leaf tree's root is its leaf.
 Agreements are ordered, so one registered agreement may hold two. The
 editorial fields are excluded from the root. Membership of an agreement in an
 assembly is a membership proof: the sorted-pair proof of its agreement leaf under
-`compositionHash` (`buildAgreementInclusionProof(template, i)`, with
+`compositionHash` (`buildAgreementInclusionProof(assembly, i)`, with
 `agreementLeafBytes(slot, i)` giving the content and `slotContentHash` its
-hash). The SDK owns the format (`templateCompositionHash`, `AssemblyAgreement`,
+hash). The SDK owns the format (`assemblyCompositionHash`, `AssemblyAgreement`,
 `ASSEMBLY_TERMS_LEAF_KEY` in `sdk/src/assembly.ts`).
 
 **Two reserved keys.** `PROVENANCE_LEAF_KEY` and `ASSEMBLY_TERMS_LEAF_KEY` are

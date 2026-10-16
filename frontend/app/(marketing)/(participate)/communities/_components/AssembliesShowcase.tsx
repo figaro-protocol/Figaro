@@ -42,7 +42,7 @@ function useSellersByAssembly(): Map<string, Seller[]> {
  *  questions. An assembly whose designer wrote none says so in the muted color;
  *  nothing is ordered from an assembly, so no other button. */
 function AssemblyCard({ choice, sellers }: { choice: AssemblyChoice; sellers: Seller[] }) {
-    const faqCount = choice.hydratedAssembly?.template.faq?.length ?? 0;
+    const faqCount = choice.hydratedAssembly?.assembly.faq?.length ?? 0;
     return (
         <li className="flex flex-col" data-testid="showcase-assembly">
             <h3 className="text-heading-h3 text-ink-heading mb-1">
@@ -73,12 +73,12 @@ function AssemblyCard({ choice, sellers }: { choice: AssemblyChoice; sellers: Se
 }
 
 function AssemblyDetail({ choice, sellers }: { choice: AssemblyChoice; sellers: Seller[] }) {
-    const template = choice.hydratedAssembly?.template ?? null;
+    const assembly = choice.hydratedAssembly?.assembly ?? null;
     return (
         <>
             <MarketingSection title={`${choice.name}.`} sectionId="assembly">
                 {choice.summary && <p className="text-base text-ink-body leading-relaxed mb-5">{choice.summary}</p>}
-                {template?.description && <p className="text-base text-ink-body leading-relaxed mb-5">{template.description}</p>}
+                {assembly?.description && <p className="text-base text-ink-body leading-relaxed mb-5">{assembly.description}</p>}
                 <AssemblyShapeLine choice={choice} className="text-sm" />
                 <p className="text-sm mt-4">
                     <Link href="/communities" className="text-ink-heading font-medium hover:underline">
@@ -107,10 +107,10 @@ function AssemblyDetail({ choice, sellers }: { choice: AssemblyChoice; sellers: 
                 )}
             </MarketingSection>
 
-            {template?.faq && template.faq.length > 0 && (
+            {assembly?.faq && assembly.faq.length > 0 && (
                 <MarketingSection title="Questions about this trade." sectionId="faq">
                     <dl className="space-y-4">
-                        {template.faq.map((entry, i) => (
+                        {assembly.faq.map((entry, i) => (
                             <div key={i}>
                                 <dt className="text-base text-ink-heading font-medium">{entry.question}</dt>
                                 <dd className="text-base text-ink-body leading-relaxed">{entry.answer}</dd>

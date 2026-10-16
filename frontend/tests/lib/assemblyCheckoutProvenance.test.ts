@@ -2,10 +2,10 @@
  * assemblyCheckoutProvenance.test.ts — the link from a realized order to the
  * assembly it instantiates is the agreement FORMAT's provenance leaf, set by
  * the checkout walk from the agreement's registered agreement key and the
- * template's own composition root; no clause section carries it.
+ * assembly's own composition root; no clause section carries it.
  */
 import { beforeAll, describe, expect, it, vi } from "vitest";
-import { agreementLeaves, computeProvenanceLeaf, templateCompositionHash } from "@figaro-protocol/sdk";
+import { agreementLeaves, computeProvenanceLeaf, assemblyCompositionHash } from "@figaro-protocol/sdk";
 import { planAssemblyOrders } from "@/lib/checkout/assemblyCheckout";
 import type { BoundAssembly } from "@/lib/member/useMemberBoundAssemblies";
 import { referenceAssembly, primeClauseSpecs } from "./primeClauseSpecs";
@@ -16,7 +16,7 @@ vi.mock("@/lib/kernel/contracts", async (importOriginal) => {
 });
 
 // The reference assembly as the seeding registers it: built over the authored
-// agreements its agreements name, each agreement's agreement beside the template.
+// agreements its agreements name, each agreement's agreement beside the assembly.
 const BUYER = "0x1111111111111111111111111111111111111111" as const;
 const SELLER = "0x2222222222222222222222222222222222222222" as const;
 const TOKEN = "0x3333333333333333333333333333333333333333" as const;
@@ -28,8 +28,8 @@ describe("assembly checkout — the provenance leaf", () => {
 
     it("every realized order names its agreement's agreement key and the composition root as its provenance, in no clause section", async () => {
         const hydratedAssembly = referenceAssembly("pos.json");
-        const template = hydratedAssembly.template;
-        const assembly: BoundAssembly = {
+        const assembly = hydratedAssembly.assembly;
+        const bound: BoundAssembly = {
             slug: "asm-test",
             name: "Point of sale",
             hydratedAssembly,
@@ -42,7 +42,7 @@ describe("assembly checkout — the provenance leaf", () => {
                 currency: TOKEN,
                 payment: 1_000_000n,
                 lineItems: [{ itemId: "i1", name: "Coffee", quantity: 1, unitPrice: "1000000" }],
-                assembly,
+                assembly: bound,
                 sellerCatalogs: [],
                 tokenDecimals: 6,
                 salt: () => 1n,
@@ -50,10 +50,10 @@ describe("assembly checkout — the provenance leaf", () => {
             },
             { chainId: 31337 },
         );
-        const compositionHash = templateCompositionHash(template);
-        expect(orders.length).toBe(template.agreements.length);
+        const compositionHash = assemblyCompositionHash(assembly);
+        expect(orders.length).toBe(assembly.agreements.length);
         for (const order of orders) {
-            const entry = template.agreements.find((s) => s.id === order.nodeId)!;
+            const entry = assembly.agreements.find((s) => s.id === order.nodeId)!;
             expect(order.agreement.provenance).toEqual({ agreementKey: entry.agreementKey, compositionHash });
             expect(agreementLeaves(order.agreement)).toContain(computeProvenanceLeaf(entry.agreementKey, compositionHash));
             for (const section of order.agreement.sections) {

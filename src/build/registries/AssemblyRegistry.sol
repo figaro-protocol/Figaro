@@ -9,10 +9,10 @@ pragma solidity 0.8.26;
 ///         (agreements) and `MembersRegistry` (members) — each family carries
 ///         its own anchor per the protocol's separation-of-concerns doctrine.
 ///
-///         An assembly composes registered agreements into order slots; its
+///         An assembly is a list of registered agreements; its
 ///         identity IS its composition: compositionHash is the merkle root,
 ///         under the agreement format's leaf convention, over one leaf per
-///         order slot (key: its agreementKey; bytes: `{"clauses":…,"slot":i}`)
+///         agreement (key: its agreementKey; bytes: `{"clauses":…,"slot":i}`)
 ///         and the terms leaf when assembly-scoped clauses are composed
 ///         (editorial prose excluded). The registry keys bindings by compositionHash:
 ///         identical compositions collapse to one binding, and no
@@ -20,12 +20,12 @@ pragma solidity 0.8.26;
 ///         slug is presentation, derived off-chain as a pure function of
 ///         compositionHash.
 ///
-///         contentURI points at the full pinned template document
+///         contentURI points at the full pinned assembly document
 ///         (typically IPFS) — including the editorial prose the root
 ///         excludes. Readers fetch the document from contentURI and verify
-///         it by rebuilding the root from its order slots and terms.
+///         it by rebuilding the root from its agreements and terms.
 ///
-///         The contract does NOT validate assembly-template content. It cannot —
+///         The contract does NOT validate assembly content. It cannot —
 ///         the document lives off-chain; the contract only stores its
 ///         hash and URI. Clause content well-formedness is an off-chain
 ///         concern (the Layer-A SDK at composition/sign time); on-chain,
@@ -92,18 +92,18 @@ contract AssemblyRegistry {
         string contentURI;
     }
 
-    /// @notice compositionHash (the merkle root over the template's order
-    ///         slots and terms) → binding details.
+    /// @notice compositionHash (the merkle root over the assembly's
+    ///         agreements and terms) → binding details.
     mapping(bytes32 => AssemblyBinding) public bindings;
 
     // ── Events ──────────────────────────────────────────────────────────
 
     /// @notice Emitted when an assembly is registered.
-    /// @param compositionHash The merkle root over the off-chain assembly
-    ///                        template's order slots and terms — the
+    /// @param compositionHash The merkle root over the off-chain
+    ///                        assembly's agreements and terms — the
     ///                        assembly's identity.
     /// @param registeredBy    Address that registered the assembly.
-    /// @param contentURI      Full off-chain assembly-template document URI
+    /// @param contentURI      Full off-chain assembly document URI
     ///                        (typically IPFS).
     event AssemblyRegistered(bytes32 indexed compositionHash, address indexed registeredBy, string contentURI);
 
@@ -141,9 +141,9 @@ contract AssemblyRegistry {
     ///         off-chain; clause content well-formedness is the off-chain
     ///         Layer-A SDK's concern — there is no on-chain content
     ///         validation.
-    /// @param compositionHash The merkle root over the off-chain assembly
-    ///                        template's order slots and terms.
-    /// @param contentURI      Full off-chain assembly-template document
+    /// @param compositionHash The merkle root over the off-chain
+    ///                        assembly's agreements and terms.
+    /// @param contentURI      Full off-chain assembly document
     ///                        pointer (typically IPFS).
     function registerAssembly(bytes32 compositionHash, string calldata contentURI) external payable {
         if (msg.value != registrationDeposit) revert WrongDeposit(msg.value, registrationDeposit);

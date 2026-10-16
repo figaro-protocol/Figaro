@@ -23,7 +23,7 @@ import { publicClient } from "@/lib/shared/wagmi";
 
 // ── The buyer's preview (what the confirm gate + sign flow consume) ─────────
 // Built by the checkout walk (`assemblyCheckout` drives the SDK's
-// reconstructOrdersFromTemplate and shapes each realized order into this).
+// reconstructOrdersFromAssembly and shapes each realized order into this).
 
 export interface OrderPreview {
     agreement: Agreement;

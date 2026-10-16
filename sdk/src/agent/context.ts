@@ -174,7 +174,7 @@ export class FigaroContext {
         return this.discovery.getMembers();
     }
 
-    /** All live-staked assemblies on the network — the templates an agent can
+    /** All live-staked assemblies on the network — the assemblies an agent can
      *  instantiate from a cold start. */
     getAssemblies(): RegisteredAssembly[] {
         return this.discovery.getAssemblies();

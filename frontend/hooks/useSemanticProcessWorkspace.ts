@@ -11,7 +11,7 @@ import { CONTRACTS } from "@/lib/kernel/contracts";
 import { OrderState, useOrderStore } from "@/lib/kernel/store";
 import { useFigaroActions } from "@/lib/kernel/useFigaroActions";
 import { useUsageRecorder } from "@/lib/protocol/useUsageRecorder";
-import { fetchAssemblyTemplateByHash } from "@/lib/protocol/useAssemblyRegistry";
+import { fetchAssemblyByHash } from "@/lib/protocol/useAssemblyRegistry";
 import { isE2EMockSession } from "@/lib/shared/e2e";
 import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
 import { useAttestationCoordinatorActions } from "@/lib/composition/useAttestationCoordinatorActions";
@@ -185,7 +185,7 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
         processAgreements,
         resolveProcess,
         fetchUsageClaimContext: usageRecorder.fetchClaimContext,
-        readAssemblyTemplate: fetchAssemblyTemplateByHash,
+        readAssembly: fetchAssemblyByHash,
         simulateUsage: usageRecorder.simulateUsage,
         recordUsage: usageRecorder.recordUsage,
         submitAttestation: attestationActions.submitAttestation,

@@ -23,7 +23,7 @@ import {
     FigaroContext, originateProcess, makeSellerOfferHandler, InProcessChannel,
 } from "@figaro-protocol/sdk/agent";
 import {
-    anchorTemplate, computeDeadline, hydrateAssembly, parseProjectionHints, readChainTimestamp, slotClauses,
+    anchorAssembly, computeDeadline, hydrateAssembly, parseProjectionHints, readChainTimestamp, slotClauses,
 } from "@figaro-protocol/sdk";
 import { parseClauseSpec } from "@figaro-protocol/sdk/clauses";
 
@@ -77,11 +77,11 @@ const specs = {
     list: () => specViews,
 };
 
-// An assembly is offered only when its template hashes to its composition
-// hash and every order slot's registered agreement hydrates and verifies
+// An assembly is offered only when its assembly hashes to its composition
+// hash and every one of its registered agreements hydrates and verifies
 // against its key — read from the binding whatever its stake.
 const hydrate = async (a) => {
-    const t = anchorTemplate(await tryHydrate(a.contentURI), a.compositionHash);
+    const t = anchorAssembly(await tryHydrate(a.contentURI), a.compositionHash);
     if (!t) return null;
     return hydrateAssembly(t, async (key) => {
         const binding = ctx.getAgreementBinding(key);
@@ -89,21 +89,21 @@ const hydrate = async (a) => {
     });
 };
 
-// Pick the single-order assembly with the fewest clauses by hydrating templates — the
+// Pick the single-order assembly with the fewest clauses by hydrating assemblies — the
 // mandatory-only blank the harness seeds, whatever else the genesis holds; no hardcoded
 // id, no order of anchoring; skip un-hydratable ones.
 let chosen = null, assembly = null, fewest = Infinity;
 for (const a of ctx.getAssemblies()) {
     const h = await hydrate(a);
-    if (!h || h.template.agreements.length !== 1) continue;
-    const n = Object.keys(slotClauses(h, h.template.agreements[0])).length;
+    if (!h || h.assembly.agreements.length !== 1) continue;
+    const n = Object.keys(slotClauses(h, h.assembly.agreements[0])).length;
     if (n < fewest) { chosen = a; assembly = h; fewest = n; }
 }
 check("discovered a single-order seed assembly", !!chosen);
 if (!chosen) process.exit(1);
 
 // Commerce clause by declared field (lineItems) — open-world, no clause name.
-const commerceClauseId = Object.keys(slotClauses(assembly, assembly.template.agreements[0]))
+const commerceClauseId = Object.keys(slotClauses(assembly, assembly.assembly.agreements[0]))
     .find((cid) => (specs.get(cid)?.fields ?? []).some((f) => f.name === "lineItems")) ?? null;
 check("located the commerce clause by its declared field", !!commerceClauseId);
 

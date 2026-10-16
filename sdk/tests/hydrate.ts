@@ -10,7 +10,7 @@
 import type { Hex } from "viem";
 import { agreementKeyOf, type ComposedAgreement, type HydratedAssembly, type AssemblyAgreement } from "../src/assembly.js";
 
-export interface AuthoredTemplate {
+export interface AuthoredAssembly {
     name?: string;
     summary?: string;
     description?: string;
@@ -19,7 +19,7 @@ export interface AuthoredTemplate {
     agreements: { id: string; clauses: Record<Hex, Record<string, unknown>> }[];
 }
 
-export function hydrateAuthored(authored: AuthoredTemplate): HydratedAssembly {
+export function hydrateAuthored(authored: AuthoredAssembly): HydratedAssembly {
     const agreements: Record<Hex, ComposedAgreement> = {};
     const entries: AssemblyAgreement[] = authored.agreements.map((entry) => {
         const clauses: Record<Hex, Record<string, unknown>> = {};
@@ -34,5 +34,5 @@ export function hydrateAuthored(authored: AuthoredTemplate): HydratedAssembly {
         return { id: entry.id, agreementKey, clauses: fills };
     });
     const { agreements: _authored, ...rest } = authored;
-    return { template: { ...rest, agreements: entries }, agreements };
+    return { assembly: { ...rest, agreements: entries }, agreements };
 }

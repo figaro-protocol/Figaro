@@ -43,7 +43,7 @@ AttestationCoordinator ──▶ FigaroCore ◀── WitnessSwapAndCommitCoordi
 - `FlorinToken` — no outbound edges: minters point at it, registered by the
   deployer at genesis before `renounceDeployerMint` closes the registry.
 - Assembly→agreement, agreement→clause and seller→assembly relationships are
-  off-chain (the pinned template and agreement documents, profile bindings) —
+  off-chain (the pinned assembly and agreement documents, profile bindings) —
   deliberately absent from this graph. Assemblies use agreements, agreements
   use clauses, and neither registry knows what uses it.
 

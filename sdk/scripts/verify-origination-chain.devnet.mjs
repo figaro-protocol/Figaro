@@ -19,7 +19,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 import { FigaroContext, originateChain, makeSellerOfferHandler, InProcessChannel } from "@figaro-protocol/sdk/agent";
 import {
-    anchorTemplate, computeDeadline, hydrateAssembly, parseProjectionHints, readChainTimestamp, slotClauses,
+    anchorAssembly, computeDeadline, hydrateAssembly, parseProjectionHints, readChainTimestamp, slotClauses,
 } from "@figaro-protocol/sdk";
 import { parseClauseSpec } from "@figaro-protocol/sdk/clauses";
 
@@ -55,7 +55,7 @@ const tryHydrate = async (uri) => { try { return await (await fetch(GATEWAY + ur
 
 let fail = 0; const check = (n, c) => { console.log(`${c ? "✓" : "✗ FAIL"} ${n}`); if (!c) fail++; };
 
-// ── Discover the MULTI-order seed chain (a template with >1 agreement) ─────────
+// ── Discover the MULTI-order seed chain (a assembly with >1 agreement) ─────────
 const ctx = new FigaroContext(pub, addresses);
 await ctx.sync();
 
@@ -74,11 +74,11 @@ const specs = {
     list: () => specViews,
 };
 
-// An assembly is offered only when its template hashes to its composition
-// hash and every order slot's registered agreement hydrates and verifies
+// An assembly is offered only when its assembly hashes to its composition
+// hash and every one of its registered agreements hydrates and verifies
 // against its key — read from the binding whatever its stake.
 const hydrate = async (a) => {
-    const t = anchorTemplate(await tryHydrate(a.contentURI), a.compositionHash);
+    const t = anchorAssembly(await tryHydrate(a.contentURI), a.compositionHash);
     if (!t) return null;
     return hydrateAssembly(t, async (key) => {
         const binding = ctx.getAgreementBinding(key);
@@ -86,18 +86,18 @@ const hydrate = async (a) => {
     });
 };
 
-// The three-order assembly with the fewest clauses across its order slots: the delivery chain
+// The three-order assembly with the fewest clauses across its agreements: the delivery chain
 // the harness seeds, whatever else the genesis holds — no hardcoded id, no order of anchoring.
 let chosen = null, assembly = null, fewest = Infinity;
 for (const a of ctx.getAssemblies()) {
     const h = await hydrate(a);
-    if (!h || h.template.agreements.length !== 3) continue;
-    const n = h.template.agreements.reduce((sum, s) => sum + Object.keys(slotClauses(h, s)).length, 0);
+    if (!h || h.assembly.agreements.length !== 3) continue;
+    const n = h.assembly.agreements.reduce((sum, s) => sum + Object.keys(slotClauses(h, s)).length, 0);
     if (n < fewest) { chosen = a; assembly = h; fewest = n; }
 }
 check("discovered the 3-order seed chain", !!assembly);
 if (!assembly) process.exit(1);
-const slotClausesById = new Map(assembly.template.agreements.map((s) => [s.id, slotClauses(assembly, s)]));
+const slotClausesById = new Map(assembly.assembly.agreements.map((s) => [s.id, slotClauses(assembly, s)]));
 
 // Commerce clause by declared field (lineItems) — open-world, once for the chain.
 const commerceClauseId = [...new Set([...slotClausesById.values()].flatMap((c) => Object.keys(c)))]
@@ -126,8 +126,8 @@ channel.register(SELLERS[1].address, makeSellerOfferHandler(sellerW[1], pub, add
 // ── Buyer LOOP: originate the whole chain ─────────────────────────────────────
 const parentsOf = (id) => Object.values(slotClausesById.get(id) ?? {}).find((d) => Array.isArray(d.parentOrderHashes))?.parentOrderHashes ?? [];
 const orderedIds = [
-    ...assembly.template.agreements.filter((a) => parentsOf(a.id).length === 0),
-    ...assembly.template.agreements.filter((a) => parentsOf(a.id).length > 0),
+    ...assembly.assembly.agreements.filter((a) => parentsOf(a.id).length === 0),
+    ...assembly.assembly.agreements.filter((a) => parentsOf(a.id).length > 0),
 ].map((a) => a.id);
 // The headless buyer authors its transaction particulars exactly as checkout
 // does: the modality is the buyer's request. The provenance leaf is the

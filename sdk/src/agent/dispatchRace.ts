@@ -21,7 +21,7 @@
  *
  * The race window (how long the buyer waits) and k (how many candidates) are
  * caller policy — checkout-time buyer behavior, never a stored field on the
- * payload, the template, or any profile.
+ * payload, the assembly, or any profile.
  */
 
 import type { WalletClient } from "viem";
@@ -222,7 +222,7 @@ function setAtPath(node: unknown, path: readonly string[], value: string): Recor
 
 export interface BuildQuoteRequestParams {
     /** The assembly, each agreement's registered agreement hydrated beside
-     *  its template. */
+     *  its assembly. */
     assembly: HydratedAssembly;
     buyer: Address;
     /** The candidate this request drafts against — one request per candidate,

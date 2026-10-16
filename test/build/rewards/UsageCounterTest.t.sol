@@ -242,7 +242,7 @@ contract UsageCounterTest is Test {
 
     /// @dev The test assembly's tree: one leaf per agreement (key = its
     ///      agreementKey, bytes = the agreement section) and the terms leaf.
-    function _templateLeaves() internal pure returns (bytes32[] memory leaves) {
+    function _assemblyLeaves() internal pure returns (bytes32[] memory leaves) {
         leaves = new bytes32[](3);
         leaves[0] = AgreementTestHelper.leafFor(AGR_KEY, _agreementLeafBytes(0));
         leaves[1] = AgreementTestHelper.leafFor(AGR2_KEY, _agreementLeafBytes(1));
@@ -251,7 +251,7 @@ contract UsageCounterTest is Test {
 
     /// @dev The test assembly's compositionHash: the root of its tree.
     function _asmRoot() internal pure returns (bytes32) {
-        return AgreementTestHelper.rootFor(_templateLeaves());
+        return AgreementTestHelper.rootFor(_assemblyLeaves());
     }
 
     /// @dev Credit the test assembly for an order instantiating `entry`.
@@ -267,7 +267,7 @@ contract UsageCounterTest is Test {
             _boundAgreement(entry),
             keccak256(_agreementLeafBytes(entry)),
             provenanceProof,
-            AgreementTestHelper.proofFor(_templateLeaves(), entry)
+            AgreementTestHelper.proofFor(_assemblyLeaves(), entry)
         );
     }
 
@@ -547,7 +547,7 @@ contract UsageCounterTest is Test {
             AGR_KEY,
             keccak256(_agreementLeafBytes(0)),
             dProof,
-            AgreementTestHelper.proofFor(_templateLeaves(), 0)
+            AgreementTestHelper.proofFor(_assemblyLeaves(), 0)
         );
 
         // The batch path's twin: an accrual naming the reserved key is skipped,
@@ -601,7 +601,7 @@ contract UsageCounterTest is Test {
         bytes32 terms = AgreementTestHelper.ASSEMBLY_TERMS_LEAF_KEY;
         bytes32 root = _asmRoot();
         (CommitmentTypes.Commitment memory c, bytes32[] memory proof) = _settledUnderAgreement(terms, root, 1);
-        bytes32[] memory membership = AgreementTestHelper.proofFor(_templateLeaves(), 2);
+        bytes32[] memory membership = AgreementTestHelper.proofFor(_assemblyLeaves(), 2);
         vm.expectRevert(abi.encodeWithSelector(UsageCounter.ReservedKeyIsNotARegistration.selector, terms));
         counter.recordAssemblyUsage(c, root, terms, keccak256(TERMS), proof, membership);
 
@@ -668,7 +668,7 @@ contract UsageCounterTest is Test {
         bytes32 otherRoot = AgreementTestHelper.rootFor(otherLeaves);
 
         (CommitmentTypes.Commitment memory c, bytes32[] memory proof) = _settledUnderAgreement(AGR_KEY, otherRoot, 1);
-        bytes32[] memory membership = AgreementTestHelper.proofFor(_templateLeaves(), 0);
+        bytes32[] memory membership = AgreementTestHelper.proofFor(_assemblyLeaves(), 0);
 
         vm.expectRevert(UsageCounter.InvalidMembershipProof.selector);
         counter.recordAssemblyUsage(c, otherRoot, AGR_KEY, keccak256(_agreementLeafBytes(0)), proof, membership);
@@ -683,7 +683,7 @@ contract UsageCounterTest is Test {
     function test_anAgreementLeafWithAnotherAgreementsBytesFails() public {
         bytes32 root = _asmRoot();
         (CommitmentTypes.Commitment memory c, bytes32[] memory proof) = _settledUnderAgreement(AGR_KEY, root, 1);
-        bytes32[] memory membership = AgreementTestHelper.proofFor(_templateLeaves(), 0);
+        bytes32[] memory membership = AgreementTestHelper.proofFor(_assemblyLeaves(), 0);
         vm.expectRevert(UsageCounter.InvalidMembershipProof.selector);
         counter.recordAssemblyUsage(c, root, AGR_KEY, keccak256(_agreementLeafBytes(1)), proof, membership);
     }
@@ -691,7 +691,7 @@ contract UsageCounterTest is Test {
     /// The assembly terms leaf shares the tree with the entries; it is proved
     /// with the same convention and opens under the root.
     function test_theTermsLeafIsALeafOfTheAssemblyTree() public pure {
-        bytes32[] memory leaves = _templateLeaves();
+        bytes32[] memory leaves = _assemblyLeaves();
         bytes32[] memory termsProof = AgreementTestHelper.proofFor(leaves, 2);
         bytes32 root = AgreementTestHelper.rootFor(leaves);
         bytes32 computed = leaves[2];

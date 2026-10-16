@@ -83,7 +83,7 @@ of them. Write the spec as the **user's** document (their workspace).
 **Say this out loud to the user; it is the highest-cost thing on this page.** The
 clause key covers the WHOLE canonical document, `block` included — so every
 character of `block` moves the clause's key, and a changed key is a different clause. And five hints inside it change what a
-designer's *template* and a party's *signed agreement* actually contain. Verify what your
+designer's *assembly* and a party's *signed agreement* actually contain. Verify what your
 spec declares with `parseProjectionHints(spec)` from `@figaro-protocol/sdk` — it returns exactly
 these five and nothing else:
 

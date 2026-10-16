@@ -43,7 +43,7 @@
 <h3 class="tsd-anchor-link" id="assembly"><span>assembly</span><a href="#assembly" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">assembly</span><span class="tsd-signature-symbol">:</span> <a href="index.HydratedAssembly.html" class="tsd-signature-type tsd-kind-interface">HydratedAssembly</a></div>
 <div class="tsd-comment tsd-typography"><p>The discovered assembly, each agreement's registered agreement
-hydrated beside its template.</p>
+hydrated beside its assembly.</p>
 </div><aside class="tsd-sources">
 <ul>
 <li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/agent/originate.ts#L488">agent/originate.ts:488</a></li></ul></aside></section>
@@ -72,7 +72,7 @@ hydrated beside its template.</p>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="nodes"><span>nodes</span><a href="#nodes" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">nodes</span><span class="tsd-signature-symbol">:</span> <a href="agent.ChainNodeSpec.html" class="tsd-signature-type tsd-kind-interface">ChainNodeSpec</a><span class="tsd-signature-symbol">[]</span></div>
-<div class="tsd-comment tsd-typography"><p>One spec per template agreement (root + subs).</p>
+<div class="tsd-comment tsd-typography"><p>One spec per registered agreement (root + subs).</p>
 </div><aside class="tsd-sources">
 <ul>
 <li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/agent/originate.ts#L493">agent/originate.ts:493</a></li></ul></aside></section>
@@ -87,7 +87,7 @@ hydrated beside its template.</p>
 <h3 class="tsd-anchor-link" id="specs"><code class="tsd-tag">Optional</code><span>specs</span><a href="#specs" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">specs</span><span class="tsd-signature-symbol">?:</span> <a href="index.SpecSource.html" class="tsd-signature-type tsd-kind-interface">SpecSource</a></div>
 <div class="tsd-comment tsd-typography"><p>The clause-spec source. With it, the walk's currency-leaf fill engages
-(<code>reconstructOrdersFromTemplate</code> writes the commerce leaf from the same
+(<code>reconstructOrdersFromAssembly</code> writes the commerce leaf from the same
 figure the struct signs, and THROWS on a contradicting override) and
 every order passes the merkle-leaf sign gate before the buyer signs.
 WITHOUT it, the walk is the documented spec-less caller-owns-the-leaf

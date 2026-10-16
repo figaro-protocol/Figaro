@@ -11,14 +11,14 @@
  * export with zero server routes, and assistance is the designer's DELEGATE
  * — so nothing is invoked from here. The surface is a round-trip:
  *
- *   OUT — the current canvas serialized as `{ template, agreements }`: the
- *         canonical `AssemblyTemplate` (one agreement per order, each
+ *   OUT — the current canvas serialized as `{ assembly, agreements }`: the
+ *         canonical `Assembly` (one agreement per order, each
  *         binding an agreement by key) and the agreements newly composed for
- *         it, built by the same `buildAssemblyTemplate` walk publish uses,
+ *         it, built by the same `buildAssembly` walk publish uses,
  *         for the designer to hand their agent as its starting point.
  *   IN  — the agent's composition pasted back, parsed + soundness-probed
- *         (`parseAssemblyTemplateJson`), each agreement's agreement read
- *         from the paste or the AgreementRegistry (`hydrateImportedTemplate`),
+ *         (`parseAssemblyJson`), each agreement's agreement read
+ *         from the paste or the AgreementRegistry (`hydrateImportedAssembly`),
  *         then applied to the canvas as an ordinary draft. Composition stays the designer's act: the import
  *         lands as unsaved canvas state to review, edit, and publish through
  *         the normal review page — nothing auto-publishes.
@@ -27,10 +27,10 @@
 import Link from "@/components/shared/Link";
 import { useCallback, useMemo, useState } from "react";
 import { canonicalize, type HydratedAssembly } from "@figaro-protocol/sdk";
-import { snapshotToAssemblyTemplate } from "@/lib/designer/draftToAssemblyTemplate";
+import { snapshotToAssembly } from "@/lib/designer/draftToAssembly";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import type { DesignSnapshot } from "@/lib/designer/syntheticDesignStore";
-import { hydrateImportedTemplate, parseAssemblyTemplateJson } from "@/lib/designer/assemblyTemplateToDraft";
+import { hydrateImportedAssembly, parseAssemblyJson } from "@/lib/designer/assemblyToDraft";
 import { ModalChrome } from "@/components/ui/ModalChrome";
 import { Button } from "@/components/ui/Button";
 
@@ -38,31 +38,31 @@ interface CompositionAssistProps {
     /** The canvas's current composition, or null when there is nothing to
      *  serialize (no orders). */
     getSnapshot: () => DesignSnapshot | null;
-    /** Apply an imported template to the canvas (the canvas owns the
+    /** Apply an imported assembly to the canvas (the canvas owns the
      *  replace-confirmation and the state swap). Returns false when the
      *  designer declines the replacement — the panel then stays open with
      *  the pasted text intact. */
-    onImportTemplate: (hydrated: HydratedAssembly, composeKeys: ReadonlySet<string>) => boolean;
+    onImportAssembly: (hydrated: HydratedAssembly, composeKeys: ReadonlySet<string>) => boolean;
 }
 
-/** The current draft as pretty-printed canonical template JSON, or an
+/** The current draft as pretty-printed canonical assembly JSON, or an
  *  explanatory fallback. Pretty-printing is display-only — the composition
  *  hash walks the parsed structure, never the string. */
 function serializeDraft(snapshot: DesignSnapshot | null): { json: string | null; error: string | null } {
     if (!snapshot) return { json: null, error: "Add at least one order to the canvas first." };
     try {
-        // The ONE draft→template walk publish uses — so the handoff template
+        // The ONE draft→assembly walk publish uses — so the handoff assembly
         // is byte-identical to what publish would anchor, the assembly-level
         // terms (`assemblyClauses`) included.
-        const built = snapshotToAssemblyTemplate(snapshot);
-        const json = canonicalize({ template: built.template, agreements: built.agreements });
+        const built = snapshotToAssembly(snapshot);
+        const json = canonicalize({ assembly: built.assembly, agreements: built.agreements });
         return { json: JSON.stringify(JSON.parse(json), null, 2), error: null };
     } catch (cause) {
         return { json: null, error: extractErrorMessage(cause, "Could not serialize the draft.") };
     }
 }
 
-export function CompositionAssist({ getSnapshot, onImportTemplate }: CompositionAssistProps) {
+export function CompositionAssist({ getSnapshot, onImportAssembly }: CompositionAssistProps) {
     const [open, setOpen] = useState(false);
     const [copied, setCopied] = useState(false);
     const [importText, setImportText] = useState("");
@@ -85,18 +85,18 @@ export function CompositionAssist({ getSnapshot, onImportTemplate }: Composition
     }, [draft.json]);
 
     const handleImport = useCallback(async () => {
-        const parsed = parseAssemblyTemplateJson(importText);
+        const parsed = parseAssemblyJson(importText);
         if (!parsed.ok) {
             setImportError(parsed.error);
             return;
         }
-        const read = await hydrateImportedTemplate(parsed);
+        const read = await hydrateImportedAssembly(parsed);
         if ("error" in read) {
             setImportError(read.error);
             return;
         }
         try {
-            if (!onImportTemplate(read.hydrated, read.composeKeys)) return;
+            if (!onImportAssembly(read.hydrated, read.composeKeys)) return;
             setImportError(null);
             setImportText("");
             setOpen(false);
@@ -106,10 +106,10 @@ export function CompositionAssist({ getSnapshot, onImportTemplate }: Composition
             // fails here, before any state is replaced.
             setImportError(extractErrorMessage(
                 cause,
-                "Could not hydrate the template — does it compose a clause not registered on this network?",
+                "Could not hydrate the assembly — does it compose a clause not registered on this network?",
             ));
         }
-    }, [importText, onImportTemplate]);
+    }, [importText, onImportAssembly]);
 
     return (
         <>
@@ -154,8 +154,8 @@ export function CompositionAssist({ getSnapshot, onImportTemplate }: Composition
                         <code className="text-xs">figaro-assembly-designer</code> is a public ecosystem
                         agent — a prompt you run in your own agent runtime, acting for your own wallet
                         (<Link href="/agents" className="underline">how agents participate</Link>).
-                        Hand it the template below as its starting point; it composes or forks and
-                        returns a template. Paste that back here to continue on the canvas — you
+                        Hand it the assembly below as its starting point; it composes or forks and
+                        returns a assembly. Paste that back here to continue on the canvas — you
                         review, edit, and publish. Invoked assistance is your delegate; composing
                         stays your act.
                     </p>
@@ -163,7 +163,7 @@ export function CompositionAssist({ getSnapshot, onImportTemplate }: Composition
                     <div className="space-y-2">
                         <div className="flex items-baseline justify-between">
                             <h3 className="text-xs font-semibold text-ink-heading">
-                                Your draft — the template your agent starts from
+                                Your draft — the assembly your agent starts from
                             </h3>
                             {draft.json && (
                                 <button
@@ -181,12 +181,12 @@ export function CompositionAssist({ getSnapshot, onImportTemplate }: Composition
                                 readOnly
                                 value={draft.json}
                                 rows={8}
-                                aria-label="Current draft as assembly-template JSON"
-                                data-testid="designer-assist-template"
+                                aria-label="Current draft as assembly JSON"
+                                data-testid="designer-assist-assembly"
                                 className="w-full text-[11px] font-mono px-2 py-1.5 rounded border border-default bg-subtle text-ink-body resize-y"
                             />
                         ) : (
-                            <p className="text-xs text-ink-muted" data-testid="designer-assist-template-empty">
+                            <p className="text-xs text-ink-muted" data-testid="designer-assist-assembly-empty">
                                 {draft.error}
                             </p>
                         )}
@@ -194,14 +194,14 @@ export function CompositionAssist({ getSnapshot, onImportTemplate }: Composition
 
                     <div className="space-y-2">
                         <h3 className="text-xs font-semibold text-ink-heading">
-                            Import your agent&apos;s template
+                            Import your agent&apos;s assembly
                         </h3>
                         <textarea
                             value={importText}
                             onChange={(e) => { setImportText(e.target.value); setImportError(null); }}
                             rows={8}
-                            placeholder='Paste the composition your agent returned — {"template": {...}, "agreements": {...}}'
-                            aria-label="Template JSON to import"
+                            placeholder='Paste the composition your agent returned — {"assembly": {...}, "agreements": {...}}'
+                            aria-label="Assembly JSON to import"
                             data-testid="designer-assist-import-input"
                             className="w-full text-[11px] font-mono px-2 py-1.5 rounded border border-default bg-paper text-ink-body placeholder:text-ink-muted resize-y focus:outline-none focus:ring-2 focus:ring-focus"
                         />

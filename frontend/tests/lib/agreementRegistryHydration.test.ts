@@ -5,7 +5,7 @@
  * `fetchComposedAgreement` reads the `AgreementRegistry` binding BY KEY, the
  * pinned document at its `contentURI`, and verifies the document against the
  * key: no binding, a failed fetch, a document that is not JSON, or one whose
- * clauses key elsewhere is ABSENCE (null), and `hydrateAssemblyTemplate` then
+ * clauses key elsewhere is ABSENCE (null), and `hydrateAnchoredAssembly` then
  * offers no assembly — never a fallback to another copy.
  *
  * The designer binds a registered agreement to an agreement as is
@@ -46,8 +46,8 @@ vi.mock("@/lib/shared/ipfsService", async (importOriginal) => {
     };
 });
 
-import { fetchComposedAgreement, getComposedAgreement, getComposedAgreementLoadError, hydrateAssemblyTemplate } from "@/lib/protocol/useAgreementRegistry";
-import { projectSnapshotForReview } from "@/lib/designer/draftToAssemblyTemplate";
+import { fetchComposedAgreement, getComposedAgreement, getComposedAgreementLoadError, hydrateAnchoredAssembly } from "@/lib/protocol/useAgreementRegistry";
+import { projectSnapshotForReview } from "@/lib/designer/draftToAssembly";
 import { createSyntheticRootOrder, createSyntheticSubOrder, startSyntheticSession } from "@/lib/designer/syntheticProcess";
 import type { DesignSnapshot } from "@/lib/designer/syntheticDesignStore";
 import { keyOf, primeClauseSpecs } from "./primeClauseSpecs";
@@ -129,8 +129,8 @@ describe("fetchComposedAgreement — the binding by key, the document verified a
             { id: "order-0", agreementKey: presentKey, clauses: {} },
             { id: "order-1", agreementKey: absentKey, clauses: {} },
         ];
-        expect(await hydrateAssemblyTemplate({ agreements: entries })).toBeNull();
-        const whole = await hydrateAssemblyTemplate({ agreements: [entries[0]] });
+        expect(await hydrateAnchoredAssembly({ agreements: entries })).toBeNull();
+        const whole = await hydrateAnchoredAssembly({ agreements: [entries[0]] });
         expect(whole?.agreements[presentKey.toLowerCase() as Hex]?.clauses).toEqual(present.clauses);
     });
 });
@@ -176,7 +176,7 @@ describe("the designer binds a registered agreement to one agreement and compose
         expect(Object.keys(review.newAgreements[newKeys[0] as Hex].clauses).sort())
             .toEqual([keyOf("figaro-commerce"), keyOf("figaro-topology"), keyOf("figaro-acceptance-criteria")].sort());
         // The bound agreement carries only its own topology fill.
-        expect(review.template.agreements[0].clauses).toEqual({ [keyOf("figaro-topology")]: { parentOrderHashes: [] } });
+        expect(review.assembly.agreements[0].clauses).toEqual({ [keyOf("figaro-topology")]: { parentOrderHashes: [] } });
     });
 
     it("refuses an agreement that binds and composes — the SDK's message reaches the review", async () => {

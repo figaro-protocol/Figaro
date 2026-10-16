@@ -32,7 +32,7 @@ import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
 const LEAD = "0x1111111111111111111111111111111111111111" as const;
 
 /** A reference assembly as the seeding registers it: authored names resolved
- *  to keys, agreements derived, every agreement's agreement beside the template. */
+ *  to keys, agreements derived, every agreement's agreement beside the assembly. */
 const hydrated = (file: string) =>
     referenceAssembly(file);
 
@@ -119,7 +119,7 @@ describe("unfilledRequiredFills — the six-party import chain, nothing filled",
         // Optional: absence is a valid committed state.
         expect(all).not.toContain("figaro-acceptance-criteria.criteriaUri");
         expect(all).not.toContain("figaro-chain-of-custody.unitIdentifier");
-        // Designer-filled (`block.design.fills`), valued on the template.
+        // Designer-filled (`block.design.fills`), valued on the assembly.
         expect(all).not.toContain("figaro-consent.documents");
         expect(all).not.toContain("figaro-applicable-law.applicableLaw");
         expect(all).not.toContain("figaro-geolocation.geocoder");
@@ -179,7 +179,7 @@ describe("unfilledRequiredFills — the six-party import chain, nothing filled",
     });
 });
 
-describe("unfilledRequiredFills — a value already composed on the template counts as filled", () => {
+describe("unfilledRequiredFills — a value already composed on the assembly counts as filled", () => {
     beforeAll(async () => { await primeClauseSpecs(); });
 
     it("every reference assembly demands only terms the checkout offers a control for", () => {
@@ -196,10 +196,10 @@ describe("unfilledRequiredFills — a value already composed on the template cou
         }
     });
 
-    it("a term the designer valued on the template is not asked of the buyer again", () => {
+    it("a term the designer valued on the assembly is not asked of the buyer again", () => {
         const composed = hydrated("tradelens.json");
         // The designer's value sits in order-0's registered agreement.
-        const order0 = composed.agreements[composed.template.agreements[0].agreementKey.toLowerCase() as `0x${string}`];
+        const order0 = composed.agreements[composed.assembly.agreements[0].agreementKey.toLowerCase() as `0x${string}`];
         order0.clauses[keyOf("figaro-acceptance-criteria")] = { acceptanceBasis: "AQL 2.5 per ISO 2859-1" };
         const groups = deriveAgreementGroups({
             pickedAssembly: { hydratedAssembly: composed, counterpartyBindings: [] },

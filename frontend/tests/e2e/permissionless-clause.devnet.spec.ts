@@ -244,7 +244,7 @@ test.describe('PERMISSIONLESS CLAUSE — the definition of green (devnet)', () =
         await page.getByTestId('checkout-view').waitFor({ timeout: 20000 });
         // The NEVER-SEEN witness clause's required committed policy is filled
         // on the generic checkout fill surface — spec-routed, zero per-clause
-        // code (templates arrive value-free by construction).
+        // code (assemblies arrive value-free by construction).
         await page.locator(`[data-testid^="checkout-field-"][data-testid$="-${WITNESS_KEY}-probePolicy"]`).first()
             .fill('probe-policy-token');
         const place = page.getByTestId('btn-place-order');

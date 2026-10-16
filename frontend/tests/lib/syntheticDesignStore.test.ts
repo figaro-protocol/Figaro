@@ -13,10 +13,10 @@
  *
  * The second suite covers the OTHER direction the canvas depends on: a design
  * fill's round-trip out of the draft and into the composition's identity
- * (`draftToAssemblyTemplate` — the one walk publish uses).
+ * (`draftToAssembly` — the one walk publish uses).
  */
 import { beforeEach, describe, expect, it } from "vitest";
-import { agreementKeyOf, serializeAssemblyTemplate } from "@figaro-protocol/sdk";
+import { agreementKeyOf, serializeAssembly } from "@figaro-protocol/sdk";
 import {
     loadNamedDraft,
     saveNamedDraft,
@@ -31,8 +31,8 @@ import {
 } from "@/lib/designer/syntheticProcess";
 import {
     snapshotCompositionIdentity,
-    snapshotToAssemblyTemplate,
-} from "@/lib/designer/draftToAssemblyTemplate";
+    snapshotToAssembly,
+} from "@/lib/designer/draftToAssembly";
 import { clauseDesignFills, getClauseSpec } from "@/lib/shared/clauseSpecSource";
 import { keyOf, primeClauseSpecs } from "./primeClauseSpecs";
 
@@ -89,7 +89,7 @@ describe("syntheticDesignStore round-trip", () => {
 });
 
 /**
- * The design-fill → template → identity round-trip, driven through the
+ * The design-fill → assembly → identity round-trip, driven through the
  * disclosure regime (`figaro-data-terms`, `block.design.fills: ["disclosure"]`)
  * because it is the case the ruling turns on: the regime is composed at design
  * time, what the canvas control writes is the clause's design fill, and the
@@ -151,17 +151,17 @@ describe("design fills are the composition's identity — the disclosure regime"
         }
     });
 
-    it("the composed regime survives into the template JSON — a design fill is NOT stripped", () => {
+    it("the composed regime survives into the assembly JSON — a design fill is NOT stripped", () => {
         for (const regime of regimeValues()) {
-            const { template, agreements } = snapshotToAssemblyTemplate(draft({ [FIELD]: regime }));
+            const { assembly, agreements } = snapshotToAssembly(draft({ [FIELD]: regime }));
             // The value sits in the agreement the agreement binds, and so in
-            // its key — the template carries that key.
-            const agreementKey = template.agreements[0].agreementKey;
+            // its key — the assembly carries that key.
+            const agreementKey = assembly.agreements[0].agreementKey;
             const composed = agreements[agreementKey].clauses[CLAUSE as `0x${string}`] as Record<string, unknown>;
             expect(composed, `${regime} is composed onto the agreement`).toEqual({ [FIELD]: regime });
             expect(agreementKeyOf(agreements[agreementKey])).toBe(agreementKey);
             // And it is in the CANONICAL bytes, not just the in-memory object.
-            const { json } = serializeAssemblyTemplate(template);
+            const { json } = serializeAssembly(assembly);
             expect(JSON.parse(json).agreements[0].agreementKey).toBe(agreementKey);
         }
     });

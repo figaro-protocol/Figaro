@@ -113,7 +113,7 @@ export default function Clauses() {
                             <tr>
                                 <td className="py-2 pr-4">everything else in <code>block</code> &mdash; <code>label</code>, <code>nestsUnder</code>, the <code>runtime</code> section</td>
                                 <td className="py-2 pr-4">the <strong>clause key</strong> only</td>
-                                <td className="py-2">Genuine presentation. It changes the clause key (every byte does) but never changes what a template or an agreement contains.</td>
+                                <td className="py-2">Genuine presentation. It changes the clause key (every byte does) but never changes what a assembly or an agreement contains.</td>
                             </tr>
                         </tbody>
                     </table>

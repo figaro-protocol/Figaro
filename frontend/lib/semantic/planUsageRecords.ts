@@ -10,7 +10,7 @@
  * names its provenance (`Agreement.provenance`: the registered agreement it
  * instantiated and its assembly's composition root) — the agreement claim and
  * the assembly claim, the latter carrying the agreement's membership proof
- * from the assembly's template. Planning here adds only what is
+ * from the assembly's assembly. Planning here adds only what is
  * process-wide:
  *
  *  - ONE write per DISTINCT `(kind, key)` pair across the whole process —
@@ -20,7 +20,7 @@
  *    composition hash with the same bytes are three pairs, each counted under
  *    its own registry;
  *  - an order whose claims do not build (a malformed provenance, a missing or
- *    mismatched template, a counter whose reserved leaves are not the
+ *    mismatched assembly, a counter whose reserved leaves are not the
  *    format's) plans nothing and is said in `problems`.
  *
  * The plan is what the counter would accept from what the agreements alone
@@ -32,7 +32,7 @@ import {
     usageClaimKindCode,
     usageKeyId,
     type Agreement,
-    type AssemblyTemplate,
+    type Assembly,
     type Commitment,
     type UsageClaimContext,
 } from "@figaro-protocol/sdk";
@@ -41,14 +41,14 @@ import type { UsageWrite } from "@/lib/protocol/useUsageRecorder";
 
 /** One resolved order's inputs: the SIGNED commitment the counter re-hashes,
  *  its hydrated agreement, the counter's facts, and — when the agreement
- *  names a provenance — the template of the assembly it instantiated (read
+ *  names a provenance — the assembly of the assembly it instantiated (read
  *  from `AssemblyRegistry` by the composition root). */
 export interface UsagePlanEntry {
     orderHash: string;
     commitment: Commitment;
     agreement: Agreement;
     context: UsageClaimContext;
-    template?: AssemblyTemplate;
+    assembly?: Assembly;
 }
 
 export type PlannedUsageWrite = UsageWrite & { orderHash: string };
@@ -64,7 +64,7 @@ export function planUsageRecords(entries: readonly UsagePlanEntry[]): UsagePlan 
     const writes: PlannedUsageWrite[] = [];
     const problems: string[] = [];
     const planned = new Set<string>();
-    for (const { orderHash, commitment, agreement, context, template } of entries) {
+    for (const { orderHash, commitment, agreement, context, assembly } of entries) {
         const provenance = agreement.provenance as unknown;
         if (provenance !== undefined && (
             provenance === null || typeof provenance !== "object"
@@ -75,7 +75,7 @@ export function planUsageRecords(entries: readonly UsagePlanEntry[]): UsagePlan 
         }
         let claims: ReturnType<typeof buildUsageClaims>;
         try {
-            claims = buildUsageClaims(commitment, agreement, context, template);
+            claims = buildUsageClaims(commitment, agreement, context, assembly);
         } catch (error) {
             problems.push(`order ${orderHash}: ${error instanceof Error ? error.message : String(error)}`);
             continue;

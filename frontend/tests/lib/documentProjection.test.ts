@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { projectDocuments, type DocumentTemplate } from "@/lib/audit/documentProjection";
-import { DOCUMENT_TEMPLATES } from "@/lib/audit/documentTemplates";
+import { projectDocuments, type DocumentLayout } from "@/lib/audit/documentProjection";
+import { DOCUMENT_LAYOUTS } from "@/lib/audit/documentLayouts";
 import { OrderState, type Order } from "@/lib/kernel/store";
 import type { Agreement } from "@figaro-protocol/sdk";
 import { _resetClauseSpecCache_TESTING_ONLY } from "@/lib/shared/clauseSpecSource";
@@ -29,7 +29,7 @@ const commerce = (lineItems: { name: string; quantity: number }[]) =>
 
 const doc = (docs: ReturnType<typeof projectDocuments>, genre: string) => docs.filter((d) => d.genre === genre);
 
-describe("projectDocuments — generic engine over declared templates", () => {
+describe("projectDocuments — generic engine over declared assemblies", () => {
     it("commercial-invoice: one per SELLER, applies where a commerce leaf exists", async () => {
         await primeClauseSpecs(ALL);
         const orders = [
@@ -40,7 +40,7 @@ describe("projectDocuments — generic engine over declared templates", () => {
             ["0xhA", agreement([commerce([{ name: "Margherita", quantity: 1 }])])],
             ["0xhB", agreement([commerce([{ name: "Delivery", quantity: 1 }])])],
         ]);
-        const docs = projectDocuments(DOCUMENT_TEMPLATES, orders, agreements);
+        const docs = projectDocuments(DOCUMENT_LAYOUTS, orders, agreements);
         const invoices = doc(docs, "commercial-invoice");
         expect(invoices).toHaveLength(2); // one per seller — not one per process
 
@@ -62,7 +62,7 @@ describe("projectDocuments — generic engine over declared templates", () => {
             commerce([{ name: "Delivery", quantity: 1 }]),
         ]);
         const docs = projectDocuments(
-            DOCUMENT_TEMPLATES,
+            DOCUMENT_LAYOUTS,
             [mkOrder({ orderHash: "0xC", seller: "0xCOURIER", payment: 40n, agreementHash: "0xh" })],
             new Map([["0xh", carriage]]),
         );
@@ -84,7 +84,7 @@ describe("projectDocuments — generic engine over declared templates", () => {
     it("emits NO bill-of-lading for a non-carriage order", async () => {
         await primeClauseSpecs(ALL);
         const docs = projectDocuments(
-            DOCUMENT_TEMPLATES,
+            DOCUMENT_LAYOUTS,
             [mkOrder({ orderHash: "0xA", seller: "0xS", payment: 10n, agreementHash: "0xh" })],
             new Map([["0xh", agreement([commerce([{ name: "Item", quantity: 1 }])])]]),
         );
@@ -92,9 +92,9 @@ describe("projectDocuments — generic engine over declared templates", () => {
         expect(doc(docs, "commercial-invoice")).toHaveLength(1);
     });
 
-    it("a NEW genre is a data entry — the engine renders an unseen template with zero code", async () => {
+    it("a NEW genre is a data entry — the engine renders an unseen assembly with zero code", async () => {
         await primeClauseSpecs(["figaro-commerce"]);
-        const packingList: DocumentTemplate = {
+        const packingList: DocumentLayout = {
             genre: "packing-list", title: "Packing list", scope: "order",
             appliesWhen: { hasLeafField: "lineItems" },
             header: [{ label: "For order", ref: { orderHash: true } }],

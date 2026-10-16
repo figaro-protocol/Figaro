@@ -8,7 +8,7 @@
  *
  *   figaro-fetch clause <clauseKey>              spec via ClauseRegistry → IPFS
  *   figaro-fetch agreement <agreementKey>        registered agreement via AgreementRegistry → IPFS
- *   figaro-fetch assembly <compositionHash>      template via AssemblyRegistry → IPFS
+ *   figaro-fetch assembly <compositionHash>      assembly via AssemblyRegistry → IPFS
  *   figaro-fetch profile <address>               profile via MembersRegistry → IPFS
  *   figaro-fetch ipfs <cid>                      raw content by CID
  *   figaro-fetch witness <contentRef>            an attestation's substance —
@@ -27,7 +27,7 @@ import {
 import { frame } from "./dataChannel.mjs";
 import { cidOf, fetchIpfsText } from "./ipfsRead.mjs";
 import { fetchWitnessContent } from "./witnessContent.mjs";
-import { fetchAnchoredClauseSpec, fetchAnchoredComposedAgreement, fetchAnchoredTemplate } from "./anchoredContent.mjs";
+import { fetchAnchoredClauseSpec, fetchAnchoredComposedAgreement, fetchAnchoredAssembly } from "./anchoredContent.mjs";
 
 function fail(message) {
     console.error(`figaro-fetch: ${message}`);
@@ -132,8 +132,8 @@ async function main() {
         const assembly = graph.getAssembly(compositionHash);
         if (!assembly) fail(`assembly ${compositionHash} is not live on the registry`);
         // Verified against its composition hash before it is printed.
-        const hit = await fetchAnchoredTemplate(assembly);
-        if (hit.absent) fail(`assembly ${compositionHash}: no anchored template at ${assembly.contentURI} — ${hit.absent} (absence, not the registry's content)`);
+        const hit = await fetchAnchoredAssembly(assembly);
+        if (hit.absent) fail(`assembly ${compositionHash}: no anchored assembly at ${assembly.contentURI} — ${hit.absent} (absence, not the registry's content)`);
         console.log(frame({
             source: "assembly-registry", refKind: "cid", ref: cidOf(assembly.contentURI), content: hit.text,
         }));

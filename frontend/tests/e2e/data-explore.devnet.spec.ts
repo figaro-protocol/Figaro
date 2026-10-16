@@ -7,7 +7,7 @@
  * aerial-survey reference — discovered from chain + IPFS by SHAPE (single
  * order composing the credential clause, the geo clause, and the each-own
  * data-terms regime), integrity re-hashed — runs once as a bonded process
- * through the SDK's ONE template walk (`reconstructOrdersFromTemplate`):
+ * through the SDK's ONE assembly walk (`reconstructOrdersFromAssembly`):
  * sign → both bonds lock → commit → three attestations → resolve. The three
  * attestations set up BOTH substance postures in one run:
  *
@@ -120,9 +120,9 @@ import {
     generateSalt,
     provenanceLeafAttestation,
     provenanceSectionBytes,
-    reconstructOrdersFromTemplate,
+    reconstructOrdersFromAssembly,
     sectionDataHash,
-    templateCompositionHash,
+    assemblyCompositionHash,
     type ReconstructedOrder,
 } from '@figaro-protocol/sdk';
 import { decodeContentFromSpec, encodeContentFromSpec, type ClauseSpec } from '@figaro-protocol/sdk/clauses';
@@ -280,7 +280,7 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
             }
         }
 
-        // ── ADOPT from chain + IPFS: anchored templates resolved in full —
+        // ── ADOPT from chain + IPFS: anchored assemblies resolved in full —
         //    each agreement's agreement read by key from AgreementRegistry
         //    and verified — selected by SHAPE (single order composing the
         //    credential clause, the GEO clause, and the each-own data-terms
@@ -292,13 +292,13 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
             && GEO in a.agreements[0].clauses
             && (a.agreements[0].clauses[DATA_TERMS] as { disclosure?: string } | undefined)?.disclosure === 'each-own');
         expect(aerial, 'the geo-bearing aerial-survey reference is anchored — run populate-test-data first').toBeTruthy();
-        expect(templateCompositionHash(aerial!.hydrated.template), 'the pinned template re-hashes to its anchored identity')
+        expect(assemblyCompositionHash(aerial!.hydrated.assembly), 'the pinned assembly re-hashes to its anchored identity')
             .toBe(aerial!.compositionHash);
         // CHAIN FACT: the agreement's agreement is a live registration, read by key.
         const aerialAgreementKey = aerial!.agreements[0].agreementKey;
         expect(await readAgreementBinding(aerialAgreementKey), 'the agreement binds a registered agreement').not.toBeNull();
         const assemblyName = aerial!.name ?? '';
-        expect(assemblyName, 'the anchored template carries its registered display name').not.toBe('');
+        expect(assemblyName, 'the anchored assembly carries its registered display name').not.toBe('');
 
         // ── The REGISTERED specs (ClauseRegistered → IPFS — the same read
         //    every consumer does, primed before the test and verified against
@@ -314,11 +314,11 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
         const geoKey = GEO;
         const termsKey = DATA_TERMS;
 
-        // ── ONE bonded process through the SDK's ONE template walk: the
+        // ── ONE bonded process through the SDK's ONE assembly walk: the
         //    client (buyer) books the surveyor (seller); value legs asserted
         //    from the token contract (the e2e value-legs rule). ──
         const chainNow = (await publicClient.getBlock({ blockTag: 'latest' })).timestamp;
-        const orders = await reconstructOrdersFromTemplate(aerial!.hydrated, {
+        const orders = await reconstructOrdersFromAssembly(aerial!.hydrated, {
             buyer: client.address,
             currency: token,
             chainId: LOCAL_ANVIL.id,

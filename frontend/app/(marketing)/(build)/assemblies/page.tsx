@@ -10,7 +10,7 @@ import { DesignGraphCollapseFigure } from "@/components/figures/DesignGraphColla
 export const metadata: Metadata = withOg({
     title: "Assemblies — Figaro Protocol",
     description:
-        "Composition templates anchored on AssemblyRegistry — each assembly composes registered agreements, each a reusable composition of clauses, into a multi-order process. The registry explorer reads on-chain AssemblyRegistered events directly.",
+        "Composition assemblies anchored on AssemblyRegistry — each assembly composes registered agreements, each a reusable composition of clauses, into a multi-order process. The registry explorer reads on-chain AssemblyRegistered events directly.",
 });
 
 export default function Assemblies() {
@@ -24,7 +24,7 @@ export default function Assemblies() {
                         binding them &mdash; a season of work, a freight leg across an ocean,
                         a data sale, a certified repair. Somebody draws a shape once, and
                         anyone who fits it can trade through it without drawing it again.
-                        An assembly is that drawing &mdash; a composition template
+                        An assembly is that drawing &mdash; a composition assembly
                         that wires registered agreements, each a reusable composition of
                         clauses,{" "}
                         into a multi-order process. Each one registers on{" "}
@@ -87,9 +87,9 @@ export default function Assemblies() {
                     ]}
                     figureTitle="A composed assembly, and the commit sequence it becomes"
                     figureDesc={
-                        "On the left, an assembly template as composed: six orders, one of " +
+                        "On the left, an assembly as composed: six orders, one of " +
                         "them hanging off the first rather than continuing the line. On the " +
-                        "right, what the Core holds when that template is used: six " +
+                        "right, what the Core holds when that assembly is used: six " +
                         "commits, every one of them to the same root buyer, extending a " +
                         "single accumulator that only rises. Resolution state records no " +
                         "parent, no child and no branch — the ordering survives only " +
@@ -123,7 +123,7 @@ export default function Assemblies() {
                     <code>(address registeredBy, uint64 registeredAt, bool depositWithdrawn, string
                     contentURI)</code>. That is the whole on-chain record. <strong>There is no
                     slug on chain, and no name.</strong> The <code>contentURI</code> points at
-                    the off-chain assembly template, which carries the topology &mdash; the
+                    the off-chain assembly, which carries the topology &mdash; the
                     orders and their parent-child links &mdash; plus the key of the registered
                     agreement each order holds (each one names which clauses attach and the
                     designer&apos;s fills). Anything a seller offers at checkout composes through
@@ -203,26 +203,26 @@ export default function Assemblies() {
                 </div>
                 <p className="text-sm text-ink-body leading-relaxed mt-5">
                     Both halves are pure functions you can call without a chain &mdash;{" "}
-                    <code>templateCompositionHash(template)</code> and{" "}
+                    <code>assemblyCompositionHash(assembly)</code> and{" "}
                     <code>deriveAssemblySlug(hash)</code>, from <code>@figaro-protocol/sdk</code>:
                 </p>
-                <pre className="text-xs font-mono text-ink-body bg-paper border border-default rounded-section p-4 overflow-x-auto mt-3"><code>{`import { templateCompositionHash,
+                <pre className="text-xs font-mono text-ink-body bg-paper border border-default rounded-section p-4 overflow-x-auto mt-3"><code>{`import { assemblyCompositionHash,
          deriveAssemblySlug } from "@figaro-protocol/sdk";
 
-const h = templateCompositionHash(template);   // the registry key: the merkle root
+const h = assemblyCompositionHash(assembly);   // the registry key: the merkle root
 deriveAssemblySlug(h);                         // "asm-<first 8 bytes>"
 
 // Prove prose is excluded: same hash, different words.
-templateCompositionHash({ ...template, name: "Anything" }) === h;  // true`}</code></pre>
+assemblyCompositionHash({ ...assembly, name: "Anything" }) === h;  // true`}</code></pre>
                 <p className="text-sm text-ink-body leading-relaxed mt-5">
-                    One order matters and is easy to get backwards: compute the hash from the <em>raw</em> template, before any buyer, catalog or pricing fill touches it &mdash; compute it after merging those fills and you get a hash the registry never anchored. That trap, and the others that bite at commit, at resolve and at read time, are indexed on <Link href="/pitfalls" className="underline">Sharp edges</Link>.
+                    One order matters and is easy to get backwards: compute the hash from the <em>raw</em> assembly, before any buyer, catalog or pricing fill touches it &mdash; compute it after merging those fills and you get a hash the registry never anchored. That trap, and the others that bite at commit, at resolve and at read time, are indexed on <Link href="/pitfalls" className="underline">Sharp edges</Link>.
                 </p>
             </MarketingSection>
 
             <MarketingSection title="Registered assemblies." bottomPad="wide">
                 <p className="text-sm text-ink-body leading-relaxed mb-6">
                     Every registered assembly is searchable in the registry explorer &mdash; each
-                    row one on-chain binding keyed by its composition hash, its template fetched
+                    row one on-chain binding keyed by its composition hash, its assembly fetched
                     from IPFS, its designer of record the wallet that anchored it.
                 </p>
                 <RegistryCountLink family="assemblies" />

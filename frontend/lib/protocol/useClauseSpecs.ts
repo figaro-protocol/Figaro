@@ -9,7 +9,7 @@
  * `clauseSpecSource` (getClauseSpec / clauseEnumValues /
  * describeAttestation / groupClausesByArticle / clauseNestsUnder) resolve for every
  * registered clause. The same read's stake fold is recorded beside the cache
- * (`noteClauseStakes`) for `liveSpecSource`, the source a new template's
+ * (`noteClauseStakes`) for `liveSpecSource`, the source a new assembly's
  * mandatory fold reads.
  *
  * This is the clause analog of the assembly loader: spec-consuming surfaces
@@ -64,7 +64,7 @@ export function useClauseSpecs(): ClauseSpecsState {
     useEffect(() => {
         if (!events) return;
         // The same read carries each registration's live stake; the cache
-        // loads every spec regardless, and the stake set lets a new template's
+        // loads every spec regardless, and the stake set lets a new assembly's
         // mandatory fold leave the withdrawn ones out (`liveSpecSource`).
         noteClauseStakes(events);
         let canceled = false;

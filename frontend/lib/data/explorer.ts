@@ -378,7 +378,7 @@ export function overlayRows(graphs: readonly OverlayGraph[]): OverlayRow[] {
  * in use here" means: it is read from what was actually attested under that
  * market's processes, never from the assembly's composed clause list (a
  * composed clause that nobody attested draws no overlay, and an attestation
- * of a family the template never named still draws one).
+ * of a family the assembly never named still draws one).
  *
  * `attributionByProcess` maps a lowercased processId to its attribution key.
  */
@@ -406,7 +406,7 @@ export interface DenominationRow {
     settledOrderCount: number;
     settledVolume: bigint;
     /** The token a designer PINNED as an assembly's denomination — a
-     *  registered fact read off the templates, never a bundled token list. */
+     *  registered fact read off the assemblies, never a bundled token list. */
     pinned: boolean;
     text: string;
 }

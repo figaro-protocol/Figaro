@@ -19,7 +19,7 @@
 import React from "react";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
-import { canonicalize, computeClauseKey, templateCompositionHash } from "@figaro-protocol/sdk";
+import { canonicalize, computeClauseKey, assemblyCompositionHash } from "@figaro-protocol/sdk";
 import { keccak256, stringToBytes } from "viem";
 
 const fetchCappedContentMock = vi.fn();
@@ -187,13 +187,13 @@ describe("StoredDocument — the pinned document, verbatim", () => {
     });
 
     it("an assembly's note names the COMPOSITION its anchor covers, not the whole document", async () => {
-        const template = {
+        const assembly = {
             name: "Equipment hire",
             summary: "Editorial wording, outside the anchor.",
             agreements: [{ id: "order-0", agreementKey: `0x${"a1".repeat(32)}`, clauses: {} }],
         };
-        const hash = templateCompositionHash(template as Parameters<typeof templateCompositionHash>[0]);
-        fetchCappedContentMock.mockResolvedValue(served(JSON.stringify(template, null, 2)));
+        const hash = assemblyCompositionHash(assembly as Parameters<typeof assemblyCompositionHash>[0]);
+        fetchCappedContentMock.mockResolvedValue(served(JSON.stringify(assembly, null, 2)));
         mount({ id: "assembly-asm-1", anchoredHash: hash, anchor: "composition-hash" });
         screen.getByTestId("stored-toggle-assembly-asm-1").click();
 

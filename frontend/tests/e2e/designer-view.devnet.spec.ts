@@ -6,12 +6,12 @@
  * covered the on-chain read-only resolution path before.
  *
  * `ViewAssemblyClient` resolves a slug from a localStorage draft first,
- * else from the chain (`AssemblyRegistered` event → IPFS assemblyTemplate), else
+ * else from the chain (`AssemblyRegistered` event → IPFS assembly), else
  * an error. This spec covers the on-chain branch and the not-found branch:
  *
  *   1. Publish an assembly via the canvas, then open /view/<slug> — it
  *      resolves from chain, the source badge reads "on-chain", the node states
- *      the clause the composition carries (read out of the PINNED template,
+ *      the clause the composition carries (read out of the PINNED assembly,
  *      the same reading the review screen makes of the bytes it is about to
  *      anchor), and a published assembly offers Fork (not Edit).
  *      Fork it unchanged and open its Review: the fork's composition hash is
@@ -26,7 +26,7 @@ import { test, expect, ANVIL_ACCOUNTS } from './devnet-multi-test';
 import { composedClauseChip, publishProbeAssembly } from './probeAssembly';
 import { discoverAnchoredAssemblies, localPublicClient, readLocalDeploymentConfig } from './devnet-helpers';
 import { ASSEMBLY_REGISTRY_ABI } from '@/lib/kernel/contracts';
-import { deriveAssemblySlug } from '@/lib/shared/assemblyTemplate';
+import { deriveAssemblySlug } from '@/lib/shared/assembly';
 
 
 test.describe('Assembly read-only inspector — /view?slug= (devnet)', () => {
@@ -53,12 +53,12 @@ test.describe('Assembly read-only inspector — /view?slug= (devnet)', () => {
         );
 
         await expect(page.getByTestId('assembly-view-page')).toBeVisible({ timeout: 30000 });
-        // Resolved from chain (AssemblyRegistered → IPFS assemblyTemplate), not a draft.
+        // Resolved from chain (AssemblyRegistered → IPFS assembly), not a draft.
         await expect(page.getByTestId('view-source-badge')).toContainText('on-chain', { timeout: 15000 });
-        // The on-chain assemblyTemplate's editorial name rendered in the toolbar.
+        // The on-chain assembly's editorial name rendered in the toolbar.
         await expect(page.getByTestId('view-toolbar')).toContainText(name);
         // The composition survives the round trip: the node states the clause
-        // the designer composed, read out of the pinned template — an assembly
+        // the designer composed, read out of the pinned assembly — an assembly
         // whose terms the inspector cannot state is one nobody can check.
         await expect(
             composedClauseChip(page, clauseKey),

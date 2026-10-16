@@ -9,7 +9,7 @@
  * rule as the per-order drawer. The drawer excludes these clauses; this panel
  * offers only these — the two surfaces partition the registry by declared
  * scope, so a duplicate is structurally impossible on this canvas (and
- * `buildAssemblyTemplate` re-verifies at draft/publish for imported or
+ * `buildAssembly` re-verifies at draft/publish for imported or
  * hand-written compositions).
  *
  * At checkout every assembly-scoped section folds into EVERY agreement, so
@@ -80,7 +80,7 @@ export function AssemblyTermsPanel({
     onSetClauseField: (clauseKey: string, field: string, value: unknown) => void;
     readOnly?: boolean;
     /** The composition root and each agreement's agreement key, in
-     *  template order — shown by the read-only surfaces. */
+     *  assembly order — shown by the read-only surfaces. */
     composition?: { compositionHash: `0x${string}`; agreementKeys: readonly `0x${string}`[] };
 }) {
     const { data: registered } = useAllRegisteredClauses();

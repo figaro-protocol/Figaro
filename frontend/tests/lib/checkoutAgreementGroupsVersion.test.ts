@@ -1,8 +1,8 @@
 /**
- * deriveAgreementGroups reads each section's spec by the KEY the template
+ * deriveAgreementGroups reads each section's spec by the KEY the assembly
  * composed — never another spec of the same name. A stranger may register a
  * `figaro-consent` lookalike (version 99) marked mandatory; it is another key,
- * and the template's own consent section is still an ordinary, buyer-filled
+ * and the assembly's own consent section is still an ordinary, buyer-filled
  * section. Every section the agreement carries is listed: a section composed
  * under a mandatory key is listed too, marked `mandatory` and never fillable,
  * since the buyer signs it.
@@ -85,7 +85,7 @@ describe("deriveAgreementGroups — spec reads by key", () => {
         expect(rowOf(groups, "assembly", V99.clauseKey)).toMatchObject({ mandatory: true, fillable: false });
     });
 
-    it("lists every section the agreement carries, in the template's order", () => {
+    it("lists every section the agreement carries, in the assembly's order", () => {
         const groups = groupsFor({
             agreements: [{ id: "order-0", clauses: { [V99.clauseKey]: DOCUMENTS, [UNLOADED]: {} } }],
         });
@@ -98,7 +98,7 @@ describe("deriveAgreementGroups — spec reads by key", () => {
 /**
  * The buyer's form reads the same key. A lookalike of the same name that drops
  * the designer's fill and adds a required term (v50 here) changes neither the
- * fields the checkout offers for the template's section nor the terms the
+ * fields the checkout offers for the assembly's section nor the terms the
  * place-order gate demands of it.
  */
 describe("buyerAuthoredFields — the offered fields are the composed key's", () => {

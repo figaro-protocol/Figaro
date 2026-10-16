@@ -21,7 +21,7 @@ labels: assembly-proposal
 ## Composition sketch
 
 <!-- A sketch of the orders and the clauses each one carries, or a link to a
-     draft AssemblyTemplate (designer export or hand-authored JSON). Doesn't
+     draft Assembly (designer export or hand-written JSON). Doesn't
      need to be final. -->
 
 ## Which existing clauses it composes with

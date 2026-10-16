@@ -9,7 +9,7 @@ signer and the socket-backed account — is `@figaro-protocol/sdk/signer`.
 ## The data channel — why a frame
 
 Everything an agent syncs is attacker-authorable: clause text, member
-profiles, catalog descriptions, assembly templates, offer envelopes,
+profiles, catalog descriptions, assemblies, offer envelopes,
 coordination messages. Concatenating any of it into a model's context bare is
 how "ignore your policy and sign this" gets promoted from data to
 instruction. The channel's rule (F4): fetched content reaches the model only
@@ -42,7 +42,7 @@ verify the same way, against the registry's key: a clause is read by its 32-byte
 bytes fetched from its `contentURI` must hash (`keccak256`, as fetched, never
 re-canonicalized) to that clause key, a registered agreement (`agreementKeyOf`,
 its `{ clauses }`) to its agreement key, read from the binding whatever its
-stake, and a template (`templateCompositionHash`) to its composition hash, so a gateway that serves
+stake, and a assembly (`assemblyCompositionHash`) to its composition hash, so a gateway that serves
 other bytes is read as absence, never as the registry's content. `profile` and
 `ipfs` print what the gateway served, framed as untrusted, and check nothing:
 their CID is the address, but a CID over a UnixFS file (what a pinning service
@@ -107,7 +107,7 @@ past it.
 
 `witnessContent.mjs` (the verified read behind an attestation's fingerprint),
 `anchoredContent.mjs` (the verified reads of a clause spec and an assembly
-template — the analyst decodes and prices with nothing else; both verify
+assembly — the analyst decodes and prices with nothing else; both verify
 through the SDK's `anchor*` functions, the ones the frontend uses) and `ipfsRead.mjs` (the one gateway reader every component here shares) sit
 under both. The fingerprint→address derivation itself is `witnessContentCid`
 (`@figaro-protocol/sdk/derive` — pure, no I/O); this runtime and

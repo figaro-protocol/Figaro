@@ -224,7 +224,7 @@ export { readCappedBytes } from "./cappedRead.js";
 export {
     type Anchored,
     anchorClauseSpec,
-    anchorTemplate,
+    anchorAssembly,
     anchorComposedAgreement,
     hydrateAssembly,
     anchorAgreement,
@@ -232,17 +232,17 @@ export {
     deriveAnchored,
 } from "./anchored.js";
 
-// Agreement + template projection (the deterministic, hash-load-bearing rules)
+// Agreement + assembly projection (the deterministic, hash-load-bearing rules)
 export {
     assertAgreementSignable,
-    buildAssemblyTemplate,
+    buildAssembly,
     composeOrderAgreement,
     buildOrderAgreement,
     parseProjectionHints,
     publicForm,
     sectionByField,
     sectionsByField,
-    serializeAssemblyTemplate,
+    serializeAssembly,
     composeAuthoredAgreement,
     assembleAuthored,
     specDeclaresField,
@@ -265,19 +265,19 @@ export type {
     ProjectionHints,
     ProjectionSpecView,
     SpecSource,
-    TemplateOrderNode,
-    BuiltAssemblyTemplate,
+    AssemblyOrderNode,
+    BuiltAssembly,
     AuthoredAgreement,
 } from "./projection.js";
 
-// The ONE template → orders walk (+ the generic topology math under it)
+// The ONE assembly → orders walk (+ the generic topology math under it)
 export {
-    planTemplateOrders,
-    reconstructOrdersFromTemplate,
-    templateAgreementFromClauses,
+    planAssemblyOrders,
+    reconstructOrdersFromAssembly,
+    agreementFromClauses,
 } from "./reconstructOrders.js";
 export type {
-    PlannedTemplateOrder,
+    PlannedAssemblyOrder,
     ReconstructNodeSpec,
     ReconstructParams,
     ReconstructedOrder,
@@ -313,21 +313,21 @@ export type {
     SubOrderPricing,
 } from "./checkoutPlan.js";
 
-// Assembly identity (the AssemblyRegistry key + derived slug) + the template
+// Assembly identity (the AssemblyRegistry key + derived slug) + the assembly
 // shape and its accessors (topology parents, composed clause keys) + the
 // authoring resolver (clause names in a source document → clause keys)
 export {
-    templateCompositionHash,
+    assemblyCompositionHash,
     deriveAssemblySlug,
-    templateParentOrderHashes,
-    templateComposedClauseKeys,
+    assemblyParentOrderHashes,
+    assemblyComposedClauseKeys,
     agreementKeyOf,
     agreementClauseLeaves,
     buildClauseInclusionProof,
     boundAgreement,
     agreementClauses,
     agreementLeafBytes,
-    templateLeaves,
+    assemblyLeaves,
     buildAgreementInclusionProof,
     assertNotReservedKey,
     ASSEMBLY_TERMS_LEAF_KEY,
@@ -335,7 +335,7 @@ export {
     resolveAuthoredClauseKeys,
 } from "./assembly.js";
 export type {
-    AssemblyTemplate,
+    Assembly,
     AssemblyFaqEntry,
     AssemblyAgreement,
     ComposedAgreement,

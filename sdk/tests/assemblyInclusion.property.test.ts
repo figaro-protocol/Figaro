@@ -12,26 +12,26 @@ import {
     agreementKeyOf,
     buildClauseInclusionProof,
     buildAgreementInclusionProof,
-    templateCompositionHash,
+    assemblyCompositionHash,
 } from "../src/assembly.js";
 import { decodeProvenanceContent, provenanceSectionBytes, verifyInclusionProof } from "../src/agreement.js";
-import { bytes32Arb, composedAgreementArb, templateArb } from "./propertyArbs.js";
+import { bytes32Arb, composedAgreementArb, assemblyArb } from "./propertyArbs.js";
 
 describe("the composition tree", () => {
     it("every agreement's membership proof verifies under its assembly's root", () => {
-        fc.assert(fc.property(templateArb, (template) => {
-            const root = templateCompositionHash(template);
-            template.agreements.forEach((_, i) => {
-                const { leaf, proof } = buildAgreementInclusionProof(template, i);
+        fc.assert(fc.property(assemblyArb, (assembly) => {
+            const root = assemblyCompositionHash(assembly);
+            assembly.agreements.forEach((_, i) => {
+                const { leaf, proof } = buildAgreementInclusionProof(assembly, i);
                 expect(verifyInclusionProof(root, leaf, proof)).toBe(true);
             });
         }));
     });
 
     it("an agreement's proof does not verify under a different assembly's root", () => {
-        fc.assert(fc.property(templateArb, templateArb, (a, b) => {
-            const rootA = templateCompositionHash(a);
-            const rootB = templateCompositionHash(b);
+        fc.assert(fc.property(assemblyArb, assemblyArb, (a, b) => {
+            const rootA = assemblyCompositionHash(a);
+            const rootB = assemblyCompositionHash(b);
             fc.pre(rootA !== rootB);
             const { leaf, proof } = buildAgreementInclusionProof(a, 0);
             expect(verifyInclusionProof(rootB, leaf, proof)).toBe(false);
@@ -39,8 +39,8 @@ describe("the composition tree", () => {
     });
 
     it("editorial prose never moves the root", () => {
-        fc.assert(fc.property(templateArb, fc.string(), (template, name) => {
-            expect(templateCompositionHash({ ...template, name } as typeof template)).toBe(templateCompositionHash(template));
+        fc.assert(fc.property(assemblyArb, fc.string(), (assembly, name) => {
+            expect(assemblyCompositionHash({ ...assembly, name } as typeof assembly)).toBe(assemblyCompositionHash(assembly));
         }));
     });
 });

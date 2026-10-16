@@ -142,7 +142,7 @@ describe("fillClassSections — catalog-sourced values folded onto their leaves"
         expect(fillClassSections(clauses, [line({ clauseValues: { [keyOf("figaro-commerce")]: { x: 1 } } })], COMMERCE)).toEqual(clauses);
     });
 
-    it("template's committed value WINS over the catalog's (terms outrank master data)", () => {
+    it("assembly's committed value WINS over the catalog's (terms outrank master data)", () => {
         const out = fillClassSections({ [keyOf("figaro-freight-class")]: { nmfcClass: "70" } }, [
             line({ clauseValues: { [keyOf("figaro-freight-class")]: { nmfcClass: "100", nmfcItem: "156600" } } }),
         ], FREIGHT);
@@ -158,7 +158,7 @@ describe("fillClassSections — catalog-sourced values folded onto their leaves"
         expect(out[keyOf("figaro-freight-class")]).not.toHaveProperty("rate");
     });
 
-    it("an empty-string template entry is not a pin — the catalog value fills it", () => {
+    it("an empty-string assembly entry is not a pin — the catalog value fills it", () => {
         const out = fillClassSections({ [keyOf("figaro-freight-class")]: { nmfcClass: "" } }, [
             line({ clauseValues: { [keyOf("figaro-freight-class")]: { nmfcClass: "100" } } }),
         ], FREIGHT);

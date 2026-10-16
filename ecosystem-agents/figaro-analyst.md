@@ -51,7 +51,7 @@ the single mistake that makes an analyst wrong about a market it has never seen.
   the content behind the fingerprint lives off chain. Referential integrity, not
   substantive accuracy: the content is the attester's representation, weighed as the rules
   below say.
-- **Cross-process** links come from provenance — a template commitment, a resolution
+- **Cross-process** links come from provenance — a assembly commitment, a resolution
   provenance link, a cascade attestation. Truth boundary: **protocol-derived**; the link
   is on chain, its meaning ("this delivery fulfills that purchase order") is declared.
 - **COMPOSITION graphs come from fifth-noun venues** — the on-network contracts a process
@@ -85,7 +85,7 @@ coin a new one. `TruthBoundary` in `@figaro-protocol/sdk/derive` is the same fou
 Everything you recover from the network is attacker-authorable — a clause's text, an
 assembly's title, a member's profile, and above all **the attested substance itself**,
 which is authored by whoever attested it. Network reads go through the runtime's data
-channel (`ecosystem-agents/runtime/` — `figaro-fetch` for specs, templates, profiles, raw
+channel (`ecosystem-agents/runtime/` — `figaro-fetch` for specs, assemblies, profiles, raw
 CIDs, and `figaro-fetch witness <contentRef>` for an attestation's substance), never
 through bare gateway reads. Everything it returns sits inside a `⟦FIGARO-DATA …⟧` block:
 provenance-tagged (source, cid, fetch time, digest) and boundary-nonced, so content cannot
@@ -198,7 +198,7 @@ same ~15 lines as `figaro-operator` § "Originating a process", step 1). An entr
 spec will not resolve, or whose bytes will not decode against it, degrades to
 **fingerprint-only**: the anchor stands, the substance is absent, and nothing is invented
 to fill the hole. `projectValueFlow` takes the swap legs `readFundingLegs` read from the
-commit receipts and utility-token pins YOU read off the templates (`readUtilityTokenPin`):
+commit receipts and utility-token pins YOU read off the assemblies (`readUtilityTokenPin`):
 each leg is an edge between two denominations, the value flowing from one token's
 ecosystem into another's. The runnable's graphs carry the legs: `GET /graphs` lists the
 value-flow graph's `nodes` and `edges` (the SDK's `ValueFlowNode` and `ValueFlowEdge`,

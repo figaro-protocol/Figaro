@@ -52,7 +52,7 @@ import { MEMBERS_REGISTRY_ABI } from "@figaro-protocol/sdk";
 export interface PublishMemberInput {
     /** Profile fields collected by the wizard, MINUS the catalogURI
      *  (which the hook fills in after pinning the catalog). */
-    profileTemplate: Omit<MemberProfileMetadata, "catalogURI">;
+    profileMetadata: Omit<MemberProfileMetadata, "catalogURI">;
     /** Catalog items to pin. Must be non-empty — FigaroCore doesn't
      *  enforce this but the onboarding UX expects it (the catalog step's
      *  own gate refuses an empty list). */
@@ -120,7 +120,7 @@ export function usePublishMemberProfile() {
 
         // (b) Build + validate the profile document with the catalogURI embedded.
         const profile: MemberProfileMetadata = {
-            ...input.profileTemplate,
+            ...input.profileMetadata,
             catalogURI,
         };
         parseMemberProfileDocument(profile, "onboarding-publish");

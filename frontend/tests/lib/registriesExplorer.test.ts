@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { agreementKeyOf, canonicalContentHash, canonicalize, computeClauseKey, templateCompositionHash } from "@figaro-protocol/sdk";
+import { agreementKeyOf, canonicalContentHash, canonicalize, computeClauseKey, assemblyCompositionHash } from "@figaro-protocol/sdk";
 import { keccak256, stringToBytes } from "viem";
 import {
     parseExplorerQuery, serializeExplorerQuery, selectRows, facetValues, explorerBreadcrumb,
@@ -89,7 +89,7 @@ describe("the document as stored — the reader re-derives the anchor themselves
     const COMMERCE = `0x${"c1".repeat(32)}` as const;
     const AGREEMENT = { name: "Equipment hire · order-0", clauses: { [COMMERCE]: {} } };
     const AGREEMENT_KEY = agreementKeyOf(AGREEMENT);
-    const TEMPLATE = {
+    const ASSEMBLY = {
         name: "Equipment hire",
         summary: "The designer's own words — deliberately outside the anchor.",
         agreements: [{ id: "order-0", agreementKey: AGREEMENT_KEY, clauses: {} }],
@@ -147,18 +147,18 @@ describe("the document as stored — the reader re-derives the anchor themselves
     });
 
     it("an assembly's served bytes reproduce the registry's compositionHash", () => {
-        const anchored = templateCompositionHash(TEMPLATE as Parameters<typeof templateCompositionHash>[0]);
-        const v = storedDocument(JSON.stringify(TEMPLATE), anchored, "composition-hash");
+        const anchored = assemblyCompositionHash(ASSEMBLY as Parameters<typeof assemblyCompositionHash>[0]);
+        const v = storedDocument(JSON.stringify(ASSEMBLY), anchored, "composition-hash");
         expect(v.matches).toBe(true);
         expect(v.anchor).toBe("composition-hash");
     });
 
     it("an assembly's editorial wording is OUTSIDE its anchor — reword it and the hash holds", () => {
-        const anchored = templateCompositionHash(TEMPLATE as Parameters<typeof templateCompositionHash>[0]);
-        const reworded = JSON.stringify({ ...TEMPLATE, name: "Kit hire", summary: "Different words entirely." });
+        const anchored = assemblyCompositionHash(ASSEMBLY as Parameters<typeof assemblyCompositionHash>[0]);
+        const reworded = JSON.stringify({ ...ASSEMBLY, name: "Kit hire", summary: "Different words entirely." });
         expect(storedDocument(reworded, anchored, "composition-hash").matches).toBe(true);
         // Changing the COMPOSITION does break it — the anchor is the terms.
-        const retermed = JSON.stringify({ ...TEMPLATE, agreements: [{ id: "order-0", agreementKey: `0x${"a2".repeat(32)}`, clauses: {} }] });
+        const retermed = JSON.stringify({ ...ASSEMBLY, agreements: [{ id: "order-0", agreementKey: `0x${"a2".repeat(32)}`, clauses: {} }] });
         expect(storedDocument(retermed, anchored, "composition-hash").matches).toBe(false);
     });
 

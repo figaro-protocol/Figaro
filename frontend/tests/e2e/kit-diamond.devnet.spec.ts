@@ -120,14 +120,14 @@ test.beforeAll(async () => {
     TOPOLOGY_CLAUSE = keyOf('figaro-topology');
 });
 
-/** The diamond's SHAPE on-chain: four orders, one committing TWO template
+/** The diamond's SHAPE on-chain: four orders, one committing TWO assembly
  *  parents, a courier-process final leg, an emissions leg. (The
  *  courier-process requirement also skips a mis-composed first anchoring
  *  attempt that persists on the devnet — an anchored assembly is immutable;
  *  a corrected composition is a NEW assembly, never an edit.) */
 async function findDiamondAssembly(): Promise<string | undefined> {
-    const templates = await discoverAnchoredAssemblies();
-    return templates.find(
+    const assemblies = await discoverAnchoredAssemblies();
+    return assemblies.find(
         (t) => t.agreements.length === 4
             && t.agreements.some((o) => {
                 const topo = (o.clauses?.[TOPOLOGY_CLAUSE] ?? {}) as { parentOrderHashes?: unknown[] };
@@ -341,7 +341,7 @@ test.describe('KIT DIAMOND — a DAG join: one buyer, four orders, two parents o
         ).toBeVisible({ timeout: 30000 });
         // The buyer authors every node's transaction particulars: TWO nodes
         // compose hand-off + proximity (B and D), one composes emissions (C) —
-        // fill EVERY matching control, per node (templates arrive value-free).
+        // fill EVERY matching control, per node (assemblies arrive value-free).
         const checkAllFields = async (suffix: string) => {
             const controls = page.locator(`[data-testid^="checkout-field-"][data-testid$="${suffix}"]`);
             const n = await controls.count();

@@ -173,7 +173,7 @@ export const OrderNode = ({ data }: { data: OrderNodeData }) => {
 
             <div className="space-y-1 text-[10px]">
                 {/* Payment, cumulative value, and parties exist only on a LIVE
-                    order. At design time the template carries none of them, so the
+                    order. At design time the assembly carries none of them, so the
                     authoring node shows only its composed terms (chips below) —
                     never a placeholder amount or a fake address. */}
                 {!data.designerMode && (

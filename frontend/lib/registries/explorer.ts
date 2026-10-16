@@ -14,7 +14,7 @@
  * speak one shape.
  */
 
-import { agreementKeyOf, canonicalize, templateCompositionHash } from "@figaro-protocol/sdk";
+import { agreementKeyOf, canonicalize, assemblyCompositionHash } from "@figaro-protocol/sdk";
 import { keccak256 } from "viem";
 import type { BreadcrumbItem } from "@/components/shared/Breadcrumb";
 import { safeJsonParse, strippingReviver } from "@/lib/shared/safeJson";
@@ -101,7 +101,7 @@ export interface ExplorerRow {
     /** Agreements and assemblies: composed clause keys. Clauses/members: empty. */
     clauses: readonly string[];
     /** Whether the pinned content behind the on-chain pointer (the clause's
-     *  spec, the assembly's template, the member's profile) has resolved.
+     *  spec, the assembly's assembly, the member's profile) has resolved.
      *  `resolving` — not served yet, being re-read; `unavailable` — served
      *  but wrong (integrity or parse failure), never going to resolve. Only
      *  a `resolved` row's name/article/description mean anything; the rest
@@ -169,9 +169,9 @@ function compareRows(a: ExplorerRow, b: ExplorerRow, sort: RegistrySort): number
  *   document outside the key.
  *
  *   `composition-hash` — assemblies. `AssemblyRegistry`'s `compositionHash` is
- *   the merkle root over the template's agreements (each agreement's agreement
+ *   the merkle root over the assembly's agreements (each agreement's agreement
  *   key and its own fills) and, where composed, its assembly-scoped clauses
- *   (`templateCompositionHash`). The designer's editorial
+ *   (`assemblyCompositionHash`). The designer's editorial
  *   fields (name, summary, description) ride in the same document and are
  *   deliberately NOT covered: a differently-worded assembly is the same
  *   assembly, a differently-termed one is not.
@@ -266,7 +266,7 @@ function textDifferences(text: string): StoredDocumentDifference[] {
  * Verify served bytes against the chain's digest. PURE — the fetch is the
  * caller's; this is the arithmetic, and it is the same arithmetic the loaders
  * already run before they will use a document (`loadClauseSpec`,
- * `fetchAssemblyTemplate`). Stated separately so the reader can be SHOWN it
+ * `fetchAssembly`). Stated separately so the reader can be SHOWN it
  * rather than told the loader did it. `fetched` is the served bytes, or
  * their exact text.
  */
@@ -285,7 +285,7 @@ export function storedDocument(fetched: Uint8Array | string, anchored: string, a
                 ? keccak256(bytes)
                 : anchor === "agreement-key"
                     ? agreementKeyOf(parsed as unknown as Parameters<typeof agreementKeyOf>[0])
-                    : templateCompositionHash(parsed as unknown as Parameters<typeof templateCompositionHash>[0]);
+                    : assemblyCompositionHash(parsed as unknown as Parameters<typeof assemblyCompositionHash>[0]);
     } catch {
         // A document that parses but carries no composition to hash cannot
         // reproduce the anchor. Absence of a recomputation, never a match.

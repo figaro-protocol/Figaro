@@ -347,7 +347,7 @@ test.describe('LOCAL COMMERCE — item delivery: canvas → bind → order → a
         ).toHaveCount(0);
 
         // The buyer authors the transaction particulars (modality request,
-        // hand-off mode, proximity band, geolocation endpoints) — templates
+        // hand-off mode, proximity band, geolocation endpoints) — assemblies
         // arrive value-free by construction.
         await fillDeliveryCheckout(page);
         // Every required term authored ⇒ the gate clears and the button says so.

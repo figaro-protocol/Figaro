@@ -21,7 +21,7 @@ import { keccak256 } from 'viem';
 import {
     AGREEMENT_REGISTRY_ABI, ASSEMBLY_REGISTRY_ABI, CLAUSE_REGISTRY_ABI, MEMBERS_REGISTRY_ABI,
 } from '@figaro-protocol/sdk';
-import { deriveAssemblySlug } from '@/lib/shared/assemblyTemplate';
+import { deriveAssemblySlug } from '@/lib/shared/assembly';
 import { discoverAnchoredAssemblies, localPublicClient, readAgreementBinding, readLocalDeploymentConfig, resolveIpfsURI } from './devnet-helpers';
 
 test.describe('Registry explorer (devnet)', () => {
@@ -168,23 +168,23 @@ test.describe('Registry explorer (devnet)', () => {
         await expect(row.getByTestId(`assembly-view-${slug}`)).toHaveAttribute('href', /\/assemblies\/designer\/view\/?\?slug=/);
     });
 
-    test('"assemblies composing it" keeps its promise — only the assemblies whose template composes the clause remain', async ({ page }) => {
-        // Truth from chain → IPFS: every anchored template, and which compose the chosen clause.
+    test('"assemblies composing it" keeps its promise — only the assemblies whose assembly composes the clause remain', async ({ page }) => {
+        // Truth from chain → IPFS: every anchored assembly, and which compose the chosen clause.
         // Each assembly hydrated: its agreements' agreements read by key
         // from AgreementRegistry → IPFS and verified.
         const discovered = await discoverAnchoredAssemblies();
         expect(discovered.length).toBeGreaterThan(1);
-        const templates = discovered.map((d) => {
-            const clauses = new Set<string>(Object.keys(d.hydrated.template.assemblyClauses ?? {}));
+        const assemblies = discovered.map((d) => {
+            const clauses = new Set<string>(Object.keys(d.hydrated.assembly.assemblyClauses ?? {}));
             for (const a of d.agreements) for (const id of Object.keys(a.clauses)) clauses.add(id);
             return { slug: d.slug, clauses };
         });
         // Pick a clause composed by SOME but not ALL assemblies — the facet must narrow.
         const counts = new Map<string, number>();
-        for (const t of templates) for (const id of t.clauses) counts.set(id, (counts.get(id) ?? 0) + 1);
-        const clauseKey = [...counts.entries()].find(([, n]) => n > 0 && n < templates.length)?.[0];
+        for (const t of assemblies) for (const id of t.clauses) counts.set(id, (counts.get(id) ?? 0) + 1);
+        const clauseKey = [...counts.entries()].find(([, n]) => n > 0 && n < assemblies.length)?.[0];
         expect(clauseKey, 'a clause composed by a strict subset of the anchored assemblies').toBeTruthy();
-        const composing = templates.filter((t) => t.clauses.has(clauseKey!)).map((t) => t.slug).sort();
+        const composing = assemblies.filter((t) => t.clauses.has(clauseKey!)).map((t) => t.slug).sort();
 
         await page.goto('/registries?family=clauses');
         const row = page.locator(`#clause-${clauseKey}`);
@@ -194,12 +194,12 @@ test.describe('Registry explorer (devnet)', () => {
         // The URL carries the facet INTO the assemblies family (the click's promise).
         await expect(page).toHaveURL(new RegExp(`family=assemblies.*clause=${clauseKey}|clause=${clauseKey}.*family=assemblies`));
         await expect(page.getByRole('navigation', { name: 'Breadcrumb' })).toContainText(`composing ${clauseKey}`);
-        // Templates resolve from the local node; the row set resolves to exactly the composing slugs.
+        // Assemblies resolve from the local node; the row set resolves to exactly the composing slugs.
         await expect.poll(async () => {
             const ids = await page.locator('li[id^="assembly-"]').evaluateAll((els) => els.map((e) => e.id.replace(/^assembly-/, '')));
             return ids.sort();
         }, { timeout: 30_000 }).toEqual(composing);
-        expect(composing.length).toBeLessThan(templates.length);
+        expect(composing.length).toBeLessThan(assemblies.length);
     });
 
     test('members: every registered wallet surfaces — the registry, not the buyer list', async ({ page }) => {

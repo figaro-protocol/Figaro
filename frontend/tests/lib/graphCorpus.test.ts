@@ -1,7 +1,7 @@
 /**
- * The corpus reads each designer's utility-token pin off the loaded templates
+ * The corpus reads each designer's utility-token pin off the loaded assemblies
  * from the spec each composed key names: two specs of one name are two keys,
- * and a template composed under the spec whose `currency` is a design fill
+ * and a assembly composed under the spec whose `currency` is a design fill
  * carries a pin, while one composed under the spec that leaves it plain
  * content carries none.
  */
@@ -10,7 +10,7 @@ import path from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { PROVENANCE_LEAF_KEY, provenanceContentRef } from "@figaro-protocol/sdk";
 import type { OverlayGraph } from "@figaro-protocol/sdk/derive";
-import { attributionFromOverlays, corpusInputsLoaded, readTemplateUtilityTokenPins } from "@/lib/data/graphCorpus";
+import { attributionFromOverlays, corpusInputsLoaded, readAssemblyUtilityTokenPins } from "@/lib/data/graphCorpus";
 import {
     _resetClauseSpecCache_TESTING_ONLY,
     loadClauseSpec,
@@ -26,15 +26,15 @@ const canonical = JSON.parse(readFileSync(path.resolve(process.cwd(), "../clause
 const V1 = pinSpec({ ...canonical, version: 1, block: { ...canonical.block, design: { ...canonical.block.design, fills: [] } } });
 const V2 = pinSpec({ ...canonical, version: 2 });
 
-type Templates = Parameters<typeof readTemplateUtilityTokenPins>[0];
-const template = (clauseKey: string): Templates[number] => ({
+type Assemblies = Parameters<typeof readAssemblyUtilityTokenPins>[0];
+const assembly = (clauseKey: string): Assemblies[number] => ({
     compositionHash: `0x${"ab".repeat(32)}`,
     agreementKeys: [],
     name: "pinned",
     clauseSets: [{ clauses: { [clauseKey]: { currency: TOKEN } } }],
 });
 
-describe("readTemplateUtilityTokenPins — the pin read from the composed key's spec", () => {
+describe("readAssemblyUtilityTokenPins — the pin read from the composed key's spec", () => {
     beforeAll(async () => {
         _resetClauseSpecCache_TESTING_ONLY();
         const docs: Record<string, string> = { "v1.json": V1.bytes, "v2.json": V2.bytes };
@@ -44,12 +44,12 @@ describe("readTemplateUtilityTokenPins — the pin read from the composed key's 
     });
     afterAll(() => _resetClauseSpecCache_TESTING_ONLY());
 
-    it("yields the pin when the template composes the key of the spec that fills currency", () => {
-        expect(readTemplateUtilityTokenPins([template(V2.clauseKey)], specSource())).toEqual([TOKEN]);
+    it("yields the pin when the assembly composes the key of the spec that fills currency", () => {
+        expect(readAssemblyUtilityTokenPins([assembly(V2.clauseKey)], specSource())).toEqual([TOKEN]);
     });
 
-    it("yields none when the template composes the key of the spec that leaves currency plain", () => {
-        expect(readTemplateUtilityTokenPins([template(V1.clauseKey)], specSource())).toEqual([]);
+    it("yields none when the assembly composes the key of the spec that leaves currency plain", () => {
+        expect(readAssemblyUtilityTokenPins([assembly(V1.clauseKey)], specSource())).toEqual([]);
     });
 });
 
@@ -126,7 +126,7 @@ describe("corpusInputsLoaded — the read waits for both off-chain inputs to fin
         expect(corpusInputsLoaded(null, false, true)).toBe(false);
     });
 
-    it("is not loaded while any assembly's template or agreements are still hydrating", () => {
+    it("is not loaded while any assembly's assembly or agreements are still hydrating", () => {
         expect(corpusInputsLoaded([loaded, loading], false, true)).toBe(false);
     });
 

@@ -174,7 +174,7 @@ test.describe('BUYER-ASSIGNED — the buyer picks the courier at checkout (devne
         await expect(breakdown, 'the picked courier prices into the P&L').not.toContainText('(choose below)', { timeout: 15000 });
 
         // The buyer authors the transaction particulars (modality request,
-        // hand-off mode, proximity band, geolocation endpoints) — templates
+        // hand-off mode, proximity band, geolocation endpoints) — assemblies
         // arrive value-free by construction.
         await fillDeliveryCheckout(page);
 

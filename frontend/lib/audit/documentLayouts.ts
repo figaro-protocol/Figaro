@@ -1,28 +1,28 @@
 /**
- * Declared document templates — the recognizable trade documents the audit /
+ * Declared document layouts — the recognizable trade documents the audit /
  * dispute bundle surfaces, as DATA. Each is a composition over committed leaves;
  * the generic engine (`documentProjection.ts`) produces them and one generic
  * renderer draws them. A new genre (packing list, certificate of origin, …) is a
- * new entry in the `DOCUMENT_TEMPLATES` array below — zero engine or renderer code.
+ * new entry in the `DOCUMENT_LAYOUTS` array below — zero engine or renderer code.
  *
- * Every reference resolves by DECLARED FIELD, never by clause id, so a template
+ * Every reference resolves by DECLARED FIELD, never by clause id, so a layout
  * projects identically over an assembly this codebase has never seen. That is what
- * makes this open-world: the templates are hardcoded here, but they carry no
+ * makes this open-world: the layouts are hardcoded here, but they carry no
  * clause-specific knowledge — they read whatever fields the committed leaves declare.
  *
- * DECISION (maintainer): these templates are a hardcoded array in this
+ * DECISION (maintainer): these layouts are a hardcoded array in this
  * file. They are NOT moved to an on-chain registry — no on-chain document registry
  * at this time. Do NOT "graduate" this to a registry, and do NOT call it a
  * "catalog" (that word is the MEMBER'S catalog — a different object entirely).
- * It is a list of document-template objects. Leave it here.
+ * It is a list of document-layout objects. Leave it here.
  */
 
-import type { DocumentTemplate } from "@/lib/audit/documentProjection";
+import type { DocumentLayout } from "@/lib/audit/documentProjection";
 
 /** Commercial invoice, EN 16931 core — one per SELLER (BG-4 single supplier). The
  *  interpretive VAT class is jurisdiction/graph-supplied and absent from the core.
  *  Applies wherever a commerce leaf (declaring `lineItems`) was committed. */
-const COMMERCIAL_INVOICE: DocumentTemplate = {
+const COMMERCIAL_INVOICE: DocumentLayout = {
     genre: "commercial-invoice",
     title: "Commercial invoice (EN 16931 core)",
     scope: "seller",
@@ -52,7 +52,7 @@ const COMMERCIAL_INVOICE: DocumentTemplate = {
 /** Non-negotiable Bill of Lading — one per carriage-leg ORDER. Never a document of
  *  title: FigaroCore forbids substituting a bonded order's parties mid-flight, so
  *  the consignee is fixed at signing (/papers/after-tradelens §7). */
-const BILL_OF_LADING: DocumentTemplate = {
+const BILL_OF_LADING: DocumentLayout = {
     genre: "bill-of-lading",
     title: "Bill of Lading (non-negotiable)",
     scope: "order",
@@ -74,9 +74,9 @@ const BILL_OF_LADING: DocumentTemplate = {
     note: "NON-NEGOTIABLE — not a document of title. The consignee is fixed at signing; FigaroCore forbids substituting a bonded order's parties mid-flight. The precise addressee is party-private (ECDH channel); only the public geohash is committed.",
 };
 
-/** The document templates the audit bundle projects. Add a genre by adding a
- *  template object to this array — the engine and renderer are generic. */
-export const DOCUMENT_TEMPLATES: readonly DocumentTemplate[] = [
+/** The document layouts the audit bundle projects. Add a genre by adding a
+ *  layout object to this array — the engine and renderer are generic. */
+export const DOCUMENT_LAYOUTS: readonly DocumentLayout[] = [
     COMMERCIAL_INVOICE,
     BILL_OF_LADING,
 ];

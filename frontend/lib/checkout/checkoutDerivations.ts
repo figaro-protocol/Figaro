@@ -16,7 +16,7 @@ import {
     type SubOrderPricing,
 } from "@figaro-protocol/sdk";
 import { displayNameForAddress } from "@/lib/member/memberListing";
-import { templateParentOrderHashes } from "@/lib/shared/assemblyTemplate";
+import { assemblyParentOrderHashes } from "@/lib/shared/assembly";
 import {
     clauseCatalogFills,
     clauseDesignFills,
@@ -90,7 +90,7 @@ export function deriveKitBreakdown(args: {
     sellerSelection: CandidatePick | null;
 }): KitBreakdown | null {
     const assembly = args.pickedAssembly;
-    if (!assembly || assembly.hydratedAssembly.template.agreements.length <= 1) return null;
+    if (!assembly || assembly.hydratedAssembly.assembly.agreements.length <= 1) return null;
     const nameOf = (addr: `0x${string}`) => displayNameForAddress(args.sellerCatalogs, addr);
     let plan: ReturnType<typeof planSubOrderSellers>;
     try {
@@ -104,7 +104,7 @@ export function deriveKitBreakdown(args: {
             if (seller) {
                 // The buyer's checkout fills join the node BEFORE pricing —
                 // a rate source (order-geodistance) derives from clause
-                // content, and templates arrive value-free by construction.
+                // content, and assemblies arrive value-free by construction.
                 // Same merge the commit walk performs, so shown = committed.
                 const listed = resolveSubOrderPricing({
                     node: { clauses: { ...node.clauses, ...args.clauseFills[node.nodeId] } },
@@ -139,7 +139,7 @@ export function deriveKitBreakdown(args: {
 export interface AgreementGroup {
     key: string;
     label: string;
-    /** `clauseKey` is the key the template composed for the section — every
+    /** `clauseKey` is the key the assembly composed for the section — every
      *  spec read the row makes is keyed on it. `mandatory` marks a section the assembly folded in because its spec's
      *  article is "mandatory" (commerce, topology, or anyone's
      *  registration so marked): it is listed like every other section, since
@@ -157,7 +157,7 @@ export interface AgreementGroup {
  * the mechanical-fill subtraction are the SAME ones the order build applies,
  * so the buyer reviews what will actually commit. Every spec read is EXACT —
  * the spec the section's key names, never another spec of the same name: a
- * stranger's spec of the same name declares nothing about this template's
+ * stranger's spec of the same name declares nothing about this assembly's
  * section.
  */
 export function deriveAgreementGroups(args: {
@@ -168,19 +168,19 @@ export function deriveAgreementGroups(args: {
     const { pickedAssembly, leadAddress, sellerCatalogs } = args;
     if (!pickedAssembly) return [];
     const hydrated = pickedAssembly.hydratedAssembly;
-    const orders = hydrated.template.agreements;
+    const orders = hydrated.assembly.agreements;
     const nameOf = (addr: `0x${string}`) => displayNameForAddress(sellerCatalogs, addr);
     let plan: ReturnType<typeof planSubOrderSellers> = [];
     if (orders.length > 1) {
         try { plan = planSubOrderSellers(pickedAssembly); } catch { plan = []; }
     }
     const sellerOf = new Map(plan.map(({ node, seller }) => [node.nodeId, seller]));
-    // ASSEMBLY TERMS first — the template's assembly-scoped sections (a
+    // ASSEMBLY TERMS first — the assembly's assembly-scoped sections (a
     // denomination pin, a dispute forum), reviewed and buyer-filled ONCE;
     // the checkout walk folds them into every agreement, so every party
     // signs them. Same fillable rules as per-order clauses; keyed by the
-    // reserved group key "assembly" (never a template order id).
-    const assemblySections: Record<string, Record<string, unknown>> = hydrated.template.assemblyClauses ?? {};
+    // reserved group key "assembly" (never a assembly order id).
+    const assemblySections: Record<string, Record<string, unknown>> = hydrated.assembly.assemblyClauses ?? {};
     const assemblyGroup: AgreementGroup[] = Object.keys(assemblySections).length === 0 ? [] : [{
         key: "assembly",
         label: "Assembly terms (every agreement)",
@@ -209,7 +209,7 @@ export function deriveAgreementGroups(args: {
         // The agreement's clauses: its registered agreement's, with the
         // agreement's own fills (the topology parents) merged over them.
         const order = { id: entry.id, clauses: agreementClauses(hydrated, entry) };
-        const isRoot = templateParentOrderHashes(entry).length === 0;
+        const isRoot = assemblyParentOrderHashes(entry).length === 0;
         const assigned = isRoot ? leadAddress : sellerOf.get(String(order.id));
         // Fold the assigned seller's PROFILE master data (dimweight's
         // divisor, a declared credential id) onto the preview leaves —
@@ -231,8 +231,8 @@ export function deriveAgreementGroups(args: {
         return {
             key: String(order.id ?? i),
             label: assigned ? nameOf(assigned) : "(to be assigned)",
-            // The template's own section order; a mandatory section is listed
-            // with the values the template composed for it, never fillable.
+            // The assembly's own section order; a mandatory section is listed
+            // with the values the assembly composed for it, never fillable.
             clauses: (Object.keys(order.clauses) as `0x${string}`[])
                 .map((clauseKey) => {
                     if (!(clauseKey in previewClauses)) {
@@ -254,7 +254,7 @@ export function deriveAgreementGroups(args: {
                         mandatory: false,
                         // A GENERAL clause's fields are transaction particulars
                         // the buyer fills here. Not fillable: designer-fills
-                        // values (the designer's tailoring, from the template),
+                        // values (the designer's tailoring, from the assembly),
                         // process-log anchors (attested at runtime, empty at
                         // commit), catalog-sourced sections (the seller's
                         // items fill them), profile-sourced sections (the
@@ -278,7 +278,7 @@ export function deriveAgreementGroups(args: {
 /**
  * The fields of a fillable clause the checkout OFFERS the buyer: the spec's own
  * fields minus the designer's tailoring (`block.design.fills`, already valued on
- * the template). ONE list — the form renders it and the place-order gate below
+ * the assembly). ONE list — the form renders it and the place-order gate below
  * checks it, so the sign gate can never demand a term the form never offered.
  * Read from the EXACT spec the section's key names: another spec of the same
  * name changes no field offered here.
@@ -323,7 +323,7 @@ export interface MissingFill {
  * reaches the gate and comes back as a spec-path dump ("$.acceptanceBasis:
  * required field is missing"), which is a developer's sentence, not a buyer's.
  *
- * Spec-routed and clause-agnostic: a value already composed on the template (or
+ * Spec-routed and clause-agnostic: a value already composed on the assembly (or
  * folded from the seller's profile) counts as filled, and a field carrying a
  * spec `default` is never demanded — the agreement build applies it.
  */

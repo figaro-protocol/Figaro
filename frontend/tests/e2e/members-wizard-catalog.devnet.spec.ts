@@ -29,7 +29,7 @@ import { sellerPageHref } from '@/lib/member/memberListing';
 import { test, gotoAsWallet, ANVIL_ACCOUNTS } from './devnet-multi-test';
 import type { Hex } from 'viem';
 import { ASSEMBLY_REGISTRY_ABI } from '@figaro-protocol/sdk';
-import { deriveAssemblySlug } from '@/lib/shared/assemblyTemplate';
+import { deriveAssemblySlug } from '@/lib/shared/assembly';
 import {
     discoverAnchoredAssemblies,
     latestMemberProfileURI,
@@ -254,7 +254,7 @@ test.describe('member wizard — catalog and assemblies steps (devnet)', () => {
         await expect(page).toHaveURL(/\/members\/assemblies/, { timeout: 30_000 });
 
         // Every anchored assembly is a row, in the chain's order — never a
-        // list that waits on its templates to settle into place.
+        // list that waits on its assemblies to settle into place.
         const rows = page.locator('[data-testid^="seller-assembly-row-"]');
         await expect(rows).toHaveCount(expected.length, { timeout: 30_000 });
         expect(await listedAssemblySlugs(page), 'rows follow the registry order').toEqual(expected);

@@ -123,7 +123,7 @@ describe("example clause specs — parse + validate sample content", () => {
     it("figaro-utility-token spec parses cleanly and declares its token pin as a designer fill", () => {
         const parsed = parseClauseSpec(utilityTokenSpecRaw);
         expect(parsed.ok).toBe(true);
-        // The designer authors the token pin into the template (block.design.fills)
+        // The designer authors the token pin into the assembly (block.design.fills)
         // — the tailoring that adapts the generic assembly, and the
         // declaration every pin lookup routes on.
         expect((utilityTokenSpecRaw as { block: { design: { fills: string[] } } }).block.design.fills).toEqual(["currency"]);
@@ -392,7 +392,7 @@ describe("example clause specs — parse + validate sample content", () => {
 
     // ── figaro-credential (declared credential vs an authority's register) ──
 
-    it("figaro-credential accepts a declared credential against a register template", () => {
+    it("figaro-credential accepts a declared credential against a register assembly", () => {
         const parsed = parseClauseSpec(credentialSpecRaw);
         if (!parsed.ok) throw new Error("spec failed to parse");
         expect(validateContent({

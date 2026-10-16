@@ -19,7 +19,7 @@ import {
     agreementKeyOf,
     assembleAuthored,
     composeAuthoredAgreement,
-    type AssemblyTemplate,
+    type Assembly,
     type ComposedAgreement,
     type Hex,
     type HydratedAssembly,
@@ -85,7 +85,7 @@ export function authoredSpecSet(): { list(): { clauseKey: Hex; clauseId: string;
     return { list: () => specs };
 }
 
-/** An authored document (template, profile, catalog) with its clause names
+/** An authored document (assembly, profile, catalog) with its clause names
  *  resolved to keys over `clauses/` — what the seeding pins. */
 export function resolveAuthored<T extends object>(doc: T): T {
     return resolveAuthoredClauseKeys(doc, authoredSpecSet());
@@ -104,14 +104,14 @@ export function authoredAgreements(): Record<string, ComposedAgreement> {
 
 /** A reference assembly (`assemblies/<name>`) built exactly as the seeding
  *  builds it: over the authored agreements its agreements name
- *  (`assembleAuthored`), every registered agreement beside the template,
+ *  (`assembleAuthored`), every registered agreement beside the assembly,
  *  keyed by lowercased key, as a registry read hands them to checkout. */
 export function referenceAssembly(name: string): HydratedAssembly {
     const authored = JSON.parse(readFileSync(path.resolve(process.cwd(), "../assemblies", name), "utf8")) as object;
-    const { template, agreements } = assembleAuthored(authored, authoredAgreements(), specSource());
+    const { assembly, agreements } = assembleAuthored(authored, authoredAgreements(), specSource());
     const byKey: Record<Hex, ComposedAgreement> = {};
     for (const [key, doc] of Object.entries(agreements)) byKey[key.toLowerCase() as Hex] = doc;
-    return { template, agreements: byKey };
+    return { assembly, agreements: byKey };
 }
 
 /** A hydrated assembly from the INLINE shape a test writes
@@ -119,7 +119,7 @@ export function referenceAssembly(name: string): HydratedAssembly {
  *  carrying its parents as `order-<j>` labels): each agreement's parents
  *  lifted into its own fill (the clause stays composed, with `{}`) and each
  *  agreement's agreement keyed — every registered agreement beside the
- *  template, keyed by lowercased key, as a registry read hands them to
+ *  assembly, keyed by lowercased key, as a registry read hands them to
  *  checkout. By default each inline agreement composes as the seeding
  *  composes an authored one (`composeAuthoredAgreement` over the primed
  *  specs, the mandatory clauses folded — prime the specs first) and the
@@ -145,13 +145,13 @@ export function hydrateAuthored(authored: object, opts: { fold?: boolean } = {})
             byName[id] = composeAuthoredAgreement({ clauses }, specSource()).document;
             return { id, agreement: id, ...(parents ? { parentOrderHashes: parents } : {}) };
         });
-        const { template, agreements } = assembleAuthored({ ...rest, agreements: entries }, byName, specSource());
+        const { assembly, agreements } = assembleAuthored({ ...rest, agreements: entries }, byName, specSource());
         for (const [key, doc] of Object.entries(agreements)) byKey[key.toLowerCase() as Hex] = doc;
-        return { template, agreements: byKey };
+        return { assembly, agreements: byKey };
     }
     const { agreements: written, ...rest } = authored as {
         agreements: { id: string; clauses: Record<Hex, Record<string, unknown>> }[];
-    } & Omit<AssemblyTemplate, "agreements">;
+    } & Omit<Assembly, "agreements">;
     const entries: AssemblyAgreement[] = written.map((entry) => {
         const clauses: Record<Hex, Record<string, unknown>> = {};
         const fills: Record<Hex, Record<string, unknown>> = {};
@@ -164,5 +164,5 @@ export function hydrateAuthored(authored: object, opts: { fold?: boolean } = {})
         byKey[agreementKey.toLowerCase() as Hex] = { clauses };
         return { id: entry.id, agreementKey, clauses: fills };
     });
-    return { template: { ...rest, agreements: entries }, agreements: byKey };
+    return { assembly: { ...rest, agreements: entries }, agreements: byKey };
 }

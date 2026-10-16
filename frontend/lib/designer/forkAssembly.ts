@@ -10,7 +10,7 @@
  *     automated browser and reads as a dead button to whoever drives one
  *     (beta r4, the founder), and a local draft's slug is a working name,
  *     not its identity — the composition hash is.
- *   - Template → draft hydration via `assemblyTemplateToDraft`.
+ *   - Assembly → draft hydration via `assemblyToDraft`.
  *   - Persisting the new draft to localStorage.
  *
  * What the helper does NOT own (caller's responsibility):
@@ -29,7 +29,7 @@ import {
     saveNamedDraft,
     uniqueDraftSlug,
 } from "./syntheticDesignStore";
-import { assemblyTemplateToDraft } from "./assemblyTemplateToDraft";
+import { assemblyToDraft } from "./assemblyToDraft";
 import type { HydratedAssembly } from "@figaro-protocol/sdk";
 
 export function forkPublishedAssembly(
@@ -37,7 +37,7 @@ export function forkPublishedAssembly(
     hydrated: HydratedAssembly,
 ): { finalSlug: string } {
     const finalSlug = uniqueDraftSlug(`${sourceSlug}-fork`);
-    const draft = assemblyTemplateToDraft(hydrated, { slug: finalSlug });
+    const draft = assemblyToDraft(hydrated, { slug: finalSlug });
     saveNamedDraft(draft);
     return { finalSlug };
 }

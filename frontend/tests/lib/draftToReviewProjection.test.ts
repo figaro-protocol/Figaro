@@ -4,11 +4,11 @@
  * The review screen is the last thing a designer reads before an irreversible
  * anchor, so the terms it shows must be the terms in the bytes it sends. This
  * pins that: `projectSnapshotForReview` returns the composition of the SAME
- * template `snapshotToAssemblyTemplate` builds and publish serializes — same
+ * assembly `snapshotToAssembly` builds and publish serializes — same
  * clauses, same hash — keyed back onto the canvas's own order ids.
  *
  * The regression it guards: a review that read the composition its own way
- * showed every order as "No terms yet" while the draft, and the template
+ * showed every order as "No terms yet" while the draft, and the assembly
  * publish would have anchored, carried the composed clauses.
  *
  * Orders are composed the way the canvas composes them (synthetic session →
@@ -17,25 +17,25 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { beforeAll, describe, expect, it } from "vitest";
-import { serializeAssemblyTemplate } from "@figaro-protocol/sdk";
+import { serializeAssembly } from "@figaro-protocol/sdk";
 import { canonicalFileBytes, keyOf, pinSpec, primeClauseSpecs } from "./primeClauseSpecs";
 import {
     projectSnapshotForReview,
     snapshotCompositionIdentity,
-    snapshotToAssemblyTemplate,
-    templateComposedByAgreement,
-    templateComposedClauses,
-    templateFoldedClauses,
+    snapshotToAssembly,
+    assemblyComposedByAgreement,
+    assemblyComposedClauses,
+    assemblyFoldedClauses,
     unfilledAssemblyTerms,
     assemblyClauseDefaults,
-} from "@/lib/designer/draftToAssemblyTemplate";
+} from "@/lib/designer/draftToAssembly";
 import { listKnownClauses, loadClauseSpec, noteClauseStakes, setClauseSpecFetcher } from "@/lib/shared/clauseSpecSource";
 import {
     createSyntheticRootOrder,
     createSyntheticSubOrder,
     startSyntheticSession,
 } from "@/lib/designer/syntheticProcess";
-import { deriveAssemblySlug } from "@/lib/shared/assemblyTemplate";
+import { deriveAssemblySlug } from "@/lib/shared/assembly";
 import type { DesignSnapshot } from "@/lib/designer/syntheticDesignStore";
 import type { Order } from "@/lib/kernel/store";
 
@@ -125,25 +125,25 @@ describe("projectSnapshotForReview — the review reads the bytes publish sends"
             .map((c) => `${c.clauseId}#${c.version}`).sort();
         expect(listed(drawn.orders[0].orderHash)).toEqual(["figaro-acceptance-criteria#1", "figaro-schedule#1"]);
         expect(listed(drawn.orders[1].orderHash)).toEqual(["figaro-acceptance-criteria#1"]);
-        // The same listing the /view path reads off a published template.
-        expect(templateComposedClauses(review.hydrated)["order-0"].map((c) => c.clauseKey).sort())
+        // The same listing the /view path reads off a published assembly.
+        expect(assemblyComposedClauses(review.hydrated)["order-0"].map((c) => c.clauseKey).sort())
             .toEqual(keys(ORDER_CLAUSES).sort());
     });
 
-    it("keys the projection by the CANVAS's order ids, not the template's local labels", () => {
+    it("keys the projection by the CANVAS's order ids, not the assembly's local labels", () => {
         const review = projectSnapshotForReview(composed);
         if (!review.ok) throw new Error(review.error);
         expect(Object.keys(review.composedByOrderId).sort())
             .toEqual(drawn.orders.map((o) => o.orderHash).sort());
-        // The template itself still speaks its own labels — the re-keying is
+        // The assembly itself still speaks its own labels — the re-keying is
         // the projection's, so a review node finds its own composition.
-        expect(review.template.agreements.map((a) => a.id)).toEqual(["order-0", "order-1"]);
+        expect(review.assembly.agreements.map((a) => a.id)).toEqual(["order-0", "order-1"]);
     });
 
-    it("is the SAME BYTES publish anchors — one template, one hash", () => {
+    it("is the SAME BYTES publish anchors — one assembly, one hash", () => {
         const review = projectSnapshotForReview(composed);
         if (!review.ok) throw new Error(review.error);
-        const published = serializeAssemblyTemplate(snapshotToAssemblyTemplate(composed).template);
+        const published = serializeAssembly(snapshotToAssembly(composed).assembly);
         expect(review.compositionHash).toBe(published.compositionHash);
         expect(review.slug).toBe(deriveAssemblySlug(published.compositionHash));
         // And the canvas's own identity readout agrees with the review's.
@@ -158,7 +158,7 @@ describe("projectSnapshotForReview — the review reads the bytes publish sends"
                 review.composedByOrderId[drawn.orders[0].orderHash],
                 "an auto-folded mandatory clause is not a term the designer composed",
             ).not.toHaveProperty(clauseId);
-            const entry = review.template.agreements[0];
+            const entry = review.assembly.agreements[0];
             expect(
                 review.newAgreements[entry.agreementKey].clauses,
                 "…but the agreement the agreement binds carries it",
@@ -189,12 +189,12 @@ describe("projectSnapshotForReview — the review reads the bytes publish sends"
         expect(other.compositionHash).not.toBe(first.compositionHash);
     });
 
-    it("reads a template's composition the same way for a published assembly", () => {
+    it("reads a assembly's composition the same way for a published assembly", () => {
         const review = projectSnapshotForReview(composed);
         if (!review.ok) throw new Error(review.error);
         // The `/view` path reads the pinned bytes directly — keyed by the
-        // template's agreement ids, same mandatory-fold exclusion.
-        const byAgreement = templateComposedByAgreement(review.hydrated);
+        // assembly's agreement ids, same mandatory-fold exclusion.
+        const byAgreement = assemblyComposedByAgreement(review.hydrated);
         expect(Object.keys(byAgreement)).toEqual(["order-0", "order-1"]);
         expect(Object.keys(byAgreement["order-0"]).sort()).toEqual(keys(ORDER_CLAUSES).sort());
     });
@@ -322,10 +322,10 @@ describe("the mandatory fold — every live mandatory registration, each listed 
             "figaro-topology#1:order-0,order-1",
         ]);
         expect(review.folded.map((f) => f.clauseKey).sort()).toEqual(keys(MANDATORY).sort());
-        // The complement of the composed readout: together they are the template.
-        for (const entry of review.template.agreements) {
-            const composed = Object.keys(templateComposedByAgreement(review.hydrated)[entry.id]);
-            const folded = templateFoldedClauses(review.hydrated)
+        // The complement of the composed readout: together they are the assembly.
+        for (const entry of review.assembly.agreements) {
+            const composed = Object.keys(assemblyComposedByAgreement(review.hydrated)[entry.id]);
+            const folded = assemblyFoldedClauses(review.hydrated)
                 .filter((f) => f.carriedBy.includes(entry.id)).map((f) => f.clauseKey);
             const carried = review.hydrated.agreements[entry.agreementKey.toLowerCase() as `0x${string}`].clauses;
             expect([...composed, ...folded].sort()).toEqual(Object.keys(carried).sort());

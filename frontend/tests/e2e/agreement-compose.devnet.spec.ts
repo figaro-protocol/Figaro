@@ -19,7 +19,7 @@
  *   CHAIN FACT the registry binds that key to the publishing wallet, and the
  *   pinned document hashes to it (the mandatory clauses folded in).
  *
- *   CHAIN FACTS, read out of band: the anchored template's root entry binds
+ *   CHAIN FACTS, read out of band: the anchored assembly's root entry binds
  *   the registered agreement's key and its sub entry a key the registry now
  *   binds to the publishing wallet; a process walked from the hydrated
  *   assembly commits and resolves; each order's agreement names both keys
@@ -38,8 +38,8 @@ import {
     agreementKeyOf,
     calculateBonds,
     generateSalt,
-    reconstructOrdersFromTemplate,
-    templateCompositionHash,
+    reconstructOrdersFromAssembly,
+    assemblyCompositionHash,
 } from '@figaro-protocol/sdk';
 import { recordProcessUsage } from '@figaro-protocol/sdk/agent';
 import { CORE_ABI } from '@/lib/kernel/contracts';
@@ -85,7 +85,7 @@ test.describe('AGREEMENTS — bind a registered agreement, compose a new one, pu
 
         // ── The registered agreement the root agreement binds: the point-of-sale
         //    reference's, derived as the seeding derives it and read BY KEY. ──
-        const registeredKey = referenceAssemblyBuilt('pos.json').template.agreements[0].agreementKey;
+        const registeredKey = referenceAssemblyBuilt('pos.json').assembly.agreements[0].agreementKey;
         const registeredBinding = await readAgreementBinding(registeredKey);
         expect(registeredBinding, 'the reference agreement is registered — run populate-test-data first').not.toBeNull();
         expect(registeredBinding!.stakeWithdrawn, 'its stake is live, so the drawer offers it').toBe(false);
@@ -144,10 +144,10 @@ test.describe('AGREEMENTS — bind a registered agreement, compose a new one, pu
         // ── REACTION: the receipt names the agreement this publish registered. ──
         await expect(page.getByTestId('assembly-publish-receipt')).toContainText('Agreement 1 key');
 
-        // ── CHAIN FACTS: the anchored template and both bindings, by key. ──
+        // ── CHAIN FACTS: the anchored assembly and both bindings, by key. ──
         const anchored = (await discoverAnchoredAssemblies()).find((a) => a.slug === slug);
         expect(anchored, 'the published assembly hydrates from chain → IPFS').toBeTruthy();
-        expect(templateCompositionHash(anchored!.hydrated.template)).toBe(anchored!.compositionHash);
+        expect(assemblyCompositionHash(anchored!.hydrated.assembly)).toBe(anchored!.compositionHash);
         const rootAgreement = anchored!.agreements.find((s) => s.agreementKey.toLowerCase() === registeredKey.toLowerCase());
         const subAgreement = anchored!.agreements.find((s) => s.agreementKey.toLowerCase() !== registeredKey.toLowerCase());
         expect(rootAgreement, 'an agreement binds the registered agreement').toBeTruthy();
@@ -159,7 +159,7 @@ test.describe('AGREEMENTS — bind a registered agreement, compose a new one, pu
         await expect(page.getByTestId('assembly-publish-receipt')).toContainText(subAgreement!.agreementKey);
 
         // ── CHECK OUT a process from the hydrated assembly (the SDK's one
-        //    template walk), commit, resolve. ──
+        //    assembly walk), commit, resolve. ──
         const buyer = privateKeyToAccount(BUYER_KEY);
         const seller = privateKeyToAccount(SELLER_KEY);
         const buyerWallet = createWalletClient({ account: buyer, chain: LOCAL_ANVIL, transport: http(RPC_URL) });
@@ -183,7 +183,7 @@ test.describe('AGREEMENTS — bind a registered agreement, compose a new one, pu
 
         const payment = parseEther('1');
         const chainNow = (await publicClient.getBlock({ blockTag: 'latest' })).timestamp;
-        const orders = await reconstructOrdersFromTemplate(anchored!.hydrated, {
+        const orders = await reconstructOrdersFromAssembly(anchored!.hydrated, {
             buyer: buyer.address,
             currency: token,
             chainId: LOCAL_ANVIL.id,
@@ -227,7 +227,7 @@ test.describe('AGREEMENTS — bind a registered agreement, compose a new one, pu
 
         // ── RECORD usage (permissionless) and read every kind back. ──
         const report = await recordProcessUsage(buyerWallet, publicClient as never, usageCounter, orders.map((o) => ({
-            commitment: o.commitment, agreement: o.agreement, template: anchored!.hydrated.template,
+            commitment: o.commitment, agreement: o.agreement, assembly: anchored!.hydrated.assembly,
         })));
         expect(report.failures, 'every usage leg lands').toEqual([]);
         const recorded = await publicClient.getContractEvents({

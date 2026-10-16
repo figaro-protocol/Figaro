@@ -26,7 +26,7 @@
  *      riding the relay — the winner receives a commit-ready order.
  *
  * The race window and the candidate count are checkout-time buyer policy —
- * never a stored field on the payload, the template, or any profile.
+ * never a stored field on the payload, the assembly, or any profile.
  *
  * THE CHOREOGRAPHY IS THE SDK'S (`startRace` — one loop, written once):
  * this surface drafts the candidates, supplies each one's
@@ -265,7 +265,7 @@ export function useDispatchRace() {
             race: { structHash: hashCommitmentStruct(winner.reply.commitment) as Hex, sellerSig: winner.reply.sellerSig as Hex },
             salt: (nodeId: string) => {
                 const s = ctx.salts.get(nodeId);
-                if (s === undefined) throw new Error(`No race salt for template node "${nodeId}" — the race fixed a salt for every node at draft time.`);
+                if (s === undefined) throw new Error(`No race salt for assembly node "${nodeId}" — the race fixed a salt for every node at draft time.`);
                 return s;
             },
             deadline: ctx.deadline,
@@ -305,8 +305,8 @@ export function useDispatchRace() {
         try {
             setStep("drafting");
             const hydrated = checkout.assembly.hydratedAssembly;
-            const node = hydrated.template.agreements.find((a) => a.id === racedNodeId);
-            if (!node) throw new Error(`Template node "${racedNodeId}" not found.`);
+            const node = hydrated.assembly.agreements.find((a) => a.id === racedNodeId);
+            if (!node) throw new Error(`Assembly node "${racedNodeId}" not found.`);
             const specs = specSource();
             const nodeClauses = { ...agreementClauses(hydrated, node), ...(checkout.clauseFills?.[racedNodeId] ?? {}) };
 
@@ -346,15 +346,15 @@ export function useDispatchRace() {
             })));
             setQuoting(!!args.quote);
 
-            // Fix the reproduction inputs ONCE: a salt per template node and a
+            // Fix the reproduction inputs ONCE: a salt per assembly node and a
             // single deadline. Every dry walk and the final checkout use them.
             const deadline = await chainDeadline();
             const salts = new Map<string, bigint>(
-                hydrated.template.agreements.map((a) => [a.id, generateSalt()]),
+                hydrated.assembly.agreements.map((a) => [a.id, generateSalt()]),
             );
             const saltFn = (nodeId: string) => {
                 const s = salts.get(nodeId);
-                if (s === undefined) throw new Error(`No race salt for template node "${nodeId}".`);
+                if (s === undefined) throw new Error(`No race salt for assembly node "${nodeId}".`);
                 return s;
             };
             ctxRef.current = { nodeId: racedNodeId, salts, deadline, decimals: checkout.tokenDecimals };

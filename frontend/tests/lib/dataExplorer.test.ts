@@ -237,7 +237,7 @@ describe("overlayRows — the open graph class", () => {
         expect(overlayRows([])).toEqual([]);
     });
 
-    it("narrows to ONE market by what its processes attested, not by what its template composed", () => {
+    it("narrows to ONE market by what its processes attested, not by what its assembly composed", () => {
         const mine = `0x${"aa".repeat(32)}` as `0x${string}`;
         const theirs = `0x${"bb".repeat(32)}` as `0x${string}`;
         const attribution = new Map([

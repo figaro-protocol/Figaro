@@ -49,7 +49,7 @@ import {
 import { frame } from "./dataChannel.mjs";
 import { ipfsGateways } from "./ipfsRead.mjs";
 import { fetchWitnessContent } from "./witnessContent.mjs";
-import { fetchAnchoredClauseSpec, fetchAnchoredComposedAgreement, fetchAnchoredTemplate } from "./anchoredContent.mjs";
+import { fetchAnchoredClauseSpec, fetchAnchoredComposedAgreement, fetchAnchoredAssembly } from "./anchoredContent.mjs";
 
 // ── Serialization ───────────────────────────────────────────────────────────
 
@@ -347,15 +347,15 @@ export async function syncCorpus({
     const overlays = extractOverlays(recovered, specs);
 
     // Utility-token pins are a designer's registered fact, read from the
-    // templates the operator could load — never a bundled token list.
+    // assemblies the operator could load — never a bundled token list.
     const pins = [];
     for (const assembly of discovery.getAssemblies()) {
         try {
-            // Verified against its composition hash: a template a gateway
+            // Verified against its composition hash: a assembly a gateway
             // substituted contributes no pin.
-            const hit = await fetchAnchoredTemplate(assembly, { gateways });
+            const hit = await fetchAnchoredAssembly(assembly, { gateways });
             if (hit.absent) continue;
-            for (const entry of hit.template.agreements ?? []) {
+            for (const entry of hit.assembly.agreements ?? []) {
                 // Each agreement's registered agreement, read from its
                 // binding whatever its stake and verified against its key: an
                 // agreement a gateway substituted, or one not registered,
@@ -366,7 +366,7 @@ export async function syncCorpus({
                 // agreement's bag, each clause read by its key.
                 const pin = readUtilityTokenPin(
                     {
-                        ...(hit.template.assemblyClauses ?? {}),
+                        ...(hit.assembly.assemblyClauses ?? {}),
                         ...(composed.absent ? {} : composed.composed.clauses),
                         ...(entry.clauses ?? {}),
                     },
@@ -375,7 +375,7 @@ export async function syncCorpus({
                 if (pin && !pins.includes(pin)) pins.push(pin);
             }
         } catch {
-            // An unreachable or unparsable template contributes no pin — absence.
+            // An unreachable or unparsable assembly contributes no pin — absence.
         }
     }
     // The swap legs beside the commits: the value flowing between

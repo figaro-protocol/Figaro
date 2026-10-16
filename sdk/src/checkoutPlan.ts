@@ -26,8 +26,8 @@ import {
     type ProjectionSpecView,
     type SpecSource,
 } from "./projection.js";
-import { agreementClauses, templateParentOrderHashes, type HydratedAssembly, type AssemblyAgreement } from "./assembly.js";
-import { planTemplateOrders, type PlannedTemplateOrder } from "./reconstructOrders.js";
+import { agreementClauses, assemblyParentOrderHashes, type HydratedAssembly, type AssemblyAgreement } from "./assembly.js";
+import { planAssemblyOrders, type PlannedAssemblyOrder } from "./reconstructOrders.js";
 import { isAddressHex, type Hex } from "./types.js";
 import type { CounterpartyBinding } from "./memberProfile.js";
 import type { CatalogItemMetadata } from "./memberCatalog.js";
@@ -60,7 +60,7 @@ export interface AssemblyCheckoutLineItem {
  *  the spec is unloaded — the fill degrades to a no-op, exactly as the
  *  registry-reading frontend does before its cache warms. The ONE lookup
  *  every spec-routed fill runs — this module's section writers, its
- *  rate-quantity resolvers and the template walk's guarded fills
+ *  rate-quantity resolvers and the assembly walk's guarded fills
  *  (`reconstructOrders.ts` `fillWalkField`) alike. */
 export function composedClauseWhere(
     clauses: ClauseFields,
@@ -152,7 +152,7 @@ export function fillCommerceSection(
 }
 
 /**
- * The designer's utility-token pin, read from a template agreement's composed
+ * The designer's utility-token pin, read from a registered agreement's composed
  * clauses — the composed clause declaring `currency` as a DESIGNER FILL
  * (`block.design.fills`), with a well-formed value. The design-fill
  * declaration is the whole routing rule, and it is what disambiguates the two
@@ -160,7 +160,7 @@ export function fillCommerceSection(
  * declares it as plain CONTENT (one order's resolution term, written at
  * checkout) and is never a pin, while ANY clause — including one this code
  * has never seen — declaring a `currency` design fill IS one. The pin
- * survives the value-free template build and is part of the compositionHash:
+ * survives the value-free assembly build and is part of the compositionHash:
  * the assembly's one-token tailoring.
  *
  * Undefined = unpinned (the buyer's payment-token pick, else the seller's
@@ -186,7 +186,7 @@ export function readUtilityTokenPin(
  *  (`fillDimweightSection`). ONE list, owned beside the fills it describes.
  *  The instantiated assembly's composition hash is no field here: it is the
  *  agreement format's provenance leaf (`Agreement.provenance`), which the
- *  template walk writes, never a clause. */
+ *  assembly walk writes, never a clause. */
 const MECHANICAL_FILL_FIELDS = ["currency", "payment", "lineItems", "parentOrderHashes", "billedMassGrams"] as const;
 
 /**
@@ -212,8 +212,8 @@ export function mechanicallyFilledFieldNames(
 
 /**
  * Write the REAL parent-order hashes into the topology section, found by its
- * declared `parentOrderHashes` field (never by clause id). The template's
- * topology data carries template-LOCAL order ids ("order-0"); the committed
+ * declared `parentOrderHashes` field (never by clause id). The assembly's
+ * topology data carries assembly-LOCAL order ids ("order-0"); the committed
  * agreement must carry the actual EIP-712 order hashes — they are the DAG
  * edges every off-chain reader (audit, derive) reconstructs from, and the
  * bytes32 shape the off-chain validator validates. The overwrite IS this writer's contract —
@@ -298,21 +298,21 @@ export function fillClassSections(
             Object.entries(line.clauseValues![clauseKey]).filter(([k, v]) => declared.includes(k) && v !== undefined && v !== ""),
         );
         if (Object.keys(authored).length === 0) continue;
-        out = { ...out, [clauseKey]: mergeUnderTemplate(out[clauseKey], authored) };
+        out = { ...out, [clauseKey]: mergeUnderAssembly(out[clauseKey], authored) };
     }
     return out;
 }
 
-/** Merge authored master data UNDER the template's committed values: a field
- *  the template already carries (a designer's `design.fills` pin) is a term and
- *  WINS; authored values fill the gaps. Empty-string/undefined template
+/** Merge authored master data UNDER the assembly's committed values: a field
+ *  the assembly already carries (a designer's `design.fills` pin) is a term and
+ *  WINS; authored values fill the gaps. Empty-string/undefined assembly
  *  entries do not count as pins — they cannot shadow authored data. */
-function mergeUnderTemplate(
-    template: Record<string, unknown> | undefined,
+function mergeUnderAssembly(
+    assembly: Record<string, unknown> | undefined,
     authored: Record<string, unknown>,
 ): Record<string, unknown> {
     const pins = Object.fromEntries(
-        Object.entries(template ?? {}).filter(([, v]) => v !== undefined && v !== ""),
+        Object.entries(assembly ?? {}).filter(([, v]) => v !== undefined && v !== ""),
     );
     return { ...authored, ...pins };
 }
@@ -322,7 +322,7 @@ function mergeUnderTemplate(
  * clause the order composes with profile-authored fields (dimweight's divisor,
  * a declared credential id, …, discovered by `block.checkout.profileFills`,
  * never by name), write the seller's stored values — restricted to the spec's
- * DECLARED profile-authored subset (`specProfileFills`), with the template's
+ * DECLARED profile-authored subset (`specProfileFills`), with the assembly's
  * committed terms winning over authored data. Absent when the seller stores no
  * values for that clause. The seller-level sibling of `fillClassSections`
  * (catalog = what is sold, profile = who sells). The declared subset is the
@@ -346,7 +346,7 @@ export function fillProfileSections(
             Object.entries(stored).filter(([k, v]) => declared.includes(k) && v !== undefined && v !== ""),
         );
         if (Object.keys(authored).length === 0) continue;
-        out = { ...out, [clauseKey]: mergeUnderTemplate(out[clauseKey], authored) };
+        out = { ...out, [clauseKey]: mergeUnderAssembly(out[clauseKey], authored) };
     }
     return out;
 }
@@ -435,7 +435,7 @@ export function profileValuesFor(
 
 // ── Sub-order seller plan (the per-clause binding cursor) ──────────────────
 
-/** The binding slice of a bound assembly — the hydrated assembly (template
+/** The binding slice of a bound assembly — the hydrated assembly (assembly
  *  plus each agreement's registered agreement) and the adopting seller's
  *  counterparty bindings (any richer projection passes structurally). */
 export interface BoundAssemblyPlanInput {
@@ -454,23 +454,23 @@ export interface BoundAssemblyPlanInput {
  * unresolvable) — the same guard the checkout relies on.
  */
 export function planSubOrderSellers(
-    assembly: BoundAssemblyPlanInput,
-): Array<{ node: PlannedTemplateOrder; seller: `0x${string}` | null }> {
-    const { template } = assembly.hydratedAssembly;
+    bound: BoundAssemblyPlanInput,
+): Array<{ node: PlannedAssemblyOrder; seller: `0x${string}` | null }> {
+    const { assembly } = bound.hydratedAssembly;
     const rootId =
-        template.agreements.find((o) => templateParentOrderHashes(o).length === 0)?.id ??
-        template.agreements[0]?.id;
+        assembly.agreements.find((o) => assemblyParentOrderHashes(o).length === 0)?.id ??
+        assembly.agreements[0]?.id;
     // Commit order (throws on a cyclic topology — the guard the checkout
     // relies on), then the sub-orders are everything but the root.
-    const ordered = planTemplateOrders(assembly.hydratedAssembly).filter((node) => node.nodeId !== rootId);
-    const byId = new Map(template.agreements.map((entry) => [entry.id, entry]));
+    const ordered = planAssemblyOrders(bound.hydratedAssembly).filter((node) => node.nodeId !== rootId);
+    const byId = new Map(assembly.agreements.map((entry) => [entry.id, entry]));
     const cursor = new Map<string, number>();
     return ordered.map((node) => {
         // The agreement's own clauses — its registered agreement's — never
         // the assembly-scoped terms every order carries.
         const entry = byId.get(node.nodeId) as AssemblyAgreement;
-        const nodeClauses = Object.keys(agreementClauses(assembly.hydratedAssembly, entry)).map((k) => k.toLowerCase());
-        const binding = assembly.counterpartyBindings.find((cb) => nodeClauses.includes(cb.clauseKey.toLowerCase()));
+        const nodeClauses = Object.keys(agreementClauses(bound.hydratedAssembly, entry)).map((k) => k.toLowerCase());
+        const binding = bound.counterpartyBindings.find((cb) => nodeClauses.includes(cb.clauseKey.toLowerCase()));
         if (!binding || binding.addresses.length === 0) return { node, seller: null };
         const bindingKey = binding.clauseKey.toLowerCase();
         const c = cursor.get(bindingKey) ?? 0;
@@ -508,7 +508,7 @@ export interface SubOrderPricing {
 
 /**
  * Price a sub-order from its contributor's OWN catalog — the lead included.
- * The template carries no payment (it's a runtime value), so the figure is
+ * The assembly carries no payment (it's a runtime value), so the figure is
  * resolved LIVE from the pricing seller's catalog — the same path the
  * delivery leg uses, minus the picker. The item rule is the contributor's
  * first available item (open refinement, kit-assembly: an itemId on the
@@ -523,7 +523,7 @@ export interface SubOrderPricing {
  * commerce clause's `payment ≥ 1` would reject it during off-chain validation regardless).
  */
 export function resolveSubOrderPricing(args: {
-    node: Pick<PlannedTemplateOrder, "clauses">;
+    node: Pick<PlannedAssemblyOrder, "clauses">;
     seller: `0x${string}`;
     sellerCatalogs: readonly PricingCatalog[];
     tokenDecimals: number;
@@ -597,7 +597,7 @@ export function resolveSubOrderPricing(args: {
  *  when the first such tenant lands. The in-file derivations (checkout-quantity,
  *  order-geodistance, booking-window) already consume it. */
 export interface RateQuantityContext {
-    /** The order's clause fields (template values + checkout fills), keyed by
+    /** The order's clause fields (assembly values + checkout fills), keyed by
      *  clause id — the same map the agreement commits. */
     clauses: ClauseFields;
     /** The buyer's entered units for this order, when the surface collected

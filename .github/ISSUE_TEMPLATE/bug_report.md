@@ -6,7 +6,7 @@ labels: bug
 ---
 
 <!--
-  SECURITY VULNERABILITY? Do NOT use this template, and do NOT file a public
+  SECURITY VULNERABILITY? Do NOT use this assembly, and do NOT file a public
   issue — see SECURITY.md.
 
   Looks like a bug in the Core? Check docs/DESIGN_DECISIONS.md first: its

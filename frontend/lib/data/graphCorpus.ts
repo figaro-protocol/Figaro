@@ -131,9 +131,9 @@ export interface GraphCorpus {
  *  identity and name, plus every composed clause set the designer composed
  *  (the assembly-scoped set, where a denomination pin composes once, and each
  *  agreement's own set), each keyed by clause key. */
-interface CorpusTemplate {
+interface CorpusAssembly {
     compositionHash: `0x${string}`;
-    /** The registered agreement each agreement binds, in template order. */
+    /** The registered agreement each agreement binds, in assembly order. */
     agreementKeys: readonly `0x${string}`[];
     name: string;
     clauseSets: readonly {
@@ -141,13 +141,13 @@ interface CorpusTemplate {
     }[];
 }
 
-/** The designer's utility-token pins across the loaded templates, each
+/** The designer's utility-token pins across the loaded assemblies, each
  *  distinct address once — a designer's registered fact, never a bundled
  *  token list. Every clause is read from the spec its key names. */
-export function readTemplateUtilityTokenPins(templates: readonly CorpusTemplate[], specs: SpecSource): Address[] {
+export function readAssemblyUtilityTokenPins(assemblies: readonly CorpusAssembly[], specs: SpecSource): Address[] {
     const pins: Address[] = [];
-    for (const template of templates) {
-        for (const { clauses } of template.clauseSets) {
+    for (const assembly of assemblies) {
+        for (const { clauses } of assembly.clauseSets) {
             const pin = readUtilityTokenPin(clauses, specs);
             if (pin && !pins.includes(pin)) pins.push(pin);
         }
@@ -301,7 +301,7 @@ async function readTokenMeta(
 }
 
 /**
- * One full pass. `deps` exist so the hook can hand in the templates it already
+ * One full pass. `deps` exist so the hook can hand in the assemblies it already
  * loaded (and so a caller can point the read at another client); with none it
  * uses the standalone public client, which is what makes this surface
  * walletless. Internal — `useGraphCorpus` is this module's contract.
@@ -309,7 +309,7 @@ async function readTokenMeta(
 async function readGraphCorpus(deps?: {
     client?: PublicClient;
     chainId?: number;
-    templates?: readonly CorpusTemplate[];
+    assemblies?: readonly CorpusAssembly[];
 }): Promise<GraphCorpus> {
     const client = deps?.client ?? (publicClient as unknown as PublicClient);
     const chainId = deps?.chainId ?? activeChain.id;
@@ -351,20 +351,20 @@ async function readGraphCorpus(deps?: {
     const overlays = extractOverlays(records, specs);
 
     // Utility-token pins are a designer's registered fact, read off the
-    // templates the page loaded — never a bundled token list.
-    const pins = readTemplateUtilityTokenPins(deps?.templates ?? [], specs);
+    // assemblies the page loaded — never a bundled token list.
+    const pins = readAssemblyUtilityTokenPins(deps?.assemblies ?? [], specs);
     // The swap legs beside the commits: the value flowing between
     // denominations, read from the venue's own transfers.
     const valueFlow = projectValueFlow(resolution, fundingLegs, pins);
 
-    const byProcess = attributionFromOverlays(overlays, deps?.templates ?? []);
+    const byProcess = attributionFromOverlays(overlays, deps?.assemblies ?? []);
     const market = marketShape(process, (processId: Hex) => byProcess.get(processId.toLowerCase()));
 
     const tokenMeta = await readTokenMeta(client, valueFlow.nodes.map((n) => n.token));
 
     const assemblyNames = new Map<string, string>();
-    for (const template of deps?.templates ?? []) {
-        assemblyNames.set(template.compositionHash.toLowerCase(), template.name);
+    for (const assembly of deps?.assemblies ?? []) {
+        assemblyNames.set(assembly.compositionHash.toLowerCase(), assembly.name);
     }
 
     return {
@@ -393,7 +393,7 @@ async function readGraphCorpus(deps?: {
  * The read waits for this because every pass recovers substance from the
  * gateway, and a withheld attestation (its content never pinned, by its
  * party's choice) costs the gateway's own miss timeout per pass. Restarting
- * the read on each assembly's landing — the template, then every agreement's
+ * the read on each assembly's landing — the assembly, then every agreement's
  * agreement — stacks those timeouts and the corpus never lands.
  */
 export function corpusInputsLoaded(
@@ -419,45 +419,45 @@ export function corpusInputsLoaded(
  */
 export function useGraphCorpus(): { corpus: GraphCorpus | null; isLoading: boolean; failed: boolean } {
     const { version: specVersion, loaded: specsLoaded } = useClauseSpecs();
-    const { data: assemblies, failed: assembliesFailed } = useAssemblyChoices();
+    const { data: choices, failed: assembliesFailed } = useAssemblyChoices();
     const [corpus, setCorpus] = useState<GraphCorpus | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [failed, setFailed] = useState(false);
 
-    // The loaded templates, in the minimal shape the read needs: the
+    // The loaded assemblies, in the minimal shape the read needs: the
     // registered identity + name, and each agreement's composed clause values
     // (where the designer's utility-token pin lives).
-    const templates = useMemo<CorpusTemplate[]>(
+    const assemblies = useMemo<CorpusAssembly[]>(
         () =>
-            (assemblies ?? [])
+            (choices ?? [])
                 .flatMap((a) => (a.hydratedAssembly === null ? [] : [{ a, hydrated: a.hydratedAssembly }]))
                 .map(({ a, hydrated }) => ({
                     compositionHash: a.compositionHash,
-                    agreementKeys: hydrated.template.agreements.map((entry) => entry.agreementKey),
+                    agreementKeys: hydrated.assembly.agreements.map((entry) => entry.agreementKey),
                     name: a.name,
                     clauseSets: [
                         // Assembly-scoped clauses compose ONCE for the whole
                         // design — a denomination pin lives here, not in an
                         // agreement — so both sets are read.
-                        ...(hydrated.template.assemblyClauses
-                            ? [{ clauses: hydrated.template.assemblyClauses }]
+                        ...(hydrated.assembly.assemblyClauses
+                            ? [{ clauses: hydrated.assembly.assemblyClauses }]
                             : []),
-                        ...hydrated.template.agreements.map((entry) => ({
+                        ...hydrated.assembly.agreements.map((entry) => ({
                             clauses: agreementClauses(hydrated, entry),
                         })),
                     ],
                 })),
-        [assemblies],
+        [choices],
     );
 
-    const inputsLoaded = corpusInputsLoaded(assemblies, assembliesFailed, specsLoaded);
+    const inputsLoaded = corpusInputsLoaded(choices, assembliesFailed, specsLoaded);
 
     useEffect(() => {
         if (!inputsLoaded) return;
         let canceled = false;
         setIsLoading(true);
         setFailed(false);
-        readGraphCorpus({ templates })
+        readGraphCorpus({ assemblies })
             .then((next) => {
                 if (canceled) return;
                 setCorpus(next);
@@ -475,7 +475,7 @@ export function useGraphCorpus(): { corpus: GraphCorpus | null; isLoading: boole
         // `specVersion` bumps as clause specs resolve from IPFS: overlays
         // decode and provenance attributions appear without a reload.
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [inputsLoaded, templates, specVersion]);
+    }, [inputsLoaded, assemblies, specVersion]);
 
     return { corpus, isLoading, failed };
 }

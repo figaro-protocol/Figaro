@@ -5,9 +5,9 @@
  * Covers the SDK's two encode/decode pairs:
  *   - `serializeCommitmentPayload` / `deserializeCommitmentPayload` (the agent
  *     offer envelope; bigints → hex strings → bigints)
- *   - `serializeAssemblyTemplate` (canonical JSON) / `JSON.parse` — the pinned
- *     template document's reader path, whose integrity check is recomputing
- *     `templateCompositionHash` from the parsed document.
+ *   - `serializeAssembly` (canonical JSON) / `JSON.parse` — the pinned
+ *     assembly document's reader path, whose integrity check is recomputing
+ *     `assemblyCompositionHash` from the parsed document.
  *
  * Complements (never replaces) the pinned golden vectors in
  * `commitmentPayload.test.ts` and the EIP-712 parity hard gate.
@@ -19,14 +19,14 @@ import {
     serializeCommitmentPayload,
     type CommitmentPayload,
 } from "../src/agent/coordination.js";
-import { serializeAssemblyTemplate } from "../src/projection.js";
-import { templateCompositionHash, type AssemblyTemplate } from "../src/assembly.js";
+import { serializeAssembly } from "../src/projection.js";
+import { assemblyCompositionHash, type Assembly } from "../src/assembly.js";
 import {
     addressArb,
     agreementArb,
     commitmentArb,
     hexOf,
-    templateArb,
+    assemblyArb,
     uint256Arb,
 } from "./propertyArbs.js";
 import { keyOf } from "./specFixtures.js";
@@ -94,36 +94,36 @@ describe("CommitmentPayload codec — property round-trip", () => {
     });
 });
 
-describe("AssemblyTemplate document — property round-trip", () => {
+describe("Assembly document — property round-trip", () => {
     it("JSON.parse(serialize(t).json) deep-equals t, and the reader's recomputed compositionHash matches", () => {
         fc.assert(
-            fc.property(templateArb, (template) => {
-                const { json, compositionHash } = serializeAssemblyTemplate(template);
-                const parsed = JSON.parse(json) as AssemblyTemplate;
-                expect(parsed).toEqual(template);
+            fc.property(assemblyArb, (assembly) => {
+                const { json, compositionHash } = serializeAssembly(assembly);
+                const parsed = JSON.parse(json) as Assembly;
+                expect(parsed).toEqual(assembly);
                 // Reader-side integrity check: recompute from the fetched doc.
-                expect(templateCompositionHash(parsed)).toBe(compositionHash);
+                expect(assemblyCompositionHash(parsed)).toBe(compositionHash);
             }),
         );
     });
 
     it("identity is composition-derived: editorial prose never forks the hash; the composition always does", () => {
         fc.assert(
-            fc.property(templateArb, fc.string({ maxLength: 16 }), (template, prose) => {
-                const { compositionHash } = serializeAssemblyTemplate(template);
+            fc.property(assemblyArb, fc.string({ maxLength: 16 }), (assembly, prose) => {
+                const { compositionHash } = serializeAssembly(assembly);
                 // Renaming never forks the slug…
-                const renamed = { ...template, name: prose, description: prose };
-                expect(serializeAssemblyTemplate(renamed).compositionHash).toBe(compositionHash);
+                const renamed = { ...assembly, name: prose, description: prose };
+                expect(serializeAssembly(renamed).compositionHash).toBe(compositionHash);
                 // …but touching the composition always does.
-                const grown: AssemblyTemplate = {
-                    ...template,
-                    agreements: template.agreements.map((a, i) =>
+                const grown: Assembly = {
+                    ...assembly,
+                    agreements: assembly.agreements.map((a, i) =>
                         i === 0
                             ? { ...a, clauses: { ...a.clauses, [keyOf("figaro-consent")]: { doc: prose } } }
                             : a,
                     ),
                 };
-                expect(serializeAssemblyTemplate(grown).compositionHash).not.toBe(compositionHash);
+                expect(serializeAssembly(grown).compositionHash).not.toBe(compositionHash);
             }),
         );
     });

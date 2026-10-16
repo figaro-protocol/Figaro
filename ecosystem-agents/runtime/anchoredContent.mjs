@@ -1,14 +1,14 @@
 /**
  * anchoredContent — registry-anchored documents, verified before use.
  *
- * A clause spec, a registered agreement and an assembly template are fetched
+ * A clause spec, a registered agreement and an assembly are fetched
  * from IPFS through whatever gateway the host configured, and the registries
  * anchor each one on chain: `ClauseRegistry` keys a clause by the hash of its
  * pinned spec bytes (the clause key), `AgreementRegistry` keys a registered
  * agreement by `agreementKeyOf` of its document, `AssemblyRegistry` keys the
- * template by its composition hash. A gateway can serve any bytes, so the
+ * assembly by its composition hash. A gateway can serve any bytes, so the
  * bytes are checked against the anchor before anything reads them, by the
- * SDK's `anchorClauseSpec`, `anchorComposedAgreement` and `anchorTemplate` —
+ * SDK's `anchorClauseSpec`, `anchorComposedAgreement` and `anchorAssembly` —
  * the functions the frontend verifies with. A
  * document that does not hash to its anchor reads as absence, never as the
  * registry's content: the verification is what makes an untrusted gateway an
@@ -25,9 +25,9 @@ import {
     agreementKeyOf,
     anchorClauseSpec,
     anchorComposedAgreement,
-    anchorTemplate,
+    anchorAssembly,
     strippingReviver,
-    templateCompositionHash,
+    assemblyCompositionHash,
 } from "@figaro-protocol/sdk";
 import { cidOf, fetchIpfsBytes, fetchIpfsText } from "./ipfsRead.mjs";
 
@@ -96,28 +96,28 @@ export async function fetchAnchoredComposedAgreement(agreement, options = {}) {
 }
 
 /**
- * A live assembly's template, verified against its composition hash.
+ * A live assembly's pinned document, verified against its composition hash.
  *
- * @param assembly  a `RegisteredAssembly` from the discovery graph
+ * @param registered  a `RegisteredAssembly` from the discovery graph
  *                  (`contentURI`, `compositionHash`)
- * @returns `{ template, text }`, or `{ absent }` naming why. Throws only when
+ * @returns `{ assembly, text }`, or `{ absent }` naming why. Throws only when
  *          every gateway failed to answer.
  */
-export async function fetchAnchoredTemplate(assembly, options = {}) {
-    const text = await fetchIpfsText(cidOf(assembly.contentURI), options);
+export async function fetchAnchoredAssembly(registered, options = {}) {
+    const text = await fetchIpfsText(cidOf(registered.contentURI), options);
     if (text === null) return { absent: "not served" };
-    const template = parseUntrusted(text);
-    if (template === null || typeof template !== "object" || !Array.isArray(template.agreements)) {
-        return { absent: "not an assembly template" };
+    const assembly = parseUntrusted(text);
+    if (assembly === null || typeof assembly !== "object" || !Array.isArray(assembly.agreements)) {
+        return { absent: "not an assembly" };
     }
-    if (anchorTemplate(template, assembly.compositionHash) === null) {
+    if (anchorAssembly(assembly, registered.compositionHash) === null) {
         let recomputed;
         try {
-            recomputed = templateCompositionHash(template);
+            recomputed = assemblyCompositionHash(assembly);
         } catch {
             recomputed = "no root";
         }
-        return { absent: `hashes to ${recomputed}, the registry anchors ${assembly.compositionHash}` };
+        return { absent: `hashes to ${recomputed}, the registry anchors ${registered.compositionHash}` };
     }
-    return { template, text };
+    return { assembly, text };
 }

@@ -7,7 +7,7 @@
  * registrations surface as two drawer rows under two keys, each labeled by
  * its spec's own title and version (the labels a reader cannot tell apart —
  * the key is the identity); composing the lookalike's row publishes an
- * assembly whose pinned template is keyed by the LOOKALIKE's key and never
+ * assembly whose pinned assembly is keyed by the LOOKALIKE's key and never
  * names the original's.
  *
  * Verification is out-of-band (registry reads, chain event → IPFS fetch),
@@ -33,7 +33,7 @@ const LOCAL_ANVIL = defineChain({
 test.setTimeout(240_000);
 
 test.describe('clause lookalike (devnet)', () => {
-    test('a lookalike of a registered clause is a second clause under its own key; composing it keys the template by it', async ({ page }) => {
+    test('a lookalike of a registered clause is a second clause under its own key; composing it keys the assembly by it', async ({ page }) => {
         // Surface browser-side read failures in the test output — the loaded
         // gate turns a cold-cache publish into a disabled button, and the
         // console names WHY the registry read failed.
@@ -98,7 +98,7 @@ test.describe('clause lookalike (devnet)', () => {
         const handle = page.url().match(/[?&]slug=(asm-[a-z0-9-]+)/)?.[1];
         const slug = await publishOrAdoptReviewed(page, handle!);
 
-        // Out-of-band: the anchored template's agreement binds a registered
+        // Out-of-band: the anchored assembly's agreement binds a registered
         // agreement keyed by the lookalike's key, and the composition hash
         // the chain keys on derives that slug.
         const anchored = (await discoverAnchoredAssemblies()).find((a) => a.slug === slug);
@@ -107,7 +107,7 @@ test.describe('clause lookalike (devnet)', () => {
             expect(await readAgreementBinding(entry.agreementKey), `agreement ${entry.id} binds a registered agreement`).not.toBeNull();
         }
         const composedKeys = anchored!.agreements.flatMap((a) => Object.keys(a.clauses).map((k) => k.toLowerCase()));
-        expect(composedKeys, 'the pinned template is keyed by the lookalike').toContain(lookalikeKey.toLowerCase());
+        expect(composedKeys, 'the pinned assembly is keyed by the lookalike').toContain(lookalikeKey.toLowerCase());
         expect(composedKeys, 'and never names the original').not.toContain(originalKey.toLowerCase());
     });
 });

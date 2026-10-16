@@ -20,7 +20,7 @@ import {
     AGREEMENT_REGISTRY_ABI,
     ASSEMBLY_REGISTRY_ABI,
     CLAUSE_REGISTRY_ABI,
-    anchorTemplate,
+    anchorAssembly,
     canonicalize,
     computeClauseKey,
     hydrateAssembly,
@@ -28,9 +28,9 @@ import {
     agreementClauses,
     assembleAuthored,
     composeAuthoredAgreement,
-    templateCompositionHash,
-    type AssemblyTemplate,
-    type BuiltAssemblyTemplate,
+    assemblyCompositionHash,
+    type Assembly,
+    type BuiltAssembly,
     type ComposedAgreement,
     type Hex,
     type HydratedAssembly,
@@ -39,7 +39,7 @@ import {
 } from '@figaro-protocol/sdk';
 import { parseClauseSpec } from '@figaro-protocol/sdk/clauses';
 import { encodeGeohash } from '@figaro-protocol/sdk/derive';
-import { deriveAssemblySlug } from '@/lib/shared/assemblyTemplate';
+import { deriveAssemblySlug } from '@/lib/shared/assembly';
 import { ZERO_ADDRESS } from '@/lib/shared/evm';
 import { clauseLadderField, labelEnumValue, loadClauseSpec, setClauseSpecFetcher } from '@/lib/shared/clauseSpecSource';
 import { keyOf } from '../lib/primeClauseSpecs';
@@ -620,7 +620,7 @@ export async function confirmAgreementPreviews(
         .toBe(expectedOrders);
 }
 
-/** An anchored assembly HYDRATED — its template verified against its
+/** An anchored assembly HYDRATED — its assembly verified against its
  *  composition root, every agreement's registered agreement read from
  *  `AgreementRegistry` by key and verified against it — with each agreement
  *  own clauses resolved (its agreement's, its own fills merged over
@@ -629,12 +629,12 @@ export async function confirmAgreementPreviews(
 export interface DiscoveredAssembly {
     slug: string;
     compositionHash: `0x${string}`;
-    /** Per agreement, in template order: its id, the agreement key it binds,
+    /** Per agreement, in assembly order: its id, the agreement key it binds,
      *  and the clauses it instantiates. */
     agreements: Array<{ id: string; agreementKey: Hex; clauses: Record<string, Record<string, unknown>> }>;
-    /** The template and the agreements beside it, as checkout reads them. */
+    /** The assembly and the agreements beside it, as checkout reads them. */
     hydrated: HydratedAssembly;
-    /** The designer's editorial prose from the pinned template — what a
+    /** The designer's editorial prose from the pinned assembly — what a
      *  reading surface must show instead of the bare slug. Absent when the
      *  designer wrote none. */
     name?: string;
@@ -669,8 +669,8 @@ function authoredAgreementsBuilt(): Record<string, ComposedAgreement> {
 
 /** A reference assembly (`assemblies/<name>`) built exactly as the seeding
  *  builds it before registering: over the authored agreements its order
- *  entries name, each distinct agreement beside the template (`assembleAuthored`). */
-export function referenceAssemblyBuilt(name: string): BuiltAssemblyTemplate {
+ *  entries name, each distinct agreement beside the assembly (`assembleAuthored`). */
+export function referenceAssemblyBuilt(name: string): BuiltAssembly {
     const doc = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../../../assemblies', name), 'utf8')) as object;
     return assembleAuthored(doc, authoredAgreementsBuilt(), authoredSpecSource());
 }
@@ -679,11 +679,11 @@ export function referenceAssemblyBuilt(name: string): BuiltAssemblyTemplate {
  *  `currency` is the ZERO_ADDRESS sentinel — by value, never by clause name;
  *  mirrors `populate-clauses.mjs`'s `fillDeployTimeCurrency`, which the
  *  seeding applies BEFORE anchoring. */
-function fillSentinelCurrency<T extends { assemblyClauses?: Record<string, Record<string, unknown>> }>(template: T, tokenAddress: `0x${string}`): T {
-    const sections = template.assemblyClauses ?? {};
-    if (!Object.values(sections).some((v) => v?.currency === ZERO_ADDRESS)) return template;
+function fillSentinelCurrency<T extends { assemblyClauses?: Record<string, Record<string, unknown>> }>(assembly: T, tokenAddress: `0x${string}`): T {
+    const sections = assembly.assemblyClauses ?? {};
+    if (!Object.values(sections).some((v) => v?.currency === ZERO_ADDRESS)) return assembly;
     return {
-        ...template,
+        ...assembly,
         assemblyClauses: Object.fromEntries(Object.entries(sections).map(([key, values]) => [
             key,
             values?.currency === ZERO_ADDRESS ? { ...values, currency: tokenAddress } : values,
@@ -695,11 +695,11 @@ function fillSentinelCurrency<T extends { assemblyClauses?: Record<string, Recor
  *  compositionHash over its canonical composition, the same one
  *  populate-test-data anchors it under (names resolved to keys first). An
  *  assembly IS its composition; it is never a "kind" inferred from which
- *  clauses it happens to carry, so a spec that wants a SPECIFIC template must
+ *  clauses it happens to carry, so a spec that wants a SPECIFIC assembly must
  *  name it by identity, never select it with a clause-shape heuristic.
  *  `name` is the file in `assemblies/`. */
 export function referenceAssemblySlug(name: string): string {
-    return deriveAssemblySlug(templateCompositionHash(referenceAssemblyBuilt(name).template));
+    return deriveAssemblySlug(assemblyCompositionHash(referenceAssemblyBuilt(name).assembly));
 }
 
 /** Identity of a reference whose checked-in copy carries the ZERO_ADDRESS
@@ -707,11 +707,11 @@ export function referenceAssemblySlug(name: string): string {
  *  new every fresh deploy, so `assemblies/*.json` cannot ship a real one). The
  *  seeding substitutes the live token into the sentinel BEFORE anchoring, so a
  *  spec wanting such a reference's slug hashes the SUBSTITUTED, key-resolved
- *  template — the raw file's hash never matches what's anchored. `name` is the
+ *  assembly — the raw file's hash never matches what's anchored. `name` is the
  *  file in `assemblies/`. */
 export function referenceAssemblySlugWithLiveCurrency(name: string, tokenAddress: `0x${string}`): string {
-    const template = fillSentinelCurrency(referenceAssemblyBuilt(name).template, tokenAddress);
-    return deriveAssemblySlug(templateCompositionHash(template));
+    const assembly = fillSentinelCurrency(referenceAssemblyBuilt(name).assembly, tokenAddress);
+    return deriveAssemblySlug(assemblyCompositionHash(assembly));
 }
 
 /** A registered agreement's binding, read BY KEY from `AgreementRegistry`
@@ -738,11 +738,11 @@ export async function readRegisteredAgreementDocument(agreementKey: Hex): Promis
     return { binding, document: JSON.parse(new TextDecoder().decode(bytes)) };
 }
 
-/** Hydrate a template out of band: each agreement's agreement read by key
+/** Hydrate a assembly out of band: each agreement's agreement read by key
  *  from `AgreementRegistry` (whatever its stake) and fetched from IPFS — the
  *  SDK verifies each against its key. Null when any is absent. */
-async function hydrateFromChain(template: AssemblyTemplate): Promise<HydratedAssembly | null> {
-    return hydrateAssembly(template, async (agreementKey) => {
+async function hydrateFromChain(assembly: Assembly): Promise<HydratedAssembly | null> {
+    return hydrateAssembly(assembly, async (agreementKey) => {
         const binding = await readAgreementBinding(agreementKey);
         if (!binding) return null;
         return new Uint8Array(await fetchPinnedBytes(binding.contentURI));
@@ -750,8 +750,8 @@ async function hydrateFromChain(template: AssemblyTemplate): Promise<HydratedAss
 }
 
 /** Every anchored assembly, discovered from chain → IPFS (AssemblyRegistered
- *  events + template docs, each agreement's agreement from AgreementRegistry
- *  → IPFS), in anchoring order. Mainnet-realistic tolerance: a template or an
+ *  events + assembly docs, each agreement's agreement from AgreementRegistry
+ *  → IPFS), in anchoring order. Mainnet-realistic tolerance: a assembly or an
  *  agreement that fails to fetch, parse or verify is skipped — anyone can
  *  anchor a garbage URI; consumers must tolerate it. */
 export async function discoverAnchoredAssemblies(): Promise<DiscoveredAssembly[]> {
@@ -767,21 +767,21 @@ export async function discoverAnchoredAssemblies(): Promise<DiscoveredAssembly[]
         const { compositionHash, contentURI } = ev.args as { compositionHash?: `0x${string}`; contentURI?: string };
         if (!compositionHash || !contentURI) continue;
         try {
-            const template = anchorTemplate(await (await fetch(resolveIpfsURI(contentURI))).json(), compositionHash);
-            if (!template || template.agreements.length === 0) continue;
-            const hydrated = await hydrateFromChain(template);
+            const assembly = anchorAssembly(await (await fetch(resolveIpfsURI(contentURI))).json(), compositionHash);
+            if (!assembly || assembly.agreements.length === 0) continue;
+            const hydrated = await hydrateFromChain(assembly);
             if (!hydrated) continue;
             out.push({
                 slug: deriveAssemblySlug(compositionHash), compositionHash,
-                agreements: template.agreements.map((entry) => ({
+                agreements: assembly.agreements.map((entry) => ({
                     id: entry.id, agreementKey: entry.agreementKey, clauses: agreementClauses(hydrated, entry),
                 })),
                 hydrated,
-                name: template.name,
-                summary: template.summary ?? template.description,
+                name: assembly.name,
+                summary: assembly.summary ?? assembly.description,
             });
         } catch {
-            continue; // unresolvable / non-JSON template — not discoverable
+            continue; // unresolvable / non-JSON assembly — not discoverable
         }
     }
     return out;
@@ -919,14 +919,14 @@ export const DELIVERY_DEVICE = { lat: 37.7749, lon: -122.4194, destination: '9q8
 
 /** A checkout-view general-clause field control, suffix-matched — the testid
  *  is `checkout-field-<orderId>-<clauseKey>-<field>[-<option>]` and the
- *  template-local order id varies per assembly. */
+ *  assembly-local order id varies per assembly. */
 function checkoutField(page: Page, clauseKey: Hex, fieldPath: string) {
     return page.locator(`[data-testid^="checkout-field-"][data-testid$="-${clauseKey}-${fieldPath}"]`).first();
 }
 
 /** Fill the delivery assembly's GENERAL-clause transaction particulars on the
  *  buyer's checkout view. Design time is STRUCTURAL:
- *  templates arrive value-free by construction; the buyer authors the
+ *  assemblies arrive value-free by construction; the buyer authors the
  *  modality request, the hand-off mode, the proximity band, and the
  *  geolocation endpoints HERE. Call after `checkout-view` renders, before
  *  placing the order. */
@@ -1051,8 +1051,8 @@ export async function authorizeFundingToken(page: Page): Promise<void> {
 async function findDeliveryAssembly(): Promise<string | undefined> {
     await primeRegisteredClauseSpecs();
     const DELIVERY_CLAUSES = deliveryClauseKeys();
-    const templates = await discoverAnchoredAssemblies();
-    return templates.find(
+    const assemblies = await discoverAnchoredAssemblies();
+    return assemblies.find(
         (t) => t.agreements.length === 2
             && t.agreements.some((o) => {
                 const clauses = Object.keys(o.clauses ?? {});
@@ -1125,7 +1125,7 @@ export async function ensureDeliveryAssembly(page: Page): Promise<string> {
         // The hand-off mode, proximity band, and geohashes are transaction
         // particulars — authored by the buyer at checkout, never here.
 
-        // Editorial identity + publish (pin template → AssemblyRegistered).
+        // Editorial identity + publish (pin assembly → AssemblyRegistered).
         await page.getByTestId('designer-name-input').fill('Local commerce');
         await page.getByTestId('designer-summary-input').fill('Merchant delivery: a merchant order plus one co-equal courier order.');
         await page.getByTestId('designer-description-input').fill('The local-commerce runtime: the buyer orders with the delivery modality; the courier order carries the goods; each transfer is attested; one resolve pays both.');

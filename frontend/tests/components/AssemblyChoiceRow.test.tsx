@@ -14,7 +14,7 @@ const CHOICE: AssemblyChoice = {
     slug: "asm-9ffb1eb79755a9ab",
     registeredBy: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
     compositionHash: `0x${"ab".repeat(32)}` as `0x${string}`,
-    contentURI: "ipfs://QmTemplate",
+    contentURI: "ipfs://QmAssembly",
     blockNumber: 1n,
     networkTargets: ["local-anvil"],
     state: "loaded",
@@ -50,13 +50,13 @@ describe("AssemblyChoiceRow", () => {
         expect(slug).toHaveTextContent(CHOICE.slug);
     });
 
-    it("shows the slug as the heading when the template carries no name", () => {
+    it("shows the slug as the heading when the assembly carries no name", () => {
         // The projection falls back to the slug; the row renders what it is given.
         renderRow({ ...CHOICE, name: CHOICE.slug, summary: null });
         expect(screen.getByText(CHOICE.slug, { selector: "span" })).toBeInTheDocument();
     });
 
-    it("renders no summary line when the template carries no prose", () => {
+    it("renders no summary line when the assembly carries no prose", () => {
         renderRow({ ...CHOICE, summary: null });
         expect(screen.queryByTestId(`seller-assembly-summary-${CHOICE.slug}`)).toBeNull();
     });

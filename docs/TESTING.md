@@ -320,8 +320,8 @@ that empties a fixture fails before the push rather than in Frontend CI.
   the directory listing is the census, never this prose.
 
 The hash- and wire-load-bearing choreography suites live with their code in
-`sdk/tests/` (`npm --prefix sdk test`): agreement/template projection, the
-template→orders walk, checkout planning + sub-order pricing, the handoff
+`sdk/tests/` (`npm --prefix sdk test`): agreement/assembly projection, the
+assembly→orders walk, checkout planning + sub-order pricing, the handoff
 ECDH, and the commitment envelope — several pinned byte-exact to
 `sdk/tests/fixtures/promotion-golden-vectors.json` (`HARVEST_GOLDEN_VECTORS=1` in
 `frontend/tests/lib/promotionGoldenVectors.test.ts` regenerates them, legitimate
@@ -466,7 +466,7 @@ three hash checks and stops at the spec-binding anchor.
 ## Playwright — the project model (`playwright.config.ts`)
 
 `npm run test:e2e:devnet` (preflight → populate-test-data (clauses + two inline
-test-scaffolding templates + every reference assembly from `assemblies/*.json` over `agreements/*.json` +
+test-scaffolding assemblies + every reference assembly from `assemblies/*.json` over `agreements/*.json` +
 sellers; seeding is pre-population, never a test; the clauses and reference
 assemblies are already the deploy's genesis, so it skips them) → run) and
 `npm run test:e2e:mobile`.

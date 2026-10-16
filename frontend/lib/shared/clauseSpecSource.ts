@@ -59,7 +59,7 @@ const NESTS_UNDER = new Map<string, string>();
  *  offers clauses from and replaced whole on every read. The spec cache
  *  itself NEVER filters on it: a committed agreement keeps reading a
  *  withdrawn clause's spec. Only `liveSpecSource().list()`, the set a NEW
- *  template's mandatory fold draws from, holds just these. */
+ *  assembly's mandatory fold draws from, holds just these. */
 const LIVE_STAKE = new Set<string>();
 
 // ── Loading (chain → IPFS) ───────────────────────────────────────────────────
@@ -242,7 +242,7 @@ export function specSource(): SpecSource {
 
 /** The SpecSource a NEW composition is built from: `get` reads every loaded
  *  spec, exactly as `specSource()` (a stated pick resolves wherever it is
- *  bound), while `list` — the set `buildAssemblyTemplate`'s mandatory fold
+ *  bound), while `list` — the set `buildAssembly`'s mandatory fold
  *  draws from — holds only registrations whose stake is live
  *  (`isLiveRegistration`), the same surfacing rule the drawer offers clauses
  *  under. */
@@ -255,7 +255,7 @@ const LIVE_SPEC_SOURCE: SpecSource = {
     },
 };
 
-/** The live-stake `SpecSource` the template build passes. */
+/** The live-stake `SpecSource` the assembly build passes. */
 export function liveSpecSource(): SpecSource {
     return LIVE_SPEC_SOURCE;
 }
@@ -267,7 +267,7 @@ export function clauseNestsUnder(clauseKey: string): string | null {
 
 /** True if a clause is MANDATORY — on every order, composed by the build
  *  (commerce + topology), not a designer choice. The SDK's `specIsMandatory`
- *  is the one predicate (the template build's fold reads it too), applied to
+ *  is the one predicate (the assembly build's fold reads it too), applied to
  *  the clause at `clauseKey`; generic surfaces exclude mandatory clauses
  *  from selectable lists and fold them in automatically. ANY registered
  *  clause declaring `block.design.article: "mandatory"` participates —
@@ -288,10 +288,10 @@ export function clauseIsAssemblyScoped(clauseKey: string): boolean {
 }
 
 /** The content fields (by name) the DESIGNER fills into the assembly
- *  template, read from the clause's own `block.design.fills` — the tailoring
+ *  assembly, read from the clause's own `block.design.fills` — the tailoring
  *  that adapts a generic clause to a specific application (a pinned consent
  *  document, a pinned denomination). The drawer exposes field editors
- *  exactly for these; their values survive into the published template.
+ *  exactly for these; their values survive into the published assembly.
  *  Empty for clauses the designer only selects (whose fields are transaction
  *  particulars, filled by the buyer at checkout) — and while the spec is
  *  uncached. ANY registered clause declaring fills participates — including

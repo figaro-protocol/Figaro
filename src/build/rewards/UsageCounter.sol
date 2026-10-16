@@ -70,7 +70,7 @@ interface IAgreementStake {
 ///              own leaf; a registered agreement by the reserved provenance
 ///              leaf, whose bytes name the agreementKey and the
 ///              compositionHash; an assembly by the same provenance leaf plus
-///              the order slot's membership proof under the compositionHash.
+///              the agreement's membership proof under the compositionHash.
 ///         Same check `AttestationCoordinator` performs, with the status gate
 ///         inverted: attestation is evidence DURING an open process, usage is
 ///         counted only once the process has resolved.
@@ -190,11 +190,11 @@ contract UsageCounter {
     /// @notice The key of an assembly tree's TERMS leaf — the leaf whose
     ///         committed bytes are the assembly-scoped clauses.
     ///         `keccak256("figaro-assembly-terms")`.
-    /// @dev    A constant of the assembly format, beside the order slots'
+    /// @dev    A constant of the assembly format, beside the agreements'
     ///         leaves under the compositionHash, and never a registration:
     ///         `_accrue` refuses it on every kind, the batch path skips it, and
     ///         `recordAssemblyUsage` refuses it as an agreementKey, so the terms
-    ///         leaf never passes as an order slot.
+    ///         leaf never passes as an agreement.
     bytes32 public constant assemblyTermsLeaf = keccak256("figaro-assembly-terms");
 
     /// @notice The minimum-support floor: a clause, agreement
@@ -361,8 +361,8 @@ contract UsageCounter {
     error OrderNotResolved();
     error AlreadyCounted();
     error InvalidInclusionProof();
-    /// @notice The order slot's leaf does not open under the compositionHash
-    ///         claimed: the assembly's tree holds no such order slot.
+    /// @notice The agreement's leaf does not open under the compositionHash
+    ///         claimed: the assembly's tree holds no such agreement.
     error InvalidMembershipProof();
     error SellerNotStaked(address seller);
     error NotBatchVerifier();
@@ -544,21 +544,21 @@ contract UsageCounter {
     ///         `KIND_ASSEMBLY` and gated by `AssemblyRegistry` alone. Proved in
     ///         two steps: the provenance leaf, exactly as `recordAgreementUsage`
     ///         proves it, shows the order names this compositionHash and the
-    ///         agreementKey of the order slot it instantiated; the order slot's
+    ///         agreementKey of the agreement it instantiated; the agreement's
     ///         leaf `keccak256(keccak256(agreementKey ‖ slotContentHash))` then
     ///         opens under the compositionHash, which is the root of the
     ///         assembly's tree — so the assembly holds that agreement in an
-    ///         order slot. The agreement's own stake is never read here.
+    ///         agreement. The agreement's own stake is never read here.
     ///
     /// @param order            The order's commitment struct, exactly as signed.
     /// @param compositionHash  The AssemblyRegistry composition being credited.
-    /// @param agreementKey     The agreementKey of the order slot the order
+    /// @param agreementKey     The agreementKey of the agreement the order
     ///                         instantiated.
-    /// @param slotContentHash  `keccak256` of the order slot's committed bytes
-    ///                         (the order slot's own clause fills and its index).
+    /// @param slotContentHash  `keccak256` of the agreement's committed bytes
+    ///                         (the agreement's own clause fills and its index).
     /// @param leafProof        Merkle proof of the provenance section against
     ///                         `agreementHash`.
-    /// @param membershipProof  Merkle proof of the order slot's leaf against
+    /// @param membershipProof  Merkle proof of the agreement's leaf against
     ///                         `compositionHash`.
     function recordAssemblyUsage(
         CommitmentTypes.Commitment calldata order,
@@ -571,8 +571,8 @@ contract UsageCounter {
         uint8 period = currentPeriod();
         (, bytes32 processId) = _requireResolvedOrder(order);
 
-        // The terms leaf shares the assembly's tree with the order slots; a
-        // reserved key is never an order slot's agreementKey, so neither passes
+        // The terms leaf shares the assembly's tree with the agreements; a
+        // reserved key is never an agreement's agreementKey, so neither passes
         // as one.
         if (agreementKey == provenanceLeaf || agreementKey == assemblyTermsLeaf) {
             revert ReservedKeyIsNotARegistration(agreementKey);
@@ -580,7 +580,7 @@ contract UsageCounter {
 
         _requireProvenance(order.agreementHash, agreementKey, compositionHash, leafProof);
 
-        // The order slot's leaf, by the agreement format's leaf convention —
+        // The agreement's leaf, by the agreement format's leaf convention —
         // the same functions that make `agreementHash` make the assembly root.
         bytes32 slotLeaf = keccak256(bytes.concat(keccak256(abi.encodePacked(agreementKey, slotContentHash))));
         if (!MerkleProof.verify(membershipProof, compositionHash, slotLeaf)) revert InvalidMembershipProof();

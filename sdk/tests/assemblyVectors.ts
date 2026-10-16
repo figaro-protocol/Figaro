@@ -12,7 +12,7 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import type { Hex } from "viem";
-import type { AssemblyTemplate, ComposedAgreement } from "../src/assembly.js";
+import type { Assembly, ComposedAgreement } from "../src/assembly.js";
 import { agreementKeyOf } from "../src/assembly.js";
 import { computeClauseKey } from "../src/discovery.js";
 
@@ -38,16 +38,16 @@ export const COMPOSED_DESIGN: ComposedAgreement = {
     },
 };
 
-export const ASSEMBLY_ONE: AssemblyTemplate = {
+export const ASSEMBLY_ONE: Assembly = {
     agreements: [{ id: "order-0", agreementKey: agreementKeyOf(COMPOSED_ONE), clauses: {} }],
 };
-export const ASSEMBLY_TWO: AssemblyTemplate = {
+export const ASSEMBLY_TWO: Assembly = {
     agreements: [
         { id: "order-0", agreementKey: agreementKeyOf(COMPOSED_THREE), clauses: {} },
         { id: "order-1", agreementKey: agreementKeyOf(COMPOSED_ONE), clauses: {} },
     ],
 };
-export const ASSEMBLY_THREE: AssemblyTemplate = {
+export const ASSEMBLY_THREE: Assembly = {
     assemblyClauses: {
         [K("figaro-applicable-law")]: { applicableLaw: "ch", forum: "Zurich", language: "en" },
     },

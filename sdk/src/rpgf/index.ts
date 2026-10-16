@@ -26,8 +26,8 @@ import {
     ASSEMBLY_TERMS_LEAF_KEY,
     assertNotReservedKey,
     buildAgreementInclusionProof,
-    templateCompositionHash,
-    type AssemblyTemplate,
+    assemblyCompositionHash,
+    type Assembly,
 } from "../assembly.js";
 import { fetchLogsChunked } from "../events.js";
 import type { SequencerUsageClaim } from "../agent/sequencer.js";
@@ -442,7 +442,7 @@ export interface UsageClaimContext {
  *    keyed by the agreement key.
  *  - the ASSEMBLY leg credits the assembly's designer from the same leaf
  *    plus the agreement's membership proof under the composition hash
- *    (`buildAgreementInclusionProof` over `template`, the instantiated template):
+ *    (`buildAgreementInclusionProof` over `assembly`, the instantiated assembly):
  *    kind `{ Assembly: { agreement_key, slot_content_hash, membership_proof } }`
  *    keyed by the composition hash. The agreement proved is the first whose
  *    `agreementKey` is the provenance's (every such agreement proves the
@@ -454,7 +454,7 @@ export interface UsageClaimContext {
  *
  * Throws when the counter's reserved keys are not the format's (every
  * agreement and assembly claim against it would revert); when the agreement
- * names a provenance but no `template` is given, the template does not hash
+ * names a provenance but no `assembly` is given, the assembly does not hash
  * to the provenance's composition hash, or no agreement binds its agreement
  * key; when the provenance's agreement key is a reserved key; and when the
  * agreement's leaves do not build — no leg of such an agreement can be
@@ -464,7 +464,7 @@ export function buildUsageClaims(
     order: Commitment,
     agreement: Agreement,
     context: UsageClaimContext,
-    template?: AssemblyTemplate,
+    assembly?: Assembly,
 ): SequencerUsageClaim[] {
     if (context.provenanceLeaf.toLowerCase() !== PROVENANCE_LEAF_KEY.toLowerCase()) {
         throw new Error(
@@ -495,13 +495,13 @@ export function buildUsageClaims(
     if (agreement.provenance !== undefined) {
         const { agreementKey, compositionHash } = agreement.provenance;
         assertNotReservedKey(agreementKey, "provenance agreementKey");
-        if (!template) {
-            throw new Error("the agreement names a provenance: its instantiated template is needed for the assembly leg's membership proof");
+        if (!assembly) {
+            throw new Error("the agreement names a provenance: its instantiated assembly is needed for the assembly leg's membership proof");
         }
-        if (templateCompositionHash(template).toLowerCase() !== compositionHash.toLowerCase()) {
-            throw new Error(`the template given does not hash to the provenance's composition hash ${compositionHash}`);
+        if (assemblyCompositionHash(assembly).toLowerCase() !== compositionHash.toLowerCase()) {
+            throw new Error(`the assembly given does not hash to the provenance's composition hash ${compositionHash}`);
         }
-        const agreementIndex = template.agreements.findIndex((entry) => entry.agreementKey.toLowerCase() === agreementKey.toLowerCase());
+        const agreementIndex = assembly.agreements.findIndex((entry) => entry.agreementKey.toLowerCase() === agreementKey.toLowerCase());
         if (agreementIndex < 0) {
             throw new Error(`no agreement of ${compositionHash} binds the provenance's agreement ${agreementKey}`);
         }
@@ -512,7 +512,7 @@ export function buildUsageClaims(
             kind: { Agreement: { composition_hash: compositionHash } },
             inclusion_proof: leafProof,
         });
-        const membership = buildAgreementInclusionProof(template, agreementIndex);
+        const membership = buildAgreementInclusionProof(assembly, agreementIndex);
         claims.push({
             order: wireOrder,
             clause_or_assembly: compositionHash,

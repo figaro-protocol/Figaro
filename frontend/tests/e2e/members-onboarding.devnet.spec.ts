@@ -42,7 +42,7 @@ import { test, gotoAsWallet } from "./devnet-multi-test";
 import { createPublicClient, defineChain, http, type Hex } from "viem";
 import { assertPinnedInIpfs, discoverAnchoredAssemblies, discoverMembers, discoverSeedAssemblies, readLocalDeploymentConfig, type DiscoveredAssembly } from "./devnet-helpers";
 import { ASSEMBLY_REGISTRY_ABI, MEMBERS_REGISTRY_ABI } from '@figaro-protocol/sdk';
-import { deriveAssemblySlug } from '@/lib/shared/assemblyTemplate';
+import { deriveAssemblySlug } from '@/lib/shared/assembly';
 // The one place the seller-page route is written — the spec follows the same
 // route the site links, never a second copy of the string.
 import { sellerPageHref } from '@/lib/member/memberListing';
@@ -162,7 +162,7 @@ async function onboardViaWizard(
     await assemblyRow.waitFor({ state: 'visible', timeout: 30_000 });
 
     // The row must read as its designer WROTE it — the name and the summary
-    // from the pinned template, compared against the template read
+    // from the pinned assembly, compared against the assembly read
     // out-of-band, with the slug secondary. A picker of bare slugs is how a
     // seller binds the wrong assembly.
     if (assembly.name) {
@@ -207,7 +207,7 @@ async function onboardViaWizard(
         await buyerCheckbox.check();
     }
     // The disclosure editor renders one buyer-posture row per clause once the
-    // subscribed assembly's template loads; offer the first row.
+    // subscribed assembly's assembly loads; offer the first row.
     const offerBox = page
         .locator(`[data-testid^="disclosure-${assemblySlug}-"][data-testid$="-buyer-offer"]`)
         .first();
@@ -225,7 +225,7 @@ async function onboardViaWizard(
 
     // The items survive a reload too. The restored values also mean the step
     // has hydrated, so the clause sections below are read after the assembly
-    // templates have had their chance to resolve.
+    // assemblies have had their chance to resolve.
     await draftCarries(page, SELLER.product.name);
     await page.reload({ waitUntil: "domcontentloaded" });
     await expect(page.locator('[id^="item-"][id$="-name"]').first())
@@ -234,7 +234,7 @@ async function onboardViaWizard(
         .toHaveValue(SELLER.product.price);
 
     // Every clause section on the item belongs to a clause the BOUND assembly
-    // composes — computed from the anchored template, never a name list. A
+    // composes — computed from the anchored assembly, never a name list. A
     // seller of one item bound to a counter-sale assembly is asked for no
     // freight class, no hazmat number, no cold-chain range.
     const composed = new Set(assembly.agreements.flatMap((a) => Object.keys(a.clauses ?? {})));

@@ -140,7 +140,7 @@ interface ClauseRung {
 // Each helper takes the clause by its spec's name and resolves the key at
 // call time — inside a test, after the chain priming.
 /** Checkout-time general-clause field input (`checkout-field-<orderId>-<clauseKey>-<field>`;
- *  prefix+suffix matched — the template-local order id varies per assembly). */
+ *  prefix+suffix matched — the assembly-local order id varies per assembly). */
 const checkoutFill = (name: string, field: string, value: string) =>
     async (page: Page) =>
         page.locator(`[data-testid^="checkout-field-"][data-testid$="-${keyOf(name)}-${field}"]`).first().fill(value);
@@ -363,7 +363,7 @@ const RUNGS: ClauseRung[] = [
     },
     {
         // DECLARED credential (the NYC-TLC shape): the designer pins the
-        // authority's public REGISTER (a URI template, a designer fill); the
+        // authority's public REGISTER (a URI assembly, a designer fill); the
         // seller declares their id ONCE on the profile (profile-sourced
         // master data); checkout folds the id onto the leaf and offers the
         // buyer the Verify link-out — the register stays the source of
@@ -638,7 +638,7 @@ test.describe('PER-CLAUSE COVERAGE — every protocol clause flows the generic p
             await page.getByTestId('checkout-view').waitFor({ timeout: 20000 });
             // GENERAL-clause transaction particulars are authored HERE, on the
             // checkout's spec-routed fill surface — the
-            // template arrived value-free by construction.
+            // assembly arrived value-free by construction.
             if (rung.checkout) await rung.checkout(page);
             const place = page.getByTestId('btn-place-order');
             await expect(place, 'buyer connected + order ready → "Place order"').toHaveText(/Place order/, { timeout: 20000 });

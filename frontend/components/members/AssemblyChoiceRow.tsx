@@ -7,7 +7,7 @@
  * line + network targets + an Inspect link into the designer's read-only view.
  *
  * The name and the summary are the designer's own words, read from the pinned
- * template; the slug is secondary, and is all a reader gets when the template
+ * assembly; the slug is secondary, and is all a reader gets when the assembly
  * carries no editorial prose (or has not resolved yet) — never invented words.
  *
  * `children` renders inside the Card below the row (e.g. the assemblies step's

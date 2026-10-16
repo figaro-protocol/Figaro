@@ -30,7 +30,7 @@ export function AssemblyShapeLine({
     className?: string;
     testId?: string;
 }) {
-    // The template names its clauses by key; each reads as its spec's title
+    // The assembly names its clauses by key; each reads as its spec's title
     // once the spec cache has warmed (a re-render on each warm).
     useClauseSpecs();
     if (choice.state === "loading") {

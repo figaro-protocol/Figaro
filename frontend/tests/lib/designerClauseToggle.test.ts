@@ -15,7 +15,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { beforeAll, describe, expect, it } from "vitest";
 import { keyOf, pinSpec, primeClauseSpecs, canonicalFileBytes } from "./primeClauseSpecs";
-import { assemblyClauseDefaults, toggleClauseByKey } from "@/lib/designer/draftToAssemblyTemplate";
+import { assemblyClauseDefaults, toggleClauseByKey } from "@/lib/designer/draftToAssembly";
 import { loadClauseSpec, setClauseSpecFetcher } from "@/lib/shared/clauseSpecSource";
 
 const CLAUSE = "figaro-arbitration-kleros";
