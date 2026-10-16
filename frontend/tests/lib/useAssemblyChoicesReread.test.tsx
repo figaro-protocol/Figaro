@@ -4,9 +4,11 @@ import { contentRetryDelayMs } from "@/lib/shared/ipfsService";
 
 const fetchHydratedAssemblyMock = vi.fn();
 const publishedMock = vi.fn();
+const loadErrorMock = vi.fn<(hash: string) => string | undefined>(() => undefined);
 vi.mock("@/lib/protocol/useAssemblyRegistry", () => ({
     usePublishedAssemblies: () => publishedMock(),
     fetchHydratedAssembly: (...args: unknown[]) => fetchHydratedAssemblyMock(...args),
+    getAssemblyLoadError: (hash: string) => loadErrorMock(hash),
 }));
 
 import { useAssemblyChoices } from "@/lib/protocol/assemblyChoices";
@@ -23,6 +25,8 @@ describe("useAssemblyChoices — a template the gateway has not served yet is re
         vi.useFakeTimers();
         publishedMock.mockReturnValue({ data: [EVENT], isLoading: false, refetch: vi.fn() });
         fetchHydratedAssemblyMock.mockReset();
+        loadErrorMock.mockReset();
+        loadErrorMock.mockReturnValue(undefined);
     });
     afterEach(() => { vi.useRealTimers(); });
 
@@ -42,6 +46,18 @@ describe("useAssemblyChoices — a template the gateway has not served yet is re
         await act(async () => { vi.advanceTimersByTime(10 * 60_000); });
         await flush();
         expect(fetchHydratedAssemblyMock).toHaveBeenCalledTimes(2);
+    });
+
+    it("a template that was served and is not the one its root anchors is never re-read — the row stays in error", async () => {
+        fetchHydratedAssemblyMock.mockResolvedValue(null);
+        loadErrorMock.mockReturnValue("integrity failure at ipfs://fresh: the document is not the template the root anchors");
+        const { result } = renderHook(() => useAssemblyChoices());
+        await flush();
+        expect(result.current.data?.[0]).toMatchObject({ state: "error", name: "asm-fresh" });
+        expect(fetchHydratedAssemblyMock).toHaveBeenCalledTimes(1);
+        await act(async () => { vi.advanceTimersByTime(10 * 60_000); });
+        await flush();
+        expect(fetchHydratedAssemblyMock).toHaveBeenCalledTimes(1);
     });
 
     it("keeps the schedule while unserved and stops on unmount", async () => {

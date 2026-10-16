@@ -26,6 +26,7 @@ vi.mock("@/lib/member/useMembersRegistry", () => ({
     },
 }));
 vi.mock("@/lib/protocol/useAssemblyRegistry", () => ({
+    getAssemblyLoadError: () => undefined,
     useAllPublishedAssemblies: () => reads.published,
     fetchHydratedAssembly: async () => ({ template: { name: "Anchored", agreements: [] }, agreements: {} }),
 }));

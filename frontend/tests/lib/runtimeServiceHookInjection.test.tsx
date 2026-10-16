@@ -50,6 +50,7 @@ vi.mock("@/lib/protocol/membersRegistryIndexer", () => ({
 // so useRegisteredCatalogs proceeds; the filtering itself lives in the
 // (injected) discovery service.
 vi.mock("@/lib/protocol/useAssemblyRegistry", () => ({
+    getAssemblyLoadError: () => undefined,
     usePublishedAssemblies: () => ({ data: [], isLoading: false }),
 }));
 

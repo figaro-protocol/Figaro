@@ -25,10 +25,10 @@ import {
     fetchComposedAgreement,
     getComposedAgreement,
     useComposedAgreementsVersion,
-    usePublishedAgreements,
-} from "@/lib/protocol/useAgreementRegistry";
+    usePublishedAgreements, getComposedAgreementLoadError } from "@/lib/protocol/useAgreementRegistry";
 import { useRegisteredMembers } from "@/lib/member/useRegisteredMembers";
 import { AssemblyShapeLine } from "@/components/assemblies/AssemblyShapeLine";
+import { getAssemblyLoadError } from "@/lib/protocol/useAssemblyRegistry";
 import { Breadcrumb } from "@/components/shared/Breadcrumb";
 import { StoredDocument } from "@/components/registries/StoredDocument";
 import { truncateHex } from "@/lib/shared/formatHex";
@@ -109,7 +109,7 @@ export function RegistryExplorer() {
             const description = doc?.summary ?? doc?.description ?? "";
             out.push({
                 family: "agreements", key: `agreement-${a.agreementKey}`, id: a.agreementKey, name, article: "", description,
-                content: doc ? "resolved" : "resolving",
+                content: doc ? "resolved" : getComposedAgreementLoadError(a.agreementKey) ? "unavailable" : "resolving",
                 registeredBy: a.registeredBy, blockNumber: a.blockNumber, stakeWithdrawn: a.stakeWithdrawn, clauses,
                 contentURI: a.contentURI, anchoredHash: a.agreementKey,
                 text: [a.agreementKey, name, description, a.registeredBy, ...clauses,
@@ -120,7 +120,7 @@ export function RegistryExplorer() {
             const description = a.hydratedAssembly?.template.summary ?? a.hydratedAssembly?.template.description ?? "";
             out.push({
                 family: "assemblies", key: `assembly-${a.slug}`, id: a.slug, name: a.name, article: "", description,
-                content: a.state === "loaded" ? "resolved" : "resolving",
+                content: a.state === "loaded" ? "resolved" : getAssemblyLoadError(a.compositionHash) ? "unavailable" : "resolving",
                 registeredBy: a.registeredBy, blockNumber: a.blockNumber, stakeWithdrawn: a.stakeWithdrawn, clauses: a.clauses ?? [],
                 contentURI: a.contentURI, anchoredHash: a.compositionHash,
                 text: [a.slug, a.name, description, a.registeredBy, ...(a.clauses ?? []),

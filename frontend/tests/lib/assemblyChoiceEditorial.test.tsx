@@ -14,6 +14,7 @@ import { agreementKeyOf } from "@figaro-protocol/sdk";
 const publishedMock = vi.fn();
 const fetchHydratedAssemblyMock = vi.fn();
 vi.mock("@/lib/protocol/useAssemblyRegistry", () => ({
+    getAssemblyLoadError: () => undefined,
     usePublishedAssemblies: () => publishedMock(),
     fetchHydratedAssembly: (...args: unknown[]) => fetchHydratedAssemblyMock(...args),
 }));

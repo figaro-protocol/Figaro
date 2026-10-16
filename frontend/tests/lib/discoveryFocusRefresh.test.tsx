@@ -17,6 +17,7 @@ vi.mock("wagmi", () => ({
 // so it does not itself re-trigger the effect on every render.
 const PUBLISHED = { data: [] as unknown[], isLoading: false };
 vi.mock("@/lib/protocol/useAssemblyRegistry", () => ({
+    getAssemblyLoadError: () => undefined,
     usePublishedAssemblies: () => PUBLISHED,
 }));
 

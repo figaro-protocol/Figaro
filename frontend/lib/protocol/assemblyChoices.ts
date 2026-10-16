@@ -21,8 +21,7 @@ import { DEVNET_CHAIN_ID } from "@/lib/shared/chains";
 import { contentRetryDelayMs } from "@/lib/shared/ipfsService";
 import {
     usePublishedAssemblies,
-    fetchHydratedAssembly,
-} from "@/lib/protocol/useAssemblyRegistry";
+    fetchHydratedAssembly, getAssemblyLoadError } from "@/lib/protocol/useAssemblyRegistry";
 
 /**
  * Synthesize a `networkTargets` value for an on-chain-registered assembly
@@ -176,7 +175,10 @@ export function useAssemblyChoices(
                         );
                         return next;
                     });
-                    if (!hydratedAssembly) schedule(event, attempt);
+                    // A served document that is not the one its root anchors —
+                    // or a slot whose agreement failed the same way — never
+                    // resolves: no re-read, the row says so.
+                    if (!hydratedAssembly && !getAssemblyLoadError(event.compositionHash)) schedule(event, attempt);
                 },
                 () => {
                     setHydratedState((prev) => {
@@ -184,7 +186,7 @@ export function useAssemblyChoices(
                         next.set(event.compositionHash, { state: "error", hydratedAssembly: null });
                         return next;
                     });
-                    schedule(event, attempt);
+                    if (!getAssemblyLoadError(event.compositionHash)) schedule(event, attempt);
                 },
             );
         };

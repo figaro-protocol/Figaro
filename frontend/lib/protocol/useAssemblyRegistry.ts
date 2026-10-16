@@ -24,7 +24,7 @@ import {
 } from "@/lib/protocol/useWithdrawStake";
 import { createRegistryEventScan } from "@/lib/protocol/registryEventScan";
 import { publicClient } from "@/lib/shared/wagmi";
-import { hydrateAssemblyTemplate } from "@/lib/protocol/useAgreementRegistry";
+import { hydrateAssemblyTemplate, getComposedAgreementLoadError } from "@/lib/protocol/useAgreementRegistry";
 import {
     deriveAssemblySlug,
     type AssemblyTemplate,
@@ -202,6 +202,17 @@ export function useAllPublishedAssemblies() {
  * content). Returns null on gateway failure, malformed JSON, or hash
  * mismatch.
  */
+/** PERMANENT failures, by composition root: the template the binding points
+ *  at was served and is not the one the root anchors, or an order slot's
+ *  registered agreement failed permanently (`getComposedAgreementLoadError`).
+ *  A gateway miss keeps nothing and is read again; this is never re-read. */
+const loadErrors = new Map<string, string>();
+
+/** The permanent load failure recorded for a composition root, if any. */
+export function getAssemblyLoadError(compositionHash: string): string | undefined {
+    return loadErrors.get(compositionHash.toLowerCase());
+}
+
 export async function fetchAssemblyTemplate(
     contentURI: string,
     expectedCompositionHash: `0x${string}`,
@@ -221,6 +232,7 @@ export async function fetchAssemblyTemplate(
         const fetched = safeJsonParse<unknown>(await response.text());
         const template = anchorTemplate(fetched, expectedCompositionHash);
         if (template === null) {
+            loadErrors.set(expectedCompositionHash.toLowerCase(), `integrity failure at ${contentURI}: the document is not the template the root anchors`);
             console.warn(
                 `[fetchAssemblyTemplate] integrity failure at ${contentURI}: the document is not the template whose composition the chain anchors (${expectedCompositionHash}) — dropping`,
             );
@@ -246,7 +258,19 @@ export async function fetchHydratedAssembly(
 ): Promise<HydratedAssembly | null> {
     const template = await fetchAssemblyTemplate(contentURI, expectedCompositionHash);
     if (!template) return null;
-    return hydrateAssemblyTemplate(template);
+    const hydrated = await hydrateAssemblyTemplate(template);
+    if (hydrated === null) {
+        // Absence that can never resolve: an order slot's agreement was served
+        // and is not the agreement its key names.
+        const failed = template.agreements.find((slot) => getComposedAgreementLoadError(slot.agreementKey));
+        if (failed) {
+            loadErrors.set(
+                expectedCompositionHash.toLowerCase(),
+                `order slot ${failed.id} binds ${failed.agreementKey}, whose document is not the agreement the key names`,
+            );
+        }
+    }
+    return hydrated;
 }
 
 /**

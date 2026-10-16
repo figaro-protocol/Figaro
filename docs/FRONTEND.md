@@ -348,7 +348,12 @@ Y", not as an open-ended build.)
   every 60 s) by the three pointer readers — `useClauseSpecs`,
   `useAssemblyChoices`, `useRegisteredMembers` — so a fresh registration names
   itself without a reload (the agreement family reads once through
-  `fetchComposedAgreement`, and an unreachable document is absence); reads walk the gateway chain (`ipfsService.ts`:
+  `fetchComposedAgreement`, and an unreachable document is absence). A
+  document that WAS served and is not what its key or root names — a retired
+  registration from before a key format changed, a tampered pin — is a
+  PERMANENT failure, recorded (`getClauseSpecLoadError`,
+  `getComposedAgreementLoadError`, `getAssemblyLoadError`), never re-read,
+  and rendered as unavailable; only a gateway miss is re-read. Reads walk the gateway chain (`ipfsService.ts`:
   `NEXT_PUBLIC_IPFS_GATEWAY_URL`, then `NEXT_PUBLIC_IPFS_FALLBACK_GATEWAY_URL`).
 - **Scenario e2e** — `frontend/tests/e2e/local-commerce.devnet.spec.ts` is the
   live exemplar (composes on the canvas, pins to IPFS + anchors on-chain, then

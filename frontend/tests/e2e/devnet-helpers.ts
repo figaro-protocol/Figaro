@@ -796,9 +796,22 @@ async function fetchPinnedBytes(uri: string): Promise<Uint8Array> {
         const res = await fetch(`${ipfsApi}/api/v0/cat?arg=${uri.slice('ipfs://'.length)}`, { method: 'POST' }).catch(() => null);
         if (res?.ok) return new Uint8Array(await res.arrayBuffer());
     }
-    const res = await fetch(resolveIpfsURI(uri));
-    if (!res.ok) throw new Error(`${uri}: ${res.status}`);
-    return new Uint8Array(await res.arrayBuffer());
+    // A public gateway rate-limits a burst (429) and stalls (5xx): back off and
+    // read again, then the fallback gateway the same way. The bytes are the
+    // bytes whichever gateway serves them; the caller keys them.
+    const gateways = [process.env.NEXT_PUBLIC_IPFS_GATEWAY_URL ?? 'http://127.0.0.1:8080', process.env.NEXT_PUBLIC_IPFS_FALLBACK_GATEWAY_URL]
+        .filter((g): g is string => !!g);
+    let last = 'no gateway configured';
+    for (const gateway of gateways) {
+        for (let attempt = 0; attempt < 5; attempt++) {
+            const res = await fetch(uri.startsWith('ipfs://') ? `${gateway}/ipfs/${uri.slice('ipfs://'.length)}` : uri).catch(() => null);
+            if (res?.ok) return new Uint8Array(await res.arrayBuffer());
+            last = `${gateway}: ${res ? res.status : 'unreachable'}`;
+            if (res && res.status !== 429 && res.status < 500) break; // a definite answer: not here
+            await new Promise((r) => setTimeout(r, 1000 * 2 ** attempt));
+        }
+    }
+    throw new Error(`${uri}: ${last}`);
 }
 
 /**

@@ -46,7 +46,7 @@ vi.mock("@/lib/shared/ipfsService", async (importOriginal) => {
     };
 });
 
-import { fetchComposedAgreement, getComposedAgreement, hydrateAssemblyTemplate } from "@/lib/protocol/useAgreementRegistry";
+import { fetchComposedAgreement, getComposedAgreement, getComposedAgreementLoadError, hydrateAssemblyTemplate } from "@/lib/protocol/useAgreementRegistry";
 import { projectSnapshotForReview } from "@/lib/designer/draftToAssemblyTemplate";
 import { createSyntheticRootOrder, createSyntheticSubOrder, startSyntheticSession } from "@/lib/designer/syntheticProcess";
 import type { DesignSnapshot } from "@/lib/designer/syntheticDesignStore";
@@ -99,11 +99,26 @@ describe("fetchComposedAgreement — the binding by key, the document verified a
         expect(await fetchComposedAgreement(garbled)).toBeNull();
     });
 
-    it("is absent when the document's clauses key elsewhere — the name rides outside the key, the clauses do not", async () => {
+    it("is absent when the document's clauses key elsewhere — the name rides outside the key, the clauses do not — and that absence is PERMANENT: recorded, never re-read", async () => {
         const doc = { clauses: { [keyOf("figaro-topology")]: { a: 3 } } };
         const other = { clauses: { [keyOf("figaro-topology")]: { a: 4 } } };
         const key = register(doc, "ipfs://swapped", canonicalize(other));
         expect(await fetchComposedAgreement(key)).toBeNull();
+        expect(getComposedAgreementLoadError(key)).toMatch(/not the agreement the key/);
+        // The binding now points at a document that WOULD verify: a retired
+        // registration's bytes never change, so the failure is not re-read.
+        reads.documents.set("ipfs://swapped", canonicalize(doc));
+        expect(await fetchComposedAgreement(key)).toBeNull();
+        expect(getComposedAgreement(key)).toBeUndefined();
+    });
+
+    it("a gateway miss is NOT permanent: nothing is recorded and the next read lands", async () => {
+        const doc = { clauses: { [keyOf("figaro-topology")]: { a: 5 } } };
+        const key = register(doc, "ipfs://late", null);
+        expect(await fetchComposedAgreement(key)).toBeNull();
+        expect(getComposedAgreementLoadError(key)).toBeUndefined();
+        reads.documents.set("ipfs://late", canonicalize(doc));
+        expect((await fetchComposedAgreement(key))?.clauses).toEqual(doc.clauses);
     });
 
     it("hydrates an assembly only when every order slot's agreement reads", async () => {

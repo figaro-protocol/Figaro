@@ -90,7 +90,8 @@ test.describe('PUBLIC REGISTRIES — the explorer shows exactly what the chain h
         }
 
         // ── Assemblies: every anchored composition, each named from its resolved template ──
-        await page.goto('/registries?family=assemblies');
+        // Every anchored composition, the retired ones included: the row set is the chain's.
+        await page.goto('/registries?family=assemblies&stake=all');
         const assemblyRows = page.locator('li[id^="assembly-"]');
         await expect.poll(async () => (await assemblyRows.evaluateAll((els) => els.map((e) => e.id.replace(/^assembly-/, '')))).sort(), { timeout: 60_000 })
             .toEqual([...slugs].sort());

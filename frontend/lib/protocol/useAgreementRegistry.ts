@@ -158,6 +158,16 @@ const verified = new Map<string, Anchored<ComposedAgreement>>();
 const inflight = new Map<string, Promise<Anchored<ComposedAgreement> | null>>();
 let verifiedVersion = 0;
 const listeners = new Set<() => void>();
+/** PERMANENT failures, by key: the bytes the binding points at were fetched
+ *  and are not the agreement the key names (not JSON, or keying elsewhere).
+ *  A gateway miss keeps nothing and is read again; this is never re-read. */
+const loadErrors = new Map<string, string>();
+
+/** The permanent load failure recorded for an agreement key, if any — the
+ *  document behind the binding was served and is not the agreement. */
+export function getComposedAgreementLoadError(agreementKey: string): string | undefined {
+    return loadErrors.get(agreementKey.toLowerCase());
+}
 
 function noteVerified(): void {
     verifiedVersion += 1;
@@ -199,9 +209,10 @@ async function fetchAgreementDocument(
         if (!response.ok) return null;
         const doc = anchorComposedAgreement(await response.text(), agreementKey);
         if (doc === null) {
-            console.warn(
-                `[fetchComposedAgreement] integrity failure at ${contentURI}: the document is not the agreement the key ${agreementKey} names — dropping`,
-            );
+            const detail = `integrity failure at ${contentURI}: the document is not the agreement the key ${agreementKey} names`;
+            console.warn(`[fetchComposedAgreement] ${detail} — dropping`);
+            loadErrors.set(agreementKey.toLowerCase(), detail);
+            noteVerified();
         }
         return doc;
     } catch {
@@ -224,6 +235,7 @@ export async function fetchComposedAgreement(
     const key = agreementKey.toLowerCase();
     const known = verified.get(key);
     if (known) return known;
+    if (loadErrors.has(key)) return null;
     const pending = inflight.get(key);
     if (pending) return pending;
     const run = (async () => {

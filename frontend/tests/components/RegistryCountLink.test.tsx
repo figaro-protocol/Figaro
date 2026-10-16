@@ -6,7 +6,8 @@ const clausesMock = vi.fn();
 const assembliesMock = vi.fn();
 const membersMock = vi.fn();
 vi.mock("@/lib/protocol/useClauseRegistry", () => ({ useAllRegisteredClauses: () => clausesMock() }));
-vi.mock("@/lib/protocol/useAssemblyRegistry", () => ({ usePublishedAssemblies: () => assembliesMock() }));
+vi.mock("@/lib/protocol/useAssemblyRegistry", () => ({
+    getAssemblyLoadError: () => undefined, usePublishedAssemblies: () => assembliesMock() }));
 vi.mock("@/lib/member/useRegisteredMembers", () => ({ useRegisteredMembers: () => membersMock() }));
 vi.mock("next/link", () => ({
     default: ({ href, children }: { href: string; children: React.ReactNode }) => <a href={href}>{children}</a>,
