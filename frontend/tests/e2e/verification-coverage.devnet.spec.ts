@@ -198,10 +198,10 @@ test.describe('VERIFICATION COVERAGE — FigaroCore-revert path, evidence reader
         // hash — the pasted JSON carries the key, nothing else identifies it.
         const clauseEntry = { clause: keyOf('figaro-topology'), data: { parentOrderHashes: [] as string[] } };
         const expectedLeaf = computeClauseLeaf(clauseEntry);
-        await page.getByTestId('verify-mode-section').click();
-        await page.getByTestId('verify-section-mode').waitFor({ state: 'visible', timeout: 10000 });
-        await page.getByTestId('verify-section-input').fill(JSON.stringify(clauseEntry));
-        await page.getByTestId('verify-section-expected').fill(expectedLeaf);
+        await page.getByTestId('verify-mode-clause').click();
+        await page.getByTestId('verify-clause-mode').waitFor({ state: 'visible', timeout: 10000 });
+        await page.getByTestId('verify-clause-input').fill(JSON.stringify(clauseEntry));
+        await page.getByTestId('verify-clause-expected').fill(expectedLeaf);
         await expect(page.getByTestId('verify-result-computed'), 'the page recomputes the SDK leaf')
             .toHaveText(expectedLeaf, { timeout: 10000 });
         await expect(page.getByTestId('verify-result-status'), 'expected vs computed reports a MATCH')

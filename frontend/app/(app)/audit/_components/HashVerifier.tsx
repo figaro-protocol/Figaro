@@ -211,7 +211,7 @@ function ClauseMode() {
     }, [json]);
 
     return (
-        <div className="space-y-4" data-testid="verify-section-mode">
+        <div className="space-y-4" data-testid="verify-clause-mode">
             <p className="text-xs text-ink-body">
                 Paste a single `AgreementClause` JSON (one clause from an
                 agreement, e.g. a commerce clauseEntry). The recomputed
@@ -225,7 +225,7 @@ function ClauseMode() {
                     onChange={(e) => setJson(e.target.value)}
                     rows={8}
                     placeholder='{"clause":"0x<clause key>","data":{"currency":"0x...","payment":"100","lineItems":[...]}}'
-                    data-testid="verify-section-input"
+                    data-testid="verify-clause-input"
                     className="mt-1 w-full font-mono text-xs px-3 py-2 border border-default rounded"
                 />
             </label>
@@ -235,7 +235,7 @@ function ClauseMode() {
                     value={expected}
                     onChange={(e) => setExpected(e.target.value)}
                     placeholder="0x…"
-                    data-testid="verify-section-expected"
+                    data-testid="verify-clause-expected"
                     className="mt-1 w-full font-mono text-xs px-3 py-2 border border-default rounded"
                 />
             </label>

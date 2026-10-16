@@ -856,9 +856,9 @@ test.describe('LOCAL COMMERCE — item delivery: canvas → bind → order → a
         //    the merkle structure IS the disclosure control. ──
         const disclosed = deliveryClauses.find((s) => s.clause.toLowerCase() === COMMERCE_CLAUSE);
         expect(disclosed, 'the delivery agreement carries a commerce clause to disclose').toBeTruthy();
-        await page.getByTestId('verify-mode-section').click();
-        await page.getByTestId('verify-section-input').fill(JSON.stringify(disclosed));
-        await page.getByTestId('verify-section-expected').fill(computeClauseLeaf(disclosed!));
+        await page.getByTestId('verify-mode-clause').click();
+        await page.getByTestId('verify-clause-input').fill(JSON.stringify(disclosed));
+        await page.getByTestId('verify-clause-expected').fill(computeClauseLeaf(disclosed!));
         await expect(
             page.getByTestId('verify-result-status'),
             'the disclosed clause alone proves against its committed leaf',
