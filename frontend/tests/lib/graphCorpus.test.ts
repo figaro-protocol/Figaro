@@ -10,7 +10,7 @@ import path from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { PROVENANCE_LEAF_KEY, provenanceContentRef } from "@figaro-protocol/sdk";
 import type { OverlayGraph } from "@figaro-protocol/sdk/derive";
-import { attributionFromOverlays, readTemplateUtilityTokenPins } from "@/lib/data/graphCorpus";
+import { attributionFromOverlays, corpusInputsLoaded, readTemplateUtilityTokenPins } from "@/lib/data/graphCorpus";
 import {
     _resetClauseSpecCache_TESTING_ONLY,
     loadClauseSpec,
@@ -110,5 +110,32 @@ describe("attributionFromOverlays — the provenance leaf", () => {
             entries: [entry(PROCESS_A, `0x${"66".repeat(32)}`, { compositionHash: COMPOSITION })],
         };
         expect(attributionFromOverlays([clauseGraph], LOADED).size).toBe(0);
+    });
+});
+
+describe("corpusInputsLoaded — the read waits for both off-chain inputs to finish loading", () => {
+    const loaded = { state: "loaded" as const };
+    const loading = { state: "loading" as const };
+    const error = { state: "error" as const };
+
+    it("is not loaded while the clause-spec load pass is still running", () => {
+        expect(corpusInputsLoaded([loaded], false, false)).toBe(false);
+    });
+
+    it("is not loaded while the assembly registry read is in flight", () => {
+        expect(corpusInputsLoaded(null, false, true)).toBe(false);
+    });
+
+    it("is not loaded while any assembly's template or agreements are still hydrating", () => {
+        expect(corpusInputsLoaded([loaded, loading], false, true)).toBe(false);
+    });
+
+    it("is loaded once every assembly is loaded or in error, and on an empty registry", () => {
+        expect(corpusInputsLoaded([loaded, error], false, true)).toBe(true);
+        expect(corpusInputsLoaded([], false, true)).toBe(true);
+    });
+
+    it("a failed assembly-registry read counts as loaded — attribution is absent, the corpus still reads", () => {
+        expect(corpusInputsLoaded(null, true, true)).toBe(true);
     });
 });

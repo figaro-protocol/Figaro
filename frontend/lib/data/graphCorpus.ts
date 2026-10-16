@@ -383,17 +383,43 @@ async function readGraphCorpus(deps?: {
 }
 
 /**
- * The explorer's corpus, read once per mount and re-read when the clause-spec
- * cache warms (a spec resolving turns a fingerprint-only overlay into a
- * decoded one, and can turn an unattributed process into an attributed one).
+ * Whether the corpus read's two off-chain inputs have finished loading: the
+ * clause-spec cache's load pass finished (`loaded`), and every published
+ * assembly's hydration reached a terminal state — loaded or error, never
+ * still loading. A failed assembly-registry read counts as finished too:
+ * attribution is then absent, which the read states, and the rest of the
+ * corpus still renders.
+ *
+ * The read waits for this because every pass recovers substance from the
+ * gateway, and a withheld attestation (its content never pinned, by its
+ * party's choice) costs the gateway's own miss timeout per pass. Restarting
+ * the read on each assembly's landing — the template, then every order slot's
+ * agreement — stacks those timeouts and the corpus never lands.
+ */
+export function corpusInputsLoaded(
+    assemblies: readonly { state: "loading" | "loaded" | "error" }[] | null,
+    assembliesFailed: boolean,
+    specsLoaded: boolean,
+): boolean {
+    if (!specsLoaded) return false;
+    if (assembliesFailed) return true;
+    if (assemblies === null) return false;
+    return assemblies.every((a) => a.state !== "loading");
+}
+
+/**
+ * The explorer's corpus, read once its inputs have loaded (`corpusInputsLoaded`)
+ * and re-read when the clause-spec cache warms further (a spec resolving on a
+ * re-read pass turns a fingerprint-only overlay into a decoded one, and can
+ * turn an unattributed process into an attributed one).
  *
  * `corpus` is null while the first read is in flight. `failed` is DISTINCT
  * from a resolved-empty corpus: empty data is absence and renders as
  * such; a failed read is unknown chain state and says so.
  */
 export function useGraphCorpus(): { corpus: GraphCorpus | null; isLoading: boolean; failed: boolean } {
-    const { version: specVersion } = useClauseSpecs();
-    const { data: assemblies } = useAssemblyChoices();
+    const { version: specVersion, loaded: specsLoaded } = useClauseSpecs();
+    const { data: assemblies, failed: assembliesFailed } = useAssemblyChoices();
     const [corpus, setCorpus] = useState<GraphCorpus | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [failed, setFailed] = useState(false);
@@ -424,7 +450,10 @@ export function useGraphCorpus(): { corpus: GraphCorpus | null; isLoading: boole
         [assemblies],
     );
 
+    const inputsLoaded = corpusInputsLoaded(assemblies, assembliesFailed, specsLoaded);
+
     useEffect(() => {
+        if (!inputsLoaded) return;
         let canceled = false;
         setIsLoading(true);
         setFailed(false);
@@ -446,7 +475,7 @@ export function useGraphCorpus(): { corpus: GraphCorpus | null; isLoading: boole
         // `specVersion` bumps as clause specs resolve from IPFS: overlays
         // decode and provenance attributions appear without a reload.
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [templates, specVersion]);
+    }, [inputsLoaded, templates, specVersion]);
 
     return { corpus, isLoading, failed };
 }
