@@ -13,7 +13,7 @@ the review's is its own.
 | | |
 |---|---|
 | Repository | https://github.com/figaro-protocol/Figaro |
-| Baseline commit | `ec0e1993` (§ "The baseline commit"); no tag names a commit under audit — one is placed when an audit is engaged |
+| Baseline commit | `0cfded15` (§ "The baseline commit"); no tag names a commit under audit — one is placed when an audit is engaged |
 | Languages in scope | Solidity (`src/`, three deploy scripts) and Rust (`prover/`, four crates) |
 | Solidity in scope | 14 contract files, 1,423 lines of code (3,544 physical); 3 deploy scripts, 401 lines of code (840 physical) |
 | Rust in scope | 4 crates, 21 files under `src/`, 6,423 lines of code (8,990 physical) net of their inline test modules |
@@ -248,7 +248,7 @@ came from the program with that key. The other external dependencies are in
 ## The baseline commit
 
 **Every figure in this document stands for the code at commit
-`ec0e1993`**, the baseline, which covers the
+`0cfded15`**, the baseline, which covers the
 whole scope, Solidity and Rust together. A figure is measured at the baseline,
 or at a commit whose in-scope code equals the baseline's once comments and
 NatSpec are stripped — the comparison `scripts/frozen-scope.sh` makes — and a
@@ -257,10 +257,21 @@ engaged, so no tag names a commit under audit; when one is engaged, a tag is
 placed at the commit it reviews and this section names it.
 
 ```bash
-git show --no-patch ec0e1993
+git show --no-patch 0cfded15
 ```
 
-The baseline differs from the previous baseline, `e800bfb2`, in one more
+The baseline differs from the previous baseline, `ec0e1993`, in one guest
+test file and the lockfile, in no contract and in no crate source:
+`prover/lib/tests/merkle_parity.rs` reads each registered agreement's clause
+leaves and membership proofs from `test/fixtures/assembly-vectors.json` and
+holds the agreement key to the root over them (the SDK's `agreementKeyOf` is
+that root; nothing on chain or in the guest derives the key), and
+`prover/Cargo.lock` names rustls 0.23.46 (`98255ef8`, the relay's host TLS,
+outside the guest's graph). Every figure measured at `ec0e1993` stands and
+names it; re-run at `0cfded15`: `MerkleParityTest` 5 passed,
+`figaro-kernel` `merkle_parity` 8 and `parity` 31 passed.
+
+`ec0e1993` differs from `e800bfb2` in one more
 registry family and in the reward's third kind. `scripts/frozen-scope.sh`
 prints these scope files as differing in code:
 `src/build/registries/AgreementRegistry.sol` (new),
