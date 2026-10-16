@@ -748,8 +748,8 @@ score by `(kind, key)`, kind `KIND_CLAUSE = 0`, `KIND_ASSEMBLY = 1` or
 under the clause kind and checks `ClauseRegistry` only;
 `recordAgreementUsage` counts under the agreement kind and checks
 `AgreementRegistry` only; `recordAssemblyUsage` counts under the assembly kind
-and checks `AssemblyRegistry` only — it proves the order slot's membership
-under `compositionHash` but never asks whether that order slot's agreement is
+and checks `AssemblyRegistry` only — it proves the agreement's membership
+under `compositionHash` but never asks whether that agreement is
 registered; `applyBatchAccrual` gates each `BatchAccrual{clauseOrAssembly,
 kind, c, d}` by its own kind's registry and skips an unknown kind. `RpgfMinter.claim(period, (kind, key)[])` reads
 the counter's slot for each kind, and `_isAuthor(kind, key, account)` reads
@@ -787,7 +787,7 @@ and `AgreementRegistry` refuses both as registrations.
 **Tests**: `test_aStrangerWhoStakesAnAssemblysKeyAsAClauseTakesNothingOfIt`
 (`test/build/rewards/RpgfIntegrationTest.t.sol`) — the stranger claims
 nothing under the clause kind and is refused under the assembly kind, and the
-assembly's registrant takes the accrual; `check_theKindsNeverShareASlot`
+assembly's registrant takes the accrual; `check_theKindsNeverShareAKey`
 (`test/build/rewards/HalmosUsageCounter.t.sol`) — an accrual under one kind on
 either path leaves every other kind's accrual at the same key untouched — the
 three kinds, symbolically; `test_theThreeKindsNeverShareACount`
@@ -799,14 +799,14 @@ read from another kind's registry.
 ## 25. The assembly root is a merkle tree over registered agreement keys — membership is proved, never looked up
 
 **Pattern**: An assembly's `compositionHash` is a merkle root built with the
-agreement format's leaf convention over one leaf per order slot — key the
-order slot's `agreementKey`, content the canonical `{"clauses":{…},"slot":i}`
+agreement format's leaf convention over one leaf per agreement — key the
+agreement's `agreementKey`, content the canonical `{"clauses":{…},"slot":i}`
 — plus, when any are composed, the assembly terms leaf
 (`keccak256("figaro-assembly-terms")`). `AssemblyRegistry` stores the root and
 a URI and checks nothing about the agreements inside it; `AgreementRegistry`
-knows no assembly. The counter's assembly leg takes the order slot's
+knows no assembly. The counter's assembly leg takes the agreement's
 `agreementKey`, its `slotContentHash` and a membership proof, and proves the
-slot leaf under `compositionHash` after proving the order's provenance leaf
+agreement leaf under `compositionHash` after proving the order's provenance leaf
 under `agreementHash`.
 
 **Why it looks wrong**: An assembly that composes registered agreements reads
@@ -818,32 +818,32 @@ supplied by the caller reads like trust handed to the caller.
 `AgreementRegistry` at assembly registration, is an edge between two
 registry families, and the families are parallel (CLAUDE.md § "Separation of
 Concerns"): assemblies use agreements, agreements use clauses, and neither
-knows what uses it. The root carries the membership instead: a slot leaf
+knows what uses it. The root carries the membership instead: a agreement leaf
 either hashes up to the registered `compositionHash` or it does not, so the
 caller can supply nothing the root did not already commit, and a wrong
-`agreementKey` or slot content derives a leaf that is not in the tree. An
+`agreementKey` or agreement content derives a leaf that is not in the tree. An
 assembly that names an agreement nobody registered is published like any
 other content; the agreement leg simply never counts it (the kind's own gate,
-§ 19, § 24), and readers that cannot hydrate an order slot do not offer the
-assembly. The reserved assembly terms key is refused as an order slot's
+§ 19, § 24), and readers that cannot hydrate an agreement do not offer the
+assembly. The reserved assembly terms key is refused as an agreement's
 `agreementKey`, so the terms leaf can never be proved as a member.
 
-**Tests**: the SDK, the counter and the guest each rebuild the order slot
+**Tests**: the SDK, the counter and the guest each rebuild the agreement
 leaves, the terms leaf, the root and the membership proofs of
 `test/fixtures/assembly-vectors.json` (the parity legs, `TESTING.md` §
 "Assembly parity"); in `test/build/rewards/UsageCounterTest.t.sol`,
 `test_aSlotLeafUnderADifferentCompositionHashFails` and
 `test_aSlotLeafWithAnotherSlotsBytesFails` refuse a membership proof that the
-root did not commit, and `test_theTermsLeafNeverPassesAsAnOrderSlot` refuses
-the reserved terms key as an order slot's `agreementKey`; the guest's twins
+root did not commit, and `test_theTermsLeafNeverPassesAsAnAgreement` refuses
+the reserved terms key as an agreement's `agreementKey`; the guest's twins
 are in `prover/lib/tests/usage.rs`.
 
-## 26. An assembly's order slots are ordered — one registered agreement may hold two order slots
+## 26. An assembly's agreements are ordered — one registered agreement may hold two agreements
 
-**Pattern**: The order slots of an assembly are a sequence, and each slot leaf
-carries its 0-based index in its content (`"slot":i`). Two order slots may
+**Pattern**: The agreements of an assembly are a sequence, and each agreement leaf
+carries its 0-based index in its content (`"slot":i`). Two agreements may
 name the same `agreementKey`; their leaves differ by index and by the order
-slot's own fills.
+agreement's own fills.
 
 **Why it looks wrong**: A set of agreement keys is the smaller structure and
 needs no index; a repeated key in a merkle tree looks like a duplicate leaf an
@@ -853,13 +853,13 @@ indexer would double-count.
 process, or two sellers adding value under the same terms, are two orders under one
 registered agreement, and a set root cannot express that. The index makes each
 leaf distinct, so the root commits the multiplicity, and the topology — which
-order slots each one follows — is a fill of the order slot, inside the leaf,
+agreements each one follows — is a fill of the agreement, inside the leaf,
 never a field of the registered agreement. Usage still counts once per
 process per (kind, key) (`CONTRACTS.md` § "Usage accounting", idempotence),
-so a repeated agreement earns for the process, not per order slot.
+so a repeated agreement earns for the process, not per agreement.
 
 **Tests**: the third vector assembly in `test/fixtures/assembly-vectors.json`
-holds one `agreementKey` in two of its three order slots, and every parity leg
+holds one `agreementKey` in two of its three agreements, and every parity leg
 rebuilds its distinct leaves and its root.
 
 ---
@@ -893,4 +893,4 @@ rebuilds its distinct leaves and its root.
 | 23 | Pinata pin key in the public site bundle | site/pinning | A credential in a public bundle reads as a leaked secret | The testnet key is pin-only (dashboard-confirmed: unpin, list, data and every V3 resource inactive) and disposable; every registry read is digest-checked against the on-chain anchor, so a hostile pin never verifies; testnet only — per-party pinning at mainnet, the keys revoked at the account split |
 | 24 | Reward keyed by (kind, key), three kinds | reward-path | A family discriminator looks like the reward crossing the registries' boundary | Each registry takes any bytes32 and nothing tells the families apart by bytes; without the kind a stranger staking an assembly's hash as a clause or an agreement would take its reward; the kind keeps a stake in one family from earning another's, and no kind's gate reads another kind's registry |
 | 25 | The assembly root is a merkle tree over registered agreement keys | registry/reward-path | No stored list of an assembly's agreements; a caller-supplied proof | A stored list or a cross-registry lookup is an edge between parallel families; the root commits membership, so a proof either reaches the registered root or fails |
-| 26 | Ordered order slots; one agreement may hold two | registry | A repeated key looks like a duplicate leaf | Designs repeat terms; the index makes each leaf distinct and the root commits the multiplicity; usage counts once per process per (kind, key) |
+| 26 | Ordered agreements; one agreement may hold two | registry | A repeated key looks like a duplicate leaf | Designs repeat terms; the index makes each leaf distinct and the root commits the multiplicity; usage counts once per process per (kind, key) |

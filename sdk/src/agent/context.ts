@@ -187,7 +187,7 @@ export class FigaroContext {
     }
 
     /** A registered agreement's binding by key WHATEVER its stake — what
-     *  hydrating an assembly's order slot reads (`hydrateAssembly`). */
+     *  hydrating an assembly's agreement reads (`hydrateAssembly`). */
     getAgreementBinding(agreementKey: Hex): RegisteredAgreement | undefined {
         return this.discovery.getAgreementBinding(agreementKey);
     }

@@ -4,8 +4,8 @@
  * Each authored agreement is written by clause name and composed at seed
  * time (`composeAuthoredAgreement` over `clauses/`: names resolved to keys,
  * the mandatory clauses folded, keyed); each reference assembly names the
- * agreements its order slots bind and is built over them (`assembleAuthored`:
- * the slot binds the agreement's key and carries its own parents). Built, it
+ * agreements its agreements bind and is built over them (`assembleAuthored`:
+ * the entry binds the agreement's key and carries its own parents). Built, it
  * must parse, hash, resolve its topology, compose only clauses that exist,
  * carry the mandatory clauses on every order, and carry the editorial
  * identity a stranger reads first; every authored agreement must be bound
@@ -16,7 +16,7 @@ import { readdirSync, readFileSync, existsSync } from "node:fs";
 import path from "node:path";
 import { beforeAll, describe, expect, it } from "vitest";
 import { keccak256 } from "viem";
-import { canonicalize, planTemplateOrders, slotClauses, templateCompositionHash, type HydratedAssembly } from "@figaro-protocol/sdk";
+import { canonicalize, planTemplateOrders, agreementClauses, templateCompositionHash, type HydratedAssembly } from "@figaro-protocol/sdk";
 import { parseAssemblyTemplateJson } from "@/lib/designer/assemblyTemplateToDraft";
 import { authoredAgreements, authoredSpecSet, primeClauseSpecs, referenceAssembly } from "./primeClauseSpecs";
 
@@ -55,7 +55,7 @@ describe("reference assemblies — the onboarding set", () => {
         const bound = new Set<string>();
         for (const file of referenceFiles) {
             const authored = JSON.parse(readFileSync(path.join(ASSEMBLIES_DIR, file), "utf8")) as { agreements: { agreement: string }[] };
-            for (const slot of authored.agreements) bound.add(slot.agreement);
+            for (const entry of authored.agreements) bound.add(entry.agreement);
         }
         expect(agreementFiles.length).toBeGreaterThan(0);
         for (const file of agreementFiles) {
@@ -72,7 +72,7 @@ describe("reference assemblies — the onboarding set", () => {
 
     for (const file of referenceFiles) {
         describe(file, () => {
-            // The seeding's build: the authored agreements composed by name over clauses/, the order slots keyed.
+            // The seeding's build: the authored agreements composed by name over clauses/, the agreements keyed.
             const hydrated = (): HydratedAssembly => referenceAssembly(file);
 
             it("parses as a sound AssemblyTemplate and its composition hashes", () => {
@@ -90,8 +90,8 @@ describe("reference assemblies — the onboarding set", () => {
             it("composes only clauses that exist, mandatory clauses on every order", () => {
                 const assembly = hydrated();
                 const template = assembly.template;
-                for (const slot of template.agreements) {
-                    const order = { id: slot.id, clauses: slotClauses(assembly, slot) };
+                for (const entry of template.agreements) {
+                    const order = { id: entry.id, clauses: agreementClauses(assembly, entry) };
                     for (const clauseKey of Object.keys(order.clauses)) {
                         expect(registeredClauseKeys.has(clauseKey), `${order.id} composes unknown clause ${clauseKey}`).toBe(true);
                     }
@@ -116,8 +116,8 @@ describe("reference assemblies — the onboarding set", () => {
 
             it("every affixed document reproduces its committed hash from the shipped bytes", () => {
                 const assembly = hydrated();
-                for (const slot of assembly.template.agreements) {
-                    const order = { clauses: slotClauses(assembly, slot) };
+                for (const entry of assembly.template.agreements) {
+                    const order = { clauses: agreementClauses(assembly, entry) };
                     const documents = (consentKey ? order.clauses[consentKey as `0x${string}`] : undefined) as { documents?: Array<{ documentHash?: string; documentUri?: string }> } | undefined;
                     const consented = documents?.documents ?? [];
                     for (const doc of consented) {

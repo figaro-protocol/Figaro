@@ -12,7 +12,7 @@
  *     atomically under a single block's gas budget. A process grown past
  *     this cap can NEVER resolve — every bond in it is locked forever —
  *     so every client-side commit path must check it (FigaroCore cannot:
- *     the composed agreements live off-chain). Driven by the chain's actual
+ *     the agreements live off-chain). Driven by the chain's actual
  *     `block.gasLimit` rather than a hardcoded literal so the same code
  *     works on Ethereum mainnet (30M), Base, Optimism, Arbitrum, etc.
  *
@@ -59,7 +59,7 @@ export interface ResolveCapReader extends BlockGasReader {
  * REAL post-Glamsterdam transaction receipts against the deployed `FigaroCore`
  * on live Sepolia (not estimated, not a pre-fork local EVM): resolveProcess
  * over N orders costs `~73,000 + ~29,800·N` gas. A resolve is its own
- * transaction, so each order's distinct `orderStatus`/balance slots pay COLD
+ * transaction, so each order's distinct `orderStatus`/balance entries pay COLD
  * access (two ERC-20 transfers + struct keccaks + SSTORE + LOG + the order's
  * calldata). Receipt points: N=1→102,689, N=2→132,465 (marginal 29,776).
  * The fork's repricing (EIP-8037 state creation, EIP-7778 refund accounting)
@@ -74,7 +74,7 @@ const RESOLVE_GAS_PER_ORDER = 30_000n;
  * Per-order cost of one `commit()` call, measured on live post-Glamsterdam
  * Sepolia receipts: a sub-order commit is 382,032 (the per-order marginal —
  * warm process state); the FIRST commit in a process (root) is ~794k because
- * it creates the cold `ProcessState` (EIP-8037 prices fresh slots steeply).
+ * it creates the cold `ProcessState` (EIP-8037 prices fresh entries steeply).
  * 383k is the marginal used here; the root's one-time premium is amortized
  * away over a multi-order process.
  *
@@ -214,7 +214,7 @@ export async function readProcessResolveCapacity(
  * chain's resolve ceiling — past it, `resolveProcess` can no longer fit
  * in one block and every bond in the process is locked forever. The
  * FigaroCore cannot enforce this (the ceiling is a block-gas property, and
- * the composed agreements live off-chain), so every client-side commit path calls this.
+ * the agreements live off-chain), so every client-side commit path calls this.
  *
  * Root commitments (`processId` = zero) pass trivially — they create a
  * fresh process with one order. Whether the process EXISTS is the

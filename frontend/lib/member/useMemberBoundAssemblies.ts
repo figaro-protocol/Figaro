@@ -5,7 +5,7 @@
  * Member-domain composition: reads the member's profile (MembersRegistry →
  * IPFS), intersects the profile's `assemblyBindings[].assemblySlug` with the
  * published assembly events, and reads each matched assembly hydrated — the
- * template and every order slot's registered agreement, each verified. The
+ * template and every agreement's registered agreement, each verified. The
  * on-chain reads come from `@/lib/protocol/useAssemblyRegistry` (a legal
  * downward arrow); the member-profile parsing stays intra-seller.
  */
@@ -30,7 +30,7 @@ export interface BoundAssembly {
     /** Display name from the assembly template; falls back to the slug. */
     name: string;
     /** The template verified against its composition hash, beside every
-     *  order slot's registered agreement verified against its key. */
+     *  agreement's registered agreement verified against its key. */
     hydratedAssembly: HydratedAssembly;
     /** The member's designated counterparty wallets for this assembly,
      *  keyed by sub-order process clause (the runtime ladder clause the

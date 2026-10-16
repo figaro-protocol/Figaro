@@ -198,7 +198,7 @@ contract RpgfMinterTest is Test {
 
     /// A registry takes any bytes32, so bob can stake carol's composition hash
     /// as a CLAUSE. The kind names the one registry that decides authorship:
-    /// bob's clause-kind entry reads the clause slot (empty), his assembly-kind
+    /// bob's clause-kind entry reads the clause entry (empty), his assembly-kind
     /// entry reads `AssemblyRegistry` (carol's), and carol is paid.
     function test_eachKindReadsOnlyItsOwnRegistry() public {
         vm.prank(bob);

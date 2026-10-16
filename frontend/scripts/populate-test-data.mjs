@@ -125,7 +125,7 @@ function seedBlank() {
 /** The multi-order value-added CHAIN — the externalized P&L the multi-order
  *  e2e runs end-to-end: a root merchant agreement (merchant process, delivery
  *  modality) plus courier and supplier sub-agreements. Which agreements
- *  compose which order slot is scenario DATA (a designed assembly this seed
+ *  compose which agreement is scenario DATA (a designed assembly this seed
  *  reproduces byte-for-byte), exactly like the member roster above.
  *  Counterparties are NOT seeded — the lead binds + designates them through
  *  the real UI flow. */

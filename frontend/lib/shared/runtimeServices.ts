@@ -9,7 +9,7 @@ import { DEFAULT_HANDOFF_PERSISTENCE_SERVICE } from "@/lib/handoff/handoffPersis
 import type { IpfsService } from "@/lib/shared/ipfsService";
 import { DEFAULT_IPFS_SERVICE } from "@/lib/shared/ipfsService";
 
-/** The 5 service slots a runtime carries. */
+/** The 5 service entries a runtime carries. */
 type RuntimeServiceKey =
     | "catalog"
     | "discovery"

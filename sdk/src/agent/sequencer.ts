@@ -103,7 +103,7 @@ export interface SequencerCommitment {
  * or assembly — the wire form of the Rust guest's `UsageClaim`. Build these
  * with `buildUsageClaims` (rpgf), which proves each clause from its section,
  * the agreement from the agreement's provenance leaf, and the assembly from
- * the same leaf plus the order slot's membership proof; never hand-roll one.
+ * the same leaf plus the agreement's membership proof; never hand-roll one.
  *
  * Nothing here is trusted. The guest re-proves that the order resolved and that
  * the clause or assembly was in the signed agreement; the counter then applies the

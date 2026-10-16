@@ -14,7 +14,7 @@ interface MobileNavProps {
     links?: NavLink[];
     logo?: React.ReactNode;
     /** Optional CTA pinned to the top of the slide-out drawer. No current
-     *  tier passes one; the slot stays for a tier that does. */
+     *  tier passes one; the entry stays for a tier that does. */
     topCta?: ReactNode;
 }
 

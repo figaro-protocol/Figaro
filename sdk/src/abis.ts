@@ -311,7 +311,7 @@ export const ASSEMBLY_REGISTRY_ABI = parseAbi([
 
 // ── AgreementRegistry ABI ─────────────────────────────────────────────────
 // AssemblyRegistry's shape, keyed by `agreementKey` (`agreementKeyOf`, the
-// merkle root over the clauses composed for one order slot). Parallel to the
+// merkle root over the clauses composed for one agreement). Parallel to the
 // clause and assembly registries: no edge to either.
 
 export const AGREEMENT_REGISTRY_ABI = parseAbi([
@@ -360,14 +360,14 @@ export const FLORIN_TOKEN_ABI = parseAbi([
 // the content of the agreement format's reserved provenance leaf
 // (`provenanceLeaf`) is fully determined by the two keys it names
 // (`agreementKey`, `compositionHash`), so the contract derives it; the
-// assembly claim adds the order slot's membership proof under
+// assembly claim adds the agreement's membership proof under
 // `compositionHash`. Accrual
 // buckets into fixed periods; a period's counts are final once `periodClosed`.
 //
 // BATCH-RESOLVED trade never touches FigaroCore, so it can never travel that
 // path. It arrives instead through `applyBatchAccrual`, which only
 // FigaroBatchVerifier may call and only with numbers an SP1 proof committed.
-// Its accrual is kept in a SEPARATE slot (`batchAccrualOf`) and merged by
+// Its accrual is kept in a SEPARATE entry (`batchAccrualOf`) and merged by
 // SCORE, never by component — read `scoreOf` for a clause or assembly's real total;
 // `accrualOf` alone sees the direct path and under-reports anything that
 // scaled.
@@ -392,7 +392,7 @@ export const USAGE_COUNTER_ABI = parseAbi([
 
     // ── Accrual ─────────────────────────────────────────────────────
     // Every accrual is keyed by (kind, key): kind 0 is a clause, 1 an assembly,
-    // 2 a registered agreement; the families never share a slot
+    // 2 a registered agreement; the families never share a entry
     // (UsageCounter.KIND_CLAUSE / KIND_ASSEMBLY / KIND_AGREEMENT).
     "function KIND_CLAUSE() view returns (uint8)",
     "function KIND_ASSEMBLY() view returns (uint8)",

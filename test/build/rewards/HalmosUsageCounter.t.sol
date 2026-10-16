@@ -98,7 +98,7 @@ contract UsageCounterHarness is UsageCounter {
 ///                                             refuses (closed); (4b) a write
 ///                                             claiming the wrong period is
 ///                                             rejected and never disturbs the
-///                                             other period's slot.
+///                                             other period's entry.
 ///           5  cross-clause-or-assembly isolation    — recording usage for clause or assembly A
 ///              (check_crossClauseOrAssemblyIsolation) leaves every field of clause or assembly
 ///                                             B's bookkeeping byte-for-byte
@@ -106,7 +106,7 @@ contract UsageCounterHarness is UsageCounter {
 ///                                             `totalScoreIn` moves by EXACTLY
 ///                                             A's own score delta.
 ///           6  kind isolation              — a use counted under any one of
-///              (check_theKindsNeverShareASlot) the three kinds, direct or
+///              (check_theKindsNeverShareAKey) the three kinds, direct or
 ///                                             batch, leaves every other kind's
 ///                                             accrual at the same key empty,
 ///                                             and the same process still
@@ -139,7 +139,7 @@ contract UsageCounterHarness is UsageCounter {
 ///         mocks above so this file proves only the arithmetic layered on top.
 contract HalmosUsageCounter is Test {
     /// @dev The arithmetic below is proved on the clause kind; the kinds share
-    ///      every line of it, and `check_theKindsNeverShareASlot` proves no two
+    ///      every line of it, and `check_theKindsNeverShareAKey` proves no two
     ///      of the three ever touch each other's accruals.
     uint8 internal constant KIND_CLAUSE = 0;
     bytes32 internal constant PROVENANCE_LEAF = keccak256("figaro-agreement-provenance");
@@ -148,7 +148,7 @@ contract HalmosUsageCounter is Test {
     uint64 internal constant P1_END = 2_000_000;
 
     /// @dev Bundles one `(c, d, score, total)` reading behind a single memory
-    ///      pointer so a snapshot occupies one stack slot instead of four —
+    ///      pointer so a snapshot occupies one stack entry instead of four —
     ///      needed to keep `check_directAccrualMonotone` under the legacy
     ///      codegen stack limit with 6 symbolic parameters already live.
     struct Snapshot {
@@ -209,7 +209,7 @@ contract HalmosUsageCounter is Test {
 
     /// @dev Reads the current `(c, d, score, total)` accrual for a clause or
     ///      assembly — factored out of `check_directAccrualMonotone` so each
-    ///      snapshot occupies one `Snapshot memory` stack slot at the call
+    ///      snapshot occupies one `Snapshot memory` stack entry at the call
     ///      site instead of four scalars (this repo's existing pattern for
     ///      stack depth, matching `UsageCounterTest`'s `_recordOn`/`_accrual`
     ///      helpers).
@@ -325,8 +325,8 @@ contract HalmosUsageCounter is Test {
             "the two universes only ever meet by ADDITION"
         );
 
-        if (!doDirect) assertEq(directScore, 0, "an untouched direct slot contributes exactly zero");
-        if (!doBatch) assertEq(batchScore, 0, "an untouched batch slot contributes exactly zero");
+        if (!doDirect) assertEq(directScore, 0, "an untouched direct entry contributes exactly zero");
+        if (!doBatch) assertEq(batchScore, 0, "an untouched batch entry contributes exactly zero");
     }
 
     // ── 4. Period bucketing ───────────────────────────────────────────
@@ -356,7 +356,7 @@ contract HalmosUsageCounter is Test {
     /// 4b. A batch write claiming a period other than the one the chain has
     /// open is rejected, and — crucially — the REJECTED write touches nothing,
     /// while a write accepted into the correct period leaves every OTHER
-    /// period's slot for the same clause or assembly exactly as it was.
+    /// period's entry for the same clause or assembly exactly as it was.
     function check_wrongPeriodIsRejected_andOtherPeriodUntouched(bytes32 clauseOrAssembly, address seller) public {
         UsageCounterHarness counter = _deploy();
         vm.warp(P0_END - 1000); // period 0 is open
@@ -377,7 +377,7 @@ contract HalmosUsageCounter is Test {
         // The correct period succeeds...
         counter.applyBatchAccrual(0, PROVENANCE_LEAF, accr, sellers);
 
-        // ...and period 1's slot for the SAME clause or assembly is untouched.
+        // ...and period 1's entry for the SAME clause or assembly is untouched.
         (,, uint256 otherAfter) = counter.batchAccrualOf(KIND_CLAUSE, clauseOrAssembly, 1);
         assertEq(otherAfter, otherBefore, "recording in period 0 never touches period 1's slot");
     }
@@ -387,7 +387,7 @@ contract HalmosUsageCounter is Test {
     /// Recording usage for clause or assembly A — via either resolution path — leaves
     /// every field of a DIFFERENT clause or assembly B's bookkeeping byte-for-byte
     /// unchanged, and the shared `totalScoreIn` moves by EXACTLY A's own score
-    /// delta (never more, which would mean it leaked from B's slot; never
+    /// delta (never more, which would mean it leaked from B's entry; never
     /// less, which would mean A's own delta was mis-added).
     function check_crossClauseOrAssemblyIsolation(
         bytes32 clauseOrAssemblyA,
@@ -416,7 +416,7 @@ contract HalmosUsageCounter is Test {
     }
 
     /// @dev B's direct + batch accrual plus the shared period-0 total,
-    ///      bundled behind one stack slot — see `Snapshot` above for why.
+    ///      bundled behind one stack entry — see `Snapshot` above for why.
     struct Isolation {
         uint64 bc;
         uint64 bd;
@@ -461,7 +461,7 @@ contract HalmosUsageCounter is Test {
         }
     }
 
-    // ── 6. The kinds never share a slot ──────────────────────────────
+    // ── 6. The kinds never share a entry ──────────────────────────────
 
     /// A use counted under one kind — direct or batch — leaves every other
     /// kind's accrual at the same key untouched: no count, no score, no
@@ -469,7 +469,7 @@ contract HalmosUsageCounter is Test {
     /// other kind. Both kinds are symbolic over the three, so every ordered
     /// pair is proved. This is what keeps a stake in one family at another
     /// family's bytes from earning that family's accrual.
-    function check_theKindsNeverShareASlot(
+    function check_theKindsNeverShareAKey(
         uint8 countedKind,
         uint8 otherKind,
         bytes32 key,

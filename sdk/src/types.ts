@@ -199,7 +199,7 @@ export interface AssemblyWithdrawnEvent {
 
 /** AgreementRegistry `AgreementRegistered`. Identity IS `agreementKey`
  *  (`agreementKeyOf`, the merkle root over the clauses composed for one
- *  order slot). */
+ *  agreement). */
 export interface AgreementRegisteredEvent {
     agreementKey: Hex;
     registeredBy: Address;

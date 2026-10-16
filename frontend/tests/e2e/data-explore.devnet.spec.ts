@@ -281,7 +281,7 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
         }
 
         // ── ADOPT from chain + IPFS: anchored templates resolved in full —
-        //    each order slot's agreement read by key from AgreementRegistry
+        //    each agreement's agreement read by key from AgreementRegistry
         //    and verified — selected by SHAPE (single order composing the
         //    credential clause, the GEO clause, and the each-own data-terms
         //    regime) — never a hardcoded slug. ──
@@ -294,9 +294,9 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
         expect(aerial, 'the geo-bearing aerial-survey reference is anchored — run populate-test-data first').toBeTruthy();
         expect(templateCompositionHash(aerial!.hydrated.template), 'the pinned template re-hashes to its anchored identity')
             .toBe(aerial!.compositionHash);
-        // CHAIN FACT: the order slot's agreement is a live registration, read by key.
+        // CHAIN FACT: the agreement's agreement is a live registration, read by key.
         const aerialAgreementKey = aerial!.agreements[0].agreementKey;
-        expect(await readAgreementBinding(aerialAgreementKey), 'the order slot binds a registered agreement').not.toBeNull();
+        expect(await readAgreementBinding(aerialAgreementKey), 'the agreement binds a registered agreement').not.toBeNull();
         const assemblyName = aerial!.name ?? '';
         expect(assemblyName, 'the anchored template carries its registered display name').not.toBe('');
 

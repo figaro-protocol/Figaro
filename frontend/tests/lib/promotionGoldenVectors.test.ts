@@ -113,7 +113,7 @@ function templateCase() {
     });
     return {
         ...serializeAssemblyTemplate(built.template),
-        // The agreements newly composed for the order slots, each as the
+        // The agreements newly composed for the agreements, each as the
         // canonical document publish pins.
         agreements: Object.fromEntries(
             Object.entries(built.agreements).map(([key, doc]) => [key, canonicalize(doc)]),

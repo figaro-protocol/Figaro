@@ -1,16 +1,16 @@
 /**
  * assemblyTemplateToDraft — hydrates a `DesignSnapshot` from a HYDRATED
- * assembly (the template pinned on AssemblyRegistry beside every order slot's
+ * assembly (the template pinned on AssemblyRegistry beside every agreement's
  * registered agreement, each verified). Powers the "Fork" button: a published
  * assembly is read, this helper turns it into a localStorage draft under a
  * new slug, and the canvas opens at /assemblies/designer/edit?slug=<new-slug>.
  *
- * The template carries structure (order slots + the topology parents in each
- * slot's own fill) and, per order slot, the registered agreement it binds —
- * no payment (payment is a runtime value). Each order slot is reconstructed
+ * The template carries structure (agreements + the topology parents in each
+ * agreement's own fill) and, per agreement, the registered agreement it binds —
+ * no payment (payment is a runtime value). Each agreement is reconstructed
  * into a display Order with a synthetic agreement (built from its clauses +
  * topology parents) seeded into the store so the canvas resolves it by hash.
- * Each order slot keeps binding its registered agreement (`registeredByOrderId`)
+ * Each agreement keeps binding its registered agreement (`registeredByOrderId`)
  * — unless the caller names its key among `composeKeys`, in which case the
  * agreement's clauses are carried into `clausesByOrderId` for the designer to
  * compose anew (an imported agreement no registry binds yet).
@@ -21,7 +21,7 @@ import {
     hydrateAssembly,
     isBytes32Hex,
     planTemplateOrders,
-    slotAgreement,
+    boundAgreement,
     type ComposedAgreement,
     type Hex,
     type HydratedAssembly,
@@ -77,9 +77,9 @@ export function assemblyTemplateToDraft(
     const compose = (key: Hex) => options.composeKeys?.has(key.toLowerCase()) ?? false;
     const registeredByOrderId: Record<string, Hex> = {};
     const clausesByOrderId: Record<string, Record<string, Record<string, unknown>>> = {};
-    for (const slot of template.agreements) {
-        if (compose(slot.agreementKey)) clausesByOrderId[slot.id] = { ...slotAgreement(hydrated, slot).clauses };
-        else registeredByOrderId[slot.id] = slot.agreementKey;
+    for (const entry of template.agreements) {
+        if (compose(entry.agreementKey)) clausesByOrderId[entry.id] = { ...boundAgreement(hydrated, entry).clauses };
+        else registeredByOrderId[entry.id] = entry.agreementKey;
     }
     return {
         slug: options.slug,
@@ -112,7 +112,7 @@ export type ParsedTemplateResult =
  * against; soundness is the bar). Accepts the handoff shape
  * `{ template, agreements }` (the template and the agreements newly composed
  * for it, keyed by agreement key) or a bare template. Shape-checks the order
- * slots, then probes the composition through `templateCompositionHash` — the
+ * entries, then probes the composition through `templateCompositionHash` — the
  * same walk the registry key uses — so anything it cannot hash is rejected
  * here with a message instead of failing later at publish.
  */
@@ -128,17 +128,17 @@ export function parseAssemblyTemplateJson(text: string): ParsedTemplateResult {
     const agreementDocs = isBundle && typeof bundle.agreements === "object" && bundle.agreements !== null
         ? bundle.agreements as Record<string, unknown>
         : {};
-    const slots = candidate.agreements;
-    if (!Array.isArray(slots) || slots.length === 0) {
-        return { ok: false, error: "A template carries a non-empty `agreements` array — one order slot per order." };
+    const entries = candidate.agreements;
+    if (!Array.isArray(entries) || entries.length === 0) {
+        return { ok: false, error: "A template carries a non-empty `agreements` array — one agreement per order." };
     }
-    for (const entry of slots) {
+    for (const entry of entries) {
         const id = (entry as { id?: unknown } | null)?.id;
         const agreementKey = (entry as { agreementKey?: unknown } | null)?.agreementKey;
         const clauses = (entry as { clauses?: unknown } | null)?.clauses;
         if (typeof entry !== "object" || entry === null || typeof id !== "string" || !isBytes32Hex(agreementKey)
             || typeof clauses !== "object" || clauses === null || Array.isArray(clauses)) {
-            return { ok: false, error: "Each order slot needs a string `id`, an `agreementKey` (the 32-byte key of a registered agreement) and a `clauses` object (the order slot's own fills)." };
+            return { ok: false, error: "Each agreement needs a string `id`, an `agreementKey` (the 32-byte key of a registered agreement) and a `clauses` object (the agreement's own fills)." };
         }
         const unkeyed = Object.keys(clauses).find((k) => !isBytes32Hex(k));
         if (unkeyed !== undefined) {
@@ -160,13 +160,13 @@ export function parseAssemblyTemplateJson(text: string): ParsedTemplateResult {
 }
 
 /**
- * Hydrate a parsed import: each order slot's agreement is read from the
+ * Hydrate a parsed import: each agreement's agreement is read from the
  * pasted documents (verified against its key) or, when the paste does not
  * carry it, from `AgreementRegistry`. Every pasted agreement comes back among
  * `composeKeys` — the agent's composition lands on the canvas as composition
  * (publish registers it unless a registry already binds its key); an order
- * slot the paste names only by key binds that registered agreement. An
- * `error` says an order slot's agreement is absent from both.
+ * entry the paste names only by key binds that registered agreement. An
+ * `error` says an agreement's agreement is absent from both.
  */
 export async function hydrateImportedTemplate(
     parsed: Extract<ParsedTemplateResult, { ok: true }>,
@@ -188,7 +188,7 @@ export async function hydrateImportedTemplate(
         return fetchComposedAgreement(agreementKey);
     });
     if (!hydrated) {
-        return { error: "An order slot binds an agreement that is neither in the pasted composition nor registered on this network's AgreementRegistry." };
+        return { error: "An agreement binds an agreement that is neither in the pasted composition nor registered on this network's AgreementRegistry." };
     }
     return { hydrated, composeKeys };
 }

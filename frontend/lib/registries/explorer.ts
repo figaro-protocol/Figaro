@@ -169,7 +169,7 @@ function compareRows(a: ExplorerRow, b: ExplorerRow, sort: RegistrySort): number
  *   document outside the key.
  *
  *   `composition-hash` — assemblies. `AssemblyRegistry`'s `compositionHash` is
- *   the merkle root over the template's order slots (each slot's agreement
+ *   the merkle root over the template's agreements (each agreement's agreement
  *   key and its own fills) and, where composed, its assembly-scoped clauses
  *   (`templateCompositionHash`). The designer's editorial
  *   fields (name, summary, description) ride in the same document and are
@@ -194,9 +194,9 @@ export const STORED_DOCUMENT_NOTE: Record<StoredDocumentAnchor, string> = {
     "content-hash":
         "The hash on chain is the clause key: the keccak256 of exactly these bytes, as pinned. The designer pins the spec's canonical form — object keys sorted at every depth, no whitespace — so anyone can hash the bytes the gateway serves and reproduce the key; the same document in any other byte form is another key.",
     "agreement-key":
-        "The hash on chain is the agreement key: the keccak256 of the canonical form of this document's clauses — the clauses composed for one order slot. The designer's editorial wording rides in the same document and is deliberately outside the key.",
+        "The hash on chain is the agreement key: the keccak256 of the canonical form of this document's clauses — the clauses composed for one agreement. The designer's editorial wording rides in the same document and is deliberately outside the key.",
     "composition-hash":
-        "The hash on chain is the composition root: the merkle root over this document's order slots — each one the key of the registered agreement it binds and its own fills — and the assembly-scoped clauses where it composes any. The designer's editorial wording rides in the same document and is deliberately outside the anchor.",
+        "The hash on chain is the composition root: the merkle root over this document's agreements — each one the key of the registered agreement it binds and its own fills — and the assembly-scoped clauses where it composes any. The designer's editorial wording rides in the same document and is deliberately outside the anchor.",
 };
 
 /** A pinned document read back and checked against the chain's own digest. */

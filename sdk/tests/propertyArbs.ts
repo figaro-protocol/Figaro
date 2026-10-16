@@ -7,7 +7,7 @@
  */
 import fc from "fast-check";
 import type { Agreement, AgreementSection } from "../src/agreement.js";
-import type { AssemblyTemplate, ComposedAgreement, TemplateSlot } from "../src/assembly.js";
+import type { AssemblyTemplate, ComposedAgreement, AssemblyAgreement } from "../src/assembly.js";
 import type { Commitment } from "../src/types.js";
 
 /** Fixed-width lowercase hex string of `bytes` bytes (0x-prefixed). */
@@ -95,9 +95,9 @@ export const composedAgreementArb: fc.Arbitrary<ComposedAgreement> = fc.record({
     clauses,
 }));
 
-/** An assembly template: one to six order slots, each binding a random
- *  agreement key (a key may repeat across order slots), each order slot
- *  after the root naming earlier order slots as parents through one
+/** An assembly template: one to six agreements, each binding a random
+ *  agreement key (a key may repeat across agreements), each agreement
+ *  after the root naming earlier agreements as parents through one
  *  topology-shaped fill, and optional assembly-scoped terms. */
 export const templateArb: fc.Arbitrary<AssemblyTemplate> = fc.record({
     topologyKey: bytes32Arb,
@@ -105,7 +105,7 @@ export const templateArb: fc.Arbitrary<AssemblyTemplate> = fc.record({
     edges: fc.array(fc.array(fc.nat(), { maxLength: 2 }), { minLength: 6, maxLength: 6 }),
     terms: fc.option(fc.dictionary(bytes32Arb, clauseDataArb, { minKeys: 1, maxKeys: 2 }), { nil: undefined }),
 }).map(({ topologyKey, keys, edges, terms }) => {
-    const agreements: TemplateSlot[] = keys.map((agreementKey, i) => {
+    const agreements: AssemblyAgreement[] = keys.map((agreementKey, i) => {
         const parents = i === 0 ? [] : [...new Set(edges[i].map((n) => `order-${n % i}`))];
         return { id: `order-${i}`, agreementKey, clauses: { [topologyKey]: { parentOrderHashes: parents } } };
     });

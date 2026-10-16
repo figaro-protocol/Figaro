@@ -1,6 +1,6 @@
 /**
- * Property tests for the composition tree and the agreement key: every order
- * slot's membership proof verifies under its own assembly's root and under
+ * Property tests for the composition tree and the agreement key: every agreement
+ * own membership proof verifies under its own assembly's root and under
  * no other; every composed clause's proof verifies under its own agreement
  * key and under no other; the agreement key ignores editorial prose and
  * moves with any clause value; the two-key provenance bytes decode back to
@@ -11,29 +11,29 @@ import { describe, expect, it } from "vitest";
 import {
     agreementKeyOf,
     buildClauseInclusionProof,
-    buildSlotInclusionProof,
+    buildAgreementInclusionProof,
     templateCompositionHash,
 } from "../src/assembly.js";
 import { decodeProvenanceContent, provenanceSectionBytes, verifyInclusionProof } from "../src/agreement.js";
 import { bytes32Arb, composedAgreementArb, templateArb } from "./propertyArbs.js";
 
 describe("the composition tree", () => {
-    it("every order slot's membership proof verifies under its assembly's root", () => {
+    it("every agreement's membership proof verifies under its assembly's root", () => {
         fc.assert(fc.property(templateArb, (template) => {
             const root = templateCompositionHash(template);
             template.agreements.forEach((_, i) => {
-                const { leaf, proof } = buildSlotInclusionProof(template, i);
+                const { leaf, proof } = buildAgreementInclusionProof(template, i);
                 expect(verifyInclusionProof(root, leaf, proof)).toBe(true);
             });
         }));
     });
 
-    it("an order slot's proof does not verify under a different assembly's root", () => {
+    it("an agreement's proof does not verify under a different assembly's root", () => {
         fc.assert(fc.property(templateArb, templateArb, (a, b) => {
             const rootA = templateCompositionHash(a);
             const rootB = templateCompositionHash(b);
             fc.pre(rootA !== rootB);
-            const { leaf, proof } = buildSlotInclusionProof(a, 0);
+            const { leaf, proof } = buildAgreementInclusionProof(a, 0);
             expect(verifyInclusionProof(rootB, leaf, proof)).toBe(false);
         }));
     });

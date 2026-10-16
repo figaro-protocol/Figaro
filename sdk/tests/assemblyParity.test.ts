@@ -3,10 +3,10 @@
  * and the two-key provenance leaf.
  *
  * The SDK builds an assembly's `compositionHash` (the merkle root over its
- * order slot leaves and its assembly-terms leaf), each order slot's
+ * agreement leaves and its assembly-terms leaf), each agreement's
  * membership proof, and the provenance leaf every instantiated order
  * carries. `UsageCounter` rebuilds the provenance leaf from the two keys and
- * verifies the order slot leaf under `compositionHash`; the guest does the
+ * verifies the agreement leaf under `compositionHash`; the guest does the
  * same on the batch path. This file freezes SDK-built bytes, leaves, roots
  * and proofs into `test/fixtures/assembly-vectors.json`; the Solidity and
  * Rust parity tests read it.
@@ -22,8 +22,8 @@ import {
     ASSEMBLY_TERMS_LEAF_KEY,
     agreementKeyOf,
     buildClauseInclusionProof,
-    buildSlotInclusionProof,
-    slotSectionBytes,
+    buildAgreementInclusionProof,
+    agreementLeafBytes,
     templateCompositionHash,
     type AssemblyTemplate,
     type ComposedAgreement,
@@ -52,16 +52,16 @@ const SHAPE =
     "membershipProof }: fillsBytes is the canonical JSON of the designer's fills for that clause, fillsHash = " +
     "keccak256(fillsBytes), leaf = keccak256(keccak256(clauseKey ‖ fillsHash)), membershipProof is the sorted-pair " +
     "proof of leaf under agreementKey, and agreementKey is the sorted-pair merkle root over every clause leaf " +
-    "(a one-clause agreement's key is its leaf). assemblies[]: { label, compositionHash, slots[], terms|null }. " +
-    "slots[i]: { id, agreementKey, slotBytes, slotContentHash, leaf, membershipProof, provenance } — " +
-    "slotBytes is the canonical JSON {\"clauses\":{…},\"slot\":i}, slotContentHash = keccak256(slotBytes), " +
+    "(a one-clause agreement's key is its leaf). assemblies[]: { label, compositionHash, entries[], terms|null }. " +
+    "slots[i]: { id, agreementKey, agreementBytes, slotContentHash, leaf, membershipProof, provenance } — " +
+    "agreementBytes is the canonical JSON {\"clauses\":{…},\"slot\":i}, slotContentHash = keccak256(agreementBytes), " +
     "leaf = keccak256(keccak256(agreementKey ‖ slotContentHash)), membershipProof is the sorted-pair proof of leaf " +
     "under compositionHash. terms: { leafKey (keccak256(\"figaro-assembly-terms\")), termsBytes (canonical JSON of " +
     "assemblyClauses), sectionHash, leaf } or null when no assembly-scoped clause is composed. " +
     "provenance: { leafKey (keccak256(\"figaro-agreement-provenance\")), agreementKey, compositionHash, sectionData " +
     "(canonical JSON {\"agreementKey\":\"0x…\",\"compositionHash\":\"0x…\"}, lowercase hex), sectionHash = " +
     "keccak256(sectionData), leaf = keccak256(keccak256(leafKey ‖ sectionHash)) }. compositionHash is the " +
-    "sorted-pair merkle root over every slot leaf and the terms leaf; a one-leaf tree's root is its leaf.";
+    "sorted-pair merkle root over every entry leaf and the terms leaf; a one-leaf tree's root is its leaf.";
 
 function agreementVector(label: string, composed: ComposedAgreement) {
     return {
@@ -90,23 +90,23 @@ function assemblyVector(label: string, template: AssemblyTemplate) {
     return {
         label,
         compositionHash,
-        slots: template.agreements.map((slot, i) => {
-            const { leaf, proof, slotContentHash } = buildSlotInclusionProof(template, i);
-            const sectionData = utf8(provenanceSectionBytes(slot.agreementKey, compositionHash));
+        agreements: template.agreements.map((entry, i) => {
+            const { leaf, proof, slotContentHash } = buildAgreementInclusionProof(template, i);
+            const sectionData = utf8(provenanceSectionBytes(entry.agreementKey, compositionHash));
             return {
-                id: slot.id,
-                agreementKey: slot.agreementKey,
-                slotBytes: utf8(slotSectionBytes(slot, i)),
+                id: entry.id,
+                agreementKey: entry.agreementKey,
+                agreementBytes: utf8(agreementLeafBytes(entry, i)),
                 slotContentHash,
                 leaf,
                 membershipProof: proof,
                 provenance: {
                     leafKey: PROVENANCE_LEAF_KEY,
-                    agreementKey: slot.agreementKey,
+                    agreementKey: entry.agreementKey,
                     compositionHash,
                     sectionData,
-                    sectionHash: provenanceContentRef(slot.agreementKey, compositionHash),
-                    leaf: computeProvenanceLeaf(slot.agreementKey, compositionHash),
+                    sectionHash: provenanceContentRef(entry.agreementKey, compositionHash),
+                    leaf: computeProvenanceLeaf(entry.agreementKey, compositionHash),
                 },
             };
         }),
@@ -123,9 +123,9 @@ function build() {
             agreementVector("two-sections-and-a-design", COMPOSED_DESIGN),
         ],
         assemblies: [
-            assemblyVector("one-slot", ASSEMBLY_ONE),
-            assemblyVector("two-slots", ASSEMBLY_TWO),
-            assemblyVector("three-slots-a-parent-edge-and-terms", ASSEMBLY_THREE),
+            assemblyVector("one-agreement", ASSEMBLY_ONE),
+            assemblyVector("two-agreements", ASSEMBLY_TWO),
+            assemblyVector("three-entries-a-parent-edge-and-terms", ASSEMBLY_THREE),
         ],
     };
 }
@@ -156,15 +156,15 @@ describe("Assembly parity vectors — the composition tree's lock", () => {
             expect(buildMerkleRoot(sortLeaves(a.clauses.map((c: { leaf: Hex }) => c.leaf)))).toBe(a.agreementKey);
         }
         for (const asm of frozen.assemblies) {
-            for (const slot of asm.slots) {
-                expect(keccak256(toHex(slot.slotBytes))).toBe(slot.slotContentHash);
-                expect(computeSectionLeaf({ clause: slot.agreementKey, dataHash: slot.slotContentHash })).toBe(slot.leaf);
-                expect(verifyInclusionProof(asm.compositionHash, slot.leaf, slot.membershipProof)).toBe(true);
-                expect(keccak256(toHex(slot.provenance.sectionData))).toBe(slot.provenance.sectionHash);
-                expect(computeSectionLeaf({ clause: slot.provenance.leafKey, dataHash: slot.provenance.sectionHash }))
-                    .toBe(slot.provenance.leaf);
+            for (const entry of asm.agreements) {
+                expect(keccak256(toHex(entry.agreementBytes))).toBe(entry.slotContentHash);
+                expect(computeSectionLeaf({ clause: entry.agreementKey, dataHash: entry.slotContentHash })).toBe(entry.leaf);
+                expect(verifyInclusionProof(asm.compositionHash, entry.leaf, entry.membershipProof)).toBe(true);
+                expect(keccak256(toHex(entry.provenance.sectionData))).toBe(entry.provenance.sectionHash);
+                expect(computeSectionLeaf({ clause: entry.provenance.leafKey, dataHash: entry.provenance.sectionHash }))
+                    .toBe(entry.provenance.leaf);
             }
-            const leaves = [...asm.slots.map((slot: { leaf: Hex }) => slot.leaf), ...(asm.terms ? [asm.terms.leaf] : [])];
+            const leaves = [...asm.agreements.map((entry: { leaf: Hex }) => entry.leaf), ...(asm.terms ? [asm.terms.leaf] : [])];
             if (asm.terms) {
                 expect(keccak256(toHex(asm.terms.termsBytes))).toBe(asm.terms.sectionHash);
                 expect(computeSectionLeaf({ clause: asm.terms.leafKey, dataHash: asm.terms.sectionHash })).toBe(asm.terms.leaf);
@@ -175,7 +175,7 @@ describe("Assembly parity vectors — the composition tree's lock", () => {
 
     it("a membership proof does not verify under another assembly's root", () => {
         const two = templateCompositionHash(ASSEMBLY_TWO);
-        const { leaf, proof } = buildSlotInclusionProof(ASSEMBLY_THREE, 2);
+        const { leaf, proof } = buildAgreementInclusionProof(ASSEMBLY_THREE, 2);
         expect(verifyInclusionProof(templateCompositionHash(ASSEMBLY_THREE), leaf, proof)).toBe(true);
         expect(verifyInclusionProof(two, leaf, proof)).toBe(false);
     });

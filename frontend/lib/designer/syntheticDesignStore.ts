@@ -81,7 +81,7 @@ function deserializeOrder(s: SerializedOrder): Order {
  *  - **named draft** — a snapshot the user explicitly "Save"d, stored by
  *    slug via `saveNamedDraft`. Survives across canvas resets.
  *  - **published `AssemblyTemplate`** (`lib/protocol/useAssemblyRegistry`)
- *    — the IPFS-pinned, published version: one order slot per order, each
+ *    — the IPFS-pinned, published version: one agreement per order, each
  *    binding a registered agreement by key. `assemblyTemplateToDraft`
  *    re-hydrates it (with its agreements) back into a `DesignSnapshot` for
  *    the editor.
@@ -115,9 +115,9 @@ export interface DesignSnapshot {
      *  per-order `clauses`; the build strips general values regardless. */
     clausesByOrderId?: Record<string, Record<string, Record<string, unknown>>>;
     /** Per-order REGISTERED agreement — keyed by order id, the
-     *  `AgreementRegistry` key the order slot binds as is. An order named
+     *  `AgreementRegistry` key the agreement binds as is. An order named
      *  here composes no clauses of its own (`clausesByOrderId`); the build
-     *  refuses an order slot that does both. */
+     *  refuses an agreement that does both. */
     registeredByOrderId?: Record<string, `0x${string}`>;
     /** ASSEMBLY-SCOPED composition — clauses declaring
      *  `design.scope: "assembly"`, composed once for the whole design

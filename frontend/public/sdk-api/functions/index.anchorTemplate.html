@@ -17,9 +17,9 @@
 <div class="tsd-signature tsd-anchor-link" id="anchortemplate"><span class="tsd-kind-call-signature">anchorTemplate</span><span class="tsd-signature-symbol">(</span><br/>    <span class="tsd-kind-parameter">raw</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">unknown</span><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">compositionHash</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">,</span><br/><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <a href="../types/index.Anchored.html" class="tsd-signature-type tsd-kind-type-alias">Anchored</a><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/index.AssemblyTemplate.html" class="tsd-signature-type tsd-kind-interface">AssemblyTemplate</a><span class="tsd-signature-symbol">&gt;</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">null</span><a href="#anchortemplate" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
 <div class="tsd-description">
 <div class="tsd-comment tsd-typography"><p>An assembly template, verified against <code>AssemblyRegistry</code>'s
-<code>compositionHash</code>: the merkle root over its order slot leaves and its
+<code>compositionHash</code>: the merkle root over its agreement leaves and its
 assembly-terms leaf is the hash. A document with no <code>agreements</code> array
-carries no composition and is not a template; an order slot whose key is
+carries no composition and is not a template; an agreement whose key is
 malformed or reserved does not hash.</p>
 </div>
 <div class="tsd-parameters">

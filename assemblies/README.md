@@ -1,7 +1,7 @@
 # Reference assemblies — the onboarding set
 
 Each file here is a real-world composition a newcomer can recognize, fork, and
-bind to on day one, written in the readable shape: one order slot per order
+bind to on day one, written in the readable shape: one agreement per order
 (`agreements[]`), each naming the written agreement it binds (`agreement`, a
 file in `agreements/`, the sibling directory) and carrying its own topology
 (`parentOrderHashes`, `order-<j>` labels); `assemblyClauses` by clause name
@@ -12,13 +12,13 @@ bound by `pos.json` and `equipment-hire.json`, `freelance-deliverable.json` by
 that shape; the populate path builds the registered shape from it at deploy:
 `composeAuthoredAgreement` (in the SDK) composes each written agreement —
 names resolved to keys, the mandatory clauses folded, the key derived — and
-`assembleAuthored` builds each assembly over the agreements its order slots
-name (the slot binds the agreement's key; its fill is the topology clause's
+`assembleAuthored` builds each assembly over the agreements its agreements
+name (each binds the agreement's key; its fill is the topology clause's
 parents), then the seeding pins and registers each DISTINCT agreement once on
 `AgreementRegistry` (one stake each; a key already registered is skipped) and
 registers the template on `AssemblyRegistry`. Identity is content-derived on
 both registries (the `agreementKey`, a merkle root over the composed clauses;
-the `compositionHash`, a merkle root over the order slots), first-write-wins,
+the `compositionHash`, a merkle root over the agreements), first-write-wins,
 so re-anchoring is a no-op and independently composing the same design
 collapses onto the same on-chain bindings. This directory and `agreements/`
 are `clauses/`' siblings: clauses are the vocabulary, agreements the terms of one
@@ -44,7 +44,7 @@ asserted from chain:
 
 `documents/` ships the raw bytes of every document a template affixes (consent
 anchors commit the document's keccak256 and `ipfs://` locator INSIDE the
-composed agreement — the bytes must pin byte-identical on any network for the
+agreement — the bytes must pin byte-identical on any network for the
 `agreementKey`, and so the composition hash, to reproduce; the populate path
 pins them first).
 

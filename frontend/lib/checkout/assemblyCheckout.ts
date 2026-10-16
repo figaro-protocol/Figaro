@@ -34,7 +34,7 @@ import {
     planSubOrderSellers,
     reconstructOrdersFromTemplate,
     resolveSubOrderPricing,
-    slotClauses,
+    agreementClauses,
     templateParentOrderHashes,
     type AssemblyCheckoutLineItem,
     type PlannedTemplateOrder,
@@ -308,11 +308,11 @@ function checkoutNodes(
     const { leadSellerAddress, currency, payment, lineItems, sellerCatalogs, tokenDecimals, subOrderSelections } = params;
     const hydrated = params.assembly.hydratedAssembly;
     return (planned) => {
-        // The order slot's own clauses — its registered agreement's, with the
-        // order slot's fills merged over them — never the assembly-scoped
+        // The agreement's own clauses — its registered agreement's, with the
+        // agreement's fills merged over them — never the assembly-scoped
         // terms the walk folds into every order.
-        const slot = hydrated.template.agreements.find((a) => a.id === planned.nodeId)!;
-        const node = { clauses: slotClauses(hydrated, slot) };
+        const entry = hydrated.template.agreements.find((a) => a.id === planned.nodeId)!;
+        const node = { clauses: agreementClauses(hydrated, entry) };
         if (planned.nodeId === rootId) {
             // The root's clause map: the derived LOGISTICS sections (cargo /
             // class leaves / dimweight) filled from the cart — wherever

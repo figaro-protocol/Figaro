@@ -355,20 +355,20 @@ export async function syncCorpus({
             // substituted contributes no pin.
             const hit = await fetchAnchoredTemplate(assembly, { gateways });
             if (hit.absent) continue;
-            for (const slot of hit.template.agreements ?? []) {
-                // Each order slot's registered agreement, read from its
+            for (const entry of hit.template.agreements ?? []) {
+                // Each agreement's registered agreement, read from its
                 // binding whatever its stake and verified against its key: an
                 // agreement a gateway substituted, or one not registered,
                 // contributes no pin.
-                const binding = discovery.getAgreementBinding(slot.agreementKey);
+                const binding = discovery.getAgreementBinding(entry.agreementKey);
                 const composed = binding ? await fetchAnchoredComposedAgreement(binding, { gateways }) : { absent: "not registered" };
                 // The pin is composed at the assembly level and folds into every
-                // order slot's bag, each clause read by its key.
+                // agreement's bag, each clause read by its key.
                 const pin = readUtilityTokenPin(
                     {
                         ...(hit.template.assemblyClauses ?? {}),
                         ...(composed.absent ? {} : composed.composed.clauses),
-                        ...(slot.clauses ?? {}),
+                        ...(entry.clauses ?? {}),
                     },
                     specs,
                 );

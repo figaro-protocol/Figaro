@@ -12,7 +12,7 @@
  * reclaimed), fetches the pinned document from IPFS, and verifies it against
  * the key (`anchorComposedAgreement`). `hydrateAssemblyTemplate` runs the SDK's
  * `hydrateAssembly` over that reader: an assembly is offered only when every
- * order slot's agreement reads and verifies — any absence is the assembly's
+ * agreement's agreement reads and verifies — any absence is the assembly's
  * absence, never a fallback to another copy.
  */
 
@@ -256,9 +256,9 @@ export async function fetchComposedAgreement(
     return run;
 }
 
-/** Hydrate an anchored template: every order slot's registered agreement read
+/** Hydrate an anchored template: every agreement's registered agreement read
  *  through `fetchComposedAgreement` and verified against its key. Null when
- *  any order slot's agreement is absent — the assembly is not offered. */
+ *  any agreement's agreement is absent — the assembly is not offered. */
 export function hydrateAssemblyTemplate(
     template: Anchored<AssemblyTemplate> | AssemblyTemplate,
 ): Promise<HydratedAssembly | null> {

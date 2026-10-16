@@ -78,7 +78,7 @@ export function anchorClauseSpec(fetched: Uint8Array | string, clauseKey: Hex | 
  *  Takes the fetched bytes or text (parsed with prototype-pollution keys
  *  stripped) or an already-parsed value. A failed parse, a document with no
  *  `clauses` object, a reserved key or a mismatch returns null — ABSENCE:
- *  the order slot, and so the assembly, is not offered, and nothing falls
+ *  the agreement, and so the assembly, is not offered, and nothing falls
  *  back to another copy. */
 export function anchorComposedAgreement(
     raw: Uint8Array | string | unknown,
@@ -112,30 +112,30 @@ export function anchorComposedAgreement(
 }
 
 /**
- * Hydrate an anchored template: read each DISTINCT order slot's registered
+ * Hydrate an anchored template: read each DISTINCT agreement's registered
  * agreement through the caller's `readAgreement` (the SDK does no I/O — the
  * caller resolves the key to the registry binding's `contentURI`, whatever
  * its stake, and fetches it; null when it cannot) and verify every document
- * against its key (`anchorComposedAgreement`). Any order slot whose agreement
+ * against its key (`anchorComposedAgreement`). Any agreement whose agreement
  * is unread or does not verify makes the whole assembly ABSENT (null): an
- * assembly is offered only when every order slot can be read.
+ * assembly is offered only when every agreement can be read.
  */
 export async function hydrateAssembly(
     template: Anchored<AssemblyTemplate> | AssemblyTemplate,
     readAgreement: (agreementKey: Hex) => Promise<Uint8Array | string | unknown | null>,
 ): Promise<HydratedAssembly | null> {
     const agreements: Record<Hex, ComposedAgreement> = {};
-    for (const slot of template.agreements) {
-        const key = slot.agreementKey.toLowerCase() as Hex;
+    for (const entry of template.agreements) {
+        const key = entry.agreementKey.toLowerCase() as Hex;
         if (agreements[key]) continue;
         let raw: unknown;
         try {
-            raw = await readAgreement(slot.agreementKey);
+            raw = await readAgreement(entry.agreementKey);
         } catch {
             return null;
         }
         if (raw === null || raw === undefined) return null;
-        const composed = anchorComposedAgreement(raw, slot.agreementKey);
+        const composed = anchorComposedAgreement(raw, entry.agreementKey);
         if (composed === null) return null;
         agreements[key] = composed;
     }
@@ -143,9 +143,9 @@ export async function hydrateAssembly(
 }
 
 /** An assembly template, verified against `AssemblyRegistry`'s
- *  `compositionHash`: the merkle root over its order slot leaves and its
+ *  `compositionHash`: the merkle root over its agreement leaves and its
  *  assembly-terms leaf is the hash. A document with no `agreements` array
- *  carries no composition and is not a template; an order slot whose key is
+ *  carries no composition and is not a template; an agreement whose key is
  *  malformed or reserved does not hash. */
 export function anchorTemplate(raw: unknown, compositionHash: Hex | string): Anchored<AssemblyTemplate> | null {
     if (raw === null || typeof raw !== "object" || !Array.isArray((raw as { agreements?: unknown }).agreements)) return null;

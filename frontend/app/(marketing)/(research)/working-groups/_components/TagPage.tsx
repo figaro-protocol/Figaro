@@ -19,7 +19,7 @@ export function TagPage({ kind, slug }: { kind: "for" | "on"; slug: string }) {
         <>
             {/* The trail sits BEFORE the hero, in the container wrapper
                 `/pitfalls` and `/agents/worked-example` already use. It cannot ride
-                the hero's `lead`: that slot renders inside a <p>, the HTML
+                the hero's `lead`: that entry renders inside a <p>, the HTML
                 parser closes a <p> at any <nav>, and the relocated node makes
                 the browser's DOM differ from React's tree — a hydration
                 mismatch (React #418/#423) on all 200 tag pages. */}

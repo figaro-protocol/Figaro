@@ -1,7 +1,7 @@
 /**
  * recordProcessUsage — the headless at-resolution usage recording. Every
  * committed section earns a clause leg, the agreement's provenance leaf
- * earns the agreement leg and the assembly leg (with the order slot's
+ * earns the agreement leg and the assembly leg (with the agreement's
  * membership proof), and a key is sent once per process.
  */
 import { describe, it, expect } from "vitest";
@@ -9,7 +9,7 @@ import { encodePacked, keccak256, type Address, type Hex, type PublicClient, typ
 import { recordProcessUsage } from "../src/agent/index.js";
 import { computeClauseKey } from "../src/discovery.js";
 import { PROVENANCE_LEAF_KEY, type Agreement } from "../src/agreement.js";
-import { ASSEMBLY_TERMS_LEAF_KEY, buildSlotInclusionProof, templateCompositionHash, type AssemblyTemplate } from "../src/assembly.js";
+import { ASSEMBLY_TERMS_LEAF_KEY, buildAgreementInclusionProof, templateCompositionHash, type AssemblyTemplate } from "../src/assembly.js";
 import type { Commitment } from "../src/types.js";
 import { keyOf } from "./specFixtures.js";
 
@@ -86,7 +86,7 @@ describe("recordProcessUsage", () => {
         expect(sent.some((s) => s.key.toLowerCase() === PROVENANCE_LEAF_KEY.toLowerCase()), "the reserved leaf key is never a clause leg").toBe(false);
         const assembly = sent.filter((s) => s.functionName === "recordAssemblyUsage");
         expect(assembly.map((s) => s.key)).toEqual([COMPOSITION]);
-        const membership = buildSlotInclusionProof(TEMPLATE, 0);
+        const membership = buildAgreementInclusionProof(TEMPLATE, 0);
         // (order, compositionHash, agreementKey, slotContentHash, leafProof, membershipProof)
         expect(assembly[0].args[2]).toBe(AGREEMENT_KEY);
         expect(assembly[0].args[3]).toBe(membership.slotContentHash);

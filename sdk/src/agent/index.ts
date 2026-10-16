@@ -120,7 +120,7 @@ export {
 export type {
     AssemblyTemplate,
     HydratedAssembly,
-    TemplateSlot,
+    AssemblyAgreement,
     InstantiateParams,
     BuildOfferParams,
     OfferCheck,

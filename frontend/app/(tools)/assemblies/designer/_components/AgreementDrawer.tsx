@@ -8,7 +8,7 @@
  *     + topology.
  *   - agreements — every LIVE registration on `AgreementRegistry`, read from
  *     the chain, each labeled by its pinned document's name with its key
- *     shown: the designer binds one to this order slot as is (a reusable
+ *     shown: the designer binds one to this agreement as is (a reusable
  *     unit), or unbinds it.
  *   - registry — every clause registered on `ClauseRegistry`, read live from
  *     the chain, grouped by `groupClausesByArticle()` (the single clause
@@ -63,14 +63,14 @@ interface Props {
     /** Set one field named in a selected clause's `design.fills` (the only
      *  fields the drawer renders editors for). */
     onSetClauseField?: (clauseKey: string, field: string, value: unknown) => void;
-    /** The registered agreement this order slot binds (`AgreementRegistry`
+    /** The registered agreement this agreement binds (`AgreementRegistry`
      *  key), when it binds one. */
     boundAgreementKey?: `0x${string}`;
-    /** Bind a registered agreement to this order slot, or unbind (`null`). */
+    /** Bind a registered agreement to this agreement, or unbind (`null`). */
     onBindAgreement?: (agreementKey: `0x${string}` | null) => void;
-    /** Register this order's composed agreement on its own — pin, stake and
+    /** Register this order's agreement on its own — pin, stake and
      *  register it on `AgreementRegistry` now, without publishing an
-     *  assembly — and bind the order slot to the registered key. Resolves to
+     *  assembly — and bind the agreement to the registered key. Resolves to
      *  the key; rejects with the reason the registration did not happen. */
     onRegisterAgreement?: () => Promise<`0x${string}`>;
 }
@@ -360,7 +360,7 @@ export function AgreementDrawer({
 }
 
 /**
- * The agreement-registry content of the drawer: the order slot's bound
+ * The agreement-registry content of the drawer: the agreement's bound
  * agreement (its pinned document's name and its key), and every LIVE
  * registration on `AgreementRegistry` to bind as is — one row per
  * registration, labeled by its pinned document's name (the key alone while
@@ -400,7 +400,7 @@ function RegisteredAgreementsPanel({
     return (
         <section data-testid="drawer-section-agreements" className="space-y-4">
             <div data-testid="drawer-bound-agreement">
-                <p className="text-xs text-ink-muted mb-1">This order slot&rsquo;s agreement</p>
+                <p className="text-xs text-ink-muted mb-1">This agreement&rsquo;s agreement</p>
                 {boundAgreementKey ? (
                     <div className="space-y-1">
                         <p

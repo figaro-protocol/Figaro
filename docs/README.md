@@ -26,7 +26,7 @@ content. (This is the instruction-system form of "derive, don't store.")
 | What the protocol has no contract for (not listed = does not exist) | `CONTRACTS.md` § "What the protocol has no contract for" |
 | Contract inventory | `CONTRACTS.md` |
 | Clause table, validation architecture, adding-a-clause | `CLAUSES.md` |
-| The agreement registry — the registered agreement, its key, the assembly's merkle root over slots, the membership proof, the fold | `CLAUSES.md` § "The registered agreement and the assembly — units above the clause" (the contract surface: `CONTRACTS.md` § Registries) |
+| The agreement registry — the registered agreement, its key, the assembly's merkle root over its agreements, the membership proof, the fold | `CLAUSES.md` § "The registered agreement and the assembly — units above the clause" (the contract surface: `CONTRACTS.md` § Registries) |
 | Route catalog, lib map, designer surface | `FRONTEND.md` |
 | Wire formats, agreement/template projection, the template→orders walk, checkout planning | `sdk/README.md` (+ the `sdk/dist` docblocks after `npm --prefix sdk run build`) |
 | Test-harness inventory, layer boundaries | `TESTING.md` |

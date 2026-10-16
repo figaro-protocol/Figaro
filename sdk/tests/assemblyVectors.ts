@@ -2,12 +2,12 @@
  * The assembly parity vectors' inputs — shared by `assemblyParity.test.ts`
  * (which freezes them into `test/fixtures/assembly-vectors.json`) and
  * `merkleParity.test.ts` (whose design-carrying agreement names the third
- * assembly's root and its first order slot's agreement in its provenance).
+ * assembly's root and its first agreement's agreement in its provenance).
  *
  * Three registered agreements drawn from the three merkle-vector agreements
  * (their clause keys and values; the topology clause composed with `{}`),
- * and three assemblies over them: one order slot, two order slots, and three
- * order slots with a parent edge and non-empty assembly-scoped terms.
+ * and three assemblies over them: one agreement, two agreements, and three
+ * agreements with a parent edge and non-empty assembly-scoped terms.
  */
 import { readFileSync } from "node:fs";
 import path from "node:path";

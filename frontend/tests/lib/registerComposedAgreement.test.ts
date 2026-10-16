@@ -1,7 +1,7 @@
 /**
  * registerComposedAgreement — the one registration path for a composed
  * agreement, whether the drawer registers it on its own or an assembly's
- * publish registers an order slot's new agreement: a key the registry
+ * publish registers an agreement's new agreement: a key the registry
  * already binds is skipped with nothing sent (first write wins); otherwise
  * the document is pinned, the registration simulated with the registry's
  * stake, written, and held to a `success` receipt.

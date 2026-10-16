@@ -21,8 +21,8 @@ import { saveAgreement } from "@/lib/designer/syntheticAgreementStore";
 import { draftOrderTopology } from "@/lib/shared/orderTopology";
 
 /** Address space for synthetic actors. Distinct prefix avoids visual confusion with live wallets. */
-export function syntheticAddress(slot: number): `0x${string}` {
-    return ("0x" + "de51" + slot.toString(16).padStart(36, "0")) as `0x${string}`;
+export function syntheticAddress(entry: number): `0x${string}` {
+    return ("0x" + "de51" + entry.toString(16).padStart(36, "0")) as `0x${string}`;
 }
 
 function syntheticBytes32(seed: string): `0x${string}` {

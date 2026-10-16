@@ -1,8 +1,8 @@
 /**
  * assemblyTemplateToDraft.test.ts — the composition-assist import seam:
- * `parseAssemblyTemplateJson` (pasted-JSON soundness — every order slot binds
+ * `parseAssemblyTemplateJson` (pasted-JSON soundness — every agreement binds
  * an agreement by key, every clause is named by its key) and the
- * hydrated-assembly→draft walk: each order slot keeps binding its registered
+ * hydrated-assembly→draft walk: each agreement keeps binding its registered
  * agreement, or — when its key is among `composeKeys` — carries that
  * agreement's clause keys into the draft for the designer to compose anew.
  */
@@ -53,7 +53,7 @@ describe("parseAssemblyTemplateJson", () => {
         }
     });
 
-    it("rejects an order slot missing its id, agreement key or clauses map", () => {
+    it("rejects an agreement missing its id, agreement key or clauses map", () => {
         const r = parseAssemblyTemplateJson(JSON.stringify({ agreements: [{ id: "order-0" }] }));
         expect(r.ok).toBe(false);
         if (!r.ok) expect(r.error).toMatch(/agreementKey/);
@@ -61,8 +61,8 @@ describe("parseAssemblyTemplateJson", () => {
 
     it("rejects a clause named by anything but its key — a name is no identity", () => {
         const { template } = hydrateAuthored(authoredOf());
-        const slot = { ...template.agreements[0], clauses: { "figaro-commerce": {} } };
-        const r = parseAssemblyTemplateJson(JSON.stringify({ agreements: [slot] }));
+        const entry = { ...template.agreements[0], clauses: { "figaro-commerce": {} } };
+        const r = parseAssemblyTemplateJson(JSON.stringify({ agreements: [entry] }));
         expect(r.ok).toBe(false);
         if (!r.ok) expect(r.error).toMatch(/clause key/);
         const terms = parseAssemblyTemplateJson(JSON.stringify({ ...template, assemblyClauses: { "some-term": {} } }));
@@ -83,8 +83,8 @@ describe("parseAssemblyTemplateJson", () => {
     });
 });
 
-describe("assemblyTemplateToDraft — the order slots carry", () => {
-    it("binds each order slot's registered agreement by default", () => {
+describe("assemblyTemplateToDraft — the agreements carry", () => {
+    it("binds each agreement's registered agreement by default", () => {
         const hydrated = hydrateAuthored(authoredOf());
         const draft = assemblyTemplateToDraft(hydrated, { slug: "assist-test" });
         expect(draft.registeredByOrderId).toEqual({
@@ -95,7 +95,7 @@ describe("assemblyTemplateToDraft — the order slots carry", () => {
         expect(draft.orders).toHaveLength(2);
     });
 
-    it("carries a composed agreement's clause keys into the draft when its key is to be composed anew", () => {
+    it("carries a agreement's clause keys into the draft when its key is to be composed anew", () => {
         const hydrated = hydrateAuthored(authoredOf());
         const key = hydrated.template.agreements[1].agreementKey.toLowerCase();
         const draft = assemblyTemplateToDraft(hydrated, { slug: "assist-test", composeKeys: new Set([key]) });

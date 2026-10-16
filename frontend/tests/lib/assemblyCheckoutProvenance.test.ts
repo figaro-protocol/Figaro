@@ -1,7 +1,7 @@
 /**
  * assemblyCheckoutProvenance.test.ts — the link from a realized order to the
  * assembly it instantiates is the agreement FORMAT's provenance leaf, set by
- * the checkout walk from the order slot's registered agreement key and the
+ * the checkout walk from the agreement's registered agreement key and the
  * template's own composition root; no clause section carries it.
  */
 import { beforeAll, describe, expect, it, vi } from "vitest";
@@ -16,7 +16,7 @@ vi.mock("@/lib/kernel/contracts", async (importOriginal) => {
 });
 
 // The reference assembly as the seeding registers it: built over the authored
-// agreements its order slots name, each order slot's agreement beside the template.
+// agreements its agreements name, each agreement's agreement beside the template.
 const BUYER = "0x1111111111111111111111111111111111111111" as const;
 const SELLER = "0x2222222222222222222222222222222222222222" as const;
 const TOKEN = "0x3333333333333333333333333333333333333333" as const;
@@ -26,7 +26,7 @@ describe("assembly checkout — the provenance leaf", () => {
         await primeClauseSpecs();
     });
 
-    it("every realized order names its order slot's agreement key and the composition root as its provenance, in no clause section", async () => {
+    it("every realized order names its agreement's agreement key and the composition root as its provenance, in no clause section", async () => {
         const hydratedAssembly = referenceAssembly("pos.json");
         const template = hydratedAssembly.template;
         const assembly: BoundAssembly = {
@@ -53,9 +53,9 @@ describe("assembly checkout — the provenance leaf", () => {
         const compositionHash = templateCompositionHash(template);
         expect(orders.length).toBe(template.agreements.length);
         for (const order of orders) {
-            const slot = template.agreements.find((s) => s.id === order.nodeId)!;
-            expect(order.agreement.provenance).toEqual({ agreementKey: slot.agreementKey, compositionHash });
-            expect(agreementLeaves(order.agreement)).toContain(computeProvenanceLeaf(slot.agreementKey, compositionHash));
+            const entry = template.agreements.find((s) => s.id === order.nodeId)!;
+            expect(order.agreement.provenance).toEqual({ agreementKey: entry.agreementKey, compositionHash });
+            expect(agreementLeaves(order.agreement)).toContain(computeProvenanceLeaf(entry.agreementKey, compositionHash));
             for (const section of order.agreement.sections) {
                 expect(JSON.stringify(section.data)).not.toContain(compositionHash.slice(2));
             }

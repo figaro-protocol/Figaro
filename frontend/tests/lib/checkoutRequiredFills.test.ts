@@ -32,7 +32,7 @@ import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
 const LEAD = "0x1111111111111111111111111111111111111111" as const;
 
 /** A reference assembly as the seeding registers it: authored names resolved
- *  to keys, order slots derived, every order slot's agreement beside the template. */
+ *  to keys, agreements derived, every agreement's agreement beside the template. */
 const hydrated = (file: string) =>
     referenceAssembly(file);
 

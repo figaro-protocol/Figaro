@@ -10,7 +10,7 @@ interface HeaderShellProps {
      *  `<ConnectWallet>`. */
     right: ReactNode;
     /** Optional CTA pinned to the top of the mobile slide-out drawer.
-     *  No current tier passes one; the slot stays for a tier that does. */
+     *  No current tier passes one; the entry stays for a tier that does. */
     mobileTopCta?: ReactNode;
     /** Override the mobile drawer link list. Marketing tier uses the
      *  default (`NAV_LINKS`, the publication row); (app) tier passes

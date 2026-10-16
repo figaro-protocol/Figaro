@@ -1,6 +1,6 @@
 /**
  * agreementRegistryHydration.test.ts — the registered agreement read at the
- * edge, and the designer's binding of one to an order slot.
+ * edge, and the designer's binding of one to an agreement.
  *
  * `fetchComposedAgreement` reads the `AgreementRegistry` binding BY KEY, the
  * pinned document at its `contentURI`, and verifies the document against the
@@ -8,9 +8,9 @@
  * clauses key elsewhere is ABSENCE (null), and `hydrateAssemblyTemplate` then
  * offers no assembly — never a fallback to another copy.
  *
- * The designer binds a registered agreement to an order slot as is
+ * The designer binds a registered agreement to an agreement as is
  * (`registeredByOrderId`), and composes a new one for another: the build
- * keeps the bound key, registers only the new one, and refuses an order slot
+ * keeps the bound key, registers only the new one, and refuses an agreement
  * that does both with the SDK's own message.
  */
 import { ZERO_ADDRESS } from "@/lib/shared/evm";
@@ -121,21 +121,21 @@ describe("fetchComposedAgreement — the binding by key, the document verified a
         expect((await fetchComposedAgreement(key))?.clauses).toEqual(doc.clauses);
     });
 
-    it("hydrates an assembly only when every order slot's agreement reads", async () => {
+    it("hydrates an assembly only when every agreement's agreement reads", async () => {
         const present = { clauses: { [keyOf("figaro-commerce")]: {}, [keyOf("figaro-topology")]: {} } };
         const presentKey = register(present, "ipfs://present");
         const absentKey = agreementKeyOf({ clauses: { [keyOf("figaro-commerce")]: { never: true } } });
-        const slots = [
+        const entries = [
             { id: "order-0", agreementKey: presentKey, clauses: {} },
             { id: "order-1", agreementKey: absentKey, clauses: {} },
         ];
-        expect(await hydrateAssemblyTemplate({ agreements: slots })).toBeNull();
-        const whole = await hydrateAssemblyTemplate({ agreements: [slots[0]] });
+        expect(await hydrateAssemblyTemplate({ agreements: entries })).toBeNull();
+        const whole = await hydrateAssemblyTemplate({ agreements: [entries[0]] });
         expect(whole?.agreements[presentKey.toLowerCase() as Hex]?.clauses).toEqual(present.clauses);
     });
 });
 
-describe("the designer binds a registered agreement to one order slot and composes another", () => {
+describe("the designer binds a registered agreement to one agreement and composes another", () => {
     function snapshot(composition: Pick<DesignSnapshot, "clausesByOrderId" | "registeredByOrderId">): DesignSnapshot & { rootId: string; subId: string } {
         const session = startSyntheticSession();
         const root = createSyntheticRootOrder(session);
@@ -168,18 +168,18 @@ describe("the designer binds a registered agreement to one order slot and compos
         };
         const review = projectSnapshotForReview(snap);
         if (!review.ok) throw new Error(review.error);
-        expect(review.slots.map((s) => [s.agreementKey === boundKey, s.bound])).toEqual([[true, true], [false, false]]);
+        expect(review.entries.map((s) => [s.agreementKey === boundKey, s.bound])).toEqual([[true, true], [false, false]]);
         const newKeys = Object.keys(review.newAgreements);
         expect(newKeys).toHaveLength(1);
         expect(newKeys[0]).not.toBe(boundKey);
         // The new agreement folds the mandatory clauses beside the designer's pick.
         expect(Object.keys(review.newAgreements[newKeys[0] as Hex].clauses).sort())
             .toEqual([keyOf("figaro-commerce"), keyOf("figaro-topology"), keyOf("figaro-acceptance-criteria")].sort());
-        // The bound order slot carries only its own topology fill.
+        // The bound agreement carries only its own topology fill.
         expect(review.template.agreements[0].clauses).toEqual({ [keyOf("figaro-topology")]: { parentOrderHashes: [] } });
     });
 
-    it("refuses an order slot that binds and composes — the SDK's message reaches the review", async () => {
+    it("refuses an agreement that binds and composes — the SDK's message reaches the review", async () => {
         const registered = { clauses: { [keyOf("figaro-commerce")]: {}, [keyOf("figaro-topology")]: {} } };
         const boundKey = register(registered, "ipfs://plain");
         await fetchComposedAgreement(boundKey);

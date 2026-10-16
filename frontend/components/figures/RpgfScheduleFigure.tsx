@@ -81,8 +81,8 @@ export function RpgfScheduleFigure({
     const total = periods.reduce((s, p) => s + p.millions, 0);
     const maxMillions = Math.max(...periods.map((p) => p.millions));
 
-    const slotW = PLOT_W / periods.length;
-    const barW = slotW * 0.62;
+    const columnW = PLOT_W / periods.length;
+    const barW = columnW * 0.62;
     const pxPerMillion = PLOT_H / (maxMillions * 1.12);
 
     return (
@@ -118,7 +118,7 @@ export function RpgfScheduleFigure({
 
                 {/* Bars */}
                 {periods.map((p, i) => {
-                    const x = PLOT_X + i * slotW + (slotW - barW) / 2;
+                    const x = PLOT_X + i * columnW + (columnW - barW) / 2;
                     const h = p.millions * pxPerMillion;
                     return (
                         <g key={`period-${i}`}>
@@ -146,8 +146,8 @@ export function RpgfScheduleFigure({
                 {/* Tranche brackets */}
                 {tranches.map((t, ti) => {
                     const startIndex = tranches.slice(0, ti).reduce((s, x) => s + x.periods, 0);
-                    const x1 = PLOT_X + startIndex * slotW + 3;
-                    const x2 = PLOT_X + (startIndex + t.periods) * slotW - 3;
+                    const x1 = PLOT_X + startIndex * columnW + 3;
+                    const x2 = PLOT_X + (startIndex + t.periods) * columnW - 3;
                     const y = BASE_Y + 34;
                     return (
                         <g key={t.label}>

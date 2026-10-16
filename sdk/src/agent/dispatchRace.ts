@@ -221,7 +221,7 @@ function setAtPath(node: unknown, path: readonly string[], value: string): Recor
 }
 
 export interface BuildQuoteRequestParams {
-    /** The assembly, each order slot's registered agreement hydrated beside
+    /** The assembly, each agreement's registered agreement hydrated beside
      *  its template. */
     assembly: HydratedAssembly;
     buyer: Address;
@@ -239,7 +239,7 @@ export interface BuildQuoteRequestParams {
      *  clause(s); the ceiling is substituted here at build time so draft and
      *  quote differ ONLY through the same substitution. */
     pricedFields: readonly PricedField[];
-    /** Per-clause overrides merged onto the root order slot's clause bag (the
+    /** Per-clause overrides merged onto the root agreement's clause bag (the
      *  non-price terms of the job). */
     overrides?: Record<string, Record<string, unknown>>;
     salt?: bigint;
@@ -435,7 +435,7 @@ export interface StartRaceOptions {
  * reply (exact match on the race leg, reconstruction on the quote leg), and
  * accumulate verified replies in arrival order — the selection tie-break.
  * One verified reply per candidate: a well-formed but unverifiable reply
- * completes (and thereby burns) that candidate's slot — a countersignature that
+ * completes (and thereby burns) that candidate's entry — a countersignature that
  * fails recovery is not a counterparty worth re-awaiting. Unreachable or
  * declining candidates complete silently; when every candidate has completed the
  * race closes itself.

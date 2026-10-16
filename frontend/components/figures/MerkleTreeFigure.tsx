@@ -55,11 +55,11 @@ export function MerkleTreeFigure({
     className,
     svgProps,
 }: MerkleTreeFigureProps) {
-    const slot = VIEW_W / leaves.length;
-    const leafW = Math.min(slot - 8, 74);
+    const entry = VIEW_W / leaves.length;
+    const leafW = Math.min(entry - 8, 74);
 
     // Levels, top to bottom: leaves, then pairwise hash levels, then the root.
-    const levels: TreeNode[][] = [leaves.map((label, i) => ({ cx: slot * (i + 0.5), label }))];
+    const levels: TreeNode[][] = [leaves.map((label, i) => ({ cx: entry * (i + 0.5), label }))];
     while (levels[levels.length - 1].length > 1) {
         levels.push(chunkPairs(levels[levels.length - 1]));
     }

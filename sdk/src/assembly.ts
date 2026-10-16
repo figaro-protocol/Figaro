@@ -7,10 +7,10 @@
  * leaf per composed clause (the clause key and the designer's fills), so
  * membership of a clause in a registered agreement is a merkle proof
  * (`buildClauseInclusionProof`). `AssemblyRegistry` keys an assembly by
- * `compositionHash` — the root over its order slots (each a registered
- * agreement key and the order slot's own fills) and its assembly-scoped
+ * `compositionHash` — the root over its agreements (each a registered
+ * agreement key and the agreement's own fills) and its assembly-scoped
  * terms, so membership of an agreement in an assembly is a merkle proof
- * (`buildSlotInclusionProof`).
+ * (`buildAgreementInclusionProof`).
  * This module is both families' key derivation — pure functions over the
  * documents, no chain access — and the one authoring resolver that turns the
  * clause NAMES a human writes in a source document into the clause keys a
@@ -33,10 +33,10 @@ import type { ProjectionSpecView } from "./projection.js";
 // ── The registered agreement (the pinned document behind an agreement key) ──
 
 /** A registered agreement's pinned document: the clauses composed for ONE
- *  order slot, value-free, with the designer's fills. The topology clause is
- *  composed with `{}` — who follows whom is the assembly's fact (each order
- *  slot's own `clauses` fill it), so one registered agreement sits in any
- *  order slot of any assembly.
+ *  agreement, value-free, with the designer's fills. The topology clause is
+ *  composed with `{}` — who follows whom is the assembly's fact (each agreement
+ *  own own `clauses` fill it), so one registered agreement sits in any
+ *  agreement of any assembly.
  *  The editorial fields are the designer's own words, pinned in the document
  *  and EXCLUDED from the key, as the assembly's are. */
 export interface ComposedAgreement {
@@ -63,7 +63,7 @@ export function agreementClauseLeaves(doc: ComposedAgreement): Hex[] {
     const keys = Object.keys(doc.clauses).map((k) => k.toLowerCase());
     const dupes = keys.filter((k, i) => keys.indexOf(k) !== i);
     if (dupes.length > 0) {
-        throw new Error(`Duplicate clause keys in composed agreement: ${[...new Set(dupes)].join(", ")}`);
+        throw new Error(`Duplicate clause keys in agreement: ${[...new Set(dupes)].join(", ")}`);
     }
     return sortLeaves(Object.entries(doc.clauses).map(([clauseKey, fills]) => composedClauseLeaf(clauseKey as Hex, fills)));
 }
@@ -97,19 +97,19 @@ export function buildClauseInclusionProof(
 
 // ── The template document (the pinned assembly, hydrated off-chain) ──────────
 
-/** One order slot of an assembly: the registered agreement it binds and the
- *  order slot's own fills over it. */
-export interface TemplateSlot {
-    /** Local label for the order slot — `order-<index>`, stable within the
+/** One agreement of an assembly: the registered agreement it binds and the
+ *  agreement's own fills over it. */
+export interface AssemblyAgreement {
+    /** Local label for the agreement — `order-<index>`, stable within the
      *  template; the reference target the topology clause's
      *  `parentOrderHashes` names. NOT a chain id, and NOT a party — the
      *  template is party-agnostic. */
     id: string;
-    /** The registered agreement this order slot binds (`AgreementRegistry`
+    /** The registered agreement this agreement binds (`AgreementRegistry`
      *  key). */
     agreementKey: Hex;
-    /** The order slot's own fills, clauseKey → values, merged over the
-     *  registered agreement's `clauses` at checkout (the order slot's fill
+    /** The agreement's own fills, clauseKey → values, merged over the
+     *  registered agreement's `clauses` at checkout (the agreement's fill
      *  wins for the keys it names): the topology clause's
      *  `{ parentOrderHashes: ["order-<j>", …] }` (empty on the root). */
     clauses: Record<Hex, Record<string, unknown>>;
@@ -144,12 +144,12 @@ export interface AssemblyTemplate {
      *  their own agreement. Sparse: absent when none composed; when present,
      *  one leaf of the composition tree (`ASSEMBLY_TERMS_LEAF_KEY`). */
     assemblyClauses?: Record<Hex, Record<string, unknown>>;
-    /** The composition: one order slot per future FigaroCore order, in
+    /** The composition: one agreement per future FigaroCore order, in
      *  template order — each a registered agreement and its own fills. */
-    agreements: TemplateSlot[];
+    agreements: AssemblyAgreement[];
 }
 
-/** An assembly template with every order slot's registered agreement
+/** An assembly template with every agreement's registered agreement
  *  beside it, keyed by lowercased `agreementKey` — what checkout plans from.
  *  Each document is read from the agreement registry's binding and verified
  *  against its key (`anchorComposedAgreement`) before it lands here. */
@@ -158,52 +158,52 @@ export interface HydratedAssembly {
     agreements: Record<Hex, ComposedAgreement>;
 }
 
-/** The registered agreement an order slot binds. Throws when the hydrated
- *  map does not carry it — a checkout never plans an order slot it cannot
+/** The registered agreement an agreement binds. Throws when the hydrated
+ *  map does not carry it — a checkout never plans an agreement it cannot
  *  read. */
-export function slotAgreement(hydrated: HydratedAssembly, slot: TemplateSlot): ComposedAgreement {
-    const doc = hydrated.agreements[slot.agreementKey.toLowerCase() as Hex]
-        ?? hydrated.agreements[slot.agreementKey];
+export function boundAgreement(hydrated: HydratedAssembly, entry: AssemblyAgreement): ComposedAgreement {
+    const doc = hydrated.agreements[entry.agreementKey.toLowerCase() as Hex]
+        ?? hydrated.agreements[entry.agreementKey];
     if (!doc) {
-        throw new Error(`order slot ${slot.id} binds agreement ${slot.agreementKey}, which is not hydrated`);
+        throw new Error(`agreement ${entry.id} binds agreement ${entry.agreementKey}, which is not hydrated`);
     }
     return doc;
 }
 
-/** The clauses an order slot instantiates: the registered agreement's
- *  `clauses` with the order slot's own fills merged over them (per clause,
- *  the order slot's values win for the fields it names). An order slot
+/** The clauses an agreement instantiates: the registered agreement's
+ *  `clauses` with the agreement's own fills merged over them (per clause,
+ *  the agreement's values win for the fields it names). An agreement
  *  fills clauses its agreement composes and never adds one: a fill naming a
  *  clause the registered agreement does not carry throws. */
-export function slotClauses(hydrated: HydratedAssembly, slot: TemplateSlot): Record<Hex, Record<string, unknown>> {
-    const composed = slotAgreement(hydrated, slot).clauses;
+export function agreementClauses(hydrated: HydratedAssembly, entry: AssemblyAgreement): Record<Hex, Record<string, unknown>> {
+    const composed = boundAgreement(hydrated, entry).clauses;
     const out: Record<Hex, Record<string, unknown>> = { ...composed };
     const carried = new Map((Object.keys(composed) as Hex[]).map((k) => [k.toLowerCase(), k]));
-    for (const [clauseKey, values] of Object.entries(slot.clauses ?? {}) as [Hex, Record<string, unknown>][]) {
+    for (const [clauseKey, values] of Object.entries(entry.clauses ?? {}) as [Hex, Record<string, unknown>][]) {
         const key = carried.get(clauseKey.toLowerCase());
         if (!key) {
-            throw new Error(`order slot ${slot.id} fills clause ${clauseKey}, which its agreement ${slot.agreementKey} does not compose`);
+            throw new Error(`agreement ${entry.id} fills clause ${clauseKey}, which its agreement ${entry.agreementKey} does not compose`);
         }
         out[key] = { ...out[key], ...values };
     }
     return out;
 }
 
-/** An order slot's parent ids — the data of its topology fill. The entry is
+/** An agreement's parent ids — the data of its topology fill. The entry is
  *  found by its DATA KEY (`parentOrderHashes` — named for what the committed
  *  clause holds at runtime: the parent orders' FigaroCore order hashes; at
  *  design time the values are sibling `order-<i>` labels), so reading needs
  *  no spec cache and tolerates any registry-defined topology clause. */
-export function templateParentOrderHashes(slot: Pick<TemplateSlot, "clauses">): string[] {
-    const entry = Object.values(slot.clauses ?? {}).find(
+export function templateParentOrderHashes(entry: Pick<AssemblyAgreement, "clauses">): string[] {
+    const fill = Object.values(entry.clauses ?? {}).find(
         (fields) => Array.isArray((fields as { parentOrderHashes?: unknown } | undefined)?.parentOrderHashes),
     );
-    const ids = (entry as { parentOrderHashes?: unknown } | undefined)?.parentOrderHashes;
+    const ids = (fill as { parentOrderHashes?: unknown } | undefined)?.parentOrderHashes;
     return Array.isArray(ids) ? ids.filter((p): p is string => typeof p === "string") : [];
 }
 
 /** Every clause a hydrated assembly composes — the assembly-scoped sections
- *  plus each order slot's — as one sorted, de-duplicated key list: each of these must be live on `ClauseRegistry` for the design to
+ *  plus each agreement's — as one sorted, de-duplicated key list: each of these must be live on `ClauseRegistry` for the design to
  *  check out. */
 export function templateComposedClauseKeys(
     template: AssemblyTemplate,
@@ -211,8 +211,8 @@ export function templateComposedClauseKeys(
 ): Hex[] {
     const hydrated: HydratedAssembly = { template, agreements: agreements as Record<Hex, ComposedAgreement> };
     const keys = new Set<Hex>(Object.keys(template.assemblyClauses ?? {}) as Hex[]);
-    for (const slot of template.agreements) {
-        for (const clauseKey of Object.keys(slotClauses(hydrated, slot)) as Hex[]) keys.add(clauseKey);
+    for (const entry of template.agreements) {
+        for (const clauseKey of Object.keys(agreementClauses(hydrated, entry)) as Hex[]) keys.add(clauseKey);
     }
     return Array.from(keys).sort();
 }
@@ -227,13 +227,13 @@ export const ASSEMBLY_TERMS_LEAF_LABEL = "figaro-assembly-terms";
  *  bytes are the canonical JSON of `assemblyClauses`. */
 export const ASSEMBLY_TERMS_LEAF_KEY: Hex = keccak256(toHex(ASSEMBLY_TERMS_LEAF_LABEL));
 
-/** An order slot leaf's committed bytes — canonical JSON
- *  `{"clauses":{…},"slot":i}` of the order slot's own fills (object keys
- *  sorted, arrays in authored order). `i` is the order slot's 0-based
+/** An agreement leaf's committed bytes — canonical JSON
+ *  `{"clauses":{…},"slot":i}` (`slot`, the wire name for the agreement's index) of the agreement's own fills (object keys
+ *  sorted, arrays in authored order). `i` is the agreement's 0-based
  *  position in the template. */
-export function slotSectionBytes(slot: Pick<TemplateSlot, "clauses">, i: number): Hex {
-    if (!Number.isSafeInteger(i) || i < 0) throw new Error(`slot index is not a non-negative integer: ${i}`);
-    return toHex(new TextEncoder().encode(canonicalize({ clauses: slot.clauses ?? {}, slot: i })));
+export function agreementLeafBytes(entry: Pick<AssemblyAgreement, "clauses">, i: number): Hex {
+    if (!Number.isSafeInteger(i) || i < 0) throw new Error(`entry index is not a non-negative integer: ${i}`);
+    return toHex(new TextEncoder().encode(canonicalize({ clauses: entry.clauses ?? {}, slot: i })));
 }
 
 /** The two format keys an agreement key may never be: the provenance leaf's
@@ -245,19 +245,19 @@ export function assertNotReservedKey(agreementKey: Hex, where = "agreementKey"):
     }
 }
 
-/** An order slot's leaf — the agreement leaf convention with the order
- *  slot's `agreementKey` as the key and `keccak256(slotSectionBytes)` as the
+/** An agreement's leaf — the agreement leaf convention with the agreement
+ *  own `agreementKey` as the key and `keccak256(agreementLeafBytes)` as the
  *  section hash. Throws for a reserved key. */
-function slotLeaf(slot: TemplateSlot, i: number): Hex {
-    assertNotReservedKey(slot.agreementKey, `order slot ${i} agreementKey`);
-    return computeSectionLeaf({ clause: slot.agreementKey, dataHash: keccak256(slotSectionBytes(slot, i)) });
+function agreementLeaf(entry: AssemblyAgreement, i: number): Hex {
+    assertNotReservedKey(entry.agreementKey, `agreement ${i} agreementKey`);
+    return computeSectionLeaf({ clause: entry.agreementKey, dataHash: keccak256(agreementLeafBytes(entry, i)) });
 }
 
 /** Every leaf of the composition tree, sorted as the tree is built: one per
- *  order slot, plus the assembly-terms leaf when any assembly-scoped clause is
+ *  agreement, plus the assembly-terms leaf when any assembly-scoped clause is
  *  composed. */
 export function templateLeaves(template: AssemblyTemplate): Hex[] {
-    const leaves = template.agreements.map((slot, i) => slotLeaf(slot, i));
+    const leaves = template.agreements.map((entry, i) => agreementLeaf(entry, i));
     const terms = template.assemblyClauses;
     if (terms && Object.keys(terms).length > 0) {
         leaves.push(computeSectionLeaf({ clause: ASSEMBLY_TERMS_LEAF_KEY, data: terms }));
@@ -265,7 +265,7 @@ export function templateLeaves(template: AssemblyTemplate): Hex[] {
     return sortLeaves(leaves);
 }
 
-/** The assembly's identity — the merkle root over its order slot leaves and its
+/** The assembly's identity — the merkle root over its agreement leaves and its
  *  assembly-terms leaf (`templateLeaves`), built by the agreement format's
  *  own tree (`buildMerkleRoot`): a one-leaf tree's root is its leaf.
  *  Editorial prose is excluded, so renaming never forks identity. This is
@@ -277,20 +277,20 @@ export function templateCompositionHash(
     return buildMerkleRoot(templateLeaves(template));
 }
 
-/** The membership proof of order slot `i` under `templateCompositionHash`:
+/** The membership proof of agreement `i` under `templateCompositionHash`:
  *  its leaf, its sorted-pair proof, and `slotContentHash` =
- *  `keccak256(slotSectionBytes(slot, i))` — what
+ *  `keccak256(agreementLeafBytes(entry, i))` — what
  *  `UsageCounter.recordAssemblyUsage` and the batch path's assembly claim
- *  take beside the order slot's agreement key. Throws for an index outside
+ *  take beside the agreement's agreement key. Throws for an index outside
  *  the template. */
-export function buildSlotInclusionProof(
+export function buildAgreementInclusionProof(
     template: AssemblyTemplate,
     i: number,
 ): { leaf: Hex; proof: Hex[]; slotContentHash: Hex } {
-    const slot = template.agreements[i];
-    if (!slot) throw new Error(`order slot ${i} is not in the template (${template.agreements.length} order slots)`);
-    const slotContentHash = keccak256(slotSectionBytes(slot, i));
-    const { leaf, proof } = buildLeafInclusionProof(templateLeaves(template), slotLeaf(slot, i));
+    const entry = template.agreements[i];
+    if (!entry) throw new Error(`agreement ${i} is not in the template (${template.agreements.length} agreements)`);
+    const slotContentHash = keccak256(agreementLeafBytes(entry, i));
+    const { leaf, proof } = buildLeafInclusionProof(templateLeaves(template), agreementLeaf(entry, i));
     return { leaf, proof, slotContentHash };
 }
 
@@ -314,7 +314,7 @@ export interface AuthoredSpecSet {
 /**
  * Resolve the clause NAMES in an authored source document to clause KEYS.
  *
- * A human authors `agreements/*.json` composed agreements, `assemblies/*.json`
+ * A human authors `agreements/*.json` agreements, `assemblies/*.json`
  * templates and `members/*.json` documents by clause name; a published
  * document carries keys. Each name is
  * matched against the loaded specs' own `clauseId` — written `name@version`,

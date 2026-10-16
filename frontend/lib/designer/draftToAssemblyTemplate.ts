@@ -17,9 +17,9 @@
  * The walk itself is `buildAssemblyTemplate` (`@figaro-protocol/sdk`), fed by the
  * live-cache `liveSpecSource()` adapter, whose fold set holds only the
  * registrations whose stake is live (the drawer's surfacing rule), and by the
- * registered agreements the designer bound to order slots, read from
+ * registered agreements the designer bound to agreements, read from
  * `AgreementRegistry` and verified against their keys (`getComposedAgreement`).
- * It VERIFIES scope placement, refuses an order slot that both binds and
+ * It VERIFIES scope placement, refuses an agreement that both binds and
  * composes, refuses a bound agreement lacking a live mandatory clause, and
  * throws on a cold spec cache or an unread bound agreement — loud failures
  * the callers surface, never silently swallowed here.
@@ -28,7 +28,7 @@
 import {
     buildAssemblyTemplate,
     serializeAssemblyTemplate,
-    slotClauses,
+    agreementClauses,
     type BuiltAssemblyTemplate,
     type ComposedAgreement,
     type Hex,
@@ -50,7 +50,7 @@ function boundAgreements(snapshot: DesignSnapshot): Record<string, ComposedAgree
     for (const [orderId, agreementKey] of Object.entries(snapshot.registeredByOrderId ?? {})) {
         const doc = getComposedAgreement(agreementKey);
         if (!doc) {
-            throw new Error(`the registered agreement ${agreementKey} bound to an order slot has not been read from the AgreementRegistry yet`);
+            throw new Error(`the registered agreement ${agreementKey} bound to an agreement has not been read from the AgreementRegistry yet`);
         }
         out[orderId] = doc;
     }
@@ -60,7 +60,7 @@ function boundAgreements(snapshot: DesignSnapshot): Record<string, ComposedAgree
 /** Project a design snapshot onto the canonical assembly template and the
  *  agreements newly composed for it (the ones publish registers before the
  *  assembly). Throws when the spec cache is cold (no mandatory clauses
- *  resolvable), a clause is composed at the wrong scope, an order slot both
+ *  resolvable), a clause is composed at the wrong scope, an agreement both
  *  binds and composes, or a bound agreement is unread or lacks a live
  *  mandatory clause — the SDK's own refusals, and this file's one. */
 export function snapshotToAssemblyTemplate(snapshot: DesignSnapshot): BuiltAssemblyTemplate {
@@ -76,26 +76,26 @@ export function snapshotToAssemblyTemplate(snapshot: DesignSnapshot): BuiltAssem
     });
 }
 
-/** A built template beside every agreement its order slots bind — the newly
+/** A built template beside every agreement its agreements bind — the newly
  *  composed ones and the registered ones the designer bound — keyed by
  *  lowercased key, as checkout reads a hydrated assembly. */
 function builtToHydrated(built: BuiltAssemblyTemplate): HydratedAssembly {
     const agreements: Record<Hex, ComposedAgreement> = {};
     for (const [key, doc] of Object.entries(built.agreements)) agreements[key.toLowerCase() as Hex] = doc;
-    for (const slot of built.template.agreements) {
-        const key = slot.agreementKey.toLowerCase() as Hex;
+    for (const entry of built.template.agreements) {
+        const key = entry.agreementKey.toLowerCase() as Hex;
         const doc = agreements[key] ?? getComposedAgreement(key);
         if (doc) agreements[key] = doc;
     }
     return { template: built.template, agreements };
 }
 
-/** The clauses an assembly states per ORDER SLOT — the read side of the one
+/** The clauses an assembly states per AGREEMENT — the read side of the one
  *  walk, for every surface that must show a composition it is about to
- *  publish (review) or has already published (`/view`): each order slot's
- *  registered agreement with the order slot's own fills merged over it.
+ *  publish (review) or has already published (`/view`): each agreement's
+ *  registered agreement with the agreement's own fills merged over it.
  *
- *  Keyed by the template's own order slot ids (`order-<i>`). The auto-folded
+ *  Keyed by the template's own agreement ids (`order-<i>`). The auto-folded
  *  MANDATORY clauses are left out here: they are not the designer's picks, and
  *  `templateFoldedClauses` lists them on their own, by key.
  *  Everything shown here comes from the pinned bytes, never from a second walk
@@ -105,10 +105,10 @@ export function templateComposedByAgreement(
     hydrated: HydratedAssembly,
 ): Record<string, Record<string, Record<string, unknown>>> {
     return Object.fromEntries(
-        hydrated.template.agreements.map((slot) => [
-            slot.id,
+        hydrated.template.agreements.map((entry) => [
+            entry.id,
             Object.fromEntries(
-                Object.entries(slotClauses(hydrated, slot)).filter(([clauseKey]) => !clauseIsMandatory(clauseKey)),
+                Object.entries(agreementClauses(hydrated, entry)).filter(([clauseKey]) => !clauseIsMandatory(clauseKey)),
             ),
         ]),
     );
@@ -140,7 +140,7 @@ export function composedClauseLabel(clause: Pick<ComposedClause, "clauseKey" | "
     return clause.clauseId === undefined ? key : `${clause.clauseId} · v${clause.version} · ${key}`;
 }
 
-/** The designer's picks per order slot, by key — the listing face of
+/** The designer's picks per agreement, by key — the listing face of
  *  `templateComposedByAgreement`, keyed the same way. Any spec is anyone's
  *  registration and two specs may share a name, so a review shows the
  *  spec's version beside its name, read from the spec the key names. */
@@ -163,7 +163,7 @@ export interface FoldedClause {
     version?: number;
     /** The spec's title, or the key when the spec is not loaded. */
     title: string;
-    /** The order slot ids carrying it, or `["assembly"]` for an
+    /** The agreement ids carrying it, or `["assembly"]` for an
      *  assembly-scoped term. */
     carriedBy: string[];
 }
@@ -184,8 +184,8 @@ export function templateFoldedClauses(hydrated: HydratedAssembly): FoldedClause[
         folded.set(clauseKey.toLowerCase(), entry);
     };
     for (const clauseKey of Object.keys(template.assemblyClauses ?? {}) as Hex[]) note(clauseKey, "assembly");
-    for (const slot of template.agreements) {
-        for (const clauseKey of Object.keys(slotClauses(hydrated, slot)) as Hex[]) note(clauseKey, slot.id);
+    for (const entry of template.agreements) {
+        for (const clauseKey of Object.keys(agreementClauses(hydrated, entry)) as Hex[]) note(clauseKey, entry.id);
     }
     return Array.from(folded.values());
 }
@@ -201,16 +201,16 @@ export type SnapshotReview =
     | {
         ok: true;
         template: AssemblyTemplate;
-        /** The template beside every agreement its order slots bind. */
+        /** The template beside every agreement its agreements bind. */
         hydrated: HydratedAssembly;
         /** The agreements newly composed for this assembly, by key — the
          *  ones publish registers (one stake each, a key already bound is
          *  skipped) before the assembly. */
         newAgreements: Record<Hex, ComposedAgreement>;
-        /** Per order slot, in template order: the canvas order id, the
+        /** Per agreement, in template order: the canvas order id, the
          *  agreement key it binds, and whether that agreement was bound as
          *  registered or composed here. */
-        slots: { orderId: string; agreementKey: Hex; bound: boolean }[];
+        entries: { orderId: string; agreementKey: Hex; bound: boolean }[];
         compositionHash: `0x${string}`;
         slug: string;
         /** canvas order id → clause key → composed values (mandatory folds out). */
@@ -252,7 +252,7 @@ export function projectSnapshotForReview(snapshot: DesignSnapshot): SnapshotRevi
             template,
             hydrated,
             newAgreements: built.agreements,
-            slots: snapshot.orders.map((order, index) => ({
+            entries: snapshot.orders.map((order, index) => ({
                 orderId: order.orderHash,
                 agreementKey: template.agreements[index].agreementKey,
                 bound: boundIds.has(order.orderHash),
@@ -273,12 +273,12 @@ export function projectSnapshotForReview(snapshot: DesignSnapshot): SnapshotRevi
 }
 
 /** The composition's IDENTITY, derived from the draft exactly as publish
- *  derives it: `compositionHash` = the merkle root over the order slots (each
- *  slot's agreement key and its own fills) and the assembly terms (the
+ *  derives it: `compositionHash` = the merkle root over the agreements (each
+ *  agreement's agreement key and its own fills) and the assembly terms (the
  *  AssemblyRegistry key), and the slug that is a pure function of it. The
  *  editorial prose is excluded, so renaming never forks identity; any change
  *  to the composed clauses — a design fill's value included, which moves the
- *  order slot's agreement key — does.
+ *  agreement's agreement key — does.
  *
  *  The identity face of `projectSnapshotForReview`, so the canvas readout and
  *  the review screen can never disagree about which assembly this is.

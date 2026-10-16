@@ -200,9 +200,9 @@ designer composes an assembly from.
   under the agreement format's leaf convention (the SDK's `agreementKeyOf(doc)`;
   a clause's membership is proved by `buildClauseInclusionProof`), where
   `clauses` maps each clause key to
-  the designer's fills for ONE order slot — value-free, the topology clause
-  composed with `{}` because who follows whom belongs to the order slot. The
-  pinned document is the composed agreement (`ComposedAgreement { name?,
+  the designer's fills for ONE agreement — value-free, the topology clause
+  composed with `{}` because who follows whom belongs to the agreement. The
+  pinned document is the agreement (`ComposedAgreement { name?,
   summary?, description?, clauses }`); the editorial fields are excluded from
   the key. A reader fetches the document from `contentURI`, parses it, and
   requires the key recomputed from its `clauses` to equal the registered key;
@@ -237,18 +237,18 @@ designer composes an assembly from.
 **`src/build/registries/AssemblyRegistry.sol`** — Permissionless assembly
 anchoring under a stake.
 - Identity is the composition: `compositionHash` is a merkle root over the
-  assembly's order slots, built with the agreement format's leaf convention
+  assembly's agreements, built with the agreement format's leaf convention
   (`leaf = keccak256(keccak256(key ‖ keccak256(bytes)))`, sorted-pair
-  hashing): one leaf per order slot `i`, keyed by the order slot's
+  hashing): one leaf per agreement `i`, keyed by the agreement's
   `agreementKey`, whose bytes are the canonical JSON
-  `{"clauses":{…},"slot":i}` (the order slot's own fills — the topology
-  clause's `parentOrderHashes` naming the order slots it follows); and one
+  `{"clauses":{…},"slot":i}` (the agreement's own fills — the topology
+  clause's `parentOrderHashes` naming the agreements it follows); and one
   assembly terms leaf, keyed by `ASSEMBLY_TERMS_LEAF_KEY =
   keccak256("figaro-assembly-terms")`, whose bytes are the canonical JSON of
   the assembly-scoped clauses, present only when any are composed. Order
-  slots are ordered, so one registered agreement may sit in two. Membership of
-  an agreement in an assembly is a merkle proof of its order slot's leaf under
-  the root, never a lookup. The contract checks nothing about an order slot's
+  the agreements are ordered, so one registered agreement may sit in two positions. Membership of
+  an agreement in an assembly is a merkle proof of its agreement's leaf under
+  the root, never a lookup. The contract checks nothing about an agreement's
   agreement: whether it is registered is the agreements registry's fact. Editorial prose is excluded; identical compositions
   collapse to one binding; no caller-chosen name exists on-chain. The
   human-readable slug is derived off-chain (`deriveAssemblySlug`).
@@ -294,7 +294,7 @@ Three permissionless functions and one proof-gated writer:
   neither key is ever a leaf key; what is a leaf is the agreement format's
   reserved provenance leaf, whose committed content is exactly
   `{"agreementKey":"0x<lowercase>","compositionHash":"0x<lowercase>"}`,
-  written at checkout from the order slot the order instantiates. The contract
+  written at checkout from the agreement the order instantiates. The contract
   rebuilds those bytes from both keys and proves that one leaf under
   `order.agreementHash`; a wrong key derives a leaf that is not in the tree.
   The leaf's key is the public constant `provenanceLeaf =
@@ -306,8 +306,8 @@ Three permissionless functions and one proof-gated writer:
 - `recordAssemblyUsage(order, compositionHash, agreementKey, slotContentHash,
   leafProof, membershipProof)` — credits an assembly. It proves the
   provenance leaf the same way (`leafProof`), refuses an `agreementKey` equal
-  to either reserved key (the assembly terms leaf is not an order slot), then
-  proves the order slot's leaf
+  to either reserved key (the assembly terms leaf is not an agreement), then
+  proves the agreement's leaf
   `keccak256(keccak256(agreementKey ‖ slotContentHash))` under
   `compositionHash` (`membershipProof`, else `InvalidMembershipProof`, distinct
   from the leaf's `InvalidInclusionProof`), so the agreement the order names is

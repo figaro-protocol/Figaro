@@ -17,13 +17,13 @@
 <div class="tsd-signature tsd-anchor-link" id="assembleauthored"><span class="tsd-kind-call-signature">assembleAuthored</span><span class="tsd-signature-symbol">(</span><br/>    <span class="tsd-kind-parameter">authored</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">object</span><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">agreementsByName</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">Readonly</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">Record</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">,</span> <a href="../interfaces/index.ComposedAgreement.html" class="tsd-signature-type tsd-kind-interface">ComposedAgreement</a><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">specs</span><span class="tsd-signature-symbol">:</span> <a href="../interfaces/index.SpecSource.html" class="tsd-signature-type tsd-kind-interface">SpecSource</a><span class="tsd-signature-symbol">,</span><br/><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <a href="../interfaces/index.BuiltAssemblyTemplate.html" class="tsd-signature-type tsd-kind-interface">BuiltAssemblyTemplate</a><a href="#assembleauthored" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
 <div class="tsd-description">
 <div class="tsd-comment tsd-typography"><p>Build an AUTHORED assembly (<code>assemblies/*.json</code>) over authored agreements:
-each order slot names the agreement it binds (<code>agreements[].agreement</code>,
+each agreement names the agreement it binds (<code>agreements[].agreement</code>,
 the authored agreement's name) and carries its own topology as
 <code>parentOrderHashes</code> (<code>order-&lt;j&gt;</code> labels); <code>assemblyClauses</code> are written by
-clause name. The slot binds the named agreement's key — the same key
+clause name. The entry binds the named agreement's key — the same key
 whether a designer registers that agreement on its own or this seeding
 registers it — and its fill is the topology clause's parents
-(<code>slotTopologyFills</code>); a bound agreement lacking a live mandatory spec is
+(<code>agreementTopologyFills</code>); a bound agreement lacking a live mandatory spec is
 refused, as the designer's drawer refuses it. Returns the template and
 each DISTINCT agreement once, keyed. Seed time only.</p>
 </div>

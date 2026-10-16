@@ -23,7 +23,7 @@ import {
     type ComposedAgreement,
     type Hex,
     type HydratedAssembly,
-    type TemplateSlot,
+    type AssemblyAgreement,
 } from "@figaro-protocol/sdk";
 import { listKnownClauses, loadClauseSpec, noteClauseStakes, setClauseSpecFetcher, specSource } from "@/lib/shared/clauseSpecSource";
 
@@ -103,7 +103,7 @@ export function authoredAgreements(): Record<string, ComposedAgreement> {
 }
 
 /** A reference assembly (`assemblies/<name>`) built exactly as the seeding
- *  builds it: over the authored agreements its order slots name
+ *  builds it: over the authored agreements its agreements name
  *  (`assembleAuthored`), every registered agreement beside the template,
  *  keyed by lowercased key, as a registry read hands them to checkout. */
 export function referenceAssembly(name: string): HydratedAssembly {
@@ -116,9 +116,9 @@ export function referenceAssembly(name: string): HydratedAssembly {
 
 /** A hydrated assembly from the INLINE shape a test writes
  *  (`agreements[].clauses` by clause key or name, the topology clause
- *  carrying its parents as `order-<j>` labels): each order slot's parents
+ *  carrying its parents as `order-<j>` labels): each agreement's parents
  *  lifted into its own fill (the clause stays composed, with `{}`) and each
- *  order slot's agreement keyed — every registered agreement beside the
+ *  agreement's agreement keyed — every registered agreement beside the
  *  template, keyed by lowercased key, as a registry read hands them to
  *  checkout. By default each inline agreement composes as the seeding
  *  composes an authored one (`composeAuthoredAgreement` over the primed
@@ -129,11 +129,11 @@ export function referenceAssembly(name: string): HydratedAssembly {
 export function hydrateAuthored(authored: object, opts: { fold?: boolean } = {}): HydratedAssembly {
     const byKey: Record<Hex, ComposedAgreement> = {};
     if (opts.fold !== false) {
-        const { agreements: entries, ...rest } = authored as {
+        const { agreements: written, ...rest } = authored as {
             agreements: { id?: string; clauses: Record<string, Record<string, unknown>> }[];
         } & Record<string, unknown>;
         const byName: Record<string, ComposedAgreement> = {};
-        const slots = entries.map((entry, i) => {
+        const entries = written.map((entry, i) => {
             const id = entry.id ?? `order-${i}`;
             const clauses: Record<string, Record<string, unknown>> = {};
             let parents: string[] | undefined;
@@ -145,14 +145,14 @@ export function hydrateAuthored(authored: object, opts: { fold?: boolean } = {})
             byName[id] = composeAuthoredAgreement({ clauses }, specSource()).document;
             return { id, agreement: id, ...(parents ? { parentOrderHashes: parents } : {}) };
         });
-        const { template, agreements } = assembleAuthored({ ...rest, agreements: slots }, byName, specSource());
+        const { template, agreements } = assembleAuthored({ ...rest, agreements: entries }, byName, specSource());
         for (const [key, doc] of Object.entries(agreements)) byKey[key.toLowerCase() as Hex] = doc;
         return { template, agreements: byKey };
     }
-    const { agreements: entries, ...rest } = authored as {
+    const { agreements: written, ...rest } = authored as {
         agreements: { id: string; clauses: Record<Hex, Record<string, unknown>> }[];
     } & Omit<AssemblyTemplate, "agreements">;
-    const slots: TemplateSlot[] = entries.map((entry) => {
+    const entries: AssemblyAgreement[] = written.map((entry) => {
         const clauses: Record<Hex, Record<string, unknown>> = {};
         const fills: Record<Hex, Record<string, unknown>> = {};
         for (const [key, values] of Object.entries(entry.clauses) as [Hex, Record<string, unknown>][]) {
@@ -164,5 +164,5 @@ export function hydrateAuthored(authored: object, opts: { fold?: boolean } = {})
         byKey[agreementKey.toLowerCase() as Hex] = { clauses };
         return { id: entry.id, agreementKey, clauses: fills };
     });
-    return { template: { ...rest, agreements: slots }, agreements: byKey };
+    return { template: { ...rest, agreements: entries }, agreements: byKey };
 }

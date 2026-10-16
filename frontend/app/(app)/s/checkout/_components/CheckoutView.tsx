@@ -28,7 +28,7 @@ import { CartLineList } from "@/components/runtime/CartLineList";
 import { useCommerce, useCheckout } from "@/lib/checkout";
 import { useCartStore } from "@/lib/checkout/cartStore";
 import { useRegisteredCatalogs } from "@/lib/member/useRegisteredCatalogs";
-import { planSubOrderSellers, readUtilityTokenPin, resolveSubOrderPricing, slotClauses } from "@figaro-protocol/sdk";
+import { planSubOrderSellers, readUtilityTokenPin, resolveSubOrderPricing, agreementClauses } from "@figaro-protocol/sdk";
 import { executeAssemblyCheckout, type AssemblyCheckoutParams } from "@/lib/checkout/assemblyCheckout";
 import {
     buyerAuthoredFields,
@@ -475,7 +475,7 @@ export function CheckoutView({ sellerAddress }: Props) {
         if (!pickedAssembly) return [];
         const out: OrderComposition[] = [];
         for (const order of pickedAssembly.hydratedAssembly.template.agreements) {
-            for (const cid of Object.keys(slotClauses(pickedAssembly.hydratedAssembly, order))) {
+            for (const cid of Object.keys(agreementClauses(pickedAssembly.hydratedAssembly, order))) {
                 const block = getClauseSpec(cid)?.block;
                 if (block?.design.composes && block.runtime.fields.length > 0) {
                     out.push({ nodeId: order.id, clauseKey: cid, interface: block.design.composes.interface, fields: block.runtime.fields });

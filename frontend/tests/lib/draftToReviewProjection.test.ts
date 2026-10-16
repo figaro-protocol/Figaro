@@ -158,10 +158,10 @@ describe("projectSnapshotForReview — the review reads the bytes publish sends"
                 review.composedByOrderId[drawn.orders[0].orderHash],
                 "an auto-folded mandatory clause is not a term the designer composed",
             ).not.toHaveProperty(clauseId);
-            const slot = review.template.agreements[0];
+            const entry = review.template.agreements[0];
             expect(
-                review.newAgreements[slot.agreementKey].clauses,
-                "…but the agreement the order slot binds carries it",
+                review.newAgreements[entry.agreementKey].clauses,
+                "…but the agreement the agreement binds carries it",
             ).toHaveProperty(clauseId);
         }
     });
@@ -323,11 +323,11 @@ describe("the mandatory fold — every live mandatory registration, each listed 
         ]);
         expect(review.folded.map((f) => f.clauseKey).sort()).toEqual(keys(MANDATORY).sort());
         // The complement of the composed readout: together they are the template.
-        for (const slot of review.template.agreements) {
-            const composed = Object.keys(templateComposedByAgreement(review.hydrated)[slot.id]);
+        for (const entry of review.template.agreements) {
+            const composed = Object.keys(templateComposedByAgreement(review.hydrated)[entry.id]);
             const folded = templateFoldedClauses(review.hydrated)
-                .filter((f) => f.carriedBy.includes(slot.id)).map((f) => f.clauseKey);
-            const carried = review.hydrated.agreements[slot.agreementKey.toLowerCase() as `0x${string}`].clauses;
+                .filter((f) => f.carriedBy.includes(entry.id)).map((f) => f.clauseKey);
+            const carried = review.hydrated.agreements[entry.agreementKey.toLowerCase() as `0x${string}`].clauses;
             expect([...composed, ...folded].sort()).toEqual(Object.keys(carried).sort());
         }
     });

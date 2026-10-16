@@ -162,7 +162,7 @@ key, `keccak256("figaro-agreement-provenance")`, is a constant of the format,
 distinct from every clause key under keccak256's second-preimage resistance.
 The format holds one more constant, the assembly terms leaf's key,
 `keccak256("figaro-assembly-terms")`, a leaf of the assembly's root and never
-an order slot. Both are refused at accrual on every kind by comparison with the
+an agreement. Both are refused at accrual on every kind by comparison with the
 constants whatever a registry holds at them: the direct path reverts
 (`UsageCounter._accrue`), the guest refuses a batch claim keyed on either
 (`apply_usage_claims`), the counter's batch path skips both

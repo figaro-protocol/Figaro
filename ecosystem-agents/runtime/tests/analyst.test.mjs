@@ -552,7 +552,7 @@ test("/prompt and market-shape answer only the bearer of this run's token; /prom
         release();
         assert.equal((await first).status, 200);
         assert.equal(runs, 1);
-        // The slot frees when the run answers.
+        // The entry frees when the run answers.
         assert.equal((await ask(AUTH)).status, 200);
     } finally { release(); await close(); }
 });

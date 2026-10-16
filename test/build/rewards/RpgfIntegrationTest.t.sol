@@ -43,12 +43,12 @@ contract RpgfIntegrationTest is Test {
 
     // The clause key is keccak256 of the spec's pinned bytes.
     bytes32 constant GEO_KEY = keccak256('{"clauseId":"figaro-geolocation","version":1}');
-    /// @dev The registered agreement the reference assembly's one order slot
+    /// @dev The registered agreement the reference assembly's one agreement
     ///      instantiates.
     bytes32 constant AGR = keccak256("reference-agreement");
     bytes32 constant PROVENANCE_LEAF = keccak256("figaro-agreement-provenance");
     /// @dev The reference assembly's compositionHash: the root of a one-leaf
-    ///      tree, which is its order slot's leaf (set in setUp).
+    ///      tree, which is its agreement's leaf (set in setUp).
     bytes32 ASM;
     bytes constant SECTION = hex"5eed";
 
@@ -71,7 +71,7 @@ contract RpgfIntegrationTest is Test {
         clauses = new ClauseRegistry(0);
         assemblies = new AssemblyRegistry(0);
         agreements = new AgreementRegistry(0);
-        ASM = AgreementTestHelper.leafFor(AGR, AgreementTestHelper.slotSection(0, "{}"));
+        ASM = AgreementTestHelper.leafFor(AGR, AgreementTestHelper.agreementLeafBytes(0, "{}"));
         members = new MembersRegistry(0, 0);
         florin = new FlorinToken();
 
@@ -189,13 +189,13 @@ contract RpgfIntegrationTest is Test {
     uint8 constant KIND_AGREEMENT = 2;
 
     /// @dev Credit `compositionHash` for an order instantiating the reference
-    ///      assembly's one order slot (a one-leaf tree: the proof is empty).
+    ///      assembly's one agreement (a one-leaf tree: the proof is empty).
     function _recordAssembly(CommitmentTypes.Commitment memory p, bytes32 compositionHash) internal {
         counter.recordAssemblyUsage(
             p,
             compositionHash,
             AGR,
-            keccak256(AgreementTestHelper.slotSection(0, "{}")),
+            keccak256(AgreementTestHelper.agreementLeafBytes(0, "{}")),
             new bytes32[](0),
             new bytes32[](0)
         );

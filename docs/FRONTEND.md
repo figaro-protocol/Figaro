@@ -186,23 +186,23 @@ The Designer is a DAG editor — assembly designers start blank or fork an exist
 - `CompositionIdentity.tsx` — the canvas's whole-composition identity readout (left inspector): derived slug + truncated compositionHash from the live draft via `snapshotCompositionIdentity`, with the one-paragraph statement that changing a composed value is a DIFFERENT assembly (regime variants are siblings) while editorial prose is hash-excluded. Nothing renders on an empty canvas.
 - `AssemblyTermsPanel.tsx` — the canvas-level composer for ASSEMBLY-SCOPED clauses (`design.scope: "assembly"`) — the denomination pin, the dispute forum: terms that compose once per assembly, partitioned from the per-order drawer by declared scope.
 - `CompositionAssist.tsx` — the composition-assist hand-off surface (toolbar "Agent assist"). The designer's OWN agent (`figaro-assembly-designer`, the public ecosystem seam — `docs/AI_AGENT_COORDINATION.md`) runs in the designer's runtime for the designer's wallet; nothing is invoked from this static export. The panel round-trips the canonical assembly template instead: OUT — the live draft serialized by the same `buildAssemblyTemplate` walk publish uses; IN — a pasted template parsed by `parseAssemblyTemplateJson` (`lib/designer/assemblyTemplateToDraft.ts`) and applied to the canvas as ordinary unsaved state (replace-confirmed when the canvas is non-trivial). Composition stays the designer's act — review/edit/publish are unchanged.
-- `AgreementDrawer.tsx` — the per-order-slot composer. Each order slot holds one
-  registered agreement, and the drawer offers two ways to fill it: the
+- `AgreementDrawer.tsx` — the per-agreement composer. Each agreement of the design is
+  one registered agreement, and the drawer offers two ways to fill it: the
   *agreements* tab binds a registered agreement as is (one row per LIVE
   `AgreementRegistry` registration, labeled by its document's name with the key
   shown, bind/unbind; a withdrawn one stays hydratable for the assemblies already
   composed from it but is not offered), or the clause tabs compose a new
-  agreement for that order slot, and "Register this agreement on its own" pins,
-  stakes and registers that composed agreement now (`usePublishAgreement` →
+  agreement for that agreement, and "Register this agreement on its own" pins,
+  stakes and registers that agreement now (`usePublishAgreement` →
   `registerComposedAgreement`, the same path an assembly's publish takes per
-  order slot) with no assembly published, then binds the order slot to the
+  agreement) with no assembly published, then binds the agreement to the
   registered key. `DesignSnapshot.registeredByOrderId` holds the
-  bound key per order slot. Publish pins and registers each new agreement
+  bound key per agreement. Publish pins and registers each new agreement
   (`registerAgreement`, one stake per distinct new agreement, a receipt row per
-  registration) before the assembly. The review lists each order slot's
+  registration) before the assembly. The review lists each agreement's
   `agreementKey`, whether it is bound or composed, and the composition root;
   `AssemblyTermsPanel` takes a `composition` prop.
-  - *Parties:* buyer, seller, DAG position (the order slot's topology fill).
+  - *Parties:* buyer, seller, DAG position (the agreement's topology fill).
   - *Registry:* every clause registered on `ClauseRegistry`, grouped by
     `block.design.article`, each a checkbox — read from the network, never a
     hardcoded roster. ASSEMBLY-SCOPED clauses (`design.scope: "assembly"`) are
@@ -228,7 +228,7 @@ The Designer is a DAG editor — assembly designers start blank or fork an exist
 
 **State:** `lib/designer/syntheticProcess.ts` (synthetic session + DAG mutation helpers — `createSyntheticRootOrder`, `createSyntheticSubOrder`, `mergeSyntheticParent`, `collectDescendants`, `isRootOrder`). Persistence: `lib/designer/syntheticDesignStore.ts` (localStorage); agreements via `lib/designer/syntheticAgreementStore.ts` (`saveAgreement`). Bridge: `lib/designer/forkAssembly.ts` + `lib/designer/assemblyTemplateToDraft.ts` (fork a published assembly's template into an editable draft).
 
-**The agreement build (composition rules).** The published **template is the faithful statement** of what the designer composed; `buildOrderAgreement` (`@figaro-protocol/sdk`, fed by the live-cache `specSource()` adapter) is a **pure, deterministic projection** of it — the composed clauses, plus the spec-declared mandatory defaults, and nothing more. It synthesizes no meaning the template + specs don't determine and reads no clause by name: mandatory clauses (`block.design.article: "mandatory"` — commerce, topology) auto-fold into every newly composed agreement generically (the SDK's fold iterates the registrations whose stake is live — `liveSpecSource`, ruled by `isLiveRegistration` — so a never-seen mandatory clause folds in with zero code). The fold is at composition only: `buildAssemblyTemplate` refuses an order slot whose registered agreement lacks a live mandatory spec at its scope, and checkout fills values and writes the topology, never adding or dropping a clause. Never a hardcoded clause→clause map, a named-clause branch, or a checkout-time guess; and no clause auto-spawns a DAG node — nodes are the designer's, drawn on the canvas.
+**The agreement build (composition rules).** The published **template is the faithful statement** of what the designer composed; `buildOrderAgreement` (`@figaro-protocol/sdk`, fed by the live-cache `specSource()` adapter) is a **pure, deterministic projection** of it — the composed clauses, plus the spec-declared mandatory defaults, and nothing more. It synthesizes no meaning the template + specs don't determine and reads no clause by name: mandatory clauses (`block.design.article: "mandatory"` — commerce, topology) auto-fold into every new agreement generically (the SDK's fold iterates the registrations whose stake is live — `liveSpecSource`, ruled by `isLiveRegistration` — so a never-seen mandatory clause folds in with zero code). The fold is at composition only: `buildAssemblyTemplate` refuses an agreement whose registered agreement lacks a live mandatory spec at its scope, and checkout fills values and writes the topology, never adding or dropping a clause. Never a hardcoded clause→clause map, a named-clause branch, or a checkout-time guess; and no clause auto-spawns a DAG node — nodes are the designer's, drawn on the canvas.
 
 ## Clause validation in the frontend
 

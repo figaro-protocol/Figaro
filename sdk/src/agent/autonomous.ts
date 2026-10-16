@@ -143,7 +143,7 @@ export interface UsageRecordingReport {
  * sections stay off-chain), and the agreement's provenance leaf
  * (`Agreement.provenance`, the registered agreement and the assembly it
  * instantiated) gets the INDEPENDENT AGREEMENT leg (`recordAgreementUsage`)
- * and ASSEMBLY leg (`recordAssemblyUsage`, with the order slot's membership
+ * and ASSEMBLY leg (`recordAssemblyUsage`, with the agreement's membership
  * proof) — the counter reproduces the leaf from the two keys. A key is
  * counted once per process, so a key two orders carry is sent once.
  * Tolerate-the-revert per leg; the report says what landed.
@@ -195,7 +195,7 @@ export async function recordProcessUsage(
             continue;
         }
         for (const claim of claims) {
-            // Counted once per (kind, key, process): the families never share a slot.
+            // Counted once per (kind, key, process): the families never share a entry.
             const key = usageKeyId(usageClaimKindCode(claim), claim.clause_or_assembly);
             if ("Assembly" in claim.kind) {
                 const { agreement_key, slot_content_hash, membership_proof } = claim.kind.Assembly;

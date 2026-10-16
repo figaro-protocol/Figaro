@@ -228,7 +228,7 @@ const rec   = walletRecord(process, wallet);
   and the registered assembly whose `provenanceContentRef(agreementKey, compositionHash)`
   equals its `contentRef`, so the overlay carries both keys: which registered agreement the
   order instantiated and which assembly held it (the agreement's membership in that assembly
-  is a merkle proof under its root, `buildSlotInclusionProof`). An admitted agreement
+  is a merkle proof under its root, `buildAgreementInclusionProof`). An admitted agreement
   document yields the same pair directly: `decodeProvenanceContent(bytes)` returns
   `{ agreementKey, compositionHash }`, or `null` for bytes that are not a provenance leaf. **Say the
   number.** It is the most honest sentence in the answer.

@@ -1,5 +1,5 @@
 {
-    "shape": "agreements[]: { label, agreementKey, clauses[] } — clauses[j]: { clauseKey, fillsBytes, fillsHash, leaf, membershipProof }: fillsBytes is the canonical JSON of the designer's fills for that clause, fillsHash = keccak256(fillsBytes), leaf = keccak256(keccak256(clauseKey ‖ fillsHash)), membershipProof is the sorted-pair proof of leaf under agreementKey, and agreementKey is the sorted-pair merkle root over every clause leaf (a one-clause agreement's key is its leaf). assemblies[]: { label, compositionHash, slots[], terms|null }. slots[i]: { id, agreementKey, slotBytes, slotContentHash, leaf, membershipProof, provenance } — slotBytes is the canonical JSON {\"clauses\":{…},\"slot\":i}, slotContentHash = keccak256(slotBytes), leaf = keccak256(keccak256(agreementKey ‖ slotContentHash)), membershipProof is the sorted-pair proof of leaf under compositionHash. terms: { leafKey (keccak256(\"figaro-assembly-terms\")), termsBytes (canonical JSON of assemblyClauses), sectionHash, leaf } or null when no assembly-scoped clause is composed. provenance: { leafKey (keccak256(\"figaro-agreement-provenance\")), agreementKey, compositionHash, sectionData (canonical JSON {\"agreementKey\":\"0x…\",\"compositionHash\":\"0x…\"}, lowercase hex), sectionHash = keccak256(sectionData), leaf = keccak256(keccak256(leafKey ‖ sectionHash)) }. compositionHash is the sorted-pair merkle root over every slot leaf and the terms leaf; a one-leaf tree's root is its leaf.",
+    "shape": "agreements[]: { label, agreementKey, clauses[] } — clauses[j]: { clauseKey, fillsBytes, fillsHash, leaf, membershipProof }: fillsBytes is the canonical JSON of the designer's fills for that clause, fillsHash = keccak256(fillsBytes), leaf = keccak256(keccak256(clauseKey ‖ fillsHash)), membershipProof is the sorted-pair proof of leaf under agreementKey, and agreementKey is the sorted-pair merkle root over every clause leaf (a one-clause agreement's key is its leaf). assemblies[]: { label, compositionHash, entries[], terms|null }. slots[i]: { id, agreementKey, agreementBytes, slotContentHash, leaf, membershipProof, provenance } — agreementBytes is the canonical JSON {\"clauses\":{…},\"slot\":i}, slotContentHash = keccak256(agreementBytes), leaf = keccak256(keccak256(agreementKey ‖ slotContentHash)), membershipProof is the sorted-pair proof of leaf under compositionHash. terms: { leafKey (keccak256(\"figaro-assembly-terms\")), termsBytes (canonical JSON of assemblyClauses), sectionHash, leaf } or null when no assembly-scoped clause is composed. provenance: { leafKey (keccak256(\"figaro-agreement-provenance\")), agreementKey, compositionHash, sectionData (canonical JSON {\"agreementKey\":\"0x…\",\"compositionHash\":\"0x…\"}, lowercase hex), sectionHash = keccak256(sectionData), leaf = keccak256(keccak256(leafKey ‖ sectionHash)) }. compositionHash is the sorted-pair merkle root over every entry leaf and the terms leaf; a one-leaf tree's root is its leaf.",
     "agreements": [
         {
             "label": "three-sections",
@@ -76,13 +76,13 @@
     ],
     "assemblies": [
         {
-            "label": "one-slot",
+            "label": "one-agreement",
             "compositionHash": "0xcc488a8d21e075e1d463c1ab9cc73774816f3aa0a992fc1576f98f7be0ff19b1",
-            "slots": [
+            "agreements": [
                 {
                     "id": "order-0",
                     "agreementKey": "0xc1ed485a19efef229f49e83017799b51ce166c137dd3ac294036cad8b9c9f08b",
-                    "slotBytes": "{\"clauses\":{},\"slot\":0}",
+                    "agreementBytes": "{\"clauses\":{},\"slot\":0}",
                     "slotContentHash": "0x766cc2b7e2f69a39e9bbbc6181f1f70c4fbea97094c92d74288928ba71b38406",
                     "leaf": "0xcc488a8d21e075e1d463c1ab9cc73774816f3aa0a992fc1576f98f7be0ff19b1",
                     "membershipProof": [],
@@ -99,13 +99,13 @@
             "terms": null
         },
         {
-            "label": "two-slots",
+            "label": "two-agreements",
             "compositionHash": "0x75b8addfd372d4758c090083fd7a391d488dc2148c366ded3b32753140a7c321",
-            "slots": [
+            "agreements": [
                 {
                     "id": "order-0",
                     "agreementKey": "0xa4f6950b1ed29a78ac53e37a4e8c9125944070320f653a92e3328cbe11b92d96",
-                    "slotBytes": "{\"clauses\":{},\"slot\":0}",
+                    "agreementBytes": "{\"clauses\":{},\"slot\":0}",
                     "slotContentHash": "0x766cc2b7e2f69a39e9bbbc6181f1f70c4fbea97094c92d74288928ba71b38406",
                     "leaf": "0xacb8939ddbf723ca9d866bf9a420dfaaa9feb6ad77d5c78ec4bfd0b86bf54b3f",
                     "membershipProof": [
@@ -123,7 +123,7 @@
                 {
                     "id": "order-1",
                     "agreementKey": "0xc1ed485a19efef229f49e83017799b51ce166c137dd3ac294036cad8b9c9f08b",
-                    "slotBytes": "{\"clauses\":{},\"slot\":1}",
+                    "agreementBytes": "{\"clauses\":{},\"slot\":1}",
                     "slotContentHash": "0x3ef60931a82f4be74a452e2135653cd3965a22f181687abd23607f77c1ff5110",
                     "leaf": "0x3709e518c54f574578b2ed2768584cdc45c58ed33c8a3f7ca5e211ce8cf01998",
                     "membershipProof": [
@@ -142,13 +142,13 @@
             "terms": null
         },
         {
-            "label": "three-slots-a-parent-edge-and-terms",
+            "label": "three-entries-a-parent-edge-and-terms",
             "compositionHash": "0xda4448979192ed5345e6c16eb93f511eb24ab2ad960ddfd155d64fdf1cef960f",
-            "slots": [
+            "agreements": [
                 {
                     "id": "order-0",
                     "agreementKey": "0x9f5abdd07a94decfaac002ba4237cfc02b50307ce3bae12e5c23b70de294b08a",
-                    "slotBytes": "{\"clauses\":{\"0xd7555453daf821f5fdf852d3c1cb7d88d6cd741dbdfb631c3406114bbf2d91bc\":{\"parentOrderHashes\":[]}},\"slot\":0}",
+                    "agreementBytes": "{\"clauses\":{\"0xd7555453daf821f5fdf852d3c1cb7d88d6cd741dbdfb631c3406114bbf2d91bc\":{\"parentOrderHashes\":[]}},\"slot\":0}",
                     "slotContentHash": "0xc5f552fe40993ec59ae24613b695443ecd817f2741ad003b916264fd44250f52",
                     "leaf": "0x0c575f3249f2deb6ec16d07831bad2159edd673fe408dc2c9150547ea18dc3ea",
                     "membershipProof": [
@@ -167,7 +167,7 @@
                 {
                     "id": "order-1",
                     "agreementKey": "0x9f5abdd07a94decfaac002ba4237cfc02b50307ce3bae12e5c23b70de294b08a",
-                    "slotBytes": "{\"clauses\":{\"0xd7555453daf821f5fdf852d3c1cb7d88d6cd741dbdfb631c3406114bbf2d91bc\":{\"parentOrderHashes\":[\"order-0\"]}},\"slot\":1}",
+                    "agreementBytes": "{\"clauses\":{\"0xd7555453daf821f5fdf852d3c1cb7d88d6cd741dbdfb631c3406114bbf2d91bc\":{\"parentOrderHashes\":[\"order-0\"]}},\"slot\":1}",
                     "slotContentHash": "0x79a786527ed469c0663f4209a368c91c90387f196cea133a0897ae1270b316f9",
                     "leaf": "0xa44b0519c82d6aea5bcbed36665d795f9bb11dd89897b07fba3755c8ff71d960",
                     "membershipProof": [
@@ -186,7 +186,7 @@
                 {
                     "id": "order-2",
                     "agreementKey": "0xa4f6950b1ed29a78ac53e37a4e8c9125944070320f653a92e3328cbe11b92d96",
-                    "slotBytes": "{\"clauses\":{},\"slot\":2}",
+                    "agreementBytes": "{\"clauses\":{},\"slot\":2}",
                     "slotContentHash": "0x9e0df0dc19ad2aa90e459c925c8b6eb18432a79d34876427113fe91c41c1d86a",
                     "leaf": "0x1414a1d65a0c6ec8c66d0078d760e21dc6c283b8602337b07af97a7089c177c9",
                     "membershipProof": [

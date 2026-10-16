@@ -154,7 +154,7 @@ describe("design fills are the composition's identity — the disclosure regime"
     it("the composed regime survives into the template JSON — a design fill is NOT stripped", () => {
         for (const regime of regimeValues()) {
             const { template, agreements } = snapshotToAssemblyTemplate(draft({ [FIELD]: regime }));
-            // The value sits in the agreement the order slot binds, and so in
+            // The value sits in the agreement the agreement binds, and so in
             // its key — the template carries that key.
             const agreementKey = template.agreements[0].agreementKey;
             const composed = agreements[agreementKey].clauses[CLAUSE as `0x${string}`] as Record<string, unknown>;

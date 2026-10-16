@@ -47,7 +47,7 @@ direct path reverts (`UsageCounter._accrue`,
 `ReservedKeyIsNotARegistration`), the guest refuses a batch claim keyed on
 it (`apply_usage_claims` in `prover/lib/src/kernel.rs`), and the counter's
 batch path skips it (`applyBatchAccrual`). Checkout writes the leaf from the
-order slot the order instantiates — the order slot's `agreementKey` and the assembly's
+agreement the order instantiates — the agreement's `agreementKey` and the assembly's
 `compositionHash`; an agreement that names no assembly carries no provenance
 leaf. The SDK owns the format (`PROVENANCE_LEAF_KEY`,
 `provenanceSectionBytes`, `computeProvenanceLeaf`, `agreementLeaves`,
@@ -61,20 +61,20 @@ compositionHash }` or `null`.
 ## The registered agreement and the assembly — units above the clause
 
 Three design-time objects, three registries, parallel: a clause is its spec
-(`ClauseRegistry`), a registered agreement is a composed agreement — the
-clauses composed for one order slot (`AgreementRegistry`), and an assembly is
-a sequence of order slots holding registered agreements plus the assembly-scoped terms
+(`ClauseRegistry`), a registered agreement is a agreement — the
+clauses composed for one agreement (`AgreementRegistry`), and an assembly is
+a sequence of agreements holding registered agreements plus the assembly-scoped terms
 (`AssemblyRegistry`). Assemblies use agreements, agreements use clauses, and
 neither knows what uses it; every arrow is off-chain, in the pinned documents.
-`AssemblyRegistry` checks nothing about an order slot's agreement, and each kind of
+`AssemblyRegistry` checks nothing about an assembly's agreements, and each kind of
 designer reward is gated by its own registry alone.
 
-**The composed agreement.** The reusable unit a designer composes an assembly
+**The agreement.** The reusable unit a designer composes an assembly
 from. Its document, `ComposedAgreement`, is `{ name?, summary?, description?,
 clauses }`, where `clauses` maps each clause key to the designer's fills —
 value-free, and the topology clause composed with `{}`, because who follows
-whom belongs to the order slot; one registered agreement can therefore sit in
-any order slot of any assembly. Its key is the merkle root over one leaf per
+whom belongs to the agreement; one registered agreement can therefore sit in
+any agreement of any assembly. Its key is the merkle root over one leaf per
 composed clause, each leaf `keccak256(keccak256(clauseKey ‖ keccak256(fills)))`
 under the agreement format's own leaf convention (`agreementKeyOf(doc)` in the
 SDK; a one-clause agreement's key is its leaf), so a clause's membership in a
@@ -90,7 +90,7 @@ parses it, and requires `agreementKeyOf(doc)` to equal the registered key
 (`anchorComposedAgreement(raw, agreementKey)`, as `anchorTemplate` recomputes
 an assembly's root). The check is on the key, not the raw bytes, because the
 editorial fields sit outside the key. A failed fetch, a failed parse or a
-mismatch is absence: the order slot, and so the assembly, is not offered, and
+mismatch is absence: the agreement, and so the assembly, is not offered, and
 nothing falls back to a bundled or inline copy. Bindings are never cleared,
 so a withdrawn stake leaves the agreement hydratable — an assembly composed
 from it keeps working — while the drawer offers only live agreements for a new
@@ -98,24 +98,24 @@ composition, and the agreement earns only while its stake is live.
 
 **The assembly.** The template document is `{ name?, summary?, description?,
 faq?, assemblyClauses?, agreements: [{ id: "order-<i>", agreementKey,
-clauses }] }`. Each entry of `agreements` is an order slot (`TemplateSlot`):
+clauses }] }`. Each entry of `agreements` is an agreement (`AssemblyAgreement`):
 a position that holds one registered agreement and the fills that belong to
 the position — the topology clause's `{ "parentOrderHashes": ["order-<j>",
-…] }`, naming the order slots it follows. The topology stays a clause: at design
-time in the assembly's order slot, at runtime in the signed agreement. The
+…] }`, naming the agreements it follows. The topology stays a clause: at design
+time in the assembly's agreement, at runtime in the signed agreement. The
 assembly's key, `compositionHash`, is the merkle root built with the section
-convention above over one leaf per order slot `i` (0-based, template order) — key
-the order slot's `agreementKey`, content the canonical JSON `{"clauses":{…},"slot":i}`
+convention above over one leaf per agreement `i` (0-based, template order) — key
+the agreement's `agreementKey`, content the canonical JSON `{"clauses":{…},"slot":i}`
 (object keys sorted, arrays in template order) — and, when any
 assembly-scoped clauses are composed, one assembly terms leaf, key
 `ASSEMBLY_TERMS_LEAF_KEY = keccak256("figaro-assembly-terms")`, content the
 canonical JSON of `assemblyClauses`. A one-leaf tree's root is its leaf.
-Order slots are ordered, so one registered agreement may hold two. The
+Agreements are ordered, so one registered agreement may hold two. The
 editorial fields are excluded from the root. Membership of an agreement in an
-assembly is a membership proof: the sorted-pair proof of its order slot leaf under
-`compositionHash` (`buildSlotInclusionProof(template, i)`, with
-`slotSectionBytes(slot, i)` giving the content and `slotContentHash` its
-hash). The SDK owns the format (`templateCompositionHash`, `TemplateSlot`,
+assembly is a membership proof: the sorted-pair proof of its agreement leaf under
+`compositionHash` (`buildAgreementInclusionProof(template, i)`, with
+`agreementLeafBytes(slot, i)` giving the content and `slotContentHash` its
+hash). The SDK owns the format (`templateCompositionHash`, `AssemblyAgreement`,
 `ASSEMBLY_TERMS_LEAF_KEY` in `sdk/src/assembly.ts`).
 
 **Two reserved keys.** `PROVENANCE_LEAF_KEY` and `ASSEMBLY_TERMS_LEAF_KEY` are
@@ -129,14 +129,14 @@ same way.
 **The fold — at composition only.** When a designer composes a new agreement,
 every mandatory spec the live-stake source lists folds into it, so a
 registered agreement carries the mandatory clauses when it is registered.
-Composing an assembly refuses an order slot whose registered agreement lacks a
+Composing an assembly refuses an agreement whose registered agreement lacks a
 live mandatory spec at its scope; the designer composes a new agreement for
-that order slot instead. Checkout fills values and writes the topology; it never
-adds or drops a clause. Each order's agreement is the order slot's hydrated
-registered agreement with the order slot's own fills merged over it (the order slot's fill
+that agreement instead. Checkout fills values and writes the topology; it never
+adds or drops a clause. Each order's agreement is the agreement's hydrated
+registered agreement with the agreement's own fills merged over it (the agreement's fill
 wins for the keys it names) and the assembly-scoped clauses beside it; the
 values are filled, the topology labels are mapped to order hashes, the
-provenance leaf is written from the order slot, and the merkle root of the result is
+provenance leaf is written from the agreement, and the merkle root of the result is
 the order's `agreementHash`.
 
 ## The SDK's validation

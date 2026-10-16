@@ -458,7 +458,7 @@ contract HalmosAssemblyRegistry is Test {
     // ── P5: cross-key isolation ──────────────────────────────────────
 
     /// @dev Bundles one `bindings(hash)` read behind a single memory pointer
-    ///      so a snapshot occupies one stack slot instead of four — needed to
+    ///      so a snapshot occupies one stack entry instead of four — needed to
     ///      keep `check_crossKeyIsolation_keyATouchesNothingOfKeyB` under the
     ///      stack limit with 5 symbolic parameters already live (same
     ///      technique as `HalmosUsageCounter.t.sol`'s `Snapshot`).
@@ -700,7 +700,7 @@ contract HalmosAgreementRegistry is Test {
     // ── P5: cross-key isolation ──────────────────────────────────────
 
     /// @dev Bundles one `bindings(key)` read behind a single memory pointer
-    ///      so a snapshot occupies one stack slot instead of four — needed to
+    ///      so a snapshot occupies one stack entry instead of four — needed to
     ///      keep `check_crossKeyIsolation_keyATouchesNothingOfKeyB` under the
     ///      stack limit with 5 symbolic parameters already live (same
     ///      technique as `HalmosUsageCounter.t.sol`'s `Snapshot`).

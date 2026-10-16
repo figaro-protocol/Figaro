@@ -25,7 +25,7 @@ import {
     computeClauseKey,
     hydrateAssembly,
     parseProjectionHints,
-    slotClauses,
+    agreementClauses,
     assembleAuthored,
     composeAuthoredAgreement,
     templateCompositionHash,
@@ -621,15 +621,15 @@ export async function confirmAgreementPreviews(
 }
 
 /** An anchored assembly HYDRATED — its template verified against its
- *  composition root, every order slot's registered agreement read from
- *  `AgreementRegistry` by key and verified against it — with each order
- *  slot's clauses resolved (its agreement's, its own fills merged over
+ *  composition root, every agreement's registered agreement read from
+ *  `AgreementRegistry` by key and verified against it — with each agreement
+ *  own clauses resolved (its agreement's, its own fills merged over
  *  them): enough for a spec to select an assembly by SHAPE (order count,
  *  clause keys) instead of a hardcoded slug. */
 export interface DiscoveredAssembly {
     slug: string;
     compositionHash: `0x${string}`;
-    /** Per order slot, in template order: its id, the agreement key it binds,
+    /** Per agreement, in template order: its id, the agreement key it binds,
      *  and the clauses it instantiates. */
     agreements: Array<{ id: string; agreementKey: Hex; clauses: Record<string, Record<string, unknown>> }>;
     /** The template and the agreements beside it, as checkout reads them. */
@@ -669,7 +669,7 @@ function authoredAgreementsBuilt(): Record<string, ComposedAgreement> {
 
 /** A reference assembly (`assemblies/<name>`) built exactly as the seeding
  *  builds it before registering: over the authored agreements its order
- *  slots name, each distinct agreement beside the template (`assembleAuthored`). */
+ *  entries name, each distinct agreement beside the template (`assembleAuthored`). */
 export function referenceAssemblyBuilt(name: string): BuiltAssemblyTemplate {
     const doc = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../../../assemblies', name), 'utf8')) as object;
     return assembleAuthored(doc, authoredAgreementsBuilt(), authoredSpecSource());
@@ -738,7 +738,7 @@ export async function readRegisteredAgreementDocument(agreementKey: Hex): Promis
     return { binding, document: JSON.parse(new TextDecoder().decode(bytes)) };
 }
 
-/** Hydrate a template out of band: each order slot's agreement read by key
+/** Hydrate a template out of band: each agreement's agreement read by key
  *  from `AgreementRegistry` (whatever its stake) and fetched from IPFS — the
  *  SDK verifies each against its key. Null when any is absent. */
 async function hydrateFromChain(template: AssemblyTemplate): Promise<HydratedAssembly | null> {
@@ -750,7 +750,7 @@ async function hydrateFromChain(template: AssemblyTemplate): Promise<HydratedAss
 }
 
 /** Every anchored assembly, discovered from chain → IPFS (AssemblyRegistered
- *  events + template docs, each order slot's agreement from AgreementRegistry
+ *  events + template docs, each agreement's agreement from AgreementRegistry
  *  → IPFS), in anchoring order. Mainnet-realistic tolerance: a template or an
  *  agreement that fails to fetch, parse or verify is skipped — anyone can
  *  anchor a garbage URI; consumers must tolerate it. */
@@ -773,8 +773,8 @@ export async function discoverAnchoredAssemblies(): Promise<DiscoveredAssembly[]
             if (!hydrated) continue;
             out.push({
                 slug: deriveAssemblySlug(compositionHash), compositionHash,
-                agreements: template.agreements.map((slot) => ({
-                    id: slot.id, agreementKey: slot.agreementKey, clauses: slotClauses(hydrated, slot),
+                agreements: template.agreements.map((entry) => ({
+                    id: entry.id, agreementKey: entry.agreementKey, clauses: agreementClauses(hydrated, entry),
                 })),
                 hydrated,
                 name: template.name,

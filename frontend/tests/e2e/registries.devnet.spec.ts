@@ -170,7 +170,7 @@ test.describe('Registry explorer (devnet)', () => {
 
     test('"assemblies composing it" keeps its promise — only the assemblies whose template composes the clause remain', async ({ page }) => {
         // Truth from chain → IPFS: every anchored template, and which compose the chosen clause.
-        // Each assembly hydrated: its order slots' agreements read by key
+        // Each assembly hydrated: its agreements' agreements read by key
         // from AgreementRegistry → IPFS and verified.
         const discovered = await discoverAnchoredAssemblies();
         expect(discovered.length).toBeGreaterThan(1);

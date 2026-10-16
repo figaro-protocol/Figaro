@@ -71,13 +71,13 @@ ones this document uses; `docs/LEXICON.md` defines every other.
   `ClauseRegistry` under a **spec** (a JSON document whose content hash and
   URI the chain holds). An **agreement** is the clauses composed for one
   order, every field filled; its merkle root is what the commitment carries.
-  A **registered agreement** is the clauses composed for one order slot with
+  A **registered agreement** is the clauses composed for one agreement with
   the designer's fills, value-free, registered in `AgreementRegistry` under
   its **agreementKey** (the merkle root over one leaf per composed clause, the
   clause key and the designer's fills, under the agreement format's leaf
   convention). An
   **assembly** is registered agreements composed into a reusable design, its
-  `compositionHash` the merkle root over its order slots, registered in
+  `compositionHash` the merkle root over its agreements, registered in
   `AssemblyRegistry`. A **designer** is the wallet that registers a clause, a
   registered agreement or an assembly, under a registration stake.
 - An **attestation** is a signed statement a party makes about an open order,
@@ -299,7 +299,7 @@ the guest's test files under `prover/lib/tests/`.
   `KIND_AGREEMENT` while the agreement's stake is live in `AgreementRegistry`
   (`:525-541`). `recordAssemblyUsage(order, compositionHash, agreementKey,
   slotContentHash, leafProof, membershipProof)` proves the same leaf, then
-  the order slot's leaf `keccak256(keccak256(agreementKey ‖ slotContentHash))`
+  the agreement's leaf `keccak256(keccak256(agreementKey ‖ slotContentHash))`
   under `compositionHash`, reverting `InvalidMembershipProof` when it does not
   open (`:563-593`). `applyBatchAccrual` gains the `KIND_AGREEMENT` branch.
 - Two reserved keys, the provenance leaf's `keccak256("figaro-agreement-provenance")`
@@ -592,7 +592,7 @@ and pure functions are omitted.
 | `AssemblyRegistry` | `withdrawDeposit` | the registrant |
 | `AgreementRegistry` | `registerAgreement` | anyone, with the registration stake; first write wins; the zero key and both reserved keys are refused |
 | `AgreementRegistry` | `withdrawDeposit` | the registrant |
-| `UsageCounter` | `recordClauseUsage`, `recordAgreementUsage`, `recordAssemblyUsage` | anyone, with merkle proofs over a resolved direct-path order (and, for an assembly, the order slot's membership proof) |
+| `UsageCounter` | `recordClauseUsage`, `recordAgreementUsage`, `recordAssemblyUsage` | anyone, with merkle proofs over a resolved direct-path order (and, for an assembly, the agreement's membership proof) |
 | `UsageCounter` | `applyBatchAccrual` | `FigaroBatchVerifier` only, immutable |
 | `RpgfMinter` | `claim` | the designer of record of every key it passes, once per closed period |
 | `FlorinToken` | `registerMinter` | the deployer, until `renounceDeployerMint` |
@@ -806,7 +806,7 @@ read it first.
   `recordAssemblyUsage` `AssemblyRegistry` only, and `applyBatchAccrual`
   gates each `BatchAccrual{clauseOrAssembly, kind, c, d}` by its own kind's
   registry and skips an unknown kind (`UsageCounter.sol:719-727`). No kind
-  gates another: an assembly accrues without its order slots' agreements
+  gates another: an assembly accrues without its agreements' agreements
   being live, and an agreement without its assembly being live.
   `RpgfMinter.claim(period, (kind, key)[])` reads the counter's slot for each
   kind, and `_isAuthor(kind, key, account)` reads the one registry the kind
@@ -826,7 +826,7 @@ read it first.
   `test_eachKindReadsOnlyItsOwnRegistry`, `test_revertsOnUnknownKind`,
   `test_theThreeKindsPayOnlyTheirOwnDesignerOfRecord`
   (`test/build/rewards/RpgfMinterTest.t.sol`),
-  `check_theKindsNeverShareASlot`
+  `check_theKindsNeverShareAKey`
   (`test/build/rewards/HalmosUsageCounter.t.sol`), and
   `a_clause_and_an_assembly_on_the_same_key_accrue_apart`,
   `one_provenance_leaf_credits_the_agreement_and_the_assembly_apart`
@@ -872,19 +872,19 @@ read it first.
   SDK's key, bytes, leaf and proof equal to the counter's on the third
   agreement of `test/fixtures/merkle-vectors.json`; `merkle_parity.rs` holds
   the guest's side of the same fixture.
-- The assembly root is a merkle tree over its order slots, with the agreement
-  format's leaf convention: one leaf per order slot, keyed by the slot's
+- The assembly root is a merkle tree over its agreements, with the agreement
+  format's leaf convention: one leaf per agreement, keyed by the agreement's
   agreementKey over the canonical bytes `{"clauses":{…},"slot":i}`, and one
   terms leaf keyed by `keccak256("figaro-assembly-terms")` over the
   assembly-scoped clauses when there are any (`DESIGN_DECISIONS.md` § 25,
   § 26). Membership is proved, never looked up: `AssemblyRegistry` holds no
   edge to `AgreementRegistry`. The terms leaf opens under the root
   (`test_theTermsLeafIsALeafOfTheAssemblyTree`) and never passes as an order
-  slot (`test_theTermsLeafNeverPassesAsAnOrderSlot`); a slot leaf opens under
-  its own root only (`test_aSlotLeafUnderADifferentCompositionHashFails`) and
-  with its own bytes only (`test_aSlotLeafWithAnotherSlotsBytesFails`).
+  agreement (`test_theTermsLeafNeverPassesAsAnAgreement`); an agreement leaf opens under
+  its own root only (`test_anAgreementLeafUnderADifferentCompositionHashFails`) and
+  with its own bytes only (`test_anAgreementLeafWithAnotherAgreementsBytesFails`).
   `test/fixtures/assembly-vectors.json` carries three agreements and three
-  assemblies (keys, slot leaves, terms leaf, roots, membership proofs and
+  assemblies (keys, agreement leaves, terms leaf, roots, membership proofs and
   provenance bytes); `test_everyAgreementKeyIsTheRootOverItsClauseLeaves` and
   `test_everyAssemblyVectorOpensUnderItsRoot` (`MerkleParityTest`) and the
   `merkle_parity.rs` and `parity.rs` vector tests hold the counter and the
@@ -897,7 +897,7 @@ read it first.
   direct path reverts: `_accrue` reverts
   `ReservedKeyIsNotARegistration(bytes32)` on either under every kind
   (`UsageCounter.sol:769-771`; the error at `:375`), and
-  `recordAssemblyUsage` refuses either as the order slot's agreementKey
+  `recordAssemblyUsage` refuses either as an agreement's agreementKey
   (`:577-579`). `AgreementRegistry.registerAgreement` refuses both as
   registrations (`AgreementRegistry.sol:162-164`). The guest refuses a claim
   keyed on either, of any kind, and an assembly claim naming either as its
@@ -912,9 +912,9 @@ read it first.
   assembly claim's `InvalidMembershipProof` (no tree has the reserved key as
   its root) and the batch-path skip;
   `test_theReservedKeysAreRefusedUnderTheAgreementKind` and
-  `test_theTermsLeafNeverPassesAsAnOrderSlot` prove the agreement kind's and
-  the order slot's refusals; `every_kind_keyed_on_a_reserved_key_is_refused`
-  and `an_assembly_claim_passing_the_terms_leaf_as_an_order_slot_is_refused`
+  `test_theTermsLeafNeverPassesAsAnAgreement` prove the agreement kind's and
+  the agreement's refusals; `every_kind_keyed_on_a_reserved_key_is_refused`
+  and `an_assembly_claim_passing_the_terms_leaf_as_an_agreement_is_refused`
   (`prover/lib/tests/usage.rs`) prove the guest's.
 - The counter holds no exclusion list. Every clause, registered agreement or
   assembly with a live registration earns under the same rule, the two
@@ -948,7 +948,7 @@ read it first.
   order and the witness spec bytes. A stranger's resolve for an open process,
   a buyer's signature replayed over another order list, a seller attestation
   under another role order, or an attestation copied with other spec bytes
-  cannot take the party's own slot (`mempool.rs`, `op_key`; the five
+  cannot take the party's own position (`mempool.rs`, `op_key`; the five
   `mempool_*` slot tests).
 - A batch takes at most `MAX_BATCH_OPS` operations, oldest first
   (`mempool.rs`, `drain_up_to`;

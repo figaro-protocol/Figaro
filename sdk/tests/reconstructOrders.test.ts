@@ -121,9 +121,9 @@ describe("reconstructOrdersFromTemplate — realization", () => {
                 deadline: 1770000000n,
             });
             for (const order of orders) {
-                const slot = template.template.agreements.find((a) => a.id === order.nodeId)!;
+                const entry = template.template.agreements.find((a) => a.id === order.nodeId)!;
                 expect(order.agreement.provenance).toEqual({
-                    agreementKey: slot.agreementKey,
+                    agreementKey: entry.agreementKey,
                     compositionHash: templateCompositionHash(template.template),
                 });
                 expect(order.agreementHash).toBe(computeAgreementHash(order.agreement));

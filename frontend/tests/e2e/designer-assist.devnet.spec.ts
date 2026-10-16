@@ -70,16 +70,16 @@ test.describe('COMPOSITION-ASSIST — export the draft, import a template, compo
         await page.getByTestId('designer-assist-open').click();
         await page.getByTestId('designer-assist-panel').waitFor({ state: 'visible', timeout: 10000 });
         const exported = await page.getByTestId('designer-assist-template').inputValue();
-        // The handoff is the template (one order slot per drawn order, each
+        // The handoff is the template (one agreement per drawn order, each
         // binding an agreement by key) beside the agreements composed for it.
         const { template, agreements } = JSON.parse(exported) as {
             template: { name?: string; agreements: Array<{ id: string; agreementKey: string }> };
             agreements: Record<string, { clauses: Record<string, unknown> }>;
         };
         expect(template.name, 'the editorial name rides the template').toBe('Assist round trip');
-        expect(template.agreements, 'one order slot per drawn order').toHaveLength(2);
+        expect(template.agreements, 'one agreement per drawn order').toHaveLength(2);
         expect(
-            template.agreements.some((slot) => PROCESS_CLAUSE in (agreements[slot.agreementKey]?.clauses ?? {})),
+            template.agreements.some((entry) => PROCESS_CLAUSE in (agreements[entry.agreementKey]?.clauses ?? {})),
             'the drawer selection lands in the exported composition',
         ).toBe(true);
 

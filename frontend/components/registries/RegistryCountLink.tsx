@@ -45,7 +45,7 @@ const SCAFFOLDING: Record<
 > = {
     clauses: { registry: "ClauseRegistry", event: "ClauseRegistered", dir: "clauses" },
     // The reference agreements are derived from the reference assemblies'
-    // files, one per distinct order slot composition.
+    // files, one per distinct agreement composition.
     agreements: { registry: "AgreementRegistry", event: "AgreementRegistered", dir: "assemblies" },
     assemblies: { registry: "AssemblyRegistry", event: "AssemblyRegistered", dir: "assemblies" },
     members: null,

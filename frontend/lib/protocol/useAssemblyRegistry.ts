@@ -46,7 +46,7 @@ export interface PublishOutcome {
     /** The content-derived slug the assembly was registered under. */
     slug: string;
     /** Each agreement this publish registered on `AgreementRegistry` before
-     *  the assembly (a newly composed agreement no registry bound yet): its
+     *  the assembly (a newly agreement no registry bound yet): its
      *  key, the registration's transaction and the pinned document's URI. */
     agreements: { agreementKey: `0x${string}`; hash: `0x${string}`; ipfsURI: string }[];
 }
@@ -203,7 +203,7 @@ export function useAllPublishedAssemblies() {
  * mismatch.
  */
 /** PERMANENT failures, by composition root: the template the binding points
- *  at was served and is not the one the root anchors, or an order slot's
+ *  at was served and is not the one the root anchors, or an agreement's
  *  registered agreement failed permanently (`getComposedAgreementLoadError`).
  *  A gateway miss keeps nothing and is read again; this is never re-read. */
 const loadErrors = new Map<string, string>();
@@ -247,9 +247,9 @@ export async function fetchAssemblyTemplate(
 /**
  * The assembly a checkout, a view or a member profile consumes: the template
  * read and verified against its composition root (`fetchAssemblyTemplate`),
- * then every order slot's registered agreement read from `AgreementRegistry`
+ * then every agreement's registered agreement read from `AgreementRegistry`
  * by key and verified against it (`hydrateAssemblyTemplate`). Null when the
- * template or any order slot's agreement is absent — the assembly is not
+ * template or any agreement's agreement is absent — the assembly is not
  * offered, and nothing falls back to a bundled copy.
  */
 export async function fetchHydratedAssembly(
@@ -260,13 +260,13 @@ export async function fetchHydratedAssembly(
     if (!template) return null;
     const hydrated = await hydrateAssemblyTemplate(template);
     if (hydrated === null) {
-        // Absence that can never resolve: an order slot's agreement was served
+        // Absence that can never resolve: an agreement's agreement was served
         // and is not the agreement its key names.
-        const failed = template.agreements.find((slot) => getComposedAgreementLoadError(slot.agreementKey));
+        const failed = template.agreements.find((entry) => getComposedAgreementLoadError(entry.agreementKey));
         if (failed) {
             loadErrors.set(
                 expectedCompositionHash.toLowerCase(),
-                `order slot ${failed.id} binds ${failed.agreementKey}, whose document is not the agreement the key names`,
+                `agreement ${failed.id} binds ${failed.agreementKey}, whose document is not the agreement the key names`,
             );
         }
     }
@@ -276,7 +276,7 @@ export async function fetchHydratedAssembly(
 /**
  * The template an `AssemblyRegistry` binding names, read BY ITS COMPOSITION
  * ROOT (whatever the stake: bindings are never cleared) and verified against
- * it — what the usage planner needs for an order slot's membership proof.
+ * it — what the usage planner needs for an agreement's membership proof.
  * Null when unbound, unreachable or not the template the root names.
  */
 export async function fetchAssemblyTemplateByHash(

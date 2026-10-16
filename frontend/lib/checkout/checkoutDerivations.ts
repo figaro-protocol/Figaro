@@ -12,7 +12,7 @@ import {
     planSubOrderSellers,
     profileValuesFor,
     resolveSubOrderPricing,
-    slotClauses,
+    agreementClauses,
     type SubOrderPricing,
 } from "@figaro-protocol/sdk";
 import { displayNameForAddress } from "@/lib/member/memberListing";
@@ -205,11 +205,11 @@ export function deriveAgreementGroups(args: {
             };
         }),
     }];
-    return [...assemblyGroup, ...orders.map((slot, i) => {
-        // The order slot's clauses: its registered agreement's, with the
-        // order slot's own fills (the topology parents) merged over them.
-        const order = { id: slot.id, clauses: slotClauses(hydrated, slot) };
-        const isRoot = templateParentOrderHashes(slot).length === 0;
+    return [...assemblyGroup, ...orders.map((entry, i) => {
+        // The agreement's clauses: its registered agreement's, with the
+        // agreement's own fills (the topology parents) merged over them.
+        const order = { id: entry.id, clauses: agreementClauses(hydrated, entry) };
+        const isRoot = templateParentOrderHashes(entry).length === 0;
         const assigned = isRoot ? leadAddress : sellerOf.get(String(order.id));
         // Fold the assigned seller's PROFILE master data (dimweight's
         // divisor, a declared credential id) onto the preview leaves —

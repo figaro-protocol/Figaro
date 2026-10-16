@@ -47,7 +47,7 @@ import {
     derivePricedFields,
     hashCommitmentStruct,
     resolveSubOrderPricing,
-    slotClauses,
+    agreementClauses,
 } from "@figaro-protocol/sdk";
 import {
     startRace,
@@ -308,7 +308,7 @@ export function useDispatchRace() {
             const node = hydrated.template.agreements.find((a) => a.id === racedNodeId);
             if (!node) throw new Error(`Template node "${racedNodeId}" not found.`);
             const specs = specSource();
-            const nodeClauses = { ...slotClauses(hydrated, node), ...(checkout.clauseFills?.[racedNodeId] ?? {}) };
+            const nodeClauses = { ...agreementClauses(hydrated, node), ...(checkout.clauseFills?.[racedNodeId] ?? {}) };
 
             // The candidate set: the live discovered-seller catalogs that can
             // price this node — the same registry read the manual path uses,

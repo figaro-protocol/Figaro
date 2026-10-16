@@ -57,7 +57,7 @@ describe("readTemplateUtilityTokenPins — the pin read from the composed key's 
 // by `provenanceLeaf` (the reserved key), its entries decode to
 // `{ agreementKey, compositionHash }` with no spec, and an entry whose payload
 // did not recover still attributes when its fingerprint is the
-// `provenanceContentRef` of a loaded assembly's order slot.
+// `provenanceContentRef` of a loaded assembly's agreement.
 describe("attributionFromOverlays — the provenance leaf", () => {
     const COMPOSITION = `0x${"9a".repeat(32)}` as `0x${string}`;
     const OTHER = `0x${"7b".repeat(32)}` as `0x${string}`;

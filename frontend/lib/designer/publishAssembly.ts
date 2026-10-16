@@ -2,27 +2,27 @@
  * lib/designer/publishAssembly.ts — AUTHORING: pin + anchor an assembly.
  *
  * Designer-tier only. Builds the off-chain assembly template from a design
- * snapshot, registers each newly composed agreement on `AgreementRegistry`,
+ * snapshot, registers each newly agreement on `AgreementRegistry`,
  * pins the template to IPFS, and registers it on `AssemblyRegistry`.
  * READING published assemblies (the `AssemblyChoice` enrichment) lives in
  * `@/lib/protocol/assemblyChoices` — design is design; reading is everyone's.
  *
  * Publish flow:
- *   1. Build the template from the snapshot — one order slot per canvas
+ *   1. Build the template from the snapshot — one agreement per canvas
  *      order, each binding a registered agreement by key (one the designer
  *      bound, or one newly composed from the order's clauses), the topology
- *      parents in the order slot's own fill — plus prose.
- *   2. Compute the composition root (the merkle root over the order slots
+ *      parents in the agreement's own fill — plus prose.
+ *   2. Compute the composition root (the merkle root over the agreements
  *      and the assembly terms — the assembly's identity).
  *   3. Pin the template to IPFS and simulate
  *      AssemblyRegistry.registerAssembly(compositionHash, contentURI); pin
- *      each newly composed agreement no registry binds yet and simulate its
+ *      each newly agreement no registry binds yet and simulate its
  *      AgreementRegistry.registerAgreement(key, uri). Every check passes
  *      before any write is sent.
  *   4. Send each agreement registration with its stake — one transaction,
  *      one receipt each — then registerAssembly.
  *      Before the call, a CLIENT-SIDE publish guard checks
- *      that the order slot count fits the per-process gas
+ *      that the agreement count fits the per-process gas
  *      ceiling, derived at runtime from the active chain's block gas limit
  *      via `maxOrdersResolvablePerProcess` in `@/lib/shared/chainGasCeilings`.
  *      The count is not a contract parameter and is never stored on-chain.
@@ -69,10 +69,10 @@ export interface RegisteredAgreementOutcome {
 }
 
 /**
- * Pin ONE composed agreement and register it on `AgreementRegistry` under its
+ * Pin ONE agreement and register it on `AgreementRegistry` under its
  * key with the registry's stake — the one registration path, whether a
  * designer registers an agreement on its own from the drawer or an assembly's
- * publish registers each order slot's new agreement. A key the registry
+ * publish registers each agreement's new agreement. A key the registry
  * already binds is skipped and reported as such: the same clauses always key
  * to one registration. Every check (the pin, the simulation) passes before
  * the wallet opens; the write waits for a `success` receipt.
@@ -120,11 +120,11 @@ export async function registerComposedAgreement(args: {
 }
 
 /**
- * Register ONE order's composed agreement on its own, from the drawer: the
+ * Register ONE order's agreement on its own, from the drawer: the
  * clauses the designer selected for the order compose through the SDK's one
  * composition rule (`composeOrderAgreement` — the mandatory fold, value-free
  * but for design fills, the scope check), then `registerComposedAgreement`.
- * The registered key is what the order slot then binds, and what any other
+ * The registered key is what the agreement then binds, and what any other
  * assembly's drawer offers from the live registry.
  */
 export function usePublishAgreement() {
@@ -249,7 +249,7 @@ export function usePublishAssembly() {
 
         // The agreements newly composed for this assembly: each one no
         // registry binds yet is pinned and simulated now, and registered
-        // FIRST below (one stake each), so every order slot the template names
+        // FIRST below (one stake each), so every agreement the template names
         // is readable the moment the assembly anchors. A key the registry
         // already binds is skipped — the same clauses always key to one
         // registration.

@@ -223,7 +223,7 @@ function roleCapabilities(
         // parties, once each per section (a repeat adds nothing: same bytes,
         // same contentRef). Process-log ladders advance instead — their
         // lifecycle IS their attestation — and a clause declaring witness
-        // stage 0 owns that slot with its own form.
+        // stage 0 owns that entry with its own form.
         //
         // ONE card per party per order, opening a chooser of the sections
         // that party has not yet re-asserted. Each choice is one section's

@@ -9,7 +9,7 @@
  * the batch path use: one claim per clause section, and — when the agreement
  * names its provenance (`Agreement.provenance`: the registered agreement it
  * instantiated and its assembly's composition root) — the agreement claim and
- * the assembly claim, the latter carrying the order slot's membership proof
+ * the assembly claim, the latter carrying the agreement's membership proof
  * from the assembly's template. Planning here adds only what is
  * process-wide:
  *

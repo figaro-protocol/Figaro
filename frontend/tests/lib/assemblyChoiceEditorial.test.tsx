@@ -37,16 +37,16 @@ const flush = () =>
         await Promise.resolve();
     });
 
-/** The hydrated read of a template whose order slots each bind the agreement
+/** The hydrated read of a template whose agreements each bind the agreement
  *  their clauses key to. */
 function hydrated(template: Record<string, unknown> & { agreements: { id: string; clauses: Record<string, Record<string, unknown>> }[] }) {
     const agreements: Record<string, { clauses: Record<string, Record<string, unknown>> }> = {};
-    const slots = template.agreements.map((entry) => {
+    const entries = template.agreements.map((entry) => {
         const agreementKey = agreementKeyOf({ clauses: entry.clauses as Record<`0x${string}`, Record<string, unknown>> });
         agreements[agreementKey.toLowerCase()] = { clauses: entry.clauses };
         return { id: entry.id, agreementKey, clauses: {} };
     });
-    return { template: { ...template, agreements: slots }, agreements };
+    return { template: { ...template, agreements: entries }, agreements };
 }
 
 /** Render the projection over one published assembly with the given template. */

@@ -108,7 +108,7 @@ const CREDENTIAL_BYTES = Buffer.from(JSON.stringify({
 const CREDENTIAL_HASH = keccak256(new Uint8Array(CREDENTIAL_BYTES));
 
 /** One anchored assembly, hydrated: the template (assemblyClauses included,
- *  which `reconstructOrdersFromTemplate` needs) and every order slot's
+ *  which `reconstructOrdersFromTemplate` needs) and every agreement's
  *  registered agreement, each verified. */
 type AnchoredTemplate = DiscoveredAssembly;
 
@@ -188,7 +188,7 @@ test.describe('DATA MARKET — dual-posture value legs over the anchored data as
         }
 
         // ── ADOPT from chain + IPFS: every anchored template resolved in
-        //    full — each order slot's agreement read by key from
+        //    full — each agreement's agreement read by key from
         //    AgreementRegistry and verified — then selected by SHAPE — never
         //    a hardcoded slug, never a composition authored in the spec. ──
         const anchored: AnchoredTemplate[] = await discoverAnchoredAssemblies();
@@ -248,7 +248,7 @@ test.describe('DATA MARKET — dual-posture value legs over the anchored data as
             expect(orders, `${opts.label}: the reference is a single-order composition`).toHaveLength(1);
             const order: ReconstructedOrder = orders[0];
             // The provenance leaf is MECHANICAL, never authored: the walk sets
-            // the agreement's provenance to its order slot's agreement key and
+            // the agreement's provenance to its agreement's agreement key and
             // the adopted assembly's own root.
             expect(order.agreement.provenance, `${opts.label}: the agreement names its registered agreement and the adopted assembly`)
                 .toEqual({ agreementKey: opts.adopted.agreements[0].agreementKey, compositionHash: opts.adopted.compositionHash });

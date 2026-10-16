@@ -1042,8 +1042,8 @@ fn a_bond_accumulation_overflow_is_rejected_not_a_panic() {
 
 // ── Agreement and assembly claims against the SDK's vectors ───────
 //
-// Each order slot of `test/fixtures/assembly-vectors.json` is
-// instantiated as one order whose agreement carries the order slot's
+// Each agreement of `test/fixtures/assembly-vectors.json` is
+// instantiated as one order whose agreement carries the agreement's
 // provenance leaf (as the lone leaf, so the inclusion proof is empty), then
 // committed, resolved and claimed for its agreement (kind 2) and its
 // assembly (kind 1) with the SDK's frozen membership proof.
@@ -1106,12 +1106,12 @@ fn claims_batch(ops: Vec<KernelOp>, claims: Vec<UsageClaim>) -> BatchInput {
     }
 }
 
-fn kind2(order: &Commitment, slot: &serde_json::Value) -> UsageClaim {
+fn kind2(order: &Commitment, entry: &serde_json::Value) -> UsageClaim {
     UsageClaim {
         order: order.clone(),
-        clause_or_assembly: hex32(&slot["agreementKey"]),
+        clause_or_assembly: hex32(&entry["agreementKey"]),
         kind: UsageClaimKind::Agreement {
-            composition_hash: hex32(&slot["provenance"]["compositionHash"]),
+            composition_hash: hex32(&entry["provenance"]["compositionHash"]),
         },
         inclusion_proof: vec![],
     }
@@ -1135,31 +1135,31 @@ fn proof_list(v: &serde_json::Value) -> Vec<B256> {
 }
 
 #[test]
-fn every_vector_order_slot_credits_its_agreement_and_its_assembly() {
+fn every_vector_agreement_credits_its_agreement_and_its_assembly() {
     let fx = assembly_vectors();
     let mut salt = 1000u64;
     for assembly in fx["assemblies"].as_array().unwrap() {
         let composition = hex32(&assembly["compositionHash"]);
-        for slot in assembly["slots"].as_array().unwrap() {
+        for entry in assembly["agreements"].as_array().unwrap() {
             salt += 1;
-            let (order, ops) = resolved_order_under(hex32(&slot["provenance"]["leaf"]), salt);
+            let (order, ops) = resolved_order_under(hex32(&entry["provenance"]["leaf"]), salt);
             let claims = vec![
-                kind2(&order, slot),
+                kind2(&order, entry),
                 kind1(
                     &order,
                     composition,
-                    hex32(&slot["agreementKey"]),
-                    hex32(&slot["slotContentHash"]),
-                    proof_list(&slot["membershipProof"]),
+                    hex32(&entry["agreementKey"]),
+                    hex32(&entry["slotContentHash"]),
+                    proof_list(&entry["membershipProof"]),
                 ),
             ];
             let (_, _, events) = apply_batch(&claims_batch(ops, claims))
-                .unwrap_or_else(|e| panic!("{} {}: {e}", assembly["label"], slot["id"]));
+                .unwrap_or_else(|e| panic!("{} {}: {e}", assembly["label"], entry["id"]));
             let mut got: Vec<(B256, u8)> =
                 events.usage_accruals.iter().map(|a| (a.clause_or_assembly, a.kind)).collect();
             got.sort();
             let mut want = vec![
-                (hex32(&slot["agreementKey"]), USAGE_KIND_AGREEMENT),
+                (hex32(&entry["agreementKey"]), USAGE_KIND_AGREEMENT),
                 (composition, USAGE_KIND_ASSEMBLY),
             ];
             want.sort();
@@ -1168,24 +1168,24 @@ fn every_vector_order_slot_credits_its_agreement_and_its_assembly() {
     }
 }
 
-/// An order slot's membership proof taken from another assembly that holds
+/// An agreement's membership proof taken from another assembly that holds
 /// the same agreement opens nothing under the claimed root.
 #[test]
 fn a_vector_membership_proof_from_another_assembly_is_refused() {
     let fx = assembly_vectors();
     let assemblies = fx["assemblies"].as_array().unwrap();
-    // `two-slots` order-1 and `one-slot` order-0 both bind the one-section agreement.
+    // `two-entries` order-1 and `one-entry` order-0 both bind the one-section agreement.
     let two = &assemblies[1];
     let one = &assemblies[0];
-    let slot = &two["slots"][1];
-    assert_eq!(slot["agreementKey"], one["slots"][0]["agreementKey"]);
-    let (order, ops) = resolved_order_under(hex32(&slot["provenance"]["leaf"]), 1);
+    let entry = &two["agreements"][1];
+    assert_eq!(entry["agreementKey"], one["agreements"][0]["agreementKey"]);
+    let (order, ops) = resolved_order_under(hex32(&entry["provenance"]["leaf"]), 1);
     let claim = kind1(
         &order,
         hex32(&two["compositionHash"]),
-        hex32(&slot["agreementKey"]),
-        hex32(&one["slots"][0]["slotContentHash"]),
-        proof_list(&one["slots"][0]["membershipProof"]),
+        hex32(&entry["agreementKey"]),
+        hex32(&one["agreements"][0]["slotContentHash"]),
+        proof_list(&one["agreements"][0]["membershipProof"]),
     );
     match apply_batch(&claims_batch(ops, vec![claim])).map(|_| ()) {
         Err(KernelError::UsageInvalidInclusionProof) => {}
@@ -1198,10 +1198,10 @@ fn a_vector_membership_proof_from_another_assembly_is_refused() {
 #[test]
 fn a_vector_agreement_claim_with_the_wrong_agreement_key_is_refused() {
     let fx = assembly_vectors();
-    let slot = &fx["assemblies"][2]["slots"][2];
-    let (order, ops) = resolved_order_under(hex32(&slot["provenance"]["leaf"]), 1);
-    let mut claim = kind2(&order, slot);
-    claim.clause_or_assembly = hex32(&fx["assemblies"][2]["slots"][0]["agreementKey"]);
+    let entry = &fx["assemblies"][2]["agreements"][2];
+    let (order, ops) = resolved_order_under(hex32(&entry["provenance"]["leaf"]), 1);
+    let mut claim = kind2(&order, entry);
+    claim.clause_or_assembly = hex32(&fx["assemblies"][2]["agreements"][0]["agreementKey"]);
     match apply_batch(&claims_batch(ops, vec![claim])).map(|_| ()) {
         Err(KernelError::UsageInvalidInclusionProof) => {}
         other => panic!("expected UsageInvalidInclusionProof, got {other:?}"),
@@ -1209,25 +1209,25 @@ fn a_vector_agreement_claim_with_the_wrong_agreement_key_is_refused() {
 }
 
 /// The vector's terms leaf IS a leaf of its assembly root — its sorted-pair
-/// proof opens — yet an assembly claim passing it as an order slot (the
-/// terms key as agreementKey, the terms bytes' hash as the order-slot content) is
-/// refused by its key: the terms leaf is not an order slot.
+/// proof opens — yet an assembly claim passing it as an agreement (the
+/// terms key as agreementKey, the terms bytes' hash as the order-entry content) is
+/// refused by its key: the terms leaf is not an agreement.
 #[test]
-fn the_vector_terms_leaf_never_passes_as_an_order_slot() {
+fn the_vector_terms_leaf_never_passes_as_an_agreement() {
     let fx = assembly_vectors();
     let assembly = &fx["assemblies"][2];
     let composition = hex32(&assembly["compositionHash"]);
     let terms = &assembly["terms"];
     let terms_leaf = hex32(&terms["leaf"]);
 
-    // The terms leaf's proof: its sibling is the order slot whose proof
-    // begins with the terms leaf; the rest of that order slot's path follows.
-    let sibling = assembly["slots"]
+    // The terms leaf's proof: its sibling is the agreement whose proof
+    // begins with the terms leaf; the rest of that agreement's path follows.
+    let sibling = assembly["agreements"]
         .as_array()
         .unwrap()
         .iter()
         .find(|s| hex32(&s["membershipProof"][0]) == terms_leaf)
-        .expect("an order slot pairs with the terms leaf");
+        .expect("an agreement pairs with the terms leaf");
     let mut proof = vec![hex32(&sibling["leaf"])];
     proof.extend(proof_list(&sibling["membershipProof"]).into_iter().skip(1));
     assert!(

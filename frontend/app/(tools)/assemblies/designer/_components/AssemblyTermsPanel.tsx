@@ -16,12 +16,12 @@
  * every party signs it — stated in the panel copy for the designer.
  *
  * Read-only surfaces (the review and `/view`) also pass the composition: its
- * root and, per order slot, the registered agreement it binds — rendered
+ * root and, per agreement, the registered agreement it binds — rendered
  * above the terms, since the root is the hash over both.
  *
  * Testids: `assembly-terms-panel`, `assembly-terms-clause-<clauseKey>`,
  * `assembly-terms-field-<clauseKey>-<field>`, `assembly-composition`,
- * `assembly-composition-root`, `assembly-composition-slot-<index>`.
+ * `assembly-composition-root`, `assembly-composition-entry-<index>`.
  */
 
 import { useMemo } from "react";
@@ -38,13 +38,13 @@ import {
 import { FieldControl } from "@/components/runtime/FieldControl";
 import { truncateHex } from "@/lib/shared/formatHex";
 
-/** The composition root and each order slot's agreement key. */
-function CompositionSlots({ composition }: { composition: { compositionHash: `0x${string}`; agreementKeys: readonly `0x${string}`[] } }) {
+/** The composition root and each agreement's agreement key. */
+function CompositionAgreements({ composition }: { composition: { compositionHash: `0x${string}`; agreementKeys: readonly `0x${string}`[] } }) {
     return (
         <section data-testid="assembly-composition" className="border border-default rounded bg-paper p-3 space-y-2">
             <p className="text-xs font-semibold text-ink-body">Composition</p>
             <p className="text-xs text-ink-muted leading-relaxed">
-                The root is the AssemblyRegistry key: the merkle root over the order slots, each
+                The root is the AssemblyRegistry key: the merkle root over the agreements, each
                 binding one registered agreement by its AgreementRegistry key, and the assembly terms.
             </p>
             <p className="font-mono text-[10px] text-ink-body break-all" data-testid="assembly-composition-root" title={composition.compositionHash}>
@@ -55,7 +55,7 @@ function CompositionSlots({ composition }: { composition: { compositionHash: `0x
                     <li
                         key={`${index}-${agreementKey}`}
                         className="text-[11px] text-ink-body"
-                        data-testid={`assembly-composition-slot-${index}`}
+                        data-testid={`assembly-composition-entry-${index}`}
                         data-agreement-key={agreementKey}
                     >
                         Order {index + 1}:{" "}
@@ -79,7 +79,7 @@ export function AssemblyTermsPanel({
     onToggleClause: (clauseKey: string, next: boolean) => void;
     onSetClauseField: (clauseKey: string, field: string, value: unknown) => void;
     readOnly?: boolean;
-    /** The composition root and each order slot's agreement key, in
+    /** The composition root and each agreement's agreement key, in
      *  template order — shown by the read-only surfaces. */
     composition?: { compositionHash: `0x${string}`; agreementKeys: readonly `0x${string}`[] };
 }) {
@@ -104,12 +104,12 @@ export function AssemblyTermsPanel({
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [registered, specsVersion]);
 
-    const slots = composition ? <CompositionSlots composition={composition} /> : null;
-    if (assemblyClauses.length === 0) return slots;
+    const entries = composition ? <CompositionAgreements composition={composition} /> : null;
+    if (assemblyClauses.length === 0) return entries;
 
     return (
         <>
-        {slots}
+        {entries}
         <section data-testid="assembly-terms-panel" className="border border-default rounded bg-paper p-3 space-y-2">
             <p className="text-xs font-semibold text-ink-body">Assembly terms</p>
             <p className="text-xs text-ink-muted leading-relaxed">

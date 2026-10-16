@@ -10,7 +10,7 @@ import "src/mocks/MockPermitToken.sol";
 /// @notice The canonical per-order resolve cost (`RESOLVE_GAS_PER_ORDER`) is the
 ///         ALL-IN figure measured on REAL post-fork Sepolia receipts:
 ///         `resolveProcess(N)` costs `~73,000 + ~29,800·N` gas. A resolve is its
-///         own transaction, so each order's distinct `orderStatus`/balance slots
+///         own transaction, so each order's distinct `orderStatus`/balance entries
 ///         pay COLD access, and the order's calldata is charged at the tx level.
 ///         This in-process test CANNOT reproduce that all-in number — it commits
 ///         and resolves in one execution (pre-warming storage) and calldata is

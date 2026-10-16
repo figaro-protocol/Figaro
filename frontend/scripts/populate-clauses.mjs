@@ -17,8 +17,8 @@
  * at seed time, before anything is pinned — everything pinned carries keys.
  * Each authored agreement (`agreements/*.json`) is composed over the specs
  * (`composeAuthoredAgreement`: the mandatory clauses folded, keyed), each
- * reference assembly is built over the agreements its order slots name
- * (`assembleAuthored`: the slot binds the named agreement's key and carries
+ * reference assembly is built over the agreements its agreements name
+ * (`assembleAuthored`: the entry binds the named agreement's key and carries
  * its own topology parents); every DISTINCT agreement is pinned and
  * registered once on AgreementRegistry (a key the registry already binds is
  * skipped), then the assembly is registered on AssemblyRegistry.
@@ -125,11 +125,11 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // pinned to IPFS and anchored on-chain. Nothing bundles a copy.
 export const CLAUSES_DIR = path.resolve(__dirname, '../../clauses');
 /** The authored agreements (`agreements/*.json`, clause names with the
- *  designer's fills) the reference assemblies' order slots name. */
+ *  designer's fills) the reference assemblies' agreements name. */
 export const AGREEMENTS_DIR = path.resolve(__dirname, '../../agreements');
 
 /** The reference assemblies — the user-onboarding set, `clauses/`' sibling:
- *  authored assemblies whose order slots' agreements register on
+ *  authored assemblies whose agreements' agreements register on
  *  AgreementRegistry and whose templates anchor on AssemblyRegistry at
  *  populate time (affixed documents in `assemblies/documents/`). */
 export const ASSEMBLIES_DIR = path.resolve(__dirname, '../../assemblies');
@@ -382,7 +382,7 @@ export function registrarAccount() {
 /**
  * Every spec in `clauses/`, each with the clause key its canonical bytes hash
  * to. The set seeding resolves authored names against
- * (`resolveAuthoredClauseKeys`'s `AuthoredSpecSet`) and derives order slots
+ * (`resolveAuthoredClauseKeys`'s `AuthoredSpecSet`) and derives agreements
  * over (a `SpecSource`: `get` by key, `list()` — each entry the parsed spec
  * view beside its key, its own `clauseId` and `version`, its file and raw spec).
  */
@@ -424,8 +424,8 @@ export function loadAuthoredAgreements(authored = loadAuthoredSpecs()) {
 }
 
 /** An authored reference assembly (`assemblies/<file>`) built over the
- *  authored agreements its order slots name: `{ template, agreements }` —
- *  the template seeding anchors and the agreements its order slots bind,
+ *  authored agreements its agreements name: `{ template, agreements }` —
+ *  the template seeding anchors and the agreements its agreements bind,
  *  keyed (`assembleAuthored`). Seed time only. */
 export function readBuiltAssembly(file, authored = loadAuthoredSpecs(), agreementsByName = loadAuthoredAgreements(authored)) {
     return assembleAuthored(JSON.parse(fs.readFileSync(file, 'utf8')), agreementsByName, authored);
@@ -557,7 +557,7 @@ export function fillDeployTimeCurrency(template, tokenAddress) {
     };
 }
 
-/** Register one composed agreement on AgreementRegistry (idempotent — the
+/** Register one agreement on AgreementRegistry (idempotent — the
  *  key is content-derived, first-write-wins: a key the registry already
  *  binds is skipped). The pinned document carries the editorial `name` beside
  *  the keyed clauses. In vault mode the multisig is msg.sender, so the DAO is
@@ -600,22 +600,22 @@ export async function registerComposedAgreement({ publicClient, walletClient, ac
 }
 
 /** Register a built assembly's agreements (each DISTINCT key once, in order
- *  slot order; the document pinned is the written agreement's own — its name
+ *  entry order; the document pinned is the written agreement's own — its name
  *  and summary beside its clauses — and a document written without a name
- *  is named after the assembly and the first order slot binding it), then
+ *  is named after the assembly and the first agreement binding it), then
  *  anchor its template. */
 export async function anchorBuiltAssembly({ built, agreementRegistry, ...args }) {
     const { template, agreements } = built;
-    for (const [i, slot] of template.agreements.entries()) {
-        const doc = agreements[slot.agreementKey];
-        if (!doc || template.agreements.findIndex((s) => s.agreementKey === slot.agreementKey) !== i) continue;
+    for (const [i, entry] of template.agreements.entries()) {
+        const doc = agreements[entry.agreementKey];
+        if (!doc || template.agreements.findIndex((s) => s.agreementKey === entry.agreementKey) !== i) continue;
         await registerComposedAgreement({
             ...args,
             registry: agreementRegistry,
-            agreementKey: slot.agreementKey,
+            agreementKey: entry.agreementKey,
             document: doc.name
                 ? doc
-                : { ...(template.name ? { name: `${template.name} · ${slot.id}` } : {}), clauses: doc.clauses },
+                : { ...(template.name ? { name: `${template.name} · ${entry.id}` } : {}), clauses: doc.clauses },
         });
     }
     return anchorAssembly({ ...args, template });

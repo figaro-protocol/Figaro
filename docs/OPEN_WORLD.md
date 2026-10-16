@@ -152,7 +152,7 @@ every composition.
   AgreementRegistry; assemblies → AssemblyRegistry; members → MembersRegistry) — parallel,
   never nested. Arrows point one way, off-chain: assemblies use agreements; agreements use
   clauses; neither knows what uses it. An assembly's `compositionHash` is a merkle root
-  over its order slots' `agreementKey`s, so membership is proved against the root, never
+  over its agreements' `agreementKey`s, so membership is proved against the root, never
   looked up in another registry. (This is the
   open-world restatement of the Separation of Concerns — Registry Families discipline.)
 
@@ -283,13 +283,13 @@ metadata — not through bespoke app forks.)
 
 ### Composition units
 
-- **Registered agreement** — the clauses composed for one order slot with the designer's
+- **Registered agreement** — the clauses composed for one agreement with the designer's
   fills, value-free: the reusable unit an assembly is composed from, anchored on-chain via
   `src/build/registries/AgreementRegistry.sol` under its `agreementKey`.
 - **Assembly** — the structural declaration (roles, mechanisms, view definitions, module
-  placement, narrative defaults): ordered order slots of registered agreements plus the
+  placement, narrative defaults): ordered agreements of registered agreements plus the
   assembly-scoped terms. Composed in `frontend/lib/designer/`, anchored on-chain via
-  `src/build/registries/AssemblyRegistry.sol` under the merkle root over its order slots.
+  `src/build/registries/AssemblyRegistry.sol` under the merkle root over its agreements.
 - **Mechanism package** — the reusable unit the runtime composes: contract bindings/writes,
   semantic adapters, capability mappings, default inspector/action modules, guarantee +
   risk copy.
@@ -297,7 +297,7 @@ metadata — not through bespoke app forks.)
   catalog metadata, discovery, messaging/handoff, evidence transport, geospatial) through
   stable interfaces, not hardwired per use-case.
 - **View definition** — the UI composition primitive (surface id, accepted context, visible
-  slots, module ordering, role-specific visibility).
+  positions, module ordering, role-specific visibility).
 
 ### What stays fixed vs what may vary
 

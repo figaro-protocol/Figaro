@@ -26,7 +26,7 @@ import {
     type ProjectionSpecView,
     type SpecSource,
 } from "./projection.js";
-import { slotClauses, templateParentOrderHashes, type HydratedAssembly, type TemplateSlot } from "./assembly.js";
+import { agreementClauses, templateParentOrderHashes, type HydratedAssembly, type AssemblyAgreement } from "./assembly.js";
 import { planTemplateOrders, type PlannedTemplateOrder } from "./reconstructOrders.js";
 import { isAddressHex, type Hex } from "./types.js";
 import type { CounterpartyBinding } from "./memberProfile.js";
@@ -436,7 +436,7 @@ export function profileValuesFor(
 // ── Sub-order seller plan (the per-clause binding cursor) ──────────────────
 
 /** The binding slice of a bound assembly — the hydrated assembly (template
- *  plus each order slot's registered agreement) and the adopting seller's
+ *  plus each agreement's registered agreement) and the adopting seller's
  *  counterparty bindings (any richer projection passes structurally). */
 export interface BoundAssemblyPlanInput {
     hydratedAssembly: HydratedAssembly;
@@ -463,13 +463,13 @@ export function planSubOrderSellers(
     // Commit order (throws on a cyclic topology — the guard the checkout
     // relies on), then the sub-orders are everything but the root.
     const ordered = planTemplateOrders(assembly.hydratedAssembly).filter((node) => node.nodeId !== rootId);
-    const byId = new Map(template.agreements.map((slot) => [slot.id, slot]));
+    const byId = new Map(template.agreements.map((entry) => [entry.id, entry]));
     const cursor = new Map<string, number>();
     return ordered.map((node) => {
-        // The order slot's own clauses — its registered agreement's — never
+        // The agreement's own clauses — its registered agreement's — never
         // the assembly-scoped terms every order carries.
-        const slot = byId.get(node.nodeId) as TemplateSlot;
-        const nodeClauses = Object.keys(slotClauses(assembly.hydratedAssembly, slot)).map((k) => k.toLowerCase());
+        const entry = byId.get(node.nodeId) as AssemblyAgreement;
+        const nodeClauses = Object.keys(agreementClauses(assembly.hydratedAssembly, entry)).map((k) => k.toLowerCase());
         const binding = assembly.counterpartyBindings.find((cb) => nodeClauses.includes(cb.clauseKey.toLowerCase()));
         if (!binding || binding.addresses.length === 0) return { node, seller: null };
         const bindingKey = binding.clauseKey.toLowerCase();

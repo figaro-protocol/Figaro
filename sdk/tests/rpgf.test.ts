@@ -33,7 +33,7 @@ import {
 import type { Commitment } from "../src/types.js";
 import {
     ASSEMBLY_TERMS_LEAF_KEY,
-    buildSlotInclusionProof,
+    buildAgreementInclusionProof,
     templateCompositionHash,
     type AssemblyTemplate,
 } from "../src/assembly.js";
@@ -579,7 +579,7 @@ describe("buildUsageClaims", () => {
     // The two designer credits ride the agreement format's provenance leaf,
     // not a section: every section still earns its clause leg, the agreement
     // leg credits the agreement key, and the assembly leg credits the
-    // compositionHash with the order slot's membership proof — never the
+    // compositionHash with the agreement's membership proof — never the
     // reserved leaf key.
     it("credits the agreement's and the assembly's designers from agreement.provenance beside every clause leg", () => {
         const claims = buildUsageClaims(order, agreementWith([modalities, commerce], PROVENANCE), CONTEXT, TEMPLATE);
@@ -592,7 +592,7 @@ describe("buildUsageClaims", () => {
         const assemblyClaim = claims.find((c) => "Assembly" in c.kind)!;
         expect(assemblyClaim.clause_or_assembly).toBe(COMPOSITION);
         expect(usageClaimKindCode(assemblyClaim)).toBe(USAGE_KIND_ASSEMBLY);
-        const membership = buildSlotInclusionProof(TEMPLATE, 1);
+        const membership = buildAgreementInclusionProof(TEMPLATE, 1);
         expect(assemblyClaim.kind).toEqual({
             Assembly: { agreement_key: AGREEMENT_KEY, slot_content_hash: membership.slotContentHash, membership_proof: membership.proof },
         });
@@ -616,13 +616,13 @@ describe("buildUsageClaims", () => {
         expect(claims.every((c) => "Clause" in c.kind)).toBe(true);
     });
 
-    it("refuses a provenance it cannot prove: no template, another template, or no order slot binding the key", () => {
+    it("refuses a provenance it cannot prove: no template, another template, or no agreement binding the key", () => {
         const agreement = agreementWith([modalities], PROVENANCE);
         expect(() => buildUsageClaims(order, agreement, CONTEXT)).toThrow(/template is needed/);
         expect(() => buildUsageClaims(order, agreement, CONTEXT, { agreements: [TEMPLATE.agreements[1]] }))
             .toThrow(/does not hash to the provenance/);
         const elsewhere = agreementWith([modalities], { agreementKey: keccak256(encodePacked(["string"], ["x"])), compositionHash: COMPOSITION });
-        expect(() => buildUsageClaims(order, elsewhere, CONTEXT, TEMPLATE)).toThrow(/no order slot/);
+        expect(() => buildUsageClaims(order, elsewhere, CONTEXT, TEMPLATE)).toThrow(/no agreement/);
     });
 
     it("refuses a reserved key as the provenance's agreement key", () => {

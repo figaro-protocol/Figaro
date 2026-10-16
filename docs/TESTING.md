@@ -34,11 +34,11 @@ counts only trade new to it), the **member-stake gate on the seller of record** 
 not registered; a seller who leaves the registry stops counting), **uniform scoring across clauses, agreements and assemblies** (no
 category, tag, or weight), the agreement and assembly legs from one provenance leaf
 (`test_oneOrderCreditsItsAgreementAndItsAssembly`), the membership proof refused under
-another `compositionHash` or with another slot's bytes, the agreement kind gated by
+another `compositionHash` or with another agreement's bytes, the agreement kind gated by
 `AgreementRegistry` on both paths (`test_revertsWhenAgreementNotRegistered`,
 `test_batchAccrualGatesTheAgreementKindByTheAgreementRegistry`), the three kinds never
 sharing a count, both reserved keys refused under the agreement kind and the terms leaf
-never passing as an order slot, period boundaries and `periodClosed`, `totalScoreIn` delta
+never passing as an agreement, period boundaries and `periodClosed`, `totalScoreIn` delta
 maintenance, and a fuzzed floor-cube-root property on `icbrt` **over the whole `uint256`
 domain** plus a no-saturation regression. Never bound a fuzz domain to less than the
 function's own: on `icbrt` a `uint64`-only domain is the one place a wrong cube bound is
@@ -90,7 +90,7 @@ allowance-pull composition end to end.
 |---|---|---|
 | `HalmosFigaroCore.t.sol` | 7 | Token conservation, bond amounts, resolution payouts, status transitions, buyer dominance, monotonicity |
 | `HalmosMembersRegistry.t.sol` | 7 | The stake mechanics the designer-reward Sybil bound assumes: solvency, no stake recycling, de-surfacing at request, the counter reads that gate |
-| `HalmosUsageCounter.t.sol` | 7 | The accrual arithmetic on top of the (already proved) stake gate: direct-path monotonicity, batch write REPLACES cumulative (c,d) never adds, `scoreOf == accrualOf.score + batchAccrualOf.score` (the only meeting point of the two paths), period bucketing ×2, isolation across keys, and `check_theKindsNeverShareASlot` — a use counted under any one of the three kinds, on either path, leaves every other kind's accrual at the same key untouched. Mutation-checked: replace-not-add, score composition. |
+| `HalmosUsageCounter.t.sol` | 7 | The accrual arithmetic on top of the (already proved) stake gate: direct-path monotonicity, batch write REPLACES cumulative (c,d) never adds, `scoreOf == accrualOf.score + batchAccrualOf.score` (the only meeting point of the two paths), period bucketing ×2, isolation across keys, and `check_theKindsNeverShareAKey` — a use counted under any one of the three kinds, on either path, leaves every other kind's accrual at the same key untouched. Mutation-checked: replace-not-add, score composition. |
 | `HalmosClauseAgreementAndAssemblyRegistries.t.sol` | 18 (6 per contract) | `HalmosClauseRegistry` + `HalmosAssemblyRegistry` + `HalmosAgreementRegistry` — the stake machines `RpgfMinter._isAuthor` reads, one per kind: solvency under arbitrary interleavings by two registering wallets, full withdrawal, first-write-wins permanence, one-shot withdrawal, eligibility ends permanently at withdraw, cross-key isolation. Mutation-checked: solvency + first-write-wins on the clause and assembly contracts, 4/4 counterexamples. |
 
 Run with `scripts/test-halmos.sh` (seven passes). **Halmos does not model
@@ -163,7 +163,7 @@ the bridge write REPLACES never adds), `FigaroCore` blindness (`settleBatch` wri
 no `FigaroCore` `orderStatus`) — 10,030,087 states, ~9.5 min. Mutation-checked: 5 mutations + 7 non-vacuity witnesses, each caught.
 The model's `Artifacts` are one abstract keyspace; it does not model the
 reward's kind, so the separation of clause and assembly accruals by (kind,
-key) is held by Foundry, Halmos (`check_theKindsNeverShareASlot`) and the
+key) is held by Foundry, Halmos (`check_theKindsNeverShareAKey`) and the
 guest's `usage.rs`, never by TLC.
 Two NAMED assumptions ride as `.cfg` constants: `AssumeDomainSeparation`
 (contract-enforced — EIP-712 `verifyingContract` disjointness carries
@@ -234,11 +234,11 @@ replay rejection (the reason the counted set rides the state root), breadth
 vs depth, the agreement leg via the two-key provenance reproduction
 (`credits_an_agreement_through_the_provenance_leaf`, refused on a wrong
 `agreementKey` or `compositionHash`), the assembly leg via the same leaf plus
-the order slot's membership proof (refused on another slot's agreement, a proof
-under another root, or the wrong slot content), one provenance leaf crediting
+the agreement's membership proof (refused on another agreement's key, a proof
+under another root, or the wrong agreement content), one provenance leaf crediting
 the agreement and the assembly apart, both reserved keys refused on every kind
 (`every_kind_keyed_on_a_reserved_key_is_refused`) and the terms leaf never
-passing as an order slot, the reserved provenance leaf attestable without a
+passing as an agreement, the reserved provenance leaf attestable without a
 spec (and refused on an uncommitted key, a foreign contentRef or non-canonical
 bytes), a clause and an assembly on the same key accruing apart, and the usage-hash vector (each
 accrual `key ‖ kind ‖ c ‖ d`) asserted verbatim on the Solidity side; bincode roundtrips
@@ -353,20 +353,20 @@ provenance entries carry the two-key bytes
 
 **Assembly parity — the three-way composition-tree lock.**
 `sdk/tests/assemblyParity.test.ts` freezes, for the three vector composed
-agreements, each `agreementKey` with its key bytes, the order slot bytes and
-leaves, the assembly terms leaf, the composition root, every order slot's
-membership proof, and the provenance bytes and leaf for each slot's two keys
+agreements, each `agreementKey` with its key bytes, the agreement bytes and
+leaves, the assembly terms leaf, the composition root, every agreement's
+membership proof, and the provenance bytes and leaf for each agreement's two keys
 into `test/fixtures/assembly-vectors.json` (`HARVEST_ASSEMBLY_VECTORS=1`
 regenerates); it also asserts a membership proof does not verify under
 another assembly's root. `test/core/attestation/MerkleParityTest.t.sol`
 (`test_everyAgreementKeyIsTheRootOverItsClauseLeaves`,
 `test_everyAssemblyVectorOpensUnderItsRoot`) rebuilds them the way
 `UsageCounter` does; `prover/lib/tests/merkle_parity.rs`
-(`every_order_slot_opens_under_its_own_root_and_no_other`, the terms leaf on
-its reserved key, a one-order-slot root equal to its leaf) and
-`prover/lib/tests/parity.rs` (`every_vector_order_slot_credits_its_agreement_and_its_assembly`,
+(`every_agreement_opens_under_its_own_root_and_no_other`, the terms leaf on
+its reserved key, a one-agreement root equal to its leaf) and
+`prover/lib/tests/parity.rs` (`every_vector_agreement_credits_its_agreement_and_its_assembly`,
 and the refusals of a foreign membership proof, a wrong `agreementKey` and the
-terms leaf as an order slot) do the same through the guest. The properties
+terms leaf as an agreement) do the same through the guest. The properties
 behind the fixture — every membership proof verifies under its own root and no
 other, editorial prose never moves the root or the key, any clause value moves
 the key, the two-key provenance bytes decode back to their keys — are
@@ -676,7 +676,7 @@ out-of-band). A handful of specs define the PATTERNS the rest follow:
 - `assembly-chain` — the multi-order chain: sellers bound +
   designated through the UI, walk-order accepts with exact per-party bond
   deltas, one atomic resolve paying every party, full audit.
-- `agreement-compose` — composing from registered agreements: one order slot
+- `agreement-compose` — composing from registered agreements: one agreement
   binds a registered agreement as is, another composes a new one, publish
   registers the new agreement before the assembly, checkout runs, and usage is
   recorded under all three kinds, each `UsageRecorded` read from the chain. Its Vitest

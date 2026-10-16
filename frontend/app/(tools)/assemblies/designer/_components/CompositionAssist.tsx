@@ -12,12 +12,12 @@
  * — so nothing is invoked from here. The surface is a round-trip:
  *
  *   OUT — the current canvas serialized as `{ template, agreements }`: the
- *         canonical `AssemblyTemplate` (one order slot per order, each
+ *         canonical `AssemblyTemplate` (one agreement per order, each
  *         binding an agreement by key) and the agreements newly composed for
  *         it, built by the same `buildAssemblyTemplate` walk publish uses,
  *         for the designer to hand their agent as its starting point.
  *   IN  — the agent's composition pasted back, parsed + soundness-probed
- *         (`parseAssemblyTemplateJson`), each order slot's agreement read
+ *         (`parseAssemblyTemplateJson`), each agreement's agreement read
  *         from the paste or the AgreementRegistry (`hydrateImportedTemplate`),
  *         then applied to the canvas as an ordinary draft. Composition stays the designer's act: the import
  *         lands as unsaved canvas state to review, edit, and publish through

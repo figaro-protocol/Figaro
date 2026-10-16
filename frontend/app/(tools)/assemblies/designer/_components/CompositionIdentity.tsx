@@ -4,7 +4,7 @@
  * CompositionIdentity — the canvas's live identity readout.
  *
  * The assembly's identity IS its composition: `compositionHash` = the merkle
- * root over its order slots (each slot's agreement key and its own fills) and
+ * root over its agreements (each agreement's agreement key and its own fills) and
  * its assembly terms, which is the AssemblyRegistry key (first-write-wins,
  * immutable), and the published slug is a pure function of it. Editorial prose (name / summary / description) is excluded from the
  * subset, so renaming never forks identity.
@@ -40,7 +40,7 @@ export function CompositionIdentity({ snapshot }: { snapshot: DesignSnapshot | n
     // is for a genuinely unbuildable composition (a mis-scoped clause from an
     // imported template), not for a cold cache.
     const { version: specsVersion } = useClauseSpecs();
-    // The registered agreements an order slot binds are an input too: the
+    // The registered agreements an agreement binds are an input too: the
     // build reads them once the registry read verifies them.
     const agreementsVersion = useComposedAgreementsVersion();
 

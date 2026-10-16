@@ -31,7 +31,7 @@
  *   a clause name. A process is attributed when its buyer attested the
  *   reserved leaf (`PROVENANCE_LEAF_KEY`) and the attestation names a
  *   composition hash — its recovered bytes decode to one, or its fingerprint
- *   is the `provenanceContentRef` of a loaded assembly's order slot (its
+ *   is the `provenanceContentRef` of a loaded assembly's agreement (its
  *   agreement key and its composition root). No such attestation, no
  *   attribution: the process is counted as unattributed and said to be.
  */
@@ -43,7 +43,7 @@ import {
     parseOrderResolvedLogs,
     parseProcessResolvedLogs,
     provenanceContentRef,
-    slotClauses,
+    agreementClauses,
     readUtilityTokenPin,
     type Address,
     type SpecSource,
@@ -133,7 +133,7 @@ export interface GraphCorpus {
  *  agreement's own set), each keyed by clause key. */
 interface CorpusTemplate {
     compositionHash: `0x${string}`;
-    /** The registered agreement each order slot binds, in template order. */
+    /** The registered agreement each agreement binds, in template order. */
     agreementKeys: readonly `0x${string}`[];
     name: string;
     clauseSets: readonly {
@@ -243,7 +243,7 @@ async function readCommitFundingLegs(
  * name or a spec field). An entry attributes by its decoded
  * `{ agreementKey, compositionHash }` when its bytes recovered, else by its
  * fingerprint matching `provenanceContentRef` of an (agreement key,
- * composition root) pair the page loaded — an order slot of a loaded
+ * composition root) pair the page loaded — an agreement of a loaded
  * assembly; the bytes are reproducible from the two keys, so the match is
  * exact.
  */
@@ -393,7 +393,7 @@ async function readGraphCorpus(deps?: {
  * The read waits for this because every pass recovers substance from the
  * gateway, and a withheld attestation (its content never pinned, by its
  * party's choice) costs the gateway's own miss timeout per pass. Restarting
- * the read on each assembly's landing — the template, then every order slot's
+ * the read on each assembly's landing — the template, then every agreement's
  * agreement — stacks those timeouts and the corpus never lands.
  */
 export function corpusInputsLoaded(
@@ -433,7 +433,7 @@ export function useGraphCorpus(): { corpus: GraphCorpus | null; isLoading: boole
                 .flatMap((a) => (a.hydratedAssembly === null ? [] : [{ a, hydrated: a.hydratedAssembly }]))
                 .map(({ a, hydrated }) => ({
                     compositionHash: a.compositionHash,
-                    agreementKeys: hydrated.template.agreements.map((slot) => slot.agreementKey),
+                    agreementKeys: hydrated.template.agreements.map((entry) => entry.agreementKey),
                     name: a.name,
                     clauseSets: [
                         // Assembly-scoped clauses compose ONCE for the whole
@@ -442,8 +442,8 @@ export function useGraphCorpus(): { corpus: GraphCorpus | null; isLoading: boole
                         ...(hydrated.template.assemblyClauses
                             ? [{ clauses: hydrated.template.assemblyClauses }]
                             : []),
-                        ...hydrated.template.agreements.map((slot) => ({
-                            clauses: slotClauses(hydrated, slot),
+                        ...hydrated.template.agreements.map((entry) => ({
+                            clauses: agreementClauses(hydrated, entry),
                         })),
                     ],
                 })),

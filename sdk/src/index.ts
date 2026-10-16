@@ -183,7 +183,7 @@ export {
 
 // Chain gas ceilings — per-process resolve cap + per-block commit landing rate.
 // A process grown past the resolve cap can never resolve; every commit path
-// checks this client-side because FigaroCore cannot (the composed agreements are off-chain).
+// checks this client-side because FigaroCore cannot (the agreements are off-chain).
 export {
     maxOrdersResolvableForGasLimit,
     maxCommitsLandableForGasLimit,
@@ -324,11 +324,11 @@ export {
     agreementKeyOf,
     agreementClauseLeaves,
     buildClauseInclusionProof,
-    slotAgreement,
-    slotClauses,
-    slotSectionBytes,
+    boundAgreement,
+    agreementClauses,
+    agreementLeafBytes,
     templateLeaves,
-    buildSlotInclusionProof,
+    buildAgreementInclusionProof,
     assertNotReservedKey,
     ASSEMBLY_TERMS_LEAF_KEY,
     ASSEMBLY_TERMS_LEAF_LABEL,
@@ -337,7 +337,7 @@ export {
 export type {
     AssemblyTemplate,
     AssemblyFaqEntry,
-    TemplateSlot,
+    AssemblyAgreement,
     ComposedAgreement,
     HydratedAssembly,
     AuthoredSpecSet,

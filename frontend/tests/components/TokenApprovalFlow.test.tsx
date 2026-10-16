@@ -193,7 +193,7 @@ describe("TokenApprovalFlow", () => {
         });
     });
 
-    it("names a refused or reverted approval in the error slot, never the authorize step alone", () => {
+    it("names a refused or reverted approval in the error entry, never the authorize step alone", () => {
         mocks.balance = 5000n;
         mocks.allowance = 0n;
         mocks.needsApproval.mockReturnValue(true);

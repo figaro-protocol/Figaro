@@ -284,9 +284,9 @@ export function useOrderCommitmentFlow() {
     ): Promise<Hex> => {
         setError(null);
         try {
-            // The role is the slot that is still EMPTY. The Core admits
+            // The role is the entry that is still EMPTY. The Core admits
             // buyer == seller (DESIGN_DECISIONS), so one wallet can hold both
-            // slots; the accepting role is then the one whose signature is
+            // entries; the accepting role is then the one whose signature is
             // missing, never "buyer" by address alone.
             const isBuyer = hexEqual(address, incoming.commitment.buyer);
             const isSeller = hexEqual(address, incoming.commitment.seller);

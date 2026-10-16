@@ -27,21 +27,21 @@ import { ERC20_ABI } from "../abis.js";
 import { commit, type TxResult } from "./autonomous.js";
 import type { Hex, Address, Commitment, FigaroAddresses } from "../types.js";
 import type { CommitmentPayload, CoordinationChannel, OfferHandler } from "./coordination.js";
-import { slotClauses, templateCompositionHash, templateParentOrderHashes } from "../assembly.js";
-import type { AssemblyTemplate, HydratedAssembly, TemplateSlot } from "../assembly.js";
+import { agreementClauses, templateCompositionHash, templateParentOrderHashes } from "../assembly.js";
+import type { AssemblyTemplate, HydratedAssembly, AssemblyAgreement } from "../assembly.js";
 import { reconstructOrdersFromTemplate, templateAgreementFromClauses, mergeOverrides, fillWalkProvenance } from "../reconstructOrders.js";
 
 // ── Assembly template (the pinned document, hydrated off-SDK) ─────────────────
 // The shapes' single home is ../assembly.js; re-exported here so the /agent
 // subpath keeps offering them alongside instantiate/originate.
 
-export type { AssemblyTemplate, HydratedAssembly, TemplateSlot };
+export type { AssemblyTemplate, HydratedAssembly, AssemblyAgreement };
 
-/** An order slot is a ROOT if its topology fill names no parent —
+/** An agreement is a ROOT if its topology fill names no parent —
  *  `parentOrderHashes`, the mandatory topology clause's field, matched by
  *  name not by clause id (open-world). */
-function isRootSlot(slot: TemplateSlot): boolean {
-    return templateParentOrderHashes(slot).length === 0;
+function isRootEntry(entry: AssemblyAgreement): boolean {
+    return templateParentOrderHashes(entry).length === 0;
 }
 
 export interface InstantiateParams {
@@ -54,15 +54,15 @@ export interface InstantiateParams {
 }
 
 /**
- * Instantiate a hydrated assembly's ROOT order slot into a signable
- * Agreement. Merges the buyer's overrides onto the order slot's clause bag
+ * Instantiate a hydrated assembly's ROOT agreement into a signable
+ * Agreement. Merges the buyer's overrides onto the agreement's clause bag
  * (its registered agreement's clauses and its own fills); the resulting
  * merkle root becomes the commitment's `agreementHash`.
  */
 export function instantiateRootAgreement(hydrated: HydratedAssembly, params: InstantiateParams): Agreement {
     const { template } = hydrated;
-    const root = template.agreements.find(isRootSlot) ?? template.agreements[0];
-    if (!root) throw new Error("assembly template has no order slots to instantiate");
+    const root = template.agreements.find(isRootEntry) ?? template.agreements[0];
+    if (!root) throw new Error("assembly template has no agreements to instantiate");
     // THE ASSEMBLY-SCOPE FOLD, exactly as the walk performs
     // it: the template's assembly-scoped sections — terms of the composition
     // itself (a denomination pin, a dispute forum) — fold into the root
@@ -70,7 +70,7 @@ export function instantiateRootAgreement(hydrated: HydratedAssembly, params: Ins
     // Skipping the fold was the audit-confirmed parity hole: the pin escaped
     // the sign gate.
     const assemblyClauses = template.assemblyClauses ?? {};
-    const folded = { ...assemblyClauses, ...slotClauses(hydrated, root) };
+    const folded = { ...assemblyClauses, ...agreementClauses(hydrated, root) };
     const merged = mergeOverrides(folded, params.overrides);
     // The one clause-bag → Agreement builder (root and multi-order alike)
     // lives with the template walk: ../reconstructOrders.js. The agreement
@@ -86,7 +86,7 @@ export function instantiateRootAgreement(hydrated: HydratedAssembly, params: Ins
 // ── Buyer side: build + sign the offer ────────────────────────────────────────
 
 export interface BuildOfferParams extends InstantiateParams {
-    /** The discovered assembly, each order slot's registered agreement
+    /** The discovered assembly, each agreement's registered agreement
      *  hydrated beside its template. */
     assembly: HydratedAssembly;
     currency: Address;
@@ -483,7 +483,7 @@ export interface ChainNodeSpec {
 }
 
 export interface BuildChainParams {
-    /** The discovered assembly, each order slot's registered agreement
+    /** The discovered assembly, each agreement's registered agreement
      *  hydrated beside its template. */
     assembly: HydratedAssembly;
     currency: Address;

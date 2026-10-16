@@ -6,7 +6,7 @@ interface LabelledListRowProps {
     /** Anchor id on the row, for a cross-page deep link that must land on
      *  this entry. Omitted rows carry no id. */
     id?: string;
-    /** Width slot for the label column. */
+    /** Width entry for the label column. */
     labelWidth?: "narrow" | "default" | "wide";
     /** Whether to uppercase the label. */
     uppercase?: boolean;

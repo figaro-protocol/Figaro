@@ -81,7 +81,7 @@ describe("anchorTemplate", () => {
         const changed = { ...template, agreements: [{ ...template.agreements[0], clauses: {} }] };
         expect(anchorTemplate(changed, templateCompositionHash(template))).toBeNull();
     });
-    it("refuses an order slot whose key is malformed or reserved", () => {
+    it("refuses an agreement whose key is malformed or reserved", () => {
         for (const agreementKey of ["0x1234", PROVENANCE_LEAF_KEY, ASSEMBLY_TERMS_LEAF_KEY]) {
             expect(anchorTemplate({ agreements: [{ id: "order-0", agreementKey, clauses: {} }] }, OTHER)).toBeNull();
         }
@@ -109,7 +109,7 @@ describe("anchorComposedAgreement", () => {
         expect(anchorComposedAgreement(JSON.stringify(changed), key)).toBeNull();
         expect(anchorComposedAgreement(composed, OTHER)).toBeNull();
     });
-    it("refuses what is not a composed agreement, and a reserved key", () => {
+    it("refuses what is not a agreement, and a reserved key", () => {
         for (const bad of [null, "not json", { name: "no clauses" }, { clauses: [] }, [composed]]) {
             expect(anchorComposedAgreement(bad, key)).toBeNull();
         }
@@ -133,7 +133,7 @@ describe("hydrateAssembly", () => {
         ],
     };
 
-    it("reads each distinct order slot's agreement once and verifies it against its key", async () => {
+    it("reads each distinct agreement's agreement once and verifies it against its key", async () => {
         const reads: string[] = [];
         const hydrated = await hydrateAssembly(two, async (k) => { reads.push(k); return JSON.stringify(composed); });
         expect(reads).toEqual([key]);
@@ -141,7 +141,7 @@ describe("hydrateAssembly", () => {
         expect(hydrated?.agreements[key.toLowerCase() as `0x${string}`]).toEqual(composed);
     });
 
-    it("is absence when any order slot's document is unread, throws, or does not hash to its key", async () => {
+    it("is absence when any agreement's document is unread, throws, or does not hash to its key", async () => {
         expect(await hydrateAssembly(two, async () => null)).toBeNull();
         expect(await hydrateAssembly(two, async () => { throw new Error("gateway down"); })).toBeNull();
         expect(await hydrateAssembly(two, async () => ({ clauses: { [keyOf("figaro-handoff")]: {} } }))).toBeNull();

@@ -13,7 +13,7 @@ import {Vm} from "forge-std/Vm.sol";
 ///         Used by AttestationCoordinator tests so each commitment's
 ///         `agreementHash` is a real merkle root and attestations can carry
 ///         valid inclusion proofs, and by the reward tests for an assembly's
-///         tree: the same leaf convention and root over the slot leaves and
+///         tree: the same leaf convention and root over the entry leaves and
 ///         the terms leaf, whose root is the compositionHash.
 library AgreementTestHelper {
     Vm private constant VM = Vm(address(uint160(uint256(keccak256("hevm cheat code")))));
@@ -34,11 +34,11 @@ library AgreementTestHelper {
         );
     }
 
-    /// @dev An order slot leaf's canonical-JSON bytes: `{"clauses":{…},"slot":i}`
-    ///      — the order slot's own clause fills and its index. `clausesJson` is
+    /// @dev An agreement leaf's canonical-JSON bytes: `{"clauses":{…},"slot":i}`
+    ///      — the agreement's own clause fills and its index. `clausesJson` is
     ///      the fills as canonical JSON (e.g. `{}`).
-    function slotSection(uint256 slot, string memory clausesJson) internal pure returns (bytes memory) {
-        return abi.encodePacked('{"clauses":', clausesJson, ',"slot":', VM.toString(slot), "}");
+    function agreementLeafBytes(uint256 entry, string memory clausesJson) internal pure returns (bytes memory) {
+        return abi.encodePacked('{"clauses":', clausesJson, ',"slot":', VM.toString(entry), "}");
     }
 
     /// @dev Compute the merkle leaf for one clause clause.

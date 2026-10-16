@@ -3,7 +3,7 @@
  *
  * A wallet orders from its OWN listing and accepts its own order. The Core
  * ADMITS buyer == seller (DESIGN_DECISIONS entry 3), so the client must too:
- * the accepting role is the slot whose signature is still empty, never "buyer"
+ * the accepting role is the entry whose signature is still empty, never "buyer"
  * by address alone (`acceptOrder`, lib/checkout/orderCommitmentFlow.ts). The
  * walk: register a member → order from its own listing → relay → accept on
  * /orders → resolve. The chain facts (the OrderCommitted pair, the escrow, the
@@ -50,7 +50,7 @@ const LOCAL_ANVIL = defineChain({
 });
 const ERC20_ABI = parseAbi(['function balanceOf(address) view returns (uint256)']);
 
-/** One wallet in both slots: seller of its own listing and its own buyer. */
+/** One wallet in both entries: seller of its own listing and its own buyer. */
 const SELF = ANVIL_ACCOUNTS[38] as Hex;
 
 test.describe('A wallet orders from its own listing (buyer == seller, devnet)', () => {
@@ -145,7 +145,7 @@ test.describe('A wallet orders from its own listing (buyer == seller, devnet)', 
         await page.getByTestId('send-commitment-xmtp').click();
         await expect(page.getByTestId('commitment-xmtp-status')).toBeVisible({ timeout: 30_000 });
 
-        // ── Accept the order on /orders — the same wallet holds the seller slot.
+        // ── Accept the order on /orders — the same wallet holds the seller entry.
         await page.goto('/orders?e2e=devnet', { waitUntil: 'domcontentloaded' });
         await page.getByTestId('orders-list').waitFor({ timeout: 30_000 });
         await waitForConnected(page);

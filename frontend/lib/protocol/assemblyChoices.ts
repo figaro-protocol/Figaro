@@ -15,7 +15,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { activeChain } from "@/lib/shared/wagmi";
 import { clauseIsProcessLog, getClauseSpec } from "@/lib/shared/clauseSpecSource";
 import { truncateHex } from "@/lib/shared/formatHex";
-import { slotClauses, templateComposedClauseKeys, type HydratedAssembly } from "@figaro-protocol/sdk";
+import { agreementClauses, templateComposedClauseKeys, type HydratedAssembly } from "@figaro-protocol/sdk";
 import { templateParentOrderHashes } from "@/lib/shared/assemblyTemplate";
 import { DEVNET_CHAIN_ID } from "@/lib/shared/chains";
 import { contentRetryDelayMs } from "@/lib/shared/ipfsService";
@@ -60,9 +60,9 @@ function chainIdToNetworkTarget(chainId: number): string {
  *  checkout, not designated by the seller's profile. */
 export function requiredCounterpartyClauses(hydrated: HydratedAssembly): string[] {
     const clauses = new Set<string>();
-    for (const slot of hydrated.template.agreements) {
-        if (templateParentOrderHashes(slot).length === 0) continue; // root has no counterparty
-        for (const clauseKey of Object.keys(slotClauses(hydrated, slot))) {
+    for (const entry of hydrated.template.agreements) {
+        if (templateParentOrderHashes(entry).length === 0) continue; // root has no counterparty
+        for (const clauseKey of Object.keys(agreementClauses(hydrated, entry))) {
             if (clauseIsProcessLog(clauseKey)) clauses.add(clauseKey);
         }
     }
@@ -83,12 +83,12 @@ export function formatAssemblyClauseList(clauses: readonly string[]): string {
  * A published assembly enriched with template-derived fields, suitable
  * for surfacing to a user as a selectable / inspectable choice.
  *
- * The read is lazy per-row: the template, then every order slot's registered
+ * The read is lazy per-row: the template, then every agreement's registered
  * agreement (`fetchHydratedAssembly`); `state` tracks the lifecycle. While
  * `state === "loading"`, `name` falls back to `slug` so the UI can
  * render the row immediately. When `state === "loaded"`, all
  * template-derived fields are populated. An assembly whose template or any
- * order slot's agreement is absent stays in `"error"` — not offered.
+ * agreement's agreement is absent stays in `"error"` — not offered.
  */
 /** Per-assembly read state: requested, succeeded, or failed. */
 type AssemblyTemplateFetchState = "loading" | "loaded" | "error";
@@ -114,7 +114,7 @@ export interface AssemblyChoice {
     /** Available when state === "loaded". Sorted, deduped clause keys. */
     clauses: readonly string[] | null;
     /** The hydrated assembly when state === "loaded": the template verified
-     *  against `compositionHash` and every order slot's registered agreement
+     *  against `compositionHash` and every agreement's registered agreement
      *  verified against its key. Avoids re-fetching from consumers that need
      *  it (e.g. fork). */
     hydratedAssembly: HydratedAssembly | null;
@@ -176,7 +176,7 @@ export function useAssemblyChoices(
                         return next;
                     });
                     // A served document that is not the one its root anchors —
-                    // or a slot whose agreement failed the same way — never
+                    // or a entry whose agreement failed the same way — never
                     // resolves: no re-read, the row says so.
                     if (!hydratedAssembly && !getAssemblyLoadError(event.compositionHash)) schedule(event, attempt);
                 },

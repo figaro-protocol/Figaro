@@ -15,7 +15,7 @@ release lives under **Unreleased**.
 ### Changed
 
 - **SDK: the registered agreement and the assembly as a merkle tree over agreement keys.**
-  A designer composes the clauses for ONE order slot into a `ComposedAgreement`
+  A designer composes the clauses for ONE agreement into a `ComposedAgreement`
   (`{ name?, summary?, description?, clauses }`, the topology clause composed as `{}`), keyed by
   `agreementKeyOf(doc)` = `canonicalContentHash({ clauses })` and registered in its own family,
   `AgreementRegistry` (`AGREEMENT_REGISTRY_ABI`, `parseAgreementRegistryLogs`,
@@ -28,7 +28,7 @@ release lives under **Unreleased**.
   `hydrateAssembly`, `anchorComposedAgreement`, `slotClauses`): `planTemplateOrders`,
   `reconstructOrdersFromTemplate`, `BoundAssemblyPlanInput.hydratedAssembly` and the agent's
   offer, chain and quote builders take one. `buildAssemblyTemplate` returns
-  `{ template, agreements }` (the newly composed agreements to register) and takes
+  `{ template, agreements }` (the newly agreements to register) and takes
   `registeredByOrderId` to bind a registered agreement as is; `slotsFromAuthoredAgreements`
   derives both from an authored document at seed time. The provenance leaf's bytes carry both keys
   (`AgreementProvenance`, `provenanceSectionBytes(agreementKey, compositionHash)`,

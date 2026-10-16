@@ -167,7 +167,7 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
         Record<string, Record<string, Record<string, unknown>>>
     >(() => initial.clausesByOrderId);
     // Per-order registered agreement (the drawer's "registered agreement"
-    // pick): order id → the AgreementRegistry key the order slot binds as is.
+    // pick): order id → the AgreementRegistry key the agreement binds as is.
     const [registeredByOrderId, setRegisteredByOrderId] = useState<
         Record<string, `0x${string}`>
     >(() => initial.registeredByOrderId);
@@ -318,9 +318,9 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
         setClausesByOrderId((prev) => ({ ...prev, [orderId]: out }));
     }, [clausesByOrderId]);
 
-    /** Bind a registered agreement to an order slot as is, or unbind it
+    /** Bind a registered agreement to an agreement as is, or unbind it
      *  (`null`). Binding leaves the order's composed clauses where they are:
-     *  an order slot that both binds and composes is the build's refusal,
+     *  an agreement that both binds and composes is the build's refusal,
      *  surfaced in the identity readout and the review. */
     const bindAgreement = useCallback((orderId: string, agreementKey: `0x${string}` | null) => {
         setRegisteredByOrderId((prev) => {
@@ -331,10 +331,10 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
         });
     }, []);
 
-    /** Register one order's composed agreement on its own (the drawer's
+    /** Register one order's agreement on its own (the drawer's
      *  action): the order's clauses compose through the SDK's one rule, pin,
-     *  stake and register on `AgreementRegistry`; then the order slot binds
-     *  the registered key and its composed clauses clear — a slot binds OR
+     *  stake and register on `AgreementRegistry`; then the agreement binds
+     *  the registered key and its composed clauses clear — a entry binds OR
      *  composes, never both. */
     const { publishAgreement } = usePublishAgreement();
     type ComposedClauses = Parameters<typeof publishAgreement>[0]["clauses"];
@@ -606,7 +606,7 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
     }, [buildSnapshot]);
 
     // What each node shows on the canvas: the clauses composed on it, or —
-    // for an order slot binding a registered agreement — that agreement's
+    // for an agreement binding a registered agreement — that agreement's
     // clauses (the mandatory folds left out, as the composed view leaves them).
     const canvasClausesByOrderId = useMemo(() => {
         const out = { ...clausesByOrderId };

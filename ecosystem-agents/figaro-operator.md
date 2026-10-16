@@ -189,9 +189,9 @@ const result = await originateProcess(buyerWallet, publicClient, addresses, {
 
 **4. Write the transaction particulars — ROUTED BY DECLARED FIELD, never by clause name.**
 A published assembly arrives value-free and is passed HYDRATED (`HydratedAssembly {
-template, agreements }`): each order slot names a registered agreement by `agreementKey`, and
+template, agreements }`): each agreement names a registered agreement by `agreementKey`, and
 you hydrate it from its `AgreementRegistry` binding with `anchorComposedAgreement(raw,
-agreementKey)`, which returns the composed agreement only when its recomputed key matches —
+agreementKey)`, which returns the agreement only when its recomputed key matches —
 `null` (a failed fetch, parse or match) means the assembly is not offered, never a fallback.
 The designer composed the clause SELECTION and their own tailoring; the remaining required content fields are the BUYER's to fill at
 origination. Route each value by the field a clause DECLARES, read from its spec — a clause
@@ -201,7 +201,7 @@ composed:
 ```ts
 const overrides = {};
 const root = assembly.template.agreements[0];
-for (const clauseKey of Object.keys(slotClauses(assembly, root))) {
+for (const clauseKey of Object.keys(agreementClauses(assembly, root))) {
   const fields = specs.get(clauseKey)?.fields ?? [];
   if (fields.some((f) => f.name === "lineItems"))          // the commerce clause, by field
     overrides[clauseKey] = { currency, payment: payment.toString(), lineItems };
@@ -219,15 +219,15 @@ the gate stops objecting.
 
 Two of them are not yours to write. The **denomination** — the `currency` leaf — is a TERM
 that the commitment struct MIRRORS: write the same address into both, or the gate refuses.
-And the **provenance** — the order slot's `agreementKey` and the assembly's
+And the **provenance** — the agreement's `agreementKey` and the assembly's
 `compositionHash` — is written by the instantiation itself, with or without `specs`:
 `instantiateRootAgreement` and the template walk set `agreement.provenance` on every order to
-the registered agreement its order slot holds and `templateCompositionHash(template)` — the
+the registered agreement its agreement holds and `templateCompositionHash(template)` — the
 agreement format's reserved provenance leaf (key `PROVENANCE_LEAF_KEY`,
 `keccak256("figaro-agreement-provenance")`; bytes
 `{"agreementKey":"0x<lowercase hex>","compositionHash":"0x<lowercase hex>"}`), a leaf of the
 agreement and never a clause section. Do not hand-write provenance: an agreement naming a
-different pair than the order slot you instantiated is a claim to a different design, and the
+different pair than the agreement you instantiated is a claim to a different design, and the
 SDK throws on it. Instantiation adds and drops no clause: it fills values and writes the
 topology.
 While the process is OPEN you may attest that leaf as the buyer —
@@ -263,7 +263,7 @@ INDEPENDENT legs (`agreementRecorded`, `assemblyRecorded`): `recordAgreementUsag
 with the agreement's `provenance` (both keys) and the provenance leaf's inclusion proof — the
 counter rebuilds the leaf under its `provenanceLeaf()` key, proves it, and requires the
 agreement to hold a live `AgreementRegistry` binding; `recordAssemblyUsage` proves the same
-leaf plus the order slot's membership proof under `compositionHash` and requires a live
+leaf plus the agreement's membership proof under `compositionHash` and requires a live
 `AssemblyRegistry` binding. An agreement with no `provenance` credits neither designer. A leg that reverts lands in `report.failures` with its reason, nothing thrown. Report
 the report, never "it reverted, so it failed".
 

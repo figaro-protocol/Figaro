@@ -8,7 +8,7 @@
  * The three calls — a clause, a registered agreement, an assembly — are
  * PERMISSIONLESS by design: UsageCounter re-verifies every fact from state
  * the chain already holds (order RESOLVED + merkle proof against the signed
- * agreementHash; for an assembly, the order slot's membership under its
+ * agreementHash; for an assembly, the agreement's membership under its
  * composition root too), so nothing about the caller is trusted.
  * The resolve capability plans these before the buyer resolves
  * (`planUsageRecords`, from the counter's own facts read by
@@ -59,11 +59,11 @@ export type UsageWrite =
           order: Commitment;
           /** The assembly's compositionHash. */
           key: Hex;
-          /** The order slot's agreement key and the hash of its slot bytes. */
+          /** The agreement's agreement key and the hash of its entry bytes. */
           agreementKey: Hex;
           slotContentHash: Hex;
           proof: readonly Hex[];
-          /** The order slot leaf's proof under `key`. */
+          /** The agreement leaf's proof under `key`. */
           membershipProof: readonly Hex[];
       };
 

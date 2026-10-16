@@ -1,5 +1,5 @@
 /**
- * agreement.ts — clause-composed agreement + merkle root + inclusion proofs.
+ * agreement.ts — clause-agreement + merkle root + inclusion proofs.
  *
  * An Agreement is the off-chain semantic layer whose merkle root becomes the
  * on-chain `agreementHash` in the signed Commitment struct. Each clause (clause
@@ -65,10 +65,10 @@ export interface Agreement {
     sections: AgreementSection[];
     /** Where this agreement came from at design time: the registered
      *  agreement (`agreementKey`, the `AgreementRegistry` key) the order's
-     *  slot binds, and the registered assembly (`compositionHash`, the
-     *  `AssemblyRegistry` key) the slot sits in. Carried by the agreement
+     *  entry binds, and the registered assembly (`compositionHash`, the
+     *  `AssemblyRegistry` key) the entry sits in. Carried by the agreement
      *  FORMAT as one reserved leaf (`PROVENANCE_LEAF_KEY`), never by a
-     *  clause. Checkout writes it from the slot the order instantiates; a
+     *  clause. Checkout writes it from the entry the order instantiates; a
      *  design cannot carry it, since neither hash can appear inside the
      *  composition it hashes. Every process instantiates an assembly, so a
      *  signed agreement carries it; an agreement built without a design (a
@@ -171,7 +171,7 @@ function sortedReplacer(_key: string, value: unknown): unknown {
  * Deterministic JSON serialization: sorted object keys at every depth,
  * preserved array order, no whitespace. THE one canonical-JSON convention —
  * agreement sections, agreement documents (`agreementKeyOf`) and the
- * assembly's slot and terms leaves hash this form, and it is the byte form the reference tooling PINS a clause
+ * assembly's entry and terms leaves hash this form, and it is the byte form the reference tooling PINS a clause
  * spec in, so the clause key (`computeClauseKey`, keccak256 of the pinned
  * bytes) is the hash of this form. A clause reader hashes the bytes it
  * fetched (`anchorClauseSpec`), never a re-canonicalization: a spec pinned in

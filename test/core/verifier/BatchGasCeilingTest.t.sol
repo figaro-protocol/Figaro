@@ -83,7 +83,7 @@ contract BatchGasCeilingTest is FigaroBatchVerifierTest {
             _hashUsage(usage),
             uint64(block.timestamp)
         );
-        // On chain a settle is its own transaction: every slot it touches is
+        // On chain a settle is its own transaction: every entry it touches is
         // cold. The test's setup and item construction warmed them.
         vm.cool(address(verifier));
         vm.cool(address(sp1));

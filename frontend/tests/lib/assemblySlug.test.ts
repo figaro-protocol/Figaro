@@ -5,7 +5,7 @@ import { deriveAssemblySlug, type AssemblyTemplate } from "@/lib/shared/assembly
 // Construct templates directly (no spec cache needed) to test the
 // serialize → compositionHash → slug pipeline in isolation. The clause keys
 // are opaque 32-byte hashes: the pipeline reads none of the specs behind them.
-// Each order slot binds the agreement those clauses key to.
+// Each agreement binds the agreement those clauses key to.
 const CLAUSE = `0x${"c1".repeat(32)}` as const;
 const LOOKALIKE = `0x${"c2".repeat(32)}` as const;
 const composition = (x: number, clauseKey: `0x${string}` = CLAUSE): AssemblyTemplate => ({

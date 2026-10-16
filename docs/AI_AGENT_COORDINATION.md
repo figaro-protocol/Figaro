@@ -63,7 +63,7 @@ deadline-is-CHAIN-time rule — is `sdk/README.md` § "The offer envelope".
 ### The exchange
 
 1. **Buyer** instantiates a discovered assembly's root order (fills the registered
-   agreement the root order slot holds, hydrated against its `agreementKey`, with
+   agreement the root agreement holds, hydrated against its `agreementKey`, with
    its own values; it adds and drops no clause), signs its half, and sends the envelope to the
    seller over a coordination channel.
 2. **Seller** runs the anti-tamper gate (below), applies BOTH of its decision floors
@@ -280,7 +280,7 @@ What is emitted, and what each thing is evidence of:
 - **New terms and new shapes of trade exist.** `ClauseRegistry.ClauseRegistered`,
   `AgreementRegistry.AgreementRegistered` and `AssemblyRegistry.AssemblyRegistered` carry
   the designer and a `contentURI`; the content resolves chain → IPFS, and a reader
-  verifies it against the key (a composed agreement by recomputing its `agreementKey`). Either registry's `DepositWithdrawn` de-surfaces the entry for new
+  verifies it against the key (a agreement by recomputing its `agreementKey`). Either registry's `DepositWithdrawn` de-surfaces the entry for new
   compositions while every order already committed against it still resolves.
 - **Someone bonded.** `FigaroCore.OrderCommitted`, with `OrderSeller` and `OrderCurrency`
   beside it: a value at one link of a chain, in a named token, backed 2×. The TERMS behind
@@ -358,9 +358,9 @@ composes.
   its label. Permissionless, first-write-wins,
   deposit-backed; the capacity's prompt is `ecosystem-agents/figaro-clause-author.md`.
 - **Assembly designer** — `AgreementRegistry.registerAgreement(agreementKey, contentURI)`
-  for each composed agreement no registration already carries, then
+  for each agreement no registration already carries, then
   `AssemblyRegistry.registerAssembly(compositionHash, contentURI)` over a published
-  template whose order slots name registered agreements. Composition is the designer's act and happens only there,
+  template whose agreements name registered agreements. Composition is the designer's act and happens only there,
   never mid-checkout and never mid-process (`OPEN_WORLD.md` §1, pattern 1); the prompt is
   `ecosystem-agents/figaro-assembly-designer.md`.
 - **Composition** — dispatched from the spec, never from a table the agent carries: a

@@ -44,10 +44,10 @@ by clause key, and sign the merkle root of the leaves.</p>
 <div class="tsd-signature"><span class="tsd-kind-property">provenance</span><span class="tsd-signature-symbol">?:</span> <a href="index.AgreementProvenance.html" class="tsd-signature-type tsd-kind-interface">AgreementProvenance</a></div>
 <div class="tsd-comment tsd-typography"><p>Where this agreement came from at design time: the registered
 agreement (<code>agreementKey</code>, the <code>AgreementRegistry</code> key) the order's
-slot binds, and the registered assembly (<code>compositionHash</code>, the
-<code>AssemblyRegistry</code> key) the slot sits in. Carried by the agreement
+entry binds, and the registered assembly (<code>compositionHash</code>, the
+<code>AssemblyRegistry</code> key) the entry sits in. Carried by the agreement
 FORMAT as one reserved leaf (<code>PROVENANCE_LEAF_KEY</code>), never by a
-clause. Checkout writes it from the slot the order instantiates; a
+clause. Checkout writes it from the entry the order instantiates; a
 design cannot carry it, since neither hash can appear inside the
 composition it hashes. Every process instantiates an assembly, so a
 signed agreement carries it; an agreement built without a design (a

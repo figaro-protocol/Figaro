@@ -25,7 +25,7 @@ import { PROVENANCE_LEAF_KEY, buildProvenanceInclusionProof, buildSectionInclusi
 import {
     ASSEMBLY_TERMS_LEAF_KEY,
     assertNotReservedKey,
-    buildSlotInclusionProof,
+    buildAgreementInclusionProof,
     templateCompositionHash,
     type AssemblyTemplate,
 } from "../assembly.js";
@@ -441,11 +441,11 @@ export interface UsageClaimContext {
  *    `buildProvenanceInclusionProof`: kind `{ Agreement: { composition_hash } }`
  *    keyed by the agreement key.
  *  - the ASSEMBLY leg credits the assembly's designer from the same leaf
- *    plus the order slot's membership proof under the composition hash
- *    (`buildSlotInclusionProof` over `template`, the instantiated template):
+ *    plus the agreement's membership proof under the composition hash
+ *    (`buildAgreementInclusionProof` over `template`, the instantiated template):
  *    kind `{ Assembly: { agreement_key, slot_content_hash, membership_proof } }`
- *    keyed by the composition hash. The order slot proved is the first whose
- *    `agreementKey` is the provenance's (every such order slot proves the
+ *    keyed by the composition hash. The agreement proved is the first whose
+ *    `agreementKey` is the provenance's (every such agreement proves the
  *    same membership).
  *
  * The provenance leaf is the agreement format's, not a section, so the
@@ -455,7 +455,7 @@ export interface UsageClaimContext {
  * Throws when the counter's reserved keys are not the format's (every
  * agreement and assembly claim against it would revert); when the agreement
  * names a provenance but no `template` is given, the template does not hash
- * to the provenance's composition hash, or no order slot binds its agreement
+ * to the provenance's composition hash, or no agreement binds its agreement
  * key; when the provenance's agreement key is a reserved key; and when the
  * agreement's leaves do not build — no leg of such an agreement can be
  * proved.
@@ -501,9 +501,9 @@ export function buildUsageClaims(
         if (templateCompositionHash(template).toLowerCase() !== compositionHash.toLowerCase()) {
             throw new Error(`the template given does not hash to the provenance's composition hash ${compositionHash}`);
         }
-        const slotIndex = template.agreements.findIndex((slot) => slot.agreementKey.toLowerCase() === agreementKey.toLowerCase());
-        if (slotIndex < 0) {
-            throw new Error(`no order slot of ${compositionHash} binds the provenance's agreement ${agreementKey}`);
+        const agreementIndex = template.agreements.findIndex((entry) => entry.agreementKey.toLowerCase() === agreementKey.toLowerCase());
+        if (agreementIndex < 0) {
+            throw new Error(`no agreement of ${compositionHash} binds the provenance's agreement ${agreementKey}`);
         }
         const leafProof = buildProvenanceInclusionProof(agreement).proof;
         claims.push({
@@ -512,7 +512,7 @@ export function buildUsageClaims(
             kind: { Agreement: { composition_hash: compositionHash } },
             inclusion_proof: leafProof,
         });
-        const membership = buildSlotInclusionProof(template, slotIndex);
+        const membership = buildAgreementInclusionProof(template, agreementIndex);
         claims.push({
             order: wireOrder,
             clause_or_assembly: compositionHash,

@@ -178,7 +178,7 @@ export function deriveAssemblyWithdrawGate(
 /**
  * Withdraw gate for a REGISTERED AGREEMENT. A trade is composed from the
  * agreement iff one of its verified orders' provenance names the
- * `agreementKey` — whichever assembly the order slot sits in. Counted per
+ * `agreementKey` — whichever assembly the agreement sits in. Counted per
  * process, as the assembly gate.
  */
 export function deriveAgreementWithdrawGate(

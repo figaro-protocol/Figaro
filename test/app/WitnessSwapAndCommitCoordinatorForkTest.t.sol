@@ -276,7 +276,7 @@ contract WitnessSwapAndCommitCoordinatorSepoliaVenueForkTest is Test {
         core = new FigaroCore();
         coord = new WitnessSwapAndCommitCoordinator(address(core), PERMIT2, SWAP_ROUTER_02);
 
-        // Both parties start holding only WETH (deal writes the balance slot).
+        // Both parties start holding only WETH (deal writes the balance entry).
         deal(address(WETH), buyer, 1 ether);
         deal(address(WETH), seller, 1 ether);
 

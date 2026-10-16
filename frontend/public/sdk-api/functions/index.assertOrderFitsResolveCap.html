@@ -20,7 +20,7 @@
 chain's resolve ceiling — past it, <code>resolveProcess</code> can no longer fit
 in one block and every bond in the process is locked forever. The
 FigaroCore cannot enforce this (the ceiling is a block-gas property, and
-the composed agreements live off-chain), so every client-side commit path calls this.</p>
+the agreements live off-chain), so every client-side commit path calls this.</p>
 <p>Root commitments (<code>processId</code> = zero) pass trivially — they create a
 fresh process with one order. Whether the process EXISTS is the
 FigaroCore's check, not this one's (<code>UnknownProcess</code> reverts on-chain).</p>

@@ -9,7 +9,7 @@
  *   2. On-chain published assembly — AssemblyRegistered event filtered
  *      by its derived slug (a pure function of the indexed compositionHash),
  *      then the template fetched from IPFS via contentURI and verified
- *      against the anchored compositionHash, and every order slot's
+ *      against the anchored compositionHash, and every agreement's
  *      registered agreement read from AgreementRegistry by key and verified
  *      against it (absent ⇒ the assembly is not shown).
  *
@@ -214,7 +214,7 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                         setResolved({
                             kind: "error",
                             message:
-                                "Assembly content could not be read — the template or one of its order slots' registered agreements could not be fetched from IPFS, or failed verification against the key the chain anchors. The on-chain identity is anchored regardless.",
+                                "Assembly content could not be read — the template or one of its agreements' registered agreements could not be fetched from IPFS, or failed verification against the key the chain anchors. The on-chain identity is anchored regardless.",
                         });
                         return;
                     }
@@ -639,28 +639,28 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
         </div>
     );
 
-    // The composition root and each order slot's agreement key — read from
+    // The composition root and each agreement's agreement key — read from
     // the pinned template (published) or the review's build (draft).
-    const slotTemplate = resolved.kind === "published"
+    const entryAssembly = resolved.kind === "published"
         ? resolved.hydratedAssembly.template
         : review?.ok ? review.template : null;
-    const composition = slotTemplate
+    const composition = entryAssembly
         ? {
             compositionHash: resolved.kind === "published"
                 ? resolved.compositionHash
                 : (review?.ok ? review.compositionHash : ("0x" as `0x${string}`)),
-            agreementKeys: slotTemplate.agreements.map((slot) => slot.agreementKey),
+            agreementKeys: entryAssembly.agreements.map((entry) => entry.agreementKey),
         }
         : null;
-    // canvas order id → the agreement key its order slot binds: a published
-    // assembly's canvas orders carry the order slot ids; a draft's are the
+    // canvas order id → the agreement key its agreement binds: a published
+    // assembly's canvas orders carry the agreement ids; a draft's are the
     // canvas orders in template order.
-    const slotKeyByOrderId: Record<string, `0x${string}`> = Object.fromEntries(
+    const agreementKeyByOrderId: Record<string, `0x${string}`> = Object.fromEntries(
         orders.flatMap((order, index) => {
-            const slot = resolved.kind === "published"
-                ? slotTemplate?.agreements.find((a) => a.id === order.orderHash)
-                : slotTemplate?.agreements[index];
-            return slot ? [[order.orderHash, slot.agreementKey]] : [];
+            const entry = resolved.kind === "published"
+                ? entryAssembly?.agreements.find((a) => a.id === order.orderHash)
+                : entryAssembly?.agreements[index];
+            return entry ? [[order.orderHash, entry.agreementKey]] : [];
         }),
     );
 
@@ -680,7 +680,7 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                         Review before publish — this action is irreversible.
                     </p>
                     <p className="text-xs text-warning-fg mt-1 max-w-3xl leading-relaxed">
-                        Confirming will register each newly composed agreement on the
+                        Confirming will register each newly agreement on the
                         AgreementRegistry (one stake each), pin the assembly template to
                         IPFS, place the stake, and anchor the slug{" "}
                         <code className="font-mono">/{slug}</code> on-chain. The slug
@@ -700,21 +700,21 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                         </p>
                     )}
                     {review?.ok && (
-                        <div className="mt-2 max-w-3xl space-y-1" data-testid="review-slots">
+                        <div className="mt-2 max-w-3xl space-y-1" data-testid="review-agreements">
                             <p className="text-xs text-warning-fg leading-relaxed">
                                 Composition root{" "}
                                 <code className="font-mono" data-testid="review-composition-root" title={review.compositionHash}>
                                     {review.compositionHash}
                                 </code>
-                                . Each order slot binds one agreement by key:
+                                . Each agreement binds one agreement by key:
                             </p>
                             <ul className="text-xs text-warning-fg font-mono space-y-0.5">
-                                {review.slots.map((slot, index) => (
-                                    <li key={slot.orderId} data-testid={`review-slot-${index}`} data-agreement-key={slot.agreementKey}>
+                                {review.entries.map((entry, index) => (
+                                    <li key={entry.orderId} data-testid={`review-entry-${index}`} data-agreement-key={entry.agreementKey}>
                                         <span className="font-sans">Order {index + 1}: </span>
-                                        <span title={slot.agreementKey}>{truncateHex(slot.agreementKey, { head: 10, tail: 6 })}</span>
+                                        <span title={entry.agreementKey}>{truncateHex(entry.agreementKey, { head: 10, tail: 6 })}</span>
                                         <span className="font-sans">
-                                            {slot.bound
+                                            {entry.bound
                                                 ? " — registered agreement, bound as is"
                                                 : " — composed here; registered on publish"}
                                         </span>
@@ -887,7 +887,7 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                     selectedClauseValues={
                         selectedOrderId ? (composedByOrderId[selectedOrderId] ?? {}) : undefined
                     }
-                    boundAgreementKey={selectedOrderId ? slotKeyByOrderId[selectedOrderId] : undefined}
+                    boundAgreementKey={selectedOrderId ? agreementKeyByOrderId[selectedOrderId] : undefined}
                     embedded
                     readOnly
                 />

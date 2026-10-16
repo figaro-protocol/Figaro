@@ -463,8 +463,8 @@ describe("buildAssemblyTemplate — a clause is its spec: the fold folds every m
         expect(fake.clauseKey).not.toBe(keyOf("figaro-commerce"));
         expect(fake.clauseId).toBe("figaro-commerce");
         const { template, agreements } = buildAssemblyTemplate({ orders: ORDERS, clausesByOrderId: {}, specs: specSourceWithRegistrations(base, [fake]) });
-        for (const slot of template.agreements) {
-            const composed = agreements[slot.agreementKey].clauses;
+        for (const entry of template.agreements) {
+            const composed = agreements[entry.agreementKey].clauses;
             expect(composed).toHaveProperty(keyOf("figaro-commerce"));
             expect(composed).toHaveProperty(fake.clauseKey);
             expect(composed).toHaveProperty(keyOf("figaro-topology"));
@@ -516,9 +516,9 @@ describe("buildAssemblyTemplate — a clause is its spec: the fold folds every m
         })).toThrow(new RegExp(`clause ${unloaded} is composed at the assembly level but its spec is not loaded`));
     });
 
-    it("puts the topology's parents in the order slot and composes the topology clause with {}", () => {
+    it("puts the topology's parents in the agreement and composes the topology clause with {}", () => {
         const { template, agreements } = buildAssemblyTemplate({ orders: ORDERS, clausesByOrderId: {}, specs: base });
-        // Both order slots compose the same clauses, so they bind one agreement.
+        // Both agreements compose the same clauses, so they bind one agreement.
         expect(Object.keys(agreements)).toHaveLength(1);
         const [root, child] = template.agreements;
         expect(root.agreementKey).toBe(child.agreementKey);
@@ -538,7 +538,7 @@ describe("buildAssemblyTemplate — a clause is its spec: the fold folds every m
         });
         expect(template.agreements[1].agreementKey).toBe(agreementKeyOf(registered));
         expect(template.agreements[1].clauses).toEqual({ [keyOf("figaro-topology")]: { parentOrderHashes: ["order-0"] } });
-        // Only the newly composed agreement is returned to register.
+        // Only the newly agreement is returned to register.
         expect(Object.keys(agreements)).toEqual([template.agreements[0].agreementKey]);
         // A registered agreement missing a live mandatory clause is refused…
         const lacking = { clauses: { [keyOf("figaro-commerce")]: {} } };
@@ -590,7 +590,7 @@ describe("buildOrderAgreement — every section reads the spec its key names", (
     });
 });
 
-describe("composeOrderAgreement — one order slot's registered agreement, on its own", () => {
+describe("composeOrderAgreement — one agreement's registered agreement, on its own", () => {
     it("keys exactly what buildAssemblyTemplate keys for the same composed clauses", () => {
         const clauses = { [keyOf("figaro-geolocation")]: { ignored: "transaction particular" } };
         const alone = composeOrderAgreement({ clauses, specs: SPECS });

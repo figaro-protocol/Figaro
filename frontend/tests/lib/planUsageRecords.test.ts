@@ -2,7 +2,7 @@
  * The buyer's at-resolution usage writes: planned before the confirm from the
  * counter's own facts (one per distinct (kind, key) across the process: every
  * clause section, and from the agreement's provenance leaf the registered
- * agreement and the assembly, the latter with its order slot's membership
+ * agreement and the assembly, the latter with its agreement's membership
  * proof from the template), each simulated before it is sent. Mirrors sdk/tests/recordProcessUsage.test.ts for the frontend path.
  */
 import { describe, expect, it, vi } from "vitest";
@@ -11,7 +11,7 @@ import {
     ASSEMBLY_TERMS_LEAF_KEY,
     PROVENANCE_LEAF_KEY,
     agreementKeyOf,
-    buildSlotInclusionProof,
+    buildAgreementInclusionProof,
     provenanceContentRef,
     provenanceSectionBytes,
     templateCompositionHash,
@@ -34,7 +34,7 @@ vi.mock("@/lib/kernel/signedCommitment", () => ({ restoreSignedProcessId: (c: Co
 // specs behind them.
 const COMMERCE = keccak256(encodePacked(["string"], ["a commerce spec's bytes"]));
 const MODALITIES = keccak256(encodePacked(["string"], ["a modalities spec's bytes"]));
-// The registered agreement the order slot binds, and the one-slot template
+// The registered agreement the agreement binds, and the one-entry template
 // whose root is the composition hash the provenance names.
 const AGREEMENT_KEY = agreementKeyOf({ clauses: { [COMMERCE]: {}, [MODALITIES]: {} } });
 const TEMPLATE: AssemblyTemplate = { agreements: [{ id: "order-0", agreementKey: AGREEMENT_KEY, clauses: {} }] };
@@ -81,10 +81,10 @@ describe("planUsageRecords", () => {
         expect(agreementWrite).toMatchObject({ key: AGREEMENT_KEY, compositionHash: COMPOSITION });
     });
 
-    it("carries the order slot's membership proof on the assembly write", () => {
+    it("carries the agreement's membership proof on the assembly write", () => {
         const { writes } = planUsageRecords([entry(1n, SELLER_A)]);
         const assembly = writes.find((w) => w.kind === "assembly");
-        const { proof, slotContentHash } = buildSlotInclusionProof(TEMPLATE, 0);
+        const { proof, slotContentHash } = buildAgreementInclusionProof(TEMPLATE, 0);
         expect(assembly).toMatchObject({ key: COMPOSITION, agreementKey: AGREEMENT_KEY, slotContentHash, membershipProof: proof });
     });
 
