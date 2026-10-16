@@ -26,7 +26,7 @@ import {
     agreementLeafBytes,
     assemblyCompositionHash,
     type Assembly,
-    type ComposedAgreement,
+    type RegisteredAgreement,
 } from "../src/assembly.js";
 import {
     PROVENANCE_LEAF_KEY,
@@ -40,7 +40,7 @@ import {
     verifyInclusionProof,
 } from "../src/agreement.js";
 import {
-    ASSEMBLY_ONE, ASSEMBLY_THREE, ASSEMBLY_TWO, COMPOSED_DESIGN, COMPOSED_ONE, COMPOSED_THREE,
+    ASSEMBLY_ONE, ASSEMBLY_THREE, ASSEMBLY_TWO, REGISTERED_DESIGN, REGISTERED_ONE, REGISTERED_THREE,
 } from "./assemblyVectors.js";
 
 const FIXTURE_PATH = path.resolve(__dirname, "../../test/fixtures/assembly-vectors.json");
@@ -63,7 +63,7 @@ const SHAPE =
     "keccak256(clauseData), leaf = keccak256(keccak256(leafKey ‖ clauseDataHash)) }. compositionHash is the " +
     "sorted-pair merkle root over every entry leaf and the terms leaf; a one-leaf tree's root is its leaf.";
 
-function agreementVector(label: string, composed: ComposedAgreement) {
+function agreementVector(label: string, composed: RegisteredAgreement) {
     return {
         label,
         agreementKey: agreementKeyOf(composed),
@@ -118,9 +118,9 @@ function build() {
     return {
         shape: SHAPE,
         agreements: [
-            agreementVector("three-clauses", COMPOSED_THREE),
-            agreementVector("one-clause", COMPOSED_ONE),
-            agreementVector("two-clauses-and-a-design", COMPOSED_DESIGN),
+            agreementVector("three-clauses", REGISTERED_THREE),
+            agreementVector("one-clause", REGISTERED_ONE),
+            agreementVector("two-clauses-and-a-design", REGISTERED_DESIGN),
         ],
         assemblies: [
             assemblyVector("one-agreement", ASSEMBLY_ONE),

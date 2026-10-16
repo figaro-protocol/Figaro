@@ -8,7 +8,7 @@
  * agreement by `agreementKeyOf` of its document, `AssemblyRegistry` keys the
  * assembly by its composition hash. A gateway can serve any bytes, so the
  * bytes are checked against the anchor before anything reads them, by the
- * SDK's `anchorClauseSpec`, `anchorComposedAgreement` and `anchorAssembly` —
+ * SDK's `anchorClauseSpec`, `anchorRegisteredAgreement` and `anchorAssembly` —
  * the functions the frontend verifies with. A
  * document that does not hash to its anchor reads as absence, never as the
  * registry's content: the verification is what makes an untrusted gateway an
@@ -24,7 +24,7 @@ import { keccak256 } from "viem";
 import {
     agreementKeyOf,
     anchorClauseSpec,
-    anchorComposedAgreement,
+    anchorRegisteredAgreement,
     anchorAssembly,
     strippingReviver,
     assemblyCompositionHash,
@@ -70,19 +70,19 @@ export async function fetchAnchoredClauseSpec(clause, options = {}) {
  * binding whatever its stake: a binding is never cleared, so an assembly
  * composed from a withdrawn agreement still hydrates.
  *
- * @param agreement  a `RegisteredAgreement` from the discovery graph
+ * @param agreement  a `AgreementBinding` from the discovery graph
  *                   (`contentURI`, `agreementKey`)
  * @returns `{ composed, text }`, or `{ absent }` naming why. Throws only when
  *          every gateway failed to answer.
  */
-export async function fetchAnchoredComposedAgreement(agreement, options = {}) {
+export async function fetchAnchoredRegisteredAgreement(agreement, options = {}) {
     const text = await fetchIpfsText(cidOf(agreement.contentURI), options);
     if (text === null) return { absent: "not served" };
     const parsed = parseUntrusted(text);
     if (parsed === null || typeof parsed !== "object" || parsed.clauses === null || typeof parsed.clauses !== "object") {
         return { absent: "not a registered agreement" };
     }
-    const composed = anchorComposedAgreement(parsed, agreement.agreementKey);
+    const composed = anchorRegisteredAgreement(parsed, agreement.agreementKey);
     if (composed === null) {
         let recomputed;
         try {

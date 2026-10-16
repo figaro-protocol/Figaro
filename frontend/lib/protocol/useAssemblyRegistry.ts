@@ -24,7 +24,7 @@ import {
 } from "@/lib/protocol/useWithdrawStake";
 import { createRegistryEventScan } from "@/lib/protocol/registryEventScan";
 import { publicClient } from "@/lib/shared/wagmi";
-import { hydrateAnchoredAssembly, getComposedAgreementLoadError } from "@/lib/protocol/useAgreementRegistry";
+import { hydrateAnchoredAssembly, getRegisteredAgreementLoadError } from "@/lib/protocol/useAgreementRegistry";
 import {
     deriveAssemblySlug,
     type Assembly,
@@ -204,7 +204,7 @@ export function useAllPublishedAssemblies() {
  */
 /** PERMANENT failures, by composition root: the assembly the binding points
  *  at was served and is not the one the root anchors, or an agreement's
- *  registered agreement failed permanently (`getComposedAgreementLoadError`).
+ *  registered agreement failed permanently (`getRegisteredAgreementLoadError`).
  *  A gateway miss keeps nothing and is read again; this is never re-read. */
 const loadErrors = new Map<string, string>();
 
@@ -262,7 +262,7 @@ export async function fetchHydratedAssembly(
     if (hydrated === null) {
         // Absence that can never resolve: an agreement's agreement was served
         // and is not the agreement its key names.
-        const failed = assembly.agreements.find((entry) => getComposedAgreementLoadError(entry.agreementKey));
+        const failed = assembly.agreements.find((entry) => getRegisteredAgreementLoadError(entry.agreementKey));
         if (failed) {
             loadErrors.set(
                 expectedCompositionHash.toLowerCase(),

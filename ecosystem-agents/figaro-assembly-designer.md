@@ -104,7 +104,7 @@ Do not soften — a softened anti-pattern still degrades the equilibrium.
 **First, per agreement: a registered agreement, or a new one.** Discover the live
 registrations on `AgreementRegistry` (`parseAgreementRegistryLogs`, or `getAgreements()` on the graph
 `reconstructDiscovery` returns — the live-staked ones), hydrate each by its binding's `contentURI` with
-`anchorComposedAgreement(raw, agreementKey)` — it parses the agreement and returns it
+`anchorRegisteredAgreement(raw, agreementKey)` — it parses the agreement and returns it
 only if `agreementKeyOf(doc)` equals the registered key; `null` (a failed fetch, parse or
 match) is absence, never a reason to fall back to a copy — and bind one as is where its clauses
 are the terms that order needs. Compose a new agreement only when no live registration fits.

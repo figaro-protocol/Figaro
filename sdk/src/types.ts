@@ -246,10 +246,10 @@ export interface RegisteredAssembly {
     contentURI: string;
 }
 
-export interface RegisteredAgreement {
+export interface AgreementBinding {
     /** The agreement key — `agreementKeyOf` of the pinned document at
      *  `contentURI`; a reader verifies the fetched document against it
-     *  (`anchorComposedAgreement`). */
+     *  (`anchorRegisteredAgreement`). */
     agreementKey: Hex;
     contentURI: string;
     registeredBy: Address;

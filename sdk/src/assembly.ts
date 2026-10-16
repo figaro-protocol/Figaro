@@ -39,7 +39,7 @@ import type { ProjectionSpecView } from "./projection.js";
  *  agreement of any assembly.
  *  The editorial fields are the designer's own words, pinned in the document
  *  and EXCLUDED from the key, as the assembly's are. */
-export interface ComposedAgreement {
+export interface RegisteredAgreement {
     name?: string;
     summary?: string;
     description?: string;
@@ -59,7 +59,7 @@ function composedClauseLeaf(clauseKey: Hex, fills: Record<string, unknown>): Hex
 
 /** Every leaf of a registered agreement's tree, sorted as the tree is built:
  *  one per composed clause. */
-export function agreementClauseLeaves(doc: ComposedAgreement): Hex[] {
+export function agreementClauseLeaves(doc: RegisteredAgreement): Hex[] {
     const keys = Object.keys(doc.clauses).map((k) => k.toLowerCase());
     const dupes = keys.filter((k, i) => keys.indexOf(k) !== i);
     if (dupes.length > 0) {
@@ -73,9 +73,9 @@ export function agreementClauseLeaves(doc: ComposedAgreement): Hex[] {
  *  (`buildMerkleRoot`): a one-clause agreement's key is its leaf. This is the
  *  key `AgreementRegistry.registerAgreement` takes. Editorial prose is
  *  excluded, so renaming never forks the key. A reader recomputes it from a
- *  fetched document (`anchorComposedAgreement`); a clause's membership in it
+ *  fetched document (`anchorRegisteredAgreement`); a clause's membership in it
  *  is a proof under it (`buildRegisteredClauseInclusionProof`). */
-export function agreementKeyOf(doc: ComposedAgreement): Hex {
+export function agreementKeyOf(doc: RegisteredAgreement): Hex {
     return buildMerkleRoot(agreementClauseLeaves(doc));
 }
 
@@ -84,7 +84,7 @@ export function agreementKeyOf(doc: ComposedAgreement): Hex {
  *  bytes of the designer's fills for it. Throws for a clause the agreement
  *  does not compose. The clause key is compared case-insensitively. */
 export function buildRegisteredClauseInclusionProof(
-    doc: ComposedAgreement,
+    doc: RegisteredAgreement,
     clauseKey: Hex,
 ): { leaf: Hex; proof: Hex[]; fillsHash: Hex } {
     const entry = Object.entries(doc.clauses).find(([k]) => k.toLowerCase() === clauseKey.toLowerCase());
@@ -152,16 +152,16 @@ export interface Assembly {
 /** An assembly with every agreement's registered agreement
  *  beside it, keyed by lowercased `agreementKey` — what checkout plans from.
  *  Each document is read from the agreement registry's binding and verified
- *  against its key (`anchorComposedAgreement`) before it lands here. */
+ *  against its key (`anchorRegisteredAgreement`) before it lands here. */
 export interface HydratedAssembly {
     assembly: Assembly;
-    agreements: Record<Hex, ComposedAgreement>;
+    agreements: Record<Hex, RegisteredAgreement>;
 }
 
 /** The registered agreement an agreement binds. Throws when the hydrated
  *  map does not carry it — a checkout never plans an agreement it cannot
  *  read. */
-export function boundAgreement(hydrated: HydratedAssembly, entry: AssemblyAgreement): ComposedAgreement {
+export function boundAgreement(hydrated: HydratedAssembly, entry: AssemblyAgreement): RegisteredAgreement {
     const doc = hydrated.agreements[entry.agreementKey.toLowerCase() as Hex]
         ?? hydrated.agreements[entry.agreementKey];
     if (!doc) {
@@ -207,9 +207,9 @@ export function assemblyParentOrderHashes(entry: Pick<AssemblyAgreement, "clause
  *  check out. */
 export function assemblyComposedClauseKeys(
     assembly: Assembly,
-    agreements: Readonly<Record<Hex, ComposedAgreement>>,
+    agreements: Readonly<Record<Hex, RegisteredAgreement>>,
 ): Hex[] {
-    const hydrated: HydratedAssembly = { assembly, agreements: agreements as Record<Hex, ComposedAgreement> };
+    const hydrated: HydratedAssembly = { assembly, agreements: agreements as Record<Hex, RegisteredAgreement> };
     const keys = new Set<Hex>(Object.keys(assembly.assemblyClauses ?? {}) as Hex[]);
     for (const entry of assembly.agreements) {
         for (const clauseKey of Object.keys(agreementClauses(hydrated, entry)) as Hex[]) keys.add(clauseKey);

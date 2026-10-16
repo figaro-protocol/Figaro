@@ -190,7 +190,7 @@ const result = await originateProcess(buyerWallet, publicClient, addresses, {
 **4. Write the transaction particulars — ROUTED BY DECLARED FIELD, never by clause name.**
 A published assembly arrives value-free and is passed HYDRATED (`HydratedAssembly {
 assembly, agreements }`): each agreement names a registered agreement by `agreementKey`, and
-you hydrate it from its `AgreementRegistry` binding with `anchorComposedAgreement(raw,
+you hydrate it from its `AgreementRegistry` binding with `anchorRegisteredAgreement(raw,
 agreementKey)`, which returns the agreement only when its recomputed key matches —
 `null` (a failed fetch, parse or match) means the assembly is not offered, never a fallback.
 The designer composed the clause SELECTION and their own tailoring; the remaining required content fields are the BUYER's to fill at

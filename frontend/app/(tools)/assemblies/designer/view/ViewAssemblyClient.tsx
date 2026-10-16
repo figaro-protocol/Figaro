@@ -71,7 +71,7 @@ import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
 import type { HydratedAssembly } from "@figaro-protocol/sdk";
 import { deriveAssemblySlug } from "@/lib/shared/assembly";
 import { truncateHex } from "@/lib/shared/formatHex";
-import { fetchComposedAgreement, useComposedAgreementsVersion } from "@/lib/protocol/useAgreementRegistry";
+import { fetchRegisteredAgreement, useRegisteredAgreementsVersion } from "@/lib/protocol/useAgreementRegistry";
 import { forkPublishedAssembly } from "@/lib/designer/forkAssembly";
 import { hexEqual } from "@/lib/shared/evm";
 import type { Order } from "@/lib/kernel/store";
@@ -283,10 +283,10 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
     // The registered agreements a draft binds are an input to the walk too:
     // read each from the AgreementRegistry (chain → IPFS, verified against
     // its key) into the session the build reads; each read re-runs it.
-    const agreementsVersion = useComposedAgreementsVersion();
+    const agreementsVersion = useRegisteredAgreementsVersion();
     useEffect(() => {
         if (resolved.kind !== "draft") return;
-        for (const key of Object.values(resolved.snapshot.registeredByOrderId ?? {})) void fetchComposedAgreement(key);
+        for (const key of Object.values(resolved.snapshot.registeredByOrderId ?? {})) void fetchRegisteredAgreement(key);
     }, [resolved]);
     const review = useMemo(
         () => (resolved.kind === "draft" ? projectSnapshotForReview(resolved.snapshot) : null),

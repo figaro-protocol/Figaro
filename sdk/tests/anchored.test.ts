@@ -10,7 +10,7 @@ import {
     anchorAgreement,
     anchorAttestationContent,
     anchorClauseSpec,
-    anchorComposedAgreement,
+    anchorRegisteredAgreement,
     anchorAssembly,
     deriveAnchored,
     hydrateAssembly,
@@ -93,33 +93,33 @@ describe("anchorAssembly", () => {
     });
 });
 
-describe("anchorComposedAgreement", () => {
+describe("anchorRegisteredAgreement", () => {
     const key = agreementKeyOf(composed);
 
     it("returns the document whose { clauses } subset hashes to the key — parsed, bytes, or text", () => {
-        expect(anchorComposedAgreement(composed, key)).toBe(composed);
-        expect(anchorComposedAgreement(JSON.stringify(composed), key)).toEqual(composed);
-        expect(anchorComposedAgreement(toBytes(JSON.stringify(composed, null, 2)), key)).toEqual(composed);
+        expect(anchorRegisteredAgreement(composed, key)).toBe(composed);
+        expect(anchorRegisteredAgreement(JSON.stringify(composed), key)).toEqual(composed);
+        expect(anchorRegisteredAgreement(toBytes(JSON.stringify(composed, null, 2)), key)).toEqual(composed);
         // Editorial prose is outside the key.
-        expect(anchorComposedAgreement({ ...composed, name: "Renamed" }, key)).toEqual({ ...composed, name: "Renamed" });
+        expect(anchorRegisteredAgreement({ ...composed, name: "Renamed" }, key)).toEqual({ ...composed, name: "Renamed" });
     });
     it("refuses a document whose bytes do not hash to its key", () => {
         const changed = { clauses: { ...composed.clauses, [keyOf("figaro-handoff")]: {} } };
-        expect(anchorComposedAgreement(changed, key)).toBeNull();
-        expect(anchorComposedAgreement(JSON.stringify(changed), key)).toBeNull();
-        expect(anchorComposedAgreement(composed, OTHER)).toBeNull();
+        expect(anchorRegisteredAgreement(changed, key)).toBeNull();
+        expect(anchorRegisteredAgreement(JSON.stringify(changed), key)).toBeNull();
+        expect(anchorRegisteredAgreement(composed, OTHER)).toBeNull();
     });
     it("refuses what is not a agreement, and a reserved key", () => {
         for (const bad of [null, "not json", { name: "no clauses" }, { clauses: [] }, [composed]]) {
-            expect(anchorComposedAgreement(bad, key)).toBeNull();
+            expect(anchorRegisteredAgreement(bad, key)).toBeNull();
         }
-        expect(anchorComposedAgreement(composed, "0x1234")).toBeNull();
-        expect(anchorComposedAgreement(composed, PROVENANCE_LEAF_KEY)).toBeNull();
-        expect(anchorComposedAgreement(composed, ASSEMBLY_TERMS_LEAF_KEY)).toBeNull();
+        expect(anchorRegisteredAgreement(composed, "0x1234")).toBeNull();
+        expect(anchorRegisteredAgreement(composed, PROVENANCE_LEAF_KEY)).toBeNull();
+        expect(anchorRegisteredAgreement(composed, ASSEMBLY_TERMS_LEAF_KEY)).toBeNull();
     });
     it("strips prototype-pollution keys from what it parses", () => {
         const hostile = `{"__proto__":{"polluted":true},"clauses":${JSON.stringify(composed.clauses)}}`;
-        expect(anchorComposedAgreement(hostile, key)).toEqual({ clauses: composed.clauses });
+        expect(anchorRegisteredAgreement(hostile, key)).toEqual({ clauses: composed.clauses });
         expect(({} as Record<string, unknown>).polluted).toBeUndefined();
     });
 });

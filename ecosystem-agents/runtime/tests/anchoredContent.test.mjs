@@ -12,7 +12,7 @@ import * as path from "node:path";
 import { fileURLToPath } from "node:url";
 import { keccak256, toBytes } from "viem";
 import { agreementKeyOf, canonicalize, assemblyCompositionHash } from "@figaro-protocol/sdk";
-import { fetchAnchoredClauseSpec, fetchAnchoredComposedAgreement, fetchAnchoredAssembly } from "../anchoredContent.mjs";
+import { fetchAnchoredClauseSpec, fetchAnchoredRegisteredAgreement, fetchAnchoredAssembly } from "../anchoredContent.mjs";
 import { fetchIpfsBytes } from "../ipfsRead.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -96,17 +96,17 @@ test("a registered agreement whose { clauses } key to its agreement key is read,
     });
     try {
         const agreement = { contentURI: "ipfs://g", agreementKey: agreementKeyOf(COMPOSED) };
-        const hit = await fetchAnchoredComposedAgreement(agreement, { gateways: [gw.url] });
+        const hit = await fetchAnchoredRegisteredAgreement(agreement, { gateways: [gw.url] });
         assert.equal(hit.absent, undefined, hit.absent);
         assert.deepEqual(hit.composed.clauses, COMPOSED.clauses);
-        const renamed = await fetchAnchoredComposedAgreement({ ...agreement, contentURI: "ipfs://renamed" }, { gateways: [gw.url] });
+        const renamed = await fetchAnchoredRegisteredAgreement({ ...agreement, contentURI: "ipfs://renamed" }, { gateways: [gw.url] });
         assert.equal(renamed.absent, undefined, renamed.absent);
 
-        const swapped = await fetchAnchoredComposedAgreement({ ...agreement, contentURI: "ipfs://forged" }, { gateways: [gw.url] });
+        const swapped = await fetchAnchoredRegisteredAgreement({ ...agreement, contentURI: "ipfs://forged" }, { gateways: [gw.url] });
         assert.match(swapped.absent, /the registry anchors/);
-        const notAgreement = await fetchAnchoredComposedAgreement({ ...agreement, contentURI: "ipfs://notAgreement" }, { gateways: [gw.url] });
+        const notAgreement = await fetchAnchoredRegisteredAgreement({ ...agreement, contentURI: "ipfs://notAgreement" }, { gateways: [gw.url] });
         assert.equal(notAgreement.absent, "not a registered agreement");
-        const missing = await fetchAnchoredComposedAgreement({ ...agreement, contentURI: "ipfs://missing" }, { gateways: [gw.url] });
+        const missing = await fetchAnchoredRegisteredAgreement({ ...agreement, contentURI: "ipfs://missing" }, { gateways: [gw.url] });
         assert.equal(missing.absent, "not served");
     } finally { await gw.close(); }
 });

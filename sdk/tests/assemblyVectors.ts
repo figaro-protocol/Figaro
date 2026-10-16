@@ -12,7 +12,7 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import type { Hex } from "viem";
-import type { Assembly, ComposedAgreement } from "../src/assembly.js";
+import type { Assembly, RegisteredAgreement } from "../src/assembly.js";
 import { agreementKeyOf } from "../src/assembly.js";
 import { computeClauseKey } from "../src/discovery.js";
 
@@ -21,17 +21,17 @@ const CLAUSES_DIR = path.resolve(__dirname, "../../clauses");
 export const K = (name: string): Hex =>
     computeClauseKey(JSON.parse(readFileSync(path.join(CLAUSES_DIR, `${name}.json`), "utf8")));
 
-export const COMPOSED_THREE: ComposedAgreement = {
+export const REGISTERED_THREE: RegisteredAgreement = {
     clauses: {
         [K("figaro-modalities")]: { modality: "delivery" },
         [K("figaro-geolocation")]: { hops: 2, origin: "site-7" },
         [K("figaro-applicable-law")]: { law: "ch" },
     },
 };
-export const COMPOSED_ONE: ComposedAgreement = {
+export const REGISTERED_ONE: RegisteredAgreement = {
     clauses: { [K("figaro-modalities")]: { modality: "pickup" } },
 };
-export const COMPOSED_DESIGN: ComposedAgreement = {
+export const REGISTERED_DESIGN: RegisteredAgreement = {
     clauses: {
         [K("figaro-commerce")]: { currency: "0x0000000000000000000000000000000000000000", payment: "7" },
         [K("figaro-topology")]: {},
@@ -39,12 +39,12 @@ export const COMPOSED_DESIGN: ComposedAgreement = {
 };
 
 export const ASSEMBLY_ONE: Assembly = {
-    agreements: [{ id: "order-0", agreementKey: agreementKeyOf(COMPOSED_ONE), clauses: {} }],
+    agreements: [{ id: "order-0", agreementKey: agreementKeyOf(REGISTERED_ONE), clauses: {} }],
 };
 export const ASSEMBLY_TWO: Assembly = {
     agreements: [
-        { id: "order-0", agreementKey: agreementKeyOf(COMPOSED_THREE), clauses: {} },
-        { id: "order-1", agreementKey: agreementKeyOf(COMPOSED_ONE), clauses: {} },
+        { id: "order-0", agreementKey: agreementKeyOf(REGISTERED_THREE), clauses: {} },
+        { id: "order-1", agreementKey: agreementKeyOf(REGISTERED_ONE), clauses: {} },
     ],
 };
 export const ASSEMBLY_THREE: Assembly = {
@@ -52,8 +52,8 @@ export const ASSEMBLY_THREE: Assembly = {
         [K("figaro-applicable-law")]: { applicableLaw: "ch", forum: "Zurich", language: "en" },
     },
     agreements: [
-        { id: "order-0", agreementKey: agreementKeyOf(COMPOSED_DESIGN), clauses: { [K("figaro-topology")]: { parentOrderHashes: [] } } },
-        { id: "order-1", agreementKey: agreementKeyOf(COMPOSED_DESIGN), clauses: { [K("figaro-topology")]: { parentOrderHashes: ["order-0"] } } },
-        { id: "order-2", agreementKey: agreementKeyOf(COMPOSED_THREE), clauses: {} },
+        { id: "order-0", agreementKey: agreementKeyOf(REGISTERED_DESIGN), clauses: { [K("figaro-topology")]: { parentOrderHashes: [] } } },
+        { id: "order-1", agreementKey: agreementKeyOf(REGISTERED_DESIGN), clauses: { [K("figaro-topology")]: { parentOrderHashes: ["order-0"] } } },
+        { id: "order-2", agreementKey: agreementKeyOf(REGISTERED_THREE), clauses: {} },
     ],
 };

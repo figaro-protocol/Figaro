@@ -30,7 +30,7 @@ import { useMemo } from "react";
 import type { DesignSnapshot } from "@/lib/designer/syntheticDesignStore";
 import { snapshotCompositionIdentity } from "@/lib/designer/draftToAssembly";
 import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
-import { useComposedAgreementsVersion } from "@/lib/protocol/useAgreementRegistry";
+import { useRegisteredAgreementsVersion } from "@/lib/protocol/useAgreementRegistry";
 import { truncateHex } from "@/lib/shared/formatHex";
 
 export function CompositionIdentity({ snapshot }: { snapshot: DesignSnapshot | null }) {
@@ -42,7 +42,7 @@ export function CompositionIdentity({ snapshot }: { snapshot: DesignSnapshot | n
     const { version: specsVersion } = useClauseSpecs();
     // The registered agreements an agreement binds are an input too: the
     // build reads them once the registry read verifies them.
-    const agreementsVersion = useComposedAgreementsVersion();
+    const agreementsVersion = useRegisteredAgreementsVersion();
 
     const identity = useMemo(
         () => (snapshot ? snapshotCompositionIdentity(snapshot) : null),

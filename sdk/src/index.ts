@@ -88,7 +88,7 @@ export type {
     RegisteredClause,
     RegisteredMember,
     RegisteredAssembly,
-    RegisteredAgreement,
+    AgreementBinding,
 } from "./types.js";
 export {
     OrderState,
@@ -225,7 +225,7 @@ export {
     type Anchored,
     anchorClauseSpec,
     anchorAssembly,
-    anchorComposedAgreement,
+    anchorRegisteredAgreement,
     hydrateAssembly,
     anchorAgreement,
     anchorAttestationContent,
@@ -338,7 +338,7 @@ export type {
     Assembly,
     AssemblyFaqEntry,
     AssemblyAgreement,
-    ComposedAgreement,
+    RegisteredAgreement,
     HydratedAssembly,
     AuthoredSpecSet,
 } from "./assembly.js";

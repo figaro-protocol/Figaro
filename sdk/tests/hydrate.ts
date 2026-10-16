@@ -8,7 +8,7 @@
  * — without the mandatory fold, so a test's clause set is the one it wrote.
  */
 import type { Hex } from "viem";
-import { agreementKeyOf, type ComposedAgreement, type HydratedAssembly, type AssemblyAgreement } from "../src/assembly.js";
+import { agreementKeyOf, type RegisteredAgreement, type HydratedAssembly, type AssemblyAgreement } from "../src/assembly.js";
 
 export interface AuthoredAssembly {
     name?: string;
@@ -20,7 +20,7 @@ export interface AuthoredAssembly {
 }
 
 export function hydrateAuthored(authored: AuthoredAssembly): HydratedAssembly {
-    const agreements: Record<Hex, ComposedAgreement> = {};
+    const agreements: Record<Hex, RegisteredAgreement> = {};
     const entries: AssemblyAgreement[] = authored.agreements.map((entry) => {
         const clauses: Record<Hex, Record<string, unknown>> = {};
         const fills: Record<Hex, Record<string, unknown>> = {};

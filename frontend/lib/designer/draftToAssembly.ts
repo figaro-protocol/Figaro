@@ -18,7 +18,7 @@
  * live-cache `liveSpecSource()` adapter, whose fold set holds only the
  * registrations whose stake is live (the drawer's surfacing rule), and by the
  * registered agreements the designer bound to agreements, read from
- * `AgreementRegistry` and verified against their keys (`getComposedAgreement`).
+ * `AgreementRegistry` and verified against their keys (`getRegisteredAgreement`).
  * It VERIFIES scope placement, refuses an agreement that both binds and
  * composes, refuses a bound agreement lacking a live mandatory clause, and
  * throws on a cold spec cache or an unread bound agreement — loud failures
@@ -30,11 +30,11 @@ import {
     serializeAssembly,
     agreementClauses,
     type BuiltAssembly,
-    type ComposedAgreement,
+    type RegisteredAgreement,
     type Hex,
     type HydratedAssembly,
 } from "@figaro-protocol/sdk";
-import { getComposedAgreement } from "@/lib/protocol/useAgreementRegistry";
+import { getRegisteredAgreement } from "@/lib/protocol/useAgreementRegistry";
 import { clauseDesignFills, clauseIsMandatory, getClauseSpec, liveSpecSource } from "@/lib/shared/clauseSpecSource";
 import { isFilledValue } from "@/lib/checkout/checkoutDerivations";
 import { deriveAssemblySlug, type Assembly } from "@/lib/shared/assembly";
@@ -45,10 +45,10 @@ import type { DesignSnapshot } from "@/lib/designer/syntheticDesignStore";
 /** The registered agreements a snapshot binds, read from this tab's verified
  *  documents. Throws for a bound key not read yet — the build never binds an
  *  agreement it cannot read. */
-function boundAgreements(snapshot: DesignSnapshot): Record<string, ComposedAgreement> {
-    const out: Record<string, ComposedAgreement> = {};
+function boundAgreements(snapshot: DesignSnapshot): Record<string, RegisteredAgreement> {
+    const out: Record<string, RegisteredAgreement> = {};
     for (const [orderId, agreementKey] of Object.entries(snapshot.registeredByOrderId ?? {})) {
-        const doc = getComposedAgreement(agreementKey);
+        const doc = getRegisteredAgreement(agreementKey);
         if (!doc) {
             throw new Error(`the registered agreement ${agreementKey} bound to an agreement has not been read from the AgreementRegistry yet`);
         }
@@ -80,11 +80,11 @@ export function snapshotToAssembly(snapshot: DesignSnapshot): BuiltAssembly {
  *  composed ones and the registered ones the designer bound — keyed by
  *  lowercased key, as checkout reads a hydrated assembly. */
 function builtToHydrated(built: BuiltAssembly): HydratedAssembly {
-    const agreements: Record<Hex, ComposedAgreement> = {};
+    const agreements: Record<Hex, RegisteredAgreement> = {};
     for (const [key, doc] of Object.entries(built.agreements)) agreements[key.toLowerCase() as Hex] = doc;
     for (const entry of built.assembly.agreements) {
         const key = entry.agreementKey.toLowerCase() as Hex;
-        const doc = agreements[key] ?? getComposedAgreement(key);
+        const doc = agreements[key] ?? getRegisteredAgreement(key);
         if (doc) agreements[key] = doc;
     }
     return { assembly: built.assembly, agreements };
@@ -206,7 +206,7 @@ export type SnapshotReview =
         /** The agreements newly composed for this assembly, by key — the
          *  ones publish registers (one stake each, a key already bound is
          *  skipped) before the assembly. */
-        newAgreements: Record<Hex, ComposedAgreement>;
+        newAgreements: Record<Hex, RegisteredAgreement>;
         /** Per agreement, in assembly order: the canvas order id, the
          *  agreement key it binds, and whether that agreement was bound as
          *  registered or composed here. */

@@ -37,7 +37,7 @@ import type { Abi } from "viem";
 import { publishTail } from "@/lib/protocol/publishTail";
 import { DEFAULT_IPFS_SERVICE } from "@/lib/shared/ipfsService";
 import type { DesignSnapshot } from "@/lib/designer/syntheticDesignStore";
-import { AGREEMENT_REGISTRY_ABI, canonicalize, composeOrderAgreement, serializeAssembly, type ComposedAgreement } from "@figaro-protocol/sdk";
+import { AGREEMENT_REGISTRY_ABI, canonicalize, composeOrderAgreement, serializeAssembly, type RegisteredAgreement } from "@figaro-protocol/sdk";
 import { snapshotToAssembly } from "@/lib/designer/draftToAssembly";
 import { liveSpecSource } from "@/lib/shared/clauseSpecSource";
 import { deriveAssemblySlug } from "@/lib/shared/assembly";
@@ -77,11 +77,11 @@ export interface RegisteredAgreementOutcome {
  * to one registration. Every check (the pin, the simulation) passes before
  * the wallet opens; the write waits for a `success` receipt.
  */
-export async function registerComposedAgreement(args: {
+export async function registerAgreement(args: {
     client: RegistrationClient;
     writeContractAsync: Parameters<typeof publishTail>[0]["writeContractAsync"];
     address: `0x${string}`;
-    doc: ComposedAgreement;
+    doc: RegisteredAgreement;
     agreementKey: `0x${string}`;
     ipfs?: Pick<typeof DEFAULT_IPFS_SERVICE, "publishJSON">;
     readBinding?: typeof readAgreementBinding;
@@ -123,7 +123,7 @@ export async function registerComposedAgreement(args: {
  * Register ONE order's agreement on its own, from the drawer: the
  * clauses the designer selected for the order compose through the SDK's one
  * composition rule (`composeOrderAgreement` — the mandatory fold, value-free
- * but for design fills, the scope check), then `registerComposedAgreement`.
+ * but for design fills, the scope check), then `registerAgreement`.
  * The registered key is what the agreement then binds, and what any other
  * assembly's drawer offers from the live registry.
  */
@@ -142,8 +142,8 @@ export function usePublishAgreement() {
             throw new Error("Compose at least one clause on this order before registering its agreement.");
         }
         const { composed, agreementKey } = composeOrderAgreement({ clauses: args.clauses, specs: liveSpecSource() });
-        const doc: ComposedAgreement = { ...(args.name ? { name: args.name } : {}), ...composed };
-        return registerComposedAgreement({ client: client as never, writeContractAsync, address, doc, agreementKey });
+        const doc: RegisteredAgreement = { ...(args.name ? { name: args.name } : {}), ...composed };
+        return registerAgreement({ client: client as never, writeContractAsync, address, doc, agreementKey });
     }
 
     return { publishAgreement, isPending };
@@ -271,7 +271,7 @@ export function usePublishAssembly() {
                 const index = assembly.agreements.findIndex((s) => hexEqual(s.agreementKey, agreementKey));
                 // The pinned document carries the designer's words beside the
                 // clauses; the key is over the clauses alone.
-                const doc: ComposedAgreement = {
+                const doc: RegisteredAgreement = {
                     ...(assembly.name ? { name: `${assembly.name} · order ${index + 1}` } : {}),
                     clauses: built.agreements[agreementKey].clauses,
                 };

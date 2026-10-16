@@ -7,7 +7,7 @@
  */
 import fc from "fast-check";
 import type { Agreement, AgreementClause } from "../src/agreement.js";
-import type { Assembly, ComposedAgreement, AssemblyAgreement } from "../src/assembly.js";
+import type { Assembly, RegisteredAgreement, AssemblyAgreement } from "../src/assembly.js";
 import type { Commitment } from "../src/types.js";
 
 /** Fixed-width lowercase hex string of `bytes` bytes (0x-prefixed). */
@@ -84,9 +84,9 @@ export const commitmentArb: fc.Arbitrary<Commitment> = fc.record({
 
 /** A registered agreement's composed document: unique clause keys, JSON-safe
  *  values, and optional editorial prose (outside the key). */
-export const composedAgreementArb: fc.Arbitrary<ComposedAgreement> = fc.record({
+export const registeredAgreementArb: fc.Arbitrary<RegisteredAgreement> = fc.record({
     clauses: fc.uniqueArray(clauseArb, { selector: (s) => s.clause, minLength: 1, maxLength: 5 })
-        .map((clauseEntries) => Object.fromEntries(clauseEntries.map((s) => [s.clause, s.data ?? {}])) as ComposedAgreement["clauses"]),
+        .map((clauseEntries) => Object.fromEntries(clauseEntries.map((s) => [s.clause, s.data ?? {}])) as RegisteredAgreement["clauses"]),
     name: fc.option(fc.string({ maxLength: 12 }), { nil: undefined }),
     summary: fc.option(fc.string({ maxLength: 12 }), { nil: undefined }),
 }).map(({ name, summary, clauses }) => ({

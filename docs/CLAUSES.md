@@ -70,7 +70,7 @@ neither knows what uses it; every arrow is off-chain, in the pinned documents.
 designer reward is gated by its own registry alone.
 
 **The agreement.** The reusable unit a designer composes an assembly
-from. Its document, `ComposedAgreement`, is `{ name?, summary?, description?,
+from. Its document, `RegisteredAgreement`, is `{ name?, summary?, description?,
 clauses }`, where `clauses` maps each clause key to the designer's fills —
 value-free, and the topology clause composed with `{}`, because who follows
 whom belongs to the agreement; one registered agreement can therefore sit in
@@ -87,7 +87,7 @@ order.
 
 **Hydration.** A reader fetches the document from the binding's `contentURI`,
 parses it, and requires `agreementKeyOf(doc)` to equal the registered key
-(`anchorComposedAgreement(raw, agreementKey)`, as `anchorAssembly` recomputes
+(`anchorRegisteredAgreement(raw, agreementKey)`, as `anchorAssembly` recomputes
 an assembly's root). The check is on the key, not the raw bytes, because the
 editorial fields sit outside the key. A failed fetch, a failed parse or a
 mismatch is absence: the agreement, and so the assembly, is not offered, and

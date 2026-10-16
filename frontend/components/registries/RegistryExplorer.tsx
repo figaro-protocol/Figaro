@@ -22,10 +22,10 @@ import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
 import { getClauseSpec, getClauseSpecLoadError, isLiveRegistration } from "@/lib/shared/clauseSpecSource";
 import { useAssemblyChoices } from "@/lib/protocol/assemblyChoices";
 import {
-    fetchComposedAgreement,
-    getComposedAgreement,
-    useComposedAgreementsVersion,
-    usePublishedAgreements, getComposedAgreementLoadError } from "@/lib/protocol/useAgreementRegistry";
+    fetchRegisteredAgreement,
+    getRegisteredAgreement,
+    useRegisteredAgreementsVersion,
+    usePublishedAgreements, getRegisteredAgreementLoadError } from "@/lib/protocol/useAgreementRegistry";
 import { useRegisteredMembers } from "@/lib/member/useRegisteredMembers";
 import { AssemblyShapeLine } from "@/components/assemblies/AssemblyShapeLine";
 import { getAssemblyLoadError } from "@/lib/protocol/useAssemblyRegistry";
@@ -77,9 +77,9 @@ export function RegistryExplorer() {
     const { data: agreements, failed: agreementsFailed } = usePublishedAgreements(undefined, { includeWithdrawn: true });
     // Each registered agreement's pinned document, read by its binding and
     // verified against its key; the rows re-derive as documents verify.
-    const agreementsVersion = useComposedAgreementsVersion();
+    const agreementsVersion = useRegisteredAgreementsVersion();
     useEffect(() => {
-        for (const a of agreements ?? []) void fetchComposedAgreement(a.agreementKey, a.contentURI);
+        for (const a of agreements ?? []) void fetchRegisteredAgreement(a.agreementKey, a.contentURI);
     }, [agreements]);
 
     const rows = useMemo<Array<ExplorerRow & RowText>>(() => {
@@ -103,13 +103,13 @@ export function RegistryExplorer() {
         for (const a of agreements ?? []) {
             // A row is one registration, keyed and anchored by its agreement
             // key; its pinned document's name is its label.
-            const doc = getComposedAgreement(a.agreementKey);
+            const doc = getRegisteredAgreement(a.agreementKey);
             const clauses = doc ? Object.keys(doc.clauses) : [];
             const name = doc?.name ?? truncateHex(a.agreementKey, { head: 10, tail: 4 });
             const description = doc?.summary ?? doc?.description ?? "";
             out.push({
                 family: "agreements", key: `agreement-${a.agreementKey}`, id: a.agreementKey, name, article: "", description,
-                content: doc ? "resolved" : getComposedAgreementLoadError(a.agreementKey) ? "unavailable" : "resolving",
+                content: doc ? "resolved" : getRegisteredAgreementLoadError(a.agreementKey) ? "unavailable" : "resolving",
                 registeredBy: a.registeredBy, blockNumber: a.blockNumber, stakeWithdrawn: a.stakeWithdrawn, clauses,
                 contentURI: a.contentURI, anchoredHash: a.agreementKey,
                 text: [a.agreementKey, name, description, a.registeredBy, ...clauses,

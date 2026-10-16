@@ -31,7 +31,7 @@ import {
     assemblyCompositionHash,
     type Assembly,
     type BuiltAssembly,
-    type ComposedAgreement,
+    type RegisteredAgreement,
     type Hex,
     type HydratedAssembly,
     type ProjectionSpecView,
@@ -658,9 +658,9 @@ function authoredSpecSource(): SpecSource {
 
 /** The authored agreements (`agreements/*.json`) composed by name over the
  *  authored specs — what the seeding registers. */
-function authoredAgreementsBuilt(): Record<string, ComposedAgreement> {
+function authoredAgreementsBuilt(): Record<string, RegisteredAgreement> {
     const dir = path.resolve(__dirname, '../../../agreements');
-    const byName: Record<string, ComposedAgreement> = {};
+    const byName: Record<string, RegisteredAgreement> = {};
     for (const file of fs.readdirSync(dir).filter((f) => f.endsWith('.json')).sort()) {
         byName[file.replace(/\.json$/, '')] = composeAuthoredAgreement(JSON.parse(fs.readFileSync(path.join(dir, file), 'utf8')), authoredSpecSource()).document;
     }

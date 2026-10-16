@@ -202,7 +202,7 @@ designer composes an assembly from.
   `clauses` maps each clause key to
   the designer's fills for ONE agreement — value-free, the topology clause
   composed with `{}` because who follows whom belongs to the agreement. The
-  pinned document is the agreement (`ComposedAgreement { name?,
+  pinned document is the agreement (`RegisteredAgreement { name?,
   summary?, description?, clauses }`); the editorial fields are excluded from
   the key. A reader fetches the document from `contentURI`, parses it, and
   requires the key recomputed from its `clauses` to equal the registered key;

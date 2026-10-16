@@ -20,7 +20,7 @@ import {
     assembleAuthored,
     composeAuthoredAgreement,
     type Assembly,
-    type ComposedAgreement,
+    type RegisteredAgreement,
     type Hex,
     type HydratedAssembly,
     type AssemblyAgreement,
@@ -93,9 +93,9 @@ export function resolveAuthored<T extends object>(doc: T): T {
 
 /** The reference assemblies' authored agreements (`agreements/*.json`),
  *  composed over the primed specs by name — what the seeding registers. */
-export function authoredAgreements(): Record<string, ComposedAgreement> {
+export function authoredAgreements(): Record<string, RegisteredAgreement> {
     const dir = path.resolve(process.cwd(), "../agreements");
-    const byName: Record<string, ComposedAgreement> = {};
+    const byName: Record<string, RegisteredAgreement> = {};
     for (const file of readdirSync(dir).filter((f) => f.endsWith(".json")).sort()) {
         byName[file.replace(/\.json$/, "")] = composeAuthoredAgreement(JSON.parse(readFileSync(path.join(dir, file), "utf8")), specSource()).document;
     }
@@ -109,7 +109,7 @@ export function authoredAgreements(): Record<string, ComposedAgreement> {
 export function referenceAssembly(name: string): HydratedAssembly {
     const authored = JSON.parse(readFileSync(path.resolve(process.cwd(), "../assemblies", name), "utf8")) as object;
     const { assembly, agreements } = assembleAuthored(authored, authoredAgreements(), specSource());
-    const byKey: Record<Hex, ComposedAgreement> = {};
+    const byKey: Record<Hex, RegisteredAgreement> = {};
     for (const [key, doc] of Object.entries(agreements)) byKey[key.toLowerCase() as Hex] = doc;
     return { assembly, agreements: byKey };
 }
@@ -127,12 +127,12 @@ export function referenceAssembly(name: string): HydratedAssembly {
  *  each inline clause set as written, for a test whose spec set carries no
  *  mandatory clause. */
 export function hydrateAuthored(authored: object, opts: { fold?: boolean } = {}): HydratedAssembly {
-    const byKey: Record<Hex, ComposedAgreement> = {};
+    const byKey: Record<Hex, RegisteredAgreement> = {};
     if (opts.fold !== false) {
         const { agreements: written, ...rest } = authored as {
             agreements: { id?: string; clauses: Record<string, Record<string, unknown>> }[];
         } & Record<string, unknown>;
-        const byName: Record<string, ComposedAgreement> = {};
+        const byName: Record<string, RegisteredAgreement> = {};
         const entries = written.map((entry, i) => {
             const id = entry.id ?? `order-${i}`;
             const clauses: Record<string, Record<string, unknown>> = {};

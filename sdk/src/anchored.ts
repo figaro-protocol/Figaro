@@ -31,7 +31,7 @@ import {
     assertNotReservedKey,
     assemblyCompositionHash,
     type Assembly,
-    type ComposedAgreement,
+    type RegisteredAgreement,
     type HydratedAssembly,
 } from "./assembly.js";
 import { isBytes32Hex } from "./types.js";
@@ -41,7 +41,7 @@ declare const ANCHORED: unique symbol;
 /** A document whose digest was recomputed and matched the chain's. Made only
  *  by the `anchor*` functions here, or derived from one by `deriveAnchored`.
  *
- *  It vouches for what the digest covers, and no more. `Anchored<ComposedAgreement>`
+ *  It vouches for what the digest covers, and no more. `Anchored<RegisteredAgreement>`
  *  and `Anchored<Assembly>` cover their composition, never the
  *  editorial prose beside it. `Anchored<Agreement>`
  *  covers the `clauses` and the `provenance`: `computeAgreementHash` is the
@@ -80,10 +80,10 @@ export function anchorClauseSpec(fetched: Uint8Array | string, clauseKey: Hex | 
  *  `clauses` object, a reserved key or a mismatch returns null — ABSENCE:
  *  the agreement, and so the assembly, is not offered, and nothing falls
  *  back to another copy. */
-export function anchorComposedAgreement(
+export function anchorRegisteredAgreement(
     raw: Uint8Array | string | unknown,
     agreementKey: Hex | string,
-): Anchored<ComposedAgreement> | null {
+): Anchored<RegisteredAgreement> | null {
     let doc: unknown = raw;
     if (typeof raw === "string" || raw instanceof Uint8Array) {
         try {
@@ -104,11 +104,11 @@ export function anchorComposedAgreement(
     }
     let recomputed: Hex;
     try {
-        recomputed = agreementKeyOf(doc as ComposedAgreement);
+        recomputed = agreementKeyOf(doc as RegisteredAgreement);
     } catch {
         return null;
     }
-    return sameHex(recomputed, agreementKey) ? (doc as Anchored<ComposedAgreement>) : null;
+    return sameHex(recomputed, agreementKey) ? (doc as Anchored<RegisteredAgreement>) : null;
 }
 
 /**
@@ -116,7 +116,7 @@ export function anchorComposedAgreement(
  * agreement through the caller's `readAgreement` (the SDK does no I/O — the
  * caller resolves the key to the registry binding's `contentURI`, whatever
  * its stake, and fetches it; null when it cannot) and verify every document
- * against its key (`anchorComposedAgreement`). Any agreement whose agreement
+ * against its key (`anchorRegisteredAgreement`). Any agreement whose agreement
  * is unread or does not verify makes the whole assembly ABSENT (null): an
  * assembly is offered only when every agreement can be read.
  */
@@ -124,7 +124,7 @@ export async function hydrateAssembly(
     assembly: Anchored<Assembly> | Assembly,
     readAgreement: (agreementKey: Hex) => Promise<Uint8Array | string | unknown | null>,
 ): Promise<HydratedAssembly | null> {
-    const agreements: Record<Hex, ComposedAgreement> = {};
+    const agreements: Record<Hex, RegisteredAgreement> = {};
     for (const entry of assembly.agreements) {
         const key = entry.agreementKey.toLowerCase() as Hex;
         if (agreements[key]) continue;
@@ -135,7 +135,7 @@ export async function hydrateAssembly(
             return null;
         }
         if (raw === null || raw === undefined) return null;
-        const composed = anchorComposedAgreement(raw, entry.agreementKey);
+        const composed = anchorRegisteredAgreement(raw, entry.agreementKey);
         if (composed === null) return null;
         agreements[key] = composed;
     }

@@ -6,11 +6,11 @@
  *
  * This is the thin on-chain layer: the registry-address resolution, the
  * event-derived read hook, the revert translators, the withdraw hook, and the
- * one reader of a registered agreement — `fetchComposedAgreement`, which reads
+ * one reader of a registered agreement — `fetchRegisteredAgreement`, which reads
  * the binding BY KEY (whatever its stake: bindings are never cleared, so an
  * assembly composed from an agreement keeps working after its stake is
  * reclaimed), fetches the pinned document from IPFS, and verifies it against
- * the key (`anchorComposedAgreement`). `hydrateAnchoredAssembly` runs the SDK's
+ * the key (`anchorRegisteredAgreement`). `hydrateAnchoredAssembly` runs the SDK's
  * `hydrateAssembly` over that reader: an assembly is offered only when every
  * agreement's agreement reads and verifies — any absence is the assembly's
  * absence, never a fallback to another copy.
@@ -19,12 +19,12 @@
 import { useMemo, useSyncExternalStore } from "react";
 import {
     AGREEMENT_REGISTRY_ABI,
-    anchorComposedAgreement,
+    anchorRegisteredAgreement,
     hydrateAssembly,
     parseAgreementRegistryLogs,
     type Anchored,
     type Assembly,
-    type ComposedAgreement,
+    type RegisteredAgreement,
     type HydratedAssembly,
 } from "@figaro-protocol/sdk";
 import { isValidAddress } from "@/lib/shared/evm";
@@ -154,8 +154,8 @@ export async function readAgreementBinding(
 
 // ── The verified documents this tab has read (session cache) ──────────────
 
-const verified = new Map<string, Anchored<ComposedAgreement>>();
-const inflight = new Map<string, Promise<Anchored<ComposedAgreement> | null>>();
+const verified = new Map<string, Anchored<RegisteredAgreement>>();
+const inflight = new Map<string, Promise<Anchored<RegisteredAgreement> | null>>();
 let verifiedVersion = 0;
 const listeners = new Set<() => void>();
 /** PERMANENT failures, by key: the bytes the binding points at were fetched
@@ -165,7 +165,7 @@ const loadErrors = new Map<string, string>();
 
 /** The permanent load failure recorded for an agreement key, if any — the
  *  document behind the binding was served and is not the agreement. */
-export function getComposedAgreementLoadError(agreementKey: string): string | undefined {
+export function getRegisteredAgreementLoadError(agreementKey: string): string | undefined {
     return loadErrors.get(agreementKey.toLowerCase());
 }
 
@@ -177,13 +177,13 @@ function noteVerified(): void {
 /** The registered agreement for a key, when this tab has read and verified it
  *  — the synchronous face the design-time build reads (`snapshotToAssembly`),
  *  as the clause build reads the warm spec cache. Undefined while unread. */
-export function getComposedAgreement(agreementKey: string): Anchored<ComposedAgreement> | undefined {
+export function getRegisteredAgreement(agreementKey: string): Anchored<RegisteredAgreement> | undefined {
     return verified.get(agreementKey.toLowerCase());
 }
 
 /** Bumps each time a registered agreement is read and verified in this tab —
- *  a surface that reads `getComposedAgreement` re-derives on it. */
-export function useComposedAgreementsVersion(): number {
+ *  a surface that reads `getRegisteredAgreement` re-derives on it. */
+export function useRegisteredAgreementsVersion(): number {
     return useSyncExternalStore(
         (l) => {
             listeners.add(l);
@@ -201,16 +201,16 @@ export function useComposedAgreementsVersion(): number {
 async function fetchAgreementDocument(
     contentURI: string,
     agreementKey: `0x${string}`,
-): Promise<Anchored<ComposedAgreement> | null> {
+): Promise<Anchored<RegisteredAgreement> | null> {
     const url = DEFAULT_IPFS_SERVICE.resolveFetchUrl(contentURI);
     if (!url) return null;
     try {
         const response = await fetchCappedContent(url);
         if (!response.ok) return null;
-        const doc = anchorComposedAgreement(await response.text(), agreementKey);
+        const doc = anchorRegisteredAgreement(await response.text(), agreementKey);
         if (doc === null) {
             const detail = `integrity failure at ${contentURI}: the document is not the agreement the key ${agreementKey} names`;
-            console.warn(`[fetchComposedAgreement] ${detail} — dropping`);
+            console.warn(`[fetchRegisteredAgreement] ${detail} — dropping`);
             loadErrors.set(agreementKey.toLowerCase(), detail);
             noteVerified();
         }
@@ -225,13 +225,13 @@ async function fetchAgreementDocument(
  * stake state), the pinned document at its `contentURI`, verified against the
  * key. Null is ABSENCE — no binding, a failed fetch, a failed parse or a key
  * mismatch — and nothing falls back to another copy. A verified document is
- * kept for the session (`getComposedAgreement`); concurrent reads of one key
+ * kept for the session (`getRegisteredAgreement`); concurrent reads of one key
  * share one fetch.
  */
-export async function fetchComposedAgreement(
+export async function fetchRegisteredAgreement(
     agreementKey: `0x${string}`,
     contentURI?: string,
-): Promise<Anchored<ComposedAgreement> | null> {
+): Promise<Anchored<RegisteredAgreement> | null> {
     const key = agreementKey.toLowerCase();
     const known = verified.get(key);
     if (known) return known;
@@ -257,10 +257,10 @@ export async function fetchComposedAgreement(
 }
 
 /** Hydrate an anchored assembly: every agreement's registered agreement read
- *  through `fetchComposedAgreement` and verified against its key. Null when
+ *  through `fetchRegisteredAgreement` and verified against its key. Null when
  *  any agreement's agreement is absent — the assembly is not offered. */
 export function hydrateAnchoredAssembly(
     assembly: Anchored<Assembly> | Assembly,
 ): Promise<HydratedAssembly | null> {
-    return hydrateAssembly(assembly, (agreementKey) => fetchComposedAgreement(agreementKey));
+    return hydrateAssembly(assembly, (agreementKey) => fetchRegisteredAgreement(agreementKey));
 }

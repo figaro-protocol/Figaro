@@ -500,7 +500,7 @@ contract UsageCounter {
         if (!MerkleProof.verify(proof, order.agreementHash, leaf)) revert InvalidInclusionProof();
 
         // 3. DESIGNER-SIDE STAKE GATE. A clause earns only while its own
-        //    registration stake is live. Without it a self-composed agreement
+        //    registration stake is live. Without it an agreement a seller wrote
         //    could commit any bytes32 key and accrue score to it, inflating the
         //    shared denominator at gas cost. The seller-side twin is in `_accrue`.
         if (!_clauseLive(clauseOrAssembly)) revert ClauseOrAssemblyNotRegistered(clauseOrAssembly);

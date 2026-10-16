@@ -21,7 +21,7 @@ import type {
     RegisteredClause,
     RegisteredMember,
     RegisteredAssembly,
-    RegisteredAgreement,
+    AgreementBinding,
 } from "../types.js";
 import { Topology } from "../state.js";
 import { fetchCoreEvents } from "../events.js";
@@ -182,13 +182,13 @@ export class FigaroContext {
 
     /** All live-staked registered agreements — what a designer composes a new
      *  assembly from. */
-    getAgreements(): RegisteredAgreement[] {
+    getAgreements(): AgreementBinding[] {
         return this.discovery.getAgreements();
     }
 
     /** A registered agreement's binding by key WHATEVER its stake — what
      *  hydrating an assembly's agreement reads (`hydrateAssembly`). */
-    getAgreementBinding(agreementKey: Hex): RegisteredAgreement | undefined {
+    getAgreementBinding(agreementKey: Hex): AgreementBinding | undefined {
         return this.discovery.getAgreementBinding(agreementKey);
     }
 

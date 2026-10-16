@@ -44,7 +44,7 @@ import {
     resolveAuthoredClauseKeys,
     assemblyCompositionHash,
     type Assembly,
-    type ComposedAgreement,
+    type RegisteredAgreement,
     type AssemblyAgreement,
 } from "./assembly.js";
 import { validateContent, type ClauseSpec } from "./clauses/index.js";
@@ -696,7 +696,7 @@ function clauseLabel(clauseKey: string, spec: ProjectionSpecView | undefined): s
  *  registered is skipped) before the assembly is registered. */
 export interface BuiltAssembly {
     assembly: Assembly;
-    agreements: Record<Hex, ComposedAgreement>;
+    agreements: Record<Hex, RegisteredAgreement>;
 }
 
 /** Compose ONE agreement's agreement from the clauses a designer selected
@@ -712,7 +712,7 @@ export function composeOrderAgreement(args: {
     /** clauseKey → the designer's composed values for this order. */
     clauses: Readonly<Record<Hex, Record<string, unknown>>>;
     specs: SpecSource;
-}): { composed: ComposedAgreement; agreementKey: Hex } {
+}): { composed: RegisteredAgreement; agreementKey: Hex } {
     const { clauses: composedClauses, specs } = args;
     for (const clauseKey of Object.keys(composedClauses) as Hex[]) {
         const spec = specs.get(clauseKey);
@@ -737,7 +737,7 @@ export function composeOrderAgreement(args: {
         selection[clauseKey] = designFillValues(specs.get(clauseKey), values);
     }
     const clauses = foldMandatoryClauses(selection, mandatory.agreement);
-    const composed: ComposedAgreement = { clauses };
+    const composed: RegisteredAgreement = { clauses };
     return { composed, agreementKey: agreementKeyOf(composed) };
 }
 
@@ -760,7 +760,7 @@ export function buildAssembly(args: {
     /** orderId → the registered agreement (hydrated and verified against
      *  its key) the agreement binds as is. An order named here composes no
      *  clauses of its own. */
-    registeredByOrderId?: Readonly<Record<string, ComposedAgreement>>;
+    registeredByOrderId?: Readonly<Record<string, RegisteredAgreement>>;
     /** ASSEMBLY-SCOPED composition — clauses declaring
      *  `block.design.scope: "assembly"`, composed ONCE for the whole design
      *  (clauseKey → the designer's values). Optional; absent = none. */
@@ -822,7 +822,7 @@ export function buildAssembly(args: {
     for (const [clauseKey, values] of Object.entries(assemblyClauses ?? {}) as [Hex, Record<string, unknown>][]) {
         assemblySelection[clauseKey] = designFillValues(specs.get(clauseKey), values);
     }
-    const agreements: Record<Hex, ComposedAgreement> = {};
+    const agreements: Record<Hex, RegisteredAgreement> = {};
     const entries: AssemblyAgreement[] = orders.map((order, i) => {
         const id = `order-${i}`;
         const parents = (order.parentOrderHashes ?? []).map((p) => idToLocal.get(p) ?? p);
@@ -846,12 +846,12 @@ export function buildAssembly(args: {
         // The one composition rule (`composeOrderAgreement`): the designer's
         // clause SELECTION, value-free but for design fills, the mandatory
         // clauses folded in.
-        const { composed: composedAgreement, agreementKey } = composeOrderAgreement({
+        const { composed: registeredAgreement, agreementKey } = composeOrderAgreement({
             clauses: clausesByOrderId[order.orderHash] ?? {},
             specs,
         });
-        const { clauses } = composedAgreement;
-        agreements[agreementKey] = composedAgreement;
+        const { clauses } = registeredAgreement;
+        agreements[agreementKey] = registeredAgreement;
         return { id, agreementKey, clauses: agreementTopologyFills(clauses, parents, specs) };
     });
     return {
@@ -890,7 +890,7 @@ export interface AuthoredAgreement {
 export function composeAuthoredAgreement(
     authored: object,
     specs: SpecSource,
-): { document: ComposedAgreement; agreementKey: Hex } {
+): { document: RegisteredAgreement; agreementKey: Hex } {
     const doc = resolveAuthoredClauseKeys(authored, specs) as Partial<AuthoredAgreement> & {
         clauses?: Record<Hex, Record<string, unknown>>;
     };
@@ -898,7 +898,7 @@ export function composeAuthoredAgreement(
         throw new Error("the authored agreement has no clauses");
     }
     const { composed, agreementKey } = composeOrderAgreement({ clauses: doc.clauses, specs });
-    const document: ComposedAgreement = {
+    const document: RegisteredAgreement = {
         ...(doc.name !== undefined ? { name: doc.name } : {}),
         ...(doc.summary !== undefined ? { summary: doc.summary } : {}),
         ...(doc.description !== undefined ? { description: doc.description } : {}),
@@ -921,7 +921,7 @@ export function composeAuthoredAgreement(
  */
 export function assembleAuthored(
     authored: object,
-    agreementsByName: Readonly<Record<string, ComposedAgreement>>,
+    agreementsByName: Readonly<Record<string, RegisteredAgreement>>,
     specs: SpecSource,
 ): BuiltAssembly {
     const doc = resolveAuthoredClauseKeys(authored, specs) as {
@@ -936,7 +936,7 @@ export function assembleAuthored(
         throw new Error("the authored assembly has no agreements");
     }
     const mandatory = mandatorySpecsByScope(specs);
-    const agreements: Record<Hex, ComposedAgreement> = {};
+    const agreements: Record<Hex, RegisteredAgreement> = {};
     const entries: AssemblyAgreement[] = doc.agreements.map((entry, i) => {
         const id = entry.id ?? `order-${i}`;
         if (typeof entry.agreement !== "string" || entry.agreement.length === 0) {

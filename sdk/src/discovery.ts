@@ -49,7 +49,7 @@ import type {
     RegisteredClause,
     RegisteredMember,
     RegisteredAssembly,
-    RegisteredAgreement,
+    AgreementBinding,
 } from "./types.js";
 import { canonicalContentHash } from "./agreement.js";
 
@@ -299,7 +299,7 @@ interface ClauseEntry {
 }
 
 interface AgreementEntry {
-    agreement: RegisteredAgreement;
+    agreement: AgreementBinding;
 }
 
 interface AssemblyEntry {
@@ -348,13 +348,13 @@ export class DiscoveryGraph {
 
     /** All live-staked registered agreements — what a drawer offers for a
      *  new composition. */
-    getAgreements(): RegisteredAgreement[] {
+    getAgreements(): AgreementBinding[] {
         return [...this.agreements.values()].filter((e) => !e.agreement.stakeWithdrawn).map((e) => e.agreement);
     }
 
     /** A single registered agreement by key; undefined if unknown or
      *  de-surfaced. */
-    getAgreement(agreementKey: Hex): RegisteredAgreement | undefined {
+    getAgreement(agreementKey: Hex): AgreementBinding | undefined {
         const e = this.agreements.get(agreementKey.toLowerCase());
         return e && !e.agreement.stakeWithdrawn ? e.agreement : undefined;
     }
@@ -363,7 +363,7 @@ export class DiscoveryGraph {
      *  binding is never cleared, so hydration of an assembly composed from a
      *  withdrawn agreement reads its `contentURI` here; `stakeWithdrawn` says
      *  whether it is still offered. Undefined only if never registered. */
-    getAgreementBinding(agreementKey: Hex): RegisteredAgreement | undefined {
+    getAgreementBinding(agreementKey: Hex): AgreementBinding | undefined {
         return this.agreements.get(agreementKey.toLowerCase())?.agreement;
     }
 

@@ -46,7 +46,7 @@ import {
 } from "../src/agreement.js";
 import { agreementArb } from "./propertyArbs.js";
 import { agreementKeyOf, assemblyCompositionHash } from "../src/assembly.js";
-import { ASSEMBLY_THREE, COMPOSED_DESIGN, K } from "./assemblyVectors.js";
+import { ASSEMBLY_THREE, REGISTERED_DESIGN, K } from "./assemblyVectors.js";
 
 const FUZZ_PATH = path.resolve(__dirname, "../../test/fixtures/streams/agreements.json");
 const FIXTURE_PATH = path.resolve(__dirname, "../../test/fixtures/merkle-vectors.json");
@@ -77,7 +77,7 @@ const WITH_DESIGN: Agreement = {
         { clause: K("figaro-commerce"), data: { currency: "0x0000000000000000000000000000000000000000", payment: "7" } },
         { clause: K("figaro-topology"), data: { parentOrderHashes: [] } },
     ],
-    provenance: { agreementKey: agreementKeyOf(COMPOSED_DESIGN), compositionHash: assemblyCompositionHash(ASSEMBLY_THREE) },
+    provenance: { agreementKey: agreementKeyOf(REGISTERED_DESIGN), compositionHash: assemblyCompositionHash(ASSEMBLY_THREE) },
 };
 
 function vectorFor(label: string, agreement: Agreement) {

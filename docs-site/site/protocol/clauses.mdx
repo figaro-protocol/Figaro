@@ -69,7 +69,7 @@ One clause is always the order's shape: `figaro-topology` states which seller fo
 
 ## How a registered agreement is composed and reused
 
-A **agreement** is the clauses composed for one agreement, with the fills the designer gives them, and no values: `ComposedAgreement { name?, summary?, description?, clauses }`, where `clauses` maps each clause key to the designer's fills. The topology clause is composed with `{}`: who follows whom belongs to the agreement, so one registered agreement can sit in any agreement of any assembly. Its key is `agreementKeyOf(doc)` (hash 4 above).
+A **agreement** is the clauses composed for one agreement, with the fills the designer gives them, and no values: `RegisteredAgreement { name?, summary?, description?, clauses }`, where `clauses` maps each clause key to the designer's fills. The topology clause is composed with `{}`: who follows whom belongs to the agreement, so one registered agreement can sit in any agreement of any assembly. Its key is `agreementKeyOf(doc)` (hash 4 above).
 
 Register it once and every designer can reuse it:
 
@@ -77,7 +77,7 @@ Register it once and every designer can reuse it:
 2. Compute `agreementKey = agreementKeyOf(doc)` and read `AgreementRegistry.bindings(agreementKey)`: a live binding means the agreement is already registered — bind it as is.
 3. Otherwise pin the document and call `registerAgreement(agreementKey, contentURI)` with `value = registrationDeposit()` ([AgreementRegistry](/protocol/contracts/)).
 
-**Hydration — verify by the key.** A reader that meets an `agreementKey` reads the binding's `contentURI`, fetches the document, parses it, and accepts it only if `agreementKeyOf(doc)` equals the registered key: `anchorComposedAgreement(raw, agreementKey)` returns the agreement or `null`. The check is on the key, not the raw bytes, because the editorial fields sit outside the key. A failed fetch, a failed parse or a mismatch is absence: the agreement, and the assembly holding it, is not offered — never a fallback to a bundled or inline copy. A withdrawn stake leaves the binding readable, so assemblies already composed from it keep hydrating; a reader offers only live registrations for a new composition.
+**Hydration — verify by the key.** A reader that meets an `agreementKey` reads the binding's `contentURI`, fetches the document, parses it, and accepts it only if `agreementKeyOf(doc)` equals the registered key: `anchorRegisteredAgreement(raw, agreementKey)` returns the agreement or `null`. The check is on the key, not the raw bytes, because the editorial fields sit outside the key. A failed fetch, a failed parse or a mismatch is absence: the agreement, and the assembly holding it, is not offered — never a fallback to a bundled or inline copy. A withdrawn stake leaves the binding readable, so assemblies already composed from it keep hydrating; a reader offers only live registrations for a new composition.
 
 ## How an assembly composes from registered agreements
 

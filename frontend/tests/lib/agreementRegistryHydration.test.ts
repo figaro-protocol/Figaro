@@ -2,7 +2,7 @@
  * agreementRegistryHydration.test.ts — the registered agreement read at the
  * edge, and the designer's binding of one to an agreement.
  *
- * `fetchComposedAgreement` reads the `AgreementRegistry` binding BY KEY, the
+ * `fetchRegisteredAgreement` reads the `AgreementRegistry` binding BY KEY, the
  * pinned document at its `contentURI`, and verifies the document against the
  * key: no binding, a failed fetch, a document that is not JSON, or one whose
  * clauses key elsewhere is ABSENCE (null), and `hydrateAnchoredAssembly` then
@@ -15,7 +15,7 @@
  */
 import { ZERO_ADDRESS } from "@/lib/shared/evm";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { agreementKeyOf, canonicalize, type ComposedAgreement, type Hex } from "@figaro-protocol/sdk";
+import { agreementKeyOf, canonicalize, type RegisteredAgreement, type Hex } from "@figaro-protocol/sdk";
 
 const reads = vi.hoisted(() => ({
     bindings: new Map<string, readonly [string, bigint, boolean, string]>(),
@@ -46,7 +46,7 @@ vi.mock("@/lib/shared/ipfsService", async (importOriginal) => {
     };
 });
 
-import { fetchComposedAgreement, getComposedAgreement, getComposedAgreementLoadError, hydrateAnchoredAssembly } from "@/lib/protocol/useAgreementRegistry";
+import { fetchRegisteredAgreement, getRegisteredAgreement, getRegisteredAgreementLoadError, hydrateAnchoredAssembly } from "@/lib/protocol/useAgreementRegistry";
 import { projectSnapshotForReview } from "@/lib/designer/draftToAssembly";
 import { createSyntheticRootOrder, createSyntheticSubOrder, startSyntheticSession } from "@/lib/designer/syntheticProcess";
 import type { DesignSnapshot } from "@/lib/designer/syntheticDesignStore";
@@ -55,7 +55,7 @@ import { keyOf, primeClauseSpecs } from "./primeClauseSpecs";
 const REGISTRANT = "0x0000000000000000000000000000000000005e11";
 
 /** Register `doc` under its key at `uri` — the binding a registry read returns. */
-function register(doc: ComposedAgreement, uri: string, body: string | null = canonicalize(doc)): Hex {
+function register(doc: RegisteredAgreement, uri: string, body: string | null = canonicalize(doc)): Hex {
     const key = agreementKeyOf(doc);
     reads.bindings.set(key.toLowerCase(), [REGISTRANT, 7n, false, uri]);
     reads.documents.set(uri, body);
@@ -66,7 +66,7 @@ beforeAll(async () => {
     await primeClauseSpecs(["figaro-commerce", "figaro-topology", "figaro-schedule", "figaro-acceptance-criteria"]);
 });
 
-describe("fetchComposedAgreement — the binding by key, the document verified against it", () => {
+describe("fetchRegisteredAgreement — the binding by key, the document verified against it", () => {
     beforeEach(() => {
         reads.bindings.clear();
         reads.documents.clear();
@@ -75,50 +75,50 @@ describe("fetchComposedAgreement — the binding by key, the document verified a
     it("reads a registered agreement and keeps it for the session", async () => {
         const doc = { name: "Counter sale · order-0", clauses: { [keyOf("figaro-commerce")]: {}, [keyOf("figaro-schedule")]: {} } };
         const key = register(doc, "ipfs://registered-1");
-        const read = await fetchComposedAgreement(key);
+        const read = await fetchRegisteredAgreement(key);
         expect(read?.clauses).toEqual(doc.clauses);
         expect(read?.name).toBe(doc.name);
-        expect(getComposedAgreement(key)?.clauses).toEqual(doc.clauses);
+        expect(getRegisteredAgreement(key)?.clauses).toEqual(doc.clauses);
     });
 
     it("reads an agreement whose stake was withdrawn — bindings are never cleared", async () => {
         const doc = { clauses: { [keyOf("figaro-commerce")]: {}, [keyOf("figaro-acceptance-criteria")]: {} } };
         const key = register(doc, "ipfs://withdrawn");
         reads.bindings.set(key.toLowerCase(), [REGISTRANT, 7n, true, "ipfs://withdrawn"]);
-        expect((await fetchComposedAgreement(key))?.clauses).toEqual(doc.clauses);
+        expect((await fetchRegisteredAgreement(key))?.clauses).toEqual(doc.clauses);
     });
 
     it("is absent when no binding exists", async () => {
-        expect(await fetchComposedAgreement(`0x${"5a".repeat(32)}`)).toBeNull();
+        expect(await fetchRegisteredAgreement(`0x${"5a".repeat(32)}`)).toBeNull();
     });
 
     it("is absent when the pinned document is unreachable or not JSON", async () => {
         const unreachable = register({ clauses: { [keyOf("figaro-topology")]: { a: 1 } } }, "ipfs://gone", null);
-        expect(await fetchComposedAgreement(unreachable)).toBeNull();
+        expect(await fetchRegisteredAgreement(unreachable)).toBeNull();
         const garbled = register({ clauses: { [keyOf("figaro-topology")]: { a: 2 } } }, "ipfs://garbled", "not json");
-        expect(await fetchComposedAgreement(garbled)).toBeNull();
+        expect(await fetchRegisteredAgreement(garbled)).toBeNull();
     });
 
     it("is absent when the document's clauses key elsewhere — the name rides outside the key, the clauses do not — and that absence is PERMANENT: recorded, never re-read", async () => {
         const doc = { clauses: { [keyOf("figaro-topology")]: { a: 3 } } };
         const other = { clauses: { [keyOf("figaro-topology")]: { a: 4 } } };
         const key = register(doc, "ipfs://swapped", canonicalize(other));
-        expect(await fetchComposedAgreement(key)).toBeNull();
-        expect(getComposedAgreementLoadError(key)).toMatch(/not the agreement the key/);
+        expect(await fetchRegisteredAgreement(key)).toBeNull();
+        expect(getRegisteredAgreementLoadError(key)).toMatch(/not the agreement the key/);
         // The binding now points at a document that WOULD verify: a retired
         // registration's bytes never change, so the failure is not re-read.
         reads.documents.set("ipfs://swapped", canonicalize(doc));
-        expect(await fetchComposedAgreement(key)).toBeNull();
-        expect(getComposedAgreement(key)).toBeUndefined();
+        expect(await fetchRegisteredAgreement(key)).toBeNull();
+        expect(getRegisteredAgreement(key)).toBeUndefined();
     });
 
     it("a gateway miss is NOT permanent: nothing is recorded and the next read lands", async () => {
         const doc = { clauses: { [keyOf("figaro-topology")]: { a: 5 } } };
         const key = register(doc, "ipfs://late", null);
-        expect(await fetchComposedAgreement(key)).toBeNull();
-        expect(getComposedAgreementLoadError(key)).toBeUndefined();
+        expect(await fetchRegisteredAgreement(key)).toBeNull();
+        expect(getRegisteredAgreementLoadError(key)).toBeUndefined();
         reads.documents.set("ipfs://late", canonicalize(doc));
-        expect((await fetchComposedAgreement(key))?.clauses).toEqual(doc.clauses);
+        expect((await fetchRegisteredAgreement(key))?.clauses).toEqual(doc.clauses);
     });
 
     it("hydrates an assembly only when every agreement's agreement reads", async () => {
@@ -159,7 +159,7 @@ describe("the designer binds a registered agreement to one agreement and compose
         // A registered agreement carrying the live mandatory clauses.
         const registered = { name: "Scheduled work", clauses: { [keyOf("figaro-commerce")]: {}, [keyOf("figaro-topology")]: {}, [keyOf("figaro-schedule")]: {} } };
         const boundKey = register(registered, "ipfs://scheduled-work");
-        await fetchComposedAgreement(boundKey);
+        await fetchRegisteredAgreement(boundKey);
         const base = snapshot({});
         const snap = {
             ...base,
@@ -182,7 +182,7 @@ describe("the designer binds a registered agreement to one agreement and compose
     it("refuses an agreement that binds and composes — the SDK's message reaches the review", async () => {
         const registered = { clauses: { [keyOf("figaro-commerce")]: {}, [keyOf("figaro-topology")]: {} } };
         const boundKey = register(registered, "ipfs://plain");
-        await fetchComposedAgreement(boundKey);
+        await fetchRegisteredAgreement(boundKey);
         const base = snapshot({});
         const review = projectSnapshotForReview({
             ...base,

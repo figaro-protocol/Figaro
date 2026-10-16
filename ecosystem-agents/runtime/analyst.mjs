@@ -49,7 +49,7 @@ import {
 import { frame } from "./dataChannel.mjs";
 import { ipfsGateways } from "./ipfsRead.mjs";
 import { fetchWitnessContent } from "./witnessContent.mjs";
-import { fetchAnchoredClauseSpec, fetchAnchoredComposedAgreement, fetchAnchoredAssembly } from "./anchoredContent.mjs";
+import { fetchAnchoredClauseSpec, fetchAnchoredRegisteredAgreement, fetchAnchoredAssembly } from "./anchoredContent.mjs";
 
 // ── Serialization ───────────────────────────────────────────────────────────
 
@@ -361,7 +361,7 @@ export async function syncCorpus({
                 // agreement a gateway substituted, or one not registered,
                 // contributes no pin.
                 const binding = discovery.getAgreementBinding(entry.agreementKey);
-                const composed = binding ? await fetchAnchoredComposedAgreement(binding, { gateways }) : { absent: "not registered" };
+                const composed = binding ? await fetchAnchoredRegisteredAgreement(binding, { gateways }) : { absent: "not registered" };
                 // The pin is composed at the assembly level and folds into every
                 // agreement's bag, each clause read by its key.
                 const pin = readUtilityTokenPin(

@@ -15,7 +15,7 @@ import {
     assemblyCompositionHash,
 } from "../src/assembly.js";
 import { decodeProvenanceContent, provenanceLeafBytes, verifyInclusionProof } from "../src/agreement.js";
-import { bytes32Arb, composedAgreementArb, assemblyArb } from "./propertyArbs.js";
+import { bytes32Arb, registeredAgreementArb, assemblyArb } from "./propertyArbs.js";
 
 describe("the composition tree", () => {
     it("every agreement's membership proof verifies under its assembly's root", () => {
@@ -47,7 +47,7 @@ describe("the composition tree", () => {
 
 describe("the agreement key", () => {
     it("every composed clause's membership proof verifies under the agreement key", () => {
-        fc.assert(fc.property(composedAgreementArb, (doc) => {
+        fc.assert(fc.property(registeredAgreementArb, (doc) => {
             const key = agreementKeyOf(doc);
             for (const clauseKey of Object.keys(doc.clauses) as `0x${string}`[]) {
                 const { leaf, proof } = buildRegisteredClauseInclusionProof(doc, clauseKey);
@@ -57,7 +57,7 @@ describe("the agreement key", () => {
     });
 
     it("a clause's proof does not verify under a different agreement's key", () => {
-        fc.assert(fc.property(composedAgreementArb, composedAgreementArb, (a, b) => {
+        fc.assert(fc.property(registeredAgreementArb, registeredAgreementArb, (a, b) => {
             const keyA = agreementKeyOf(a);
             const keyB = agreementKeyOf(b);
             fc.pre(keyA !== keyB);
@@ -68,13 +68,13 @@ describe("the agreement key", () => {
     });
 
     it("ignores the editorial fields", () => {
-        fc.assert(fc.property(composedAgreementArb, fc.string(), (doc, description) => {
+        fc.assert(fc.property(registeredAgreementArb, fc.string(), (doc, description) => {
             expect(agreementKeyOf({ ...doc, description, name: `${doc.name ?? ""}!` })).toBe(agreementKeyOf({ clauses: doc.clauses }));
         }));
     });
 
     it("moves with any clause value", () => {
-        fc.assert(fc.property(composedAgreementArb, (doc) => {
+        fc.assert(fc.property(registeredAgreementArb, (doc) => {
             const [first] = Object.keys(doc.clauses) as `0x${string}`[];
             const changed = { clauses: { ...doc.clauses, [first]: { ...doc.clauses[first], __moved: true } } };
             expect(agreementKeyOf(changed)).not.toBe(agreementKeyOf(doc));

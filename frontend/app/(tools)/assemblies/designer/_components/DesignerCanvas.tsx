@@ -59,9 +59,9 @@ import { assemblyToDraft } from "@/lib/designer/assemblyToDraft";
 import type { HydratedAssembly } from "@figaro-protocol/sdk";
 import { clauseIsMandatory } from "@/lib/shared/clauseSpecSource";
 import {
-    fetchComposedAgreement,
-    getComposedAgreement,
-    useComposedAgreementsVersion,
+    fetchRegisteredAgreement,
+    getRegisteredAgreement,
+    useRegisteredAgreementsVersion,
 } from "@/lib/protocol/useAgreementRegistry";
 import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
 import { maxCommitsLandableInOneBlock, maxOrdersResolvablePerProcess } from "@/lib/shared/chainGasCeilings";
@@ -174,9 +174,9 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
     // The bound agreements' documents are read from the registry (chain →
     // IPFS) into the session cache the build reads; a read re-derives the
     // identity and the canvas's per-node clauses.
-    const composedAgreementsVersion = useComposedAgreementsVersion();
+    const registeredAgreementsVersion = useRegisteredAgreementsVersion();
     useEffect(() => {
-        for (const key of Object.values(registeredByOrderId)) void fetchComposedAgreement(key);
+        for (const key of Object.values(registeredByOrderId)) void fetchRegisteredAgreement(key);
     }, [registeredByOrderId]);
     // The assembly-scoped terms, clause key → the designer's values.
     const [assemblyClauses, setAssemblyClauses] = useState<
@@ -611,7 +611,7 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
     const canvasClausesByOrderId = useMemo(() => {
         const out = { ...clausesByOrderId };
         for (const [orderId, key] of Object.entries(registeredByOrderId)) {
-            const doc = getComposedAgreement(key);
+            const doc = getRegisteredAgreement(key);
             if (!doc) continue;
             out[orderId] = {
                 ...Object.fromEntries(Object.entries(doc.clauses).filter(([clauseKey]) => !clauseIsMandatory(clauseKey))),
@@ -620,7 +620,7 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
         }
         return out;
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [clausesByOrderId, registeredByOrderId, composedAgreementsVersion]);
+    }, [clausesByOrderId, registeredByOrderId, registeredAgreementsVersion]);
 
     const savedHint = useMemo(() => {
         if (!savedAt) return null;

@@ -27,7 +27,7 @@ import {
 import { frame } from "./dataChannel.mjs";
 import { cidOf, fetchIpfsText } from "./ipfsRead.mjs";
 import { fetchWitnessContent } from "./witnessContent.mjs";
-import { fetchAnchoredClauseSpec, fetchAnchoredComposedAgreement, fetchAnchoredAssembly } from "./anchoredContent.mjs";
+import { fetchAnchoredClauseSpec, fetchAnchoredRegisteredAgreement, fetchAnchoredAssembly } from "./anchoredContent.mjs";
 
 function fail(message) {
     console.error(`figaro-fetch: ${message}`);
@@ -118,7 +118,7 @@ async function main() {
         const agreement = graph.getAgreementBinding(agreementKey);
         if (!agreement) fail(`agreement ${agreementKey} is not registered`);
         // Verified against its key before it is printed.
-        const hit = await fetchAnchoredComposedAgreement(agreement);
+        const hit = await fetchAnchoredRegisteredAgreement(agreement);
         if (hit.absent) fail(`agreement ${agreementKey}: no anchored document at ${agreement.contentURI} — ${hit.absent} (absence, not the registry's content)`);
         console.log(frame({
             source: "agreement-registry", refKind: "cid", ref: cidOf(agreement.contentURI), content: hit.text,

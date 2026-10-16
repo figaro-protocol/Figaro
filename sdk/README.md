@@ -307,7 +307,7 @@ definition) and `RPGF_*` constant is a **root** export.
 | `agreementKeyOf` | root | A registered agreement's key — the merkle root over one leaf per composed clause (the clause key and the designer's fills; editorial prose excluded); the key `AgreementRegistry` binds. |
 | `agreementClauseLeaves` | root | The sorted leaves of a registered agreement's tree, one per composed clause. |
 | `buildRegisteredClauseInclusionProof` | root | A composed clause's membership proof under `agreementKeyOf`: its leaf, its sorted-pair proof, and the hash of the designer's fills for it. |
-| `anchorComposedAgreement` | root | A fetched registered agreement as `Anchored<ComposedAgreement>` when `agreementKeyOf` of it is the key; null (absence) otherwise. |
+| `anchorRegisteredAgreement` | root | A fetched registered agreement as `Anchored<RegisteredAgreement>` when `agreementKeyOf` of it is the key; null (absence) otherwise. |
 | `anchorAssembly` | root | A fetched assembly as `Anchored<Assembly>` when its merkle root over the agreements and terms is `AssemblyRegistry`'s `compositionHash`; null otherwise. |
 | `assertAgreementSignable` | root | The ONE pre-signature thrower: every clause conforms to its spec, and the terms equal the struct. |
 | `assertApprovalCoversBond` | root | Throws when an approval is short of the full per-order bond `FigaroCore` will pull. |
@@ -1917,7 +1917,7 @@ import { anchorAssembly, hydrateAssembly, agreementClauses, buildAgreementInclus
 const anchored = anchorAssembly(JSON.parse(assemblyText, strippingReviver), registered.compositionHash);
 const assembly = anchored && await hydrateAssembly(anchored, async (agreementKey) => {
   const binding = graph.getAgreementBinding(agreementKey);
-  return binding ? fetchText(binding.contentURI) : null;   // anchorComposedAgreement checks it
+  return binding ? fetchText(binding.contentURI) : null;   // anchorRegisteredAgreement checks it
 });
 if (!assembly) { /* absence: the assembly is not offered */ }
 // What agreement i instantiates: its registered agreement, the agreement's fills over it.

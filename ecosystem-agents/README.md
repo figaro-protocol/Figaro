@@ -44,7 +44,7 @@ the whole model first.
 - **`figaro-clause-author`** — author (or version) a clause: a spec → IPFS → a permissionless
   `ClauseRegistry` registration under the user's wallet. No on-chain code.
 - **`figaro-assembly-designer`** — compose a new assembly, or **fork** an existing one, from
-  registered agreements (registering a new `ComposedAgreement` on `AgreementRegistry` only
+  registered agreements (registering a new `RegisteredAgreement` on `AgreementRegistry` only
   when none fits): an `Assembly` → IPFS → a permissionless `AssemblyRegistry`
   registration under the user's wallet.
 - **`figaro-analyst`** — *read and analyze* a market's public graphs (`@figaro-protocol/sdk/derive`):

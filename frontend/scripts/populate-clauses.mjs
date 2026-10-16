@@ -562,7 +562,7 @@ export function fillDeployTimeCurrency(assembly, tokenAddress) {
  *  binds is skipped). The pinned document carries the editorial `name` beside
  *  the keyed clauses. In vault mode the multisig is msg.sender, so the DAO is
  *  the agreement's designer of record. */
-export async function registerComposedAgreement({ publicClient, walletClient, account, registry, ipfsApiUrl, agreementKey, document, vault, ownerClients, log = console.log }) {
+export async function registerAgreement({ publicClient, walletClient, account, registry, ipfsApiUrl, agreementKey, document, vault, ownerClients, log = console.log }) {
     const [, registeredAt] = await publicClient.readContract({
         address: registry, abi: AGREEMENT_REGISTRY_ABI, functionName: 'bindings', args: [agreementKey],
     });
@@ -609,7 +609,7 @@ export async function anchorBuiltAssembly({ built, agreementRegistry, ...args })
     for (const [i, entry] of assembly.agreements.entries()) {
         const doc = agreements[entry.agreementKey];
         if (!doc || assembly.agreements.findIndex((s) => s.agreementKey === entry.agreementKey) !== i) continue;
-        await registerComposedAgreement({
+        await registerAgreement({
             ...args,
             registry: agreementRegistry,
             agreementKey: entry.agreementKey,

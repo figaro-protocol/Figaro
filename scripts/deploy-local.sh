@@ -254,7 +254,7 @@ echo "   Deployment: $CORE_DEPLOYMENT"
 # frontend's useClauseSpecs() never loads and the designer/checkout surfaces crash
 # with "clause specs not loaded: no structural clauses in the cache".
 # The same invocation registers the reference assemblies, as the Sepolia
-# genesis does: each assembly's distinct composed agreements on
+# genesis does: each assembly's distinct registered agreements on
 # AgreementRegistry, then the assembly on AssemblyRegistry, with the devnet's
 # MockERC20 substituted for the checked-in ZERO_ADDRESS currency sentinel
 # (the token populate-test-data.mjs and the e2e specs substitute too).

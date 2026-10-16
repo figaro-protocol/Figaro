@@ -17,18 +17,18 @@
  */
 
 import {
-    anchorComposedAgreement,
+    anchorRegisteredAgreement,
     hydrateAssembly,
     isBytes32Hex,
     planAssemblyOrders,
     boundAgreement,
-    type ComposedAgreement,
+    type RegisteredAgreement,
     type Hex,
     type HydratedAssembly,
 } from "@figaro-protocol/sdk";
 import { ZERO_ADDRESS } from "@/lib/shared/evm";
 import { assemblyCompositionHash, type Assembly } from "@/lib/shared/assembly";
-import { fetchComposedAgreement } from "@/lib/protocol/useAgreementRegistry";
+import { fetchRegisteredAgreement } from "@/lib/protocol/useAgreementRegistry";
 import { safeJsonParse } from "@/lib/shared/safeJson";
 import type { ClauseFields } from "@/lib/shared/clauseFields";
 import { extractErrorMessage } from "@/lib/shared/errors";
@@ -171,10 +171,10 @@ export function parseAssemblyJson(text: string): ParsedAssemblyResult {
 export async function hydrateImportedAssembly(
     parsed: Extract<ParsedAssemblyResult, { ok: true }>,
 ): Promise<{ hydrated: HydratedAssembly; composeKeys: Set<string> } | { error: string }> {
-    const pasted = new Map<string, ComposedAgreement>();
+    const pasted = new Map<string, RegisteredAgreement>();
     for (const [key, raw] of Object.entries(parsed.agreements)) {
         if (!isBytes32Hex(key)) continue;
-        const doc = anchorComposedAgreement(raw, key);
+        const doc = anchorRegisteredAgreement(raw, key);
         if (doc) pasted.set(key.toLowerCase(), doc);
     }
     const composeKeys = new Set<string>();
@@ -185,7 +185,7 @@ export async function hydrateImportedAssembly(
             composeKeys.add(key);
             return local;
         }
-        return fetchComposedAgreement(agreementKey);
+        return fetchRegisteredAgreement(agreementKey);
     });
     if (!hydrated) {
         return { error: "An agreement binds an agreement that is neither in the pasted composition nor registered on this network's AgreementRegistry." };

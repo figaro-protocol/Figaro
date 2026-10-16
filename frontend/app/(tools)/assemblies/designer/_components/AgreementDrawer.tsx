@@ -28,9 +28,9 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Order } from "@/lib/kernel/store";
 import {
-    fetchComposedAgreement,
-    getComposedAgreement,
-    useComposedAgreementsVersion,
+    fetchRegisteredAgreement,
+    getRegisteredAgreement,
+    useRegisteredAgreementsVersion,
     usePublishedAgreements,
 } from "@/lib/protocol/useAgreementRegistry";
 import { useAllRegisteredClauses, type RegisteredClauseEvent } from "@/lib/protocol/useClauseRegistry";
@@ -386,17 +386,17 @@ function RegisteredAgreementsPanel({
     const { data: liveAgreements, refetch: refetchAgreements } = usePublishedAgreements(undefined);
     // Re-renders as each document is read and verified (the labels read the
     // session cache).
-    useComposedAgreementsVersion();
+    useRegisteredAgreementsVersion();
     useEffect(() => {
-        for (const row of liveAgreements ?? []) void fetchComposedAgreement(row.agreementKey, row.contentURI);
-        if (boundAgreementKey) void fetchComposedAgreement(boundAgreementKey);
+        for (const row of liveAgreements ?? []) void fetchRegisteredAgreement(row.agreementKey, row.contentURI);
+        if (boundAgreementKey) void fetchRegisteredAgreement(boundAgreementKey);
     }, [liveAgreements, boundAgreementKey]);
     const label = (agreementKey: `0x${string}`): string => {
-        const doc = getComposedAgreement(agreementKey);
+        const doc = getRegisteredAgreement(agreementKey);
         const key = truncateHex(agreementKey, { head: 10, tail: 4 });
         return doc?.name ? `${doc.name} · ${key}` : key;
     };
-    const boundDoc = boundAgreementKey ? getComposedAgreement(boundAgreementKey) : undefined;
+    const boundDoc = boundAgreementKey ? getRegisteredAgreement(boundAgreementKey) : undefined;
     return (
         <section data-testid="drawer-section-agreements" className="space-y-4">
             <div data-testid="drawer-bound-agreement">

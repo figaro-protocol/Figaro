@@ -1,5 +1,5 @@
 /**
- * registerComposedAgreement — the one registration path for a composed
+ * registerAgreement — the one registration path for a composed
  * agreement, whether the drawer registers it on its own or an assembly's
  * publish registers an agreement's new agreement: a key the registry
  * already binds is skipped with nothing sent (first write wins); otherwise
@@ -7,7 +7,7 @@
  * stake, written, and held to a `success` receipt.
  */
 import { describe, expect, it, vi } from "vitest";
-import { agreementKeyOf, type ComposedAgreement } from "@figaro-protocol/sdk";
+import { agreementKeyOf, type RegisteredAgreement } from "@figaro-protocol/sdk";
 
 vi.mock("@/lib/kernel/contracts", async (importOriginal) => {
     const actual = await importOriginal<typeof import("@/lib/kernel/contracts")>();
@@ -18,10 +18,10 @@ vi.mock("@/lib/shared/wagmi", () => ({
     activeChain: { id: 31337 },
 }));
 
-import { registerComposedAgreement } from "@/lib/designer/publishAssembly";
+import { registerAgreement } from "@/lib/designer/publishAssembly";
 
 const DESIGNER = "0x1111111111111111111111111111111111111111" as const;
-const DOC: ComposedAgreement = {
+const DOC: RegisteredAgreement = {
     name: "Probe",
     clauses: { [`0x${"ab".repeat(32)}`]: {}, [`0x${"cd".repeat(32)}`]: { regime: "open" } },
 };
@@ -41,10 +41,10 @@ function fakes(receiptStatus = "success") {
     return { calls, client, writeContractAsync, ipfs };
 }
 
-describe("registerComposedAgreement", () => {
+describe("registerAgreement", () => {
     it("pins, simulates with the registry's stake, writes and waits for a success receipt", async () => {
         const { calls, client, writeContractAsync, ipfs } = fakes();
-        const out = await registerComposedAgreement({
+        const out = await registerAgreement({
             client: client as never, writeContractAsync, address: DESIGNER, doc: DOC, agreementKey: KEY,
             ipfs, readBinding: async () => null,
         });
@@ -61,7 +61,7 @@ describe("registerComposedAgreement", () => {
 
     it("skips a key the registry already binds — nothing is pinned or sent", async () => {
         const { calls, client, writeContractAsync, ipfs } = fakes();
-        const out = await registerComposedAgreement({
+        const out = await registerAgreement({
             client: client as never, writeContractAsync, address: DESIGNER, doc: DOC, agreementKey: KEY,
             ipfs, readBinding: async () => ({ registeredBy: DESIGNER, registeredAt: 1n, stakeWithdrawn: false, contentURI: "ipfs://old" }),
         });
@@ -71,7 +71,7 @@ describe("registerComposedAgreement", () => {
 
     it("a mined-but-reverted registration throws and is never reported as registered", async () => {
         const { client, writeContractAsync, ipfs } = fakes("reverted");
-        await expect(registerComposedAgreement({
+        await expect(registerAgreement({
             client: client as never, writeContractAsync, address: DESIGNER, doc: DOC, agreementKey: KEY,
             ipfs, readBinding: async () => null,
         })).rejects.toThrow(/registration was not created/);

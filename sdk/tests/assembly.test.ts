@@ -17,7 +17,7 @@ import {
     agreementClauseLeaves,
     buildRegisteredClauseInclusionProof,
 } from "../src/assembly.js";
-import type { Assembly, ComposedAgreement } from "../src/assembly.js";
+import type { Assembly, RegisteredAgreement } from "../src/assembly.js";
 import { PROVENANCE_LEAF_KEY, buildMerkleRoot, canonicalize, computeClauseLeaf, sortLeaves, verifyInclusionProof } from "../src/agreement.js";
 import { assembleAuthored, composeAuthoredAgreement } from "../src/projection.js";
 import { hydrateAuthored } from "./hydrate.js";
@@ -229,7 +229,7 @@ describe("composeAuthoredAgreement + assembleAuthored (seed-time derivation)", (
         const all = specSourceOf(readdirSync(clausesDir).filter((f) => f.endsWith(".json"))
             .map((f) => viewOf(JSON.parse(readFileSync(path.join(clausesDir, f), "utf8")))));
         const agreementsDir = path.resolve(__dirname, "../../agreements");
-        const byName: Record<string, ComposedAgreement> = {};
+        const byName: Record<string, RegisteredAgreement> = {};
         for (const file of readdirSync(agreementsDir).filter((f) => f.endsWith(".json"))) {
             const { document, agreementKey } = composeAuthoredAgreement(JSON.parse(readFileSync(path.join(agreementsDir, file), "utf8")), all);
             expect(document.name, `${file} carries its name`).toBeTruthy();
