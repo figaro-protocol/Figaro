@@ -600,8 +600,10 @@ export async function registerComposedAgreement({ publicClient, walletClient, ac
 }
 
 /** Register a built assembly's agreements (each DISTINCT key once, in order
- *  slot order; each document named after the assembly and the first order
- *  slot binding it), then anchor its template. */
+ *  slot order; the document pinned is the written agreement's own — its name
+ *  and summary beside its clauses — and a document written without a name
+ *  is named after the assembly and the first order slot binding it), then
+ *  anchor its template. */
 export async function anchorBuiltAssembly({ built, agreementRegistry, ...args }) {
     const { template, agreements } = built;
     for (const [i, slot] of template.agreements.entries()) {
@@ -611,7 +613,9 @@ export async function anchorBuiltAssembly({ built, agreementRegistry, ...args })
             ...args,
             registry: agreementRegistry,
             agreementKey: slot.agreementKey,
-            document: { ...(template.name ? { name: `${template.name} · ${slot.id}` } : {}), clauses: doc.clauses },
+            document: doc.name
+                ? doc
+                : { ...(template.name ? { name: `${template.name} · ${slot.id}` } : {}), clauses: doc.clauses },
         });
     }
     return anchorAssembly({ ...args, template });
