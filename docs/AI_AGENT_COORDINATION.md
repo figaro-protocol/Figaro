@@ -238,8 +238,9 @@ validates against its clause spec before a signature is emitted
 chain — agreement bodies, evidence pre-images, the books a process leaves behind
 stay with the wallets that produced them. An agent that needs that substance buys it
 from its owner on the owner's terms, through the same bonded commitment as any other
-trade, and verifies each disclosed leaf by merkle inclusion against the source
-process's on-chain `agreementHash`. The buyer checks provenance against the chain
+trade, and verifies each disclosed term by merkle inclusion against the source
+process's on-chain `agreementHash`, and each delivered datum against the content
+hash a party attested under a clause leaf while the process was open. The buyer checks provenance against the chain
 rather than the seller's word; what no chain testifies to is whether the data is
 true about the world. Each declared or attested value is a party's declaration or attestation.
 What stands behind a seller's attestation is the buyer's decision to withhold
