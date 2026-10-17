@@ -40,7 +40,7 @@ export default function FlorinSchellingPointTokenPaper() {
                     <li>Japan. Payment Services Act, Act No. 59 of 2009, as amended.</li>
                     <li>Korea. Act on the Protection of Virtual Asset Users, Act No. 19563, 2023, in force July 19, 2024.</li>
                     <li>Mehta, J., Starmer, C., &amp; Sugden, R. The Nature of Salience: An Experimental Investigation of Pure Coordination Games. <em>American Economic Review</em>, 84(3):658&ndash;673, 1994.</li>
-                    <li>Monetary Authority of Singapore. A Guide to Digital Token Offerings. 2017, last updated May 26, 2020; re-issued November 14, 2025 as the Guide on the Tokenisation of Capital Markets Products.</li>
+                    <li>Monetary Authority of Singapore. A Guide to Digital Token Offerings. 2017, last updated May 26, 2020; re-issued November 14, 2025 as the Guide on the Tokenization of Capital Markets Products.</li>
                     <li>Nakamoto, S. Bitcoin: A Peer-to-Peer Electronic Cash System. White paper, 2008.</li>
                     <li>People&rsquo;s Bank of China and six other agencies. Announcement on Preventing the Risks of Token Issuance and Financing. September 4, 2017.</li>
                     <li>Schelling, T. C. <em>The Strategy of Conflict</em>. Harvard University Press, Cambridge, MA, 1960.</li>
@@ -168,7 +168,7 @@ export default function FlorinSchellingPointTokenPaper() {
                                     <td className="border border-default px-3 py-1.5 align-top">equity and tokens sold to venture investors before launch</td>
                                     <td className="border border-default px-3 py-1.5 align-top">the company and its investors</td>
                                     <td className="border border-default px-3 py-1.5 align-top">nothing public until launch</td>
-                                    <td className="border border-default px-3 py-1.5 align-top">the company shape in full; analysed case by case</td>
+                                    <td className="border border-default px-3 py-1.5 align-top">the company shape in full; analyzed case by case</td>
                                 </tr>
                                 <tr>
                                     <td className="border border-default px-3 py-1.5 align-top">Meme coins</td>
