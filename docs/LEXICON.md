@@ -153,3 +153,20 @@ The register every public page is measured against. The lexicon above gives the 
 - A designer builds a process, never a market: a clause, composed into an agreement, composed into an assembly, run as a process. A market in the world's sense keeps the world's word.
 
 The beta panel is the measure: a page passes when a stranger of its audience states its claim back in their own words with the mechanism attached.
+
+## Voice of the papers
+
+The register every paper is measured against. A paper keeps the lexicon's nouns, the claim stated then shown, the caveat in the paragraph of the claim it qualifies, no sentence that needs the paper around it to be true, and a designer rewarded, never paid. Where a public page and a scholarly paper part, the paper's sentence is Vitalik Buterin's, as his essays show it.
+
+- The claim comes first and its reason follows, marked plainly: "because", "the reason is", a colon. The reader never waits for the point.
+- One idea per sentence, fifteen to thirty words; a short flat sentence sits between the long ones. A colon introduces a gloss or a list. No clause stacked on clause, no appositive piled on appositive.
+- A definition or a mechanism statement is stated flat. A qualifier belongs to a judgment about the world and is one word: perhaps, arguably, likely. "We believe", "it could be argued", "to some extent" are deleted.
+- The objection is named in the referee's own words, as a question, in the paragraph where the claim stands or the one after, and answered there. A claim is never hedged to pre-empt it.
+- A number is a figure or a range. An example is a toy model with named variables, worked to its end. An analogy carries the reader into the mechanism once and is then dropped.
+- The field's exact word, glossed at first use in a parenthesis or after a colon. A term the paper coins is stated as a definition where it first appears and used by that name after.
+- "We" is the byline. "You" is a party reading its own position. "I" never.
+- A paragraph runs three to seven sentences, and its thesis sentence can be lifted out and read as its summary. A heading is a statement or a question when the section argues, a label when it defines.
+- A paper opens on a fact, a figure or a stipulated scenario, never on its thesis or on the project. It closes on the judgment the argument has earned, in one paragraph.
+- One treatment of each idea. A sentence that restates an earlier one in other words is deleted, never varied; repetition is a referee's first finding.
+
+The referee is the measure: a paper passes when a reader of its discipline can state its result and finds no objection the paper has not already answered.
