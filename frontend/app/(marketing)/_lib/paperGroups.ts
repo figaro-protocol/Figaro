@@ -87,7 +87,7 @@ export const PAPER_GROUPS: PaperGroup[] = [
             {
                 title: "Markets Without a Venue: Dispatch Races and Requests for Quotes as Market-Design Mechanisms over a Market-Blind Mechanism",
                 href: "/papers/markets-without-a-venue",
-                summary: "How a market forms with no venue holding state: the buyer circulates the unsigned commitment itself, as a dispatch race or a sealed-bid request for quotes, and mutual exclusion, discovery, stake, and the trail all follow from the order of signatures.",
+                summary: "How a market forms with no venue holding state: the buyer circulates the unsigned commitment itself, as a dispatch race or a sealed-bid request for quotes; mutual exclusion, discovery and the stake follow from the order of signatures, verifiable selection does not, so the price is first price.",
                 keywords: ["market design", "auction theory", "matching theory", "procurement", "posted prices", "offer formation", "sealed-bid", "reserve price", "bonded commitment"],
                 industries: ["Procurement", "Marketplaces"],
             },
@@ -246,14 +246,14 @@ export const PAPER_GROUPS: PaperGroup[] = [
             {
                 title: "The Ungoverned Substrate",
                 href: "/papers/ungoverned-substrate",
-                summary: "A third option beside the network state and on-chain governance: a substrate that is itself not governed at all, on which network states, DAOs, cooperatives, sole traders, and agent coalitions can all be constituted.",
-                keywords: ["network state", "blockchain governance", "lex cryptographica", "ungoverned substrate", "decentralized autonomous organization", "governance at the graph"],
+                summary: "A third option beside the network state and on-chain governance: a substrate whose only decisions are its parties' signatures, on which network states, DAOs, cooperatives, sole traders, and agent coalitions can all be constituted.",
+                keywords: ["network state", "blockchain governance", "lex cryptographia", "ungoverned substrate", "decentralized autonomous organization", "governance at the graph"],
                 industries: ["DAOs and governance"],
             },
             {
                 title: "Corridors Without a Hegemon: The Substrate as Common Infrastructure Beneath Rival Trade Corridors",
                 href: "/papers/corridors-without-a-hegemon",
-                summary: "Belt and Road and IMEC contest who controls the corridor. The physical layer stays with whoever finances it; the coordination layer need not, and a decentralized, permissionless one cannot be weaponized by either bloc.",
+                summary: "Belt and Road and IMEC contest who controls the corridor. The physical layer stays with whoever finances it; the coordination layer need not: a decentralized, permissionless one holds no hub for either bloc to seize, while the denomination and the ramps stay governed.",
                 keywords: ["weaponized interdependence", "hegemony", "Belt and Road Initiative", "IMEC", "infrastructure power", "cooperation under anarchy", "permissionless substrate"],
                 industries: ["Cross-border trade"],
             },
