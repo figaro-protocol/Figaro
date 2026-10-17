@@ -131,7 +131,7 @@ export default function MarketsWithoutAVenuePaper() {
                         The Core verifies both signatures against one digest and imposes no order between them. Which side signs first is a convention of whatever produces the struct, never a rule of the Core. Any wallet holding both signatures may submit the commitment, because the Core checks the signatures and never the sender. Section 3 shows that this degree of freedom is where the market lives.
                     </PaperRun>
                     <PaperRun title="No revocation, one deadline.">
-                        The Core has no operation that withdraws a signature. A released signature stays admissible until the deadline inside its struct, whenever its signer&rsquo;s balance and the allowance it has granted the Core cover the bond. Only by withdrawing that balance or allowance can a signer make its released signatures inadmissible earlier; the Core does not see the withdrawal, and it blocks every other commitment the signer has signed in that token.
+                        The Core has no operation that withdraws a signature. A released signature stays admissible until the deadline inside its struct while two conditions hold: its signer&rsquo;s balance and the allowance it has granted the Core cover the bond, and the cumulative value the struct names still equals the process&rsquo;s running value plus the order&rsquo;s own payment. A signer can end its released signatures earlier by withdrawing that balance or allowance; the Core does not see the withdrawal, and it blocks every other commitment the signer has signed in that token. At an extending position the buyer also ends a released signature by committing any other order in the process, which advances the running value, or by resolving, which closes the process.
                     </PaperRun>
                     <PaperRun title="Orders are related only through their process.">
                         Each admitted order is identified by its content: two structs that differ anywhere, in the seller, the payment or the salt, are two orders, and the Core&rsquo;s duplicate guard is per order. Orders that open different processes are related in no way. Orders in one process share one buyer, one denomination, one cumulative value and one resolution. Each carries, as a signed field, the cumulative value the process is to hold once it joins, and the Core admits it only if that figure equals the running value plus the order&rsquo;s own payment.
@@ -408,7 +408,7 @@ export default function MarketsWithoutAVenuePaper() {
                         </p>
                     </FormalBlock>
                     <p>
-                        Both mechanisms are interface-minimal. Their output is a commitment with both signatures, the object the Core accepted before any market existed. Their inputs are the parties&rsquo; signatures and published terms. Admission turns on the struct, the two signatures and the two parties&rsquo; balances, never on how the struct was found.
+                        Both mechanisms are interface-minimal. Their output is a commitment with both signatures, the object the Core accepted before any market existed. Their inputs are the parties&rsquo; signatures and published terms. Admission turns on the struct, the two signatures and the two parties&rsquo; balances and allowances, never on how the struct was found.
                     </p>
                     <FormalBlock label="Proposition 6.2 (No re-derivation).">
                         <p>
