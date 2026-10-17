@@ -178,7 +178,7 @@ export default function CodeIsConstitutionPaper() {
                 </p>
             </PaperSection>
 
-            <PaperSection title="Acknowledgements">
+            <PaperSection title="Acknowledgments">
                 <p>
                     We thank Vlad Zamfir and Primavera De Filippi, whose years of conversation and collaboration shaped the questions this paper tries to answer. The errors are ours alone.
                 </p>
