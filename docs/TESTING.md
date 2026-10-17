@@ -203,8 +203,9 @@ never a dominant strategy), and `Chain.cooperation_is_equilibrium` (the
 N-party chain: no unilateral deviation profits at any position, with the
 inclusive accumulator `Gᵢ = ∑_{j≤i} Pⱼ` derived, not assumed). Dependency-free
 by design: core Lean 4 + `omega`, no Mathlib — `lake build` from
-`formal/lean/` needs no network beyond the pinned toolchain; `sorry`-free and
-constructive (`#print axioms` shows `propext` + `Quot.sound` only). Optional
+`formal/lean/` needs no network beyond the pinned toolchain; `sorry`-free
+(`#print axioms` shows `propext` and `Quot.sound`, and `Classical.choice` for the
+margin result `deterrent_gap`). Optional
 credibility asset, not release path.
 
 ## Rust — the proof apparatus (`prover/`)
