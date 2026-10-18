@@ -9,6 +9,18 @@ import {
 } from "@/components/papers/PaperLayout";
 import { Math } from "@/components/papers/Math";
 import { MarketFormationSwimlaneFigure } from "@/components/figures/MarketFormationSwimlaneFigure";
+import { KERNEL_EQUILIBRIUM } from "@figaro-protocol/sdk";
+
+// The position of Section 1.2 renders the winning order's figures from the
+// equilibrium module, the one owner of the numbers. The order opens a process,
+// so its cumulative value is its payment: G = P.
+const EX = KERNEL_EQUILIBRIUM.example;
+const EX_P = EX.payment;
+// The other prices of the position, placed around the winning figure.
+const EX_CHEAPER = EX_P - 1;
+const EX_DEARER = EX_P + 2;
+const EX_CEILING = EX_P + 2;
+const EX_QUOTE_HIGH = EX_P + 1;
 
 export const metadata: Metadata = withOg({
     title: "Markets Without a Venue — Figaro Protocol",
@@ -47,68 +59,122 @@ export default function MarketsWithoutAVenuePaper() {
             abstract={
                 <>
                     <p>
-                        An exchange, an auction house, a procurement portal and a dispatcher each hold state between the moment a bid is solicited and the moment it binds. That held state does four jobs. It lets at most one of the competing bids bind, it tells a participant whom it may ask, it makes reneging costly, and it lets a loser check the selection. A venue contract on a public chain would do the same four jobs, and it would hold a position no party bonded, outside the analysis that makes resolution safe.
+                        A buyer needs one job done, and several sellers have published a price for it. Asking all of them at once is a coordination problem: several can answer, only one order should form, and between the asking and the binding nobody holds the authoritative state. An exchange, an auction house, a procurement portal and a dispatcher solve it by holding that state, which does four jobs. It lets at most one of the competing bids bind, it tells a participant whom it may ask, it makes reneging costly, and it lets a loser check the selection. A venue contract on a public chain would do the same four jobs, and it would hold a position no party bonded, outside the analysis that makes resolution safe.
                     </p>
                     <p>
-                        We study formation over a commit-and-resolve mechanism, the Core, which admits a commitment on two signatures over one struct and has each party lock a bond against its own defection. Two formation mechanisms are analyzed. In the <em>dispatch race</em>, the buyer drafts one unsigned commitment per candidate at that candidate&rsquo;s published price, candidates countersign to answer, and the buyer signs one. In the <em>request for quotes</em>, the draft goes out at the buyer&rsquo;s ceiling, each candidate returns it re-priced, and the buyer verifies a reply by rebuilding its own draft at the quoted figure. The race is a posted-price mechanism that searches over availability, not price. The request for quotes has the form of a sealed-bid first-price procurement auction with an announced reserve, and the commitment structure of a negotiation.
+                        We study formation over a commit-and-resolve mechanism, the Core, which admits a commitment on two signatures over one struct and has each party lock a bond against its own defection. Two formation mechanisms are analyzed, and they divide on what the buyer lacks: availability at prices it already knows, or the price itself. In the <em>dispatch race</em>, the buyer drafts one unsigned commitment per candidate at that candidate&rsquo;s published price, candidates countersign to answer, and the buyer signs one. In the <em>request for quotes</em>, the draft goes out at the buyer&rsquo;s ceiling, each candidate returns it re-priced, and the buyer verifies a reply by rebuilding its own draft at the quoted figure. The race is a posted-price mechanism that searches over availability, not price. The request for quotes discovers price; it has the form of a sealed-bid first-price procurement auction with an announced reserve, and the commitment structure of a negotiation.
                     </p>
                     <p>
-                        Three results carry the argument. A buyer that signs last is held to exactly one commitment, and chooses which, however many candidates it solicited. First price is forced, because the buyer signs last, is bound by no rule, and completes the struct that pays least. The participation constraint is a balance: the draft states the figure the candidate will be bonded against, so whether it can take part is known in advance and rises with its own quote. A market layer whose only output is a commitment the Core already accepts inherits the Core&rsquo;s equilibrium unchanged, and the data the Core keeps is silent about how the pair was found.
+                        Four mechanism-design results, each proved here, carry the argument. A buyer that signs last is held to exactly one commitment, and chooses which, however many candidates it solicited. First price is forced, because the buyer signs last, is bound by no rule, and completes the struct that pays least. The participation constraint is a balance: the draft states the figure the candidate will be bonded against, so whether it can take part is known in advance and rises with its own quote. A market layer whose only output is a commitment the Core already accepts inherits the Core&rsquo;s equilibrium unchanged, and the data the Core keeps is silent about how the pair was found. The results take the candidate set as given: discovery is an input to formation, and the paper models neither how a buyer finds candidates among many nor what reading their published terms costs.
                     </p>
                 </>
             }
             references={
                 <>
-                    <li>Ausubel, L. M. &amp; Milgrom, P. The Lovely but Lonely Vickrey Auction. In P. Cramton, Y. Shoham, &amp; R. Steinberg (eds.), <em>Combinatorial Auctions</em>, pp. 17&ndash;40. MIT Press, Cambridge, MA, 2006.</li>
-                    <li>Bajari, P., McMillan, R., &amp; Tadelis, S. Auctions Versus Negotiations in Procurement: An Empirical Analysis. <em>Journal of Law, Economics, and Organization</em>, 25(2):372&ndash;399, 2009.</li>
-                    <li>Bulow, J. &amp; Klemperer, P. Auctions Versus Negotiations. <em>American Economic Review</em>, 86(1):180&ndash;194, 1996.</li>
-                    <li>Diamond, P. A. A Model of Price Adjustment. <em>Journal of Economic Theory</em>, 3(2):156&ndash;168, 1971.</li>
-                    <li>Gale, D. &amp; Shapley, L. S. College Admissions and the Stability of Marriage. <em>American Mathematical Monthly</em>, 69(1):9&ndash;15, 1962.</li>
-                    <li>Gibbard, A. Manipulation of Voting Schemes: A General Result. <em>Econometrica</em>, 41(4):587&ndash;601, 1973.</li>
-                    <li>Hagerty, K. M. &amp; Rogerson, W. P. Robust Trading Mechanisms. <em>Journal of Economic Theory</em>, 42(1):94&ndash;107, 1987.</li>
-                    <li>Hayek, F. A. The Use of Knowledge in Society. <em>American Economic Review</em>, 35(4):519&ndash;530, 1945.</li>
-                    <li>Klemperer, P. Auction Theory: A Guide to the Literature. <em>Journal of Economic Surveys</em>, 13(3):227&ndash;286, 1999.</li>
-                    <li>Milgrom, P. <em>Discovering Prices: Auction Design in Markets with Complex Constraints</em>. Columbia University Press, New York, 2017.</li>
-                    <li>Milgrom, P. R. &amp; Weber, R. J. A Theory of Auctions and Competitive Bidding. <em>Econometrica</em>, 50(5):1089&ndash;1122, 1982.</li>
-                    <li>Myerson, R. B. Optimal Auction Design. <em>Mathematics of Operations Research</em>, 6(1):58&ndash;73, 1981.</li>
-                    <li>Myerson, R. B. &amp; Satterthwaite, M. A. Efficient Mechanisms for Bilateral Trading. <em>Journal of Economic Theory</em>, 29(2):265&ndash;281, 1983.</li>
-                    <li>Riley, J. G. &amp; Samuelson, W. F. Optimal Auctions. <em>American Economic Review</em>, 71(3):381&ndash;392, 1981.</li>
-                    <li>Roth, A. E. What Have We Learned from Market Design? <em>Economic Journal</em>, 118(527):285&ndash;310, 2008.</li>
-                    <li>Roth, A. E. &amp; Ockenfels, A. Last-Minute Bidding and the Rules for Ending Second-Price Auctions: Evidence from eBay and Amazon Auctions on the Internet. <em>American Economic Review</em>, 92(4):1093&ndash;1103, 2002.</li>
-                    <li>Roth, A. E. &amp; Sotomayor, M. <em>Two-Sided Matching: A Study in Game-Theoretic Modeling and Analysis</em>. Cambridge University Press, Cambridge, 1990.</li>
-                    <li>Roth, A. E. &amp; Xing, X. Jumping the Gun: Imperfections and Institutions Related to the Timing of Market Transactions. <em>American Economic Review</em>, 84(4):992&ndash;1044, 1994.</li>
-                    <li>Rothkopf, M. H., Teisberg, T. J., &amp; Kahn, E. P. Why Are Vickrey Auctions Rare? <em>Journal of Political Economy</em>, 98(1):94&ndash;109, 1990.</li>
-                    <li>Satterthwaite, M. A. Strategy-Proofness and Arrow&rsquo;s Conditions: Existence and Correspondence Theorems for Voting Procedures and Social Welfare Functions. <em>Journal of Economic Theory</em>, 10(2):187&ndash;217, 1975.</li>
-                    <li>Stigler, G. J. The Economics of Information. <em>Journal of Political Economy</em>, 69(3):213&ndash;225, 1961.</li>
-                    <li>Vickrey, W. Counterspeculation, Auctions, and Competitive Sealed Tenders. <em>Journal of Finance</em>, 16(1):8&ndash;37, 1961.</li>
+                    <li>Ausubel, Lawrence M., and Paul Milgrom. 2005. &ldquo;The Lovely but Lonely Vickrey Auction.&rdquo; In <em>Combinatorial Auctions</em>, edited by Peter Cramton, Yoav Shoham, and Richard Steinberg, 17&ndash;40. Cambridge, MA: MIT Press. https://doi.org/10.7551/mitpress/9780262033428.003.0002.</li>
+                    <li>Bajari, Patrick, Robert McMillan, and Steven Tadelis. 2009. &ldquo;Auctions versus Negotiations in Procurement: An Empirical Analysis.&rdquo; <em>Journal of Law, Economics, and Organization</em> 25 (2): 372&ndash;399. https://doi.org/10.1093/jleo/ewn002.</li>
+                    <li>Bulow, Jeremy, and Paul Klemperer. 1996. &ldquo;Auctions versus Negotiations.&rdquo; <em>American Economic Review</em> 86 (1): 180&ndash;194.</li>
+                    <li>Diamond, Peter A. 1971. &ldquo;A Model of Price Adjustment.&rdquo; <em>Journal of Economic Theory</em> 3 (2): 156&ndash;168. https://doi.org/10.1016/0022-0531(71)90013-5.</li>
+                    <li>Figaro. 2026. &ldquo;Asymmetric Bonding and Buyer Dominance: Two Composing Mechanisms for Self-Enforcing N-Party Coordination.&rdquo; Preprint. https://figaroprotocol.com/papers/asymmetric-bonding/. Accessed October 18, 2026.</li>
+                    <li>Gale, D., and L. S. Shapley. 1962. &ldquo;College Admissions and the Stability of Marriage.&rdquo; <em>American Mathematical Monthly</em> 69 (1): 9&ndash;15. https://doi.org/10.1080/00029890.1962.11989827.</li>
+                    <li>Gibbard, Allan. 1973. &ldquo;Manipulation of Voting Schemes: A General Result.&rdquo; <em>Econometrica</em> 41 (4): 587&ndash;601. https://doi.org/10.2307/1914083.</li>
+                    <li>Hagerty, Kathleen M., and William P. Rogerson. 1987. &ldquo;Robust Trading Mechanisms.&rdquo; <em>Journal of Economic Theory</em> 42 (1): 94&ndash;107. https://doi.org/10.1016/0022-0531(87)90104-9.</li>
+                    <li>Hayek, F. A. 1945. &ldquo;The Use of Knowledge in Society.&rdquo; <em>American Economic Review</em> 35 (4): 519&ndash;530.</li>
+                    <li>Klemperer, Paul. 1999. &ldquo;Auction Theory: A Guide to the Literature.&rdquo; <em>Journal of Economic Surveys</em> 13 (3): 227&ndash;286. https://doi.org/10.1111/1467-6419.00083.</li>
+                    <li>Milgrom, Paul. 2017. <em>Discovering Prices: Auction Design in Markets with Complex Constraints</em>. New York: Columbia University Press. https://doi.org/10.7312/milg17598.</li>
+                    <li>Milgrom, Paul R., and Robert J. Weber. 1982. &ldquo;A Theory of Auctions and Competitive Bidding.&rdquo; <em>Econometrica</em> 50 (5): 1089&ndash;1122. https://doi.org/10.2307/1911865.</li>
+                    <li>Myerson, Roger B. 1981. &ldquo;Optimal Auction Design.&rdquo; <em>Mathematics of Operations Research</em> 6 (1): 58&ndash;73. https://doi.org/10.1287/moor.6.1.58.</li>
+                    <li>Myerson, Roger B., and Mark A. Satterthwaite. 1983. &ldquo;Efficient Mechanisms for Bilateral Trading.&rdquo; <em>Journal of Economic Theory</em> 29 (2): 265&ndash;281. https://doi.org/10.1016/0022-0531(83)90048-0.</li>
+                    <li>Riley, John G., and William F. Samuelson. 1981. &ldquo;Optimal Auctions.&rdquo; <em>American Economic Review</em> 71 (3): 381&ndash;392.</li>
+                    <li>Roth, Alvin E. 2008. &ldquo;What Have We Learned from Market Design?&rdquo; <em>Economic Journal</em> 118 (527): 285&ndash;310. https://doi.org/10.1111/j.1468-0297.2007.02121.x.</li>
+                    <li>Roth, Alvin E., and Axel Ockenfels. 2002. &ldquo;Last-Minute Bidding and the Rules for Ending Second-Price Auctions: Evidence from eBay and Amazon Auctions on the Internet.&rdquo; <em>American Economic Review</em> 92 (4): 1093&ndash;1103. https://doi.org/10.1257/00028280260344632.</li>
+                    <li>Roth, Alvin E., and Marilda A. Oliveira Sotomayor. 1990. <em>Two-Sided Matching: A Study in Game-Theoretic Modeling and Analysis</em>. Cambridge: Cambridge University Press. https://doi.org/10.1017/CCOL052139015X.</li>
+                    <li>Roth, Alvin E., and Xiaolin Xing. 1994. &ldquo;Jumping the Gun: Imperfections and Institutions Related to the Timing of Market Transactions.&rdquo; <em>American Economic Review</em> 84 (4): 992&ndash;1044.</li>
+                    <li>Rothkopf, Michael H., Thomas J. Teisberg, and Edward P. Kahn. 1990. &ldquo;Why Are Vickrey Auctions Rare?&rdquo; <em>Journal of Political Economy</em> 98 (1): 94&ndash;109. https://doi.org/10.1086/261670.</li>
+                    <li>Satterthwaite, Mark Allen. 1975. &ldquo;Strategy-Proofness and Arrow&rsquo;s Conditions: Existence and Correspondence Theorems for Voting Procedures and Social Welfare Functions.&rdquo; <em>Journal of Economic Theory</em> 10 (2): 187&ndash;217. https://doi.org/10.1016/0022-0531(75)90050-2.</li>
+                    <li>Stigler, George J. 1961. &ldquo;The Economics of Information.&rdquo; <em>Journal of Political Economy</em> 69 (3): 213&ndash;225. https://doi.org/10.1086/258464.</li>
+                    <li>Vickrey, William. 1961. &ldquo;Counterspeculation, Auctions, and Competitive Sealed Tenders.&rdquo; <em>Journal of Finance</em> 16 (1): 8&ndash;37. https://doi.org/10.1111/j.1540-6261.1961.tb02789.x.</li>
                 </>
             }
         >
             <PaperSection title="1. Introduction">
-                <PaperSubsection title="1.1 The venue assumption">
+                <PaperSubsection title="1.1 The coordination problem">
                     <p>
-                        A buyer wants one position filled and finds <Math>{"k"}</Math> wallets that publish a price for it. If it sends each of them a commitment it has already signed, each can complete one alone, and the buyer may be bound <Math>{"k"}</Math> times. If it asks first and signs later, it must decide what to sign and on what evidence. A venue answers both questions by holding the bids: it collects them, keeps them sealed, applies a rule, and keeps the bids and the outcome where a loser can check them.
+                        A buyer needs one job done and finds <Math>{"k"}</Math> wallets that publish a price for it. It wants to ask several at once, because any one of them may be busy, and it wants exactly one of them bound. Three facts make this a coordination problem. Several candidates can answer. Only one order should form. And nobody holds the authoritative state of the solicitation: no party keeps who was asked, who answered, or which answer binds. If the buyer sends each candidate a commitment it has already signed, each can complete one alone, and the buyer may be bound <Math>{"k"}</Math> times. If it asks first and signs later, it must decide what to sign and on what evidence.
                     </p>
                     <p>
-                        Market design has mostly designed such institutions. The sealed-bid tender, the ascending auction, the clearinghouse and the deferred-acceptance match are each specified as a procedure someone runs. Milgrom (2017) develops auction design for markets with complex constraints, in which the auctioneer computes both the allocation and the prices. The procedure&rsquo;s properties then hold only if the party running it behaves. Rothkopf, Teisberg, &amp; Kahn (1990) explain the rarity of second-price auctions by bidders&rsquo; distrust of an auctioneer who learns the highest bid and computes the payment from the second, and Ausubel &amp; Milgrom (2006) extend the diagnosis to combinatorial settings.
+                        The buyer may lack one of two things, and the distinction runs through the paper. When the published prices fit the job, the buyer knows every price before it asks, and what it lacks is <em>availability</em>: whether the cheapest candidate is willing and able to take this job now. When no published price fits, it lacks the <em>price</em> itself. The two formation mechanisms studied here divide on that line. The dispatch race searches over availability at published prices (&sect;4.2), and the request for quotes discovers a price (&sect;5.1).
                     </p>
                     <p>
-                        The setting here adds a reason to avoid a venue that reputation and law do not address. The Core, defined in &sect;2, makes performance self-enforcing between strangers by having each party lock a bond against its own conduct. Its security is an equilibrium over exactly those locked positions. A venue that holds bid bonds, or that can move a party&rsquo;s tokens, adds a position that analysis does not cover. Our question is how much of a venue&rsquo;s work the two signatures on a commitment can do by themselves.
+                        A venue solves the problem by holding the authoritative state. It collects the bids, keeps them sealed, applies a rule, and keeps the bids and the outcome where a loser can check them. Market design has mostly designed such institutions. The sealed-bid tender, the ascending auction, the clearinghouse and the deferred-acceptance match are each specified as a procedure someone runs. Milgrom (2017) develops auction design for markets with complex constraints, in which the auctioneer computes both the allocation and the prices. The procedure&rsquo;s properties then hold only if the party running it behaves. Rothkopf, Teisberg, and Kahn (1990) explain the rarity of second-price auctions by bidders&rsquo; distrust of an auctioneer who learns the highest bid and computes the payment from the second, and Ausubel and Milgrom (2005) extend the diagnosis to combinatorial settings.
+                    </p>
+                    <p>
+                        The setting here adds a reason to avoid a venue that reputation and law do not address. The Core, defined in &sect;2, makes performance self-enforcing between strangers by having each party lock a bond against its own conduct. Its security is an equilibrium over exactly those locked positions and the two operations that move them, and a game with any further way to release a locked position does not inherit it (Figaro 2026, Theorem 2). A venue that holds bid bonds, or that can move a party&rsquo;s tokens, adds a position that analysis does not cover. Our question is how much of a venue&rsquo;s work the two signatures on a commitment can do by themselves.
                     </p>
                 </PaperSubsection>
-                <PaperSubsection title="1.2 Contribution">
+                <PaperSubsection title="1.2 One position, two routes">
+                    <p>
+                        A stipulated position shows both routes before the formal apparatus. A buyer <Math>{"B"}</Math> needs one job done, at a position that opens a process, so the order&rsquo;s cumulative value is its payment. Three candidates, <Math>{"S_1"}</Math>, <Math>{"S_2"}</Math> and <Math>{"S_3"}</Math>, have published terms that can price the job. Every object exchanged is one commitment struct: a <em>draft</em> carries no signature, an <em>answer</em> carries the candidate&rsquo;s, and a commitment carries both. The table gives each step of each route, and who signs what at it.
+                    </p>
+                    <div className="my-4 overflow-x-auto">
+                        <table className="text-sm border-collapse">
+                            <thead>
+                                <tr>
+                                    {["Step", "Dispatch race", "Request for quotes"].map((h) => (
+                                        <th key={h} className="border border-default px-3 py-1.5 text-left font-semibold text-ink-heading">{h}</th>
+                                    ))}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td className="border border-default px-3 py-1.5">1. Read, before asking</td>
+                                    <td className="border border-default px-3 py-1.5"><Math>{"B"}</Math> reads the published prices: <Math>{"S_1"}</Math> at {EX_CHEAPER}, <Math>{"S_2"}</Math> at {EX_P}, <Math>{"S_3"}</Math> at {EX_DEARER}. Nobody signs.</td>
+                                    <td className="border border-default px-3 py-1.5">No published price fits the job. <Math>{"B"}</Math> fixes its ceiling at {EX_CEILING}, the most it will pay. Nobody signs.</td>
+                                </tr>
+                                <tr>
+                                    <td className="border border-default px-3 py-1.5">2. Draft, sent at once with one deadline</td>
+                                    <td className="border border-default px-3 py-1.5">Three drafts, each naming one candidate at that candidate&rsquo;s own price. <Math>{"B"}</Math> signs nothing.</td>
+                                    <td className="border border-default px-3 py-1.5">Three drafts at the ceiling, each naming one candidate and the fields <Math>{"B"}</Math> treats as priced. <Math>{"B"}</Math> signs nothing.</td>
+                                </tr>
+                                <tr>
+                                    <td className="border border-default px-3 py-1.5">3. Answer, within the window</td>
+                                    <td className="border border-default px-3 py-1.5"><Math>{"S_1"}</Math> is busy and does not answer. <Math>{"S_2"}</Math> and <Math>{"S_3"}</Math> each sign their draft unchanged.</td>
+                                    <td className="border border-default px-3 py-1.5"><Math>{"S_1"}</Math> re-prices its draft at {EX_QUOTE_HIGH} and signs it; <Math>{"S_2"}</Math> re-prices at {EX_P} and signs; <Math>{"S_3"}</Math> does not answer.</td>
+                                </tr>
+                                <tr>
+                                    <td className="border border-default px-3 py-1.5">4. Verify</td>
+                                    <td className="border border-default px-3 py-1.5"><Math>{"B"}</Math> checks that each answer is the struct it drafted, hash for hash, and that the signature recovers against its own copy.</td>
+                                    <td className="border border-default px-3 py-1.5"><Math>{"B"}</Math> rebuilds its own draft at each quoted figure, requires the same equality, and checks that the figure lies between one unit and the ceiling.</td>
+                                </tr>
+                                <tr>
+                                    <td className="border border-default px-3 py-1.5">5. Select and sign, at the close</td>
+                                    <td className="border border-default px-3 py-1.5"><Math>{"B"}</Math> signs <Math>{"S_2"}</Math>&rsquo;s answer at {EX_P}, the cheapest verified one.</td>
+                                    <td className="border border-default px-3 py-1.5"><Math>{"B"}</Math> signs <Math>{"S_2"}</Math>&rsquo;s answer at {EX_P}, the cheapest verified quote.</td>
+                                </tr>
+                                <tr>
+                                    <td className="border border-default px-3 py-1.5">6. Admission</td>
+                                    <td className="border border-default px-3 py-1.5" colSpan={2}>Any wallet holding both signatures submits the commitment. The Core locks {EX.buyer_locks} from <Math>{"B"}</Math>, twice the payment, and {EX.seller_locks} from <Math>{"S_2"}</Math>, twice the cumulative value: {EX.held} held in all. The losing answer lapses at the deadline, having moved nothing.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <p>
+                        The two routes differ at the third step only. A race candidate signs a price it published before the solicitation existed, so its answer reports availability and nothing else: what the race found out is that <Math>{"S_1"}</Math>, the cheapest, could not take the job. A quote candidate signs a figure it chose, so the answers are the price discovery. On both routes the buyer signs last and once, and its one signature is the selection and the commitment. The Core sees only the commitment at the sixth step. Section 3 shows why signing last is what makes asking several candidates safe, and &sect;&sect;4 and 5 analyze each route.
+                    </p>
+                </PaperSubsection>
+                <PaperSubsection title="1.3 Contribution">
                     <p>
                         We analyze two formation mechanisms with the field&rsquo;s ordinary tools: mechanism class, where price is discovered, incentives on both sides, and stability in the matching sense.
                     </p>
                     <ol className="space-y-2 list-decimal pl-6 text-sm">
                         <li><strong>Exclusion by signature order.</strong> A buyer that signs first releases structs its recipients can complete alone; a buyer that signs last releases none, and its one signature is the selection and the commitment at once. Signing last holds the buyer to one commitment of its choosing at every position (&sect;3.2).</li>
-                        <li><strong>Two mechanisms, classified.</strong> The dispatch race is a posted-price mechanism with simultaneous solicitation, the class Hagerty &amp; Rogerson (1987) identify with dominant strategies in bilateral trade. The request for quotes is what a buyer uses to discover a price the posted class cannot supply (&sect;&sect;4.1, 5.1).</li>
+                        <li><strong>Two mechanisms, classified.</strong> The dispatch race is a posted-price mechanism with simultaneous solicitation, the class Hagerty and Rogerson (1987) identify with dominant strategies in bilateral trade. The request for quotes is what a buyer uses to discover a price the posted class cannot supply (&sect;&sect;4.1, 5.1).</li>
                         <li><strong>First price is forced.</strong> The winner is paid a field of the struct it signed, and the buyer, signing last and bound by no rule, completes the struct that pays least. A second-price rule needs a party that binds the buyer&rsquo;s choice, which is the venue (&sect;5.3).</li>
                         <li><strong>The participation constraint is a balance.</strong> Each draft states the cumulative value the candidate will be bonded against, so the quantity that decides participation is known in advance, depends on position, and rises with the candidate&rsquo;s own quote. A cheaper price at one position lowers the balance required at every later one (&sect;&sect;5.4, 5.5).</li>
                         <li><strong>Composition without awareness.</strong> A market layer whose only output is an object the Core already accepts inherits the Core&rsquo;s equilibrium without re-derivation, and the data the Core keeps cannot tell a raced commitment from one arranged by hand (&sect;6).</li>
                     </ol>
                     <p>
-                        Section 2 states the Core and the slice of its equilibrium the argument uses. Section 3 treats signature order and the four roles of a venue. Sections 4 and 5 analyze the two mechanisms, &sect;6 states the composition property, and &sect;7 concludes.
+                        Section 2 states the Core, the slice of its equilibrium the argument uses, and what the results establish and assume. Section 3 treats signature order and the four roles of a venue. Sections 4 and 5 analyze the two mechanisms, &sect;6 states the composition property, and &sect;7 concludes.
                     </p>
                 </PaperSubsection>
             </PaperSection>
@@ -151,7 +217,7 @@ export default function MarketsWithoutAVenuePaper() {
                         <li><strong>Before performance, the buyer keeps the process open.</strong> Resolving at once is terminal at <Math>{"-P"}</Math>, with nothing delivered, while keeping the process open leads to performance by (2).</li>
                     </ol>
                     <p>
-                        Comparisons (2) and (3) are each party&rsquo;s best reply to the other&rsquo;s plan, verified jointly, so cooperation is the equilibrium: a fixed point, not a dominance result. A shortfall is put right before the buyer resolves, because resolution is terminal and the Core has no path that reverses a payment. An outside forum may rule on a process&rsquo;s data while the process stands open, and it cannot call resolve. The comparison contains no term for what a party spends to perform. This paper adds a layer above the Core and adds nothing to that comparison; where it needs a party&rsquo;s capacity to trade, it uses the one quantity the Core contains, the balance a wallet can commit.
+                        Comparisons (2) and (3) are each party&rsquo;s best reply to the other&rsquo;s plan, verified jointly, so cooperation is the equilibrium: a fixed point, not a dominance result. Figaro (2026, Theorems 1 and 3) proves the comparisons for two parties, where the profile is subgame-perfect, and for a process chain of any length the network resolves in one call. The proof assumes parties that rank outcomes by these payoffs at the figures both signed, know the schedule of transfers and the two operations, stand beyond each other&rsquo;s coercive reach, and have no observer of performance but themselves; resolution is terminal and the buyer&rsquo;s alone, no clock runs once the bonds are locked, and either party may adopt any plan at its nodes. A shortfall is put right before the buyer resolves, because resolution is terminal and the Core has no path that reverses a payment. An outside forum may rule on a process&rsquo;s data while the process stands open, and it cannot call resolve. The comparison contains no term for what a party spends to perform. This paper adds a layer above the Core and adds nothing to that comparison; where it needs a party&rsquo;s capacity to trade, it uses the one quantity the Core contains, the balance a wallet can commit.
                     </p>
                 </PaperSubsection>
 
@@ -174,6 +240,22 @@ export default function MarketsWithoutAVenuePaper() {
                         <li><strong>An anti-reneging stake.</strong> A bid that costs nothing to make and nothing to abandon is weak evidence of availability, so venues take bid bonds.</li>
                         <li><strong>Verifiable selection.</strong> A losing participant must be able to check that the announced rule was the rule applied.</li>
                     </ol>
+                </PaperSubsection>
+
+                <PaperSubsection title="2.5 What the results establish and what they assume">
+                    <p>
+                        The results of &sect;&sect;3 to 6 are mechanism-design results about formation: how one commitment comes to carry two signatures. They establish that a buyer signing last is held to one commitment of its choosing (Proposition 3.1); that the race&rsquo;s outcome is stable among the candidates that answered (Proposition 4.1); that a quote varies the price and nothing else, that first price is forced, and that participation turns on a balance the draft states (Propositions 5.1 to 5.3 and &sect;5.4); and that the commitment formed inherits the Core&rsquo;s equilibrium (Proposition 6.2). They assume the following.
+                    </p>
+                    <ol className="space-y-2 list-decimal pl-6 text-sm">
+                        <li><strong>Actors.</strong> One buyer and a finite set of candidates, each a wallet that signs for itself. No other party acts between the solicitation and the commitment.</li>
+                        <li><strong>Information.</strong> The buyer observes the published terms of every candidate it solicits before it asks. Each candidate sees only its own draft, which states the payment, the cumulative value and the deadline it would be bound by. A candidate&rsquo;s capacity, its cost of performing and its beliefs about rivals are its own; they enter the incentive arguments of &sect;&sect;4.3 and 5.3 and no proposition.</li>
+                        <li><strong>Timing.</strong> The buyer sends every draft of one solicitation at once, under one deadline. Answers arrive within a window the buyer sets and may close early, and the buyer signs at most one answer per position. Positions are formed in commit order.</li>
+                        <li><strong>Strategies.</strong> A race candidate answers or does not. A quote candidate names a figure between one unit and the ceiling, or does not answer. The buyer chooses <Math>{"k"}</Math>, the window, the ceiling, and which verified answer to sign, if any, and it is bound by no selection rule.</li>
+                        <li><strong>External mechanisms.</strong> The members&rsquo; profiles, registered publicly under a stake and read at the moment of solicitation (&sect;3.3); a channel that carries drafts and answers between the buyer and each candidate; and the Core, with the equilibrium of &sect;2.2. Nothing holds state between the solicitation and the commitment.</li>
+                    </ol>
+                    <p>
+                        Discovery is an input to formation, and this paper does not supply it. Both mechanisms begin from a candidate set: the members whose published terms can price the position. How a buyer finds those members among many, filters them by the terms a complex job needs, and judges whether a declared catalog is accurate lies outside the model. So does the cost of reading their published terms, which &sect;4.2 takes as zero. The apparatus bears on scale in three places. Each further candidate costs the buyer one message, and the buyer&rsquo;s exposure stays at one commitment however many it asks (Proposition 3.1(b)). A losing answer costs its signer nothing, so a solicitation that many candidates lose moves no value and leaves no entry in the data (&sect;6.3). And a job of many positions is formed one position at a time, each a separate solicitation in commit order, up to the orders the network can resolve in one transaction; stability is established per position only (&sect;4.4), and each position&rsquo;s participation constraint depends on the figures committed before it (&sect;5.5).
+                    </p>
                 </PaperSubsection>
             </PaperSection>
 
@@ -247,7 +329,7 @@ export default function MarketsWithoutAVenuePaper() {
                         The candidate makes no report. The price in its draft is the one it published before the solicitation existed, and its action set is <Math>{"\\{\\text{answer}, \\text{do not answer}\\}"}</Math>. The race is a posted-price mechanism with simultaneous solicitation and buyer-side selection: an assignment over an already-priced set, not an auction, since no participant submits a figure the allocation rule operates on.
                     </p>
                     <p>
-                        Hagerty &amp; Rogerson (1987) show that in bilateral trade the mechanisms that are dominant-strategy incentive compatible, individually rational and budget balanced are posted-price mechanisms or randomizations over them. Their setting has a mediator computing the outcome from reports, and this one has none, so the result is recognized here more than applied. The race&rsquo;s clean incentives have the reason their theorem identifies: the terms of trade depend on no report. A market with no mediator is pushed toward posted prices at least as hard as a mediated one, since nobody is there to compute a report-dependent rule.
+                        Hagerty and Rogerson (1987) show that in bilateral trade the mechanisms that are dominant-strategy incentive compatible, individually rational and budget balanced are posted-price mechanisms or randomizations over them. Their setting has a mediator computing the outcome from reports, and this one has none, so the result is recognized here more than applied. The race&rsquo;s clean incentives have the reason their theorem identifies: the terms of trade depend on no report. A market with no mediator is pushed toward posted prices at least as hard as a mediated one, since nobody is there to compute a report-dependent rule.
                     </p>
                 </PaperSubsection>
 
@@ -259,7 +341,7 @@ export default function MarketsWithoutAVenuePaper() {
                         This is Stigler&rsquo;s (1961) fixed-sample search with the two unknowns exchanged. Stigler&rsquo;s buyer samples <Math>{"k"}</Math> sellers to learn prices and takes the lowest draw, trading the cost of one more query against the expected fall in the minimum. Here the prices are observed in full, and the sample buys the probability of finding the cheapest <em>available</em> candidate, in parallel rather than in sequence. Choosing <Math>{"k"}</Math> trades the cost of one more message against the risk that all <Math>{"k"}</Math> cheapest candidates are unavailable.
                     </p>
                     <p>
-                        Price discovery happens at publication. A published figure is a standing, public, unilateral price statement, the kind of dispersed knowledge Hayek (1945) treats prices as conveying, and buyers observe the whole published set before they solicit. Diamond (1971) shows that with sequential search at any strictly positive cost, posted prices go to the monopoly price, because a buyer accepts a small overcharge rather than pay to check one more seller. The race removes that premise. Reading the published set costs the buyer nothing, and each further candidate costs one message, so the search cost is near zero where Diamond&rsquo;s argument needs it positive.
+                        Price discovery happens at publication. A published figure is a standing, public, unilateral price statement, the kind of dispersed knowledge Hayek (1945) treats prices as conveying, and buyers observe the whole published set before they solicit. Diamond (1971) shows that with sequential search at any strictly positive cost, posted prices go to the monopoly price, because a buyer accepts a small overcharge rather than pay to check one more seller. The race removes that premise. Reading the published set sends no message to any candidate, and the model takes its cost as zero, an assumption &sect;2.5 bounds. Each further candidate costs one message, so the search cost is near zero where Diamond&rsquo;s argument needs it positive.
                     </p>
                     <PaperRemark title="Publication is not a commitment to trade.">
                         A candidate may decline any draft for any reason, and declining costs it nothing beyond the trade it declined. Publication commits a candidate to the terms on which it will be asked, as a catalog does, never to capacity. That is why the race can solicit widely without any candidate having reserved capacity for it.
@@ -274,13 +356,13 @@ export default function MarketsWithoutAVenuePaper() {
                         In conventional procurement, award and contract are separate, and the interval between them is where requalification, renegotiation and hold-up occur. Here the interval does not exist, because the buyer&rsquo;s single signature is both the selection and the commitment. The buyer cannot select and then reopen terms, since no state exists in which it has selected and not committed. It cannot commit at other terms either, since the winner&rsquo;s signature covers one struct and any other struct is a different object.
                     </PaperRun>
                     <PaperRun title="Timing rules favor the candidate.">
-                        Roth &amp; Ockenfels (2002) show that the ending rule matters: hard-close auctions attract last-moment bidding that soft-close auctions do not. The race closes hard on the buyer&rsquo;s clock, and nobody gains by arriving late, because a late answer cannot move the price and ties break by arrival order. The buyer&rsquo;s option to close early makes the window a maximum, so the buyer has no reason to wait out a market that has answered. In the unraveling literature (Roth &amp; Xing, 1994), exploding offers are how one side pressures the other into deciding early. Here the expiring object is the <em>candidate&rsquo;s</em> answer, at the one deadline fixed for the whole solicitation, and its expiry protects the candidate.
+                        Roth and Ockenfels (2002) show that the ending rule matters: hard-close auctions attract last-moment bidding that soft-close auctions do not. The race closes hard on the buyer&rsquo;s clock, and nobody gains by arriving late, because a late answer cannot move the price and ties break by arrival order. The buyer&rsquo;s option to close early makes the window a maximum, so the buyer has no reason to wait out a market that has answered. In the unraveling literature (Roth and Xing 1994), exploding offers are how one side pressures the other into deciding early. Here the expiring object is the <em>candidate&rsquo;s</em> answer, at the one deadline fixed for the whole solicitation, and its expiry protects the candidate.
                     </PaperRun>
                 </PaperSubsection>
 
                 <PaperSubsection title="4.4 Stability, and the only two ways it fails">
                     <p>
-                        The race allocates one position among candidates, which invites the matching question (Gale &amp; Shapley, 1962; Roth &amp; Sotomayor, 1990): is there a buyer and a candidate who would both rather be matched to each other than to what the race gave them?
+                        The race allocates one position among candidates, which invites the matching question (Gale and Shapley 1962; Roth and Sotomayor 1990): is there a buyer and a candidate who would both rather be matched to each other than to what the race gave them?
                     </p>
                     <FormalBlock label="Proposition 4.1 (Stability within the responsive set).">
                         <p>
@@ -311,10 +393,10 @@ export default function MarketsWithoutAVenuePaper() {
                         In form this is a sealed-bid first-price procurement auction with an announced reserve. It is sealed, because each candidate sees only its own draft and nothing holds the quotes that could reveal them. It is first-price, because the winner is paid the figure it named (&sect;5.3). The reserve is the ceiling, and it binds, because a quote above it fails reconstruction and is discarded.
                     </p>
                     <PaperRemark title="The ceiling binds because it is disclosed.">
-                        The ceiling is a field of the struct every candidate receives, and that is why a quote above it cannot survive verification. In optimal-auction theory the reserve is likewise announced as part of the rules the auctioneer commits to, set against the distribution of bidders&rsquo; types (Myerson, 1981; Riley &amp; Samuelson, 1981). What differs here is that the ceiling is the only rule the buyer is bound by. An announced reserve draws quotes toward it as competition thins, and with one invited candidate a quote at the ceiling is the obvious play. The buyer&rsquo;s defenses are the ones in its hands: an honest ceiling and more candidates. The race reveals nothing about what the buyer would pay, since its drafts carry the candidates&rsquo; own figures.
+                        The ceiling is a field of the struct every candidate receives, and that is why a quote above it cannot survive verification. In optimal-auction theory the reserve is likewise announced as part of the rules the auctioneer commits to, set against the distribution of bidders&rsquo; types (Myerson 1981; Riley and Samuelson 1981). What differs here is that the ceiling is the only rule the buyer is bound by. An announced reserve draws quotes toward it as competition thins, and with one invited candidate a quote at the ceiling is the obvious play. The buyer&rsquo;s defenses are the ones in its hands: an honest ceiling and more candidates. The race reveals nothing about what the buyer would pay, since its drafts carry the candidates&rsquo; own figures.
                     </PaperRemark>
                     <p>
-                        In substance the quote leg is nearer a negotiation than an auction. Bulow &amp; Klemperer (1996) show that a seller does better with an auction without a reserve and with one additional bidder than with a negotiation among the original bidders in which it may choose the best mechanism. Their auction is one whose allocation rule the auctioneer commits to. Here the buyer commits to the ceiling and to nothing else: it may take a quote that is not the lowest, or none. Bajari, McMillan, &amp; Tadelis (2009) find that auctions have limits in complex projects with incomplete designs and few bidders, and that they discourage communication between buyer and contractor about the design. Those are the jobs for which a buyer reaches for a quote leg, so the quote leg has an auction&rsquo;s form and a negotiation&rsquo;s commitment structure.
+                        In substance the quote leg is nearer a negotiation than an auction. Bulow and Klemperer (1996) show that a seller does better with an auction without a reserve and with one additional bidder than with a negotiation among the original bidders in which it may choose the best mechanism. Their auction is one whose allocation rule the auctioneer commits to. Here the buyer commits to the ceiling and to nothing else: it may take a quote that is not the lowest, or none. Bajari, McMillan, and Tadelis (2009) find that auctions have limits in complex projects with incomplete designs and few bidders, and that they discourage communication between buyer and contractor about the design. Those are the jobs for which a buyer reaches for a quote leg, so the quote leg has an auction&rsquo;s form and a negotiation&rsquo;s commitment structure.
                     </p>
                 </PaperSubsection>
 
@@ -348,10 +430,10 @@ export default function MarketsWithoutAVenuePaper() {
                         Let the winner have answered at <Math>{"q_1"}</Math> and let the rule prescribe <Math>{"q_2 \\neq q_1"}</Math>, computed from rival reports. The Core transfers the payment field of the admitted struct, so paying <Math>{"q_2"}</Math> requires an admitted struct whose payment field is <Math>{"q_2"}</Math>, and a signature over the struct at <Math>{"q_1"}</Math> does not cover it. The winner may sign a struct at <Math>{"q_2"}</Math> after the reports are known, and if <Math>{"q_2 < q_1"}</Math> it may decline, which makes the rule a fresh request rather than an allocation rule. It may also sign in advance a ladder of structs at several figures. Either way the buyer signs last and is bound by no rule, so among the structs the winner has signed it completes the one that pays least. The winner&rsquo;s lowest signed figure is then its bid and its payment, which is first price. A payment of <Math>{"q_2"}</Math> in every profile of reports therefore needs a party that binds the buyer&rsquo;s choice, or one that supplies a party&rsquo;s signature without it. The Core accepts a signature only when it recovers to the named party&rsquo;s key, so either party holds power over a key not its own, and that party is the venue. <span className="italic">&#9633;</span>
                     </Proof>
                     <p>
-                        The proposition is a cost. The quote leg is not strategy-proof and cannot be made so within the design: a candidate&rsquo;s best quote depends on its beliefs about rival quotes and about the ceiling, as in first-price sealed bidding (Milgrom &amp; Weber, 1982; Klemperer, 1999). The impossibility is this proposition&rsquo;s, and it is narrower than the classical one. Gibbard (1973) and Satterthwaite (1975) show that every non-dictatorial rule over at least three outcomes and unrestricted preferences is manipulable; procurement with quasilinear payoffs is a restricted domain, and there the Vickrey rule is strategy-proof. What excludes it here is that the buyer cannot commit to it. The race has dominant strategies because it has no report, the quote leg discovers price because it has one, and the design cannot have both: <em>strategy-proofness on the quote leg is the price of having no venue</em>.
+                        The proposition is a cost. The quote leg is not strategy-proof and cannot be made so within the design: a candidate&rsquo;s best quote depends on its beliefs about rival quotes and about the ceiling, as in first-price sealed bidding (Milgrom and Weber 1982; Klemperer 1999). The impossibility is this proposition&rsquo;s, and it is narrower than the classical one. Gibbard (1973) and Satterthwaite (1975) show that every non-dictatorial rule over at least three outcomes and unrestricted preferences is manipulable; procurement with quasilinear payoffs is a restricted domain, and there the Vickrey rule is strategy-proof. What excludes it here is that the buyer cannot commit to it. The race has dominant strategies because it has no report, the quote leg discovers price because it has one, and the design cannot have both: <em>strategy-proofness on the quote leg is the price of having no venue</em>.
                     </p>
                     <PaperRemark title="The efficiency question is not asked.">
-                        Myerson &amp; Satterthwaite (1983) show that no mechanism for bilateral trade under two-sided private information is at once efficient, individually rational and budget balanced. Their result is about valuations and costs. The Core&rsquo;s game is over payments and bonds, with retained value credited at the figures the parties signed, and the market layer adds a quote, a figure a candidate names. We make no efficiency claim. What the two mechanisms supply is feasibility: the parties who trade are secured, and finding a counterparty costs a message.
+                        Myerson and Satterthwaite (1983) show that no mechanism for bilateral trade under two-sided private information is at once efficient, individually rational and budget balanced. Their result is about valuations and costs. The Core&rsquo;s game is over payments and bonds, with retained value credited at the figures the parties signed, and the market layer adds a quote, a figure a candidate names. We make no efficiency claim. What the two mechanisms supply is feasibility: the parties who trade are secured, and soliciting a candidate costs one message.
                     </PaperRemark>
                 </PaperSubsection>
 
@@ -392,7 +474,7 @@ export default function MarketsWithoutAVenuePaper() {
                         <Math>{"G_i"}</Math> is a sum over <Math>{"j \\leq i"}</Math>, and <Math>{"m \\leq i"}</Math>, so reducing <Math>{"P_m"}</Math> by <Math>{"\\delta"}</Math> reduces <Math>{"G_i"}</Math> by <Math>{"\\delta"}</Math> and <Math>{"2G_i"}</Math> by <Math>{"2\\delta"}</Math>. The constraint at position <Math>{"i"}</Math> is <Math>{"2G_i \\leq \\beta"}</Math>; relaxing its left side weakly enlarges the set of balances satisfying it. Positions with <Math>{"i < m"}</Math> are unaffected, <Math>{"G_i"}</Math> not depending on <Math>{"P_m"}</Math>. <span className="italic">&#9633;</span>
                     </Proof>
                     <p>
-                        A buyer&rsquo;s search at one position is therefore more than a private saving. It lowers the balance the winner must hold and the balance every later seller must hold, so it thickens the market at that position and at every one after it, where &sect;5.4(3) located the scarcity. The effect runs one way, from a position to itself and the positions after it, and it follows from the cumulative value being a running sum. A buyer forming several positions in sequence therefore does weakly better forming the earlier ones first. The same running sum also excludes rival drafts once one of them commits, by Proposition 3.1<em>(a&prime;)</em>, so one figure both sizes the bond and closes the position.
+                        A buyer&rsquo;s search at one position is therefore more than a private saving. It lowers the balance the winner must hold and the balance every later seller must hold, so it weakly widens the set of candidates able to be committed at that position and at every one after it, where &sect;5.4(3) located the scarcity. Whether a wider set draws more answers is conduct the proposition does not model. The effect runs one way, from a position to itself and the positions after it, and it follows from the cumulative value being a running sum. A buyer forming several positions in sequence therefore does weakly better forming the earlier ones first. The same running sum also excludes rival drafts once one of them commits, by Proposition 3.1<em>(a&prime;)</em>, so one figure both sizes the bond and closes the position.
                     </p>
                 </PaperSubsection>
             </PaperSection>
@@ -444,12 +526,95 @@ export default function MarketsWithoutAVenuePaper() {
                     </p>
                 </PaperSubsection>
 
-                <PaperSubsection title="6.4 What a venue would cost">
+                <PaperSubsection title="6.4 What a venue would cost, and what its absence forbids">
                     <p>
-                        For each of the four roles of &sect;2.4, a venue contract would add little and cost something specific.
+                        The trade-off can be stated property by property. The table sets each property a market design asks for against what the two mechanisms supply when no venue holds the authoritative state, with the result that establishes it. The four roles of &sect;2.4 are among its rows, and for three of them a venue contract would add little and cost something specific.
                     </p>
+                    <div className="my-4 overflow-x-auto">
+                        <table className="text-sm border-collapse">
+                            <thead>
+                                <tr>
+                                    {["Property", "Without a venue", "Where"].map((h) => (
+                                        <th key={h} className="border border-default px-3 py-1.5 text-left font-semibold text-ink-heading">{h}</th>
+                                    ))}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td className="border border-default px-3 py-1.5">Mutual exclusion</td>
+                                    <td className="border border-default px-3 py-1.5">Held: a buyer signing last is held to one commitment of its choosing at every position. A venue contract would have to hold or constrain a signature that is never in circulation.</td>
+                                    <td className="border border-default px-3 py-1.5">Proposition 3.1</td>
+                                </tr>
+                                <tr>
+                                    <td className="border border-default px-3 py-1.5">Formation safety</td>
+                                    <td className="border border-default px-3 py-1.5">Held: an answer exposes its signer to the one trade it answered for, and to nothing the buyer can enlarge.</td>
+                                    <td className="border border-default px-3 py-1.5">&sect;3.2, Remark</td>
+                                </tr>
+                                <tr>
+                                    <td className="border border-default px-3 py-1.5">Anti-reneging stake</td>
+                                    <td className="border border-default px-3 py-1.5">Held without a bid bond: the answer binds its signer if selected, and a losing answer forfeits nothing. A venue&rsquo;s bid bond would give the candidate&rsquo;s calculation a position the Core&rsquo;s equilibrium does not cover, and losing would stop being free.</td>
+                                    <td className="border border-default px-3 py-1.5">&sect;3.3; Proposition 6.2</td>
+                                </tr>
+                                <tr>
+                                    <td className="border border-default px-3 py-1.5">Discovery</td>
+                                    <td className="border border-default px-3 py-1.5">Held as a read of the members, where an empty result means absence. A venue&rsquo;s list is a roster, where an entry means admission by someone and an empty result means the roster is incomplete. Discovery at scale is outside the model.</td>
+                                    <td className="border border-default px-3 py-1.5">&sect;&sect;2.5, 3.3</td>
+                                </tr>
+                                <tr>
+                                    <td className="border border-default px-3 py-1.5">No interval between award and contract</td>
+                                    <td className="border border-default px-3 py-1.5">Held: the buyer&rsquo;s one signature is the selection and the commitment, so no state exists in which terms can be reopened.</td>
+                                    <td className="border border-default px-3 py-1.5">&sect;4.3</td>
+                                </tr>
+                                <tr>
+                                    <td className="border border-default px-3 py-1.5">Stability</td>
+                                    <td className="border border-default px-3 py-1.5">Held for one position, among the candidates that answered; the residual failures are thickness and congestion, priced by the buyer&rsquo;s own <Math>{"k"}</Math> and window.</td>
+                                    <td className="border border-default px-3 py-1.5">Proposition 4.1</td>
+                                </tr>
+                                <tr>
+                                    <td className="border border-default px-3 py-1.5">Commensurable quotes</td>
+                                    <td className="border border-default px-3 py-1.5">Held: a quote moves the price and nothing else.</td>
+                                    <td className="border border-default px-3 py-1.5">Proposition 5.1</td>
+                                </tr>
+                                <tr>
+                                    <td className="border border-default px-3 py-1.5">Participation known in advance</td>
+                                    <td className="border border-default px-3 py-1.5">Held: the balance a commitment requires is stated in the draft.</td>
+                                    <td className="border border-default px-3 py-1.5">&sect;5.4</td>
+                                </tr>
+                                <tr>
+                                    <td className="border border-default px-3 py-1.5">The Core&rsquo;s equilibrium for the commitments formed</td>
+                                    <td className="border border-default px-3 py-1.5">Held: inherited without re-derivation.</td>
+                                    <td className="border border-default px-3 py-1.5">Proposition 6.2</td>
+                                </tr>
+                                <tr>
+                                    <td className="border border-default px-3 py-1.5">Verifiable selection</td>
+                                    <td className="border border-default px-3 py-1.5">Lost: the buyer is bound by no rule, so a loser has nothing to audit.</td>
+                                    <td className="border border-default px-3 py-1.5">&sect;3.3</td>
+                                </tr>
+                                <tr>
+                                    <td className="border border-default px-3 py-1.5">Second-price payment; a strategy-proof quote leg</td>
+                                    <td className="border border-default px-3 py-1.5">Impossible: first price is forced.</td>
+                                    <td className="border border-default px-3 py-1.5">Proposition 5.2</td>
+                                </tr>
+                                <tr>
+                                    <td className="border border-default px-3 py-1.5">Selection evidenced in the data</td>
+                                    <td className="border border-default px-3 py-1.5">Absent: the data cannot tell a raced commitment from one arranged by hand, and the buyer shows how it chose only by its own attestation.</td>
+                                    <td className="border border-default px-3 py-1.5">&sect;6.3</td>
+                                </tr>
+                                <tr>
+                                    <td className="border border-default px-3 py-1.5">Stability across several positions</td>
+                                    <td className="border border-default px-3 py-1.5">Not established: a sequence of stable one-position matches is not in general a stable many-to-many match.</td>
+                                    <td className="border border-default px-3 py-1.5">&sect;4.4</td>
+                                </tr>
+                                <tr>
+                                    <td className="border border-default px-3 py-1.5">Efficiency</td>
+                                    <td className="border border-default px-3 py-1.5">Not claimed.</td>
+                                    <td className="border border-default px-3 py-1.5">&sect;5.3, Remark</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
                     <p>
-                        For <em>mutual exclusion</em> it adds nothing: candidate-first signing excludes rivals at every position, and a contract would have to hold or constrain a signature that is never in circulation. For <em>discovery</em> it adds nothing a read of the members does not do, and a candidate list kept by a venue is a roster, where an entry means admission by someone and an empty result means the roster is incomplete. For an <em>anti-reneging stake</em>, a venue could hold bid bonds, at exactly the cost of Proposition 6.2&rsquo;s contrapositive: the candidate&rsquo;s calculation gains a position the Core&rsquo;s equilibrium does not cover, and losing stops being free. For <em>verifiable selection</em>, a venue could make the buyer&rsquo;s rule binding and checkable, which is the one role genuinely lost. It would buy the commitment Proposition 5.2 shows to be otherwise unavailable, at the cost of a party with authority over which of several bonded parties becomes obliged.
+                        Verifiable selection is the one role genuinely lost. A venue could make the buyer&rsquo;s rule binding and checkable, which would buy the commitment Proposition 5.2 shows to be otherwise unavailable. Its cost is a party with authority over which of several bonded parties becomes obliged.
                     </p>
                     <p>
                         Two asymmetries decide the balance. The role a venue adds limits the buyer&rsquo;s ability to make promises to candidates, never a candidate&rsquo;s safety: an answering candidate is exposed to its own answer and to nothing the buyer can enlarge. And the choice is reversible in one direction only. A venue can later compose alongside an interface-minimal market, taking as inputs what the parties already exchange; a market built around a venue cannot have it removed without redesigning the exchange from the signature order up. Beginning without one is the reversible choice.
@@ -459,7 +624,7 @@ export default function MarketsWithoutAVenuePaper() {
 
             <PaperSection title="7. Conclusion">
                 <p>
-                    A venue&rsquo;s first three roles need no venue when the object exchanged during formation is the commitment itself, signed in a chosen order. Exclusion follows from the buyer signing last, discovery is a read of a permissionless registry, and the anti-reneging stake is the answer, which binds its signer if selected. The fourth role, commitment to an allocation rule, is genuinely lost, and the loss is exact: the buyer completes the struct that pays least, so first price is forced. The dispatch race and the request for quotes sit on either side of that trade, one keeping dominant strategies by asking for no report, the other discovering price at the cost of strategy-proofness and of a disclosed ceiling. Both produce only what the Core already accepts, so the parties who trade are secured by an equilibrium proved without reference to how they found each other, and finding each other cost a message.
+                    A venue&rsquo;s first three roles need no venue when the object exchanged during formation is the commitment itself, signed in a chosen order. Exclusion follows from the buyer signing last, discovery is a read of a permissionless registry, and the anti-reneging stake is the answer, which binds its signer if selected. The fourth role, commitment to an allocation rule, is genuinely lost, and the loss is exact: the buyer completes the struct that pays least, so first price is forced. The dispatch race and the request for quotes sit on either side of that trade. The race searches over availability and asks for no report, so in the single-position problem answering is weakly dominant for a candidate willing to perform. The request for quotes discovers price at the cost of strategy-proofness and of a disclosed ceiling. Both produce only what the Core already accepts, so the parties who trade are secured by an equilibrium proved for the Core alone, without reference to how they found each other (Figaro 2026), and asking each candidate cost one message.
                 </p>
             </PaperSection>
         </PaperLayout>
