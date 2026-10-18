@@ -38,6 +38,7 @@ FOUNDRY_PROFILE=halmos halmos --contract HalmosFigaroCore \
 cd frontend && npm run dev               # Dev server
 cd frontend && npm run type-check
 cd frontend && npx vitest run            # UI logic — component + unit tier
+cd frontend && npm run check:paper-pdfs  # after a build: every paper PDF's text layer keeps each inline formula in its sentence (pypdf, python3 -I)
 cd frontend && npm run test:e2e:mobile   # responsive/viewport chrome
 cd frontend && npm run test:e2e:devnet   # e2e — real UI against Anvil + contracts
 cd frontend && E2E_CHAIN=sepolia SMOKE_SELLER_KEY=0x… SMOKE_BUYER_KEY=0x… npx playwright test --project=sepolia   # the Sepolia smoke (funded keys; TESTING.md § projects)
@@ -63,7 +64,7 @@ node scripts/check-deployment.mjs <record.json> deployments/<chainId>.expected.j
 # --- Public site export (the direct upload's file tree) ---
 # The maintainers' private site-build script runs these three steps in order and
 # stops at the first failure; frontend/out/ is then the one tree a direct upload ships.
-cd frontend && env -u NEXT_DISTDIR -u FIGARO_ALLOW_TEST_HELPERS npm run build   # the site's static export → frontend/out/ (NEXT_DISTDIR unset, so the export lands in out/); a public-network build also sets NEXT_PUBLIC_CHAIN, the record's addresses and the pin key (§ Environment variables)
+cd frontend && env -u NEXT_DISTDIR -u FIGARO_ALLOW_TEST_HELPERS npm run build   # the site's static export → frontend/out/ (NEXT_DISTDIR unset, so the export lands in out/); its postbuild writes each paper's PDF beside its page and fails without Tectonic (§ "Paper PDFs"); a public-network build also sets NEXT_PUBLIC_CHAIN, the record's addresses and the pin key (§ Environment variables)
 cd docs-site && npm run build            # the docs-site's static export → docs-site/out/ (basePath /docs; prebuild assembles the content)
 rm -rf frontend/out/docs && cp -R docs-site/out frontend/out/docs   # the docs-site under the site's /docs: docs-site/out/index.html is served at /docs/
 ```
@@ -117,7 +118,16 @@ flight) and never touches `:3000` (the interactive dev server).
   - **Native Kubo (no Docker) — required where current Docker Desktop will not install (macOS Ventura 13.x).** Docker Desktop ≥ the macOS-14 cutoff won't install on Ventura, and the last Ventura-compatible build's VM wedged under sustained pinning. `devup.sh` uses *anything listening on :5001* (`nc -z`), so run Kubo natively instead: `brew install ipfs` (Kubo 0.42.0, same version); init a repo at a dedicated path so a stale `~/.ipfs` can't interfere — `export IPFS_PATH="$HOME/.ipfs-figaro"; ipfs init`; allowlist the dev origins — `ipfs config --json API.HTTPHeaders.Access-Control-Allow-Origin '["http://localhost:3000","http://127.0.0.1:3000","http://localhost:3100","http://127.0.0.1:3100"]'` + `Access-Control-Allow-Methods '["POST","GET","OPTIONS"]'`; then run it detached and **offline** (no DHT ⇒ no reprovider stalls; every devnet CID is local anyway) — `IPFS_PATH="$HOME/.ipfs-figaro" nohup ipfs daemon --offline > /tmp/figaro-ipfs-native.log 2>&1 &`. `devup`/`devdown` reference the `figaro-ipfs` Docker container by name but do not require it when :5001 is already served natively; take a native daemon down by killing that process, not `devdown.sh`.
 - **Mythril.** Symbolic execution via `scripts/mythril-docker.sh` (image `mythril/myth`). Opportunistic, not in the standard test loop.
 - **GraphQL indexing (subgraph).** `graph-node` + Postgres stack when a subgraph indexer is being exercised. Opportunistic; no subgraph artifacts currently in the repo.
-- **LaTeX → PDF.** No in-repo LaTeX targets — the paper corpus is web-native (`/papers/<slug>` pages). The `texlive/texlive` image (`pdflatex -interaction=nonstopmode`, two-pass for `\Cref` / citations) remains the way to build any ad-hoc or git-restored `.tex`; no native LaTeX on the host.
+- **LaTeX → PDF.** The paper corpus is web-native (`/papers/<slug>` pages); the site build typesets each paper's PDF from its exported page with **Tectonic**, native on the host (§ "Paper PDFs" below). The `texlive/texlive` image (`pdflatex -interaction=nonstopmode`, two-pass for `\Cref` / citations) remains the way to build any other ad-hoc or git-restored `.tex`.
+
+### Paper PDFs — the Tectonic prerequisite
+
+`npm run build` in `frontend/` ends with `frontend/scripts/build-paper-pdfs.mjs` (the npm `postbuild` hook, after `prettify-export.mjs`), which writes `out/papers/<slug>/<slug>.pdf` beside every exported paper page (FRONTEND.md § "Static export" owns the step). It needs:
+
+- **Tectonic** on `PATH` (`tectonic --version`). Without it the build FAILS — no export ships a paper page with a dead PDF link. `brew install tectonic` where Homebrew has a bottle; on macOS 13 (Ventura) Homebrew has none and builds LLVM and Rust from source, so install the release binary instead: `tectonic-<version>-x86_64-apple-darwin.tar.gz` from https://github.com/tectonic-typesetting/tectonic/releases, unpacked into a directory on `PATH`. Frontend CI installs the Linux release binary, pinned by version and checksum. Tectonic fetches the TeX files it uses on its first run and caches them, so the first build needs the network.
+- **Playwright's Chromium** (`npx playwright install chromium`), which renders each SVG figure to PDF.
+
+The Playwright e2e harness build (`FIGARO_ALLOW_TEST_HELPERS=1`) skips the step. After a build, `npm run check:paper-pdfs` checks every PDF's text layer (pypdf under `python3 -I`; TESTING.md § "Frontend Vitest").
 
 ---
 

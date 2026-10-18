@@ -320,6 +320,23 @@ that empties a fixture fails before the push rather than in Frontend CI.
   catalog pipeline, IPFS service, geocode, and the rest —
   the directory listing is the census, never this prose.
 
+**The paper PDFs** (`frontend/scripts/build-paper-pdfs.mjs`, FRONTEND.md §
+"Static export") have two checks. `frontend/tests/lib/paperLatex.test.tsx` (lib tier)
+renders the real `PaperLayout` and `Math` to static markup and asserts the
+HTML → LaTeX conversion of `frontend/scripts/paper-latex.mjs`: each formula's TeX taken
+verbatim from KaTeX's annotation (inline `$…$`, display `\[…\]`), entities and
+LaTeX specials, sections, run-in headings, lists, tables, figures, the
+preprint header, and the references with their URLs. `npm run
+check:paper-pdfs` (`frontend/scripts/check-paper-pdfs.mjs`, after a build) reads every
+built PDF's text layer with pypdf (`python3 -I`) and fails unless every inline
+formula sits in its sentence: the transaction-scoped-institutions §2 ("the
+buyer bonds twice the payment") and §5 ("Market with a court") sentences
+quoted in order, every inline `<Math>` of every paper found between the
+page's own words before and after it (never side by side — a formula-shaped
+hole — and never missing; a formula beside another formula or at a block
+edge has no sentence text to anchor and is counted, not checked), and no
+". :"-style punctuation gap the page does not itself write.
+
 The hash- and wire-load-bearing choreography suites live with their code in
 `sdk/tests/` (`npm --prefix sdk test`): agreement/assembly projection, the
 assembly→orders walk, checkout planning + sub-order pricing, the handoff
@@ -740,7 +757,9 @@ Per workflow, what it runs and when:
   that changes the SDK or the runtime; its macOS sandbox tests skip on the
   Linux runner.
 - **`frontend-ci`** — push/PR, path-filtered: type-check, ESLint, Vitest
-  (+coverage), the **mobile** Playwright project, production build.
+  (+coverage), the **mobile** Playwright project, production build (its
+  postbuild typesets the paper PDFs; the job installs Tectonic, pinned by
+  version and checksum).
 - **`devnet-e2e-ci`** — push/PR, path-filtered: the **bilateral spine**
   (`orders-accept`) end to end in the runner — Kubo (IPFS, CORS-configured),
   Anvil (`--accounts` at the count `scripts/lint-anvil-accounts-lockstep.sh` holds), a full `deploy-local.sh` stack,

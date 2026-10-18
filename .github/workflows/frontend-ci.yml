@@ -76,6 +76,16 @@ jobs:
           path: frontend/playwright-report/
           retention-days: 7
 
+      # The build's postbuild step typesets every paper's PDF with Tectonic
+      # (scripts/build-paper-pdfs.mjs) and fails without it. Release binary,
+      # pinned by version and checksum.
+      - name: Install Tectonic
+        run: |
+          curl -fsSL -o "$RUNNER_TEMP/tectonic.tgz" "https://github.com/tectonic-typesetting/tectonic/releases/download/tectonic%400.17.0/tectonic-0.17.0-x86_64-unknown-linux-musl.tar.gz"
+          echo "8533d07f9ccbd7a65824b9e0459041bca34af1eb33daba48f59215593753a3b7  $RUNNER_TEMP/tectonic.tgz" | sha256sum -c -
+          tar -xzf "$RUNNER_TEMP/tectonic.tgz" -C "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
+
       - name: Build production bundle
         run: npm run build
         env:

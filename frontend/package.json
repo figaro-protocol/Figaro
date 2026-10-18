@@ -5,7 +5,8 @@
     "scripts": {
         "dev": "NODE_OPTIONS=--no-deprecation next dev",
         "build": "next build",
-        "postbuild": "node scripts/prettify-export.mjs",
+        "postbuild": "node scripts/prettify-export.mjs && node scripts/build-paper-pdfs.mjs",
+        "check:paper-pdfs": "node scripts/check-paper-pdfs.mjs",
         "start": "node scripts/serve-export.mjs out 3000",
         "serve:export": "node scripts/serve-export.mjs",
         "lint": "next lint",

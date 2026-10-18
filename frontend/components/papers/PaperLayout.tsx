@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import Link from "@/components/shared/Link";
 import { getPaperNavigation, getPaperRef } from "@/app/(marketing)/_lib/paperGroups";
 import { Breadcrumb } from "@/components/shared/Breadcrumb";
-import { PrintButton } from "./PrintButton";
+import { PaperPdfLink } from "./PaperPdfLink";
 import { BackToTop } from "./BackToTop";
 
 interface PaperLayoutProps {
@@ -18,7 +18,8 @@ interface PaperLayoutProps {
     coauthor?: string;
     date: string;
     abstract: ReactNode;
-    /** Diagonal print-only watermark text. Shown on every printed page, hidden on screen. */
+    /** Diagonal print-only watermark text. Shown on every printed page, hidden on screen;
+     *  the typeset PDF carries it as its running header. */
     watermark?: string;
     children: ReactNode;
     references: ReactNode;
@@ -26,10 +27,10 @@ interface PaperLayoutProps {
 
 /**
  * Document-format shell for a prose paper rendered as a page. Screen view is a
- * single readable column; the print path (PrintButton → window.print()) exports
- * it to PDF with the watermark and pagination from the `paper-*` rules in
- * globals.css. The page itself is the sole committed source of truth, and the
- * reader prints their own PDF from it.
+ * single readable column. The page itself is the sole committed source of
+ * truth: the site build typesets the paper's PDF from this page's export
+ * (PaperPdfLink links it), and a reader who prints the page gets the watermark
+ * and pagination from the `paper-*` rules in globals.css.
  */
 export function PaperLayout({
     slug,
@@ -62,7 +63,7 @@ export function PaperLayout({
             )}
 
             <div className="print:hidden mb-8 flex justify-end">
-                <PrintButton />
+                <PaperPdfLink slug={slug} />
             </div>
 
             <header className="paper-header mb-10 border-b border-default pb-8">
