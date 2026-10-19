@@ -170,7 +170,10 @@ is the one non-recoverable per-trade cost, scaling with fabricated volume and ac
 to every base-currency holder; and the 600M is a FIXED pool a farmer DILUTES rather
 than inflates, in RISING tranches so the largest budgets pay on the most-measured
 periods. Formally: capturing a fraction φ of a period requires attacker score
-φ/(1−φ) times the honest score, at a capital cost LINEAR in that score — the
+φ/(1−φ) times the honest score, at a capital cost LINEAR in that score for one
+registration on one route — registrations committed in the same fabricated agreements
+share those sellers and processes, each further one priced by its own designer-side
+registration stake and its own counting gas, so the bound never holds over a portfolio — the
 rent-dissipation bound whose closed form, and the stake and cooldown derived from it, is
 published as §7 of `/papers/substrate-broadening-rpgf`; it is checkable at each period
 when both terms are observable. The florin has no protocol-set price, so the bound is

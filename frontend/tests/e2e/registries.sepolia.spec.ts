@@ -37,11 +37,12 @@ test.describe('PUBLIC REGISTRIES — the explorer shows exactly what the chain h
         const agreementKeys = new Set(agreementEvents.map((e) => String((e.args as { agreementKey?: string }).agreementKey ?? '').toLowerCase()).filter(Boolean));
         const assemblyEvents = await scanContractEvents(publicClient, { address: config.assemblyRegistry as `0x${string}`, abi: ASSEMBLY_REGISTRY_ABI, eventName: 'AssemblyRegistered' });
         const slugs = new Set(assemblyEvents.map((e) => deriveAssemblySlug((e.args as { compositionHash: `0x${string}` }).compositionHash)));
-        // A registration whose stake was withdrawn is retired: its binding stays
-        // readable (a row in the explorer, never cleared), but nothing about its
-        // content is asserted here — on the public network a retired
-        // registration may predate the key format in force, so its document
-        // no longer keys to it and an assembly over it no longer hydrates.
+        // A registration whose stake is withdrawn keeps its binding readable (a
+        // row in the explorer, never cleared), and nothing about its content is
+        // asserted here — on the public network a withdrawn registration's
+        // document may be keyed under another format than the one in force, so
+        // it need not key to its registration and an assembly over it need not
+        // hydrate.
         const withdrawnAgreements = new Set((await scanContractEvents(publicClient, { address: config.agreementRegistry as `0x${string}`, abi: AGREEMENT_REGISTRY_ABI, eventName: 'DepositWithdrawn' }))
             .map((e) => String((e.args as { agreementKey?: string }).agreementKey ?? '').toLowerCase()).filter(Boolean));
         const withdrawnSlugs = new Set((await scanContractEvents(publicClient, { address: config.assemblyRegistry as `0x${string}`, abi: ASSEMBLY_REGISTRY_ABI, eventName: 'DepositWithdrawn' }))
@@ -74,7 +75,7 @@ test.describe('PUBLIC REGISTRIES — the explorer shows exactly what the chain h
         for (const key of agreementKeys) {
             const read = await readRegisteredAgreementDocument(key as `0x${string}`);
             expect(read, `${key} is bound on the AgreementRegistry`).not.toBeNull();
-            if (withdrawnAgreements.has(key)) continue; // retired: the binding stands, its content is not held to the key
+            if (withdrawnAgreements.has(key)) continue; // withdrawn: the binding stands, its content is not held to the key
             expect(agreementKeyOf(read!.document).toLowerCase(), `the document pinned for ${key} keys to it`).toBe(key);
             agreementBindings.set(key, read!.binding.registeredBy);
         }
@@ -90,14 +91,14 @@ test.describe('PUBLIC REGISTRIES — the explorer shows exactly what the chain h
         }
 
         // ── Assemblies: every anchored composition, each named from its resolved assembly ──
-        // Every anchored composition, the retired ones included: the row set is the chain's.
+        // Every anchored composition, the withdrawn ones included: the row set is the chain's.
         await page.goto('/registries?family=assemblies&stake=all');
         const assemblyRows = page.locator('li[id^="assembly-"]');
         await expect.poll(async () => (await assemblyRows.evaluateAll((els) => els.map((e) => e.id.replace(/^assembly-/, '')))).sort(), { timeout: 60_000 })
             .toEqual([...slugs].sort());
         await expect(page.getByTestId('content-resolving')).toHaveCount(0, { timeout: RESOLVE_TIMEOUT });
         for (const slug of slugs) {
-            if (withdrawnSlugs.has(slug)) continue; // retired: the row stands, its assembly is not held to resolve
+            if (withdrawnSlugs.has(slug)) continue; // withdrawn: the row stands, its assembly is not held to resolve
             const name = (await page.getByTestId(`assembly-view-${slug}`).textContent())?.trim();
             expect(name, `${slug} is named from its assembly, not by its slug`).not.toBe(slug);
         }

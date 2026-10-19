@@ -60,7 +60,7 @@ Nouns and their definitions. One name per thing.
 
 **designer rewards** — The share of florins a designer is rewarded, after the fact and in proportion to real use, for the clauses, registered agreements and assemblies processes have used. A reward, minted for the purpose; never a payment, which is the buyer's word.
 
-**dispatch race** — One way an offer forms: a buyer's request goes out and the first willing seller takes it.
+**dispatch race** — One way an offer forms: a buyer's request goes out to several sellers, each at the price its catalog lists; each willing seller signs it, and the buyer signs one of the answers, the cheapest unless it picks another.
 
 **field** — A value a clause leaves open to be filled: by the designer when the assembly is designed, or by the parties at checkout.
 
@@ -96,7 +96,7 @@ Nouns and their definitions. One name per thing.
 
 **registry** — One of the protocol's four public lists on the chain: clauses, registered agreements, assemblies, members. Each entry is placed by its own wallet with its own stake.
 
-**request for quotes** — The other way an offer forms: a buyer's request goes out and sellers answer with a price, filling the one field the design leaves open; the terms are the design's.
+**request for quotes** — The other way an offer forms: a buyer's request goes out and sellers answer with a price, filling only the price fields the request names; the terms are the design's.
 
 **resolution** — The buyer's single signature that ends a process: every payment transfers and every bond is refunded — the buyer's less the payments it carried — all at once.
 

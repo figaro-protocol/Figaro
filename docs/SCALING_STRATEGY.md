@@ -193,22 +193,24 @@ by token transfers, not `FigaroCore` logic.
 
 | Step | Gas | Notes |
 |---|---|---|
-| `commit()` execution | ~794k (root) / ~382k (sub) | ECDSA recovery × 2, storage writes, 2–4 token transfers |
-| Transaction base cost | 21k | per-transaction overhead |
-| `resolveProcess()` per order | ~12.5k warm-exec marginal / ~30k all-in | hashStruct + SLOAD + 2 safeTransfer + SSTORE + event |
-| **Total per order** | **~190k (sub) – ~257k (root)** | across 2+ separate transactions |
+| `commit()` execution | ~794k (root) / ~382k (sub) | ECDSA recovery × 2, storage writes, 2–4 token transfers; receipt gas, the transaction base included |
+| Transaction base cost | 21k | per-transaction overhead, inside every receipt figure here |
+| `resolveProcess()` per order | ~12k warm-exec marginal / ~30k all-in, plus ~73k once per call | hashStruct + SLOAD + 2 safeTransfer + SSTORE + event |
+| **Total per order** | **~413k (sub) – ~824k (root)**, plus ~73k once per process | across 2+ separate transactions |
 
 > **Which number to quote.** The rows are ranges because a ROOT commit costs
 > more than a SUB-order commit, and resolve's MARGINAL cost (warm storage,
 > mid-loop) sits below its ALL-IN cost (cold, amortizing the call). The single
 > source of truth for anything downstream is the pinned pair
-> `COMMIT_GAS_PER_ORDER = 144_000` and `RESOLVE_GAS_PER_ORDER = 23_000`
+> `COMMIT_GAS_PER_ORDER = 383_000` and `RESOLVE_GAS_PER_ORDER = 30_000`, with
+> `RESOLVE_FIXED_OVERHEAD = 73_000` once per resolve call
 > (`sdk/src/gasCeilings.ts` ↔ `test/core/kernel/GasCeilingTest.t.sol`) — the same
 > anchors the ceilings table below uses, which is why the summary quotes
-> ~167k/order for a sub-order. Quote those, add the 21k base per TRANSACTION
-> when counting a full lifecycle, and do not re-derive from this table.
+> ~413k/order for a sub-order. They are receipt figures with the 21k
+> transaction base already inside them; quote those, and do not re-derive from
+> this table.
 
-For 100 orders, the direct path costs ~25.7M gas across 100+ transactions.
+For 100 orders, the direct path costs ~42M gas across 100+ transactions.
 
 **Batch path — full per-order on-chain cost:**
 
@@ -248,9 +250,9 @@ land on-chain.
 | Direct `resolveProcess()` | about 550 orders under the 2^24 transaction cap; ~950 at 30M without it | single call | ~30k/order (all-in) |
 | Batch `settleBatch()` | about 260 positions under the 2^24 transaction cap (EIP-7825, mainnet); without the cap about 460 at 30M, 930 at 60M and 3,000 at Sepolia's 200M, as the relay plans it from the batch's own execution (`prover/sequencer/src/gas.rs`); a batch-path process is kept within one settle's resolve | single call | 60k/position planned; ~26k measured cold on the pre-fork EVM |
 
-The correct comparison is total lifecycle cost: ~167k gas per order (direct)
+The correct comparison is total lifecycle cost: ~413k gas per order (direct)
 against about 26k measured per net position (batch; 60k as planned) — roughly
-**6× cheaper** per resolved order on the measured cost, about 2.8× on the
+**16× cheaper** per resolved order on the measured cost, about 7× on the
 planned ceiling, with further improvement from netting.
 
 **Implementation note — O(n) hashing required.** The hash-verification
@@ -549,7 +551,7 @@ transactions, never to a council making discretionary decisions.
 | State-transition correctness | none | SP1 proof + on-chain verifier |
 | Chain continuity | none | `prevStateRoot == stateRoot` check |
 | Cross-chain replay prevention | none | `chainId` + `verifyingContract` in public inputs |
-| Batch liveness | the sequencer | operational; a new process can open on the direct path, an open batch-path process needs the state the sequencer holds |
+| Batch liveness | the sequencer, the prover it proves with, and the verifier gateway the deployment wires | operational; a new process can open on the direct path, an open batch-path process needs the state the sequencer holds |
 | Approval integrity before a batch | the sequencer | pre-submission approval check (operational) |
 | Ordering within a batch | none | deterministic mirror execution |
 
