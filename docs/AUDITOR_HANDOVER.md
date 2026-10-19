@@ -13,7 +13,7 @@ the review's is its own.
 | | |
 |---|---|
 | Repository | https://github.com/figaro-protocol/Figaro |
-| Baseline commit | `28489848` (§ "The baseline commit"); no tag names a commit under audit — one is placed when an audit is engaged |
+| Baseline commit | `32c4ef8d` (§ "The baseline commit"); no tag names a commit under audit — one is placed when an audit is engaged |
 | Languages in scope | Solidity (`src/`, three deploy scripts) and Rust (`prover/`, four crates) |
 | Solidity in scope | 14 contract files, 1,423 lines of code (3,544 physical); 3 deploy scripts, 401 lines of code (840 physical) |
 | Rust in scope | 4 crates, 21 files under `src/`, 6,739 lines of code (9,426 physical) net of their inline test modules |
@@ -248,7 +248,7 @@ came from the program with that key. The other external dependencies are in
 ## The baseline commit
 
 **Every figure in this document stands for the code at commit
-`28489848`**, the baseline, which covers the
+`32c4ef8d`**, the baseline, which covers the
 whole scope, Solidity and Rust together. A figure is measured at the baseline,
 or at a commit whose in-scope code equals the baseline's once comments and
 NatSpec are stripped — the comparison `scripts/frozen-scope.sh` makes — and a
@@ -257,7 +257,7 @@ engaged, so no tag names a commit under audit; when one is engaged, a tag is
 placed at the commit it reviews and this section names it.
 
 ```bash
-git show --no-patch 28489848
+git show --no-patch 32c4ef8d
 ```
 
 The baseline differs from the previous baseline, `28489848`, in the relay
@@ -1261,12 +1261,12 @@ tests is `TESTING.md`.
 | Halmos | at `28489848`, whose Solidity equals the baseline's: 39 of 39 properties proved — `FigaroCore` 7, `MembersRegistry` 7, `UsageCounter` 7, `ClauseRegistry` 6, `AssemblyRegistry` 6, `AgreementRegistry` 6 |
 | Certora | 7 of 7 specs, every rule verified, at `f62b71cf`; not re-run at `c53bdaeb`, at `e800bfb2`, at `28489848` or at the baseline. `certora/RpgfMinter.spec`, `BatchVerifierTokenOps.spec`, `BatchVerifierStateRoot.spec` and `token-ops.inventory` are edited for `e800bfb2`'s (kind, key) claim and `registered` read, and `RpgfMinter.spec` again for `28489848`'s agreement kind and fifth constructor address; they have not been run against either |
 | Echidna | 15 properties, every one held on both harnesses, at `f62b71cf` |
-| TLA+ | 5 models in 6 configurations, 60 invariants and 2 action properties, no error. `RelayState` at this change, both configurations: the relay's state lifecycle (`RelayState.cfg`, 7 invariants + 2 action properties) 10,837,227 states generated, 1,959,944 distinct, depth 32; the deferral at batch formation (`DeferSpec`, `RelayStateDeferral.cfg`, 6 invariants) 100,334 generated, 45,331 distinct, depth 20; each of its ten switches set FALSE fails the property it names. Not re-run at this change, which the other models do not reach: `ResolutionUniverses` (20 invariants) at `c53bdaeb`, 10,030,087 states, no error; `FigaroCore` (9) at `cf6ba4ab`, 8,380,329 states generated, 6,087,113 distinct; `FlorinToken` (8) and `WitnessSwapAndCommitCoordinator` (10) at `cf6ba4ab`; the models' defect switches are their mutation checks (`TESTING.md` § TLA+) |
-| Rust (`cargo test --locked`) | at this change: every crate of the workspace passes, 0 failed, among them `usage` 32, `parity` 31, `merkle_parity` 8, `guest_program` 6, and the relay's 21 unit and 106 integration tests; 2 ignored by design, run by the fuzz script |
+| TLA+ | 5 models in 6 configurations, 60 invariants and 2 action properties, no error. `RelayState` at `32c4ef8d`, both configurations: the relay's state lifecycle (`RelayState.cfg`, 7 invariants + 2 action properties) 10,837,227 states generated, 1,959,944 distinct, depth 32; the deferral at batch formation (`DeferSpec`, `RelayStateDeferral.cfg`, 6 invariants) 100,334 generated, 45,331 distinct, depth 20; each of its ten switches set FALSE fails the property it names. Not re-run at `32c4ef8d`, which the other models do not reach: `ResolutionUniverses` (20 invariants) at `c53bdaeb`, 10,030,087 states, no error; `FigaroCore` (9) at `cf6ba4ab`, 8,380,329 states generated, 6,087,113 distinct; `FlorinToken` (8) and `WitnessSwapAndCommitCoordinator` (10) at `cf6ba4ab`; the models' defect switches are their mutation checks (`TESTING.md` § TLA+) |
+| Rust (`cargo test --locked`) | at `32c4ef8d`: every crate of the workspace passes, 0 failed, among them `usage` 32, `parity` 31, `merkle_parity` 8, `guest_program` 6, and the relay's 21 unit and 106 integration tests; 2 ignored by design, run by the fuzz script |
 | Differential fuzz | at `cf6ba4ab`: one round at seed 1791923560, no divergence: 400 Core operations (298 accepted, 102 rejected, 94 processes), the agreement vectors, 6,352 clause cases (1,850 encoded byte-for-byte, 3,318 rejected, 1,184 specs refused); CI runs four rounds on every push |
 | SDK (Vitest) | at `28489848`: 974 passed, 65 files |
 | Frontend (Vitest) and devnet end-to-end (Playwright) | at `28489848`; no spec runs the relay: 1,067 passed, 119 files; every devnet e2e spec green |
-| Batch end-to-end (SDK → relay → verifier) | passed at this change: `batch-e2e.test.ts` 3 of 3 (a second relay started on the first's served state, `STATE_FROM`, resolves the second batch), `batch-revoke-e2e.test.ts` 2 of 2, against a fresh Anvil with the release binary rebuilt and stamped |
+| Batch end-to-end (SDK → relay → verifier) | passed at `32c4ef8d`: `batch-e2e.test.ts` 3 of 3 (a second relay started on the first's served state, `STATE_FROM`, resolves the second batch), `batch-revoke-e2e.test.ts` 2 of 2, against a fresh Anvil with the release binary rebuilt and stamped |
 
 Certora reports, each "No errors found by Prover" at `f62b71cf`:
 
