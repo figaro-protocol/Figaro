@@ -277,16 +277,19 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
      * the composition its own way could — and did — show an order as empty
      * while publish anchored its terms.
      *
-     * The spec cache is an input to the walk (the mandatory clauses fold from
-     * it, and scope is verified against it), so a warm re-runs the projection.
+     * The spec cache is an input to the walk (every composed and picked
+     * clause is read from it, and scope is verified against it), so a warm
+     * re-runs the projection.
      */
-    // The registered agreements a draft binds are an input to the walk too:
-    // read each from the AgreementRegistry (chain → IPFS, verified against
-    // its key) into the session the build reads; each read re-runs it.
+    // The registered agreements a draft binds and picks in the mandatory
+    // article are an input to the walk too: read each from the
+    // AgreementRegistry (chain → IPFS, verified against its key) into the
+    // session the build reads; each read re-runs it.
     const agreementsVersion = useRegisteredAgreementsVersion();
     useEffect(() => {
         if (resolved.kind !== "draft") return;
         for (const key of Object.values(resolved.snapshot.registeredByOrderId ?? {})) void fetchRegisteredAgreement(key);
+        for (const key of Object.values(resolved.snapshot.mandatoryByOrderId ?? {})) void fetchRegisteredAgreement(key);
     }, [resolved]);
     const review = useMemo(
         () => (resolved.kind === "draft" ? projectSnapshotForReview(resolved.snapshot) : null),
@@ -564,9 +567,9 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                 type="button"
                 size="compact"
                 onClick={handleConfirmPublish}
-                // Gated on the spec cache: the publish build folds the MANDATORY
-                // mandatory clauses from loaded specs — confirming before the
-                // chain→IPFS warm completes would throw "no mandatory clauses".
+                // Gated on the spec cache: the publish build reads every
+                // composed and picked clause from loaded specs — confirming
+                // before the chain→IPFS warm completes would throw "spec is not loaded".
                 // And gated on the composition BUILDING: an assembly whose
                 // assembly this screen could not derive is one whose terms it
                 // could not show, so it must not be anchorable from here.
@@ -723,17 +726,18 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                             </ul>
                         </div>
                     )}
-                    {review?.ok && review.folded.length > 0 && (
-                        <div className="mt-2 max-w-3xl space-y-1" data-testid="review-folded-clauses">
+                    {review?.ok && review.mandatory.length > 0 && (
+                        <div className="mt-2 max-w-3xl space-y-1" data-testid="review-mandatory-clauses">
                             <p className="text-xs text-warning-fg leading-relaxed">
-                                Required clauses: their specs mark them required, so they are added
-                                without your pick. Anyone can register a clause, so check that each
-                                name, version and key below is one you mean to publish; confirming
-                                publishes them with this assembly.
+                                Mandatory clauses: they come from the registered agreement picked
+                                in the mandatory article for each order. Anyone can register a
+                                clause or an agreement, so check that each name, version and key
+                                below is one you mean to publish; confirming publishes them with
+                                this assembly.
                             </p>
                             <ul className="text-xs text-warning-fg font-mono space-y-0.5">
-                                {review.folded.map((clause) => (
-                                    <li key={clause.clauseKey} data-testid={`review-folded-${clause.clauseKey}`}>
+                                {review.mandatory.map((clause) => (
+                                    <li key={clause.clauseKey} data-testid={`review-mandatory-${clause.clauseKey}`}>
                                         {composedClauseLabel(clause)}
                                         <span className="font-sans"> — {clause.title} (
                                             {clause.carriedBy[0] === "assembly"

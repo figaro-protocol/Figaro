@@ -39,7 +39,8 @@ import { DEFAULT_IPFS_SERVICE } from "@/lib/shared/ipfsService";
 import type { DesignSnapshot } from "@/lib/designer/syntheticDesignStore";
 import { AGREEMENT_REGISTRY_ABI, canonicalize, composeOrderAgreement, serializeAssembly, type RegisteredAgreement } from "@figaro-protocol/sdk";
 import { snapshotToAssembly } from "@/lib/designer/draftToAssembly";
-import { liveSpecSource } from "@/lib/shared/clauseSpecSource";
+import { specSource } from "@/lib/shared/clauseSpecSource";
+import { getRegisteredAgreement } from "@/lib/protocol/useAgreementRegistry";
 import { deriveAssemblySlug } from "@/lib/shared/assembly";
 import { hexEqual } from "@/lib/shared/evm";
 import { maxOrdersResolvablePerProcess } from "@/lib/shared/chainGasCeilings";
@@ -122,8 +123,9 @@ export async function registerAgreement(args: {
 /**
  * Register ONE order's agreement on its own, from the drawer: the
  * clauses the designer selected for the order compose through the SDK's one
- * composition rule (`composeOrderAgreement` — the mandatory fold, value-free
- * but for design fills, the scope check), then `registerAgreement`.
+ * composition rule (`composeOrderAgreement` — the clauses of the registered
+ * agreement picked in the mandatory article merged, value-free but for design
+ * fills, the scope check), then `registerAgreement`.
  * The registered key is what the agreement then binds, and what any other
  * assembly's drawer offers from the live registry.
  */
@@ -134,6 +136,8 @@ export function usePublishAgreement() {
 
     async function publishAgreement(args: {
         clauses: Readonly<Record<`0x${string}`, Record<string, unknown>>>;
+        /** The `AgreementRegistry` key the order picked in the mandatory article. */
+        mandatoryAgreementKey?: `0x${string}`;
         name?: string;
     }): Promise<RegisteredAgreementOutcome> {
         if (!client) throw new Error("No public client available to read the registration stake.");
@@ -141,7 +145,14 @@ export function usePublishAgreement() {
         if (Object.keys(args.clauses).length === 0) {
             throw new Error("Compose at least one clause on this order before registering its agreement.");
         }
-        const { composed, agreementKey } = composeOrderAgreement({ clauses: args.clauses, specs: liveSpecSource() });
+        if (!args.mandatoryAgreementKey) {
+            throw new Error("Pick a registered agreement in the mandatory article before registering this order's agreement.");
+        }
+        const mandatory = getRegisteredAgreement(args.mandatoryAgreementKey);
+        if (!mandatory) {
+            throw new Error(`the registered agreement ${args.mandatoryAgreementKey} picked in the mandatory article has not been read from the AgreementRegistry yet`);
+        }
+        const { composed, agreementKey } = composeOrderAgreement({ clauses: args.clauses, mandatory, specs: specSource() });
         const doc: RegisteredAgreement = { ...(args.name ? { name: args.name } : {}), ...composed };
         return registerAgreement({ client: client as never, writeContractAsync, address, doc, agreementKey });
     }

@@ -136,6 +136,15 @@ describe("fetchRegisteredAgreement — the binding by key, the document verified
 });
 
 describe("the designer binds a registered agreement to one agreement and composes another", () => {
+    /** The registered agreement each order picks in the mandatory article:
+     *  the mandatory clauses alone, read from the registry like any other. */
+    let pickKey: Hex;
+    beforeEach(async () => {
+        const pick = { name: "Mandatory clauses", clauses: { [keyOf("figaro-commerce")]: {}, [keyOf("figaro-topology")]: {} } };
+        pickKey = register(pick, "ipfs://mandatory-clauses");
+        await fetchRegisteredAgreement(pickKey);
+    });
+
     function snapshot(composition: Pick<DesignSnapshot, "clausesByOrderId" | "registeredByOrderId">): DesignSnapshot & { rootId: string; subId: string } {
         const session = startSyntheticSession();
         const root = createSyntheticRootOrder(session);
@@ -151,12 +160,13 @@ describe("the designer binds a registered agreement to one agreement and compose
             updatedAt: 1,
             rootId: root.order.orderHash,
             subId: sub.order.orderHash,
+            mandatoryByOrderId: { [root.order.orderHash]: pickKey, [sub.order.orderHash]: pickKey },
             ...composition,
         };
     }
 
     it("keeps the bound key, registers only the new agreement, and states both on the review", async () => {
-        // A registered agreement carrying the live mandatory clauses.
+        // A registered agreement carrying the clauses of its pick.
         const registered = { name: "Scheduled work", clauses: { [keyOf("figaro-commerce")]: {}, [keyOf("figaro-topology")]: {}, [keyOf("figaro-schedule")]: {} } };
         const boundKey = register(registered, "ipfs://scheduled-work");
         await fetchRegisteredAgreement(boundKey);
@@ -172,7 +182,7 @@ describe("the designer binds a registered agreement to one agreement and compose
         const newKeys = Object.keys(review.newAgreements);
         expect(newKeys).toHaveLength(1);
         expect(newKeys[0]).not.toBe(boundKey);
-        // The new agreement folds the mandatory clauses beside the designer's pick.
+        // The new agreement merges its pick's clauses beside the designer's composition.
         expect(Object.keys(review.newAgreements[newKeys[0] as Hex].clauses).sort())
             .toEqual([keyOf("figaro-commerce"), keyOf("figaro-topology"), keyOf("figaro-acceptance-criteria")].sort());
         // The bound agreement carries only its own topology fill.
@@ -191,6 +201,16 @@ describe("the designer binds a registered agreement to one agreement and compose
         });
         expect(review.ok).toBe(false);
         if (!review.ok) expect(review.error).toMatch(/binds a registered agreement and also composes clauses/);
+    });
+
+    it("refuses a bound agreement lacking a clause of the registered agreement picked for its order", async () => {
+        const short = { name: "No topology", clauses: { [keyOf("figaro-commerce")]: {}, [keyOf("figaro-schedule")]: {} } };
+        const boundKey = register(short, "ipfs://no-topology");
+        await fetchRegisteredAgreement(boundKey);
+        const base = snapshot({});
+        const review = projectSnapshotForReview({ ...base, registeredByOrderId: { [base.rootId]: boundKey } });
+        expect(review.ok).toBe(false);
+        if (!review.ok) expect(review.error).toMatch(/order-0: registered agreement 0x[0-9a-f]{64} lacks figaro-topology .* picked in the mandatory article/);
     });
 
     it("refuses a binding this tab has not read — the build never binds an agreement it cannot read", () => {

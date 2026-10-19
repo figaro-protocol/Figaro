@@ -4,12 +4,15 @@ Each file here is one agreement a designer would register and any
 assembly can bind: the clauses selected for one agreement, written by clause
 name (`name@version` where two specs share a name) with the designer's own
 fills (`block.design.fills` values only — a clause's other fields are the
-buyer's at checkout), beside the designer's words (`name`, `summary`). The
-mandatory clauses need not be written: the fold adds them, so a file lists what
-the designer selects.
+buyer's at checkout), beside the designer's words (`name`, `summary`), and the agreement it picks in
+the mandatory article (`mandatory`, a file name here): the pick's clauses merge
+in, so a file lists what the designer selects. `mandatory-clauses.json` is that
+pick: the mandatory clauses alone, the registration the designer drawer's
+mandatory article lists, registered beside the clauses at deploy; it names no
+pick of its own.
 
 The populate path composes each file at deploy (`composeAuthoredAgreement` in
-the SDK: names resolved to keys, the mandatory clauses folded, the key derived
+the SDK: names resolved to keys, the pick's clauses merged, the key derived
 as the merkle root over the composed clauses), pins the document and registers
 it once on `AgreementRegistry` under its key (one stake; a key the registry
 already binds is skipped). A reference assembly (`assemblies/*.json`) names the

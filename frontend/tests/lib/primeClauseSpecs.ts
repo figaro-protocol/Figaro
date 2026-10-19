@@ -19,13 +19,14 @@ import {
     agreementKeyOf,
     assembleAuthored,
     composeAuthoredAgreement,
+    composeAuthoredAgreements,
     type Assembly,
     type RegisteredAgreement,
     type Hex,
     type HydratedAssembly,
     type AssemblyAgreement,
 } from "@figaro-protocol/sdk";
-import { listKnownClauses, loadClauseSpec, noteClauseStakes, setClauseSpecFetcher, specSource } from "@/lib/shared/clauseSpecSource";
+import { listKnownClauses, loadClauseSpec, setClauseSpecFetcher, specSource } from "@/lib/shared/clauseSpecSource";
 
 // Vitest runs with cwd = frontend/ (the vitest config root).
 const EXAMPLES_DIR = path.resolve(process.cwd(), "../clauses");
@@ -43,9 +44,8 @@ export async function canonicalFileBytes(uri: string): Promise<string> {
 }
 
 /** Load the named off-chain specs into the cache — or every example spec when
- *  called with no argument — and note every loaded clause's stake as live, as
- *  the registry read `useClauseSpecs` performs does for a registration nobody
- *  withdrew. Idempotent (loadClauseSpec caches). Names here are FILE names in
+ *  called with no argument — as `useClauseSpecs` loads them from the registry.
+ *  Idempotent (loadClauseSpec caches). Names here are FILE names in
  *  `clauses/`, the maintainer's authored source. */
 export async function primeClauseSpecs(clauseFiles?: readonly string[]): Promise<void> {
     const files = clauseFiles
@@ -57,7 +57,6 @@ export async function primeClauseSpecs(clauseFiles?: readonly string[]): Promise
         const file = path.join(EXAMPLES_DIR, `${name}.json`);
         await loadClauseSpec(computeClauseKey(JSON.parse(readFileSync(file, "utf8"))), file);
     }
-    noteClauseStakes(listKnownClauses().map((c) => ({ clauseKey: c.clauseKey, stakeWithdrawn: false })));
 }
 
 /** The key of the ONE loaded spec whose own `clauseId` is `name` (and whose
@@ -92,14 +91,35 @@ export function resolveAuthored<T extends object>(doc: T): T {
 }
 
 /** The reference assemblies' authored agreements (`agreements/*.json`),
- *  composed over the primed specs by name — what the seeding registers. */
+ *  composed over the primed specs by name, each pick resolved within the set
+ *  (`composeAuthoredAgreements`) — what the seeding registers. */
 export function authoredAgreements(): Record<string, RegisteredAgreement> {
     const dir = path.resolve(process.cwd(), "../agreements");
-    const byName: Record<string, RegisteredAgreement> = {};
+    const authored: Record<string, object> = {};
     for (const file of readdirSync(dir).filter((f) => f.endsWith(".json")).sort()) {
-        byName[file.replace(/\.json$/, "")] = composeAuthoredAgreement(JSON.parse(readFileSync(path.join(dir, file), "utf8")), specSource()).document;
+        authored[file.replace(/\.json$/, "")] = JSON.parse(readFileSync(path.join(dir, file), "utf8"));
     }
-    return byName;
+    return Object.fromEntries(Object.entries(composeAuthoredAgreements(authored, specSource())).map(([name, { document }]) => [name, document]));
+}
+
+/** The reference agreement the reference agreements pick in the mandatory
+ *  article (`agreements/mandatory-clauses.json`: the mandatory clauses
+ *  alone), composed over the primed specs — prime commerce and topology
+ *  first. */
+export function mandatoryPick(): RegisteredAgreement {
+    const file = path.resolve(process.cwd(), "../agreements/mandatory-clauses.json");
+    return composeAuthoredAgreement(JSON.parse(readFileSync(file, "utf8")), specSource()).document;
+}
+
+/** Put the reference pick (`mandatoryPick`) in this tab's verified
+ *  registered-agreement cache, as a read of its `AgreementRegistry` binding
+ *  would, and return its key — what a design snapshot's `mandatoryByOrderId`
+ *  names. */
+export async function primeMandatoryPick(): Promise<Hex> {
+    // Imported here, not at the top: the registry module reads the contract
+    // addresses, which some tests mock with values declared below their imports.
+    const { _primeRegisteredAgreement_TESTING_ONLY } = await import("@/lib/protocol/useAgreementRegistry");
+    return _primeRegisteredAgreement_TESTING_ONLY(mandatoryPick());
 }
 
 /** A reference assembly (`assemblies/<name>`) built exactly as the seeding
@@ -122,13 +142,15 @@ export function referenceAssembly(name: string): HydratedAssembly {
  *  assembly, keyed by lowercased key, as a registry read hands them to
  *  checkout. By default each inline agreement composes as the seeding
  *  composes an authored one (`composeAuthoredAgreement` over the primed
- *  specs, the mandatory clauses folded — prime the specs first) and the
- *  assembly builds over them (`assembleAuthored`); `{ fold: false }` keys
+ *  specs, picking the reference agreement in the mandatory article —
+ *  `mandatoryPick`, its clauses merged; prime the specs first) and the
+ *  assembly builds over them (`assembleAuthored`); `{ pick: false }` keys
  *  each inline clause set as written, for a test whose spec set carries no
  *  mandatory clause. */
-export function hydrateAuthored(authored: object, opts: { fold?: boolean } = {}): HydratedAssembly {
+export function hydrateAuthored(authored: object, opts: { pick?: boolean } = {}): HydratedAssembly {
     const byKey: Record<Hex, RegisteredAgreement> = {};
-    if (opts.fold !== false) {
+    if (opts.pick !== false) {
+        const pick = mandatoryPick();
         const { agreements: written, ...rest } = authored as {
             agreements: { id?: string; clauses: Record<string, Record<string, unknown>> }[];
         } & Record<string, unknown>;
@@ -142,10 +164,10 @@ export function hydrateAuthored(authored: object, opts: { fold?: boolean } = {})
                 clauses[key] = composed;
                 if (Array.isArray(parentOrderHashes)) parents = [...parentOrderHashes] as string[];
             }
-            byName[id] = composeAuthoredAgreement({ clauses }, specSource()).document;
+            byName[id] = composeAuthoredAgreement({ clauses, mandatory: "mandatory-clauses" }, specSource(), { "mandatory-clauses": pick }).document;
             return { id, agreement: id, ...(parents ? { parentOrderHashes: parents } : {}) };
         });
-        const { assembly, agreements } = assembleAuthored({ ...rest, agreements: entries }, byName, specSource());
+        const { assembly, agreements } = assembleAuthored({ ...rest, agreements: entries }, { ...byName, "mandatory-clauses": pick }, specSource());
         for (const [key, doc] of Object.entries(agreements)) byKey[key.toLowerCase() as Hex] = doc;
         return { assembly, agreements: byKey };
     }

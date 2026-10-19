@@ -83,7 +83,7 @@ export default function Clauses() {
                             <tr>
                                 <td className="py-2 pr-4"><code>block.design.article: &quot;mandatory&quot;</code></td>
                                 <td className="py-2 pr-4"><strong><code>agreementKey</code></strong> + <strong><code>agreementHash</code></strong></td>
-                                <td className="py-2">Auto-folds your clause into <em>every</em> newly agreement, whether or not a designer chose it. This is how the two mandatory clauses &mdash; <code>figaro-commerce</code> and <code>figaro-topology</code> &mdash; ride along. Which registered agreement and which assembly an order instantiates is carried by the agreement itself, as one reserved leaf of its merkle tree, and by no clause.</td>
+                                <td className="py-2">Makes your clause one a designer never selects on its own. A registered agreement whose clauses are all mandatory is what the designer&apos;s mandatory article lists, whoever registered it; the designer picks one for every agreement of an assembly, and its clauses merge into that agreement. This is how the two mandatory clauses &mdash; <code>figaro-commerce</code> and <code>figaro-topology</code> &mdash; reach every order. Which registered agreement and which assembly an order instantiates is carried by the agreement itself, as one reserved leaf of its merkle tree, and by no clause.</td>
                             </tr>
                             <tr>
                                 <td className="py-2 pr-4"><code>block.design.article: &quot;attestations&quot;</code></td>

@@ -34,7 +34,7 @@ import {
     snapshotToAssembly,
 } from "@/lib/designer/draftToAssembly";
 import { clauseDesignFills, getClauseSpec } from "@/lib/shared/clauseSpecSource";
-import { keyOf, primeClauseSpecs } from "./primeClauseSpecs";
+import { keyOf, primeClauseSpecs, primeMandatoryPick } from "./primeClauseSpecs";
 
 describe("syntheticDesignStore round-trip", () => {
     beforeEach(async () => {
@@ -103,12 +103,14 @@ describe("syntheticDesignStore round-trip", () => {
 describe("design fills are the composition's identity — the disclosure regime", () => {
     const CLAUSE_NAME = "figaro-data-terms";
     let CLAUSE = "0x" as `0x${string}`;
+    let PICK = "0x" as `0x${string}`;
     const FIELD = "disclosure";
 
     beforeEach(async () => {
         window.localStorage.clear();
         await primeClauseSpecs();
         CLAUSE = keyOf(CLAUSE_NAME);
+        PICK = await primeMandatoryPick();
     });
 
     /** A one-order draft composing the clause with the given field values. */
@@ -125,6 +127,7 @@ describe("design fills are the composition's identity — the disclosure regime"
             nextSellerIndex: session.nextSellerIndex,
             orders: [root.order],
             clausesByOrderId: { [root.order.orderHash]: { [CLAUSE]: values } },
+            mandatoryByOrderId: { [root.order.orderHash]: PICK },
             createdAt: 1,
             updatedAt: 1,
         };

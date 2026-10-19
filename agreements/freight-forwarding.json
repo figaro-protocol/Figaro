@@ -3,6 +3,7 @@
         "figaro-geolocation": {},
         "figaro-merchant-process": {}
     },
+    "mandatory": "mandatory-clauses",
     "name": "Freight forwarding",
     "summary": "The forwarder's leg: the consignment booked onward from a named place."
 }

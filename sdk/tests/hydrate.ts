@@ -5,7 +5,7 @@
  * registered agreement with the `parentOrderHashes` values lifted into its
  * agreement's own fill (the clause stays composed, with `{}`), as the seeding
  * derives a reference assembly (`composeAuthoredAgreement`, `assembleAuthored`)
- * — without the mandatory fold, so a test's clause set is the one it wrote.
+ * — with no mandatory pick, so a test's clause set is the one it wrote.
  */
 import type { Hex } from "viem";
 import { agreementKeyOf, assemblyCompositionHash, type RegisteredAgreement, type HydratedAssembly, type AssemblyAgreement } from "../src/assembly.js";

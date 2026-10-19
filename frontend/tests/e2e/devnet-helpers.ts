@@ -27,7 +27,9 @@ import {
     parseProjectionHints,
     agreementClauses,
     assembleAuthored,
-    composeAuthoredAgreement,
+    composeAuthoredAgreements,
+    agreementKeyOf,
+    isMandatoryAgreement,
     assemblyCompositionHash,
     tryParseMemberProfileDocument,
     type Assembly,
@@ -43,7 +45,7 @@ import { parseClauseSpec } from '@figaro-protocol/sdk/clauses';
 import { encodeGeohash } from '@figaro-protocol/sdk/derive';
 import { deriveAssemblySlug } from '@/lib/shared/assembly';
 import { ZERO_ADDRESS } from '@/lib/shared/evm';
-import { clauseLadderField, labelEnumValue, loadClauseSpec, setClauseSpecFetcher } from '@/lib/shared/clauseSpecSource';
+import { clauseLadderField, labelEnumValue, loadClauseSpec, setClauseSpecFetcher, specSource } from '@/lib/shared/clauseSpecSource';
 import { keyOf } from '../lib/primeClauseSpecs';
 
 /** The ONE way a spec locates a clause by the name a human reads — over the
@@ -692,14 +694,15 @@ function authoredSpecSource(): SpecSource {
 }
 
 /** The authored agreements (`agreements/*.json`) composed by name over the
- *  authored specs — what the seeding registers. */
+ *  authored specs, each pick in the mandatory article resolved within the
+ *  set — what the seeding registers. */
 function authoredAgreementsBuilt(): Record<string, RegisteredAgreement> {
     const dir = path.resolve(__dirname, '../../../agreements');
-    const byName: Record<string, RegisteredAgreement> = {};
+    const authored: Record<string, object> = {};
     for (const file of fs.readdirSync(dir).filter((f) => f.endsWith('.json')).sort()) {
-        byName[file.replace(/\.json$/, '')] = composeAuthoredAgreement(JSON.parse(fs.readFileSync(path.join(dir, file), 'utf8')), authoredSpecSource()).document;
+        authored[file.replace(/\.json$/, '')] = JSON.parse(fs.readFileSync(path.join(dir, file), 'utf8'));
     }
-    return byName;
+    return Object.fromEntries(Object.entries(composeAuthoredAgreements(authored, authoredSpecSource())).map(([name, { document }]) => [name, document]));
 }
 
 /** A reference assembly (`assemblies/<name>`) built exactly as the seeding
@@ -880,6 +883,60 @@ export async function primeRegisteredClauseSpecs(): Promise<{ clauseKey: Hex; co
         await loadClauseSpec(clauseKey, contentURI).catch(() => undefined);
     }
     return rows;
+}
+
+/**
+ * The registrations the designer drawer's mandatory article lists, discovered
+ * from chain → IPFS: every `AgreementRegistered` event whose stake is live,
+ * its document read by key and verified against it, kept when every clause it
+ * carries is mandatory-article (`isMandatoryAgreement`, over the specs read
+ * from ClauseRegistry). Whoever registered it. In registration order.
+ */
+export async function discoverMandatoryAgreements(): Promise<{ agreementKey: Hex; registeredBy: `0x${string}`; document: RegisteredAgreement }[]> {
+    await primeRegisteredClauseSpecs();
+    const registry = (process.env.NEXT_PUBLIC_AGREEMENT_REGISTRY ?? readLocalDeploymentConfig().agreementRegistry ?? '') as `0x${string}`;
+    const events = await scanContractEvents(localPublicClient() as PublicClient, {
+        address: registry, abi: AGREEMENT_REGISTRY_ABI, eventName: 'AgreementRegistered',
+    });
+    const out: { agreementKey: Hex; registeredBy: `0x${string}`; document: RegisteredAgreement }[] = [];
+    for (const ev of events) {
+        const { agreementKey } = ev.args as { agreementKey?: Hex };
+        if (!agreementKey) continue;
+        const read = await readRegisteredAgreementDocument(agreementKey).catch(() => null);
+        if (!read || read.binding.stakeWithdrawn) continue;
+        if (agreementKeyOf(read.document) !== agreementKey) continue;
+        if (!isMandatoryAgreement(read.document, specSource())) continue;
+        out.push({ agreementKey, registeredBy: read.binding.registeredBy, document: read.document });
+    }
+    return out;
+}
+
+/**
+ * In the designer drawer, pick a registration in the mandatory article for
+ * every order on the canvas, as a designer does: each node's tab, the
+ * registry tab, the registration's radio. `agreementKey` defaults to the
+ * first registration the article lists, discovered from the chain
+ * (`discoverMandatoryAgreements`). Opens the drawer on the first node when no
+ * node is selected.
+ */
+export async function pickMandatoryForEveryOrder(page: Page, agreementKey?: Hex): Promise<void> {
+    const key = agreementKey ?? (await discoverMandatoryAgreements())[0]?.agreementKey;
+    if (!key) throw new Error('no registered agreement whose clauses are all mandatory-article is on the chain — run populate-test-data');
+    if (await page.getByTestId('agreement-drawer').getAttribute('data-empty') === 'true') {
+        await page.locator('[data-testid^="order-node-"]:not([data-testid$="-delete"])').first().click();
+    }
+    const tabs = page.locator('[data-testid^="drawer-node-tab-"]');
+    const ids = await tabs.count() > 0
+        ? await tabs.evaluateAll((els) => els.map((el) => el.getAttribute('data-testid')!.replace('drawer-node-tab-', '')))
+        : [null];
+    for (const id of ids) {
+        if (id) await page.getByTestId(`drawer-node-tab-${id}`).click();
+        await page.getByTestId('drawer-tab-registry').click();
+        const radio = page.getByTestId(`drawer-mandatory-agreement-${key}`);
+        await radio.waitFor({ state: 'visible', timeout: 30000 });
+        await radio.check();
+        await expect(radio).toBeChecked();
+    }
 }
 
 /** A process-log LADDER's stage labels, read from the clause's chain-anchored
@@ -1171,6 +1228,7 @@ export async function ensureDeliveryAssembly(page: Page): Promise<string> {
         await page.getByTestId('designer-name-input').fill('Local commerce');
         await page.getByTestId('designer-summary-input').fill('Merchant delivery: a merchant order plus one co-equal courier order.');
         await page.getByTestId('designer-description-input').fill('The local-commerce runtime: the buyer orders with the delivery modality; the courier order carries the goods; each transfer is attested; one resolve pays both.');
+        await pickMandatoryForEveryOrder(page);
         await expect(page.getByTestId('designer-review')).toBeEnabled({ timeout: 5000 });
         await page.getByTestId('designer-review').click();
         await page.waitForURL(/\/assemblies\/designer\/view\/?\?slug=asm-/, { timeout: 15000 });

@@ -140,7 +140,7 @@ export interface AgreementGroup {
     key: string;
     label: string;
     /** `clauseKey` is the key the assembly composed for the clause — every
-     *  spec read the row makes is keyed on it. `mandatory` marks a clause the assembly folded in because its spec's
+     *  spec read the row makes is keyed on it. `mandatory` marks a clause whose spec's
      *  article is "mandatory" (commerce, topology, or anyone's
      *  registration so marked): it is listed like every other clause, since
      *  the buyer signs it, and is never fillable — the checkout walk fills it. */
@@ -151,7 +151,7 @@ export interface AgreementGroup {
  * The per-order agreement review rows: every order in the assembly — root +
  * sub-orders — surfaced for review, each clause rendering its COMPOSED
  * values, spec-driven. Every clause the agreement carries is listed, the
- * mandatory ones (folded by the assembly, filled by the checkout walk) marked
+ * mandatory ones (merged from the designer's pick, filled by the checkout walk) marked
  * `mandatory` and never fillable: the spec's article is anyone's to write, so
  * a clause the buyer signs is never left off the list. The profile fold and
  * the mechanical-fill subtraction are the SAME ones the order build applies,

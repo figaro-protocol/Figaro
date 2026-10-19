@@ -12,6 +12,7 @@
         },
         "figaro-merchant-process": {}
     },
+    "mandatory": "mandatory-clauses",
     "name": "Customs filing",
     "summary": "The customs filing, made under the affixed filing terms the parties consented to."
 }

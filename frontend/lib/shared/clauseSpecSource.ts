@@ -54,14 +54,6 @@ const SPEC_LOAD_ERRORS = new Map<string, string>();
  *  scalar. Enforced by scripts/lint-clause-nests-under-a-field.sh. */
 const NESTS_UNDER = new Map<string, string>();
 
-/** The registrations whose stake is live (`isLiveRegistration`), keyed like
- *  the spec cache — read from the same `ClauseRegistry` scan the drawer
- *  offers clauses from and replaced whole on every read. The spec cache
- *  itself NEVER filters on it: a committed agreement keeps reading a
- *  withdrawn clause's spec. Only `liveSpecSource().list()`, the set a NEW
- *  assembly's mandatory fold draws from, holds just these. */
-const LIVE_STAKE = new Set<string>();
-
 // ── Loading (chain → IPFS) ───────────────────────────────────────────────────
 
 /**
@@ -158,23 +150,14 @@ export function _resetClauseSpecCache_TESTING_ONLY(): void {
     SPEC_CACHE.clear();
     SPEC_LOAD_ERRORS.clear();
     NESTS_UNDER.clear();
-    LIVE_STAKE.clear();
 }
 
 /** THE live-stake rule (K4): a registration surfaces for NEW compositions
  *  while its registrant has not reclaimed the stake. The drawer's offer, the
- *  assembly-terms panel, the registry counts and `liveSpecSource` all read
- *  this one predicate. */
+ *  assembly-terms panel and the registry counts all read this one
+ *  predicate. */
 export function isLiveRegistration(row: { stakeWithdrawn: boolean }): boolean {
     return !row.stakeWithdrawn;
-}
-
-/** Note each registration's live stake from a `ClauseRegistry` read. The
- *  read is the whole registry, so the set is replaced, never merged: a
- *  registration absent from it is not live. */
-export function noteClauseStakes(rows: readonly { clauseKey: Hex; stakeWithdrawn: boolean }[]): void {
-    LIVE_STAKE.clear();
-    for (const row of rows) if (isLiveRegistration(row)) LIVE_STAKE.add(norm(row.clauseKey));
 }
 
 // ── Sync API (resolves against the loaded cache) ─────────────────────────────
@@ -240,37 +223,18 @@ export function specSource(): SpecSource {
     return SPEC_SOURCE;
 }
 
-/** The SpecSource a NEW composition is built from: `get` reads every loaded
- *  spec, exactly as `specSource()` (a stated pick resolves wherever it is
- *  bound), while `list` — the set `buildAssembly`'s mandatory fold
- *  draws from — holds only registrations whose stake is live
- *  (`isLiveRegistration`), the same surfacing rule the drawer offers clauses
- *  under. */
-const LIVE_SPEC_SOURCE: SpecSource = {
-    get: SPEC_SOURCE.get,
-    list() {
-        return Array.from(SPEC_CACHE.values())
-            .filter((spec) => LIVE_STAKE.has(norm(spec.clauseKey)))
-            .map(toProjectionView);
-    },
-};
-
-/** The live-stake `SpecSource` the assembly build passes. */
-export function liveSpecSource(): SpecSource {
-    return LIVE_SPEC_SOURCE;
-}
-
 /** The field name a clause nests under in the drawer, or null if top-level. */
 export function clauseNestsUnder(clauseKey: string): string | null {
     return NESTS_UNDER.get(norm(clauseKey)) ?? null;
 }
 
-/** True if a clause is MANDATORY — on every order, composed by the build
- *  (commerce + topology), not a designer choice. The SDK's `specIsMandatory`
- *  is the one predicate (the assembly build's fold reads it too), applied to
- *  the clause at `clauseKey`; generic surfaces exclude mandatory clauses
- *  from selectable lists and fold them in automatically. ANY registered
- *  clause declaring `block.design.article: "mandatory"` participates —
+/** True if a clause is MANDATORY (`block.design.article: "mandatory"`,
+ *  commerce + topology among them). The SDK's `specIsMandatory` is the one
+ *  predicate, applied to the clause at `clauseKey`. A designer never selects
+ *  one on its own: generic surfaces leave mandatory clauses out of
+ *  selectable lists, and the drawer's mandatory article lists registered
+ *  agreements whose clauses all are (`isMandatoryAgreement`), one picked per
+ *  order. ANY registered clause declaring the article participates —
  *  including one this codebase has never seen. */
 export function clauseIsMandatory(clauseKey: string): boolean {
     const spec = SPEC_SOURCE.get(clauseKey as Hex);

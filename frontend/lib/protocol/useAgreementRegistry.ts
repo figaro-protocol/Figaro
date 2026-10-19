@@ -19,7 +19,9 @@
 import { useMemo, useSyncExternalStore } from "react";
 import {
     AGREEMENT_REGISTRY_ABI,
+    agreementKeyOf,
     anchorRegisteredAgreement,
+    canonicalize,
     hydrateAssembly,
     parseAgreementRegistryLogs,
     type Anchored,
@@ -173,6 +175,18 @@ function noteVerified(): void {
  *  as the clause build reads the warm spec cache. Undefined while unread. */
 export function getRegisteredAgreement(agreementKey: string): Anchored<RegisteredAgreement> | undefined {
     return verified.get(agreementKey.toLowerCase());
+}
+
+/** Test-only — put a registered agreement into this tab's verified cache, as
+ *  a read of its binding and pinned document would: verified against its own
+ *  key (`anchorRegisteredAgreement` over its canonical bytes). Returns the key. */
+export function _primeRegisteredAgreement_TESTING_ONLY(doc: RegisteredAgreement): `0x${string}` {
+    const agreementKey = agreementKeyOf(doc);
+    const anchored = anchorRegisteredAgreement(canonicalize(doc), agreementKey);
+    if (!anchored) throw new Error(`the document does not verify against its key ${agreementKey}`);
+    verified.set(agreementKey.toLowerCase(), anchored);
+    noteVerified();
+    return agreementKey;
 }
 
 /** Bumps each time a registered agreement is read and verified in this tab —

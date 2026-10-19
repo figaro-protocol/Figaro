@@ -330,8 +330,9 @@ definition) and `RPGF_*` constant is a **root** export.
 | `buildDomain` | root | The EIP-712 domain for a chain id + `FigaroCore` address. |
 | `buildOrderAgreement` | root | Build one order's agreement document and its merkle tree from its clause map. |
 | `buildQuoteRequest` | `/agent` | Build an UNSIGNED RFQ draft, priced at the buyer's ceiling. |
-| `buildAssembly` | root | Design time: the assembly of agreements plus the new agreements to register; binds a registered agreement as is or composes a new one with the mandatory clauses folded in. |
-| `composeOrderAgreement` | root | ONE agreement's registered agreement from the clauses a designer selected for it — the scope check, the value-free rule, the mandatory fold — and its `agreementKey`; `buildAssembly` composes every new agreement through it, and a designer registers one on its own through it. |
+| `buildAssembly` | root | Design time: the assembly of agreements plus the new agreements to register; every order picks a registered agreement whose clauses are all mandatory-article (`mandatoryByOrderId`); binds a registered agreement as is or composes a new one with the pick's clauses merged in. |
+| `composeOrderAgreement` | root | ONE agreement's registered agreement from the clauses a designer selected for it and the registered agreement picked for it in the mandatory article — the scope check, the value-free rule, the pick's clauses merged — and its `agreementKey`; `buildAssembly` composes every new agreement through it, and a designer registers one on its own through it. |
+| `isMandatoryAgreement` | root | True for a registered agreement the designer's mandatory article lists: one clause or more, every one loaded, mandatory-article and agreement-scoped — any wallet's registration. |
 | `buildProvenanceInclusionProof` | root | Merkle proof that the agreement's provenance leaf sits under a signed `agreementHash`. |
 | `buildAgreementInclusionProof` | root | An agreement's membership proof under `compositionHash`, with its `slotContentHash` — what the assembly reward claim carries. |
 | `buildSignedClauseInclusionProof` | root | Merkle proof that one clause sits under a signed `agreementHash`. |
@@ -1309,7 +1310,7 @@ should build them.
 | `POST /submit` | `{ "operation": { "Commit" \| "Resolve" \| "AttestAsSeller" \| "AttestAsBuyer": {…} } }` — a serde externally-tagged enum | `{ "id": n }` — a queue receipt, **not** resolution | `submitCommit` · `submitResolve` · `submitAttestAsSeller` · `submitAttestAsBuyer` |
 | `POST /submit-usage` | `{ "claim": <UsageClaim> }` | `{ "pending": n }` | `submitUsageClaim` |
 | `GET /health` | — | `{ status, pending_ops, pending_usage_claims, batches_settled }` | none — `isAvailable()` probes `/status` instead |
-| `GET /status` | — | the `/health` fields plus `state_root`, `dead_lettered_ops`, `last_settle_error`, `archive: { first_batch, last_batch, retained_batches, max_batches }` | `status()` |
+| `GET /status` | — | the `/health` fields plus `state_root`, `dead_lettered_ops`, `last_settle_error`, `dropped_usage_claims`, `last_dropped_claim_error` (usage claims dropped without landing, counted apart from the operations), `archive: { first_batch, last_batch, retained_batches, max_batches }` | `status()` |
 | `GET /state` | — | the state behind the relay's root, in the relay's state-file format (`KernelStateSnapshot`); the root is in the `x-figaro-state-root` header | none — save it to a new file; when the header's root is the verifier's `stateRoot`, make that file a relay's `STATE_PATH` and start it on this state (the relay checks the root again). Never write it over a state file unchecked: a stale relay serves a stale state, and the file it replaces may be the only copy |
 | `GET /orders/{orderHash}` | 32-byte hex in the path | `{ order_hash, process_id, commit, resolution }` — either leg `null` | `order()` → `null` on `404` |
 | `GET /processes/{processId}` | 32-byte hex in the path | `{ process_id, orders[], resolution }` | `process()` → `null` on `404` |
@@ -1793,7 +1794,9 @@ import type { SpecSource, ProjectionSpecView } from "@figaro-protocol/sdk";
 // `block.design.article` is normally your clause's own group name (free text:
 // "coordination", "logistics", …). TWO values are RESERVED and change
 // agreement semantics:
-//   "mandatory"    — auto-folds into EVERY new agreement (specIsMandatory)
+//   "mandatory"    — never selected on its own: an agreement whose clauses
+//                    all are is what a designer picks per order, and its
+//                    clauses merge in (specIsMandatory, isMandatoryAgreement)
 //   "attestations" — an empty anchor at commit, content attested later
 //                    (specIsProcessLog)
 // Pick either by accident — say you group an attestation clause under
@@ -1831,14 +1834,14 @@ function makeSpecSource(rawSpecsByKey: Map<Hex, unknown>): SpecSource {
 `get` takes the clause KEY — the hash of the pinned spec bytes, the key every
 agreement leaf carries — and nothing reads a clause by name; a spec's
 `clauseId` and `version` are labels. `list` returns every spec the source
-surfaces, each with its `clauseKey`, and is the set `buildAssembly`
-folds the mandatory clauses from when it composes a NEW agreement: pass the
-registrations whose stake is live (the surfacing rule), and EVERY one whose
-spec marks `article: "mandatory"` folds — there is no selection among them,
-since two specs are two clauses. The fold is at composition only: a registered
-agreement bound as is must already carry every live mandatory spec at its
-scope (`buildAssembly` refuses it otherwise), and checkout adds no
-clause.
+surfaces, each with its `clauseKey`. Nothing folds from it: the mandatory
+clauses enter a NEW agreement through the registered agreement the designer
+picks for that order (`mandatoryByOrderId`) — one whose clauses are all
+`article: "mandatory"` and agreement-scoped (`isMandatoryAgreement`), whoever
+registered it — and its clauses merge into the composition
+(`composeOrderAgreement`). Every order needs a pick (`buildAssembly` refuses
+otherwise); a registered agreement bound as is must already carry every clause
+of its order's pick; and checkout adds no clause.
 
 A spec that is not (yet) loaded returns `undefined` from `get`, and the
 projection degrades exactly as the registry-reading frontend does (no defaults
@@ -1924,12 +1927,14 @@ import {
   AGREEMENT_REGISTRY_ABI, ASSEMBLY_REGISTRY_ABI,
 } from "@figaro-protocol/sdk";
 
-// DESIGN: per canvas order, either bind a registered agreement as is
-// (`registeredByOrderId`, the hydrated document — refused if it lacks a live
-// mandatory spec at its scope) or compose clauses (`clausesByOrderId`), which
-// become a NEW agreement with the mandatory clauses folded in.
+// DESIGN: per canvas order, pick a registered agreement whose clauses are all
+// mandatory-article (`mandatoryByOrderId`, hydrated; `isMandatoryAgreement`
+// tells which ones qualify), then either bind a registered agreement as is
+// (`registeredByOrderId`, the hydrated document — refused if it lacks a clause
+// of its pick) or compose clauses (`clausesByOrderId`), which become a NEW
+// agreement with the pick's clauses merged in.
 const { assembly, agreements } = buildAssembly({
-  name, orders, clausesByOrderId, registeredByOrderId, assemblyClauses, specs,
+  name, orders, clausesByOrderId, registeredByOrderId, mandatoryByOrderId, assemblyClauses, specs,
 });
 // `agreements` holds only the newly composed ones: pin each as canonical JSON
 // and register it (one stake each; a key already registered is skipped).
@@ -1971,12 +1976,12 @@ const clauses = agreementClauses(assembly, assembly.assembly.agreements[i]);
 const { leaf, proof, slotContentHash } = buildAgreementInclusionProof(assembly.assembly, i);
 ```
 
-`composeAuthoredAgreement(doc, specs)` and `assembleAuthored(doc, agreementsByName, specs)`
+`composeAuthoredAgreement(doc, specs, picks)`, `composeAuthoredAgreements(docsByName, specs)` and `assembleAuthored(doc, agreementsByName, specs)`
 are the SEED-TIME derivation for the reference set written by hand: an agreement file (`agreements/*.json`, clause names with the
-designer's fills) resolves its names (`resolveAuthoredClauseKeys`) and composes
+designer's fills and `mandatory`, the name of the agreement it picks) resolves its names (`resolveAuthoredClauseKeys`) and composes
 through the one composition rule (`composeOrderAgreement`: the scope check, the
-value-free rule, the mandatory fold) into the document the seeding pins and its
-key; an assembly file (`assemblies/*.json`, agreements naming their agreements
+value-free rule, the pick's clauses merged) into the document the seeding pins and its
+key (`composeAuthoredAgreements` composes a whole set by name, each pick resolved within it); an assembly file binds an agreement only when it carries every clause of one agreement in the set whose clauses are all mandatory-article; an assembly file (`assemblies/*.json`, agreements naming their agreements
 and carrying their own `parentOrderHashes`) binds each named agreement's key
 and takes the topology parents as the agreement's fill, returning each DISTINCT
 agreement once beside the assembly. Neither runs on a read path.

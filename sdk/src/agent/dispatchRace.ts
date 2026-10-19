@@ -8,9 +8,15 @@
  * catalog price — candidates countersign to signal availability, and the
  * buyer signs EXACTLY ONE winner. The buyer's single signature is
  * simultaneously the selection event and the seller-address answer; losing
- * countersignatures expire inert at the struct `deadline`, and an unfunded
- * winner reverts at `commit` (FigaroCore pulls the seller bond), so the
- * remaining countersignatures form a free fallback ladder.
+ * countersignatures the buyer never signs expire inert at the struct
+ * `deadline`, and an unfunded winner reverts at `commit` (FigaroCore pulls the
+ * seller bond), so the remaining countersignatures form a fallback ladder.
+ * Falling back is a second buyer signature, and any wallet holding both
+ * signatures may commit either order until its `deadline`: the unfunded
+ * winner's stays committable should its seller fund it. At a sub-order
+ * position FigaroCore admits at most one of the two (each names an
+ * `expectedCumulativeValue` built on the process as it stood before either);
+ * at a root position it may admit both.
  *
  * This is the SELLER-SIGNS-FIRST leg — deliberately the inverse of the
  * origination handshake (`buildBuyerOffer` → `counterSignOffer`), whose

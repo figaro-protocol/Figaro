@@ -3,6 +3,7 @@
         "figaro-merchant-process": {},
         "figaro-modalities": {}
     },
+    "mandatory": "mandatory-clauses",
     "name": "Merchant order",
     "summary": "A merchant's order of goods, the buyer's choice of how it reaches them made at checkout."
 }

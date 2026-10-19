@@ -8,6 +8,7 @@
         "figaro-modalities": {},
         "figaro-schedule": {}
     },
+    "mandatory": "mandatory-clauses",
     "name": "Aerial survey flight, open data",
     "summary": "The same flight with its data disclosed openly: one changed design fill, a different agreement."
 }

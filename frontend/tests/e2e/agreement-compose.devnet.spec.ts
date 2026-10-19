@@ -17,7 +17,7 @@
  *   order and press "Register this agreement on its own"; REACTION (UI) the
  *   agreement now binds the registered key and the agreements tab lists it;
  *   CHAIN FACT the registry binds that key to the publishing wallet, and the
- *   pinned document hashes to it (the mandatory clauses folded in).
+ *   pinned document hashes to it (the clauses of its mandatory pick merged in).
  *
  *   CHAIN FACTS, read out of band: the anchored assembly's root entry binds
  *   the registered agreement's key and its sub entry a key the registry now
@@ -58,6 +58,7 @@ import {
     referenceAssemblyBuilt,
     readRegisteredAgreementDocument,
     waitForConnected,
+    pickMandatoryForEveryOrder,
 } from './devnet-helpers';
 import { makeProbeSpec, registerProbeClause } from './probeAssembly';
 import { ANVIL_ACCOUNTS, ANVIL_KEYS } from '../anvilAccounts';
@@ -128,6 +129,7 @@ test.describe('AGREEMENTS — bind a registered agreement, compose a new one, pu
         await page.getByTestId('designer-name-input').fill(`Bound and composed ${nonce}`);
         await page.getByTestId('designer-summary-input').fill('A registered agreement bound as is beside a newly composed one.');
         await page.getByTestId('designer-description-input').fill('Root agreement: a registered agreement. Sub-order: a new agreement composed for it.');
+        await pickMandatoryForEveryOrder(page);
         await expect(page.getByTestId('designer-review')).toBeEnabled({ timeout: 5000 });
         await page.getByTestId('designer-review').click();
         await page.waitForURL(/\/assemblies\/designer\/view\/?\?slug=asm-/, { timeout: 15000 });
@@ -263,6 +265,7 @@ test.describe('AGREEMENTS — bind a registered agreement, compose a new one, pu
         await page.getByTestId('drawer-tab-registry').click();
         await page.getByTestId('drawer-section-registry').waitFor({ state: 'visible', timeout: 5000 });
         await page.getByTestId(`drawer-registry-clause-${probeKey}`).check();
+        await pickMandatoryForEveryOrder(page);
         await page.getByTestId('designer-name-input').fill(`Alone ${nonce}`);
 
         await page.getByTestId('drawer-tab-agreements').click();
@@ -281,7 +284,7 @@ test.describe('AGREEMENTS — bind a registered agreement, compose a new one, pu
             .toBeVisible({ timeout: 30000 });
 
         // ── CHAIN FACTS: the registry binds the key to the publishing wallet,
-        //    and the pinned document hashes to it with the mandatory fold. ──
+        //    and the pinned document hashes to it with the pick's clauses merged. ──
         const read = await readRegisteredAgreementDocument(agreementKey);
         expect(read, 'AgreementRegistry binds the key').not.toBeNull();
         expect(read!.binding.registeredBy.toLowerCase()).toBe(ANVIL_ACCOUNTS[0].toLowerCase());
@@ -289,8 +292,8 @@ test.describe('AGREEMENTS — bind a registered agreement, compose a new one, pu
         expect(agreementKeyOf(read!.document).toLowerCase(), 'the pinned document keys to the registry key').toBe(agreementKey.toLowerCase());
         const composedKeys = Object.keys(read!.document.clauses).map((k) => k.toLowerCase());
         expect(composedKeys, 'the probe clause is composed').toContain(probeKey.toLowerCase());
-        expect(composedKeys, 'the mandatory commerce clause folded in').toContain(keyOf('figaro-commerce').toLowerCase());
-        expect(composedKeys, 'the mandatory topology clause folded in').toContain(keyOf('figaro-topology').toLowerCase());
+        expect(composedKeys, 'the mandatory commerce clause merged from the pick').toContain(keyOf('figaro-commerce').toLowerCase());
+        expect(composedKeys, 'the mandatory topology clause merged from the pick').toContain(keyOf('figaro-topology').toLowerCase());
         expect(read!.document.name, 'the document carries the designer\'s name for it').toBe(`Alone ${nonce} · order 1`);
     });
 });

@@ -3,6 +3,7 @@
         "figaro-content-handoff": {},
         "figaro-geolocation": {}
     },
+    "mandatory": "mandatory-clauses",
     "name": "Freelance contribution",
     "summary": "A contributor's part of a larger deliverable, handed to the lead over the encrypted channel."
 }

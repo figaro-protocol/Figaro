@@ -3,6 +3,7 @@
         "figaro-geolocation": {},
         "figaro-modalities": {}
     },
+    "mandatory": "mandatory-clauses",
     "name": "Counter sale",
     "summary": "A buyer and a seller at the counter: the goods, where the trade happens, and how the buyer takes them."
 }

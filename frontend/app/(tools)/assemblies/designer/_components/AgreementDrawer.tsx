@@ -10,11 +10,16 @@
  *     the chain, each labeled by its pinned document's name with its key
  *     shown: the designer binds one to this agreement as is (a reusable
  *     unit), or unbinds it.
- *   - registry — every clause registered on `ClauseRegistry`, read live from
- *     the chain, grouped by `groupClausesByArticle()` (the single clause
- *     classification, shared with the /clauses inventory — grouping + order come
- *     from the spec's `block.design.article`, never a hardcoded list), a checkbox
- *     per clause.
+ *   - registry — first the mandatory article: every LIVE registration on
+ *     `AgreementRegistry` whose clauses are all mandatory-article
+ *     (`isMandatoryAgreement`), whoever registered it, one radio per
+ *     registration; the designer picks one for the order, nothing
+ *     preselected, and its clauses merge into the order's agreement. Then
+ *     every other clause registered on `ClauseRegistry`, read live from the
+ *     chain, grouped by `groupClausesByArticle()` (the single clause
+ *     classification, shared with the /clauses inventory — grouping + order
+ *     come from the spec's `block.design.article`, never a hardcoded list), a
+ *     checkbox per clause.
  *
  * Clause composition happens on this registry surface, never through
  * per-article editing tabs or hardcoded option enums / sentinels / spec-card
@@ -35,7 +40,8 @@ import {
 } from "@/lib/protocol/useAgreementRegistry";
 import { useAllRegisteredClauses, type RegisteredClauseEvent } from "@/lib/protocol/useClauseRegistry";
 import { useClauseSpecs } from "@/lib/protocol/useClauseSpecs";
-import { groupClausesByArticle, getClauseSpec, clauseNestsUnder, clauseIsMandatory, clauseIsAssemblyScoped, clauseDesignFills, isLiveRegistration } from "@/lib/shared/clauseSpecSource";
+import { isMandatoryAgreement } from "@figaro-protocol/sdk";
+import { groupClausesByArticle, getClauseSpec, clauseNestsUnder, clauseIsMandatory, clauseIsAssemblyScoped, clauseDesignFills, isLiveRegistration, specSource } from "@/lib/shared/clauseSpecSource";
 import { truncateHex } from "@/lib/shared/formatHex";
 import { ClausesByArticle } from "@/components/runtime/ClausesByArticle";
 import { FieldControl } from "@/components/runtime/FieldControl";
@@ -68,6 +74,11 @@ interface Props {
     boundAgreementKey?: `0x${string}`;
     /** Bind a registered agreement to this agreement, or unbind (`null`). */
     onBindAgreement?: (agreementKey: `0x${string}` | null) => void;
+    /** The registered agreement this order picked in the mandatory article
+     *  (`AgreementRegistry` key), when it has picked one. */
+    mandatoryAgreementKey?: `0x${string}`;
+    /** Pick a registered agreement the mandatory article lists for this order. */
+    onPickMandatory?: (agreementKey: `0x${string}`) => void;
     /** Register this order's agreement on its own — pin, stake and
      *  register it on `AgreementRegistry` now, without publishing an
      *  assembly — and bind the agreement to the registered key. Resolves to
@@ -88,6 +99,8 @@ export function AgreementDrawer({
     boundAgreementKey,
     onBindAgreement,
     onRegisterAgreement,
+    mandatoryAgreementKey,
+    onPickMandatory,
 }: Props) {
     const [openSection, setOpenSection] = useState<string | null>(null);
     const [minimized, setMinimized] = useState(false);
@@ -344,11 +357,18 @@ export function AgreementDrawer({
                     )}
 
                     {openSection === "registry" && (
-                        <ClauseRegistryPanel
-                            selectedClauseValues={selectedClauseValues}
-                            onToggleClause={onToggleClause}
-                            onSetClauseField={onSetClauseField}
-                        />
+                        <>
+                            <MandatoryArticlePanel
+                                orderHash={order.orderHash}
+                                mandatoryAgreementKey={mandatoryAgreementKey}
+                                onPickMandatory={onPickMandatory}
+                            />
+                            <ClauseRegistryPanel
+                                selectedClauseValues={selectedClauseValues}
+                                onToggleClause={onToggleClause}
+                                onSetClauseField={onSetClauseField}
+                            />
+                        </>
                     )}
 
                     </fieldset>
@@ -513,6 +533,93 @@ function RegisteredAgreementsPanel({
 }
 
 /**
+ * The drawer's mandatory article: every LIVE registration on
+ * `AgreementRegistry` whose clauses are all mandatory-article
+ * (`isMandatoryAgreement` over the loaded specs), the DAO's and any other
+ * wallet's, each labeled by its pinned document's name, its key and its
+ * clauses. One radio per registration; the order's pick is checked and
+ * nothing is preselected. A registration whose document is unread, or whose
+ * clauses are not all mandatory-article, is not listed here.
+ */
+function MandatoryArticlePanel({
+    orderHash,
+    mandatoryAgreementKey,
+    onPickMandatory,
+}: {
+    orderHash: string;
+    mandatoryAgreementKey?: `0x${string}`;
+    onPickMandatory?: (agreementKey: `0x${string}`) => void;
+}) {
+    const { data: liveAgreements } = usePublishedAgreements(undefined);
+    const agreementsVersion = useRegisteredAgreementsVersion();
+    const { version: clauseSpecsVersion } = useClauseSpecs();
+    useEffect(() => {
+        for (const row of liveAgreements ?? []) void fetchRegisteredAgreement(row.agreementKey, row.contentURI);
+        if (mandatoryAgreementKey) void fetchRegisteredAgreement(mandatoryAgreementKey);
+    }, [liveAgreements, mandatoryAgreementKey]);
+    const listed = useMemo(
+        () => (liveAgreements ?? []).filter((row) => {
+            const doc = getRegisteredAgreement(row.agreementKey);
+            return doc !== undefined && isMandatoryAgreement(doc, specSource());
+        }),
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [liveAgreements, agreementsVersion, clauseSpecsVersion],
+    );
+    return (
+        <section data-testid="drawer-mandatory-article" className="mb-5">
+            <p className="text-sm font-medium text-ink-heading mb-2">mandatory</p>
+            <p className="text-xs text-ink-muted mb-2">
+                Pick one registered agreement for this order. Its clauses merge into the
+                order&rsquo;s agreement, and no process resolves without them. The list is
+                every registration on the on-chain{" "}
+                <code className="font-mono">AgreementRegistry</code> whose clauses are all
+                mandatory, whoever registered it.
+            </p>
+            {liveAgreements === null ? (
+                <p className="text-xs text-ink-muted" data-testid="drawer-mandatory-loading">
+                    Reading the registry&hellip;
+                </p>
+            ) : listed.length === 0 ? (
+                <p className="text-xs text-ink-muted" data-testid="drawer-mandatory-empty">
+                    No registered agreement whose clauses are all mandatory on the network this site is reading.
+                </p>
+            ) : (
+                <ul className="space-y-2" data-testid="drawer-mandatory-list">
+                    {listed.map((row) => {
+                        const doc = getRegisteredAgreement(row.agreementKey);
+                        const key = truncateHex(row.agreementKey, { head: 10, tail: 4 });
+                        const picked = !!mandatoryAgreementKey && mandatoryAgreementKey.toLowerCase() === row.agreementKey.toLowerCase();
+                        return (
+                            <li key={row.agreementKey}>
+                                <label className="flex items-start gap-2 text-xs text-ink-body" title={row.agreementKey}>
+                                    <input
+                                        type="radio"
+                                        className="h-3.5 w-3.5 mt-0.5"
+                                        name={`mandatory-${orderHash}`}
+                                        checked={picked}
+                                        onChange={() => onPickMandatory?.(row.agreementKey)}
+                                        data-testid={`drawer-mandatory-agreement-${row.agreementKey}`}
+                                    />
+                                    <span className="min-w-0">
+                                        <span className="text-ink-primary">{doc?.name ? `${doc.name} · ` : ""}</span>
+                                        <span className="font-mono text-[10px] text-ink-muted">{key}</span>
+                                        <span className="block text-[11px] text-ink-muted">
+                                            {Object.keys(doc?.clauses ?? {})
+                                                .map((clauseKey) => getClauseSpec(clauseKey)?.title ?? truncateHex(clauseKey, { head: 10, tail: 0 }))
+                                                .join(", ")}
+                                        </span>
+                                    </span>
+                                </label>
+                            </li>
+                        );
+                    })}
+                </ul>
+            )}
+        </section>
+    );
+}
+
+/**
  * One registered clause on the registry tab: a checkbox to compose it onto the
  * order, plus — for fields named in design.fills only — its field editors when
  * selected (general clauses fill at checkout; runtime process clauses
@@ -565,10 +672,11 @@ function ClauseRegistryPanel({
             .map((g) => ({
                 article: g.article,
                 entries: g.clauses
-                    // Mandatory clauses fold in automatically; ASSEMBLY-SCOPED
-                    // clauses (design.scope: "assembly") compose once at the
-                    // assembly level, never per order — the drawer offering
-                    // them here is how duplicates would happen.
+                    // Mandatory clauses enter through the mandatory article's
+                    // pick, never one by one; ASSEMBLY-SCOPED clauses
+                    // (design.scope: "assembly") compose once at the assembly
+                    // level, never per order — the drawer offering them here
+                    // is how duplicates would happen.
                     .filter((c) => !clauseIsMandatory(c.clauseKey) && !clauseIsAssemblyScoped(c.clauseKey))
                     .map((c) => eventByKey.get(c.clauseKey.toLowerCase()))
                     .filter((e): e is RegisteredClauseEvent => e !== undefined),

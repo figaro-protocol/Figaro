@@ -201,6 +201,9 @@ describe("SequencerClient", () => {
                                 state_root: "0xabc",
                                 pending_ops: 3,
                                 batches_settled: 5,
+                                dead_lettered_ops: 1,
+                                dropped_usage_claims: 2,
+                                last_dropped_claim_error: "dropped at batch formation: UsageOrderNotResolved",
                             },
                         },
                     ],
@@ -212,6 +215,10 @@ describe("SequencerClient", () => {
         expect(status.state_root).toBe("0xabc");
         expect(status.pending_ops).toBe(3);
         expect(status.batches_settled).toBe(5);
+        // Claims are counted apart from the operations.
+        expect(status.dead_lettered_ops).toBe(1);
+        expect(status.dropped_usage_claims).toBe(2);
+        expect(status.last_dropped_claim_error).toContain("UsageOrderNotResolved");
     });
 
     it("isAvailable returns true when sequencer responds", async () => {

@@ -42,7 +42,7 @@ import {
     createPublicClient, defineChain, http, parseAbi, type Hex,
 } from 'viem';
 import { privateKeyToAccount, mnemonicToAccount } from 'viem/accounts';
-import { readLocalDeploymentConfig, assertPinnedInIpfs, publishOrAdoptReviewed, waitForConnected, keyOf, primeRegisteredClauseSpecs } from './devnet-helpers';
+import { readLocalDeploymentConfig, assertPinnedInIpfs, publishOrAdoptReviewed, waitForConnected, keyOf, primeRegisteredClauseSpecs, pickMandatoryForEveryOrder } from './devnet-helpers';
 import { makeProbeSpec, makeProbeWitnessSpec, registerProbeClause } from './probeAssembly';
 import { ANVIL_KEYS } from '../anvilAccounts';
 import { CORE_ABI } from '@/lib/kernel/contracts';
@@ -167,6 +167,7 @@ test.describe('PERMISSIONLESS CLAUSE — the definition of green (devnet)', () =
         await page.getByTestId('designer-name-input').fill(assemblyName);
         await page.getByTestId('designer-summary-input').fill('Acceptance probe: a never-seen clause end to end.');
         await page.getByTestId('designer-description-input').fill('Single-node assembly carrying figaro-probe-attest — the open-world certification.');
+        await pickMandatoryForEveryOrder(page);
         await expect(page.getByTestId('designer-review')).toBeEnabled({ timeout: 5000 });
         await page.getByTestId('designer-review').click();
 

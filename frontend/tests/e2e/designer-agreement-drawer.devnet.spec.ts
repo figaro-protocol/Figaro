@@ -42,7 +42,7 @@
  */
 import { test, expect } from './devnet-multi-test';
 import type { Hex } from 'viem';
-import { keyOf, primeRegisteredClauseSpecs } from './devnet-helpers';
+import { keyOf, primeRegisteredClauseSpecs, pickMandatoryForEveryOrder } from './devnet-helpers';
 import type { Page } from '@playwright/test';
 import { composedClauseChip } from './probeAssembly';
 
@@ -164,17 +164,19 @@ test.describe('Designer AgreementDrawer (devnet)', () => {
         await page.getByTestId('designer-canvas-toolbar').waitFor({ timeout: 30000 });
 
         // The canvas states its composition identity as soon as there is a
-        // composition to identify — derived from the same walk publish anchors.
+        // composition to identify — derived from the same walk publish
+        // anchors: the order's pick in the mandatory article first.
+        const rootNode = page.locator('[data-testid^="order-node-"]:not([data-testid$="-delete"])').first();
+        await rootNode.waitFor({ state: 'visible', timeout: 10000 });
+        await rootNode.click();
+        await page.getByTestId('agreement-drawer').waitFor({ state: 'visible', timeout: 10000 });
+        await pickMandatoryForEveryOrder(page);
         const hashReadout = page.getByTestId('designer-composition-hash');
         await expect(hashReadout).toBeVisible({ timeout: 30000 });
         const before = await hashReadout.getAttribute('title');
         expect(before, 'the identity readout carries the full composition hash').toMatch(/^0x[0-9a-f]{64}$/);
 
         // Compose the regime clause on the root order.
-        const rootNode = page.locator('[data-testid^="order-node-"]:not([data-testid$="-delete"])').first();
-        await rootNode.waitFor({ state: 'visible', timeout: 10000 });
-        await rootNode.click();
-        await page.getByTestId('agreement-drawer').waitFor({ state: 'visible', timeout: 10000 });
         await page.getByTestId('drawer-tab-registry').click();
         const regimeToggle = page.getByTestId(`drawer-registry-clause-${REGIME_CLAUSE_KEY}`);
         await expect(regimeToggle, 'the drawer surfaces the regime clause').toHaveCount(1, { timeout: 20000 });
@@ -258,6 +260,7 @@ test.describe('Designer AgreementDrawer (devnet)', () => {
         const forumToggle = page.getByTestId(`assembly-terms-clause-${FORUM_CLAUSE_KEY}`);
         await expect(forumToggle, 'the assembly-terms panel surfaces the forum clause').toHaveCount(1, { timeout: 20000 });
         await forumToggle.check();
+        await pickMandatoryForEveryOrder(page);
 
         // The canvas states the composition on the node itself — the reading the
         // review must reproduce. Each chip carries its clause's name and key as its tooltip.

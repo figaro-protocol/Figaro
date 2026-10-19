@@ -31,9 +31,10 @@ and one who registered fifty.
 Two things follow that people expect to be otherwise.
 
 **The mandatory clauses earn.** `figaro-commerce` and `figaro-topology` ride on
-every order, and they are scored for their designer of record like any other
-clause. "Mandatory" is a registration-layer convention about what a runtime
-composes; nothing on chain privileges them, and nothing on chain exempts them.
+every order whose designer picked an agreement carrying them in the mandatory
+article, the DAO's registration among them, and they are scored for their
+designer of record like any other clause. "Mandatory" is a registration-layer
+convention about what a designer picks; nothing on chain privileges them, and nothing on chain exempts them.
 They are the DAO's because the DAO develops them: a clause every agreement
 carries is substrate the commons itself must build, and assigning it to the
 treasury aligns the treasury's interest with every trade (`docs/DAO.md`
@@ -171,9 +172,10 @@ registration. No other key is refused by list. The line they draw is **terms
 versus meter**.
 
 Commerce and topology are contract *terms* the parties agree to. A runtime that
-composes them is making an offer, and the set of terms a runtime folds into
-every assembly is disciplined by ordinary competition: a runtime that folds in
-terms its users do not want loses them. That also answers how many such
+composes them is making an offer, and the set of terms a designer picks for
+every agreement is disciplined by ordinary competition: an agreement the
+mandatory article lists that carries terms designers do not want is not
+picked. That also answers how many such
 clauses the commons may hold — as many as survive that competition.
 
 The provenance leaf is not a term anyone agreed to. It is the reward system's

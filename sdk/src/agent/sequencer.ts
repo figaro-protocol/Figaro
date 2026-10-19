@@ -159,6 +159,11 @@ export interface SequencerStatus {
     dead_lettered_ops?: number;
     /** The most recent dead-letter reason, verbatim; null while clean. */
     last_settle_error?: string | null;
+    /** Cumulative usage claims the relay dropped without landing, counted
+     *  apart from the operations. Absent on a relay predating the count. */
+    dropped_usage_claims?: number;
+    /** The most recent claim drop's reason, verbatim; null while clean. */
+    last_dropped_claim_error?: string | null;
     /** The publication window. Absent on a relay predating the read routes. */
     archive?: SequencerRetentionWindow;
 }

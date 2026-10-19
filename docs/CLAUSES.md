@@ -126,13 +126,19 @@ every kind and skips both on the batch path, `recordAssemblyUsage` refuses an
 `agreementKey` equal to either, and the guest and the relay refuse both the
 same way.
 
-**The fold — at composition only.** When a designer composes a new agreement,
-every mandatory spec the live-stake source lists folds into it, so a
-registered agreement carries the mandatory clauses when it is registered.
-Composing an assembly refuses an agreement whose registered agreement lacks a
-live mandatory spec at its scope; the designer composes a new agreement for
-that agreement instead. Checkout fills values and writes the topology; it never
-adds or drops a clause. Each order's agreement is the agreement's hydrated
+**The mandatory pick — at composition only.** Nothing folds on its own. The
+designer drawer's mandatory article lists registered agreements whose clauses
+are all mandatory-article (`isMandatoryAgreement`), the DAO's and any other
+wallet's; the designer picks one for each agreement in the assembly's list,
+nothing preselected, and `buildAssembly` refuses an order with no pick. When a
+designer composes a new agreement, the pick's clauses merge into it
+(`composeOrderAgreement`), so a registered agreement carries the mandatory
+clauses when it is registered; the agreement and assembly formats are
+unchanged, and a pick holding the clauses the reference agreements carry
+leaves every agreement key as it was. A registered agreement bound as is must
+already carry every clause of its order's pick, or the build refuses it; the
+designer composes a new agreement for that order instead. Checkout fills
+values and writes the topology; it never adds or drops a clause. Each order's agreement is the agreement's hydrated
 registered agreement with the agreement's own fills merged over it (the agreement's fill
 wins for the keys it names) and the assembly-scoped clauses beside it; the
 values are filled, the topology labels are mapped to order hashes, the
@@ -297,9 +303,11 @@ section a clause reads under. Classification reads the article, never the
 field shape:
 
 - **`mandatory`** — committed content on every order (`figaro-commerce`,
-  `figaro-topology`, both at agreement scope), never a designer choice; they
-  fold in generically (§ "The registered agreement and the assembly"). No mandatory clause
-  is at assembly scope.
+  `figaro-topology`, both at agreement scope), never selected one by one; they
+  enter an agreement through the registered agreement the designer picks in
+  the mandatory article (§ "The registered agreement and the assembly"). No
+  mandatory clause is at assembly scope, and one registered there joins no
+  composition.
 - **`attestations`** — runtime transfer ladders the responsible party advances
   (`figaro-merchant-process`, `figaro-courier-process`; a supply chain runs the
   same structure at length). These are coordination attestations between

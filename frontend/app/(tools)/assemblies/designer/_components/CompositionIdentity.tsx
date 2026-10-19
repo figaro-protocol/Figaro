@@ -34,8 +34,8 @@ import { useRegisteredAgreementsVersion } from "@/lib/protocol/useAgreementRegis
 import { truncateHex } from "@/lib/shared/formatHex";
 
 export function CompositionIdentity({ snapshot }: { snapshot: DesignSnapshot | null }) {
-    // The spec cache is an input to the walk (the mandatory clauses fold from
-    // it), so a warm — or a clause registered mid-session — re-runs it. The
+    // The spec cache is an input to the walk (every composed and picked
+    // clause is read from it), so a warm — or a clause registered mid-session — re-runs it. The
     // canvas already gates its render on `loaded`, so the error branch below
     // is for a genuinely unbuildable composition (a mis-scoped clause from an
     // imported assembly), not for a cold cache.

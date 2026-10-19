@@ -21,7 +21,7 @@ import {
 import { privateKeyToAccount } from 'viem/accounts';
 import type { Page } from '@playwright/test';
 import { expect } from './devnet-multi-test';
-import { readLocalDeploymentConfig, pinClauseSpec, localPublicClient, publishOrAdoptReviewed } from './devnet-helpers';
+import { readLocalDeploymentConfig, pinClauseSpec, localPublicClient, publishOrAdoptReviewed, pickMandatoryForEveryOrder } from './devnet-helpers';
 import { ANVIL_KEYS } from '../anvilAccounts';
 import { CLAUSE_REGISTRY_ABI } from '@figaro-protocol/sdk';
 
@@ -195,6 +195,7 @@ export async function publishProbeAssembly(page: Page): Promise<PublishedProbe> 
     await page.getByTestId('designer-name-input').fill(name);
     await page.getByTestId('designer-summary-input').fill('Publish-flow coverage: a unique probe assembly.');
     await page.getByTestId('designer-description-input').fill('Single-node assembly carrying a per-run probe clause.');
+    await pickMandatoryForEveryOrder(page);
     await expect(page.getByTestId('designer-review')).toBeEnabled({ timeout: 5000 });
     await page.getByTestId('designer-review').click();
 

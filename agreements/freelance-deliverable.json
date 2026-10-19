@@ -4,6 +4,7 @@
         "figaro-geolocation": {},
         "figaro-modalities": {}
     },
+    "mandatory": "mandatory-clauses",
     "name": "Freelance deliverable",
     "summary": "A digital deliverable handed over on the encrypted channel, the buyer's choice of how it is delivered made at checkout."
 }

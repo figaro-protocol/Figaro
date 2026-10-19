@@ -28,16 +28,12 @@ const referenceFiles = readdirSync(ASSEMBLIES_DIR).filter((f) => f.endsWith(".js
 const agreementFiles = readdirSync(AGREEMENTS_DIR).filter((f) => f.endsWith(".json")).sort();
 const authored = authoredSpecSet().list();
 const registeredClauseKeys = new Set<string>(authored.map((a) => a.clauseKey));
-// Mandatory folds at the level its scope names:
-// agreement-scoped mandatory on every ORDER; an assembly-scoped mandatory
-// clause, when the registry holds one, once in the assembly's assemblyClauses.
+// Every reference agreement picks the reference agreement holding the
+// mandatory clauses alone, so every ORDER carries each agreement-scoped
+// mandatory clause clauses/ holds.
 type Design = { block?: { design?: { article?: string; scope?: string } } };
-const mandatorySpecs = authored.filter((a) => (a.spec as Design).block?.design?.article === "mandatory");
-const mandatoryClauseKeys = mandatorySpecs
-    .filter((a) => (a.spec as Design).block?.design?.scope !== "assembly")
-    .map((a) => a.clauseKey);
-const assemblyMandatoryClauseKeys = mandatorySpecs
-    .filter((a) => (a.spec as Design).block?.design?.scope === "assembly")
+const mandatoryClauseKeys = authored
+    .filter((a) => (a.spec as Design).block?.design?.article === "mandatory" && (a.spec as Design).block?.design?.scope !== "assembly")
     .map((a) => a.clauseKey);
 const consentKey = authored.find((a) => a.clauseId === "figaro-consent")?.clauseKey;
 
@@ -51,7 +47,7 @@ describe("reference assemblies — the onboarding set", () => {
         }
     });
 
-    it("every authored agreement carries its own words and is bound by at least one reference assembly", () => {
+    it("every authored agreement carries its own words and is bound by at least one reference assembly or picked in the mandatory article", () => {
         const bound = new Set<string>();
         for (const file of referenceFiles) {
             const authored = JSON.parse(readFileSync(path.join(ASSEMBLIES_DIR, file), "utf8")) as { agreements: { agreement: string }[] };
@@ -59,11 +55,15 @@ describe("reference assemblies — the onboarding set", () => {
         }
         expect(agreementFiles.length).toBeGreaterThan(0);
         for (const file of agreementFiles) {
+            const doc = JSON.parse(readFileSync(path.join(AGREEMENTS_DIR, file), "utf8")) as { mandatory?: string };
+            if (doc.mandatory) bound.add(doc.mandatory);
+        }
+        for (const file of agreementFiles) {
             const doc = JSON.parse(readFileSync(path.join(AGREEMENTS_DIR, file), "utf8")) as { name?: string; summary?: string; clauses?: object };
             expect((doc.name ?? "").trim().length, `${file} names itself`).toBeGreaterThan(0);
             expect((doc.summary ?? "").trim().length, `${file} says what it is`).toBeGreaterThan(0);
             expect(doc.clauses, `${file} composes clauses`).toBeTypeOf("object");
-            expect(bound.has(file.replace(/\.json$/, "")), `${file} is bound by a reference assembly`).toBe(true);
+            expect(bound.has(file.replace(/\.json$/, "")), `${file} is bound by a reference assembly or picked`).toBe(true);
         }
         // The shared ones are shared: a name bound by two assemblies keys once.
         const keys = new Map(Object.entries(authoredAgreements()).map(([name, doc]) => [name, doc.clauses]));
@@ -98,12 +98,6 @@ describe("reference assemblies — the onboarding set", () => {
                     for (const mandatory of mandatoryClauseKeys) {
                         expect(order.clauses, `${order.id} carries mandatory ${mandatory}`).toHaveProperty(mandatory);
                     }
-                }
-                for (const mandatory of assemblyMandatoryClauseKeys) {
-                    expect(
-                        (assembly as { assemblyClauses?: Record<string, unknown> }).assemblyClauses ?? {},
-                        `the assembly carries assembly-mandatory ${mandatory} once, at the assembly level`,
-                    ).toHaveProperty(mandatory);
                 }
             });
 

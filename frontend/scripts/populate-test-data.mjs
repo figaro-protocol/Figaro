@@ -28,11 +28,11 @@ import { mnemonicToAccount } from 'viem/accounts';
 // identity (compositionHash). Nothing is re-implemented here.
 import { MEMBERS_REGISTRY_ABI, ERC20_ABI } from '@figaro-protocol/sdk';
 import {
-    ASSEMBLIES_DIR, LOCAL_ANVIL, anchorBuiltAssembly, fillDeployTimeCurrency, loadAuthoredSpecs, pinFile, pinJSON,
+    AGREEMENTS_DIR, ASSEMBLIES_DIR, LOCAL_ANVIL, anchorBuiltAssembly, fillDeployTimeCurrency, loadAuthoredSpecs, pinFile, pinJSON,
     loadAuthoredAgreements, readBuiltAssembly,
     populateClauses, populateReferenceAssemblies, readEnvLocal, registrarAccount,
 } from './populate-clauses.mjs';
-import { assemblyCompositionHash, resolveAuthoredClauseKeys, composeAuthoredAgreement, assembleAuthored } from '@figaro-protocol/sdk';
+import { assemblyCompositionHash, resolveAuthoredClauseKeys, composeAuthoredAgreements, assembleAuthored } from '@figaro-protocol/sdk';
 
 // The specs in clauses/, each with its key — the set every authored clause
 // NAME below resolves against at seed time (`resolveAuthoredClauseKeys`);
@@ -86,26 +86,28 @@ const isAlreadyRegistered = (err) => /AlreadyRegistered/i.test(err instanceof Er
 // so an empty AssemblyRegistry means zero surfaced members). Seeding is
 // PRE-POPULATION, exactly like clauses and sellers above — never a test
 // (the scenario-era build-order coupling is the cautionary tale). Each seed is
-// authored like a reference: its agreements composed by clause name
-// (`composeAuthoredAgreement` — the mandatory clauses fold in, so a seed
-// writes only what it selects), then the assembly built over them by name
+// authored like a reference: its agreements composed by clause name, each
+// picking the reference agreement holding the mandatory clauses alone
+// (`composeAuthoredAgreements` — its clauses merge in, so a seed writes only
+// what it selects), then the assembly built over them by name
 // (`assembleAuthored`): its agreements register on AgreementRegistry, then
 // its assembly anchors — identity (agreement keys, compositionHash + slug)
 // and canonical JSON come from the SDK.
 
 /** The seeds' authored agreements, composed once, by name. Design time is
  *  STRUCTURAL: a clause is SELECTED; its values are the buyer's at checkout. */
-const SEED_AGREEMENTS = Object.fromEntries(Object.entries({
-    // The blank agreement: the mandatory clauses alone.
-    blank: { clauses: {} },
+const SEED_AGREEMENTS = Object.fromEntries(Object.entries(composeAuthoredAgreements({
+    // The blank agreement: the mandatory clauses alone — the reference pick.
+    blank: { mandatory: 'mandatory-clauses', clauses: {} },
     // A root merchant agreement: the merchant process and the modality the
     // buyer picks at checkout.
-    merchant: { clauses: { 'figaro-merchant-process': {}, 'figaro-modalities': {} } },
+    merchant: { mandatory: 'mandatory-clauses', clauses: { 'figaro-merchant-process': {}, 'figaro-modalities': {} } },
     // A courier sub-agreement.
-    courier: { clauses: { 'figaro-courier-process': {} } },
+    courier: { mandatory: 'mandatory-clauses', clauses: { 'figaro-courier-process': {} } },
     // A supplier sub-agreement: the merchant process alone.
-    supplier: { clauses: { 'figaro-merchant-process': {} } },
-}).map(([name, authored]) => [name, composeAuthoredAgreement(authored, AUTHORED).document]));
+    supplier: { mandatory: 'mandatory-clauses', clauses: { 'figaro-merchant-process': {} } },
+    'mandatory-clauses': JSON.parse(fs.readFileSync(path.join(AGREEMENTS_DIR, 'mandatory-clauses.json'), 'utf8')),
+}, AUTHORED)).map(([name, { document }]) => [name, document]));
 
 // The zero-address sentinel, the currency fill, and the anchoring itself all
 // live in populate-clauses.mjs now — the ONE reference-assembly population

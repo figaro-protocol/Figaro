@@ -15,14 +15,14 @@
  * the draft that can silently fall out of step with them.
  *
  * The walk itself is `buildAssembly` (`@figaro-protocol/sdk`), fed by the
- * live-cache `liveSpecSource()` adapter, whose fold set holds only the
- * registrations whose stake is live (the drawer's surfacing rule), and by the
- * registered agreements the designer bound to agreements, read from
- * `AgreementRegistry` and verified against their keys (`getRegisteredAgreement`).
- * It VERIFIES scope placement, refuses an agreement that both binds and
- * composes, refuses a bound agreement lacking a live mandatory clause, and
- * throws on a cold spec cache or an unread bound agreement — loud failures
- * the callers surface, never silently swallowed here.
+ * live-cache `specSource()` adapter and by the registered agreements the
+ * designer bound to agreements and picked in the drawer's mandatory article,
+ * read from `AgreementRegistry` and verified against their keys
+ * (`getRegisteredAgreement`). It VERIFIES scope placement, refuses an order
+ * with no pick, refuses an agreement that both binds and composes, refuses a
+ * bound agreement lacking a clause of its pick, and throws on a cold spec
+ * cache or an unread bound or picked agreement — loud failures the callers
+ * surface, never silently swallowed here.
  */
 
 import {
@@ -35,22 +35,23 @@ import {
     type HydratedAssembly,
 } from "@figaro-protocol/sdk";
 import { getRegisteredAgreement } from "@/lib/protocol/useAgreementRegistry";
-import { clauseDesignFills, clauseIsMandatory, getClauseSpec, liveSpecSource } from "@/lib/shared/clauseSpecSource";
+import { clauseDesignFills, clauseIsMandatory, getClauseSpec, specSource } from "@/lib/shared/clauseSpecSource";
 import { isFilledValue } from "@/lib/checkout/checkoutDerivations";
 import { deriveAssemblySlug, type Assembly } from "@/lib/shared/assembly";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import { truncateHex } from "@/lib/shared/formatHex";
 import type { DesignSnapshot } from "@/lib/designer/syntheticDesignStore";
 
-/** The registered agreements a snapshot binds, read from this tab's verified
- *  documents. Throws for a bound key not read yet — the build never binds an
- *  agreement it cannot read. */
-function boundAgreements(snapshot: DesignSnapshot): Record<string, RegisteredAgreement> {
+/** The registered agreements an order map names (the ones a snapshot binds,
+ *  or the ones it picks in the mandatory article), read from this tab's
+ *  verified documents. Throws for a key not read yet — the build never uses
+ *  an agreement it cannot read. */
+function readAgreements(byOrderId: Record<string, `0x${string}`> | undefined, use: string): Record<string, RegisteredAgreement> {
     const out: Record<string, RegisteredAgreement> = {};
-    for (const [orderId, agreementKey] of Object.entries(snapshot.registeredByOrderId ?? {})) {
+    for (const [orderId, agreementKey] of Object.entries(byOrderId ?? {})) {
         const doc = getRegisteredAgreement(agreementKey);
         if (!doc) {
-            throw new Error(`the registered agreement ${agreementKey} bound to an agreement has not been read from the AgreementRegistry yet`);
+            throw new Error(`the registered agreement ${agreementKey} ${use} has not been read from the AgreementRegistry yet`);
         }
         out[orderId] = doc;
     }
@@ -59,10 +60,11 @@ function boundAgreements(snapshot: DesignSnapshot): Record<string, RegisteredAgr
 
 /** Project a design snapshot onto the canonical assembly and the
  *  agreements newly composed for it (the ones publish registers before the
- *  assembly). Throws when the spec cache is cold (no mandatory clauses
- *  resolvable), a clause is composed at the wrong scope, an agreement both
- *  binds and composes, or a bound agreement is unread or lacks a live
- *  mandatory clause — the SDK's own refusals, and this file's one. */
+ *  assembly). Throws when a clause's spec is not loaded or is composed at
+ *  the wrong scope, an order has no pick in the mandatory article, an
+ *  agreement both binds and composes, a bound or picked agreement is unread,
+ *  or a bound agreement lacks a clause of its pick — the SDK's own refusals,
+ *  and this file's one. */
 export function snapshotToAssembly(snapshot: DesignSnapshot): BuiltAssembly {
     return buildAssembly({
         name: snapshot.name.trim() || undefined,
@@ -70,9 +72,10 @@ export function snapshotToAssembly(snapshot: DesignSnapshot): BuiltAssembly {
         description: snapshot.description?.trim() || undefined,
         orders: snapshot.orders,
         clausesByOrderId: snapshot.clausesByOrderId ?? {},
-        registeredByOrderId: boundAgreements(snapshot),
+        registeredByOrderId: readAgreements(snapshot.registeredByOrderId, "bound to an agreement"),
         assemblyClauses: snapshot.assemblyClauses,
-        specs: liveSpecSource(),
+        mandatoryByOrderId: readAgreements(snapshot.mandatoryByOrderId, "picked in the mandatory article"),
+        specs: specSource(),
     });
 }
 
@@ -95,9 +98,10 @@ function builtToHydrated(built: BuiltAssembly): HydratedAssembly {
  *  publish (review) or has already published (`/view`): each agreement's
  *  registered agreement with the agreement's own fills merged over it.
  *
- *  Keyed by the assembly's own agreement ids (`order-<i>`). The auto-folded
- *  MANDATORY clauses are left out here: they are not the designer's picks, and
- *  `assemblyFoldedClauses` lists them on their own, by key.
+ *  Keyed by the assembly's own agreement ids (`order-<i>`). The MANDATORY
+ *  clauses are left out here: they come from the registered agreement picked
+ *  in the mandatory article, and `assemblyMandatoryClauses` lists them on
+ *  their own, by key.
  *  Everything shown here comes from the pinned bytes, never from a second walk
  *  over the draft — that divergence is the defect this exists to make
  *  impossible. */
@@ -154,9 +158,10 @@ export function assemblyComposedClauses(hydrated: HydratedAssembly): Record<stri
     );
 }
 
-/** A clause the assembly carries because its spec marks it mandatory, not
- *  because the designer picked it. */
-export interface FoldedClause {
+/** A clause the assembly carries whose spec marks it mandatory — merged from
+ *  the registered agreement picked in the mandatory article, or carried by a
+ *  bound agreement. */
+export interface MandatoryClause {
     clauseKey: Hex;
     /** The spec's own `clauseId` and `version` — presentation. */
     clauseId?: string;
@@ -172,22 +177,22 @@ export interface FoldedClause {
  *  complement of `assemblyComposedByAgreement`. "Mandatory" is the spec's
  *  `block.design.article`, written by whoever registered the clause and open
  *  to anyone's registration, so it confers no standing: a review lists every
- *  one of these for the designer to confirm before anchoring, never folds
- *  them out of sight. Read from the pinned bytes. */
-export function assemblyFoldedClauses(hydrated: HydratedAssembly): FoldedClause[] {
+ *  one of these for the designer to confirm before anchoring, never hides
+ *  them. Read from the pinned bytes. */
+export function assemblyMandatoryClauses(hydrated: HydratedAssembly): MandatoryClause[] {
     const { assembly } = hydrated;
-    const folded = new Map<string, FoldedClause>();
+    const mandatory = new Map<string, MandatoryClause>();
     const note = (clauseKey: Hex, carrier: string) => {
         if (!clauseIsMandatory(clauseKey)) return;
-        const entry = folded.get(clauseKey.toLowerCase()) ?? { clauseKey, ...clauseLabel(clauseKey), carriedBy: [] };
+        const entry = mandatory.get(clauseKey.toLowerCase()) ?? { clauseKey, ...clauseLabel(clauseKey), carriedBy: [] };
         entry.carriedBy.push(carrier);
-        folded.set(clauseKey.toLowerCase(), entry);
+        mandatory.set(clauseKey.toLowerCase(), entry);
     };
     for (const clauseKey of Object.keys(assembly.assemblyClauses ?? {}) as Hex[]) note(clauseKey, "assembly");
     for (const entry of assembly.agreements) {
         for (const clauseKey of Object.keys(agreementClauses(hydrated, entry)) as Hex[]) note(clauseKey, entry.id);
     }
-    return Array.from(folded.values());
+    return Array.from(mandatory.values());
 }
 
 /** A draft projected onto the bytes that publish anchors, plus the readout
@@ -213,7 +218,7 @@ export type SnapshotReview =
         entries: { orderId: string; agreementKey: Hex; bound: boolean }[];
         compositionHash: `0x${string}`;
         slug: string;
-        /** canvas order id → clause key → composed values (mandatory folds out). */
+        /** canvas order id → clause key → composed values (the mandatory clauses listed apart). */
         composedByOrderId: Record<string, Record<string, Record<string, unknown>>>;
         /** canvas order id → the same picks with their labels, for the
          *  review's listing. */
@@ -222,7 +227,7 @@ export type SnapshotReview =
         assemblyClauses: Record<string, Record<string, unknown>>;
         /** The mandatory clauses the assembly carries, by key — what
          *  the designer confirms before publish. */
-        folded: FoldedClause[];
+        mandatory: MandatoryClause[];
     }
     | { ok: false; error: string };
 
@@ -262,7 +267,7 @@ export function projectSnapshotForReview(snapshot: DesignSnapshot): SnapshotRevi
             composedByOrderId,
             composedClausesByOrderId,
             assemblyClauses: assembly.assemblyClauses ?? {},
-            folded: assemblyFoldedClauses(hydrated),
+            mandatory: assemblyMandatoryClauses(hydrated),
         };
     } catch (cause) {
         return {

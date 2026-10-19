@@ -89,7 +89,7 @@ these five and nothing else:
 
 | Hint | Reaches | Effect |
 |---|---|---|
-| `block.design.article: "mandatory"` | `agreementKey` + `agreementHash` | auto-folds the clause into EVERY new agreement, chosen or not; a registered agreement that lacks it cannot fill an agreement of a new assembly |
+| `block.design.article: "mandatory"` | `agreementKey` + `agreementHash` | the clause is never selected on its own: a registered agreement whose clauses are all mandatory-article is what a designer picks for each agreement of an assembly (any wallet's registration), and its clauses merge into that agreement; a registered agreement bound as is must already carry its pick's clauses |
 | `block.design.article: "attestations"` | `agreementHash` | the clause is committed as an EMPTY anchor, filled by attestation later; field `default`s are NOT applied |
 | `block.design.scope: "assembly"` | `compositionHash` + `agreementHash` | composed ONCE for the whole design, folded into EVERY agreement at checkout; composing it on one order is a build error |
 | `block.design.fills` | `agreementKey` | names the fields whose DESIGN-TIME values survive into a agreement; name nothing and the agreement carries `{}` |

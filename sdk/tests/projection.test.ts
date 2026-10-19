@@ -55,6 +55,10 @@ const SPECS = specSourceFromFixtures([
     "figaro-utility-token",
 ]);
 
+/** The registered agreement a designer picks in the mandatory article: the
+ *  mandatory clauses alone. Its clauses merge into each agreement composed. */
+const MANDATORY = { clauses: { [keyOf("figaro-commerce")]: {}, [keyOf("figaro-topology")]: {} } };
+
 function commerceData() {
     return {
         currency: CURRENCY,
@@ -266,7 +270,7 @@ describe("projection — golden-vector byte-exactness", () => {
         expect(agreementHash).toBe(vectors.agreementProjection.processLog.agreementHash);
     });
 
-    it("mandatory fold + relabeling + assembly-scope fold reproduce the frozen assembly + compositionHash", () => {
+    it("the mandatory pick + relabeling + assembly terms reproduce the frozen assembly + compositionHash", () => {
         // figaro-applicable-law is ASSEMBLY-SCOPED (design.scope: "assembly")
         // and DESIGNER-AUTHORED (design.fills — recourse
         // terms are part of the assembly's identity, never buyer-authored),
@@ -279,6 +283,7 @@ describe("projection — golden-vector byte-exactness", () => {
             ],
             clausesByOrderId: {},
             assemblyClauses: { [keyOf("figaro-applicable-law")]: { applicableLaw: "US-NY" } },
+            mandatoryByOrderId: { "synthetic-root": MANDATORY, "synthetic-child": MANDATORY },
             specs: SPECS,
         });
         const assembly = serializeAssembly(built.assembly);
@@ -294,6 +299,7 @@ describe("projection — golden-vector byte-exactness", () => {
         expect(() => buildAssembly({
             orders: [{ orderHash: "synthetic-root", parentOrderHashes: [] }],
             clausesByOrderId: { "synthetic-root": { [keyOf("figaro-applicable-law")]: {} } },
+            mandatoryByOrderId: { "synthetic-root": MANDATORY },
             specs: SPECS,
         })).toThrow(/design\.scope "assembly"/);
         // …and an agreement-scoped clause at the assembly level likewise.
@@ -301,6 +307,7 @@ describe("projection — golden-vector byte-exactness", () => {
             orders: [{ orderHash: "synthetic-root", parentOrderHashes: [] }],
             clausesByOrderId: {},
             assemblyClauses: { [keyOf("figaro-geolocation")]: {} },
+            mandatoryByOrderId: { "synthetic-root": MANDATORY },
             specs: SPECS,
         })).toThrow(/does not declare design\.scope "assembly"/);
     });
@@ -455,49 +462,82 @@ describe("warnProcessLogFillsTrap — the reserved 'attestations' article trap",
     });
 });
 
-describe("buildAssembly — a clause is its spec: the fold folds every mandatory registration", () => {
-    // A clause's key is the hash of its pinned bytes, so a registration that
-    // reuses a name and version with other bytes is ANOTHER clause: it never
-    // displaces the clause a design composed, and nothing selects among
-    // registrations — every live registration marking itself mandatory folds.
+describe("buildAssembly — the mandatory article's pick: a registered agreement whose clauses merge into each agreement", () => {
+    // Nothing folds: the designer picks, for each agreement in the assembly's
+    // list, a registered agreement whose clauses are all mandatory-article,
+    // and its clauses merge into that agreement. A clause is its spec, so a
+    // stranger's registration reusing a name and version is another clause,
+    // and enters a composition only through a pick that carries it.
     const ORDERS = [
         { orderHash: "synthetic-root", parentOrderHashes: [] },
         { orderHash: "synthetic-child", parentOrderHashes: ["synthetic-root"] },
     ];
     const base = specSourceFromFixtures(["figaro-commerce", "figaro-topology", "figaro-geolocation", "figaro-applicable-law"]);
+    /** Every order in ORDERS picks `pick`. */
+    const picks = (pick: { clauses: Record<string, Record<string, unknown>> } = MANDATORY) =>
+        Object.fromEntries(ORDERS.map((o) => [o.orderHash, pick]));
     /** A stranger's registration: the named spec's bytes with a changed title
      *  (and any further edits) — same clauseId and version, a different key. */
     const lookalike = (name: string, edit: (raw: Record<string, unknown>) => Record<string, unknown> = (r) => r): ProjectionSpecView =>
         viewOf(edit({ ...rawSpecOf(name), title: `${name} (a stranger's registration)` }));
 
-    it("a lookalike of a mandatory clause is another clause: both fold, the real key unchanged", () => {
+    it("merges the picked agreement's clauses into each agreement composed", () => {
+        const { assembly, agreements } = buildAssembly({
+            orders: ORDERS,
+            clausesByOrderId: { "synthetic-child": { [keyOf("figaro-geolocation")]: { origin: "u4pru" } } },
+            mandatoryByOrderId: picks(),
+            specs: base,
+        });
+        const [root, child] = assembly.agreements;
+        expect(Object.keys(agreements[root.agreementKey].clauses).sort()).toEqual(Object.keys(MANDATORY.clauses).sort());
+        expect(agreements[child.agreementKey].clauses).toEqual({ ...MANDATORY.clauses, [keyOf("figaro-geolocation")]: {} });
+    });
+
+    it("refuses an agreement with no pick, naming the agreement", () => {
+        expect(() => buildAssembly({
+            orders: ORDERS,
+            clausesByOrderId: {},
+            mandatoryByOrderId: { "synthetic-root": MANDATORY },
+            specs: base,
+        })).toThrow(/order-1 has no registered agreement picked in the mandatory article/);
+        expect(() => buildAssembly({ orders: ORDERS, clausesByOrderId: {}, mandatoryByOrderId: {}, specs: base }))
+            .toThrow(/order-0 has no registered agreement picked in the mandatory article/);
+    });
+
+    it("refuses a pick carrying a clause that is not mandatory-article, or carrying none", () => {
+        const mixed = { clauses: { ...MANDATORY.clauses, [keyOf("figaro-geolocation")]: {} } };
+        expect(() => buildAssembly({ orders: ORDERS, clausesByOrderId: {}, mandatoryByOrderId: picks(mixed), specs: base }))
+            .toThrow(/figaro-geolocation .* is not a mandatory-article clause/);
+        expect(() => buildAssembly({ orders: ORDERS, clausesByOrderId: {}, mandatoryByOrderId: picks({ clauses: {} }), specs: base }))
+            .toThrow(/carries no clause/);
+    });
+
+    it("a stranger's mandatory registration enters no composition the designer did not pick it for", () => {
         const fake = lookalike("figaro-commerce");
         expect(fake.clauseKey).not.toBe(keyOf("figaro-commerce"));
-        expect(fake.clauseId).toBe("figaro-commerce");
-        const { assembly, agreements } = buildAssembly({ orders: ORDERS, clausesByOrderId: {}, specs: specSourceWithRegistrations(base, [fake]) });
+        const specs = specSourceWithRegistrations(base, [fake]);
+        const { assembly, agreements } = buildAssembly({ orders: ORDERS, clausesByOrderId: {}, mandatoryByOrderId: picks(), specs });
         for (const entry of assembly.agreements) {
-            const composed = agreements[entry.agreementKey].clauses;
-            expect(composed).toHaveProperty(keyOf("figaro-commerce"));
-            expect(composed).toHaveProperty(fake.clauseKey);
-            expect(composed).toHaveProperty(keyOf("figaro-topology"));
+            expect(agreements[entry.agreementKey].clauses).not.toHaveProperty(fake.clauseKey);
         }
+        // Picked, the stranger's agreement merges like any other.
+        const theirs = { clauses: { [fake.clauseKey]: {}, [keyOf("figaro-topology")]: {} } };
+        const picked = buildAssembly({ orders: ORDERS, clausesByOrderId: {}, mandatoryByOrderId: picks(theirs), specs });
+        const composed = picked.agreements[picked.assembly.agreements[0].agreementKey].clauses;
+        expect(composed).toHaveProperty(fake.clauseKey);
+        expect(composed).not.toHaveProperty(keyOf("figaro-commerce"));
     });
 
-    it("with no registration added the assembly is the same — the fold reads only what the source surfaces", () => {
-        const once = serializeAssembly(buildAssembly({ orders: ORDERS, clausesByOrderId: {}, specs: base }).assembly);
-        const twice = serializeAssembly(buildAssembly({ orders: ORDERS, clausesByOrderId: {}, specs: base }).assembly);
-        expect(twice.compositionHash).toBe(once.compositionHash);
-    });
-
-    it("an assembly-scoped registration marking itself mandatory folds into the assembly's terms", () => {
+    it("an assembly-scoped registration marking itself mandatory joins no composition", () => {
         const floor = lookalike("figaro-applicable-law", (r) => ({
             ...r,
             clauseId: "stranger-assembly-floor",
             block: { ...(r.block as Record<string, unknown>), design: { ...((r.block as { design?: object }).design ?? {}), article: "mandatory", scope: "assembly" } },
         }));
-        const { assembly, agreements } = buildAssembly({ orders: [ORDERS[0]], clausesByOrderId: {}, specs: specSourceWithRegistrations(base, [floor]) });
-        expect(assembly.assemblyClauses).toEqual({ [floor.clauseKey]: {} });
-        expect(agreements[assembly.agreements[0].agreementKey].clauses).not.toHaveProperty(floor.clauseKey);
+        const { assembly } = buildAssembly({
+            orders: [ORDERS[0]], clausesByOrderId: {}, mandatoryByOrderId: picks(), specs: specSourceWithRegistrations(base, [floor]),
+        });
+        expect(assembly.assemblyClauses).toBeUndefined();
     });
 
     it("composes the key the design names, whatever else shares its name", () => {
@@ -506,6 +546,7 @@ describe("buildAssembly — a clause is its spec: the fold folds every mandatory
         const { assembly, agreements } = buildAssembly({
             orders: [ORDERS[0]],
             clausesByOrderId: { "synthetic-root": { [keyOf("figaro-geolocation")]: {} } },
+            mandatoryByOrderId: picks(),
             specs,
         });
         const composed = agreements[assembly.agreements[0].agreementKey].clauses;
@@ -513,23 +554,28 @@ describe("buildAssembly — a clause is its spec: the fold folds every mandatory
         expect(composed).not.toHaveProperty(fake.clauseKey);
     });
 
-    it("a composed key whose spec is not loaded is a build error, on an order and at the assembly level", () => {
+    it("a composed or picked key whose spec is not loaded is a build error", () => {
         const unloaded = `0x${"77".repeat(32)}` as const;
         expect(() => buildAssembly({
             orders: [ORDERS[0]],
             clausesByOrderId: { "synthetic-root": { [unloaded]: {} } },
+            mandatoryByOrderId: picks(),
             specs: base,
         })).toThrow(new RegExp(`clause ${unloaded} is composed on an order but its spec is not loaded`));
         expect(() => buildAssembly({
             orders: [ORDERS[0]],
             clausesByOrderId: {},
             assemblyClauses: { [unloaded]: {} },
+            mandatoryByOrderId: picks(),
             specs: base,
         })).toThrow(new RegExp(`clause ${unloaded} is composed at the assembly level but its spec is not loaded`));
+        expect(() => buildAssembly({
+            orders: [ORDERS[0]], clausesByOrderId: {}, mandatoryByOrderId: picks({ clauses: { [unloaded]: {} } }), specs: base,
+        })).toThrow(new RegExp(`clause ${unloaded} is picked in the mandatory article but its spec is not loaded`));
     });
 
     it("puts the topology's parents in the agreement and composes the topology clause with {}", () => {
-        const { assembly, agreements } = buildAssembly({ orders: ORDERS, clausesByOrderId: {}, specs: base });
+        const { assembly, agreements } = buildAssembly({ orders: ORDERS, clausesByOrderId: {}, mandatoryByOrderId: picks(), specs: base });
         // Both agreements compose the same clauses, so they bind one agreement.
         expect(Object.keys(agreements)).toHaveLength(1);
         const [root, child] = assembly.agreements;
@@ -538,40 +584,36 @@ describe("buildAssembly — a clause is its spec: the fold folds every mandatory
         expect(root.clauses).toEqual({ [keyOf("figaro-topology")]: { parentOrderHashes: [] } });
         expect(child.clauses).toEqual({ [keyOf("figaro-topology")]: { parentOrderHashes: ["order-0"] } });
         expect(agreementKeyOf(agreements[root.agreementKey])).toBe(root.agreementKey);
+        // The agreement the pick yields is the pick itself: same key.
+        expect(root.agreementKey).toBe(agreementKeyOf(MANDATORY));
     });
 
-    it("binds a registered agreement as is, and refuses one lacking a live mandatory spec", () => {
+    it("binds a registered agreement as is, and refuses one lacking a clause of its pick", () => {
         const registered = { name: "Registered", clauses: { [keyOf("figaro-commerce")]: {}, [keyOf("figaro-topology")]: {}, [keyOf("figaro-geolocation")]: {} } };
         const { assembly, agreements } = buildAssembly({
             orders: ORDERS,
             clausesByOrderId: {},
             registeredByOrderId: { "synthetic-child": registered },
+            mandatoryByOrderId: picks(),
             specs: base,
         });
         expect(assembly.agreements[1].agreementKey).toBe(agreementKeyOf(registered));
         expect(assembly.agreements[1].clauses).toEqual({ [keyOf("figaro-topology")]: { parentOrderHashes: ["order-0"] } });
-        // Only the newly agreement is returned to register.
+        // Only the newly composed agreement is returned to register.
         expect(Object.keys(agreements)).toEqual([assembly.agreements[0].agreementKey]);
-        // A registered agreement missing a live mandatory clause is refused…
+        // A registered agreement missing a clause of its pick is refused…
         const lacking = { clauses: { [keyOf("figaro-commerce")]: {} } };
         expect(() => buildAssembly({
-            orders: ORDERS, clausesByOrderId: {}, registeredByOrderId: { "synthetic-child": lacking }, specs: base,
-        })).toThrow(/lacks the live mandatory/);
+            orders: ORDERS, clausesByOrderId: {}, registeredByOrderId: { "synthetic-child": lacking }, mandatoryByOrderId: picks(), specs: base,
+        })).toThrow(/order-1: registered agreement 0x[0-9a-f]{64} lacks figaro-topology .* of the registered agreement picked in the mandatory article/);
         // …as is one order binding a registered agreement and composing clauses too.
         expect(() => buildAssembly({
             orders: ORDERS,
             clausesByOrderId: { "synthetic-child": { [keyOf("figaro-geolocation")]: {} } },
             registeredByOrderId: { "synthetic-child": registered },
+            mandatoryByOrderId: picks(),
             specs: base,
         })).toThrow(/choose one/);
-    });
-
-    it("refuses a assembly build with no mandatory clause loaded", () => {
-        expect(() => buildAssembly({
-            orders: [ORDERS[0]],
-            clausesByOrderId: {},
-            specs: specSourceFromFixtures(["figaro-geolocation"]),
-        })).toThrow(/no mandatory clauses/);
     });
 });
 
@@ -603,29 +645,38 @@ describe("buildOrderAgreement — every clause reads the spec its key names", ()
 });
 
 describe("composeOrderAgreement — one agreement's registered agreement, on its own", () => {
-    it("keys exactly what buildAssembly keys for the same composed clauses", () => {
+    it("keys exactly what buildAssembly keys for the same composed clauses and pick", () => {
         const clauses = { [keyOf("figaro-geolocation")]: { ignored: "transaction particular" } };
-        const alone = composeOrderAgreement({ clauses, specs: SPECS });
+        const alone = composeOrderAgreement({ clauses, mandatory: MANDATORY, specs: SPECS });
         const built = buildAssembly({
             orders: [{ orderHash: "synthetic-root", parentOrderHashes: [] }],
             clausesByOrderId: { "synthetic-root": clauses },
+            mandatoryByOrderId: { "synthetic-root": MANDATORY },
             specs: SPECS,
         });
         expect(built.assembly.agreements[0].agreementKey).toBe(alone.agreementKey);
         expect(built.agreements[alone.agreementKey]).toEqual(alone.composed);
     });
 
-    it("folds every agreement-scoped mandatory clause and keeps the composition value-free", () => {
-        const { composed } = composeOrderAgreement({ clauses: { [keyOf("figaro-geolocation")]: { origin: "u4pru" } }, specs: SPECS });
+    it("merges the pick's clauses and keeps the composition value-free", () => {
+        const { composed } = composeOrderAgreement({ clauses: { [keyOf("figaro-geolocation")]: { origin: "u4pru" } }, mandatory: MANDATORY, specs: SPECS });
         expect(Object.keys(composed.clauses)).toContain(keyOf("figaro-commerce"));
         expect(Object.keys(composed.clauses)).toContain(keyOf("figaro-topology"));
         expect(composed.clauses[keyOf("figaro-geolocation")]).toEqual({});
     });
 
+    it("refuses a composition with no pick unless every clause it composes is mandatory-article", () => {
+        expect(() => composeOrderAgreement({ clauses: { [keyOf("figaro-geolocation")]: {} }, specs: SPECS }))
+            .toThrow(/no registered agreement picked in the mandatory article/);
+        // The agreement a pick names: the mandatory clauses alone, composed with no pick.
+        expect(composeOrderAgreement({ clauses: MANDATORY.clauses, specs: SPECS }).agreementKey).toBe(agreementKeyOf(MANDATORY));
+        expect(() => composeOrderAgreement({ clauses: {}, specs: SPECS })).toThrow(/no registered agreement picked/);
+    });
+
     it("refuses an assembly-scoped clause and a clause whose spec is not loaded", () => {
-        expect(() => composeOrderAgreement({ clauses: { [keyOf("figaro-applicable-law")]: {} }, specs: SPECS }))
+        expect(() => composeOrderAgreement({ clauses: { [keyOf("figaro-applicable-law")]: {} }, mandatory: MANDATORY, specs: SPECS }))
             .toThrow(/design\.scope "assembly"/);
-        expect(() => composeOrderAgreement({ clauses: { [`0x${"ab".repeat(32)}`]: {} }, specs: SPECS }))
+        expect(() => composeOrderAgreement({ clauses: { [`0x${"ab".repeat(32)}`]: {} }, mandatory: MANDATORY, specs: SPECS }))
             .toThrow(/spec is not loaded/);
     });
 });
@@ -704,6 +755,34 @@ describe("the sign gate's design check — the designer's values against the des
         const dropped = { ...anchored, sections: anchored.sections.filter((s) => s.clause !== keyOf("figaro-merchant-process")) };
         expect(() => assertAgreementSignable(dropped, computeAgreementHash(dropped), LOG_SPECS, STRUCT, logDesign))
             .toThrow(/figaro-merchant-process clause: the order does not carry this clause/);
+    });
+
+    it("refuses an order missing a clause the mandatory pick merged into its agreement", () => {
+        // The pick's clauses merge into the registered agreement, so the
+        // design names them as its own: an order dropping one is refused like
+        // any clause the designer composed.
+        const built = buildAssembly({
+            orders: [{ orderHash: "synthetic-root", parentOrderHashes: [] }],
+            clausesByOrderId: { "synthetic-root": { [keyOf("figaro-merchant-process")]: {} } },
+            mandatoryByOrderId: { "synthetic-root": MANDATORY },
+            specs: SPECS,
+        });
+        const [entry] = built.assembly.agreements;
+        const picked: HydratedAssembly = {
+            assembly: built.assembly,
+            agreements: { [entry.agreementKey.toLowerCase() as `0x${string}`]: built.agreements[entry.agreementKey] },
+        };
+        const provenance = { agreementKey: entry.agreementKey, compositionHash: assemblyCompositionHash(built.assembly) };
+        const { agreement } = buildOrderAgreement(BUYER, SELLER, {
+            [keyOf("figaro-commerce")]: commerceData(),
+            [keyOf("figaro-topology")]: { parentOrderHashes: [] },
+            [keyOf("figaro-merchant-process")]: {},
+        }, SPECS);
+        const full = { ...agreement, provenance };
+        expect(validateCommitmentAgreement(full, computeAgreementHash(full), SPECS, STRUCT, picked).issues).toEqual([]);
+        const dropped = { ...full, sections: full.sections.filter((s) => s.clause !== keyOf("figaro-topology")) };
+        expect(() => assertAgreementSignable(dropped, computeAgreementHash(dropped), SPECS, STRUCT, picked))
+            .toThrow(/figaro-topology clause: the order does not carry this clause/);
     });
 
     it("refuses a design that is not the one the agreement's provenance names", () => {

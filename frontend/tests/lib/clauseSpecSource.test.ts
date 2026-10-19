@@ -12,8 +12,6 @@ import {
     clauseLadderField,
     labelEnumValue,
     specSource,
-    liveSpecSource,
-    noteClauseStakes,
     isLiveRegistration,
     clauseIsMandatory,
     describeAttestation,
@@ -257,28 +255,10 @@ describe("Anchored — a document is anchored only when an anchor function retur
     });
 });
 
-describe("the live stake — one rule for the offer and the mandatory fold", () => {
+describe("the live stake — the drawer's offer", () => {
     it("isLiveRegistration is the stake not withdrawn", () => {
         expect(isLiveRegistration({ stakeWithdrawn: false })).toBe(true);
         expect(isLiveRegistration({ stakeWithdrawn: true })).toBe(false);
-    });
-
-    it("liveSpecSource lists only the clauses noted with a live stake; get reads every loaded spec", async () => {
-        await primeClauseSpecs(["figaro-commerce", "figaro-topology"]);
-        const commerce = keyOf("figaro-commerce");
-        const topology = keyOf("figaro-topology");
-        noteClauseStakes([
-            { clauseKey: commerce, stakeWithdrawn: true },
-            { clauseKey: topology, stakeWithdrawn: false },
-        ]);
-        expect(liveSpecSource().list().map((s) => s.clauseKey)).toEqual([topology]);
-        expect(liveSpecSource().get(commerce)?.clauseId).toBe("figaro-commerce");
-    });
-
-    it("a loaded spec with no noted registration is not live", async () => {
-        await primeClauseSpecs(["figaro-topology"]);
-        noteClauseStakes([]);
-        expect(liveSpecSource().list()).toEqual([]);
     });
 });
 

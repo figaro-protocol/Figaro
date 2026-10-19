@@ -16,7 +16,10 @@
  * to the key of the loaded spec it names (`resolveAuthoredClauseKeys`) here,
  * at seed time, before anything is pinned — everything pinned carries keys.
  * Each authored agreement (`agreements/*.json`) is composed over the specs
- * (`composeAuthoredAgreement`: the mandatory clauses folded, keyed), each
+ * (`composeAuthoredAgreements`: the clauses of the agreement it picks in the
+ * mandatory article merged, keyed); the agreement holding the mandatory
+ * clauses alone registers beside the clauses (`populateMandatoryAgreements`);
+ * each
  * reference assembly is built over the agreements its agreements name
  * (`assembleAuthored`: the entry binds the named agreement's key and carries
  * its own topology parents); every DISTINCT agreement is pinned and
@@ -116,7 +119,8 @@ import { mnemonicToAccount, privateKeyToAccount } from 'viem/accounts';
 import {
     CLAUSE_REGISTRY_ABI, ASSEMBLY_REGISTRY_ABI, AGREEMENT_REGISTRY_ABI, computeClauseKey, canonicalize,
     assemblyCompositionHash, deriveAssemblySlug, parseProjectionHints,
-    assemblyComposedClauseKeys, resolveAuthoredClauseKeys, composeAuthoredAgreement, assembleAuthored,
+    assemblyComposedClauseKeys, resolveAuthoredClauseKeys, composeAuthoredAgreements, assembleAuthored,
+    isMandatoryAgreement, agreementKeyOf,
 } from '@figaro-protocol/sdk';
 import { parseClauseSpec } from '@figaro-protocol/sdk/clauses';
 
@@ -413,14 +417,14 @@ export function resolveAuthoredClauseNames(names, authored = loadAuthoredSpecs()
 
 /** Every authored agreement (`agreements/*.json`) composed over the loaded
  *  specs, by its name (the file's basename): the document the seeding pins
- *  and the key it registers under (`composeAuthoredAgreement`). */
+ *  and the key it registers under, each pick in the mandatory article
+ *  resolved within the set (`composeAuthoredAgreements`). */
 export function loadAuthoredAgreements(authored = loadAuthoredSpecs()) {
-    const byName = {};
+    const authoredByName = {};
     for (const file of fs.readdirSync(AGREEMENTS_DIR).filter((f) => f.endsWith('.json')).sort()) {
-        const { document } = composeAuthoredAgreement(JSON.parse(fs.readFileSync(path.join(AGREEMENTS_DIR, file), 'utf8')), authored);
-        byName[path.basename(file, '.json')] = document;
+        authoredByName[path.basename(file, '.json')] = JSON.parse(fs.readFileSync(path.join(AGREEMENTS_DIR, file), 'utf8'));
     }
-    return byName;
+    return Object.fromEntries(Object.entries(composeAuthoredAgreements(authoredByName, authored)).map(([name, { document }]) => [name, document]));
 }
 
 /** An authored reference assembly (`assemblies/<file>`) built over the
@@ -527,6 +531,27 @@ export async function populateClauses({ publicClient, walletClient, account, reg
         }
         registered += 1;
         log(`  ✓ ${label} ${clauseKey} — pinned ${contentURI} (article ${spec.block?.design?.article ?? '-'})`);
+    }
+    return registered;
+}
+
+/**
+ * Register every authored agreement whose clauses are all mandatory-article
+ * (`isMandatoryAgreement` — `agreements/mandatory-clauses.json`) on
+ * AgreementRegistry, beside the mandatory clauses: the registration the
+ * designer's mandatory article lists and the reference agreements pick. No
+ * assembly binds it as is, so the reference-assembly pass never registers it.
+ * Idempotent (`registerAgreement` skips a key already bound). Returns the
+ * number newly registered.
+ */
+export async function populateMandatoryAgreements({ registry, log = console.log, ...args }) {
+    const authored = loadAuthoredSpecs();
+    let registered = 0;
+    for (const [name, document] of Object.entries(loadAuthoredAgreements(authored))) {
+        if (!isMandatoryAgreement(document, authored)) continue;
+        log(`  · ${name}: its clauses are all mandatory-article`);
+        const result = await registerAgreement({ ...args, registry, agreementKey: agreementKeyOf(document), document, log });
+        if (result.registered) registered += 1;
     }
     return registered;
 }
@@ -778,7 +803,8 @@ async function main() {
     // A Ledger-driven founder run registers the founder's own artifacts and
     // never a mandatory clause: those are the DAO vault's (RELEASE_READINESS
     // Task 13), and first write wins forever. An assembly's prerequisite set
-    // folds the mandatory clauses in, so they are taken back out here unless
+    // carries the mandatory clauses its agreements' picks merged, so they are
+    // taken back out here unless
     // SEED_CLAUSES names one by hand (a deliberate act, logged as such). The
     // devnet's one-key seeding (no Ledger, no vault) is untouched.
     if (process.env.REGISTRAR_LEDGER_HD_PATH && !vault) {
@@ -810,11 +836,24 @@ async function main() {
     const n = await populateClauses({ publicClient, walletClient, account, registry, ipfsApiUrl, vault, ownerClients, limit: seedLimit, only: onlyClauses });
     console.log(`\nDone — ${n} clause(s) newly registered + pinned.`);
 
+    // The agreement the mandatory article lists rides beside the mandatory
+    // clauses, under the same registrar: the DAO vault's on a public network,
+    // so a Ledger-driven founder run leaves it, as it leaves the clauses.
+    const assemblyRegistry = process.env.NEXT_PUBLIC_ASSEMBLY_REGISTRY ?? env.NEXT_PUBLIC_ASSEMBLY_REGISTRY;
+    const agreementRegistry = process.env.NEXT_PUBLIC_AGREEMENT_REGISTRY ?? env.NEXT_PUBLIC_AGREEMENT_REGISTRY;
+    if (agreementRegistry) {
+        if (process.env.REGISTRAR_LEDGER_HD_PATH && !vault) {
+            console.log('\nThe agreement holding the mandatory clauses alone is the DAO vault\'s, not the founder\'s — skipped');
+        } else {
+            console.log(`\nPopulating the mandatory article → AgreementRegistry ${agreementRegistry}`);
+            const m = await populateMandatoryAgreements({ publicClient, walletClient, account, registry: agreementRegistry, ipfsApiUrl, vault, ownerClients });
+            console.log(`Done — ${m} agreement(s) newly registered.`);
+        }
+    }
+
     // Reference assemblies ride the same invocation when the registry and the
     // denomination fill are both provided (testnet/mainnet: Sepolia USDC;
     // devnet's populate-test-data passes its mock instead).
-    const assemblyRegistry = process.env.NEXT_PUBLIC_ASSEMBLY_REGISTRY ?? env.NEXT_PUBLIC_ASSEMBLY_REGISTRY;
-    const agreementRegistry = process.env.NEXT_PUBLIC_AGREEMENT_REGISTRY ?? env.NEXT_PUBLIC_AGREEMENT_REGISTRY;
     const assemblyToken = process.env.ASSEMBLY_TOKEN_ADDRESS;
     if (assemblyRegistry && assemblyToken && !agreementRegistry) {
         throw new Error('NEXT_PUBLIC_ASSEMBLY_REGISTRY is set but NEXT_PUBLIC_AGREEMENT_REGISTRY is not — a reference assembly\'s agreements register before it');

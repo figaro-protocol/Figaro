@@ -33,6 +33,7 @@ import {
     primeRegisteredClauseSpecs,
     anchoredCompositionHash,
     isBindingOf,
+    pickMandatoryForEveryOrder,
 } from './devnet-helpers';
 import { ANVIL_ACCOUNTS } from '../anvilAccounts';
 import { geohashCentroidDistanceKm } from '@figaro-protocol/sdk/derive';
@@ -81,7 +82,7 @@ async function findRateAssembly(): Promise<string | undefined> {
     // construction — the geohashes are the buyer's checkout fills, so no
     // anchored value can identify the assembly). The rate shape: a two-node
     // chain whose hauled leg composes process + geo and NOTHING else beyond
-    // the two mandatory folds (the delivery assembly's courier leg also
+    // the two mandatory clauses of its pick (the delivery assembly's courier leg also
     // carries handoff + proximity → 6 keys, and its root carries merchant +
     // modalities → 4 keys; this shape is 4 and 2).
     return assemblies.find((t) => {
@@ -200,6 +201,7 @@ test.describe('RATE PRICING — a contributor prices per started km of the commi
             await page.getByTestId('designer-name-input').fill('Rate-priced haul');
             await page.getByTestId('designer-summary-input').fill('A lead order plus one hauled leg priced per started km of its committed endpoints.');
             await page.getByTestId('designer-description-input').fill('Rate-pricing scenario: the hauler lists a per-km rate; checkout derives the payment from the geodistance between the committed origin and destination.');
+            await pickMandatoryForEveryOrder(page);
             await expect(page.getByTestId('designer-review')).toBeEnabled({ timeout: 5000 });
             await page.getByTestId('designer-review').click();
             await page.waitForURL(/\/assemblies\/designer\/view\/?\?slug=asm-/, { timeout: 15000 });

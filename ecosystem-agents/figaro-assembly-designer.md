@@ -38,8 +38,9 @@ change it, and register the fork under your own key; the fork is yours (RPGF rew
   registering makes it discoverable everywhere that reads the registry — no frontend to
   satisfy. Most of a clause's `block` shapes presentation and affects neither validity nor
   discoverability — but **five hints in it are hash-load-bearing and three of them decide
-  what YOUR assembly contains**: `design.article: "mandatory"` (folds into every agreement
-  whether you chose it or not), `design.scope: "assembly"` (composed once for the whole
+  what YOUR assembly contains**: `design.article: "mandatory"` (never selected on its own:
+  you pick, for every agreement, a registered agreement whose clauses all carry it —
+  `isMandatoryAgreement` — and its clauses merge in), `design.scope: "assembly"` (composed once for the whole
   design, carried by every agreement — composing it on an agreement is a build error, not a
   no-op), and `design.fills` (the only fields whose design-time values survive into a
   agreement; every other clause's entry is `{}`). Read a composed clause's hints with
@@ -119,13 +120,15 @@ KEY — `keccak256` of the clause spec's pinned bytes, the `clauseKey` each regi
 — never by the name a spec displays.
 
 **Build it with `buildAssembly` (root `@figaro-protocol/sdk`), not by hand.** It takes,
-per order, EITHER the registered agreement it binds (`registeredByOrderId`, hydrated) OR the
-clauses composed for a new one (`clausesByOrderId`), plus the assembly-scoped selection and a
-`SpecSource`, and returns `{ assembly, agreements }` — `agreements` being every NEW composed
+per order, the registered agreement you pick in the mandatory article (`mandatoryByOrderId`,
+hydrated — any wallet's registration whose clauses are all mandatory-article), and EITHER the
+registered agreement it binds (`registeredByOrderId`, hydrated) OR the clauses composed for a
+new one (`clausesByOrderId`), plus the assembly-scoped selection and a `SpecSource`, and returns `{ assembly, agreements }` — `agreements` being every NEW composed
 agreement keyed by its `agreementKey`, to register before the assembly. It enforces the rules
-below BY CONSTRUCTION rather than by your care: it folds the live mandatory clauses into every
-new agreement at the level each one's scope names, REFUSES a bound registered agreement that
-lacks a live mandatory spec (compose a new agreement for that agreement instead), strips every
+below BY CONSTRUCTION rather than by your care: it REFUSES an order with no pick, merges each
+pick's clauses into the new agreement composed for that order, REFUSES a bound registered
+agreement that lacks a clause of its order's pick (compose a new agreement for that order
+instead), strips every
 value that is not a declared designer fill — **field-granular**, so one stray transaction particular sitting
 beside a legitimate fill on the same clause strips too, instead of riding its neighbor's
 declaration — and REFUSES a scope error outright (an assembly-scoped clause composed on an
@@ -179,8 +182,9 @@ derive identity.
   designer's fills), the assembly as agreements naming those agreements and carrying their
   own `parentOrderHashes` — `composeAuthoredAgreement(doc, specs)` from `@figaro-protocol/sdk`
   resolves the names (`resolveAuthoredClauseKeys`: the keys of the specs in `specs.list()` whose
-  `clauseId` matches; write `name@version` to match the `version` too), folds the live
-  mandatory clauses and keys the agreement, and `assembleAuthored(doc, agreementsByName, specs)`
+  `clauseId` matches; write `name@version` to match the `version` too), merges the clauses of
+  the agreement the document names as its pick (`mandatory`, a name in `picks` — or compose
+  the whole set by name with `composeAuthoredAgreements(docsByName, specs)`) and keys the agreement, and `assembleAuthored(doc, agreementsByName, specs)`
   binds each one to the named agreement's key and returns `{ assembly, agreements }` with each
   DISTINCT agreement once. They refuse a name two loaded specs share unless the file
   says which, and a name no loaded spec carries. Run them once, before
@@ -217,10 +221,9 @@ Each `agreementKey` names a agreement registered on `AgreementRegistry`, pinned 
 "0x<topology clause key>": {} } }`.
 
 `assemblyClauses` is omitted entirely when nothing assembly-scoped is composed. The
-mandatory clauses `buildAssembly` folds into a new agreement are every spec your
-`SpecSource` lists whose `block.design.article` is `"mandatory"`, with no selection among them;
-liveness comes from the source, so build it from the registrations whose stake is live, and
-review every folded key in each agreement before you register it.
+mandatory clauses in a new agreement are exactly the clauses of the registered agreement you
+picked for its order; anyone can register one, so read each pick's clauses by key, and review
+every mandatory key in each agreement before you register it.
 
 No clause is composed for the link back to your design. Every agreement instantiated from
 the assembly carries, as `agreement.provenance`, the `agreementKey` of the agreement it

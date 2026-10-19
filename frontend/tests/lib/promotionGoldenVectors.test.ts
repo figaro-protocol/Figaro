@@ -12,8 +12,8 @@
  *   3. agreement projection → agreementHash (since Phase 3: @figaro-protocol/sdk
  *      projection — spec-default injection, process-log skip, clause sort),
  *   4. assembly composition → compositionHash (since Phase 3: @figaro-protocol/sdk
- *      projection — mandatory auto-fold, sparse-version normalization,
- *      editorial exclusion).
+ *      projection — the mandatory pick's clauses merged, sparse-version
+ *      normalization, editorial exclusion).
  *
  * The fixture lives in `sdk/tests/fixtures/promotion-golden-vectors.json` so
  * the SDK-side tests consume the SAME frozen bytes after each move phase.
@@ -43,7 +43,7 @@ import {
 import { buildOrderAgreement, buildAssembly, serializeAssembly } from "@figaro-protocol/sdk";
 import { canonicalize } from "@/lib/shared/canonicalJson";
 import { specSource } from "@/lib/shared/clauseSpecSource";
-import { primeClauseSpecs, resolveAuthored } from "./primeClauseSpecs";
+import { mandatoryPick, primeClauseSpecs, resolveAuthored } from "./primeClauseSpecs";
 
 /** A clause map authored by NAME, resolved to clause keys over `clauses/` —
  *  the seeding's resolution (`resolveAuthoredClauseKeys`); the inputs below
@@ -94,8 +94,10 @@ function projectionCases() {
     };
 }
 
-/** Two-node parent-edged design (root + child) exercising the mandatory
- *  auto-fold, the local relabeling, the sparse-version normalization, and the
+/** Two-node parent-edged design (root + child) exercising the mandatory pick
+ *  (each order picks the reference agreement holding the mandatory clauses
+ *  alone, so the agreement keys are the ones frozen before the pick existed),
+ *  the local relabeling, the sparse-version normalization, and the
  *  ASSEMBLY-SCOPE placement (applicable-law declares design.scope "assembly"
  *  — so it composes once at the assembly level and its
  *  typed value strips to {}). */
@@ -109,6 +111,7 @@ function assemblyCase() {
         orders,
         clausesByOrderId: {},
         assemblyClauses: byKey({ "figaro-applicable-law": { applicableLaw: "US-NY" } }),
+        mandatoryByOrderId: Object.fromEntries(orders.map((o) => [o.orderHash, mandatoryPick()])),
         specs: specSource(),
     });
     return {
@@ -276,7 +279,7 @@ describe("SDK-promotion golden vectors — the live bytes, frozen", () => {
         expect(agreementHash).toBe(v.agreementHash);
     });
 
-    it("assembly: mandatory fold + relabeling reproduce the frozen assembly, its agreements + compositionHash", () => {
+    it("assembly: the mandatory pick + relabeling reproduce the frozen assembly, its agreements + compositionHash", () => {
         const v = loadVectors().assembly;
         const assembly = assemblyCase();
         expect(assembly.json).toBe(v.canonicalJson);

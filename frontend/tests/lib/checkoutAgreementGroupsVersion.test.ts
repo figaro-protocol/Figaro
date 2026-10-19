@@ -30,7 +30,7 @@ const UNLOADED = `0x${"ee".repeat(32)}`;
 
 const groupsFor = (authored: Record<string, unknown>) =>
     deriveAgreementGroups({
-        pickedAssembly: { hydratedAssembly: hydrateAuthored(authored, { fold: false }), counterpartyBindings: [] },
+        pickedAssembly: { hydratedAssembly: hydrateAuthored(authored, { pick: false }), counterpartyBindings: [] },
         leadAddress: LEAD,
         sellerCatalogs: [] as never,
     });
