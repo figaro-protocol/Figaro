@@ -43,6 +43,19 @@ export interface PaperRef {
      *  for which this paper is a starting point (`/working-groups/for/<slug>`).
      *  Empty when the paper is theory with no such doorway. */
     industries: string[];
+    /** The paper's card on `/working-groups`, three lines read from the
+     *  paper's abstract and main result. `question`: what the paper asks, in
+     *  one sentence. */
+    question: string;
+    /** What the paper establishes, in one sentence, at its claim type (a
+     *  theorem as proved, a hypothesis as a hypothesis, an argument as
+     *  argued). A citation of the equilibrium carries its bound: for any
+     *  number of orders the network resolves in one call. */
+    result: string;
+    /** What the result assumes: actors, information, the mechanisms it
+     *  relies on, and where it stops. A statement of scope, never a list of
+     *  open questions. */
+    scope: string;
 }
 
 export interface PaperGroup {
@@ -83,6 +96,9 @@ export const PAPER_GROUPS: PaperGroup[] = [
                 summary: "The two calls of the mechanism and why they compose: commit locks a bond on each side, resolve closes every order at once on the buyer's signature alone, and at every link a defector is left out of pocket even after crediting what it keeps.",
                 keywords: ["mechanism design", "subgame-perfect equilibrium", "Nash equilibrium", "asymmetric bonding", "multi-party coordination", "process chains", "peer enforcement"],
                 industries: [],
+                question: "Can a promise between strangers, and a chain of sellers behind one buyer, be made credible before the trade, with no authority acting after it?",
+                result: "Proved: cooperation is the equilibrium for any number of orders the network resolves in one call, : after performance resolving is the buyer's strict preference with no assumption about the seller; given the buyer's plan to resolve once performance has occurred and its co-sellers' performance, performing is each seller's strict best response; and atomic resolution puts the sellers in a weakest-link subgame whose selection criteria favor universal performance.",
+                scope: "One buyer and sellers who each sign for themselves; the goods and every passage of value stay off-chain, and a defector is credited with all it keeps; commit and resolve are the only calls, with no timeout; one denomination per process; of joint-liability lending it reproduces the coordination-pressure component, not peer selection or peer monitoring.",
             },
             {
                 title: "Markets Without a Venue: Dispatch Races and Requests for Quotes as Market-Design Mechanisms over a Market-Blind Mechanism",
@@ -90,6 +106,9 @@ export const PAPER_GROUPS: PaperGroup[] = [
                 summary: "How a market forms with no venue holding state: the buyer circulates the unsigned commitment itself, as a dispatch race or a sealed-bid request for quotes; mutual exclusion, discovery and the stake follow from the order of signatures, verifiable selection does not, so the price is first price.",
                 keywords: ["market design", "auction theory", "matching theory", "procurement", "posted prices", "offer formation", "sealed-bid", "reserve price", "bonded commitment"],
                 industries: ["Procurement", "Marketplaces"],
+                question: "How does one commitment come to carry two signatures when no venue holds the state between the asking and the binding?",
+                result: "Proved: a buyer that signs last is held to exactly one commitment of its choosing; in the request for quotes first price is forced and participation turns on a balance the draft states; and a market layer whose only output is a commitment the Core accepts inherits the Core's equilibrium, for any number of orders the network resolves in one call, unchanged.",
+                scope: "One buyer and a finite set of candidates it has already found by their published terms; drafts travel over a channel, and nothing holds state between solicitation and commitment; positions form one at a time in commit order; discovery and the cost of reading published terms lie outside the model.",
             },
             {
                 title: "From Firms to Transaction-Scoped Institutions",
@@ -97,6 +116,9 @@ export const PAPER_GROUPS: PaperGroup[] = [
                 summary: "The Coasean collapse: when a stranger's promise enforces itself for the network's gas and the time value of a bond, the institution a trade needs exists for the time of that trade — terms, evidence, books, enforcement, close — and what remains of the firm is a legal wrapper around assets that hold their own wallets.",
                 keywords: ["transaction-cost economics", "theory of the firm", "subordination", "coordination economics", "two-sided markets", "organizational substrate", "institutional economics"],
                 industries: ["Firms and strategy"],
+                question: "What follows for the firm when a stranger's promise enforces itself for the network's gas and the time value of the bonds?",
+                result: "An economic hypothesis, stated as a proposition over the cost shapes of four governance modes: the bonded process is the cheaper mode where each party can bond its own link, the bonds' time value is a small share of the trade and the buyer can judge the outcome at acceptance, and above a recurrence threshold the firm keeps the cell.",
+                scope: "Takes the equilibrium as proved, for any number of orders the network resolves in one call; the cost shapes are stated, not measured, and no play by independent participants has been observed; what remains of the firm passes to composition only where the productive assets hold their own wallets.",
             },
             {
                 title: "Coordination Substrates: Firm, Platform, Court, and Bond",
@@ -104,6 +126,9 @@ export const PAPER_GROUPS: PaperGroup[] = [
                 summary: "Four ways to make a stranger's promise good, compared on ten institutional axes: internalize it in a firm, route it through a platform, leave it to a court, or have the parties bond it themselves before the trade.",
                 keywords: ["comparative institutional analysis", "discriminating alignment", "transaction cost economics", "contract enforcement", "two-sided markets", "private ordering", "bonded commitment", "institutional substrates", "regulatory reporting", "unit of account"],
                 industries: ["Regulation and licensing", "E-invoicing and tax", "Platforms"],
+                question: "Of four substrates (the firm, the platform, the court, and the parties' own bonds), which makes a stranger's promise worth acting on at least cost, and where?",
+                result: "A comparison on ten institutional axes, with a discriminating-alignment result stated as an economic hypothesis from four cost shapes: against a platform the bond is cheaper for every trade open less than τ/(4r), against a court at small value, and where a party is no person any legal order recognizes the bond is the only one of the four substrates available.",
+                scope: "A comparison of substrates, not a theory of the firm; the data a platform collects and its power to revoke admission are set aside; the shared infrastructure and any token are left out; analytic throughout, with no play by independent participants observed.",
             },
             {
                 title: "The Florin: A Schelling-Point Token Issued at Zero",
@@ -111,6 +136,9 @@ export const PAPER_GROUPS: PaperGroup[] = [
                 summary: "A token issued at zero after the work, with no central operator and nothing beneath it, taken through the securities tests in a regulator's order: Howey's four questions, the disclosure they exist to compel, sufficiently decentralized on day one, and what is left, a Schelling point.",
                 keywords: ["cryptoeconomics", "Schelling point", "focal-point coordination", "token design", "Howey test", "securities regulation", "MiCA", "sufficiently decentralized", "disclosure", "no central operator", "fixed supply cap"],
                 industries: ["Tokens and treasuries"],
+                question: "What is a token issued at zero, after its economic system was built and with nothing in that system conditioned on it, under the securities tests?",
+                result: "Argued in a regulator's order: on the mint path each of Howey's four questions fails and a secondary purchase reopens only the first; the disclosure the tests compel is the public rules and data themselves; the sufficiently-decentralized condition holds on the first day; and what remains is a Schelling point.",
+                scope: "The florin's facts as issued: a fixed ceiling; genesis allocations minted at zero, with nothing given for them; a reward reserve minted to designers of record in proportion to recorded use; no central operator; Howey, the disclosure regime and MiCA as the tests; whether participants converge on it is a question about strangers, which the design does not answer.",
             },
             {
                 title: "Self-Authenticating Data Sales: Arrow's Information Paradox Under the Bonded Commitment",
@@ -118,6 +146,9 @@ export const PAPER_GROUPS: PaperGroup[] = [
                 summary: "Arrow's paradox for data, dissolved economically: a term sold verifies by inclusion proof against the source agreement's root, delivered data by the hash a party attested while the process was open, and the doubled bond leaves a misdescribing seller out of pocket.",
                 keywords: ["information paradox", "mechanism design", "merkle proofs", "data markets", "asymmetric bonding", "disclosure", "repeated games"],
                 industries: ["Data markets"],
+                question: "Does Arrow's information paradox still bar a first sale of data between strangers under a bonded commitment?",
+                result: "Shown by economic construction: the appropriation horn closes, because the value a buyer has extracted sits in both its continuations and cancels; the valuation horn is answered by provenance verified against the agreement's merkle root and the attested content hash, with the doubled seller bond leaving misdescription out of pocket.",
+                scope: "One transaction and its own data, never the correlated data of third parties; the guarantee is referential, showing that disclosed data is what a named process committed or a named party attested, never that it is true; a no-redistribution term is evidence for a forum, not a control; the buyer keeps a residual valuation risk.",
             },
         ],
     },
@@ -135,6 +166,9 @@ export const PAPER_GROUPS: PaperGroup[] = [
                 summary: "Figaro read through the field's own definitions of cryptoeconomics: what it governs, what it guarantees and at what cost to a defector, its incentive mechanisms and their several ends, the system and what emerges from it, and its place among institutions.",
                 keywords: ["cryptoeconomics", "cryptoeconomic systems", "complex systems", "incentive mechanisms", "purpose-driven tokens", "institutional economics"],
                 industries: [],
+                question: "What does Figaro govern, what does it guarantee, and what is it as a whole, read by the three founding definitions of cryptoeconomics?",
+                result: "A system-level reading, argued from the definitions: Figaro governs trade in goods, work or data, guarantees six invariants, meets the field's statement of security at every order, and acts as an institution before the trade, where the firm, the platform and the court act after it.",
+                scope: "Takes the definitions of Zamfir, Buterin, and Voshmgir and Zargham as the field states them, and the equilibrium as proved, for any number of orders the network resolves in one call; it reports no play by independent participants.",
             },
             {
                 title: "Air Service as Coordinated Resource Markets",
@@ -142,6 +176,9 @@ export const PAPER_GROUPS: PaperGroup[] = [
                 summary: "Air service read as coordination across resource markets: crew, aircraft time, fuel, gates, catering, handling, each provider a wallet, the passenger the buyer of every order, one resolution paying the whole flight.",
                 keywords: ["scheduled-service coordination", "supply-chain coordination", "process modeling", "resource markets", "weakest-link coordination", "industrial engineering"],
                 industries: ["Air service", "Procurement"],
+                question: "Can the resource markets of one flight (crew, aircraft time, fuel, landing slots, catering, maintenance, handling) run as one bonded process the passenger resolves?",
+                result: "Worked through as a composition: each provider is a wallet bonded to the passenger as buyer, atomic resolution puts each provider's payment and bond behind every other's performance so the cohort holds its own reason to compensate the passenger first, and on a stylized ten-order journey of $250 the passenger bonds $500 and the providers $3,512.",
+                scope: "The equilibrium as proved, for any number of orders the network resolves in one call; one denomination per process, converted before commit; public authorities bonding in is a declared thought experiment on which no result depends; strongest where providers compete, weakest at near-monopolies.",
             },
             {
                 title: "After TradeLens: A Permissionless Bonded Replacement",
@@ -149,6 +186,9 @@ export const PAPER_GROUPS: PaperGroup[] = [
                 summary: "Why TradeLens failed as a structure, not as software, and the permissionless alternative at the same perimeter: carriers, ports, customs, forwarders, and financiers each bonded into one import chain under incoterms, chain of custody and cold-chain terms.",
                 keywords: ["container shipping", "supply-chain coordination", "bills of lading", "Incoterms", "MLETR", "transferable records", "process modeling"],
                 industries: ["Container shipping", "Freight and customs"],
+                question: "Why did TradeLens fail although carriers covering more than half the world's ocean container cargo had joined it, and what stands at the same perimeter without its shape?",
+                result: "Argued: the failure was one of governance shape, since a platform one carrier controls asks its rivals to ratify that carrier's gatekeeping; the permissionless composition, worked through a thirteen-order import, makes every carrier, port, inspector, insurer and customs authority a seller to the importer.",
+                scope: "The importer is the one buyer; the mechanism-design results are restated, not extended, with the equilibrium proved for any number of orders the network resolves in one call; a port's hold on berth windows stays; customs acts off-chain as sovereign; small shippers enter through a forwarder that bonds as the seller.",
             },
         ],
     },
@@ -166,6 +206,9 @@ export const PAPER_GROUPS: PaperGroup[] = [
                 summary: "What it means to verify a contract of two calls, decentralized and permissionless, with no timeout: exhaustive model checking, property-based fuzzing, symbolic execution, specification checking, and a proof of the equilibrium algebra apart from the code — what each one reaches, and the scope of the claim they support between them.",
                 keywords: ["smart contracts", "formal verification", "model checking", "symbolic execution", "property-based fuzzing", "EIP-712", "verification scope"],
                 industries: ["Security and audit"],
+                question: "How far does a machine check reach on a contract of two calls, with no upgrade path and no timeout?",
+                result: "Machine-checked, property by property: four classes of check (model checking, fuzzing, symbolic execution, specification checking) establish token conservation, solvency, the bond and payout amounts, monotonic cumulative value, buyer-only atomic resolution and a no-write guarantee for the attestation contract, each within its bounds, and a proof-assistant development proves the equilibrium algebra at any chain length over the payoff table the model checking pins to the contract.",
+                scope: "Every property belongs to the direct resolution path; the batched path has a model of its own and five named assumptions; the checks do not establish that the specification is the right one, that deployed bytecode came from the checked source, or that the denomination token behaves.",
             },
         ],
     },
@@ -183,6 +226,9 @@ export const PAPER_GROUPS: PaperGroup[] = [
                 summary: "Resolution is on-chain by nature and adjudication off-chain by nature. The five-layer stack, the evidentiary properties of what the chain holds, and how eIDAS, the Federal Rules of Evidence, and UNCITRAL already receive it.",
                 keywords: ["electronic evidence", "smart-contract law", "dispute resolution", "blockchain evidence", "eIDAS", "UNCITRAL", "jurisdictional flexibility"],
                 industries: ["Legal and dispute resolution"],
+                question: "Should a smart contract adjudicate disputes, or produce what adjudication needs?",
+                result: "Argued: adjudication on-chain is a category error that reintroduces the discretionary intermediary, while the data resolution leaves has evidentiary properties that eIDAS, UCC §1-201 and the UNCITRAL Model Law on Electronic Commerce already receive, so forums rule off-chain on the open process data.",
+                scope: "A five-layer stack: chain security, the bonding game with its data, the peer-coordination subgame, arbitration, and the legal system; the protocol says nothing of what counts as satisfactory performance; a forum rules but cannot call resolve.",
             },
             {
                 title: "The Wallet as Legal Subject",
@@ -190,6 +236,9 @@ export const PAPER_GROUPS: PaperGroup[] = [
                 summary: "Employment law classifies workers by subordination. Under bonded commitments no party holds a power to direct another's work, so the tests find no directive relation to classify; a wallet whose operator holds its own key is property and party at once.",
                 keywords: ["labor law", "employee classification", "gig economy", "private government", "subordination", "legal subject", "self-sovereign identity"],
                 industries: ["Platform work", "Legal and dispute resolution"],
+                question: "What do labor law's subordination tests find when productive exchange runs as bonded commitments between wallets?",
+                result: "Argued: no party holds a power to direct another's conduct, so the tests find no directive relation to classify, and a wallet whose operator holds its own key is property and party at once, collapsing the Roman partition of res and persona.",
+                scope: "Where a relation stays employment-shaped in substance, or a layer of dispatch, reputation or key-holding rebuilds a platform's position, existing doctrine reaches it; the leveling reaches only those who can fund a bond.",
             },
             {
                 title: "The Coercion Variable",
@@ -197,6 +246,9 @@ export const PAPER_GROUPS: PaperGroup[] = [
                 summary: "Law has always paired texts with a coercive apparatus. The bonded commitment enforces bilateral commerce with no third party applying force: a pre-commitment, self-binding at consent, whose bonds stay locked while the buyer withholds resolution.",
                 keywords: ["coercion", "sovereignty", "monopoly on violence", "pre-commitment", "bonded enforcement", "political philosophy", "Hobbes", "Weber", "Hart", "boundary of state authority"],
                 industries: ["Legal and dispute resolution"],
+                question: "Can bilateral commercial obligations be enforced with no third party applying force?",
+                result: "Argued: the bonded commitment is a pre-commitment in Elster's sense whose bonds are offers, not threats, on Nozick's baseline test, so coercion becomes a variable of the enforcement architecture whose authority component can be set to zero in priceable, bilateral, voluntary commerce.",
+                scope: "The equilibrium as proved, for any number of orders the network resolves in one call; criminal harm, externalities, public goods, status and rights stay with the sovereign; the domain of the question of legitimate coercion is narrowed, and the question itself is left to political philosophy.",
             },
             {
                 title: "The Disclosure Asymmetry: Cryptoeconomic Mechanism Design and the Engineering of Consent",
@@ -204,6 +256,9 @@ export const PAPER_GROUPS: PaperGroup[] = [
                 summary: "Consent engineering and mechanism design use the same instruments pointed opposite ways. The operation that reverses the vector is disclosure: published, deterministic rules make the participant who models the mechanism the source of trust, not its victim.",
                 keywords: ["mechanism design", "engineering of consent", "manufacture of consent", "disclosure", "common knowledge", "legitimacy", "platform capitalism", "surveillance capitalism", "trust"],
                 industries: ["Platforms"],
+                question: "Are the engineering of consent and mechanism design one instrument, and what sets the sign of its effect?",
+                result: "Argued: one variable, the participant's accuracy about the mechanism in force, sets the sign: consent engineering reaches its outcome only while accuracy is low, and a public, deterministic mechanism reaches its equilibrium as accuracy rises, in full when it is maximal; disclosure moves the variable, provided a commitment condition and an objective condition also hold.",
+                scope: "Grants Viljoen, Goldenfein and McGuigan's diagnosis of platforms and answers its extension to mechanism design; Figaro is the worked instance of all three conditions, its rules public, its arithmetic fixed at deployment, its terms chosen in designs above it.",
             },
             {
                 title: "Code Is Constitution: The Entrenched Layer Beneath Enactment",
@@ -211,6 +266,9 @@ export const PAPER_GROUPS: PaperGroup[] = [
                 summary: "Not code is law but code is constitution: the entrenched procedural layer beneath enactment. Courts consume the protocol's evidence rather than operate its core, and the right regulatory demand is neutrality of procedure, since there is no entity to regulate.",
                 keywords: ["constitutional political economy", "code is law", "lex cryptographia", "credible neutrality", "legality", "lex mercatoria", "decentralized protocols", "entrenchment"],
                 industries: ["Regulation and licensing", "Legal and dispute resolution"],
+                question: "If code is law lost its argument in the 2016 fork, which layer of rules does a decentralized protocol occupy?",
+                result: "Argued: a sufficiently decentralized protocol is a constitution in the sense of constitutional political economy, an entrenched procedural layer that scores well against Fuller's eight principles of legality and is protected from capture by immutability, credible neutrality and forkability, so regulation reaches the actors at the edges through the data and leaves the arithmetic neutral.",
+                scope: "Tested against one artifact, a Core of commit and resolve whose equilibrium is proved for any number of orders the network resolves in one call; congruence is claimed only for the rules the Core holds.",
             },
         ],
     },
@@ -228,6 +286,9 @@ export const PAPER_GROUPS: PaperGroup[] = [
                 summary: "Capacity is the contract element a polity confers; the mechanism tests it by two acts that consult no polity, signing and funding a bond. What the bonded commitment means for refugees, the stateless, and populations outside stable banking and enforcement, and the boundary: a bond they can fund.",
                 keywords: ["statelessness", "refugee economies", "displaced populations", "the wallet as legal subject", "Arendt", "humanitarian economics", "commerce-without-recognition"],
                 industries: ["Humanitarian"],
+                question: "What does a mechanism whose precondition is a key, not civil-legal subjecthood, offer refugees, stateless persons and populations beyond stable banking and enforcement?",
+                result: "Argued positionally: of a contract's six elements, the mechanism meets capacity by two acts that consult no polity, signing and funding a bond, and supplies no legality, so it grants a capacity to have commerce where the right to have rights is denied, never in its place.",
+                scope: "Bounded throughout to those who keep tokens to fund a bond; keeping a key safe, on-ramps, counterparty and currency gatekeeping, and the absence of a forum both parties reach are named as constraints.",
             },
             {
                 title: "The Subordination Variable",
@@ -235,6 +296,9 @@ export const PAPER_GROUPS: PaperGroup[] = [
                 summary: "Socialist and capitalist traditions agree that the wage relation is the central fact. A bonded wallet is producer, means of production, and party at once, so the transfer of control never has to be specified, and coordination rent stops recurring.",
                 keywords: ["political economy", "subordination", "coordination rent", "free association", "classical liberalism", "frame collapse", "conditionality of the left/right partition"],
                 industries: ["Platform work"],
+                question: "If the cooperative-Marxian and classical-liberal traditions agree that the wage relation divides them, what is left of the partition under a mechanism with no wage relation?",
+                result: "Argued: under the bonded commitment no residual right over a seller's conduct passes to anyone and no party takes a rent for enforcement, so one artifact answers both to free association and to voluntary exchange, and the partition relocates to the graph composed above the mechanism.",
+                scope: "A party needs the wealth to post its bond, and the mechanism inherits its property baseline from the law around it; distribution, public goods and the composition of participation are decided in the graph.",
             },
             {
                 title: "The Visibility of Coordination",
@@ -242,6 +306,9 @@ export const PAPER_GROUPS: PaperGroup[] = [
                 summary: "“Strangers need a platform” has become common sense in Gramsci's sense, and beneath it an older proposition: that a promise is made good only after the fact, by an authority. Separating the coordination function from the entities that perform it makes it visible and opens the organizational space, of which the firm is one pattern. The diagnostic is turned on this arrangement too: compounding, holding, naming, disclosure.",
                 keywords: ["cultural hegemony", "Gramsci", "platform economy", "political economy of infrastructure", "coordination substrate", "paradigm shift"],
                 industries: ["Platforms"],
+                question: "Which beliefs about how strangers coordinate rule as common sense in Gramsci's sense, and what makes them visible?",
+                result: "Argued as a diagnosis: that strangers need a platform, that production needs firms, and that cross-border transfer needs rails a state or an alliance controls meet Gramsci's test; beneath them a promise is made good after the fact; and moving the guarantee before the trade shows coordination as a bundle that can be taken apart.",
+                scope: "The equilibrium in the slice the argument uses, proved for any number of orders the network resolves in one call; the claim is that a substitution becomes conceivable, and the same diagnostic is turned on the arrangement that proposes it.",
             },
             {
                 title: "The Ungoverned Substrate",
@@ -249,6 +316,9 @@ export const PAPER_GROUPS: PaperGroup[] = [
                 summary: "A third option beside the network state and on-chain governance: a substrate whose only decisions are its parties' signatures, on which network states, DAOs, cooperatives, sole traders, and agent coalitions can all be constituted.",
                 keywords: ["network state", "blockchain governance", "lex cryptographia", "ungoverned substrate", "decentralized autonomous organization", "governance at the graph"],
                 industries: ["DAOs and governance"],
+                question: "Must the alternative to state coordination itself be a governed entity, as the network-state and blockchain-governance programs assume?",
+                result: "Argued: the assumption reflects the governance-rich protocols both programs studied, because a Core fixed at deployment, whose only decisions are the parties' signatures and the buyer's resolution, holds its equilibrium with no party outside the trade, and governance moves up to the graph, where any form of it, or none, can be chosen.",
+                scope: "The Core as four contracts with no upgrade path, its equilibrium proved for any number of orders the network resolves in one call; the governance of the designs composed on it belongs to those who compose them.",
             },
             {
                 title: "Corridors Without a Hegemon: The Substrate as Common Infrastructure Beneath Rival Trade Corridors",
@@ -256,6 +326,9 @@ export const PAPER_GROUPS: PaperGroup[] = [
                 summary: "Belt and Road and IMEC contest who controls the corridor. The physical layer stays with whoever finances it; the coordination layer need not: a decentralized, permissionless one holds no hub for either bloc to seize, while the denomination and the ramps stay governed.",
                 keywords: ["weaponized interdependence", "hegemony", "Belt and Road Initiative", "IMEC", "infrastructure power", "cooperation under anarchy", "permissionless substrate"],
                 industries: ["Cross-border trade"],
+                question: "Must a partner that chooses Belt and Road or IMEC also choose whose chokepoint its trade coordination sits behind?",
+                result: "Argued: a corridor's coordination layer can rest on a decentralized, permissionless substrate whose every position belongs to a party to the trade it carries, so it holds no hub from which a state could watch privately or interrupt another's flows, and a participant sits behind one chokepoint fewer, never none.",
+                scope: "The physical layer stays with whoever finances it; the denomination, the ramps to local purchasing power and the chain beneath stay governed, and an issuer's lever over a denomination reaches through the substrate.",
             },
         ],
     },
@@ -273,6 +346,9 @@ export const PAPER_GROUPS: PaperGroup[] = [
                 summary: "The process is an accounting entity: born at the first commitment, equity always zero, closed by the buyer's call. Its books are a byproduct of the trade, and an EN 16931 invoice projects from each order, its tax elements supplied by the terms.",
                 keywords: ["bookkeeping", "accounting", "auditing", "double-entry", "triple-entry", "trust accounting", "audit assertions", "Pacioli", "e-invoicing", "EN 16931"],
                 industries: ["Accounting and audit", "E-invoicing and tax"],
+                question: "What is a bonded process in the accounting register, and what does it leave of the accounting professions?",
+                result: "Shown entry by entry: the process is an accounting entity born at the first commitment, with equity identically zero and no revenue or expense account, and the buyer's resolution is a closing entry that zeroes every account the period opened; journal-keeping and the close become byproduct, while interpretive judgment and the audit against the world continue.",
+                scope: "The accounts of one bonded process, never performance, the parties' own accounts or their reporting frameworks; the ledger inherits the reliability of the chain and its signature scheme; control of a position is control of the wallet's keys.",
             },
             {
                 title: "Substrate-Broadening Retroactive Public-Goods Funding",
@@ -280,6 +356,9 @@ export const PAPER_GROUPS: PaperGroup[] = [
                 summary: "How 600 million florins reward clause and assembly designers after the fact: nine annual periods with rising budgets, usage counted on chain as it happens, breadth over volume, and Sybil resistance from a two-sided live stake.",
                 keywords: ["retroactive public goods funding", "mechanism design", "resource allocation", "verified usage accounting", "permissionless recording", "deterministic allocation", "clause authoring", "assembly design", "coordination protocols"],
                 industries: ["Tokens and treasuries", "Builders"],
+                question: "How are 600 million florins distributed to the designers of clauses, registered agreements and assemblies, with no committee and no list to curate?",
+                result: "Specified and proved: a registration's share of a period is its score c^(1/3)·d^(2/3) over the period's total; any weighting layer is either a function of the same counters or a judgment supplied from outside them; and capturing a fraction of a period's budget costs an outlay convex in that fraction and unbounded as it approaches one.",
+                scope: "Use is counted on chain at resolution from facts the chain already holds; Sybil resistance comes from a live stake in the base chain's currency on both sides of a counted event; it rewards clause, agreement and assembly design and nothing else; it holds no social-welfare objective.",
             },
         ],
     },
@@ -297,6 +376,9 @@ export const PAPER_GROUPS: PaperGroup[] = [
                 summary: "The Core reads signatures and bond posture, never the kind of entity behind a key, so people and software coordinate on the same footing, with the bond as what lets a stranger trust a stranger: the enforcement layer that market design and control theory both lacked.",
                 keywords: ["multi-agent coordination", "bonded commitment", "control theory", "actor-neutrality", "autonomous agents", "AI agent design", "human-in-the-loop"],
                 industries: ["AI agents"],
+                question: "Does the incentive result of the bonded commitment carry to autonomous agents?",
+                result: "Shown: the Core's transition function does not vary with the kind of entity holding a key, so its equilibrium, for any number of orders the network resolves in one call, carries to agents unchanged; read as a controller, an agent's wallet bounds one commit's loss by the bond the mechanism pulls and leaves aggregate exposure to its policy.",
+                scope: "A party is any key holder whose ECDSA signature over the commitment recovers to the named address; a smart-contract account cannot take a party's place; discovery through identity documents is kept apart from trust, which the bond supplies.",
             },
         ],
     },
@@ -314,6 +396,9 @@ export const PAPER_GROUPS: PaperGroup[] = [
                 summary: "How the equilibrium argument fares with loss-averse, boundedly rational, stranger-wary people: the payoffs straddle the reference point, so loss aversion weights defection alone, and the coordination-failure condition is conceded: pessimism buys duration, not a worse outcome.",
                 keywords: ["behavioral game theory", "loss aversion", "prospect theory", "weakest-link coordination", "peer pressure", "incentive legibility", "mechanism design", "experimental economics", "interface cognition"],
                 industries: [],
+                question: "How does the equilibrium fare with participants who are loss-averse, boundedly reasoning and pessimistic about strangers?",
+                result: "Four hypotheses, derived and unobserved: loss aversion weights the defecting branch; the Van Huyck coordination-failure condition is present, but pessimism buys duration rather than a worse outcome; atomic resolution gives each seller a bonded interest in every other seller's performance; and each node asks one comparison and one step of reasoning.",
+                scope: "Takes the equilibrium as proved, for any number of orders the network resolves in one call, and the experimental literature's estimates, the meta-analytic interval for loss aversion and the reasoning depth of the level-k literature, as given; no play by independent participants has been observed.",
             },
             {
                 title: "External Events and the Resolution Frame: One Rule for Everything the World Does Between the Two Calls",
@@ -321,6 +406,9 @@ export const PAPER_GROUPS: PaperGroup[] = [
                 summary: "Between commit and resolve the world goes on. Any occurrence that changes what the parties want the resolution to be is squared before the terminal call, with fewer transfers than there are parties, and the buyer's comparison is unchanged.",
                 keywords: ["external events", "resolution frame", "discretionary and deterministic decision", "incomplete contracts", "unforeseen contingencies", "renegotiation", "private ordering", "netting completeness", "bonded commitment", "decision science"],
                 industries: [],
+                question: "What happens when the world changes the resolution the parties want, between commit and resolve?",
+                result: "Proved: transfers among the parties before resolution reach every zero-sum reallocation of the committed schedule with fewer transfers than there are parties; none touches a bond, so after performance resolving stays strictly better for the buyer; and, given that the agreed reallocation closes the process, a seller executes an agreed transfer below P_i + 2G_i − r_i, a threshold whose floor P_i + G_i is computable from the accumulator alone.",
+                scope: "One denomination per process; transfers among the parties only, from balances they hold; the frame executes the reallocation the parties agree and chooses none; the result is one-sided, securing what a failing seller transfers and leaving the buyer's part to its commercial reason.",
             },
         ],
     },

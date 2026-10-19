@@ -77,7 +77,7 @@ export default function WorkingGroups() {
                             </p>
                             <ul className="space-y-5 max-w-2xl">
                                 {g.papers.map((p) => (
-                                    <PaperRow key={p.href} paper={p} group={g} showGroup={false} />
+                                    <PaperRow key={p.href} paper={p} group={g} showGroup={false} showCard />
                                 ))}
                             </ul>
                             {g.venue && (
