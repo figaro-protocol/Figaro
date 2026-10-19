@@ -19,6 +19,7 @@ import { DEFAULT_IPFS_SERVICE, fetchCappedContent } from "@/lib/shared/ipfsServi
 import { safeJsonParse } from "@/lib/shared/safeJson";
 import {
     createUseWithdrawStake,
+    sharedRegisterRevertMessage,
     translateContractRevert,
     withdrawRevertMessage,
 } from "@/lib/protocol/useWithdrawStake";
@@ -83,17 +84,10 @@ export function translatePublishRevert(err: unknown, attemptedSlug: string): Err
         switch (name) {
             case "CompositionAlreadyRegistered":
                 return `This assembly is already published — an identical composition is anchored on-chain as "${attemptedSlug}". Identity is the composition, so the same composition always maps to one binding; adopt the existing one rather than re-publishing.`;
-            case "WrongDeposit": {
-                const provided = (args?.[0] as bigint | undefined)?.toString() ?? "?";
-                const required = (args?.[1] as bigint | undefined)?.toString() ?? "?";
-                return `Registration stake mismatch (provided ${provided} wei, required ${required} wei). The stake amount changed between the read and the send — retry.`;
-            }
-            case "EmptyContentURI":
-                return "The IPFS pin returned an empty URI.";
             case "ZeroCompositionHash":
                 return "Computed an empty composition hash — likely a assembly-builder bug.";
             default:
-                return null;
+                return sharedRegisterRevertMessage(name, args);
         }
     });
 }

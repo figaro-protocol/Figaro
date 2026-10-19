@@ -12,7 +12,7 @@ import { FormField } from "@/components/ui/FormField";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { IpfsImageUpload } from "@/components/members/IpfsImageUpload";
-import type { OnboardingStepChromeProps } from "@/components/members/OnboardingStepChrome";
+import { finishStep, type OnboardingStepChromeProps } from "@/components/members/OnboardingStepChrome";
 import { useMounted } from "@/hooks/useMounted";
 import {
     onboardingNextHref,
@@ -357,15 +357,8 @@ export function OnboardingCatalogForm({
             return;
         }
         setSubmitError(null);
-        if (onSave) {
-            // Edit mode: caller pins the catalog + chases with
-            // updateProfile. The wizard navigation is suppressed.
-            onSave(savedItems, unitSystem).catch(() => {
-                // The caller surfaces failures via `externalError`.
-            });
-            return;
-        }
-        router.push(onboardingNextHref("catalog"));
+        // Edit mode: caller pins the catalog + chases with updateProfile.
+        finishStep(onSave && (() => onSave(savedItems, unitSystem)), () => router.push(onboardingNextHref("catalog")));
     }
 
     if (!mounted) {

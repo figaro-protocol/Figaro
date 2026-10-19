@@ -29,8 +29,8 @@
  * memoize them (useCallback) or the ceremony re-decrypts every render.
  */
 
-import { useEffect, useState } from "react";
-import { useChainId, usePublicClient } from "wagmi";
+import { useCallback, useEffect, useState } from "react";
+import { useAccount, useChainId, usePublicClient, useWalletClient } from "wagmi";
 import { getHandoffChannel } from "@/lib/handoff/channel";
 import {
     verifyEcdhMessageAuth,
@@ -43,6 +43,9 @@ import {
     type AnchorVerificationState,
 } from "@/lib/handoff/handoffAnchorState";
 import { hexEqual } from "@/lib/shared/evm";
+import { extractErrorMessage } from "@/lib/shared/errors";
+import { useAttestationCoordinatorActions } from "@/lib/composition/useAttestationCoordinatorActions";
+import type { PartyRole } from "@/lib/kernel/walletProcessQueries";
 
 export interface UseCeremonyChannelOptions<T> {
     /** The connected wallet; the ceremony idles while undefined. */
@@ -179,4 +182,124 @@ export function useCeremonyChannel<T>(
     }, [enabled, address, peerPubKey, blob, orderHash, publicClient, chainId, decrypt, expectedAnchor, ceremonyKey]);
 
     return { channel, peerPubKey, requested, setRequested, received, anchored };
+}
+
+type SignAuth = (message: string) => Promise<`0x${string}`>;
+
+export interface UseCeremonyPanelOptions<T>
+    extends Pick<UseCeremonyChannelOptions<T>, "ceremonyId" | "expectedAnchor"> {
+    /** The codec's decrypt (decryptAddressDetail, decryptContentDelivery) — a stable module-level function. */
+    decryptBlob: (args: {
+        myAddress: `0x${string}`;
+        orderId: string;
+        senderPubKeyHex: string;
+        blobB64: string;
+    }) => Promise<T | null>;
+    orderHash: string;
+    /** The declaring clause's key — the attestation anchors under it. */
+    clauseKey: string;
+    buyer: string;
+    seller: string;
+    /** The codec's request call (requestAddressDetail, requestContentDelivery). */
+    request: (
+        channel: HandoffChannel,
+        params: { myAddress: string; recipientAddress: string; orderId: string; signAuth: SignAuth },
+    ) => Promise<unknown>;
+}
+
+/** What a panel's send step hands back: the attestation to file, and its result. */
+export interface CeremonyDelivery<R> {
+    stage: number;
+    content: `0x${string}`;
+    anchorFailureMessage: string;
+    result: R;
+}
+
+/**
+ * The whole symmetric body of a ceremony panel: the connected wallet's seat on
+ * the order, the channel, the request action, and `deliver` — send over the
+ * channel, then file the attestation that anchors it. A panel supplies its
+ * codec (`decrypt`, `expectedAnchor`, `request`, and the `build` it passes to
+ * `deliver`) and its JSX.
+ */
+export function useCeremonyPanel<T>(options: UseCeremonyPanelOptions<T>) {
+    const { orderHash, clauseKey, buyer, seller, request, ceremonyId, decryptBlob, expectedAnchor } = options;
+    const { address } = useAccount();
+    const { data: walletClient } = useWalletClient();
+    const attestationActions = useAttestationCoordinatorActions();
+
+    const role: PartyRole | null =
+        address && hexEqual(address, seller) ? "seller"
+        : address && hexEqual(address, buyer) ? "buyer"
+        : null;
+    const counterparty = role === "seller" ? buyer : seller;
+    const [busy, setBusy] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    const decrypt = useCallback(
+        (args: { myAddress: `0x${string}`; senderPubKeyHex: string; blobB64: string }) =>
+            decryptBlob({ ...args, orderId: orderHash }),
+        [decryptBlob, orderHash],
+    );
+    const ceremony = useCeremonyChannel<T>({
+        address, enabled: role !== null, ceremonyId, orderHash, counterparty, decrypt, expectedAnchor,
+    });
+    const { channel, peerPubKey, setRequested } = ceremony;
+
+    const handleRequest = useCallback(async () => {
+        if (!channel || !address || !walletClient) return;
+        setBusy(true);
+        setError(null);
+        try {
+            await request(channel, {
+                myAddress: address,
+                recipientAddress: counterparty,
+                orderId: orderHash,
+                signAuth: (message) => walletClient.signMessage({ message }),
+            });
+            setRequested(true);
+        } catch (e) {
+            setError(extractErrorMessage(e, "Request failed."));
+        } finally {
+            setBusy(false);
+        }
+    }, [channel, address, walletClient, counterparty, orderHash, setRequested, request]);
+
+    const deliver = useCallback(async <R,>(
+        failureMessage: string,
+        build: (ctx: {
+            channel: HandoffChannel;
+            address: `0x${string}`;
+            peerPubKey: string;
+            counterparty: string;
+            signAuth: SignAuth;
+        }) => Promise<CeremonyDelivery<R>>,
+    ): Promise<R | undefined> => {
+        if (!channel || !address || !peerPubKey || !walletClient || !role) return undefined;
+        setBusy(true);
+        setError(null);
+        try {
+            const { stage, content, anchorFailureMessage, result } = await build({
+                channel, address, peerPubKey, counterparty,
+                signAuth: (message) => walletClient.signMessage({ message }),
+            });
+            await attestationActions.submitAttestation(role, {
+                orderHash: orderHash as `0x${string}`,
+                clauseId: clauseKey as `0x${string}`,
+                stage,
+                content,
+                failureMessage: anchorFailureMessage,
+            });
+            return result;
+        } catch (e) {
+            setError(extractErrorMessage(e, failureMessage));
+            return undefined;
+        } finally {
+            setBusy(false);
+        }
+    }, [channel, address, peerPubKey, walletClient, counterparty, orderHash, clauseKey, attestationActions, role]);
+
+    // The waiting line names the seat the request is waiting on.
+    const waitingLabel = `Requested — waiting for the ${role === "seller" ? "buyer" : "seller"}`;
+    return { ...ceremony, role, counterparty, busy, error, handleRequest, deliver, waitingLabel };
 }

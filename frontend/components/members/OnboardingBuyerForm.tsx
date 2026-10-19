@@ -15,7 +15,7 @@ import type {
 import { type AssemblyChoice, useAssemblyChoices } from "@/lib/protocol/assemblyChoices";
 import { AssemblyChoiceRow } from "@/components/members/AssemblyChoiceRow";
 import { DisclosurePolicyEditor } from "@/components/members/DisclosurePolicyEditor";
-import type { OnboardingStepChromeProps } from "@/components/members/OnboardingStepChrome";
+import { finishStep, type OnboardingStepChromeProps, toggledSet, usePostureDisclosure } from "@/components/members/OnboardingStepChrome";
 
 /**
  * The Buy through step of the member wizard — the twin of Sell through. The member SUBSCRIBES the
@@ -79,20 +79,14 @@ export function OnboardingBuyerForm({
     // This step edits BUYER-posture disclosure entries only (classes
     // derive from the subscriptions). Seller-posture entries belong to
     // the assemblies step and are carried through every write untouched.
-    const [policyEntries, setPolicyEntries] = useState<DisclosurePolicyEntry[]>([]);
-    const [otherPostureEntries, setOtherPostureEntries] = useState<DisclosurePolicyEntry[]>([]);
-    // Hydrated for which subject: the wallet, or the anonymous draft before one connects.
-    const [hydratedFor, setHydratedFor] = useState<string | null>(null);
-    const hydrated = hydratedFor === subject;
+    const { policyEntries, setPolicyEntries, otherPostureEntries, hydrated, hydrate } =
+        usePostureDisclosure<DisclosurePolicyEntry>("buyer", subject);
 
     useEffect(() => {
         if (hydrated || !loaded) return;
         setSubscribed(new Set((state.buyerAssemblies ?? []).map((s) => s.compositionHash)));
-        const allEntries = state.disclosurePolicy ?? [];
-        setPolicyEntries(allEntries.filter((e) => e.posture === "buyer"));
-        setOtherPostureEntries(allEntries.filter((e) => e.posture !== "buyer"));
-        setHydratedFor(subject);
-    }, [hydrated, loaded, subject, state.buyerAssemblies, state.disclosurePolicy]);
+        hydrate(state.disclosurePolicy ?? []);
+    }, [hydrated, loaded, hydrate, state.buyerAssemblies, state.disclosurePolicy]);
 
     useEffect(() => {
         if (!hydrated) return;
@@ -106,26 +100,18 @@ export function OnboardingBuyerForm({
     }, [subscribed, policyEntries, otherPostureEntries, hydrated, update]);
 
     function toggle(compositionHash: string) {
-        setSubscribed((prev) => {
-            const next = new Set(prev);
-            if (next.has(compositionHash)) next.delete(compositionHash);
-            else next.add(compositionHash);
-            return next;
-        });
+        setSubscribed((prev) => toggledSet(prev, compositionHash));
     }
 
     function handleNext(e: React.FormEvent) {
         e.preventDefault();
-        if (onSave) {
-            onSave(
+        finishStep(
+            onSave && (() => onSave(
                 buildSubscriptions(subscribed),
                 [...otherPostureEntries, ...activeBuyerPolicy(policyEntries, subscribed)],
-            ).catch(() => {
-                // Caller surfaces the error via `externalError`.
-            });
-            return;
-        }
-        router.push(onboardingNextHref("buyer"));
+            )),
+            () => router.push(onboardingNextHref("buyer")),
+        );
     }
 
     if (!mounted) {

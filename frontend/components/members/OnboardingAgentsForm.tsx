@@ -10,7 +10,7 @@ import { HintedFieldList, type HintedFieldDef } from "@/components/ui/HintedFiel
 import { useMounted } from "@/hooks/useMounted";
 import { onboardingNextHref, onboardingPrevHref, useOnboardingState } from "@/lib/member/onboardingState";
 import type { MemberAgentServices } from "@/lib/member/memberProfileMetadata";
-import type { OnboardingStepChromeProps } from "@/components/members/OnboardingStepChrome";
+import { finishStep, type OnboardingStepChromeProps } from "@/components/members/OnboardingStepChrome";
 
 /**
  * The agents step of the onboarding wizard. Collects ERC-8004-compatible
@@ -61,6 +61,13 @@ const FIELDS: HintedFieldDef<ServiceKey>[] = [
     },
 ];
 
+function nonEmptyServices(services: MemberAgentServices): MemberAgentServices | undefined {
+    const nonEmpty = Object.fromEntries(
+        Object.entries(services).filter(([, v]) => Boolean(v?.trim())),
+    ) as MemberAgentServices;
+    return Object.keys(nonEmpty).length > 0 ? nonEmpty : undefined;
+}
+
 export interface OnboardingAgentsFormProps extends OnboardingStepChromeProps {
     /**
      * Edit-mode override. When provided, the submit handler calls
@@ -99,12 +106,7 @@ export function OnboardingAgentsForm({
 
     useEffect(() => {
         if (!hydrated) return;
-        const nonEmpty = Object.fromEntries(
-            Object.entries(services).filter(([, v]) => Boolean(v?.trim())),
-        ) as MemberAgentServices;
-        update({
-            services: Object.keys(nonEmpty).length > 0 ? nonEmpty : undefined,
-        });
+        update({ services: nonEmptyServices(services) });
     }, [services, hydrated, update]);
 
     function setField(key: ServiceKey, value: string) {
@@ -113,21 +115,10 @@ export function OnboardingAgentsForm({
 
     function handleNext(e: React.FormEvent) {
         e.preventDefault();
-        if (onSave) {
-            // Build the same trim+filter logic as the persistence
-            // effect — only non-empty endpoints survive into the
-            // pinned profile, and an entirely empty set becomes
-            // `undefined` so the field gets stripped from the JSON.
-            const nonEmpty = Object.fromEntries(
-                Object.entries(services).filter(([, v]) => Boolean(v?.trim())),
-            ) as MemberAgentServices;
-            const payload = Object.keys(nonEmpty).length > 0 ? nonEmpty : undefined;
-            onSave(payload).catch(() => {
-                // Caller surfaces failures via `externalError`.
-            });
-            return;
-        }
-        router.push(onboardingNextHref("agents"));
+        // Same trim+filter as the persistence effect — only non-empty
+        // endpoints survive into the pinned profile, and an entirely empty
+        // set becomes `undefined` so the field gets stripped from the JSON.
+        finishStep(onSave && (() => onSave(nonEmptyServices(services))), () => router.push(onboardingNextHref("agents")));
     }
 
     if (!mounted) {

@@ -33,6 +33,7 @@ import { DEFAULT_IPFS_SERVICE, fetchCappedContent } from "@/lib/shared/ipfsServi
 import { publicClient } from "@/lib/shared/wagmi";
 import {
     createUseWithdrawStake,
+    sharedRegisterRevertMessage,
     translateContractRevert,
     withdrawRevertMessage,
 } from "@/lib/protocol/useWithdrawStake";
@@ -62,17 +63,10 @@ export function translateAgreementRegisterRevert(err: unknown, agreementKey: str
                 return `Agreement ${agreementKey} is already registered — the same clauses always key to one registration; bind the existing one.`;
             case "ReservedKeyIsNotARegistration":
                 return `${agreementKey} is a reserved format key, never an agreement.`;
-            case "WrongDeposit": {
-                const provided = (args?.[0] as bigint | undefined)?.toString() ?? "?";
-                const required = (args?.[1] as bigint | undefined)?.toString() ?? "?";
-                return `Registration stake mismatch (provided ${provided} wei, required ${required} wei). The stake amount changed between the read and the send — retry.`;
-            }
-            case "EmptyContentURI":
-                return "The IPFS pin returned an empty URI.";
             case "ZeroAgreementKey":
                 return "Computed an empty agreement key.";
             default:
-                return null;
+                return sharedRegisterRevertMessage(name, args);
         }
     });
 }

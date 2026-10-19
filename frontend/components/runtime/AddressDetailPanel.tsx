@@ -25,7 +25,6 @@
  * the title, never a dispatch.
  */
 import { useCallback, useState } from "react";
-import { useAccount, useWalletClient } from "wagmi";
 import {
     addressDetailAnchorRef,
     addressDetailBlobHash,
@@ -34,41 +33,17 @@ import {
     sendAddressDetail,
     type AddresseeBlock,
 } from "@/lib/handoff/addressDetail";
-import { useCeremonyChannel } from "@/lib/handoff/useCeremonyChannel";
-import { useAttestationCoordinatorActions } from "@/lib/composition/useAttestationCoordinatorActions";
-import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
-import { hexEqual } from "@/lib/shared/evm";
-import { extractErrorMessage } from "@/lib/shared/errors";
+import { useCeremonyPanel } from "@/lib/handoff/useCeremonyChannel";
+import { CeremonyPanelFrame } from "@/components/runtime/CeremonyPanelFrame";
 import type { InteractionSurfaceProps } from "@/components/runtime/interactionSurfaces";
-import type { PartyRole } from "@/lib/kernel/walletProcessQueries";
 
-export function AddressDetailPanel({ processId, orderHash, clauseKey, buyer, seller }: InteractionSurfaceProps) {
-    const { address } = useAccount();
-    const { data: walletClient } = useWalletClient();
-    const attestationActions = useAttestationCoordinatorActions();
-
-    const role: PartyRole | null =
-        address && hexEqual(address, seller) ? "seller"
-        : address && hexEqual(address, buyer) ? "buyer"
-        : null;
-
-    const counterparty = role === "seller" ? buyer : seller;
+export function AddressDetailPanel({ orderHash, clauseKey, buyer, seller }: InteractionSurfaceProps) {
     const [sent, setSent] = useState(false);
-    const [busy, setBusy] = useState(false);
-    const [error, setError] = useState<string | null>(null);
     const [form, setForm] = useState<AddresseeBlock>({
         name: "", street: "", unit: "", instructions: "",
         notifyName: "", notifyContact: "", handling: "",
     });
 
-    const decrypt = useCallback(
-        (args: { myAddress: `0x${string}`; senderPubKeyHex: string; blobB64: string }) =>
-            decryptAddressDetail({
-                myAddress: args.myAddress, orderId: orderHash,
-                senderPubKeyHex: args.senderPubKeyHex, blobB64: args.blobB64,
-            }),
-        [orderHash],
-    );
     // The anchor is keccak of the anchored blob hash — hash-only, the
     // chain never carries the ciphertext.
     const expectedAnchor = useCallback(
@@ -77,41 +52,15 @@ export function AddressDetailPanel({ processId, orderHash, clauseKey, buyer, sel
     );
 
     // Both parties send ECDH pubkeys on the order id itself.
-    const { channel, peerPubKey, requested, setRequested, received: detail, anchored } =
-        useCeremonyChannel<AddresseeBlock>({
-            address,
-            enabled: role !== null,
-            ceremonyId: orderHash,
-            orderHash,
-            counterparty,
-            decrypt,
-            expectedAnchor,
-        });
-
-    const handleRequest = useCallback(async () => {
-        if (!channel || !address || !walletClient) return;
-        setBusy(true);
-        setError(null);
-        try {
-            await requestAddressDetail(channel, {
-                myAddress: address,
-                recipientAddress: counterparty,
-                orderId: orderHash,
-                signAuth: (message) => walletClient.signMessage({ message }),
-            });
-            setRequested(true);
-        } catch (e) {
-            setError(extractErrorMessage(e, "Request failed."));
-        } finally {
-            setBusy(false);
-        }
-    }, [channel, address, walletClient, counterparty, orderHash, setRequested]);
+    const {
+        role, channel, peerPubKey, requested, received: detail, anchored, busy, error, handleRequest, deliver, waitingLabel,
+    } = useCeremonyPanel<AddresseeBlock>({
+        ceremonyId: orderHash, orderHash, clauseKey, buyer, seller, decryptBlob: decryptAddressDetail, expectedAnchor,
+        request: requestAddressDetail,
+    });
 
     const handleSend = useCallback(async () => {
-        if (!channel || !address || !peerPubKey || !walletClient || !role) return;
-        setBusy(true);
-        setError(null);
-        try {
+        const done = await deliver("Sending the address failed.", async (ctx) => {
             const block: AddresseeBlock = {
                 name: form.name.trim(),
                 street: form.street.trim(),
@@ -121,51 +70,31 @@ export function AddressDetailPanel({ processId, orderHash, clauseKey, buyer, sel
                 ...(form.notifyContact?.trim() ? { notifyContact: form.notifyContact.trim() } : {}),
                 ...(form.handling?.trim() ? { handling: form.handling.trim() } : {}),
             };
-            const { blobB64 } = await sendAddressDetail(channel, {
-                myAddress: address, recipientAddress: counterparty, orderId: orderHash,
-                recipientPubKeyHex: peerPubKey, block,
-                signAuth: (message) => walletClient.signMessage({ message }),
+            const { blobB64 } = await sendAddressDetail(ctx.channel, {
+                myAddress: ctx.address, recipientAddress: ctx.counterparty, orderId: orderHash,
+                recipientPubKeyHex: ctx.peerPubKey, block, signAuth: ctx.signAuth,
             });
             // Anchor keccak256(blob) on-chain AS the attestation content —
             // hash-only, so the ciphertext never reaches calldata and stays
             // deletable on the channel; the coordinator merkle-binds the
             // clause and hash-binds the content.
-            // Keyed by the committed clause key — the one the
-            // signed agreement committed.
-            const anchorArgs = {
-                orderHash: orderHash as `0x${string}`,
-                clauseId: clauseKey as `0x${string}`,
+            return {
                 stage: 0,
                 content: addressDetailBlobHash(blobB64),
-                failureMessage: "Anchoring the address detail failed",
+                anchorFailureMessage: "Anchoring the address detail failed",
+                result: true,
             };
-            await attestationActions.submitAttestation(role, anchorArgs);
-            setSent(true);
-        } catch (e) {
-            setError(extractErrorMessage(e, "Sending the address failed."));
-        } finally {
-            setBusy(false);
-        }
-    }, [channel, address, peerPubKey, walletClient, counterparty, orderHash, clauseKey, form, attestationActions, role]);
+        });
+        if (done) setSent(true);
+    }, [deliver, form, orderHash]);
 
     if (!role) return null;
-    const clauseTitle = getClauseSpec(clauseKey)?.title ?? clauseKey;
     // Role-flavored copy over ONE symmetric body: what I ask for and what I
     // might share differ by seat, the ceremony does not.
     const requestLabel = role === "seller" ? "Request delivery address" : "Request pickup address";
-    const waitingLabel = role === "seller"
-        ? "Requested — waiting for the buyer"
-        : "Requested — waiting for the seller";
 
     return (
-        <section
-            className="rounded border border-default bg-paper p-4 space-y-3"
-            data-testid="interaction-address-panel"
-        >
-            <div className="flex items-baseline justify-between gap-2">
-                <p className="text-xs font-semibold text-ink-muted">Address detail (private)</p>
-                <p className="text-[11px] text-ink-faint">{clauseTitle}</p>
-            </div>
+        <CeremonyPanelFrame testId="interaction-address-panel" title="Address detail (private)" clauseKey={clauseKey}>
             <p className="text-xs text-ink-body">
                 The agreement commits the geohash cells; door-level detail is shared
                 privately here, encrypted to this order&apos;s counterparty alone, its
@@ -269,6 +198,6 @@ export function AddressDetailPanel({ processId, orderHash, clauseKey, buyer, sel
             )}
 
             {error && <p className="text-xs text-error-fg" data-testid="interaction-address-error">{error}</p>}
-        </section>
+        </CeremonyPanelFrame>
     );
 }

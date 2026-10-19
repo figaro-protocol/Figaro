@@ -25,7 +25,6 @@
  * and the title, never a dispatch.
  */
 import { useCallback, useRef, useState } from "react";
-import { useAccount, useWalletClient } from "wagmi";
 import { keccak256 } from "viem";
 import { encodeContentFromSpec } from "@figaro-protocol/sdk/clauses";
 import {
@@ -36,42 +35,19 @@ import {
     sendContentDelivery,
     type DeliveredContent,
 } from "@/lib/handoff/contentDelivery";
-import { useCeremonyChannel } from "@/lib/handoff/useCeremonyChannel";
-import { useAttestationCoordinatorActions } from "@/lib/composition/useAttestationCoordinatorActions";
+import { useCeremonyPanel } from "@/lib/handoff/useCeremonyChannel";
 import { getClauseSpec } from "@/lib/shared/clauseSpecSource";
-import { hexEqual } from "@/lib/shared/evm";
-import { extractErrorMessage } from "@/lib/shared/errors";
+import { CeremonyPanelFrame } from "@/components/runtime/CeremonyPanelFrame";
 import type { InteractionSurfaceProps } from "@/components/runtime/interactionSurfaces";
-import type { PartyRole } from "@/lib/kernel/walletProcessQueries";
 
 /** The stage the declaring clause's completion evidence files at. */
 const COMPLETION_STAGE = 1;
 
-export function ContentDeliveryPanel({ processId, orderHash, clauseKey, buyer, seller }: InteractionSurfaceProps) {
-    const { address } = useAccount();
-    const { data: walletClient } = useWalletClient();
-    const attestationActions = useAttestationCoordinatorActions();
+export function ContentDeliveryPanel({ orderHash, clauseKey, buyer, seller }: InteractionSurfaceProps) {
     const fileInputRef = useRef<HTMLInputElement | null>(null);
-
-    const role: PartyRole | null =
-        address && hexEqual(address, seller) ? "seller"
-        : address && hexEqual(address, buyer) ? "buyer"
-        : null;
-
-    const counterparty = role === "seller" ? buyer : seller;
     const ceremonyId = contentCeremonyId(orderHash);
     const [sent, setSent] = useState<`0x${string}` | null>(null);
-    const [busy, setBusy] = useState(false);
-    const [error, setError] = useState<string | null>(null);
 
-    const decrypt = useCallback(
-        (args: { myAddress: `0x${string}`; senderPubKeyHex: string; blobB64: string }) =>
-            decryptContentDelivery({
-                myAddress: args.myAddress, orderId: orderHash,
-                senderPubKeyHex: args.senderPubKeyHex, blobB64: args.blobB64,
-            }),
-        [orderHash],
-    );
     // Rehash what was decrypted into the stage-1 evidence shape (its
     // content is the encoded {contentHash} struct; the event binds
     // contentRef = keccak(content)).
@@ -87,47 +63,21 @@ export function ContentDeliveryPanel({ processId, orderHash, clauseKey, buyer, s
     );
 
     // Both parties send ECDH pubkeys on the derived content-ceremony id.
-    const { channel, peerPubKey, requested, setRequested, received, anchored } =
-        useCeremonyChannel<DeliveredContent>({
-            address,
-            enabled: role !== null,
-            ceremonyId,
-            orderHash,
-            counterparty,
-            decrypt,
-            expectedAnchor,
-        });
-
-    const handleRequest = useCallback(async () => {
-        if (!channel || !address || !walletClient) return;
-        setBusy(true);
-        setError(null);
-        try {
-            await requestContentDelivery(channel, {
-                myAddress: address,
-                recipientAddress: counterparty,
-                orderId: orderHash,
-                signAuth: (message) => walletClient.signMessage({ message }),
-            });
-            setRequested(true);
-        } catch (e) {
-            setError(extractErrorMessage(e, "Request failed."));
-        } finally {
-            setBusy(false);
-        }
-    }, [channel, address, walletClient, counterparty, orderHash, setRequested]);
+    const {
+        role, channel, peerPubKey, requested, received, anchored, busy, error, handleRequest, deliver, waitingLabel,
+    } = useCeremonyPanel<DeliveredContent>({
+        ceremonyId, orderHash, clauseKey, buyer, seller, decryptBlob: decryptContentDelivery, expectedAnchor,
+        request: requestContentDelivery,
+    });
 
     const handleSend = useCallback(async (file: File) => {
-        if (!channel || !address || !peerPubKey || !walletClient || !role) return;
-        setBusy(true);
-        setError(null);
-        try {
+        const contentHash = await deliver("Delivering the content failed.", async (ctx) => {
             const bytes = new Uint8Array(await file.arrayBuffer());
-            const { contentHash } = await sendContentDelivery(channel, {
-                myAddress: address, recipientAddress: counterparty, orderId: orderHash,
-                recipientPubKeyHex: peerPubKey,
+            const { contentHash } = await sendContentDelivery(ctx.channel, {
+                myAddress: ctx.address, recipientAddress: ctx.counterparty, orderId: orderHash,
+                recipientPubKeyHex: ctx.peerPubKey,
                 artifact: { name: file.name, mediaType: file.type || "application/octet-stream", bytes },
-                signAuth: (message) => walletClient.signMessage({ message }),
+                signAuth: ctx.signAuth,
             });
             // File the spec's stage-1 completion evidence: the artifact's
             // keccak256, encoded per the declaring clause's own stage shape
@@ -135,21 +85,15 @@ export function ContentDeliveryPanel({ processId, orderHash, clauseKey, buyer, s
             // omitted — counterparty-private transfers have no locator.
             const spec = getClauseSpec(clauseKey);
             if (!spec) throw new Error(`Clause spec not loaded: ${clauseKey}`);
-            const attestArgs = {
-                orderHash: orderHash as `0x${string}`,
-                clauseId: clauseKey as `0x${string}`,
+            return {
                 stage: COMPLETION_STAGE,
                 content: encodeContentFromSpec(spec, { contentHash }, { stage: COMPLETION_STAGE }),
-                failureMessage: "Anchoring the completion evidence failed",
+                anchorFailureMessage: "Anchoring the completion evidence failed",
+                result: contentHash as `0x${string}`,
             };
-            await attestationActions.submitAttestation(role, attestArgs);
-            setSent(contentHash);
-        } catch (e) {
-            setError(extractErrorMessage(e, "Delivering the content failed."));
-        } finally {
-            setBusy(false);
-        }
-    }, [channel, address, peerPubKey, walletClient, counterparty, orderHash, clauseKey, attestationActions, role]);
+        });
+        if (contentHash) setSent(contentHash);
+    }, [deliver, orderHash, clauseKey]);
 
     const handleDownload = useCallback(() => {
         if (!received) return;
@@ -162,23 +106,12 @@ export function ContentDeliveryPanel({ processId, orderHash, clauseKey, buyer, s
     }, [received]);
 
     if (!role) return null;
-    const clauseTitle = getClauseSpec(clauseKey)?.title ?? clauseKey;
     // Role-flavored copy over ONE symmetric body: the buyer asks for the
     // deliverable, a seller may ask for source materials the same way.
     const requestLabel = role === "buyer" ? "Request the deliverable" : "Request counterparty content";
-    const waitingLabel = role === "buyer"
-        ? "Requested — waiting for the seller"
-        : "Requested — waiting for the buyer";
 
     return (
-        <section
-            className="rounded border border-default bg-paper p-4 space-y-3"
-            data-testid="interaction-content-panel"
-        >
-            <div className="flex items-baseline justify-between gap-2">
-                <p className="text-xs font-semibold text-ink-muted">Content delivery (private)</p>
-                <p className="text-[11px] text-ink-faint">{clauseTitle}</p>
-            </div>
+        <CeremonyPanelFrame testId="interaction-content-panel" title="Content delivery (private)" clauseKey={clauseKey}>
             <p className="text-xs text-ink-body">
                 The artifact travels encrypted to this order&apos;s counterparty alone;
                 its keccak256 anchors on-chain as the completion evidence. The chain
@@ -265,6 +198,6 @@ export function ContentDeliveryPanel({ processId, orderHash, clauseKey, buyer, s
             )}
 
             {error && <p className="text-xs text-error-fg" data-testid="interaction-content-error">{error}</p>}
-        </section>
+        </CeremonyPanelFrame>
     );
 }

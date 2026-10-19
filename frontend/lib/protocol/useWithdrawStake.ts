@@ -54,6 +54,28 @@ export function translateContractRevert(
 }
 
 /**
+ * The register/publish reverts every registry shares — the stake that changed
+ * between read and send, and the empty pin — as a message, or null for a
+ * revert only one registry has. Each register translator's table ends in it.
+ */
+export function sharedRegisterRevertMessage(
+    errorName: string | undefined,
+    args: readonly unknown[] | undefined,
+): string | null {
+    switch (errorName) {
+        case "WrongDeposit": {
+            const provided = (args?.[0] as bigint | undefined)?.toString() ?? "?";
+            const required = (args?.[1] as bigint | undefined)?.toString() ?? "?";
+            return `Registration stake mismatch (provided ${provided} wei, required ${required} wei). The stake amount changed between the read and the send — retry.`;
+        }
+        case "EmptyContentURI":
+            return "The IPFS pin returned an empty URI.";
+        default:
+            return null;
+    }
+}
+
+/**
  * The shared `withdrawDeposit` revert table — the on-chain guards only
  * (registeredBy-only, once-only, must-exist; the commits==resolves gate is
  * off-chain/advisory via `useWithdrawGate`). The registries' tables

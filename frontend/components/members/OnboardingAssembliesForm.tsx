@@ -24,7 +24,7 @@ import {
 import { AssemblyChoiceRow } from "@/components/members/AssemblyChoiceRow";
 import { DisclosurePolicyEditor } from "@/components/members/DisclosurePolicyEditor";
 import { ProfileClauseValues } from "@/components/members/ProfileClauseValues";
-import type { OnboardingStepChromeProps } from "@/components/members/OnboardingStepChrome";
+import { finishStep, type OnboardingStepChromeProps, toggledSet, usePostureDisclosure } from "@/components/members/OnboardingStepChrome";
 
 /**
  * The assemblies step of the onboarding wizard. The member picks which published
@@ -138,11 +138,8 @@ export function OnboardingAssembliesForm({
     // This step edits SELLER-posture disclosure entries only (classes
     // derive from the bindings). Buyer-posture entries belong to the
     // buyer step and are carried through every write untouched.
-    const [policyEntries, setPolicyEntries] = useState<DisclosurePolicyEntry[]>([]);
-    const [otherPostureEntries, setOtherPostureEntries] = useState<DisclosurePolicyEntry[]>([]);
-    // Hydrated for which subject: the wallet, or the anonymous draft before one connects.
-    const [hydratedFor, setHydratedFor] = useState<string | null>(null);
-    const hydrated = hydratedFor === subject;
+    const { policyEntries, setPolicyEntries, otherPostureEntries, hydrated, hydrate } =
+        usePostureDisclosure<DisclosurePolicyEntry>("seller", subject);
     const [submitError, setSubmitError] = useState<string | null>(null);
 
     useEffect(() => {
@@ -156,11 +153,8 @@ export function OnboardingAssembliesForm({
             }
         }
         setCounterpartiesByAssembly(cps);
-        const allEntries = state.disclosurePolicy ?? [];
-        setPolicyEntries(allEntries.filter((e) => e.posture === "seller"));
-        setOtherPostureEntries(allEntries.filter((e) => e.posture !== "seller"));
-        setHydratedFor(subject);
-    }, [hydrated, loaded, subject, state.assemblies, state.disclosurePolicy]);
+        hydrate(state.disclosurePolicy ?? []);
+    }, [hydrated, loaded, hydrate, state.assemblies, state.disclosurePolicy]);
 
     useEffect(() => {
         if (!hydrated || !choicesLoaded) return;
@@ -174,12 +168,7 @@ export function OnboardingAssembliesForm({
     }, [selected, counterpartiesByAssembly, policyEntries, otherPostureEntries, hydrated, address, choices, choicesLoaded, update]);
 
     function toggle(key: string) {
-        setSelected((prev) => {
-            const next = new Set(prev);
-            if (next.has(key)) next.delete(key);
-            else next.add(key);
-            return next;
-        });
+        setSelected((prev) => toggledSet(prev, key));
     }
 
     const updateCounterparties = useCallback(
@@ -208,16 +197,13 @@ export function OnboardingAssembliesForm({
             return;
         }
         setSubmitError(null);
-        if (onSave) {
-            onSave(
+        finishStep(
+            onSave && (() => onSave(
                 buildBindings(address ?? DRAFT_SUBJECT, selected, choices, counterpartiesByAssembly),
                 [...otherPostureEntries, ...activePolicy(policyEntries, selected, choices)],
-            ).catch(() => {
-                // Caller surfaces the error via `externalError`.
-            });
-            return;
-        }
-        router.push(onboardingNextHref("assemblies"));
+            )),
+            () => router.push(onboardingNextHref("assemblies")),
+        );
     }
 
     if (!mounted) {

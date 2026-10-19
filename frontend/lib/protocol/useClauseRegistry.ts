@@ -28,6 +28,7 @@ import { DEFAULT_IPFS_SERVICE } from "@/lib/shared/ipfsService";
 import { isValidAddress } from "@/lib/shared/evm";
 import {
     createUseWithdrawStake,
+    sharedRegisterRevertMessage,
     translateContractRevert,
     withdrawRevertMessage,
 } from "@/lib/protocol/useWithdrawStake";
@@ -132,17 +133,10 @@ export function clauseRegisterRevertMessage(
     switch (errorName) {
         case "AlreadyRegistered":
             return `"${clauseLabel}" is already registered: these exact spec bytes hash to a clause key the registry holds. A clause's key is the hash of its spec and registration is first-write-wins and immutable, so the same spec always maps to one binding. Adopt the existing clause, or change the spec to register a different one.`;
-        case "WrongDeposit": {
-            const provided = (args?.[0] as bigint | undefined)?.toString() ?? "?";
-            const required = (args?.[1] as bigint | undefined)?.toString() ?? "?";
-            return `Registration stake mismatch (provided ${provided} wei, required ${required} wei). The stake amount changed between the read and the send — retry.`;
-        }
         case "ZeroClauseKey":
             return "Computed a zero clause key — the spec document is empty or malformed.";
-        case "EmptyContentURI":
-            return "The IPFS pin returned an empty URI.";
         default:
-            return null;
+            return sharedRegisterRevertMessage(errorName, args);
     }
 }
 
