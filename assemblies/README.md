@@ -32,9 +32,9 @@ asserted from chain:
 
 | Reference | Composition | The story | Proven by |
 |---|---|---|---|
-| `pos.json` | 1 order | A buyer and a seller at the counter — no processor between them | `orders-accept.devnet.spec.ts` (single-order accept) |
-| `local-commerce.json` | 2 orders | Merchant + gig courier trade direct, both bonded, keeping the platform's cut | `local-commerce.devnet.spec.ts` (full cycle incl. dispute-free resolution) |
-| `freelancer.json` | 1 order | A digital deliverable over the encrypted hand-off — no marketplace fee | `content-delivery.devnet.spec.ts` |
+| `pos.json` | 1 order | A buyer and a seller at the counter, both bonded, the payment transferred at the buyer's resolution | `orders-accept.devnet.spec.ts` (single-order accept) |
+| `local-commerce.json` | 2 orders | Merchant + gig courier each bonded in its own order with the buyer, both paid at one resolution | `local-commerce.devnet.spec.ts` (full cycle incl. dispute-free resolution) |
+| `freelancer.json` | 1 order | A digital deliverable over the encrypted hand-off, paid at the buyer's resolution | `content-delivery.devnet.spec.ts` |
 | `freelancer-value-chain.json` | 3 orders | A lead freelancer + contributors, one resolution | `freelancer-chain.devnet.spec.ts` (full cycle: three encrypted deliveries, one resolution) |
 | `tradelens.json` | 6 orders | The containerized import chain: shipper → inspection → forwarder → reefer carrier → customs → drayage | `scenario-tradelens` + `tradelens-runtime` |
 | `aerial-survey.json` | 1 order | A credentialed drone operator flies a committed window and route; the flight's co-produced record is part of the service (each party holds its copy) | `data-market.devnet.spec.ts` (full cycle: adopt, dual posture, ERC-20 balance assertions, self-authenticating data-terms leaf) |

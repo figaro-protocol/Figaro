@@ -5,8 +5,7 @@ else. This document owns what the token is, what it is not, its name, the whole
 of its supply and how that supply is allocated, and the contract that enforces
 those limits.
 
-Two subjects that were once told here have their own documents, because they
-are their own subjects: what the DAO is for and how it spends is `docs/DAO.md`;
+Two subjects have their own documents: what the DAO is for and how it spends is `docs/DAO.md`;
 how the 600M is earned and paid is `docs/DESIGNER_REWARDS.md`. Contract
 surfaces are inventoried in `docs/CONTRACTS.md`.
 
@@ -154,7 +153,7 @@ supporters + DAO genesis allocation, then seals minting. `FOUNDER_ALLOC = 70M`,
 ```
 1. Deploy FlorinToken (deployer becomes the constructor deployer).
 2. Deploy UsageCounter, then RpgfMinter over it (florin + counter +
-   ClauseRegistry + AssemblyRegistry). Periods, budgets, and the
+   ClauseRegistry + AssemblyRegistry + AgreementRegistry). Periods, budgets, and the
    minimum-support floor are DESIGNER_REWARDS.md's.
 3. fig.registerMinter(rpgfMinter, 600M) — MUST precede renounce (irreversible).
 4. Register the deployer as a one-shot genesis minter with cap 400M (= FOUNDER_ALLOC + SUPPORTERS_ALLOC + DAO_ALLOC).

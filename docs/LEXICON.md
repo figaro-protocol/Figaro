@@ -38,9 +38,9 @@ Nouns and their definitions. One name per thing.
 
 **composition** — How anything here is built, on both sides of the Core. Internal: clauses composed into agreements, agreements into assemblies, assemblies instantiated as processes — the designer's act, over the Core without touching it. External, on-chain: plugging a process into another contract on the chain — a swap, a payment splitter, a dispute resolution forum. External, off-chain: meeting a legal or regulatory norm with the data a process leaves — an EU electronic invoice, ESG reporting, GDPR, taxation. Composition is what makes the protocol a network instead of a silo.
 
-**consideration** — The element of a contract by which each party gives value to the other. Between strangers it is the element that fails; the Core is what makes it hold.
+**consideration** — The element of a contract by which each party gives value to the other: here the seller's performance and the buyer's payment. The payment travels inside the buyer's bond, half of which is the payment and half the deterrent, and transfers to the seller at resolution; each seller's bond is deterrent only and is refunded whole. Between strangers it is the element that fails; the Core is what makes it hold.
 
-**contract** — What every trade is in law. A binding contract needs six elements, and each has one place here: offer is the buyer's signature over the commitment, carried to the seller; acceptance is the seller's counter-signature over the same commitment; mutual assent is the Core's check at commit that both signatures recover to the named parties over one hash; consideration is the bonds pulled at commit and the payment moved at resolve; capacity is any wallet that can sign and fund its bond, a person's or an agent's; legality is absent from the Core by design and enters through the clauses the agreement hash binds, or through a forum ruling on the data afterward. Its terms are the agreement; its warranties and representations are the attestations; the trail it leaves is the process's data. On chain the word means code, so Figaro says agreement for the parties' document and keeps contract for this definition and for smart contracts.
+**contract** — What every trade is in law. A binding contract needs six elements, and each has one place here: offer is the buyer's signature over the commitment, carried to the seller; acceptance is the seller's counter-signature over the same commitment; mutual assent is the Core's check at commit that both signatures recover to the named parties over one hash; consideration is the payment, carried inside the buyer's bond from commit and transferred to the seller at resolution; capacity is any wallet that can sign and fund its bond, a person's or an agent's; legality is absent from the Core by design and enters through the clauses the agreement hash binds, or through a forum ruling on the data afterward. Its terms are the agreement; its warranties and representations are the attestations; the trail it leaves is the process's data. On chain the word means code, so Figaro says agreement for the parties' document and keeps contract for this definition and for smart contracts.
 
 **coordination token** — A token two strangers can agree on because it is neutral to both: a stablecoin, or the florin. Any process may be denominated in one.
 
@@ -66,7 +66,7 @@ Nouns and their definitions. One name per thing.
 
 **gas** — What the chain charges to execute a transaction.
 
-**judgment** — What a party decides rather than what the chain computes. Every judgment is exercised before both parties have signed — in design, in binding, at checkout, in negotiating the offer — or is kept by a named party afterwards: the buyer alone deciding to resolve, a forum ruling on a process's data, the DAO spending its treasury. The chain accepts exactly one judgment after commit — the buyer's resolution — and everything else it does is arithmetic.
+**judgment** — What a party decides rather than what the chain computes. Every judgment is exercised before both parties have signed — in design, in binding, in selection at checkout — or is kept by a named party afterwards: the buyer alone deciding to resolve, a forum ruling on a process's data, the DAO spending its treasury. The chain accepts exactly one judgment after commit — the buyer's resolution — and everything else it does is arithmetic.
 
 **member** — A wallet that has registered a profile, with a stake, so that others can find it.
 
@@ -96,7 +96,7 @@ Nouns and their definitions. One name per thing.
 
 **registry** — One of the protocol's four public lists on the chain: clauses, registered agreements, assemblies, members. Each entry is placed by its own wallet with its own stake.
 
-**request for quotes** — The other way an offer forms: a buyer's request goes out and sellers answer with terms.
+**request for quotes** — The other way an offer forms: a buyer's request goes out and sellers answer with a price, filling the one field the design leaves open; the terms are the design's.
 
 **resolution** — The buyer's single signature that ends a process: every payment transfers and every bond is refunded — the buyer's less the payments it carried — all at once.
 

@@ -7,7 +7,8 @@ Figaro makes that element hold, and the firm stops being necessary.
 
 A binding contract needs offer, acceptance, consideration, capacity, legality,
 and mutual assent, and it implies a body of terms and a trail of data. Between
-people who know each other, or who share a court, all eight hold. Between
+people who know each other, or who share a court, all six hold, and the terms
+and the data with them. Between
 strangers, consideration fails: each can promise value; nothing makes delivering
 it credible.
 
@@ -23,10 +24,12 @@ reaches.
 
 Figaro makes consideration credible with nobody in charge of it. When a buyer
 and a seller commit to an order, each deposits a bond: the buyer twice the
-payment, the seller twice the cumulative value through its order. A bond is its
-owner's own deterrent — whatever a party could gain by walking away, it leaves
-more behind. Only the buyer resolves the process, and resolution pays every
-seller and refunds every bond at once. Keeping one's word is each party's best
+payment, the seller twice the cumulative value through its order. Half the
+buyer's bond is the consideration, the payments traveling inside it; the other
+half, and the whole of each seller's bond, is its owner's own deterrent —
+whatever a party could gain by walking away, it leaves more behind. Only the
+buyer resolves the process, and resolution pays every seller and refunds every
+bond at once: each seller's whole, the buyer's less the payments it carried. Keeping one's word is each party's best
 move on every order, and the process holds as one: nobody is paid until the
 buyer resolves, so every seller has a live interest in putting right any one
 seller's fault before that signature. Four contracts — the Core — do
@@ -93,7 +96,7 @@ choose because it is neutral to both, and from a **community token**, whose use
 in processes elsewhere sustains its worth at home. The tokens a wallet holds
 say which communities and which designs it takes part in.
 
-The equilibrium has no fixed point. Value capture moves from the top
+Value capture has no fixed place. It moves from the top
 of the firm down to the assets that produce, and it rests where each asset
 earns what it needs to keep taking part in processes — a productive life. The
 market enforces that the way it enforces going concern everywhere: a wallet

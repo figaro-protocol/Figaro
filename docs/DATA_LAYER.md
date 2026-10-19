@@ -98,8 +98,8 @@ dissolves. The Core is fixed and neutral — **it's what we and others put in th
 protocol layer that makes the difference.** Every mechanism proposal is checked
 against three forward-looking stress tests:
 
-1. **Break the platform companies** — the mechanism must work where no private
-   flow-map monopoly exists, because it built the public one.
+1. **Operate on a public flow-map** — the mechanism must work where no private
+   flow-map exists, because it builds the public one.
 2. **Operate post-apocalyptic** — no institutions: nothing in the path may require a
    committee, a registry authority, or a standing organization.
 3. **Operate off-planet** — no Earth committee, no KYC oracle: identity-free,
@@ -117,9 +117,7 @@ benchmark reasoning but fails one of the three is wrong here.
 This section is load-bearing: it explains why the geo/coordination clauses exist and
 get written, now that the reward is **no more for them than for any other clause.**
 The reward is UNIFORM (contract surface: `CONTRACTS.md` § "Designer rewards"): a clause's or assembly's score is its **real usage
-alone** — `icbrt(c·d²·1e18)` — with **no tag, no category, no weight multiplier.** The
-old "substrate-broadening weight" (`UsageCounter.BOOSTED_WEIGHT`/`BASE_WEIGHT`,
-`ClauseRegistry.rpgfTag`/`rpgfTagOf`, the counter's `boostedTag`) is **deleted.**
+alone** — `icbrt(c·d²·1e18)` — with **no tag, no category, no weight multiplier.**
 Neutrality is achieved by the **stake, not by weighting.**
 
 **The must-haves see value, not place.** Every Figaro agreement composes the core
@@ -153,9 +151,9 @@ holds a live `MembersRegistry` stake (`UsageCounter` reads `MembersRegistry.regi
 else `SellerNotStaked`), and a designer is rewarded only while their registration stake is
 un-withdrawn (`RpgfMinter._isAuthor` requires clause `depositOf.withdrawn == false`,
 assembly `bindings.depositWithdrawn == false`); withdraw and you forfeit future rewards.
-The ETH stake is a **value loop, not a cost**: more trade means more base-currency
-demand for gas, so ETH appreciates in fiat for every registry staker — aligned upside,
-not a cost. That is why every registry stakes in ETH: **florin is the Schelling-point
+The ETH stake is a **value loop**: every process pays its gas in the base chain's own
+currency, the stake rises and falls with demand for that chain, and it stays
+reclaimable by the wallet that placed it. That is why every registry stakes in ETH: **florin is the Schelling-point
 REWARD, ETH is the ALIGNMENT.** Procedural neutrality (the same uniform rule for every
 designer, no committee, no category) and Sybil-resistance now live in the *same*
 mechanism — the stake — rather than being traded off against a non-flat weighting.
