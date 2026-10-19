@@ -89,7 +89,7 @@ describe("re-assert committed clauses — one card per party per order", () => {
         it(`${party}: K committed clauseEntries, none re-asserted → one card, N = K, K choices`, () => {
             const cards = reassertCards(address);
             expect(cards).toHaveLength(1);
-            expect(cards[0].label).toBe(`Re-assert committed clauseEntries (${K})`);
+            expect(cards[0].label).toBe(`Re-assert committed clauses (${K})`);
             expect(choicesOf(cards[0])).toHaveLength(K);
             expect(choiceClauseIds(cards[0])).toEqual(clauseEntries.map((s) => s.clause));
             for (const choice of choicesOf(cards[0])) {
@@ -109,7 +109,7 @@ describe("re-assert committed clauses — one card per party per order", () => {
         it(`${party}: one clause re-asserted → N = K-1 and that clause absent`, () => {
             const cards = reassertCards(address, [reasserted(1, address)]);
             expect(cards).toHaveLength(1);
-            expect(cards[0].label).toBe(`Re-assert committed clauseEntries (${K - 1})`);
+            expect(cards[0].label).toBe(`Re-assert committed clauses (${K - 1})`);
             expect(choiceClauseIds(cards[0])).toEqual([clauseEntries[0].clause, clauseEntries[2].clause]);
         });
 

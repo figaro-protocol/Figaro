@@ -46,7 +46,7 @@ describe("CapabilityRail — a choice card opens a chooser", () => {
     } as unknown as CapabilityModel);
     const card = (choices: CapabilityModel[]): CapabilityModel => ({
         id: "p:o:seller-reassert-committed-clauses",
-        label: `Re-assert committed sections (${choices.length})`,
+        label: `Re-assert committed clauses (${choices.length})`,
         actionKind: "reassert-committed-clauses",
         action: { executionType: "choice", kind: "choose-capability", choices },
         preconditions: [],

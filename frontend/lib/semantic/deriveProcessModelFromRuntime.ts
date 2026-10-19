@@ -300,7 +300,7 @@ function roleCapabilities(
             const cardId = `${order.processId}:${orderIdStr}:${party}-reassert-committed-clauses`;
             out.push({
                 id: cardId,
-                label: `Re-assert committed clauseEntries (${choices.length})`,
+                label: `Re-assert committed clauses (${choices.length})`,
                 orderLabel,
                 // Its OWN actionKind (→ its own `capability-*` testid): the
                 // rail renders many attestation cards per order, and the

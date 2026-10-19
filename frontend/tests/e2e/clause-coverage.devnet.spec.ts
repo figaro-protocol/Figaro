@@ -844,7 +844,7 @@ test.describe('PER-CLAUSE COVERAGE — every protocol clause flows the generic p
                     await expect(
                         reassertOpen,
                         'the card\'s count falls by one',
-                    ).toHaveText(`Re-assert committed clauseEntries (${reassertCountBefore - 1})`, { timeout: 30000 });
+                    ).toHaveText(`Re-assert committed clauses (${reassertCountBefore - 1})`, { timeout: 30000 });
                 } else {
                     await expect(reassertCard, 'the last clause re-asserted retires the card').toHaveCount(0, { timeout: 30000 });
                     await expect(chooser, 'the chooser closes with its card').toHaveCount(0);
