@@ -1224,6 +1224,13 @@ scripts and tests and is not the scope's figure.
 
 ### Mutation testing, Solidity
 
+Both mutation sections' runs are launched by `scripts/mewt-run.sh` and
+`scripts/cargo-mutants-run.sh`, which hold `.mewt.lock` and first print
+`gate_layers` (`scripts/frozen-scope.sh`): "full gate" when a scope file's
+stripped code or a build configuration moved from the baseline commit, else
+"quick layers only", and these reports stand. `scripts/check-red-on-parent.sh`
+proves a test-first change's new tests fail on the `src/` before it.
+
 Trail of Bits' `mewt` 4.0.0, measured at `f62b71cf`, high and medium severity
 mutations (statement removal, error replacement, condition forcing, negation
 removal, return-default), one run and one database per contract, each against the

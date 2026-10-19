@@ -44,6 +44,40 @@
 
 set -e
 
+# ── A pass that proved nothing is a failure ────────────────────────────────
+# Halmos exits 0 and prints "No tests" when its artifacts lack the compiler AST
+# (nothing matched or nothing loaded). Every pass goes through run_halmos, which
+# fails on that line whatever the exit code.
+: "${HALMOS_BIN:=halmos}"
+run_halmos() {
+    local log status
+    log=$(mktemp)
+    FOUNDRY_PROFILE=halmos "$HALMOS_BIN" "$@" 2>&1 | tee "$log"
+    status=${PIPESTATUS[0]}
+    if [ "$status" -eq 0 ] && grep -q 'No tests' "$log"; then
+        echo "❌ halmos printed \"No tests\": the pass proved nothing (artifacts without the compiler AST? run: FOUNDRY_PROFILE=halmos forge build --force)."
+        status=1
+    fi
+    rm -f "$log"
+    return "$status"
+}
+
+if [ "${1:-}" = "--self-test" ]; then
+    tmp=$(mktemp -d)
+    printf '#!/bin/sh\necho "No tests found"\nexit 0\n' > "$tmp/fake-empty"
+    printf '#!/bin/sh\necho "[PASS] check_x"\nexit 0\n' > "$tmp/fake-ok"
+    chmod +x "$tmp/fake-empty" "$tmp/fake-ok"
+    if HALMOS_BIN="$tmp/fake-empty" run_halmos >/dev/null 2>&1; then
+        echo "[test-halmos] self-test: a pass printing \"No tests\" exited 0 — FAIL"; rm -rf "$tmp"; exit 1
+    fi
+    if ! HALMOS_BIN="$tmp/fake-ok" run_halmos >/dev/null 2>&1; then
+        echo "[test-halmos] self-test: a passing run failed — FAIL"; rm -rf "$tmp"; exit 1
+    fi
+    rm -rf "$tmp"
+    echo "[test-halmos] self-test: \"No tests\" fails the pass, a real pass stands — ok"
+    exit 0
+fi
+
 # ── Environment checks ─────────────────────────────────────────────────────
 
 if ! command -v halmos >/dev/null 2>&1; then
@@ -78,7 +112,7 @@ CORE_ARGS=(
 echo "▶ Pass 1/7 — 6 batched FigaroCore properties (fast)"
 echo ""
 
-FOUNDRY_PROFILE=halmos halmos \
+run_halmos \
     "${CORE_ARGS[@]}" \
     --match-test '(tokenConservation|contractSolvency|correctBondAmounts|orderStatusTransition|buyerDominance|cumulativeValue)' \
     "$@"
@@ -89,7 +123,7 @@ echo ""
 
 # ── Pass 2: the one heavy property, in a fresh halmos process ──────────────
 
-FOUNDRY_PROFILE=halmos halmos \
+run_halmos \
     "${CORE_ARGS[@]}" \
     --function check_resolutionPayouts \
     "$@"
@@ -107,7 +141,7 @@ echo ""
 # (an unread gate prices nothing). What they do NOT prove is that the deposit
 # is big enough — that stays paper work.
 
-FOUNDRY_PROFILE=halmos halmos \
+run_halmos \
     --contract HalmosMembersRegistry \
     --solver z3 \
     --solver-timeout-assertion "$HALMOS_SOLVER_TIMEOUT_MS" \
@@ -125,7 +159,7 @@ echo ""
 # exactly its period window; clause A's record never touches clause B.
 # The stake GATE itself is Pass 3's job (E-5) — not re-proved here.
 
-FOUNDRY_PROFILE=halmos halmos \
+run_halmos \
     --contract HalmosUsageCounter \
     --solver z3 \
     --solver-timeout-assertion "$HALMOS_SOLVER_TIMEOUT_MS" \
@@ -143,7 +177,7 @@ echo ""
 # stakes are held-at-claim for RpgfMinter._isAuthor, so their state machines
 # carry the designer half of the Sybil bound.
 
-FOUNDRY_PROFILE=halmos halmos \
+run_halmos \
     --contract HalmosClauseRegistry \
     --solver z3 \
     --solver-timeout-assertion "$HALMOS_SOLVER_TIMEOUT_MS" \
@@ -153,7 +187,7 @@ echo ""
 echo "▶ Pass 6/7 — AssemblyRegistry: the same stake machine, compositionHash-keyed"
 echo ""
 
-FOUNDRY_PROFILE=halmos halmos \
+run_halmos \
     --contract HalmosAssemblyRegistry \
     --solver z3 \
     --solver-timeout-assertion "$HALMOS_SOLVER_TIMEOUT_MS" \
@@ -163,7 +197,7 @@ echo ""
 echo "▶ Pass 7/7 — AgreementRegistry: the same stake machine, agreementKey-keyed"
 echo ""
 
-FOUNDRY_PROFILE=halmos halmos \
+run_halmos \
     --contract HalmosAgreementRegistry \
     --solver z3 \
     --solver-timeout-assertion "$HALMOS_SOLVER_TIMEOUT_MS" \

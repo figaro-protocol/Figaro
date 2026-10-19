@@ -97,7 +97,8 @@ Run with `scripts/test-halmos.sh` (seven passes). **Halmos does not model
 `expectRevert`** — assert on a low-level call's own success flag instead. It
 also needs the compiler AST, so a build made without it silently yields "no
 tests found"; the runner's `forge build --ast` handles that, but a manual
-`forge build` in between will overwrite the artifact and reproduce it.
+`forge build` in between will overwrite the artifact and reproduce it. The
+script fails any pass that prints "No tests", whatever halmos's exit code.
 
 **A passing symbolic property can still be vacuous.** The two anti-recycling
 properties are mutation-checked: a deliberate recycling bug in
@@ -840,6 +841,20 @@ Per workflow, what it runs and when:
 
 The EIP-712 parity harness (above) rides `foundry-ci` + `sdk-ci`; both run its
 two halves unconditionally.
+
+### Mutation runs and the test-first proof
+
+Four maintainer-side scripts, none run by CI. `scripts/mewt-run.sh <target.sol>`
+and `scripts/cargo-mutants-run.sh <crate>` launch one mutation run detached,
+holding `.mewt.lock` (the two never overlap; `cargo-mutants-run.sh` runs
+`--in-place` over `figaro-kernel` or `figaro-clause`, from a full checkout). Both
+print `gate_layers` from `scripts/frozen-scope.sh` first: "full gate" when a
+scope file's stripped code moved or a build configuration changed since the
+handover's baseline commit, else "quick layers only" (the mutation and Certora
+reports stand). `scripts/check-red-on-parent.sh [<commit>]` runs the `function
+test*` names a change adds under `test/` against `src/` as it stood before, and
+fails when every one passes there; a `Red-on-parent:` trailer in the commit
+message runs it from `.husky/commit-msg`.
 
 ## Opportunistic — Mythril
 

@@ -323,7 +323,16 @@ test("a named secret path is unreadable", { skip: !HAS_SANDBOX_EXEC }, () => {
     }
 });
 
-test("direct outbound network is denied, and so is every loopback port but the proxy's", { skip: !HAS_SANDBOX_EXEC }, async () => {
+/** A shell that is already sandboxed (an agent harness's own sandbox) restricts a nested
+ *  sandbox-exec further: it cannot reach a loopback port the outer sandbox does not open.
+ *  The probe runs the same `nc` under a permissive nested profile; when THAT cannot reach
+ *  the port, the environment — not this profile — is what blocks it. */
+function nestedLoopbackBlocked(port) {
+    const probe = spawnSync("sandbox-exec", ["-p", "(version 1)(allow default)", "/usr/bin/nc", "-z", "127.0.0.1", String(port)], { encoding: "utf-8" });
+    return probe.status !== 0;
+}
+
+test("direct outbound network is denied, and so is every loopback port but the proxy's", { skip: !HAS_SANDBOX_EXEC }, async (t) => {
     const workspace = fs.mkdtempSync(path.join(os.tmpdir(), "sbx-ws-"));
     // One loopback listener stands in for the egress proxy; the other for
     // what else listens on a host — a local IPFS API, a devnet, a proxy that
@@ -333,6 +342,13 @@ test("direct outbound network is denied, and so is every loopback port but the p
     await new Promise((r) => proxy.listen(0, "127.0.0.1", r));
     await new Promise((r) => other.listen(0, "127.0.0.1", r));
     const proxyPort = proxy.address().port;
+    if (nestedLoopbackBlocked(proxyPort)) {
+        await new Promise((r) => proxy.close(r));
+        await new Promise((r) => other.close(r));
+        fs.rmSync(workspace, { recursive: true, force: true });
+        t.skip("the shell is already sandboxed: a nested sandbox-exec cannot reach the loopback port of the stand-in proxy even under a permissive profile");
+        return;
+    }
     try {
         // 1.1.1.1:443 — a reachable host on the open internet; the sandbox
         // must refuse the connection attempt itself.
