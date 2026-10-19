@@ -119,6 +119,7 @@ import {
     decodeProvenanceContent,
     generateSalt,
     provenanceLeafAttestation,
+    provenanceContentRef,
     provenanceLeafBytes,
     reconstructOrdersFromAssembly,
     hashClauseData,
@@ -930,9 +931,31 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
                 groups: unknown[]; unattributedProcessCount: number;
                 valueFlow: { edges: Array<Record<string, unknown>> };
             };
-            expect(shape.groups, 'no held agreements ⇒ no attributed groups — never a guessed bin').toEqual([]);
-            expect(shape.unattributedProcessCount, 'every process on this chain is reported, unattributed')
-                .toBe(new Set(allCommitted.map((e) => (e.args.processId as string).toLowerCase())).size);
+            // The analyst holds no agreement, so it attributes only through the
+            // public provenance overlay: a process whose BUYER attested the
+            // provenance leaf, the pair recovered and re-hashing to the attested
+            // contentRef. The same fold, recomputed here from chain + IPFS.
+            const buyerByOrder = new Map(allCommitted.map((e) => [(e.args.orderHash as string).toLowerCase(), (e.args.buyer as string).toLowerCase()]));
+            const expectedAttribution = new Map<string, string>();
+            for (const ev of [...directAtt, ...batchAtt]) {
+                if ((ev.args.clauseId as string).toLowerCase() !== PROVENANCE_LEAF_KEY.toLowerCase()) continue;
+                const processId = (ev.args.processId as string).toLowerCase();
+                if (expectedAttribution.has(processId)) continue;
+                if (buyerByOrder.get((ev.args.orderHash as string).toLowerCase()) !== (ev.args.attester as string).toLowerCase()) continue;
+                const bytes = await fetchWitnessBytes(ev.args.contentRef as string);
+                const pair = bytes ? decodeProvenanceContent(bytes as Hex) : null;
+                if (!pair) continue;
+                if (provenanceContentRef(pair.agreementKey, pair.compositionHash).toLowerCase() !== (ev.args.contentRef as string).toLowerCase()) continue;
+                expectedAttribution.set(processId, pair.compositionHash.toLowerCase());
+            }
+            expect(expectedAttribution.size, 'the seed test published a buyer-attested provenance leaf').toBeGreaterThan(0);
+            const expectedGroups = new Map<string, number>();
+            for (const key of expectedAttribution.values()) expectedGroups.set(key, (expectedGroups.get(key) ?? 0) + 1);
+            const wireGroups = new Map((shape.groups as Array<{ key: string; processCount: number }>).map((g) => [g.key.toLowerCase(), g.processCount]));
+            expect(wireGroups, 'each group is an assembly some buyer attested, with that many processes — never a guessed bin').toEqual(expectedGroups);
+            const allProcesses = new Set(allCommitted.map((e) => (e.args.processId as string).toLowerCase()));
+            expect(shape.unattributedProcessCount, 'every process no buyer attested is reported, unattributed')
+                .toBe(allProcesses.size - expectedAttribution.size);
 
             // ── The swap legs on the wire: /graphs and market-shape carry the
             //    value-flow graph's leg edges, equal to the out-of-band read
