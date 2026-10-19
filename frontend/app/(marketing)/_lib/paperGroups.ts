@@ -97,7 +97,7 @@ export const PAPER_GROUPS: PaperGroup[] = [
                 keywords: ["mechanism design", "subgame-perfect equilibrium", "Nash equilibrium", "asymmetric bonding", "multi-party coordination", "process chains", "peer enforcement"],
                 industries: [],
                 question: "Can a promise between strangers, and a chain of sellers behind one buyer, be made credible before the trade, with no authority acting after it?",
-                result: "Proved: cooperation is the equilibrium for any number of orders the network resolves in one call, : after performance resolving is the buyer's strict preference with no assumption about the seller; given the buyer's plan to resolve once performance has occurred and its co-sellers' performance, performing is each seller's strict best response; and atomic resolution puts the sellers in a weakest-link subgame whose selection criteria favor universal performance.",
+                result: "Proved: cooperation is the equilibrium for any number of orders the network resolves in one call: after performance resolving is the buyer's strict preference with no assumption about the seller; given the buyer's plan to resolve once performance has occurred and its co-sellers' performance, performing is each seller's strict best response; and atomic resolution puts the sellers in a weakest-link subgame whose selection criteria favor universal performance.",
                 scope: "One buyer and sellers who each sign for themselves; the goods and every passage of value stay off-chain, and a defector is credited with all it keeps; commit and resolve are the only calls, with no timeout; one denomination per process; of joint-liability lending it reproduces the coordination-pressure component, not peer selection or peer monitoring.",
             },
             {
@@ -117,7 +117,7 @@ export const PAPER_GROUPS: PaperGroup[] = [
                 keywords: ["transaction-cost economics", "theory of the firm", "subordination", "coordination economics", "two-sided markets", "organizational substrate", "institutional economics"],
                 industries: ["Firms and strategy"],
                 question: "What follows for the firm when a stranger's promise enforces itself for the network's gas and the time value of the bonds?",
-                result: "An economic hypothesis, stated as a proposition over the cost shapes of four governance modes: the bonded process is the cheaper mode where each party can bond its own link, the bonds' time value is a small share of the trade and the buyer can judge the outcome at acceptance, and above a recurrence threshold the firm keeps the cell.",
+                result: "A proposition derived from the two proved mechanisms and from stated cost shapes of four governance modes: the bonded process is the cheaper mode where each party can bond its own link, the bonds' time value is a small share of the trade and the buyer can judge the outcome at acceptance, and above a recurrence threshold the firm keeps the cell.",
                 scope: "Takes the equilibrium as proved, for any number of orders the network resolves in one call; the cost shapes are stated, not measured, and no play by independent participants has been observed; what remains of the firm passes to composition only where the productive assets hold their own wallets.",
             },
             {
@@ -127,7 +127,7 @@ export const PAPER_GROUPS: PaperGroup[] = [
                 keywords: ["comparative institutional analysis", "discriminating alignment", "transaction cost economics", "contract enforcement", "two-sided markets", "private ordering", "bonded commitment", "institutional substrates", "regulatory reporting", "unit of account"],
                 industries: ["Regulation and licensing", "E-invoicing and tax", "Platforms"],
                 question: "Of four substrates (the firm, the platform, the court, and the parties' own bonds), which makes a stranger's promise worth acting on at least cost, and where?",
-                result: "A comparison on ten institutional axes, with a discriminating-alignment result stated as an economic hypothesis from four cost shapes: against a platform the bond is cheaper for every trade open less than τ/(4r), against a court at small value, and where a party is no person any legal order recognizes the bond is the only one of the four substrates available.",
+                result: "A comparison on ten institutional axes, with a discriminating-alignment result that follows from the two proved mechanisms and four cost shapes: against a platform the bond is cheaper for every trade open less than τ/(4r), against a court at small value, and where a party is no person any legal order recognizes the bond is the only one of the four substrates available.",
                 scope: "A comparison of substrates, not a theory of the firm; the data a platform collects and its power to revoke admission are set aside; the shared infrastructure and any token are left out; analytic throughout, with no play by independent participants observed.",
             },
             {
