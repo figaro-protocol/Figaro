@@ -163,7 +163,7 @@ if (slugs.includes(tsi)) {
     const text = canon(raw);
     const cases = [
         ["§2", "the buyer bonds twice the payment", "the buyer bonds twice the payment P, and the seller bonds twice the value G ≥ P the process has accumulated"],
-        ["§5", "Market with a court.", "Market with a court. C_M = A + q(k)(L + D) + h(k): the apparatus a claim presupposes"],
+        ["§5", "Market with a court.", "Market with a court. C_M = A + φ + q(k)(L + D) + h(k): the apparatus a claim presupposes"],
     ];
     for (const [where, start, expected] of cases) {
         const want = canon(expected.replace("C_M", "CM"));
