@@ -15,7 +15,7 @@ import { useAccount, useReadContract, useWalletClient } from "wagmi";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { deriveSignState } from "@/lib/checkout/signState";
-import { useOrderCommitmentFlow } from "@/lib/checkout/orderCommitmentFlow";
+import { readSigningDesign, useOrderCommitmentFlow } from "@/lib/checkout/orderCommitmentFlow";
 import {
     deserializeCommitmentPayload,
     type CommitmentPayload,
@@ -23,7 +23,7 @@ import {
 import { ZERO_ADDRESS, hexEqual } from "@/lib/shared/evm";
 import { useTokenSymbol } from "@/hooks/useTokenSymbol";
 import { extractErrorMessage } from "@/lib/shared/errors";
-import { validateCommitmentAgreement } from "@figaro-protocol/sdk";
+import { validateCommitmentAgreement, type HydratedAssembly } from "@figaro-protocol/sdk";
 import { specSource } from "@/lib/shared/clauseSpecSource";
 import { TokenApprovalFlow } from "@/components/runtime/TokenApprovalFlow";
 import { SwapFundingPanel, fundingAuthorization, fundingBlocksTheAct } from "@/app/(app)/s/checkout/_components/SwapFundingPanel";
@@ -312,11 +312,24 @@ function SignPageContent() {
     // Off-chain validation over what was pasted/relayed: does the inline agreement merkle
     // to the signed agreementHash and conform to its clause specs? Computed at
     // review time so the party isn't reading terms that aren't the ones signed;
-    // the sign/commit gates re-assert this at the exit.
+    // the sign/commit gates re-assert this at the exit. The design the
+    // agreement names is read first, so the designer's values are checked
+    // against it; the check waits for the read.
+    const [designRead, setDesignRead] = useState<{ agreement: unknown; design: HydratedAssembly | null } | null>(null);
+    useEffect(() => {
+        const agreement = parsed?.agreement;
+        if (!agreement) return;
+        let live = true;
+        void readSigningDesign(agreement).then((design) => {
+            if (live) setDesignRead({ agreement, design });
+        });
+        return () => { live = false; };
+    }, [parsed]);
     const agreementCheck = useMemo(() => {
         if (!parsed?.agreement || !commitment) return null;
-        return validateCommitmentAgreement(parsed.agreement, commitment.agreementHash, specSource(), commitment);
-    }, [parsed, commitment]);
+        if (designRead?.agreement !== parsed.agreement) return null;
+        return validateCommitmentAgreement(parsed.agreement, commitment.agreementHash, specSource(), commitment, designRead.design);
+    }, [parsed, commitment, designRead]);
 
     // The seller's own listed prices beside the amounts it is asked to sign,
     // when the denomination is not the token its catalog is priced in: the

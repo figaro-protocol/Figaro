@@ -26,10 +26,10 @@
 
 import type { WalletClient } from "viem";
 import { buildCommitment, buildDomain, hashCommitmentStruct, verifyCommitmentSignature, COMMITMENT_TYPES, ZERO_PROCESS_ID } from "../commitments.js";
-import { computeAgreementHash, type Agreement } from "../agreement.js";
+import { computeAgreementHash, type Agreement, type AgreementProvenance } from "../agreement.js";
 import type { Hex, Address } from "../types.js";
 import type { CommitmentPayload, CoordinationChannel, PricedField, QuoteRequestTerms } from "./coordination.js";
-import { checkOfferPolicy, instantiateRootAgreement, verifyRaceReply, type OfferCheck, type OfferPolicy } from "./originate.js";
+import { checkOfferPolicy, instantiateRootAgreement, readOfferDesign, verifyRaceReply, type OfferCheck, type OfferPolicy } from "./originate.js";
 
 // One owner for the reply check: the offer loops and the race both use it.
 export { verifyRaceReply };
@@ -59,6 +59,7 @@ export function validateDraft(
     expectedSeller: Address,
     policy?: OfferPolicy,
     specs?: SpecSource,
+    design: HydratedAssembly | null = null,
 ): OfferCheck {
     if (draft.buyerSig) return { ok: false, reason: "payload carries a buyer signature — an offer, not a race draft" };
     if (draft.sellerSig) return { ok: false, reason: "payload already carries a seller signature" };
@@ -75,7 +76,7 @@ export function validateDraft(
     }
     if (specs) {
         try {
-            assertAgreementSignable(draft.agreement, c.agreementHash, specs, c, "This draft");
+            assertAgreementSignable(draft.agreement, c.agreementHash, specs, c, design, "This draft");
         } catch (cause) {
             return { ok: false, reason: cause instanceof Error ? cause.message : String(cause) };
         }
@@ -111,12 +112,13 @@ export async function counterSignDraft(
     accept?: (draft: CommitmentPayload) => boolean,
     policy?: OfferPolicy,
     specs?: SpecSource,
+    design: HydratedAssembly | null = null,
 ): Promise<CommitmentPayload | null> {
     const account = wallet.account;
     if (!account) throw new Error("counterSignDraft: wallet has no account");
     const seller = account.address;
 
-    const check = validateDraft(draft, seller, undefined, specs);
+    const check = validateDraft(draft, seller, undefined, specs, design);
     if (!check.ok) throw new Error(`counterSignDraft: refusing malformed draft — ${check.reason}`);
     if (draft.quoteRequest) {
         throw new Error("counterSignDraft: payload is a quote request — the candidate prices it via quoteDraft, never countersigns the ceiling");
@@ -297,12 +299,13 @@ export async function quoteDraft(
     quote?: (draft: CommitmentPayload) => bigint | null,
     policy?: OfferPolicy,
     specs?: SpecSource,
+    design: HydratedAssembly | null = null,
 ): Promise<CommitmentPayload | null> {
     const account = wallet.account;
     if (!account) throw new Error("quoteDraft: wallet has no account");
     const seller = account.address;
 
-    const check = validateDraft(draft, seller, undefined, specs);
+    const check = validateDraft(draft, seller, undefined, specs, design);
     if (!check.ok) throw new Error(`quoteDraft: refusing malformed quote request — ${check.reason}`);
     const terms = draft.quoteRequest;
     if (!terms || terms.pricedFields.length === 0) {
@@ -319,7 +322,7 @@ export async function quoteDraft(
 
     const { commitment: quoted, agreement } = buildCounterDraft(draft, terms, q);
     if (specs) {
-        assertAgreementSignable(agreement, quoted.agreementHash, specs, quoted, "This quote");
+        assertAgreementSignable(agreement, quoted.agreementHash, specs, quoted, design, "This quote");
     }
     const domain = buildDomain(ctx.chainId, ctx.core);
     const sellerSig = await wallet.signTypedData({
@@ -546,9 +549,11 @@ export function makeSellerRaceHandler(
         policy: OfferPolicy;
         /** The clause-spec source for the merkle-leaf seam — see `counterSignDraft`. */
         specs?: SpecSource;
+        /** Reads the design a draft's agreement names — see `makeSellerOfferHandler`. */
+        readDesign?: (provenance: AgreementProvenance) => Promise<HydratedAssembly | null>;
     },
 ): (offer: CommitmentPayload) => Promise<CommitmentPayload | null> {
-    return (offer) => counterSignDraft(wallet, offer, ctx, opts.accept, opts.policy, opts.specs);
+    return async (offer) => counterSignDraft(wallet, offer, ctx, opts.accept, opts.policy, opts.specs, await readOfferDesign(offer, opts.readDesign));
 }
 
 /**
@@ -565,7 +570,9 @@ export function makeSellerQuoteHandler(
         policy: OfferPolicy;
         /** The clause-spec source for the merkle-leaf seam — see `quoteDraft`. */
         specs?: SpecSource;
+        /** Reads the design a draft's agreement names — see `makeSellerOfferHandler`. */
+        readDesign?: (provenance: AgreementProvenance) => Promise<HydratedAssembly | null>;
     },
 ): (offer: CommitmentPayload) => Promise<CommitmentPayload | null> {
-    return (offer) => quoteDraft(wallet, offer, ctx, opts.quote, opts.policy, opts.specs);
+    return async (offer) => quoteDraft(wallet, offer, ctx, opts.quote, opts.policy, opts.specs, await readOfferDesign(offer, opts.readDesign));
 }

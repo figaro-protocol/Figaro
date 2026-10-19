@@ -170,11 +170,15 @@ counterparty's gate as the only net.
   With it the walk also fills the currency leaf from the figure the struct signs and
   THROWS on an override that contradicts it.
 - **Seller side:** `makeSellerOfferHandler(wallet, publicClient, addresses, { accept,
-  policy, specs })`, or `counterSignOffer(wallet, offer, ctx, accept, policy, specs)`
-  directly. The market-formation legs take it in the same last position —
-  `counterSignDraft(wallet, draft, ctx, accept, policy, specs)`,
-  `quoteDraft(wallet, draft, ctx, quote, policy, specs)` — and the mountable handlers
-  `makeSellerRaceHandler` / `makeSellerQuoteHandler` accept it in their opts.
+  policy, specs, readDesign })`, or `counterSignOffer(wallet, offer, ctx, accept, policy,
+  specs, design)` directly. The market-formation legs take them in the same last positions —
+  `counterSignDraft(wallet, draft, ctx, accept, policy, specs, design)`,
+  `quoteDraft(wallet, draft, ctx, quote, policy, specs, design)` — and the mountable handlers
+  `makeSellerRaceHandler` / `makeSellerQuoteHandler` accept `specs` and `readDesign` in their
+  opts. `design` is the hydrated assembly the payload's provenance leaf names; `readDesign`
+  reads it per payload (`(provenance) => Promise<HydratedAssembly | null>`: the assembly by
+  its composition hash, verified with `anchorAssembly`, its registered agreements with
+  `hydrateAssembly`). With `specs`, a payload naming a design you did not read is refused.
 
 ```ts
 channel.register(sellerAddr, makeSellerOfferHandler(sellerWallet, publicClient, addresses, {
@@ -374,9 +378,10 @@ root `@figaro-protocol/sdk` exports and the document you were handed:
 
 **Recomputing the hash stays necessary — and it is not sufficient.** A document can hash
 correctly and still be wrong: the terms inside it can contradict the struct you bond
-against, or omit a term the clause requires. `assertAgreementSignable(agreement,
-agreementHash, specs, commitment, label)` is the one off-chain gate every signature in the
-SDK routes through, and it refuses three things the hash comparison cannot see:
+against, omit a term the clause requires, or change a designer's value.
+`assertAgreementSignable(agreement, agreementHash, specs, commitment, design, label)` is the
+one off-chain gate every signature in the SDK routes through, and it refuses four things the
+hash comparison cannot see:
 
 - **A clause that violates its own clause spec** — including a MISSING REQUIRED term. An
   agreement can carry a clause the designer composed and the buyer never filled; the gate
@@ -389,6 +394,11 @@ SDK routes through, and it refuses three things the hash comparison cannot see:
   assembly-scoped clause declaring `currency` as a designer fill), the gate asserts
   pin == commerce leaf == struct — so an assembly denominated by design cannot be resolved
   in a token the designer did not pin.
+- **A designer value a party changed.** `design` is the hydrated assembly the agreement's
+  provenance leaf names. Every field a clause declares in `block.design.fills` that the
+  design sets must arrive unchanged; a buyer or a seller never changes it. A design field
+  the designer left unset is yours to fill. Pass `null` only for an agreement naming no
+  design: an agreement naming one is refused when its design was not read.
 
 The gate needs your `SpecSource` to run (step 1 of the recipe above): pass `specs` and it
 runs, omit it and only the structural checks do. On the seller side the same gate rides
@@ -532,9 +542,9 @@ the next reply is the free fallback. Two legs, one choreography, from
   posted price; a counter-signature means "available at my price"; cheapest available
   wins. Buyer: build one draft per candidate, then
   `requestCounterSignatures(channel, drafts, ctx)` → verified replies + the winner.
-  Candidate: mount `makeSellerRaceHandler(wallet, ctx, { accept, policy, specs })` — the
-  same `SpecSource` as everywhere else, so a draft whose leaf contradicts the struct is
-  refused before any signature.
+  Candidate: mount `makeSellerRaceHandler(wallet, ctx, { accept, policy, specs, readDesign })`
+  — the same `SpecSource` as everywhere else, so a draft whose leaf contradicts the struct,
+  or whose designer values differ from its design, is refused before any signature.
 - **The RFQ (the candidate names the price):** the request drafts at the buyer's
   CEILING (their reservation price, inside the signed struct so the cap is enforceable)
   with `pricedFields` naming where the figure lives; the candidate's counter-draft

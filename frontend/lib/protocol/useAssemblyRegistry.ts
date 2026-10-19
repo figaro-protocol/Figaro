@@ -297,3 +297,18 @@ export async function fetchAssemblyByHash(
         return null;
     }
 }
+
+/**
+ * The hydrated assembly an agreement's provenance names, read BY ITS
+ * COMPOSITION ROOT (`fetchAssemblyByHash`) and every agreement's registered
+ * agreement read and verified against its key (`hydrateAnchoredAssembly`) —
+ * the design the sign gate checks the designer's values against. Null when
+ * the assembly or any registered agreement is unbound, unreachable or not
+ * the document its key names.
+ */
+export async function fetchHydratedAssemblyByHash(
+    compositionHash: `0x${string}`,
+): Promise<HydratedAssembly | null> {
+    const assembly = await fetchAssemblyByHash(compositionHash);
+    return assembly ? hydrateAnchoredAssembly(assembly) : null;
+}

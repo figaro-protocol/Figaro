@@ -529,8 +529,8 @@ describe("OriginationSequenceFigure", () => {
     it("draws both refusal exits, each with its own consequence", () => {
         const { container } = render(<OriginationSequenceFigure />);
         const text = container.textContent ?? "";
-        expect(text).toContain("refuses to sign: a missing required term, or a leaf that");
-        expect(text).toContain("contradicts the struct it rides with. Nothing is signed.");
+        expect(text).toContain("refuses to sign: a missing required term, a leaf that contradicts");
+        expect(text).toContain("the struct it rides with, or a designer value changed. Nothing is signed.");
         expect(text).toContain("a hash or signature mismatch THROWS; the two opt-in");
         expect(text).toContain("floors decline with null instead. Nothing is on chain.");
         // One no-entry glyph per exit, and no others.

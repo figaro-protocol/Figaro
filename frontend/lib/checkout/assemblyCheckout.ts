@@ -37,6 +37,7 @@ import {
     agreementClauses,
     assemblyParentOrderHashes,
     type AssemblyCheckoutLineItem,
+    type HydratedAssembly,
     type PlannedAssemblyOrder,
     type ReconstructNodeSpec,
     type ReconstructedOrder,
@@ -84,8 +85,8 @@ export interface AssemblyCheckoutDeps {
 /** Off-chain validation, early: surface an invalid agreement BEFORE the wallet opens. The
  *  sign step itself (`signAs`) runs the same gate — this call is the UX
  *  courtesy, not the enforcement. */
-function assertValidToSign(preview: OrderPreview, label: string): void {
-    assertAgreementSignable(preview.agreement, preview.agreementHash, specSource(), preview.commitment, label);
+function assertValidToSign(preview: OrderPreview, design: HydratedAssembly, label: string): void {
+    assertAgreementSignable(preview.agreement, preview.agreementHash, specSource(), preview.commitment, design, label);
 }
 
 /** The entries the fills actually CHANGED — passed to the walk as overrides so
@@ -250,7 +251,7 @@ export async function executeAssemblyCheckout(
                 // share panel shows the root for the buyer to relay to the
                 // lead. The lead accepts → root commits → the already-shared
                 // sub-orders unlock for their sellers to accept.
-                assertValidToSign(preview, "This order");
+                assertValidToSign(preview, hydrated, "This order");
                 rootPreview = preview;
                 return;
             }
@@ -271,7 +272,7 @@ export async function executeAssemblyCheckout(
                     tokenDecimals: params.tokenDecimals,
                 });
             }
-            assertValidToSign(preview, "A sub-order");
+            assertValidToSign(preview, hydrated, "A sub-order");
             // A race-formed node: the winner already countersigned the drafted
             // struct, so the rebuilt struct must hash to EXACTLY the drafted
             // one — a mismatch means the walk inputs drifted from draft time,

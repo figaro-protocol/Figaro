@@ -26,8 +26,9 @@ export type OriginationSequenceFigureProps = BaseFigureProps;
  *    HYDRATED from its `contentURI`, and the commerce clause is located by the
  *    field it declares — no hardcoded clause id.
  *  - Buyer gate: `assertAgreementSignable(agreement, expectedHash, specs,
- *    struct)` — every clause conforms to its spec AND the currency /
- *    payment TERMS equal the commitment struct's mirrors.
+ *    struct, design)` — every clause conforms to its spec, the currency /
+ *    payment TERMS equal the commitment struct's mirrors, AND every
+ *    designer value arrives as the design gives it.
  *  - Deadline: `computeDeadline(await readChainTimestamp(client))` — chain
  *    time, never the machine clock.
  *  - Seller gate: `validateOffer` — buyer signature present, named seller is
@@ -91,12 +92,13 @@ const ROWS: readonly Row[] = [
         from: "buyer",
         label: "validate — assertAgreementSignable()",
         detail: [
-            "Every clause conforms to its spec, and the currency and payment",
-            "TERMS equal the commitment struct's mirrors.",
+            "Every clause conforms to its spec, the currency and payment TERMS",
+            "equal the commitment struct's mirrors, and the designer's values",
+            "arrive as the assembly gives them.",
         ],
         exit: [
-            "refuses to sign: a missing required term, or a leaf that",
-            "contradicts the struct it rides with. Nothing is signed.",
+            "refuses to sign: a missing required term, a leaf that contradicts",
+            "the struct it rides with, or a designer value changed. Nothing is signed.",
         ],
     },
     {

@@ -309,3 +309,61 @@ describe("the assembly-scope fold at root instantiation (audit hole (a), closed)
         expect(offer.commitment.agreementHash).toBe(computeAgreementHash(offer.agreement));
     });
 });
+
+describe("the designer's values — never changed by a buyer or a seller", () => {
+    // The ruling: a design fill (`block.design.fills`) the designer set is the
+    // designer's value; the sign gate refuses an agreement whose clause
+    // carries another, wherever the override came from.
+    const DESIGN_SPECS = specSourceFromFixtures(["figaro-commerce", "figaro-topology", "figaro-consent", "figaro-applicable-law"]);
+    const DOCS = [{ documentHash: `0x${"d0".repeat(32)}`, documentVersion: "1.0.0", documentTitle: "Terms of Service" }];
+    const FORGED = [{ documentHash: `0x${"ee".repeat(32)}`, documentVersion: "1.0.0", documentTitle: "Terms of Service" }];
+    const designed = hydrateAuthored({
+        assemblyClauses: { [keyOf("figaro-applicable-law")]: { applicableLaw: "England-Wales" } },
+        agreements: [{
+            id: "order-0",
+            clauses: {
+                [keyOf("figaro-commerce")]: {},
+                [keyOf("figaro-topology")]: { parentOrderHashes: [] },
+                [keyOf("figaro-consent")]: { documents: DOCS },
+            },
+        }],
+    });
+    const params = (extra: Record<string, Record<string, unknown>>) => ({
+        assembly: designed, seller: SELLER.address, currency: CURRENCY, payment: 1000n,
+        chainId: CHAIN, core: CORE, deadline: 1_900_000_000n, specs: DESIGN_SPECS,
+        overrides: { ...overrides, ...extra },
+    });
+
+    it("signs an offer that keeps every designer value", async () => {
+        const offer = await buildBuyerOffer(buyerW, params({}));
+        expect(offer.buyerSig).toBeDefined();
+    });
+
+    it("refuses an override that replaces an agreement-scoped designer value", async () => {
+        await expect(buildBuyerOffer(buyerW, params({ [keyOf("figaro-consent")]: { documents: FORGED } })))
+            .rejects.toThrow(/figaro-consent documents: .*designer/);
+    });
+
+    it("refuses an override that replaces an assembly-scoped designer value", async () => {
+        await expect(buildBuyerOffer(buyerW, params({ [keyOf("figaro-applicable-law")]: { applicableLaw: "US-NY" } })))
+            .rejects.toThrow(/figaro-applicable-law applicableLaw: .*designer/);
+    });
+
+    it("the seller refuses an offer whose designer value a buyer changed, and one whose design it cannot read", async () => {
+        // A buyer that skips its own gate (no specs) still reaches the seller's.
+        const forged = await buildBuyerOffer(buyerW, { ...params({ [keyOf("figaro-consent")]: { documents: FORGED } }), specs: undefined });
+        expect(validateOffer(forged, SELLER.address, undefined, DESIGN_SPECS, designed).reason).toMatch(/figaro-consent documents: .*designer/);
+        const clean = await buildBuyerOffer(buyerW, params({}));
+        expect(validateOffer(clean, SELLER.address, undefined, DESIGN_SPECS, designed).ok).toBe(true);
+        expect(validateOffer(clean, SELLER.address, undefined, DESIGN_SPECS).reason).toMatch(/was not read/);
+        await expect(counterSignOffer(sellerW, forged, { chainId: CHAIN, core: CORE }, () => true, policy, DESIGN_SPECS, designed))
+            .rejects.toThrow(/designer/);
+    });
+
+    it("lets a party fill a design field the designer left unset", async () => {
+        const offer = await buildBuyerOffer(buyerW, params({
+            [keyOf("figaro-applicable-law")]: { applicableLaw: "England-Wales", forum: "London" },
+        }));
+        expect(offer.buyerSig).toBeDefined();
+    });
+});

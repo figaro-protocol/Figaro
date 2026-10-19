@@ -21,7 +21,7 @@
 import type { WalletClient, PublicClient } from "viem";
 import { verifyTypedData } from "viem";
 import { buildCommitment, buildDomain, hashCommitmentStruct, verifyCommitmentSignature, ZERO_PROCESS_ID, COMMITMENT_TYPES } from "../commitments.js";
-import { computeAgreementHash, type Agreement } from "../agreement.js";
+import { computeAgreementHash, type Agreement, type AgreementProvenance } from "../agreement.js";
 import { assertAgreementSignable, type SpecSource } from "../projection.js";
 import { ERC20_ABI } from "../abis.js";
 import { commit, type TxResult } from "./autonomous.js";
@@ -127,7 +127,7 @@ export async function buildBuyerOffer(wallet: WalletClient, params: BuildOfferPa
         agreementHash, salt: params.salt, deadline: params.deadline,
     }, domain);
     if (params.specs) {
-        assertAgreementSignable(agreement, agreementHash, params.specs, commitment, "This offer");
+        assertAgreementSignable(agreement, agreementHash, params.specs, commitment, params.assembly, "This offer");
     }
     const buyerSig = await wallet.signTypedData({ account, ...typedData });
     return { commitment, agreement, buyerSig };
@@ -201,6 +201,7 @@ export function validateOffer(
     expectedSeller: Address,
     policy?: OfferPolicy,
     specs?: SpecSource,
+    design: HydratedAssembly | null = null,
 ): OfferCheck {
     if (!offer.buyerSig) return { ok: false, reason: "offer is missing the buyer signature" };
     const c = offer.commitment;
@@ -214,7 +215,7 @@ export function validateOffer(
     }
     if (specs) {
         try {
-            assertAgreementSignable(offer.agreement, c.agreementHash, specs, c, "This offer");
+            assertAgreementSignable(offer.agreement, c.agreementHash, specs, c, design, "This offer");
         } catch (cause) {
             return { ok: false, reason: cause instanceof Error ? cause.message : String(cause) };
         }
@@ -283,13 +284,14 @@ export async function counterSignOffer(
     accept?: (offer: CommitmentPayload) => boolean,
     policy?: OfferPolicy,
     specs?: SpecSource,
+    design: HydratedAssembly | null = null,
 ): Promise<CommitmentPayload | null> {
     const account = wallet.account;
     if (!account) throw new Error("counterSignOffer: wallet has no account");
     const seller = account.address;
 
     // Anti-tamper gate: a malformed/tampered offer THROWS (integrity attack).
-    const check = validateOffer(offer, seller, undefined, specs);
+    const check = validateOffer(offer, seller, undefined, specs, design);
     if (!check.ok) throw new Error(`counterSignOffer: refusing malformed offer — ${check.reason}`);
 
     const domain = buildDomain(ctx.chainId, ctx.core);
@@ -425,9 +427,32 @@ export interface SellerOfferHandlerOpts {
      *  handler runs no leaf/struct check — the caller's own SpecSource (the same
      *  one used to originate or display the offer) is the one to pass here. */
     specs?: SpecSource;
+    /** Reads the design an offer's agreement names (its provenance leaf):
+     *  the assembly by its composition hash, every registered agreement
+     *  verified against its key; null when it cannot be read. With `specs`,
+     *  the gate checks the designer's values against it, and an offer whose
+     *  design is not read is refused. */
+    readDesign?: (provenance: AgreementProvenance) => Promise<HydratedAssembly | null>;
     /** Approve the seller's 2× cumulative-value bond before returning the signed
      *  offer, so the allowance is on chain before the buyer commits (default true). */
     approveBond?: boolean;
+}
+
+/** The design an inbound payload's agreement names, read through the
+ *  operator's `readDesign`; null when the agreement names none, no reader is
+ *  given, or the read fails — the gate then refuses an agreement naming a
+ *  design. Shared by the offer and the race handlers. */
+export async function readOfferDesign(
+    payload: CommitmentPayload,
+    readDesign?: (provenance: AgreementProvenance) => Promise<HydratedAssembly | null>,
+): Promise<HydratedAssembly | null> {
+    const provenance = payload.agreement.provenance;
+    if (!provenance || !readDesign) return null;
+    try {
+        return await readDesign(provenance);
+    } catch {
+        return null;
+    }
 }
 
 /**
@@ -446,7 +471,8 @@ export function makeSellerOfferHandler(
 ): OfferHandler {
     return async (offer: CommitmentPayload): Promise<CommitmentPayload | null> => {
         const chainId = await publicClient.getChainId();
-        const signed = await counterSignOffer(wallet, offer, { chainId, core: addresses.core }, opts.accept, opts.policy, opts.specs);
+        const design = await readOfferDesign(offer, opts.readDesign);
+        const signed = await counterSignOffer(wallet, offer, { chainId, core: addresses.core }, opts.accept, opts.policy, opts.specs, design);
         if (!signed) return null;
         if (opts.approveBond !== false) {
             await approveBond(wallet, publicClient, addresses.core, offer.commitment.currency, 2n * offer.commitment.expectedCumulativeValue);
@@ -542,7 +568,7 @@ export async function buildChainOffers(wallet: WalletClient, params: BuildChainP
             if (params.specs) {
                 assertAgreementSignable(
                     order.agreement, order.commitment.agreementHash, params.specs,
-                    order.commitment, `Order "${order.nodeId}"`,
+                    order.commitment, params.assembly, `Order "${order.nodeId}"`,
                 );
             }
             const buyerSig = await wallet.signTypedData({ account, ...order.typedData });

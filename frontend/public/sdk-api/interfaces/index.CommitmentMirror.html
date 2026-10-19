@@ -14,12 +14,16 @@
 <section class="tsd-panel tsd-comment">
 <div class="tsd-comment tsd-typography"><p>The off-chain layer of the verification stack, run on BOTH sides of the bilateral commit
 (buyer before initiating, seller before counter-signing) so neither party
-signs an invalid agreement. Three checks: every present clause conforms to
+signs an invalid agreement. Four checks: every present clause conforms to
 its clause spec (validateContent; process-log clauses are presence-markers,
 skipped); the denomination AND payment the parties are about to sign
 as TERMS equal the ones they are about to sign as EXECUTION data
 (leaf == struct for both mirrored fields, and where a denomination pin is
-composed, pin == leaf); and the <code>agreementHash</code> about to be signed equals
+composed, pin == leaf); every designer value (<code>block.design.fills</code>) the
+design sets arrives unchanged — <code>design</code> is the hydrated assembly the
+agreement's provenance names, <code>null</code> when none was read, and an agreement
+naming a design then fails (a buyer or a seller never changes the
+designer's values); and the <code>agreementHash</code> about to be signed equals
 the merkle root recomputed from the clauses. Catches a malformed agreement
 before a chain round-trip.</p>
 <p><code>struct</code> is the commitment's mirrored pair — the struct side of the
@@ -31,7 +35,7 @@ bare currency string fails at compile, not silently.</p>
 </div></section>
 <div class="tsd-signature"><span class="tsd-signature-keyword">interface</span> <span class="tsd-kind-interface">CommitmentMirror</span> <span class="tsd-signature-symbol">{</span><br/>    <a class="tsd-kind-property" href="#currency">currency</a><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">`</span><span class="tsd-signature-type">0x</span><span class="tsd-signature-symbol">${</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">`</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#payment">payment</a><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">bigint</span><span class="tsd-signature-symbol">;</span><br/><span class="tsd-signature-symbol">}</span></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/projection.ts#L443">projection.ts:443</a></li></ul></aside>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/projection.ts#L449">projection.ts:449</a></li></ul></aside>
 <section class="tsd-panel-group tsd-index-group">
 <section class="tsd-panel tsd-index-panel">
 <details class="tsd-index-content tsd-accordion" open><summary class="tsd-accordion-summary tsd-index-summary"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>
@@ -51,14 +55,14 @@ bare currency string fails at compile, not silently.</p>
 <div class="tsd-comment tsd-typography"><p>The commitment's <code>currency</code> field.</p>
 </div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/projection.ts#L445">projection.ts:445</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/projection.ts#L451">projection.ts:451</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member">
 <h3 class="tsd-anchor-link" id="payment"><span>payment</span><a href="#payment" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">payment</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">bigint</span></div>
 <div class="tsd-comment tsd-typography"><p>The commitment's <code>payment</code> field.</p>
 </div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/projection.ts#L447">projection.ts:447</a></li></ul></aside></section></section></details></div>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/projection.ts#L453">projection.ts:453</a></li></ul></aside></section></section></details></div>
 <div class="col-sidebar">
 <div class="page-menu">
 <div class="tsd-navigation settings">

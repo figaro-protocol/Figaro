@@ -388,22 +388,28 @@ describe("the merkle-leaf seam on the race + quote legs (docs/CLAUSES.md § 'Eve
             overrides: fullCommerce(CURRENCY, "1000"),
         });
         const { buyerSig: _stripped, ...draft } = offer;
-        const reply = await counterSignDraft(courierAW, draft, CTX, () => true, policy, SPECS);
+        // The gate reads the design the draft names: without it the
+        // candidate refuses, with it the clean draft countersigns.
+        await expect(counterSignDraft(courierAW, draft, CTX, () => true, policy, SPECS))
+            .rejects.toThrow(/was not read/);
+        const reply = await counterSignDraft(courierAW, draft, CTX, () => true, policy, SPECS, assembly);
         expect(reply?.sellerSig).toBeDefined();
-        const viaHandler = makeSellerRaceHandler(courierAW, CTX, { accept: () => true, policy, specs: SPECS });
+        const viaHandler = makeSellerRaceHandler(courierAW, CTX, { accept: () => true, policy, specs: SPECS, readDesign: async () => assembly });
         expect((await viaHandler(draft))?.sellerSig).toBeDefined();
+        const unread = makeSellerRaceHandler(courierAW, CTX, { accept: () => true, policy, specs: SPECS, readDesign: async () => null });
+        await expect(unread(draft)).rejects.toThrow(/was not read/);
     });
 
     it("quoteDraft with specs: a clean request quotes (outbound gate passes), a leaf-tampered request THROWS", async () => {
         const clean = requestFor(COURIER_A.address);
-        const reply = await quoteDraft(courierAW, clean, CTX, () => 700n, quotePolicy, SPECS);
+        const reply = await quoteDraft(courierAW, clean, CTX, () => 700n, quotePolicy, SPECS, assembly);
         expect(reply?.sellerSig).toBeDefined();
         const tampered = buildQuoteRequest({
             assembly: assembly, buyer: BUYER.address, seller: COURIER_A.address, currency: CURRENCY,
             ceiling: CEILING, chainId: CHAIN, core: CORE, pricedFields: PRICED, deadline: 1_900_000_000n,
             overrides: fullCommerce(BAD_CURRENCY, "0"),
         });
-        await expect(quoteDraft(courierAW, tampered, CTX, () => 700n, quotePolicy, SPECS))
+        await expect(quoteDraft(courierAW, tampered, CTX, () => 700n, quotePolicy, SPECS, assembly))
             .rejects.toThrow(/denomination/i);
     });
 });

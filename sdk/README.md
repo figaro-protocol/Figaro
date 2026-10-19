@@ -124,12 +124,15 @@ What it does, in order:
    `InProcessChannel`, with both refusal floors filled in explicitly (an `accept`
    business rule plus an economic `policy` bounding currency and magnitude) and
    the registry-built `SpecSource` (`specs`), which arms the merkle-leaf sign
-   gate. A handler missing either floor declines every offer.
+   gate, and a `readDesign` reader, which hands the gate the hydrated assembly
+   an offer's provenance leaf names. A handler missing either floor declines
+   every offer.
 3. **Runs the buyer loop.** `originateProcess(…)` instantiates the discovered
    assembly's root agreement with the buyer's overrides, runs the merkle-leaf
    sign gate (`assertAgreementSignable` — every clause conforms to its spec,
-   and the currency/payment TERMS equal the commitment struct's mirrors; a
-   missing required term or a leaf/struct contradiction refuses to sign), signs
+   the currency/payment TERMS equal the commitment struct's mirrors, and every
+   designer value the assembly sets arrives unchanged; a missing required term,
+   a leaf/struct contradiction or a changed designer value refuses to sign), signs
    the EIP-712 commitment against a CHAIN-time deadline (`readChainTimestamp` +
    `computeDeadline` — never the machine clock), and hands the offer to the
    channel. The seller re-hashes the agreement against the committed
@@ -309,7 +312,7 @@ definition) and `RPGF_*` constant is a **root** export.
 | `buildRegisteredClauseInclusionProof` | root | A composed clause's membership proof under `agreementKeyOf`: its leaf, its sorted-pair proof, and the hash of the designer's fills for it. |
 | `anchorRegisteredAgreement` | root | A fetched registered agreement as `Anchored<RegisteredAgreement>` when `agreementKeyOf` of it is the key; null (absence) otherwise. |
 | `anchorAssembly` | root | A fetched assembly as `Anchored<Assembly>` when its merkle root over the agreements and terms is `AssemblyRegistry`'s `compositionHash`; null otherwise. |
-| `assertAgreementSignable` | root | The ONE pre-signature thrower: every clause conforms to its spec, and the terms equal the struct. |
+| `assertAgreementSignable` | root | The ONE pre-signature thrower: every clause conforms to its spec, the terms equal the struct, and the designer's values equal the design's. |
 | `assertApprovalCoversBond` | root | Throws when an approval is short of the full per-order bond `FigaroCore` will pull. |
 | `attestAsBuyer` | `/agent` | Submit a root-buyer attestation for one leaf of a committed order — a clause, or the provenance leaf. |
 | `attestAsSeller` | `/agent` | Submit a seller attestation for one clause of a committed order. |
@@ -1028,6 +1031,10 @@ channel.register(sellerAddr, makeSellerOfferHandler(sellerWallet, publicClient, 
     specs, // the merkle-leaf sign gate — a leaf/struct contradiction or missing
            // required term REFUSES before counter-signing; omit it and no
            // content check runs on this side
+    readDesign, // (provenance) => the hydrated assembly the offer names, read
+           // by its composition hash and verified (`anchorAssembly` +
+           // `hydrateAssembly`), or null. With `specs`, an offer whose design
+           // is not read, or whose designer values differ, is REFUSED
 }));
 const tx = await originateProcess(buyerWallet, publicClient, addresses, {
     channel, assembly, buyer, seller, currency, payment, chainId, core, overrides,
@@ -1064,7 +1071,7 @@ const a2aTx = await originateProcess(buyerWallet, publicClient, addresses,
 // serverless function), wrapping the SAME `makeSellerOfferHandler` — so the
 // refuse-all floor is unchanged: no `accept` OR no `policy` declines everything.
 const respond = makeA2aOfferResponder(
-    makeSellerOfferHandler(sellerWallet, publicClient, addresses, { accept, policy, specs }), // the two floors + the sign gate
+    makeSellerOfferHandler(sellerWallet, publicClient, addresses, { accept, policy, specs, readDesign }), // the two floors + the sign gate
 );
 const { status, body } = await respond(rawRequestBody); // status is always 200 — JSON-RPC carries the outcome
 // The three handshake outcomes on the wire, mirroring HttpChannel's 200/204/422:
@@ -1089,16 +1096,18 @@ const { status, body } = await respond(rawRequestBody); // status is always 200 
 // (FigaroCore needs both signatures); a losing countersignature expires inert
 // at the struct deadline. Same two candidate-side floors as counterSignOffer,
 // and the same optional `specs` merkle-leaf gate: with a SpecSource, a draft
-// whose commerce leaf contradicts the struct is refused before any signature.
+// whose commerce leaf contradicts the struct, or whose designer values differ
+// from the design it names (`design`, the hydrated assembly; null refuses a
+// draft naming one), is refused before any signature.
 import { validateDraft, counterSignDraft, verifyRaceReply, selectRaceWinner } from "@figaro-protocol/sdk/agent";
-const reply = await counterSignDraft(courierWallet, draft, { chainId, core }, accept, policy, specs);
+const reply = await counterSignDraft(courierWallet, draft, { chainId, core }, accept, policy, specs, design);
 // Buyer side: exact struct-hash equality against the SENT draft, then recovery —
 // a doctored reply cannot ride a valid signature.
 const check = await verifyRaceReply(reply!, draft, { chainId, core });
 const winner = selectRaceWinner(replies); // cheapest countersigner; ties by arrival
 // Packaged fan-out + mountable responder (the RFQ leg below has the same pair):
 import { requestCounterSignatures, makeSellerRaceHandler } from "@figaro-protocol/sdk/agent";
-channel.register(courierAddr, makeSellerRaceHandler(courierWallet, { chainId, core }, { accept, policy, specs }));
+channel.register(courierAddr, makeSellerRaceHandler(courierWallet, { chainId, core }, { accept, policy, specs, readDesign }));
 const race = await requestCounterSignatures(channel, drafts, { chainId, core }); // { replies, winner }
 
 // The RFQ leg — same choreography, the CANDIDATE authors the price (bespoke
@@ -1822,9 +1831,16 @@ clauses deterministically, and returns the `Agreement` + its merkle-root
 signature routes through — buyer sign, seller counter-sign, and the checkout's
 pre-wallet check all call it, so no path signs an agreement whose clauses
 violate their specs, whose denomination differs between the signed TERM
-and the signed STRUCT, or whose hash mismatches its recomputed root
-(`validateCommitmentAgreement` is the non-throwing form, returning
-`{ ok, issues }`). The mirror check is why the gate takes the commitment's
+and the signed STRUCT, whose designer values (`block.design.fills`) differ
+from the design the agreement's provenance leaf names, or whose hash
+mismatches its recomputed root (`validateCommitmentAgreement` is the
+non-throwing form, returning `{ ok, issues }`). The design is the gate's
+fifth argument: the hydrated assembly the provenance names, which the caller
+reads and verifies (`anchorAssembly` + `hydrateAssembly`), or `null` when it
+read none — `null` refuses any agreement that names a design, so a design that
+cannot be fetched or does not verify is never signed. A value the design sets
+is the designer's and arrives unchanged; a design field the designer left
+unset is a party's to fill. The mirror check is why the gate takes the commitment's
 `{ currency, payment }` pair (a full `Commitment` satisfies it): both are
 clause leaves under `agreementHash` (the commerce clause's `currency` and
 `payment` fields) AND fields of the commitment, and the gate asserts
@@ -1843,8 +1859,9 @@ import { buildOrderAgreement, assertAgreementSignable, clauseByField } from "@fi
 const { agreement, agreementHash } = buildOrderAgreement(buyer, seller, clauses, specs);
 // The 4th argument is the commitment's mirrored pair (currency + payment) —
 // the struct side of the leaf==struct assertion; a full Commitment satisfies
-// it. The last argument is the label used in the error.
-assertAgreementSignable(agreement, agreementHash, specs, commitment, "checkout"); // throws on any validation issue
+// it. The 5th is the hydrated assembly the agreement's provenance names (null
+// for an agreement naming none). The last argument is the label used in the error.
+assertAgreementSignable(agreement, agreementHash, specs, commitment, hydrated, "checkout"); // throws on any validation issue
 
 // Read clauses by DECLARED FIELD, never by clause id — any registered clause
 // carrying the field participates.
@@ -2459,7 +2476,7 @@ const clauses = {
   [handoffKey]:  { contentHandoff: ["encrypted-transfer"] },
 };
 const { agreement, agreementHash } = buildOrderAgreement(buyer, seller, clauses, specs);
-assertAgreementSignable(agreement, agreementHash, specs, commitment, "data sale");
+assertAgreementSignable(agreement, agreementHash, specs, commitment, hydrated, "data sale");
 ```
 
 The literal map above is the hand-written form. In a catalog checkout you do

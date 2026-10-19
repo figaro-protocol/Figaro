@@ -174,7 +174,8 @@ test.describe('designer rewards — usage accrues, the UI reads it (devnet)', ()
             // THE MERKLE-LEAF SEAM (docs/CLAUSES.md § "Every clause is a merkle
             // leaf"): the commerce clause's currency and payment TERMS must
             // equal the commitment struct's mirrors BEFORE either party signs.
-            assertAgreementSignable(agreement, agreementHash, specSource(), { currency: token, payment });
+            // The agreement names no design (no provenance leaf), so no design is read.
+            assertAgreementSignable(agreement, agreementHash, specSource(), { currency: token, payment }, null);
 
             // 3. Sign + commit (both parties bond; the buyer broadcasts). Root
             //    orders sign processId = 0 — the chain derives the real id.

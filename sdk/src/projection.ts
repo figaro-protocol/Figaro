@@ -43,12 +43,14 @@ import {
     assertNotReservedKey,
     resolveAuthoredClauseKeys,
     assemblyCompositionHash,
+    agreementClauses,
     type Assembly,
     type RegisteredAgreement,
     type AssemblyAgreement,
+    type HydratedAssembly,
 } from "./assembly.js";
 import { validateContent, type ClauseSpec } from "./clauses/index.js";
-import { isAddressHex, type Hex } from "./types.js";
+import { isAddressHex, isBytes32Hex, type Hex } from "./types.js";
 
 // ── The spec seam ───────────────────────────────────────────────────────────
 
@@ -424,12 +426,16 @@ function currencyPinClause(
 /**
  * The off-chain layer of the verification stack, run on BOTH sides of the bilateral commit
  * (buyer before initiating, seller before counter-signing) so neither party
- * signs an invalid agreement. Three checks: every present clause conforms to
+ * signs an invalid agreement. Four checks: every present clause conforms to
  * its clause spec (validateContent; process-log clauses are presence-markers,
  * skipped); the denomination AND payment the parties are about to sign
  * as TERMS equal the ones they are about to sign as EXECUTION data
  * (leaf == struct for both mirrored fields, and where a denomination pin is
- * composed, pin == leaf); and the `agreementHash` about to be signed equals
+ * composed, pin == leaf); every designer value (`block.design.fills`) the
+ * design sets arrives unchanged — `design` is the hydrated assembly the
+ * agreement's provenance names, `null` when none was read, and an agreement
+ * naming a design then fails (a buyer or a seller never changes the
+ * designer's values); and the `agreementHash` about to be signed equals
  * the merkle root recomputed from the clauses. Catches a malformed agreement
  * before a chain round-trip.
  *
@@ -447,11 +453,136 @@ export interface CommitmentMirror {
     payment: bigint;
 }
 
+/** The clause bags a design gives the order an agreement instantiates: one
+ *  per assembly agreement binding the registered agreement the provenance
+ *  names — the assembly-scoped clauses with that agreement's clauses (its
+ *  registered agreement's, its own fills over them) beside them, as the
+ *  assembly walk builds every order's bag (`planAssemblyOrders`). */
+function designClauseBags(
+    design: HydratedAssembly,
+    agreementKey: Hex,
+): Record<string, Record<string, unknown>>[] {
+    const assemblyClauses = design.assembly.assemblyClauses ?? {};
+    return design.assembly.agreements
+        .filter((entry) => entry.agreementKey.toLowerCase() === agreementKey.toLowerCase())
+        .map((entry) => {
+            const bag: Record<string, Record<string, unknown>> = {};
+            for (const [key, values] of Object.entries({ ...assemblyClauses, ...agreementClauses(design, entry) })) {
+                bag[key.toLowerCase()] = values;
+            }
+            return bag;
+        });
+}
+
+/** Every designer value the agreement's clauses do not carry as the design
+ *  gives it, against one clause bag of the design: for each clause whose spec
+ *  declares `block.design.fills`, each such field the design SETS must arrive
+ *  unchanged. A field the design leaves unset is a party's to fill. A clause
+ *  whose content is withheld (`dataHash`) cannot show its designer values, so
+ *  it fails whenever the design sets one. */
+function designerValueIssues(
+    agreement: Agreement,
+    bag: Record<string, Record<string, unknown>>,
+    specs: SpecSource,
+): CommitmentAgreementIssue[] {
+    const issues: CommitmentAgreementIssue[] = [];
+    for (const clauseEntry of agreement.sections) {
+        const spec = specs.get(clauseEntry.clause);
+        if (!spec) continue;
+        const designed = bag[clauseEntry.clause.toLowerCase()];
+        for (const field of specDesignFills(spec)) {
+            const value = designed?.[field];
+            if (value === undefined) continue;
+            if (clauseEntry.data === undefined) {
+                issues.push({
+                    clause: clauseEntry.clause,
+                    path: field,
+                    message: `the clause's content is withheld, so the designer's value cannot be shown unchanged`,
+                });
+                continue;
+            }
+            if (canonicalize(clauseEntry.data[field] ?? null) !== canonicalize(value)) {
+                issues.push({
+                    clause: clauseEntry.clause,
+                    path: field,
+                    message: `the agreement carries ${canonicalize(clauseEntry.data[field] ?? null)}; the designer's value is ${canonicalize(value)}, and a buyer or a seller never changes it`,
+                });
+            }
+        }
+    }
+    return issues;
+}
+
+/** The design check: the agreement names, in its provenance leaf, the
+ *  registered agreement and the assembly it instantiates; `design` is that
+ *  assembly, hydrated (each registered agreement read and verified against
+ *  its key). The design must be the one the provenance names, and every
+ *  designer value must arrive unchanged in one of the orders the design
+ *  gives that registered agreement. `null` is "no design in hand": an
+ *  agreement naming a design then fails, because its designer values cannot
+ *  be checked. */
+function designIssues(
+    agreement: Agreement,
+    specs: SpecSource,
+    design: HydratedAssembly | null,
+): CommitmentAgreementIssue[] {
+    const provenance = agreement.provenance;
+    // A provenance that is not two 32-byte keys does not encode: the merkle
+    // check reports it.
+    if (provenance !== undefined && !(isBytes32Hex(provenance.agreementKey) && isBytes32Hex(provenance.compositionHash))) return [];
+    if (design == null) {
+        return provenance === undefined ? [] : [{
+            clause: "(provenance)",
+            path: "compositionHash",
+            message: `the agreement instantiates assembly ${provenance.compositionHash}, which was not read, so its designer values cannot be checked`,
+        }];
+    }
+    if (provenance === undefined) {
+        return [{ clause: "(provenance)", path: "compositionHash", message: `the agreement names no design, so its designer values cannot be checked` }];
+    }
+    let compositionHash: Hex;
+    try {
+        compositionHash = assemblyCompositionHash(design.assembly);
+    } catch (cause) {
+        return [{ clause: "(provenance)", path: "compositionHash", message: `the design does not hash: ${cause instanceof Error ? cause.message : String(cause)}` }];
+    }
+    if (compositionHash.toLowerCase() !== provenance.compositionHash.toLowerCase()) {
+        return [{
+            clause: "(provenance)",
+            path: "compositionHash",
+            message: `the agreement instantiates assembly ${provenance.compositionHash}; the design read is ${compositionHash}`,
+        }];
+    }
+    let bags: Record<string, Record<string, unknown>>[];
+    try {
+        bags = designClauseBags(design, provenance.agreementKey);
+    } catch (cause) {
+        return [{ clause: "(provenance)", path: "agreementKey", message: `the design cannot be read: ${cause instanceof Error ? cause.message : String(cause)}` }];
+    }
+    if (bags.length === 0) {
+        return [{
+            clause: "(provenance)",
+            path: "agreementKey",
+            message: `assembly ${provenance.compositionHash} binds no registered agreement ${provenance.agreementKey}`,
+        }];
+    }
+    // The order matches one of the design's orders for that registered
+    // agreement; report against the first when it matches none.
+    let first: CommitmentAgreementIssue[] | undefined;
+    for (const bag of bags) {
+        const found = designerValueIssues(agreement, bag, specs);
+        if (found.length === 0) return [];
+        first ??= found;
+    }
+    return first ?? [];
+}
+
 export function validateCommitmentAgreement(
     agreement: Agreement,
     expectedHash: `0x${string}`,
     specs: SpecSource,
     struct: CommitmentMirror,
+    design: HydratedAssembly | null,
 ): { ok: boolean; issues: CommitmentAgreementIssue[] } {
     const issues: CommitmentAgreementIssue[] = [];
 
@@ -525,6 +656,8 @@ export function validateCommitmentAgreement(
         }
     }
 
+    issues.push(...designIssues(agreement, specs, design));
+
     if (issues.length === 0) {
         let computed: `0x${string}` | null = null;
         try {
@@ -553,19 +686,23 @@ export function validateCommitmentAgreement(
  * counter-sign, and the checkout's early pre-wallet check all call this, so no
  * path signs an agreement whose clauses violate their clause specs, whose
  * denomination or payment differs between the signed term and the
- * signed struct, or whose hash doesn't match its recomputed merkle root.
+ * signed struct, whose designer values differ from the design it names, or
+ * whose hash doesn't match its recomputed merkle root.
  *
  * `struct` is the mirrored pair of the commitment being signed (a full
- * `Commitment` satisfies it).
+ * `Commitment` satisfies it). `design` is the hydrated assembly the
+ * agreement's provenance names, or `null` when the caller read none — which
+ * refuses any agreement naming a design.
  */
 export function assertAgreementSignable(
     agreement: Agreement,
     expectedHash: `0x${string}`,
     specs: SpecSource,
     struct: CommitmentMirror,
+    design: HydratedAssembly | null,
     label = "This order",
 ): void {
-    const check = validateCommitmentAgreement(agreement, expectedHash, specs, struct);
+    const check = validateCommitmentAgreement(agreement, expectedHash, specs, struct, design);
     if (!check.ok) {
         throw new Error(
             `${label} isn't valid to sign yet: ${check.issues

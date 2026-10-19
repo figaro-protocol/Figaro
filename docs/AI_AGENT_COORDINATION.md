@@ -232,7 +232,9 @@ which processes instantiated a given assembly and how their orders relate. It do
 not support "assembly compliance": nothing on chain compares a live agreement
 against the assembly it came from. What IS enforced is that every composed section
 validates against its clause spec before a signature is emitted
-(`assertAgreementSignable`) and, on the batched path, inside the proof.
+(`assertAgreementSignable`) and, on the batched path, inside the proof; and, off chain
+at the same gate, that every designer value arrives as the assembly the agreement's
+provenance leaf names gives it.
 
 **Buying the sealed part.** What a fingerprint anchors is not readable from the
 chain — agreement bodies, evidence pre-images, the books a process leaves behind

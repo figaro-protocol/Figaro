@@ -35,8 +35,9 @@ import {
     type SwapFundingLeg,
 } from "@figaro-protocol/sdk";
 import { CONTRACTS } from "@/lib/kernel/contracts";
-import { assertAgreementSignable } from "@figaro-protocol/sdk";
+import { assertAgreementSignable, type HydratedAssembly } from "@figaro-protocol/sdk";
 import { specSource } from "@/lib/shared/clauseSpecSource";
+import { fetchHydratedAssemblyByHash } from "@/lib/protocol/useAssemblyRegistry";
 import { useFigaroActions } from "@/lib/kernel/useFigaroActions";
 import { useRuntimeServices } from "@/lib/shared/runtimeServicesContext";
 import { hexEqual, isValidAddress, ZERO_ADDRESS } from "@/lib/shared/evm";
@@ -104,6 +105,22 @@ function assertSigningDomain(core: string | undefined, chainId: number): asserts
     }
 }
 
+/** The design the agreement names in its provenance leaf, read from the
+ *  chain and IPFS and verified against its composition root and every
+ *  registered agreement's key — the input the sign gate checks the
+ *  designer's values against. Null when the agreement names none or the read
+ *  fails; the gate then refuses an agreement naming a design (fail-closed:
+ *  an agreement it cannot fetch or verify is never signed or broadcast). */
+export async function readSigningDesign(agreement: Agreement): Promise<HydratedAssembly | null> {
+    const provenance = agreement.provenance;
+    if (!provenance) return null;
+    try {
+        return await fetchHydratedAssemblyByHash(provenance.compositionHash);
+    } catch {
+        return null;
+    }
+}
+
 export function useOrderCommitmentFlow() {
     const { address } = useAccount();
     const chainId = useChainId();
@@ -133,8 +150,10 @@ export function useOrderCommitmentFlow() {
         // it: every clause conforms to its clause spec AND the agreement's
         // recomputed merkle root equals the hash being signed. The /orders
         // accept card, /sign, and the buyer's checkout sign all route through
-        // here — both sides of the bilateral commit get the same check.
-        assertAgreementSignable(agreement, commitment.agreementHash, specSource(), commitment);
+        // here — both sides of the bilateral commit get the same check. The
+        // design the agreement names is read and verified here, so the
+        // designer's values are checked against it.
+        assertAgreementSignable(agreement, commitment.agreementHash, specSource(), commitment, await readSigningDesign(agreement));
         // When the bond is swap-funded, `swap` surfaces the leg's maxInput in
         // the SAME confirm — one approval covers the commitment sign AND the
         // Permit2 witness sign the caller does right after.
@@ -474,6 +493,7 @@ export function useOrderCommitmentFlow() {
                 payload.commitment.agreementHash,
                 specSource(),
                 payload.commitment,
+                await readSigningDesign(payload.agreement),
             );
             const approved = await requestCommitConfirmation(
                 payload.commitment,
