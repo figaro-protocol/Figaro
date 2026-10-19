@@ -1,7 +1,7 @@
 /// Batch assembler — drains the mempool and builds a BatchInput for
 /// the SP1 prover.
 use alloy_primitives::{Address, B256};
-use figaro_kernel::types::{BatchInput, KernelOp, KernelStateSnapshot, UsageClaim};
+use figaro_kernel::types::{BatchInput, KernelError, KernelOp, KernelStateSnapshot, UsageClaim};
 
 use crate::mempool::PendingOp;
 
@@ -143,6 +143,198 @@ pub fn filter_applicable_ops(
     (valid, poison)
 }
 
+/// Whether a Core refusal against the LANDED state is final. The state
+/// behind the verifier's root only moves forward — a process, once it
+/// exists, keeps its root buyer and currency; an order goes from
+/// uncommitted to committed to resolved and never back; the chain's clock
+/// only advances — and a signature or a witness fails whatever the state.
+/// The rest name what a later operation may still supply: a process or an
+/// order not yet committed, an order list or a cumulative value a sibling
+/// order may yet complete. A refusal that carries its figures is judged on
+/// them: an order list SHORTER than the active orders, or a cumulative value
+/// the process has already PASSED, never returns (the active count and the
+/// accumulator only grow until resolution), and a resolve listing an order
+/// whose own process is not the resolve's names an order that can never be
+/// under it. Exhaustive, so a new refusal is classified where it is added.
+pub fn is_permanent_refusal(e: &KernelError, op: &KernelOp, domain: &B256) -> bool {
+    match e {
+        KernelError::IncompleteOrderList { required, provided } => provided < required,
+        KernelError::CumulativeValueMismatch { expected, actual } => expected < actual,
+        KernelError::OrderNotCommitted(_) => match op {
+            KernelOp::Resolve { process_id, commitments, .. } => commitments
+                .iter()
+                .any(|c| figaro_kernel::kernel::derive_commitment_ids(domain, c).1 != *process_id),
+            _ => false,
+        },
+        KernelError::DeadlineExpired
+        | KernelError::InvalidBuyerSignature
+        | KernelError::InvalidSellerSignature
+        | KernelError::InvalidSignature
+        | KernelError::ZeroPayment
+        | KernelError::InvalidRootCumulativeValue
+        | KernelError::Overflow
+        | KernelError::ProcessAlreadyExists
+        | KernelError::DuplicateCommitment
+        | KernelError::ProcessAlreadyResolved
+        | KernelError::NoActiveOrders
+        | KernelError::OrderResolved
+        | KernelError::NotProcessBuyer
+        | KernelError::CurrencyMismatch
+        | KernelError::NotAuthorized
+        | KernelError::ProcessMismatch
+        | KernelError::InvalidInclusionProof
+        | KernelError::ClauseSpecParseFailed(_)
+        | KernelError::SpecIdentityMismatch(_)
+        | KernelError::ClauseContentInvalid(_)
+        | KernelError::ContentEncodingFailed(_)
+        | KernelError::ContentHashMismatch
+        | KernelError::ProvenanceLeafNotCanonical => true,
+        KernelError::UnknownProcess | KernelError::UnknownOrder => false,
+        // A usage claim's refusals; an operation never meets them.
+        KernelError::UsageOrderNotResolved(_)
+        | KernelError::UsageAlreadyCounted { .. }
+        | KernelError::UsageInvalidInclusionProof
+        | KernelError::ReservedKeyIsNotARegistration(_) => false,
+    }
+}
+
+/// Split the operation filter's poison into what may yet apply, what the
+/// Core refuses for good, and what was built on the latter. Each is judged
+/// ALONE against the landed state (`prev_state`), never against the drain's
+/// own operations, which have not landed: a refusal there that is permanent
+/// ([`is_permanent_refusal`]) is returned with the Core's reason, to be
+/// dead-lettered at once. An operation that names a process or an order only
+/// a refused commit would have created — one the landed state does not hold
+/// — is built on it and goes with it, transitively, with the refused one's
+/// reason. Every other one — one that applies alone, or names a missing
+/// dependency — keeps its reason and may be deferred.
+pub fn split_permanent_refusals(
+    chain_id: u64,
+    verifying_contract: Address,
+    block_timestamp: u64,
+    prev_state: &KernelStateSnapshot,
+    poison: Vec<(PendingOp, String)>,
+) -> (Vec<(PendingOp, String)>, Vec<(PendingOp, String)>, Vec<(PendingOp, String)>) {
+    let domain = figaro_kernel::eip712::domain_separator(chain_id, verifying_contract);
+    let mut deferrable = Vec::new();
+    let mut refused = Vec::new();
+    for (op, reason) in poison {
+        match trial_apply_kernel(chain_id, verifying_contract, block_timestamp, prev_state, &op.op) {
+            Err(e) if is_permanent_refusal(&e, &op.op, &domain) => refused.push((op, e.to_string())),
+            _ => deferrable.push((op, reason)),
+        }
+    }
+    if refused.is_empty() {
+        return (deferrable, refused, Vec::new());
+    }
+    // What the refused commits would have created and the landed state does
+    // not hold, each with the reason it is gone.
+    let landed_processes: std::collections::HashSet<B256> =
+        prev_state.processes.iter().map(|(id, _)| *id).collect();
+    let landed_orders: std::collections::HashSet<B256> =
+        prev_state.order_status.iter().map(|(h, _)| *h).collect();
+    let mut gone: std::collections::HashMap<B256, String> = std::collections::HashMap::new();
+    let add_created = |op: &KernelOp, why: &str, gone: &mut std::collections::HashMap<B256, String>| {
+        if let KernelOp::Commit { commitment: c, .. } = op {
+            let (order_hash, process_id) = figaro_kernel::kernel::derive_commitment_ids(&domain, c);
+            if c.process_id == B256::ZERO && !landed_processes.contains(&process_id) {
+                gone.entry(process_id).or_insert_with(|| why.to_string());
+            }
+            if !landed_orders.contains(&order_hash) {
+                gone.entry(order_hash).or_insert_with(|| why.to_string());
+            }
+        }
+    };
+    for (op, why) in &refused {
+        add_created(&op.op, why, &mut gone);
+    }
+    let mut built_on = Vec::new();
+    loop {
+        let mut moved = false;
+        let mut waiting = Vec::with_capacity(deferrable.len());
+        for (op, reason) in deferrable {
+            match referenced_ids(&domain, &op.op).iter().find_map(|id| gone.get(id).cloned()) {
+                Some(why) => {
+                    add_created(&op.op, &why, &mut gone);
+                    built_on.push((op, format!("built on an operation the kernel refused for good: {why}")));
+                    moved = true;
+                }
+                None => waiting.push((op, reason)),
+            }
+        }
+        deferrable = waiting;
+        if !moved {
+            break;
+        }
+    }
+    (deferrable, refused, built_on)
+}
+
+/// The processes and orders an operation needs to exist: a sub-order's
+/// process, a resolve's process and listed orders, an attestation's role and
+/// target orders.
+fn referenced_ids(domain: &B256, op: &KernelOp) -> Vec<B256> {
+    let order = |c: &figaro_kernel::types::Commitment| figaro_kernel::kernel::derive_commitment_ids(domain, c).0;
+    match op {
+        KernelOp::Commit { commitment, .. } => {
+            if commitment.process_id == B256::ZERO {
+                Vec::new()
+            } else {
+                vec![commitment.process_id]
+            }
+        }
+        KernelOp::Resolve { process_id, commitments, .. } => {
+            let mut ids = vec![*process_id];
+            ids.extend(commitments.iter().map(|c| {
+                figaro_kernel::eip712::compute_order_hash(process_id, &figaro_kernel::eip712::commitment_struct_hash(c))
+            }));
+            ids
+        }
+        KernelOp::AttestAsSeller { role, target, .. } => vec![order(role), order(target)],
+        KernelOp::AttestAsBuyer { target, .. } => vec![order(target)],
+    }
+}
+
+/// Filter `valid` again once formation has taken operations out of it:
+/// what was filtered into an order behind an operation taken out does not
+/// apply without it, and left in the batch would fail the
+/// Core's rules at planning and cost the whole tick's batch. Returns the ops
+/// kept, in a working execution order; the ops that apply again once the
+/// `deferred` operations are restored — built on one of them, they move
+/// with them; and the rest, each with the Core's reason, built on an
+/// operation dropped for good.
+pub fn refilter_after_drops(
+    chain_id: u64,
+    verifying_contract: Address,
+    block_timestamp: u64,
+    prev_state: &KernelStateSnapshot,
+    valid: Vec<PendingOp>,
+    deferred: &[PendingOp],
+) -> (Vec<PendingOp>, Vec<PendingOp>, Vec<(PendingOp, String)>) {
+    let (kept, built_on) =
+        filter_applicable_ops(chain_id, verifying_contract, block_timestamp, prev_state, valid);
+    if built_on.is_empty() || deferred.is_empty() {
+        return (kept, Vec::new(), built_on);
+    }
+    let with_deferred: Vec<PendingOp> = kept
+        .iter()
+        .chain(deferred)
+        .cloned()
+        .chain(built_on.iter().map(|(op, _)| op.clone()))
+        .collect();
+    let (applies, _) = filter_applicable_ops(
+        chain_id,
+        verifying_contract,
+        block_timestamp,
+        prev_state,
+        with_deferred,
+    );
+    let (follow, dropped): (Vec<_>, Vec<_>) = built_on
+        .into_iter()
+        .partition(|(op, _)| applies.iter().any(|a| a.id == op.id));
+    (kept, follow.into_iter().map(|(op, _)| op).collect(), dropped)
+}
+
 /// Drop the commits that would grow a batch-path process past what one
 /// settle can resolve (`gas::max_orders_in_one_settle`): a process past it
 /// has no resolve any relay on the chain can settle, so its bonds would
@@ -282,6 +474,17 @@ fn trial_apply(
     state: &KernelStateSnapshot,
     op: &KernelOp,
 ) -> Result<KernelStateSnapshot, String> {
+    trial_apply_kernel(chain_id, verifying_contract, block_timestamp, state, op).map_err(|e| e.to_string())
+}
+
+/// [`trial_apply`] with the Core's own refusal.
+fn trial_apply_kernel(
+    chain_id: u64,
+    verifying_contract: Address,
+    block_timestamp: u64,
+    state: &KernelStateSnapshot,
+    op: &KernelOp,
+) -> Result<KernelStateSnapshot, KernelError> {
     // Ops only — a trial-apply asks "does this operation apply cleanly
     // against the running state?", and usage claims answer a different
     // question against the batch's POST-state.
@@ -295,7 +498,5 @@ fn trial_apply(
         usage_period: 0,
         provenance_leaf: B256::ZERO,
     };
-    figaro_kernel::kernel::apply_batch_with_state(&trial)
-        .map(|(_, _, _, post)| post.to_snapshot())
-        .map_err(|e| e.to_string())
+    figaro_kernel::kernel::apply_batch_with_state(&trial).map(|(_, _, _, post)| post.to_snapshot())
 }

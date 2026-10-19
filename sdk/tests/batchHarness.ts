@@ -5,8 +5,9 @@
  * witness clause anchored, FigaroCore, MembersRegistry, AssemblyRegistry,
  * UsageCounter, FigaroBatchVerifier), and the relay's process management.
  *
- * Requires Anvil at http://127.0.0.1:8545 and the release sequencer binary at
- * prover/target/release/sequencer (cargo build --release -p figaro-sequencer).
+ * Requires Anvil at http://127.0.0.1:8545 (or at `ANVIL_URL`) and the release
+ * sequencer binary at prover/target/release/sequencer
+ * (cargo build --release -p figaro-sequencer).
  */
 
 import { expect } from "vitest";
@@ -32,7 +33,8 @@ import { BATCH_VERIFIER_ABI } from "../src/index.js";
 import { canonicalize } from "../src/agreement.js";
 import type { SequencerClient } from "../src/agent/sequencer.js";
 
-export const ANVIL_URL = "http://127.0.0.1:8545";
+/** The chain the suites run against; `ANVIL_URL` points them at another Anvil. */
+export const ANVIL_URL = process.env.ANVIL_URL ?? "http://127.0.0.1:8545";
 
 export async function anvilReachable(): Promise<boolean> {
     try {

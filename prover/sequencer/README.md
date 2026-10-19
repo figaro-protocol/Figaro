@@ -191,6 +191,7 @@ floors): Groth16 wrap ~14 GB RAM, PLONK wrap ~60 GB; both wrap through the
 | `SETTLE_GAS_CAP` | `16777216` | The chain's cap on one transaction's gas (EIP-7825's 2^24, which mainnet enforces); a chain without it is told so here (Sepolia carries larger transactions), set below 95 percent of its block limit. It is the bound a batch-path process is admitted under, stable across ticks, and the tick's budget never plans past it; a value below the gas of resolving a one-order process (590,096), or at or past 95 percent of the block limit read at startup, is a refusal to start |
 | `MEMPOOL_MAX_OPS` | `10000` | Pending-op queue cap |
 | `MEMPOOL_MAX_USAGE_CLAIMS` | `10000` | Pending usage-claim queue cap |
+| `DEFER_WINDOW_SECS` | `600` | How long an operation deferred at batch formation waits, from its first deferral, before it is dead-lettered (see Mempool bounds) |
 | `MAX_BODY_BYTES` | `1048576` | Per-request HTTP body cap |
 | `REQUEST_TIMEOUT_SECS` | `10` | A request not answered by then is `408` |
 | `MAX_IN_FLIGHT` | `256` | Requests served at once, across every route; the rest wait |
@@ -249,14 +250,20 @@ All errors are structured JSON: `{ "error": "<reason>" }`.
   the failure surface, and the publication window:
   `{ "state_root", "pending_ops", "pending_usage_claims", "batches_settled",
   "dead_lettered_ops", "last_settle_error",
+  "dropped_usage_claims", "last_dropped_claim_error",
   "archive": { "first_batch", "last_batch", "retained_batches", "max_batches" } }`.
+  `pending_ops` counts the deferred operations with the queued ones.
   `dead_lettered_ops` counts, for the whole relay, the ops dropped without
-  resolving, whatever the path — one that did not apply against the drain it
-  was taken in, one whose bond its wallet cannot cover or whose balance could not be read,
-  unanchored or past the resolve capacity, one that fits no resolution, a batch
+  resolving, whatever the path — one deferred at formation whose window ran
+  out, one whose bond its wallet cannot cover, unanchored or past the resolve
+  capacity, one that fits no resolution, a batch
   that failed to prove or to plan, a batch the chain refused — every one
   re-submittable, and `last_settle_error` carries the most recent failure's
-  reason verbatim, whatever its path (null while clean). Neither says whose
+  reason verbatim, whatever its path (null while clean).
+  `dropped_usage_claims` counts the usage claims dropped without landing —
+  at the pre-filter, at formation (one that would abort the proof), with no
+  counter or accrual closed, or with a batch that did not land — apart from
+  the operations, and `last_dropped_claim_error` carries the latest reason. Neither says whose
   operation died: anyone may submit an operation that fails at formation, so
   the counter grows without the reader's own having moved. A client follows
   its own order on `/orders/:order_hash` and its process on
@@ -400,7 +407,9 @@ kept only if its wallet still covers it after the commits kept before it
 (both bonds of a commit where the buyer is the seller count together). A
 commit that does not fund is dropped there, counted on `/status` as
 dead-lettered with its reason, and re-submittable once funded; it is never
-proved.
+proved. A commit whose balance or allowance could not be read is not
+dropped: it is deferred with what was filtered into its order behind it, and
+read again when it is next drained (see Mempool bounds).
 
 ## Before proving
 
@@ -421,7 +430,7 @@ of losing the batch:
   that fails either, so a copy of a landed attestation with one byte
   changed costs nobody else their batch. Without `BATCH_VERIFIER_ADDRESS` (the prove-only dry run)
 nothing is read. A read failure at the door is not a verdict — the batch-time
-check decides; a read failure at batch time drops the commit conservatively.
+check decides; a read failure at batch time defers the commit, never proves it.
 
 ## Mempool bounds
 
@@ -440,7 +449,32 @@ assembler filter instead.
 An operation re-queued after a transient submission failure (the chain never
 evaluated the batch) is re-queued at most three times; past that it is
 dead-lettered — surfaced on `/status` with the reason, re-submittable — so a
-batch that never lands is not re-proved forever.
+batch that never lands is not re-proved forever. A copy resubmitted while the
+operation was drained is dropped when it is re-queued.
+
+An operation the Core's rules refuse for good, judged alone against the landed
+state — its process or order already exists or has resolved, its deadline
+has passed, a signature or its witness fails, its order list is shorter than
+the active orders, the process has passed its cumulative value, or it is a
+resolve listing an order of another process — is dead-lettered at once with
+the Core's reason, and so is what names a process or an order only a
+refused commit would have created. An operation that applies against no order of the
+drain it was taken in for any other reason — its dependency may sit past the
+drain's cut, ride a batch still in flight, not be submitted yet, or never
+come — and a commit whose funding could not be read are **deferred**, not
+dead-lettered, and what was filtered into an order
+behind a deferred commit moves with it, in one group. A deferred operation
+waits apart from the queue, its key held (a resubmission is a duplicate of
+it, and a copy resubmitted while it was drained is dropped), and is drained
+again only into the room the queue leaves, its group whole: it never
+displaces a queued operation, so one that never applies — anyone may submit
+one free — costs no drain anything. It is dead-lettered, with its reason and
+re-submittable, once `DEFER_WINDOW_SECS` have passed since it was first
+deferred, retried or not: the bound is in time, never in attempts, and the
+deferral spends nothing of the re-queue count. The time rides on the
+operation, so it ends when the operation lands. `formal/RelayState.tla`
+(`DeferSpec`, `formal/RelayStateDeferral.cfg`) models the deferral; each of
+its five switches set FALSE restores one defect the model then finds.
 
 ## The batch's bound
 

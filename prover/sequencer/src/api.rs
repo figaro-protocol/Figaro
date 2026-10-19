@@ -55,7 +55,9 @@ pub struct AppState {
 /// gap it closes: ops were dead-lettered and every observer kept polling a surface that
 /// could not say so). Counts OPS dead-lettered — dropped without resolving —
 /// whatever the path (deterministic resolve revert, prove failure); the last
-/// error is kept verbatim for the reader.
+/// error is kept verbatim for the reader. Usage claims dropped without
+/// landing are counted apart, with their own last reason: a claim is not an
+/// operation, and one figure for both would tell neither reader the truth.
 #[derive(Clone, Default)]
 pub struct FailureLog {
     inner: std::sync::Arc<tokio::sync::RwLock<FailureLogInner>>,
@@ -65,6 +67,8 @@ pub struct FailureLog {
 struct FailureLogInner {
     dead_lettered_ops: u64,
     last_error: Option<String>,
+    dropped_usage_claims: u64,
+    last_claim_error: Option<String>,
 }
 
 impl FailureLog {
@@ -78,6 +82,37 @@ impl FailureLog {
         let inner = self.inner.read().await;
         (inner.dead_lettered_ops, inner.last_error.clone())
     }
+
+    /// Count `claims` usage claims dropped without landing, with the reason.
+    pub async fn record_claims(&self, claims: u64, error: String) {
+        if claims == 0 {
+            return;
+        }
+        let mut inner = self.inner.write().await;
+        inner.dropped_usage_claims += claims;
+        inner.last_claim_error = Some(error);
+    }
+
+    /// The usage claims dropped so far, and the last reason.
+    pub async fn claims_snapshot(&self) -> (u64, Option<String>) {
+        let inner = self.inner.read().await;
+        (inner.dropped_usage_claims, inner.last_claim_error.clone())
+    }
+}
+
+/// Log every usage claim dropped at `stage`, each with its reason, so a
+/// claim drop counts on `/status` apart from the operations. Returns how
+/// many were recorded.
+pub async fn record_dropped_claims(
+    failures: &FailureLog,
+    dropped: &[(UsageClaim, String)],
+    stage: &str,
+) -> u64 {
+    for (claim, reason) in dropped {
+        tracing::warn!(clause_or_assembly = ?claim.clause_or_assembly, %reason, "Usage claim dropped at {stage}");
+        failures.record_claims(1, format!("dropped at {stage}: {reason}")).await;
+    }
+    dropped.len() as u64
 }
 
 /// Record every operation dropped at `stage` (batch formation, say), each
@@ -228,6 +263,11 @@ pub struct StatusResponse {
     pub dead_lettered_ops: u64,
     /// The most recent dead-letter reason, verbatim; null while clean.
     pub last_settle_error: Option<String>,
+    /// Cumulative usage claims dropped without landing — counted apart from
+    /// the operations: a claim credits a designer, it resolves nothing.
+    pub dropped_usage_claims: u64,
+    /// The most recent claim drop's reason, verbatim; null while clean.
+    pub last_dropped_claim_error: Option<String>,
     /// The publication window — what `/batches` can still serve. A
     /// consumer reads this BEFORE replaying, so a gap between its cursor
     /// and `first_batch` is visible rather than silently skipped.
@@ -399,6 +439,7 @@ async fn status(State(state): State<AppState>) -> impl IntoResponse {
     let batches = *state.batch_count.read().await;
     let archive = state.archive.window().await;
     let (dead_lettered_ops, last_settle_error) = state.failures.snapshot().await;
+    let (dropped_usage_claims, last_dropped_claim_error) = state.failures.claims_snapshot().await;
 
     Json(StatusResponse {
         state_root: format!("{root:?}"),
@@ -407,6 +448,8 @@ async fn status(State(state): State<AppState>) -> impl IntoResponse {
         batches_settled: batches,
         dead_lettered_ops,
         last_settle_error,
+        dropped_usage_claims,
+        last_dropped_claim_error,
         archive,
     })
 }
@@ -535,6 +578,8 @@ mod failure_tests {
             batches_settled: 0,
             dead_lettered_ops: 0,
             last_settle_error: None,
+            dropped_usage_claims: 0,
+            last_dropped_claim_error: None,
             archive: RetentionWindow {
                 first_batch: None,
                 last_batch: None,

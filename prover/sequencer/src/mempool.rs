@@ -9,6 +9,7 @@
 /// drift.
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::Arc;
+use std::time::{Duration, Instant};
 use tokio::sync::Mutex;
 
 use alloy_primitives::{keccak256, B256};
@@ -30,6 +31,11 @@ pub struct PendingOp {
     pub id: u64,
     pub key: B256,
     pub op: KernelOp,
+    /// When batch formation first deferred this operation ([`Mempool::defer`]);
+    /// `None` until then. The time rides on the operation, so it is gone
+    /// when the operation lands or is dead-lettered, a resubmission starts
+    /// with none, and it is kept apart from the transient re-queue's count.
+    pub deferred_since: Option<Instant>,
 }
 
 /// Result of an accepted submission.
@@ -68,6 +74,7 @@ pub struct Mempool {
     max_pending_ops: usize,
     max_pending_usage: usize,
     max_requeues: u32,
+    defer_window: Duration,
 }
 
 struct MempoolInner {
@@ -89,7 +96,19 @@ struct MempoolInner {
     /// submission failure. Cleared on a fresh admission; consulted by
     /// `requeue`, which dead-letters a key past `max_requeues`.
     requeues: HashMap<B256, u32>,
+    /// Operations batch formation deferred ([`Mempool::defer`]), in groups,
+    /// oldest first: each group is one tick's deferrals, an operation with
+    /// what was filtered into an order behind it. They wait apart from
+    /// `pending` and are drained again only into the room `pending` leaves
+    /// empty, a group whole; their keys stay in `index`.
+    deferred: VecDeque<Vec<PendingOp>>,
     next_id: u64,
+}
+
+impl MempoolInner {
+    fn deferred_len(&self) -> usize {
+        self.deferred.iter().map(Vec::len).sum()
+    }
 }
 
 /// Re-queues a transiently failed op survives before it is dead-lettered.
@@ -98,6 +117,14 @@ struct MempoolInner {
 /// re-proved forever; after this many attempts it is surfaced on `/status`
 /// and left for re-submission.
 pub const DEFAULT_MAX_REQUEUES: u32 = 3;
+
+/// How long an operation batch formation deferred waits, from its first
+/// deferral, before it is dead-lettered. A bound in time, never in attempts:
+/// a deferred operation is retried only when the queue leaves room, so an
+/// attempt count would expire it early on an idle relay and never on a busy
+/// one. Ten minutes covers a dependency queued past the drain's cut, or
+/// carried by a batch still in flight, at the defaults.
+pub const DEFAULT_DEFER_WINDOW: Duration = Duration::from_secs(600);
 
 impl Mempool {
     pub fn new(chain_id: u64, verifying_contract: alloy_primitives::Address) -> Self {
@@ -131,6 +158,7 @@ impl Mempool {
                 pending_usage: VecDeque::new(),
                 usage_index: HashSet::new(),
                 requeues: HashMap::new(),
+                deferred: VecDeque::new(),
                 next_id: 1,
             })),
             chain_id,
@@ -138,7 +166,14 @@ impl Mempool {
             max_pending_ops,
             max_pending_usage,
             max_requeues: DEFAULT_MAX_REQUEUES,
+            defer_window: DEFAULT_DEFER_WINDOW,
         }
+    }
+
+    /// The deferral's window (see [`DEFAULT_DEFER_WINDOW`]).
+    pub fn with_defer_window(mut self, window: Duration) -> Self {
+        self.defer_window = window;
+        self
     }
 
     /// The re-queue cap (see [`DEFAULT_MAX_REQUEUES`]).
@@ -162,14 +197,20 @@ impl Mempool {
                 duplicate: true,
             });
         }
-        if inner.pending.len() >= self.max_pending_ops {
+        // A deferred operation is still pending: the cap bounds both.
+        if inner.pending.len() + inner.deferred_len() >= self.max_pending_ops {
             return Err(SubmitError::Full);
         }
         let id = inner.next_id;
         inner.next_id += 1;
         inner.index.insert(key, id);
         inner.requeues.remove(&key);
-        inner.pending.push_back(PendingOp { id, key, op });
+        inner.pending.push_back(PendingOp {
+            id,
+            key,
+            op,
+            deferred_since: None,
+        });
         Ok(Admission {
             id,
             duplicate: false,
@@ -307,17 +348,96 @@ impl Mempool {
         self.drain_up_to(usize::MAX).await
     }
 
-    /// Drain at most `max` pending operations, oldest first, for one batch.
-    /// The rest stay queued in order, deduplicated as before; the drained
-    /// ones leave the dedup index.
+    /// Drain at most `max` operations, oldest first, for one batch: the
+    /// queue first, then the deferred groups, oldest first, each whole, into
+    /// the room the queue left — a deferred operation never displaces a
+    /// queued one. The rest stay where they were, deduplicated as before; the
+    /// drained ones leave the dedup index.
     pub async fn drain_up_to(&self, max: usize) -> Vec<PendingOp> {
         let mut inner = self.inner.lock().await;
         let take = max.min(inner.pending.len());
-        let drained: Vec<PendingOp> = inner.pending.drain(..take).collect();
+        let mut drained: Vec<PendingOp> = inner.pending.drain(..take).collect();
+        let mut room = max - take;
+        if room > 0 && !inner.deferred.is_empty() {
+            let mut waiting = VecDeque::with_capacity(inner.deferred.len());
+            while let Some(group) = inner.deferred.pop_front() {
+                if group.len() <= room {
+                    room -= group.len();
+                    drained.extend(group);
+                } else {
+                    waiting.push_back(group);
+                }
+            }
+            inner.deferred = waiting;
+        }
         for op in &drained {
             inner.index.remove(&op.key);
         }
         drained
+    }
+
+    /// Defer the operations batch formation could not use this tick — one
+    /// that applies against no order of its drain, a commit whose funding
+    /// could not be read, and what was filtered into an order behind either
+    /// — as one group, apart from the queue (drained again only into the
+    /// room the queue leaves, [`Mempool::drain_up_to`]). Each keeps the time
+    /// it was first deferred; one deferred for the window or longer since
+    /// then is not deferred but returned, with the reason, for the caller to
+    /// dead-letter. Deferring spends nothing of the re-queue's count. A copy
+    /// resubmitted while the operation was drained is dropped: the deferred
+    /// one holds the key, and a resubmission is a duplicate of it.
+    /// Cap-exempt: these were already acknowledged.
+    pub async fn defer(&self, ops: Vec<PendingOp>, now: Instant) -> Vec<(PendingOp, String)> {
+        let mut inner = self.inner.lock().await;
+        let mut group = Vec::with_capacity(ops.len());
+        let mut expired = Vec::new();
+        for mut op in ops {
+            let since = *op.deferred_since.get_or_insert(now);
+            if now.saturating_duration_since(since) >= self.defer_window {
+                expired.push((op, self.expiry_reason()));
+                continue;
+            }
+            if inner.index.contains_key(&op.key) {
+                inner.pending.retain(|queued| queued.key != op.key);
+            }
+            inner.index.insert(op.key, op.id);
+            group.push(op);
+        }
+        if !group.is_empty() {
+            inner.deferred.push_back(group);
+        }
+        expired
+    }
+
+    /// Take every deferred operation whose window has passed since it was
+    /// first deferred, retried or not, for the caller to dead-letter; its key
+    /// is freed.
+    pub async fn expire_deferred(&self, now: Instant) -> Vec<(PendingOp, String)> {
+        let mut inner = self.inner.lock().await;
+        let mut expired = Vec::new();
+        let window = self.defer_window;
+        let groups = std::mem::take(&mut inner.deferred);
+        for group in groups {
+            let (late, waiting): (Vec<_>, Vec<_>) = group.into_iter().partition(|op| {
+                op.deferred_since
+                    .is_some_and(|since| now.saturating_duration_since(since) >= window)
+            });
+            for op in late {
+                inner.index.remove(&op.key);
+                expired.push((op, self.expiry_reason()));
+            }
+            if !waiting.is_empty() {
+                inner.deferred.push_back(waiting);
+            }
+        }
+        expired
+    }
+
+    fn expiry_reason(&self) -> String {
+        format!(
+            "deferred at batch formation and not applied within {}s of its first deferral — its dependency never came, or its funding could not be read; dead-lettered, re-submittable",
+            self.defer_window.as_secs()
+        )
     }
 
     /// Drain all pending usage claims for batch assembly.
@@ -367,6 +487,8 @@ impl Mempool {
     /// were already acknowledged. An op re-queued more than `max_requeues`
     /// times is not re-queued but returned, with the reason, for the caller
     /// to dead-letter — a batch that never lands is not re-proved forever.
+    /// A copy resubmitted meanwhile is dropped, as [`Mempool::give_back`]
+    /// drops one.
     pub async fn requeue(&self, ops: Vec<PendingOp>) -> Vec<(PendingOp, String)> {
         let mut inner = self.inner.lock().await;
         let mut dropped = Vec::new();
@@ -384,6 +506,9 @@ impl Mempool {
                 ));
                 continue;
             }
+            if inner.index.contains_key(&op.key) {
+                inner.pending.retain(|queued| queued.key != op.key);
+            }
             inner.index.insert(op.key, op.id);
             inner.pending.push_front(op);
         }
@@ -391,9 +516,10 @@ impl Mempool {
         dropped
     }
 
-    /// Number of pending operations.
+    /// Number of pending operations, the deferred among them.
     pub async fn len(&self) -> usize {
-        self.inner.lock().await.pending.len()
+        let inner = self.inner.lock().await;
+        inner.pending.len() + inner.deferred_len()
     }
 
     /// Pre-check: verify EIP-712 signature validity and (for

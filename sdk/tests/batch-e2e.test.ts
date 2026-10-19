@@ -8,7 +8,7 @@
  * this test fails.
  *
  * Requires:
- *   - Anvil running at http://127.0.0.1:8545
+ *   - Anvil running at http://127.0.0.1:8545 (or at ANVIL_URL)
  *   - Sequencer binary built at prover/target/release/sequencer
  *     (cargo build --release -p figaro-sequencer)
  *
@@ -22,9 +22,10 @@
  *   5. Submit Commit + AttestAsSeller (RuntimeWitness) via SequencerClient
  *   6. Wait for batch 1: bonds pulled, Attestation re-emitted
  *   6b. A relay holding no state refuses to start; a second relay starts
- *       on the state the first publishes (GET /state); the relay that built
- *       batch 1 restarts and resumes on its kept state
- *   7. Submit Resolve; wait for batch 2
+ *       on the state the first serves (STATE_FROM=<its URL>, fetched and
+ *       checked by the relay itself); the relay that built batch 1
+ *       restarts and resumes on its kept state
+ *   7. Submit Resolve to the second relay; it settles batch 2
  *   8. Verify: final balances, state root advanced, batch count
  */
 
@@ -115,6 +116,8 @@ const SECTION_DATA = `{"modality":"delivery"}`;
 
 /** The relay's state file for this run: the preimage of the verifier's root. */
 const STATE_PATH = path.join(os.tmpdir(), `sequencer-state-e2e-${process.pid}.json`);
+/** The second relay's state file: written by the relay itself from the first's GET /state. */
+const TAKEOVER_STATE_PATH = path.join(os.tmpdir(), `sequencer-state-e2e-${process.pid}-takeover.json`);
 /** The relay's sequencer archive for this run, deleted with the state in afterAll. */
 const ARCHIVE_PATH = `sequencer-archive-e2e-${process.pid}.jsonl`;
 
@@ -162,6 +165,8 @@ describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
     let alive = false;
     let hasBinary = false;
     let sequencerProcess: ChildProcess | null = null;
+    /** The relay that takes over from the first and settles batch 2. */
+    let secondProcess: ChildProcess | null = null;
     let sequencerClient: SequencerClient;
     let relay: RelayConfig;
 
@@ -297,8 +302,13 @@ describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
             }
             sequencerProcess = null;
         }
+        if (secondProcess) {
+            await stopSequencer(secondProcess);
+            secondProcess = null;
+        }
         for (const suffix of ["", ".tmp", ".next.jsonl", ".next.jsonl.tmp"]) {
             fs.rmSync(STATE_PATH + suffix, { force: true });
+            fs.rmSync(TAKEOVER_STATE_PATH + suffix, { force: true });
         }
         fs.rmSync(ARCHIVE_PATH, { force: true });
     });
@@ -455,37 +465,32 @@ describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
         expect(statelessOutput).toContain("does not hold the state behind the verifier's root");
         expect(statelessExit).toBe(2);
 
-        // A second relay takes over from the published state: it fetches
-        // the first relay's GET /state into its own STATE_PATH and starts on
-        // it, holding the verifier's root. Nothing in the fetched file is
-        // trusted — the relay recomputes the root and would refuse a wrong one.
-        const takeoverState = path.join(os.tmpdir(), `sequencer-state-e2e-${process.pid}-takeover.json`);
-        const publishedState = await fetch(`${SEQUENCER_URL}/state`);
-        expect(publishedState.ok).toBe(true);
-        fs.writeFileSync(takeoverState, Buffer.from(await publishedState.arrayBuffer()));
-        const second = startSequencer(relay, {
-            STATE_PATH: takeoverState,
+        // A second relay takes over from the served state: started with
+        // STATE_FROM=<the first relay's URL> and an empty STATE_PATH, it
+        // fetches the first relay's GET /state itself, recomputes the root,
+        // writes the state over its own kept file only because that root is
+        // the verifier's, and starts on it. It settles the next batch.
+        const SECOND_URL = `http://127.0.0.1:${SEQUENCER_PORT + 2}`;
+        expect(fs.existsSync(TAKEOVER_STATE_PATH)).toBe(false);
+        secondProcess = startSequencer(relay, {
+            STATE_PATH: TAKEOVER_STATE_PATH,
+            STATE_FROM: SEQUENCER_URL,
             ARCHIVE_PATH: "",
             LISTEN_ADDR: `0.0.0.0:${SEQUENCER_PORT + 2}`,
         });
-        try {
-            await waitForSequencer(`http://127.0.0.1:${SEQUENCER_PORT + 2}`, 10 * 60_000);
-            const secondStatus = await new SequencerClient({ url: `http://127.0.0.1:${SEQUENCER_PORT + 2}` }).status();
-            const rootNow = await publicClient.readContract({
-                address: batchVerifierAddress,
-                abi: BATCH_VERIFIER_ABI,
-                functionName: "stateRoot",
-            });
-            expect(secondStatus.state_root.toLowerCase()).toBe((rootNow as string).toLowerCase());
-        } finally {
-            await stopSequencer(second);
-            for (const suffix of ["", ".tmp", ".next.jsonl", ".next.jsonl.tmp"]) {
-                fs.rmSync(takeoverState + suffix, { force: true });
-            }
-        }
+        attachLogs(secondProcess);
+        await waitForSequencer(SECOND_URL, 10 * 60_000);
+        const secondClient = new SequencerClient({ url: SECOND_URL });
+        const rootAtTakeover = (await publicClient.readContract({
+            address: batchVerifierAddress,
+            abi: BATCH_VERIFIER_ABI,
+            functionName: "stateRoot",
+        })) as string;
+        expect((await secondClient.status()).state_root.toLowerCase()).toBe(rootAtTakeover.toLowerCase());
+        expect(fs.existsSync(TAKEOVER_STATE_PATH), "the relay wrote the adopted state as its kept file").toBe(true);
 
         // The relay that built batch 1 restarts and resumes on its kept
-        // state: the resolve below lands in a batch built on it.
+        // state, beside the second; the batch below is the second's.
         await stopSequencer(sequencerProcess!);
         sequencerProcess = startSequencer(relay);
         attachLogs(sequencerProcess);
@@ -508,7 +513,7 @@ describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
             message: { processId },
         });
 
-        const resolveResult = await sequencerClient.submitResolve(
+        const resolveResult = await secondClient.submitResolve(
             processId,
             [commitment],
             buyerResolveSig,
@@ -540,10 +545,12 @@ describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
         expect(claims).toHaveLength(1);
         expect(claims[0].clause_or_assembly).toBe(clauseKey);
 
-        const submitted = await sequencerClient.submitUsageClaim(claims[0]);
+        const submitted = await secondClient.submitUsageClaim(claims[0]);
         expect(submitted.pending).toBe(1);
 
-        await waitForBatchCount(sequencerClient, 2);
+        // The second relay settles it: its first batch, on the state it
+        // took over.
+        await waitForBatchCount(secondClient, 1, 5 * 60_000);
 
         // ── 5c. THE CHAIN FACT: the accrual landed on the COUNTER ──
         // Read from the counter's own storage — not from the sequencer's
@@ -610,19 +617,25 @@ describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
         })) as bigint;
         expect(finalBatchCount).toBe(2n);
 
-        const status = await sequencerClient.status();
-        expect(status.batches_settled).toBe(2);
+        const status = await secondClient.status();
+        expect(status.batches_settled, "the second relay settled batch 2").toBe(1);
         expect(status.pending_ops).toBe(0);
+        expect(status.state_root.toLowerCase()).toBe(finalRoot.toLowerCase());
+        expect((await sequencerClient.status()).batches_settled, "the first relay settled batch 1 alone").toBe(1);
 
         // ── 8. What the relay PUBLISHED, read as a stranger reads it ──
         // The relay's wire and this client's types are two statements of one
         // record; a field the two name differently arrives as `undefined` and
         // reads as a batch that never reached the chain. Every anchor the
         // relay publishes is checked against the chain's own receipt.
-        const published = await sequencerClient.order(orderHash);
-        expect(published, "the relay publishes the order it resolved").not.toBeNull();
-        const commitAnchor = published!.commit!.batch;
-        const resolutionAnchor = published!.resolution!.batch;
+        // Each relay publishes what it settled: the first the commit, the
+        // second the resolution.
+        const publishedCommit = await sequencerClient.order(orderHash);
+        expect(publishedCommit, "the first relay publishes the order it committed").not.toBeNull();
+        const publishedResolution = await secondClient.order(orderHash);
+        expect(publishedResolution, "the second relay publishes the order it resolved").not.toBeNull();
+        const commitAnchor = publishedCommit!.commit!.batch;
+        const resolutionAnchor = publishedResolution!.resolution!.batch;
         expect(resolutionAnchor.new_state_root, "the resolution's batch left the final root").toBe(finalRoot);
         for (const [leg, anchor] of [["commit", commitAnchor], ["resolution", resolutionAnchor]] as const) {
             expect(anchor.resolution_tx, `${leg}: the relay names the transaction`).toMatch(/^0x[0-9a-f]{64}$/);
@@ -635,9 +648,10 @@ describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
             expect(anchor.chain_id).toBe(Number(await publicClient.getChainId()));
         }
         expect(commitAnchor.resolution_tx).not.toBe(resolutionAnchor.resolution_tx);
-        const page = await sequencerClient.batches();
-        expect(page.batches.map((b) => b.resolution_tx)).toEqual([
+        expect((await sequencerClient.batches()).batches.map((b) => b.resolution_tx)).toEqual([
             commitAnchor.resolution_tx,
+        ]);
+        expect((await secondClient.batches()).batches.map((b) => b.resolution_tx)).toEqual([
             resolutionAnchor.resolution_tx,
         ]);
     }, 5 * 60_000);

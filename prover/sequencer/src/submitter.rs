@@ -246,8 +246,8 @@ pub fn allocate_funding(
 /// trial-apply: each wallet's balance and allowance are read once, at the
 /// latest block, and allocated across the batch's commits
 /// ([`allocate_funding`]). A dropped commit is re-submittable once funded; a
-/// read failure drops conservatively, never proves against unverified
-/// funding. `None` (no verifier configured — a prove-only dry run) passes
+/// read failure is returned as unverifiable ([`is_unverifiable_drop`]),
+/// which formation defers — never proved against unverified funding. `None` (no verifier configured — a prove-only dry run) passes
 /// everything through untouched.
 pub async fn filter_funded_commits(
     gate: Option<&FundingGate>,
@@ -1007,6 +1007,7 @@ mod tests {
                     s: B256::ZERO,
                 },
             },
+            deferred_since: None,
         }];
         let (valid, dropped) = filter_funded_commits(None, ops).await;
         assert_eq!(valid.len(), 1);
@@ -1036,6 +1037,7 @@ mod tests {
                     buyer_sig: sig.clone(),
                     seller_sig: sig.clone(),
                 },
+                deferred_since: None,
             },
             PendingOp {
                 id: 2,
@@ -1045,6 +1047,7 @@ mod tests {
                     commitments: vec![],
                     buyer_sig: sig,
                 },
+                deferred_since: None,
             },
         ];
         let (valid, dropped) = filter_funded_commits(Some(&gate), ops).await;

@@ -338,6 +338,7 @@ fn pend(ops: Vec<KernelOp>) -> Vec<PendingOp> {
             id: i as u64 + 1,
             key: B256::with_last_byte(i as u8 + 1),
             op,
+            deferred_since: None,
         })
         .collect()
 }
@@ -2113,6 +2114,7 @@ fn commit_from(base: &Commitment, salt: u64, payment: u64) -> PendingOp {
             buyer_sig: Signature { r: B256::ZERO, s: B256::ZERO, v: 27 },
             seller_sig: Signature { r: B256::ZERO, s: B256::ZERO, v: 27 },
         },
+        deferred_since: None,
     }
 }
 
@@ -2496,6 +2498,7 @@ fn a_commit_that_would_grow_a_process_past_one_settle_is_dropped_at_formation() 
         id: 99,
         key: B256::with_last_byte(99),
         op: KernelOp::Resolve { process_id: process, commitments: vec![], buyer_sig: Signature { r: B256::ZERO, s: B256::ZERO, v: 27 } },
+        deferred_since: None,
     };
     let ops = vec![commit(1), commit(2), commit(3), resolve, commit(4)];
     let (kept, dropped) = assembler::filter_commits_within_resolve_capacity(&prev, ops, 4);
@@ -2613,8 +2616,8 @@ async fn an_operation_dropped_at_batch_formation_is_recorded_with_its_reason() {
     let failures = FailureLog::default();
     let ops = canonical_ops();
     let dropped = vec![
-        (PendingOp { id: 7, key: B256::with_last_byte(7), op: ops[0].clone() }, "OrderAlreadyExists".to_string()),
-        (PendingOp { id: 8, key: B256::with_last_byte(8), op: ops[1].clone() }, "UnknownOrder".to_string()),
+        (PendingOp { id: 7, key: B256::with_last_byte(7), op: ops[0].clone(), deferred_since: None }, "OrderAlreadyExists".to_string()),
+        (PendingOp { id: 8, key: B256::with_last_byte(8), op: ops[1].clone(), deferred_since: None }, "UnknownOrder".to_string()),
     ];
     let recorded = record_dropped(&failures, &dropped, "batch formation").await;
     assert_eq!(recorded, 2);
@@ -2624,4 +2627,344 @@ async fn an_operation_dropped_at_batch_formation_is_recorded_with_its_reason() {
     // Nothing dropped records nothing.
     assert_eq!(record_dropped(&failures, &[], "batch formation").await, 0);
     assert_eq!(failures.snapshot().await.0, 2);
+}
+
+// ── An operation dropped at formation is deferred, bounded in time ────
+//
+// `formal/RelayState.tla`, `DeferSpec`: an operation that applies against
+// no order of its drain, or a commit whose funding could not be read, waits
+// apart from the queue; it is drained again only into the room the queue
+// leaves empty, its group whole; it is dead-lettered once the window has
+// passed since it was first deferred, however often it was retried; its
+// time rides on the operation and spends nothing of the re-queue's count.
+
+const WINDOW: std::time::Duration = std::time::Duration::from_secs(60);
+
+fn secs(n: u64) -> std::time::Duration {
+    std::time::Duration::from_secs(n)
+}
+
+#[tokio::test]
+async fn a_deferred_operation_is_drained_only_into_slots_the_queue_leaves_empty() {
+    let mp = mempool().with_defer_window(WINDOW);
+    let ops = canonical_ops();
+    let mut ids = Vec::new();
+    for op in &ops {
+        ids.push(mp.submit(op.clone()).await.unwrap().id);
+    }
+    let t0 = std::time::Instant::now();
+    let first = mp.drain_up_to(1).await;
+    assert!(mp.defer(first, t0).await.is_empty(), "deferred, not expired");
+    assert_eq!(mp.len().await, 4, "a deferred operation still waits");
+    // A full drain takes the queue alone: the deferred one displaces nothing.
+    let second = mp.drain_up_to(2).await;
+    assert_eq!(second.iter().map(|p| p.id).collect::<Vec<_>>(), ids[1..3]);
+    // The queue leaves room for one: the deferred one rides in it.
+    let third = mp.drain_up_to(2).await;
+    assert_eq!(third.iter().map(|p| p.id).collect::<Vec<_>>(), vec![ids[3], ids[0]]);
+    assert_eq!(mp.len().await, 0);
+}
+
+#[tokio::test]
+async fn a_deferred_group_is_retried_whole() {
+    let mp = mempool().with_defer_window(WINDOW);
+    let ops = canonical_ops();
+    for op in &ops {
+        mp.submit(op.clone()).await.unwrap();
+    }
+    let t0 = std::time::Instant::now();
+    // The commit and what was filtered into its order, deferred together.
+    let group = mp.drain_up_to(2).await;
+    let group_ids: Vec<u64> = group.iter().map(|p| p.id).collect();
+    assert!(mp.defer(group, t0).await.is_empty());
+    // Room for one is left after the queue's two operations: the group of two
+    // does not split into it.
+    let next = mp.drain_up_to(3).await;
+    assert_eq!(next.len(), 2, "the queued operations alone: {next:?}");
+    // Room for two: the queue is empty, and the group comes back whole.
+    let next = mp.drain_up_to(2).await;
+    assert_eq!(next.iter().map(|p| p.id).collect::<Vec<_>>(), group_ids);
+}
+
+#[tokio::test]
+async fn a_deferral_is_bounded_in_time_from_first_deferral_not_in_attempts() {
+    let mp = mempool().with_defer_window(WINDOW);
+    let ops = canonical_ops();
+    mp.submit(ops[3].clone()).await.unwrap();
+    let t0 = std::time::Instant::now();
+    // Retried at every tick inside the window: never expired, however many
+    // attempts it took.
+    let mut drained = mp.drain_up_to(10).await;
+    for k in 0..30u64 {
+        assert!(mp.defer(drained, t0 + secs(k)).await.is_empty(), "attempt {k} is inside the window");
+        drained = mp.drain_up_to(10).await;
+        assert_eq!(drained.len(), 1);
+    }
+    // At the window, counted from the FIRST deferral, it is dead-lettered.
+    let expired = mp.defer(drained, t0 + WINDOW).await;
+    assert_eq!(expired.len(), 1);
+    assert!(expired[0].1.contains("60s"), "{}", expired[0].1);
+    assert_eq!(mp.len().await, 0, "and not deferred");
+
+    // Never retried (the queue never leaves room), it expires on time all
+    // the same.
+    mp.submit(ops[2].clone()).await.unwrap();
+    let parked = mp.drain_up_to(1).await;
+    assert!(mp.defer(parked, t0).await.is_empty());
+    assert!(mp.expire_deferred(t0 + WINDOW - secs(1)).await.is_empty());
+    let expired = mp.expire_deferred(t0 + WINDOW).await;
+    assert_eq!(expired.len(), 1);
+    assert_eq!(mp.len().await, 0);
+    // Expired, its key is free: a resubmission is a fresh admission with a
+    // fresh clock.
+    assert!(!mp.submit(ops[2].clone()).await.unwrap().duplicate);
+    let fresh = mp.drain_up_to(1).await;
+    assert!(mp.defer(fresh, t0 + WINDOW + secs(1)).await.is_empty());
+}
+
+#[tokio::test]
+async fn a_deferral_spends_nothing_of_the_requeue_count() {
+    let mp = mempool().with_defer_window(WINDOW).with_max_requeues(1);
+    let ops = canonical_ops();
+    mp.submit(ops[0].clone()).await.unwrap();
+    let t0 = std::time::Instant::now();
+    let mut drained = mp.drain_up_to(1).await;
+    for k in 0..3u64 {
+        assert!(mp.defer(drained, t0 + secs(k)).await.is_empty());
+        drained = mp.drain_up_to(1).await;
+    }
+    // Deferred three times, it still has its one transient re-queue.
+    assert!(mp.requeue(drained).await.is_empty(), "the deferrals spent no re-queue");
+    // And the re-queue leaves its deferral clock where it was: first deferred
+    // at t0, it expires at t0 + the window.
+    let drained = mp.drain_up_to(1).await;
+    assert_eq!(mp.defer(drained, t0 + WINDOW).await.len(), 1);
+}
+
+#[tokio::test]
+async fn deferring_drops_a_copy_resubmitted_meanwhile_and_holds_the_key() {
+    let mp = mempool().with_defer_window(WINDOW);
+    let ops = canonical_ops();
+    let first = mp.submit(ops[3].clone()).await.unwrap();
+    let drained = mp.drain_up_to(1).await;
+    // While the tick ran, the same operation was submitted again under a
+    // new id: the drain had freed its key.
+    let copy = mp.submit(ops[3].clone()).await.unwrap();
+    assert!(!copy.duplicate);
+    assert!(mp.defer(drained, std::time::Instant::now()).await.is_empty());
+    assert_eq!(mp.len().await, 1, "one copy waits: the deferred one");
+    // Deferred, its key is held: a resubmission is a duplicate of it.
+    let again = mp.submit(ops[3].clone()).await.unwrap();
+    assert!(again.duplicate);
+    assert_eq!(again.id, first.id);
+    let next = mp.drain_up_to(10).await;
+    assert_eq!(next.iter().map(|p| p.id).collect::<Vec<_>>(), vec![first.id]);
+}
+
+#[tokio::test]
+async fn requeue_drops_a_copy_resubmitted_meanwhile() {
+    let mp = mempool();
+    let ops = canonical_ops();
+    let first = mp.submit(ops[0].clone()).await.unwrap();
+    let drained = mp.drain_up_to(1).await;
+    assert!(!mp.submit(ops[0].clone()).await.unwrap().duplicate);
+    assert!(mp.requeue(drained).await.is_empty());
+    let next = mp.drain_up_to(10).await;
+    assert_eq!(next.iter().map(|p| p.id).collect::<Vec<_>>(), vec![first.id]);
+}
+
+#[test]
+fn what_was_built_on_a_deferred_operation_moves_with_it() {
+    let ops = pend(canonical_ops());
+    let (commit, rest) = (ops[0].clone(), ops[1..].to_vec());
+    // The commit's funding could not be read: it is deferred, and what was
+    // filtered into its order no longer applies without it — but applies
+    // with it, so it moves with it.
+    let (kept, follow, dropped) = assembler::refilter_after_drops(
+        CHAIN_ID,
+        CORE,
+        1000,
+        &empty_snapshot(),
+        rest.clone(),
+        std::slice::from_ref(&commit),
+    );
+    assert!(kept.is_empty());
+    assert_eq!(follow.iter().map(|p| p.id).collect::<Vec<_>>(), vec![2, 3, 4]);
+    assert!(dropped.is_empty());
+    // The commit is refused for good (a verified shortfall): what is built
+    // on it is dead-lettered, with the Core's reason.
+    let (kept, follow, dropped) =
+        assembler::refilter_after_drops(CHAIN_ID, CORE, 1000, &empty_snapshot(), rest, &[]);
+    assert!(kept.is_empty());
+    assert!(follow.is_empty());
+    assert_eq!(dropped.len(), 3);
+}
+
+// ── A dropped usage claim counts on /status, apart from operations ─────
+
+#[tokio::test]
+async fn a_dropped_usage_claim_is_counted_apart_from_operations() {
+    let failures = FailureLog::default();
+    let batch = build_canonical_batch_input();
+    let claim = UsageClaim {
+        clause_or_assembly: B256::with_last_byte(9),
+        ..batch.usage_claims.first().cloned().unwrap_or_else(|| panic!("the canonical batch carries a claim"))
+    };
+    let dropped = vec![(claim.clone(), "not registered".to_string()), (claim, "unstaked seller".to_string())];
+    assert_eq!(api::record_dropped_claims(&failures, &dropped, "batch formation").await, 2);
+    failures.record_claims(1, "no usage counter".to_string()).await;
+    assert_eq!(failures.snapshot().await.0, 0, "no operation is dead-lettered");
+    let (claims, last) = failures.claims_snapshot().await;
+    assert_eq!(claims, 3);
+    assert_eq!(last.as_deref(), Some("no usage counter"));
+
+    let state = test_app_state();
+    state.failures.record_claims(2, "would abort the batch proof".to_string()).await;
+    let app = api::router(state, ApiConfig::default());
+    let req = Request::builder().uri("/status").body(Body::empty()).unwrap();
+    let response = app.oneshot(req).await.unwrap();
+    let body = axum::body::to_bytes(response.into_body(), 4096).await.unwrap();
+    let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+    assert_eq!(json["dropped_usage_claims"], 2);
+    assert_eq!(json["last_dropped_claim_error"], "would abort the batch proof");
+    assert_eq!(json["dead_lettered_ops"], 0);
+    assert!(json["last_settle_error"].is_null());
+}
+
+// ── A permanent Core refusal is dead-lettered at once ───────────────
+//
+// The deferral is for an operation that may yet apply. Against the landed
+// state alone — never the drain's own unlanded operations — a refusal the
+// state can only keep (a process or order that exists, is resolved, a
+// deadline past, a signature or a witness that fails) is final: dead-lettered
+// at once with the Core's reason. One that names a missing dependency
+// (an unknown process or order, a list or accumulator a later order may
+// complete) is deferred.
+
+#[tokio::test]
+async fn a_permanent_kernel_refusal_is_dead_lettered_at_once_and_a_missing_dependency_deferred() {
+    let ops = canonical_ops();
+    // Landed: the canonical batch committed, attested and resolved.
+    let mirror = StateMirror::genesis();
+    let batch1 = assembler::assemble_batch(CHAIN_ID, CORE, 1000, ops.clone(), mirror.snapshot().await, UsageContext::default());
+    let (_, _, _, post1) = apply_batch_with_state(&batch1).unwrap();
+    mirror.advance(post1).await;
+    let landed = mirror.snapshot().await;
+
+    let (valid, poison) = assembler::filter_applicable_ops(CHAIN_ID, CORE, 1001, &landed, pend(ops.clone()));
+    assert!(valid.is_empty());
+    let (deferrable, refused, _) = assembler::split_permanent_refusals(CHAIN_ID, CORE, 1001, &landed, poison);
+    assert!(deferrable.is_empty(), "{deferrable:?}");
+    let reasons: Vec<&str> = refused.iter().map(|(_, r)| r.as_str()).collect();
+    assert_eq!(refused.len(), 4);
+    assert!(reasons[0].contains("ProcessAlreadyExists"), "{reasons:?}");
+    assert!(reasons[1].contains("OrderResolved") && reasons[2].contains("OrderResolved"), "{reasons:?}");
+    assert!(reasons[3].contains("NoActiveOrders"), "{reasons:?}");
+
+    // Nothing landed: what follows the commit names a missing dependency
+    // and is deferred.
+    let (_, poison) = assembler::filter_applicable_ops(CHAIN_ID, CORE, 1000, &empty_snapshot(), pend(ops[1..].to_vec()));
+    let (deferrable, refused, _) = assembler::split_permanent_refusals(CHAIN_ID, CORE, 1000, &empty_snapshot(), poison);
+    assert!(refused.is_empty(), "{refused:?}");
+    assert_eq!(deferrable.len(), 3);
+
+    // A replay refused only against the drain's own unlanded resolve is
+    // judged against the landed state, where it names a missing process:
+    // deferred, never refused on what has not landed.
+    let mut replayed = ops.clone();
+    replayed.push(ops[3].clone());
+    let (_, poison) = assembler::filter_applicable_ops(CHAIN_ID, CORE, 1000, &empty_snapshot(), pend(replayed));
+    assert!(poison[0].1.contains("NoActiveOrders"), "{poison:?}");
+    let (deferrable, refused, _) = assembler::split_permanent_refusals(CHAIN_ID, CORE, 1000, &empty_snapshot(), poison);
+    assert!(refused.is_empty(), "{refused:?}");
+    assert_eq!(deferrable.len(), 1);
+
+    // A deadline the chain's clock has passed never returns.
+    let (_, poison) = assembler::filter_applicable_ops(CHAIN_ID, CORE, 3000, &empty_snapshot(), pend(vec![ops[0].clone()]));
+    let (deferrable, refused, _) = assembler::split_permanent_refusals(CHAIN_ID, CORE, 3000, &empty_snapshot(), poison);
+    assert!(deferrable.is_empty());
+    assert!(refused[0].1.contains("DeadlineExpired"), "{}", refused[0].1);
+}
+
+fn signed_commit(c: &Commitment) -> KernelOp {
+    let domain = domain_separator(CHAIN_ID, CORE);
+    KernelOp::Commit {
+        commitment: c.clone(),
+        buyer_sig: sign_commitment(c, &domain, &make_signing_key(BUYER_KEY)),
+        seller_sig: sign_commitment(c, &domain, &make_signing_key(SELLER1_KEY)),
+    }
+}
+
+fn landed_after(ops: Vec<KernelOp>) -> KernelStateSnapshot {
+    let batch = assembler::assemble_batch(CHAIN_ID, CORE, 1000, ops, empty_snapshot(), UsageContext::default());
+    let (_, _, _, post) = apply_batch_with_state(&batch).unwrap();
+    post.to_snapshot()
+}
+
+fn split_alone(ts: u64, prev: &KernelStateSnapshot, ops: Vec<KernelOp>) -> (Vec<String>, Vec<String>, Vec<String>) {
+    let (_, poison) = assembler::filter_applicable_ops(CHAIN_ID, CORE, ts, prev, pend(ops));
+    let (deferrable, refused, built_on) = assembler::split_permanent_refusals(CHAIN_ID, CORE, ts, prev, poison);
+    let reasons = |v: Vec<(PendingOp, String)>| v.into_iter().map(|(_, r)| r).collect::<Vec<_>>();
+    (reasons(deferrable), reasons(refused), reasons(built_on))
+}
+
+#[test]
+fn a_refusal_is_classified_on_the_fields_it_carries() {
+    let (root_op, sub_op, root, sub, process_id, resolve_sig) = two_order_process();
+    let both = landed_after(vec![root_op.clone(), sub_op.clone()]);
+    // An order list shorter than the active orders only grows shorter.
+    let short = KernelOp::Resolve { process_id, commitments: vec![root.clone()], buyer_sig: resolve_sig.clone() };
+    let (d, r, _) = split_alone(1001, &both, vec![short]);
+    assert!(d.is_empty(), "{d:?}");
+    assert!(r[0].contains("IncompleteOrderList(required=2, provided=1)"), "{r:?}");
+    // A cumulative value the process has already passed never returns.
+    let (d, r, _) = split_alone(1001, &both, vec![sub_op.clone()]);
+    assert!(d.is_empty(), "{d:?}");
+    assert!(r[0].contains("CumulativeValueMismatch"), "{r:?}");
+
+    let root_only = landed_after(vec![root_op.clone()]);
+    // A list longer than the active orders, and a cumulative value not yet
+    // reached, wait for the orders that may complete them.
+    let long = KernelOp::Resolve { process_id, commitments: vec![root.clone(), sub.clone()], buyer_sig: resolve_sig.clone() };
+    let fifth = alloy_primitives::U256::from(5u64);
+    let later = Commitment {
+        payment: fifth,
+        expected_cumulative_value: sub.expected_cumulative_value + fifth,
+        salt: sub.salt + alloy_primitives::U256::from(1u64),
+        ..sub.clone()
+    };
+    let (d, r, _) = split_alone(1001, &root_only, vec![long, signed_commit(&later)]);
+    assert!(r.is_empty(), "{r:?}");
+    assert!(d[0].contains("IncompleteOrderList(required=1, provided=2)") && d[1].contains("CumulativeValueMismatch"), "{d:?}");
+
+    // A resolve listing an order of another process names an order that can
+    // never be under its own: refused. One listing an order of its own
+    // process not yet committed waits.
+    let elsewhere = Commitment { salt: root.salt + alloy_primitives::U256::from(10u64), ..root.clone() };
+    let foreign = KernelOp::Resolve { process_id, commitments: vec![elsewhere], buyer_sig: resolve_sig.clone() };
+    let own = KernelOp::Resolve { process_id, commitments: vec![sub.clone()], buyer_sig: resolve_sig };
+    let (d, r, _) = split_alone(1001, &root_only, vec![foreign, own]);
+    assert_eq!(r.len(), 1, "{r:?}");
+    assert!(r[0].contains("OrderNotCommitted"), "{r:?}");
+    assert_eq!(d.len(), 1, "{d:?}");
+    assert!(d[0].contains("OrderNotCommitted"), "{d:?}");
+}
+
+#[test]
+fn what_was_built_on_a_permanently_refused_operation_is_dead_lettered_at_once() {
+    let (_, _, root, sub, _, _) = two_order_process();
+    let domain = domain_separator(CHAIN_ID, CORE);
+    // A root whose deadline the chain has passed, and a sub-order of its
+    // process whose own deadline has not.
+    let expired_root = Commitment { deadline: alloy_primitives::U256::from(1200u64), ..root.clone() };
+    let (_, expired_process) = derive_commitment_ids(&domain, &expired_root);
+    let behind = Commitment { process_id: expired_process, deadline: alloy_primitives::U256::from(5000u64), ..sub.clone() };
+    // An unrelated operation waiting on an order of its own.
+    let waiting = canonical_ops()[1].clone();
+    let (d, r, b) = split_alone(1500, &empty_snapshot(), vec![signed_commit(&expired_root), signed_commit(&behind), waiting]);
+    assert!(r.len() == 1 && r[0].contains("DeadlineExpired"), "{r:?}");
+    assert_eq!(b.len(), 1, "the sub-order goes with the root: {b:?}");
+    assert!(b[0].contains("DeadlineExpired"), "{b:?}");
+    assert_eq!(d.len(), 1, "the unrelated one still waits: {d:?}");
+    assert!(d[0].contains("UnknownOrder"), "{d:?}");
 }

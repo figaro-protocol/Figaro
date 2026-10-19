@@ -63,6 +63,49 @@
 (*                            approval re-sends the same batch instead of  *)
 (*                            dropping the revoker and rebuilding, so the  *)
 (*                            relay sends a batch it knows cannot pull     *)
+(*                                                                         *)
+(* THE DEFERRAL (the second half of this module, `DeferSpec`, checked by   *)
+(* RelayStateDeferral.cfg; `Spec` above holds its variables still and      *)
+(* `DeferSpec` holds the lifecycle's). Batch formation drains at most      *)
+(* `DCap` operations and filters them against the state: an operation      *)
+(* that applies against no order of the drain (its dependency may sit past *)
+(* the drain's cut, may not be submitted yet, or may never come), or a     *)
+(* commit whose funding the node could not read, is DEFERRED, never        *)
+(* dead-lettered at first sight; what was filtered into an order behind a  *)
+(* deferred operation moves with it. A deferred operation waits apart from *)
+(* the queue and is drained again only into the slots the queue leaves     *)
+(* empty, its group whole; it is dead-lettered once `DWindow` ticks have   *)
+(* passed since it was first deferred. The ops are fixed: "a" a commit,    *)
+(* "b" an operation on a's order, "f" one that never applies — the free    *)
+(* failure anyone may submit whose refusal names a missing dependency. An  *)
+(* operation the kernel refuses for good against the landed state (it      *)
+(* exists, is resolved, is past its deadline, fails a signature or a       *)
+(* witness) is dead-lettered at once and never enters the deferral, so it  *)
+(* is not modelled here.                                                   *)
+(*                                                                         *)
+(* FIVE MORE SWITCHES, each FALSE restoring one defect the deferral must   *)
+(* not have:                                                               *)
+(*   DeferBoundedInTime       — FALSE: the bound is in attempts, so an     *)
+(*                              operation retried every tick expires       *)
+(*                              before a late dependency had its window,   *)
+(*                              and one never retried waits forever        *)
+(*                              (fails `DeferralBoundedInTime`)            *)
+(*   DeferOwnCounter          — FALSE: a deferral spends the transient     *)
+(*                              re-queue's counter, so an operation is     *)
+(*                              dead-lettered at the re-queue cap without  *)
+(*                              that many transient failures (fails        *)
+(*                              `RequeueCapCountsTransients`)              *)
+(*   DeferDrainsOnlyFreeSlots — FALSE: a deferred operation goes back to   *)
+(*                              the queue's front, and every tick drains   *)
+(*                              it ahead of what waits behind it (fails    *)
+(*                              `NoExtraDraining`)                         *)
+(*   DeferMovesDependents     — FALSE: what was filtered into an order     *)
+(*                              behind a deferred operation is dead-       *)
+(*                              lettered, though its dependency stays      *)
+(*                              (fails `BuiltOnOnlyBehindDead`)            *)
+(*   DeferDropsCopy           — FALSE: a copy resubmitted while the        *)
+(*                              operation was drained stays queued beside  *)
+(*                              the deferred one (fails `NoTwoCopies`)     *)
 (***************************************************************************)
 EXTENDS Naturals, Sequences, FiniteSets
 
@@ -74,7 +117,17 @@ CONSTANTS
     HoldThroughRevert,
     KeepRetainsBuiltOnRoot,
     TakeoverChecksRoot,
-    RebatchDropsRevoker
+    RebatchDropsRevoker,
+    DCap,           \* MAX_BATCH_OPS: operations one drain takes
+    DWindow,        \* the deferral's bound, in ticks from first deferral
+    DMaxTime,       \* the ticks the model runs
+    DMaxRequeues,   \* the transient re-queue's cap
+    DMaxAttempts,   \* the attempt bound DeferBoundedInTime = FALSE uses
+    DeferBoundedInTime,
+    DeferOwnCounter,
+    DeferDrainsOnlyFreeSlots,
+    DeferMovesDependents,
+    DeferDropsCopy
 
 Genesis == 0
 Roots == 0..MaxBatches
@@ -335,7 +388,257 @@ Next ==
     \/ \E p \in Parties : Revoke(p)
     \/ \E r, s \in Relays : Takeover(r, s)
 
-Spec == Init /\ [][Next]_vars
+(***************************************************************************)
+(* THE DEFERRAL of an operation dropped at batch formation (main.rs's      *)
+(* formation, mempool.rs's `defer`, `drain_up_to`, `expire_deferred`).     *)
+(***************************************************************************)
+DOps == {"a", "b", "f"}
+\* b is built on a's order; f never applies; a is the one commit.
+DDep == [o \in DOps |-> IF o = "b" THEN {"a"} ELSE {}]
+DFree == {"f"}
+DCommits == {"a"}
+DReasons == {"no", "expired", "requeueCap", "unfunded", "builtOn"}
+
+VARIABLES
+    queue,       \* the pending queue, oldest first
+    parked,      \* the deferral: groups (sets), oldest first
+    deferred,    \* ghost: every operation deferred now, wherever it sits
+    drained,     \* the tick's drain, between drain and formation
+    dphase,      \* "idle" | "drained"
+    landed,      \* operations a batch landed
+    dead,        \* why each operation was dead-lettered ("no": it was not)
+    sightSet,    \* operations holding a first-deferral record
+    sight,       \* that record: the tick of the first deferral
+    requeues,    \* the transient re-queue's counter
+    transients,  \* ghost: transient failures each operation suffered
+    attempts,    \* the attempt counter DeferBoundedInTime = FALSE bounds by
+    submitted,   \* operations submitted once
+    now,         \* the tick
+    lastDrain,   \* ghost: did the last drain retry a deferred operation,
+                 \* and did it leave a queued one behind
+    early        \* ghost: an operation expired before its window ran out
+
+dvars == <<queue, parked, deferred, drained, dphase, landed, dead,
+           sightSet, sight, requeues, transients, attempts, submitted, now,
+           lastDrain, early>>
+allvars == <<vars, dvars>>
+
+ParkedOps == UNION Range(parked)
+SeqOf(S) == CHOOSE s \in [1..Cardinality(S) -> S] : Range(s) = S
+Without(s, S) == SelectSeq(s, LAMBDA x : x \notin S)
+DropEmpty(gs) == SelectSeq(gs, LAMBDA g : g # {})
+Min(x, y) == IF x < y THEN x ELSE y
+
+\* What applies, in some order, against the landed state: the operations
+\* whose dependencies landed or apply in the same drain. The dependencies
+\* are acyclic, so the fixpoint is unique.
+Applicable(D) ==
+    CHOOSE V \in SUBSET D :
+        V = {o \in D : o \notin DFree /\ o \notin landed /\ DDep[o] \subseteq landed \cup V}
+
+\* Retry deferred groups, oldest first, each whole, into `room` slots.
+RECURSIVE TakeGroups(_, _)
+TakeGroups(gs, room) ==
+    IF gs = <<>> THEN [taken |-> {}, rest |-> <<>>]
+    ELSE IF Cardinality(Head(gs)) <= room
+         THEN LET r == TakeGroups(Tail(gs), room - Cardinality(Head(gs)))
+              IN [taken |-> Head(gs) \cup r.taken, rest |-> r.rest]
+         ELSE LET r == TakeGroups(Tail(gs), room)
+              IN [taken |-> r.taken, rest |-> <<Head(gs)>> \o r.rest]
+
+DTypeOK ==
+    /\ queue \in Seq(DOps)
+    /\ parked \in Seq(SUBSET DOps)
+    /\ deferred \subseteq DOps
+    /\ drained \subseteq DOps
+    /\ dphase \in {"idle", "drained"}
+    /\ landed \subseteq DOps
+    /\ dead \in [DOps -> DReasons]
+    /\ sightSet \subseteq DOps
+    /\ sight \in [DOps -> 0..DMaxTime]
+    /\ requeues \in [DOps -> 0..(DMaxTime + 1)]
+    /\ transients \in [DOps -> 0..(DMaxTime + 1)]
+    /\ attempts \in [DOps -> 0..(DMaxTime + 1)]
+    /\ submitted \subseteq DOps
+    /\ now \in 0..DMaxTime
+    /\ lastDrain \in [retried : BOOLEAN, leftQueued : BOOLEAN]
+    /\ early \in BOOLEAN
+
+DInit ==
+    /\ queue = <<>>
+    /\ parked = <<>>
+    /\ deferred = {}
+    /\ drained = {}
+    /\ dphase = "idle"
+    /\ landed = {}
+    /\ dead = [o \in DOps |-> "no"]
+    /\ sightSet = {}
+    /\ sight = [o \in DOps |-> 0]
+    /\ requeues = [o \in DOps |-> 0]
+    /\ transients = [o \in DOps |-> 0]
+    /\ attempts = [o \in DOps |-> 0]
+    /\ submitted = {}
+    /\ now = 0
+    /\ lastDrain = [retried |-> FALSE, leftQueued |-> FALSE]
+    /\ early = FALSE
+
+\* A submission, once per operation (a deferred operation's key stays in the
+\* mempool's index, so resubmitting it then is a duplicate and adds nothing).
+DSubmit(o) ==
+    /\ o \notin submitted
+    /\ queue' = Append(queue, o)
+    /\ submitted' = submitted \cup {o}
+    /\ UNCHANGED <<parked, deferred, drained, dphase, landed, dead,
+                   sightSet, sight, requeues, transients, attempts, now, lastDrain,
+                   early>>
+
+\* The drain freed a drained operation's key: the same operation can be
+\* submitted again while its tick runs. A fresh admission clears the key's
+\* re-queue count (`Mempool::submit`).
+DSubmitCopy(o) ==
+    /\ dphase = "drained"
+    /\ o \in drained
+    /\ o \notin Range(queue)
+    /\ queue' = Append(queue, o)
+    /\ requeues' = [requeues EXCEPT ![o] = 0]
+    /\ transients' = [transients EXCEPT ![o] = 0]
+    /\ UNCHANGED <<parked, deferred, drained, dphase, landed, dead,
+                   sightSet, sight, attempts, submitted, now, lastDrain, early>>
+
+\* A tick's head: the clock moves, a deferral past its window is
+\* dead-lettered (in time: whether or not it was ever retried), and the drain
+\* takes the queue first and the deferred groups only into the slots left.
+DDrain ==
+    /\ dphase = "idle"
+    /\ now < DMaxTime
+    /\ LET t == now + 1
+           exp == IF DeferBoundedInTime
+                  THEN {o \in deferred : t - sight[o] >= DWindow}
+                  ELSE {}
+           q1 == Without(queue, exp)
+           p1 == DropEmpty([i \in 1..Len(parked) |-> parked[i] \ exp])
+           n == Min(DCap, Len(q1))
+           fromQueue == Range(SubSeq(q1, 1, n))
+           tg == TakeGroups(p1, DCap - n)
+           taken == IF DeferDrainsOnlyFreeSlots THEN fromQueue \cup tg.taken ELSE fromQueue
+       IN
+        /\ now' = t
+        /\ queue' = SubSeq(q1, n + 1, Len(q1))
+        /\ parked' = IF DeferDrainsOnlyFreeSlots THEN tg.rest ELSE p1
+        /\ drained' = taken
+        /\ deferred' = deferred \ (exp \cup taken)
+        /\ dead' = [o \in DOps |-> IF o \in exp THEN "expired" ELSE dead[o]]
+        /\ lastDrain' = [retried |-> taken \cap deferred # {},
+                         leftQueued |-> SubSeq(q1, n + 1, Len(q1)) # <<>>]
+        /\ early' = (early \/ \E o \in exp : t - sight[o] < DWindow)
+        \* The record dies with the operation.
+        /\ sightSet' = sightSet \ exp
+    /\ dphase' = "drained"
+    /\ UNCHANGED <<landed, sight, requeues, transients, attempts, submitted>>
+
+\* Formation and the send. The operation filter's poison and the funding
+\* filter's unverifiable reads (U) are deferred; a verified shortfall (X) is
+\* dead-lettered; the operation filter runs again after the funding drops,
+\* and what was filtered behind a deferred operation moves with it. The
+\* batch then lands, or fails transiently and re-queues at the front, each
+\* operation at most DMaxRequeues times.
+DForm ==
+    /\ dphase = "drained"
+    /\ LET valid0 == Applicable(drained)
+           poison == drained \ valid0
+       IN \E U \in SUBSET (valid0 \cap DCommits), X \in SUBSET (valid0 \cap DCommits),
+             outcome \in {"land", "transient"} :
+        /\ U \cap X = {}
+        /\ LET rest == valid0 \ (U \cup X)
+               batch == Applicable(rest)
+               builtOn == rest \ batch
+               follow == IF DeferMovesDependents
+                         THEN builtOn \cap Applicable(batch \cup U \cup builtOn)
+                         ELSE {}
+               deadBuilt == builtOn \ follow
+               toDefer == poison \cup U \cup follow
+               overdue == IF DeferBoundedInTime
+                          THEN {o \in toDefer : o \in sightSet /\ now - sight[o] >= DWindow}
+                          ELSE {o \in toDefer : attempts[o] + 1 > DMaxAttempts}
+               capped == IF DeferOwnCounter
+                         THEN {}
+                         ELSE {o \in toDefer \ overdue : requeues[o] + 1 > DMaxRequeues}
+               defer == toDefer \ (overdue \cup capped)
+               \* The transient re-queue.
+               rq == [o \in DOps |-> IF ~DeferOwnCounter /\ o \in toDefer \ overdue
+                                     THEN requeues[o] + 1 ELSE requeues[o]]
+               failed == IF outcome = "transient" THEN batch ELSE {}
+               overCap == {o \in failed : rq[o] + 1 > DMaxRequeues}
+               back == failed \ overCap
+               \* Where the deferred go, a queued copy dropped first; the
+               \* re-queue drops its copy whatever the switch.
+               q1 == Without(IF DeferDropsCopy THEN Without(queue, defer) ELSE queue, back)
+               q2 == IF DeferDrainsOnlyFreeSlots THEN q1 ELSE SeqOf(defer) \o q1
+           IN
+            /\ batch # {} \/ outcome = "land"
+            /\ queue' = SeqOf(back) \o q2
+            /\ parked' = IF DeferDrainsOnlyFreeSlots /\ defer # {}
+                         THEN Append(parked, defer) ELSE parked
+            /\ deferred' = deferred \cup defer
+            /\ landed' = IF outcome = "land" THEN landed \cup batch ELSE landed
+            \* The first-deferral record rides on the operation: set once,
+            \* gone when the operation lands or is dead-lettered.
+            /\ sightSet' = ((sightSet \cup defer)
+                             \ (overdue \cup capped \cup overCap \cup X \cup deadBuilt))
+                           \ (IF outcome = "land" THEN batch ELSE {})
+            /\ early' = (early \/ \E o \in overdue : o \notin sightSet \/ now - sight[o] < DWindow)
+            /\ sight' = [o \in DOps |-> IF o \in defer /\ o \notin sightSet THEN now ELSE sight[o]]
+            /\ attempts' = IF DeferBoundedInTime THEN attempts
+                           ELSE [o \in DOps |-> IF o \in toDefer THEN attempts[o] + 1 ELSE attempts[o]]
+            /\ requeues' = [o \in DOps |-> IF o \in failed THEN rq[o] + 1 ELSE rq[o]]
+            /\ transients' = [o \in DOps |-> IF o \in failed THEN transients[o] + 1 ELSE transients[o]]
+            /\ dead' = [o \in DOps |->
+                          IF o \in overdue THEN "expired"
+                          ELSE IF o \in capped \cup overCap THEN "requeueCap"
+                          ELSE IF o \in X THEN "unfunded"
+                          ELSE IF o \in deadBuilt THEN "builtOn"
+                          ELSE dead[o]]
+    /\ drained' = {}
+    /\ dphase' = "idle"
+    /\ UNCHANGED <<submitted, now, lastDrain>>
+
+DNext ==
+    \/ \E o \in DOps : DSubmit(o) \/ DSubmitCopy(o)
+    \/ DDrain
+    \/ DForm
+
+Spec == Init /\ DInit /\ [][Next /\ UNCHANGED dvars]_allvars
+
+DeferSpec == Init /\ DInit /\ [][DNext /\ UNCHANGED vars]_allvars
+
+(***************************************************************************)
+(* The deferral's invariants.                                              *)
+(***************************************************************************)
+
+\* Bounded in TIME from the first deferral, both ways: nothing deferred is
+\* held past the window, retried or not, and nothing expires before it.
+DeferralBoundedInTime ==
+    /\ \A o \in deferred : now - sight[o] < DWindow
+    /\ ~early
+
+\* The re-queue cap counts transient failures alone.
+RequeueCapCountsTransients ==
+    \A o \in DOps : dead[o] = "requeueCap" => transients[o] > DMaxRequeues
+
+\* A deferred operation is drained only into slots the queue left empty: a
+\* drain that retries one leaves nothing queued behind it.
+NoExtraDraining == lastDrain.retried => ~lastDrain.leftQueued
+
+\* An operation is dead-lettered as built on a dropped one only when one of
+\* its dependencies was dropped for good — never behind a deferred one.
+BuiltOnOnlyBehindDead ==
+    \A o \in DOps : dead[o] = "builtOn" => \E d \in DDep[o] : dead[d] # "no"
+
+\* One copy of an operation waits at a time, queued or deferred.
+NoTwoCopies ==
+    \A o \in DOps :
+        Cardinality({i \in 1..Len(queue) : queue[i] = o})
+            + (IF o \in ParkedOps THEN 1 ELSE 0) <= 1
 
 (***************************************************************************)
 (* Invariants.                                                             *)

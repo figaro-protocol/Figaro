@@ -151,6 +151,14 @@ async fn main() {
     let mempool_max_usage: usize = env_or("MEMPOOL_MAX_USAGE_CLAIMS", "10000")
         .parse()
         .expect("invalid MEMPOOL_MAX_USAGE_CLAIMS");
+    // How long an operation batch formation deferred waits, from its first
+    // deferral, before it is dead-lettered (`mempool::DEFAULT_DEFER_WINDOW`).
+    let defer_window_secs: u64 = env_or(
+        "DEFER_WINDOW_SECS",
+        &figaro_sequencer::mempool::DEFAULT_DEFER_WINDOW.as_secs().to_string(),
+    )
+    .parse()
+    .expect("invalid DEFER_WINDOW_SECS");
     let max_body_bytes: usize = env_or("MAX_BODY_BYTES", "1048576")
         .parse()
         .expect("invalid MAX_BODY_BYTES");
@@ -179,7 +187,7 @@ async fn main() {
         "STATE_PATH",
         &format!("sequencer-state-{chain_id}-{verifier_addr:#x}.json"),
     );
-    info!(%rpc_url, %chain_id, ?verifier_addr, ?verifying_contract, %listen_addr, %batch_interval, %max_ops, %settle_gas_cap, %mempool_max_ops, %mempool_max_usage, %max_body_bytes, %archive_path, %archive_max_batches, %state_path, "Starting Figaro sequencer");
+    info!(%rpc_url, %chain_id, ?verifier_addr, ?verifying_contract, %listen_addr, %batch_interval, %max_ops, %settle_gas_cap, %mempool_max_ops, %mempool_max_usage, %defer_window_secs, %max_body_bytes, %archive_path, %archive_max_batches, %state_path, "Starting Figaro sequencer");
 
     // ── Initialize components ─────────────────────────────────────
     let mempool = Mempool::with_caps(
@@ -187,7 +195,8 @@ async fn main() {
         verifying_contract,
         mempool_max_ops,
         mempool_max_usage,
-    );
+    )
+    .with_defer_window(Duration::from_secs(defer_window_secs));
     let (state_store, kept_state) =
         match StateStore::open((!state_path.is_empty()).then(|| state_path.clone().into())).await {
             Ok(opened) => opened,
@@ -484,6 +493,13 @@ async fn batch_loop(
     loop {
         ticker.tick().await;
 
+        // A deferred operation whose window has passed since its first
+        // deferral is dead-lettered at every tick, retried or not, and
+        // whether or not this tick builds a batch.
+        let now = std::time::Instant::now();
+        let expired = mempool.expire_deferred(now).await;
+        api::record_dropped(&failures, &expired, "the deferral").await;
+
         // Build only on the state behind the verifier's root. Asked before
         // anything is drained: a batch this relay sent may have landed
         // unread (its state is held, and becomes the mirror's here), or
@@ -535,7 +551,9 @@ async fn batch_loop(
         // below) is what stops a claim submitted after the last trade from
         // sitting in the mempool forever.
         // At most MAX_BATCH_OPS operations: a batch has to fit in one block
-        // and be proved in one sitting. The rest wait for the next tick.
+        // and be proved in one sitting. The rest wait for the next tick. The
+        // queue is drained first; deferred operations ride only in the room
+        // it leaves empty.
         let pending = mempool.drain_up_to(config.max_ops).await;
         let usage_claims = mempool.drain_usage().await;
 
@@ -547,9 +565,7 @@ async fn batch_loop(
         // for the residual race (a seller unstaking after this read).
         let (usage_claims, dropped_claims) =
             submitter::filter_usage_claims(&submitter_config, usage_claims).await;
-        for (claim, why) in &dropped_claims {
-            warn!(clause_or_assembly = ?claim.clause_or_assembly, reason = %why, "Dropped usage claim — the counter would reject it");
-        }
+        api::record_dropped_claims(&failures, &dropped_claims, "the usage-claim pre-filter — the counter would reject it").await;
 
         if pending.is_empty() && usage_claims.is_empty() {
             continue;
@@ -570,20 +586,53 @@ async fn batch_loop(
             pending,
         );
         // An op that applies against no order of THIS drain — its dependency
-        // may sit past the drain's cut, or it may never apply — is dropped,
-        // re-submittable, and a recorded failure like every other drop, so it
-        // counts on /status.
+        // may sit past the drain's cut, be carried by a batch in flight, not
+        // be submitted yet, or never come — is deferred, not dead-lettered:
+        // it waits apart from the queue, drained again only into the room
+        // the queue leaves, until its window from first deferral passes
+        // (`mempool.rs`, `defer`; `formal/RelayState.tla`, `DeferSpec`).
+        // One the Core refuses for good against the landed state alone —
+        // a process or order that already exists or resolved, a deadline
+        // past, a signature or a witness that fails — is dead-lettered at
+        // once with the Core's reason (`assembler::is_permanent_refusal`).
+        // What names a process or an order only a refused commit would have
+        // created goes with it, at once.
+        let (poison, refused, built_on_refused) = assembler::split_permanent_refusals(
+            chain_id,
+            verifying_contract,
+            timestamp,
+            &prev_state,
+            poison,
+        );
+        api::record_dropped(&failures, &refused, "batch formation").await;
+        api::record_dropped(&failures, &built_on_refused, "batch formation").await;
         let poison_count = poison.len();
-        api::record_dropped(&failures, &poison, "batch formation").await;
+        let mut to_defer: Vec<PendingOp> = Vec::with_capacity(poison.len());
+        for (p, reason) in poison {
+            info!(id = p.id, %reason, "Deferred at batch formation — applies against no order of this drain");
+            to_defer.push(p);
+        }
 
         // Funding at batch formation, against the latest block: a commit
-        // whose bonds fail to pull would revert the whole settle. Dropped
-        // here it is dead-lettered and re-submittable, never proved.
+        // whose bonds fail to pull would revert the whole batch. A verified
+        // shortfall is dead-lettered and re-submittable, never proved; a
+        // commit whose funding could not be read is deferred, and read again
+        // when it is next drained.
         let (valid, unfunded) = submitter::filter_funded_commits(funding.as_ref(), valid).await;
+        let (unread, unfunded): (Vec<_>, Vec<_>) = unfunded
+            .into_iter()
+            .partition(|(_, why, _)| submitter::is_unverifiable_drop(why));
         for (p, reason, _) in &unfunded {
             warn!(id = p.id, %reason, "Dropped commit at batch formation");
             failures.record(1, reason.clone()).await;
         }
+        let unread: Vec<PendingOp> = unread
+            .into_iter()
+            .map(|(p, reason, _)| {
+                info!(id = p.id, %reason, "Deferred at batch formation — funding could not be read");
+                p
+            })
+            .collect();
         // An attestation whose witness spec does not hash to its clause key,
         // or whose key is not registered, reverts the whole batch on chain:
         // dropped here, alone.
@@ -593,23 +642,36 @@ async fn batch_loop(
             failures.record(1, reason.clone()).await;
         }
         // What was filtered into an order behind a dropped commit or
-        // attestation is filtered again without it: left in the batch, it
-        // would fail the kernel at planning and cost the whole tick's batch.
-        if !unfunded.is_empty() || !unanchored.is_empty() {
-            let (again, built_on_them) = assembler::filter_applicable_ops(
+        // attestation is filtered again without it, as after a capacity
+        // drop: left in the batch, it would fail the Core's rules at planning and
+        // cost the whole tick's batch. What applies once the deferred commits
+        // are restored moves with them; the rest is dead-lettered.
+        if !unfunded.is_empty() || !unanchored.is_empty() || !unread.is_empty() {
+            let (again, follow, built_on_them) = assembler::refilter_after_drops(
                 chain_id,
                 verifying_contract,
                 timestamp,
                 &prev_state,
                 std::mem::take(&mut valid),
+                &unread,
             );
             for (p, reason) in &built_on_them {
                 let why = format!("built on an operation dropped at batch formation: {reason}");
                 error!(id = p.id, %why, "Dead-lettered");
                 failures.record(1, why).await;
             }
+            for p in &follow {
+                info!(id = p.id, "Deferred at batch formation with the commit it was filtered behind");
+            }
+            to_defer.extend(unread);
+            to_defer.extend(follow);
             valid = again;
         }
+        // One group: an operation and what was filtered behind it are
+        // drained again together. One deferred past its window since its
+        // first deferral is dead-lettered instead.
+        let expired = mempool.defer(to_defer, now).await;
+        api::record_dropped(&failures, &expired, "batch formation").await;
         if valid.is_empty() && usage_claims.is_empty() {
             continue;
         }
@@ -621,7 +683,7 @@ async fn batch_loop(
         info!(
             ops = op_count,
             usage_claims = usage_claims.len(),
-            dropped = poison_count,
+            deferred = poison_count,
             "Assembling batch"
         );
 
@@ -641,10 +703,9 @@ async fn batch_loop(
             },
             None => {
                 if !usage_claims.is_empty() {
-                    warn!(
-                        claims = usage_claims.len(),
-                        "Dropping usage claims — no usage counter, or accrual has closed"
-                    );
+                    let why = "no usage counter, or accrual has closed";
+                    warn!(claims = usage_claims.len(), "Dropping usage claims — {why}");
+                    failures.record_claims(usage_claims.len() as u64, why.to_string()).await;
                 }
                 assembler::UsageContext::default()
             }
@@ -739,9 +800,7 @@ async fn batch_loop(
                 usage.provenance_leaf,
                 std::mem::take(&mut usage.claims),
             );
-            for (claim, reason) in &dropped {
-                warn!(clause_or_assembly = ?claim.clause_or_assembly, %reason, "Dropped usage claim — would abort the batch proof");
-            }
+            api::record_dropped_claims(&failures, &dropped, "batch formation — it would abort the batch proof").await;
             usage.claims = kept;
         }
         if valid.is_empty() && usage.claims.is_empty() {
@@ -844,12 +903,14 @@ async fn batch_loop(
             }
             batch.usage_claims = kept_claims;
         }
+        let claims_planned = batch.usage_claims.len() as u64;
         let (batch, claims_given_back) = match gas::trim_claims_to_budget(batch, budget, &mut estimate) {
             Ok(cut) => cut,
             Err(e) => {
                 let n = valid.len();
                 error!(%e, ops = n, "Batch failed to execute while its claims were planned — dead-lettered");
                 failures.record(n as u64, format!("planning failed: {e}")).await;
+                failures.record_claims(claims_planned, format!("planning failed: {e}")).await;
                 continue;
             }
         };
@@ -873,6 +934,7 @@ async fn batch_loop(
                 // dead-letter the batch instead.
                 error!(%e, ops = op_count, "Batch failed to prove after filtering — dead-lettered");
                 failures.record(op_count as u64, format!("prove failed: {e}")).await;
+                failures.record_claims(batch.usage_claims.len() as u64, format!("prove failed: {e}")).await;
                 continue;
             }
         };
@@ -893,6 +955,7 @@ async fn batch_loop(
             if let Err(e) = state_store.hold_next(next.clone()).await {
                 error!(%e, "Could not write the batch's state — the batch is not sent; re-queuing operations");
                 requeue_or_dead_letter(&mempool, &failures, valid).await;
+                failures.record_claims(batch.usage_claims.len() as u64, format!("the batch's state could not be written: {e}")).await;
                 continue;
             }
         }
@@ -944,7 +1007,7 @@ async fn batch_loop(
                     let (mut still_funded, unfunded) =
                         submitter::filter_funded_commits(funding.as_ref(), valid).await;
                     // Only a VERIFIED shortfall names a revoker; a wallet
-                    // whose read failed is dropped conservatively elsewhere
+                    // whose read failed is re-queued below
                     // and must not be logged as one.
                     let (revoked, unverifiable): (Vec<_>, Vec<_>) = unfunded
                         .into_iter()
@@ -960,6 +1023,7 @@ async fn batch_loop(
                         // /status so a polling driver sees the death instead
                         // of waiting it out.
                         error!(error = %e, ops = op_count, "Deterministic resolve revert — dead-lettered, NOT re-proving");
+                        failures.record_claims(batch.usage_claims.len() as u64, e.message.clone()).await;
                         failures.record(op_count as u64, e.message).await;
                     } else {
                         let mut revokers: Vec<Address> = Vec::new();
@@ -970,6 +1034,7 @@ async fn batch_loop(
                                 revokers.push(*who);
                             }
                         }
+                        failures.record_claims(batch.usage_claims.len() as u64, "the batch was refused for a revoked approval".to_string()).await;
                         for who in revokers {
                             let hits = revocations.record(who);
                             if hits > 1 {
@@ -995,6 +1060,7 @@ async fn batch_loop(
                     // never lands is not re-proved forever.
                     error!(error = %e, "On-chain submission failed (transient) — re-queuing operations");
                     requeue_or_dead_letter(&mempool, &failures, valid).await;
+                    failures.record_claims(batch.usage_claims.len() as u64, format!("on-chain submission failed (transient): {}", e.message)).await;
                 }
             }
         } else {

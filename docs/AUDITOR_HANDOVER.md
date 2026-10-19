@@ -16,7 +16,7 @@ the review's is its own.
 | Baseline commit | `28489848` (§ "The baseline commit"); no tag names a commit under audit — one is placed when an audit is engaged |
 | Languages in scope | Solidity (`src/`, three deploy scripts) and Rust (`prover/`, four crates) |
 | Solidity in scope | 14 contract files, 1,423 lines of code (3,544 physical); 3 deploy scripts, 401 lines of code (840 physical) |
-| Rust in scope | 4 crates, 21 files under `src/`, 6,423 lines of code (8,990 physical) net of their inline test modules |
+| Rust in scope | 4 crates, 21 files under `src/`, 6,739 lines of code (9,426 physical) net of their inline test modules |
 | Configuration in scope | `foundry.toml`, the `Cargo.toml` files and `Cargo.lock`, the Rust toolchain pin (§ "In scope — configuration") |
 | Trusted, not reviewed | SP1 (the zkVM, its crates, its on-chain verifier gateway), OpenZeppelin Contracts, Permit2, Uniswap SwapRouter02 |
 | Out of scope | mocks, fuzz harnesses, tests and formal specs, the proving harness crate, the Sepolia deploy script, `frontend/`, `sdk/` |
@@ -160,7 +160,7 @@ in scope.
 | `prover/program/` | `figaro-prover` | 13 | The guest's entry point: reads the batch input, runs the Core mirror, commits the public values | A batch the chain resolves wrongly |
 | `prover/lib/` | `figaro-kernel` | 2,046 | The mirror of `FigaroCore`'s commit and resolve logic, the witness gates, the public-values encoding, the state root, the usage accrual | A batch the chain resolves wrongly |
 | `prover/clause/` | `figaro-clause` | 1,939 | The generic clause engine: parses any clause spec supplied as witness input, validates content against it, encodes it | An attestation the batch path reads differently from the party who signed it |
-| `prover/sequencer/` | `figaro-sequencer` | 4,992 | The relay: collects signed operations, forms batches, proves them, calls `settleBatch`, publishes what it resolved | Liveness and griefing; a reader misled by what the relay publishes |
+| `prover/sequencer/` | `figaro-sequencer` | 5,428 | The relay: collects signed operations, forms batches, proves them, calls `settleBatch`, publishes what it resolved | Liveness and griefing; a reader misled by what the relay publishes |
 
 The Lines column counts physical lines under each crate's `src/`, net of the
 inline test modules.
@@ -260,7 +260,25 @@ placed at the commit it reviews and this section names it.
 git show --no-patch 28489848
 ```
 
-The baseline differs from the previous baseline, `d934e032`, in comments
+The baseline differs from the previous baseline, `28489848`, in the relay
+alone, in no contract and in no guest crate: `scripts/frozen-scope.sh`
+prints `prover/sequencer/src/main.rs`, `mempool.rs`, `assembler.rs`,
+`api.rs` and `submitter.rs` (its test module) as differing in code. Batch
+formation defers what it dropped at first sight before — an operation that
+applies against no order of its drain, a commit whose funding could not be
+read, and what was filtered behind such a commit — bounded in time from the
+first deferral, drained only into the room the queue leaves, its group
+whole; a copy resubmitted meanwhile is dropped when an operation is deferred
+or re-queued; and `GET /status` counts dropped usage claims apart from
+operations (§ "Behaviors to surface"; Known limitation 7;
+`formal/RelayState.tla`, `DeferSpec`). The guest's bytes did not change, so
+the verification key stands. The layers re-run at the baseline are the ones
+§ "The gate" names at it: the Rust workspace, the relay's TLA+ model in both
+configurations, and the batch end-to-end; Foundry, Halmos, Certora, Echidna,
+the differential fuzz and the Vitest suites read none of the relay's code,
+and stand at the commits their rows name.
+
+`28489848` differs from the previous baseline, `d934e032`, in comments
 alone: the NatSpec of `AssemblyRegistry`, `AgreementRegistry` and
 `UsageCounter`, a comment in `script/Deploy.s.sol` and one in the relay's
 `submitter.rs` say agreement and registered agreement, the lexicon's nouns,
@@ -583,7 +601,8 @@ The constants and constructor arguments the mainnet deploy fixes
 | `PUBLIC_VALUES_LENGTH` | 288 bytes, nine words; any other length is refused by name | `FigaroBatchVerifier.sol:106` |
 | `MAX_BATCH_OPS` | the relay's bound on what the prover finishes in one sitting, 100 operations by default; an operator's environment variable | `prover/sequencer/src/main.rs:121` |
 | The batch's gas budget | 95 percent of the latest block's gas limit, read at every tick, under the chain's cap on one transaction (`SETTLE_GAS_CAP`, EIP-7825's 2^24 by default, the bound a batch-path process is admitted under; below a one-order `settleBatch` call's 590,096, or at or past 95 percent of the block limit read at startup, the relay refuses to start); the call's cost is planned per item from ceilings measured on the pre-fork EVM with a stated allowance (at least twice the cold measurement for every item that writes state, at least half again for events and registry reads) and the proof's verification read from live receipts | `prover/sequencer/src/gas.rs`; `test/core/verifier/BatchGasCeilingTest.t.sol` |
-| Re-queue bound | an operation re-queued after a transient submission failure is re-queued at most three times, then dead-lettered | `prover/sequencer/README.md` |
+| Re-queue bound | an operation re-queued after a transient submission failure is re-queued at most three times, then dead-lettered; a deferral at batch formation spends nothing of it | `prover/sequencer/README.md`; `mempool.rs`, `requeue` |
+| Deferral window | an operation deferred at batch formation (it applies against no order of its drain, or its funding could not be read) is dead-lettered once 600 seconds have passed since it was first deferred, retried or not; an operator's environment variable, `DEFER_WINDOW_SECS` | `prover/sequencer/src/mempool.rs`, `DEFAULT_DEFER_WINDOW` |
 | Clause, agreement and assembly registration stake | 0.05 ETH per registration, no cooldown, withdrawable once; the binding stays | `DeployMainnet.s.sol:160`, `:174`, `:167` |
 | Member stake | 0.05 ETH, 28-day withdrawal cooldown | `DeployMainnet.s.sol:207` |
 | Minimum-support floor | 3 distinct staked sellers before a clause, registered agreement or assembly scores, under each of the three kinds | `DeployMainnet.s.sol:268` |
@@ -1002,14 +1021,56 @@ read it first.
   `the_canonical_batch_is_planned_from_its_own_execution_and_fits_a_block`,
   `mempool_gives_back_operations_at_the_front_untried`,
   `mempool_gives_back_no_copy_of_an_operation_resubmitted_meanwhile`).
-- Every operation dropped at batch formation — one that applies against no
-  order of the drain it was taken in (its dependency may sit past the drain's
-  cut; Known limitation 7), short of balance or allowance or with funding the node could not
-  read, unanchored, past the resolve capacity, or built on a dropped one — is
-  a recorded failure with its reason on `GET /status`, re-submittable, like a
-  batch that failed to prove or to plan (`api.rs`, `record_dropped`,
-  `FailureLog`;
-  `an_operation_dropped_at_batch_formation_is_recorded_with_its_reason`). The
+- Every operation dropped at batch formation — short of balance or
+  allowance, unanchored, past the resolve capacity, built on a dropped one, or
+  deferred past its window — is a recorded failure with its reason on
+  `GET /status`, re-submittable, like a batch that failed to prove or to plan
+  (`api.rs`, `record_dropped`, `FailureLog`;
+  `an_operation_dropped_at_batch_formation_is_recorded_with_its_reason`).
+- An operation the Core's rules refuse for good, judged alone against the landed
+  state (its process or order exists or has resolved, its deadline has
+  passed, a signature or its witness fails, an order list shorter than the
+  active orders, a cumulative value the process has passed, a resolve
+  listing an order of another process), is dead-lettered at once with
+  the Core's reason, and so is what names a process or an order only a refused
+  commit would have created (`assembler.rs`, `is_permanent_refusal`,
+  `split_permanent_refusals`;
+  `a_permanent_kernel_refusal_is_dead_lettered_at_once_and_a_missing_dependency_deferred`,
+  `a_refusal_is_classified_on_the_fields_it_carries`,
+  `what_was_built_on_a_permanently_refused_operation_is_dead_lettered_at_once`).
+  Any other operation that applies against no order of the drain it was
+  taken in (its dependency may sit past the drain's cut, ride a batch in
+  flight, not be submitted yet, or never come) and a commit whose balance or
+  allowance the node could not read are deferred, not dropped; what was filtered into an
+  order behind a deferred commit applies again once the commit is restored
+  and moves with it, in one group (`assembler.rs`, `refilter_after_drops`;
+  `what_was_built_on_a_deferred_operation_moves_with_it`). A deferred group
+  waits apart from the queue, its keys held, and is drained again only into
+  the room the queue leaves, whole (`mempool.rs`, `drain_up_to`,
+  `defer`;
+  `a_deferred_operation_is_drained_only_into_slots_the_queue_leaves_empty`,
+  `a_deferred_group_is_retried_whole`); it is dead-lettered once the deferral
+  window has passed since its first deferral, at every tick, retried or not
+  (`expire_deferred`;
+  `a_deferral_is_bounded_in_time_from_first_deferral_not_in_attempts`). The
+  first deferral's time rides on the operation (`PendingOp::deferred_since`),
+  so it ends when the operation lands or is dead-lettered and spends nothing
+  of the re-queue count (`a_deferral_spends_nothing_of_the_requeue_count`);
+  a copy resubmitted while the operation was drained is dropped when it is
+  deferred or re-queued
+  (`deferring_drops_a_copy_resubmitted_meanwhile_and_holds_the_key`,
+  `requeue_drops_a_copy_resubmitted_meanwhile`). `formal/RelayState.tla`,
+  `DeferSpec` (`formal/RelayStateDeferral.cfg`), checks these as six
+  invariants, each of five switches set FALSE failing the one it names.
+- A usage claim dropped without landing — at the pre-filter, at formation,
+  with no counter or accrual closed, or with a batch that did not land — is
+  counted on `GET /status` as `dropped_usage_claims` with its reason in
+  `last_dropped_claim_error`, apart from `dead_lettered_ops`, which counts
+  operations alone (`api.rs`, `record_dropped_claims`,
+  `FailureLog::record_claims`;
+  `a_dropped_usage_claim_is_counted_apart_from_operations`). A claim in a
+  batch that failed transiently is counted dropped, not re-queued: its
+  submitter re-submits it. The
   counter and the reason are the relay's, never one client's: the README
   sends a client to its order and its process on the publication routes, and
   to the root. What was filtered into an order behind a dropped commit or
@@ -1156,20 +1217,38 @@ Stated so the review does not spend hours finding them.
    and publishes nothing — those processes have no one who can build their
    resolve, and their bonds stay in the verifier. A relay that does not hold
    the state refuses to start and builds nothing.
-7. **A drop at batch formation is final for that submission.** An operation
-   that applies against no order of the drain it was taken in is dropped,
-   though its dependency may sit past the drain's cut, in a later position of
-   the queue; a commit whose balance or allowance the node could not read is
-   dropped the same way. Each is recorded with its reason and is
-   re-submittable, and nothing in this repository defers it to a later drain
-   or re-queues it on a read failure: a bounded recovery — a bound in time
-   rather than in attempts, dependents moved with the operation, no extra
-   draining for an operation anyone may submit free — is not built.
+7. **A deferral at batch formation is bounded by a window, not by the
+   dependency.** An operation that applies against no order of its drain, or
+   a commit whose funding the node could not read, waits for its dependency
+   or a readable node for `DEFER_WINDOW_SECS` (600 seconds by default) from
+   its first deferral, and is retried only in the room the queue leaves
+   empty: under a queue that stays longer than `MAX_BATCH_OPS` for the whole
+   window it is never retried, and a dependency that arrives later than the
+   window finds it dead-lettered, recorded with its reason and
+   re-submittable. A deferred operation counts against `MEMPOOL_MAX_OPS` for
+   its window. The refusals that defer, and so hold capacity, are the ones
+   that name what a later operation may supply, judged against the landed
+   state: an unknown process or order (`UnknownProcess`, `UnknownOrder`); a
+   resolve whose listed orders are all of its own process but not yet
+   committed (`OrderNotCommitted`); an order list longer than the active
+   orders (`IncompleteOrderList` with provided above required); a cumulative
+   value the process has not yet reached (`CumulativeValueMismatch` with
+   expected above actual); and a commit whose funding could not be read.
+   Every other refusal — and every operation in the same drain that names a
+   process or an order only a refused commit would have created — is
+   dead-lettered at once and holds none; such a dependent arriving in a later
+   tick, after the commit was dead-lettered, reads as `UnknownProcess` or
+   `UnknownOrder` against the landed state and defers for the window. A deferring operation costs its sender nothing (a resolve of a
+   process that never comes needs only a signature that recovers), so one
+   client address can hold up to `SUBMITS_PER_MINUTE_PER_IP` (60) times the
+   window's minutes of capacity — 600 operations at the defaults, against a
+   `MEMPOOL_MAX_OPS` of 10,000 — rather than until each one's first drain;
+   the limit is per IP, and behind a proxy it is the proxy's.
 
 ## Verification evidence
 
 A figure in this section was measured at the baseline unless its row names
-another commit; a row that names `e800bfb2`, `c53bdaeb`, `cf6ba4ab` or
+another commit; a row that names `28489848`, `e800bfb2`, `c53bdaeb`, `cf6ba4ab` or
 `f62b71cf` was not re-run at the baseline (§ "The baseline commit" states the rule).
 Which invariant each layer carries is `VERIFICATION_MAP.md`; the inventory of
 tests is `TESTING.md`.
@@ -1178,16 +1257,16 @@ tests is `TESTING.md`.
 
 | Layer | Result |
 |---|---|
-| Foundry | at the baseline, `forge test --via-ir`: 27 suites, 418 passed, 0 failed, 3 skipped (386 test functions, the batch gas-ceiling suite's inherited harness tests counted in forge's figure); the three skipped are the fork tests (mainnet's Permit2, Sepolia's SwapRouter02), run without `MAINNET_RPC_URL` and `SEPOLIA_RPC_URL`. At `f62b71cf`, the fork tests included: 381 passed, 0 failed, 0 skipped |
-| Halmos | at the baseline: 39 of 39 properties proved — `FigaroCore` 7, `MembersRegistry` 7, `UsageCounter` 7, `ClauseRegistry` 6, `AssemblyRegistry` 6, `AgreementRegistry` 6 |
-| Certora | 7 of 7 specs, every rule verified, at `f62b71cf`; not re-run at `c53bdaeb`, at `e800bfb2` or at the baseline. `certora/RpgfMinter.spec`, `BatchVerifierTokenOps.spec`, `BatchVerifierStateRoot.spec` and `token-ops.inventory` are edited for `e800bfb2`'s (kind, key) claim and `registered` read, and `RpgfMinter.spec` again for the baseline's agreement kind and fifth constructor address; they have not been run against either |
+| Foundry | at `28489848`, whose Solidity equals the baseline's, `forge test --via-ir`: 27 suites, 418 passed, 0 failed, 3 skipped (386 test functions, the batch gas-ceiling suite's inherited harness tests counted in forge's figure); the three skipped are the fork tests (mainnet's Permit2, Sepolia's SwapRouter02), run without `MAINNET_RPC_URL` and `SEPOLIA_RPC_URL`. At `f62b71cf`, the fork tests included: 381 passed, 0 failed, 0 skipped |
+| Halmos | at `28489848`, whose Solidity equals the baseline's: 39 of 39 properties proved — `FigaroCore` 7, `MembersRegistry` 7, `UsageCounter` 7, `ClauseRegistry` 6, `AssemblyRegistry` 6, `AgreementRegistry` 6 |
+| Certora | 7 of 7 specs, every rule verified, at `f62b71cf`; not re-run at `c53bdaeb`, at `e800bfb2`, at `28489848` or at the baseline. `certora/RpgfMinter.spec`, `BatchVerifierTokenOps.spec`, `BatchVerifierStateRoot.spec` and `token-ops.inventory` are edited for `e800bfb2`'s (kind, key) claim and `registered` read, and `RpgfMinter.spec` again for `28489848`'s agreement kind and fifth constructor address; they have not been run against either |
 | Echidna | 15 properties, every one held on both harnesses, at `f62b71cf` |
-| TLA+ | 5 models, 54 invariants, no error; not re-run at `e800bfb2` or at the baseline, whose changes the models do not reach (`ResolutionUniverses` models one abstract set of (kind, key) artifacts, which a third kind enlarges without changing a rule; its edits at the baseline are comments). `ResolutionUniverses` (20 invariants) at `c53bdaeb`: 10,030,087 states, no error. The other four models' figures stand at `cf6ba4ab`: `FigaroCore` 8,380,329 states generated, 6,087,113 distinct; `RelayState` (the relay's state lifecycle, 7 invariants + 1 action property) 10,837,227 generated, 1,959,944 distinct; the models' defect switches are their mutation checks (`TESTING.md` § TLA+) |
-| Rust (`cargo test --locked`) | at the baseline: every crate of the workspace passes, 0 failed, among them `usage` 32, `parity` 31, `merkle_parity` 8, `guest_program` 6, and the relay's 21 unit and 95 integration tests; 2 ignored by design, run by the fuzz script |
+| TLA+ | 5 models in 6 configurations, 60 invariants and 2 action properties, no error. `RelayState` at this change, both configurations: the relay's state lifecycle (`RelayState.cfg`, 7 invariants + 2 action properties) 10,837,227 states generated, 1,959,944 distinct, depth 32; the deferral at batch formation (`DeferSpec`, `RelayStateDeferral.cfg`, 6 invariants) 100,334 generated, 45,331 distinct, depth 20; each of its ten switches set FALSE fails the property it names. Not re-run at this change, which the other models do not reach: `ResolutionUniverses` (20 invariants) at `c53bdaeb`, 10,030,087 states, no error; `FigaroCore` (9) at `cf6ba4ab`, 8,380,329 states generated, 6,087,113 distinct; `FlorinToken` (8) and `WitnessSwapAndCommitCoordinator` (10) at `cf6ba4ab`; the models' defect switches are their mutation checks (`TESTING.md` § TLA+) |
+| Rust (`cargo test --locked`) | at this change: every crate of the workspace passes, 0 failed, among them `usage` 32, `parity` 31, `merkle_parity` 8, `guest_program` 6, and the relay's 21 unit and 106 integration tests; 2 ignored by design, run by the fuzz script |
 | Differential fuzz | at `cf6ba4ab`: one round at seed 1791923560, no divergence: 400 Core operations (298 accepted, 102 rejected, 94 processes), the agreement vectors, 6,352 clause cases (1,850 encoded byte-for-byte, 3,318 rejected, 1,184 specs refused); CI runs four rounds on every push |
-| SDK (Vitest) | at the baseline: 974 passed, 65 files |
-| Frontend (Vitest) and devnet end-to-end (Playwright) | at the baseline: 1,067 passed, 119 files; every devnet e2e spec green |
-| Batch end-to-end (SDK → relay → verifier) | passed at `cf6ba4ab` |
+| SDK (Vitest) | at `28489848`: 974 passed, 65 files |
+| Frontend (Vitest) and devnet end-to-end (Playwright) | at `28489848`; no spec runs the relay: 1,067 passed, 119 files; every devnet e2e spec green |
+| Batch end-to-end (SDK → relay → verifier) | passed at this change: `batch-e2e.test.ts` 3 of 3 (a second relay started on the first's served state, `STATE_FROM`, resolves the second batch), `batch-revoke-e2e.test.ts` 2 of 2, against a fresh Anvil with the release binary rebuilt and stamped |
 
 Certora reports, each "No errors found by Prover" at `f62b71cf`:
 

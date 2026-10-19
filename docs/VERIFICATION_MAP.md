@@ -24,7 +24,7 @@ a test file). Where a check runs, and what shows it is load-bearing:
 | Halmos | `scripts/test-halmos.sh` | `foundry-ci` | the properties marked MUTATION-CHECKED in §9 (MembersRegistry 2, UsageCounter 2, the two designer registries 4); the seven `HalmosFigaroCore` properties are not mutation-checked |
 | Certora | `scripts/test-certora.sh` | the maintainer's gate — needs `CERTORAKEY`, never CI | `RpgfMinter`'s conservation, double-claim and eligibility rules and all three `BatchVerifierStateRoot` rules (§10); the other five specs are not mutation-checked |
 | Echidna | `scripts/test-echidna.sh` | the gate | not mutation-checked |
-| TLA+ | `scripts/test-tla.sh` | the gate | `WitnessSwapAndCommitCoordinator` 6 mutations, `ResolutionUniverses` 5 + 7 non-vacuity witnesses, `RelayState` 4 (§7); `FigaroCore.tla` and `FlorinToken.tla` are not mutation-checked |
+| TLA+ | `scripts/test-tla.sh` | the gate | `WitnessSwapAndCommitCoordinator` 6 mutations, `ResolutionUniverses` 5 + 7 non-vacuity witnesses, `RelayState` 10 (§7: five lifecycle switches, five deferral switches); `FigaroCore.tla` and `FlorinToken.tla` are not mutation-checked |
 | Lean 4 | `lake build` in `formal/lean/` | the gate | proof-checked; a mutation is a build failure |
 | Rust | `cargo test` | `prover-ci`: the guest crates on every push, the relay and the batch end-to-end on main | `cargo-mutants` over the guest crates: 617 mutants, 12 survivors each read as equivalent (`AUDITOR_HANDOVER.md` § "Mutation testing, Rust"); the relay is not mutation-tested |
 | SDK Vitest | `cd sdk && npm test` | `sdk-ci` | not mutation-checked; the encoders are held by the cross-language vectors and the differential fuzz (`prover-ci`) |
@@ -288,6 +288,25 @@ Mutation-checked: each of the four lifecycle switches FALSE (`HoldBeforeSend`,
 `HoldThroughRevert`, `KeepRetainsBuiltOnRoot`, `TakeoverChecksRoot`) fails
 `Recoverable`, and `RebatchDropsRevoker` FALSE fails
 `SendsExcludeKnownRevoked`; the counterexamples are 6, 7, 13, 10 and 8
+states long.
+
+The same module's second spec, `DeferSpec` (`formal/RelayStateDeferral.cfg`),
+models the deferral of an operation dropped at batch formation — 6
+invariants, 100,334 states / 45,331 distinct, depth 20:
+
+| Property | Code | Formal |
+|---|---|---|
+| An operation that applies against no order of its drain, or a commit whose funding could not be read, is deferred and dead-lettered once the window has passed since its first deferral — retried or not, never earlier | `mempool.rs`, `defer`, `expire_deferred` (at every tick's head), `DEFAULT_DEFER_WINDOW` / `DEFER_WINDOW_SECS`; `a_deferral_is_bounded_in_time_from_first_deferral_not_in_attempts` | `DeferralBoundedInTime` |
+| A deferral spends nothing of the transient re-queue's count | `PendingOp::deferred_since`, apart from `requeues`; `a_deferral_spends_nothing_of_the_requeue_count` | `RequeueCapCountsTransients` |
+| A deferred operation is drained only into the room the queue leaves, its group whole — one that never applies costs no drain anything | `drain_up_to`; `a_deferred_operation_is_drained_only_into_slots_the_queue_leaves_empty`, `a_deferred_group_is_retried_whole` | `NoExtraDraining` |
+| What was filtered behind a deferred commit moves with it; only what was built on an operation dropped for good is dead-lettered | `assembler.rs`, `refilter_after_drops`; `what_was_built_on_a_deferred_operation_moves_with_it` | `BuiltOnOnlyBehindDead` |
+| One copy of an operation waits at a time: a copy resubmitted while it was drained is dropped when it is deferred or re-queued | `defer`, `requeue`; `deferring_drops_a_copy_resubmitted_meanwhile_and_holds_the_key`, `requeue_drops_a_copy_resubmitted_meanwhile` | `NoTwoCopies` |
+
+Mutation-checked: each of the five deferral switches FALSE fails the
+property beside it — `DeferBoundedInTime` → `DeferralBoundedInTime`,
+`DeferOwnCounter` → `RequeueCapCountsTransients`, `DeferDrainsOnlyFreeSlots` →
+`NoExtraDraining`, `DeferMovesDependents` → `BuiltOnOnlyBehindDead`,
+`DeferDropsCopy` → `NoTwoCopies`; the counterexamples are 6, 6, 7, 5 and 5
 states long.
 
 ---

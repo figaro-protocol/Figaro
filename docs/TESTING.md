@@ -130,7 +130,7 @@ Companion: `certora/token-ops.inventory` — declarative inventory of every ERC2
 `src/echidna/EchidnaToken.sol` is not a harness — it is the minimal ERC-20 the `FigaroCore`
 harness fuzzes against (`EchidnaFuzzer.sol` imports it); it declares no `echidna_` properties.
 
-## TLA+ (`formal/`) — 54 invariants across 5 models (FigaroCore 9 + FlorinToken 8 + WitnessSwapAndCommitCoordinator 10 + ResolutionUniverses 20 + RelayState 7)
+## TLA+ (`formal/`) — 60 invariants across 5 models (FigaroCore 9 + FlorinToken 8 + WitnessSwapAndCommitCoordinator 10 + ResolutionUniverses 20 + RelayState 7 + its deferral 6)
 
 FigaroCore (`MC.tla` + `MC.cfg`): `TokenConservation`, `ContractSolvency`,
 `WalletNonNegative`, `CumulativeIntegrity`, `ActiveCountCorrect`,
@@ -189,6 +189,27 @@ Mutation-checked through five `.cfg` switches, each restoring one defect:
 `HoldBeforeSend`, `HoldThroughRevert`, `KeepRetainsBuiltOnRoot`,
 `TakeoverChecksRoot` — each FALSE fails `Recoverable` — and
 `RebatchDropsRevoker` — FALSE fails `SendsExcludeKnownRevoked`.
+
+RelayState's second spec, `DeferSpec` (`RelayState.tla` +
+`RelayStateDeferral.cfg`, the sixth pass of `scripts/test-tla.sh`): the
+deferral of an operation dropped at batch formation
+(`prover/sequencer/src/main.rs`, `mempool.rs`) — three operations (a commit,
+one built on its order, one that never applies), a drain cap of 2, a window
+of 2 ticks in 5, a re-queue cap of 1, funding reads that fail or show a
+shortfall, transient send failures, and a copy resubmitted while a tick runs.
+6 invariants — `DeferralBoundedInTime` (nothing deferred is held past the
+window, retried or not, and nothing expires before it),
+`RequeueCapCountsTransients`, `NoExtraDraining` (a drain that retries a
+deferred operation leaves nothing queued behind it), `BuiltOnOnlyBehindDead`,
+`NoTwoCopies`, `DTypeOK`: 100,334 states / 45,331 distinct, depth 20, 22
+seconds. Mutation-checked through five more `.cfg` switches, each FALSE
+failing the invariant it names: `DeferBoundedInTime` →
+`DeferralBoundedInTime`, `DeferOwnCounter` → `RequeueCapCountsTransients`,
+`DeferDrainsOnlyFreeSlots` → `NoExtraDraining`, `DeferMovesDependents` →
+`BuiltOnOnlyBehindDead`, `DeferDropsCopy` → `NoTwoCopies`; the
+counterexamples are 6, 6, 7, 5 and 5 states long. `Spec` holds the
+deferral's variables at their initial values, so the lifecycle's figures
+above are unchanged by it.
 
 ## Lean 4 (`formal/lean/`) — the equilibrium, machine-checked
 
