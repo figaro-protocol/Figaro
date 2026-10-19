@@ -3,7 +3,7 @@
  *
  * Countersign-first choreography (maintainer-ruled). An unbound
  * sub-order position is filled by racing the market instead of a manual pick:
- * the buyer sends the SAME unsigned draft shape to k candidate sellers — each
+ * the buyer sends the SAME draft order to k candidate sellers — each
  * draft naming that candidate as `seller` at the candidate's own posted
  * catalog price — candidates countersign to signal availability, and the
  * buyer signs EXACTLY ONE winner. The buyer's single signature is
@@ -41,7 +41,8 @@ import type { HydratedAssembly } from "../assembly.js";
  * draft — the draft-shaped sibling of `validateOffer`. A draft is UNSIGNED by
  * definition: a payload already carrying a buyer signature is an offer and
  * belongs to the origination handshake, so it is rejected here to keep the two
- * legs distinct (one referent per word: draft = no signatures yet).
+ * legs distinct (a draft order is an order no party has signed yet; a draft
+ * agreement or assembly is the designer's, before registration).
  *
  * Checks: no signatures present, the draft names me as seller, the agreement
  * hashes to the committed `agreementHash` (the sender cannot pin one agreement

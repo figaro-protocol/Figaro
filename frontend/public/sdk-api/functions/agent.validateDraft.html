@@ -20,7 +20,8 @@
 draft — the draft-shaped sibling of <code>validateOffer</code>. A draft is UNSIGNED by
 definition: a payload already carrying a buyer signature is an offer and
 belongs to the origination handshake, so it is rejected here to keep the two
-legs distinct (one referent per word: draft = no signatures yet).</p>
+legs distinct (a draft order is an order no party has signed yet; a draft
+agreement or assembly is the designer's, before registration).</p>
 <p>Checks: no signatures present, the draft names me as seller, the agreement
 hashes to the committed <code>agreementHash</code> (the sender cannot pin one agreement
 and commit another), and the agreement's parties match the commitment. With
@@ -42,7 +43,7 @@ here through it.</p>
 <li><span><span class="tsd-kind-parameter">design</span>: <a href="../interfaces/index.HydratedAssembly.html" class="tsd-signature-type tsd-kind-interface">HydratedAssembly</a> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">null</span><span class="tsd-signature-symbol"> = null</span></span></li></ul></div>
 <h4 class="tsd-returns-title">Returns <a href="../interfaces/agent.OfferCheck.html" class="tsd-signature-type tsd-kind-interface">OfferCheck</a></h4><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/agent/dispatchRace.ts#L57">agent/dispatchRace.ts:57</a></li></ul></aside></div></li></ul></section></div>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/agent/dispatchRace.ts#L58">agent/dispatchRace.ts:58</a></li></ul></aside></div></li></ul></section></div>
 <div class="col-sidebar">
 <div class="page-menu">
 <div class="tsd-navigation settings">
