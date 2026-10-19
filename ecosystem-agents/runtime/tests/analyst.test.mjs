@@ -311,6 +311,41 @@ test("the buyer's attestation of the provenance leaf is named as the agreement's
     assert.match(leaf.decoded, new RegExp(agreementKey));
 });
 
+test("market-shape attributes a process whose buyer attested the provenance leaf — the public overlay, no held agreement", () => {
+    const composition = `0x${"7e".repeat(32)}`;
+    const agreementKey = `0x${"8f".repeat(32)}`;
+    const leafAttestation = (attester, content) => {
+        const corpus = fixtureCorpus();
+        const event = {
+            orderHash: ORDER_A, processId: PROCESS, attester, clauseId: PROVENANCE_LEAF_KEY,
+            stage: 0, contentRef: provenanceContentRef(agreementKey, composition), blockNumber: 21, transactionHash: null,
+            universe: "direct",
+        };
+        corpus.graphs.overlays = extractOverlays([...corpus.recovered, { event, content }], corpus.specs);
+        return corpus;
+    };
+    // Content recovered: the leaf decodes to both keys, and the pair hashes
+    // back to the attested contentRef.
+    const decoded = marketShapeAnswer(leafAttestation(BUYER, provenanceLeafBytes(agreementKey, composition)));
+    assert.equal(decoded.groups.length, 1);
+    assert.equal(decoded.groups[0].key, composition);
+    assert.equal(decoded.unattributedProcessCount, 0);
+    // Content unrecovered: the fingerprint is matched by provenanceContentRef
+    // against the (agreementKey, compositionHash) pairs of the assemblies the
+    // corpus discovered.
+    const fingerprintOnly = leafAttestation(BUYER, null);
+    assert.equal(marketShapeAnswer(fingerprintOnly).unattributedProcessCount, 1);
+    fingerprintOnly.provenanceContentRefs = new Map([[provenanceContentRef(agreementKey, composition).toLowerCase(), composition]]);
+    const matched = marketShapeAnswer(fingerprintOnly);
+    assert.equal(matched.groups.length, 1);
+    assert.equal(matched.groups[0].key, composition);
+    // Only the buyer's attestation attributes: a seller's attests nothing
+    // about the design the buyer instantiated.
+    const bySeller = marketShapeAnswer(leafAttestation(SELLER_A, provenanceLeafBytes(agreementKey, composition)));
+    assert.equal(bySeller.groups.length, 0);
+    assert.equal(bySeller.unattributedProcessCount, 1);
+});
+
 test("an absent process is ABSENCE with its two live possibilities, never 'it did not happen'", () => {
     const story = tradeStory(fixtureCorpus(), `0x${"99".repeat(32)}`);
     assert.equal(story.found, false);
@@ -323,7 +358,7 @@ test("market-shape reports unattributed processes rather than binning them under
     assert.equal(shape.truthBoundary, "protocol-derived");
     assert.equal(shape.groups.length, 0);
     assert.equal(shape.unattributedProcessCount, 1);
-    assert.match(shape.attribution, /held agreements only/);
+    assert.match(shape.attribution, /provenance leaf/);
 });
 
 test("wallet-record answers a stranger's wallet with an empty record, not an error", () => {

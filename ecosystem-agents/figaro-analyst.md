@@ -284,7 +284,7 @@ nothing but the five deterministic queries.
 
 **Two routes answer only the bearer of this run's token:** `POST /prompt` (it spends the
 host's model turns) and `GET /queries/market-shape` (it is attributed from the agreement
-bodies the wallet holds or bought). The analyst draws a fresh token at every start, writes it
+bodies the wallet holds or bought, beside the buyers' public provenance-leaf attestations). The analyst draws a fresh token at every start, writes it
 to `FIGARO_ANALYST_BEARER_FILE` (default `analyst.token` in its working directory, mode
 `0600`), and names the file on stderr without printing the token; send it as
 `Authorization: Bearer <token>`. Two open routes carry the wallet's holdings to the same
@@ -324,8 +324,9 @@ window is a SMALLER CORPUS, and every answer reports the range it was drawn from
 directory of agreement documents the wallet holds — its own, or ones a purchase delivered —
 and each one is admitted only if its recomputed root IS a committed `agreementHash` on this
 chain. A document that fails is REJECTED and named in `GET /status` to the bearer of the token, whoever handed it over.
-Admitted documents are what unlocks assembly attribution and real chain shapes in
-market-shape; without them the query honestly reports every process as unattributed.
+Admitted documents unlock assembly attribution and real chain shapes in market-shape;
+without them a process is attributed only when its buyer attested the provenance leaf, and
+every other process is reported as unattributed.
 
 `node --test tests/analyst.test.mjs` covers the address derivation against a vector a real
 Kubo produced, the projections and queries over a fixture corpus, the absence cases, and

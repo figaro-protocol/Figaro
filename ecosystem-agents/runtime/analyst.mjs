@@ -31,6 +31,7 @@ import {
     fetchEndpointLogAgreement,
     fetchDiscoveryEvents,
     parseProjectionHints,
+    provenanceContentRef,
     reconstructDiscovery,
     readUtilityTokenPin,
     clauseByField,
@@ -349,6 +350,11 @@ export async function syncCorpus({
     // Utility-token pins are a designer's registered fact, read from the
     // assemblies the operator could load — never a bundled token list.
     const pins = [];
+    // The provenance-leaf fingerprint of every (registered agreement,
+    // assembly) pair the verified assemblies compose → that assembly's
+    // composition hash: what attributes a buyer's provenance attestation
+    // whose content was not recovered (`assemblyAttribution`).
+    const provenanceContentRefs = new Map();
     for (const assembly of discovery.getAssemblies()) {
         try {
             // Verified against its composition hash: a assembly a gateway
@@ -356,6 +362,12 @@ export async function syncCorpus({
             const hit = await fetchAnchoredAssembly(assembly, { gateways });
             if (hit.absent) continue;
             for (const entry of hit.assembly.agreements ?? []) {
+                if (BYTES32.test(entry.agreementKey ?? "")) {
+                    provenanceContentRefs.set(
+                        provenanceContentRef(entry.agreementKey, assembly.compositionHash).toLowerCase(),
+                        assembly.compositionHash,
+                    );
+                }
                 // Each agreement's registered agreement, read from its
                 // binding whatever its stake and verified against its key: an
                 // agreement a gateway substituted, or one not registered,
@@ -406,6 +418,7 @@ export async function syncCorpus({
         framedSubstance,
         substanceRecovered,
         held,
+        provenanceContentRefs,
         endpointAgreement,
         fundingLegs,
         unreadReceipts,
@@ -416,13 +429,20 @@ export async function syncCorpus({
 // ── Attribution (caller-supplied, never guessed) ────────────────────────────
 
 /**
- * Assembly attribution from the agreements the operator actually holds: the
- * agreement's provenance leaf (`agreement.provenance`, the registered
- * agreement and the composition hash of the assembly it instantiated) — the
- * agreement format's own field, never a clause. A process with no held agreement is `undefined` — counted
- * as unattributed, never binned under a fabricated key. That is the honest
- * public picture: the resolution skeleton is public, the body that says WHICH
- * assembly produced it is party-private until someone discloses or sells it.
+ * Assembly attribution from two sources, both the agreement format's
+ * provenance leaf (the registered agreement and the composition hash of the
+ * assembly the order instantiated — the format's own field, never a clause):
+ *   - the agreements the operator holds (`agreement.provenance`), each
+ *     verified against its committed `agreementHash`;
+ *   - the public provenance-leaf overlay (`OverlayGraph.provenanceLeaf`): a
+ *     buyer's attestation of the leaf, merkle-bound on chain to the order's
+ *     agreement. Its pair is the decoded content when the content was
+ *     recovered, kept only when `provenanceContentRef` of the pair equals the
+ *     attested `contentRef`; otherwise the fingerprint is matched against
+ *     the pairs of the assemblies the corpus discovered. Only the order's
+ *     buyer's attestation attributes.
+ * A process neither source keys is `undefined` — counted as unattributed,
+ * never binned under a fabricated key.
  */
 function assemblyAttribution(corpus) {
     const byProcess = new Map();
@@ -431,6 +451,24 @@ function assemblyAttribution(corpus) {
         // A composition hash is a bytes32; anything else there is a party's
         // free text, attributes nothing, and never reaches the wire.
         if (typeof key === "string" && BYTES32.test(key)) byProcess.set(order.processId.toLowerCase(), key);
+    }
+    const buyerByOrder = new Map(corpus.core.orderCommitted.map((o) => [o.orderHash.toLowerCase(), o.buyer.toLowerCase()]));
+    const refs = corpus.provenanceContentRefs ?? new Map();
+    for (const graph of corpus.graphs.overlays) {
+        if (!graph.provenanceLeaf) continue;
+        for (const entry of graph.entries) {
+            const processId = entry.processId.toLowerCase();
+            if (byProcess.has(processId)) continue;
+            if (buyerByOrder.get(entry.orderHash.toLowerCase()) !== entry.attester.toLowerCase()) continue;
+            const contentRef = entry.contentRef.toLowerCase();
+            let key = refs.get(contentRef);
+            const pair = entry.decoded;
+            if (pair && BYTES32.test(pair.agreementKey ?? "") && BYTES32.test(pair.compositionHash ?? "")
+                && provenanceContentRef(pair.agreementKey, pair.compositionHash).toLowerCase() === contentRef) {
+                key = pair.compositionHash;
+            }
+            if (typeof key === "string" && BYTES32.test(key)) byProcess.set(processId, key);
+        }
     }
     return (processId) => byProcess.get(processId.toLowerCase());
 }
@@ -509,7 +547,7 @@ export function marketShapeAnswer(corpus) {
     const shape = marketShape(corpus.graphs.process, assemblyAttribution(corpus), parentEdges(corpus));
     return {
         truthBoundary: shape.boundary,
-        attribution: "held agreements only — a process with no held or purchased agreement is unattributed",
+        attribution: "the provenance leaf — of the agreements held or purchased, and of the buyer's public attestations of it; a process neither keys is unattributed",
         unattributedProcessCount: shape.unattributedProcessCount,
         groups: [...shape.groups.values()].map((g) => jsonSafe(g)),
         valueFlow: jsonSafe(corpus.graphs.valueFlow),
