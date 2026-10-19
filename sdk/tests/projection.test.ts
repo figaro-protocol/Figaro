@@ -17,6 +17,8 @@ import {
     assertAgreementSignable,
     buildAssembly,
     composeOrderAgreement,
+    deriveAssemblySlug,
+    withholdClauseContent,
     buildOrderAgreement,
     canonicalize,
     computeAgreementHash,
@@ -664,6 +666,44 @@ describe("the sign gate's design check — the designer's values against the des
         const b = instantiate({ documents: DOCS }, { applicableLaw: "US-NY" });
         expect(() => assertAgreementSignable(b.agreement, b.agreementHash, DESIGN_SPECS, STRUCT, design))
             .toThrow(/figaro-applicable-law applicableLaw: .*designer/);
+    });
+
+    it("refuses an order missing a clause of the registered agreement it names, agreement-scoped and assembly-scoped alike, by slug and full hash", () => {
+        const { agreement: full } = instantiate({ documents: DOCS }, { applicableLaw: "England-Wales" });
+        for (const dropped of ["figaro-consent", "figaro-applicable-law"]) {
+            const short = { ...full, sections: full.sections.filter((s) => s.clause !== keyOf(dropped)) };
+            const check = validateCommitmentAgreement(short, computeAgreementHash(short), DESIGN_SPECS, STRUCT, design);
+            expect(check.ok).toBe(false);
+            expect(check.issues).toHaveLength(1);
+            expect(() => assertAgreementSignable(short, computeAgreementHash(short), DESIGN_SPECS, STRUCT, design))
+                .toThrow(new RegExp(`${dropped} clause: the order does not carry this clause, which assembly ${deriveAssemblySlug(compositionHash)} \\(${compositionHash}\\) composes`));
+        }
+    });
+
+    it("passes a process-log clause carried as an empty anchor, and refuses the order that drops it", () => {
+        const LOG_SPECS = specSourceFromFixtures(["figaro-commerce", "figaro-merchant-process"]);
+        const withLog = { clauses: { [keyOf("figaro-commerce")]: {}, [keyOf("figaro-merchant-process")]: {} } };
+        const logKey = agreementKeyOf(withLog);
+        const logDesign: HydratedAssembly = {
+            assembly: { agreements: [{ id: "order-0", agreementKey: logKey, clauses: {} }] },
+            agreements: { [logKey.toLowerCase() as `0x${string}`]: withLog },
+        };
+        const provenance = { agreementKey: logKey, compositionHash: assemblyCompositionHash(logDesign.assembly) };
+        const { agreement } = buildOrderAgreement(BUYER, SELLER, {
+            [keyOf("figaro-commerce")]: commerceData(),
+            [keyOf("figaro-merchant-process")]: {},
+        }, LOG_SPECS);
+        const anchored = { ...agreement, provenance };
+        expect(validateCommitmentAgreement(anchored, computeAgreementHash(anchored), LOG_SPECS, STRUCT, logDesign).issues).toEqual([]);
+        // Carried is a check on keys: a withheld clause and a clause whose
+        // spec is not loaded each count as carried.
+        const withheld = { ...anchored, sections: anchored.sections.map((s) => s.clause === keyOf("figaro-merchant-process") ? withholdClauseContent(s) : s) };
+        expect(validateCommitmentAgreement(withheld, computeAgreementHash(withheld), LOG_SPECS, STRUCT, logDesign).issues).toEqual([]);
+        const commerceOnly = specSourceFromFixtures(["figaro-commerce"]);
+        expect(validateCommitmentAgreement(anchored, computeAgreementHash(anchored), commerceOnly, STRUCT, logDesign).issues).toEqual([]);
+        const dropped = { ...anchored, sections: anchored.sections.filter((s) => s.clause !== keyOf("figaro-merchant-process")) };
+        expect(() => assertAgreementSignable(dropped, computeAgreementHash(dropped), LOG_SPECS, STRUCT, logDesign))
+            .toThrow(/figaro-merchant-process clause: the order does not carry this clause/);
     });
 
     it("refuses a design that is not the one the agreement's provenance names", () => {

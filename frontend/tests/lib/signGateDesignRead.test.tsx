@@ -7,8 +7,9 @@
  * registered agreement from `AgreementRegistry` → IPFS, verify each against
  * its root or key, and run `assertAgreementSignable` with it. An assembly
  * that cannot be fetched, one that does not hash to its root, a registered
- * agreement whose content does not match its key, a designer value a party
- * changed, and a relayed agreement whose content does not match its
+ * agreement whose content does not match its key, an order missing a clause
+ * of the registered agreement it names, a designer value a party changed, and
+ * a relayed agreement whose content does not match its
  * `agreementHash` are each refused before anything is signed or broadcast.
  */
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
@@ -18,6 +19,7 @@ import {
     assemblyCompositionHash,
     buildOrderAgreement,
     computeAgreementHash,
+    deriveAssemblySlug,
     type Agreement,
     type Assembly,
     type Commitment,
@@ -130,14 +132,17 @@ function design() {
     return { documents, registered, agreementKey, assembly, compositionHash, anchor, id: caseId };
 }
 
-function payloadFor(d: ReturnType<typeof design>, consent = { documents: d.documents }): CommitmentPayload {
+/** The order `d` designs, its consent clause carrying `consent` — or, with
+ *  `null`, the order without the consent clause its registered agreement
+ *  composes. */
+function payloadFor(d: ReturnType<typeof design>, consent: Record<string, unknown> | null = { documents: d.documents }): CommitmentPayload {
     const { agreement: built } = buildOrderAgreement(BUYER, SELLER, {
         [keyOf("figaro-commerce")]: {
             currency: CURRENCY,
             payment: "1000",
             lineItems: [{ itemId: "item-1", name: "Item", quantity: 1, unitPrice: "1000" }],
         },
-        [keyOf("figaro-consent")]: consent,
+        ...(consent === null ? {} : { [keyOf("figaro-consent")]: consent }),
     }, specSource());
     const agreement: Agreement = { ...built, provenance: { agreementKey: d.agreementKey, compositionHash: d.compositionHash } };
     const commitment: Commitment = {
@@ -204,6 +209,16 @@ describe("both sign flows read and verify the design the agreement names", () =>
         const { result } = renderHook(() => useOrderCommitmentFlow());
         await expect(result.current.acceptOrder(payloadFor(d, forged))).rejects.toThrow(/figaro-consent documents: .*designer/);
         await expect(result.current.commitOrder(signed(payloadFor(d, forged)))).rejects.toThrow(/designer/);
+        expect(commitSignedOrder).not.toHaveBeenCalled();
+    });
+
+    it("refuses an order missing a clause of the registered agreement it names, naming the assembly by slug and full hash", async () => {
+        const d = design();
+        d.anchor();
+        const missing = new RegExp(`figaro-consent clause: the order does not carry this clause, which assembly ${deriveAssemblySlug(d.compositionHash)} \\(${d.compositionHash}\\) composes`);
+        const { result } = renderHook(() => useOrderCommitmentFlow());
+        await expect(result.current.acceptOrder(payloadFor(d, null))).rejects.toThrow(missing);
+        await expect(result.current.commitOrder(signed(payloadFor(d, null)))).rejects.toThrow(missing);
         expect(commitSignedOrder).not.toHaveBeenCalled();
     });
 

@@ -11,6 +11,7 @@ import {
 } from "../src/agent/originate.js";
 import { InProcessChannel } from "../src/agent/coordination.js";
 import { computeAgreementHash } from "../src/agreement.js";
+import { buildDomain, COMMITMENT_TYPES } from "../src/commitments.js";
 import { assemblyCompositionHash } from "../src/assembly.js";
 import type { Address } from "../src/types.js";
 import { keyOf, specSourceFromFixtures } from "./specFixtures.js";
@@ -366,6 +367,21 @@ describe("the designer's values — never changed by a buyer or a seller", () =>
         expect((await validateOffer(clean, SELLER.address, undefined, DESIGN_SPECS, null, profileBinding(designed))).reason).toMatch(/was not read/);
         await expect(counterSignOffer(sellerW, forged, { chainId: CHAIN, core: CORE }, () => true, policy, DESIGN_SPECS, designed, profileBinding(designed)))
             .rejects.toThrow(/designer/);
+    });
+
+    it("the seller refuses an offer missing a clause of the registered agreement it names, before any signature", async () => {
+        const clean = await buildBuyerOffer(buyerW, params({}));
+        const agreement = { ...clean.agreement, sections: clean.agreement.sections.filter((s) => s.clause !== keyOf("figaro-consent")) };
+        const commitment = { ...clean.commitment, agreementHash: computeAgreementHash(agreement) };
+        const buyerSig = await buyerW.signTypedData({
+            account: BUYER, domain: buildDomain(CHAIN, CORE), types: COMMITMENT_TYPES, primaryType: "Commitment", message: commitment,
+        });
+        const short: CommitmentPayload = { commitment, agreement, buyerSig };
+        const compositionHash = assemblyCompositionHash(designed.assembly);
+        const named = new RegExp(`figaro-consent clause: the order does not carry this clause, which assembly ${deriveAssemblySlug(compositionHash)} \\(${compositionHash}\\) composes`);
+        expect((await validateOffer(short, SELLER.address, undefined, DESIGN_SPECS, designed, profileBinding(designed))).reason).toMatch(named);
+        await expect(counterSignOffer(sellerW, short, { chainId: CHAIN, core: CORE }, () => true, policy, DESIGN_SPECS, designed, profileBinding(designed)))
+            .rejects.toThrow(named);
     });
 
     it("lets a party fill a design field the designer left unset", async () => {

@@ -44,6 +44,7 @@ import {
     resolveAuthoredClauseKeys,
     assemblyCompositionHash,
     agreementClauses,
+    deriveAssemblySlug,
     type Assembly,
     type RegisteredAgreement,
     type AssemblyAgreement,
@@ -431,11 +432,13 @@ function currencyPinClause(
  * skipped); the denomination AND payment the parties are about to sign
  * as TERMS equal the ones they are about to sign as EXECUTION data
  * (leaf == struct for both mirrored fields, and where a denomination pin is
- * composed, pin == leaf); every designer value (`block.design.fills`) the
- * design sets arrives unchanged — `design` is the hydrated assembly the
- * agreement's provenance names, `null` when none was read, and an agreement
- * naming a design then fails (a buyer or a seller never changes the
- * designer's values); and the `agreementHash` about to be signed equals
+ * composed, pin == leaf); the order carries every clause of the design its
+ * provenance names (the registered agreement's and the assembly-scoped ones)
+ * and every designer value (`block.design.fills`) the design sets arrives
+ * unchanged — `design` is the hydrated assembly the agreement's provenance
+ * names, `null` when none was read, and an agreement naming a design then
+ * fails (a buyer or a seller never drops a designed clause or changes a
+ * designer's value); and the `agreementHash` about to be signed equals
  * the merkle root recomputed from the clauses. Catches a malformed agreement
  * before a chain round-trip.
  *
@@ -453,6 +456,13 @@ export interface CommitmentMirror {
     payment: bigint;
 }
 
+/** One order the design gives a registered agreement: its clause bag, and
+ *  the clause keys (lowercased) an order instantiating it must carry. */
+interface DesignOrderBag {
+    clauses: Record<string, Record<string, unknown>>;
+    required: string[];
+}
+
 /** The clause bags a design gives the order an agreement instantiates: one
  *  per assembly agreement binding the registered agreement the provenance
  *  names — the assembly-scoped clauses with that agreement's clauses (its
@@ -461,16 +471,21 @@ export interface CommitmentMirror {
 function designClauseBags(
     design: HydratedAssembly,
     agreementKey: Hex,
-): Record<string, Record<string, unknown>>[] {
+): DesignOrderBag[] {
     const assemblyClauses = design.assembly.assemblyClauses ?? {};
     return design.assembly.agreements
         .filter((entry) => entry.agreementKey.toLowerCase() === agreementKey.toLowerCase())
         .map((entry) => {
-            const bag: Record<string, Record<string, unknown>> = {};
-            for (const [key, values] of Object.entries({ ...assemblyClauses, ...agreementClauses(design, entry) })) {
-                bag[key.toLowerCase()] = values;
+            const composed = agreementClauses(design, entry);
+            const clauses: Record<string, Record<string, unknown>> = {};
+            for (const [key, values] of Object.entries({ ...assemblyClauses, ...composed })) {
+                clauses[key.toLowerCase()] = values;
             }
-            return bag;
+            // Every clause the order carries: its registered agreement's, and
+            // the assembly-scoped clauses the walk folds into every order.
+            const required = new Set(Object.keys(composed).map((key) => key.toLowerCase()));
+            for (const key of Object.keys(assemblyClauses)) required.add(key.toLowerCase());
+            return { clauses, required: [...required] };
         });
 }
 
@@ -553,7 +568,7 @@ function designIssues(
             message: `the agreement instantiates assembly ${provenance.compositionHash}; the design read is ${compositionHash}`,
         }];
     }
-    let bags: Record<string, Record<string, unknown>>[];
+    let bags: DesignOrderBag[];
     try {
         bags = designClauseBags(design, provenance.agreementKey);
     } catch (cause) {
@@ -567,10 +582,23 @@ function designIssues(
         }];
     }
     // The order matches one of the design's orders for that registered
-    // agreement; report against the first when it matches none.
+    // agreement — every clause carried, every designer value unchanged;
+    // report against the first when it matches none. Carried is a check on
+    // KEYS alone: a withheld clause (`dataHash`), a clause whose spec is not
+    // loaded and a value-free clause (a process-log clause's empty anchor)
+    // each count, so an order never names a design it does not carry.
+    const carried = new Set(agreement.sections.map((s) => s.clause.toLowerCase()));
+    const named = `assembly ${deriveAssemblySlug(provenance.compositionHash)} (${provenance.compositionHash})`;
     let first: CommitmentAgreementIssue[] | undefined;
     for (const bag of bags) {
-        const found = designerValueIssues(agreement, bag, specs);
+        const found: CommitmentAgreementIssue[] = bag.required
+            .filter((clause) => !carried.has(clause))
+            .map((clause) => ({
+                clause,
+                path: "clause",
+                message: `the order does not carry this clause, which ${named} composes for registered agreement ${provenance.agreementKey}`,
+            }));
+        found.push(...designerValueIssues(agreement, bag.clauses, specs));
         if (found.length === 0) return [];
         first ??= found;
     }

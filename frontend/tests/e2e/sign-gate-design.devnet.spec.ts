@@ -7,12 +7,15 @@
  * broadcast of a fully signed payload (`/sign` → submit → `commitOrder`).
  *
  * A party hands the connected wallet a payload built and signed out of band —
- * a counterparty the wallet does not have to trust. Two payloads:
+ * a counterparty the wallet does not have to trust. Three payloads:
  *   - its agreement's provenance leaf names an assembly no registry anchors:
  *     the design cannot be fetched, and the gate refuses;
  *   - its agreement names an anchored assembly and carries one designer value
  *     (a `block.design.fills` field the assembly sets) the buyer changed: the
- *     gate refuses, naming the clause and the field.
+ *     gate refuses, naming the clause and the field;
+ *   - its agreement names an anchored assembly and drops one clause of the
+ *     registered agreement it names: the gate refuses, naming the clause and
+ *     the assembly by slug and full hash.
  * The seller's own profile binds both assemblies the payloads name, so each
  * counter-sign reaches the design gate (a seller refuses an order under an
  * assembly it has not bound before any design is read —
@@ -117,9 +120,9 @@ async function signedPayload(agreement: Agreement, commitment: Commitment, both:
 }
 
 test.describe('the sign gate reads the design an agreement names (devnet)', () => {
-    test.setTimeout(240_000);
+    test.setTimeout(360_000);
 
-    test('refuses an agreement whose design cannot be fetched, and one carrying a changed designer value; nothing commits', async ({ page }) => {
+    test('refuses an agreement whose design cannot be fetched, one carrying a changed designer value, and one missing a clause of its design; nothing commits', async ({ page }) => {
         const config = readLocalDeploymentConfig();
         const core = config.figaroCore as Hex;
         const token = config.tokenAddress as Hex;
@@ -231,6 +234,30 @@ test.describe('the sign gate reads the design an agreement names (devnet)', () =
         // Broadcast of a fully signed payload.
         await refuseOnSign(BUYER.address, await signedPayload(unreadAgreement, unreadCommitment, true), 'btn-broadcast', notRead);
         await refuseOnSign(BUYER.address, await signedPayload(forgedCase!.order.agreement, forgedCase!.order.commitment, true), 'btn-broadcast', designerChanged);
+
+        // The dropped-clause case, selected by shape: the clean root order
+        // with one clause of its design removed and rehashed, preferring a
+        // clause whose absence is the order's only refusal.
+        let dropped: { clauseKey: Hex; agreement: Agreement; commitment: Commitment; onlyMissing: boolean } | undefined;
+        for (const section of cleanOrder.agreement.sections) {
+            const agreement: Agreement = { ...cleanOrder.agreement, sections: cleanOrder.agreement.sections.filter((s) => s !== section) };
+            const commitment: Commitment = { ...cleanOrder.commitment, agreementHash: computeAgreementHash(agreement) };
+            const check = validateCommitmentAgreement(agreement, commitment.agreementHash, specSource(), commitment, forgedCase!.found.hydrated);
+            const missing = check.issues.filter((i) => i.clause.toLowerCase() === section.clause.toLowerCase() && /does not carry this clause/.test(i.message));
+            if (missing.length === 0) continue;
+            const onlyMissing = missing.length === check.issues.length;
+            if (!dropped || (onlyMissing && !dropped.onlyMissing)) dropped = { clauseKey: section.clause as Hex, agreement, commitment, onlyMissing };
+        }
+        expect(dropped, 'the gate refuses the order with a clause of its design dropped').toBeDefined();
+        const droppedClauseId = specSource().get(dropped!.clauseKey)?.clauseId ?? dropped!.clauseKey;
+        test.info().annotations.push({
+            type: 'dropped clause',
+            description: `assembly ${forgedCase!.found.slug} clause ${droppedClauseId} (only refusal: ${dropped!.onlyMissing})`,
+        });
+        const hash = forgedCase!.found.compositionHash;
+        const notCarried = new RegExp(`(?:${droppedClauseId}|${dropped!.clauseKey}) clause: the order does not carry this clause, which assembly ${forgedCase!.found.slug} \\(${hash}\\) composes`, 'i');
+        await refuseOnSign(SELLER.address, await signedPayload(dropped!.agreement, dropped!.commitment, false), 'btn-counter-sign', notCarried);
+        await refuseOnSign(BUYER.address, await signedPayload(dropped!.agreement, dropped!.commitment, true), 'btn-broadcast', notCarried);
 
         // Out of band: the chain holds no new order for the buyer, and no
         // bond moved.

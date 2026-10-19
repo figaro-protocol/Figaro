@@ -391,9 +391,10 @@ root `@figaro-protocol/sdk` exports and the document you were handed:
 
 **Recomputing the hash stays necessary — and it is not sufficient.** A document can hash
 correctly and still be wrong: the terms inside it can contradict the struct you bond
-against, omit a term the clause requires, or change a designer's value.
+against, omit a term the clause requires, drop a clause of its design, or change a designer's
+value.
 `assertAgreementSignable(agreement, agreementHash, specs, commitment, design, label)` is the
-one off-chain gate every signature in the SDK routes through, and it refuses four things the
+one off-chain gate every signature in the SDK routes through, and it refuses five things the
 hash comparison cannot see:
 
 - **A clause that violates its own clause spec** — including a MISSING REQUIRED term. An
@@ -412,6 +413,10 @@ hash comparison cannot see:
   design sets must arrive unchanged; a buyer or a seller never changes it. A design field
   the designer left unset is yours to fill. Pass `null` only for an agreement naming no
   design: an agreement naming one is refused when its design was not read.
+- **A clause of the design dropped.** The order carries every clause of the design its
+  provenance leaf names — its registered agreement's and the assembly-scoped ones — checked
+  by key: a withheld clause and a process-log clause's empty anchor count as carried. An
+  order missing one is refused, naming the clause and the assembly by slug and full hash.
 
 The gate needs your `SpecSource` to run (step 1 of the recipe above): pass `specs` and it
 runs, omit it and only the structural checks do. On the seller side the same gate rides
@@ -557,7 +562,8 @@ the next reply is the free fallback. Two legs, one choreography, from
   `requestCounterSignatures(channel, drafts, ctx)` → verified replies + the winner.
   Candidate: mount `makeSellerRaceHandler(wallet, ctx, { accept, policy, specs, readDesign,
   readProfile })` — the same `SpecSource` and readers as everywhere else, so a draft whose
-  leaf contradicts the struct, whose designer values differ from its design, or whose
+  leaf contradicts the struct, which drops a clause of its design, whose designer values
+  differ from it, or whose
   assembly your profile does not bind, is refused before any signature. As a buyer, race
   only candidates whose profiles bind the assembly: a candidate that has not bound it refuses.
 - **The RFQ (the candidate names the price):** the request drafts at the buyer's

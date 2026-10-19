@@ -16,6 +16,7 @@
  * the same way.
  */
 
+import { hexToBytes } from "viem";
 import { type Hex, isBytes32Hex } from "../types.js";
 
 // CIDv1 prefix for [raw codec 0x55, keccak-256 multihash 0x1b, digest length
@@ -62,9 +63,5 @@ function base32Lower(bytes: Uint8Array): string {
  */
 export function witnessContentCidBase32(contentRef: Hex): string {
     const hex = witnessContentCid(contentRef).slice(1); // strip multibase "f"
-    const bytes = new Uint8Array(hex.length / 2);
-    for (let i = 0; i < bytes.length; i++) {
-        bytes[i] = parseInt(hex.slice(i * 2, i * 2 + 2), 16);
-    }
-    return "b" + base32Lower(bytes);
+    return "b" + base32Lower(hexToBytes(`0x${hex}`));
 }

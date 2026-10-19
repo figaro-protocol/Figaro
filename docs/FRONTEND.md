@@ -136,8 +136,9 @@ Tiered, bottom to top; each tier imports only what sits below it (enforced by th
     fully-signed `commitOrder` broadcast; before every sign and that broadcast,
     `readSigningDesign` reads and verifies the assembly the agreement's
     provenance leaf names and hands it to the sign gate, which refuses an
-    agreement whose design cannot be fetched or verified, or whose designer
-    values differ from it (`/sign`'s review reads it the same way). `orderSignedAndShared.ts` and
+    agreement whose design cannot be fetched or verified, which drops a clause
+    of that design, or whose designer values differ from it (`/sign`'s review
+    reads it the same way). `orderSignedAndShared.ts` and
     `orderPendingSellerSignature.ts` hold the pending predicates including
     `awaitsMyBroadcast`, the race winner's ready-to-submit lane on `/orders`. The
     gate's terms rendering is `components/runtime/AgreementReview.tsx` — the ONE

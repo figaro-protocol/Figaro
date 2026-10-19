@@ -417,6 +417,29 @@ describe("the merkle-leaf seam on the race + quote legs (docs/CLAUSES.md § 'Eve
         await expect(quoteDraft(courierAW, tampered, CTX, () => 700n, quotePolicy, SPECS, assembly, BOUND))
             .rejects.toThrow(/denomination/i);
     });
+
+    /** `payload` with the topology clause the registered agreement composes
+     *  dropped, rehashed so only the missing clause is wrong. */
+    function withoutTopology(payload: CommitmentPayload): CommitmentPayload {
+        const agreement = { ...payload.agreement, sections: payload.agreement.sections.filter((s) => s.clause !== keyOf("figaro-topology")) };
+        return { ...payload, agreement, commitment: { ...payload.commitment, agreementHash: computeAgreementHash(agreement) } };
+    }
+    const draftHash = assemblyCompositionHash(assembly.assembly);
+    const missing = new RegExp(`figaro-topology clause: the order does not carry this clause, which assembly ${deriveAssemblySlug(draftHash)} \\(${draftHash}\\) composes`);
+
+    it("validateDraft, counterSignDraft and quoteDraft refuse a draft missing a clause of the registered agreement it names", async () => {
+        const offer = await buildBuyerOffer(buyerW, {
+            assembly: assembly, seller: COURIER_A.address, currency: CURRENCY, payment: 1000n,
+            chainId: CHAIN, core: CORE, deadline: 1_900_000_000n,
+            overrides: fullCommerce(CURRENCY, "1000"),
+        });
+        const { buyerSig: _stripped, ...draft } = offer;
+        const short = withoutTopology(draft);
+        expect((await validateDraft(short, COURIER_A.address, undefined, SPECS, assembly, BOUND)).reason).toMatch(missing);
+        await expect(counterSignDraft(courierAW, short, CTX, () => true, policy, SPECS, assembly, BOUND)).rejects.toThrow(missing);
+        await expect(quoteDraft(courierAW, withoutTopology(requestFor(COURIER_A.address)), CTX, () => 700n, quotePolicy, SPECS, assembly, BOUND))
+            .rejects.toThrow(missing);
+    });
 });
 
 describe("the seller's bound assemblies — the race and quote legs refuse a draft under an assembly the candidate has not bound", () => {

@@ -136,9 +136,10 @@ What it does, in order:
 3. **Runs the buyer loop.** `originateProcess(…)` instantiates the discovered
    assembly's root agreement with the buyer's overrides, runs the merkle-leaf
    sign gate (`assertAgreementSignable` — every clause conforms to its spec,
-   the currency/payment TERMS equal the commitment struct's mirrors, and every
-   designer value the assembly sets arrives unchanged; a missing required term,
-   a leaf/struct contradiction or a changed designer value refuses to sign), signs
+   the currency/payment TERMS equal the commitment struct's mirrors, the order
+   carries every clause of the design it names, and every designer value the
+   assembly sets arrives unchanged; a missing required term, a leaf/struct
+   contradiction, a dropped clause or a changed designer value refuses to sign), signs
    the EIP-712 commitment against a CHAIN-time deadline (`readChainTimestamp` +
    `computeDeadline` — never the machine clock), and hands the offer to the
    channel. The seller re-hashes the agreement against the committed
@@ -320,7 +321,7 @@ definition) and `RPGF_*` constant is a **root** export.
 | `buildRegisteredClauseInclusionProof` | root | A composed clause's membership proof under `agreementKeyOf`: its leaf, its sorted-pair proof, and the hash of the designer's fills for it. |
 | `anchorRegisteredAgreement` | root | A fetched registered agreement as `Anchored<RegisteredAgreement>` when `agreementKeyOf` of it is the key; null (absence) otherwise. |
 | `anchorAssembly` | root | A fetched assembly as `Anchored<Assembly>` when its merkle root over the agreements and terms is `AssemblyRegistry`'s `compositionHash`; null otherwise. |
-| `assertAgreementSignable` | root | The ONE pre-signature thrower: every clause conforms to its spec, the terms equal the struct, and the designer's values equal the design's. |
+| `assertAgreementSignable` | root | The ONE pre-signature thrower: every clause conforms to its spec, the terms equal the struct, every clause of the design is carried, and the designer's values equal the design's. |
 | `assertApprovalCoversBond` | root | Throws when an approval is short of the full per-order bond `FigaroCore` will pull. |
 | `attestAsBuyer` | `/agent` | Submit a root-buyer attestation for one leaf of a committed order — a clause, or the provenance leaf. |
 | `attestAsSeller` | `/agent` | Submit a seller attestation for one clause of a committed order. |
@@ -1043,7 +1044,8 @@ channel.register(sellerAddr, makeSellerOfferHandler(sellerWallet, publicClient, 
     readDesign, // (provenance) => the hydrated assembly the offer names, read
            // by its composition hash and verified (`anchorAssembly` +
            // `hydrateAssembly`), or null. With `specs`, an offer whose design
-           // is not read, or whose designer values differ, is REFUSED
+           // is not read, which drops a clause of that design, or whose
+           // designer values differ, is REFUSED
     readProfile, // (member) => the seller's OWN profile, read when the offer
            // arrives: MembersRegistry's latest metadataURI for the member (a
            // `FigaroContext` sync, then its members) → the pinned document →
@@ -1115,7 +1117,8 @@ const { status, body } = await respond(rawRequestBody); // status is always 200 
 // a draft under an assembly it has not bound is refused, so a buyer races only
 // candidates whose profiles bind the assembly), and the same optional `specs`
 // merkle-leaf gate: with a SpecSource, a draft whose commerce leaf contradicts
-// the struct, or whose designer values differ from the design it names
+// the struct, which drops a clause of the design it names, or whose designer
+// values differ from it
 // (`design`, the hydrated assembly; null refuses a draft naming one), is
 // refused before any signature.
 import { validateDraft, counterSignDraft, verifyRaceReply, selectRaceWinner } from "@figaro-protocol/sdk/agent";
@@ -1851,14 +1854,19 @@ clauses deterministically, and returns the `Agreement` + its merkle-root
 signature routes through — buyer sign, seller counter-sign, and the checkout's
 pre-wallet check all call it, so no path signs an agreement whose clauses
 violate their specs, whose denomination differs between the signed TERM
-and the signed STRUCT, whose designer values (`block.design.fills`) differ
-from the design the agreement's provenance leaf names, or whose hash
+and the signed STRUCT, which drops a clause of the design the agreement's
+provenance leaf names, whose designer values (`block.design.fills`) differ
+from that design, or whose hash
 mismatches its recomputed root (`validateCommitmentAgreement` is the
 non-throwing form, returning `{ ok, issues }`). The design is the gate's
 fifth argument: the hydrated assembly the provenance names, which the caller
 reads and verifies (`anchorAssembly` + `hydrateAssembly`), or `null` when it
 read none — `null` refuses any agreement that names a design, so a design that
-cannot be fetched or does not verify is never signed. A value the design sets
+cannot be fetched or does not verify is never signed. The order carries every
+clause of the design it names — its registered agreement's and the assembly-scoped
+ones — by key: a withheld clause and a process-log clause's empty anchor count
+as carried; a clause dropped is refused, naming the clause and the assembly by
+slug and full hash. A value the design sets
 is the designer's and arrives unchanged; a design field the designer left
 unset is a party's to fill. The mirror check is why the gate takes the commitment's
 `{ currency, payment }` pair (a full `Commitment` satisfies it): both are
