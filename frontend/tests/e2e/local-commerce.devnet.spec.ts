@@ -95,6 +95,8 @@ import {
     ladderLabelsOf,
     readLocalDeploymentConfig,
     memberProfileBindings,
+    anchoredCompositionHash,
+    isBindingOf,
 } from './devnet-helpers';
 import { ANVIL_ACCOUNTS } from '../anvilAccounts';
 import { CORE_ABI } from '@/lib/kernel/contracts';
@@ -213,6 +215,7 @@ test.describe('LOCAL COMMERCE — item delivery: canvas → bind → order → a
         //    the shape; a re-run adopts the anchored one (content-addressed,
         //    first-write-wins — the mainnet ensure-exists semantics). ──
         const deliverySlug = await ensureDeliveryAssembly(page);
+        const deliveryHash = await anchoredCompositionHash(deliverySlug);
 
         // The registry explorer carries it — author → pin → anchor → visible.
         await page.goto('/registries?family=assemblies&e2e=devnet', { waitUntil: 'domcontentloaded' });
@@ -224,7 +227,7 @@ test.describe('LOCAL COMMERCE — item delivery: canvas → bind → order → a
         //    registry events + IPFS. ──
         const merchantConformant = async (): Promise<boolean> => {
             const bindings = await memberProfileBindings(MERCHANT);
-            const binding = bindings.find((b) => b.assemblySlug === deliverySlug);
+            const binding = bindings.find((b) => isBindingOf(b, deliveryHash));
             return !!binding && (binding.counterpartyBindings ?? []).some(
                 (cb) => cb.clauseKey.toLowerCase() === COURIER_CLAUSE
                     && cb.addresses.some((a) => a.toLowerCase() === COURIER.toLowerCase()),
@@ -243,14 +246,14 @@ test.describe('LOCAL COMMERCE — item delivery: canvas → bind → order → a
                 timeout: 60000, message: "the merchant's re-pinned profile carries the binding + courier designation",
             }).toBe(true);
         }
-        if (!(await memberProfileBindings(COURIER)).some((b) => b.assemblySlug === deliverySlug)) {
+        if (!(await memberProfileBindings(COURIER)).some((b) => isBindingOf(b, deliveryHash))) {
             await gotoAsWallet(page, COURIER, '/members/edit/assemblies?e2e=devnet');
             const row = page.getByTestId(`seller-assembly-row-${deliverySlug}`);
             await row.waitFor({ state: 'visible', timeout: 30000 });
             await row.locator('input[type="checkbox"]').first().check();
             await page.getByRole('button', { name: 'Save changes' }).click();
             await expect.poll(async () =>
-                (await memberProfileBindings(COURIER)).some((b) => b.assemblySlug === deliverySlug), {
+                (await memberProfileBindings(COURIER)).some((b) => isBindingOf(b, deliveryHash)), {
                 timeout: 60000, message: "the courier's re-pinned profile carries the binding",
             }).toBe(true);
         }

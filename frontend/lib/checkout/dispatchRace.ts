@@ -8,10 +8,12 @@
  * counterparty — the SAME derived absence the manual picker resolves) can be
  * filled by racing the market instead of picking by hand:
  *
- *   1. Candidates are the live discovered-seller set whose catalog can
+ *   1. Candidates are the live discovered-seller set whose profile binds
+ *      the assembly (every seller in a process must have bound it — a
+ *      candidate that has not would refuse the draft) and whose catalog can
  *      price the node (`resolveSubOrderPricing` — the ruled first-available-
- *      item rule, rate items included). A registry read, never a roster;
- *      resolved-empty = nothing to race.
+ *      item rule, rate items included): `pricedRaceCandidates`. A registry
+ *      read, never a roster; resolved-empty = nothing to race.
  *   2. One dry walk per candidate (`planAssemblyOrders`, fixed per-node salts
  *      + one deadline) produces that candidate's EXACT commitment struct at
  *      their own posted price. The raced node's order is the draft — relayed
@@ -44,10 +46,12 @@
 import { useCallback, useRef, useState } from "react";
 import { useChainId, useWalletClient } from "wagmi";
 import {
+    assemblyCompositionHash,
     derivePricedFields,
     hashCommitmentStruct,
     resolveSubOrderPricing,
     agreementClauses,
+    type SubOrderPricing,
 } from "@figaro-protocol/sdk";
 import {
     startRace,
@@ -70,6 +74,7 @@ import { specSource } from "@/lib/shared/clauseSpecSource";
 import { formatToken } from "@/lib/shared/utils";
 import { hexEqual } from "@/lib/shared/evm";
 import { getE2EModeSession } from "@/lib/shared/e2e";
+import { bindsAssembly } from "@/lib/member/memberListing";
 import { extractErrorMessage } from "@/lib/shared/errors";
 
 type Hex = `0x${string}`;
@@ -118,6 +123,48 @@ export async function resolveAgentEndpoint(
 }
 
 export type DispatchRaceStep = "idle" | "drafting" | "racing" | "done" | "error";
+
+/**
+ * The race's candidate set for one node: the live discovered-seller catalogs
+ * whose profile binds the assembly and whose catalog can price the node —
+ * the same registry read the manual path uses. A candidate that has not
+ * bound the assembly would refuse the draft (every seller's accept gate
+ * checks its own bindings), so it is never raced. The buyer's own catalog is
+ * skipped (the buyer does not race itself over the channel). Sorted
+ * best-priced first so the buyer's k (`maxCandidates`, a policy knob, never
+ * stored) means "the k cheapest posted" — on the quotes leg the posted
+ * figure is only the eligibility/ranking signal; the quote sets the price.
+ */
+export function pricedRaceCandidates(args: {
+    checkout: Pick<AssemblyCheckoutParams, "buyer" | "assembly" | "sellerCatalogs" | "tokenDecimals" | "clauseFills" | "subOrderQuantities">;
+    racedNodeId: string;
+    maxCandidates?: number;
+}): Array<{ address: Hex; services: MemberAgentServices | undefined; pricing: SubOrderPricing }> {
+    const { checkout, racedNodeId } = args;
+    const hydrated = checkout.assembly.hydratedAssembly;
+    const node = hydrated.assembly.agreements.find((a) => a.id === racedNodeId);
+    if (!node) throw new Error(`Assembly node "${racedNodeId}" not found.`);
+    const specs = specSource();
+    const compositionHash = assemblyCompositionHash(hydrated.assembly);
+    const nodeClauses = { ...agreementClauses(hydrated, node), ...(checkout.clauseFills?.[racedNodeId] ?? {}) };
+    return checkout.sellerCatalogs
+        .filter((cat) => !hexEqual(cat.address, checkout.buyer) && bindsAssembly(cat, compositionHash))
+        .map((cat) => ({
+            address: cat.address as Hex,
+            services: cat.agentServices,
+            pricing: resolveSubOrderPricing({
+                node: { clauses: nodeClauses },
+                seller: cat.address as Hex,
+                sellerCatalogs: checkout.sellerCatalogs,
+                tokenDecimals: checkout.tokenDecimals,
+                specs,
+                checkoutQuantity: checkout.subOrderQuantities?.[racedNodeId],
+            }),
+        }))
+        .filter(({ pricing }) => pricing.item !== null && !pricing.issue && pricing.payment > 0n)
+        .sort((a, b) => (a.pricing.payment < b.pricing.payment ? -1 : a.pricing.payment > b.pricing.payment ? 1 : 0))
+        .slice(0, args.maxCandidates && args.maxCandidates > 0 ? args.maxCandidates : undefined);
+}
 
 /** A candidate in the running: their drafted struct + reply state (render model). */
 export interface RaceCandidateView {
@@ -305,37 +352,13 @@ export function useDispatchRace() {
         try {
             setStep("drafting");
             const hydrated = checkout.assembly.hydratedAssembly;
-            const node = hydrated.assembly.agreements.find((a) => a.id === racedNodeId);
-            if (!node) throw new Error(`Assembly node "${racedNodeId}" not found.`);
             const specs = specSource();
-            const nodeClauses = { ...agreementClauses(hydrated, node), ...(checkout.clauseFills?.[racedNodeId] ?? {}) };
 
-            // The candidate set: the live discovered-seller catalogs that can
-            // price this node — the same registry read the manual path uses,
-            // resolved fresh here. The buyer's own catalog is skipped (the
-            // buyer does not race itself over the channel). Sorted best-priced
-            // first so the buyer's k (a policy knob, never stored) means "the
-            // k cheapest posted" — on the quotes leg the posted figure is only
-            // the eligibility/ranking signal; the quote sets the price.
-            const priced = checkout.sellerCatalogs
-                .filter((cat) => !hexEqual(cat.address, checkout.buyer))
-                .map((cat) => ({
-                    address: cat.address as Hex,
-                    services: cat.agentServices,
-                    pricing: resolveSubOrderPricing({
-                        node: { clauses: nodeClauses },
-                        seller: cat.address as Hex,
-                        sellerCatalogs: checkout.sellerCatalogs,
-                        tokenDecimals: checkout.tokenDecimals,
-                        specs,
-                        checkoutQuantity: checkout.subOrderQuantities?.[racedNodeId],
-                    }),
-                }))
-                .filter(({ pricing }) => pricing.item !== null && !pricing.issue && pricing.payment > 0n)
-                .sort((a, b) => (a.pricing.payment < b.pricing.payment ? -1 : a.pricing.payment > b.pricing.payment ? 1 : 0))
-                .slice(0, args.maxCandidates && args.maxCandidates > 0 ? args.maxCandidates : undefined);
+            // The candidate set, resolved fresh here: the members whose
+            // profiles bind this assembly and whose catalogs can price the node.
+            const priced = pricedRaceCandidates({ checkout, racedNodeId, maxCandidates: args.maxCandidates });
             if (priced.length === 0) {
-                throw new Error("No registered member's catalog can price this order — nothing to race.");
+                throw new Error("No registered member that has bound this assembly lists an item that prices this order — nothing to race.");
             }
             // Route each candidate — through the DID-verifying resolver where a
             // DID is declared — in parallel: a slow or hostile document host

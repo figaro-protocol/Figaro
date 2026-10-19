@@ -36,6 +36,8 @@ import {
     seedRegisteredMember,
     memberProfileBindings,
     waitForConnected,
+    anchoredCompositionHash,
+    isBindingOf,
 } from './devnet-helpers';
 import { ANVIL_ACCOUNTS, ANVIL_KEYS } from '../anvilAccounts';
 import { CORE_ABI } from '@/lib/kernel/contracts';
@@ -81,14 +83,15 @@ test.describe('RFQ AT CHECKOUT — the candidates author the price (devnet)', ()
         // ── GATES shared with dispatch-race (all idempotent): the assembly,
         //    Aurora's undesignated binding, the two couriers, funding. ──
         const deliverySlug = await ensureDeliveryAssembly(page);
-        if (!(await memberProfileBindings(MERCHANT)).some((b) => b.assemblySlug === deliverySlug)) {
+        const deliveryHash = await anchoredCompositionHash(deliverySlug);
+        if (!(await memberProfileBindings(MERCHANT)).some((b) => isBindingOf(b, deliveryHash))) {
             await gotoAsWallet(page, MERCHANT, '/members/edit/assemblies?e2e=devnet');
             const row = page.getByTestId(`seller-assembly-row-${deliverySlug}`);
             await row.waitFor({ state: 'visible', timeout: 30000 });
             await row.locator('input[type="checkbox"]').first().check();
             await page.getByRole('button', { name: 'Save changes' }).click();
             await expect.poll(async () =>
-                (await memberProfileBindings(MERCHANT)).some((b) => b.assemblySlug === deliverySlug), {
+                (await memberProfileBindings(MERCHANT)).some((b) => isBindingOf(b, deliveryHash)), {
                 timeout: 60000, message: "the merchant's binding lands",
             }).toBe(true);
         }
@@ -118,7 +121,7 @@ test.describe('RFQ AT CHECKOUT — the candidates author the price (devnet)', ()
                     assemblyBindings: [{
                         bindingId: `race-binding-${address.slice(2, 8).toLowerCase()}`,
                         subjectAddress: address,
-                        assemblySlug: deliverySlug,
+                        compositionHash: deliveryHash,
                         counterpartyBindings: [],
                     }],
                 },

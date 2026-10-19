@@ -13,6 +13,10 @@
  *   - its agreement names an anchored assembly and carries one designer value
  *     (a `block.design.fills` field the assembly sets) the buyer changed: the
  *     gate refuses, naming the clause and the field.
+ * The seller's own profile binds both assemblies the payloads name, so each
+ * counter-sign reaches the design gate (a seller refuses an order under an
+ * assembly it has not bound before any design is read —
+ * `seller-binding.devnet.spec.ts`).
  * Each refusal is read on the screen (the review's verdict, then the error
  * the action raises), and out of band from the chain: no new OrderCommitted
  * for the buyer, and no token moved.
@@ -49,13 +53,15 @@ import {
     localPublicClient,
     primeRegisteredClauseSpecs,
     readLocalDeploymentConfig,
+    seedRegisteredMember,
     waitForConnected,
     type DiscoveredAssembly,
 } from './devnet-helpers';
 
 // anvil[0] signs as the buyer out of band; anvil[1] is the seller it names.
 const BUYER = privateKeyToAccount('0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80');
-const SELLER = privateKeyToAccount('0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d');
+const SELLER_KEY = '0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d' as const;
+const SELLER = privateKeyToAccount(SELLER_KEY);
 const ERC20_ABI = [{
     type: 'function', name: 'balanceOf', stateMutability: 'view',
     inputs: [{ name: 'a', type: 'address' }], outputs: [{ name: '', type: 'uint256' }],
@@ -173,6 +179,20 @@ test.describe('the sign gate reads the design an agreement names (devnet)', () =
         const unreadAgreement: Agreement = { ...cleanOrder.agreement, provenance: { agreementKey: cleanOrder.agreement.provenance!.agreementKey, compositionHash: unanchored } };
         const unreadCommitment: Commitment = { ...cleanOrder.commitment, agreementHash: computeAgreementHash(unreadAgreement) };
         expect(unread.provenance?.compositionHash).toBe(forgedCase!.found.compositionHash);
+
+        // The seller binds both assemblies the payloads name — its own act,
+        // through its own registry entry — so the counter-sign reaches the
+        // design gate this spec is about.
+        await seedRegisteredMember({
+            walletKey: SELLER_KEY,
+            profile: {
+                name: 'Sign gate seller',
+                description: 'Seeded by sign-gate-design.devnet.spec.ts',
+                assemblyBindings: [forgedCase!.found.compositionHash, unanchored].map((compositionHash, i) => ({
+                    bindingId: `sign-gate-design-${i}`, subjectAddress: SELLER.address, compositionHash, counterpartyBindings: [],
+                })),
+            },
+        });
 
         const committedBefore = await committedForBuyer();
         const [buyerBefore, sellerBefore, coreBefore] = await Promise.all([balanceOf(BUYER.address), balanceOf(SELLER.address), balanceOf(core)]);

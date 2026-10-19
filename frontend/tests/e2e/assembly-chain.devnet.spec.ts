@@ -67,6 +67,7 @@ import {
     memberProfileBindings,
     keyOf,
     primeRegisteredClauseSpecs,
+    isBindingOf,
 } from './devnet-helpers';
 import { ANVIL_ACCOUNTS } from '../anvilAccounts';
 import { CORE_ABI } from '@/lib/kernel/contracts';
@@ -156,6 +157,8 @@ test.describe('VALUE-ADDED CHAIN — one buyer binds three sellers; one resolve 
         expect(single, 'a single-order assembly is anchored (the seed)').toBeTruthy();
         const chainSlug = chain!.slug;
         const singleSlug = single!.slug;
+        const chainHash = chain!.compositionHash;
+        const singleHash = single!.compositionHash;
 
         // ── GATE (idempotent): the LEAD binds both assemblies + designates the
         //    chain counterparties THROUGH THE WIZARD. Mainnet semantics: register
@@ -163,14 +166,14 @@ test.describe('VALUE-ADDED CHAIN — one buyer binds three sellers; one resolve 
         //    the conformant bindings. ──
         type ProfileBindings = Awaited<ReturnType<typeof memberProfileBindings>>;
         const isConformant = (bindings: ProfileBindings): boolean => {
-            const chainBinding = bindings.find((b) => b.assemblySlug === chainSlug);
+            const chainBinding = bindings.find((b) => isBindingOf(b, chainHash));
             const designated = (clauseKey: Hex, addr: Hex) =>
                 (chainBinding?.counterpartyBindings ?? []).some(
                     (cb) => cb.clauseKey.toLowerCase() === clauseKey
                         && cb.addresses.some((a) => a.toLowerCase() === addr.toLowerCase()),
                 );
             return !!chainBinding
-                && bindings.some((b) => b.assemblySlug === singleSlug)
+                && bindings.some((b) => isBindingOf(b, singleHash))
                 && designated(COURIER_CLAUSE, COURIER)
                 && designated(SUPPLIER_CLAUSE, SUPPLIER);
         };
@@ -239,14 +242,14 @@ test.describe('VALUE-ADDED CHAIN — one buyer binds three sellers; one resolve 
         //    binding — a participating seller binds the assembly it participates
         //    in. Verified out-of-band from the registry events + IPFS. ──
         const ensureBound = async (seller: Hex, label: string) => {
-            if ((await memberProfileBindings(seller)).some((b) => b.assemblySlug === chainSlug)) return;
+            if ((await memberProfileBindings(seller)).some((b) => isBindingOf(b, chainHash))) return;
             await gotoAsWallet(page, seller, '/members/edit/assemblies?e2e=devnet');
             const row = page.getByTestId(`seller-assembly-row-${chainSlug}`);
             await row.waitFor({ state: 'visible', timeout: 30000 });
             await row.locator('input[type="checkbox"]').first().check();
             await page.getByRole('button', { name: 'Save changes' }).click();
             await expect.poll(async () =>
-                (await memberProfileBindings(seller)).some((b) => b.assemblySlug === chainSlug), {
+                (await memberProfileBindings(seller)).some((b) => isBindingOf(b, chainHash)), {
                 timeout: 60000, message: `${label}'s re-pinned profile carries the chain binding`,
             }).toBe(true);
         };

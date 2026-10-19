@@ -53,7 +53,7 @@ const ERC20_ABI = parseAbi(['function balanceOf(address) view returns (uint256)'
 
 /** Walk the registration wizard as the member's wallet, binding EXACTLY the
  *  given assemblies (clears any prior bindings first — update-mode repair). */
-async function onboardViaWizard(page: Page, assemblySlugs: string[]) {
+async function onboardViaWizard(page: Page, slugs: string[]) {
     await gotoAsWallet(page, SELLER.address, '/members/manage');
     await page.waitForFunction(
         () => {
@@ -87,7 +87,7 @@ async function onboardViaWizard(page: Page, assemblySlugs: string[]) {
     while (await checkedBoxes.count() > 0) {
         await checkedBoxes.first().uncheck();
     }
-    for (const slug of assemblySlugs) {
+    for (const slug of slugs) {
         const row = page.getByTestId(`seller-assembly-row-${slug}`);
         await row.waitFor({ state: 'visible', timeout: 30_000 });
         await row.locator('input[type="checkbox"]').first().check();
@@ -143,6 +143,7 @@ test.describe('checkout assembly choice — two bindings force the buyer to pick
         expect(singleOrderSlug, 'a single-order assembly is anchored (run populate-test-data)').toBeTruthy();
         expect(multiOrderSlug, 'a multi-order assembly is anchored (run populate-test-data)').toBeTruthy();
         const targetSlugs = [singleOrderSlug!, multiOrderSlug!];
+        const targetHashes = [seeds.blank!.compositionHash, seeds.chain!.compositionHash].map((h) => h.toLowerCase());
 
         // Mainnet semantics: register ONCE and persist. Walk the wizard only
         // when this wallet isn't registered yet or its bindings don't match
@@ -167,8 +168,8 @@ test.describe('checkout assembly choice — two bindings force the buyer to pick
         if (uriBefore) {
             const gateway = process.env.NEXT_PUBLIC_IPFS_GATEWAY_URL ?? 'http://127.0.0.1:8080';
             const doc = await (await fetch(`${gateway}/ipfs/${uriBefore.slice('ipfs://'.length)}`)).json();
-            const bound = ((doc.assemblyBindings ?? []) as Array<{ assemblySlug: string }>).map((b) => b.assemblySlug);
-            conformant = bound.length === 2 && targetSlugs.every((s) => bound.includes(s));
+            const bound = ((doc.assemblyBindings ?? []) as Array<{ compositionHash?: string }>).map((b) => b.compositionHash?.toLowerCase());
+            conformant = bound.length === 2 && targetHashes.every((h) => bound.includes(h));
         }
         const wizardRan = !uriBefore || !conformant;
         if (wizardRan) {

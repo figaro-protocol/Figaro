@@ -45,7 +45,7 @@ import {
 import type { FigaroAddresses } from "../src/types.js";
 import { ANVIL_URL, anvilReachable } from "./batchHarness.js";
 import { keyOf } from "./specFixtures.js";
-import { hydrateAuthored } from "./hydrate.js";
+import { hydrateAuthored, profileBinding } from "./hydrate.js";
 
 // ── Skip unless Anvil is reachable ──────────────────────────────────────────
 
@@ -312,8 +312,8 @@ describe.skipIf(SKIP)("SDK Integration (Anvil)", () => {
         // ── 2. Both candidates price and countersign over the channel. ──
         const quotePolicy: OfferPolicy = { requireRootShape: true, currencyAllowlist: [tokenAddress], maxValue: CEILING };
         const channel = new InProcessChannel();
-        channel.register(sellerAccount.address, makeSellerQuoteHandler(sellerWallet, ctx, { quote: () => WINNING_QUOTE, policy: quotePolicy }));
-        channel.register(loserAccount.address, makeSellerQuoteHandler(loserWallet, ctx, { quote: () => LOSING_QUOTE, policy: quotePolicy }));
+        channel.register(sellerAccount.address, makeSellerQuoteHandler(sellerWallet, ctx, { quote: () => WINNING_QUOTE, policy: quotePolicy, readProfile: profileBinding(assembly) }));
+        channel.register(loserAccount.address, makeSellerQuoteHandler(loserWallet, ctx, { quote: () => LOSING_QUOTE, policy: quotePolicy, readProfile: profileBinding(assembly) }));
         const drafts = [requestFor(sellerAccount.address), requestFor(loserAccount.address)];
         const { replies, winner } = await requestQuotes(channel, drafts, ctx);
         expect(replies).toHaveLength(2);

@@ -1,3 +1,4 @@
+import { keccak256, toHex } from "viem";
 import { afterEach, describe, expect, it } from "vitest";
 import {
     catalogClausesForBindings,
@@ -65,23 +66,26 @@ describe("validateCatalogClauseValues — off-chain gate, reused validator", () 
 
 /** An `AssemblyChoice`-shaped row, reduced to the two fields the derivation
  *  reads. The real rows come from `useAssemblyChoices` (chain → IPFS). */
-const choice = (slug: string, clauses: readonly string[] | null) => ({ slug, clauses });
+const choice = (compositionHash: string, clauses: readonly string[] | null) => ({ compositionHash, clauses });
+/** A stand-in composition hash per named assembly — a binding names its
+ *  assembly by the full hash. */
+const H = (label: string) => keccak256(toHex(label));
 
 describe("catalogClausesForBindings — the bindings decide which item fields exist", () => {
     it("asks for nothing before an assembly is bound", async () => {
         await primeClauseSpecs();
         expect(catalogClausesForBindings([], [
-            choice("asm-haul", [KEY("figaro-commerce"), KEY("figaro-hazmat"), KEY("figaro-freight-class")]),
+            choice(H("haul"), [KEY("figaro-commerce"), KEY("figaro-hazmat"), KEY("figaro-freight-class")]),
         ])).toEqual([]);
     });
 
     it("asks only for the catalog-authored clauses the bound assembly composes", async () => {
         await primeClauseSpecs();
         const derived = catalogClausesForBindings(
-            [{ assemblySlug: "asm-haul" }],
+            [{ compositionHash: H("haul") }],
             [
-                choice("asm-haul", [KEY("figaro-commerce"), KEY("figaro-topology"), KEY("figaro-freight-class")]),
-                choice("asm-reefer", [KEY("figaro-commerce"), KEY("figaro-cold-chain"), KEY("figaro-hazmat")]),
+                choice(H("haul"), [KEY("figaro-commerce"), KEY("figaro-topology"), KEY("figaro-freight-class")]),
+                choice(H("reefer"), [KEY("figaro-commerce"), KEY("figaro-cold-chain"), KEY("figaro-hazmat")]),
             ],
         );
         // figaro-commerce and figaro-topology declare no catalogueFills, so
@@ -93,19 +97,19 @@ describe("catalogClausesForBindings — the bindings decide which item fields ex
     it("a seller of one mug, bound to a counter-sale assembly, is asked for no logistics fields", async () => {
         await primeClauseSpecs();
         expect(catalogClausesForBindings(
-            [{ assemblySlug: "asm-pos" }],
-            [choice("asm-pos", [KEY("figaro-commerce"), KEY("figaro-topology")])],
+            [{ compositionHash: H("pos") }],
+            [choice(H("pos"), [KEY("figaro-commerce"), KEY("figaro-topology")])],
         )).toEqual([]);
     });
 
     it("unions the clauses of every bound assembly", async () => {
         await primeClauseSpecs();
         const derived = catalogClausesForBindings(
-            [{ assemblySlug: "asm-haul" }, { assemblySlug: "asm-reefer" }],
+            [{ compositionHash: H("haul") }, { compositionHash: H("reefer") }],
             [
-                choice("asm-haul", [KEY("figaro-freight-class")]),
-                choice("asm-reefer", [KEY("figaro-cold-chain")]),
-                choice("asm-data", [KEY("figaro-data-license")]),
+                choice(H("haul"), [KEY("figaro-freight-class")]),
+                choice(H("reefer"), [KEY("figaro-cold-chain")]),
+                choice(H("data"), [KEY("figaro-data-license")]),
             ],
         );
         expect(derived.map((c) => c.clauseId).sort())
@@ -115,23 +119,23 @@ describe("catalogClausesForBindings — the bindings decide which item fields ex
     it("a bound assembly whose assembly has not resolved contributes nothing, not everything", async () => {
         await primeClauseSpecs();
         expect(catalogClausesForBindings(
-            [{ assemblySlug: "asm-haul" }],
-            [choice("asm-haul", null)],
+            [{ compositionHash: H("haul") }],
+            [choice(H("haul"), null)],
         )).toEqual([]);
     });
 
     it("a binding with no matching published assembly asks for nothing", async () => {
         await primeClauseSpecs();
         expect(catalogClausesForBindings(
-            [{ assemblySlug: "asm-withdrawn" }],
-            [choice("asm-haul", [KEY("figaro-hazmat")])],
+            [{ compositionHash: H("withdrawn") }],
+            [choice(H("haul"), [KEY("figaro-hazmat")])],
         )).toEqual([]);
     });
 
     it("is empty while the clause specs are uncached — resolved-empty, never a guess", () => {
         expect(catalogClausesForBindings(
-            [{ assemblySlug: "asm-haul" }],
-            [choice("asm-haul", [KEY("figaro-freight-class")])],
+            [{ compositionHash: H("haul") }],
+            [choice(H("haul"), [KEY("figaro-freight-class")])],
         )).toEqual([]);
     });
 
@@ -140,8 +144,8 @@ describe("catalogClausesForBindings — the bindings decide which item fields ex
         // Nothing here names a clause: whatever the registry says declares
         // catalogueFills, and the bound assembly composes, is asked for.
         const everyCatalogClause = catalogClausesForBindings(
-            [{ assemblySlug: "asm-everything" }],
-            [choice("asm-everything", [
+            [{ compositionHash: H("everything") }],
+            [choice(H("everything"), [
                 KEY("figaro-freight-class"), KEY("figaro-hazmat"), KEY("figaro-cold-chain"), KEY("figaro-data-license"),
             ])],
         );

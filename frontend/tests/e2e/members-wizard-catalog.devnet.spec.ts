@@ -37,6 +37,7 @@ import {
     pinJSONToIPFS,
     readLocalDeploymentConfig,
     referenceAssemblySlug,
+    referenceAssemblyCompositionHash,
     resolveIpfsURI,
     seedRegisteredMember,
 } from './devnet-helpers';
@@ -76,7 +77,7 @@ async function seedBaseline(runTag: string): Promise<{ itemName: string; slug: s
             acceptedTokens: [{ address: token, symbol: 'MOCK', chainId: 31337 }],
             defaultTokenAddress: token,
             assemblyBindings: [{
-                bindingId: 'wizard-catalog', subjectAddress: WIZARD, assemblySlug: slug, counterpartyBindings: [],
+                bindingId: 'wizard-catalog', subjectAddress: WIZARD, compositionHash: referenceAssemblyCompositionHash('pos.json'), counterpartyBindings: [],
             }],
         },
     });
@@ -265,10 +266,11 @@ test.describe('member wizard — catalog and assemblies steps (devnet)', () => {
         await expect(boundRow.locator('input[type="checkbox"]').first()).toBeChecked();
         expect(await listedAssemblySlugs(page), 'a toggle leaves the order alone').toEqual(expected);
 
-        // A reload restores the draft and the same order.
+        // A reload restores the draft and the same order. The draft's binding
+        // names the assembly by its full composition hash.
         await page.waitForFunction(
             (needle) => Object.keys(window.localStorage).some((k) => (window.localStorage.getItem(k) ?? '').includes(needle)),
-            slug, { timeout: 15_000 },
+            referenceAssemblyCompositionHash('pos.json'), { timeout: 15_000 },
         );
         await page.reload({ waitUntil: 'domcontentloaded' });
         await expect(rows).toHaveCount(expected.length, { timeout: 30_000 });

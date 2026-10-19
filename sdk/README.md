@@ -124,9 +124,15 @@ What it does, in order:
    `InProcessChannel`, with both refusal floors filled in explicitly (an `accept`
    business rule plus an economic `policy` bounding currency and magnitude) and
    the registry-built `SpecSource` (`specs`), which arms the merkle-leaf sign
-   gate, and a `readDesign` reader, which hands the gate the hydrated assembly
-   an offer's provenance leaf names. A handler missing either floor declines
-   every offer.
+   gate, a `readDesign` reader, which hands the gate the hydrated assembly
+   an offer's provenance leaf names, and a `readProfile` reader, which reads the
+   seller's own member profile (MembersRegistry → metadataURI → IPFS) when an
+   offer arrives. The seller first binds the discovered assembly in that
+   profile: a seller accepts only orders under an assembly it has bound. A
+   handler missing either floor declines every offer; a handler with no
+   `readProfile` refuses every offer, and one given `specs` without
+   `readDesign` refuses every offer naming a design — every offer, since every
+   process instantiates an assembly.
 3. **Runs the buyer loop.** `originateProcess(…)` instantiates the discovered
    assembly's root agreement with the buyer's overrides, runs the merkle-leaf
    sign gate (`assertAgreementSignable` — every clause conforms to its spec,
@@ -136,7 +142,9 @@ What it does, in order:
    the EIP-712 commitment against a CHAIN-time deadline (`readChainTimestamp` +
    `computeDeadline` — never the machine clock), and hands the offer to the
    channel. The seller re-hashes the agreement against the committed
-   `agreementHash`, runs the same gate through its own `specs`, applies its
+   `agreementHash`, reads its own profile to confirm it has bound the
+   assembly the offer's provenance leaf names, runs the same gate through its
+   own `specs`, applies its
    floors, approves its 2× bond and counter-signs. The buyer checks the reply
    is the offer it sent — the same struct, counter-signed by the seller it
    went to (`verifyRaceReply`); anything else throws before any chain call —
@@ -335,6 +343,7 @@ definition) and `RPGF_*` constant is a **root** export.
 | `calculateSubOrderApproval` | root | The approval before a SUB-order commit — the FULL bond, never the increment. |
 | `canonicalContentHash` | root | `keccak256` over the canonical serialization — a clause's key when pinned in that form, and the assembly registry's digest. |
 | `canonicalize` | root | THE canonical-JSON convention: sorted keys at every depth, array order kept, no whitespace. |
+| `checkSellerBindsAssembly` | root | The seller's bound-assembly check: the assembly an order's provenance leaf names must be one the seller's own profile binds, read through a `MemberProfileReader` at acceptance time; refuses a missing provenance leaf, a missing reader and an unreadable profile. Every seller acceptance path runs it. |
 | `checkEndpointLogAgreement` | root | Agreement over the event sets N endpoints returned for one pinned range — pure, caller-fetched. |
 | `commit` | `/agent` | Submit `FigaroCore.commit` with both signatures; any holder of the payload may broadcast. |
 | `computeAgreementHash` | root | The agreement's merkle root over its sorted clause leaves and its two-key provenance leaf. |
@@ -446,7 +455,7 @@ definition) and `RPGF_*` constant is a **root** export.
 | `unwrapWithSharedSecret` | `/handoff` | Decrypt what `wrapWithSharedSecret` produced. |
 | `validateCommitmentAgreement` | root | The non-throwing form of `assertAgreementSignable` — returns the findings instead. |
 | `validateContent` | `/clauses` | Validate clause content against its spec; on a closed clause, unknown fields are rejected. |
-| `validateDraft` | `/agent` | The structural check a candidate MUST run before countersigning a race draft. |
+| `validateDraft` | `/agent` | The check a candidate MUST run before countersigning a race draft: structure, the bound assembly (`readProfile`), and with `specs` the merkle-leaf gate. |
 | `verifyCommitmentSignature` | root | Does this signature over this commitment recover to this signer? Refuse early, off chain. |
 | `verifyInclusionProof` | root | Does this leaf sit under this root? The off-chain mirror of the on-chain `MerkleProof.verify`. |
 | `verifyRaceReply` | `/agent` | Buyer side: the reply's struct must EXACTLY equal the draft, and recover to the drafted candidate. |
@@ -1035,6 +1044,13 @@ channel.register(sellerAddr, makeSellerOfferHandler(sellerWallet, publicClient, 
            // by its composition hash and verified (`anchorAssembly` +
            // `hydrateAssembly`), or null. With `specs`, an offer whose design
            // is not read, or whose designer values differ, is REFUSED
+    readProfile, // (member) => the seller's OWN profile, read when the offer
+           // arrives: MembersRegistry's latest metadataURI for the member (a
+           // `FigaroContext` sync, then its members) → the pinned document →
+           // `tryParseMemberProfileDocument`; null when unreadable. An offer
+           // under an assembly the profile does not bind, an offer with no
+           // provenance leaf, and every offer when this reader is omitted or
+           // returns null are REFUSED (`checkSellerBindsAssembly`)
 }));
 const tx = await originateProcess(buyerWallet, publicClient, addresses, {
     channel, assembly, buyer, seller, currency, payment, chainId, core, overrides,
@@ -1071,7 +1087,7 @@ const a2aTx = await originateProcess(buyerWallet, publicClient, addresses,
 // serverless function), wrapping the SAME `makeSellerOfferHandler` — so the
 // refuse-all floor is unchanged: no `accept` OR no `policy` declines everything.
 const respond = makeA2aOfferResponder(
-    makeSellerOfferHandler(sellerWallet, publicClient, addresses, { accept, policy, specs, readDesign }), // the two floors + the sign gate
+    makeSellerOfferHandler(sellerWallet, publicClient, addresses, { accept, policy, specs, readDesign, readProfile }), // the two floors + the sign gate + the bound assembly
 );
 const { status, body } = await respond(rawRequestBody); // status is always 200 — JSON-RPC carries the outcome
 // The three handshake outcomes on the wire, mirroring HttpChannel's 200/204/422:
@@ -1095,19 +1111,22 @@ const { status, body } = await respond(rawRequestBody); // status is always 200 
 // and the seller-address answer. A draft binds nobody and cannot be broadcast
 // (FigaroCore needs both signatures); a losing countersignature expires inert
 // at the struct deadline. Same two candidate-side floors as counterSignOffer,
-// and the same optional `specs` merkle-leaf gate: with a SpecSource, a draft
-// whose commerce leaf contradicts the struct, or whose designer values differ
-// from the design it names (`design`, the hydrated assembly; null refuses a
-// draft naming one), is refused before any signature.
+// the same bound-assembly check (`readProfile`, the candidate's own profile —
+// a draft under an assembly it has not bound is refused, so a buyer races only
+// candidates whose profiles bind the assembly), and the same optional `specs`
+// merkle-leaf gate: with a SpecSource, a draft whose commerce leaf contradicts
+// the struct, or whose designer values differ from the design it names
+// (`design`, the hydrated assembly; null refuses a draft naming one), is
+// refused before any signature.
 import { validateDraft, counterSignDraft, verifyRaceReply, selectRaceWinner } from "@figaro-protocol/sdk/agent";
-const reply = await counterSignDraft(courierWallet, draft, { chainId, core }, accept, policy, specs, design);
+const reply = await counterSignDraft(courierWallet, draft, { chainId, core }, accept, policy, specs, design, readProfile);
 // Buyer side: exact struct-hash equality against the SENT draft, then recovery —
 // a doctored reply cannot ride a valid signature.
 const check = await verifyRaceReply(reply!, draft, { chainId, core });
 const winner = selectRaceWinner(replies); // cheapest countersigner; ties by arrival
 // Packaged fan-out + mountable responder (the RFQ leg below has the same pair):
 import { requestCounterSignatures, makeSellerRaceHandler } from "@figaro-protocol/sdk/agent";
-channel.register(courierAddr, makeSellerRaceHandler(courierWallet, { chainId, core }, { accept, policy, specs, readDesign }));
+channel.register(courierAddr, makeSellerRaceHandler(courierWallet, { chainId, core }, { accept, policy, specs, readDesign, readProfile }));
 const race = await requestCounterSignatures(channel, drafts, { chainId, core }); // { replies, winner }
 
 // The RFQ leg — same choreography, the CANDIDATE authors the price (bespoke
@@ -1123,6 +1142,7 @@ import { buildQuoteRequest, requestQuotes, makeSellerQuoteHandler } from "@figar
 channel.register(courierAddr, makeSellerQuoteHandler(courierWallet, { chainId, core }, {
     quote: (draft) => myPriceFor(draft),           // null declines; > ceiling declines
     policy: { requireRootShape: true, currencyAllowlist: [myToken], maxValue: myMaxBond },
+    specs, readDesign, readProfile,                // the same gate as every seller handler
 }));
 const drafts = candidates.map((seller) => buildQuoteRequest({
     assembly, buyer, seller, currency, ceiling, chainId, core,
@@ -2204,8 +2224,14 @@ registration at all.
     non-clearable once set; a patch that drops it silently orphans the
     document.
   - `assemblyBindings` is an array of `AssemblyBindingRecord` — one entry per
-    assembly the wallet participates in, each
-    `{ bindingId, subjectAddress, assemblySlug, counterpartyBindings? }`. Each
+    assembly the wallet sells through, each
+    `{ bindingId, subjectAddress, compositionHash, counterpartyBindings? }`.
+    `compositionHash` is the bound assembly's full `AssemblyRegistry` key — the
+    same identity a `buyerAssemblies` entry and an agreement's provenance leaf
+    carry; a slug shown anywhere is derived from it (`deriveAssemblySlug`),
+    never stored. A seller accepts an order only under an assembly this list
+    binds (`checkSellerBindsAssembly`), and every seller in a process must have
+    bound it, the designated sub-order counterparties included. Each
     `counterpartyBindings` entry is `{ clauseKey, addresses[] }`: the wallets the
     seller designates for a sub-order carrying that process clause (e.g. a
     courier-process clause → the courier wallets checkout fills the courier

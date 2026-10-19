@@ -31,6 +31,8 @@ import {
     waitForConnected,
     keyOf,
     primeRegisteredClauseSpecs,
+    anchoredCompositionHash,
+    isBindingOf,
 } from './devnet-helpers';
 import { ANVIL_ACCOUNTS } from '../anvilAccounts';
 import type { Page } from '@playwright/test';
@@ -89,7 +91,7 @@ async function onboardSeller(page: Page, opts: {
     name: string;
     specialty: string;
     geohash: string;
-    assemblySlug: string;
+    slug: string;
     product: { name: string; price: string; rate?: { unit: string; source: string } };
     designate?: { clauseKey: Hex; counterparty: Hex };
 }) {
@@ -103,11 +105,11 @@ async function onboardSeller(page: Page, opts: {
     await page.getByRole('button', { name: /^Next/ }).click();
     await expect(page).toHaveURL(/\/members\/assemblies/);
 
-    const row = page.getByTestId(`seller-assembly-row-${opts.assemblySlug}`);
+    const row = page.getByTestId(`seller-assembly-row-${opts.slug}`);
     await row.waitFor({ state: 'visible', timeout: 30000 });
     await row.locator('input[type="checkbox"]').first().check();
     if (opts.designate) {
-        const counterparties = page.getByTestId(`seller-assembly-counterparties-${opts.assemblySlug}`);
+        const counterparties = page.getByTestId(`seller-assembly-counterparties-${opts.slug}`);
         await counterparties.waitFor({ state: 'visible', timeout: 30000 });
         await counterparties
             .getByTestId(`counterparty-${opts.designate.clauseKey}-input-0`)
@@ -194,11 +196,13 @@ test.describe('BOOKING-WINDOW PRICING — a contributor prices per started hour 
             expect(slug, 'the published booking assembly is discoverable by shape').toBe(published);
         }
 
+        const assemblyHash = await anchoredCompositionHash(slug!);
+
         // ── ONBOARD (idempotent): the lead (fixed price) binds + designates the
         //    provider; the provider (RATE item, booking-window source) binds. ──
         const leadConformant = async (): Promise<boolean> => {
             const bindings = await memberProfileBindings(LEAD);
-            const binding = bindings.find((b) => b.assemblySlug === slug);
+            const binding = bindings.find((b) => isBindingOf(b, assemblyHash));
             return !!binding && (binding.counterpartyBindings ?? []).some(
                 (cb) => cb.clauseKey.toLowerCase() === PROCESS_CLAUSE
                     && cb.addresses.some((a) => a.toLowerCase() === PROVIDER.toLowerCase()),
@@ -210,7 +214,7 @@ test.describe('BOOKING-WINDOW PRICING — a contributor prices per started hour 
                 name: 'Booking Test Group',
                 specialty: 'test intake',
                 geohash: '9q8yyk',
-                assemblySlug: slug!,
+                slug: slug!,
                 product: { name: 'Intake', price: '1' },
                 designate: { clauseKey: PROCESS_CLAUSE, counterparty: PROVIDER },
             });
@@ -218,13 +222,13 @@ test.describe('BOOKING-WINDOW PRICING — a contributor prices per started hour 
                 timeout: 60000, message: "the lead's pinned profile carries the binding + provider designation",
             }).toBe(true);
         }
-        if (!(await memberProfileBindings(PROVIDER)).some((b) => b.assemblySlug === slug)) {
+        if (!(await memberProfileBindings(PROVIDER)).some((b) => isBindingOf(b, assemblyHash))) {
             await onboardSeller(page, {
                 wallet: PROVIDER,
                 name: 'Booking Test Consultancy',
                 specialty: 'test consultancy',
                 geohash: '9q8yyk',
-                assemblySlug: slug!,
+                slug: slug!,
                 product: {
                     name: 'Consultation',
                     price: RATE,
@@ -232,7 +236,7 @@ test.describe('BOOKING-WINDOW PRICING — a contributor prices per started hour 
                 },
             });
             await expect.poll(async () =>
-                (await memberProfileBindings(PROVIDER)).some((b) => b.assemblySlug === slug), {
+                (await memberProfileBindings(PROVIDER)).some((b) => isBindingOf(b, assemblyHash)), {
                 timeout: 60000, message: "the provider's pinned profile carries the binding",
             }).toBe(true);
         }

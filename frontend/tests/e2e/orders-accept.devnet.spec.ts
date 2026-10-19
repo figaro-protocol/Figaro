@@ -33,6 +33,8 @@ import {
     holdIpfsApi,
     keyOf,
     primeRegisteredClauseSpecs,
+    anchoredCompositionHash,
+    isBindingOf,
 } from './devnet-helpers';
 import { ANVIL_KEYS } from '../anvilAccounts';
 import { CORE_ABI } from '@/lib/kernel/contracts';
@@ -90,7 +92,8 @@ async function findPosAssembly(): Promise<string> {
 }
 async function ensurePosSeller(token: Hex): Promise<Hex> {
     const slug = await findPosAssembly();
-    const bound = (await memberProfileBindings(POS_SELLER)).some((b) => b.assemblySlug === slug);
+    const assemblyHash = await anchoredCompositionHash(slug);
+    const bound = (await memberProfileBindings(POS_SELLER)).some((b) => isBindingOf(b, assemblyHash));
     if (!bound) {
         const { uri: catalogURI } = await pinJSONToIPFS({
             subjectAddress: POS_SELLER,
@@ -117,13 +120,13 @@ async function ensurePosSeller(token: Hex): Promise<Hex> {
                 assemblyBindings: [{
                     bindingId: 'pos-reference',
                     subjectAddress: POS_SELLER,
-                    assemblySlug: slug,
+                    compositionHash: assemblyHash,
                     counterpartyBindings: [],
                 }],
             },
         });
         await expect.poll(async () =>
-            (await memberProfileBindings(POS_SELLER)).some((b) => b.assemblySlug === slug), {
+            (await memberProfileBindings(POS_SELLER)).some((b) => isBindingOf(b, assemblyHash)), {
             timeout: 60000, message: "the POS seller's pinned profile carries the pos binding",
         }).toBe(true);
     }

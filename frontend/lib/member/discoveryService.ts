@@ -43,6 +43,7 @@ function profileToCatalog(
         defaultTokenAddress: profile.defaultTokenAddress,
         profileClauseValues: profile.profileClauseValues,
         agentServices: profile.services,
+        assemblyBindings: profile.assemblyBindings,
         disclosurePolicy: profile.disclosurePolicy,
         unitSystem: catalog?.unitSystem,
     };
@@ -52,7 +53,7 @@ async function fetchSellerAsCatalog(
     address: string,
     metadataURI: string,
     fetchFn: (url: string) => Promise<CappedContentResponse>,
-    publishedSlugs: ReadonlySet<string>,
+    publishedHashes: ReadonlySet<string>,
 ): Promise<MemberCatalog | null> {
     // IPFS-only: the profile and its catalog are member-chosen URIs, and an
     // http(s) one reads as absent (`uriFetcher`).
@@ -78,7 +79,7 @@ async function fetchSellerAsCatalog(
     // profile an assertion). No anchored binding ⇒ absence, on /discover,
     // /s, and checkout alike.
     const hasAnchoredBinding = (profile.assemblyBindings ?? [])
-        .some((b) => publishedSlugs.has(b.assemblySlug));
+        .some((b) => publishedHashes.has(b.compositionHash.toLowerCase()));
     if (!hasAnchoredBinding) return null;
 
     // Stamp the wallet onto the profile so downstream renderers can
@@ -119,10 +120,10 @@ async function fetchSellerAsCatalog(
 
 export interface DiscoveryService {
     isRegistryConfigured(): boolean;
-    /** `publishedSlugs` = the AssemblyRegistry's anchored slugs; the surfacing
-     *  rule drops members without ≥1 anchored binding (applied evenly across
-     *  every projection). */
-    listCatalogs(client: PublicClient, chainId: number, publishedSlugs: ReadonlySet<string>): Promise<DiscoveryResult>;
+    /** `publishedHashes` = the AssemblyRegistry's anchored composition
+     *  hashes, lowercased; the surfacing rule drops members without ≥1
+     *  anchored binding (applied evenly across every projection). */
+    listCatalogs(client: PublicClient, chainId: number, publishedHashes: ReadonlySet<string>): Promise<DiscoveryResult>;
 }
 
 export interface DiscoveryServiceOptions {
@@ -144,7 +145,7 @@ export function createDiscoveryService(
         isRegistryConfigured() {
             return !!CONTRACTS.membersRegistry && CONTRACTS.membersRegistry.length === 42;
         },
-        async listCatalogs(client: PublicClient, chainId: number, publishedSlugs: ReadonlySet<string>) {
+        async listCatalogs(client: PublicClient, chainId: number, publishedHashes: ReadonlySet<string>) {
             if (!service.isRegistryConfigured()) {
                 return EMPTY_RESULT;
             }
@@ -166,7 +167,7 @@ export function createDiscoveryService(
                                 seller.address,
                                 seller.metadataURI,
                                 fetchFn,
-                                publishedSlugs,
+                                publishedHashes,
                             );
                         } catch {
                             return null;

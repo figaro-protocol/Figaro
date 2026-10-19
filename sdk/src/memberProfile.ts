@@ -40,6 +40,9 @@ import {
     type UnknownRecord,
 } from "./documentParse.js";
 import { isBytes32Hex } from "./types.js";
+import type { Address } from "./types.js";
+import type { Agreement } from "./agreement.js";
+import { deriveAssemblySlug } from "./assembly.js";
 
 // ── Dependent identity types ──────────────────────────────────────────────────
 
@@ -112,10 +115,18 @@ export interface CounterpartyBinding {
     addresses: `0x${string}`[];
 }
 
+/**
+ * One assembly the member has bound as a seller. The assembly is named by
+ * its full `compositionHash` — the `AssemblyRegistry` key, the same identity
+ * a buyer's `BuyerAssemblySubscription` and an agreement's provenance leaf
+ * carry. A slug shown anywhere is derived from it (`deriveAssemblySlug`),
+ * never stored.
+ */
 export interface AssemblyBindingRecord {
     bindingId: string;
     subjectAddress: `0x${string}`;
-    assemblySlug: string;
+    /** `AssemblyRegistry` compositionHash of the bound assembly. */
+    compositionHash: `0x${string}`;
     counterpartyBindings?: CounterpartyBinding[];
 }
 
@@ -322,7 +333,7 @@ function parseAssemblyBindingDocument(value: unknown, sourceLabel = "institution
     return {
         bindingId: asString(record.bindingId, `${sourceLabel}.bindingId`),
         subjectAddress: asAddress(record.subjectAddress, `${sourceLabel}.subjectAddress`),
-        assemblySlug: asString(record.assemblySlug, `${sourceLabel}.assemblySlug`),
+        compositionHash: asCompositionHash(record.compositionHash, `${sourceLabel}.compositionHash`),
         counterpartyBindings: parseCounterpartyBindingArray(record.counterpartyBindings, `${sourceLabel}.counterpartyBindings`),
     };
 }
@@ -582,4 +593,60 @@ export function projectAgentServices(value: unknown): AgentServiceInfo {
         capabilities,
         reachable: true,
     };
+}
+
+// ── The seller's bound assemblies, checked at acceptance ─────────────────────
+
+/** Reads a member's OWN profile document at the edge: MembersRegistry →
+ *  the member's current metadataURI → the pinned document, parsed. Null when
+ *  the member has no live profile or the read fails. */
+export type MemberProfileReader = (member: Address) => Promise<MemberProfileMetadata | null>;
+
+/** The bound-assembly check's verdict; `reason` names a refusal. */
+export interface AssemblyBindingCheck {
+    ok: boolean;
+    reason?: string;
+}
+
+/**
+ * Does the seller's own profile bind the assembly the order instantiates?
+ * Every process instantiates an assembly: the order's agreement names it in
+ * its provenance leaf (`compositionHash`), and a seller accepts only orders
+ * under assemblies it has bound. Run on EVERY seller acceptance path — the
+ * offer, the race draft, the quote request — before any signature.
+ *
+ * The bound set is read through `readProfile` at acceptance time, from the
+ * seller's own profile; it is never a value the caller passes in. Refuses an
+ * agreement with no provenance leaf, a missing reader, a profile that cannot
+ * be read, and an assembly the profile does not bind. A refusal names the
+ * assembly by its derived slug and its full hash.
+ */
+export async function checkSellerBindsAssembly(
+    agreement: Agreement,
+    seller: Address,
+    readProfile?: MemberProfileReader,
+): Promise<AssemblyBindingCheck> {
+    const compositionHash = agreement.provenance?.compositionHash;
+    if (!compositionHash) {
+        return { ok: false, reason: "the order names no assembly: its agreement carries no provenance leaf, and every process instantiates an assembly" };
+    }
+    const named = `assembly ${deriveAssemblySlug(compositionHash)} (${compositionHash})`;
+    if (!readProfile) {
+        return { ok: false, reason: `no member-profile reader is given, so whether the seller has bound ${named} cannot be read` };
+    }
+    let profile: MemberProfileMetadata | null;
+    try {
+        profile = await readProfile(seller);
+    } catch {
+        profile = null;
+    }
+    if (!profile) {
+        return { ok: false, reason: `the seller's profile could not be read (MembersRegistry → metadataURI → IPFS), so whether it has bound ${named} cannot be checked` };
+    }
+    const bound = (profile.assemblyBindings ?? [])
+        .some((b) => b.compositionHash.toLowerCase() === compositionHash.toLowerCase());
+    if (!bound) {
+        return { ok: false, reason: `the seller ${seller} has not bound ${named} in its member profile` };
+    }
+    return { ok: true };
 }

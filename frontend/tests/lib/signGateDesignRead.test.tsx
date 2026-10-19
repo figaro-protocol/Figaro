@@ -90,6 +90,18 @@ vi.mock("@figaro-protocol/sdk", async (importOriginal) => {
     return { ...actual, verifyCommitmentSignature: async () => true };
 });
 
+// The seller's own profile binds every design a case makes: the binding
+// check (`sellerBoundAssembly.test.tsx`) passes, so each case reaches the
+// design read it is about.
+const designed: Hex[] = [];
+vi.mock("@/lib/member/profileFetcher", async (importOriginal) => ({
+    ...(await importOriginal<typeof import("@/lib/member/profileFetcher")>()),
+    profileReaderForChain: () => async () => ({
+        name: "Seller",
+        assemblyBindings: designed.map((compositionHash, i) => ({ bindingId: `b-${i}`, subjectAddress: SELLER, compositionHash })),
+    }),
+}));
+
 const commitSignedOrder = vi.fn(async () => `0x${"cc".repeat(32)}` as Hex);
 vi.mock("@/lib/kernel/orderCommitted", () => ({ commitSignedOrder: (...args: unknown[]) => commitSignedOrder(...(args as [])) }));
 vi.mock("@/lib/kernel/useFigaroActions", () => ({ useFigaroActions: () => ({ commit: vi.fn() }) }));
@@ -108,6 +120,7 @@ function design() {
     const agreementKey = agreementKeyOf(registered);
     const assembly: Assembly = { agreements: [{ id: "order-0", agreementKey, clauses: {} }] };
     const compositionHash = assemblyCompositionHash(assembly);
+    designed.push(compositionHash);
     const anchor = () => {
         bindings.set(compositionHash.toLowerCase(), `ipfs://assembly-${caseId}`);
         bindings.set(agreementKey.toLowerCase(), `ipfs://agreement-${caseId}`);

@@ -1,10 +1,14 @@
 import { describe, expect, it } from "vitest";
 
 import {
+    checkSellerBindsAssembly,
     parseMemberProfileDocument,
     projectAgentServices,
     tryParseMemberProfileDocument,
+    type MemberProfileMetadata,
 } from "../src/memberProfile.js";
+import { deriveAssemblySlug } from "../src/assembly.js";
+import type { Agreement } from "../src/agreement.js";
 import { keyOf } from "./specFixtures.js";
 
 describe("member profile metadata parser", () => {
@@ -259,7 +263,7 @@ describe("member profile metadata parser", () => {
                 assemblyBindings: [{
                     bindingId: "b-1",
                     subjectAddress: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
-                    assemblySlug: "aerial-survey",
+                    compositionHash: HASH,
                 }],
             });
 
@@ -335,5 +339,103 @@ describe("member profile metadata parser", () => {
             });
             expect(result.capabilities).toEqual(["valid", "also-valid"]);
         });
+    });
+
+    describe("assembly bindings carry the full compositionHash", () => {
+        const HASH = `0x${"ab".repeat(32)}`;
+        const SUBJECT = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
+
+        it("parses a binding's compositionHash and round-trips it", () => {
+            const first = parseMemberProfileDocument({
+                name: "Bob",
+                assemblyBindings: [{ bindingId: "b-1", subjectAddress: SUBJECT, compositionHash: HASH }],
+            });
+            expect(first.assemblyBindings?.[0]?.compositionHash).toBe(HASH);
+            expect(parseMemberProfileDocument(first)).toEqual(first);
+        });
+
+        it("refuses a binding that names its assembly by anything but a 32-byte compositionHash", () => {
+            expect(() => parseMemberProfileDocument({
+                name: "Bob",
+                assemblyBindings: [{ bindingId: "b-1", subjectAddress: SUBJECT }],
+            })).toThrow(/assemblyBindings\[0\]\.compositionHash must be a 32-byte hex hash/);
+            expect(() => parseMemberProfileDocument({
+                name: "Bob",
+                assemblyBindings: [{ bindingId: "b-1", subjectAddress: SUBJECT, compositionHash: deriveAssemblySlug(HASH as `0x${string}`) }],
+            })).toThrow(/assemblyBindings\[0\]\.compositionHash must be a 32-byte hex hash/);
+        });
+    });
+});
+
+describe("checkSellerBindsAssembly — the seller's own bound assemblies, read at the edge", () => {
+    const SELLER = "0x70997970C51812dc3A010C7d01b50e0d17dc79C8" as const;
+    const BUYER = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266" as const;
+    const BOUND = `0x${"11".repeat(32)}` as const;
+    const OTHER = `0x${"22".repeat(32)}` as const;
+    const KEY = `0x${"33".repeat(32)}` as const;
+
+    const agreementUnder = (compositionHash?: `0x${string}`): Agreement => ({
+        version: "a1",
+        buyer: BUYER,
+        seller: SELLER,
+        sections: [],
+        ...(compositionHash ? { provenance: { agreementKey: KEY, compositionHash } } : {}),
+    });
+    const profileBinding = (compositionHash: `0x${string}`): MemberProfileMetadata => ({
+        name: "Seller",
+        assemblyBindings: [{ bindingId: "b", subjectAddress: SELLER, compositionHash }],
+    });
+
+    it("accepts an order under an assembly the seller's profile binds", async () => {
+        const reads: string[] = [];
+        const check = await checkSellerBindsAssembly(agreementUnder(BOUND), SELLER, async (member) => {
+            reads.push(member);
+            return profileBinding(BOUND);
+        });
+        expect(check).toEqual({ ok: true });
+        // The seller's OWN profile is the one read.
+        expect(reads).toEqual([SELLER]);
+    });
+
+    it("matches the binding case-insensitively", async () => {
+        const upper = `0x${"AB".repeat(32)}` as const;
+        const check = await checkSellerBindsAssembly(agreementUnder(upper.toLowerCase() as `0x${string}`), SELLER, async () => profileBinding(upper));
+        expect(check.ok).toBe(true);
+    });
+
+    it("refuses an order under an assembly the seller has not bound, naming it by slug and full hash", async () => {
+        const check = await checkSellerBindsAssembly(agreementUnder(OTHER), SELLER, async () => profileBinding(BOUND));
+        expect(check.ok).toBe(false);
+        expect(check.reason).toContain(deriveAssemblySlug(OTHER));
+        expect(check.reason).toContain(OTHER);
+        expect(check.reason).toMatch(/has not bound/);
+    });
+
+    it("refuses an order whose agreement carries no provenance leaf — every process instantiates an assembly", async () => {
+        const check = await checkSellerBindsAssembly(agreementUnder(), SELLER, async () => profileBinding(BOUND));
+        expect(check.ok).toBe(false);
+        expect(check.reason).toMatch(/names no assembly/);
+    });
+
+    it("refuses when no profile reader is given", async () => {
+        const check = await checkSellerBindsAssembly(agreementUnder(BOUND), SELLER, undefined);
+        expect(check.ok).toBe(false);
+        expect(check.reason).toMatch(/no member-profile reader/);
+    });
+
+    it("refuses when the seller's profile cannot be read (null or a throw)", async () => {
+        const absent = await checkSellerBindsAssembly(agreementUnder(BOUND), SELLER, async () => null);
+        expect(absent.ok).toBe(false);
+        expect(absent.reason).toMatch(/could not be read/);
+        expect(absent.reason).toContain(BOUND);
+        const thrown = await checkSellerBindsAssembly(agreementUnder(BOUND), SELLER, async () => { throw new Error("gateway down"); });
+        expect(thrown.ok).toBe(false);
+        expect(thrown.reason).toMatch(/could not be read/);
+    });
+
+    it("refuses a profile that binds nothing", async () => {
+        const check = await checkSellerBindsAssembly(agreementUnder(BOUND), SELLER, async () => ({ name: "Seller" }));
+        expect(check.ok).toBe(false);
+        expect(check.reason).toMatch(/has not bound/);
     });
 });

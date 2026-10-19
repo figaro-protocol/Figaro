@@ -35,6 +35,7 @@ import { checkOfferPolicy, instantiateRootAgreement, readOfferDesign, verifyRace
 export { verifyRaceReply };
 import { assertAgreementSignable, type SpecSource } from "../projection.js";
 import type { HydratedAssembly } from "../assembly.js";
+import { checkSellerBindsAssembly, type MemberProfileReader } from "../memberProfile.js";
 
 /**
  * Structural validation a candidate MUST run before countersigning a race
@@ -50,18 +51,23 @@ import type { HydratedAssembly } from "../assembly.js";
  * `specs`, ALSO runs the merkle-leaf seam (`assertAgreementSignable` —
  * docs/CLAUSES.md § "Every clause is a merkle leaf"), exactly as
  * `validateOffer` does: a draft whose commerce leaf contradicts the struct the
- * candidate would bond against is refused before any signature. With a
+ * candidate would bond against is refused before any signature. ALWAYS checks,
+ * as `validateOffer` does, that the candidate has bound the assembly the draft
+ * instantiates (`checkSellerBindsAssembly`, the candidate's OWN profile read
+ * through `readProfile` at acceptance time); a draft with no provenance leaf,
+ * no reader, or an unreadable or unbinding profile is refused. With a
  * `policy`, ALSO applies the operator's economic floor (root-shape, currency
  * allowlist, magnitude cap) — the same floor `validateOffer` applies, reached
  * here through it.
  */
-export function validateDraft(
+export async function validateDraft(
     draft: CommitmentPayload,
     expectedSeller: Address,
     policy?: OfferPolicy,
     specs?: SpecSource,
     design: HydratedAssembly | null = null,
-): OfferCheck {
+    readProfile?: MemberProfileReader,
+): Promise<OfferCheck> {
     if (draft.buyerSig) return { ok: false, reason: "payload carries a buyer signature — an offer, not a race draft" };
     if (draft.sellerSig) return { ok: false, reason: "payload already carries a seller signature" };
     const c = draft.commitment;
@@ -75,6 +81,8 @@ export function validateDraft(
         || draft.agreement.seller.toLowerCase() !== c.seller.toLowerCase()) {
         return { ok: false, reason: "agreement parties do not match the commitment" };
     }
+    const bound = await checkSellerBindsAssembly(draft.agreement, c.seller, readProfile);
+    if (!bound.ok) return bound;
     if (specs) {
         try {
             assertAgreementSignable(draft.agreement, c.agreementHash, specs, c, design, "This draft");
@@ -98,8 +106,9 @@ export function validateDraft(
  *     until `deadline`, so with NO `policy` the draft is declined.
  *   - REFUSE-ALL FLOOR: a clean draft countersigns ONLY when an explicit
  *     `accept` returns true.
- * A malformed/tampered draft THROWS — the candidate must never countersign a
- * bogus commitment. There is no buyer signature to verify; that is the point.
+ * A malformed/tampered draft, or one under an assembly the candidate has not
+ * bound (`validateDraft`), THROWS — the candidate never countersigns it. There
+ * is no buyer signature to verify; that is the point.
  *
  * With `specs`, the anti-tamper gate ALSO runs the merkle-leaf seam
  * (`validateDraft`'s `assertAgreementSignable` check), the same treatment
@@ -114,19 +123,20 @@ export async function counterSignDraft(
     policy?: OfferPolicy,
     specs?: SpecSource,
     design: HydratedAssembly | null = null,
+    readProfile?: MemberProfileReader,
 ): Promise<CommitmentPayload | null> {
     const account = wallet.account;
     if (!account) throw new Error("counterSignDraft: wallet has no account");
     const seller = account.address;
 
-    const check = validateDraft(draft, seller, undefined, specs, design);
-    if (!check.ok) throw new Error(`counterSignDraft: refusing malformed draft — ${check.reason}`);
+    const check = await validateDraft(draft, seller, undefined, specs, design, readProfile);
+    if (!check.ok) throw new Error(`counterSignDraft: refusing the draft — ${check.reason}`);
     if (draft.quoteRequest) {
         throw new Error("counterSignDraft: payload is a quote request — the candidate prices it via quoteDraft, never countersigns the ceiling");
     }
 
     if (!policy) return null;
-    const economic = validateDraft(draft, seller, policy);
+    const economic = checkOfferPolicy(draft.commitment, policy);
     if (!economic.ok) return null;
 
     if (!accept || !accept(draft)) return null;
@@ -285,7 +295,8 @@ export function buildQuoteRequest(params: BuildQuoteRequestParams): CommitmentPa
  *   - PRICING FLOOR: `quote` is the operator's pricing function — `null`
  *     declines; a figure above the ceiling or below the payment floor (≥ 1)
  *     declines. No pricing function → decline. Autonomy is never the default.
- * A malformed/tampered request THROWS. The counter-draft is built through the
+ * A malformed/tampered request, or one under an assembly the candidate has not
+ * bound (`validateDraft`), THROWS. The counter-draft is built through the
  * same substitution the buyer will reconstruct with — the quote changes the
  * price and nothing else, by construction.
  *
@@ -301,13 +312,14 @@ export async function quoteDraft(
     policy?: OfferPolicy,
     specs?: SpecSource,
     design: HydratedAssembly | null = null,
+    readProfile?: MemberProfileReader,
 ): Promise<CommitmentPayload | null> {
     const account = wallet.account;
     if (!account) throw new Error("quoteDraft: wallet has no account");
     const seller = account.address;
 
-    const check = validateDraft(draft, seller, undefined, specs, design);
-    if (!check.ok) throw new Error(`quoteDraft: refusing malformed quote request — ${check.reason}`);
+    const check = await validateDraft(draft, seller, undefined, specs, design, readProfile);
+    if (!check.ok) throw new Error(`quoteDraft: refusing the quote request — ${check.reason}`);
     const terms = draft.quoteRequest;
     if (!terms || terms.pricedFields.length === 0) {
         throw new Error("quoteDraft: payload carries no quote request — a race draft countersigns via counterSignDraft");
@@ -552,9 +564,12 @@ export function makeSellerRaceHandler(
         specs?: SpecSource;
         /** Reads the design a draft's agreement names — see `makeSellerOfferHandler`. */
         readDesign?: (provenance: AgreementProvenance) => Promise<HydratedAssembly | null>;
+        /** Reads the candidate's OWN member profile at acceptance time — see
+         *  `makeSellerOfferHandler`. OMIT it and every draft is refused. */
+        readProfile?: MemberProfileReader;
     },
 ): (offer: CommitmentPayload) => Promise<CommitmentPayload | null> {
-    return async (offer) => counterSignDraft(wallet, offer, ctx, opts.accept, opts.policy, opts.specs, await readOfferDesign(offer, opts.readDesign));
+    return async (offer) => counterSignDraft(wallet, offer, ctx, opts.accept, opts.policy, opts.specs, await readOfferDesign(offer, opts.readDesign), opts.readProfile);
 }
 
 /**
@@ -573,7 +588,10 @@ export function makeSellerQuoteHandler(
         specs?: SpecSource;
         /** Reads the design a draft's agreement names — see `makeSellerOfferHandler`. */
         readDesign?: (provenance: AgreementProvenance) => Promise<HydratedAssembly | null>;
+        /** Reads the candidate's OWN member profile at acceptance time — see
+         *  `makeSellerOfferHandler`. OMIT it and every quote request is refused. */
+        readProfile?: MemberProfileReader;
     },
 ): (offer: CommitmentPayload) => Promise<CommitmentPayload | null> {
-    return async (offer) => quoteDraft(wallet, offer, ctx, opts.quote, opts.policy, opts.specs, await readOfferDesign(offer, opts.readDesign));
+    return async (offer) => quoteDraft(wallet, offer, ctx, opts.quote, opts.policy, opts.specs, await readOfferDesign(offer, opts.readDesign), opts.readProfile);
 }

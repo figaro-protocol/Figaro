@@ -31,6 +31,8 @@ import {
     waitForConnected,
     keyOf,
     primeRegisteredClauseSpecs,
+    anchoredCompositionHash,
+    isBindingOf,
 } from './devnet-helpers';
 import { ANVIL_KEYS } from '../anvilAccounts';
 import { CORE_ABI } from '@/lib/kernel/contracts';
@@ -68,6 +70,7 @@ test.describe('A wallet orders from its own listing (buyer == seller, devnet)', 
         // ── Register the member, bound to the pos reference (identity by slug,
         //    never a clause-shape heuristic — as orders-accept does).
         const slug = referenceAssemblySlug('pos.json');
+        const assemblyHash = await anchoredCompositionHash(slug);
         expect(
             (await discoverAnchoredAssemblies()).some((a) => a.slug === slug),
             'the pos reference (assemblies/pos.json) is anchored — run populate-test-data',
@@ -97,13 +100,13 @@ test.describe('A wallet orders from its own listing (buyer == seller, devnet)', 
                 assemblyBindings: [{
                     bindingId: 'self-order',
                     subjectAddress: SELF,
-                    assemblySlug: slug,
+                    compositionHash: assemblyHash,
                     counterpartyBindings: [],
                 }],
             },
         });
         await expect.poll(async () =>
-            (await memberProfileBindings(SELF)).some((b) => b.assemblySlug === slug), {
+            (await memberProfileBindings(SELF)).some((b) => isBindingOf(b, assemblyHash)), {
             timeout: 60_000, message: "the member's pinned profile carries the pos binding",
         }).toBe(true);
 

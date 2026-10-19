@@ -28,6 +28,7 @@ import {
     anchorAssembly, computeDeadline, hydrateAssembly, parseProjectionHints, readChainTimestamp, agreementClauses,
 } from "@figaro-protocol/sdk";
 import { parseClauseSpec } from "@figaro-protocol/sdk/clauses";
+import { bindAssemblyAsSeller, designReader, memberProfileReader } from "./devnet-seller.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const env = Object.fromEntries(
@@ -36,6 +37,7 @@ const env = Object.fromEntries(
 );
 const RPC = process.env.FIGARO_DEVNET_RPC_URL || "http://127.0.0.1:8545";
 const GATEWAY = "http://127.0.0.1:8080/ipfs/";
+const IPFS_API = env.NEXT_PUBLIC_IPFS_API_URL || "http://127.0.0.1:5001";
 const addresses = {
     core: env.NEXT_PUBLIC_FIGARO_CORE, clauseRegistry: env.NEXT_PUBLIC_CLAUSE_REGISTRY,
     membersRegistry: env.NEXT_PUBLIC_MEMBERS_REGISTRY, assemblyRegistry: env.NEXT_PUBLIC_ASSEMBLY_REGISTRY,
@@ -88,9 +90,15 @@ const hydrate = async (a) => {
 
 // ── Seller: run its offer handler behind a REAL HTTP endpoint ─────────────────
 // Refuse-all floor: the proof script IS the operator — explicit accept + policy.
+// The readers give the gate the seller's own profile (the offer's assembly
+// must be bound there) and the design the offer names, read at acceptance.
+const readProfile = memberProfileReader(ctx, tryHydrate);
+const readDesign = designReader(ctx, hydrate);
 const responder = makeHttpOfferResponder(makeSellerOfferHandler(sellerW, pub, addresses, {
     accept: () => true, policy: { requireRootShape: true, currencyAllowlist: [TOKEN], maxValue: 10_000n },
     specs, // the merkle-leaf seam on the counter-sign side of the socket
+    readDesign,
+    readProfile,
 }));
 const server = createServer((req, res) => {
     let body = ""; req.on("data", (c) => (body += c));
@@ -120,6 +128,14 @@ if (!chosen) { server.close(); process.exit(1); }
 const commerceClauseId = Object.keys(agreementClauses(assembly, assembly.assembly.agreements[0]))
     .find((cid) => (specs.get(cid)?.fields ?? []).some((f) => f.name === "lineItems")) ?? null;
 check("located the commerce clause by its declared field", !!commerceClauseId);
+
+// ── The seller binds the assembly in its own member profile ──────────────────
+await bindAssemblyAsSeller({
+    pub, wallet: sellerW, membersRegistry: addresses.membersRegistry, compositionHash: chosen.compositionHash,
+    ipfsApiUrl: IPFS_API, readProfile, name: "Origination proof seller",
+});
+check("the seller's own profile binds the assembly", (await readProfile(SELLER.address))?.assemblyBindings
+    ?.some((b) => b.compositionHash.toLowerCase() === chosen.compositionHash.toLowerCase()) === true);
 
 // ── Buyer LOOP: originate over HttpChannel (the seller is reached via the socket) ─
 const channel = new HttpChannel({ resolveEndpoint: async () => sellerUrl });

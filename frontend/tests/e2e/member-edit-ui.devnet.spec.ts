@@ -268,7 +268,7 @@ test.describe('Seller edit UI surfaces (devnet)', () => {
             fromBlock: 0n,
         });
         expect(registered.length, 'no anchored assemblies on this devnet — run the devnet-authoring project first').toBeGreaterThan(0);
-        const assemblySlug = deriveAssemblySlug(registered[registered.length - 1].args.compositionHash as `0x${string}`);
+        const slug = deriveAssemblySlug(registered[registered.length - 1].args.compositionHash as `0x${string}`);
 
         // 2. Register the seller (separate from the assembly author —
         //    same key here, fine). Seller starts with no bindings.
@@ -284,7 +284,7 @@ test.describe('Seller edit UI surfaces (devnet)', () => {
         await page.goto('/members/edit/assemblies?e2e=devnet', { waitUntil: 'domcontentloaded' });
 
         // The assembly row carries `seller-assembly-row-<slug>` testid.
-        const assemblyRow = page.getByTestId(`seller-assembly-row-${assemblySlug}`);
+        const assemblyRow = page.getByTestId(`seller-assembly-row-${slug}`);
         await expect(assemblyRow).toBeVisible({ timeout: 30000 });
         await assemblyRow.locator('input[type="checkbox"]').first().check();
 

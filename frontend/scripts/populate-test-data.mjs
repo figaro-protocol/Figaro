@@ -25,14 +25,14 @@ import { createPublicClient, createWalletClient, http } from 'viem';
 import { mnemonicToAccount } from 'viem/accounts';
 // Protocol canonicals come from the SDK (@figaro-protocol/sdk, file:../sdk): the
 // registry + ERC-20 ABIs, the canonical-JSON convention, and the assembly
-// identity (compositionHash + slug). Nothing is re-implemented here.
+// identity (compositionHash). Nothing is re-implemented here.
 import { MEMBERS_REGISTRY_ABI, ERC20_ABI } from '@figaro-protocol/sdk';
 import {
     ASSEMBLIES_DIR, LOCAL_ANVIL, anchorBuiltAssembly, fillDeployTimeCurrency, loadAuthoredSpecs, pinFile, pinJSON,
     loadAuthoredAgreements, readBuiltAssembly,
     populateClauses, populateReferenceAssemblies, readEnvLocal, registrarAccount,
 } from './populate-clauses.mjs';
-import { assemblyCompositionHash, deriveAssemblySlug, resolveAuthoredClauseKeys, composeAuthoredAgreement, assembleAuthored } from '@figaro-protocol/sdk';
+import { assemblyCompositionHash, resolveAuthoredClauseKeys, composeAuthoredAgreement, assembleAuthored } from '@figaro-protocol/sdk';
 
 // The specs in clauses/, each with its key — the set every authored clause
 // NAME below resolves against at seed time (`resolveAuthoredClauseKeys`);
@@ -67,12 +67,13 @@ const SELLERS = [
     { addressIndex: 12, name: 'Sterling Goods', specialty: 'general goods, delivery with named recourse', geohash: '9q8yyk8z0', binds: 'pos.json', products: [{ name: 'Hardware kit', price: '1' }] },
 ];
 
-/** The slug a reference assembly is anchored under: the composition hash of the
- *  assembly AFTER the deploy-time currency fill — the same hash
- *  populateReferenceAssemblies anchored, never the raw file's. */
-function referenceSlug(file, tokenAddress) {
+/** The composition hash a reference assembly is anchored under — the hash of
+ *  the assembly AFTER the deploy-time currency fill, the same hash
+ *  populateReferenceAssemblies anchored, never the raw file's. A binding
+ *  records it in full. */
+function referenceCompositionHash(file, tokenAddress) {
     const { assembly } = readBuiltAssembly(path.join(ASSEMBLIES_DIR, file), AUTHORED, AUTHORED_AGREEMENTS);
-    return deriveAssemblySlug(assemblyCompositionHash(fillDeployTimeCurrency(assembly, tokenAddress)));
+    return assemblyCompositionHash(fillDeployTimeCurrency(assembly, tokenAddress));
 }
 
 const slugifyId = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
@@ -243,7 +244,7 @@ async function main() {
             assemblyBindings: [{
                 bindingId: `seed-${s.addressIndex}`,
                 subjectAddress: account.address,
-                assemblySlug: referenceSlug(s.binds, mockErc20),
+                compositionHash: referenceCompositionHash(s.binds, mockErc20),
                 counterpartyBindings: s.courierIndex == null
                     ? []
                     : [{ clauseId: COURIER_CLAUSE, addresses: [mnemonicToAccount(ANVIL_MNEMONIC, { addressIndex: s.courierIndex }).address] }],

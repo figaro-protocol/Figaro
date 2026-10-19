@@ -16,6 +16,9 @@
 import type { MemberProfileMetadata } from "@/lib/member/memberProfileMetadata";
 import { tryParseMemberProfileDocument } from "@/lib/member/memberProfileMetadata";
 import { createUriFetcher } from "@/lib/member/uriFetcher";
+import { getMemberMetadataURI } from "@/lib/protocol/membersRegistryIndexer";
+import type { MemberProfileReader } from "@figaro-protocol/sdk";
+import type { PublicClient } from "viem";
 
 const profileFetcher = createUriFetcher<MemberProfileMetadata>({
     parse: (doc) => tryParseMemberProfileDocument(doc),
@@ -26,3 +29,17 @@ const profileFetcher = createUriFetcher<MemberProfileMetadata>({
  *  profile update re-pins to a NEW URI, so no invalidation surface is
  *  needed (or exported). */
 export const fetchMemberProfile = profileFetcher.fetch;
+
+/** A member's OWN profile, read at the edge when it is needed — the
+ *  `MemberProfileReader` a seller's accept gate takes
+ *  (`checkSellerBindsAssembly`): MembersRegistry's current metadataURI for
+ *  the member, folded from the registry's events on this read, then the
+ *  pinned document through the cached parse above. Null when the member
+ *  has no live profile, or when there is no chain connection. */
+export function profileReaderForChain(client: PublicClient | undefined, chainId: number): MemberProfileReader {
+    return async (member) => {
+        if (!client) return null;
+        const metadataURI = await getMemberMetadataURI(client, chainId, member);
+        return metadataURI ? fetchMemberProfile(metadataURI) : null;
+    };
+}

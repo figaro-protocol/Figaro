@@ -51,16 +51,18 @@ function buildBinding(
     counterpartyBindings: CounterpartyBinding[],
 ): AssemblyBindingRecord {
     return {
-        bindingId: `binding:${wallet.toLowerCase()}:${choice.slug}`,
+        bindingId: `binding:${wallet.toLowerCase()}:${choice.compositionHash.toLowerCase()}`,
         subjectAddress: wallet,
-        assemblySlug: choice.slug,
+        compositionHash: choice.compositionHash,
         counterpartyBindings: counterpartyBindings.length > 0 ? counterpartyBindings : undefined,
     };
 }
 
 /** Build the full bindings array from the live selection + counterparty
  *  state. Used both for the autosave effect and the submit handler so
- *  they can't drift. */
+ *  they can't drift. The selection and the counterparty state are keyed by
+ *  each assembly's full composition hash, lowercased — the identity a
+ *  binding carries; the slug is only shown. */
 // A draft made before a wallet connects carries this subject; the review step
 // re-stamps every binding with the wallet that signs the registration.
 const DRAFT_SUBJECT = ZERO_ADDRESS;
@@ -69,11 +71,16 @@ function buildBindings(
     wallet: `0x${string}`,
     selected: Set<string>,
     choices: AssemblyChoice[],
-    counterpartiesBySlug: Map<string, CounterpartyBinding[]>,
+    counterpartiesByAssembly: Map<string, CounterpartyBinding[]>,
 ): AssemblyBindingRecord[] {
     return choices
-        .filter((c) => selected.has(c.slug))
-        .map((c) => buildBinding(wallet, c, counterpartiesBySlug.get(c.slug) ?? []));
+        .filter((c) => selected.has(assemblyKey(c)))
+        .map((c) => buildBinding(wallet, c, counterpartiesByAssembly.get(assemblyKey(c)) ?? []));
+}
+
+/** The key the selection is held under: the assembly's full composition hash. */
+function assemblyKey(choice: { compositionHash: string }): string {
+    return choice.compositionHash.toLowerCase();
 }
 
 /** Restrict the disclosure policy to the data of the assemblies
@@ -86,7 +93,7 @@ function activePolicy(
     choices: AssemblyChoice[],
 ): DisclosurePolicyEntry[] {
     const selectedHashes = new Set(
-        choices.filter((c) => selected.has(c.slug)).map((c) => c.compositionHash),
+        choices.filter((c) => selected.has(assemblyKey(c))).map((c) => c.compositionHash),
     );
     return entries.filter((e) => selectedHashes.has(e.compositionHash));
 }
@@ -125,7 +132,7 @@ export function OnboardingAssembliesForm({
     const choices: AssemblyChoice[] = choicesData ?? [];
 
     const [selected, setSelected] = useState<Set<string>>(new Set());
-    const [counterpartiesBySlug, setCounterpartiesBySlug] = useState<
+    const [counterpartiesByAssembly, setCounterpartiesByAssembly] = useState<
         Map<string, CounterpartyBinding[]>
     >(new Map());
     // This step edits SELLER-posture disclosure entries only (classes
@@ -141,14 +148,14 @@ export function OnboardingAssembliesForm({
     useEffect(() => {
         if (hydrated || !loaded) return;
         const existing = state.assemblies ?? [];
-        setSelected(new Set(existing.map((b) => b.assemblySlug)));
+        setSelected(new Set(existing.map(assemblyKey)));
         const cps = new Map<string, CounterpartyBinding[]>();
         for (const b of existing) {
             if (b.counterpartyBindings && b.counterpartyBindings.length > 0) {
-                cps.set(b.assemblySlug, b.counterpartyBindings);
+                cps.set(assemblyKey(b), b.counterpartyBindings);
             }
         }
-        setCounterpartiesBySlug(cps);
+        setCounterpartiesByAssembly(cps);
         const allEntries = state.disclosurePolicy ?? [];
         setPolicyEntries(allEntries.filter((e) => e.posture === "seller"));
         setOtherPostureEntries(allEntries.filter((e) => e.posture !== "seller"));
@@ -158,33 +165,33 @@ export function OnboardingAssembliesForm({
     useEffect(() => {
         if (!hydrated || !choicesLoaded) return;
         update({
-            assemblies: buildBindings(address ?? DRAFT_SUBJECT, selected, choices, counterpartiesBySlug),
+            assemblies: buildBindings(address ?? DRAFT_SUBJECT, selected, choices, counterpartiesByAssembly),
             disclosurePolicy: [
                 ...otherPostureEntries,
                 ...activePolicy(policyEntries, selected, choices),
             ],
         });
-    }, [selected, counterpartiesBySlug, policyEntries, otherPostureEntries, hydrated, address, choices, choicesLoaded, update]);
+    }, [selected, counterpartiesByAssembly, policyEntries, otherPostureEntries, hydrated, address, choices, choicesLoaded, update]);
 
-    function toggle(slug: string) {
+    function toggle(key: string) {
         setSelected((prev) => {
             const next = new Set(prev);
-            if (next.has(slug)) next.delete(slug);
-            else next.add(slug);
+            if (next.has(key)) next.delete(key);
+            else next.add(key);
             return next;
         });
     }
 
     const updateCounterparties = useCallback(
-        (slug: string, clauseKey: `0x${string}`, addresses: `0x${string}`[]) => {
-            setCounterpartiesBySlug((prev) => {
+        (key: string, clauseKey: `0x${string}`, addresses: `0x${string}`[]) => {
+            setCounterpartiesByAssembly((prev) => {
                 const next = new Map(prev);
-                const existing = (next.get(slug) ?? []).filter((cb) => cb.clauseKey.toLowerCase() !== clauseKey.toLowerCase());
+                const existing = (next.get(key) ?? []).filter((cb) => cb.clauseKey.toLowerCase() !== clauseKey.toLowerCase());
                 if (addresses.length > 0) {
                     existing.push({ clauseKey, addresses });
                 }
-                if (existing.length > 0) next.set(slug, existing);
-                else next.delete(slug);
+                if (existing.length > 0) next.set(key, existing);
+                else next.delete(key);
                 return next;
             });
         },
@@ -203,7 +210,7 @@ export function OnboardingAssembliesForm({
         setSubmitError(null);
         if (onSave) {
             onSave(
-                buildBindings(address ?? DRAFT_SUBJECT, selected, choices, counterpartiesBySlug),
+                buildBindings(address ?? DRAFT_SUBJECT, selected, choices, counterpartiesByAssembly),
                 [...otherPostureEntries, ...activePolicy(policyEntries, selected, choices)],
             ).catch(() => {
                 // Caller surfaces the error via `externalError`.
@@ -245,18 +252,18 @@ export function OnboardingAssembliesForm({
 
             <div className="space-y-3">
                 {choices.map((choice) => {
-                    const isSelected = selected.has(choice.slug);
+                    const isSelected = selected.has(assemblyKey(choice));
                     const requiredClauses =
                         choice.state === "loaded" && choice.hydratedAssembly
                             ? requiredCounterpartyClauses(choice.hydratedAssembly)
                             : [];
-                    const counterparties = counterpartiesBySlug.get(choice.slug) ?? [];
+                    const counterparties = counterpartiesByAssembly.get(assemblyKey(choice)) ?? [];
                     return (
                         <AssemblyChoiceRow
-                            key={choice.slug}
+                            key={choice.compositionHash}
                             choice={choice}
                             checked={isSelected}
-                            onToggle={() => toggle(choice.slug)}
+                            onToggle={() => toggle(assemblyKey(choice))}
                             testIdPrefix="seller-assembly"
                         >
                             {isSelected && requiredClauses.length > 0 && (
@@ -273,7 +280,7 @@ export function OnboardingAssembliesForm({
                                                 clauseKey={clauseKey}
                                                 addresses={addresses}
                                                 onChange={(next) =>
-                                                    updateCounterparties(choice.slug, clauseKey as `0x${string}`, next)
+                                                    updateCounterparties(assemblyKey(choice), clauseKey as `0x${string}`, next)
                                                 }
                                             />
                                         );
@@ -294,7 +301,7 @@ export function OnboardingAssembliesForm({
                 draft, which is the document they belong to. */}
             <ProfileClauseValues
                 clauseKeys={[...new Set(
-                    choices.filter((c) => selected.has(c.slug)).flatMap((c) => c.clauses ?? []),
+                    choices.filter((c) => selected.has(assemblyKey(c))).flatMap((c) => c.clauses ?? []),
                 )]}
                 values={state.profile?.profileClauseValues ?? {}}
                 onChange={(next) =>
@@ -312,7 +319,7 @@ export function OnboardingAssembliesForm({
                 buyer side has its own step, deriving from its own
                 subscriptions. */}
             <DisclosurePolicyEditor
-                choices={choices.filter((c) => selected.has(c.slug))}
+                choices={choices.filter((c) => selected.has(assemblyKey(c)))}
                 entries={policyEntries}
                 onChange={setPolicyEntries}
                 postures={["seller"]}

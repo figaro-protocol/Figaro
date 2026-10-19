@@ -175,7 +175,7 @@ test.describe('REAL XMTP RELAY — buyer signs, relays over the hosted dev netwo
                 assemblyBindings: [{
                     bindingId: `xmtp-smoke-${SELLER.slice(2, 8).toLowerCase()}`,
                     subjectAddress: SELLER,
-                    assemblySlug: assembly.slug,
+                    compositionHash: assembly.compositionHash,
                     counterpartyBindings: [],
                 }],
             },

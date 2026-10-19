@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import { deriveAssemblySlug } from "@/lib/shared/assembly";
 import { useSearchParams } from "next/navigation";
 import Link from "@/components/shared/Link";
 import { MarketingSection } from "@/components/marketing/MarketingSection";
@@ -27,7 +28,7 @@ function useSellersByAssembly(): Map<string, Seller[]> {
         for (const row of data ?? []) {
             if (row.stakeWithdrawn || !row.profile) continue;
             const listing = profileToListing(row.profile, row.address);
-            for (const slug of new Set(listing.bindings.map((b) => b.assemblySlug))) {
+            for (const slug of new Set(listing.bindings.map((b) => deriveAssemblySlug(b.compositionHash)))) {
                 const sellers = bySlug.get(slug) ?? [];
                 sellers.push({ address: row.address, name: listing.name || row.address });
                 bySlug.set(slug, sellers);

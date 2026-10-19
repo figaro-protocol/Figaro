@@ -41,7 +41,6 @@ import {
 } from './devnet-helpers';
 import { ANVIL_KEYS } from '../anvilAccounts';
 import { ASSEMBLY_REGISTRY_ABI } from '@figaro-protocol/sdk';
-import { deriveAssemblySlug } from '@/lib/shared/assembly';
 
 const RPC_URL = 'http://127.0.0.1:8545';
 const LOCAL_ANVIL = defineChain({
@@ -53,7 +52,7 @@ const LOCAL_ANVIL = defineChain({
 
 /** Discover an anchored assembly slug from chain (never a roster) — the
  *  seeded profile must bind one to satisfy the even surfacing rule. */
-async function discoverAnchoredAssemblySlug(): Promise<string> {
+async function discoverAnchoredCompositionHash(): Promise<Hex> {
     const config = readLocalDeploymentConfig();
     const registry = (process.env.NEXT_PUBLIC_ASSEMBLY_REGISTRY
         ?? config.assemblyRegistry ?? '') as Hex;
@@ -70,7 +69,7 @@ async function discoverAnchoredAssemblySlug(): Promise<string> {
     if (events.length === 0) {
         throw new Error('no anchored assemblies on this devnet — run frontend/scripts/populate-test-data.mjs first');
     }
-    return deriveAssemblySlug(events[events.length - 1].args.compositionHash as `0x${string}`);
+    return events[events.length - 1].args.compositionHash as Hex;
 }
 
 const SELLER_KEY = ANVIL_KEYS[1];
@@ -112,7 +111,7 @@ async function seedRegisteredMemberWithCatalog(): Promise<SeededSeller> {
     };
     const { uri: catalogURI } = await pinJSONToIPFS(catalog);
 
-    const anchoredSlug = await discoverAnchoredAssemblySlug();
+    const anchoredHash = await discoverAnchoredCompositionHash();
     await seedRegisteredMember({
         walletKey: SELLER_KEY,
         profile: {
@@ -124,7 +123,7 @@ async function seedRegisteredMemberWithCatalog(): Promise<SeededSeller> {
             assemblyBindings: [{
                 bindingId: `seller-page-binding-${Date.now()}`,
                 subjectAddress: SELLER_ADDR as Hex,
-                assemblySlug: anchoredSlug,
+                compositionHash: anchoredHash,
                 counterpartyBindings: [],
             }],
         },

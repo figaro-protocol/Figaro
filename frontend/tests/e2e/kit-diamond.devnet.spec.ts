@@ -80,6 +80,8 @@ import {
     memberProfileBindings,
     waitForConnected,
     publishOrAdoptReviewed,
+    anchoredCompositionHash,
+    isBindingOf,
 } from './devnet-helpers';
 import { ANVIL_ACCOUNTS } from '../anvilAccounts';
 import { CORE_ABI } from '@/lib/kernel/contracts';
@@ -232,11 +234,13 @@ test.describe('KIT DIAMOND — a DAG join: one buyer, four orders, two parents o
             expect(kitSlug, 'the published diamond is discoverable by shape').toBe(receiptSlug);
         }
 
+        const kitHash = await anchoredCompositionHash(kitSlug!);
+
         // ── BIND (idempotent): the lead registers through the wizard, binds the
         //    diamond, and designates the seeded counterparties per clause. ──
         type ProfileBindings = Awaited<ReturnType<typeof memberProfileBindings>>;
         const isConformant = (bindings: ProfileBindings): boolean => {
-            const b = bindings.find((x) => x.assemblySlug === kitSlug);
+            const b = bindings.find((x) => isBindingOf(x, kitHash));
             const designated = (clauseKey: Hex, addr: Hex) =>
                 (b?.counterpartyBindings ?? []).some(
                     (cb) => cb.clauseKey.toLowerCase() === clauseKey && cb.addresses.some((a) => a.toLowerCase() === addr.toLowerCase()),
@@ -297,14 +301,14 @@ test.describe('KIT DIAMOND — a DAG join: one buyer, four orders, two parents o
 
         // Each counterparty pins the assembly it participates in (even-surfacing).
         const ensureBound = async (seller: Hex, label: string) => {
-            if ((await memberProfileBindings(seller)).some((b) => b.assemblySlug === kitSlug)) return;
+            if ((await memberProfileBindings(seller)).some((b) => isBindingOf(b, kitHash))) return;
             await gotoAsWallet(page, seller, '/members/edit/assemblies?e2e=devnet');
             const r = page.getByTestId(`seller-assembly-row-${kitSlug}`);
             await r.waitFor({ state: 'visible', timeout: 30000 });
             await r.locator('input[type="checkbox"]').first().check();
             await page.getByRole('button', { name: 'Save changes' }).click();
             await expect.poll(async () =>
-                (await memberProfileBindings(seller)).some((b) => b.assemblySlug === kitSlug), {
+                (await memberProfileBindings(seller)).some((b) => isBindingOf(b, kitHash)), {
                 timeout: 60000, message: `${label}'s re-pinned profile carries the diamond binding`,
             }).toBe(true);
         };

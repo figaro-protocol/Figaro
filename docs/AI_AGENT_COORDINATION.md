@@ -344,8 +344,11 @@ composes.
   process credits no clause designer and no assembly designer.
 - **Seller** — derived as an order naming my address as its seller; the same
   `proposeActions` call returns `attest-as-seller` for it. Work arrives through the
-  handshake — `makeSellerOfferHandler` (the anti-tamper gate plus two decline-by-default
-  floors), `makeSellerRaceHandler` / `makeSellerQuoteHandler` on the formation legs. Being
+  handshake — `makeSellerOfferHandler` (the anti-tamper gate, the bound-assembly check,
+  and two decline-by-default floors), `makeSellerRaceHandler` / `makeSellerQuoteHandler` on
+  the formation legs. A seller accepts only orders under an assembly its own profile binds
+  (`checkSellerBindsAssembly`, the profile read through `readProfile` when the payload
+  arrives). Being
   DISCOVERABLE is `MembersRegistry.register(metadataURI)`; being REACHABLE for inbound
   offers is a `services` endpoint inside that profile. Two different things, and neither is
   a status.

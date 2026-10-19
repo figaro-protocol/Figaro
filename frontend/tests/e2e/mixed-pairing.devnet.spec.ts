@@ -45,6 +45,9 @@ import {
     seedRegisteredMember,
     memberProfileBindings,
     waitForConnected,
+    anchoredCompositionHash,
+    isBindingOf,
+    chainProfileReader,
 } from './devnet-helpers';
 import { ANVIL_ACCOUNTS, ANVIL_KEYS } from '../anvilAccounts';
 import { CORE_ABI } from '@/lib/kernel/contracts';
@@ -110,7 +113,9 @@ test.describe('MIXED PAIRING — a human buyer races an agent service and a huma
         //    describes. ──
         const policy: OfferPolicy = { currencyAllowlist: [token], maxValue: parseUnits('1000', 18) };
         const respondToRaceDraft = makeHttpOfferResponder(
-            makeSellerRaceHandler(agentWallet, { chainId: 31337, core }, { accept: () => true, policy }),
+            // The agent reads its OWN profile when a draft arrives: a draft under
+            // an assembly it has not bound is refused.
+            makeSellerRaceHandler(agentWallet, { chainId: 31337, core }, { accept: () => true, policy, readProfile: chainProfileReader() }),
         );
         let commitReady: CommitmentPayload | null = null;
         const agentServer: Server = createServer((req, res) => {
@@ -149,14 +154,15 @@ test.describe('MIXED PAIRING — a human buyer races an agent service and a huma
             //    the two couriers (human posted 2 / agent posted 1.5 +
             //    services.rest), funding. ──
             const deliverySlug = await ensureDeliveryAssembly(page);
-            if (!(await memberProfileBindings(MERCHANT)).some((b) => b.assemblySlug === deliverySlug)) {
+            const deliveryHash = await anchoredCompositionHash(deliverySlug);
+            if (!(await memberProfileBindings(MERCHANT)).some((b) => isBindingOf(b, deliveryHash))) {
                 await gotoAsWallet(page, MERCHANT, '/members/edit/assemblies?e2e=devnet');
                 const row = page.getByTestId(`seller-assembly-row-${deliverySlug}`);
                 await row.waitFor({ state: 'visible', timeout: 30000 });
                 await row.locator('input[type="checkbox"]').first().check();
                 await page.getByRole('button', { name: 'Save changes' }).click();
                 await expect.poll(async () =>
-                    (await memberProfileBindings(MERCHANT)).some((b) => b.assemblySlug === deliverySlug), {
+                    (await memberProfileBindings(MERCHANT)).some((b) => isBindingOf(b, deliveryHash)), {
                     timeout: 60000, message: "the merchant's binding lands",
                 }).toBe(true);
             }
@@ -189,7 +195,7 @@ test.describe('MIXED PAIRING — a human buyer races an agent service and a huma
                         assemblyBindings: [{
                             bindingId: `race-binding-${address.slice(2, 8).toLowerCase()}`,
                             subjectAddress: address,
-                            assemblySlug: deliverySlug,
+                            compositionHash: deliveryHash,
                             counterpartyBindings: [],
                         }],
                         ...(services ? { services } : {}),

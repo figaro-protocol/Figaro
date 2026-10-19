@@ -170,21 +170,34 @@ counterparty's gate as the only net.
   With it the walk also fills the currency leaf from the figure the struct signs and
   THROWS on an override that contradicts it.
 - **Seller side:** `makeSellerOfferHandler(wallet, publicClient, addresses, { accept,
-  policy, specs, readDesign })`, or `counterSignOffer(wallet, offer, ctx, accept, policy,
-  specs, design)` directly. The market-formation legs take them in the same last positions —
-  `counterSignDraft(wallet, draft, ctx, accept, policy, specs, design)`,
-  `quoteDraft(wallet, draft, ctx, quote, policy, specs, design)` — and the mountable handlers
-  `makeSellerRaceHandler` / `makeSellerQuoteHandler` accept `specs` and `readDesign` in their
-  opts. `design` is the hydrated assembly the payload's provenance leaf names; `readDesign`
-  reads it per payload (`(provenance) => Promise<HydratedAssembly | null>`: the assembly by
-  its composition hash, verified with `anchorAssembly`, its registered agreements with
-  `hydrateAssembly`). With `specs`, a payload naming a design you did not read is refused.
+  policy, specs, readDesign, readProfile })`, or `counterSignOffer(wallet, offer, ctx, accept,
+  policy, specs, design, readProfile)` directly. The market-formation legs take them in the
+  same last positions — `counterSignDraft(wallet, draft, ctx, accept, policy, specs, design,
+  readProfile)`, `quoteDraft(wallet, draft, ctx, quote, policy, specs, design, readProfile)` —
+  and the mountable handlers `makeSellerRaceHandler` / `makeSellerQuoteHandler` accept
+  `specs`, `readDesign` and `readProfile` in their opts. `design` is the hydrated assembly the
+  payload's provenance leaf names; `readDesign` reads it per payload (`(provenance) =>
+  Promise<HydratedAssembly | null>`: the assembly by its composition hash, verified with
+  `anchorAssembly`, its registered agreements with `hydrateAssembly`). `readProfile` reads the
+  seller's OWN member profile when the payload arrives (`(member) =>
+  Promise<MemberProfileMetadata | null>`: MembersRegistry's latest metadataURI for the
+  member, from a fresh `ctx.sync()` and `ctx.getMembers()`, then the pinned document through
+  `tryParseMemberProfileDocument`).
+
+  **A seller handler given `specs` needs BOTH readers, or it refuses every order.** Every
+  process instantiates an assembly, so every payload names one in its provenance leaf: with
+  `specs` and no `readDesign` the gate cannot check the designer's values and refuses; with
+  no `readProfile` it cannot read your bound assemblies and refuses (`readProfile` is needed
+  with or without `specs`). A payload with no provenance leaf, under an assembly your profile
+  does not bind, or arriving while your profile cannot be read is refused too
+  (`checkSellerBindsAssembly`) — bind the assembly in your profile's `assemblyBindings` (by its
+  full `compositionHash`) before you serve it.
 
 ```ts
 channel.register(sellerAddr, makeSellerOfferHandler(sellerWallet, publicClient, addresses, {
   accept: (offer) => offer.commitment.currency === myAcceptedToken,
   policy: { requireRootShape: true, currencyAllowlist: [myAcceptedToken], maxValue: myMaxBond },
-  specs,
+  specs, readDesign, readProfile,
 }));
 const result = await originateProcess(buyerWallet, publicClient, addresses, {
   channel, assembly, seller, currency, payment, chainId, core, overrides, deadline, specs,
@@ -542,9 +555,11 @@ the next reply is the free fallback. Two legs, one choreography, from
   posted price; a counter-signature means "available at my price"; cheapest available
   wins. Buyer: build one draft per candidate, then
   `requestCounterSignatures(channel, drafts, ctx)` → verified replies + the winner.
-  Candidate: mount `makeSellerRaceHandler(wallet, ctx, { accept, policy, specs, readDesign })`
-  — the same `SpecSource` as everywhere else, so a draft whose leaf contradicts the struct,
-  or whose designer values differ from its design, is refused before any signature.
+  Candidate: mount `makeSellerRaceHandler(wallet, ctx, { accept, policy, specs, readDesign,
+  readProfile })` — the same `SpecSource` and readers as everywhere else, so a draft whose
+  leaf contradicts the struct, whose designer values differ from its design, or whose
+  assembly your profile does not bind, is refused before any signature. As a buyer, race
+  only candidates whose profiles bind the assembly: a candidate that has not bound it refuses.
 - **The RFQ (the candidate names the price):** the request drafts at the buyer's
   CEILING (their reservation price, inside the signed struct so the cap is enforceable)
   with `pricedFields` naming where the figure lives; the candidate's counter-draft
@@ -552,7 +567,7 @@ the next reply is the free fallback. Two legs, one choreography, from
   `requestQuotes(channel, drafts, ctx)` — every reply is verified by RECONSTRUCTION
   (your own draft re-priced at the quote must reproduce it hash-for-hash; a quote can
   change the price and nothing else). Candidate: mount
-  `makeSellerQuoteHandler(wallet, ctx, { quote, policy, specs })` — `quote(draft)` is the
+  `makeSellerQuoteHandler(wallet, ctx, { quote, policy, specs, readDesign, readProfile })` — `quote(draft)` is the
   owner's pricing function; `null` declines. Build the request with `deadline` in CHAIN
   time here too: `buildQuoteRequest` requires it, like every other origination call.
 

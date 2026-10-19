@@ -56,6 +56,8 @@ import {
     readLocalDeploymentConfig,
     memberProfileBindings,
     waitForConnected,
+    anchoredCompositionHash,
+    isBindingOf,
 } from './devnet-helpers';
 import { ANVIL_ACCOUNTS } from '../anvilAccounts';
 import { CORE_ABI } from '@/lib/kernel/contracts';
@@ -92,33 +94,35 @@ test.describe('BUYER-ASSIGNED — the buyer picks the courier at checkout (devne
 
         // ── ENSURE the delivery assembly (shared author-if-absent). ──
         const deliverySlug = await ensureDeliveryAssembly(page);
+        const deliveryHash = await anchoredCompositionHash(deliverySlug);
 
         // ── BIND (idempotent): Aurora pins the assembly and designates NOBODY.
         //    The counterparty editor is left untouched — the ABSENCE of a
         //    designation is what makes this adoption buyer-assigned. ──
-        if (!(await memberProfileBindings(MERCHANT)).some((b) => b.assemblySlug === deliverySlug)) {
+        if (!(await memberProfileBindings(MERCHANT)).some((b) => isBindingOf(b, deliveryHash))) {
             await gotoAsWallet(page, MERCHANT, '/members/edit/assemblies?e2e=devnet');
             const row = page.getByTestId(`seller-assembly-row-${deliverySlug}`);
             await row.waitFor({ state: 'visible', timeout: 30000 });
             await row.locator('input[type="checkbox"]').first().check();
             await page.getByRole('button', { name: 'Save changes' }).click();
             await expect.poll(async () =>
-                (await memberProfileBindings(MERCHANT)).some((b) => b.assemblySlug === deliverySlug), {
+                (await memberProfileBindings(MERCHANT)).some((b) => isBindingOf(b, deliveryHash)), {
                 timeout: 60000, message: "the merchant's re-pinned profile carries the (undesignated) binding",
             }).toBe(true);
         }
         // The scenario's precondition, verified out-of-band: the binding names
         // NO courier — the node is genuinely unbound.
-        const binding = (await memberProfileBindings(MERCHANT)).find((b) => b.assemblySlug === deliverySlug);
+        const binding = (await memberProfileBindings(MERCHANT)).find((b) => isBindingOf(b, deliveryHash));
         expect(
             (binding?.counterpartyBindings ?? []).some((cb) => cb.clauseKey.toLowerCase() === deliveryClauseKeys().courier),
             'the merchant binding designates no courier (buyer-assigned adoption)',
         ).toBe(false);
 
         // ── The COURIER the buyer will pick — DISCOVERED from MembersRegistry
-        //    events + IPFS (never a roster): the first bound seller that is
-        //    not the merchant (a binding is what admits a catalog to every
-        //    read — the even-surfacing rule). Filtered to anvil-held wallets:
+        //    events + IPFS (never a roster): the first seller, not the
+        //    merchant, whose profile binds the delivery assembly — every
+        //    seller in a process must have bound its assembly, and the picker
+        //    offers no other. Filtered to anvil-held wallets:
         //    the spec later DRIVES the courier (accept + bond), and foreign
         //    sellers (the relay smoke's device-unique seller) legitimately
         //    live on the persisted devnet. ──
@@ -126,9 +130,10 @@ test.describe('BUYER-ASSIGNED — the buyer picks the courier at checkout (devne
         const sellers = await discoverMembers();
         const courier = sellers.find(
             (s) => anvilAddrs.has(s.address.toLowerCase())
-                && s.address.toLowerCase() !== MERCHANT.toLowerCase() && s.assemblyBindings.length > 0,
+                && s.address.toLowerCase() !== MERCHANT.toLowerCase()
+                && s.assemblyBindings.some((b) => isBindingOf(b, deliveryHash)),
         );
-        expect(courier, 'a bound, non-merchant, anvil-held seller exists on-chain to pick').toBeTruthy();
+        expect(courier, 'a non-merchant, anvil-held seller bound to the delivery assembly exists on-chain to pick').toBeTruthy();
         const COURIER = courier!.address;
 
         // ── BASELINES before any commit pulls bonds (deltas, never absolutes). ──

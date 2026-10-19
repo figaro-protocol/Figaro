@@ -48,7 +48,7 @@ import {
 } from '@figaro-protocol/sdk';
 import { CORE_ABI, ERC20_ABI } from '@/lib/kernel/contracts';
 import {
-    E2E_CHAIN, LOCAL_ANVIL, RPC_URL, assertPinnedInIpfs, readAgreementBinding, readLocalDeploymentConfig, referenceAssemblySlug, resolveIpfsURI, scanContractEvents, waitForConnected,
+    E2E_CHAIN, LOCAL_ANVIL, RPC_URL, assertPinnedInIpfs, readAgreementBinding, readLocalDeploymentConfig, referenceAssemblySlug, referenceAssemblyCompositionHash, isBindingOf, resolveIpfsURI, scanContractEvents, waitForConnected,
     keyOf,
     primeRegisteredClauseSpecs,
 } from './devnet-helpers';
@@ -140,6 +140,7 @@ test.describe('LIVE ORDER — a public deployment traded through the real UI', (
 
             // ═══ 1. MEMBER — the wizard ═══════════════════════════════════════
             const posSlug = referenceAssemblySlug('pos.json');
+            const posHash = referenceAssemblyCompositionHash('pos.json');
             const sellerName = `Smoke counter ${seller.address.slice(2, 8)}`;
             const gateway = (process.env.NEXT_PUBLIC_IPFS_GATEWAY_URL ?? 'http://127.0.0.1:8080').replace(/\/$/, '');
             const latestUri = async () => {
@@ -161,9 +162,9 @@ test.describe('LIVE ORDER — a public deployment traded through the real UI', (
             if (alreadyRegistered) {
                 const uri = await latestUri();
                 const doc = uri.startsWith('ipfs://')
-                    ? await fetch(`${gateway}/ipfs/${uri.slice('ipfs://'.length)}`).then((r) => (r.ok ? r.json() : null)).catch(() => null) as { name?: string; assemblyBindings?: Array<{ assemblySlug?: string }> } | null
+                    ? await fetch(`${gateway}/ipfs/${uri.slice('ipfs://'.length)}`).then((r) => (r.ok ? r.json() : null)).catch(() => null) as { name?: string; assemblyBindings?: Array<{ compositionHash?: string }> } | null
                     : null;
-                alreadyBound = !!doc && doc.name === sellerName && (doc.assemblyBindings ?? []).some((b) => b.assemblySlug === posSlug);
+                alreadyBound = !!doc && doc.name === sellerName && (doc.assemblyBindings ?? []).some((b) => isBindingOf(b, posHash));
             }
             if (alreadyBound) {
                 testInfo.annotations.push({ type: 'wizard', description: 'skipped — member already registered and bound to pos (idempotent rerun)' });

@@ -31,6 +31,7 @@
  * chain. Depends on populate-test-data (clauses + reference assemblies
  * anchored).
  */
+import { deriveAssemblySlug } from '@/lib/shared/assembly';
 import type { Page } from '@playwright/test';
 import { test, expect, gotoAsWallet, ANVIL_ACCOUNTS } from './devnet-multi-test';
 import { createPublicClient, createWalletClient, http, parseAbi, parseEther, type Hex } from 'viem';
@@ -92,6 +93,7 @@ const PRODUCTS = [
 ] as const;
 
 interface PublishedDataMember {
+    /** The slugs derived from the bound assemblies' composition hashes. */
     bindings: string[];
     subscriptions: string[];
     offered: Array<{ compositionHash: string; clauseKey: string; posture: string }>;
@@ -109,7 +111,9 @@ async function readPublishedDataMember(): Promise<PublishedDataMember | null> {
     const profile = await fetchPinned(latest);
     const catalog = profile.catalogURI ? await fetchPinned(profile.catalogURI) : { items: [] };
     return {
-        bindings: ((profile.assemblyBindings ?? []) as Array<{ assemblySlug: string }>).map((b) => b.assemblySlug),
+        // A binding names its assembly by the full composition hash; the
+        // slug it is compared under is derived from it.
+        bindings: ((profile.assemblyBindings ?? []) as Array<{ compositionHash: `0x${string}` }>).map((b) => deriveAssemblySlug(b.compositionHash)),
         subscriptions: ((profile.buyerAssemblies ?? []) as Array<{ compositionHash: string }>).map((s) => s.compositionHash),
         offered: ((profile.disclosurePolicy ?? []) as Array<{ compositionHash: string; clauseKey: string; posture: string; offered: boolean }>)
             .filter((e) => e.offered),

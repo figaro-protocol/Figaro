@@ -50,6 +50,7 @@ async function buildOffer(): Promise<CommitmentPayload> {
 const sellerHandler: OfferHandler = (offer) => counterSignOffer(
     sellerW, offer, { chainId: CHAIN_ID, core: CORE }, () => true,
     { requireRootShape: true, currencyAllowlist: [CURRENCY], maxValue: 10_000n },
+    undefined, null, profileBinding(assembly),
 );
 
 async function startSellerServer(
@@ -191,7 +192,7 @@ describe("A2aChannel over a real socket", () => {
 import { didWebEndpointResolver } from "../src/agent/httpChannel.js";
 import type { DIDDocument } from "../src/agent/did.js";
 import { keyOf } from "./specFixtures.js";
-import { hydrateAuthored } from "./hydrate.js";
+import { hydrateAuthored, profileBinding } from "./hydrate.js";
 
 describe("A2aChannel + didWebEndpointResolver", () => {
     it("resolves the seller's declared A2AEndpoint and completes the handshake over it", async () => {

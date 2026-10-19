@@ -3,7 +3,7 @@
  * into the buyer-facing choice set at checkout.
  *
  * Member-domain composition: reads the member's profile (MembersRegistry →
- * IPFS), intersects the profile's `assemblyBindings[].assemblySlug` with the
+ * IPFS), intersects the profile's `assemblyBindings[].compositionHash` with the
  * published assembly events, and reads each matched assembly hydrated — the
  * assembly and every agreement's registered agreement, each verified. The
  * on-chain reads come from `@/lib/protocol/useAssemblyRegistry` (a legal
@@ -19,6 +19,8 @@ import {
     tryParseMemberProfileDocument,
     type CounterpartyBinding,
 } from "@/lib/member/memberProfileMetadata";
+import { assemblyCompositionHash } from "@figaro-protocol/sdk";
+import { bindsAssembly, findListingByAddress } from "@/lib/member/memberListing";
 import {
     useAllPublishedAssemblies,
     fetchHydratedAssembly,
@@ -26,6 +28,7 @@ import {
 
 /** A member's on-chain bound assembly, hydrated. */
 export interface BoundAssembly {
+    /** Derived from the composition hash (`deriveAssemblySlug`) — display only. */
     slug: string;
     /** Display name from the assembly; falls back to the slug. */
     name: string;
@@ -54,7 +57,7 @@ export interface MemberBoundAssemblies {
 /**
  * Resolves a member's on-chain bound assemblies into the buyer-facing
  * choice set. Reads the member's profile (MembersRegistry →
- * IPFS), intersects the profile's `assemblyBindings[].assemblySlug` with
+ * IPFS), intersects the profile's `assemblyBindings[].compositionHash` with
  * the published assembly events, and reads each matched assembly hydrated.
  *
  * When `hasOnChainBinding` is true, `assemblies` is the authoritative
@@ -114,8 +117,8 @@ export function useMemberBoundAssemblies(
                     return;
                 }
 
-                const sellerSlugs = new Set(profile.assemblyBindings.map((b) => b.assemblySlug));
-                const matchedEvents = publishedEvents.filter((e) => sellerSlugs.has(e.slug));
+                const boundHashes = new Set(profile.assemblyBindings.map((b) => b.compositionHash.toLowerCase()));
+                const matchedEvents = publishedEvents.filter((e) => boundHashes.has(e.compositionHash.toLowerCase()));
                 if (matchedEvents.length === 0) {
                     setResult({ assemblies: [], isLoading: false, hasOnChainBinding: false });
                     return;
@@ -132,9 +135,9 @@ export function useMemberBoundAssemblies(
                 const assemblies: BoundAssembly[] = [];
                 hydratedAssemblies.forEach((m, i) => {
                     if (!m) return;
-                    const slug = matchedEvents[i].slug;
+                    const { slug, compositionHash } = matchedEvents[i];
                     const binding = (profile.assemblyBindings ?? []).find(
-                        (b) => b.assemblySlug === slug,
+                        (b) => b.compositionHash.toLowerCase() === compositionHash.toLowerCase(),
                     );
                     assemblies.push({
                         slug,
@@ -162,4 +165,30 @@ export function useMemberBoundAssemblies(
     }, [sellerAddress, registryData, publishedEvents, registryLoading, eventsLoading]);
 
     return result;
+}
+
+/**
+ * The bound assembly with each designated counterparty kept only when its
+ * OWN profile binds the assembly too: every seller in a process must have
+ * bound the order's assembly, so a designated wallet that has not is never
+ * offered — it would refuse the sub-order. `members` is the discovered member
+ * set (`useRegisteredCatalogs`); a designated wallet outside it has no profile
+ * to read a binding from. A designation left with no wallet is dropped, and
+ * the sub-order falls to the buyer's checkout choice.
+ */
+export function withBoundCounterparties(
+    bound: BoundAssembly,
+    members: readonly { address: string; assemblyBindings?: readonly { compositionHash: string }[] }[],
+): BoundAssembly {
+    const compositionHash = assemblyCompositionHash(bound.hydratedAssembly.assembly);
+    const counterpartyBindings = bound.counterpartyBindings
+        .map((cb) => ({
+            ...cb,
+            addresses: cb.addresses.filter((a) => {
+                const member = findListingByAddress(members, a);
+                return !!member && bindsAssembly(member, compositionHash);
+            }),
+        }))
+        .filter((cb) => cb.addresses.length > 0);
+    return { ...bound, counterpartyBindings };
 }

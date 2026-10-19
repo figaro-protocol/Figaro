@@ -351,6 +351,7 @@ export {
     parseMemberProfileDocument,
     tryParseMemberProfileDocument,
     projectAgentServices,
+    checkSellerBindsAssembly,
 } from "./memberProfile.js";
 export type {
     MemberProfileMetadata,
@@ -364,6 +365,8 @@ export type {
     DisclosureCalendar,
     DisclosurePolicyEntry,
     AgentServiceInfo,
+    MemberProfileReader,
+    AssemblyBindingCheck,
 } from "./memberProfile.js";
 
 // Member catalog document — the volatile item list pinned to

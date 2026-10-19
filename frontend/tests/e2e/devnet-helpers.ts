@@ -29,8 +29,10 @@ import {
     assembleAuthored,
     composeAuthoredAgreement,
     assemblyCompositionHash,
+    tryParseMemberProfileDocument,
     type Assembly,
     type BuiltAssembly,
+    type MemberProfileReader,
     type RegisteredAgreement,
     type Hex,
     type HydratedAssembly,
@@ -230,7 +232,8 @@ export interface SeedMemberProfile {
     assemblyBindings?: Array<{
         bindingId: string;
         subjectAddress: `0x${string}`;
-        assemblySlug: string;
+        /** The bound assembly's full `AssemblyRegistry` composition hash. */
+        compositionHash: `0x${string}`;
         counterpartyBindings: Array<{ clauseKey: string; addresses: string[] }>;
     }>;
     /** Agent service endpoints (`MemberAgentServices`) — a declared `rest`
@@ -464,9 +467,25 @@ export interface DiscoveredMember {
     /** The seller's home geohash (profile.location.geohash), discovered from IPFS. */
     geohash?: string;
     assemblyBindings: Array<{
-        assemblySlug: string;
+        compositionHash: `0x${string}`;
         counterpartyBindings?: Array<{ clauseKey: string; addresses: string[] }>;
     }>;
+}
+
+/** Does this profile binding name the assembly with this composition hash?
+ *  A binding records the full hash; the slug a UI testid carries is derived
+ *  from it. */
+export function isBindingOf(binding: { compositionHash?: string }, compositionHash: string): boolean {
+    return !!binding.compositionHash && binding.compositionHash.toLowerCase() === compositionHash.toLowerCase();
+}
+
+/** The full composition hash of the ANCHORED assembly a slug is derived
+ *  from — what a profile binding records. Read from the registry's events;
+ *  throws when no anchored assembly derives that slug. */
+export async function anchoredCompositionHash(slug: string): Promise<`0x${string}`> {
+    const found = (await discoverAnchoredAssemblies()).find((a) => a.slug === slug);
+    if (!found) throw new Error(`no anchored assembly derives the slug ${slug}`);
+    return found.compositionHash;
 }
 
 /** Every LIVE registered seller, discovered from chain → IPFS (events +
@@ -569,6 +588,22 @@ export async function latestMemberProfileURI(member: `0x${string}`): Promise<str
     return [...registrations, ...updates]
         .sort((a, b) => Number(a.blockNumber - b.blockNumber))
         .at(-1)?.args.metadataURI as string | undefined;
+}
+
+/** A member's OWN profile read from the chain at the moment it is needed —
+ *  MembersRegistry's latest metadataURI for the member → the pinned document
+ *  → the SDK's parse: the `readProfile` a seller handler takes. Null when the
+ *  member has no profile or the read fails. */
+export function chainProfileReader(): MemberProfileReader {
+    return async (member) => {
+        const uri = await latestMemberProfileURI(member);
+        if (!uri) return null;
+        try {
+            return tryParseMemberProfileDocument(await (await fetch(resolveIpfsURI(uri))).json());
+        } catch {
+            return null;
+        }
+    };
 }
 
 /** A seller's live assembly bindings, read from its latest pinned profile
@@ -699,7 +734,14 @@ function fillSentinelCurrency<T extends { assemblyClauses?: Record<string, Recor
  *  name it by identity, never select it with a clause-shape heuristic.
  *  `name` is the file in `assemblies/`. */
 export function referenceAssemblySlug(name: string): string {
-    return deriveAssemblySlug(assemblyCompositionHash(referenceAssemblyBuilt(name).assembly));
+    return deriveAssemblySlug(referenceAssemblyCompositionHash(name));
+}
+
+/** The composition hash of a REFERENCE assembly — the identity
+ *  `referenceAssemblySlug` derives its slug from, and what a profile binding
+ *  records. `name` is the file in `assemblies/`. */
+export function referenceAssemblyCompositionHash(name: string): `0x${string}` {
+    return assemblyCompositionHash(referenceAssemblyBuilt(name).assembly);
 }
 
 /** Identity of a reference whose checked-in copy carries the ZERO_ADDRESS

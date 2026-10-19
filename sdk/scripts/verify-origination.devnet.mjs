@@ -26,6 +26,7 @@ import {
     anchorAssembly, computeDeadline, hydrateAssembly, parseProjectionHints, readChainTimestamp, agreementClauses,
 } from "@figaro-protocol/sdk";
 import { parseClauseSpec } from "@figaro-protocol/sdk/clauses";
+import { bindAssemblyAsSeller, designReader, memberProfileReader } from "./devnet-seller.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const env = Object.fromEntries(
@@ -34,6 +35,7 @@ const env = Object.fromEntries(
 );
 const RPC = process.env.FIGARO_DEVNET_RPC_URL || "http://127.0.0.1:8545";
 const GATEWAY = "http://127.0.0.1:8080/ipfs/";
+const IPFS_API = env.NEXT_PUBLIC_IPFS_API_URL || "http://127.0.0.1:5001";
 const addresses = {
     core: env.NEXT_PUBLIC_FIGARO_CORE, clauseRegistry: env.NEXT_PUBLIC_CLAUSE_REGISTRY,
     membersRegistry: env.NEXT_PUBLIC_MEMBERS_REGISTRY, assemblyRegistry: env.NEXT_PUBLIC_ASSEMBLY_REGISTRY,
@@ -107,12 +109,27 @@ const commerceClauseId = Object.keys(agreementClauses(assembly, assembly.assembl
     .find((cid) => (specs.get(cid)?.fields ?? []).some((f) => f.name === "lineItems")) ?? null;
 check("located the commerce clause by its declared field", !!commerceClauseId);
 
+// ── The seller binds the assembly in its own member profile ──────────────────
+// A seller accepts only orders under an assembly it has bound; the readers
+// give its gate the seller's own profile and the design an order names, both
+// read at acceptance time.
+const readProfile = memberProfileReader(ctx, tryHydrate);
+const readDesign = designReader(ctx, hydrate);
+await bindAssemblyAsSeller({
+    pub, wallet: sellerW, membersRegistry: addresses.membersRegistry, compositionHash: chosen.compositionHash,
+    ipfsApiUrl: IPFS_API, readProfile, name: "Origination proof seller",
+});
+check("the seller's own profile binds the assembly", (await readProfile(SELLER.address))?.assemblyBindings
+    ?.some((b) => b.compositionHash.toLowerCase() === chosen.compositionHash.toLowerCase()) === true);
+
 // ── Seller LOOP: register the offer handler on the channel ────────────────────
 const channel = new InProcessChannel();
 // Refuse-all floor: the proof script IS the operator — explicit accept + policy.
 channel.register(SELLER.address, makeSellerOfferHandler(sellerW, pub, addresses, {
     accept: () => true, policy: { requireRootShape: true, currencyAllowlist: [TOKEN], maxValue: 10_000n },
     specs, // the merkle-leaf seam on the counter-sign side
+    readDesign, // the design the offer's provenance leaf names
+    readProfile, // the seller's own profile: the offer's assembly must be bound
 }));
 
 // ── Buyer LOOP: originate against the discovered assembly + seller ────────────

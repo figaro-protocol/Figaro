@@ -52,6 +52,8 @@ import {
     seedRegisteredMember,
     memberProfileBindings,
     waitForConnected,
+    anchoredCompositionHash,
+    isBindingOf,
 } from './devnet-helpers';
 import { ANVIL_ACCOUNTS, ANVIL_KEYS } from '../anvilAccounts';
 import { CORE_ABI } from '@/lib/kernel/contracts';
@@ -101,21 +103,22 @@ test.describe('DISPATCH RACE — countersign-first market formation, zero contra
 
         // ── ENSURE the delivery assembly (shared author-if-absent). ──
         const deliverySlug = await ensureDeliveryAssembly(page);
+        const deliveryHash = await anchoredCompositionHash(deliverySlug);
 
         // ── BIND (idempotent): Aurora pins the assembly, designating NOBODY —
         //    the absence IS what makes the courier node race-able. ──
-        if (!(await memberProfileBindings(MERCHANT)).some((b) => b.assemblySlug === deliverySlug)) {
+        if (!(await memberProfileBindings(MERCHANT)).some((b) => isBindingOf(b, deliveryHash))) {
             await gotoAsWallet(page, MERCHANT, '/members/edit/assemblies?e2e=devnet');
             const row = page.getByTestId(`seller-assembly-row-${deliverySlug}`);
             await row.waitFor({ state: 'visible', timeout: 30000 });
             await row.locator('input[type="checkbox"]').first().check();
             await page.getByRole('button', { name: 'Save changes' }).click();
             await expect.poll(async () =>
-                (await memberProfileBindings(MERCHANT)).some((b) => b.assemblySlug === deliverySlug), {
+                (await memberProfileBindings(MERCHANT)).some((b) => isBindingOf(b, deliveryHash)), {
                 timeout: 60000, message: "the merchant's re-pinned profile carries the (undesignated) binding",
             }).toBe(true);
         }
-        const binding = (await memberProfileBindings(MERCHANT)).find((b) => b.assemblySlug === deliverySlug);
+        const binding = (await memberProfileBindings(MERCHANT)).find((b) => isBindingOf(b, deliveryHash));
         expect(
             (binding?.counterpartyBindings ?? []).some((cb) => cb.clauseKey.toLowerCase() === deliveryClauseKeys().courier),
             'the merchant binding designates no courier — the node is genuinely unbound',
@@ -149,7 +152,7 @@ test.describe('DISPATCH RACE — countersign-first market formation, zero contra
                     assemblyBindings: [{
                         bindingId: `race-binding-${address.slice(2, 8).toLowerCase()}`,
                         subjectAddress: address,
-                        assemblySlug: deliverySlug,
+                        compositionHash: deliveryHash,
                         counterpartyBindings: [],
                     }],
                 },

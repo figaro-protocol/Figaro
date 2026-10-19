@@ -14,7 +14,9 @@
  *   - buyer-assigned  — the buyer enters any seller's address.
  *
  * Either way: the address resolves the seller's catalog, and the buyer
- * selects an item from its published price list.
+ * selects an item from its published price list — only from a seller whose
+ * profile binds the order's assembly (`compositionHash`): every seller in a
+ * process must have bound it, so a seller that has not is never offered.
  *
  * Catalogs come from `useRegisteredCatalogs` — the discovered member
  * set. Any wallet that publishes a catalog is a registered member, so an
@@ -29,6 +31,8 @@ import { isAddress } from "viem";
 import { useRegisteredCatalogs } from "@/lib/member/useRegisteredCatalogs";
 import type { CatalogItemMetadata } from "@/lib/member/memberCatalogMetadata";
 import { hexEqual } from "@/lib/shared/evm";
+import { bindsAssembly } from "@/lib/member/memberListing";
+import { deriveAssemblySlug } from "@/lib/shared/assembly";
 
 export interface SellerSelection {
     seller: `0x${string}`;
@@ -41,13 +45,16 @@ export interface SellerSelection {
 interface Props {
     /** Token symbol for price display. */
     tokenSymbol: string;
+    /** The composition hash of the assembly the order instantiates — the
+     *  picked seller's profile must bind it. */
+    compositionHash: `0x${string}`;
     /** Reports the completed selection, or `null` while incomplete. */
     onSelect: (selection: SellerSelection | null) => void;
 }
 
 const FIELD = "w-full rounded border border-default bg-surface px-3 py-2 text-sm text-ink-primary focus:outline-none focus:ring-2 focus:ring-focus focus:border-transparent";
 
-export function SellerCatalogPicker({ tokenSymbol, onSelect }: Props) {
+export function SellerCatalogPicker({ tokenSymbol, compositionHash, onSelect }: Props) {
     const [selectedSellerAddress, setSelectedSellerAddress] = useState("");
     const [selectedItemId, setSelectedItemId] = useState("");
 
@@ -62,9 +69,10 @@ export function SellerCatalogPicker({ tokenSymbol, onSelect }: Props) {
     // free-form seller label, never a closed tag the picker may branch on (the
     // coordination context comes from the order's coordination clause, not from
     // an item's category string).
+    const sellerHasNotBound = !!memberCatalog && !bindsAssembly(memberCatalog, compositionHash);
     const catalogItems = useMemo(
-        () => memberCatalog?.items ?? [],
-        [memberCatalog],
+        () => (memberCatalog && !sellerHasNotBound ? memberCatalog.items : []),
+        [memberCatalog, sellerHasNotBound],
     );
     const selectedItem = catalogItems.find((i) => i.id === selectedItemId);
     // A list price is quoted in the seller's own default token, never in the
@@ -109,7 +117,13 @@ export function SellerCatalogPicker({ tokenSymbol, onSelect }: Props) {
             {validSeller && isLoading && catalogItems.length === 0 && (
                 <p className="text-xs text-ink-muted">Loading the seller&apos;s catalog…</p>
             )}
-            {validSeller && !isLoading && catalogItems.length === 0 && (
+            {sellerHasNotBound && (
+                <p className="text-xs text-ink-muted" data-testid="seller-not-bound">
+                    This seller has not bound this assembly ({deriveAssemblySlug(compositionHash)}), so it would
+                    refuse the order. Pick a seller that has.
+                </p>
+            )}
+            {validSeller && !isLoading && !sellerHasNotBound && catalogItems.length === 0 && (
                 <p className="text-xs text-ink-muted" data-testid="seller-no-items">
                     This seller publishes no catalog items.
                 </p>

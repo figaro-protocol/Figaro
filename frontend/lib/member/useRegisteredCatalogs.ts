@@ -64,12 +64,12 @@ export function useRegisteredCatalogs(
             setIsLoading(true);
             return;
         }
-        const publishedSlugs = new Set(publishedAssemblies.map((a) => a.slug));
+        const publishedHashes = new Set(publishedAssemblies.map((a) => a.compositionHash.toLowerCase()));
 
         let canceled = false;
         setIsLoading(true);
 
-        service.listCatalogs(client, chainId, publishedSlugs)
+        service.listCatalogs(client, chainId, publishedHashes)
             .then((result) => {
                 if (canceled) return;
                 setDiscoveryResult({ ...result, isLoading: false });

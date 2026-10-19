@@ -30,6 +30,7 @@ import type { CommitmentPayload, CoordinationChannel, OfferHandler } from "./coo
 import { agreementClauses, assemblyCompositionHash, assemblyParentOrderHashes } from "../assembly.js";
 import type { Assembly, HydratedAssembly, AssemblyAgreement } from "../assembly.js";
 import { reconstructOrdersFromAssembly, agreementFromClauses, mergeOverrides, fillWalkProvenance } from "../reconstructOrders.js";
+import { checkSellerBindsAssembly, type MemberProfileReader } from "../memberProfile.js";
 
 // ── Assembly (the pinned document, hydrated off-SDK) ─────────────────
 // The shapes' single home is ../assembly.js; re-exported here so the /agent
@@ -189,20 +190,27 @@ export interface OfferPolicy {
  * `SpecSource` gets no leaf/struct check here (structural + policy checks
  * still run).
  *
+ * ALWAYS checks that the seller has bound the assembly the offer instantiates
+ * (`checkSellerBindsAssembly`): the agreement's provenance leaf names it, and
+ * `readProfile` reads the seller's OWN profile (MembersRegistry → metadataURI
+ * → IPFS) at acceptance time. An offer with no provenance leaf, no reader, an
+ * unreadable profile, or an assembly the profile does not bind is refused.
+ *
  * With a `policy`, ALSO checks the economic fields the seller bonds against:
  * root-shape, the currency allowlist, and the magnitude cap. WITHOUT a `policy`,
- * only the structural (+ merkle-leaf, when `specs` is given) checks run — the
- * seller-facing seam (`counterSignOffer`) treats an absent policy as a DECLINE,
- * so a bare integration never vouches for economic fields it has not been told
- * to bound.
+ * only the structural, bound-assembly (+ merkle-leaf, when `specs` is given)
+ * checks run — the seller-facing seam (`counterSignOffer`) treats an absent
+ * policy as a DECLINE, so a bare integration never vouches for economic fields
+ * it has not been told to bound.
  */
-export function validateOffer(
+export async function validateOffer(
     offer: CommitmentPayload,
     expectedSeller: Address,
     policy?: OfferPolicy,
     specs?: SpecSource,
     design: HydratedAssembly | null = null,
-): OfferCheck {
+    readProfile?: MemberProfileReader,
+): Promise<OfferCheck> {
     if (!offer.buyerSig) return { ok: false, reason: "offer is missing the buyer signature" };
     const c = offer.commitment;
     if (c.seller.toLowerCase() !== expectedSeller.toLowerCase()) return { ok: false, reason: "offer names a different seller" };
@@ -213,6 +221,8 @@ export function validateOffer(
         || offer.agreement.seller.toLowerCase() !== c.seller.toLowerCase()) {
         return { ok: false, reason: "agreement parties do not match the commitment" };
     }
+    const bound = await checkSellerBindsAssembly(offer.agreement, c.seller, readProfile);
+    if (!bound.ok) return bound;
     if (specs) {
         try {
             assertAgreementSignable(offer.agreement, c.agreementHash, specs, c, design, "This offer");
@@ -232,7 +242,8 @@ export function validateOffer(
  *  rejects rather than waving the offer through. Exported for the dispatch
  *  race's draft validator, which applies the same floor to an UNSIGNED draft
  *  (`validateOffer` itself requires a buyer signature, which a draft lacks by
- *  definition). */
+ *  definition); the counter-sign seams apply it on its own once the full gate
+ *  has passed. */
 export function checkOfferPolicy(c: Commitment, policy: OfferPolicy): OfferCheck {
     if (policy.requireRootShape
         && !(c.processId.toLowerCase() === ZERO_PROCESS_ID && c.expectedCumulativeValue === c.payment)) {
@@ -255,9 +266,10 @@ export function checkOfferPolicy(c: Commitment, policy: OfferPolicy): OfferCheck
 
 /**
  * Seller validates an inbound offer and counter-signs, or declines. `wallet` is
- * the seller. A malformed offer (fails `validateOffer`, or a buyer signature
- * that does not recover to the named buyer) THROWS — the seller must never
- * counter-sign a tampered or bogus commitment.
+ * the seller. An offer that fails `validateOffer` (tampered, malformed, under
+ * an assembly the seller's profile — read through `readProfile` — does not
+ * bind, or with no provenance leaf), or whose buyer signature does not recover
+ * to the named buyer, THROWS — the seller never counter-signs it.
  *
  * TWO FLOORS, both operator-supplied, both opt-IN (autonomy is never the
  * default), both DECLINE (`null`) rather than throw — a throw is reserved for a
@@ -285,14 +297,16 @@ export async function counterSignOffer(
     policy?: OfferPolicy,
     specs?: SpecSource,
     design: HydratedAssembly | null = null,
+    readProfile?: MemberProfileReader,
 ): Promise<CommitmentPayload | null> {
     const account = wallet.account;
     if (!account) throw new Error("counterSignOffer: wallet has no account");
     const seller = account.address;
 
-    // Anti-tamper gate: a malformed/tampered offer THROWS (integrity attack).
-    const check = validateOffer(offer, seller, undefined, specs, design);
-    if (!check.ok) throw new Error(`counterSignOffer: refusing malformed offer — ${check.reason}`);
+    // The gate: a malformed or tampered offer, or one under an assembly the
+    // seller has not bound, THROWS.
+    const check = await validateOffer(offer, seller, undefined, specs, design, readProfile);
+    if (!check.ok) throw new Error(`counterSignOffer: refusing the offer — ${check.reason}`);
 
     const domain = buildDomain(ctx.chainId, ctx.core);
     const buyerSigValid = await verifyTypedData({
@@ -304,7 +318,7 @@ export async function counterSignOffer(
 
     // Economic floor: no policy, or economic fields outside it, DECLINES.
     if (!policy) return null;
-    const economic = validateOffer(offer, seller, policy);
+    const economic = checkOfferPolicy(offer.commitment, policy);
     if (!economic.ok) return null;
 
     // Refuse-all floor: no accept, or an accept that says no, declines.
@@ -433,6 +447,11 @@ export interface SellerOfferHandlerOpts {
      *  the gate checks the designer's values against it, and an offer whose
      *  design is not read is refused. */
     readDesign?: (provenance: AgreementProvenance) => Promise<HydratedAssembly | null>;
+    /** Reads the seller's OWN member profile at acceptance time
+     *  (MembersRegistry → metadataURI → IPFS, parsed): the gate accepts an
+     *  offer only under an assembly that profile binds. OMIT it and the
+     *  handler refuses every offer. */
+    readProfile?: MemberProfileReader;
     /** Approve the seller's 2× cumulative-value bond before returning the signed
      *  offer, so the allowance is on chain before the buyer commits (default true). */
     approveBond?: boolean;
@@ -457,11 +476,15 @@ export async function readOfferDesign(
 
 /**
  * SELLER LOOP — build an `OfferHandler` to register on a channel. On an inbound
- * offer it validates (the anti-tamper gate), applies the accept policy, and — if
- * accepting — approves its bond then counter-signs. A declined offer returns
- * `null` (and does NOT approve the bond); a malformed offer throws. With no
- * `accept` business rule OR no economic `policy` the handler declines everything
- * (both floors) — so registering it bare never auto-signs a stranger's offer.
+ * offer it validates (the anti-tamper gate and the bound-assembly check),
+ * applies the accept policy, and — if accepting — approves its bond then
+ * counter-signs. A declined offer returns `null` (and does NOT approve the
+ * bond); a malformed offer, or one under an assembly the seller has not bound,
+ * throws. With no `accept` business rule OR no economic `policy` the handler
+ * declines everything (both floors); with no `readProfile` it refuses
+ * everything; given `specs`, it also needs `readDesign` or it refuses every
+ * offer naming a design — so registering it bare never auto-signs a
+ * stranger's offer.
  */
 export function makeSellerOfferHandler(
     wallet: WalletClient,
@@ -472,7 +495,7 @@ export function makeSellerOfferHandler(
     return async (offer: CommitmentPayload): Promise<CommitmentPayload | null> => {
         const chainId = await publicClient.getChainId();
         const design = await readOfferDesign(offer, opts.readDesign);
-        const signed = await counterSignOffer(wallet, offer, { chainId, core: addresses.core }, opts.accept, opts.policy, opts.specs, design);
+        const signed = await counterSignOffer(wallet, offer, { chainId, core: addresses.core }, opts.accept, opts.policy, opts.specs, design, opts.readProfile);
         if (!signed) return null;
         if (opts.approveBond !== false) {
             await approveBond(wallet, publicClient, addresses.core, offer.commitment.currency, 2n * offer.commitment.expectedCumulativeValue);

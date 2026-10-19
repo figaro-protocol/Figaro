@@ -57,6 +57,8 @@ import {
     RPC_URL,
     keyOf,
     primeRegisteredClauseSpecs,
+    anchoredCompositionHash,
+    isBindingOf,
 } from './devnet-helpers';
 import { ANVIL_KEYS } from '../anvilAccounts';
 import { CORE_ABI } from '@/lib/kernel/contracts';
@@ -104,7 +106,8 @@ async function findEquipmentHireAssembly(tokenAddress: Hex): Promise<string> {
 
 async function ensureEquipmentHireSeller(mockToken: Hex, permitToken: Hex): Promise<Hex> {
     const slug = await findEquipmentHireAssembly(mockToken);
-    const bound = (await memberProfileBindings(SELLER)).some((b) => b.assemblySlug === slug);
+    const assemblyHash = await anchoredCompositionHash(slug);
+    const bound = (await memberProfileBindings(SELLER)).some((b) => isBindingOf(b, assemblyHash));
     if (!bound) {
         const { uri: catalogURI } = await pinJSONToIPFS({
             subjectAddress: SELLER,
@@ -138,13 +141,13 @@ async function ensureEquipmentHireSeller(mockToken: Hex, permitToken: Hex): Prom
                 assemblyBindings: [{
                     bindingId: 'equipment-hire-reference',
                     subjectAddress: SELLER,
-                    assemblySlug: slug,
+                    compositionHash: assemblyHash,
                     counterpartyBindings: [],
                 }],
             },
         });
         await expect.poll(async () =>
-            (await memberProfileBindings(SELLER)).some((b) => b.assemblySlug === slug), {
+            (await memberProfileBindings(SELLER)).some((b) => isBindingOf(b, assemblyHash)), {
             timeout: 60000, message: "the equipment-hire seller's pinned profile carries the binding",
         }).toBe(true);
     }

@@ -28,7 +28,7 @@ import { CartLineList } from "@/components/runtime/CartLineList";
 import { useCommerce, useCheckout } from "@/lib/checkout";
 import { useCartStore } from "@/lib/checkout/cartStore";
 import { useRegisteredCatalogs } from "@/lib/member/useRegisteredCatalogs";
-import { planSubOrderSellers, readUtilityTokenPin, resolveSubOrderPricing, agreementClauses } from "@figaro-protocol/sdk";
+import { assemblyCompositionHash, planSubOrderSellers, readUtilityTokenPin, resolveSubOrderPricing, agreementClauses } from "@figaro-protocol/sdk";
 import { executeAssemblyCheckout, type AssemblyCheckoutParams } from "@/lib/checkout/assemblyCheckout";
 import {
     buyerAuthoredFields,
@@ -60,7 +60,7 @@ import { extractErrorMessage } from "@/lib/shared/errors";
 import { hexEqual, normalizeAddressParam, ZERO_ADDRESS } from "@/lib/shared/evm";
 import { truncateHex } from "@/lib/shared/formatHex";
 import { formatToken, parseToken } from "@/lib/shared/utils";
-import { useMemberBoundAssemblies } from "@/lib/member/useMemberBoundAssemblies";
+import { useMemberBoundAssemblies, withBoundCounterparties } from "@/lib/member/useMemberBoundAssemblies";
 import { displayNameForAddress } from "@/lib/member/memberListing";
 import { formatMass, formatVolume } from "@/lib/member/unitConversion";
 import { getClauseSpec, specSource } from "@/lib/shared/clauseSpecSource";
@@ -116,7 +116,15 @@ export function CheckoutView({ sellerAddress }: Props) {
     const { items } = useCartStore();
     const connectInjected = useConnectInjected();
 
-    const { assemblies: boundAssemblies } = useMemberBoundAssemblies(sellerAddressTyped);
+    const { assemblies: sellerBoundAssemblies } = useMemberBoundAssemblies(sellerAddressTyped);
+    // Every seller in a process must have bound the order's assembly: a
+    // counterparty the lead seller designates is used only when its own
+    // profile binds the assembly too — otherwise its sub-order falls to the
+    // buyer's checkout choice, never to a seller that would refuse it.
+    const boundAssemblies = useMemo(
+        () => sellerBoundAssemblies.map((a) => withBoundCounterparties(a, sellerCatalogs)),
+        [sellerBoundAssemblies, sellerCatalogs],
+    );
 
     // The buyer's options ARE the seller's bound assemblies — each is one
     // option, labeled by the assembly's own name and keyed by its slug.
@@ -1167,9 +1175,10 @@ export function CheckoutView({ sellerAddress }: Props) {
                             checkout-time buyer behavior, never stored. */}
                         {buyerChoosesCounterparty && (
                             <>
-                                {!raceOutcome && (
+                                {!raceOutcome && pickedAssembly && (
                                     <SellerCatalogPicker
                                         tokenSymbol={tokenSymbol}
+                                        compositionHash={assemblyCompositionHash(pickedAssembly.hydratedAssembly.assembly)}
                                         onSelect={setSellerSelection}
                                     />
                                 )}

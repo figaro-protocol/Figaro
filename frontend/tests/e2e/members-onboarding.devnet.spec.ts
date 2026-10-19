@@ -40,9 +40,8 @@ import { clampPublicGeohash } from "../../lib/shared/geohash";
 import { expect, type Page } from "@playwright/test";
 import { test, gotoAsWallet } from "./devnet-multi-test";
 import { createPublicClient, defineChain, http, type Hex } from "viem";
-import { assertPinnedInIpfs, discoverAnchoredAssemblies, discoverMembers, discoverSeedAssemblies, readLocalDeploymentConfig, type DiscoveredAssembly } from "./devnet-helpers";
+import { assertPinnedInIpfs, discoverAnchoredAssemblies, discoverMembers, discoverSeedAssemblies, isBindingOf, readLocalDeploymentConfig, type DiscoveredAssembly } from "./devnet-helpers";
 import { ASSEMBLY_REGISTRY_ABI, MEMBERS_REGISTRY_ABI } from '@figaro-protocol/sdk';
-import { deriveAssemblySlug } from '@/lib/shared/assembly';
 // The one place the seller-page route is written — the spec follows the same
 // route the site links, never a second copy of the string.
 import { sellerPageHref } from '@/lib/member/memberListing';
@@ -102,7 +101,7 @@ async function onboardViaWizard(
     page: import("@playwright/test").Page,
     assembly: DiscoveredAssembly,
 ) {
-    const assemblySlug = assembly.slug;
+    const slug = assembly.slug;
     await gotoAsWallet(page, SELLER.address, "/members/manage");
     await waitForMembersReady(page);
     await page.goto("/members/identity", { waitUntil: "domcontentloaded" });
@@ -158,7 +157,7 @@ async function onboardViaWizard(
     ).toBeVisible();
     await expect(page).toHaveURL(/\/members\/assemblies/);
     // Then bind the single-order seed assembly, by slug from shape discovery.
-    const assemblyRow = page.getByTestId(`seller-assembly-row-${assemblySlug}`);
+    const assemblyRow = page.getByTestId(`seller-assembly-row-${slug}`);
     await assemblyRow.waitFor({ state: 'visible', timeout: 30_000 });
 
     // The row must read as its designer WROTE it — the name and the summary
@@ -170,16 +169,16 @@ async function onboardViaWizard(
     }
     if (assembly.summary) {
         await expect(
-            page.getByTestId(`seller-assembly-summary-${assemblySlug}`),
+            page.getByTestId(`seller-assembly-summary-${slug}`),
         ).toHaveText(assembly.summary);
     }
-    await expect(assemblyRow).toContainText(assemblySlug);
+    await expect(assemblyRow).toContainText(slug);
 
     await assemblyRow.locator('input[type="checkbox"]').first().check();
     // SELLER-side data: offer the first row derived from the binding — BOTH
     // market sides declare through the same editor, each on its own step.
     const sellerOfferBox = page
-        .locator(`[data-testid^="disclosure-${assemblySlug}-"][data-testid$="-seller-offer"]`)
+        .locator(`[data-testid^="disclosure-${slug}-"][data-testid$="-seller-offer"]`)
         .first();
     await sellerOfferBox.waitFor({ state: 'visible', timeout: 30_000 });
     if (!(await sellerOfferBox.isChecked())) {
@@ -188,10 +187,11 @@ async function onboardViaWizard(
     // The binding survives a reload: it is the seller's declaration, held in
     // this browser under this wallet until they publish it.
     await draftCarries(page, '"offered":true');
-    await draftCarries(page, assemblySlug);
+    // The binding the draft holds names the assembly by its full hash.
+    await draftCarries(page, assembly.compositionHash);
     await page.reload({ waitUntil: "domcontentloaded" });
     await expect(
-        page.getByTestId(`seller-assembly-row-${assemblySlug}`).locator('input[type="checkbox"]').first(),
+        page.getByTestId(`seller-assembly-row-${slug}`).locator('input[type="checkbox"]').first(),
     ).toBeChecked({ timeout: 30_000 });
 
     await page.getByRole("button", { name: /^Next/ }).click();
@@ -200,7 +200,7 @@ async function onboardViaWizard(
     // Buy through: subscribe an assembly the wallet buys through, then
     // offer some of its data for sale. Subscribing is the buying posture's
     // verb (a profile declaration), distinct from the BINDING on the step before.
-    const buyerRow = page.getByTestId(`buyer-assembly-row-${assemblySlug}`);
+    const buyerRow = page.getByTestId(`buyer-assembly-row-${slug}`);
     await buyerRow.waitFor({ state: 'visible', timeout: 30_000 });
     const buyerCheckbox = buyerRow.locator('input[type="checkbox"]').first();
     if (!(await buyerCheckbox.isChecked())) {
@@ -209,7 +209,7 @@ async function onboardViaWizard(
     // The disclosure editor renders one buyer-posture row per clause once the
     // subscribed assembly's assembly loads; offer the first row.
     const offerBox = page
-        .locator(`[data-testid^="disclosure-${assemblySlug}-"][data-testid$="-buyer-offer"]`)
+        .locator(`[data-testid^="disclosure-${slug}-"][data-testid$="-buyer-offer"]`)
         .first();
     await offerBox.waitFor({ state: 'visible', timeout: 30_000 });
     if (!(await offerBox.isChecked())) {
@@ -257,7 +257,7 @@ async function onboardViaWizard(
     // And the filter BITES: a catalog-authored clause composed by some OTHER
     // anchored assembly, but not by this one, has no clause here.
     const unboundClause = (await discoverAnchoredAssemblies())
-        .filter((a) => a.slug !== assemblySlug)
+        .filter((a) => a.slug !== slug)
         .flatMap((a) => a.agreements.flatMap((ag) => Object.keys(ag.clauses ?? {})))
         .find((clauseKey) => !composed.has(clauseKey));
     if (unboundClause) {
@@ -324,7 +324,6 @@ test.describe("member registration wizard (devnet)", () => {
         // one binding.
         const singleOrderAssembly = (await discoverSeedAssemblies()).blank;
         expect(singleOrderAssembly, 'a single-order assembly is anchored (run populate-test-data)').toBeTruthy();
-        const singleOrderSlug = singleOrderAssembly?.slug;
 
         // Mainnet semantics: a member registers ONCE and persists. Walk the
         // wizard when this wallet isn't registered yet — or when its CURRENT
@@ -350,7 +349,7 @@ test.describe("member registration wizard (devnet)", () => {
         if (uriBefore) {
             const gateway = process.env.NEXT_PUBLIC_IPFS_GATEWAY_URL ?? "http://127.0.0.1:8080";
             const doc = await (await fetch(`${gateway}/ipfs/${uriBefore.slice("ipfs://".length)}`)).json();
-            const bindings = (doc.assemblyBindings ?? []) as Array<{ assemblySlug: string }>;
+            const bindings = (doc.assemblyBindings ?? []) as Array<{ compositionHash?: string }>;
             // Premise: exactly the single-order binding AND both devnet tokens
             // accepted (the permit token is the swap-funded leg's input set —
             // an older single-token profile gets repaired in update mode).
@@ -363,7 +362,7 @@ test.describe("member registration wizard (devnet)", () => {
             const policyEntries = (doc.disclosurePolicy ?? []) as Array<{ posture: string; offered: boolean }>;
             const buyerOffered = policyEntries.some((e) => e.posture === "buyer" && e.offered === true);
             const sellerOffered = policyEntries.some((e) => e.posture === "seller" && e.offered === true);
-            conformant = bindings.length === 1 && bindings[0].assemblySlug === singleOrderSlug
+            conformant = bindings.length === 1 && isBindingOf(bindings[0], singleOrderAssembly!.compositionHash)
                 && !!permitToken
                 && acceptedTokens.some((t) => t.address?.toLowerCase() === permitToken)
                 && buyerSubs.length >= 1 && buyerOffered && sellerOffered;
@@ -443,9 +442,9 @@ test.describe("member registration wizard (devnet)", () => {
             }),
             discoverMembers(),
         ]);
-        const anchoredSlugs = new Set(published.map((e) => deriveAssemblySlug(e.args.compositionHash as `0x${string}`)));
+        const anchoredHashes = new Set(published.map((e) => (e.args.compositionHash as string).toLowerCase()));
         const nonConformant = allSellers.filter(
-            (s) => !s.assemblyBindings.some((b) => anchoredSlugs.has(b.assemblySlug)),
+            (s) => !s.assemblyBindings.some((b) => anchoredHashes.has(b.compositionHash?.toLowerCase())),
         );
         for (const seller of nonConformant.slice(0, 5)) {
             await expect(

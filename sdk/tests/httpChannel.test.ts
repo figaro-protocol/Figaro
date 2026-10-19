@@ -9,7 +9,7 @@ import { serializeCommitmentPayload } from "../src/agent/coordination.js";
 import { COMMITMENT_TYPES, buildDomain } from "../src/commitments.js";
 import type { DIDDocument } from "../src/agent/did.js";
 import { keyOf } from "./specFixtures.js";
-import { hydrateAuthored } from "./hydrate.js";
+import { hydrateAuthored, profileBinding } from "./hydrate.js";
 
 // ── Fixtures (no chain — signing is local; the socket is real) ────────────────
 
@@ -43,6 +43,7 @@ async function buildOffer(): Promise<CommitmentPayload> {
 const sellerHandler: OfferHandler = (offer) => counterSignOffer(
     sellerW, offer, { chainId: CHAIN_ID, core: CORE }, () => true,
     { requireRootShape: true, currencyAllowlist: [CURRENCY], maxValue: 10_000n },
+    undefined, null, profileBinding(assembly),
 );
 
 /** Stand up a real node:http server running `responder`; returns its URL + a stop. */

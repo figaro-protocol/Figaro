@@ -12,6 +12,12 @@
  *   buyer:  signAndShare(preview) → sign → relay to the seller
  *   seller: acceptOrder(payload)  → sign → broadcast on-chain
  *
+ * Every seller accept path — `acceptOrder`, `counterSignAndReturn`,
+ * `quoteAndReturn` — first reads the seller's OWN profile (MembersRegistry →
+ * metadataURI → IPFS, at accept time) and refuses an order under an
+ * assembly that profile does not bind, or one naming no assembly
+ * (`checkSellerBindsAssembly`).
+ *
  * It owns the EIP-712 domain and the confirm gate — before every sign, and
  * before the standalone commit broadcast (`commitOrder`). It does NOT approve
  * — that is `useTokenApproval`'s job, wired beside the preview.
@@ -28,6 +34,7 @@ import {
     COMMITMENT_TYPES,
     buildDomain,
     calculateBonds,
+    checkSellerBindsAssembly,
     verifyCommitmentSignature,
     type Agreement,
     type Commitment,
@@ -56,6 +63,7 @@ import { commitSignedOrder } from "@/lib/kernel/orderCommitted";
 import { commitmentOrderHash } from "@/lib/kernel/signedCommitment";
 import { quoteFundingLeg, signFundingLeg } from "@/lib/composition/swapFunding";
 import { useSwapAndCommitActions } from "@/lib/composition/useSwapAndCommitActions";
+import { profileReaderForChain } from "@/lib/member/profileFetcher";
 
 /** The buyer's checkout-time choice to fund their bond by swap: which
  *  accepted token to fund from. Threaded through the sign step so EVERY
@@ -328,6 +336,15 @@ export function useOrderCommitmentFlow() {
             ))) {
                 throw new Error("The relayed order's counterparty signature is missing or invalid — refusing to counter-sign.");
             }
+            // A seller accepts only an order under an assembly its own
+            // profile binds — read now, from the registry, never from the
+            // payload.
+            if (role === "seller") {
+                const bound = await checkSellerBindsAssembly(
+                    incoming.agreement, incoming.commitment.seller as Hex, profileReaderForChain(publicClient, chainId),
+                );
+                if (!bound.ok) throw new Error(`Refusing this order — ${bound.reason}`);
+            }
 
             setStep("signing");
             // The seller's optional on-ramp is quoted before the sign so its
@@ -387,7 +404,8 @@ export function useOrderCommitmentFlow() {
      * which is exactly why countersigning first is safe: the countersignature
      * is the candidate's availability answer, binding only if the buyer
      * commits this struct before its deadline. The SDK's draft gate rejects a
-     * tampered draft — and a payload that already carries a buyer signature
+     * tampered draft, a draft under an assembly this wallet's own profile does
+     * not bind — and a payload that already carries a buyer signature
      * (that is an offer; it accepts through `acceptOrder`). Signing runs the
      * SAME off-chain validation + confirm gate as every other signature. The bond is
      * already approved (the page gated this) — being committed later pulls it.
@@ -398,7 +416,7 @@ export function useOrderCommitmentFlow() {
         if (!address) throw new Error("Connect a wallet first.");
         setError(null);
         try {
-            const check = validateDraft(incoming, address);
+            const check = await validateDraft(incoming, address, undefined, undefined, null, profileReaderForChain(publicClient, chainId));
             if (!check.ok) throw new Error(`Refusing this draft — ${check.reason}`);
             setStep("signing");
             const sellerSig = await signAs(incoming.commitment, incoming.agreement);
@@ -419,7 +437,7 @@ export function useOrderCommitmentFlow() {
             setStep("error");
             throw e;
         }
-    }, [address, signAs, chainId, walletClient, services]);
+    }, [address, signAs, chainId, walletClient, services, publicClient]);
 
     /**
      * CANDIDATE side (RFQ): an inbound QUOTE REQUEST → the person names their
@@ -438,7 +456,7 @@ export function useOrderCommitmentFlow() {
         if (!address) throw new Error("Connect a wallet first.");
         setError(null);
         try {
-            const check = validateDraft(incoming, address);
+            const check = await validateDraft(incoming, address, undefined, undefined, null, profileReaderForChain(publicClient, chainId));
             if (!check.ok) throw new Error(`Refusing this draft — ${check.reason}`);
             const terms = incoming.quoteRequest;
             if (!terms || terms.pricedFields.length === 0) {
@@ -472,7 +490,7 @@ export function useOrderCommitmentFlow() {
             setStep("error");
             throw e;
         }
-    }, [address, signAs, chainId, walletClient, services]);
+    }, [address, signAs, chainId, walletClient, services, publicClient]);
 
     /**
      * Broadcast an ALREADY fully-signed payload — no signature added. For the

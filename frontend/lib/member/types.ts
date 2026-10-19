@@ -1,6 +1,6 @@
 import type { CatalogItemMetadata, UnitSystem } from "@/lib/member/memberCatalogMetadata";
 import type { AcceptedTokenMetadata } from "@/lib/member/acceptedTokenMetadata";
-import type { DisclosurePolicyEntry, MemberAgentServices } from "@/lib/member/memberProfileMetadata";
+import type { AssemblyBindingRecord, DisclosurePolicyEntry, MemberAgentServices } from "@/lib/member/memberProfileMetadata";
 
 /**
  * Buyer-side projection of a member's profile + catalog.
@@ -8,7 +8,7 @@ import type { DisclosurePolicyEntry, MemberAgentServices } from "@/lib/member/me
  * Sources:
  *  - profile (`MemberProfileMetadata`): name, slug, description,
  *    specialty, location (geohash + addressText), branding, accepted
- *    tokens, default token, agent services.
+ *    tokens, default token, agent services, assembly bindings.
  *  - catalog (`MemberCatalogMetadata`): items.
  *
  * Carries no closed-taxonomy fields. A field like `cuisine`, `rating`,
@@ -42,6 +42,10 @@ export interface MemberCatalog {
     profileClauseValues?: Readonly<Record<string, Record<string, unknown>>>;
     /** ERC-8004-compatible service endpoints (optional, for agent-driven members). */
     agentServices?: MemberAgentServices;
+    /** The assemblies the member has bound as a seller, each by its full
+     *  composition hash — the set a buyer's checkout reads to offer only
+     *  sellers that bound the order's assembly (`bindsAssembly`). */
+    assemblyBindings?: AssemblyBindingRecord[];
     /** The member's data-disclosure policy (voluntary data market) —
      *  which co-produced data is offered, to whom, when.
      *  Absent = the paper-contract default: each party holds its own

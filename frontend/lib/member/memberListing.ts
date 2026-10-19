@@ -16,8 +16,9 @@ import { hexEqual } from "@/lib/shared/evm";
  * the primary.
  */
 interface ListingBinding {
-    /** Slug of the assembly this binding targets (e.g. "local-commerce-seller-assigned"). */
-    assemblySlug: string;
+    /** `AssemblyRegistry` composition hash of the assembly this binding
+     *  targets; a slug shown for it is derived (`deriveAssemblySlug`). */
+    compositionHash: `0x${string}`;
 }
 
 export interface Listing {
@@ -62,7 +63,7 @@ export function profileToListing(
     address: string,
 ): Listing {
     const bindings: ListingBinding[] = (profile.assemblyBindings ?? []).map((b) => ({
-        assemblySlug: b.assemblySlug,
+        compositionHash: b.compositionHash,
     }));
 
     return {
@@ -80,6 +81,17 @@ export function profileToListing(
 
 
 import { truncateHex } from "@/lib/shared/formatHex";
+
+/** Does this member's discovered profile bind the assembly with this
+ *  composition hash? The buyer-side reading of the rule every seller's accept
+ *  gate enforces (`checkSellerBindsAssembly`): a seller is offered for an
+ *  order only under an assembly it has bound. */
+export function bindsAssembly(
+    member: { assemblyBindings?: readonly { compositionHash: string }[] },
+    compositionHash: string,
+): boolean {
+    return (member.assemblyBindings ?? []).some((b) => hexEqual(b.compositionHash, compositionHash));
+}
 
 /** Find a member listing by wallet address. Case-insensitive. Accepts any
  *  {address}-keyed collection (Listing[], MemberCatalog[], …). */

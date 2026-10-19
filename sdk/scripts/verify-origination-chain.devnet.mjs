@@ -22,6 +22,7 @@ import {
     anchorAssembly, computeDeadline, hydrateAssembly, parseProjectionHints, readChainTimestamp, agreementClauses,
 } from "@figaro-protocol/sdk";
 import { parseClauseSpec } from "@figaro-protocol/sdk/clauses";
+import { bindAssemblyAsSeller, designReader, memberProfileReader } from "./devnet-seller.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const env = Object.fromEntries(
@@ -30,6 +31,7 @@ const env = Object.fromEntries(
 );
 const RPC = process.env.FIGARO_DEVNET_RPC_URL || "http://127.0.0.1:8545";
 const GATEWAY = "http://127.0.0.1:8080/ipfs/";
+const IPFS_API = env.NEXT_PUBLIC_IPFS_API_URL || "http://127.0.0.1:5001";
 const addresses = {
     core: env.NEXT_PUBLIC_FIGARO_CORE, clauseRegistry: env.NEXT_PUBLIC_CLAUSE_REGISTRY,
     membersRegistry: env.NEXT_PUBLIC_MEMBERS_REGISTRY, assemblyRegistry: env.NEXT_PUBLIC_ASSEMBLY_REGISTRY,
@@ -109,6 +111,21 @@ check("located the commerce clause by its declared field", !!commerceClauseId);
 // approval must stack on the first, not overwrite it.
 const NODE_SELLERS = [SELLERS[0], SELLERS[1], SELLERS[1]];
 
+// ── Every seller in the process binds the assembly in its own profile ────────
+// A seller accepts only orders under an assembly it has bound — the root
+// seller and the sub-order seller alike. The readers give each gate the
+// seller's own profile and the design an order names, read at acceptance.
+const readProfile = memberProfileReader(ctx, tryHydrate);
+const readDesign = designReader(ctx, hydrate);
+for (const [i, s] of [SELLERS[0], SELLERS[1]].entries()) {
+    await bindAssemblyAsSeller({
+        pub, wallet: sellerW[i], membersRegistry: addresses.membersRegistry, compositionHash: chosen.compositionHash,
+        ipfsApiUrl: IPFS_API, readProfile, name: `Origination proof seller ${i}`,
+    });
+    check(`seller ${i}'s own profile binds the assembly`, (await readProfile(s.address))?.assemblyBindings
+        ?.some((b) => b.compositionHash.toLowerCase() === chosen.compositionHash.toLowerCase()) === true);
+}
+
 // ── One seller LOOP per DISTINCT seller, registered on the channel ────────────
 const channel = new InProcessChannel();
 // The refuse-all floor (maintainer ruling): a bare handler declines
@@ -117,10 +134,10 @@ const channel = new InProcessChannel();
 // requires root shape; the sub-order seller serves chain nodes, so it omits it.
 const OPERATOR = { accept: () => true };
 channel.register(SELLERS[0].address, makeSellerOfferHandler(sellerW[0], pub, addresses, {
-    ...OPERATOR, policy: { requireRootShape: true, currencyAllowlist: [TOKEN], maxValue: 10_000n }, specs,
+    ...OPERATOR, policy: { requireRootShape: true, currencyAllowlist: [TOKEN], maxValue: 10_000n }, specs, readDesign, readProfile,
 }));
 channel.register(SELLERS[1].address, makeSellerOfferHandler(sellerW[1], pub, addresses, {
-    ...OPERATOR, policy: { currencyAllowlist: [TOKEN], maxValue: 10_000n }, specs,
+    ...OPERATOR, policy: { currencyAllowlist: [TOKEN], maxValue: 10_000n }, specs, readDesign, readProfile,
 }));
 
 // ── Buyer LOOP: originate the whole chain ─────────────────────────────────────

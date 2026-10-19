@@ -13,7 +13,8 @@ const fetchCappedContentMock = vi.hoisted(() => vi.fn());
 // Stable references: the hook's effect keys on the registry reads' identity.
 const reads = vi.hoisted(() => ({
     published: {
-        data: [{ slug: "asm-anchored", contentURI: "ipfs://QmAssembly", compositionHash: "0x01" }],
+        // The slug is derived from the composition hash (`deriveAssemblySlug`).
+        data: [{ slug: "asm-0101010101010101", contentURI: "ipfs://QmAssembly", compositionHash: "0x0101010101010101010101010101010101010101010101010101010101010101" }],
         isLoading: false,
     },
     profile: { data: [""] as [string], isLoading: false },
@@ -39,7 +40,7 @@ import { useMemberBoundAssemblies } from "@/lib/member/useMemberBoundAssemblies"
 
 const PROFILE = {
     name: "Seller",
-    assemblyBindings: [{ bindingId: "b1", subjectAddress: SELLER, assemblySlug: "asm-anchored", counterpartyBindings: [] }],
+    assemblyBindings: [{ bindingId: "b1", subjectAddress: SELLER, compositionHash: `0x${"01".repeat(32)}`, counterpartyBindings: [] }],
 };
 
 describe("useMemberBoundAssemblies", () => {
@@ -62,6 +63,6 @@ describe("useMemberBoundAssemblies", () => {
         await waitFor(() => expect(result.current.hasOnChainBinding).toBe(true));
         expect(fetchCappedContentMock).toHaveBeenCalledTimes(1);
         expect(String(fetchCappedContentMock.mock.calls[0][0])).toMatch(/\/ipfs\/QmYwAPJzv5CZsnA625s3Xf2nemtYgPpHdWEz79ojWnPbdG$/);
-        expect(result.current.assemblies.map((a) => a.slug)).toEqual(["asm-anchored"]);
+        expect(result.current.assemblies.map((a) => a.slug)).toEqual(["asm-0101010101010101"]);
     });
 });

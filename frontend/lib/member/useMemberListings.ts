@@ -44,7 +44,7 @@ function isRegistryConfigured(): boolean {
 async function fetchProfileAsListing(
     address: string,
     metadataURI: string,
-    publishedSlugs: Set<string>,
+    publishedHashes: Set<string>,
 ): Promise<Listing | null> {
     const profile = await fetchMemberProfile(metadataURI);
     if (!profile) return null;
@@ -54,7 +54,7 @@ async function fetchProfileAsListing(
     // assertion. Only anchored bindings survive; a member with none does
     // not surface on discover at all (no member
     // without a properly anchored assembly).
-    const anchored = listing.bindings.filter((b) => publishedSlugs.has(b.assemblySlug));
+    const anchored = listing.bindings.filter((b) => publishedHashes.has(b.compositionHash.toLowerCase()));
     if (anchored.length === 0) return null;
     return { ...listing, bindings: anchored };
 }
@@ -62,12 +62,12 @@ async function fetchProfileAsListing(
 async function listFromRegistry(
     client: PublicClient,
     chainId: number,
-    publishedSlugs: Set<string>,
+    publishedHashes: Set<string>,
 ): Promise<Listing[]> {
     const sellers = await getActiveMembers(client, chainId);
     if (sellers.length === 0) return [];
     const results = await Promise.all(
-        sellers.map((op) => fetchProfileAsListing(op.address, op.metadataURI, publishedSlugs)),
+        sellers.map((op) => fetchProfileAsListing(op.address, op.metadataURI, publishedHashes)),
     );
     return results.filter((l): l is Listing => l !== null);
 }
@@ -90,12 +90,12 @@ export function useMemberListings(): UseSellerListingsResult {
             setState((prev) => ({ ...prev, isLoading: true }));
             return;
         }
-        const publishedSlugs = new Set(publishedAssemblies.map((a) => a.slug));
+        const publishedHashes = new Set(publishedAssemblies.map((a) => a.compositionHash.toLowerCase()));
 
         let canceled = false;
         setState((prev) => ({ ...prev, isLoading: true }));
 
-        listFromRegistry(client, chainId, publishedSlugs)
+        listFromRegistry(client, chainId, publishedHashes)
             .then((fromRegistry) => {
                 if (canceled) return;
                 setState({

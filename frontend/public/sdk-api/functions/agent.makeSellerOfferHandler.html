@@ -17,11 +17,15 @@
 <div class="tsd-signature tsd-anchor-link" id="makesellerofferhandler"><span class="tsd-kind-call-signature">makeSellerOfferHandler</span><span class="tsd-signature-symbol">(</span><br/>    <span class="tsd-kind-parameter">wallet</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">{}</span><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">publicClient</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">{}</span><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">addresses</span><span class="tsd-signature-symbol">:</span> <a href="../interfaces/index.FigaroAddresses.html" class="tsd-signature-type tsd-kind-interface">FigaroAddresses</a><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">opts</span><span class="tsd-signature-symbol">?:</span> <a href="../interfaces/agent.SellerOfferHandlerOpts.html" class="tsd-signature-type tsd-kind-interface">SellerOfferHandlerOpts</a><span class="tsd-signature-symbol">,</span><br/><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <a href="../types/agent.OfferHandler.html" class="tsd-signature-type tsd-kind-type-alias">OfferHandler</a><a href="#makesellerofferhandler" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
 <div class="tsd-description">
 <div class="tsd-comment tsd-typography"><p>SELLER LOOP — build an <code>OfferHandler</code> to register on a channel. On an inbound
-offer it validates (the anti-tamper gate), applies the accept policy, and — if
-accepting — approves its bond then counter-signs. A declined offer returns
-<code>null</code> (and does NOT approve the bond); a malformed offer throws. With no
-<code>accept</code> business rule OR no economic <code>policy</code> the handler declines everything
-(both floors) — so registering it bare never auto-signs a stranger's offer.</p>
+offer it validates (the anti-tamper gate and the bound-assembly check),
+applies the accept policy, and — if accepting — approves its bond then
+counter-signs. A declined offer returns <code>null</code> (and does NOT approve the
+bond); a malformed offer, or one under an assembly the seller has not bound,
+throws. With no <code>accept</code> business rule OR no economic <code>policy</code> the handler
+declines everything (both floors); with no <code>readProfile</code> it refuses
+everything; given <code>specs</code>, it also needs <code>readDesign</code> or it refuses every
+offer naming a design — so registering it bare never auto-signs a
+stranger's offer.</p>
 </div>
 <div class="tsd-parameters">
 <h4 class="tsd-parameters-title">Parameters</h4>
@@ -32,7 +36,7 @@ accepting — approves its bond then counter-signs. A declined offer returns
 <li><span><span class="tsd-kind-parameter">opts</span>: <a href="../interfaces/agent.SellerOfferHandlerOpts.html" class="tsd-signature-type tsd-kind-interface">SellerOfferHandlerOpts</a><span class="tsd-signature-symbol"> = {}</span></span></li></ul></div>
 <h4 class="tsd-returns-title">Returns <a href="../types/agent.OfferHandler.html" class="tsd-signature-type tsd-kind-type-alias">OfferHandler</a></h4><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/agent/originate.ts#L466">agent/originate.ts:466</a></li></ul></aside></div></li></ul></section></div>
+<li>Defined in <a href="https://github.com/figaro-protocol/Figaro/blob/main/sdk/src/agent/originate.ts#L489">agent/originate.ts:489</a></li></ul></aside></div></li></ul></section></div>
 <div class="col-sidebar">
 <div class="page-menu">
 <div class="tsd-navigation settings">

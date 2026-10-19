@@ -12,6 +12,7 @@ import { TransactionReceipt } from "@/components/shared/TransactionReceipt";
 import { useMounted } from "@/hooks/useMounted";
 import { onboardingStepLabel, useOnboardingState } from "@/lib/member/onboardingState";
 import { sellerPageHref } from "@/lib/member/memberListing";
+import { deriveAssemblySlug } from "@/lib/shared/assembly";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import {
     useMemberProfile,
@@ -78,7 +79,7 @@ function buildDraft(state: ReturnType<typeof useOnboardingState>["state"], walle
         assemblyBindings: state.assemblies?.map((b) => ({
             ...b,
             subjectAddress: wallet,
-            bindingId: `binding:${wallet.toLowerCase()}:${b.assemblySlug}`,
+            bindingId: `binding:${wallet.toLowerCase()}:${b.compositionHash.toLowerCase()}`,
         })),
         // Absence is each optional list's no-declaration state — an
         // empty list pins NO field, never `[]`.
@@ -347,7 +348,7 @@ export function OnboardingReview() {
                 {bindings.length > 0 ? (
                     <ul className="space-y-1 text-sm text-ink-body">
                         {bindings.map((b) => (
-                            <li key={b.bindingId} className="font-mono text-xs">{b.assemblySlug}</li>
+                            <li key={b.bindingId} className="font-mono text-xs">{deriveAssemblySlug(b.compositionHash)}</li>
                         ))}
                     </ul>
                 ) : (
