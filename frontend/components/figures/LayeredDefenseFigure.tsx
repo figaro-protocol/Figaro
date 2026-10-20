@@ -31,7 +31,7 @@ export interface LayeredDefenseFigureProps extends BaseFigureProps {
 // smart contract", "the losing party's other assets") — the default's sole consumer.
 const FAQ_LAYERS: NonNullable<LayeredDefenseFigureProps["layers"]> = [
     { label: "1 · The chain", note: "Ethereum's consensus — the data nothing can rewrite" },
-    { label: "2 · The smart contract (FigaroCore)", note: "holds every bond; only the buyer's resolveProcess moves them" },
+    { label: "2 · The smart contract (FigaroCore)", note: "holds each bond on the direct path; only the buyer's resolveProcess moves them" },
     { label: "3 · The other sellers", note: "all-or-nothing resolution gives every co-seller a bond-backed reason to help remedy" },
     { label: "4 · Arbitration (e.g. Kleros)", note: "weighs the on-chain data from outside the trade" },
     { label: "5 · Ordinary courts", note: "always available; enforces against the losing party's other assets — the smart contract stays sealed" },

@@ -297,7 +297,7 @@ an encrypted per-order delivery, and the property the owner is actually selling:
 disclosed leaf verifies by merkle inclusion against the source process's ON-CHAIN
 `agreementHash`, so the buyer checks provenance against the chain instead of the owner's
 word. **The recipe is the SDK README, "Data products — sell, deliver, verify,
-subscribe"** — sell, compose, deliver, verify, subscribe, executable as written. Two
+stream"** — sell, compose, deliver, verify, stream, executable as written. Two
 things to keep straight when you report to the owner: the proof is provenance and
 integrity, never veracity (no chain testifies that the data is true about the world; what
 keeps it accurate is what a false claim costs its signer — a locked bond and a buyer who

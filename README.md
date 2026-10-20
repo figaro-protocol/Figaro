@@ -29,7 +29,7 @@ they published. `docs/VISION.md` says why; `docs/THEORY.md` derives it;
 
 - **Core** — `src/core/`: the four contracts every trade runs on.
   `FigaroCore.sol` (two entry points, three mappings, decentralized and
-  permissionless) holds every bond and resolves a process when its buyer
+  permissionless) holds each bond on the direct path and resolves a process when its buyer
   signs; `CommitmentTypes.sol` defines the commitment and its EIP-712 hashing;
   `AttestationCoordinator.sol` binds what a party attests to the agreement it
   signed; `FigaroBatchVerifier.sol` accepts a validity proof of many processes

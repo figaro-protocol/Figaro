@@ -343,11 +343,11 @@ arrived — every disclosed leaf proves by merkle inclusion against the source p
 ON-CHAIN `agreementHash`, named in the license's `sourceProcesses`, so provenance rests on
 a chain fact rather than the licensor's word. **Verify before you analyze**, always: an
 unverified document informs nothing, whoever handed it over. The recipe — sell, compose,
-deliver, verify, subscribe — is `sdk/README.md` § "Data products — sell, deliver, verify,
-subscribe", executable as written; do not re-derive it here. Two things that are yours to
+deliver, verify, stream — is `sdk/README.md` § "Data products — sell, deliver, verify,
+stream", executable as written; do not re-derive it here. Two things that are yours to
 get right: the purchase itself is a TRADE, so it goes through `figaro-operator`'s loop and
 the policy signer like any other, never through you; and `access: "stream"` is the
-subscription form the drone-in-a-corridor case actually needs — each period's delivery is a
+stream form the drone-in-a-corridor case actually needs — each period's delivery is a
 further bonded order under the same terms, which is what makes a live feed self-policing
 and lets you buy telemetry on the fly instead of a stale snapshot.
 

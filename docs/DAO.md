@@ -136,12 +136,14 @@ mandatory clauses for the community is one of those uses. Nothing is
 donated to the DAO but tokens, in any denomination: a clause registered by
 another wallet is that wallet's, and competing under one's own wallet is equally welcome.
 
-Every resolved process composes the mandatory clauses: no assembly publishes
-until each of its agreements has a pick in the mandatory article, and a pick's
-clauses merge into the agreement (a registered agreement bound as is must
-already carry them). Where the pick is the DAO's, their usage accrues to the
-DAO exactly the way any designer's clauses accrue: **the commons is rewarded,
-from the reserve, for the use of what every trade carries.** The
+An assembly published through the designer composes the mandatory clauses:
+the drawer publishes no assembly until each of its agreements has a pick in the
+mandatory article, and a pick's clauses merge into the agreement (a registered
+agreement bound as is must already carry them). The convention is the
+registration layer's; nothing on chain requires the clauses (`DESIGNER_REWARDS.md`
+§ "The mandatory clauses earn"). Where the pick is the DAO's, their usage accrues
+to the DAO exactly the way any designer's clauses accrue: **the commons is
+rewarded, from the reserve, for the use of what those trades carry.** The
 protocol takes nothing from a trade, and the DAO's registrations claim no
 privileged weight: they ride the same uniform meter as every other clause. A
 registered agreement that composes them earns under the agreement kind for its

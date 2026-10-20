@@ -1,7 +1,7 @@
 # Security Policy
 
 Every trade on Figaro runs on four contracts, the Core. One of them,
-`FigaroCore.sol`, holds every bond and resolves a process when its buyer
+`FigaroCore.sol`, holds each bond on the direct path and resolves a process when its buyer
 signs. A flaw in the on-chain surface can mean direct loss of locked bonds.
 Disclosure is taken seriously.
 

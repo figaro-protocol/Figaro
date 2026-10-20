@@ -22,7 +22,7 @@ export const metadata: Metadata = withOg({
 const SUBJECTS: { line: string; body: ReactNode; cta: string; href: string }[] = [
     {
         line: "Four smart contracts, decentralized and permissionless.",
-        body: "FigaroCore holds every bond and resolves a process. CommitmentTypes defines the commitment each party signs. AttestationCoordinator binds what a party attests to the agreement it signed. FigaroBatchVerifier accepts a validity proof of many processes in one transaction.",
+        body: "FigaroCore holds each bond on the direct path and resolves a process. CommitmentTypes defines the commitment each party signs. AttestationCoordinator binds what a party attests to the agreement it signed. FigaroBatchVerifier accepts a validity proof of many processes in one transaction.",
         cta: "The spec",
         href: "/spec",
     },

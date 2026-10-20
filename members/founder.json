@@ -1,7 +1,7 @@
 {
   "subjectAddress": "0xB4592b12F02a46a8FD8529CE992f067403BDe3e9",
   "name": "Figaro Founder",
-  "description": "Founder of the Figaro protocol. A buyer-side member: procures work through the freelancer assembly and subscribes to live records through the data-stream-subscription assembly. The buyer's copies of co-produced records are offered under the disclosure policy below — every buyer is a seller of its data. The seller side of this profile (consulting, speaking, books) follows later on the same wallet.",
+  "description": "Founder of the Figaro protocol. A buyer-side member: procures work through the freelancer assembly and buys a stream of live data through the data stream assembly. The buyer's copies of co-produced data are offered under the disclosure policy below — every buyer is a seller of its data. The seller side of this profile (consulting, speaking, books) follows later on the same wallet.",
   "specialty": "protocol design — digital contracts, mechanism design",
   "acceptedTokens": [
     {

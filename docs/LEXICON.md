@@ -20,6 +20,8 @@ Nouns and their definitions. One name per thing.
 
 **batch** — A set of processes resolved together in one transaction on the strength of a validity proof, instead of one at a time through `FigaroCore`.
 
+**bind** — What a seller does to an assembly it sells through: it names the assembly in its profile as a standing offer, and a buyer selects among the assemblies its seller binds. Only a seller binds.
+
 **bond** — What a party locks in the Core when it commits to an order: the buyer twice the payment — the payments travel inside it — and each seller twice the cumulative value through its order. A bond is what lets two strangers trust each other with no bank, platform, or court between them, the way a permissionless chain lets them transact with no bank: each bond is its party's own deterrent against its own defection, measured net of what a defector keeps. A seller that walks away forfeits twice what it promised and keeps only what it withheld, so it is out exactly what it promised; a buyer that never resolves forfeits twice the payment and keeps what arrived, so it is out exactly the payment. Defection never pays, on either side, and that is what frees a wallet to trade with anyone, anywhere, in any token, on any terms. At resolution each seller's bond is refunded whole; the buyer's is refunded less the payments it carried.
 
 **buyer** — The one party in a process who pays, and the only party who can resolve it.
@@ -44,7 +46,7 @@ Nouns and their definitions. One name per thing.
 
 **coordination token** — A token two strangers can agree on because it is neutral to both: a stablecoin, or the florin. Any process may be denominated in one.
 
-**Core** — The four contracts every trade runs on. `FigaroCore` holds every bond and resolves a process when its buyer signs. `CommitmentTypes` defines the commitment each party signs and how it is hashed for signing. `AttestationCoordinator` binds what a party attests to the agreement it signed. `FigaroBatchVerifier` accepts a validity proof of many processes and resolves them in one transaction.
+**Core** — The four contracts every trade runs on. `FigaroCore` holds each bond on the direct path and resolves a process when its buyer signs. `CommitmentTypes` defines the commitment each party signs and how it is hashed for signing. `AttestationCoordinator` binds what a party attests to the agreement it signed. `FigaroBatchVerifier` accepts a validity proof of many processes, nets each party's deposits and payouts across them, and moves only the difference in one transaction.
 
 **cumulative value** — The total value a process has accumulated through a given seller's order, that seller's own payment included. A seller's bond is twice it.
 
@@ -72,7 +74,7 @@ Nouns and their definitions. One name per thing.
 
 **membership proof** — The merkle proof that an agreement is one of an assembly's agreements: the agreement's leaf, proved under the assembly's merkle root. Membership is proved, never looked up.
 
-**offer** — The buyer's signed commitment over an order's terms, carried to the seller before the seller has signed; the seller's counter-signature is the acceptance. Offers form by dispatch race or by request for quotes.
+**offer** — The buyer's signed commitment over an order's terms; the seller's counter-signature is the acceptance, whichever of the two is given first. Offers form by dispatch race or by request for quotes.
 
 **operator** — Whoever holds the signing key of an asset's wallet and acts for the asset: a person or an agent. Whose value the wallet carries decides the word — an asset acting for itself is a seller; a key-holder acting for another asset is its operator.
 
@@ -109,6 +111,10 @@ Nouns and their definitions. One name per thing.
 **sequencer** — The off-chain relay that gathers signed operations into a batch, proves it, and submits it.
 
 **stake** — The base chain's own currency a wallet places to take part in the ecosystem: to register as a member, or to register a clause, a registered agreement or an assembly as a designer. It rises and falls with demand for the chain the ecosystem runs on. It stays reclaimable by the wallet that placed it; withdrawing it removes the registration from view.
+
+**stream** — A data product delivered and bought period by period under one agreement, the buyer deciding each period; the data-license clause's access field says `stream`.
+
+**subscribe** — What a buyer does to an assembly it buys through: it names the assembly in its profile and chooses which of the data those trades co-produce it offers. Only a buyer subscribes; a data product bought period by period is a stream.
 
 **topology** — The clause that states the order of the sellers in a process.
 
