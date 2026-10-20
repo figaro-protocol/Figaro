@@ -65,7 +65,7 @@ The single CTA-only contrast color. Traditional MUJI aizome indigo: deep, cool, 
 
 **Discipline (load-bearing):**
 
-- **CTAs only.** Use `bg-accent` / `text-accent` on the primary call-to-action of a page (e.g., the marketing-header Discover button, a "Download paper" button, a "Sign commitment" button on a transactional surface). Do not use accent on body text, captions, status surfaces, or decorative dividers.
+- **CTAs only.** `bg-accent` / `text-accent` / `border-accent` belong to a page's one primary call to action and to nothing else — not body text, captions, status surfaces, or decorative dividers. No page spends that surface: no page or component carries any of the three utilities, and the site's calls to action are outline-sumi (`CtaLink`, `<Button>`'s `default`). The live uses of the hue are the native checkbox and radio fill, `accent-accent` (`components/runtime/FieldControl.tsx`, `components/members/AssemblyChoiceRow.tsx`, `components/members/DisclosurePolicyEditor.tsx`), and a `focus:ring-accent` on five compact field inputs (`components/runtime/FieldControl.tsx`, `components/runtime/DatetimeFieldInput.tsx`, `components/runtime/GeohashFieldInput.tsx`, `components/runtime/PayoutRoutingPanel.tsx` ×2), where the Focus row above assigns `ring-focus`.
 - **Max one accent surface per page.** Two accent fills on one page produce CTA-stacking — neither reads as primary. The outline-strong-secondary pattern (`border-ink-heading`, paper fill) is the canonical companion shape for the secondary action.
 - **Never used as a text-on-canvas color** for prose. `text-accent` on canvas is decoratively visible but not body-text legible at small sizes. Reserve for short labels (button text uses `text-paper` on `bg-accent`).
 - **Two hover shapes, one per job** (both are correct; do not collapse them into one rule):
@@ -160,7 +160,15 @@ Six-step scale aliasing the muji-* density values. Coexists with Tailwind's defa
 | `xl`    | `p-xl`, ...      | `2.5rem`  |
 | `2xl`   | `p-2xl`, ...     | `3.5rem`  |
 
-Container side-padding is `px-6 sm:px-10` (`1.5rem` / `2.5rem`) — matches `space.lg` / `space.xl`.
+Container side-padding is `px-6` (`1.5rem`, the value of `space.lg`) at every width: every page container is `container mx-auto px-6`. The `globals.css` base rule `.container, .mx-auto { @apply px-6 sm:px-10 }` pads only an element that sets no padding of its own; a `px-6` utility on the element wins at every width, because the utilities layer follows the base layer.
+
+### Measure
+
+| Token   | Tailwind utility | Value   | Use                                   |
+|---------|------------------|---------|---------------------------------------|
+| `paper` | `max-w-paper`    | `46rem` | The paper column (`PaperLayout`).     |
+
+Every other page type reads at Tailwind's default `max-w-3xl` (`48rem`); a lead or a line inside it narrows to `max-w-2xl`.
 
 ---
 
@@ -180,7 +188,7 @@ Tailwind's default `rounded-{none,sm,md,lg,xl,2xl,3xl,full}` scale also remains 
 
 | Token        | Tailwind utility | Value                              | Use                          |
 |--------------|------------------|------------------------------------|------------------------------|
-| `section`    | `shadow-section` | `0 2px 8px 0 rgba(0, 0, 0, 0.03)`  | Section cards only.          |
+| `section`    | `shadow-section` | `0 2px 8px 0 rgba(0, 0, 0, 0.03)`  | Section cards, and a fixed control floating over scrolling content (`BackToTop`). |
 
 Link tiles and invariant cards explicitly carry no shadow.
 
@@ -346,3 +354,79 @@ Two channels, per §1. The bare token carries the fill, border, ring, or icon (`
 - `text-paper` / `text-subtle` / `text-canvas` — render invisible-on-canvas; the surface tokens are not text-safe.
 - `focus:outline-none` without a paired `focus-visible:` indicator — leaves keyboard navigation with no visible focus state.
 - New tokens added to `lib/shared/designTokenValues.ts` / `tailwind.config.ts` without a corresponding entry in this spec, or vice versa. A color token also carries its measured contrast on `canvas` and `paper` in the spec — measured with the WCAG relative-luminance formula, never estimated.
+
+---
+
+## 9. Page composition
+
+Six page types, one reference page each. A new page copies the reference composition of its type, in the tokens and primitives named here. Which surface a page belongs on is `docs/README.md` § "Content architecture"; the route catalog, the three doors and the wallet-provider tiers are `docs/FRONTEND.md` § "Routes" and § "Wallet-provider scope per route"; the component shapes are §7 above.
+
+### The frame
+
+Each route group's layout supplies the chrome; a page composes only what sits inside `<main id="main-content">`.
+
+| Route group | Layout | Header | Wallet provider |
+|---|---|---|---|
+| `(marketing)` | `frontend/app/(marketing)/layout.tsx` | `MarketingHeader` (`HeaderShell`, no right cluster) | none |
+| `(app)` | `frontend/app/(app)/layout.tsx` | `Header` (`HeaderShell` + `YourTurnBadge` when connected + `ConnectWallet`) | `<Providers>` |
+| `(tools)` | `frontend/app/(tools)/layout.tsx` | `ToolsHeader` (`HeaderShell` + `YourTurnBadge` + `ConnectWallet`) | `<Providers>` |
+
+All three close with `Footer` (`frontend/components/shared/Footer.tsx`). Every page type below reads in one column, `container mx-auto px-6`, at `max-w-3xl`; the paper column is `max-w-paper` (§3).
+
+### Home — `/`
+
+`frontend/app/(marketing)/page.tsx`; its header comment states the shape and its reasons.
+
+- `MarketingHero` (`frontend/components/marketing/MarketingHero.tsx`): title and lead, then as children one example line (`text-base text-ink-body leading-relaxed max-w-2xl`) whose numbers render from `KERNEL_EQUILIBRIUM` (`@figaro-protocol/sdk`), and the three doors in `grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-8`, each one `text-base text-ink-body` sentence over one `CtaLink` (`frontend/components/marketing/CtaLink.tsx`).
+- One section, `pb-20`: six frames, each a row `border-t border-default pt-10` (`mt-12` after the first) in `grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-6 items-center`, its claim `text-heading-h3 text-ink-heading`, its fact `text-base text-ink-body leading-relaxed`, its picture `WholeStripFrame` (`frontend/components/figures/WholeStripFigure.tsx`); the picture side alternates through `md:order-*`.
+- Three foot strips, each `mt-12 border-t border-default pt-8` under a `text-sm text-ink-muted` label: the on-chain compositions (each mark `h-6 w-6`, its name `text-sm text-ink-body hover:text-ink-heading`, its note `text-sm text-ink-muted`), the off-chain compositions (`text-sm text-ink-body`), and two `text-sm text-ink-muted max-w-2xl` lines, each ending in an inline link `text-ink-heading font-medium hover:underline`.
+
+### Landing — `/core`
+
+`docs/FRONTEND.md` § "Routes" names `/core` as the shape every door's landing takes; this entry gives its tokens. `frontend/app/(marketing)/(build)/core/page.tsx`:
+
+- `MarketingHero`: title; as children one `CtaLink` in `flex flex-wrap gap-4 mb-8`, then the subjects, one line each, as `text-body-lead text-ink-muted max-w-2xl list-disc pl-6 space-y-2`.
+- One section, `pb-20`: the subjects again as cards in `grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-10 border-t border-default pt-10`; each card `flex flex-col`, its sentence `text-heading-h3 text-ink-heading mb-2`, its paragraph `text-base text-ink-body leading-relaxed grow`, its one `CtaLink` in `mt-4`.
+
+A landing card is a grid cell under the section rule: no `Card` surface, no shadow. The three door pages (`landings` in `frontend/lib/shared/sections.json`: `/participate`, `/terms`, `/research`) carry the same grid and card strings, with a `lead` on the hero in place of the line list. `/terms` closes with one `mt-12 border-t border-default pt-8` line in `text-sm text-ink-muted`; `/participate` follows the grid with a second section holding one trade as a table and three links.
+
+### Owner — `/clauses`
+
+The page a landing's card opens, which owns the how of one subject — a concept page at the site root (`docs/FRONTEND.md` § "Routes", the URL-depth rule). `frontend/app/(marketing)/(build)/clauses/page.tsx`:
+
+- `MarketingHero`: title and lead; inline links in the lead take `underline`.
+- A run of `MarketingSection`s (`frontend/components/marketing/MarketingSection.tsx`: `border-t border-default pt-xl`, H2 `text-heading-h2 text-ink-heading`, `pb-12`), each holding:
+  - prose `text-sm text-ink-body leading-relaxed`, lists `space-y-3 list-disc pl-5` in the same type;
+  - a table `w-full text-sm` inside `overflow-x-auto -mx-6 px-6`: header row `border-b border-default text-left font-semibold text-ink-heading`, body `[&>tr]:border-b [&>tr]:border-default align-top`, cells `py-2 pr-4`;
+  - a code block `pre` in `text-xs font-mono text-ink-body bg-paper border border-default rounded-section p-4 overflow-x-auto`;
+  - a sub-heading `text-heading-h3 text-ink-heading`;
+  - the live registry count, `RegistryCountLink` (`frontend/components/registries/RegistryCountLink.tsx`);
+  - an anchored section through `sectionId`.
+- The last section, `bottomPad="wide"`, holds the page's one `CtaLink`, to the tool beneath the object (`/clauses/register`).
+
+### Reference — `/data/explore`
+
+A page of the reference / read-only tier (`docs/FRONTEND.md` § "Wallet-provider scope per route"): it reads the network with no wallet and mounts the provider. `frontend/app/(app)/data/explore/page.tsx`:
+
+- The shell `container mx-auto px-6 py-10 max-w-3xl space-y-8`; a `header space-y-2` with the H1 `text-heading-h2 text-ink-heading` and one statement `text-sm text-ink-body max-w-2xl`. `/audit` (`frontend/app/(app)/audit/page.tsx`) carries the same shell and header strings.
+- The reader inside `Suspense`, fallback `text-sm text-ink-muted`. `DataExplorer` (`frontend/components/data/DataExplorer.tsx`) composes `Breadcrumb` (`frontend/components/shared/Breadcrumb.tsx`); one view at a time behind a WAI-ARIA tab set — a `role="tablist"` row of `role="tab"` buttons, each with `aria-selected` and `aria-controls` naming the one `role="tabpanel"`, which `aria-labelledby` the selected tab; a roving `tabIndex` and the arrow keys, Home and End move the selection; each tab `inline-flex items-center min-h-11 px-3 text-sm rounded-tile border`, the selected one `border-ink-heading text-ink-heading`; each view headed `text-heading-h3 text-ink-heading`; `Input` and `Card` from `components/ui/`; reading, failed and resolved as three distinct states, the first two each one `text-sm text-ink-muted` line. The view rides the query string (`frontend/lib/data/explorer.ts`), so every view is a permalink.
+
+A page that is an inventory of registrations takes its read path from `docs/FRONTEND.md` § "Canonical exemplars — copy these shapes", the event-driven inventory page (`/registries`).
+
+### Paper — `/papers/figaro-as-a-cryptoeconomic-system`
+
+`frontend/app/(marketing)/papers/figaro-as-a-cryptoeconomic-system/page.tsx`. The paper composes `PaperLayout`, `PaperSection`, `PaperRun` (`frontend/components/papers/PaperLayout.tsx`) and `Math` (`frontend/components/papers/Math.tsx`), and defines no component of its own.
+
+- `PaperLayout`: `article` at `pt-16 pb-24 max-w-paper`; `Breadcrumb` (Working groups, the discipline, the title, from `frontend/app/(marketing)/_lib/paperGroups.ts`); `PaperPdfLink` (`buttonVariants({ variant: "outline", size: "sm" })`, §7); the header `paper-header border-b border-default pb-8`: H1 `text-heading-h1 text-ink-heading`, subtitle `text-body-lead text-ink-muted italic`, byline and date `text-sm text-ink-body`; the abstract `border-l-2 border-default pl-6` under a `text-xs font-semibold uppercase tracking-wide text-ink-body` label, in `text-sm text-ink-muted`, its keywords `text-xs text-ink-body`; the body `paper-body text-base text-ink-body leading-relaxed space-y-6`; the references `paper-references border-t border-default pt-8` under a `text-heading-h3` heading; the previous/next links within the discipline in `grid grid-cols-2`; `BackToTop` (`frontend/components/papers/BackToTop.tsx`).
+- In the body: `PaperSection` (H2 `text-heading-h2 text-ink-heading`), `PaperRun` (run-in `font-semibold text-ink-heading`), `Math` inline and `display`; tables `text-sm border-collapse w-full` inside `overflow-x-auto my-4`, every cell `border border-default px-3 py-1.5 text-left align-top`, header cells adding `font-semibold text-ink-heading`. `PaperSubsection` (H3) and `PaperRemark` (`border-l-2 border-default pl-4 text-sm text-ink-muted italic`) are the layout's two further exports.
+- The `paper-*` classes are `frontend/app/globals.css`'s print rules; the typeset PDF is `docs/FRONTEND.md` § "Static export".
+
+### App — `/orders/view`
+
+A transactional page (`docs/FRONTEND.md` § "Wallet-provider scope per route"). `frontend/app/(app)/orders/view/page.tsx` reads the process id from the query string inside `Suspense` (fallback `container mx-auto px-6 py-12`, `text-sm text-ink-muted`) and renders `OrderTimelineView` (`frontend/app/(app)/orders/_components/OrderTimelineView.tsx`). The derived actions it mounts are `docs/FRONTEND.md` § "Canonical exemplars — copy these shapes", the runtime order surface (`CapabilityRail`).
+
+- The shell is the reference page's string, `container mx-auto px-6 py-10 max-w-3xl space-y-8`.
+- `header space-y-3`: a caption `text-xs font-semibold text-ink-muted`; the H1 `text-heading-h1 text-ink-heading` beside a status pill `rounded-full border px-3 py-1 text-xs font-semibold` in §1's status-surface alpha convention (`border-<status>/30 bg-<status>/10 text-<status>-fg`, neutral `border-default bg-subtle text-ink-body`); one statement `text-sm text-ink-body`; meta lines `text-xs`, the process id `font-mono`.
+- The panels in order (`frontend/components/runtime/`): `ResolutionProceedsPanel` and `PayoutRoutingPanel` once the process is resolved, `OrderInteractionSurfaces` and `CapabilityRail` for a wallet that is a party to it; an action error `text-sm text-error-fg`.
+- The timeline: a `text-xs font-semibold text-ink-muted` label over rows `flex items-start gap-3 rounded-tile border border-default bg-paper p-3`, each led by a `h-3 w-3 rounded-full bg-success border-success` dot, its event `text-sm font-semibold text-ink-primary`, its detail `text-xs text-ink-muted`.
+- The secondary links take §7's shape through `buttonVariants({ variant: "outline" })` (`frontend/components/ui/Button.tsx`): `min-h-11`, `rounded-tile`.

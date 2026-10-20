@@ -8,12 +8,12 @@ import Link from "@/components/shared/Link";
  * border-ink-primary`) flipping to filled-sumi on hover — rather than crossing
  * hue families, which reads as a register break instead of activation. Sumi
  * rather than `bg-accent` because accent is capped at one surface per page and
- * these CTAs appear beside a marketing header that already spends it.
+ * a page carries several of these CTAs (the home page's three doors, a
+ * landing's one per card), so accent here would stack them.
  *
- * It was hand-spelled at four call sites (`/members` ×2, `/assemblies`,
- * `/clauses`) with the same ~250 characters of class list. This is that string,
- * once. Anything a caller needs to vary — the outer margin, mainly — comes
- * through `className`; the idiom itself is not a prop.
+ * Every marketing CTA uses this one class list. Anything a caller needs to
+ * vary — the outer margin, mainly — comes through `className`; the idiom
+ * itself is not a prop.
  *
  * The trailing arrow is part of the idiom, not the caller's copy: it is
  * `aria-hidden` decoration on every one of these, so folding it in keeps the
@@ -24,7 +24,7 @@ import Link from "@/components/shared/Link";
  */
 
 const CTA_CLASSES =
-    "inline-flex min-w-[200px] justify-center items-center gap-1 px-9 py-sm bg-paper text-ink-primary text-sm font-medium rounded-tile border border-ink-primary " +
+    "inline-flex min-w-48 justify-center items-center gap-1 px-9 py-sm bg-paper text-ink-primary text-sm font-medium rounded-tile border border-ink-primary " +
     "hover:bg-ink-primary hover:text-paper hover:no-underline transition-colors " +
     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-focus";
 

@@ -15,9 +15,10 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import type { GraphCorpus } from "@/lib/data/graphCorpus";
 
 let searchParams = "view=market";
+const replaceMock = vi.fn();
 vi.mock("next/navigation", () => ({
     usePathname: () => "/data/explore",
-    useRouter: () => ({ replace: vi.fn(), push: vi.fn() }),
+    useRouter: () => ({ replace: replaceMock, push: vi.fn() }),
     useSearchParams: () => new URLSearchParams(searchParams),
 }));
 
@@ -310,5 +311,62 @@ describe("DataExplorer — a listed process can be carried into the audit view",
         render(<DataExplorer />);
         expect(screen.queryByTestId("market-processes-unattributed")).toBeNull();
         expect(screen.queryByTestId(`process-audit-link-${PROCESS.toLowerCase()}`)).toBeNull();
+    });
+});
+
+describe("DataExplorer — the layer tabs are a WAI-ARIA tab set with 44px targets", () => {
+    beforeEach(() => {
+        analystUrlMock.mockReturnValue(null);
+        statusMock.mockReturnValue(null);
+        searchParams = "view=market";
+        corpusMock.mockReturnValue({ corpus: corpus(), isLoading: false, failed: false });
+    });
+
+    it("each tab controls the one tabpanel, which is labeled by the selected tab", () => {
+        render(<DataExplorer />);
+        const tabs = screen.getAllByRole("tab");
+        const panel = screen.getByRole("tabpanel");
+        for (const tab of tabs) {
+            expect(tab.getAttribute("aria-controls")).toBe(panel.id);
+        }
+        const selected = tabs.filter((t) => t.getAttribute("aria-selected") === "true");
+        expect(selected).toHaveLength(1);
+        expect(selected[0].id).toBeTruthy();
+        expect(panel.getAttribute("aria-labelledby")).toBe(selected[0].id);
+        expect(panel).toContainElement(screen.getByTestId("layer-boundary"));
+    });
+
+    it("roving tabindex: only the selected tab is in the tab order", () => {
+        render(<DataExplorer />);
+        for (const tab of screen.getAllByRole("tab")) {
+            expect(tab.getAttribute("tabindex")).toBe(tab.getAttribute("aria-selected") === "true" ? "0" : "-1");
+        }
+    });
+
+    it("arrow keys, Home and End move the selection along the row", () => {
+        replaceMock.mockClear();
+        render(<DataExplorer />);
+        const tabs = screen.getAllByRole("tab");
+        const viewOf = (t: HTMLElement) => t.dataset.testid!.replace("graph-view-", "");
+        const first = tabs[0];
+        expect(first.getAttribute("aria-selected")).toBe("true");
+        fireEvent.keyDown(first, { key: "ArrowRight" });
+        expect(replaceMock.mock.calls.at(-1)?.[0]).toContain(`view=${viewOf(tabs[1])}`);
+        fireEvent.keyDown(first, { key: "ArrowLeft" });
+        expect(replaceMock.mock.calls.at(-1)?.[0]).toContain(`view=${viewOf(tabs.at(-1)!)}`);
+        fireEvent.keyDown(first, { key: "Home" });
+        expect(replaceMock.mock.calls.at(-1)?.[0]).toContain(`view=${viewOf(tabs[0])}`);
+        fireEvent.keyDown(first, { key: "End" });
+        expect(replaceMock.mock.calls.at(-1)?.[0]).toContain(`view=${viewOf(tabs.at(-1)!)}`);
+    });
+
+    it("every tab is a 44px target (WCAG 2.5.5) on the tile radius", () => {
+        render(<DataExplorer />);
+        for (const tab of screen.getAllByRole("tab")) {
+            const cls = tab.getAttribute("class") ?? "";
+            expect(cls).toContain("min-h-11");
+            expect(cls).toContain("rounded-tile");
+            expect(cls).not.toMatch(/(^|\s)rounded(\s|$)/);
+        }
     });
 });

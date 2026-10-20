@@ -23,7 +23,7 @@
  */
 
 import Link from "@/components/shared/Link";
-import { useCallback, useMemo } from "react";
+import { useCallback, useId, useMemo, useRef, type KeyboardEvent } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { walletRecord, type ValueFlowEdge } from "@figaro-protocol/sdk/derive";
 import { Breadcrumb } from "@/components/shared/Breadcrumb";
@@ -104,6 +104,33 @@ export function DataExplorer() {
 
     const { corpus, isLoading, failed } = useGraphCorpus();
 
+    // The layer row is a WAI-ARIA tab set: one tabpanel, labeled by the
+    // selected tab; a roving tabindex keeps one tab in the tab order, and the
+    // arrow keys, Home and End move the selection (automatic activation — a
+    // layer is a URL change, nothing is lost by selecting on focus).
+    const idBase = useId();
+    const tabId = (view: GraphView) => `${idBase}-tab-${view}`;
+    const panelId = `${idBase}-panel`;
+    const tabRefs = useRef(new Map<GraphView, HTMLButtonElement>());
+    const onTabKeyDown = useCallback(
+        (event: KeyboardEvent<HTMLButtonElement>) => {
+            const at = GRAPH_LAYERS.findIndex((l) => l.view === state.view);
+            const last = GRAPH_LAYERS.length - 1;
+            const to =
+                event.key === "ArrowRight" ? (at >= last ? 0 : at + 1)
+                : event.key === "ArrowLeft" ? (at <= 0 ? last : at - 1)
+                : event.key === "Home" ? 0
+                : event.key === "End" ? last
+                : null;
+            if (to === null) return;
+            event.preventDefault();
+            const view = GRAPH_LAYERS[to].view;
+            setState({ view, q: "" });
+            tabRefs.current.get(view)?.focus();
+        },
+        [state.view, setState],
+    );
+
     return (
         <div className="space-y-8">
             <Breadcrumb items={dataExplorerBreadcrumb(state)} />
@@ -121,39 +148,49 @@ export function DataExplorer() {
                 {GRAPH_LAYERS.map((l) => (
                     <button
                         key={l.view}
+                        ref={(el) => {
+                            if (el) tabRefs.current.set(l.view, el);
+                            else tabRefs.current.delete(l.view);
+                        }}
+                        id={tabId(l.view)}
                         type="button"
                         role="tab"
                         aria-selected={state.view === l.view}
+                        aria-controls={panelId}
+                        tabIndex={state.view === l.view ? 0 : -1}
                         data-testid={`graph-view-${l.view}`}
                         onClick={() => setState({ view: l.view, q: "" })}
-                        className={`px-3 py-1.5 text-sm rounded border ${state.view === l.view ? "border-ink-heading text-ink-heading" : "border-ink-muted/30 text-ink-muted hover:text-ink-heading"}`}
+                        onKeyDown={onTabKeyDown}
+                        className={`inline-flex items-center min-h-11 px-3 text-sm rounded-tile border ${state.view === l.view ? "border-ink-heading text-ink-heading" : "border-ink-muted/30 text-ink-muted hover:text-ink-heading"}`}
                     >
                         {l.label}
                     </button>
                 ))}
             </div>
 
-            <BoundaryLine view={state.view} />
+            <div role="tabpanel" id={panelId} aria-labelledby={tabId(state.view)} tabIndex={0} className="space-y-8">
+                <BoundaryLine view={state.view} />
 
-            {failed ? (
-                <p className="text-sm text-ink-muted" data-testid="corpus-failed">
-                    The event read failed on this network, so nothing is shown rather than a
-                    stale or partial picture. That is unknown chain state &mdash; not empty data.
-                </p>
-            ) : isLoading || !corpus ? (
-                <p className="text-sm text-ink-muted" data-testid="corpus-loading">
-                    Reading the data and projecting the graphs&hellip;
-                </p>
-            ) : (
-                <>
-                    <CorpusLine corpus={corpus} />
-                    {state.view === "market" ? <MarketView corpus={corpus} state={state} onQuery={setState} /> : null}
-                    {state.view === "overlays" ? <OverlaysView corpus={corpus} state={state} onQuery={setState} /> : null}
-                    {state.view === "value-flow" ? <ValueFlowView corpus={corpus} /> : null}
-                    {state.view === "wallet" ? <WalletView corpus={corpus} state={state} onQuery={setState} /> : null}
-                    {state.view === "trade" ? <TradeView /> : null}
-                </>
-            )}
+                {failed ? (
+                    <p className="text-sm text-ink-muted" data-testid="corpus-failed">
+                        The event read failed on this network, so nothing is shown rather than a
+                        stale or partial picture. That is unknown chain state &mdash; not empty data.
+                    </p>
+                ) : isLoading || !corpus ? (
+                    <p className="text-sm text-ink-muted" data-testid="corpus-loading">
+                        Reading the data and projecting the graphs&hellip;
+                    </p>
+                ) : (
+                    <>
+                        <CorpusLine corpus={corpus} />
+                        {state.view === "market" ? <MarketView corpus={corpus} state={state} onQuery={setState} /> : null}
+                        {state.view === "overlays" ? <OverlaysView corpus={corpus} state={state} onQuery={setState} /> : null}
+                        {state.view === "value-flow" ? <ValueFlowView corpus={corpus} /> : null}
+                        {state.view === "wallet" ? <WalletView corpus={corpus} state={state} onQuery={setState} /> : null}
+                        {state.view === "trade" ? <TradeView /> : null}
+                    </>
+                )}
+            </div>
 
             <AnalystPrompt />
         </div>

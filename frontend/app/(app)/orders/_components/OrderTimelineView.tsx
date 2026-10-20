@@ -21,6 +21,7 @@
  */
 
 import Link from "@/components/shared/Link";
+import { buttonVariants } from "@/components/ui/Button";
 import { useMemo } from "react";
 import { useAccount } from "wagmi";
 import { ResolutionProceedsPanel } from "@/components/runtime/ResolutionProceedsPanel";
@@ -85,7 +86,7 @@ export function OrderTimelineView({ processId }: Props) {
         return (
             <div className="container mx-auto px-6 py-16 max-w-3xl">
                 <p className="text-xs font-semibold text-ink-muted mb-3">Order</p>
-                <h1 className="text-3xl font-bold text-ink-primary mb-4">Loading…</h1>
+                <h1 className="text-heading-h1 text-ink-heading mb-4">Loading…</h1>
                 <p className="text-sm text-ink-body">
                     Reading process <code className="font-mono text-xs">{truncateHex(processId, { head: 10, tail: 0 })}</code> from
                     chain. If this persists, the process ID may be wrong or the indexer may be unreachable.
@@ -112,7 +113,7 @@ export function OrderTimelineView({ processId }: Props) {
             <header className="space-y-3">
                 <p className="text-xs font-semibold text-ink-muted">Order</p>
                 <div className="flex flex-wrap items-baseline gap-3">
-                    <h1 className="text-3xl font-bold text-ink-primary">{headline}</h1>
+                    <h1 className="text-heading-h1 text-ink-heading">{headline}</h1>
                     <span
                         className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold ${toneClasses(pillTone)}`}
                         data-testid="order-status-pill"
@@ -213,7 +214,7 @@ export function OrderTimelineView({ processId }: Props) {
             <section className="space-y-3">
                 <p className="text-xs font-semibold text-ink-muted">Timeline</p>
                 <ol className="space-y-2" data-testid="order-timeline">
-                    <li className="flex items-start gap-3 rounded border border-default bg-paper p-3">
+                    <li className="flex items-start gap-3 rounded-tile border border-default bg-paper p-3">
                         <span className="mt-1 inline-block h-3 w-3 rounded-full border bg-success border-success" />
                         <div className="flex-1">
                             <p className="text-sm font-semibold text-ink-primary">order placed</p>
@@ -227,7 +228,7 @@ export function OrderTimelineView({ processId }: Props) {
                         return (
                             <li
                                 key={`${att.clauseId}-${att.orderHash}-${att.stage}-${att.blockNumber}`}
-                                className="flex items-start gap-3 rounded border border-default bg-paper p-3"
+                                className="flex items-start gap-3 rounded-tile border border-default bg-paper p-3"
                                 // Stable raw event code for targeting (the humanized
                                 // eventLabel is the visible text below).
                                 data-testid={`timeline-event-${eventCode}`}
@@ -242,7 +243,7 @@ export function OrderTimelineView({ processId }: Props) {
                         );
                     })}
                     {isResolved && (
-                        <li className="flex items-start gap-3 rounded border border-default bg-paper p-3">
+                        <li className="flex items-start gap-3 rounded-tile border border-default bg-paper p-3">
                             <span className="mt-1 inline-block h-3 w-3 rounded-full border bg-success border-success" />
                             <div className="flex-1">
                                 <p className="text-sm font-semibold text-ink-primary">order completed</p>
@@ -257,7 +258,7 @@ export function OrderTimelineView({ processId }: Props) {
             <section className="flex flex-wrap gap-3 text-sm">
                 <Link
                     href={`/audit/view?process=${processId}`}
-                    className="rounded border border-default px-4 py-2 text-ink-body hover:bg-subtle"
+                    className={buttonVariants({ variant: "outline" })}
                     data-testid="link-audit"
                 >
                     View audit data
@@ -265,7 +266,7 @@ export function OrderTimelineView({ processId }: Props) {
                 {isResolved && (
                     <Link
                         href="/data/yours"
-                        className="rounded border border-default px-4 py-2 text-ink-body hover:bg-subtle"
+                        className={buttonVariants({ variant: "outline" })}
                         data-testid="link-your-data"
                     >
                         Your data

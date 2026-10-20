@@ -33,8 +33,8 @@ const config: Config = {
             ringOffsetColor: { DEFAULT: colorTokens.canvas },
             // Per docs/DESIGN_TOKENS.md §3 (Spacing tokens).
             // Six-step scale aliasing the muji-* values; named `xs..2xl` so
-            // utilities read as `p-md`, `gap-lg`, `mt-2xl`. Container side-padding
-            // (1.5rem / sm:2.5rem) already lives in `space.lg` / `space.xl`.
+            // utilities read as `p-md`, `gap-lg`, `mt-2xl`. Page containers pad
+            // with the default `px-6` (1.5rem, the value of `space.lg`).
             spacing: {
                 xs: '0.5rem',
                 sm: '0.75rem',
@@ -42,6 +42,11 @@ const config: Config = {
                 lg: '1.5rem',
                 xl: '2.5rem',
                 '2xl': '3.5rem',
+            },
+            // Per docs/DESIGN_TOKENS.md §3 (Measure). The paper column; every
+            // other page type reads at the default `max-w-3xl`.
+            maxWidth: {
+                paper: '46rem',
             },
             // Per docs/DESIGN_TOKENS.md §4 (Radius tokens).
             // Spec ties `link`, `button`, `input` all to 0.75rem; deduplicated

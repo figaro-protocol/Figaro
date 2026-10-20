@@ -47,7 +47,7 @@ export function PaperLayout({
     const nav = getPaperNavigation(slug);
     const keywords = getPaperRef(slug)?.keywords.join(", ");
     return (
-        <article className="container mx-auto px-6 pt-16 pb-24 max-w-[46rem]">
+        <article className="container mx-auto px-6 pt-16 pb-24 max-w-paper">
             <div aria-hidden className="paper-watermark">
                 {watermark}
             </div>
@@ -75,16 +75,16 @@ export function PaperLayout({
                     {author}
                     {coauthor ? ` · ${coauthor}` : ""}
                 </p>
-                <p className="text-sm text-ink-faint">{date}</p>
+                <p className="text-sm text-ink-body">{date}</p>
             </header>
 
             <section className="mb-12 border-l-2 border-default pl-6" aria-label="Abstract">
-                <h2 className="text-xs font-semibold uppercase tracking-wide text-ink-faint mb-3">
+                <h2 className="text-xs font-semibold uppercase tracking-wide text-ink-body mb-3">
                     Abstract
                 </h2>
                 <div className="text-sm text-ink-muted leading-relaxed space-y-3">{abstract}</div>
                 {keywords && (
-                    <p className="text-xs text-ink-faint mt-5">
+                    <p className="text-xs text-ink-body mt-5">
                         <span className="font-semibold">Keywords:</span> {keywords}
                     </p>
                 )}

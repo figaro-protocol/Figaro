@@ -12,7 +12,7 @@ export const metadata: Metadata = withOg({
 export default function DiscoverPage() {
     return (
         <section className="container mx-auto px-6 pt-16 pb-24 max-w-5xl">
-            <h1 className="text-4xl sm:text-5xl font-bold text-ink-primary leading-tight tracking-tight mb-3">
+            <h1 className="text-heading-h1 text-ink-heading mb-3">
                 Members on this network.
             </h1>
             <p className="text-sm text-ink-muted mb-4">
