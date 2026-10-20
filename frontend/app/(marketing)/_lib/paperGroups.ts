@@ -218,7 +218,7 @@ export const PAPER_GROUPS: PaperGroup[] = [
         name: "Philosophy, Law and Ethics",
         discipline: "Contract theory · evidence law · labor law · stateless subjecthood · political philosophy",
         intro: "The normative layer: any choice of coordination objective is a subjective choice, so whose values a system encodes, the accountability of its designers, and the ethics of decision algorithms in social systems come before the engineering.",
-        definition: "A Figaro commitment is a signed contract: payment = consideration, clauses = terms and conditions, agreementHash = the contract document. Resolution happens on-chain by nature; adjudication happens off-chain by nature; and the primitive's precondition is a cryptographic key rather than civil-legal subjecthood. The papers here ask what lawyers, philosophers, and ethicists ask.",
+        definition: "A Figaro commitment is a signed contract: payment = consideration, clauses = terms and conditions, agreementHash = the contract document. Resolution happens on-chain by nature; adjudication happens off-chain by nature; and the mechanism asks for a signing key and a bond where commerce asked for civil-legal recognition. The papers here ask what lawyers, philosophers, and ethicists ask.",
         papers: [
             {
                 title: "On-Chain Evidence, Off-Chain Adjudication",
@@ -278,17 +278,17 @@ export const PAPER_GROUPS: PaperGroup[] = [
         name: "Political Science, Institutional Economics and Governance",
         discipline: "Political economy · hegemony · sovereign coordination",
         intro: "The meso-institutional level: who gets to make which decisions, under which circumstances, accountable to whom, and how that changes over time — automation in socioeconomic systems as algorithmic policy-making.",
-        definition: "The mechanism is ideologically agnostic; the graph is the politics. A market-liberal assembly, a cooperative assembly, an Islamic-finance assembly, and a mutual-aid assembly all use the same mechanism. The papers here ask what political theorists ask — Gramsci, Arendt, post-hegemony: what governance is when the primitive refuses to take positions, and what a capacity to have commerce amounts to with no polity behind it.",
+        definition: "The mechanism is ideologically agnostic; the graph is the politics. A market-liberal assembly, a cooperative assembly, an Islamic-finance assembly, and a mutual-aid assembly all use the same mechanism. The papers here ask what political theorists ask — Gramsci, Arendt, post-hegemony: what governance is when the mechanism refuses to take positions, and what a credible promise amounts to with no polity behind it.",
         papers: [
             {
                 title: "The Wallet Without a Polity",
                 href: "/papers/wallet-without-polity",
-                summary: "Capacity is the contract element a polity confers; the mechanism tests it by two acts that consult no polity, signing and funding a bond. What the bonded commitment means for refugees, the stateless, and populations outside stable banking and enforcement, and the boundary: a bond they can fund.",
-                keywords: ["statelessness", "refugee economies", "displaced populations", "the wallet as legal subject", "Arendt", "humanitarian economics", "commerce-without-recognition"],
+                summary: "Between strangers the contract element that fails is consideration, and refugees, stateless people and others beyond stable banking and courts lack what ordinarily makes a promise credible. A bonded commitment makes it credible by two acts no state is asked about, a signature and a bond; the boundary is a bond they can deposit.",
+                keywords: ["statelessness", "refugee economies", "displaced populations", "consideration", "Arendt", "humanitarian economics", "commerce without recognition"],
                 industries: ["Humanitarian"],
-                question: "What does a mechanism whose precondition is a key, not civil-legal subjecthood, offer refugees, stateless persons and populations beyond stable banking and enforcement?",
-                result: "Argued positionally: of a contract's six elements, the mechanism meets capacity by two acts that consult no polity, signing and funding a bond, and supplies no legality, so it grants a capacity to have commerce where the right to have rights is denied, never in its place.",
-                scope: "Bounded throughout to those who keep tokens to fund a bond; keeping a key safe, on-ramps, counterparty and currency gatekeeping, and the absence of a forum both parties reach are named as constraints.",
+                question: "What does a mechanism whose precondition is a key and a bond, not recognition by a state, offer refugees, stateless people and others beyond stable banking and courts?",
+                result: "Argued: between strangers the element of a contract that fails is consideration, and a bonded commitment makes it hold by two acts no state is asked about, a signature and a bond, so it supplies a credible promise where the right to have rights is denied; legality, a forum and status stay the state's.",
+                scope: "Rests on the equilibrium proved for any number of orders the network resolves in one call, and holds only for those who can deposit a bond; seven constraints are named (keeping the key, the on-ramp, counterparty and currency gatekeeping, the absence of a forum, legality, exposure of the data, the funding of the bond), and no play by displaced participants has been observed.",
             },
             {
                 title: "The Subordination Variable",
