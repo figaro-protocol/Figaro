@@ -258,7 +258,7 @@ export const PAPER_GROUPS: PaperGroup[] = [
                 industries: ["Platforms"],
                 question: "Are the engineering of consent and mechanism design one instrument, and what sets the sign of its effect?",
                 result: "Argued: one variable, the participant's accuracy about the mechanism in force, sets the sign: consent engineering reaches its outcome only while accuracy is low, and a public, deterministic mechanism reaches its equilibrium as accuracy rises, in full when it is maximal; disclosure moves the variable, provided a commitment condition and an objective condition also hold.",
-                scope: "Grants Viljoen, Goldenfein and McGuigan's diagnosis of platforms and answers its extension to mechanism design; Figaro is the worked instance of all three conditions, its rules public, its arithmetic fixed at deployment, its terms chosen in designs above it.",
+                scope: "Grants Viljoen, Goldenfein, and McGuigan's diagnosis of platforms and answers its extension to mechanism design; Figaro is the worked instance of all three conditions, its rules public, its arithmetic fixed at deployment, its terms chosen in designs above it.",
             },
             {
                 title: "Code Is Constitution: The Entrenched Layer Beneath Enactment",
@@ -303,7 +303,7 @@ export const PAPER_GROUPS: PaperGroup[] = [
             {
                 title: "The Visibility of Coordination",
                 href: "/papers/visibility-of-coordination",
-                summary: "“Strangers need a platform” has become common sense in Gramsci's sense, and beneath it an older proposition: that a promise is made good only after the fact, by an authority. Separating the coordination function from the entities that perform it makes it visible and opens the organizational space, of which the firm is one pattern. The diagnostic is turned on this arrangement too: compounding, holding, naming, disclosure.",
+                summary: "“Strangers need a platform” has become common sense in Gramsci's sense, and beneath it an older proposition: that a promise is made good only after the fact, by an authority. Separating the coordination function from the entities that perform it makes it visible and opens the organizational space, of which the firm is one pattern. The diagnostic is turned on this arrangement too: compounding, holding, standing, disclosure.",
                 keywords: ["cultural hegemony", "Gramsci", "platform economy", "political economy of infrastructure", "coordination substrate", "paradigm shift"],
                 industries: ["Platforms"],
                 question: "Which beliefs about how strangers coordinate rule as common sense in Gramsci's sense, and what makes them visible?",
@@ -318,7 +318,7 @@ export const PAPER_GROUPS: PaperGroup[] = [
                 industries: ["DAOs and governance"],
                 question: "Must the alternative to state coordination itself be a governed entity, as the network-state and blockchain-governance programs assume?",
                 result: "Argued: the assumption reflects the governance-rich protocols both programs studied, because a Core fixed at deployment, whose only decisions are the parties' signatures and the buyer's resolution, holds its equilibrium with no party outside the trade, and governance moves up to the graph, where any form of it, or none, can be chosen.",
-                scope: "The Core as four contracts with no upgrade path, its equilibrium proved for any number of orders the network resolves in one call; the governance of the designs composed on it belongs to those who compose them.",
+                scope: "The Core as four contracts whose code is fixed at deployment, its equilibrium proved for any number of orders the network resolves in one call; the governance of the designs composed on it belongs to those who compose them.",
             },
             {
                 title: "Corridors Without a Hegemon: The Substrate as Common Infrastructure Beneath Rival Trade Corridors",
@@ -396,7 +396,7 @@ export const PAPER_GROUPS: PaperGroup[] = [
                 summary: "How the equilibrium argument fares with loss-averse, boundedly rational, stranger-wary people: the payoffs straddle the reference point, so loss aversion weights defection alone, and the coordination-failure condition is conceded: pessimism buys duration, not a worse outcome.",
                 keywords: ["behavioral game theory", "loss aversion", "prospect theory", "weakest-link coordination", "peer pressure", "incentive legibility", "mechanism design", "experimental economics", "interface cognition"],
                 industries: [],
-                question: "How does the equilibrium fare with participants who are loss-averse, boundedly reasoning and pessimistic about strangers?",
+                question: "How does the equilibrium fare with participants who are loss-averse, boundedly reasoning, and pessimistic about strangers?",
                 result: "Four hypotheses, derived and unobserved: loss aversion weights the defecting branch; the Van Huyck coordination-failure condition is present, but pessimism buys duration rather than a worse outcome; atomic resolution gives each seller a bonded interest in every other seller's performance; and each node asks one comparison and one step of reasoning.",
                 scope: "Takes the equilibrium as proved, for any number of orders the network resolves in one call, and the experimental literature's estimates, the meta-analytic interval for loss aversion and the reasoning depth of the level-k literature, as given; no play by independent participants has been observed.",
             },

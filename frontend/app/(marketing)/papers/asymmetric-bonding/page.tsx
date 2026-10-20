@@ -115,8 +115,8 @@ export default function AsymmetricBondingPaper() {
                     <li>Stiglitz, Joseph E. 1990. &ldquo;Peer Monitoring and Credit Markets.&rdquo; <em>World Bank Economic Review</em> 4 (3): 351&ndash;366. https://doi.org/10.1093/wber/4.3.351.</li>
                     <li>Telser, L. G. 1980. &ldquo;A Theory of Self-Enforcing Agreements.&rdquo; <em>Journal of Business</em> 53 (1): 27&ndash;44. https://doi.org/10.1086/296069.</li>
                     <li>UMA Project. n.d. &ldquo;How Does UMA Work?&rdquo; UMA Documentation. https://docs.uma.xyz/protocol-overview/how-does-umas-oracle-work. Accessed October 18, 2026.</li>
-                    <li>Van Huyck, John B., Raymond C. Battalio, and Richard O. Beil. 1990. &ldquo;Tacit Coordination Games, Strategic Uncertainty, and Coordination Failure.&rdquo; <em>American Economic Review</em> 80 (1): 234&ndash;248.</li>
-                    <li>Williamson, Oliver E. 1983. &ldquo;Credible Commitments: Using Hostages to Support Exchange.&rdquo; <em>American Economic Review</em> 73 (4): 519&ndash;540.</li>
+                    <li>Van Huyck, John B., Raymond C. Battalio, and Richard O. Beil. 1990. &ldquo;Tacit Coordination Games, Strategic Uncertainty, and Coordination Failure.&rdquo; <em>American Economic Review</em> 80 (1): 234&ndash;248. https://www.jstor.org/stable/2006745.</li>
+                    <li>Williamson, Oliver E. 1983. &ldquo;Credible Commitments: Using Hostages to Support Exchange.&rdquo; <em>American Economic Review</em> 73 (4): 519&ndash;540. https://www.jstor.org/stable/1816557.</li>
                     <li>Yunus, Muhammad, with Alan Jolis. 1999. <em>Banker to the Poor: Micro-Lending and the Battle against World Poverty</em>. New York: PublicAffairs.</li>
                     <li>Zimbeck, David. 2014. &ldquo;Two Party Double Deposit Trustless Escrow in Cryptographic Networks and Bitcoin.&rdquo; BitHalo white paper. https://bithalo.org/whitepaper_twosided.pdf. Accessed October 18, 2026.</li>
                 </>
