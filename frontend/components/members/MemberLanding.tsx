@@ -431,10 +431,15 @@ function WithdrawRow({
         try {
             await requestWithdrawal();
             setConfirming(false);
-            // De-surfaced on-chain — complete the erasure locally NOW, at the
-            // request, not at the later claim: the member has left, so nothing
-            // of theirs should stay published while the cooldown runs. A
-            // refused unpin is shown; the request itself stands.
+        } catch (e: unknown) {
+            setSubmitError(extractErrorMessage(e, String(e)));
+            return;
+        }
+        // De-surfaced on-chain — complete the erasure locally NOW, at the
+        // request, not at the later claim: the member has left, so nothing
+        // of theirs should stay published while the cooldown runs. A
+        // refused unpin is shown in the receipt view; the request itself stands.
+        try {
             await unpinSupersededProfileArtifacts({
                 ipfs: DEFAULT_IPFS_SERVICE,
                 priorProfileUri: metadataURI,
@@ -442,7 +447,9 @@ function WithdrawRow({
                 nextProfile: null,
             });
         } catch (e: unknown) {
-            setSubmitError(extractErrorMessage(e, String(e)));
+            setSubmitError(
+                `You have left the registry; your profile files stay pinned. ${extractErrorMessage(e, String(e))}`,
+            );
         }
     }
 
@@ -466,16 +473,24 @@ function WithdrawRow({
                 rows={[{ label: "Tx:", value: receiptHash }]}
                 rowsLayout="inline"
                 actions={
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                            setReceiptHash(null);
-                            onWithdrawn();
-                        }}
-                    >
-                        Continue
-                    </Button>
+                    <>
+                        {submitError && (
+                            <p className="text-xs text-error-fg" role="alert">
+                                {submitError}
+                            </p>
+                        )}
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                                setReceiptHash(null);
+                                setSubmitError(null);
+                                onWithdrawn();
+                            }}
+                        >
+                            Continue
+                        </Button>
+                    </>
                 }
             />
         );

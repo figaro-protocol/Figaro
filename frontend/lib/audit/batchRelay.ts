@@ -49,20 +49,38 @@
  *   state-root-anchor the commit batch's `new_state_root` must appear in a
  *                     `BatchSettled` this verifier emitted on chain.
  *   resolution-anchor the resolution leg's batch passes the same domain and
- *                     anchor checks; an order reads as resolved only then.
+ *                     anchor checks.
+ *   state-inclusion   the order must sit under the verifier's CURRENT root,
+ *                     with the status the relay claims. The relay publishes the
+ *                     whole preimage of that root at `GET /state`
+ *                     (`KernelStateSnapshot`, `prover/sequencer/src/api.rs`), so
+ *                     no inclusion proof is needed: this reader recomputes the
+ *                     root from it exactly as the guest does
+ *                     (`./batchStateRoot`, the port of
+ *                     `prover/lib/src/state.rs::compute_root`), holds it to
+ *                     `FigaroBatchVerifier.stateRoot()` read from the chain (and
+ *                     to the relay's own `x-figaro-state-root` header when the
+ *                     browser can read it), and reads the order's status and
+ *                     process out of it. A struct both parties signed but no
+ *                     accepted batch committed fails here.
  *
- * WHAT THE ANCHOR DOES NOT PROVE. The relay publishes no inclusion proof, so
- * this reader shows that a `BatchSettled` carries the root the relay named —
- * never that this order sits under that root. A struct both parties signed
- * but never committed passes every check above. The checks and the panel say
- * so in their own words rather than calling the order verified on chain.
+ * WHY THE CURRENT STATE ANSWERS FOR AN OLD BATCH. An order resolved in an
+ * older batch is still in the current state: the guest writes an order's
+ * status 1 at commit and 2 at resolve (`prover/lib/src/kernel.rs`
+ * `apply_commit`/`apply_resolve`) and never removes an entry from any section
+ * of `KernelState`, and the verifier moves its root only from the root it
+ * holds (`FigaroBatchVerifier.settleBatch`, `pv.prevRoot == stateRoot`). So
+ * the current root's preimage carries every order any accepted batch ever
+ * committed, at its latest status. The one race is timing: a batch landing
+ * between the `/state` read and the `stateRoot` read makes the roots differ,
+ * which this reader reports as a FAILED check naming both roots, never as
+ * absence.
  *
  * An order failing ANY check renders as FAILED — loudly, naming the check and
  * the mismatch. It is never silently dropped and never softened, because a
  * relay that publishes a struct nobody signed must be visibly caught, not
- * quietly ignored. A relay cannot forge a signature, a payout or a state root;
- * it can omit, delay, and name a batch for an order this reader cannot place
- * under that batch's root.
+ * quietly ignored. A relay cannot forge a signature, a payout, a state root
+ * or an order's place under it; it can omit and delay.
  *
  * ZERO new crypto: the derivations are the SDK's own `computeOrderHash`,
  * `computeCommitmentProcessId`, `verifyCommitmentSignature`,
@@ -82,6 +100,7 @@
  */
 
 import {
+    BATCH_VERIFIER_ABI,
     calculateBonds,
     calculateResolution,
     computeCommitmentProcessId,
@@ -109,6 +128,11 @@ import { readUserEndpoints, sanitizeEndpointUrl } from "@/lib/shared/userEndpoin
 import { hexEqual } from "@/lib/shared/evm";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import { orderFromSdk, type Order } from "@/lib/kernel/store";
+import {
+    computeKernelStateRoot,
+    parseKernelStateSnapshot,
+    type KernelStateSnapshot,
+} from "@/lib/audit/batchStateRoot";
 
 // ── Relay endpoint — deployment config, resolved-empty means ABSENCE ─────────
 
@@ -158,7 +182,8 @@ export type BatchRelayCheckId =
     | "payouts"
     | "resolve-signature"
     | "state-root-anchor"
-    | "resolution-anchor";
+    | "resolution-anchor"
+    | "state-inclusion";
 
 export interface BatchRelayCheck {
     id: BatchRelayCheckId;
@@ -207,6 +232,14 @@ export interface VerifiedBatchOrder {
  *  without a chain and the chain read has exactly one implementation. */
 export type StateRootAnchorCheck = (batch: SequencerBatchRef) => Promise<BatchRelayCheck>;
 
+/** Injectable inclusion check: does `orderHash` sit under the verifier's
+ *  current root, in `processId`, resolved exactly when `resolved`? */
+export type StateInclusionCheck = (
+    orderHash: string,
+    processId: string,
+    resolved: boolean,
+) => Promise<BatchRelayCheck>;
+
 export interface BatchVerifyContext {
     /** The chain the reader is actually on. */
     chainId: number;
@@ -216,6 +249,7 @@ export interface BatchVerifyContext {
      *  id fails, however genuine its signatures. */
     processId: string;
     isAnchored: StateRootAnchorCheck;
+    isIncluded: StateInclusionCheck;
 }
 
 // ── Per-order verification ──────────────────────────────────────────────────
@@ -406,6 +440,10 @@ export async function verifyBatchOrder(
         checks.push({ id: "resolution-anchor", ok: anchor.ok, detail: `resolution batch: ${anchor.detail}` });
     }
 
+    // Under the root: looked up by the hash the struct DERIVES, so the
+    // relay's own `order_hash` field never chooses the entry read.
+    checks.push(await ctx.isIncluded(derivedOrderHash, ctx.processId, resolutionBatch !== null));
+
     return finish(base, checks, commitment, batch, resolutionBatch, payouts);
 }
 
@@ -529,7 +567,134 @@ export function createStateRootAnchorCheck(
         }
         return pass(
             "state-root-anchor",
-            `state root ${batch.new_state_root} resolved on chain in ${match.transactionHash}; this order's inclusion under that root is not proved here — the relay publishes no inclusion proof`,
+            `state root ${batch.new_state_root} resolved on chain in ${match.transactionHash}`,
+        );
+    };
+}
+
+// ── Inclusion under the verifier's current root ────────────────────────────
+
+/** A relay's `GET /state`: the body, and the root its header names (null when
+ *  absent or unreadable — a cross-origin header the relay does not expose). */
+interface RelayStateRead {
+    text: string;
+    headerRoot: string | null;
+}
+
+/** `GET <relay>/state`, the body read as text so its u64s stay exact. */
+function fetchRelayState(relayUrl: string): () => Promise<RelayStateRead> {
+    return async () => {
+        const res = await fetch(`${relayUrl}/state`, {
+            method: "GET",
+            headers: { Accept: "application/json" },
+        });
+        if (!res.ok) {
+            throw new Error(`GET ${relayUrl}/state answered ${res.status} ${res.statusText}`.trim());
+        }
+        return { text: await res.text(), headerRoot: res.headers.get("x-figaro-state-root") };
+    };
+}
+
+/** `FigaroBatchVerifier.stateRoot()`, read from the chain. */
+function readVerifierStateRoot(
+    client: PublicClient,
+    verifier: `0x${string}`,
+): () => Promise<Hex> {
+    return () =>
+        client.readContract({
+            address: verifier,
+            abi: BATCH_VERIFIER_ABI,
+            functionName: "stateRoot",
+        }) as Promise<Hex>;
+}
+
+const STATUS_WORD: Record<number, string> = { 1: "committed and open", 2: "resolved" };
+
+/**
+ * Prove an order's inclusion from the preimage of the verifier's root. The
+ * relay's state and the chain's root are read ONCE per check instance (one per
+ * process read) and every order of the process is looked up in that one state.
+ */
+export function createStateInclusionCheck(deps: {
+    loadState: () => Promise<RelayStateRead>;
+    readStateRoot: () => Promise<Hex>;
+}): StateInclusionCheck {
+    type Loaded =
+        | { ok: true; root: Hex; state: KernelStateSnapshot }
+        | { ok: false; detail: string };
+    let loaded: Promise<Loaded> | null = null;
+
+    const load = async (): Promise<Loaded> => {
+        let read: RelayStateRead;
+        try {
+            read = await deps.loadState();
+        } catch (e) {
+            return { ok: false, detail: extractErrorMessage(e, "could not read the relay's GET /state") };
+        }
+        let state: KernelStateSnapshot;
+        try {
+            state = parseKernelStateSnapshot(read.text);
+        } catch (e) {
+            return {
+                ok: false,
+                detail: `the relay's GET /state is not the guest's state: ${extractErrorMessage(e, "unparseable")}`,
+            };
+        }
+        const root = computeKernelStateRoot(state);
+        if (read.headerRoot !== null && !hexEqual(read.headerRoot, root)) {
+            return {
+                ok: false,
+                detail: `the relay's x-figaro-state-root header names ${read.headerRoot}, but its GET /state recomputes to ${root}`,
+            };
+        }
+        let chainRoot: Hex;
+        try {
+            chainRoot = await deps.readStateRoot();
+        } catch (e) {
+            return { ok: false, detail: extractErrorMessage(e, "could not read FigaroBatchVerifier.stateRoot() on chain") };
+        }
+        if (!hexEqual(chainRoot, root)) {
+            return {
+                ok: false,
+                detail: `the relay's GET /state recomputes to ${root}, but FigaroBatchVerifier.stateRoot() is ${chainRoot} — the state served is not the one behind the verifier's root (a batch may have landed between the two reads; reload)`,
+            };
+        }
+        return { ok: true, root, state };
+    };
+
+    return async (orderHash, processId, resolved) => {
+        loaded ??= load();
+        const l = await loaded;
+        if (!l.ok) return fail("state-inclusion", l.detail);
+
+        const key = orderHash.toLowerCase();
+        const status = l.state.orderStatus.get(key);
+        if (status === undefined) {
+            return fail(
+                "state-inclusion",
+                `order ${orderHash} is not in the state behind the verifier's root ${l.root} — no batch this verifier accepted committed it`,
+            );
+        }
+        const filedUnder = l.state.orderProcessId.get(key);
+        if (!filedUnder || !hexEqual(filedUnder, processId)) {
+            return fail(
+                "state-inclusion",
+                `under the verifier's root ${l.root} this order belongs to process ${filedUnder ?? "(none)"}, not ${processId}`,
+            );
+        }
+        const word = STATUS_WORD[status] ?? `status ${status}`;
+        const expected = resolved ? 2 : 1;
+        if (status !== expected) {
+            return fail(
+                "state-inclusion",
+                resolved
+                    ? `the relay publishes this order as resolved, but under the verifier's root ${l.root} it is ${word}`
+                    : `the relay publishes no resolution for this order, but under the verifier's root ${l.root} it is ${word}`,
+            );
+        }
+        return pass(
+            "state-inclusion",
+            `under the verifier's current root ${l.root} (recomputed from the relay's GET /state) this order is ${word}`,
         );
     };
 }
@@ -589,7 +754,11 @@ export async function readVerifiedBatchProcess(
     client: PublicClient,
     chainId: number,
     processId: string,
-    deps?: { client?: SequencerClient; isAnchored?: StateRootAnchorCheck },
+    deps?: {
+        client?: SequencerClient;
+        isAnchored?: StateRootAnchorCheck;
+        isIncluded?: StateInclusionCheck;
+    },
 ): Promise<VerifiedBatchProcess> {
     const relayUrl = getBatchRelayUrl();
     if (!relayUrl && !deps?.client) {
@@ -638,6 +807,12 @@ export async function readVerifiedBatchProcess(
         verifier,
         processId,
         isAnchored: deps?.isAnchored ?? createStateRootAnchorCheck(client, chainId),
+        isIncluded: deps?.isIncluded ?? createStateInclusionCheck({
+            loadState: relayUrl
+                ? fetchRelayState(relayUrl)
+                : () => Promise.reject(new Error("no relay URL is configured to read GET /state from")),
+            readStateRoot: readVerifierStateRoot(client, verifier),
+        }),
     };
 
     const orders = await Promise.all(view.orders.map((o) => verifyBatchOrder(o, ctx)));

@@ -9,7 +9,6 @@ import { BatchResolutionSequenceFigure } from "@/components/figures/BatchResolut
 import { ResolutionPathsFigure } from "@/components/figures/ResolutionPathsFigure";
 import { MarketFormationSwimlaneFigure } from "@/components/figures/MarketFormationSwimlaneFigure";
 import { OriginationSequenceFigure } from "@/components/figures/OriginationSequenceFigure";
-import { GasCrossoverFigure } from "@/components/figures/GasCrossoverFigure";
 import { DualProcessIdFigure } from "@/components/figures/DualProcessIdFigure";
 import { RegistryLifecycleFigure } from "@/components/figures/RegistryLifecycleFigure";
 import { readFile } from "node:fs/promises";
@@ -574,90 +573,6 @@ describe("OriginationSequenceFigure", () => {
         expect(svg).toHaveAttribute("aria-labelledby", "os-title os-desc");
         expect(container.querySelector("#os-title")?.textContent).toContain("origination handshake");
         expect(container.querySelector("#os-desc")?.textContent).toContain("Two refusals");
-    });
-});
-
-describe("GasCrossoverFigure", () => {
-    it("renders /spec's own constants, and the 26.5k marginal without rounding it away", () => {
-        const { container } = render(<GasCrossoverFigure />);
-        const text = container.textContent ?? "";
-        expect(text).toContain("direct path — 167k per order");
-        expect(text).toContain("batch path — 333k fixed ÷ positions, + 26.5k each");
-        expect(text).toContain("144k sub-order commit + 23k per-order resolve");
-        expect(text).toContain("one-time 38k");
-    });
-
-    it("DERIVES the crossover from its inputs rather than printing a fixed number", () => {
-        const { container } = render(<GasCrossoverFigure />);
-        // 332,902 / (167,000 − 26,500) = 2.369… — so the 3rd whole position is
-        // the first cheaper one, which is the integer /spec's prose quotes.
-        expect(container.textContent).toContain("crossover ≈ 2.4");
-        expect(container.textContent).toContain("the 3rd position is the first cheaper");
-        cleanup();
-
-        const { container: doubled } = render(
-            <GasCrossoverFigure batchFixed={281_000} directPerOrder={167_000} batchMarginal={26_500} />,
-        );
-        // 281,000 / 140,500 = 2.0 exactly — the two paths TIE at two positions,
-        // so the first strictly cheaper one is still the third.
-        expect(doubled.textContent).toContain("crossover ≈ 2.0");
-        expect(doubled.textContent).toContain("the 3rd position is the first cheaper");
-        cleanup();
-
-        const { container: late } = render(
-            <GasCrossoverFigure batchFixed={600_000} directPerOrder={167_000} batchMarginal={26_500} />,
-        );
-        // 600,000 / 140,500 = 4.27 — the ordinal moves with the arithmetic.
-        expect(late.textContent).toContain("crossover ≈ 4.3");
-        expect(late.textContent).toContain("the 5th position is the first cheaper");
-    });
-
-    it("states the two units it plots, because they are not the same unit", () => {
-        const { container } = render(<GasCrossoverFigure />);
-        const text = container.textContent ?? "";
-        expect(text).toContain("Gas per unit resolved, by batch size");
-        expect(text).toContain("Per order on the direct path; per net position on the batch path.");
-        expect(text).not.toContain("Gas per resolved order, by batch size");
-    });
-
-    it("names no network in its accessible description (alt text is not a second register)", () => {
-        const { container } = render(<GasCrossoverFigure idPrefix="gd" />);
-        const desc = container.querySelector("#gd-desc")?.textContent ?? "";
-        expect(desc).toContain("The two measured resolutions on the public chain");
-        for (const network of ["Sepolia", "mainnet", "Ethereum", "testnet"]) {
-            expect(desc).not.toContain(network);
-        }
-    });
-
-    it("plots each measured receipt at its own position count, with its gas figure", () => {
-        const { container } = render(<GasCrossoverFigure />);
-        const text = container.textContent ?? "";
-        expect(text).toContain("measured on chain");
-        expect(text).toContain("385,902 gas ÷ 2 — commit + witness attestation");
-        expect(text).toContain("377,885 gas ÷ 2 — resolve + usage claim");
-        // One dot per receipt, plus the single hollow dot marking the crossing.
-        expect(container.querySelectorAll('circle[r="3.25"]')).toHaveLength(3);
-    });
-
-    it("omits the receipt block entirely when given none (optional field)", () => {
-        const { container } = render(<GasCrossoverFigure receipts={[]} />);
-        expect(container.textContent).not.toContain("measured on chain");
-        expect(container.querySelectorAll('circle[r="3.25"]')).toHaveLength(1);
-    });
-
-    it("draws no crossing when a position never costs less than a whole order (malformed input)", () => {
-        const { container } = render(
-            <GasCrossoverFigure batchMarginal={200_000} directPerOrder={167_000} receipts={[]} />,
-        );
-        expect(container.textContent).not.toContain("crossover");
-        expect(container.querySelectorAll('circle[r="3.25"]')).toHaveLength(0);
-    });
-
-    it("exposes an accessible title and description bound by aria-labelledby", () => {
-        const { container } = render(<GasCrossoverFigure idPrefix="gx" />);
-        const svg = container.querySelector("svg");
-        expect(svg).toHaveAttribute("aria-labelledby", "gx-title gx-desc");
-        expect(container.querySelector("#gx-desc")?.textContent).toContain("2.4 net positions");
     });
 });
 

@@ -13,7 +13,9 @@
  *   3. The caller renders the form with an `onSave` that calls
  *      `useUpdateMemberProfile.save(...)` — pin merged JSON,
  *      dispatch `updateProfile`.
- *   4. On success, redirect back to `/members/manage`.
+ *   4. Once the save has completed whole (the update confirmed and the
+ *      superseded files unpinned), redirect back to `/members/manage`.
+ *      A refused unpin keeps the member here with the refusal shown.
  *
  * A wallet the registry has never seen is redirected to `/members/manage`
  * (mirrors the redirect-on-miss pattern at `/members` itself). A wallet
@@ -168,16 +170,19 @@ export function useMemberProfileEditor(
         setSeeded(true);
     }, [seeded, loaded, existingProfile, extraFetchPending, seed, update]);
 
-    // Redirect back to /members/manage on a confirmed update. No refetch
+    // Redirect back to /members/manage once the save has completed whole —
+    // the update confirmed AND the superseded files unpinned. On a refused
+    // unpin `isSaved` stays false, so the member stays on this page where
+    // `externalError` shows the refusal (the update itself stands). No refetch
     // here: `useMemberProfile` is per-call-site local state, so refetching
     // this component's instance can't refresh /members/manage (which has its
     // own) — and the synchronous re-render + re-fetch it kicked raced the
     // router.push navigation. /members/manage reads fresh on mount regardless.
     useEffect(() => {
-        if (updater.isSuccess) {
+        if (updater.isSaved) {
             router.push("/members/manage");
         }
-    }, [updater.isSuccess, router]);
+    }, [updater.isSaved, router]);
 
     const setFetchError = useCallback((message: string) => {
         setFetchErrorState(message);

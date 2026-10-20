@@ -10,9 +10,10 @@
  * (struct → its own order hash and the process id this page asked for, both
  * signatures → the parties named inside that struct under the VERIFIER's
  * domain, payouts → recomputed from the struct, commit and resolution batches
- * → their state roots found in a `BatchSettled` on chain) and this panel
- * reports the verdict per check. The relay publishes no inclusion proof, so
- * the panel never claims an order sits under the root it found.
+ * → their state roots found in a `BatchSettled` on chain, and the order →
+ * found, with the status the relay claims, in the relay's `GET /state` once
+ * that state recomputes to `FigaroBatchVerifier.stateRoot()`) and this panel
+ * reports the verdict per check.
  *
  * An order that fails any check is shown as FAILED, naming the check and the
  * mismatch. It is never dropped and never softened — a relay publishing
@@ -119,12 +120,13 @@ export function BatchUniversePanel({ batch }: { batch: VerifiedBatchProcess | nu
                     struct, the payouts must recompute from it, the resolve
                     signature must recover to the buyer those structs name, and
                     each batch&rsquo;s state root must appear in a{" "}
-                    <code>BatchSettled</code> on chain. A relay cannot forge a
-                    signature, a payout or a state root. It can omit or delay, and
-                    it can name a batch for an order this page cannot place under
-                    that batch&rsquo;s root: the relay publishes no inclusion proof,
-                    so the state-root check shows the root is on chain, not that
-                    the order sits under it.
+                    <code>BatchSettled</code> on chain, and the order must sit,
+                    with the status the relay claims, in the state the relay
+                    publishes at <code>GET /state</code> &mdash; once this page
+                    recomputes that state&rsquo;s root and finds it equal to the
+                    verifier&rsquo;s <code>stateRoot</code> on chain. A relay cannot
+                    forge a signature, a payout, a state root or an order&rsquo;s
+                    place under it. It can omit or delay.
                 </p>
             </div>
 
@@ -192,7 +194,7 @@ export function BatchUniversePanel({ batch }: { batch: VerifiedBatchProcess | nu
                                                 }`}
                                             data-testid={`batch-verdict-${o.orderHash}`}
                                         >
-                                            {o.verdict === "verified" && "Passed every check — its inclusion under the state root is not proved here"}
+                                            {o.verdict === "verified" && "Passed every check — included under the verifier's current state root"}
                                             {o.verdict === "failed" && "FAILED verification — not displayed as trade"}
                                             {o.verdict === "unretained" && "Unretained — this relay dropped the committing batch, so there is no struct to check"}
                                         </span>

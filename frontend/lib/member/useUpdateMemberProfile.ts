@@ -19,8 +19,9 @@
  *      caller-only metadata-only path, by contract design).
  *   6. After the supersede confirms, best-effort unpin the prior
  *      profile CID and any published artifact the successor
- *      no longer references (wallet pins → wallet erases; the
- *      erasure never fails a confirmed save).
+ *      no longer references (wallet pins → wallet erases). A
+ *      refused unpin is the save's error and `isSaved` stays
+ *      false; the confirmed update stands.
  *
  * Hook returns a `save(partial)` function plus progress state. The
  * caller is responsible for redirect / success UI; the hook only
@@ -66,6 +67,12 @@ export interface UseUpdateMemberProfileResult {
     isConfirming: boolean;
     /** True after the transaction has confirmed. */
     isSuccess: boolean;
+    /**
+     * True once the most-recent save has completed whole: the transaction
+     * confirmed AND the superseded profile files were unpinned. A refused
+     * unpin leaves it false (the update stands; `error` names the refusal).
+     */
+    isSaved: boolean;
     /** Most-recent error from any phase (pin / parse / write / confirmation). */
     error: Error | null;
     /** Pinned IPFS URI from the most-recent successful save. */
@@ -90,6 +97,7 @@ export function useUpdateMemberProfile(
     const [pinning, setPinning] = useState(false);
     const [pinError, setPinError] = useState<Error | null>(null);
     const [publishedURI, setPublishedURI] = useState<string | null>(null);
+    const [saved, setSaved] = useState(false);
 
     // Reset transient errors whenever the underlying profile reference changes
     // (e.g. user navigates away and back). Keeps stale messages from leaking
@@ -105,6 +113,7 @@ export function useUpdateMemberProfile(
         }
         setPinError(null);
         setPublishedURI(null);
+        setSaved(false);
         setPinning(true);
 
         let merged: MemberProfileMetadata;
@@ -153,10 +162,13 @@ export function useUpdateMemberProfile(
                 nextProfile: merged,
             });
         } catch (err) {
-            const e = toError(err);
+            const e = new Error(
+                `Your profile is updated; its superseded files stay pinned. ${toError(err).message}`,
+            );
             setPinError(e);
             throw e;
         }
+        setSaved(true);
     }
 
     const error = pinError ?? (writeError as Error | null) ?? null;
@@ -165,6 +177,7 @@ export function useUpdateMemberProfile(
         isPending: pinning || writePending,
         isConfirming,
         isSuccess,
+        isSaved: saved,
         error,
         publishedURI,
     };

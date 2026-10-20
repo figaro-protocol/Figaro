@@ -56,14 +56,17 @@ vi.mock("@/lib/shared/userEndpoints", async (importOriginal) => {
 });
 
 import {
+    createStateInclusionCheck,
     createStateRootAnchorCheck,
     getBatchRelayUrl,
     readVerifiedBatchProcess,
     verifyBatchOrder,
     type BatchRelayCheckId,
     type BatchVerifyContext,
+    type StateInclusionCheck,
     type StateRootAnchorCheck,
 } from "@/lib/audit/batchRelay";
+import { computeKernelStateRoot, parseKernelStateSnapshot } from "@/lib/audit/batchStateRoot";
 
 // Deterministic anvil test keys (devnet-only, publicly known).
 const buyer = privateKeyToAccount("0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80");
@@ -143,11 +146,22 @@ const anchored: StateRootAnchorCheck = async () => ({
     detail: "anchored (stub)",
 });
 
-const ctx = (isAnchored: StateRootAnchorCheck = anchored): BatchVerifyContext => ({
+/** An inclusion stub that says the order IS under the verifier's root. */
+const included: StateInclusionCheck = async () => ({
+    id: "state-inclusion",
+    ok: true,
+    detail: "included (stub)",
+});
+
+const ctx = (
+    isAnchored: StateRootAnchorCheck = anchored,
+    isIncluded: StateInclusionCheck = included,
+): BatchVerifyContext => ({
     chainId: CHAIN_ID,
     verifier: VERIFIER,
     processId,
     isAnchored,
+    isIncluded,
 });
 
 const checkFor = (
@@ -180,6 +194,7 @@ describe("verifyBatchOrder — an honest relay record", () => {
             "process-id",
             "resolution-anchor",
             "seller-signature",
+            "state-inclusion",
             "state-root-anchor",
         ]);
         expect(result.checks.every((c) => c.ok)).toBe(true);
@@ -459,8 +474,10 @@ describe("createStateRootAnchorCheck", () => {
         ]);
         const check = await createStateRootAnchorCheck(client, CHAIN_ID)(batchRef);
         expect(check.ok).toBe(true);
-        // It says what it checked: the root, not the order's inclusion under it.
-        expect(check.detail).toContain("inclusion under that root is not proved");
+        // It says what it checked: the root is on chain. Inclusion is the
+        // `state-inclusion` check's, never claimed here.
+        expect(check.detail).toContain(`state root ${NEW_ROOT} resolved on chain`);
+        expect(check.detail).not.toContain("inclusion");
     });
 
     it("fails when no BatchSettled carries that state root", async () => {
@@ -635,6 +652,7 @@ describe("readVerifiedBatchProcess", () => {
         const result = await readVerifiedBatchProcess(client, CHAIN_ID, processId, {
             client: relay as never,
             isAnchored: anchored,
+            isIncluded: included,
         });
         expect(result.status).toBe("found");
         expect(result.orders[0]?.verdict).toBe("verified");
@@ -666,6 +684,7 @@ describe("readVerifiedBatchProcess", () => {
         const result = await readVerifiedBatchProcess(client, CHAIN_ID, processId, {
             client: relay as never,
             isAnchored: anchored,
+            isIncluded: included,
         });
         expect(result.resolution?.signature.ok).toBe(false);
         expect(result.resolution?.signature.detail).toContain("NOT proven to be buyer-authorized");
@@ -707,6 +726,7 @@ describe("readVerifiedBatchProcess", () => {
         const result = await readVerifiedBatchProcess(client, CHAIN_ID, processId, {
             client: relay as never,
             isAnchored: anchored,
+            isIncluded: included,
         });
         expect(result.resolution?.signature.ok).toBe(false);
         expect(result.resolution?.signature.detail).toContain("the signed structs name");
@@ -720,6 +740,7 @@ describe("readVerifiedBatchProcess", () => {
         const result = await readVerifiedBatchProcess(client, CHAIN_ID, processId, {
             client: relay as never,
             isAnchored: anchored,
+            isIncluded: included,
         });
         expect(result.resolution?.signature.ok).toBe(false);
         expect(result.resolution?.signature.detail).toContain("cannot be tied to the buyer");
@@ -738,6 +759,7 @@ describe("readVerifiedBatchProcess", () => {
         const result = await readVerifiedBatchProcess(client, CHAIN_ID, processId, {
             client: relay as never,
             isAnchored: commitOnly,
+            isIncluded: included,
         });
         expect(result.resolution?.signature.ok).toBe(false);
         expect(result.resolution?.signature.detail).toContain("not on chain");
@@ -751,6 +773,7 @@ describe("readVerifiedBatchProcess", () => {
         const result = await readVerifiedBatchProcess(client, CHAIN_ID, processId, {
             client: relay as never,
             isAnchored: anchored,
+            isIncluded: included,
         });
         expect(result.resolution?.signature.ok).toBe(false);
     });
@@ -761,6 +784,7 @@ describe("readVerifiedBatchProcess", () => {
         const result = await readVerifiedBatchProcess(client, CHAIN_ID, processId, {
             client: relay as never,
             isAnchored: anchored,
+            isIncluded: included,
         });
         expect(result.status).toBe("unreachable");
         expect(result.orders).toEqual([]);
@@ -768,6 +792,229 @@ describe("readVerifiedBatchProcess", () => {
     });
 });
 
+
+// ── Inclusion under the verifier's CURRENT root ─────────────────────────────
+//
+// The relay's `GET /state` is the preimage of `FigaroBatchVerifier.stateRoot`.
+// The reader recomputes the root from it (the port is locked against the Rust
+// in batchStateRoot.test.ts), holds it to the verifier's on-chain root, and
+// reads the order's status there. No inclusion proof is needed: the whole
+// preimage is.
+
+const OTHER_ROOT = `0x${"99".repeat(32)}` as Hex;
+
+/** A `/state` body as the Rust serializes `KernelStateSnapshot`. */
+function stateBody(orders: { hash: string; status: number; process: string }[]): string {
+    return JSON.stringify({
+        processes: [[processId, {
+            root_buyer: buyer.address.toLowerCase(),
+            currency: commitment.currency.toLowerCase(),
+            cumulative_value: hexQty(commitment.expectedCumulativeValue),
+            active_order_count: 0,
+        }]],
+        order_status: orders.map((o) => [o.hash, o.status]),
+        order_process_id: orders.map((o) => [o.hash, o.process]),
+        usage_counted: [],
+        usage_seller_seen: [],
+        usage_accrual: [],
+    });
+}
+const rootOf = (text: string) => computeKernelStateRoot(parseKernelStateSnapshot(text));
+
+function inclusionOver(
+    text: string,
+    opts: { chainRoot?: Hex; headerRoot?: string | null } = {},
+): { check: StateInclusionCheck; loads: () => number } {
+    let n = 0;
+    const root = rootOf(text);
+    const check = createStateInclusionCheck({
+        loadState: async () => {
+            n += 1;
+            return { text, headerRoot: opts.headerRoot === undefined ? root : opts.headerRoot };
+        },
+        readStateRoot: async () => opts.chainRoot ?? root,
+    });
+    return { check, loads: () => n };
+}
+
+describe("state-inclusion — the order read from the preimage of the verifier's root", () => {
+    it("an order RESOLVED under the verifier's root reads as included and resolved", async () => {
+        const text = stateBody([{ hash: orderHash, status: 2, process: processId }]);
+        const { check } = inclusionOver(text);
+        const result = await verifyBatchOrder(honestView(), ctx(anchored, check));
+        const c = checkFor(result.checks, "state-inclusion");
+        expect(c?.ok).toBe(true);
+        expect(c?.detail).toContain(rootOf(text));
+        expect(c?.detail).toContain("resolved");
+        expect(result.verdict).toBe("verified");
+        expect(result.order).not.toBeNull();
+    });
+
+    it("an OPEN order committed under the verifier's root reads as included and open", async () => {
+        const text = stateBody([{ hash: orderHash, status: 1, process: processId }]);
+        const { check } = inclusionOver(text);
+        const result = await verifyBatchOrder(honestView({ resolution: null }), ctx(anchored, check));
+        const c = checkFor(result.checks, "state-inclusion");
+        expect(c?.ok).toBe(true);
+        expect(c?.detail).toContain("open");
+        expect(result.verdict).toBe("verified");
+    });
+
+    it("EXCLUDED: an order absent from the state behind the root is FAILED, never verified", async () => {
+        // The case the anchor alone could not catch: a struct both parties
+        // signed but no batch ever committed.
+        const text = stateBody([{ hash: `0x${"77".repeat(32)}`, status: 2, process: processId }]);
+        const { check } = inclusionOver(text);
+        const result = await verifyBatchOrder(honestView(), ctx(anchored, check));
+        const c = checkFor(result.checks, "state-inclusion");
+        expect(c?.ok).toBe(false);
+        expect(c?.detail).toContain("not in the state");
+        expect(result.verdict).toBe("failed");
+        expect(result.order).toBeNull();
+    });
+
+    it("a relay claiming RESOLVED for an order the state holds open is FAILED", async () => {
+        const text = stateBody([{ hash: orderHash, status: 1, process: processId }]);
+        const { check } = inclusionOver(text);
+        const result = await verifyBatchOrder(honestView(), ctx(anchored, check));
+        const c = checkFor(result.checks, "state-inclusion");
+        expect(c?.ok).toBe(false);
+        expect(c?.detail).toContain("open");
+        expect(result.verdict).toBe("failed");
+    });
+
+    it("a relay omitting the resolution of an order the state holds resolved is FAILED", async () => {
+        const text = stateBody([{ hash: orderHash, status: 2, process: processId }]);
+        const { check } = inclusionOver(text);
+        const result = await verifyBatchOrder(honestView({ resolution: null }), ctx(anchored, check));
+        expect(checkFor(result.checks, "state-inclusion")?.ok).toBe(false);
+        expect(result.verdict).toBe("failed");
+    });
+
+    it("an order the state files under another process is FAILED", async () => {
+        const text = stateBody([{ hash: orderHash, status: 2, process: `0x${"cd".repeat(32)}` }]);
+        const { check } = inclusionOver(text);
+        const result = await verifyBatchOrder(honestView(), ctx(anchored, check));
+        const c = checkFor(result.checks, "state-inclusion");
+        expect(c?.ok).toBe(false);
+        expect(c?.detail).toContain("process");
+        expect(result.verdict).toBe("failed");
+    });
+
+    it("ROOT MISMATCH: a /state that does not recompute to the verifier's root is FAILED, naming both roots", async () => {
+        const text = stateBody([{ hash: orderHash, status: 2, process: processId }]);
+        const { check } = inclusionOver(text, { chainRoot: OTHER_ROOT });
+        const result = await verifyBatchOrder(honestView(), ctx(anchored, check));
+        const c = checkFor(result.checks, "state-inclusion");
+        expect(c?.ok).toBe(false);
+        expect(c?.detail).toContain(rootOf(text));
+        expect(c?.detail).toContain(OTHER_ROOT);
+        expect(result.verdict).toBe("failed");
+        expect(result.order).toBeNull();
+    });
+
+    it("a relay whose root header names a root other than its body's is FAILED", async () => {
+        const text = stateBody([{ hash: orderHash, status: 2, process: processId }]);
+        const { check } = inclusionOver(text, { headerRoot: OTHER_ROOT });
+        const result = await verifyBatchOrder(honestView(), ctx(anchored, check));
+        const c = checkFor(result.checks, "state-inclusion");
+        expect(c?.ok).toBe(false);
+        expect(c?.detail).toContain("x-figaro-state-root");
+    });
+
+    it("an absent root header is not a failure — the verifier's root is the check", async () => {
+        const text = stateBody([{ hash: orderHash, status: 2, process: processId }]);
+        const { check } = inclusionOver(text, { headerRoot: null });
+        const result = await verifyBatchOrder(honestView(), ctx(anchored, check));
+        expect(checkFor(result.checks, "state-inclusion")?.ok).toBe(true);
+    });
+
+    it("an unparseable /state is FAILED, never skipped", async () => {
+        const check = createStateInclusionCheck({
+            loadState: async () => ({ text: "{ not the guest's state", headerRoot: null }),
+            readStateRoot: async () => OTHER_ROOT,
+        });
+        const result = await verifyBatchOrder(honestView(), ctx(anchored, check));
+        expect(checkFor(result.checks, "state-inclusion")?.ok).toBe(false);
+        expect(result.verdict).toBe("failed");
+    });
+
+    it("an unreachable /state is FAILED with the reason", async () => {
+        const check = createStateInclusionCheck({
+            loadState: async () => { throw new Error("connection refused"); },
+            readStateRoot: async () => OTHER_ROOT,
+        });
+        const result = await verifyBatchOrder(honestView(), ctx(anchored, check));
+        const c = checkFor(result.checks, "state-inclusion");
+        expect(c?.ok).toBe(false);
+        expect(c?.detail).toContain("connection refused");
+    });
+
+    it("reads /state once for every order of a process", async () => {
+        const text = stateBody([{ hash: orderHash, status: 2, process: processId }]);
+        const { check, loads } = inclusionOver(text);
+        await Promise.all([check(orderHash, processId, true), check(orderHash, processId, true)]);
+        expect(loads()).toBe(1);
+    });
+});
+
+describe("readVerifiedBatchProcess — the default inclusion check reads the relay's /state and the verifier's root", () => {
+    const RELAY = "http://relay.test";
+
+    it("fetches GET /state from the relay the page reads and holds it to FigaroBatchVerifier.stateRoot", async () => {
+        readUserEndpointsMock.mockReturnValue({ batchRelayUrl: RELAY });
+        const text = stateBody([{ hash: orderHash, status: 2, process: processId }]);
+        const root = rootOf(text);
+        const fetchMock = vi.fn().mockResolvedValue(
+            new Response(text, { status: 200, headers: { "x-figaro-state-root": root } }),
+        );
+        vi.stubGlobal("fetch", fetchMock);
+        const readContract = vi.fn().mockResolvedValue(root);
+        const relay = {
+            process: vi.fn().mockResolvedValue({ process_id: processId, orders: [honestView()], resolution: null }),
+            status: vi.fn().mockResolvedValue({ archive: null }),
+        };
+        try {
+            const result = await readVerifiedBatchProcess(
+                { readContract } as unknown as PublicClient,
+                CHAIN_ID,
+                processId,
+                { client: relay as never, isAnchored: anchored },
+            );
+            expect(fetchMock).toHaveBeenCalledTimes(1);
+            expect(String(fetchMock.mock.calls[0]?.[0])).toBe(`${RELAY}/state`);
+            expect(readContract).toHaveBeenCalledWith(
+                expect.objectContaining({ address: VERIFIER, functionName: "stateRoot" }),
+            );
+            expect(checkFor(result.orders[0]!.checks, "state-inclusion")?.ok).toBe(true);
+            expect(result.orders[0]?.verdict).toBe("verified");
+        } finally {
+            vi.unstubAllGlobals();
+        }
+    });
+
+    it("fails every order when the verifier's root is not the relay's", async () => {
+        readUserEndpointsMock.mockReturnValue({ batchRelayUrl: RELAY });
+        const text = stateBody([{ hash: orderHash, status: 2, process: processId }]);
+        vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(text, { status: 200 })));
+        const relay = {
+            process: vi.fn().mockResolvedValue({ process_id: processId, orders: [honestView()], resolution: null }),
+            status: vi.fn().mockResolvedValue({ archive: null }),
+        };
+        try {
+            const result = await readVerifiedBatchProcess(
+                { readContract: vi.fn().mockResolvedValue(OTHER_ROOT) } as unknown as PublicClient,
+                CHAIN_ID,
+                processId,
+                { client: relay as never, isAnchored: anchored },
+            );
+            expect(result.orders[0]?.verdict).toBe("failed");
+            expect(checkFor(result.orders[0]!.checks, "state-inclusion")?.detail).toContain(OTHER_ROOT);
+        } finally {
+            vi.unstubAllGlobals();
+        }
+    });
+});
 
 // ── A REAL relay payload, produced by the Rust sequencer ────────────────────
 //
@@ -848,6 +1095,7 @@ describe("a REAL payload from the Rust relay", () => {
             verifier: REAL_VERIFIER,
             processId: REAL_COMMIT.process_id,
             isAnchored: anchored,
+            isIncluded: included,
         });
         expect(checkFor(result.checks, "buyer-signature")?.ok).toBe(true);
         expect(checkFor(result.checks, "seller-signature")?.ok).toBe(true);
@@ -860,6 +1108,7 @@ describe("a REAL payload from the Rust relay", () => {
             verifier: REAL_VERIFIER,
             processId: REAL_COMMIT.process_id,
             isAnchored: anchored,
+            isIncluded: included,
         });
         expect(checkFor(result.checks, "payouts")?.ok).toBe(true);
         // 100e18 payment, 100e18 cumulative value ⇒ 300e18 / 100e18.
