@@ -16,7 +16,7 @@
  * absence, never a fallback to another copy.
  */
 
-import { useMemo, useSyncExternalStore } from "react";
+import { useSyncExternalStore } from "react";
 import {
     AGREEMENT_REGISTRY_ABI,
     agreementKeyOf,
@@ -31,7 +31,6 @@ import {
 } from "@figaro-protocol/sdk";
 import { isValidAddress } from "@/lib/shared/evm";
 import { CONTRACTS } from "@/lib/kernel/contracts";
-import { DEFAULT_IPFS_SERVICE, fetchCappedContent } from "@/lib/shared/ipfsService";
 import { publicClient } from "@/lib/shared/wagmi";
 import {
     createUseWithdrawStake,
@@ -39,7 +38,8 @@ import {
     translateContractRevert,
     withdrawRevertMessage,
 } from "@/lib/protocol/useWithdrawStake";
-import { createRegistryEventScan } from "@/lib/protocol/registryEventScan";
+import { createRegistryEventScan, useDesurfaced } from "@/lib/protocol/registryEventScan";
+import { fetchPinnedDocument, readRegistryBinding } from "@/lib/protocol/registryDocument";
 
 export function getAgreementRegistry(): `0x${string}` | null {
     const a = CONTRACTS.agreementRegistry;
@@ -116,13 +116,7 @@ export function usePublishedAgreements(
     registeredBy: `0x${string}` | undefined,
     opts?: { includeWithdrawn?: boolean },
 ) {
-    const scan = useAgreementRegistryScan({ registeredBy });
-    const keep = !!registeredBy || !!opts?.includeWithdrawn;
-    const data = useMemo(
-        () => (scan.data && !keep ? scan.data.filter((i) => !i.stakeWithdrawn) : scan.data),
-        [scan.data, keep],
-    );
-    return { ...scan, data };
+    return useDesurfaced(useAgreementRegistryScan({ registeredBy }), registeredBy, opts);
 }
 
 /** The registry's binding for one key, read at the edge. Null when the key is
@@ -134,18 +128,10 @@ export async function readAgreementBinding(
 ): Promise<{ registeredBy: `0x${string}`; registeredAt: bigint; stakeWithdrawn: boolean; contentURI: string } | null> {
     const registry = getAgreementRegistry();
     if (!registry) return null;
-    try {
-        const [registeredBy, registeredAt, stakeWithdrawn, contentURI] = (await client.readContract({
-            address: registry,
-            abi: AGREEMENT_REGISTRY_ABI,
-            functionName: "bindings",
-            args: [agreementKey],
-        })) as readonly [`0x${string}`, bigint, boolean, string];
-        if (registeredAt === 0n || !contentURI) return null;
-        return { registeredBy, registeredAt, stakeWithdrawn, contentURI };
-    } catch {
-        return null;
-    }
+    const binding = await readRegistryBinding(registry, AGREEMENT_REGISTRY_ABI, agreementKey, client);
+    if (!binding) return null;
+    const [registeredBy, registeredAt, stakeWithdrawn, contentURI] = binding;
+    return { registeredBy, registeredAt, stakeWithdrawn, contentURI };
 }
 
 // ── The verified documents this tab has read (session cache) ──────────────
@@ -210,22 +196,16 @@ async function fetchAgreementDocument(
     contentURI: string,
     agreementKey: `0x${string}`,
 ): Promise<Anchored<RegisteredAgreement> | null> {
-    const url = DEFAULT_IPFS_SERVICE.resolveFetchUrl(contentURI);
-    if (!url) return null;
-    try {
-        const response = await fetchCappedContent(url);
-        if (!response.ok) return null;
-        const doc = anchorRegisteredAgreement(await response.text(), agreementKey);
-        if (doc === null) {
+    return fetchPinnedDocument(
+        contentURI,
+        (text) => anchorRegisteredAgreement(text, agreementKey),
+        () => {
             const detail = `integrity failure at ${contentURI}: the document is not the agreement the key ${agreementKey} names`;
             console.warn(`[fetchRegisteredAgreement] ${detail} — dropping`);
             loadErrors.set(agreementKey.toLowerCase(), detail);
             noteVerified();
-        }
-        return doc;
-    } catch {
-        return null;
-    }
+        },
+    );
 }
 
 /**

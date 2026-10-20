@@ -11,11 +11,9 @@
  * imports only viem / wagmi / `@/lib/shared/*` / `@/lib/kernel/*`.
  */
 
-import { useMemo } from "react";
 import { isValidAddress } from "@/lib/shared/evm";
 import { anchorAssembly, parseAssemblyRegistryLogs, type Anchored, type HydratedAssembly } from "@figaro-protocol/sdk";
 import { ASSEMBLY_REGISTRY_ABI, CONTRACTS } from "@/lib/kernel/contracts";
-import { DEFAULT_IPFS_SERVICE, fetchCappedContent } from "@/lib/shared/ipfsService";
 import { safeJsonParse } from "@/lib/shared/safeJson";
 import {
     createUseWithdrawStake,
@@ -23,8 +21,8 @@ import {
     translateContractRevert,
     withdrawRevertMessage,
 } from "@/lib/protocol/useWithdrawStake";
-import { createRegistryEventScan } from "@/lib/protocol/registryEventScan";
-import { publicClient } from "@/lib/shared/wagmi";
+import { createRegistryEventScan, useDesurfaced } from "@/lib/protocol/registryEventScan";
+import { fetchPinnedDocument, readRegistryBinding } from "@/lib/protocol/registryDocument";
 import { hydrateAnchoredAssembly, getRegisteredAgreementLoadError } from "@/lib/protocol/useAgreementRegistry";
 import {
     deriveAssemblySlug,
@@ -162,20 +160,7 @@ export function usePublishedAssemblies(
     registeredBy: `0x${string}` | undefined,
     opts?: { includeWithdrawn?: boolean },
 ) {
-    const scan = useAssemblyRegistryScan({ registeredBy });
-    // Withdraw = de-surface: the network-wide read powers every surfacing
-    // path, so it drops withdrawn stakes; the registering wallet's own read
-    // keeps them, flagged, and `includeWithdrawn` keeps them for a reader
-    // whose job is showing the withdrawn set (the registry explorer).
-    const keep = !!registeredBy || !!opts?.includeWithdrawn;
-    // Memoized: downstream hooks key on this array's identity (e.g. the
-    // assembly-choices fold), so the filtered view must be referentially
-    // stable across renders, not rebuilt per call.
-    const data = useMemo(
-        () => (scan.data && !keep ? scan.data.filter((i) => !i.stakeWithdrawn) : scan.data),
-        [scan.data, keep],
-    );
-    return { ...scan, data };
+    return useDesurfaced(useAssemblyRegistryScan({ registeredBy }), registeredBy, opts);
 }
 
 /**
@@ -211,31 +196,21 @@ export async function fetchAssembly(
     contentURI: string,
     expectedCompositionHash: `0x${string}`,
 ): Promise<Anchored<Assembly> | null> {
-    const url = DEFAULT_IPFS_SERVICE.resolveFetchUrl(contentURI);
-    if (!url) return null;
-    try {
-        // Size-capped fetch (F4): an oversized pin aborts mid-stream (throws →
-        // the catch below → null) before the hash check would buffer it.
-        const response = await fetchCappedContent(url);
-        if (!response.ok) return null;
-        // Reviver-backed parse: the compositionHash proves DESIGNER-integrity,
-        // not prototype-pollution safety — the registering wallet is untrusted (the
-        // AssemblyRegistry is permissionless), so a hostile assembly can be
-        // anchored under its own hash and pass verification.
-        // Matches the clause-spec path; strips __proto__/constructor/prototype.
-        const fetched = safeJsonParse<unknown>(await response.text());
-        const assembly = anchorAssembly(fetched, expectedCompositionHash);
-        if (assembly === null) {
+    // Size-capped fetch (F4) and a reviver-backed parse: the compositionHash proves
+    // DESIGNER-integrity, not prototype-pollution safety — the registering wallet is
+    // untrusted (the AssemblyRegistry is permissionless), so a hostile assembly can be
+    // anchored under its own hash and pass verification. Matches the clause-spec path;
+    // strips __proto__/constructor/prototype.
+    return fetchPinnedDocument(
+        contentURI,
+        (text) => anchorAssembly(safeJsonParse<unknown>(text), expectedCompositionHash),
+        () => {
             loadErrors.set(expectedCompositionHash.toLowerCase(), `integrity failure at ${contentURI}: the document is not the assembly the root anchors`);
             console.warn(
                 `[fetchAssembly] integrity failure at ${contentURI}: the document is not the assembly whose composition the chain anchors (${expectedCompositionHash}) — dropping`,
             );
-            return null;
-        }
-        return assembly;
-    } catch {
-        return null;
-    }
+        },
+    );
 }
 
 /**
@@ -278,18 +253,8 @@ export async function fetchAssemblyByHash(
 ): Promise<Anchored<Assembly> | null> {
     const registry = getAssemblyRegistry();
     if (!registry) return null;
-    try {
-        const [, registeredAt, , contentURI] = (await publicClient.readContract({
-            address: registry,
-            abi: ASSEMBLY_REGISTRY_ABI,
-            functionName: "bindings",
-            args: [compositionHash],
-        })) as readonly [`0x${string}`, bigint, boolean, string];
-        if (registeredAt === 0n || !contentURI) return null;
-        return fetchAssembly(contentURI, compositionHash);
-    } catch {
-        return null;
-    }
+    const binding = await readRegistryBinding(registry, ASSEMBLY_REGISTRY_ABI, compositionHash);
+    return binding ? fetchAssembly(binding[3], compositionHash) : null;
 }
 
 /**

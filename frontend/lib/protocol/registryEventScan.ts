@@ -120,3 +120,23 @@ export function createRegistryEventScan<Row>(config: RegistryEventScanConfig<Row
         return useMemo(() => ({ data, isLoading, failed, refetch }), [data, isLoading, failed, refetch]);
     };
 }
+
+/**
+ * Withdraw = de-surface, the one fold for every family: the network-wide read powers every
+ * surfacing path, so it drops withdrawn stakes; the registering wallet's own read keeps them,
+ * flagged, and `includeWithdrawn` keeps them for a reader whose job is showing the withdrawn
+ * set (the registry explorer). Memoized: downstream hooks key on this array's identity (e.g.
+ * the assembly-choices fold), so the filtered view stays referentially stable across renders.
+ */
+export function useDesurfaced<Row extends { stakeWithdrawn: boolean }, Scan extends { data: Row[] | null }>(
+    scan: Scan,
+    registeredBy: `0x${string}` | undefined,
+    opts?: { includeWithdrawn?: boolean },
+) {
+    const keep = !!registeredBy || !!opts?.includeWithdrawn;
+    const data = useMemo(
+        () => (scan.data && !keep ? scan.data.filter((i) => !i.stakeWithdrawn) : scan.data),
+        [scan.data, keep],
+    );
+    return { ...scan, data };
+}

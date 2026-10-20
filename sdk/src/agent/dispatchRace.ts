@@ -31,17 +31,17 @@
  */
 
 import type { WalletClient } from "viem";
-import { buildCommitment, buildDomain, hashCommitmentStruct, verifyCommitmentSignature, COMMITMENT_TYPES, ZERO_PROCESS_ID } from "../commitments.js";
+import { buildCommitment, buildDomain, hashCommitmentStruct, ZERO_PROCESS_ID } from "../commitments.js";
 import { computeAgreementHash, type Agreement, type AgreementProvenance } from "../agreement.js";
 import type { Hex, Address } from "../types.js";
 import type { CommitmentPayload, CoordinationChannel, PricedField, QuoteRequestTerms } from "./coordination.js";
-import { checkOfferPolicy, instantiateRootAgreement, readOfferDesign, verifyRaceReply, type OfferCheck, type OfferPolicy } from "./originate.js";
+import { checkOfferPolicy, checkPayloadTerms, checkSellerSignature, countersignUnderFloors, gateSeller, instantiateRootAgreement, readOfferDesign, signCommitmentAs, verifyRaceReply, type OfferCheck, type OfferPolicy } from "./originate.js";
 
 // One owner for the reply check: the offer loops and the race both use it.
 export { verifyRaceReply };
 import { assertAgreementSignable, type SpecSource } from "../projection.js";
 import type { HydratedAssembly } from "../assembly.js";
-import { checkSellerBindsAssembly, type MemberProfileReader } from "../memberProfile.js";
+import type { MemberProfileReader } from "../memberProfile.js";
 
 /**
  * Structural validation a candidate MUST run before countersigning a race
@@ -76,31 +76,7 @@ export async function validateDraft(
 ): Promise<OfferCheck> {
     if (draft.buyerSig) return { ok: false, reason: "payload carries a buyer signature — an offer, not a race draft" };
     if (draft.sellerSig) return { ok: false, reason: "payload already carries a seller signature" };
-    const c = draft.commitment;
-    if (c.seller.toLowerCase() !== expectedSeller.toLowerCase()) {
-        return { ok: false, reason: "draft names a different seller" };
-    }
-    if (c.agreementHash.toLowerCase() !== computeAgreementHash(draft.agreement).toLowerCase()) {
-        return { ok: false, reason: "agreement does not hash to the committed agreementHash" };
-    }
-    if (draft.agreement.buyer.toLowerCase() !== c.buyer.toLowerCase()
-        || draft.agreement.seller.toLowerCase() !== c.seller.toLowerCase()) {
-        return { ok: false, reason: "agreement parties do not match the commitment" };
-    }
-    const bound = await checkSellerBindsAssembly(draft.agreement, c.seller, readProfile);
-    if (!bound.ok) return bound;
-    if (specs) {
-        try {
-            assertAgreementSignable(draft.agreement, c.agreementHash, specs, c, design, "This draft");
-        } catch (cause) {
-            return { ok: false, reason: cause instanceof Error ? cause.message : String(cause) };
-        }
-    }
-    if (policy) {
-        const economic = checkOfferPolicy(c, policy);
-        if (!economic.ok) return economic;
-    }
-    return { ok: true };
+    return checkPayloadTerms(draft, expectedSeller, "draft", policy, specs, design, readProfile);
 }
 
 /**
@@ -131,27 +107,12 @@ export async function counterSignDraft(
     design: HydratedAssembly | null = null,
     readProfile?: MemberProfileReader,
 ): Promise<CommitmentPayload | null> {
-    const account = wallet.account;
-    if (!account) throw new Error("counterSignDraft: wallet has no account");
-    const seller = account.address;
-
-    const check = await validateDraft(draft, seller, undefined, specs, design, readProfile);
-    if (!check.ok) throw new Error(`counterSignDraft: refusing the draft — ${check.reason}`);
+    await gateSeller(wallet, "counterSignDraft", "the draft", (seller) => validateDraft(draft, seller, undefined, specs, design, readProfile));
     if (draft.quoteRequest) {
         throw new Error("counterSignDraft: payload is a quote request — the candidate prices it via quoteDraft, never countersigns the ceiling");
     }
 
-    if (!policy) return null;
-    const economic = checkOfferPolicy(draft.commitment, policy);
-    if (!economic.ok) return null;
-
-    if (!accept || !accept(draft)) return null;
-
-    const domain = buildDomain(ctx.chainId, ctx.core);
-    const sellerSig = await wallet.signTypedData({
-        account, domain, types: COMMITMENT_TYPES, primaryType: "Commitment", message: draft.commitment,
-    });
-    return { ...draft, sellerSig };
+    return countersignUnderFloors(wallet, draft, ctx, policy, accept, "counterSignDraft");
 }
 
 /** A verified countersigned reply, paired with the draft it answers. */
@@ -320,12 +281,7 @@ export async function quoteDraft(
     design: HydratedAssembly | null = null,
     readProfile?: MemberProfileReader,
 ): Promise<CommitmentPayload | null> {
-    const account = wallet.account;
-    if (!account) throw new Error("quoteDraft: wallet has no account");
-    const seller = account.address;
-
-    const check = await validateDraft(draft, seller, undefined, specs, design, readProfile);
-    if (!check.ok) throw new Error(`quoteDraft: refusing the quote request — ${check.reason}`);
+    await gateSeller(wallet, "quoteDraft", "the quote request", (seller) => validateDraft(draft, seller, undefined, specs, design, readProfile));
     const terms = draft.quoteRequest;
     if (!terms || terms.pricedFields.length === 0) {
         throw new Error("quoteDraft: payload carries no quote request — a race draft countersigns via counterSignDraft");
@@ -343,10 +299,7 @@ export async function quoteDraft(
     if (specs) {
         assertAgreementSignable(agreement, quoted.agreementHash, specs, quoted, design, "This quote");
     }
-    const domain = buildDomain(ctx.chainId, ctx.core);
-    const sellerSig = await wallet.signTypedData({
-        account, domain, types: COMMITMENT_TYPES, primaryType: "Commitment", message: quoted,
-    });
+    const sellerSig = await signCommitmentAs(wallet, ctx, quoted, "quoteDraft");
     return { commitment: quoted, agreement, sellerSig };
 }
 
@@ -404,11 +357,7 @@ export async function verifyQuoteReply(
         return { ok: false, reason: "quote's inline agreement does not hash to its committed agreementHash" };
     }
     // Recover against the buyer's OWN reconstruction of the quoted struct.
-    const valid = await verifyCommitmentSignature(
-        expected.commitment, reply.sellerSig as Hex, draft.commitment.seller, ctx,
-    );
-    if (!valid) return { ok: false, reason: "seller signature does not recover to the drafted candidate" };
-    return { ok: true };
+    return checkSellerSignature(expected.commitment, reply.sellerSig as Hex, draft.commitment.seller, ctx);
 }
 
 // ── THE race engine — one choreography, every surface ────────────────────────

@@ -5,6 +5,11 @@ import {
     instantiateRootAgreement,
     buildBuyerOffer,
     validateOffer,
+    checkPayloadTerms,
+    signCommitmentAs,
+    countersignUnderFloors,
+    checkSellerSignature,
+    gateSeller,
     counterSignOffer,
     offerToExecutionInputs,
     type OfferPolicy,
@@ -454,5 +459,82 @@ describe("the seller's bound assemblies — the offer leg refuses an order under
             accept: () => true, policy, approveBond: false, readProfile: profileBinding(elsewhere),
         });
         await expect(notBinding(offer)).rejects.toThrow(/has not bound assembly/);
+    });
+});
+
+describe("checkPayloadTerms — the one term check the offer leg and the race draft leg share", () => {
+    it("passes a clean payload and names the payload's noun in the refusal of a different seller", async () => {
+        const offer = await buildBuyerOffer(buyerW, offerParams());
+        expect((await checkPayloadTerms(offer, SELLER.address, "offer", undefined, undefined, null, BOUND)).ok).toBe(true);
+        const other = await checkPayloadTerms(offer, BUYER.address, "offer", undefined, undefined, null, BOUND);
+        expect(other).toEqual({ ok: false, reason: "offer names a different seller" });
+        const draftSide = await checkPayloadTerms(offer, BUYER.address, "draft", undefined, undefined, null, BOUND);
+        expect(draftSide).toEqual({ ok: false, reason: "draft names a different seller" });
+    });
+
+    it("refuses an agreement that does not hash to the committed agreementHash, and a seller whose profile does not bind", async () => {
+        const offer = await buildBuyerOffer(buyerW, offerParams());
+        const tampered = { ...offer, agreement: { ...offer.agreement, buyer: SELLER.address } };
+        expect((await checkPayloadTerms(tampered, SELLER.address, "offer", undefined, undefined, null, BOUND)).ok).toBe(false);
+        expect((await checkPayloadTerms(offer, SELLER.address, "offer", undefined, undefined, null, undefined)).ok).toBe(false);
+    });
+
+    it("applies the operator's economic floor when a policy is given", async () => {
+        const offer = await buildBuyerOffer(buyerW, offerParams());
+        const tight: OfferPolicy = { requireRootShape: true, currencyAllowlist: [CURRENCY], maxValue: 1n };
+        expect((await checkPayloadTerms(offer, SELLER.address, "offer", tight, undefined, null, BOUND)).ok).toBe(false);
+        expect((await checkPayloadTerms(offer, SELLER.address, "offer", policy, undefined, null, BOUND)).ok).toBe(true);
+    });
+});
+
+describe("signCommitmentAs — the one signature over a commitment the seller legs share", () => {
+    it("signs the commitment under the wallet's account, and refuses a wallet with no account", async () => {
+        const offer = await buildBuyerOffer(buyerW, offerParams());
+        const ctx = { chainId: CHAIN, core: CORE };
+        const sig = await signCommitmentAs(sellerW, ctx, offer.commitment, "test");
+        const direct = await sellerW.signTypedData({
+            account: SELLER, domain: buildDomain(CHAIN, CORE), types: COMMITMENT_TYPES, primaryType: "Commitment", message: offer.commitment,
+        });
+        expect(sig).toBe(direct);
+        const noAccount = createWalletClient({ transport: http("http://localhost:0") });
+        await expect(signCommitmentAs(noAccount, ctx, offer.commitment, "test")).rejects.toThrow(/test: wallet has no account/);
+    });
+});
+
+describe("countersignUnderFloors — the two opt-in floors, then the seller's signature, shared by the seller legs", () => {
+    it("declines with no policy, outside the policy, with no accept, or when accept says no; signs only when all three agree", async () => {
+        const offer = await buildBuyerOffer(buyerW, offerParams());
+        const ctx = { chainId: CHAIN, core: CORE };
+        const yes = () => true;
+        const go = (pol: OfferPolicy | undefined, accept: ((p: CommitmentPayload) => boolean) | undefined) =>
+            countersignUnderFloors(sellerW, offer, ctx, pol, accept, "test");
+        expect(await go(undefined, yes)).toBeNull();
+        expect(await go({ requireRootShape: true, currencyAllowlist: [CURRENCY], maxValue: 1n }, yes)).toBeNull();
+        expect(await go(policy, undefined)).toBeNull();
+        expect(await go(policy, () => false)).toBeNull();
+        const signed = await go(policy, yes);
+        expect(signed?.sellerSig).toBe(await signCommitmentAs(sellerW, ctx, offer.commitment, "test"));
+        expect(signed?.commitment).toEqual(offer.commitment);
+    });
+});
+
+describe("checkSellerSignature — recovery of a seller signature to the named seller", () => {
+    it("passes the seller's own signature and refuses another wallet's", async () => {
+        const offer = await buildBuyerOffer(buyerW, offerParams());
+        const ctx = { chainId: CHAIN, core: CORE };
+        const sig = await signCommitmentAs(sellerW, ctx, offer.commitment, "test");
+        expect(await checkSellerSignature(offer.commitment, sig, SELLER.address, ctx)).toEqual({ ok: true });
+        const wrong = await checkSellerSignature(offer.commitment, sig, BUYER.address, ctx);
+        expect(wrong).toEqual({ ok: false, reason: "seller signature does not recover to the drafted candidate" });
+    });
+});
+
+describe("gateSeller — the head the seller legs share: the wallet's account, then the term check, or a throw", () => {
+    it("returns the wallet's address when the check passes, names the caller and the thing refused when it fails, and refuses a wallet with no account", async () => {
+        expect(await gateSeller(sellerW, "who", "the thing", async () => ({ ok: true }))).toBe(SELLER.address);
+        await expect(gateSeller(sellerW, "who", "the thing", async () => ({ ok: false, reason: "why" })))
+            .rejects.toThrow("who: refusing the thing — why");
+        const noAccount = createWalletClient({ transport: http("http://localhost:0") });
+        await expect(gateSeller(noAccount, "who", "the thing", async () => ({ ok: true }))).rejects.toThrow("who: wallet has no account");
     });
 });

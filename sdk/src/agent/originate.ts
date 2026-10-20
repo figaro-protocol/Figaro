@@ -212,20 +212,41 @@ export async function validateOffer(
     readProfile?: MemberProfileReader,
 ): Promise<OfferCheck> {
     if (!offer.buyerSig) return { ok: false, reason: "offer is missing the buyer signature" };
-    const c = offer.commitment;
-    if (c.seller.toLowerCase() !== expectedSeller.toLowerCase()) return { ok: false, reason: "offer names a different seller" };
-    if (c.agreementHash.toLowerCase() !== computeAgreementHash(offer.agreement).toLowerCase()) {
+    return checkPayloadTerms(offer, expectedSeller, "offer", policy, specs, design, readProfile);
+}
+
+/**
+ * The term check a payload passes on the offer leg (`validateOffer`) and on the
+ * race draft leg (`validateDraft`): it names me as seller, its agreement hashes to
+ * the committed `agreementHash`, the agreement's parties match the commitment, the
+ * seller has bound the assembly the agreement instantiates, the merkle-leaf seam
+ * holds when `specs` is given, and the economic floor holds when `policy` is
+ * given. `noun` ("offer" or "draft") names the payload in the refusal. The
+ * signature checks differ by leg and stay with each caller.
+ */
+export async function checkPayloadTerms(
+    payload: CommitmentPayload,
+    expectedSeller: Address,
+    noun: "offer" | "draft",
+    policy?: OfferPolicy,
+    specs?: SpecSource,
+    design: HydratedAssembly | null = null,
+    readProfile?: MemberProfileReader,
+): Promise<OfferCheck> {
+    const c = payload.commitment;
+    if (c.seller.toLowerCase() !== expectedSeller.toLowerCase()) return { ok: false, reason: `${noun} names a different seller` };
+    if (c.agreementHash.toLowerCase() !== computeAgreementHash(payload.agreement).toLowerCase()) {
         return { ok: false, reason: "agreement does not hash to the committed agreementHash" };
     }
-    if (offer.agreement.buyer.toLowerCase() !== c.buyer.toLowerCase()
-        || offer.agreement.seller.toLowerCase() !== c.seller.toLowerCase()) {
+    if (payload.agreement.buyer.toLowerCase() !== c.buyer.toLowerCase()
+        || payload.agreement.seller.toLowerCase() !== c.seller.toLowerCase()) {
         return { ok: false, reason: "agreement parties do not match the commitment" };
     }
-    const bound = await checkSellerBindsAssembly(offer.agreement, c.seller, readProfile);
+    const bound = await checkSellerBindsAssembly(payload.agreement, c.seller, readProfile);
     if (!bound.ok) return bound;
     if (specs) {
         try {
-            assertAgreementSignable(offer.agreement, c.agreementHash, specs, c, design, "This offer");
+            assertAgreementSignable(payload.agreement, c.agreementHash, specs, c, design, `This ${noun}`);
         } catch (cause) {
             return { ok: false, reason: cause instanceof Error ? cause.message : String(cause) };
         }
@@ -235,6 +256,68 @@ export async function validateOffer(
         if (!economic.ok) return economic;
     }
     return { ok: true };
+}
+
+/** The seller's EIP-712 signature over a commitment: the one signing call the
+ *  counter-sign seams (`counterSignOffer`, `counterSignDraft`, `quoteDraft`)
+ *  share. `who` names the caller in the refusal of a wallet with no account. */
+export async function signCommitmentAs(
+    wallet: WalletClient,
+    ctx: { chainId: number; core: Address },
+    commitment: Commitment,
+    who: string,
+): Promise<Hex> {
+    const account = wallet.account;
+    if (!account) throw new Error(`${who}: wallet has no account`);
+    return wallet.signTypedData({
+        account, domain: buildDomain(ctx.chainId, ctx.core), types: COMMITMENT_TYPES, primaryType: "Commitment", message: commitment,
+    });
+}
+
+/** The head every seller leg (`counterSignOffer`, `counterSignDraft`, `quoteDraft`) shares:
+ *  the wallet's account is the seller, and the term check run against it must pass or the
+ *  leg THROWS, naming itself (`who`) and what it refused (`what`). Returns the seller. */
+export async function gateSeller(
+    wallet: WalletClient,
+    who: string,
+    what: string,
+    check: (seller: Address) => Promise<OfferCheck>,
+): Promise<Address> {
+    const account = wallet.account;
+    if (!account) throw new Error(`${who}: wallet has no account`);
+    const checked = await check(account.address);
+    if (!checked.ok) throw new Error(`${who}: refusing ${what} — ${checked.reason}`);
+    return account.address;
+}
+
+/** The tail every seller leg with a boolean accept (`counterSignOffer`, `counterSignDraft`) shares:
+ *  the two opt-in floors a clean payload must still pass, then the seller's signature. The
+ *  ECONOMIC floor (no `policy`, or economic fields outside it, declines) and the REFUSE-ALL
+ *  floor (no `accept`, or an `accept` that says no, declines) each DECLINE with `null`;
+ *  autonomy is never the default. */
+export async function countersignUnderFloors(
+    wallet: WalletClient,
+    payload: CommitmentPayload,
+    ctx: { chainId: number; core: Address },
+    policy: OfferPolicy | undefined,
+    accept: ((payload: CommitmentPayload) => boolean) | undefined,
+    who: string,
+): Promise<CommitmentPayload | null> {
+    if (!policy || !checkOfferPolicy(payload.commitment, policy).ok) return null;
+    if (!accept || !accept(payload)) return null;
+    return { ...payload, sellerSig: await signCommitmentAs(wallet, ctx, payload.commitment, who) };
+}
+
+/** A seller signature over `commitment` recovers to `seller`: the last step of every
+ *  buyer-side reply check (`verifyRaceReply`, `verifyQuoteReply`). */
+export async function checkSellerSignature(
+    commitment: Commitment,
+    sellerSig: Hex,
+    seller: Address,
+    ctx: { chainId: number; core: Address },
+): Promise<OfferCheck> {
+    const valid = await verifyCommitmentSignature(commitment, sellerSig, seller, ctx);
+    return valid ? { ok: true } : { ok: false, reason: "seller signature does not recover to the drafted candidate" };
 }
 
 /** The economic floor, applied once the offer is structurally sound. Each check
@@ -299,14 +382,9 @@ export async function counterSignOffer(
     design: HydratedAssembly | null = null,
     readProfile?: MemberProfileReader,
 ): Promise<CommitmentPayload | null> {
-    const account = wallet.account;
-    if (!account) throw new Error("counterSignOffer: wallet has no account");
-    const seller = account.address;
-
     // The gate: a malformed or tampered offer, or one under an assembly the
     // seller has not bound, THROWS.
-    const check = await validateOffer(offer, seller, undefined, specs, design, readProfile);
-    if (!check.ok) throw new Error(`counterSignOffer: refusing the offer — ${check.reason}`);
+    await gateSeller(wallet, "counterSignOffer", "the offer", (seller) => validateOffer(offer, seller, undefined, specs, design, readProfile));
 
     const domain = buildDomain(ctx.chainId, ctx.core);
     const buyerSigValid = await verifyTypedData({
@@ -316,18 +394,8 @@ export async function counterSignOffer(
     });
     if (!buyerSigValid) throw new Error("counterSignOffer: buyer signature does not recover to the named buyer");
 
-    // Economic floor: no policy, or economic fields outside it, DECLINES.
-    if (!policy) return null;
-    const economic = checkOfferPolicy(offer.commitment, policy);
-    if (!economic.ok) return null;
-
-    // Refuse-all floor: no accept, or an accept that says no, declines.
-    if (!accept || !accept(offer)) return null;
-
-    const sellerSig = await wallet.signTypedData({
-        account, domain, types: COMMITMENT_TYPES, primaryType: "Commitment", message: offer.commitment,
-    });
-    return { ...offer, sellerSig };
+    // Both floors (economic, refuse-all): either one declining declines.
+    return countersignUnderFloors(wallet, offer, ctx, policy, accept, "counterSignOffer");
 }
 
 /**
@@ -349,11 +417,7 @@ export async function verifyRaceReply(
     }
     // Verify against the buyer's OWN drafted struct (never the reply's echoed
     // fields), recovering to the drafted candidate seller.
-    const valid = await verifyCommitmentSignature(
-        draft.commitment, reply.sellerSig as Hex, draft.commitment.seller, ctx,
-    );
-    if (!valid) return { ok: false, reason: "seller signature does not recover to the drafted candidate" };
-    return { ok: true };
+    return checkSellerSignature(draft.commitment, reply.sellerSig as Hex, draft.commitment.seller, ctx);
 }
 
 /** The fully-signed commitment from a completed handshake — the input an

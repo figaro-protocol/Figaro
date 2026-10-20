@@ -2025,7 +2025,7 @@ member's current <code>metadataURI</code>, by design (state is event-derived; di
 reconstructs it). <code>registered(member)</code> answers only whether the stake is live.
 The event log is the read path: verify an update landed by re-running discovery
 (<code>reconstructDiscovery(await fetchDiscoveryEvents(client, addresses, 0n))</code>).</p>
-<h2 id="data-products-sell-deliver-verify-subscribe" class="tsd-anchor-link">Data products — sell, deliver, verify, subscribe<a href="#data-products-sell-deliver-verify-subscribe" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
+<h2 id="data-products-sell-deliver-verify-stream" class="tsd-anchor-link">Data products — sell, deliver, verify, stream<a href="#data-products-sell-deliver-verify-stream" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
 <p>A data sale is not a special mode of the protocol. It is an <strong>ordinary bonded
 order whose value-added IS access to data</strong> — so everything above applies
 unchanged: the same 2× bonds, the same bilateral signature, the same atomic
@@ -2140,14 +2140,14 @@ produce well-formed false data. And <code>redistribution: &quot;prohibited&quot;
 co-signed term is timestamped evidence for the layers outside the Core (the
 co-sellers' live interest in the same unresolved process, a composed arbitration
 forum, ordinary courts), the same posture as every other off-chain obligation.</p>
-<h3 id="4-subscribe-is-the-repeated-game" class="tsd-anchor-link">4. SUBSCRIBE — <code>access: &quot;stream&quot;</code> is the repeated game<a href="#4-subscribe-is-the-repeated-game" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<h3 id="4-stream-is-the-repeated-game" class="tsd-anchor-link">4. STREAM — <code>access: &quot;stream&quot;</code> is the repeated game<a href="#4-stream-is-the-repeated-game" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3>
 <p><code>snapshot</code> is a one-time delivery verified by content hash. <code>stream</code> is the
 sustainable form and the more interesting one: <strong>each period's delivery is a
 further bonded order (or hand-off) under the same agreement's terms</strong>, and a
 renewal is a new bonded process. That is what makes the obligation self-policing
 without any enforcement machinery — a licensee who breaches loses the continuing
 stream, a seller who degrades it loses the renewal, and gas is paid per
-subscription rather than per data point. Who triggers period N+1 is the buyer's
+period rather than per data point. Who triggers period N+1 is the buyer's
 side of the repeated game: their agent re-runs the sign-and-commit ceremony under
 whatever policy rule the owner set — there is deliberately no on-chain scheduler,
 keeper, or streaming-payment machinery to do it for them, because a standing
@@ -2156,7 +2156,7 @@ the Core exists to remove.</p>
 <p>A worked reference of exactly this shape ships with the protocol and anchors on
 the devnet &quot;Your first commit&quot; brings up — an assembly composing a license
 clause, a hand-off clause and a schedule clause for the access window, published
-as <em>Data stream subscription</em>. Whether you are on that devnet or a public chain,
+as <em>Data stream</em>. Whether you are on that devnet or a public chain,
 find it the way you find any assembly — <strong>by shape, from the registry</strong>, never by
 a name and never from a bundled file (a chain that anchors none returns nothing,
 which is the correct answer, not an error):</p>
@@ -2290,13 +2290,13 @@ socket via <code>HttpChannel</code>, not the in-process channel), and
 <ul>
 <li><a href="#worked-example-the-fill-pipeline-in-sequence"><span>Worked example — the fill pipeline in sequence</span></a></li></ul></li>
 <li><a href="#member-profile-catalog-documents"><span>Member <wbr/>Profile + <wbr/>Catalog <wbr/>Documents</span></a></li>
-<li><a href="#data-products-sell-deliver-verify-subscribe"><span>Data products — sell, deliver, verify, subscribe</span></a></li>
+<li><a href="#data-products-sell-deliver-verify-stream"><span>Data products — sell, deliver, verify, stream</span></a></li>
 <li>
 <ul>
 <li><a href="#1-sell-declare-the-terms-price-the-item"><span>1. <wbr/>SELL — declare the terms, price the item</span></a></li>
 <li><a href="#2-compose-the-sale-is-an-order-like-any-other"><span>2. <wbr/>COMPOSE — the sale is an order like any other</span></a></li>
 <li><a href="#3-deliver-verify--the-self-authenticating-leaf"><span>3. <wbr/>DELIVER + <wbr/>VERIFY — the self-<wbr/>authenticating leaf</span></a></li>
-<li><a href="#4-subscribe-is-the-repeated-game"><span>4. <wbr/>SUBSCRIBE —  is the repeated game</span></a></li></ul></li>
+<li><a href="#4-stream-is-the-repeated-game"><span>4. <wbr/>STREAM —  is the repeated game</span></a></li></ul></li>
 <li><a href="#claiming-the-designers-mint-"><span>Claiming the designer&#39;s mint — </span></a></li>
 <li><a href="#design-principles"><span>Design <wbr/>Principles</span></a></li>
 <li><a href="#versioning-stability"><span>Versioning &amp; stability</span></a></li>
