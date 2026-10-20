@@ -183,11 +183,11 @@ export const PAPER_GROUPS: PaperGroup[] = [
             {
                 title: "After TradeLens: A Permissionless Bonded Replacement",
                 href: "/papers/after-tradelens",
-                summary: "Why TradeLens failed as a structure, not as software, and the permissionless alternative at the same perimeter: carriers, ports, customs, forwarders, and financiers each bonded into one import chain under incoterms, chain of custody and cold-chain terms.",
+                summary: "Why TradeLens failed as a structure, not as software, and the permissionless alternative at the same perimeter: carriers, ports, customs, forwarders, and financiers each bonded into one import chain under Incoterms, handoff, and cold-chain terms.",
                 keywords: ["container shipping", "supply-chain coordination", "bills of lading", "Incoterms", "MLETR", "transferable records", "process modeling"],
                 industries: ["Container shipping", "Freight and customs"],
                 question: "Why did TradeLens fail although carriers covering more than half the world's ocean container cargo had joined it, and what stands at the same perimeter without its shape?",
-                result: "Argued: the failure was one of governance shape, since a platform one carrier controls asks its rivals to ratify that carrier's gatekeeping; the permissionless composition, worked through a thirteen-order import, makes every carrier, port, inspector, insurer and customs authority a seller to the importer.",
+                result: "Argued: the failure was one of governance shape, since a platform one carrier controls asks its rivals to ratify that carrier's gatekeeping; the permissionless composition, worked through a thirteen-order import, makes every carrier, port, inspector, insurer, and customs authority a seller to the importer.",
                 scope: "The importer is the one buyer; the mechanism-design results are restated, not extended, with the equilibrium proved for any number of orders the network resolves in one call; a port's hold on berth windows stays; customs acts off-chain as sovereign; small shippers enter through a forwarder that bonds as the seller.",
             },
         ],
@@ -263,7 +263,7 @@ export const PAPER_GROUPS: PaperGroup[] = [
             {
                 title: "Code Is Constitution: The Entrenched Layer Beneath Enactment",
                 href: "/papers/code-is-constitution",
-                summary: "Not code is law but code is constitution: the entrenched procedural layer beneath enactment. Courts consume the protocol's evidence rather than operate its core, and the right regulatory demand is neutrality of procedure, since there is no entity to regulate.",
+                summary: "Not code is law but code is constitution: the entrenched procedural layer beneath enactment. Courts consume the protocol's evidence rather than operate its core, and the right regulatory demand is neutrality of procedure, while the actors at its edges comply as they always have.",
                 keywords: ["constitutional political economy", "code is law", "lex cryptographia", "credible neutrality", "legality", "lex mercatoria", "decentralized protocols", "entrenchment"],
                 industries: ["Regulation and licensing", "Legal and dispute resolution"],
                 question: "If code is law lost its argument in the 2016 fork, which layer of rules does a decentralized protocol occupy?",
