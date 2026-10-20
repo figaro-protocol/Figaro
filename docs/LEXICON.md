@@ -112,7 +112,7 @@ Nouns and their definitions. One name per thing.
 
 **stake** — The base chain's own currency a wallet places to take part in the ecosystem: to register as a member, or to register a clause, a registered agreement or an assembly as a designer. It rises and falls with demand for the chain the ecosystem runs on. It stays reclaimable by the wallet that placed it; withdrawing it removes the registration from view.
 
-**stream** — A data product delivered and bought period by period under one agreement, the buyer deciding each period; the data-license clause's access field says `stream`.
+**stream** — A data product delivered and bought period by period under one agreement's terms: each period's delivery is a further bonded order, the buyer deciding each period, or a further hand-off under the same agreement; the data-license clause's access field says `stream`.
 
 **subscribe** — What a buyer does to an assembly it buys through: it names the assembly in its profile and chooses which of the data those trades co-produce it offers. Only a buyer subscribes; a data product bought period by period is a stream.
 

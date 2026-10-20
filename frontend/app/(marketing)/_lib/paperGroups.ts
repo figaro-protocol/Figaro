@@ -103,7 +103,7 @@ export const PAPER_GROUPS: PaperGroup[] = [
             {
                 title: "Markets Without a Venue: Dispatch Races and Requests for Quotes as Market-Design Mechanisms over a Market-Blind Mechanism",
                 href: "/papers/markets-without-a-venue",
-                summary: "How a market forms with no venue holding state: the buyer circulates the unsigned commitment itself, as a dispatch race or a sealed-bid request for quotes; mutual exclusion, discovery and the stake follow from the order of signatures, verifiable selection does not, so the price is first price.",
+                summary: "How a market forms with no venue holding state: the buyer circulates the unsigned commitment itself, as a dispatch race or a sealed-bid request for quotes; mutual exclusion follows from the order of signatures, the anti-reneging stake follows in part, and verifiable selection does not, so the price is first price; discovery at scale lies outside the model.",
                 keywords: ["market design", "auction theory", "matching theory", "procurement", "posted prices", "offer formation", "sealed-bid", "reserve price", "bonded commitment"],
                 industries: ["Procurement", "Marketplaces"],
                 question: "How does one commitment come to carry two signatures when no venue holds the state between the asking and the binding?",
@@ -143,7 +143,7 @@ export const PAPER_GROUPS: PaperGroup[] = [
             {
                 title: "Self-Authenticating Data Sales: Arrow's Information Paradox Under the Bonded Commitment",
                 href: "/papers/self-authenticating-data-sales",
-                summary: "Arrow's paradox for data, dissolved economically: a term sold verifies by inclusion proof against the source agreement's root, delivered data by the hash a party attested while the process was open, and the doubled bond leaves a misdescribing seller out of pocket.",
+                summary: "Arrow's paradox for data, answered by the mechanism: a term sold verifies by inclusion proof against the source agreement's root, delivered data by the hash a party attested while the process was open, and the doubled bond leaves a misdescribing seller out of pocket.",
                 keywords: ["information paradox", "mechanism design", "merkle proofs", "data markets", "asymmetric bonding", "disclosure", "repeated games"],
                 industries: ["Data markets"],
                 question: "Does Arrow's information paradox still bar a first sale of data between strangers under a bonded commitment?",
@@ -248,7 +248,7 @@ export const PAPER_GROUPS: PaperGroup[] = [
                 industries: ["Legal and dispute resolution"],
                 question: "Can bilateral commercial obligations be enforced with no third party applying force?",
                 result: "Argued: the bonded commitment is a pre-commitment in Elster's sense whose bonds are offers, not threats, on Nozick's baseline test, so coercion becomes a variable of the enforcement architecture whose authority component can be set to zero in priceable, bilateral, voluntary commerce.",
-                scope: "The equilibrium as proved, for any number of orders the network resolves in one call; criminal harm, externalities, public goods, status and rights stay with the sovereign; the domain of the question of legitimate coercion is narrowed, and the question itself is left to political philosophy.",
+                scope: "The equilibrium as proved, for any number of orders the network resolves in one call; criminal harm, externalities, public goods, status, rights, and defense stay with the sovereign; the domain of the question of legitimate coercion is narrowed, and the question itself is left to political philosophy.",
             },
             {
                 title: "The Disclosure Asymmetry: Cryptoeconomic Mechanism Design and the Engineering of Consent",
@@ -323,11 +323,11 @@ export const PAPER_GROUPS: PaperGroup[] = [
             {
                 title: "Corridors Without a Hegemon: The Substrate as Common Infrastructure Beneath Rival Trade Corridors",
                 href: "/papers/corridors-without-a-hegemon",
-                summary: "Belt and Road and IMEC contest who controls the corridor. The physical layer stays with whoever finances it; the coordination layer need not: a decentralized, permissionless one holds no hub for either bloc to seize, while the denomination and the ramps stay governed.",
+                summary: "Belt and Road and IMEC contest who controls the corridor. The physical layer stays with whoever finances it; the coordination layer need not: in a decentralized, permissionless one every position is a party's own, while the denomination, its issuer, and the ramps stay governed.",
                 keywords: ["weaponized interdependence", "hegemony", "Belt and Road Initiative", "IMEC", "infrastructure power", "cooperation under anarchy", "permissionless substrate"],
                 industries: ["Cross-border trade"],
                 question: "Must a partner that chooses Belt and Road or IMEC also choose whose chokepoint its trade coordination sits behind?",
-                result: "Argued: a corridor's coordination layer can rest on a decentralized, permissionless substrate whose every position belongs to a party to the trade it carries, so it holds no hub from which a state could watch privately or interrupt another's flows, and a participant sits behind one chokepoint fewer, never none.",
+                result: "Argued: a corridor's coordination layer can rest on a decentralized, permissionless substrate whose every position belongs to a party to the trade it carries and whose data is public to every reader alike; a participant sits behind one chokepoint fewer, never none.",
                 scope: "The physical layer stays with whoever finances it; the denomination, the ramps to local purchasing power and the chain beneath stay governed, and an issuer's lever over a denomination reaches through the substrate.",
             },
         ],
