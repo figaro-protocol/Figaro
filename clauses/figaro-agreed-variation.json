@@ -1,0 +1,113 @@
+{
+    "clauseId": "figaro-agreed-variation",
+    "version": 1,
+    "title": "Agreed variation",
+    "description": "A variation of a process's terms that its parties agree between the commits and the buyer's resolution, in answer to an external event: a cargo resold in transit, a re-routing, a change nobody is at fault for. Composed once for the whole assembly, so every agreement signed under it carries the clause from signing and each party can attest the variation against its own order while the process stands open. The designer names the external events the trade is known to admit; the list anticipates and never closes, and a variation answering an event it does not name is attested the same way. The variation is the stage-1 attestation: the event in the parties' words, the fingerprint of the transferable instrument through which it happened (a bill of lading, a warehouse receipt, a contract of sale) when there is one, the transfers between the process's parties that net the committed schedule to the positions they agreed, and the fingerprint of the revised terms. The parties make the transfers themselves before resolution, out of their own balances; the Core executes the committed schedule unchanged, and every bond stays deposited until the buyer resolves. The instrument and the revised terms stay with the parties and the clause carries their fingerprints. Whether the parties' attestations agree is derived at read time, never stored.",
+    "fields": [
+        {
+            "name": "anticipatedEvents",
+            "type": "array",
+            "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 140
+            },
+            "minItems": 1,
+            "required": true,
+            "label": "Anticipated external events",
+            "description": "The external events the design anticipates, in the designer's words (e.g. \"Cargo resold in transit\", \"Re-routing of the consignment\"). Free-form, never a closed list: it tells the parties at signing which variations the trade is known to admit, and a variation answering an event not named here attests at stage 1 all the same."
+        }
+    ],
+    "stages": {
+        "1": [
+            {
+                "name": "event",
+                "type": "string",
+                "required": true,
+                "minLength": 1,
+                "maxLength": 140,
+                "label": "External event",
+                "description": "The external event the variation answers, in the parties' words (e.g. \"Consignment resold to a new owner mid-voyage\")."
+            },
+            {
+                "name": "instrumentHash",
+                "type": "string",
+                "format": "bytes32-hex",
+                "required": false,
+                "label": "Instrument fingerprint",
+                "description": "keccak256 of the transferable instrument through which the event happened (an electronic bill of lading, a warehouse receipt, a contract of sale), when there is one. The instrument stands on its own and before whatever forum it answers to; the process holds only its fingerprint."
+            },
+            {
+                "name": "transfers",
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "fields": [
+                        {
+                            "name": "from",
+                            "type": "string",
+                            "format": "address-hex",
+                            "required": true,
+                            "description": "The wallet of the party of the process that sends the transfer."
+                        },
+                        {
+                            "name": "to",
+                            "type": "string",
+                            "format": "address-hex",
+                            "required": true,
+                            "description": "The wallet of the party of the process that receives the transfer."
+                        },
+                        {
+                            "name": "amount",
+                            "type": "bigint",
+                            "required": true,
+                            "min": "1",
+                            "description": "The agreed amount, in the base units of the process's denomination."
+                        }
+                    ]
+                },
+                "minItems": 0,
+                "required": true,
+                "label": "Netting schedule",
+                "description": "The transfers between the process's parties that net the committed schedule to the positions the parties agreed, made by the parties before resolution out of their own balances. Empty when the variation moves no value inside the process."
+            },
+            {
+                "name": "revisedTermsHash",
+                "type": "string",
+                "format": "bytes32-hex",
+                "required": true,
+                "label": "Revised terms fingerprint",
+                "description": "keccak256 of the document holding the revised terms the parties agreed."
+            },
+            {
+                "name": "revisedTermsUri",
+                "type": "string",
+                "format": "uri",
+                "required": false,
+                "minLength": 0,
+                "maxLength": 512,
+                "label": "Revised terms locator",
+                "description": "Optional locator for the revised terms (e.g. ipfs://\u2026), so a party can fetch the document and verify it by rehashing. The fingerprint is the binding anchor; the locator is readability."
+            }
+        ]
+    },
+    "block": {
+        "design": {
+            "article": "external-events",
+            "scope": "assembly",
+            "nestsUnder": null,
+            "fills": [
+                "anticipatedEvents"
+            ],
+            "composes": null
+        },
+        "checkout": {
+            "catalogueFills": [],
+            "profileFills": []
+        },
+        "runtime": {
+            "interaction": null,
+            "fields": []
+        }
+    }
+}

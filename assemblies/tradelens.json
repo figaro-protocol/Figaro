@@ -1,5 +1,11 @@
 {
     "assemblyClauses": {
+        "figaro-agreed-variation": {
+            "anticipatedEvents": [
+                "Cargo resold in transit",
+                "Re-routing of the consignment"
+            ]
+        },
         "figaro-applicable-law": {
             "applicableLaw": "England-Wales"
         },

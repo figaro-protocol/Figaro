@@ -4,6 +4,7 @@ import { encodeContentFromSpec, decodeContentFromSpec } from "../../src/clauses/
 import dataLicenseSpecRaw from "../../../clauses/figaro-data-license.json" with { type: "json" };
 import dataTermsSpecRaw from "../../../clauses/figaro-data-terms.json" with { type: "json" };
 import chainOfCustodySpecRaw from "../../../clauses/figaro-chain-of-custody.json" with { type: "json" };
+import agreedVariationSpecRaw from "../../../clauses/figaro-agreed-variation.json" with { type: "json" };
 import acceptanceCriteriaSpecRaw from "../../../clauses/figaro-acceptance-criteria.json" with { type: "json" };
 import modalitiesSpecRaw from "../../../clauses/figaro-modalities.json" with { type: "json" };
 import { validateContent } from "../../src/clauses/validate.js";
@@ -816,6 +817,68 @@ describe("example clause specs — parse + validate sample content", () => {
             unitIdentifier: "MSKU1234567",
             occurredAt: "2026-08-01T10:00:00Z",
         }, parsed.spec, { stage: 1 }).ok).toBe(false);
+    });
+
+    // ── figaro-agreed-variation ──
+
+    it("figaro-agreed-variation spec parses cleanly", () => {
+        expect(parseClauseSpec(agreedVariationSpecRaw).ok).toBe(true);
+    });
+
+    it("figaro-agreed-variation accepts the designer's anticipated events and round-trips through the generic encoder", () => {
+        const parsed = parseClauseSpec(agreedVariationSpecRaw);
+        if (!parsed.ok) throw new Error("spec failed to parse");
+        const committed = { anticipatedEvents: ["Cargo resold in transit", "Re-routing of the consignment"] };
+        expect(validateContent(committed, parsed.spec).ok).toBe(true);
+        const encoded = encodeContentFromSpec(parsed.spec, committed);
+        expect(decodeContentFromSpec(parsed.spec, encoded)).toEqual(committed);
+    });
+
+    it("figaro-agreed-variation stage-1 witness round-trips a resale in transit netted by two transfers", () => {
+        const parsed = parseClauseSpec(agreedVariationSpecRaw);
+        if (!parsed.ok) throw new Error("spec failed to parse");
+        // The external-events paper's worked case: the carrier and the
+        // warehouse each send the shipper the payment the schedule owes them.
+        const shipper = "0x" + "11".repeat(20);
+        const variation = {
+            event: "Consignment resold to a new owner mid-voyage",
+            instrumentHash: "0x" + "b1".repeat(32),
+            transfers: [
+                { from: "0x" + "22".repeat(20), to: shipper, amount: "30000000000000000000" },
+                { from: "0x" + "33".repeat(20), to: shipper, amount: "5000000000000000000" },
+            ],
+            revisedTermsHash: "0x" + "c2".repeat(32),
+            revisedTermsUri: "ipfs://bafyrevisedterms",
+        };
+        expect(validateContent(variation, parsed.spec, { stage: 1 }).ok).toBe(true);
+        const encoded = encodeContentFromSpec(parsed.spec, variation, { stage: 1 });
+        expect(decodeContentFromSpec(parsed.spec, encoded, { stage: 1 })).toEqual(variation);
+    });
+
+    it("figaro-agreed-variation stage-1 accepts a variation that moves no value and names no instrument", () => {
+        const parsed = parseClauseSpec(agreedVariationSpecRaw);
+        if (!parsed.ok) throw new Error("spec failed to parse");
+        const variation = {
+            event: "Discharge port changed to Antwerp",
+            transfers: [],
+            revisedTermsHash: "0x" + "d3".repeat(32),
+        };
+        expect(validateContent(variation, parsed.spec, { stage: 1 }).ok).toBe(true);
+        const encoded = encodeContentFromSpec(parsed.spec, variation, { stage: 1 });
+        expect(decodeContentFromSpec(parsed.spec, encoded, { stage: 1 })).toMatchObject(variation);
+    });
+
+    it("figaro-agreed-variation rejects no anticipated event, a zero transfer, and a variation without its revised terms", () => {
+        const parsed = parseClauseSpec(agreedVariationSpecRaw);
+        if (!parsed.ok) throw new Error("spec failed to parse");
+        expect(validateContent({ anticipatedEvents: [] }, parsed.spec).ok).toBe(false);
+        const base = {
+            event: "Cargo resold in transit",
+            transfers: [{ from: "0x" + "22".repeat(20), to: "0x" + "11".repeat(20), amount: "0" }],
+            revisedTermsHash: "0x" + "c2".repeat(32),
+        };
+        expect(validateContent(base, parsed.spec, { stage: 1 }).ok).toBe(false);
+        expect(validateContent({ event: "Cargo resold in transit", transfers: [] }, parsed.spec, { stage: 1 }).ok).toBe(false);
     });
 
     // ── figaro-acceptance-criteria ──
