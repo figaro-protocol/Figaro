@@ -137,8 +137,8 @@ export const PAPER_GROUPS: PaperGroup[] = [
                 keywords: ["cryptoeconomics", "Schelling point", "focal-point coordination", "token design", "Howey test", "securities regulation", "MiCA", "sufficiently decentralized", "disclosure", "no central operator", "fixed supply cap"],
                 industries: ["Tokens and treasuries"],
                 question: "What is a token issued at zero, after its economic system was built and with nothing in that system conditioned on it, under the securities tests?",
-                result: "Argued in a regulator's order: on the mint path each of Howey's four questions fails and a secondary purchase reopens only the first; the disclosure the tests compel is the public rules and data themselves; the sufficiently-decentralized condition holds on the first day; and what remains is a Schelling point.",
-                scope: "The florin's facts as issued: a fixed ceiling; genesis allocations minted at zero, with nothing given for them; a reward reserve minted to designers of record in proportion to recorded use; no central operator; Howey, the disclosure regime and MiCA as the tests; whether participants converge on it is a question about strangers, which the design does not answer.",
+                result: "Argued in a regulator's order: where a florin first comes to exist, each of Howey's four questions fails and a secondary purchase reopens only the first; the disclosure the tests compel is the public rules and data themselves; the sufficiently-decentralized condition holds on the first day; and what remains is a Schelling point.",
+                scope: "The florin's facts as issued: a fixed ceiling; genesis allocations minted at zero, with nothing given for them; a reward reserve minted to designers of record in proportion to counted use; no central operator; Howey, the disclosure regime and MiCA as the tests; whether participants converge on it is a question about strangers, which the design does not answer.",
             },
             {
                 title: "Self-Authenticating Data Sales: Arrow's Information Paradox Under the Bonded Commitment",
@@ -238,7 +238,7 @@ export const PAPER_GROUPS: PaperGroup[] = [
                 industries: ["Platform work", "Legal and dispute resolution"],
                 question: "What do labor law's subordination tests find when productive exchange runs as bonded commitments between wallets?",
                 result: "Argued: no party holds a power to direct another's conduct, so the tests find no directive relation to classify, and a wallet whose operator holds its own key is property and party at once, collapsing the Roman partition of res and persona.",
-                scope: "Where a relation stays employment-shaped in substance, or a layer of dispatch, reputation or key-holding rebuilds a platform's position, existing doctrine reaches it; the leveling reaches only those who can fund a bond.",
+                scope: "Where a relation stays employment-shaped in substance, or a layer of dispatch, reputation, or key-holding rebuilds a platform's position, existing doctrine reaches it; the leveling reaches only those who can fund a bond.",
             },
             {
                 title: "The Coercion Variable",
@@ -298,7 +298,7 @@ export const PAPER_GROUPS: PaperGroup[] = [
                 industries: ["Platform work"],
                 question: "If the cooperative-Marxian and classical-liberal traditions agree that the wage relation divides them, what is left of the partition under a mechanism with no wage relation?",
                 result: "Argued: under the bonded commitment no residual right over a seller's conduct passes to anyone and no party takes a rent for enforcement, so one artifact answers both to free association and to voluntary exchange, and the partition relocates to the graph composed above the mechanism.",
-                scope: "A party needs the wealth to post its bond, and the mechanism inherits its property baseline from the law around it; distribution, public goods and the composition of participation are decided in the graph.",
+                scope: "A party needs the wealth to post its bond, and the mechanism inherits its property baseline from the law around it; distribution, public goods, and the composition of participation are decided in the graph.",
             },
             {
                 title: "The Visibility of Coordination",
