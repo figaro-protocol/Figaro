@@ -50,7 +50,8 @@ function cacheKey(chainId: number, contract: string, eventName: string): string 
     return `${chainId}:${contract.toLowerCase()}:${eventName}`;
 }
 
-const deploymentBlock = (): bigint => {
+/** The block the site's own deployment starts at; a scan of this deployment starts here. */
+export const deploymentBlock = (): bigint => {
     if (typeof process !== "undefined" && process.env?.NEXT_PUBLIC_DEPLOYMENT_BLOCK) {
         return BigInt(process.env.NEXT_PUBLIC_DEPLOYMENT_BLOCK);
     }

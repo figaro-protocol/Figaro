@@ -34,14 +34,15 @@ export {   activeChain,  };
 // wagmi's config is created once at module load, so an override change
 // applies on the next reload.
 const userRpcOverride = readUserEndpoints().rpcUrl;
-const rpcUrl =
+/** The RPC this site reads: the viewer's own override, else the deployment's default. */
+export const siteRpcUrl =
     userRpcOverride ??
     process.env.NEXT_PUBLIC_RPC_URL ??
     activeChain.rpcUrls.default.http[0];
 
 export const publicClient = createPublicClient({
     chain: activeChain,
-    transport: mockAwareHttp(rpcUrl),
+    transport: mockAwareHttp(siteRpcUrl),
 });
 
 // ---------------------------------------------------------------------------
@@ -63,8 +64,8 @@ export const config = createConfig({
         // as fallback. e2e sessions short-circuit to the http/mock leg inside
         // the transport — the devnet suite never touches the wallet leg.
         [activeChain.id]: userRpcOverride
-            ? mockAwareHttp(rpcUrl, { batch: false })
-            : connectorFirstTransport(rpcUrl, { batch: false }),
+            ? mockAwareHttp(siteRpcUrl, { batch: false })
+            : connectorFirstTransport(siteRpcUrl, { batch: false }),
     } as Record<number, ReturnType<typeof mockAwareHttp>>,
     connectors,
     // EIP-6963 multi-injected-provider discovery. Default in wagmi v2 is `true`;
@@ -83,6 +84,6 @@ export const config = createConfig({
 // Browser-only dev/test shims — call as side effects on module load.
 // These are no-ops outside the browser and when env vars are absent.
 // ---------------------------------------------------------------------------
-attachDebugClient(rpcUrl);
+attachDebugClient(siteRpcUrl);
 attachDevProvider();
 attachTestSigner();

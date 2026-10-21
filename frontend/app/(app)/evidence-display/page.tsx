@@ -25,6 +25,9 @@ import { buildProcessTimeline, type ProcessTimeline, type TimelineEvent } from "
 import { truncateHex } from "@/lib/shared/formatHex";
 import { extractErrorMessage } from "@/lib/shared/errors";
 import { formatBlockTimestamp } from "@/lib/shared/formatTimestamp";
+import { CONTRACTS } from "@/lib/kernel/contracts";
+import { activeChain } from "@/lib/shared/chains";
+import { siteRpcUrl } from "@/lib/shared/wagmi";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -55,6 +58,15 @@ const EVENT_COLORS: Record<string, string> = {
     Attestation: "bg-green-500",
     OrderResolved: "bg-emerald-600",
 };
+
+/** An RPC's origin, for comparing the link's endpoint with the site's own. */
+function rpcOrigin(url: string | null): string {
+    try {
+        return url ? new URL(url).origin : "";
+    } catch {
+        return "";
+    }
+}
 
 /** Validate an RPC URL to prevent SSRF via attacker-controlled endpoints. */
 function isAllowedRpcUrl(url: string): boolean {
@@ -206,14 +218,20 @@ function EvidenceDisplayContent() {
         }
 
         try {
-            const tl = await buildProcessTimeline(client, processId, coreAddressParam ?? undefined);
+            // The RPC is the link's choice, so its logs never enter the
+            // site's shared event cache.
+            const tl = await buildProcessTimeline(client, processId, coreAddressParam ?? undefined, { sharedCache: false });
+            if (chainIdParam && Number(chainIdParam) !== tl.chainId) {
+                setError(`The link names chain ${chainIdParam}, but its RPC answers for chain ${tl.chainId}.`);
+                return;
+            }
             setTimeline(tl);
         } catch (cause: unknown) {
             setError(extractErrorMessage(cause, "Failed to fetch process timeline."));
         } finally {
             setLoading(false);
         }
-    }, [client, clientError, processId, coreAddressParam]);
+    }, [client, clientError, processId, coreAddressParam, chainIdParam]);
 
     useEffect(() => {
         fetchTimeline();
@@ -258,10 +276,23 @@ function EvidenceDisplayContent() {
                     </p>
                     <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-ink-muted font-mono">
                         <span>process: {timeline.processId}</span>
-                        <span>chain: {chainIdParam ?? timeline.chainId}</span>
-                        <span>core: {truncateHex(coreAddressParam ?? timeline.coreAddress)}</span>
+                        <span>chain: {timeline.chainId}</span>
+                        <span>core: {truncateHex(timeline.coreAddress)}</span>
+                        <span>rpc: {rpcOrigin(rpcUrl)}</span>
                         <span>generated: {formatTimestamp(timeline.generatedAt)}</span>
                     </div>
+                    {(timeline.chainId !== activeChain.id ||
+                        timeline.coreAddress.toLowerCase() !== CONTRACTS.core?.toLowerCase() ||
+                        rpcOrigin(rpcUrl) !== rpcOrigin(siteRpcUrl)) && (
+                        <p
+                            className="mt-3 text-xs text-warning-fg bg-warning/10 border border-warning/30 rounded px-3 py-2"
+                            data-testid="evidence-outside-deployment"
+                        >
+                            The link chose what this page reads ({rpcOrigin(rpcUrl)}), not this site&rsquo;s own
+                            deployment. The events below come from the address and the RPC the link names; check both
+                            against the chain before relying on them.
+                        </p>
+                    )}
                 </header>
                 {timeline.participants.length > 0 && (
                     <div className="mb-4">

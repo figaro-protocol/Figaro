@@ -17,11 +17,12 @@
  * serializable.
  */
 
-import type { PublicClient } from "viem";
+import { getAbiItem, type Abi, type PublicClient } from "viem";
 import { CORE_ABI, CONTRACTS } from "@/lib/kernel/contracts";
 import { ATTESTATION_COORDINATOR_ABI } from "@figaro-protocol/sdk";
 import { getAttestationCoordinator } from "@/lib/composition/contracts";
-import { cachedGetContractEvents } from "@/lib/kernel/eventCache";
+import { cachedGetContractEvents, deploymentBlock, getLogsAdaptive, type LogScanClient } from "@/lib/kernel/eventCache";
+import { activeChain } from "@/lib/shared/chains";
 import { describeAttestation } from "@/lib/shared/clauseSpecSource";
 
 // ---------------------------------------------------------------------------
@@ -111,11 +112,29 @@ export async function buildProcessTimeline(
     client: PublicClient,
     processId: `0x${string}`,
     coreAddressOverride?: string,
+    /** `sharedCache: false` for a client the site did not configure (an RPC a
+     *  link names): its logs are read directly and never written into the
+     *  event cache every other page reads. */
+    options: { sharedCache?: boolean } = {},
 ): Promise<ProcessTimeline> {
     const coreAddress = (coreAddressOverride ?? CONTRACTS.core) as `0x${string}`;
     if (!coreAddress) throw new Error("Core contract address is not configured");
 
     const chainId = await client.getChainId();
+    const sharedCache = options.sharedCache ?? true;
+    // An outside read starts at the site's deployment block only when it reads
+    // the site's own deployment; any other core is scanned from genesis.
+    const ownDeployment = chainId === activeChain.id && coreAddress.toLowerCase() === CONTRACTS.core?.toLowerCase();
+    const scanEvents = (params: { address: `0x${string}`; abi: Abi | readonly unknown[]; eventName: string }) => {
+        if (sharedCache) return cachedGetContractEvents(client, chainId, params);
+        const event = getAbiItem({ abi: params.abi as Abi, name: params.eventName });
+        if (!event) throw new Error(`buildProcessTimeline: ${params.eventName} is not in the given ABI`);
+        return getLogsAdaptive(client as unknown as LogScanClient, {
+            address: params.address,
+            event: event as Parameters<typeof getLogsAdaptive>[1]["event"],
+            fromBlock: ownDeployment ? deploymentBlock() : 0n,
+        });
+    };
     const blockCache = new Map<string, number>();
     const events: TimelineEvent[] = [];
     const participantSet = new Set<string>();
@@ -139,7 +158,7 @@ export async function buildProcessTimeline(
             .map((l) => ({ ...l, blockNumber: BigInt(l.blockNumber ?? 0), transactionHash: l.transactionHash ?? undefined }));
 
     // ── OrderCommitted ─────────────────────────────────────────────
-    const committedLogs = byProcess(await cachedGetContractEvents(client, chainId, {
+    const committedLogs = byProcess(await scanEvents({
         address: coreAddress,
         abi: CORE_ABI,
         eventName: "OrderCommitted",
@@ -181,7 +200,7 @@ export async function buildProcessTimeline(
     // Live FigaroCore: no OrderCancelled event — orders resolve or stay active.
 
     // ── OrderResolved ───────────────────────────────────────────────
-    const resolvedLogs = byProcess(await cachedGetContractEvents(client, chainId, {
+    const resolvedLogs = byProcess(await scanEvents({
         address: coreAddress,
         abi: CORE_ABI,
         eventName: "OrderResolved",
@@ -223,7 +242,7 @@ export async function buildProcessTimeline(
     // digest, not an off-chain pointer.
     const coordinatorAddr = getAttestationCoordinator();
     if (coordinatorAddr) {
-        const attestLogs = byProcess(await cachedGetContractEvents(client, chainId, {
+        const attestLogs = byProcess(await scanEvents({
             address: coordinatorAddr,
             abi: ATTESTATION_COORDINATOR_ABI,
             eventName: "Attestation",
