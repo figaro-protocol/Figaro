@@ -18,7 +18,7 @@ Nouns and their definitions. One name per thing.
 
 **Core** — The four contracts every trade runs on. `FigaroCore` holds each bond on the direct path and resolves a process when its buyer calls it. `CommitmentTypes` defines the commitment each party signs and how it is hashed for signing. `AttestationCoordinator` binds what a party attests to the agreement it signed. `FigaroBatchVerifier` accepts a validity proof of many processes, nets each party's deposits and payouts across them, and moves only the difference in one transaction.
 
-**process** — The runtime instance of an assembly that one buyer opens: its orders, resolved together.
+**process** — The runtime instance of an assembly: opened by a buyer's first commitment, extended by each further commitment in the same token, and ended by the buyer's resolution. The Core identifies it by the hash of its first commitment and holds its buyer, its token, its running total and its open commitments.
 
 **refund** — The return of a bond to the party that deposited it, at resolution: each seller's whole, the buyer's less the payments it carried. Only a bond is ever refunded; a payment transfers.
 

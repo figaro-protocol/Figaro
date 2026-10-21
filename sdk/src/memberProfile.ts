@@ -131,7 +131,7 @@ export interface AssemblyBindingRecord {
 }
 
 /**
- * One buyer-side assembly SUBSCRIPTION — the process design this member buys
+ * One buyer-side assembly SUBSCRIPTION — the assembly this member buys
  * through and monetizes records from. Subscribing is the buyer's verb;
  * BINDING (`AssemblyBindingRecord`) stays the seller's, and the two lists
  * are independent: a wallet does not buy through the assemblies it sells

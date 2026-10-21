@@ -4,7 +4,7 @@
  * CheckoutView — the buyer's order surface at `/s/checkout?seller=<address>`.
  *
  * Driven EXCLUSIVELY by the seller's bound assembly. The checkout names no
- * clause and knows no modality: it resolves the assembly from the seller's
+ * clause and knows no modality: it reads the assembly from the seller's
  * profile, walks the assembly's own topology + clauses, computes the bond,
  * validates the off-chain spec, runs the bilateral / multi-order commit, and redirects to
  * `/orders/view?process=<processId>`. Every order's clauses come straight from the assembly

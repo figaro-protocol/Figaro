@@ -231,7 +231,7 @@ export async function assertOrderFitsResolveCap(
         throw new Error(
             `Process has ${activeOrderCount} active orders; this chain resolves at most ${cap} ` +
                 `in one atomic resolveProcess. Committing another order would make the process ` +
-                `permanently unresolvable — compose a new process instead.`,
+                `permanently unresolvable — open a new process instead.`,
         );
     }
 }
