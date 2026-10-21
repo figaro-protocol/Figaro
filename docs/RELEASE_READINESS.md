@@ -18,7 +18,7 @@ Kleros courts are live on Ethereum mainnet.
 ## Current Verdict
 
 There are two finish lines, in order. **Public on testnet** is the launch flip: the site
-leaves noindex, and strangers read it and trade on Sepolia; it is blocked on the five
+leaves noindex, and strangers read it and trade on Sepolia; it is blocked on the six
 items below. **Mainnet** is blocked on the in-house security program's pass over the
 audit scope (Task 2); an external audit runs the day one is affordable. Everything else
 under Open Tasks is deploy-day work or sequenced behind that gate. Work that blocks
@@ -45,6 +45,14 @@ neither line does not delay either.
    from a separate pinning account registered with an address that names no one, the
    old key is revoked, and the build is refused if any shipped token carries a personal
    field: a pinning service writes its account owner's email into every key it issues.
+6. **The stack is hardened.** The repository's secret scanning, push protection, Dependabot
+   security updates and protection of `main` are on; the frontend's high security gaps are
+   closed (the event cache an outside RPC can write, the SDK's sign gate when no clause specs are
+   passed, inline scripts in the content security policy, the personal-information guard); the
+   site is built from a clean checkout of a named commit; an automated accessibility check runs
+   against WCAG AA; one public page states what is testnet-only, unaudited, or not yet built; and
+   the SDK's next major version is published with the redeploy, so what a builder installs
+   matches the contracts.
 
 ## Open Tasks
 
@@ -115,6 +123,13 @@ read from a search summary, never the firm's own page):
   down; Immunefi and Cantina quote per pool. Vanta and Testlio do not apply to
   this stack; 20squares' open-game engine addresses the equilibrium the Lean
   proof already covers.
+
+### Task 14: Mainnet hardening
+
+- The domain's DNS carries CAA, naming the one certificate authority that may issue for it.
+- A status page for the relay and the services it depends on.
+- The bug bounty listed on a platform, and event-driven alerting on the contracts beside the
+  daily scan (`SECURITY.md` § Monitoring).
 
 ### Task 3 (residue): state the mainnet γ-curve point
 
