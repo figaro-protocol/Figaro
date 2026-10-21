@@ -81,7 +81,7 @@ contract FigaroCore_EventEmission is Test {
             currency: address(token),
             payment: payment,
             expectedCumulativeValue: payment,
-            agreementHash: keccak256("root-agreement"),
+            checkoutHash: keccak256("root-agreement"),
             salt: salt,
             deadline: block.timestamp + 1 hours
         });
@@ -103,7 +103,7 @@ contract FigaroCore_EventEmission is Test {
             currency: address(token),
             payment: payment,
             expectedCumulativeValue: expectedCum,
-            agreementHash: keccak256(abi.encodePacked("sub-agreement-", salt)),
+            checkoutHash: keccak256(abi.encodePacked("sub-agreement-", salt)),
             salt: salt,
             deadline: block.timestamp + 1 hours
         });
@@ -117,7 +117,7 @@ contract FigaroCore_EventEmission is Test {
         address expectedCurrency,
         uint256 expectedPayment,
         uint256 expectedCumValue,
-        bytes32 expectedAgreementHash
+        bytes32 expectedCheckoutHash
     ) internal pure {
         (
             address seller_,
@@ -135,7 +135,7 @@ contract FigaroCore_EventEmission is Test {
         assertEq(currency_, expectedCurrency, "currency");
         assertEq(payment_, expectedPayment, "payment");
         assertEq(cumValue_, expectedCumValue, "cumulativeValue");
-        assertEq(agreement_, expectedAgreementHash, "agreementHash");
+        assertEq(agreement_, expectedCheckoutHash, "checkoutHash");
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -151,7 +151,7 @@ contract FigaroCore_EventEmission is Test {
             currency: address(token),
             payment: payment,
             expectedCumulativeValue: payment,
-            agreementHash: keccak256("root-agreement"),
+            checkoutHash: keccak256("root-agreement"),
             salt: 1,
             deadline: block.timestamp + 1 hours
         });
@@ -317,7 +317,7 @@ contract FigaroCore_EventEmission is Test {
             currency: address(token),
             payment: subPayment,
             expectedCumulativeValue: expectedCum,
-            agreementHash: keccak256("sub-agreement"),
+            checkoutHash: keccak256("sub-agreement"),
             salt: 2,
             deadline: block.timestamp + 1 hours
         });
@@ -357,7 +357,7 @@ contract FigaroCore_EventEmission is Test {
             currency: address(token),
             payment: 25 ether,
             expectedCumulativeValue: 65 ether,
-            agreementHash: keccak256("sub"),
+            checkoutHash: keccak256("sub"),
             salt: 2,
             deadline: block.timestamp + 1 hours
         });

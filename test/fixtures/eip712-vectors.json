@@ -12,30 +12,30 @@
                 "currency": "0x5615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f",
                 "payment": "100000000000000000000",
                 "expectedCumulativeValue": "100000000000000000000",
-                "agreementHash": "0x4d38a284aebd2196b913b9bd71cee7e649123b53deb813d048a75dae79663cbd",
+                "checkoutHash": "0x4d38a284aebd2196b913b9bd71cee7e649123b53deb813d048a75dae79663cbd",
                 "salt": "42",
                 "deadline": "2000"
             },
-            "structHash": "0x56c45ad86315e2a2eb77538407cb6914b581b352f0852ef61fde329fc11510cd",
-            "processId": "0x7189e6bb14436b6fd327cc785bc52c9a9c7b5e16f83bcdebaf5438a9f81322fe",
-            "orderHash": "0xa4ff2adf77b123ca122f01fb3b8e3a887434b6cfd8555585bdc4d0e337b6316d"
+            "structHash": "0xf0a481575b0324755dc3868de944a130b699c5b4b43fd819ca4effced3422592",
+            "processId": "0x15978cc271a0eb2eac3ddc12b12b97b0886636b6393f3e28865c9f4d91488cd8",
+            "orderHash": "0x5a5b2033a2abc24629050980883539557a8063c8748b7574950a73d4f30f90d0"
         },
         {
             "label": "sub",
             "commitment": {
-                "processId": "0x83118784bdf5c22406e4bd1877f8a6cc53da421295721b5fdc99cd7a5dc4f3c4",
+                "processId": "0xa809fe3f6ab3509a130c6cd20bf910767b4ccafce5d46f8ad99d0e62f367c83b",
                 "buyer": "0x0376AAc07Ad725E01357B1725B5ceC61aE10473c",
                 "seller": "0xC22667C5926d1C9af6C0fa8Cedc4ea3e489F6F70",
                 "currency": "0x5615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f",
                 "payment": "50000000000000000000",
                 "expectedCumulativeValue": "150000000000000000000",
-                "agreementHash": "0xc246b902bc5d7588756d6d8cfc22e022a052b19175a4277456c96196877efc2b",
+                "checkoutHash": "0xc246b902bc5d7588756d6d8cfc22e022a052b19175a4277456c96196877efc2b",
                 "salt": "43",
                 "deadline": "2000"
             },
-            "structHash": "0x79c2f3be4fcecb869aacb3fca5baf99d1ea2b9757a8243e8ab5d97696b0bb84c",
-            "processId": "0x83118784bdf5c22406e4bd1877f8a6cc53da421295721b5fdc99cd7a5dc4f3c4",
-            "orderHash": "0x4ab8b13d6589e595e04b7858c75ee32c0293b49f92b38d8f4a25480e75e5e5ea"
+            "structHash": "0xd9a5cb004387bfb22c64bf61d3d263df2689df6b51144cd3ad18f684af1c3231",
+            "processId": "0xa809fe3f6ab3509a130c6cd20bf910767b4ccafce5d46f8ad99d0e62f367c83b",
+            "orderHash": "0xda9af386b03e8c5787b58f31ae5a4f5556f1142f40e2a2508af62d3ba2637e59"
         }
     ],
     "batch": {

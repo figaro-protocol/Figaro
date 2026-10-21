@@ -26,12 +26,12 @@ interface IFigaroCore {
 ///
 /// @dev Two attestation modes — each caller supplies one or two `Commitment`
 ///      structs so the coordinator can (a) verify role authority, (b) read the
-///      signed `agreementHash` without new FigaroCore state, and (c) verify the
+///      signed `checkoutHash` without new FigaroCore state, and (c) verify the
 ///      attestation matches a clause in the signed agreement.
 ///      - attestAsSeller:    caller supplies role + target commitments
 ///                           (role proves seller identity + process; target
 ///                           carries the order being attested and its
-///                           agreementHash for the receipt). For same-order
+///                           checkoutHash for the receipt). For same-order
 ///                           attestation pass the same commitment twice.
 ///      - attestAsBuyer:     caller supplies the target commitment only
 ///                           (`c.buyer == processes[c.processId].rootBuyer` by
@@ -40,13 +40,13 @@ interface IFigaroCore {
 ///
 /// @dev Agreement binding (mandatory):
 ///      Every `attest*` call carries an inclusion proof showing the attestation's
-///      clause and clause data are leaves of the order's signed `agreementHash`
+///      clause and clause data are leaves of the order's signed `checkoutHash`
 ///      merkle root. A seller who signed an emissions clause naming "ISO 14064-1" at commit
 ///      time cannot fire a runtime emissions attestation under a different standard —
 ///      the inclusion proof won't open. This closes the drift where runtime
 ///      declarations could contradict the signed agreement.
 ///
-///      Leaf format: `keccak256(bytes.concat(keccak256(abi.encodePacked(clauseId, keccak256(sectionData)))))`
+///      Leaf format: `keccak256(bytes.concat(keccak256(abi.encodePacked(clauseId, keccak256(clauseData)))))`
 ///      — double-hashed so the leaf domain (32-byte preimage) can never collide
 ///      with the internal-node domain (64-byte preimage); a crafted agreement
 ///      cannot replay one of its own internal nodes as a signed clause leaf.
@@ -58,8 +58,8 @@ interface IFigaroCore {
 ///      JSON spec whose pinned bytes hash to the clause key ClauseRegistry registers) and lives OFF-CHAIN — in
 ///      (optionally encrypted) IPFS for a `private`-disposition clause, in the
 ///      open for a `public` one. The chain never sees the preimage: the caller
-///      supplies only `contentRef` (`keccak256(content)`) and `sectionHash`
-///      (`keccak256(sectionData)`) — the FINGERPRINTS. So a private attestation's
+///      supplies only `contentRef` (`keccak256(content)`) and `clauseDataHash`
+///      (`keccak256(clauseData)`) — the FINGERPRINTS. So a private attestation's
 ///      plaintext never touches public, permanent calldata; only its hash does.
 ///      The chain does not decode or validate content — well-formedness is the
 ///      off-chain SDK's job (honest authors) and a read-time concern (downstream
@@ -91,7 +91,7 @@ contract AttestationCoordinator {
     error ProcessMismatch();
     error UnknownOrder();
     error OrderResolved();
-    error InvalidInclusionProof(bytes32 agreementHash, bytes32 clauseId);
+    error InvalidInclusionProof(bytes32 checkoutHash, bytes32 clauseId);
 
     // ── Constructor ─────────────────────────────────────────────────
 
@@ -109,14 +109,14 @@ contract AttestationCoordinator {
     ///      sub-order commitment as role), pass distinct `role` and `target`
     ///      commitments — the coordinator verifies both are committed and in
     ///      the same process. The inclusion proof is verified against
-    ///      `target.agreementHash` (the clause being declared lives in the
+    ///      `target.checkoutHash` (the clause being declared lives in the
     ///      target's signed agreement, not the role's).
     function attestAsSeller(
         CommitmentTypes.Commitment calldata role,
         CommitmentTypes.Commitment calldata target,
         bytes32 clauseId,
         uint8 stage,
-        bytes32 sectionHash,
+        bytes32 clauseDataHash,
         bytes32[] calldata proof,
         bytes32 contentRef
     ) external {
@@ -126,7 +126,7 @@ contract AttestationCoordinator {
         (bytes32 targetOrderHash, bytes32 targetProcessId) = _requireKnownCommitment(target);
         if (roleProcessId != targetProcessId) revert ProcessMismatch();
 
-        _verifyInclusion(target.agreementHash, clauseId, sectionHash, proof);
+        _verifyInclusion(target.checkoutHash, clauseId, clauseDataHash, proof);
         emit Attestation(targetOrderHash, targetProcessId, msg.sender, clauseId, stage, contentRef);
     }
 
@@ -142,14 +142,14 @@ contract AttestationCoordinator {
         CommitmentTypes.Commitment calldata target,
         bytes32 clauseId,
         uint8 stage,
-        bytes32 sectionHash,
+        bytes32 clauseDataHash,
         bytes32[] calldata proof,
         bytes32 contentRef
     ) external {
         (bytes32 targetOrderHash, bytes32 targetProcessId) = _requireKnownCommitment(target);
         if (msg.sender != target.buyer) revert NotAuthorized();
 
-        _verifyInclusion(target.agreementHash, clauseId, sectionHash, proof);
+        _verifyInclusion(target.checkoutHash, clauseId, clauseDataHash, proof);
         emit Attestation(targetOrderHash, targetProcessId, msg.sender, clauseId, stage, contentRef);
     }
 
@@ -160,20 +160,20 @@ contract AttestationCoordinator {
     ///      (merkle inclusion) and, separately, to its content (the caller's
     ///      `contentRef`, emitted verbatim); it does not validate content shape —
     ///      that is an off-chain SDK / read-time concern. The leaf is built from
-    ///      the caller-supplied `sectionHash` (`keccak256(sectionData)`), never a
+    ///      the caller-supplied `clauseDataHash` (`keccak256(clauseData)`), never a
     ///      preimage, so a `private` clause's plaintext never touches calldata; a
     ///      wrong hash simply fails to open, so this is exactly as sound as taking
     ///      the preimage.
-    ///      Leaf = `keccak256(keccak256(clauseId || sectionHash))` (double-hashed —
+    ///      Leaf = `keccak256(keccak256(clauseId || clauseDataHash))` (double-hashed —
     ///      leaf/node domain separation), sorted-pair merkle tree as produced by
     ///      the off-chain agreement helpers.
-    function _verifyInclusion(bytes32 agreementHash, bytes32 clauseId, bytes32 sectionHash, bytes32[] calldata proof)
+    function _verifyInclusion(bytes32 checkoutHash, bytes32 clauseId, bytes32 clauseDataHash, bytes32[] calldata proof)
         internal
         pure
     {
-        bytes32 leaf = keccak256(bytes.concat(keccak256(abi.encodePacked(clauseId, sectionHash))));
-        if (!MerkleProof.verify(proof, agreementHash, leaf)) {
-            revert InvalidInclusionProof(agreementHash, clauseId);
+        bytes32 leaf = keccak256(bytes.concat(keccak256(abi.encodePacked(clauseId, clauseDataHash))));
+        if (!MerkleProof.verify(proof, checkoutHash, leaf)) {
+            revert InvalidInclusionProof(checkoutHash, clauseId);
         }
     }
 

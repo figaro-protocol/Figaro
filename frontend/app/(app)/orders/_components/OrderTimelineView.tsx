@@ -188,7 +188,7 @@ export function OrderTimelineView({ processId }: Props) {
                         key={order.orderId}
                         processId={processId}
                         orderHash={order.orderId}
-                        agreementHash={order.agreementHash}
+                        checkoutHash={order.checkoutHash}
                         buyer={order.buyer}
                         seller={order.seller}
                     />

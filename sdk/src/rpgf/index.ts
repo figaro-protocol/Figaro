@@ -106,7 +106,7 @@ export type UsageKind = typeof USAGE_KIND_CLAUSE | typeof USAGE_KIND_ASSEMBLY | 
 export interface UsageKey {
     kind: UsageKind;
     /** A clause key (`kind` = clause), an assembly composition hash
-     *  (`kind` = assembly) or a registered agreement key (`kind` =
+     *  (`kind` = assembly) or a registered agreement hash (`kind` =
      *  agreement). */
     key: Hex;
 }
@@ -134,7 +134,7 @@ export interface UsageRecord {
     blockNumber: bigint;
     logIndex: number;
     kind: UsageKind;
-    /** Clause key, assembly compositionHash or agreement key, by `kind`. */
+    /** Clause key, assembly compositionHash or agreement hash, by `kind`. */
     clauseOrAssembly: Hex;
     period: number;
     processId: Hex;
@@ -439,13 +439,13 @@ export interface UsageClaimContext {
  *  - the AGREEMENT leg credits the registered agreement's designer from the
  *    agreement's provenance leaf (`Agreement.provenance`), proved with
  *    `buildProvenanceInclusionProof`: kind `{ Agreement: { composition_hash } }`
- *    keyed by the agreement key.
+ *    keyed by the agreement hash.
  *  - the ASSEMBLY leg credits the assembly's designer from the same leaf
  *    plus the agreement's membership proof under the composition hash
  *    (`buildAgreementInclusionProof` over `assembly`, the instantiated assembly):
- *    kind `{ Assembly: { agreement_key, slot_content_hash, membership_proof } }`
+ *    kind `{ Assembly: { agreement_hash, slot_content_hash, membership_proof } }`
  *    keyed by the composition hash. The agreement proved is the first whose
- *    `agreementKey` is the provenance's (every such agreement proves the
+ *    `agreementHash` is the provenance's (every such agreement proves the
  *    same membership).
  *
  * The provenance leaf is the agreement format's, not a clause, so the
@@ -456,7 +456,7 @@ export interface UsageClaimContext {
  * agreement and assembly claim against it would revert); when the agreement
  * names a provenance but no `assembly` is given, the assembly does not hash
  * to the provenance's composition hash, or no agreement binds its agreement
- * key; when the provenance's agreement key is a reserved key; and when the
+ * hash; when the provenance's agreement hash is a reserved key; and when the
  * agreement's leaves do not build — no leg of such an agreement can be
  * proved.
  */
@@ -482,33 +482,33 @@ export function buildUsageClaims(
     const claims: SequencerUsageClaim[] = [];
 
     // ── Clause leg ──
-    for (const clauseEntry of agreement.sections) {
+    for (const clauseEntry of agreement.clauses) {
         claims.push({
             order: wireOrder,
             clause_or_assembly: clauseEntry.clause,
-            kind: { Clause: { section_hash: hashClauseData(clauseEntry) } },
+            kind: { Clause: { clause_data_hash: hashClauseData(clauseEntry) } },
             inclusion_proof: buildSignedClauseInclusionProof(agreement, clauseEntry.clause).proof,
         });
     }
 
     // ── Agreement and assembly legs — the agreement's provenance leaf ──
     if (agreement.provenance !== undefined) {
-        const { agreementKey, compositionHash } = agreement.provenance;
-        assertNotReservedKey(agreementKey, "provenance agreementKey");
+        const { agreementHash, compositionHash } = agreement.provenance;
+        assertNotReservedKey(agreementHash, "provenance agreementHash");
         if (!assembly) {
             throw new Error("the agreement names a provenance: its instantiated assembly is needed for the assembly leg's membership proof");
         }
         if (assemblyCompositionHash(assembly).toLowerCase() !== compositionHash.toLowerCase()) {
             throw new Error(`the assembly given does not hash to the provenance's composition hash ${compositionHash}`);
         }
-        const agreementIndex = assembly.agreements.findIndex((entry) => entry.agreementKey.toLowerCase() === agreementKey.toLowerCase());
+        const agreementIndex = assembly.agreements.findIndex((entry) => entry.agreementHash.toLowerCase() === agreementHash.toLowerCase());
         if (agreementIndex < 0) {
-            throw new Error(`no agreement of ${compositionHash} binds the provenance's agreement ${agreementKey}`);
+            throw new Error(`no agreement of ${compositionHash} binds the provenance's agreement ${agreementHash}`);
         }
         const leafProof = buildProvenanceInclusionProof(agreement).proof;
         claims.push({
             order: wireOrder,
-            clause_or_assembly: agreementKey,
+            clause_or_assembly: agreementHash,
             kind: { Agreement: { composition_hash: compositionHash } },
             inclusion_proof: leafProof,
         });
@@ -518,7 +518,7 @@ export function buildUsageClaims(
             clause_or_assembly: compositionHash,
             kind: {
                 Assembly: {
-                    agreement_key: agreementKey,
+                    agreement_hash: agreementHash,
                     slot_content_hash: membership.slotContentHash,
                     membership_proof: membership.proof,
                 },

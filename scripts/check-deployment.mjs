@@ -270,7 +270,7 @@ async function main() {
     // counter, keccak256("figaro-agreement-provenance") — never a clause key.
     await expectValue("usageCounter.provenanceLeaf()", u.provenanceLeaf, await read(record.usageCounter, "provenanceLeaf"));
     // The assembly format's reserved terms leaf: a constant of the counter,
-    // keccak256("figaro-assembly-terms") — never an agreementKey.
+    // keccak256("figaro-assembly-terms") — never an agreementHash.
     await expectValue("usageCounter.assemblyTermsLeaf()", u.assemblyTermsLeaf, await read(record.usageCounter, "assemblyTermsLeaf"));
     const minterPeriods = await read(record.rpgfMinter, "periodCount");
     let sum = 0n;

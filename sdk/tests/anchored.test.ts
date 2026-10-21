@@ -15,9 +15,9 @@ import {
     deriveAnchored,
     hydrateAssembly,
 } from "../src/anchored.js";
-import { PROVENANCE_LEAF_KEY, canonicalContentHash, canonicalize, computeAgreementHash, type Agreement } from "../src/agreement.js";
+import { PROVENANCE_LEAF_KEY, canonicalContentHash, canonicalize, computeCheckoutHash, type Agreement } from "../src/agreement.js";
 import { computeClauseKey } from "../src/discovery.js";
-import { ASSEMBLY_TERMS_LEAF_KEY, agreementKeyOf, assemblyCompositionHash, type Assembly } from "../src/assembly.js";
+import { ASSEMBLY_TERMS_LEAF_KEY, agreementHashOf, assemblyCompositionHash, type Assembly } from "../src/assembly.js";
 import { keyOf } from "./specFixtures.js";
 
 const OTHER = `0x${"11".repeat(32)}` as const;
@@ -28,14 +28,14 @@ const composed = { name: "Editorial", clauses: { [keyOf("figaro-commerce")]: {},
 
 const assembly: Assembly = {
     name: "Editorial",
-    agreements: [{ id: "order-0", agreementKey: agreementKeyOf(composed), clauses: { [keyOf("figaro-topology")]: { parentOrderHashes: [] } } }],
+    agreements: [{ id: "order-0", agreementHash: agreementHashOf(composed), clauses: { [keyOf("figaro-topology")]: { parentOrderHashes: [] } } }],
 };
 
 const agreement: Agreement = {
     version: "a1",
     buyer: "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
     seller: "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
-    sections: [{ clause: keyOf("figaro-modalities"), data: { modality: "pickup" } }],
+    clauses: [{ clause: keyOf("figaro-modalities"), data: { modality: "pickup" } }],
 };
 
 describe("anchorClauseSpec", () => {
@@ -82,8 +82,8 @@ describe("anchorAssembly", () => {
         expect(anchorAssembly(changed, assemblyCompositionHash(assembly))).toBeNull();
     });
     it("refuses an agreement whose key is malformed or reserved", () => {
-        for (const agreementKey of ["0x1234", PROVENANCE_LEAF_KEY, ASSEMBLY_TERMS_LEAF_KEY]) {
-            expect(anchorAssembly({ agreements: [{ id: "order-0", agreementKey, clauses: {} }] }, OTHER)).toBeNull();
+        for (const agreementHash of ["0x1234", PROVENANCE_LEAF_KEY, ASSEMBLY_TERMS_LEAF_KEY]) {
+            expect(anchorAssembly({ agreements: [{ id: "order-0", agreementHash, clauses: {} }] }, OTHER)).toBeNull();
         }
     });
     it("refuses a document that is not a assembly", () => {
@@ -94,7 +94,7 @@ describe("anchorAssembly", () => {
 });
 
 describe("anchorRegisteredAgreement", () => {
-    const key = agreementKeyOf(composed);
+    const key = agreementHashOf(composed);
 
     it("returns the document whose { clauses } subset hashes to the key — parsed, bytes, or text", () => {
         expect(anchorRegisteredAgreement(composed, key)).toBe(composed);
@@ -125,11 +125,11 @@ describe("anchorRegisteredAgreement", () => {
 });
 
 describe("hydrateAssembly", () => {
-    const key = agreementKeyOf(composed);
+    const key = agreementHashOf(composed);
     const two: Assembly = {
         agreements: [
             assembly.agreements[0],
-            { id: "order-1", agreementKey: key, clauses: { [keyOf("figaro-topology")]: { parentOrderHashes: ["order-0"] } } },
+            { id: "order-1", agreementHash: key, clauses: { [keyOf("figaro-topology")]: { parentOrderHashes: ["order-0"] } } },
         ],
     };
 
@@ -150,29 +150,29 @@ describe("hydrateAssembly", () => {
 
 describe("anchorAgreement", () => {
     it("returns the agreement its hash names", () => {
-        expect(anchorAgreement(agreement, computeAgreementHash(agreement))).toBe(agreement);
+        expect(anchorAgreement(agreement, computeCheckoutHash(agreement))).toBe(agreement);
     });
-    it("refuses a changed section", () => {
-        const changed = { ...agreement, sections: [{ ...agreement.sections[0]!, data: { modality: "delivery" } }] };
-        expect(anchorAgreement(changed, computeAgreementHash(agreement))).toBeNull();
+    it("refuses a changed clause", () => {
+        const changed = { ...agreement, clauses: [{ ...agreement.clauses[0]!, data: { modality: "delivery" } }] };
+        expect(anchorAgreement(changed, computeCheckoutHash(agreement))).toBeNull();
     });
     it("refuses an agreement whose clauses do not hash", () => {
-        const duplicated = { ...agreement, sections: [agreement.sections[0]!, agreement.sections[0]!] };
+        const duplicated = { ...agreement, clauses: [agreement.clauses[0]!, agreement.clauses[0]!] };
         expect(anchorAgreement(duplicated, OTHER)).toBeNull();
-        expect(anchorAgreement({ sections: "none" }, OTHER)).toBeNull();
+        expect(anchorAgreement({ clauses: "none" }, OTHER)).toBeNull();
         expect(anchorAgreement(null, OTHER)).toBeNull();
     });
     it("accepts the provenance leaf as two 32-byte keys under the hash, and refuses anything else there", () => {
-        const P = { agreementKey: `0x${"33".repeat(32)}`, compositionHash: `0x${"22".repeat(32)}` } as const;
+        const P = { agreementHash: `0x${"33".repeat(32)}`, compositionHash: `0x${"22".repeat(32)}` } as const;
         const named = { ...agreement, provenance: P };
-        const root = computeAgreementHash(named);
+        const root = computeCheckoutHash(named);
         expect(anchorAgreement(named, root)).toBe(named);
         // Dropping or changing either key changes the root.
         expect(anchorAgreement(agreement, root)).toBeNull();
         expect(anchorAgreement({ ...named, provenance: { ...P, compositionHash: OTHER } }, root)).toBeNull();
-        expect(anchorAgreement({ ...named, provenance: { ...P, agreementKey: OTHER } }, root)).toBeNull();
+        expect(anchorAgreement({ ...named, provenance: { ...P, agreementHash: OTHER } }, root)).toBeNull();
         // A provenance that is not two 32-byte hex keys is not the agreement format.
-        for (const bad of [P.compositionHash, "0x1234", 7, null, { compositionHash: P.compositionHash }, { ...P, agreementKey: "0x12" }]) {
+        for (const bad of [P.compositionHash, "0x1234", 7, null, { compositionHash: P.compositionHash }, { ...P, agreementHash: "0x12" }]) {
             expect(anchorAgreement({ ...named, provenance: bad }, root)).toBeNull();
         }
     });

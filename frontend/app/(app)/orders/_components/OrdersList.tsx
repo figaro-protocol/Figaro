@@ -370,7 +370,7 @@ export function OrdersList() {
     const handleAccept = useCallback(async (index: number) => {
         const payload = incoming[index];
         if (!payload) return;
-        // Off-chain validation (agreement-hash recompute) is enforced inside the flow's sign
+        // Off-chain validation (checkout-hash recompute) is enforced inside the flow's sign
         // step — acceptOrder throws on mismatch and the catch below surfaces it.
         setAcceptingIndex(index);
         setAcceptError(null);

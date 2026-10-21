@@ -10,14 +10,14 @@ import { parseAbi, parseAbiItem } from "viem";
 // ── Commitment struct type (shared across ABI strings) ──────────────────────
 // Matches CommitmentTypes.Commitment in Solidity:
 //   (bytes32 processId, address buyer, address seller, address currency,
-//    uint256 payment, uint256 expectedCumulativeValue, bytes32 agreementHash,
+//    uint256 payment, uint256 expectedCumulativeValue, bytes32 checkoutHash,
 //    uint256 salt, uint256 deadline)
 
 /** The Core's `Commitment` struct as an ABI tuple string. A core primitive —
  *  exported so contracts the frontend composes with (which take a Commitment as
  *  a calldata arg) can build their ABIs without re-stating the FigaroCore struct. */
 export const COMMITMENT_TUPLE =
-    "(bytes32 processId, address buyer, address seller, address currency, uint256 payment, uint256 expectedCumulativeValue, bytes32 agreementHash, uint256 salt, uint256 deadline)";
+    "(bytes32 processId, address buyer, address seller, address currency, uint256 payment, uint256 expectedCumulativeValue, bytes32 checkoutHash, uint256 salt, uint256 deadline)";
 
 // ── FigaroCore ABI ──────────────────────────────────────────────────────────
 
@@ -34,7 +34,7 @@ export const CORE_ABI = parseAbi([
     "function orderProcessId(bytes32 orderHash) view returns (bytes32)",
 
     // ── Events ──────────────────────────────────────────────────────
-    "event OrderCommitted(bytes32 indexed orderHash, bytes32 indexed processId, address indexed buyer, address seller, address currency, uint256 payment, uint256 cumulativeValue, bytes32 agreementHash, uint256 salt, uint256 deadline)",
+    "event OrderCommitted(bytes32 indexed orderHash, bytes32 indexed processId, address indexed buyer, address seller, address currency, uint256 payment, uint256 cumulativeValue, bytes32 checkoutHash, uint256 salt, uint256 deadline)",
     "event OrderSeller(bytes32 indexed orderHash, address indexed seller)",
     "event OrderCurrency(bytes32 indexed orderHash, address indexed currency)",
     "event OrderResolved(bytes32 indexed orderHash, bytes32 indexed processId, uint256 sellerPayout, uint256 buyerPayout)",
@@ -76,7 +76,7 @@ export const CORE_ABI = parseAbi([
 // ── Individual event ABIs (for log filtering) ───────────────────────────────
 
 export const EV_ORDER_COMMITTED = parseAbiItem(
-    "event OrderCommitted(bytes32 indexed orderHash, bytes32 indexed processId, address indexed buyer, address seller, address currency, uint256 payment, uint256 cumulativeValue, bytes32 agreementHash, uint256 salt, uint256 deadline)",
+    "event OrderCommitted(bytes32 indexed orderHash, bytes32 indexed processId, address indexed buyer, address seller, address currency, uint256 payment, uint256 cumulativeValue, bytes32 checkoutHash, uint256 salt, uint256 deadline)",
 );
 
 export const EV_ORDER_SELLER = parseAbiItem(
@@ -108,17 +108,17 @@ export const EV_PROCESS_RESOLVED = parseAbiItem(
 export const ATTESTATION_COORDINATOR_ABI = parseAbi([
     "function core() view returns (address)",
     // Both paths take the full Commitment(s) so the coordinator can
-    // recover `agreementHash` without new FigaroCore state, and carry the clause
-    // FINGERPRINT `sectionHash` (`keccak256(sectionData)`) + merkle `proof` so
+    // recover `checkoutHash` without new FigaroCore state, and carry the clause
+    // FINGERPRINT `clauseDataHash` (`keccak256(clauseData)`) + merkle `proof` so
     // the clause is provably part of the signed agreement. The content
     // FINGERPRINT `contentRef` (`keccak256(content)`) is supplied too — never the
     // preimage, so a `private` clause's plaintext never touches public calldata;
     // it lives off-chain (encrypted IPFS) bound to this hash. There is no on-chain
     // clause-content validator. Matches the batched path's bytes32 convention.
-    `function attestAsSeller(${COMMITMENT_TUPLE} role, ${COMMITMENT_TUPLE} target, bytes32 clauseId, uint8 stage, bytes32 sectionHash, bytes32[] proof, bytes32 contentRef) external`,
-    `function attestAsBuyer(${COMMITMENT_TUPLE} target, bytes32 clauseId, uint8 stage, bytes32 sectionHash, bytes32[] proof, bytes32 contentRef) external`,
+    `function attestAsSeller(${COMMITMENT_TUPLE} role, ${COMMITMENT_TUPLE} target, bytes32 clauseId, uint8 stage, bytes32 clauseDataHash, bytes32[] proof, bytes32 contentRef) external`,
+    `function attestAsBuyer(${COMMITMENT_TUPLE} target, bytes32 clauseId, uint8 stage, bytes32 clauseDataHash, bytes32[] proof, bytes32 contentRef) external`,
     "event Attestation(bytes32 indexed orderHash, bytes32 indexed processId, address indexed attester, bytes32 clauseId, uint8 stage, bytes32 contentRef)",
-    "error InvalidInclusionProof(bytes32 agreementHash, bytes32 clauseId)",
+    "error InvalidInclusionProof(bytes32 checkoutHash, bytes32 clauseId)",
     "error NotAuthorized()",
     "error ProcessMismatch()",
     "error UnknownOrder()",
@@ -310,20 +310,20 @@ export const ASSEMBLY_REGISTRY_ABI = parseAbi([
 ]);
 
 // ── AgreementRegistry ABI ─────────────────────────────────────────────────
-// AssemblyRegistry's shape, keyed by `agreementKey` (`agreementKeyOf`, the
+// AssemblyRegistry's shape, keyed by `agreementHash` (`agreementHashOf`, the
 // merkle root over the clauses composed for one agreement). Parallel to the
 // clause and assembly registries: no edge to either.
 
 export const AGREEMENT_REGISTRY_ABI = parseAbi([
-    "function registerAgreement(bytes32 agreementKey, string contentURI) external payable",
-    "function withdrawDeposit(bytes32 agreementKey) external",
-    "function bindings(bytes32 agreementKey) view returns (address registeredBy, uint64 registeredAt, bool depositWithdrawn, string contentURI)",
+    "function registerAgreement(bytes32 agreementHash, string contentURI) external payable",
+    "function withdrawDeposit(bytes32 agreementHash) external",
+    "function bindings(bytes32 agreementHash) view returns (address registeredBy, uint64 registeredAt, bool depositWithdrawn, string contentURI)",
     "function registrationDeposit() view returns (uint256)",
-    "event AgreementRegistered(bytes32 indexed agreementKey, address indexed registeredBy, string contentURI)",
-    "event DepositWithdrawn(bytes32 indexed agreementKey, address indexed registeredBy, uint256 amount)",
+    "event AgreementRegistered(bytes32 indexed agreementHash, address indexed registeredBy, string contentURI)",
+    "event DepositWithdrawn(bytes32 indexed agreementHash, address indexed registeredBy, uint256 amount)",
     "error EmptyContentURI()",
-    "error ZeroAgreementKey()",
-    "error AgreementAlreadyRegistered(bytes32 agreementKey)",
+    "error ZeroAgreementHash()",
+    "error AgreementAlreadyRegistered(bytes32 agreementHash)",
     "error ReservedKeyIsNotARegistration(bytes32 key)",
     "error WrongDeposit(uint256 provided, uint256 required)",
     "error NotRegistered()",
@@ -352,14 +352,14 @@ export const FLORIN_TOKEN_ABI = parseAbi([
 //
 // Verified clause-or-assembly usage, counted when it happens. `recordClauseUsage` is
 // permissionless: it proves the order is RESOLVED (`core.orderStatus == 2`)
-// and that the clause or assembly is merkle-included in the signed `agreementHash` —
+// and that the clause or assembly is merkle-included in the signed `checkoutHash` —
 // the same leaf shape `computeClauseLeaf` builds. It carries only the clause
-// FINGERPRINT `sectionHash` (`keccak256` of the committed bytes), never the
+// FINGERPRINT `clauseDataHash` (`keccak256` of the committed bytes), never the
 // preimage, so a `private` clause's plaintext never touches public calldata.
 // `recordAgreementUsage` and `recordAssemblyUsage` take no clause at all —
 // the content of the agreement format's reserved provenance leaf
 // (`provenanceLeaf`) is fully determined by the two keys it names
-// (`agreementKey`, `compositionHash`), so the contract derives it; the
+// (`agreementHash`, `compositionHash`), so the contract derives it; the
 // assembly claim adds the agreement's membership proof under
 // `compositionHash`. Accrual
 // buckets into fixed periods; a period's counts are final once `periodClosed`.
@@ -374,9 +374,9 @@ export const FLORIN_TOKEN_ABI = parseAbi([
 
 export const USAGE_COUNTER_ABI = parseAbi([
     // ── Recording (permissionless) ──────────────────────────────────
-    `function recordClauseUsage(${COMMITMENT_TUPLE} order, bytes32 clauseOrAssembly, bytes32 sectionHash, bytes32[] proof) external`,
-    `function recordAgreementUsage(${COMMITMENT_TUPLE} order, bytes32 agreementKey, bytes32 compositionHash, bytes32[] proof) external`,
-    `function recordAssemblyUsage(${COMMITMENT_TUPLE} order, bytes32 compositionHash, bytes32 agreementKey, bytes32 slotContentHash, bytes32[] leafProof, bytes32[] membershipProof) external`,
+    `function recordClauseUsage(${COMMITMENT_TUPLE} order, bytes32 clauseOrAssembly, bytes32 clauseDataHash, bytes32[] proof) external`,
+    `function recordAgreementUsage(${COMMITMENT_TUPLE} order, bytes32 agreementHash, bytes32 compositionHash, bytes32[] proof) external`,
+    `function recordAssemblyUsage(${COMMITMENT_TUPLE} order, bytes32 compositionHash, bytes32 agreementHash, bytes32 slotContentHash, bytes32[] leafProof, bytes32[] membershipProof) external`,
 
     // ── Composition + schedule ──────────────────────────────────────
     "function core() view returns (address)",

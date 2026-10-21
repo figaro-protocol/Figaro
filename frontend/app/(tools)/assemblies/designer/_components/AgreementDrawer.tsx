@@ -71,14 +71,14 @@ interface Props {
     onSetClauseField?: (clauseKey: string, field: string, value: unknown) => void;
     /** The registered agreement this agreement binds (`AgreementRegistry`
      *  key), when it binds one. */
-    boundAgreementKey?: `0x${string}`;
+    boundAgreementHash?: `0x${string}`;
     /** Bind a registered agreement to this agreement, or unbind (`null`). */
-    onBindAgreement?: (agreementKey: `0x${string}` | null) => void;
+    onBindAgreement?: (agreementHash: `0x${string}` | null) => void;
     /** The registered agreement this order picked in the mandatory article
      *  (`AgreementRegistry` key), when it has picked one. */
-    mandatoryAgreementKey?: `0x${string}`;
+    mandatoryAgreementHash?: `0x${string}`;
     /** Pick a registered agreement the mandatory article lists for this order. */
-    onPickMandatory?: (agreementKey: `0x${string}`) => void;
+    onPickMandatory?: (agreementHash: `0x${string}`) => void;
     /** Register this order's agreement on its own — pin, stake and
      *  register it on `AgreementRegistry` now, without publishing an
      *  assembly — and bind the agreement to the registered key. Resolves to
@@ -96,10 +96,10 @@ export function AgreementDrawer({
     selectedClauseValues,
     onToggleClause,
     onSetClauseField,
-    boundAgreementKey,
+    boundAgreementHash,
     onBindAgreement,
     onRegisterAgreement,
-    mandatoryAgreementKey,
+    mandatoryAgreementHash,
     onPickMandatory,
 }: Props) {
     const [openSection, setOpenSection] = useState<string | null>(null);
@@ -348,7 +348,7 @@ export function AgreementDrawer({
 
                     {openSection === "agreements" && (
                         <RegisteredAgreementsPanel
-                            boundAgreementKey={boundAgreementKey}
+                            boundAgreementHash={boundAgreementHash}
                             onBindAgreement={onBindAgreement}
                             onRegisterAgreement={onRegisterAgreement}
                             composedClauseCount={Object.keys(selectedClauseValues ?? {}).length}
@@ -360,7 +360,7 @@ export function AgreementDrawer({
                         <>
                             <MandatoryArticlePanel
                                 orderHash={order.orderHash}
-                                mandatoryAgreementKey={mandatoryAgreementKey}
+                                mandatoryAgreementHash={mandatoryAgreementHash}
                                 onPickMandatory={onPickMandatory}
                             />
                             <ClauseRegistryPanel
@@ -388,14 +388,14 @@ export function AgreementDrawer({
  * agreement already bound keeps reading whatever its stake.
  */
 function RegisteredAgreementsPanel({
-    boundAgreementKey,
+    boundAgreementHash,
     onBindAgreement,
     onRegisterAgreement,
     composedClauseCount,
     readOnly,
 }: {
-    boundAgreementKey?: `0x${string}`;
-    onBindAgreement?: (agreementKey: `0x${string}` | null) => void;
+    boundAgreementHash?: `0x${string}`;
+    onBindAgreement?: (agreementHash: `0x${string}` | null) => void;
     onRegisterAgreement?: () => Promise<`0x${string}`>;
     /** How many clauses the order composes — the register action needs one. */
     composedClauseCount: number;
@@ -408,27 +408,27 @@ function RegisteredAgreementsPanel({
     // session cache).
     useRegisteredAgreementsVersion();
     useEffect(() => {
-        for (const row of liveAgreements ?? []) void fetchRegisteredAgreement(row.agreementKey, row.contentURI);
-        if (boundAgreementKey) void fetchRegisteredAgreement(boundAgreementKey);
-    }, [liveAgreements, boundAgreementKey]);
-    const label = (agreementKey: `0x${string}`): string => {
-        const doc = getRegisteredAgreement(agreementKey);
-        const key = truncateHex(agreementKey, { head: 10, tail: 4 });
+        for (const row of liveAgreements ?? []) void fetchRegisteredAgreement(row.agreementHash, row.contentURI);
+        if (boundAgreementHash) void fetchRegisteredAgreement(boundAgreementHash);
+    }, [liveAgreements, boundAgreementHash]);
+    const label = (agreementHash: `0x${string}`): string => {
+        const doc = getRegisteredAgreement(agreementHash);
+        const key = truncateHex(agreementHash, { head: 10, tail: 4 });
         return doc?.name ? `${doc.name} · ${key}` : key;
     };
-    const boundDoc = boundAgreementKey ? getRegisteredAgreement(boundAgreementKey) : undefined;
+    const boundDoc = boundAgreementHash ? getRegisteredAgreement(boundAgreementHash) : undefined;
     return (
         <section data-testid="drawer-section-agreements" className="space-y-4">
             <div data-testid="drawer-bound-agreement">
                 <p className="text-xs text-ink-muted mb-1">This agreement&rsquo;s agreement</p>
-                {boundAgreementKey ? (
+                {boundAgreementHash ? (
                     <div className="space-y-1">
                         <p
                             className="font-mono text-[11px] text-ink-body break-all"
-                            data-testid="drawer-bound-agreement-key"
-                            title={boundAgreementKey}
+                            data-testid="drawer-bound-agreement-hash"
+                            title={boundAgreementHash}
                         >
-                            {label(boundAgreementKey)}
+                            {label(boundAgreementHash)}
                         </p>
                         {boundDoc && (
                             <ul className="text-[11px] text-ink-muted space-y-0.5" data-testid="drawer-bound-agreement-clauses">
@@ -504,22 +504,22 @@ function RegisteredAgreementsPanel({
                     ) : (
                         <ul className="space-y-1" data-testid="drawer-agreements-list">
                             {liveAgreements.map((row) => {
-                                const bound = !!boundAgreementKey && boundAgreementKey.toLowerCase() === row.agreementKey.toLowerCase();
+                                const bound = !!boundAgreementHash && boundAgreementHash.toLowerCase() === row.agreementHash.toLowerCase();
                                 return (
-                                    <li key={row.agreementKey}>
+                                    <li key={row.agreementHash}>
                                         <button
                                             type="button"
-                                            onClick={() => onBindAgreement?.(row.agreementKey)}
+                                            onClick={() => onBindAgreement?.(row.agreementHash)}
                                             aria-pressed={bound}
-                                            data-testid={`drawer-agreement-${row.agreementKey}`}
-                                            title={row.agreementKey}
+                                            data-testid={`drawer-agreement-${row.agreementHash}`}
+                                            title={row.agreementHash}
                                             className={`w-full text-left text-[11px] font-mono px-2 py-1 rounded border break-all ${
                                                 bound
                                                     ? "border-ink-primary bg-subtle text-ink-primary"
                                                     : "border-default bg-paper text-ink-body hover:border-default-strong"
                                             }`}
                                         >
-                                            {label(row.agreementKey)}
+                                            {label(row.agreementHash)}
                                         </button>
                                     </li>
                                 );
@@ -543,23 +543,23 @@ function RegisteredAgreementsPanel({
  */
 function MandatoryArticlePanel({
     orderHash,
-    mandatoryAgreementKey,
+    mandatoryAgreementHash,
     onPickMandatory,
 }: {
     orderHash: string;
-    mandatoryAgreementKey?: `0x${string}`;
-    onPickMandatory?: (agreementKey: `0x${string}`) => void;
+    mandatoryAgreementHash?: `0x${string}`;
+    onPickMandatory?: (agreementHash: `0x${string}`) => void;
 }) {
     const { data: liveAgreements } = usePublishedAgreements(undefined);
     const agreementsVersion = useRegisteredAgreementsVersion();
     const { version: clauseSpecsVersion } = useClauseSpecs();
     useEffect(() => {
-        for (const row of liveAgreements ?? []) void fetchRegisteredAgreement(row.agreementKey, row.contentURI);
-        if (mandatoryAgreementKey) void fetchRegisteredAgreement(mandatoryAgreementKey);
-    }, [liveAgreements, mandatoryAgreementKey]);
+        for (const row of liveAgreements ?? []) void fetchRegisteredAgreement(row.agreementHash, row.contentURI);
+        if (mandatoryAgreementHash) void fetchRegisteredAgreement(mandatoryAgreementHash);
+    }, [liveAgreements, mandatoryAgreementHash]);
     const listed = useMemo(
         () => (liveAgreements ?? []).filter((row) => {
-            const doc = getRegisteredAgreement(row.agreementKey);
+            const doc = getRegisteredAgreement(row.agreementHash);
             return doc !== undefined && isMandatoryAgreement(doc, specSource());
         }),
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -586,19 +586,19 @@ function MandatoryArticlePanel({
             ) : (
                 <ul className="space-y-2" data-testid="drawer-mandatory-list">
                     {listed.map((row) => {
-                        const doc = getRegisteredAgreement(row.agreementKey);
-                        const key = truncateHex(row.agreementKey, { head: 10, tail: 4 });
-                        const picked = !!mandatoryAgreementKey && mandatoryAgreementKey.toLowerCase() === row.agreementKey.toLowerCase();
+                        const doc = getRegisteredAgreement(row.agreementHash);
+                        const key = truncateHex(row.agreementHash, { head: 10, tail: 4 });
+                        const picked = !!mandatoryAgreementHash && mandatoryAgreementHash.toLowerCase() === row.agreementHash.toLowerCase();
                         return (
-                            <li key={row.agreementKey}>
-                                <label className="flex items-start gap-2 text-xs text-ink-body" title={row.agreementKey}>
+                            <li key={row.agreementHash}>
+                                <label className="flex items-start gap-2 text-xs text-ink-body" title={row.agreementHash}>
                                     <input
                                         type="radio"
                                         className="h-3.5 w-3.5 mt-0.5"
                                         name={`mandatory-${orderHash}`}
                                         checked={picked}
-                                        onChange={() => onPickMandatory?.(row.agreementKey)}
-                                        data-testid={`drawer-mandatory-agreement-${row.agreementKey}`}
+                                        onChange={() => onPickMandatory?.(row.agreementHash)}
+                                        data-testid={`drawer-mandatory-agreement-${row.agreementHash}`}
                                     />
                                     <span className="min-w-0">
                                         <span className="text-ink-primary">{doc?.name ? `${doc.name} · ` : ""}</span>

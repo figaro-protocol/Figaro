@@ -310,7 +310,7 @@ function SignPageContent() {
     }, [sellerShortOfDenomination, sellerFundingCandidates.length]);
 
     // Off-chain validation over what was pasted/relayed: does the inline agreement merkle
-    // to the signed agreementHash and conform to its clause specs? Computed at
+    // to the signed checkoutHash and conform to its clause specs? Computed at
     // review time so the party isn't reading terms that aren't the ones signed;
     // the sign/commit gates re-assert this at the exit. The design the
     // agreement names is read first, so the designer's values are checked
@@ -328,7 +328,7 @@ function SignPageContent() {
     const agreementCheck = useMemo(() => {
         if (!parsed?.agreement || !commitment) return null;
         if (designRead?.agreement !== parsed.agreement) return null;
-        return validateCommitmentAgreement(parsed.agreement, commitment.agreementHash, specSource(), commitment, designRead.design);
+        return validateCommitmentAgreement(parsed.agreement, commitment.checkoutHash, specSource(), commitment, designRead.design);
     }, [parsed, commitment, designRead]);
 
     // The seller's own listed prices beside the amounts it is asked to sign,
@@ -415,7 +415,7 @@ function SignPageContent() {
                     {agreementCheck && !agreementCheck.ok && (
                         <div className="rounded border border-error/30 bg-error/10 px-3 py-2 text-xs text-error-fg" data-testid="sign-agreement-invalid">
                             <p className="font-semibold mb-1">
-                                These terms do NOT match the signed agreementHash — do not proceed.
+                                These terms do NOT match the signed checkoutHash — do not proceed.
                             </p>
                             <ul className="list-disc pl-4 space-y-0.5">
                                 {agreementCheck.issues.map((issue, i) => (

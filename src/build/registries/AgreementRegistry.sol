@@ -13,12 +13,12 @@ pragma solidity 0.8.26;
 ///         A registered agreement is the clauses composed for ONE order
 ///         with the designer's fills, value-free: a reusable unit a
 ///         designer binds into any assembly, in any position, as is. Its identity
-///         IS its composition: agreementKey is the merkle root over one leaf per
+///         IS its composition: agreementHash is the merkle root over one leaf per
 ///         composed clause, the clause key and the canonical bytes of the fills
 ///         the designer gave it, so a clause's membership is a merkle proof. The
 ///         topology clause is composed with `{}` (who follows whom is the assembly's
 ///         fact), and editorial prose is excluded, so renaming never forks identity. The registry keys
-///         bindings by agreementKey: identical compositions collapse to one
+///         bindings by agreementHash: identical compositions collapse to one
 ///         binding, and no caller-chosen name exists on-chain to squat.
 ///
 ///         contentURI points at the full pinned agreement document
@@ -33,12 +33,12 @@ pragma solidity 0.8.26;
 ///         AttestationCoordinator merkle-binds each attestation to the signed
 ///         agreement without validating content shape.
 ///
-///         The agreementKey is a design-time key, never the runtime
-///         `agreementHash` a commitment carries: an order instantiating a
+///         The agreementHash is a design-time key, never the runtime
+///         `checkoutHash` a commitment carries: an order instantiating a
 ///         registered agreement carries the agreement format's reserved
-///         provenance leaf, whose bytes name the agreementKey and the
+///         provenance leaf, whose bytes name the agreementHash and the
 ///         compositionHash of the assembly it came from, under its own
-///         `agreementHash`.
+///         `checkoutHash`.
 ///
 ///         STAKED INTENT: registration requires an ETH stake
 ///         (`registrationDeposit`, immutable at deploy) — registering IS
@@ -58,7 +58,7 @@ pragma solidity 0.8.26;
 ///         resolution, attributed by each order's decoded provenance) and the
 ///         gate is enforced at the protocol surface (SDK and frontend refuse).
 ///
-///         The designer of record is first-write-wins on the agreementKey:
+///         The designer of record is first-write-wins on the agreementHash:
 ///         whoever anchors a composition first is its designer of record.
 ///         Editorial prose is not identity, so a front-runner can anchor
 ///         someone else's composition under their own prose — the same
@@ -74,12 +74,12 @@ pragma solidity 0.8.26;
 contract AgreementRegistry {
     /// @notice The agreement format's reserved provenance leaf key,
     ///         `keccak256("figaro-agreement-provenance")` — a format constant,
-    ///         never a registration and never an agreementKey.
+    ///         never a registration and never an agreementHash.
     bytes32 public constant PROVENANCE_LEAF_KEY = keccak256("figaro-agreement-provenance");
 
     /// @notice The key of an assembly tree's terms leaf,
     ///         `keccak256("figaro-assembly-terms")` — a format constant, never
-    ///         a registration and never an agreementKey.
+    ///         a registration and never an agreementHash.
     bytes32 public constant ASSEMBLY_TERMS_LEAF_KEY = keccak256("figaro-assembly-terms");
 
     /// @notice Stake in wei required at registration. Immutable at deploy.
@@ -99,40 +99,40 @@ contract AgreementRegistry {
         string contentURI;
     }
 
-    /// @notice agreementKey (the merkle root over the agreement's clause
+    /// @notice agreementHash (the merkle root over the agreement's clause
     ///         leaves) → binding details.
     mapping(bytes32 => AgreementBinding) public bindings;
 
     // ── Events ──────────────────────────────────────────────────────────
 
     /// @notice Emitted when an agreement is registered.
-    /// @param agreementKey The merkle root over the agreement's clause
+    /// @param agreementHash The merkle root over the agreement's clause
     ///                     leaves — the agreement's identity.
     /// @param registeredBy Address that registered the agreement.
     /// @param contentURI   Full off-chain agreement document URI (typically
     ///                     IPFS).
-    event AgreementRegistered(bytes32 indexed agreementKey, address indexed registeredBy, string contentURI);
+    event AgreementRegistered(bytes32 indexed agreementHash, address indexed registeredBy, string contentURI);
 
     /// @notice Emitted when the registering wallet withdraws its stake. The
     ///         binding stays in place; only the stake moves.
-    /// @param agreementKey The agreement whose stake was withdrawn.
+    /// @param agreementHash The agreement whose stake was withdrawn.
     /// @param registeredBy Address that withdrew.
     /// @param amount       Stake returned (always equals
     ///                     `registrationDeposit`).
-    event DepositWithdrawn(bytes32 indexed agreementKey, address indexed registeredBy, uint256 amount);
+    event DepositWithdrawn(bytes32 indexed agreementHash, address indexed registeredBy, uint256 amount);
 
     // ── Errors ──────────────────────────────────────────────────────────
 
     error EmptyContentURI();
-    error ZeroAgreementKey();
-    error AgreementAlreadyRegistered(bytes32 agreementKey);
+    error ZeroAgreementHash();
+    error AgreementAlreadyRegistered(bytes32 agreementHash);
     error WrongDeposit(uint256 provided, uint256 required);
     error NotRegistered();
     error NotRegisteredBy(address caller, address registeredBy);
     error AlreadyWithdrawn();
     error TransferFailed();
     /// @notice One of the two reserved format keys was offered as an
-    ///         agreementKey.
+    ///         agreementHash.
     error ReservedKeyIsNotARegistration(bytes32 key);
 
     // ── Constructor ─────────────────────────────────────────────────────
@@ -145,35 +145,35 @@ contract AgreementRegistry {
     // ── Agreement registration (permissionless, first-write-wins) ───────
 
     /// @notice Register an agreement. Requires `registrationDeposit` ETH.
-    ///         The contract anchors identity (agreementKey → contentURI).
+    ///         The contract anchors identity (agreementHash → contentURI).
     ///         The two reserved format keys are refused: the provenance leaf
     ///         key and the assembly terms leaf key are constants of the
     ///         formats, never an agreement.
     ///         Content validity is the publisher's responsibility off-chain;
     ///         clause content well-formedness is the SDK's off-chain validator's
     ///         concern — there is no on-chain content validation.
-    /// @param agreementKey The merkle root over the agreement's clause
+    /// @param agreementHash The merkle root over the agreement's clause
     ///                     leaves.
     /// @param contentURI   Full off-chain agreement document pointer
     ///                     (typically IPFS).
-    function registerAgreement(bytes32 agreementKey, string calldata contentURI) external payable {
+    function registerAgreement(bytes32 agreementHash, string calldata contentURI) external payable {
         if (msg.value != registrationDeposit) revert WrongDeposit(msg.value, registrationDeposit);
-        if (agreementKey == bytes32(0)) revert ZeroAgreementKey();
-        if (agreementKey == PROVENANCE_LEAF_KEY || agreementKey == ASSEMBLY_TERMS_LEAF_KEY) {
-            revert ReservedKeyIsNotARegistration(agreementKey);
+        if (agreementHash == bytes32(0)) revert ZeroAgreementHash();
+        if (agreementHash == PROVENANCE_LEAF_KEY || agreementHash == ASSEMBLY_TERMS_LEAF_KEY) {
+            revert ReservedKeyIsNotARegistration(agreementHash);
         }
         if (bytes(contentURI).length == 0) revert EmptyContentURI();
 
-        if (bindings[agreementKey].registeredAt != 0) revert AgreementAlreadyRegistered(agreementKey);
+        if (bindings[agreementHash].registeredAt != 0) revert AgreementAlreadyRegistered(agreementHash);
 
-        bindings[agreementKey] = AgreementBinding({
+        bindings[agreementHash] = AgreementBinding({
             registeredBy: msg.sender,
             registeredAt: uint64(block.timestamp),
             depositWithdrawn: false,
             contentURI: contentURI
         });
 
-        emit AgreementRegistered(agreementKey, msg.sender, contentURI);
+        emit AgreementRegistered(agreementHash, msg.sender, contentURI);
     }
 
     // ── Stake withdrawal (registeredBy-only) ────────────────────────────
@@ -184,16 +184,16 @@ contract AgreementRegistry {
     ///         `registeredBy`, and only once per binding.
     /// @dev The commits == resolves gate is protocol-surface (indexer count;
     ///      see the contract notice).
-    /// @param agreementKey The agreement whose stake to withdraw.
-    function withdrawDeposit(bytes32 agreementKey) external {
-        AgreementBinding storage binding = bindings[agreementKey];
+    /// @param agreementHash The agreement whose stake to withdraw.
+    function withdrawDeposit(bytes32 agreementHash) external {
+        AgreementBinding storage binding = bindings[agreementHash];
         if (binding.registeredAt == 0) revert NotRegistered();
         if (msg.sender != binding.registeredBy) revert NotRegisteredBy(msg.sender, binding.registeredBy);
         if (binding.depositWithdrawn) revert AlreadyWithdrawn();
 
         // Checks-effects-interactions: flag THEN transfer.
         binding.depositWithdrawn = true;
-        emit DepositWithdrawn(agreementKey, msg.sender, registrationDeposit);
+        emit DepositWithdrawn(agreementHash, msg.sender, registrationDeposit);
 
         (bool ok,) = msg.sender.call{value: registrationDeposit}("");
         if (!ok) revert TransferFailed();

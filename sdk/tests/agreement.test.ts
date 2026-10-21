@@ -2,7 +2,7 @@ import { keccak256, toHex } from "viem";
 import { describe, it, expect } from "vitest";
 import {
     computeClauseLeaf,
-    computeAgreementHash,
+    computeCheckoutHash,
     buildSignedClauseInclusionProof,
     verifyInclusionProof,
     getClauseDataBytes,
@@ -41,12 +41,12 @@ const MODALITIES: AgreementClause = {
     data: { modality: "pickup" },
 };
 
-function agreement(sections: AgreementClause[]): Agreement {
+function agreement(clauses: AgreementClause[]): Agreement {
     return {
         version: "a1",
         buyer: BUYER,
         seller: SELLER,
-        sections: [...sections].sort((a, b) => a.clause.localeCompare(b.clause)),
+        clauses: [...clauses].sort((a, b) => a.clause.localeCompare(b.clause)),
     };
 }
 
@@ -55,7 +55,7 @@ describe("computeClauseLeaf", () => {
         expect(computeClauseLeaf(COMMERCE)).toMatch(/^0x[0-9a-f]{64}$/);
     });
 
-    it("is deterministic for the same section", () => {
+    it("is deterministic for the same clause", () => {
         expect(computeClauseLeaf(COMMERCE)).toBe(computeClauseLeaf(COMMERCE));
     });
 
@@ -71,32 +71,32 @@ describe("computeClauseLeaf", () => {
     });
 });
 
-describe("computeAgreementHash", () => {
+describe("computeCheckoutHash", () => {
     it("empty agreement yields zero root", () => {
-        expect(computeAgreementHash(agreement([]))).toBe(`0x${"0".repeat(64)}`);
+        expect(computeCheckoutHash(agreement([]))).toBe(`0x${"0".repeat(64)}`);
     });
 
-    it("single-section root equals the leaf", () => {
+    it("single-clause root equals the leaf", () => {
         const a = agreement([COMMERCE]);
-        expect(computeAgreementHash(a)).toBe(computeClauseLeaf(COMMERCE));
+        expect(computeCheckoutHash(a)).toBe(computeClauseLeaf(COMMERCE));
     });
 
     it("is deterministic and order-insensitive", () => {
-        const h1 = computeAgreementHash(agreement([COMMERCE, GEO, GHG]));
-        const h2 = computeAgreementHash(agreement([GHG, COMMERCE, GEO]));
+        const h1 = computeCheckoutHash(agreement([COMMERCE, GEO, GHG]));
+        const h2 = computeCheckoutHash(agreement([GHG, COMMERCE, GEO]));
         expect(h1).toBe(h2);
     });
 
     it("changes when any clause changes", () => {
-        const h1 = computeAgreementHash(agreement([COMMERCE, GHG]));
+        const h1 = computeCheckoutHash(agreement([COMMERCE, GHG]));
         const modified = { ...GHG, data: { ...GHG.data, standard: "PAS 2050" } };
-        const h2 = computeAgreementHash(agreement([COMMERCE, modified]));
+        const h2 = computeCheckoutHash(agreement([COMMERCE, modified]));
         expect(h1).not.toBe(h2);
     });
 
     it("rejects agreements with duplicate clause keys", () => {
         const dup = { ...GHG, data: { ...GHG.data, standard: "PAS 2050" } };
-        expect(() => computeAgreementHash(agreement([GHG, dup])))
+        expect(() => computeCheckoutHash(agreement([GHG, dup])))
             .toThrow(/Duplicate clause keys/);
     });
 });
@@ -104,26 +104,26 @@ describe("computeAgreementHash", () => {
 describe("buildSignedClauseInclusionProof + verifyInclusionProof", () => {
     it("single clauseEntry: empty proof verifies", () => {
         const a = agreement([COMMERCE]);
-        const root = computeAgreementHash(a);
+        const root = computeCheckoutHash(a);
         const { leaf, proof } = buildSignedClauseInclusionProof(a, K("figaro-commerce"));
         expect(proof).toHaveLength(0);
         expect(verifyInclusionProof(root, leaf, proof)).toBe(true);
     });
 
-    it("two sections: proof has one sibling per section", () => {
+    it("two clauses: proof has one sibling per clause", () => {
         const a = agreement([COMMERCE, GHG]);
-        const root = computeAgreementHash(a);
-        for (const s of a.sections) {
+        const root = computeCheckoutHash(a);
+        for (const s of a.clauses) {
             const { leaf, proof } = buildSignedClauseInclusionProof(a, s.clause);
             expect(proof).toHaveLength(1);
             expect(verifyInclusionProof(root, leaf, proof)).toBe(true);
         }
     });
 
-    it("four sections: every clause proves inclusion", () => {
+    it("four clauses: every clause proves inclusion", () => {
         const a = agreement([COMMERCE, GEO, GHG, MODALITIES]);
-        const root = computeAgreementHash(a);
-        for (const s of a.sections) {
+        const root = computeCheckoutHash(a);
+        for (const s of a.clauses) {
             const { leaf, proof } = buildSignedClauseInclusionProof(a, s.clause);
             expect(verifyInclusionProof(root, leaf, proof)).toBe(true);
         }
@@ -131,8 +131,8 @@ describe("buildSignedClauseInclusionProof + verifyInclusionProof", () => {
 
     it("odd clause count: promoted leaf proves inclusion", () => {
         const a = agreement([COMMERCE, GEO, GHG]);
-        const root = computeAgreementHash(a);
-        for (const s of a.sections) {
+        const root = computeCheckoutHash(a);
+        for (const s of a.clauses) {
             const { leaf, proof } = buildSignedClauseInclusionProof(a, s.clause);
             expect(verifyInclusionProof(root, leaf, proof)).toBe(true);
         }
@@ -142,7 +142,7 @@ describe("buildSignedClauseInclusionProof + verifyInclusionProof", () => {
         const a1 = agreement([COMMERCE, GHG]);
         const a2 = agreement([COMMERCE, MODALITIES]);
         const { leaf, proof } = buildSignedClauseInclusionProof(a1, K("figaro-commerce"));
-        expect(verifyInclusionProof(computeAgreementHash(a2), leaf, proof)).toBe(false);
+        expect(verifyInclusionProof(computeCheckoutHash(a2), leaf, proof)).toBe(false);
     });
 
     it("throws when the clause is absent", () => {
@@ -163,12 +163,12 @@ describe("content-withheld clauseEntries (the private side of the data seam)", (
     it("an agreement root is unchanged when a clause is withheld", () => {
         const full = agreement([COMMERCE, GEO, GHG]);
         const partlyWithheld = agreement([COMMERCE, withholdClauseContent(GEO), GHG]);
-        expect(computeAgreementHash(partlyWithheld)).toBe(computeAgreementHash(full));
+        expect(computeCheckoutHash(partlyWithheld)).toBe(computeCheckoutHash(full));
     });
 
     it("a withheld clause still proves inclusion against the root", () => {
         const a = agreement([COMMERCE, withholdClauseContent(GEO), GHG]);
-        const root = computeAgreementHash(a);
+        const root = computeCheckoutHash(a);
         const { leaf, proof } = buildSignedClauseInclusionProof(a, K("figaro-geolocation"));
         expect(verifyInclusionProof(root, leaf, proof)).toBe(true);
     });

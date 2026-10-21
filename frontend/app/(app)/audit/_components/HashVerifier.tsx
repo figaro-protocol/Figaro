@@ -8,7 +8,7 @@
  * see what it anchors to:
  *
  *   • Mode A — Agreement: paste a full Agreement JSON, recompute its
- *     merkle root, optionally compare to an expected `agreementHash`.
+ *     merkle root, optionally compare to an expected `checkoutHash`.
  *
  *   • Mode B — Clause: paste a single `AgreementClause` JSON, recompute
  *     its leaf hash, optionally compare to an expected leaf.
@@ -21,13 +21,13 @@
  *     wallet's visible orders, including the current process).
  *
  * No server round-trip; all computation is client-side via the same
- * `computeAgreementHash` / `computeClauseLeaf` SDK functions the protocol
+ * `computeCheckoutHash` / `computeClauseLeaf` SDK functions the protocol
  * uses internally — verifiability follows from using the canonical
  * functions, not a re-implementation.
  */
 import { useState, useMemo } from "react";
 import {
-    computeAgreementHash,
+    computeCheckoutHash,
     computeProvenanceLeaf,
     computeClauseLeaf,
     type Agreement,
@@ -131,21 +131,21 @@ function AgreementMode() {
         if (!json.trim()) return { kind: "idle" as const };
         try {
             const parsed = JSON.parse(json) as Agreement;
-            if (!parsed || typeof parsed !== "object" || !Array.isArray(parsed.sections)) {
+            if (!parsed || typeof parsed !== "object" || !Array.isArray(parsed.clauses)) {
                 return { kind: "error" as const, message: "Parsed JSON is not an Agreement (missing clauses array)." };
             }
             // Every clause is cleartext ({ clause, data }) — the IPFS body
             // carries them all. Selective disclosure is a merkle inclusion proof,
             // not a redacted agreement form.
-            for (const s of parsed.sections as AgreementClause[]) {
+            for (const s of parsed.clauses as AgreementClause[]) {
                 if (!s || typeof s !== "object" || typeof s.clause !== "string") {
                     return { kind: "error" as const, message: "Each clause must have a string `clause` field." };
                 }
                 if (typeof s.data !== "object") {
-                    return { kind: "error" as const, message: `Section "${s.clause}" missing data field.` };
+                    return { kind: "error" as const, message: `Clause "${s.clause}" missing data field.` };
                 }
             }
-            const hash = computeAgreementHash(parsed);
+            const hash = computeCheckoutHash(parsed);
             return { kind: "ok" as const, hash };
         } catch (e) {
             return { kind: "error" as const, message: extractErrorMessage(e, "JSON parse failed.") };
@@ -155,9 +155,9 @@ function AgreementMode() {
     return (
         <div className="space-y-4" data-testid="verify-agreement-mode">
             <p className="text-xs text-ink-body">
-                Paste an `Agreement` JSON (the off-chain document referenced by `agreementHash`).
+                Paste an `Agreement` JSON (the off-chain document referenced by `checkoutHash`).
                 The recomputed merkle root is shown below — compare to the on-chain
-                `OrderCommitted.agreementHash` event field.
+                `OrderCommitted.checkoutHash` event field.
             </p>
             <label className="block text-xs font-semibold text-ink-body">
                 Agreement JSON
@@ -165,13 +165,13 @@ function AgreementMode() {
                     value={json}
                     onChange={(e) => setJson(e.target.value)}
                     rows={12}
-                    placeholder='{"version":"a1","buyer":"0x...","seller":"0x...","sections":[...]}'
+                    placeholder='{"version":"a1","buyer":"0x...","seller":"0x...","clauses":[...]}'
                     data-testid="verify-agreement-input"
                     className="mt-1 w-full font-mono text-xs px-3 py-2 border border-default rounded"
                 />
             </label>
             <label className="block text-xs font-semibold text-ink-body">
-                Expected agreementHash (optional)
+                Expected checkoutHash (optional)
                 <input
                     value={expected}
                     onChange={(e) => setExpected(e.target.value)}
@@ -219,7 +219,7 @@ function ClauseMode() {
                 the audit-bundle hash appendix.
             </p>
             <label className="block text-xs font-semibold text-ink-body">
-                Section JSON
+                Clause JSON
                 <textarea
                     value={json}
                     onChange={(e) => setJson(e.target.value)}
@@ -250,7 +250,7 @@ function ClauseMode() {
 // ── Mode C — Hash search ───────────────────────────────────────────────────
 
 interface HashHit {
-    kind: "agreementHash" | "clause-leaf" | "provenance-leaf" | "orderHash" | "processId";
+    kind: "checkoutHash" | "clause-leaf" | "provenance-leaf" | "orderHash" | "processId";
     label: string;
     location: string;
 }
@@ -258,11 +258,11 @@ interface HashHit {
 function SearchMode() {
     const [hash, setHash] = useState("");
     const orders = useWalletOrders(); // every order the connected wallet is a party to
-    const agreementHashes = useMemo(
-        () => orders.map((o) => o.agreementHash).filter((h): h is string => Boolean(h)),
+    const checkoutHashes = useMemo(
+        () => orders.map((o) => o.checkoutHash).filter((h): h is string => Boolean(h)),
         [orders],
     );
-    const agreements = useProcessAgreements(agreementHashes);
+    const agreements = useProcessAgreements(checkoutHashes);
 
     const hits = useMemo<HashHit[]>(() => {
         const target = hash.trim().toLowerCase();
@@ -284,35 +284,35 @@ function SearchMode() {
                     location: `OrderCommitted.processId / FigaroCore.processes[${order.processId}]`,
                 });
             }
-            if (hexEqual(order.agreementHash, target)) {
+            if (hexEqual(order.checkoutHash, target)) {
                 found.push({
-                    kind: "agreementHash",
+                    kind: "checkoutHash",
                     label: `Agreement merkle root (order ${order.orderHash})`,
-                    location: `OrderCommitted.agreementHash event field`,
+                    location: `OrderCommitted.checkoutHash event field`,
                 });
             }
             // Walk each order's hydrated agreement and see if any clause leaf matches.
-            const agreement = order.agreementHash
-                ? (agreements.get(order.agreementHash) ?? null)
+            const agreement = order.checkoutHash
+                ? (agreements.get(order.checkoutHash) ?? null)
                 : null;
             if (agreement) {
-                for (const clauseEntry of agreement.sections) {
+                for (const clauseEntry of agreement.clauses) {
                     if (hexEqual(computeClauseLeaf(clauseEntry), target)) {
                         found.push({
                             kind: "clause-leaf",
                             label: `Clause leaf — ${clauseEntry.clause}`,
-                            location: `Merkle leaf under agreementHash ${order.agreementHash} (order ${order.orderHash})`,
+                            location: `Merkle leaf under checkoutHash ${order.checkoutHash} (order ${order.orderHash})`,
                         });
                     }
                 }
                 // The agreement format's provenance leaf — a leaf of the same
                 // tree, under the reserved key, never a clause.
                 if (agreement.provenance !== undefined
-                    && hexEqual(computeProvenanceLeaf(agreement.provenance.agreementKey, agreement.provenance.compositionHash), target)) {
+                    && hexEqual(computeProvenanceLeaf(agreement.provenance.agreementHash, agreement.provenance.compositionHash), target)) {
                     found.push({
                         kind: "provenance-leaf",
-                        label: `Provenance leaf — agreement ${agreement.provenance.agreementKey} in assembly ${agreement.provenance.compositionHash}`,
-                        location: `Merkle leaf under agreementHash ${order.agreementHash} (order ${order.orderHash})`,
+                        label: `Provenance leaf — agreement ${agreement.provenance.agreementHash} in assembly ${agreement.provenance.compositionHash}`,
+                        location: `Merkle leaf under checkoutHash ${order.checkoutHash} (order ${order.orderHash})`,
                     });
                 }
             }

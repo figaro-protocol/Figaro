@@ -265,7 +265,7 @@ describe.skipIf(SKIP)("Batch E2E: a revocation mid-flight dead-letters the revok
                     currency: tokenAddress,
                     payment: PAYMENT,
                     expectedCumulativeValue: PAYMENT,
-                    agreementHash: keccak256(`0x${salt.toString(16).padStart(64, "0")}`),
+                    checkoutHash: keccak256(`0x${salt.toString(16).padStart(64, "0")}`),
                     salt,
                     deadline: BigInt(Math.floor(Date.now() / 1000) + 3600),
                 },

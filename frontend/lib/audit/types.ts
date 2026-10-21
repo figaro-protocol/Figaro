@@ -4,7 +4,7 @@
  * The bundle composes open-world, clause-agnostic documents into one
  * cryptographically-verifiable set:
  *
- *   - Contract     — agreement document referenced by `agreementHash`
+ *   - Contract     — agreement document referenced by `checkoutHash`
  *   - Clause data  — every committed clause's fields, rendered generically
  *                    from its registered spec (names no clause, assumes no field)
  *   - Process logs — the attestation timeline by tier + ladder
@@ -23,8 +23,8 @@ export interface ExtractedDocument {
     orderHash: string;
     /** processId this document's order belongs to. */
     processId: string;
-    /** agreementHash anchoring the document's content to chain. */
-    agreementHash: string;
+    /** checkoutHash anchoring the document's content to chain. */
+    checkoutHash: string;
     /** Buyer address from the order — load-bearing identifier; auditor
      *  landing on any document page needs the parties without
      *  cross-referencing. */

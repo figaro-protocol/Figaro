@@ -101,7 +101,7 @@ export function createCapabilityExecutors(deps: CapabilityExecutorDeps) {
             currency: order.currency as Hex,
             payment: order.payment,
             expectedCumulativeValue: order.cumulativeValue,
-            agreementHash: order.agreementHash as Hex,
+            checkoutHash: order.checkoutHash as Hex,
             salt: order.salt,
             deadline: order.deadline,
         }, chainId));
@@ -170,10 +170,10 @@ export function createCapabilityExecutors(deps: CapabilityExecutorDeps) {
         const assemblies = new Map<string, Assembly | null>();
         const entries: UsagePlanEntry[] = [];
         for (let i = 0; i < activeOrders.length; i++) {
-            const { orderHash, agreementHash } = activeOrders[i];
-            const agreement = agreementHash ? deps.processAgreements.get(agreementHash) : undefined;
+            const { orderHash, checkoutHash } = activeOrders[i];
+            const agreement = checkoutHash ? deps.processAgreements.get(checkoutHash) : undefined;
             if (!agreement) {
-                console.error(`[usage-recording] no hydrated agreement for order ${orderHash} (hash ${agreementHash}) — skipping its clauses and assemblies`);
+                console.error(`[usage-recording] no hydrated agreement for order ${orderHash} (hash ${checkoutHash}) — skipping its clauses and assemblies`);
                 continue;
             }
             let assembly: Assembly | undefined;
@@ -206,7 +206,7 @@ export function createCapabilityExecutors(deps: CapabilityExecutorDeps) {
         if (action.reasserts) {
             // RE-ASSERT: content stays OMITTED — the coordinator
             // defaults it to the committed clauseData, the exact
-            // bytes under the agreementHash merkle binding.
+            // bytes under the checkoutHash merkle binding.
             content = undefined;
         } else if (isLadder) {
             // LADDER: the event code plus any companion-field fills
@@ -253,7 +253,7 @@ export function createCapabilityExecutors(deps: CapabilityExecutorDeps) {
             orderHash: action.orderHash as Hex,
             clauseId: PROVENANCE_LEAF_KEY,
             stage: 0,
-            content: provenanceLeafBytes(action.agreementKey, action.compositionHash),
+            content: provenanceLeafBytes(action.agreementHash, action.compositionHash),
             failureMessage: "provenance attestation failed",
         });
 

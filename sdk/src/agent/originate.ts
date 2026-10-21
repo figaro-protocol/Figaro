@@ -21,7 +21,7 @@
 import type { WalletClient, PublicClient } from "viem";
 import { verifyTypedData } from "viem";
 import { buildCommitment, buildDomain, hashCommitmentStruct, verifyCommitmentSignature, ZERO_PROCESS_ID, COMMITMENT_TYPES } from "../commitments.js";
-import { computeAgreementHash, type Agreement, type AgreementProvenance } from "../agreement.js";
+import { computeCheckoutHash, type Agreement, type AgreementProvenance } from "../agreement.js";
 import { assertAgreementSignable, type SpecSource } from "../projection.js";
 import { ERC20_ABI } from "../abis.js";
 import { commit, type TxResult } from "./autonomous.js";
@@ -58,7 +58,7 @@ export interface InstantiateParams {
  * Instantiate a hydrated assembly's ROOT agreement into a signable
  * Agreement. Merges the buyer's overrides onto the agreement's clause bag
  * (its registered agreement's clauses and its own fills); the resulting
- * merkle root becomes the commitment's `agreementHash`.
+ * merkle root becomes the commitment's `checkoutHash`.
  */
 export function instantiateRootAgreement(hydrated: HydratedAssembly, params: InstantiateParams): Agreement {
     const { assembly } = hydrated;
@@ -79,7 +79,7 @@ export function instantiateRootAgreement(hydrated: HydratedAssembly, params: Ins
     // provenance leaf, the same fill the walk performs on every order.
     return fillWalkProvenance(
         agreementFromClauses(merged, params.buyer, params.seller),
-        { agreementKey: root.agreementKey, compositionHash: assemblyCompositionHash(assembly) },
+        { agreementHash: root.agreementHash, compositionHash: assemblyCompositionHash(assembly) },
         root.id ?? "root",
     );
 }
@@ -120,15 +120,15 @@ export async function buildBuyerOffer(wallet: WalletClient, params: BuildOfferPa
     const agreement = instantiateRootAgreement(params.assembly, {
         buyer, seller: params.seller, overrides: params.overrides,
     });
-    const agreementHash = computeAgreementHash(agreement);
+    const checkoutHash = computeCheckoutHash(agreement);
     const domain = buildDomain(params.chainId, params.core);
     const { commitment, typedData } = buildCommitment({
         processId: ZERO_PROCESS_ID, buyer, seller: params.seller, currency: params.currency,
         payment: params.payment, expectedCumulativeValue: params.payment,
-        agreementHash, salt: params.salt, deadline: params.deadline,
+        checkoutHash, salt: params.salt, deadline: params.deadline,
     }, domain);
     if (params.specs) {
-        assertAgreementSignable(agreement, agreementHash, params.specs, commitment, params.assembly, "This offer");
+        assertAgreementSignable(agreement, checkoutHash, params.specs, commitment, params.assembly, "This offer");
     }
     const buyerSig = await wallet.signTypedData({ account, ...typedData });
     return { commitment, agreement, buyerSig };
@@ -172,7 +172,7 @@ export interface OfferPolicy {
  * anti-tamper gate, plus (when an `OfferPolicy` is supplied) the operator's
  * economic floor. Verifies the offer is well-formed and internally consistent:
  * buyer signature present, named seller is me, the agreement hashes to the
- * committed `agreementHash` (the buyer cannot sign one agreement and pin
+ * committed `checkoutHash` (the buyer cannot sign one agreement and pin
  * another), and the agreement's parties match the commitment. Cryptographic
  * verification of the buyer signature is done in `counterSignOffer` (async).
  *
@@ -218,7 +218,7 @@ export async function validateOffer(
 /**
  * The term check a payload passes on the offer leg (`validateOffer`) and on the
  * race draft leg (`validateDraft`): it names me as seller, its agreement hashes to
- * the committed `agreementHash`, the agreement's parties match the commitment, the
+ * the committed `checkoutHash`, the agreement's parties match the commitment, the
  * seller has bound the assembly the agreement instantiates, the merkle-leaf seam
  * holds when `specs` is given, and the economic floor holds when `policy` is
  * given. `noun` ("offer" or "draft") names the payload in the refusal. The
@@ -235,8 +235,8 @@ export async function checkPayloadTerms(
 ): Promise<OfferCheck> {
     const c = payload.commitment;
     if (c.seller.toLowerCase() !== expectedSeller.toLowerCase()) return { ok: false, reason: `${noun} names a different seller` };
-    if (c.agreementHash.toLowerCase() !== computeAgreementHash(payload.agreement).toLowerCase()) {
-        return { ok: false, reason: "agreement does not hash to the committed agreementHash" };
+    if (c.checkoutHash.toLowerCase() !== computeCheckoutHash(payload.agreement).toLowerCase()) {
+        return { ok: false, reason: "agreement does not hash to the committed checkoutHash" };
     }
     if (payload.agreement.buyer.toLowerCase() !== c.buyer.toLowerCase()
         || payload.agreement.seller.toLowerCase() !== c.seller.toLowerCase()) {
@@ -246,7 +246,7 @@ export async function checkPayloadTerms(
     if (!bound.ok) return bound;
     if (specs) {
         try {
-            assertAgreementSignable(payload.agreement, c.agreementHash, specs, c, design, `This ${noun}`);
+            assertAgreementSignable(payload.agreement, c.checkoutHash, specs, c, design, `This ${noun}`);
         } catch (cause) {
             return { ok: false, reason: cause instanceof Error ? cause.message : String(cause) };
         }
@@ -654,7 +654,7 @@ export async function buildChainOffers(wallet: WalletClient, params: BuildChainP
         onOrder: async (order) => {
             if (params.specs) {
                 assertAgreementSignable(
-                    order.agreement, order.commitment.agreementHash, params.specs,
+                    order.agreement, order.commitment.checkoutHash, params.specs,
                     order.commitment, params.assembly, `Order "${order.nodeId}"`,
                 );
             }

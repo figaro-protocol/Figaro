@@ -20,7 +20,7 @@
 anti-tamper gate, plus (when an <code>OfferPolicy</code> is supplied) the operator's
 economic floor. Verifies the offer is well-formed and internally consistent:
 buyer signature present, named seller is me, the agreement hashes to the
-committed <code>agreementHash</code> (the buyer cannot sign one agreement and pin
+committed <code>checkoutHash</code> (the buyer cannot sign one agreement and pin
 another), and the agreement's parties match the commitment. Cryptographic
 verification of the buyer signature is done in <code>counterSignOffer</code> (async).</p>
 <p>With <code>specs</code> supplied, ALSO runs the merkle-leaf seam

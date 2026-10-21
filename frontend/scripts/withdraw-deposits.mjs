@@ -41,7 +41,7 @@
  *                                   state reads are not). WITHDRAW_ASSEMBLIES
  *                                   is its sibling (csv of compositionHashes),
  *                                   and WITHDRAW_AGREEMENTS (csv of agreement
- *                                   keys); any one alone skips the other
+ *                                   hashes); any one alone skips the other
  *                                   families' scans.
  *   DRY_RUN                       — print the manifest, send nothing
  *   ACTOR                         — DRY_RUN only: manifest for this address
@@ -170,17 +170,17 @@ async function main() {
         const agreementDeposit = await publicClient.readContract({
             address: agreementRegistry, abi: AGREEMENT_REGISTRY_ABI, functionName: 'registrationDeposit',
         });
-        const agreementKeys = explicit
+        const agreementHashes = explicit
             ? explicitAgreements.map((s) => {
-                if (!isBytes32Hex(s)) throw new Error(`WITHDRAW_AGREEMENTS: "${s}" is not an agreement key (bytes32 hex)`);
+                if (!isBytes32Hex(s)) throw new Error(`WITHDRAW_AGREEMENTS: "${s}" is not an agreement hash (bytes32 hex)`);
                 return s.toLowerCase();
             })
             : (await scanContractEvents(publicClient, {
                 address: agreementRegistry, abi: AGREEMENT_REGISTRY_ABI, eventName: 'AgreementRegistered',
             }, fromBlock))
                 .filter((e) => String(e.args.registeredBy ?? '').toLowerCase() === actor)
-                .map((e) => e.args.agreementKey);
-        for (const key of agreementKeys) {
+                .map((e) => e.args.agreementHash);
+        for (const key of agreementHashes) {
             const [registeredBy, , depositWithdrawn] = await publicClient.readContract({
                 address: agreementRegistry, abi: AGREEMENT_REGISTRY_ABI, functionName: 'bindings', args: [key],
             });

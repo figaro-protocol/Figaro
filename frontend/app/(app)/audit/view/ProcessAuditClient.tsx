@@ -22,11 +22,11 @@ import { deriveProcessRecourse } from "@/lib/semantic/processRecourse";
  */
 function ProcessDisputeSection({ processId }: { processId: string }) {
     const { orders } = useAuditProcessOrders(processId);
-    const agreementHashes = useMemo(
-        () => orders.map((o) => o.agreementHash).filter((h): h is string => Boolean(h)),
+    const checkoutHashes = useMemo(
+        () => orders.map((o) => o.checkoutHash).filter((h): h is string => Boolean(h)),
         [orders],
     );
-    const agreements = useProcessAgreements(agreementHashes);
+    const agreements = useProcessAgreements(checkoutHashes);
 
     // Layer-3 recourse is whatever the assembly's dispute-resolution clauses
     // named — read off the committed orders by spec, not a global default.
@@ -39,7 +39,7 @@ function ProcessDisputeSection({ processId }: { processId: string }) {
                 recourses={recourses}
                 orders={orders}
             />
-            <AgreementPinErasure agreementHashes={agreementHashes} />
+            <AgreementPinErasure checkoutHashes={checkoutHashes} />
         </div>
     );
 }

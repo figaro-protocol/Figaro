@@ -57,7 +57,7 @@ fn the_guest_reproduces_every_commitment_vector() {
             currency: addr(&c["currency"]),
             payment: u256(&c["payment"]),
             expected_cumulative_value: u256(&c["expectedCumulativeValue"]),
-            agreement_hash: b256(&c["agreementHash"]),
+            checkout_hash: b256(&c["checkoutHash"]),
             salt: u256(&c["salt"]),
             deadline: u256(&c["deadline"]),
         };

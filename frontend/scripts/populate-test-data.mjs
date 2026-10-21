@@ -91,7 +91,7 @@ const isAlreadyRegistered = (err) => /AlreadyRegistered/i.test(err instanceof Er
 // (`composeAuthoredAgreements` — its clauses merge in, so a seed writes only
 // what it selects), then the assembly built over them by name
 // (`assembleAuthored`): its agreements register on AgreementRegistry, then
-// its assembly anchors — identity (agreement keys, compositionHash + slug)
+// its assembly anchors — identity (agreement hashes, compositionHash + slug)
 // and canonical JSON come from the SDK.
 
 /** The seeds' authored agreements, composed once, by name. Design time is
@@ -172,7 +172,7 @@ async function main() {
     //  (`scripts/deploy-local.sh` registers them through populate-clauses,
     //  with this same token), so the call below finds each one's agreements
     //  and assembly already bound and skips them: compositionHash and every
-    //  agreement key are content-derived, the registries' `bindings` read is
+    //  agreement hash are content-derived, the registries' `bindings` read is
     //  the already-registered test, and first write wins whoever the
     //  registrar. It still anchors them on a registry that lacks them. Their
     //  affixed documents (`assemblies/documents/*`) pin beforehand so every

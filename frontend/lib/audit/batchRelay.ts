@@ -10,7 +10,7 @@
  * resolves the same trade and publishes none of it: `FigaroBatchVerifier`'s
  * public values carry no order hashes, its storage is `stateRoot` +
  * `batchCount`, and `BatchSettled` names no order. So a batched order's buyer,
- * seller, payment and `agreementHash` exist only under the proven state root,
+ * seller, payment and `checkoutHash` exist only under the proven state root,
  * and every reader built on `OrderCommitted` logs — `useProcessOrders`,
  * `useWalletOrders` — finds NOTHING for batched trade.
  *
@@ -503,7 +503,7 @@ function toOrder(
         buyer: c.buyer,
         seller: c.seller,
         currency: c.currency,
-        agreementHash: c.agreementHash,
+        checkoutHash: c.checkoutHash,
         cumulativeValue: c.expectedCumulativeValue,
         payment: c.payment,
         state: resolved ? OrderState.Resolved : OrderState.Active,

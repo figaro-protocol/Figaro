@@ -12,7 +12,7 @@ pragma solidity 0.8.26;
 ///         An assembly is a list of registered agreements; its
 ///         identity IS its composition: compositionHash is the merkle root,
 ///         under the agreement format's leaf convention, over one leaf per
-///         agreement (key: its agreementKey; bytes: `{"clauses":…,"slot":i}`)
+///         agreement (key: its agreementHash; bytes: `{"clauses":…,"slot":i}`)
 ///         and the terms leaf when assembly-scoped clauses are composed
 ///         (editorial prose excluded). The registry keys bindings by compositionHash:
 ///         identical compositions collapse to one binding, and no

@@ -5,7 +5,7 @@
  * from IPFS through whatever gateway the host configured, and the registries
  * anchor each one on chain: `ClauseRegistry` keys a clause by the hash of its
  * pinned spec bytes (the clause key), `AgreementRegistry` keys a registered
- * agreement by `agreementKeyOf` of its document, `AssemblyRegistry` keys the
+ * agreement by `agreementHashOf` of its document, `AssemblyRegistry` keys the
  * assembly by its composition hash. A gateway can serve any bytes, so the
  * bytes are checked against the anchor before anything reads them, by the
  * SDK's `anchorClauseSpec`, `anchorRegisteredAgreement` and `anchorAssembly` —
@@ -22,7 +22,7 @@
 
 import { keccak256 } from "viem";
 import {
-    agreementKeyOf,
+    agreementHashOf,
     anchorClauseSpec,
     anchorRegisteredAgreement,
     anchorAssembly,
@@ -64,14 +64,14 @@ export async function fetchAnchoredClauseSpec(clause, options = {}) {
 }
 
 /**
- * A registered agreement's document, verified against its agreement key:
- * `agreementKeyOf` of the parsed document (the root over its composed
+ * A registered agreement's document, verified against its agreement hash:
+ * `agreementHashOf` of the parsed document (the root over its composed
  * clauses — the editorial fields are outside the key) must equal the key. Read from the
  * binding whatever its stake: a binding is never cleared, so an assembly
  * composed from a withdrawn agreement still hydrates.
  *
  * @param agreement  a `AgreementBinding` from the discovery graph
- *                   (`contentURI`, `agreementKey`)
+ *                   (`contentURI`, `agreementHash`)
  * @returns `{ composed, text }`, or `{ absent }` naming why. Throws only when
  *          every gateway failed to answer.
  */
@@ -82,15 +82,15 @@ export async function fetchAnchoredRegisteredAgreement(agreement, options = {}) 
     if (parsed === null || typeof parsed !== "object" || parsed.clauses === null || typeof parsed.clauses !== "object") {
         return { absent: "not a registered agreement" };
     }
-    const composed = anchorRegisteredAgreement(parsed, agreement.agreementKey);
+    const composed = anchorRegisteredAgreement(parsed, agreement.agreementHash);
     if (composed === null) {
         let recomputed;
         try {
-            recomputed = agreementKeyOf(parsed);
+            recomputed = agreementHashOf(parsed);
         } catch {
             recomputed = "no key";
         }
-        return { absent: `keys to ${recomputed}, the registry anchors ${agreement.agreementKey}` };
+        return { absent: `keys to ${recomputed}, the registry anchors ${agreement.agreementHash}` };
     }
     return { composed, text };
 }

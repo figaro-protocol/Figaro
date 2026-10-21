@@ -16,7 +16,7 @@
  * (`draftToAssembly` — the one walk publish uses).
  */
 import { beforeEach, describe, expect, it } from "vitest";
-import { agreementKeyOf, serializeAssembly } from "@figaro-protocol/sdk";
+import { agreementHashOf, serializeAssembly } from "@figaro-protocol/sdk";
 import {
     loadNamedDraft,
     saveNamedDraft,
@@ -159,13 +159,13 @@ describe("design fills are the composition's identity — the disclosure regime"
             const { assembly, agreements } = snapshotToAssembly(draft({ [FIELD]: regime }));
             // The value sits in the agreement the agreement binds, and so in
             // its key — the assembly carries that key.
-            const agreementKey = assembly.agreements[0].agreementKey;
-            const composed = agreements[agreementKey].clauses[CLAUSE as `0x${string}`] as Record<string, unknown>;
+            const agreementHash = assembly.agreements[0].agreementHash;
+            const composed = agreements[agreementHash].clauses[CLAUSE as `0x${string}`] as Record<string, unknown>;
             expect(composed, `${regime} is composed onto the agreement`).toEqual({ [FIELD]: regime });
-            expect(agreementKeyOf(agreements[agreementKey])).toBe(agreementKey);
+            expect(agreementHashOf(agreements[agreementHash])).toBe(agreementHash);
             // And it is in the CANONICAL bytes, not just the in-memory object.
             const { json } = serializeAssembly(assembly);
-            expect(JSON.parse(json).agreements[0].agreementKey).toBe(agreementKey);
+            expect(JSON.parse(json).agreements[0].agreementHash).toBe(agreementHash);
         }
     });
 
@@ -253,7 +253,7 @@ describe("buildSyntheticOrder — the agreement carries the clause by its key", 
 
     it("a node's clause names the clause key and carries no version", () => {
         const geo = keyOf("figaro-geolocation");
-        const { agreementHash } = buildSyntheticOrder({
+        const { checkoutHash } = buildSyntheticOrder({
             orderId: `0x${"01".repeat(32)}`,
             processId: `0x${"00".repeat(32)}`,
             buyer: syntheticAddress(0),
@@ -263,8 +263,8 @@ describe("buildSyntheticOrder — the agreement carries the clause by its key", 
             salt: 1n,
             clauseFields: { [geo]: {} },
         });
-        const stored = JSON.parse(window.localStorage.getItem(`figaro:agreement:${agreementHash}`) ?? "null");
-        const clauseEntry = stored.sections.find((s: { clause: string }) => s.clause.toLowerCase() === geo.toLowerCase());
+        const stored = JSON.parse(window.localStorage.getItem(`figaro:agreement:${checkoutHash}`) ?? "null");
+        const clauseEntry = stored.clauses.find((s: { clause: string }) => s.clause.toLowerCase() === geo.toLowerCase());
         expect(clauseEntry).toBeTruthy();
         expect(clauseEntry).not.toHaveProperty("version");
     });

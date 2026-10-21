@@ -10,7 +10,7 @@
  * This is authoring state, NOT a runtime cache: committed agreements are fetched
  * from the network via `lib/kernel/agreementFetch`, never read from here.
  */
-import { computeAgreementHash, type Agreement } from "@figaro-protocol/sdk";
+import { computeCheckoutHash, type Agreement } from "@figaro-protocol/sdk";
 
 const PREFIX = "figaro:agreement:";
 const key = (h: string) => PREFIX + h;
@@ -18,7 +18,7 @@ const canUseStorage = () => typeof window !== "undefined";
 
 /** Persist a synthetic agreement; returns its hash (the order's anchor). */
 export function saveAgreement(agreement: Agreement): `0x${string}` {
-    const hash = computeAgreementHash(agreement);
+    const hash = computeCheckoutHash(agreement);
     if (!canUseStorage()) return hash;
     try {
         localStorage.setItem(key(hash), JSON.stringify(agreement));

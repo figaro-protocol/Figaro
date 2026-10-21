@@ -28,7 +28,7 @@ import {
     agreementClauses,
     assembleAuthored,
     composeAuthoredAgreements,
-    agreementKeyOf,
+    agreementHashOf,
     isMandatoryAgreement,
     assemblyCompositionHash,
     tryParseMemberProfileDocument,
@@ -629,7 +629,7 @@ export async function memberProfileBindings(
  *  panel (the root's relay surface) appears. Every modal shares one testid
  *  and the next can replace the last faster than a hidden-state observation
  *  (the multi-order walk signs sub-orders back to back), so each confirm is
- *  keyed on the DISPLAYED agreementHash — one confirm per distinct hash. */
+ *  keyed on the DISPLAYED checkoutHash — one confirm per distinct hash. */
 export async function confirmAgreementPreviews(
     page: import('@playwright/test').Page,
     expectedOrders: number,
@@ -643,7 +643,7 @@ export async function confirmAgreementPreviews(
         // Short-timeout read: between modals (or after the last one) there is
         // nothing to read — an unbounded locator read would block the loop
         // right past the share panel's arrival.
-        const hash = (await page.getByTestId('preview-agreement-hash')
+        const hash = (await page.getByTestId('preview-checkout-hash')
             .textContent({ timeout: 500 })
             .catch(() => null))?.trim();
         if (!hash || confirmed.has(hash)) continue; // same modal (or between modals) — poll on
@@ -666,9 +666,9 @@ export async function confirmAgreementPreviews(
 export interface DiscoveredAssembly {
     slug: string;
     compositionHash: `0x${string}`;
-    /** Per agreement, in assembly order: its id, the agreement key it binds,
+    /** Per agreement, in assembly order: its id, the agreement hash it binds,
      *  and the clauses it instantiates. */
-    agreements: Array<{ id: string; agreementKey: Hex; clauses: Record<string, Record<string, unknown>> }>;
+    agreements: Array<{ id: string; agreementHash: Hex; clauses: Record<string, Record<string, unknown>> }>;
     /** The assembly and the agreements beside it, as checkout reads them. */
     hydrated: HydratedAssembly;
     /** The designer's editorial prose from the pinned assembly — what a
@@ -761,10 +761,10 @@ export function referenceAssemblySlugWithLiveCurrency(name: string, tokenAddress
 
 /** A registered agreement's binding, read BY KEY from `AgreementRegistry`
  *  out of band — the chain fact a spec asserts. Null when unbound. */
-export async function readAgreementBinding(agreementKey: Hex): Promise<{ registeredBy: `0x${string}`; stakeWithdrawn: boolean; contentURI: string } | null> {
+export async function readAgreementBinding(agreementHash: Hex): Promise<{ registeredBy: `0x${string}`; stakeWithdrawn: boolean; contentURI: string } | null> {
     const registry = (process.env.NEXT_PUBLIC_AGREEMENT_REGISTRY ?? readLocalDeploymentConfig().agreementRegistry ?? '') as `0x${string}`;
     const [registeredBy, registeredAt, stakeWithdrawn, contentURI] = await localPublicClient().readContract({
-        address: registry, abi: AGREEMENT_REGISTRY_ABI, functionName: 'bindings', args: [agreementKey],
+        address: registry, abi: AGREEMENT_REGISTRY_ABI, functionName: 'bindings', args: [agreementHash],
     }) as readonly [`0x${string}`, bigint, boolean, string];
     return registeredAt > 0n ? { registeredBy, stakeWithdrawn, contentURI } : null;
 }
@@ -772,12 +772,12 @@ export async function readAgreementBinding(agreementKey: Hex): Promise<{ registe
 /** A registered agreement read out of band: its binding BY KEY (any stake
  *  state), and the document at the binding's `contentURI` fetched through the
  *  gateway chain and parsed — unverified here, so the caller asserts the key
- *  itself (`agreementKeyOf(document) === agreementKey`). Null when unbound. */
-export async function readRegisteredAgreementDocument(agreementKey: Hex): Promise<{
+ *  itself (`agreementHashOf(document) === agreementHash`). Null when unbound. */
+export async function readRegisteredAgreementDocument(agreementHash: Hex): Promise<{
     binding: { registeredBy: `0x${string}`; stakeWithdrawn: boolean; contentURI: string };
     document: { name?: string; clauses: Record<Hex, Record<string, unknown>> };
 } | null> {
-    const binding = await readAgreementBinding(agreementKey);
+    const binding = await readAgreementBinding(agreementHash);
     if (!binding) return null;
     const bytes = await fetchPinnedBytes(binding.contentURI);
     return { binding, document: JSON.parse(new TextDecoder().decode(bytes)) };
@@ -787,8 +787,8 @@ export async function readRegisteredAgreementDocument(agreementKey: Hex): Promis
  *  from `AgreementRegistry` (whatever its stake) and fetched from IPFS — the
  *  SDK verifies each against its key. Null when any is absent. */
 async function hydrateFromChain(assembly: Assembly): Promise<HydratedAssembly | null> {
-    return hydrateAssembly(assembly, async (agreementKey) => {
-        const binding = await readAgreementBinding(agreementKey);
+    return hydrateAssembly(assembly, async (agreementHash) => {
+        const binding = await readAgreementBinding(agreementHash);
         if (!binding) return null;
         return new Uint8Array(await fetchPinnedBytes(binding.contentURI));
     });
@@ -819,7 +819,7 @@ export async function discoverAnchoredAssemblies(): Promise<DiscoveredAssembly[]
             out.push({
                 slug: deriveAssemblySlug(compositionHash), compositionHash,
                 agreements: assembly.agreements.map((entry) => ({
-                    id: entry.id, agreementKey: entry.agreementKey, clauses: agreementClauses(hydrated, entry),
+                    id: entry.id, agreementHash: entry.agreementHash, clauses: agreementClauses(hydrated, entry),
                 })),
                 hydrated,
                 name: assembly.name,
@@ -892,21 +892,21 @@ export async function primeRegisteredClauseSpecs(): Promise<{ clauseKey: Hex; co
  * carries is mandatory-article (`isMandatoryAgreement`, over the specs read
  * from ClauseRegistry). Whoever registered it. In registration order.
  */
-export async function discoverMandatoryAgreements(): Promise<{ agreementKey: Hex; registeredBy: `0x${string}`; document: RegisteredAgreement }[]> {
+export async function discoverMandatoryAgreements(): Promise<{ agreementHash: Hex; registeredBy: `0x${string}`; document: RegisteredAgreement }[]> {
     await primeRegisteredClauseSpecs();
     const registry = (process.env.NEXT_PUBLIC_AGREEMENT_REGISTRY ?? readLocalDeploymentConfig().agreementRegistry ?? '') as `0x${string}`;
     const events = await scanContractEvents(localPublicClient() as PublicClient, {
         address: registry, abi: AGREEMENT_REGISTRY_ABI, eventName: 'AgreementRegistered',
     });
-    const out: { agreementKey: Hex; registeredBy: `0x${string}`; document: RegisteredAgreement }[] = [];
+    const out: { agreementHash: Hex; registeredBy: `0x${string}`; document: RegisteredAgreement }[] = [];
     for (const ev of events) {
-        const { agreementKey } = ev.args as { agreementKey?: Hex };
-        if (!agreementKey) continue;
-        const read = await readRegisteredAgreementDocument(agreementKey).catch(() => null);
+        const { agreementHash } = ev.args as { agreementHash?: Hex };
+        if (!agreementHash) continue;
+        const read = await readRegisteredAgreementDocument(agreementHash).catch(() => null);
         if (!read || read.binding.stakeWithdrawn) continue;
-        if (agreementKeyOf(read.document) !== agreementKey) continue;
+        if (agreementHashOf(read.document) !== agreementHash) continue;
         if (!isMandatoryAgreement(read.document, specSource())) continue;
-        out.push({ agreementKey, registeredBy: read.binding.registeredBy, document: read.document });
+        out.push({ agreementHash, registeredBy: read.binding.registeredBy, document: read.document });
     }
     return out;
 }
@@ -914,13 +914,13 @@ export async function discoverMandatoryAgreements(): Promise<{ agreementKey: Hex
 /**
  * In the designer drawer, pick a registration in the mandatory article for
  * every order on the canvas, as a designer does: each node's tab, the
- * registry tab, the registration's radio. `agreementKey` defaults to the
+ * registry tab, the registration's radio. `agreementHash` defaults to the
  * first registration the article lists, discovered from the chain
  * (`discoverMandatoryAgreements`). Opens the drawer on the first node when no
  * node is selected.
  */
-export async function pickMandatoryForEveryOrder(page: Page, agreementKey?: Hex): Promise<void> {
-    const key = agreementKey ?? (await discoverMandatoryAgreements())[0]?.agreementKey;
+export async function pickMandatoryForEveryOrder(page: Page, agreementHash?: Hex): Promise<void> {
+    const key = agreementHash ?? (await discoverMandatoryAgreements())[0]?.agreementHash;
     if (!key) throw new Error('no registered agreement whose clauses are all mandatory-article is on the chain — run populate-test-data');
     if (await page.getByTestId('agreement-drawer').getAttribute('data-empty') === 'true') {
         await page.locator('[data-testid^="order-node-"]:not([data-testid$="-delete"])').first().click();

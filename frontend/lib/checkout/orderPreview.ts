@@ -8,7 +8,7 @@
  *
  * This file also owns the CONFIRM GATE: the singleton that pauses signing —
  * and the standalone commit broadcast — until the human has seen the
- * human-readable terms next to the 32-byte agreementHash they bind to. The
+ * human-readable terms next to the 32-byte checkoutHash they bind to. The
  * gate is SHARED — the buyer's preview here, the seller's preview
  * (orderPendingSellerSignature), and the both-sigs broadcast are the same
  * gate over different term sources.
@@ -27,7 +27,7 @@ import { publicClient } from "@/lib/shared/wagmi";
 
 export interface OrderPreview {
     agreement: Agreement;
-    agreementHash: Hex;
+    checkoutHash: Hex;
     /** The unsigned commitment the buyer is about to sign. */
     commitment: Commitment;
 }
@@ -49,7 +49,7 @@ export async function chainDeadline(ttlSeconds = 3600n): Promise<bigint> {
 // ── Confirm gate (shared: sign AND commit, both parties) ────────────────────
 //
 // Threat-model 🟡 (UI ↔ wallet). The wallet prompt for an EIP-712 Commitment
-// shows only the agreementHash (a 32-byte merkle root); the prompt for the
+// shows only the checkoutHash (a 32-byte merkle root); the prompt for the
 // commit broadcast shows an opaque transaction. Neither lets the party verify
 // the terms they're binding to. This store + its Provider + Modal close the
 // gap: every sign goes through `requestSignConfirmation` and every standalone

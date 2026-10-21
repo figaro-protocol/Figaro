@@ -3,7 +3,7 @@
 /**
  * useProcessAgreements — IPFS-backed agreement hydration owner.
  *
- * Returns a Map<agreementHash, Agreement> populated as hydration completes.
+ * Returns a Map<checkoutHash, Agreement> populated as hydration completes.
  * Downstream consumers (the semantic process model, the order page) read
  * from this Map; `loadAgreement` is a synchronous localStorage cache that
  * is fine as a cache but wrong as a primary source — a wallet that lands
@@ -45,7 +45,7 @@ function getStore(): CacheStore {
     return w.__FIGARO_AGREEMENT_STORE__;
 }
 
-export function useProcessAgreements(agreementHashes: string[]): Map<string, Agreement> {
+export function useProcessAgreements(checkoutHashes: string[]): Map<string, Agreement> {
     const [version, setVersion] = useState(0);
     const store = getStore();
 
@@ -62,10 +62,10 @@ export function useProcessAgreements(agreementHashes: string[]): Map<string, Agr
     // Stabilize the hydration dep: drive the effect by the set of distinct
     // non-zero hashes, not by the parent's array identity.
     const stableKey = useMemo(
-        () => [...new Set(agreementHashes.filter((h) => Boolean(h) && h !== ZERO_BYTES32))]
+        () => [...new Set(checkoutHashes.filter((h) => Boolean(h) && h !== ZERO_BYTES32))]
             .sort()
             .join(","),
-        [agreementHashes],
+        [checkoutHashes],
     );
 
     useEffect(() => {

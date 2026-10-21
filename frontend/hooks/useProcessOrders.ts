@@ -170,7 +170,7 @@ export function useProcessOrders(processId: string | null): Order[] {
  * and returns [] for null, so the hash-search verifier that relied on it
  * had nothing to search. This hook is that missing wallet-wide loader:
  * bounded (the SDK's `walletRecord` filter, never the whole chain), full
- * Orders (agreementHash + parties), reload-key aware — the SAME fold and
+ * Orders (checkoutHash + parties), reload-key aware — the SAME fold and
  * wallet query `/data/explore` answers wallet history with.
  */
 export function useWalletOrders(): Order[] {

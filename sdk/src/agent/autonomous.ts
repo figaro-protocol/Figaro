@@ -198,12 +198,12 @@ export async function recordProcessUsage(
             // Counted once per (kind, key, process): the families never share a entry.
             const key = usageKeyId(usageClaimKindCode(claim), claim.clause_or_assembly);
             if ("Assembly" in claim.kind) {
-                const { agreement_key, slot_content_hash, membership_proof } = claim.kind.Assembly;
+                const { agreement_hash, slot_content_hash, membership_proof } = claim.kind.Assembly;
                 if (report.assemblyRecorded || sent.has(key)) continue;
                 sent.add(key);
                 try {
                     await send("recordAssemblyUsage", [
-                        commitment, claim.clause_or_assembly, agreement_key, slot_content_hash,
+                        commitment, claim.clause_or_assembly, agreement_hash, slot_content_hash,
                         claim.inclusion_proof, membership_proof,
                     ]);
                     report.assemblyRecorded = true;
@@ -229,7 +229,7 @@ export async function recordProcessUsage(
             sent.add(key);
             report.attempted++;
             try {
-                await send("recordClauseUsage", [commitment, claim.clause_or_assembly, claim.kind.Clause.section_hash, claim.inclusion_proof]);
+                await send("recordClauseUsage", [commitment, claim.clause_or_assembly, claim.kind.Clause.clause_data_hash, claim.inclusion_proof]);
                 report.recorded++;
             } catch (error) {
                 report.failures.push(`clause ${claim.clause_or_assembly}: ${error instanceof Error ? error.message : String(error)}`);
@@ -275,7 +275,7 @@ export function prepareAttestationContent(
  *               root `processId` is the DERIVED id — the coordinator re-hashes
  *               and recovery would miss.
  * @param target Commitment for the order being attested (carries the
- *               `agreementHash` the merkle proof opens against). Also the SIGNED
+ *               `checkoutHash` the merkle proof opens against). Also the SIGNED
  *               struct (root: `processId = 0`). For SAME-ORDER attestation pass
  *               the SAME commitment as both `role` and `target` — one struct in
  *               both args, not two distinct commitments.

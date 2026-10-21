@@ -45,9 +45,9 @@ export interface SequencerContentProof {
     content_json: string;
     /** Canonical-JSON clauseData bytes — the committed agreement
      *  clause this attestation declares against. */
-    section_data: string;
+    clause_data: string;
     /** Sorted-pair Merkle proof binding the clause leaf to the target
-     *  order's signed agreementHash. Empty for a single-section agreement. */
+     *  order's signed checkoutHash. Empty for a single-clause agreement. */
     inclusion_proof: Hex[];
     content_kind: SequencerContentKind;
 }
@@ -93,7 +93,7 @@ export interface SequencerCommitment {
     currency: Address;
     payment: string;
     expected_cumulative_value: string;
-    agreement_hash: Hex;
+    checkout_hash: Hex;
     salt: string;
     deadline: string;
 }
@@ -111,13 +111,13 @@ export interface SequencerCommitment {
  * assertion that counts.
  */
 export type SequencerUsageClaimKind =
-    | { Clause: { section_hash: Hex } }
+    | { Clause: { clause_data_hash: Hex } }
     | { Agreement: { composition_hash: Hex } }
-    | { Assembly: { agreement_key: Hex; slot_content_hash: Hex; membership_proof: Hex[] } };
+    | { Assembly: { agreement_hash: Hex; slot_content_hash: Hex; membership_proof: Hex[] } };
 
 export interface SequencerUsageClaim {
     order: SequencerCommitment;
-    /** Clause key (kind `Clause`), agreement key (kind `Agreement`) or
+    /** Clause key (kind `Clause`), agreement hash (kind `Agreement`) or
      *  assembly compositionHash (kind `Assembly`). Field name mirrors the Rust
      *  guest's `UsageClaim.clause_or_assembly` (prover/lib/src/types.rs) — a
      *  wire-protocol identity; any change must land in lockstep with the Rust side. */
@@ -125,7 +125,7 @@ export interface SequencerUsageClaim {
     /** serde's externally-tagged encoding of the Rust `UsageClaimKind`;
      *  codes 0 / 2 / 1 (`usageClaimKindCode`). */
     kind: SequencerUsageClaimKind;
-    /** Sorted-pair proof against the order's `agreement_hash`: of the clause
+    /** Sorted-pair proof against the order's `checkout_hash`: of the clause
      *  leaf (Clause) or of the provenance leaf (Agreement, Assembly). */
     inclusion_proof: Hex[];
 }
@@ -175,7 +175,7 @@ export interface SequencerStatus {
 // commit calldata). The batch path resolves the same trade and publishes none
 // of it — `FigaroBatchVerifier`'s public values carry no order hashes and
 // `BatchSettled` names no order — so a batched order's buyer, seller, payment
-// and agreementHash exist only under the proven state root. These read types
+// and checkoutHash exist only under the proven state root. These read types
 // mirror the relay's publication routes, which close that gap.
 //
 // NOTHING HERE IS AUTHORITY. A relay can omit or delay, never forge: every
@@ -286,7 +286,7 @@ export function toSequencerCommitment(c: Commitment): SequencerCommitment {
         currency: c.currency,
         payment: c.payment.toString(),
         expected_cumulative_value: c.expectedCumulativeValue.toString(),
-        agreement_hash: c.agreementHash,
+        checkout_hash: c.checkoutHash,
         salt: c.salt.toString(),
         deadline: c.deadline.toString(),
     };
@@ -355,7 +355,7 @@ export function fromSequencerCommitment(c: SequencerCommitment): Commitment {
             c.expected_cumulative_value,
             "expected_cumulative_value",
         ),
-        agreementHash: c.agreement_hash,
+        checkoutHash: c.checkout_hash,
         salt: parseWireQuantity(c.salt, "salt"),
         deadline: parseWireQuantity(c.deadline, "deadline"),
     };
@@ -455,7 +455,7 @@ export class SequencerClient {
     /**
      * Submit a seller attestation using SDK types. `role` proves seller
      * identity + process membership; `target` carries the attested order
-     * and the agreementHash the witness proof opens against (pass the
+     * and the checkoutHash the witness proof opens against (pass the
      * same commitment twice for same-order attestation).
      */
     async submitAttestAsSeller(args: {

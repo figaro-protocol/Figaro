@@ -340,9 +340,9 @@ impl Mempool {
     ///
     /// Claims are SUBMITTED, never derived here — exactly as attestation
     /// witnesses are. The sequencer holds no agreements: it sees commitment
-    /// structs, whose `agreement_hash` is a root, not the sections. Whoever
+    /// structs, whose `checkout_hash` is a root, not the clauses. Whoever
     /// holds the agreement (the author of the clause or assembly, typically,
-    /// since this is how their work gets counted) supplies the section
+    /// since this is how their work gets counted) supplies the clause
     /// fingerprint and the
     /// inclusion proof. Nothing is trusted either way — the guest re-proves
     /// resolution and inclusion, and the counter enforces the reward's own
@@ -361,9 +361,9 @@ impl Mempool {
                 "usage claim clause-or-assembly is zero".to_string(),
             ));
         }
-        if claim.order.agreement_hash == alloy_primitives::B256::ZERO {
+        if claim.order.checkout_hash == alloy_primitives::B256::ZERO {
             return Err(SubmitError::Invalid(
-                "usage claim order carries no agreement hash".to_string(),
+                "usage claim order carries no checkout hash".to_string(),
             ));
         }
         let key = claim_key(&claim);
@@ -848,7 +848,7 @@ impl Mempool {
                     content_ref,
                     clause_id,
                     *stage,
-                    &target.agreement_hash,
+                    &target.checkout_hash,
                 )
                 .map_err(|e| format!("attestation witness gates rejected: {e}"))?;
                 Ok(())
@@ -880,7 +880,7 @@ impl Mempool {
                     content_ref,
                     clause_id,
                     *stage,
-                    &target.agreement_hash,
+                    &target.checkout_hash,
                 )
                 .map_err(|e| format!("attestation witness gates rejected: {e}"))?;
                 Ok(())

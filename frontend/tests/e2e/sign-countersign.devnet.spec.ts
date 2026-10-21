@@ -100,10 +100,10 @@ test.describe('/sign counter-sign — shared review before commit (devnet)', () 
             .toHaveText(new RegExp(SELLER, 'i'));
         await expect(page.getByTestId('preview-line-items'), 'the catalog line items render')
             .toBeVisible();
-        await expect(page.getByTestId('preview-agreement-hash'), 'the signed hash renders beside the terms')
+        await expect(page.getByTestId('preview-checkout-hash'), 'the signed hash renders beside the terms')
             .toHaveText(/^0x[0-9a-f]{64}$/i);
         // Off-chain validation over the relayed payload: the inline agreement recomputes to
-        // the signed agreementHash and conforms to its clause specs.
+        // the signed checkoutHash and conforms to its clause specs.
         await expect(page.getByTestId('sign-agreement-verified'), 'the relayed terms verify against the signed hash')
             .toBeVisible();
         await expect(page.getByTestId('sign-agreement-invalid')).toHaveCount(0);

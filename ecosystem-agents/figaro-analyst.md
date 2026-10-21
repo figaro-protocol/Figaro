@@ -225,12 +225,12 @@ const rec   = walletRecord(process, wallet);
   agreement format's own: a buyer may attest the agreement's provenance leaf while the
   process is open, and those attestations form the overlay whose `provenanceLeaf` is
   `true` — no spec; each entry's `processId` is attributable to the registered agreement
-  and the registered assembly whose `provenanceContentRef(agreementKey, compositionHash)`
+  and the registered assembly whose `provenanceContentRef(agreementHash, compositionHash)`
   equals its `contentRef`, so the overlay carries both keys: which registered agreement the
   order instantiated and which assembly held it (the agreement's membership in that assembly
   is a merkle proof under its root, `buildAgreementInclusionProof`). An admitted agreement
   document yields the same pair directly: `decodeProvenanceContent(bytes)` returns
-  `{ agreementKey, compositionHash }`, or `null` for bytes that are not a provenance leaf. **Say the
+  `{ agreementHash, compositionHash }`, or `null` for bytes that are not a provenance leaf. **Say the
   number.** It is the most honest sentence in the answer.
 - **Wallet-record** — one wallet's public history: the processes it resolves as root buyer
   and the orders it holds either side of. A wallet with no history returns empty arrays;
@@ -322,7 +322,7 @@ window is a SMALLER CORPUS, and every answer reports the range it was drawn from
 
 **`FIGARO_AGREEMENTS_DIR` is where bought and owned substance enters.** Point it at a
 directory of agreement documents the wallet holds — its own, or ones a purchase delivered —
-and each one is admitted only if its recomputed root IS a committed `agreementHash` on this
+and each one is admitted only if its recomputed root IS a committed `checkoutHash` on this
 chain. A document that fails is REJECTED and named in `GET /status` to the bearer of the token, whoever handed it over.
 Admitted documents unlock assembly attribution and real chain shapes in market-shape;
 without them a process is attributed only when its buyer attested the provenance leaf, and
@@ -340,7 +340,7 @@ no capability hand-off, no privileged feed. Your wallet is an ordinary buyer: it
 data product in a member's catalog, composes a bonded order whose value-added IS access
 to those records, receives delivery over the per-order sealed channel, and verifies what
 arrived — every disclosed leaf proves by merkle inclusion against the source process's
-ON-CHAIN `agreementHash`, named in the license's `sourceProcesses`, so provenance rests on
+ON-CHAIN `checkoutHash`, named in the license's `sourceProcesses`, so provenance rests on
 a chain fact rather than the licensor's word. **Verify before you analyze**, always: an
 unverified document informs nothing, whoever handed it over. The recipe — sell, compose,
 deliver, verify, stream — is `sdk/README.md` § "Data products — sell, deliver, verify,

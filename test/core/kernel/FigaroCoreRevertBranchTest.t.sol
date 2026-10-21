@@ -79,7 +79,7 @@ contract FigaroCore_RevertBranch is Test {
             currency: address(token),
             payment: payment,
             expectedCumulativeValue: payment,
-            agreementHash: keccak256("test"),
+            checkoutHash: keccak256("test"),
             salt: salt,
             deadline: block.timestamp + 1 hours
         });
@@ -151,7 +151,7 @@ contract FigaroCore_RevertBranch is Test {
             currency: address(token),
             payment: 10 ether,
             expectedCumulativeValue: 10 ether,
-            agreementHash: keccak256("test"),
+            checkoutHash: keccak256("test"),
             salt: 1,
             deadline: block.timestamp + 1 hours
         });
@@ -170,7 +170,7 @@ contract FigaroCore_RevertBranch is Test {
             currency: address(token),
             payment: 10 ether,
             expectedCumulativeValue: 60 ether,
-            agreementHash: keccak256("test"),
+            checkoutHash: keccak256("test"),
             salt: 2,
             deadline: block.timestamp + 1 hours
         });
@@ -190,7 +190,7 @@ contract FigaroCore_RevertBranch is Test {
             currency: address(otherToken),
             payment: 10 ether,
             expectedCumulativeValue: 60 ether,
-            agreementHash: keccak256("test"),
+            checkoutHash: keccak256("test"),
             salt: 2,
             deadline: block.timestamp + 1 hours
         });
@@ -209,7 +209,7 @@ contract FigaroCore_RevertBranch is Test {
             currency: address(token),
             payment: 10 ether,
             expectedCumulativeValue: 999 ether,
-            agreementHash: keccak256("test"),
+            checkoutHash: keccak256("test"),
             salt: 2,
             deadline: block.timestamp + 1 hours
         });
@@ -228,7 +228,7 @@ contract FigaroCore_RevertBranch is Test {
             currency: address(token),
             payment: 10 ether,
             expectedCumulativeValue: 60 ether,
-            agreementHash: keccak256("test"),
+            checkoutHash: keccak256("test"),
             salt: 2,
             deadline: block.timestamp - 1
         });
@@ -256,7 +256,7 @@ contract FigaroCore_RevertBranch is Test {
             currency: address(feeToken),
             payment: 50 ether,
             expectedCumulativeValue: 50 ether,
-            agreementHash: keccak256("test"),
+            checkoutHash: keccak256("test"),
             salt: 1,
             deadline: block.timestamp + 1 hours
         });
@@ -311,7 +311,7 @@ contract FigaroCore_RevertBranch is Test {
             currency: address(token),
             payment: 20 ether,
             expectedCumulativeValue: 30 ether,
-            agreementHash: keccak256("sub"),
+            checkoutHash: keccak256("sub"),
             salt: 2,
             deadline: block.timestamp + 1 hours
         });
@@ -351,7 +351,7 @@ contract FigaroCore_RevertBranch is Test {
             currency: address(token),
             payment: 20 ether,
             expectedCumulativeValue: 30 ether,
-            agreementHash: keccak256("sub"),
+            checkoutHash: keccak256("sub"),
             salt: 2,
             deadline: block.timestamp + 1 hours
         });
@@ -392,7 +392,7 @@ contract FigaroCore_RevertBranch is Test {
             currency: address(token),
             payment: 20 ether,
             expectedCumulativeValue: 30 ether,
-            agreementHash: keccak256("sub"),
+            checkoutHash: keccak256("sub"),
             salt: 2,
             deadline: block.timestamp + 1 hours
         });

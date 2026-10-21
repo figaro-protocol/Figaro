@@ -53,10 +53,10 @@ describe("parseAssemblyJson", () => {
         }
     });
 
-    it("rejects an agreement missing its id, agreement key or clauses map", () => {
+    it("rejects an agreement missing its id, agreement hash or clauses map", () => {
         const r = parseAssemblyJson(JSON.stringify({ agreements: [{ id: "order-0" }] }));
         expect(r.ok).toBe(false);
-        if (!r.ok) expect(r.error).toMatch(/agreementKey/);
+        if (!r.ok) expect(r.error).toMatch(/agreementHash/);
     });
 
     it("rejects a clause named by anything but its key — a name is no identity", () => {
@@ -88,8 +88,8 @@ describe("assemblyToDraft — the agreements carry", () => {
         const hydrated = hydrateAuthored(authoredOf());
         const draft = assemblyToDraft(hydrated, { slug: "assist-test" });
         expect(draft.registeredByOrderId).toEqual({
-            "order-0": hydrated.assembly.agreements[0].agreementKey,
-            "order-1": hydrated.assembly.agreements[1].agreementKey,
+            "order-0": hydrated.assembly.agreements[0].agreementHash,
+            "order-1": hydrated.assembly.agreements[1].agreementHash,
         });
         expect(draft.clausesByOrderId).toEqual({});
         expect(draft.orders).toHaveLength(2);
@@ -97,7 +97,7 @@ describe("assemblyToDraft — the agreements carry", () => {
 
     it("carries a agreement's clause keys into the draft when its key is to be composed anew", () => {
         const hydrated = hydrateAuthored(authoredOf());
-        const key = hydrated.assembly.agreements[1].agreementKey.toLowerCase();
+        const key = hydrated.assembly.agreements[1].agreementHash.toLowerCase();
         const draft = assemblyToDraft(hydrated, { slug: "assist-test", composeKeys: new Set([key]) });
         expect(Object.keys(draft.clausesByOrderId?.["order-1"] ?? {}).sort())
             .toEqual([keyOf("figaro-commerce"), keyOf("figaro-topology")].sort());

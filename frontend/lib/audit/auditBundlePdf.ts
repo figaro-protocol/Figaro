@@ -93,8 +93,8 @@ export async function buildAuditBundlePdfBlob(
     }
 
     for (const order of orders) {
-        const cleartextAgreement = order.agreementHash
-            ? (agreements.get(order.agreementHash) ?? null)
+        const cleartextAgreement = order.checkoutHash
+            ? (agreements.get(order.checkoutHash) ?? null)
             : null;
         if (!cleartextAgreement) {
             continue;

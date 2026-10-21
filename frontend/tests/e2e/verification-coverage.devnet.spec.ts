@@ -10,9 +10,9 @@
  *              only URL params (processId, chainID, coreAddress) it renders
  *              the process's on-chain timeline — the commit and the runtime
  *              attestation this walk produced
- *   verify   → the /audit hash verifier's uncovered modes: B (section-leaf
+ *   verify   → the /audit hash verifier's uncovered modes: B (clause-leaf
  *              recompute matches the SDK's own computeClauseLeaf) and C
- *              (hash search resolves the REAL committed agreementHash to its
+ *              (hash search resolves the REAL committed checkoutHash to its
  *              OrderCommitted anchor, and a junk hash reports no-hits — not
  *              a false match)
  *   sigs     → /audit/view per-order SIGNATURE VERDICTS: the reader re-verifies
@@ -118,7 +118,7 @@ test.describe('VERIFICATION COVERAGE — FigaroCore-revert path, evidence reader
         const committed = await queryCommitted();
         const event = committed[committed.length - 1];
         const processId = event.args.processId! as Hex;
-        const agreementHash = event.args.agreementHash! as Hex;
+        const checkoutHash = event.args.checkoutHash! as Hex;
 
         // Value leg — the bond lock, read from the token contract.
         const { buyerBond, sellerBond } = calculateBonds(event.args.cumulativeValue!, event.args.payment!);
@@ -191,7 +191,7 @@ test.describe('VERIFICATION COVERAGE — FigaroCore-revert path, evidence reader
         await page.getByTestId('verify-page').waitFor({ timeout: 30000 });
         await waitForConnected(page);
 
-        // Mode B — section-leaf recompute: the page's computation must equal
+        // Mode B — clause-leaf recompute: the page's computation must equal
         // the SDK's own computeClauseLeaf for the same clause.
         // The clause names its clause by KEY (the hash of the clause's
         // pinned spec), and the leaf is keccak over that key ++ the data
@@ -207,13 +207,13 @@ test.describe('VERIFICATION COVERAGE — FigaroCore-revert path, evidence reader
         await expect(page.getByTestId('verify-result-status'), 'expected vs computed reports a MATCH')
             .toContainText(/match/i, { timeout: 10000 });
 
-        // Mode C — hash search: the REAL committed agreementHash resolves to
+        // Mode C — hash search: the REAL committed checkoutHash resolves to
         // its OrderCommitted anchor; junk reports no-hits, never a false match.
         await page.getByTestId('verify-mode-search').click();
         await page.getByTestId('verify-search-mode').waitFor({ state: 'visible', timeout: 10000 });
-        await page.getByTestId('verify-search-input').fill(agreementHash);
-        await expect(page.getByTestId('verify-search-hit-0'), 'the agreementHash resolves to its on-chain anchor')
-            .toContainText(/agreementHash/i, { timeout: 30000 });
+        await page.getByTestId('verify-search-input').fill(checkoutHash);
+        await expect(page.getByTestId('verify-search-hit-0'), 'the checkoutHash resolves to its on-chain anchor')
+            .toContainText(/checkoutHash/i, { timeout: 30000 });
         await page.getByTestId('verify-search-input').fill('0x' + 'ab'.repeat(32));
         await expect(page.getByTestId('verify-search-no-hits'), 'a junk hash reports no-hits — no false match')
             .toBeVisible({ timeout: 10000 });

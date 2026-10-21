@@ -82,7 +82,7 @@ describe("the A2A envelope codec", () => {
         expect(message.parts[0].kind).toBe("data");
         const back = offerFromA2aMessage(message);
         expect(back).not.toBeNull();
-        expect(back!.commitment.agreementHash).toBe(offer.commitment.agreementHash);
+        expect(back!.commitment.checkoutHash).toBe(offer.commitment.checkoutHash);
         expect(back!.commitment.payment).toBe(offer.commitment.payment);
         expect(back!.buyerSig).toBe(offer.buyerSig);
     });
@@ -173,7 +173,7 @@ describe("A2aChannel over a real socket", () => {
             const channel = new A2aChannel({ resolveEndpoint: async () => url });
             const offer = await buildOffer();
             const echoed = await channel.sendOffer(SELLER.address, offer);
-            expect(echoed?.commitment.agreementHash).toBe(offer.commitment.agreementHash);
+            expect(echoed?.commitment.checkoutHash).toBe(offer.commitment.checkoutHash);
         } finally {
             await stop();
         }

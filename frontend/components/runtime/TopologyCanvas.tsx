@@ -159,11 +159,11 @@ export function TopologyCanvas({
 }: TopologyCanvasProps) {
     // IPFS-first agreement hydration (the shared singleton) — the canvas never
     // reads localStorage synchronously; nodes rebuild as hydration completes.
-    const agreementHashes = useMemo(
-        () => orders.map((o) => o.agreementHash).filter((h): h is string => Boolean(h)),
+    const checkoutHashes = useMemo(
+        () => orders.map((o) => o.checkoutHash).filter((h): h is string => Boolean(h)),
         [orders],
     );
-    const agreements = useProcessAgreements(agreementHashes);
+    const agreements = useProcessAgreements(checkoutHashes);
     const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
     const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
 

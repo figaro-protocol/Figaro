@@ -196,7 +196,7 @@ run_halmos \
     "$@"
 
 echo ""
-echo "▶ Pass 7/7 — AgreementRegistry: the same stake machine, agreementKey-keyed"
+echo "▶ Pass 7/7 — AgreementRegistry: the same stake machine, agreementHash-keyed"
 echo ""
 
 run_halmos \

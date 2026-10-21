@@ -62,7 +62,7 @@ type RegistrationClient = Parameters<typeof publishTail>[0]["client"] & {
 };
 
 export interface RegisteredAgreementOutcome {
-    agreementKey: `0x${string}`;
+    agreementHash: `0x${string}`;
     /** The registration's transaction and pinned document, or null when the
      *  registry already bound the key (first write wins; nothing was sent). */
     hash: `0x${string}` | null;
@@ -83,19 +83,19 @@ export async function registerAgreement(args: {
     writeContractAsync: Parameters<typeof publishTail>[0]["writeContractAsync"];
     address: `0x${string}`;
     doc: RegisteredAgreement;
-    agreementKey: `0x${string}`;
+    agreementHash: `0x${string}`;
     ipfs?: Pick<typeof DEFAULT_IPFS_SERVICE, "publishJSON">;
     readBinding?: typeof readAgreementBinding;
 }): Promise<RegisteredAgreementOutcome> {
-    const { client, writeContractAsync, address, doc, agreementKey } = args;
+    const { client, writeContractAsync, address, doc, agreementHash } = args;
     const ipfs = args.ipfs ?? DEFAULT_IPFS_SERVICE;
     const readBinding = args.readBinding ?? readAgreementBinding;
     const agreementRegistry = getAgreementRegistry();
     if (!agreementRegistry) {
         throw new Error("AgreementRegistry address not configured (NEXT_PUBLIC_AGREEMENT_REGISTRY).");
     }
-    if (await readBinding(agreementKey, client as never)) {
-        return { agreementKey, hash: null, ipfsURI: null };
+    if (await readBinding(agreementHash, client as never)) {
+        return { agreementHash, hash: null, ipfsURI: null };
     }
     const agreementDeposit = (await client.readContract({
         address: agreementRegistry,
@@ -111,13 +111,13 @@ export async function registerAgreement(args: {
         address: agreementRegistry,
         abi: AGREEMENT_REGISTRY_ABI as Abi,
         functionName: "registerAgreement",
-        args: [agreementKey, pinned.uri],
+        args: [agreementHash, pinned.uri],
         value: agreementDeposit,
         account: address,
-        translateRevert: (err) => translateAgreementRegisterRevert(err, agreementKey),
+        translateRevert: (err) => translateAgreementRegisterRevert(err, agreementHash),
         failureMessage: "The agreement registration was not created.",
     });
-    return { agreementKey, hash, ipfsURI: pinned.uri };
+    return { agreementHash, hash, ipfsURI: pinned.uri };
 }
 
 /**
@@ -137,7 +137,7 @@ export function usePublishAgreement() {
     async function publishAgreement(args: {
         clauses: Readonly<Record<`0x${string}`, Record<string, unknown>>>;
         /** The `AgreementRegistry` key the order picked in the mandatory article. */
-        mandatoryAgreementKey?: `0x${string}`;
+        mandatoryAgreementHash?: `0x${string}`;
         name?: string;
     }): Promise<RegisteredAgreementOutcome> {
         if (!client) throw new Error("No public client available to read the registration stake.");
@@ -145,16 +145,16 @@ export function usePublishAgreement() {
         if (Object.keys(args.clauses).length === 0) {
             throw new Error("Compose at least one clause on this order before registering its agreement.");
         }
-        if (!args.mandatoryAgreementKey) {
+        if (!args.mandatoryAgreementHash) {
             throw new Error("Pick a registered agreement in the mandatory article before registering this order's agreement.");
         }
-        const mandatory = getRegisteredAgreement(args.mandatoryAgreementKey);
+        const mandatory = getRegisteredAgreement(args.mandatoryAgreementHash);
         if (!mandatory) {
-            throw new Error(`the registered agreement ${args.mandatoryAgreementKey} picked in the mandatory article has not been read from the AgreementRegistry yet`);
+            throw new Error(`the registered agreement ${args.mandatoryAgreementHash} picked in the mandatory article has not been read from the AgreementRegistry yet`);
         }
-        const { composed, agreementKey } = composeOrderAgreement({ clauses: args.clauses, mandatory, specs: specSource() });
+        const { composed, agreementHash } = composeOrderAgreement({ clauses: args.clauses, mandatory, specs: specSource() });
         const doc: RegisteredAgreement = { ...(args.name ? { name: args.name } : {}), ...composed };
-        return registerAgreement({ client: client as never, writeContractAsync, address, doc, agreementKey });
+        return registerAgreement({ client: client as never, writeContractAsync, address, doc, agreementHash });
     }
 
     return { publishAgreement, isPending };
@@ -264,7 +264,7 @@ export function usePublishAssembly() {
         // is readable the moment the assembly anchors. A key the registry
         // already binds is skipped — the same clauses always key to one
         // registration.
-        const toRegister: { agreementKey: `0x${string}`; uri: string }[] = [];
+        const toRegister: { agreementHash: `0x${string}`; uri: string }[] = [];
         const newKeys = Object.keys(built.agreements) as `0x${string}`[];
         const agreementRegistry = getAgreementRegistry();
         let agreementDeposit = 0n;
@@ -277,14 +277,14 @@ export function usePublishAssembly() {
                 abi: AGREEMENT_REGISTRY_ABI,
                 functionName: "registrationDeposit",
             });
-            for (const agreementKey of newKeys) {
-                if (await readAgreementBinding(agreementKey, client)) continue;
-                const index = assembly.agreements.findIndex((s) => hexEqual(s.agreementKey, agreementKey));
+            for (const agreementHash of newKeys) {
+                if (await readAgreementBinding(agreementHash, client)) continue;
+                const index = assembly.agreements.findIndex((s) => hexEqual(s.agreementHash, agreementHash));
                 // The pinned document carries the designer's words beside the
                 // clauses; the key is over the clauses alone.
                 const doc: RegisteredAgreement = {
                     ...(assembly.name ? { name: `${assembly.name} · order ${index + 1}` } : {}),
-                    clauses: built.agreements[agreementKey].clauses,
+                    clauses: built.agreements[agreementHash].clauses,
                 };
                 const pinned = await DEFAULT_IPFS_SERVICE.publishJSON(JSON.parse(canonicalize(doc)));
                 try {
@@ -292,14 +292,14 @@ export function usePublishAssembly() {
                         address: agreementRegistry,
                         abi: AGREEMENT_REGISTRY_ABI as Abi,
                         functionName: "registerAgreement",
-                        args: [agreementKey, pinned.uri],
+                        args: [agreementHash, pinned.uri],
                         value: agreementDeposit,
                         account: address,
                     });
                 } catch (err) {
-                    throw translateAgreementRegisterRevert(err, agreementKey);
+                    throw translateAgreementRegisterRevert(err, agreementHash);
                 }
-                toRegister.push({ agreementKey, uri: pinned.uri });
+                toRegister.push({ agreementHash, uri: pinned.uri });
             }
         }
 
@@ -307,20 +307,20 @@ export function usePublishAssembly() {
         // `success` receipt (`publishTail`), so the UI never declares success
         // on a transaction the chain rejected.
         const agreements: PublishOutcome["agreements"] = [];
-        for (const { agreementKey, uri } of toRegister) {
+        for (const { agreementHash, uri } of toRegister) {
             const agreementTx = await publishTail({
                 client,
                 writeContractAsync,
                 address: agreementRegistry!,
                 abi: AGREEMENT_REGISTRY_ABI as Abi,
                 functionName: "registerAgreement",
-                args: [agreementKey, uri],
+                args: [agreementHash, uri],
                 value: agreementDeposit,
                 account: address,
-                translateRevert: (err) => translateAgreementRegisterRevert(err, agreementKey),
+                translateRevert: (err) => translateAgreementRegisterRevert(err, agreementHash),
                 failureMessage: "The agreement registration was not created.",
             });
-            agreements.push({ agreementKey, hash: agreementTx, ipfsURI: uri });
+            agreements.push({ agreementHash, hash: agreementTx, ipfsURI: uri });
         }
 
         const txHash = await publishTail({

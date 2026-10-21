@@ -41,7 +41,7 @@ contract AttestationCoordinatorTest is Test {
     bytes32 constant COMMERCE_CLAUSE = keccak256('{"clauseId":"figaro-commerce","version":1}');
     bytes32 constant MODALITIES_CLAUSE = keccak256('{"clauseId":"figaro-modalities","version":1}');
 
-    /// @dev The section/content FINGERPRINT for an empty section — the coordinator
+    /// @dev The clause-data/content FINGERPRINT for an empty clause — the coordinator
     ///      takes hashes, never preimages, so calldata never carries the plaintext.
     bytes32 constant EMPTY = keccak256("");
 
@@ -111,7 +111,7 @@ contract AttestationCoordinatorTest is Test {
         return keccak256(abi.encodePacked("\x19\x01", domainSeparator, structHash));
     }
 
-    function _rootCommitment(uint256 payment, uint256 salt, bytes32 agreementHash)
+    function _rootCommitment(uint256 payment, uint256 salt, bytes32 checkoutHash)
         internal
         view
         returns (CommitmentTypes.Commitment memory)
@@ -123,17 +123,17 @@ contract AttestationCoordinatorTest is Test {
             currency: address(token),
             payment: payment,
             expectedCumulativeValue: payment,
-            agreementHash: agreementHash,
+            checkoutHash: checkoutHash,
             salt: salt,
             deadline: block.timestamp + 1 hours
         });
     }
 
-    function _commitRoot(uint256 payment, uint256 salt, bytes32 agreementHash)
+    function _commitRoot(uint256 payment, uint256 salt, bytes32 checkoutHash)
         internal
         returns (bytes32 processId, bytes32 orderHash, CommitmentTypes.Commitment memory c)
     {
-        c = _rootCommitment(payment, salt, agreementHash);
+        c = _rootCommitment(payment, salt, checkoutHash);
         bytes memory buyerSig = _signCommitment(c, BUYER_KEY);
         bytes memory sellerSig = _signCommitment(c, SELLER1_KEY);
         (processId, orderHash) = core.commit(c, buyerSig, sellerSig);
@@ -146,7 +146,7 @@ contract AttestationCoordinatorTest is Test {
         uint256 expectedCum,
         uint256 sellerKey,
         uint256 salt,
-        bytes32 agreementHash
+        bytes32 checkoutHash
     ) internal returns (bytes32 orderHash, CommitmentTypes.Commitment memory c) {
         c = CommitmentTypes.Commitment({
             processId: processId,
@@ -155,7 +155,7 @@ contract AttestationCoordinatorTest is Test {
             currency: address(token),
             payment: payment,
             expectedCumulativeValue: expectedCum,
-            agreementHash: agreementHash,
+            checkoutHash: checkoutHash,
             salt: salt,
             deadline: block.timestamp + 1 hours
         });
@@ -166,7 +166,7 @@ contract AttestationCoordinatorTest is Test {
 
     /// @dev Shortcut: commit a root order whose agreement is a single clause
     ///      under `clauseId` with `clauseData`. The resulting commitment's
-    ///      `agreementHash` equals `leafFor(clauseId, clauseData)`, which is
+    ///      `checkoutHash` equals `leafFor(clauseId, clauseData)`, which is
     ///      a valid single-leaf merkle tree — attestations use `clauseData`
     ///      plus an empty proof.
     function _commitRootSingle(uint256 payment, uint256 salt, bytes32 clauseIdLocal, bytes memory clauseData)
@@ -288,7 +288,7 @@ contract AttestationCoordinatorTest is Test {
     // ═══════════════════════════════════════════════════════════════
 
     function test_crossOrderAttestation_sameProcess() public {
-        // Root and sub-order each commit under a single-section LIFECYCLE
+        // Root and sub-order each commit under a single-clause LIFECYCLE
         // agreement so a lifecycle attestation against either has a valid
         // inclusion proof from the respective commitment.
         bytes32 agHash = AgreementTestHelper.singleClauseRoot(LIFECYCLE_CLAUSE, "");
@@ -356,7 +356,7 @@ contract AttestationCoordinatorTest is Test {
             currency: address(token),
             payment: 50 ether,
             expectedCumulativeValue: 50 ether,
-            agreementHash: keccak256("fake"),
+            checkoutHash: keccak256("fake"),
             salt: 999,
             deadline: block.timestamp + 1 hours
         });
@@ -380,7 +380,7 @@ contract AttestationCoordinatorTest is Test {
             currency: address(token),
             payment: 50 ether,
             expectedCumulativeValue: 50 ether,
-            agreementHash: keccak256("fake-buyer"),
+            checkoutHash: keccak256("fake-buyer"),
             salt: 998,
             deadline: block.timestamp + 1 hours
         });
@@ -478,7 +478,7 @@ contract AttestationCoordinatorTest is Test {
             currency: address(token),
             payment: 1 ether,
             expectedCumulativeValue: 1 ether,
-            agreementHash: keccak256("never-committed-target"),
+            checkoutHash: keccak256("never-committed-target"),
             salt: 42,
             deadline: block.timestamp + 1 hours
         });
@@ -518,7 +518,7 @@ contract AttestationCoordinatorTest is Test {
             currency: address(token),
             payment: 50 ether,
             expectedCumulativeValue: 50 ether,
-            agreementHash: keccak256("nonexistent-order-in-process"),
+            checkoutHash: keccak256("nonexistent-order-in-process"),
             salt: 666,
             deadline: block.timestamp + 1 hours
         });
@@ -549,7 +549,7 @@ contract AttestationCoordinatorTest is Test {
             currency: address(token),
             payment: 25 ether,
             expectedCumulativeValue: 25 ether,
-            agreementHash: AgreementTestHelper.singleClauseRoot(LIFECYCLE_CLAUSE, ""),
+            checkoutHash: AgreementTestHelper.singleClauseRoot(LIFECYCLE_CLAUSE, ""),
             salt: 2,
             deadline: block.timestamp + 1 hours
         });
@@ -583,10 +583,10 @@ contract AttestationCoordinatorTest is Test {
         assertTrue(clauses.registered(COMMERCE_CLAUSE), "commerce clause registered");
         assertTrue(clauses.registered(MODALITIES_CLAUSE), "modalities clause registered");
 
-        // ── Multi-section agreement ───────────────────────────────
+        // ── Multi-clause agreement ───────────────────────────────
         // Both root and driver commitments use the same two-clause agreement:
         // one LIFECYCLE clause (empty) and one PROXIMITY clause (empty). The
-        // merkle root is the agreementHash both parties sign at commit time;
+        // merkle root is the checkoutHash both parties sign at commit time;
         // each attestation carries the other leaf as its inclusion proof.
         //
         // Scoped: lifecycleLeaf/proximityLeaf/leaves are only inputs to the
@@ -694,21 +694,19 @@ contract AttestationCoordinatorTest is Test {
         (,, CommitmentTypes.Commitment memory c) = _commitRootSingle(1 ether, 1, LIFECYCLE_CLAUSE, "");
         vm.prank(seller1);
         vm.expectRevert(
-            abi.encodeWithSelector(
-                AttestationCoordinator.InvalidInclusionProof.selector, c.agreementHash, UNUSED_CLAUSE
-            )
+            abi.encodeWithSelector(AttestationCoordinator.InvalidInclusionProof.selector, c.checkoutHash, UNUSED_CLAUSE)
         );
         coordinator.attestAsSeller(c, c, UNUSED_CLAUSE, 1, EMPTY, _emptyProof(), EMPTY);
     }
 
     /// @dev Same merkle gate from the buyer path: wrong clauseData (or wrong
     ///      clause) breaks inclusion.
-    function test_attestAsBuyer_revertsOnSectionDataMismatch() public {
+    function test_attestAsBuyer_revertsOnClauseDataMismatch() public {
         (,, CommitmentTypes.Commitment memory c) = _commitRootSingle(1 ether, 2, LIFECYCLE_CLAUSE, "");
         vm.prank(buyer);
         vm.expectRevert(
             abi.encodeWithSelector(
-                AttestationCoordinator.InvalidInclusionProof.selector, c.agreementHash, LIFECYCLE_CLAUSE
+                AttestationCoordinator.InvalidInclusionProof.selector, c.checkoutHash, LIFECYCLE_CLAUSE
             )
         );
         // Signed clauseData was "" — attesting with non-empty clauseData

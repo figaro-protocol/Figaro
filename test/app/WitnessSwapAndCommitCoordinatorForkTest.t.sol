@@ -98,7 +98,7 @@ contract WitnessSwapAndCommitCoordinatorForkTest is Test {
             currency: address(bond),
             payment: P,
             expectedCumulativeValue: P,
-            agreementHash: keccak256("witness-fork-root"),
+            checkoutHash: keccak256("witness-fork-root"),
             salt: 1,
             deadline: block.timestamp + 1 hours
         });
@@ -323,7 +323,7 @@ contract WitnessSwapAndCommitCoordinatorSepoliaVenueForkTest is Test {
             currency: address(USDC),
             payment: P,
             expectedCumulativeValue: P,
-            agreementHash: keccak256("sepolia-venue-fork-root"),
+            checkoutHash: keccak256("sepolia-venue-fork-root"),
             salt: 1,
             deadline: block.timestamp + 1 hours
         });

@@ -134,21 +134,21 @@ test.describe('Registry explorer (devnet)', () => {
             address: registry, abi: AGREEMENT_REGISTRY_ABI, eventName: 'AgreementRegistered', fromBlock: 0n,
         });
         expect(events.length, 'no registered agreements on this devnet — run populate-test-data first').toBeGreaterThan(0);
-        const agreementKey = (events[events.length - 1].args.agreementKey as `0x${string}`).toLowerCase();
+        const agreementHash = (events[events.length - 1].args.agreementHash as `0x${string}`).toLowerCase();
         // CHAIN FACT, read by key: the binding names its designer of record and stake.
-        const binding = await readAgreementBinding(agreementKey as `0x${string}`);
+        const binding = await readAgreementBinding(agreementHash as `0x${string}`);
         expect(binding, 'the registry binds the key').not.toBeNull();
 
         await page.goto('/registries?family=agreements&stake=all');
-        const row = page.getByTestId(`agreement-row-${agreementKey}`);
+        const row = page.getByTestId(`agreement-row-${agreementHash}`);
         await expect(row).toBeVisible({ timeout: 30_000 });
-        await expect(row.getByTestId(`agreement-key-${agreementKey}`)).toHaveText(new RegExp(agreementKey, 'i'));
+        await expect(row.getByTestId(`agreement-hash-${agreementHash}`)).toHaveText(new RegExp(agreementHash, 'i'));
         await expect(row).toContainText(new RegExp(binding!.registeredBy.slice(0, 6), 'i'));
-        await expect(row.getByTestId(`agreement-stake-${agreementKey}`))
+        await expect(row.getByTestId(`agreement-stake-${agreementHash}`))
             .toHaveText(binding!.stakeWithdrawn ? '(stake withdrawn)' : '(live stake)');
         // The pinned document, read back and checked against the key.
-        await row.getByTestId(`stored-toggle-agreement-${agreementKey}`).click();
-        await expect(row.getByTestId(`stored-verdict-agreement-${agreementKey}`)).toContainText(/reproduces the anchor/i, { timeout: 30_000 });
+        await row.getByTestId(`stored-toggle-agreement-${agreementHash}`).click();
+        await expect(row.getByTestId(`stored-verdict-agreement-${agreementHash}`)).toContainText(/reproduces the anchor/i, { timeout: 30_000 });
     });
 
     test('assemblies: an anchored assembly discovered from chain renders its row', async ({ page }) => {

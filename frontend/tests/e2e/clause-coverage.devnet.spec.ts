@@ -17,7 +17,7 @@
  *             asymmetric bonds actually move in the payment token
  *   audit   → the audit package surfaces the target clause's committed leaf,
  *             labeled from its spec, and the hash verifier recomputes the
- *             merkle root over ALL leaves against the on-chain agreementHash
+ *             merkle root over ALL leaves against the on-chain checkoutHash
  *
  * There is NO probe clause here — the probe (register an UNKNOWN clause at
  * test time) is permissionless-clause's instrument. These clauses are known,
@@ -125,7 +125,7 @@ interface ClauseRung {
      *  committed clause, for a rung whose assertion spans more than one
      *  leaf (e.g. the utility-token pin vs. the commerce leaf's currency —
      *  the provenance pair). */
-    leaf: (data: Record<string, unknown>, sections: { clause: string; data: Record<string, unknown> }[]) => void | Promise<void>;
+    leaf: (data: Record<string, unknown>, clauses: { clause: string; data: Record<string, unknown> }[]) => void | Promise<void>;
     /** Witness-stage form input (TEST INPUT, like `design`) — REQUIRED when the
      *  registered spec declares `stages`; the trigger is the spec, this is only
      *  the data a seller would type. */
@@ -784,7 +784,7 @@ test.describe('PER-CLAUSE COVERAGE — every protocol clause flows the generic p
                 const reassertOpen = reassertCard.getByTestId('capability-execute-reassert-committed-clauses');
                 const cardLabel = (await reassertOpen.textContent()) ?? '';
                 const countMatch = /^Re-assert committed clauses \((\d+)\)$/.exec(cardLabel.trim());
-                expect(countMatch, `the card states its count of sections: "${cardLabel}"`).toBeTruthy();
+                expect(countMatch, `the card states its count of clauses: "${cardLabel}"`).toBeTruthy();
                 const reassertCountBefore = Number(countMatch![1]);
                 await reassertOpen.click();
 
@@ -854,7 +854,7 @@ test.describe('PER-CLAUSE COVERAGE — every protocol clause flows the generic p
 
             // ── AUDIT: the target clause's committed leaf surfaces, labeled
             //    from its spec, and the merkle root over ALL leaves matches the
-            //    on-chain agreementHash. ──
+            //    on-chain checkoutHash. ──
             await page.goto(`/audit/view?process=${processId}&e2e=devnet`, { waitUntil: 'domcontentloaded' });
             await page.getByTestId('audit-page').waitFor({ timeout: 30000 });
             await waitForConnected(page);
@@ -887,38 +887,38 @@ test.describe('PER-CLAUSE COVERAGE — every protocol clause flows the generic p
             // The committed tree, from the network SSoT: fetch the agreement the
             // audit resolves (IPFS, pinned), assert the target leaf's DATA, then
             // drive the hash verifier (Mode A) to tie every leaf to the chain.
-            const agreementHash = event.args.agreementHash as `0x${string}`;
+            const checkoutHash = event.args.checkoutHash as `0x${string}`;
             const agreementUri = await page.evaluate(
                 (key) => window.localStorage.getItem(key),
-                `figaro:agreement-uri:${agreementHash}`,
+                `figaro:agreement-uri:${checkoutHash}`,
             );
             expect(agreementUri, 'the committed agreement has a network (IPFS) locator').toMatch(/^ipfs:\/\//);
             const agreementCid = agreementUri!.replace(/^ipfs:\/\//, '');
             await assertPinnedInIpfs(agreementCid);
             const agreementJson = await (await fetch(`${ipfsApi}/api/v0/cat?arg=${agreementCid}`, { method: 'POST' })).text();
             const agreement = JSON.parse(agreementJson) as {
-                sections: { clause: string; data: Record<string, unknown> }[];
+                clauses: { clause: string; data: Record<string, unknown> }[];
             };
-            const leafClauses = agreement.sections.map((s) => s.clause.toLowerCase());
+            const leafClauses = agreement.clauses.map((s) => s.clause.toLowerCase());
             expect(leafClauses, 'the committed merkle tree carries the mandatory and target leaves')
                 .toEqual(expect.arrayContaining([
                     keyOf('figaro-commerce'), keyOf('figaro-topology'),
                     ...(rung.composeFirst ?? []).map((name) => keyOf(name)), rungKey,
                 ]));
-            const targetLeaf = agreement.sections.find((s) => s.clause.toLowerCase() === rungKey);
+            const targetLeaf = agreement.clauses.find((s) => s.clause.toLowerCase() === rungKey);
             expect(targetLeaf, `the ${rung.clauseId} clause is a committed leaf`).toBeTruthy();
-            await rung.leaf(targetLeaf!.data, agreement.sections);
+            await rung.leaf(targetLeaf!.data, agreement.clauses);
 
             await page.getByTestId('verify-mode-agreement').click();
             await page.getByTestId('verify-agreement-input').fill(agreementJson);
-            await page.getByTestId('verify-agreement-expected').fill(agreementHash);
+            await page.getByTestId('verify-agreement-expected').fill(checkoutHash);
             await expect(
                 page.getByTestId('verify-result-computed'),
                 'the audit recomputes a merkle root from the IPFS agreement',
             ).toBeVisible({ timeout: 15000 });
             await expect(
                 page.getByTestId('verify-result-status'),
-                'the recomputed root over every leaf matches the on-chain agreementHash',
+                'the recomputed root over every leaf matches the on-chain checkoutHash',
             ).toHaveText(/Matches expected hash/, { timeout: 15000 });
         });
     }

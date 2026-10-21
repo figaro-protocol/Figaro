@@ -347,19 +347,19 @@ describe("every spec-routed fill reads the spec each composed key names", () => 
         expect(readUtilityTokenPin({ [fake]: { currency: TOKEN } }, specs)).toBe(TOKEN);
     });
 
-    it("the walk's guarded fillWalkProvenance writes agreement.provenance, never a section", () => {
-        const agreement: Agreement = { version: "a1", buyer: "0x01", seller: "0x02", sections: [{ clause: REAL, data: {} }] };
+    it("the walk's guarded fillWalkProvenance writes agreement.provenance, never a clause", () => {
+        const agreement: Agreement = { version: "a1", buyer: "0x01", seller: "0x02", clauses: [{ clause: REAL, data: {} }] };
         const KEY = `0x${"ef".repeat(32)}` as `0x${string}`;
-        const P = { agreementKey: KEY, compositionHash: HASH };
+        const P = { agreementHash: KEY, compositionHash: HASH };
         const filled = fillWalkProvenance(agreement, P, "n");
         expect(filled.provenance).toEqual(P);
-        expect(filled.sections).toEqual(agreement.sections);
+        expect(filled.clauses).toEqual(agreement.clauses);
         // An identical claim passes (case-insensitive); a different key or hash is a forgery.
         const upper = HASH.toUpperCase().replace("0X", "0x") as `0x${string}`;
-        expect(fillWalkProvenance({ ...agreement, provenance: { agreementKey: KEY, compositionHash: upper } }, P, "n").provenance).toEqual(P);
-        expect(() => fillWalkProvenance({ ...agreement, provenance: { agreementKey: KEY, compositionHash: `0x${"cd".repeat(32)}` } }, P, "n"))
+        expect(fillWalkProvenance({ ...agreement, provenance: { agreementHash: KEY, compositionHash: upper } }, P, "n").provenance).toEqual(P);
+        expect(() => fillWalkProvenance({ ...agreement, provenance: { agreementHash: KEY, compositionHash: `0x${"cd".repeat(32)}` } }, P, "n"))
             .toThrow(/refusing to claim a different provenance/);
-        expect(() => fillWalkProvenance({ ...agreement, provenance: { agreementKey: `0x${"cd".repeat(32)}`, compositionHash: HASH } }, P, "n"))
+        expect(() => fillWalkProvenance({ ...agreement, provenance: { agreementHash: `0x${"cd".repeat(32)}`, compositionHash: HASH } }, P, "n"))
             .toThrow(/refusing to claim a different provenance/);
     });
 

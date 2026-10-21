@@ -8,9 +8,9 @@
 // it the agreement JSON you were shown and the EIP-712 typed data your wallet
 // displayed, and it recomputes, from the SDK's canonical primitives alone:
 //
-//   1. every per-section merkle leaf (so you can see WHAT each hash covers),
-//   2. the agreement merkle root (`computeAgreementHash`),
-//   3. a MATCH/MISMATCH verdict against the `agreementHash` field inside the
+//   1. every per-clause merkle leaf (so you can see WHAT each hash covers),
+//   2. the agreement merkle root (`computeCheckoutHash`),
+//   3. a MATCH/MISMATCH verdict against the `checkoutHash` field inside the
 //      typed data your wallet displayed,
 //   4. optionally — given the buyer/seller signatures — whether each address
 //      really signed the commitment struct hash (`verifyCommitmentSignature`).
@@ -24,7 +24,7 @@
 //     [--buyer-sig 0x…] [--seller-sig 0x…]
 //
 //   <agreement.json>  The agreement you were shown: {version:"a1", buyer,
-//                     seller, sections:[…]} — a pinned payload envelope
+//                     seller, clauses:[…]} — a pinned payload envelope
 //                     carrying it under `.agreement` is also accepted.
 //   <typedData.json>  The EIP-712 payload your wallet displayed:
 //                     {domain, types, primaryType, message}.
@@ -39,7 +39,7 @@ import { fileURLToPath } from "node:url";
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
 const {
     buildDomain,
-    computeAgreementHash,
+    computeCheckoutHash,
     computeOrderHash,
     computeClauseLeaf,
     hashCommitmentStruct,
@@ -91,7 +91,7 @@ function loadJson(path) {
 const agreementDoc = loadJson(args.agreement);
 // Accept the raw Agreement or a pinned payload envelope carrying it inline.
 const agreement = agreementDoc?.version === "a1" ? agreementDoc : agreementDoc?.agreement;
-if (agreement?.version !== "a1" || !Array.isArray(agreement.sections)) {
+if (agreement?.version !== "a1" || !Array.isArray(agreement.clauses)) {
     usage(`${args.agreement} is not an "a1" agreement (nor an envelope carrying one under .agreement)`);
 }
 
@@ -109,7 +109,7 @@ const commitment = {
     currency: message.currency,
     payment: BigInt(message.payment),
     expectedCumulativeValue: BigInt(message.expectedCumulativeValue),
-    agreementHash: message.agreementHash,
+    checkoutHash: message.checkoutHash,
     salt: BigInt(message.salt),
     deadline: BigInt(message.deadline),
 };
@@ -119,23 +119,23 @@ const core = domain.verifyingContract;
 let failed = false;
 const lower = (h) => String(h).toLowerCase();
 
-// ── 1+2. Per-section leaves + recomputed agreement root ─────────────────────
+// ── 1+2. Per-clause leaves + recomputed agreement root ─────────────────────
 
-console.log("Agreement clauses — the leaves the agreementHash commits to:");
-for (const clauseEntry of agreement.sections) {
+console.log("Agreement clauses — the leaves the checkoutHash commits to:");
+for (const clauseEntry of agreement.clauses) {
     const withheld = clauseEntry.data === undefined;
     console.log(`  ${clauseEntry.clause}@${clauseEntry.version}${withheld ? "  (content-withheld: fingerprint only)" : ""}`);
     console.log(`    data hash: ${hashClauseData(clauseEntry)}`);
     console.log(`    leaf:      ${computeClauseLeaf(clauseEntry)}`);
 }
 
-const recomputedHash = computeAgreementHash(agreement);
-console.log(`\nRecomputed agreementHash (merkle root): ${recomputedHash}`);
-console.log(`Wallet-displayed agreementHash:         ${commitment.agreementHash}`);
+const recomputedHash = computeCheckoutHash(agreement);
+console.log(`\nRecomputed checkoutHash (merkle root): ${recomputedHash}`);
+console.log(`Wallet-displayed checkoutHash:         ${commitment.checkoutHash}`);
 
 // ── 3. Verdict ──────────────────────────────────────────────────────────────
 
-if (lower(recomputedHash) === lower(commitment.agreementHash)) {
+if (lower(recomputedHash) === lower(commitment.checkoutHash)) {
     console.log("VERDICT: MATCH — the hash your wallet displayed commits to exactly the agreement text above.");
 } else {
     failed = true;

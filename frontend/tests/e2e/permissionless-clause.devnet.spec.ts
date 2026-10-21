@@ -17,7 +17,7 @@
  *              topology, AND the never-seen clause, each labeled from its spec), the
  *              seller's runtime ATTESTATION (stage label + attester, from the event
  *              log), and a hash verifier that recomputes the merkle root over all
- *              leaves to match the on-chain agreementHash — the whole tree, tied to chain
+ *              leaves to match the on-chain checkoutHash — the whole tree, tied to chain
  *
  * This test drives the REAL UI end to end, exactly as orders-accept /
  * members-onboarding do, importing no closed-world scenario apparatus (no
@@ -473,32 +473,32 @@ test.describe('PERMISSIONLESS CLAUSE — the definition of green (devnet)', () =
         // EVERY leaf. Fetch the agreement from IPFS (the network SSoT the audit resolves
         // via its URI pointer — NOT the local cache), assert it is pinned, then drive
         // the audit's hash verifier (Mode A): it recomputes the merkle root over all
-        // leaves and confirms it equals the on-chain agreementHash FigaroCore stored.
-        const agreementHash = event.args.agreementHash as `0x${string}`;
+        // leaves and confirms it equals the on-chain checkoutHash FigaroCore stored.
+        const checkoutHash = event.args.checkoutHash as `0x${string}`;
         const agreementUri = await page.evaluate(
             (key) => window.localStorage.getItem(key),
-            `figaro:agreement-uri:${agreementHash}`,
+            `figaro:agreement-uri:${checkoutHash}`,
         );
         expect(agreementUri, 'the committed agreement has a network (IPFS) locator').toMatch(/^ipfs:\/\//);
         const agreementCid = agreementUri!.replace(/^ipfs:\/\//, '');
         await assertPinnedInIpfs(agreementCid); // the SSoT copy is genuinely pinned, not a local cache
         const ipfsApi = process.env.NEXT_PUBLIC_IPFS_API_URL ?? 'http://127.0.0.1:5001';
         const agreementJson = await (await fetch(`${ipfsApi}/api/v0/cat?arg=${agreementCid}`, { method: 'POST' })).text();
-        const agreement = JSON.parse(agreementJson) as { sections: { clause: string }[] };
-        const leafClauses = agreement.sections.map((s) => s.clause.toLowerCase());
+        const agreement = JSON.parse(agreementJson) as { clauses: { clause: string }[] };
+        const leafClauses = agreement.clauses.map((s) => s.clause.toLowerCase());
         expect(leafClauses, 'the committed merkle tree carries all four leaves')
             .toEqual(expect.arrayContaining([keyOf('figaro-commerce'), keyOf('figaro-topology'), NOVEL_KEY, WITNESS_KEY]));
 
         await page.getByTestId('verify-mode-agreement').click();
         await page.getByTestId('verify-agreement-input').fill(agreementJson);
-        await page.getByTestId('verify-agreement-expected').fill(agreementHash);
+        await page.getByTestId('verify-agreement-expected').fill(checkoutHash);
         await expect(
             page.getByTestId('verify-result-computed'),
             'the audit recomputes a merkle root from the IPFS agreement',
         ).toBeVisible({ timeout: 15000 });
         await expect(
             page.getByTestId('verify-result-status'),
-            'the recomputed root over every leaf matches the on-chain agreementHash',
+            'the recomputed root over every leaf matches the on-chain checkoutHash',
         ).toHaveText(/Matches expected hash/, { timeout: 15000 });
     });
 });

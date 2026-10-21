@@ -17,10 +17,10 @@ import { PinErasureControl } from "@/components/runtime/PinErasureControl";
  * wallet's copies; a counterparty node or a gateway may still hold them. Mirrors
  * the evidence-bundle "Unpin from IPFS" affordance it sits beside.
  */
-export function AgreementPinErasure({ agreementHashes }: { agreementHashes: string[] }) {
+export function AgreementPinErasure({ checkoutHashes }: { checkoutHashes: string[] }) {
     return (
         <PinErasureControl
-            hashes={agreementHashes}
+            hashes={checkoutHashes}
             testidPrefix="agreement-pin-erasure"
             unpinOne={unpinAgreement}
             buttonLabel="Unpin agreement copies from IPFS"

@@ -17,7 +17,7 @@ const BUYER = "0x1111111111111111111111111111111111111111";
 const SELLER = "0x2222222222222222222222222222222222222222";
 const PROCESS = `0x${"ab".repeat(32)}`;
 const ORDER_HASH = `0x${"cd".repeat(32)}`;
-const AGREEMENT_HASH = `0x${"ef".repeat(32)}`;
+const CHECKOUT_HASH = `0x${"ef".repeat(32)}`;
 const K = 3;
 
 const clauseEntries = Array.from({ length: K }, (_v, i) => ({
@@ -29,7 +29,7 @@ const agreement: Agreement = {
     version: "a1",
     buyer: BUYER,
     seller: SELLER,
-    sections: clauseEntries,
+    clauses: clauseEntries,
 };
 
 const order: Order = {
@@ -45,7 +45,7 @@ const order: Order = {
     buyerBond: 6n,
     salt: 1n,
     deadline: 0n,
-    agreementHash: AGREEMENT_HASH,
+    checkoutHash: CHECKOUT_HASH,
 };
 
 const summary: ProcessSummary = {
@@ -68,7 +68,7 @@ const reassertCards = (address: string, attestations: RuntimeAttestation[] = [])
     const model = deriveProcessModelFromRuntime(
         summary,
         [order],
-        new Map([[AGREEMENT_HASH, agreement]]),
+        new Map([[CHECKOUT_HASH, agreement]]),
         address,
         undefined,
         attestations,
@@ -93,7 +93,7 @@ describe("re-assert committed clauses — one card per party per order", () => {
             expect(choicesOf(cards[0])).toHaveLength(K);
             expect(choiceClauseIds(cards[0])).toEqual(clauseEntries.map((s) => s.clause));
             for (const choice of choicesOf(cards[0])) {
-                // Each choice is exactly the single-section re-assert action.
+                // Each choice is exactly the single-clause re-assert action.
                 expect(choice.actionKind).toBe("reassert-committed-clause");
                 expect(choice.action).toMatchObject({
                     executionType: "transaction",
@@ -140,13 +140,13 @@ describe("re-assert committed clauses — one card per party per order", () => {
 // the format's leaf, never a clauseEntry: it is keyed by the reserved key.
 describe("re-assert committed clauses — the provenance leaf", () => {
     const COMPOSITION = `0x${"9a".repeat(32)}` as `0x${string}`;
-    const AGREEMENT_KEY = `0x${"8b".repeat(32)}` as `0x${string}`;
-    const withProvenance: Agreement = { ...agreement, provenance: { agreementKey: AGREEMENT_KEY, compositionHash: COMPOSITION } };
+    const AGREEMENT_HASH = `0x${"8b".repeat(32)}` as `0x${string}`;
+    const withProvenance: Agreement = { ...agreement, provenance: { agreementHash: AGREEMENT_HASH, compositionHash: COMPOSITION } };
     const cardsWith = (address: string, attestations: RuntimeAttestation[] = [], state = OrderState.Active) =>
         deriveProcessModelFromRuntime(
             summary,
             [{ ...order, state }],
-            new Map([[AGREEMENT_HASH, withProvenance]]),
+            new Map([[CHECKOUT_HASH, withProvenance]]),
             address,
             undefined,
             attestations,
@@ -163,7 +163,7 @@ describe("re-assert committed clauses — the provenance leaf", () => {
             executionType: "transaction",
             kind: "attest-provenance-leaf",
             orderHash: ORDER_HASH,
-            agreementKey: AGREEMENT_KEY,
+            agreementHash: AGREEMENT_HASH,
             compositionHash: COMPOSITION,
             party: "buyer",
         });
@@ -205,10 +205,10 @@ describe("re-assert committed clauses — several orders in one process", () => 
         payment: 2n,
         sellerBond: 10n,
         buyerBond: 4n,
-        agreementHash: AGREEMENT_B,
+        checkoutHash: AGREEMENT_B,
     };
     const agreements = new Map<string, Agreement>([
-        [AGREEMENT_HASH, agreement],
+        [CHECKOUT_HASH, agreement],
         [AGREEMENT_B, { ...agreement, seller: SELLER_B }],
     ]);
     const cardsFor = (address: string, attestations: RuntimeAttestation[] = []): CapabilityModel[] =>
@@ -257,13 +257,13 @@ describe("witness-stage cards — several orders in one process", () => {
         payment: 2n,
         sellerBond: 10n,
         buyerBond: 4n,
-        agreementHash: AGREEMENT_B,
+        checkoutHash: AGREEMENT_B,
     };
     const pinned = pinSpec(WITNESS_SPEC);
     const witnessClause = { clause: pinned.clauseKey, data: {} };
     const agreements = new Map<string, Agreement>([
-        [AGREEMENT_HASH, { ...agreement, sections: [witnessClause] }],
-        [AGREEMENT_B, { ...agreement, seller: SELLER_B, sections: [witnessClause] }],
+        [CHECKOUT_HASH, { ...agreement, clauses: [witnessClause] }],
+        [AGREEMENT_B, { ...agreement, seller: SELLER_B, clauses: [witnessClause] }],
     ]);
 
     beforeAll(async () => {

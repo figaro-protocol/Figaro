@@ -7,7 +7,7 @@
  *   agreement from the drawer's agreements tab (one row per live
  *   `AgreementRegistry` registration), and the sub-order composes a per-run
  *   probe clause — a new agreement. The review states each agreement's
- *   agreement key and the composition root; confirming registers the new
+ *   agreement hash and the composition root; confirming registers the new
  *   agreement, then anchors the assembly.
  *
  *   REACTION (UI): the publish receipt names the agreement it registered.
@@ -20,7 +20,7 @@
  *   pinned document hashes to it (the clauses of its mandatory pick merged in).
  *
  *   CHAIN FACTS, read out of band: the anchored assembly's root entry binds
- *   the registered agreement's key and its sub entry a key the registry now
+ *   the registered agreement's hash and its sub entry a key the registry now
  *   binds to the publishing wallet; a process walked from the hydrated
  *   assembly commits and resolves; each order's agreement names both keys
  *   in its provenance; and `UsageRecorded` lands under kind 0 (each clause),
@@ -35,7 +35,7 @@ import {
     USAGE_KIND_AGREEMENT,
     USAGE_KIND_ASSEMBLY,
     USAGE_KIND_CLAUSE,
-    agreementKeyOf,
+    agreementHashOf,
     calculateBonds,
     generateSalt,
     reconstructOrdersFromAssembly,
@@ -86,7 +86,7 @@ test.describe('AGREEMENTS — bind a registered agreement, compose a new one, pu
 
         // ── The registered agreement the root agreement binds: the point-of-sale
         //    reference's, derived as the seeding derives it and read BY KEY. ──
-        const registeredKey = referenceAssemblyBuilt('pos.json').assembly.agreements[0].agreementKey;
+        const registeredKey = referenceAssemblyBuilt('pos.json').assembly.agreements[0].agreementHash;
         const registeredBinding = await readAgreementBinding(registeredKey);
         expect(registeredBinding, 'the reference agreement is registered — run populate-test-data first').not.toBeNull();
         expect(registeredBinding!.stakeWithdrawn, 'its stake is live, so the drawer offers it').toBe(false);
@@ -118,7 +118,7 @@ test.describe('AGREEMENTS — bind a registered agreement, compose a new one, pu
         await expect(registeredRow, 'the drawer lists the live registration').toBeVisible({ timeout: 30000 });
         await registeredRow.click();
         await expect(registeredRow).toHaveAttribute('aria-pressed', 'true');
-        await expect(page.getByTestId('drawer-bound-agreement-key')).toHaveAttribute('title', registeredKey);
+        await expect(page.getByTestId('drawer-bound-agreement-hash')).toHaveAttribute('title', registeredKey);
 
         // Sub-order: compose the probe clause — a new agreement.
         await page.getByTestId(`drawer-node-tab-${subId}`).click();
@@ -136,8 +136,8 @@ test.describe('AGREEMENTS — bind a registered agreement, compose a new one, pu
         const handle = page.url().match(/[?&]slug=(asm-[a-z0-9-]+)/)?.[1];
 
         const slug = await publishOrAdoptReviewed(page, handle!, async () => {
-            // The review states each agreement's agreement key and the root.
-            await expect(page.getByTestId('review-entry-0')).toHaveAttribute('data-agreement-key', registeredKey);
+            // The review states each agreement's agreement hash and the root.
+            await expect(page.getByTestId('review-entry-0')).toHaveAttribute('data-agreement-hash', registeredKey);
             await expect(page.getByTestId('review-entry-0')).toContainText('registered agreement, bound as is');
             await expect(page.getByTestId('review-entry-1')).toContainText('composed here');
             await expect(page.getByTestId('review-composition-root')).toHaveText(/^0x[0-9a-f]{64}$/);
@@ -150,15 +150,15 @@ test.describe('AGREEMENTS — bind a registered agreement, compose a new one, pu
         const anchored = (await discoverAnchoredAssemblies()).find((a) => a.slug === slug);
         expect(anchored, 'the published assembly hydrates from chain → IPFS').toBeTruthy();
         expect(assemblyCompositionHash(anchored!.hydrated.assembly)).toBe(anchored!.compositionHash);
-        const rootAgreement = anchored!.agreements.find((s) => s.agreementKey.toLowerCase() === registeredKey.toLowerCase());
-        const subAgreement = anchored!.agreements.find((s) => s.agreementKey.toLowerCase() !== registeredKey.toLowerCase());
+        const rootAgreement = anchored!.agreements.find((s) => s.agreementHash.toLowerCase() === registeredKey.toLowerCase());
+        const subAgreement = anchored!.agreements.find((s) => s.agreementHash.toLowerCase() !== registeredKey.toLowerCase());
         expect(rootAgreement, 'an agreement binds the registered agreement').toBeTruthy();
         expect(subAgreement, 'another agreement binds a new agreement').toBeTruthy();
         expect(Object.keys(subAgreement!.clauses).map((k) => k.toLowerCase()), 'the new agreement composes the probe clause')
             .toContain(probeKey.toLowerCase());
-        const newBinding = await readAgreementBinding(subAgreement!.agreementKey);
+        const newBinding = await readAgreementBinding(subAgreement!.agreementHash);
         expect(newBinding, 'the publish registered the new agreement on AgreementRegistry').not.toBeNull();
-        await expect(page.getByTestId('assembly-publish-receipt')).toContainText(subAgreement!.agreementKey);
+        await expect(page.getByTestId('assembly-publish-receipt')).toContainText(subAgreement!.agreementHash);
 
         // ── CHECK OUT a process from the hydrated assembly (the SDK's one
         //    assembly walk), commit, resolve. ──
@@ -208,7 +208,7 @@ test.describe('AGREEMENTS — bind a registered agreement, compose a new one, pu
         for (const order of orders) {
             const entry = anchored!.agreements.find((s) => s.id === order.nodeId)!;
             expect(order.agreement.provenance, 'each order names its registered agreement and the assembly')
-                .toEqual({ agreementKey: entry.agreementKey, compositionHash: anchored!.compositionHash });
+                .toEqual({ agreementHash: entry.agreementHash, compositionHash: anchored!.compositionHash });
             const { buyerBond, sellerBond } = calculateBonds(order.cumulativeValue, order.payment);
             await receipt(await buyerWallet.writeContract({ address: token, abi: ERC20_ABI, functionName: 'approve', args: [core, buyerBond] }));
             await receipt(await sellerWallet.writeContract({ address: token, abi: ERC20_ABI, functionName: 'approve', args: [core, sellerBond] }));
@@ -240,7 +240,7 @@ test.describe('AGREEMENTS — bind a registered agreement, compose a new one, pu
             .map((e) => (e.args.clauseOrAssembly as string).toLowerCase());
         expect(keysOf(USAGE_KIND_CLAUSE), 'the probe clause is recorded under the clause kind').toContain(probeKey.toLowerCase());
         expect(keysOf(USAGE_KIND_AGREEMENT).sort(), 'both registered agreements are recorded under the agreement kind')
-            .toEqual([registeredKey.toLowerCase(), subAgreement!.agreementKey.toLowerCase()].sort());
+            .toEqual([registeredKey.toLowerCase(), subAgreement!.agreementHash.toLowerCase()].sort());
         expect(keysOf(USAGE_KIND_ASSEMBLY), 'the assembly is recorded under the assembly kind')
             .toEqual([anchored!.compositionHash.toLowerCase()]);
     });
@@ -275,21 +275,21 @@ test.describe('AGREEMENTS — bind a registered agreement, compose a new one, pu
         await register.click();
 
         // ── REACTION: the agreement binds the registered key. ──
-        const boundKey = page.getByTestId('drawer-bound-agreement-key');
+        const boundKey = page.getByTestId('drawer-bound-agreement-hash');
         await expect(boundKey, 'the agreement binds the agreement it just registered').toBeVisible({ timeout: 60000 });
-        const agreementKey = (await boundKey.getAttribute('title')) as Hex;
-        expect(agreementKey).toMatch(/^0x[0-9a-f]{64}$/i);
+        const agreementHash = (await boundKey.getAttribute('title')) as Hex;
+        expect(agreementHash).toMatch(/^0x[0-9a-f]{64}$/i);
         await expect(page.getByTestId('drawer-register-agreement-error')).toHaveCount(0);
-        await expect(page.getByTestId(`drawer-agreement-${agreementKey}`), 'the live registry list now offers it to any assembly')
+        await expect(page.getByTestId(`drawer-agreement-${agreementHash}`), 'the live registry list now offers it to any assembly')
             .toBeVisible({ timeout: 30000 });
 
         // ── CHAIN FACTS: the registry binds the key to the publishing wallet,
         //    and the pinned document hashes to it with the pick's clauses merged. ──
-        const read = await readRegisteredAgreementDocument(agreementKey);
+        const read = await readRegisteredAgreementDocument(agreementHash);
         expect(read, 'AgreementRegistry binds the key').not.toBeNull();
         expect(read!.binding.registeredBy.toLowerCase()).toBe(ANVIL_ACCOUNTS[0].toLowerCase());
         expect(read!.binding.stakeWithdrawn).toBe(false);
-        expect(agreementKeyOf(read!.document).toLowerCase(), 'the pinned document keys to the registry key').toBe(agreementKey.toLowerCase());
+        expect(agreementHashOf(read!.document).toLowerCase(), 'the pinned document keys to the registry key').toBe(agreementHash.toLowerCase());
         const composedKeys = Object.keys(read!.document.clauses).map((k) => k.toLowerCase());
         expect(composedKeys, 'the probe clause is composed').toContain(probeKey.toLowerCase());
         expect(composedKeys, 'the mandatory commerce clause merged from the pick').toContain(keyOf('figaro-commerce').toLowerCase());

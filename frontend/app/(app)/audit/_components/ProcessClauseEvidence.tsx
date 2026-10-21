@@ -130,11 +130,11 @@ export function ProcessClauseEvidence({ processId }: { processId: string }) {
     // code has never seen. `version` bumps as specs land; it drives the recompute.
     const { version: clauseSpecsVersion } = useClauseSpecs();
 
-    const agreementHashes = useMemo(
-        () => orders.map((o) => o.agreementHash).filter((h): h is string => Boolean(h)),
+    const checkoutHashes = useMemo(
+        () => orders.map((o) => o.checkoutHash).filter((h): h is string => Boolean(h)),
         [orders],
     );
-    const agreements = useProcessAgreements(agreementHashes);
+    const agreements = useProcessAgreements(checkoutHashes);
 
     // The process's attestation log, fetched per order and read clause-agnostically
     // (the same indexer read the PDF builder uses). Keyed by order id.
@@ -251,7 +251,7 @@ export function ProcessClauseEvidence({ processId }: { processId: string }) {
     // existing generic extractors — no new projection.
     const perOrder = useMemo(() => {
         return orders.map((order) => {
-            const agreement = order.agreementHash ? agreements.get(order.agreementHash) : undefined;
+            const agreement = order.checkoutHash ? agreements.get(order.checkoutHash) : undefined;
             const clauseData = agreement ? extractClauseData(order, agreement) : null;
             const processLogs = extractProcessLogs(order, attestationsByOrder.get(order.orderHash) ?? []);
             return { order, clauseData, processLogs };

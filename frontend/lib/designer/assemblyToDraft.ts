@@ -78,8 +78,8 @@ export function assemblyToDraft(
     const registeredByOrderId: Record<string, Hex> = {};
     const clausesByOrderId: Record<string, Record<string, Record<string, unknown>>> = {};
     for (const entry of assembly.agreements) {
-        if (compose(entry.agreementKey)) clausesByOrderId[entry.id] = { ...boundAgreement(hydrated, entry).clauses };
-        else registeredByOrderId[entry.id] = entry.agreementKey;
+        if (compose(entry.agreementHash)) clausesByOrderId[entry.id] = { ...boundAgreement(hydrated, entry).clauses };
+        else registeredByOrderId[entry.id] = entry.agreementHash;
     }
     return {
         slug: options.slug,
@@ -111,7 +111,7 @@ export type ParsedAssemblyResult =
  * chain-anchored URI (so there is no compositionHash to check integrity
  * against; soundness is the bar). Accepts the handoff shape
  * `{ assembly, agreements }` (the assembly and the agreements newly composed
- * for it, keyed by agreement key) or a bare assembly. Shape-checks the order
+ * for it, keyed by agreement hash) or a bare assembly. Shape-checks the order
  * entries, then probes the composition through `assemblyCompositionHash` — the
  * same walk the registry key uses — so anything it cannot hash is rejected
  * here with a message instead of failing later at publish.
@@ -134,11 +134,11 @@ export function parseAssemblyJson(text: string): ParsedAssemblyResult {
     }
     for (const entry of entries) {
         const id = (entry as { id?: unknown } | null)?.id;
-        const agreementKey = (entry as { agreementKey?: unknown } | null)?.agreementKey;
+        const agreementHash = (entry as { agreementHash?: unknown } | null)?.agreementHash;
         const clauses = (entry as { clauses?: unknown } | null)?.clauses;
-        if (typeof entry !== "object" || entry === null || typeof id !== "string" || !isBytes32Hex(agreementKey)
+        if (typeof entry !== "object" || entry === null || typeof id !== "string" || !isBytes32Hex(agreementHash)
             || typeof clauses !== "object" || clauses === null || Array.isArray(clauses)) {
-            return { ok: false, error: "Each agreement needs a string `id`, an `agreementKey` (the 32-byte key of a registered agreement) and a `clauses` object (the agreement's own fills)." };
+            return { ok: false, error: "Each agreement needs a string `id`, an `agreementHash` (the 32-byte key of a registered agreement) and a `clauses` object (the agreement's own fills)." };
         }
         const unkeyed = Object.keys(clauses).find((k) => !isBytes32Hex(k));
         if (unkeyed !== undefined) {
@@ -178,14 +178,14 @@ export async function hydrateImportedAssembly(
         if (doc) pasted.set(key.toLowerCase(), doc);
     }
     const composeKeys = new Set<string>();
-    const hydrated = await hydrateAssembly(parsed.assembly, async (agreementKey) => {
-        const key = agreementKey.toLowerCase();
+    const hydrated = await hydrateAssembly(parsed.assembly, async (agreementHash) => {
+        const key = agreementHash.toLowerCase();
         const local = pasted.get(key);
         if (local) {
             composeKeys.add(key);
             return local;
         }
-        return fetchRegisteredAgreement(agreementKey);
+        return fetchRegisteredAgreement(agreementHash);
     });
     if (!hydrated) {
         return { error: "An agreement binds an agreement that is neither in the pasted composition nor registered on this network's AgreementRegistry." };

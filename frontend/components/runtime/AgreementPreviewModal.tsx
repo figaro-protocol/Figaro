@@ -5,7 +5,7 @@
  * the COMMIT step of a Commitment.
  *
  * Threat-model 🟡 Priority 4 (UI ↔ MetaMask injection). The wallet prompt
- * shows only the agreementHash (sign) or an opaque transaction (commit).
+ * shows only the checkoutHash (sign) or an opaque transaction (commit).
  * This modal renders the human-readable agreement terms — the shared
  * `AgreementReview` — next to the hash so the user can verify "the hash
  * I'm about to bind to corresponds to the agreement in front of me"
@@ -42,7 +42,7 @@ const INTENT_COPY: Record<ConfirmationIntent, { eyebrow: string; lede: React.Rea
         eyebrow: "Review before signing",
         lede: (
             <>
-                Your wallet will display only the <code className="font-mono text-xs">agreementHash</code>.
+                Your wallet will display only the <code className="font-mono text-xs">checkoutHash</code>.
                 Verify the terms below match what you intend to sign.
             </>
         ),

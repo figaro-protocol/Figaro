@@ -18,7 +18,7 @@ export interface Order {
     buyer: string;
     seller: string;
     currency?: string;       // ERC-20 token address (from OrderCommitted event)
-    agreementHash?: string;  // bytes32 — opaque off-chain agreement ref
+    checkoutHash?: string;  // bytes32 — opaque off-chain agreement ref
     /** Design-time first-class topology edges: this order's parent order hashes — the
      *  data of its topology clause. Set by the designer when edges
      *  are drawn, so topology is read straight from the order and never
@@ -60,7 +60,7 @@ export function orderFromSdk(order: SdkOrder): Order {
         buyer: order.buyer,
         seller: order.seller,
         currency: order.currency,
-        agreementHash: order.agreementHash,
+        checkoutHash: order.checkoutHash,
         payment: order.payment,
         cumulativeValue: order.cumulativeValue,
         state: order.state,

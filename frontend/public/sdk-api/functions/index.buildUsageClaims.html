@@ -26,13 +26,13 @@ clause earns, the mandatory ones included.</li>
 <li>the AGREEMENT leg credits the registered agreement's designer from the
 agreement's provenance leaf (<code>Agreement.provenance</code>), proved with
 <code>buildProvenanceInclusionProof</code>: kind <code>{ Agreement: { composition_hash } }</code>
-keyed by the agreement key.</li>
+keyed by the agreement hash.</li>
 <li>the ASSEMBLY leg credits the assembly's designer from the same leaf
 plus the agreement's membership proof under the composition hash
 (<code>buildAgreementInclusionProof</code> over <code>assembly</code>, the instantiated assembly):
-kind <code>{ Assembly: { agreement_key, slot_content_hash, membership_proof } }</code>
+kind <code>{ Assembly: { agreement_hash, slot_content_hash, membership_proof } }</code>
 keyed by the composition hash. The agreement proved is the first whose
-<code>agreementKey</code> is the provenance's (every such agreement proves the
+<code>agreementHash</code> is the provenance's (every such agreement proves the
 same membership).</li>
 </ul>
 <p>The provenance leaf is the agreement format's, not a clause, so the
@@ -42,7 +42,7 @@ of the last two legs.</p>
 agreement and assembly claim against it would revert); when the agreement
 names a provenance but no <code>assembly</code> is given, the assembly does not hash
 to the provenance's composition hash, or no agreement binds its agreement
-key; when the provenance's agreement key is a reserved key; and when the
+hash; when the provenance's agreement hash is a reserved key; and when the
 agreement's leaves do not build — no leg of such an agreement can be
 proved.</p>
 </div>

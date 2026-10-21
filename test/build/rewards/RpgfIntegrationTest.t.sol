@@ -50,7 +50,7 @@ contract RpgfIntegrationTest is Test {
     /// @dev The reference assembly's compositionHash: the root of a one-leaf
     ///      tree, which is its agreement's leaf (set in setUp).
     bytes32 ASM;
-    bytes constant SECTION = hex"5eed";
+    bytes constant CLAUSE_DATA = hex"5eed";
 
     uint64 constant P0_END = 1_000_000;
 
@@ -144,7 +144,7 @@ contract RpgfIntegrationTest is Test {
             currency: address(token),
             payment: 100 ether,
             expectedCumulativeValue: 100 ether,
-            agreementHash: AgreementTestHelper.singleClauseRoot(clauseOrAssembly, SECTION),
+            checkoutHash: AgreementTestHelper.singleClauseRoot(clauseOrAssembly, CLAUSE_DATA),
             salt: salt,
             deadline: block.timestamp + 1 hours
         });
@@ -155,7 +155,7 @@ contract RpgfIntegrationTest is Test {
         core.resolveProcess(processId, all);
     }
 
-    /// @dev A resolved process whose agreement carries the PROVENANCE section
+    /// @dev A resolved process whose agreement carries the PROVENANCE leaf
     ///      naming the reference agreement and `compositionHash` — the only way
     ///      an agreement or an assembly is ever provable, because agreement
     ///      leaves are keyed by clause and neither key is ever a leaf key.
@@ -163,7 +163,7 @@ contract RpgfIntegrationTest is Test {
         internal
         returns (CommitmentTypes.Commitment memory c, bytes memory clauseData)
     {
-        // Sections commit as CANONICAL JSON bytes — the same convention the
+        // Clauses commit as CANONICAL JSON bytes — the same convention the
         // runtime's agreements use (the merkle leaf hashes exactly these).
         clauseData = AgreementTestHelper.provenanceLeaf(AGR, compositionHash);
         c = CommitmentTypes.Commitment({
@@ -173,7 +173,7 @@ contract RpgfIntegrationTest is Test {
             currency: address(token),
             payment: 100 ether,
             expectedCumulativeValue: 100 ether,
-            agreementHash: AgreementTestHelper.singleClauseRoot(PROVENANCE_LEAF, clauseData),
+            checkoutHash: AgreementTestHelper.singleClauseRoot(PROVENANCE_LEAF, clauseData),
             salt: salt,
             deadline: block.timestamp + 1 hours
         });
@@ -216,7 +216,7 @@ contract RpgfIntegrationTest is Test {
     function test_settledTradeBecomesAFlorinPayout() public {
         // Two resolved processes use the clause; one uses the assembly.
         CommitmentTypes.Commitment memory p1 = _settle(GEO_KEY, 1);
-        counter.recordClauseUsage(p1, GEO_KEY, keccak256(SECTION), new bytes32[](0));
+        counter.recordClauseUsage(p1, GEO_KEY, keccak256(CLAUSE_DATA), new bytes32[](0));
         (CommitmentTypes.Commitment memory p2,) = _settleUnderAssembly(ASM, 2);
         _recordAssembly(p2, ASM);
 
@@ -261,11 +261,11 @@ contract RpgfIntegrationTest is Test {
 
     function test_usageInALaterPeriodPaysTheLaterBudget() public {
         CommitmentTypes.Commitment memory p1 = _settle(GEO_KEY, 1);
-        counter.recordClauseUsage(p1, GEO_KEY, keccak256(SECTION), new bytes32[](0));
+        counter.recordClauseUsage(p1, GEO_KEY, keccak256(CLAUSE_DATA), new bytes32[](0));
 
         vm.warp(P0_END + 1);
         CommitmentTypes.Commitment memory p2 = _settle(GEO_KEY, 2);
-        counter.recordClauseUsage(p2, GEO_KEY, keccak256(SECTION), new bytes32[](0));
+        counter.recordClauseUsage(p2, GEO_KEY, keccak256(CLAUSE_DATA), new bytes32[](0));
 
         vm.warp(P0_END * 2 + 1);
         vm.startPrank(author);
@@ -280,7 +280,7 @@ contract RpgfIntegrationTest is Test {
         assertEq(florin.balanceOf(author) - afterFirst, T1);
     }
 
-    function test_assemblyCannotBeCreditedWithoutItsProvenanceSection() public {
+    function test_assemblyCannotBeCreditedWithoutItsProvenanceLeaf() public {
         // An agreement that never committed the provenance leaf cannot credit
         // an assembly — there is no leaf to open. This is the path that looked
         // like it worked when the clause or assembly key was passed directly.
@@ -289,10 +289,10 @@ contract RpgfIntegrationTest is Test {
         _recordAssembly(p, ASM);
     }
 
-    function test_provenanceSectionMustNameTheAssemblyClaimed() public {
+    function test_provenanceLeafMustNameTheAssemblyClaimed() public {
         (CommitmentTypes.Commitment memory p,) = _settleUnderAssembly(ASM, 1);
-        // The section content is DERIVED from the claimed compositionHash, so a
-        // different composition derives a different section hash whose leaf is
+        // The clause content is DERIVED from the claimed compositionHash, so a
+        // different composition derives a different clause data hash whose leaf is
         // simply not in the tree — the old ProvenanceMismatch content-check now
         // collapses into the one inclusion gate (a stronger, structural check).
         vm.expectRevert(UsageCounter.InvalidInclusionProof.selector);
@@ -301,7 +301,7 @@ contract RpgfIntegrationTest is Test {
 
     function test_nonAuthorCannotClaimSomeoneElsesClauseOrAssembly() public {
         CommitmentTypes.Commitment memory p1 = _settle(GEO_KEY, 1);
-        counter.recordClauseUsage(p1, GEO_KEY, keccak256(SECTION), new bytes32[](0));
+        counter.recordClauseUsage(p1, GEO_KEY, keccak256(CLAUSE_DATA), new bytes32[](0));
         vm.warp(P0_END + 1);
 
         vm.prank(designer);
@@ -374,7 +374,7 @@ contract RpgfIntegrationTest is Test {
         assemblies.registerAssembly(GEO_KEY, "ipfs://a-stranger-stakes-a-clause-key-as-an-assembly");
 
         CommitmentTypes.Commitment memory p = _settle(GEO_KEY, 1);
-        counter.recordClauseUsage(p, GEO_KEY, keccak256(SECTION), new bytes32[](0));
+        counter.recordClauseUsage(p, GEO_KEY, keccak256(CLAUSE_DATA), new bytes32[](0));
         vm.warp(P0_END + 1);
 
         (,, uint256 assemblyKindScore) = counter.accrualOf(KIND_ASSEMBLY, GEO_KEY, 0);
@@ -406,7 +406,7 @@ contract RpgfIntegrationTest is Test {
         vm.stopPrank();
 
         CommitmentTypes.Commitment memory p1 = _settle(GEO_KEY, 1);
-        counter.recordClauseUsage(p1, GEO_KEY, keccak256(SECTION), new bytes32[](0));
+        counter.recordClauseUsage(p1, GEO_KEY, keccak256(CLAUSE_DATA), new bytes32[](0));
         (CommitmentTypes.Commitment memory p2,) = _settleUnderAssembly(ASM, 2);
         _recordAssembly(p2, ASM);
         vm.warp(P0_END + 1);

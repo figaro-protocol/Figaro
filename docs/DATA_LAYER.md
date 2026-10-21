@@ -54,7 +54,7 @@ a process's own data is the composable
 their own half); the terms of a specific sale are the `figaro-data-license`
 clause (scope, purpose, snapshot-vs-stream, redistribution-as-evidence, and
 process-anchored provenance — disclosed leaves verify by merkle proof against
-the source process's on-chain agreementHash); delivery rides the sealed
+the source process's on-chain checkoutHash); delivery rides the sealed
 content-handoff channel. The sustainable product is the evolving stream rather
 than a snapshot. Nothing here changes the posture that the protocol itself
 holds no user data to sell — the owner holds everything and chooses.
@@ -253,7 +253,7 @@ frontend knows in advance.
 The corpus links an order to the registered agreement and the assembly it
 instantiated through one attestation: the buyer attests the agreement format's
 reserved provenance leaf (`CLAUSES.md` § "Every clause is a merkle leaf") while
-the process is open, and that attestation names both the `agreementKey` and the
+the process is open, and that attestation names both the `agreementHash` and the
 `compositionHash`; the agreement's membership in the assembly is a merkle proof
 against the assembly's root. A process without it is counted
 as unattributed.

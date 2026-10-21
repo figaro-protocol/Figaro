@@ -14,15 +14,15 @@
  *   1. an order is IN-FLIGHT when committed (`OrderCommitted`) but its process
  *      is not yet resolved (`ProcessResolved`) — `deriveInFlightOrders` reads
  *      that straight off the reconstructed `Topology`;
- *   2. each in-flight order carries an `agreementHash`; the caller fetches the
+ *   2. each in-flight order carries an `checkoutHash`; the caller fetches the
  *      pinned, hash-verified agreement document for it (the SDK stays viem-only
  *      and does no IPFS I/O — the frontend's `fetchAgreement` is that fetch);
- *   3. the agreement NAMES the clauses it composes — `Agreement.sections[].clause`,
+ *   3. the agreement NAMES the clauses it composes — `Agreement.clauses[].clause`,
  *      each the clause's key — and, in its provenance leaf
  *      (`Agreement.provenance`, under the same hash), the registered agreement
  *      and the assembly it instantiated. A clause is attributed by its key
  *      among the clauses; an agreement and an assembly by the provenance's
- *      `agreementKey` and `compositionHash`.
+ *      `agreementHash` and `compositionHash`.
  *
  * `canWithdraw(clauseOrAssembly) == (inFlightCount === 0)`.
  *
@@ -51,12 +51,12 @@ import type { Agreement, AgreementProvenance } from "../agreement.js";
 // ── In-flight extraction (pure — the caller supplies fetched events) ─────────
 
 /** A committed-but-unresolved order — one live bonded commitment. The chain
- *  part of the join; the caller resolves each `agreementHash` to its pinned
+ *  part of the join; the caller resolves each `checkoutHash` to its pinned
  *  agreement before running a gate. */
 export interface InFlightOrderRef {
     orderHash: Hex;
     processId: Hex;
-    agreementHash: Hex;
+    checkoutHash: Hex;
 }
 
 /**
@@ -77,7 +77,7 @@ export function deriveInFlightOrders(events: CoreEvents): InFlightOrderRef[] {
             refs.push({
                 orderHash: order.orderHash,
                 processId: order.processId,
-                agreementHash: order.agreementHash,
+                checkoutHash: order.checkoutHash,
             });
         }
     }
@@ -128,7 +128,7 @@ export function deriveClauseWithdrawGate(
             unverifiedCount += 1;
             continue;
         }
-        if (entry.agreement.sections.some((s) => s.clause.toLowerCase() === clauseKey.toLowerCase())) {
+        if (entry.agreement.clauses.some((s) => s.clause.toLowerCase() === clauseKey.toLowerCase())) {
             inFlightCount += 1;
         }
     }
@@ -178,12 +178,12 @@ export function deriveAssemblyWithdrawGate(
 /**
  * Withdraw gate for a REGISTERED AGREEMENT. A trade is composed from the
  * agreement iff one of its verified orders' provenance names the
- * `agreementKey` — whichever assembly the agreement sits in. Counted per
+ * `agreementHash` — whichever assembly the agreement sits in. Counted per
  * process, as the assembly gate.
  */
 export function deriveAgreementWithdrawGate(
-    agreementKey: Hex,
+    agreementHash: Hex,
     agreements: readonly InFlightAgreement[],
 ): WithdrawGate {
-    return provenanceGate("agreementKey", agreementKey, agreements);
+    return provenanceGate("agreementHash", agreementHash, agreements);
 }

@@ -21,7 +21,7 @@
  * clauses alone registers beside the clauses (`populateMandatoryAgreements`);
  * each
  * reference assembly is built over the agreements its agreements name
- * (`assembleAuthored`: the entry binds the named agreement's key and carries
+ * (`assembleAuthored`: the entry binds the named agreement's hash and carries
  * its own topology parents); every DISTINCT agreement is pinned and
  * registered once on AgreementRegistry (a key the registry already binds is
  * skipped), then the assembly is registered on AssemblyRegistry.
@@ -120,7 +120,7 @@ import {
     CLAUSE_REGISTRY_ABI, ASSEMBLY_REGISTRY_ABI, AGREEMENT_REGISTRY_ABI, computeClauseKey, canonicalize,
     assemblyCompositionHash, deriveAssemblySlug, parseProjectionHints,
     assemblyComposedClauseKeys, resolveAuthoredClauseKeys, composeAuthoredAgreements, assembleAuthored,
-    isMandatoryAgreement, agreementKeyOf,
+    isMandatoryAgreement, agreementHashOf,
 } from '@figaro-protocol/sdk';
 import { parseClauseSpec } from '@figaro-protocol/sdk/clauses';
 
@@ -550,7 +550,7 @@ export async function populateMandatoryAgreements({ registry, log = console.log,
     for (const [name, document] of Object.entries(loadAuthoredAgreements(authored))) {
         if (!isMandatoryAgreement(document, authored)) continue;
         log(`  · ${name}: its clauses are all mandatory-article`);
-        const result = await registerAgreement({ ...args, registry, agreementKey: agreementKeyOf(document), document, log });
+        const result = await registerAgreement({ ...args, registry, agreementHash: agreementHashOf(document), document, log });
         if (result.registered) registered += 1;
     }
     return registered;
@@ -587,12 +587,12 @@ export function fillDeployTimeCurrency(assembly, tokenAddress) {
  *  binds is skipped). The pinned document carries the editorial `name` beside
  *  the keyed clauses. In vault mode the multisig is msg.sender, so the DAO is
  *  the agreement's designer of record. */
-export async function registerAgreement({ publicClient, walletClient, account, registry, ipfsApiUrl, agreementKey, document, vault, ownerClients, log = console.log }) {
+export async function registerAgreement({ publicClient, walletClient, account, registry, ipfsApiUrl, agreementHash, document, vault, ownerClients, log = console.log }) {
     const [, registeredAt] = await publicClient.readContract({
-        address: registry, abi: AGREEMENT_REGISTRY_ABI, functionName: 'bindings', args: [agreementKey],
+        address: registry, abi: AGREEMENT_REGISTRY_ABI, functionName: 'bindings', args: [agreementHash],
     });
     if (registeredAt !== 0n && registeredAt !== 0) {
-        log(`    · agreement ${agreementKey} — already registered, skipped`);
+        log(`    · agreement ${agreementHash} — already registered, skipped`);
         return { registered: false };
     }
     const contentURI = await pinJSON(ipfsApiUrl, canonicalize(document));
@@ -604,23 +604,23 @@ export async function registerAgreement({ publicClient, walletClient, account, r
             publicClient, vault, ownerClients,
             to: registry,
             value: deposit,
-            data: encodeFunctionData({ abi: AGREEMENT_REGISTRY_ABI, functionName: 'registerAgreement', args: [agreementKey, contentURI] }),
-            // Nonce = the agreement key: unique per agreement, deterministic across re-runs.
-            nonce: BigInt(agreementKey),
+            data: encodeFunctionData({ abi: AGREEMENT_REGISTRY_ABI, functionName: 'registerAgreement', args: [agreementHash, contentURI] }),
+            // Nonce = the agreement hash: unique per agreement, deterministic across re-runs.
+            nonce: BigInt(agreementHash),
             log,
         });
     } else {
         await publicClient.simulateContract({
             account: account.address, address: registry, abi: AGREEMENT_REGISTRY_ABI,
-            functionName: 'registerAgreement', args: [agreementKey, contentURI], value: deposit,
+            functionName: 'registerAgreement', args: [agreementHash, contentURI], value: deposit,
         });
         const hash = await walletClient.writeContract({
             address: registry, abi: AGREEMENT_REGISTRY_ABI, functionName: 'registerAgreement',
-            args: [agreementKey, contentURI], value: deposit,
+            args: [agreementHash, contentURI], value: deposit,
         });
         await publicClient.waitForTransactionReceipt({ hash });
     }
-    log(`    ✓ agreement ${agreementKey} — registered; document ${contentURI}`);
+    log(`    ✓ agreement ${agreementHash} — registered; document ${contentURI}`);
     return { registered: true };
 }
 
@@ -632,12 +632,12 @@ export async function registerAgreement({ publicClient, walletClient, account, r
 export async function anchorBuiltAssembly({ built, agreementRegistry, ...args }) {
     const { assembly, agreements } = built;
     for (const [i, entry] of assembly.agreements.entries()) {
-        const doc = agreements[entry.agreementKey];
-        if (!doc || assembly.agreements.findIndex((s) => s.agreementKey === entry.agreementKey) !== i) continue;
+        const doc = agreements[entry.agreementHash];
+        if (!doc || assembly.agreements.findIndex((s) => s.agreementHash === entry.agreementHash) !== i) continue;
         await registerAgreement({
             ...args,
             registry: agreementRegistry,
-            agreementKey: entry.agreementKey,
+            agreementHash: entry.agreementHash,
             document: doc.name
                 ? doc
                 : { ...(assembly.name ? { name: `${assembly.name} · ${entry.id}` } : {}), clauses: doc.clauses },

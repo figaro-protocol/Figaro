@@ -29,14 +29,14 @@ export function extractClauseData(
     order: Order,
     agreement: Agreement,
 ): ClauseDataDocument {
-    const clauses = agreement.sections.map((clauseEntry) =>
+    const clauses = agreement.clauses.map((clauseEntry) =>
         describeClause(clauseEntry.clause, (clauseEntry as { data?: Record<string, unknown> }).data),
     );
     return {
         title: "Clause data",
         orderHash: order.orderHash,
         processId: order.processId,
-        agreementHash: order.agreementHash ?? "0x",
+        checkoutHash: order.checkoutHash ?? "0x",
         buyer: order.buyer,
         seller: order.seller,
         clauses,

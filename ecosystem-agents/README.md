@@ -115,7 +115,7 @@ several separate voices — each prompt points back here instead of restating th
 
 `figaro-clause-author` and `figaro-assembly-designer` each close on a "Step 6 — Output"
 that prints a plain-text block naming what was produced and where it now lives
-(the clause key, or each `agreementKey` and the `compositionHash`; `contentURI`, the transaction, the registering wallet).
+(the clause key, or each `agreementHash` and the `compositionHash`; `contentURI`, the transaction, the registering wallet).
 The convention is the same for both even though the fields differ: the block belongs to
 the **user**, never to this repo — it is what they paste into their own notes, hand to
 a counterparty, or check against later. `figaro-operator` and `figaro-analyst` register

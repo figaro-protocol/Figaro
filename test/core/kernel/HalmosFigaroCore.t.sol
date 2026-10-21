@@ -74,7 +74,7 @@ contract HalmosFigaroCore is Test {
             currency: address(token),
             payment: payment,
             expectedCumulativeValue: payment,
-            agreementHash: keccak256("test"),
+            checkoutHash: keccak256("test"),
             salt: 1,
             deadline: block.timestamp + 1 hours
         });
@@ -163,7 +163,7 @@ contract HalmosFigaroCore is Test {
             currency: address(token),
             payment: payment,
             expectedCumulativeValue: payment,
-            agreementHash: keccak256("test"),
+            checkoutHash: keccak256("test"),
             salt: 1,
             deadline: block.timestamp + 1 hours
         });
@@ -206,7 +206,7 @@ contract HalmosFigaroCore is Test {
             currency: address(token),
             payment: payment,
             expectedCumulativeValue: payment,
-            agreementHash: keccak256("test"),
+            checkoutHash: keccak256("test"),
             salt: 1,
             deadline: block.timestamp + 1 hours
         });
@@ -245,7 +245,7 @@ contract HalmosFigaroCore is Test {
             currency: address(token),
             payment: payment,
             expectedCumulativeValue: payment,
-            agreementHash: keccak256("test"),
+            checkoutHash: keccak256("test"),
             salt: 1,
             deadline: block.timestamp + 1 hours
         });
@@ -291,7 +291,7 @@ contract HalmosFigaroCore is Test {
             currency: address(token),
             payment: payment2,
             expectedCumulativeValue: cumAfterSub,
-            agreementHash: keccak256("sub"),
+            checkoutHash: keccak256("sub"),
             salt: 2,
             deadline: block.timestamp + 1 hours
         });

@@ -164,7 +164,7 @@ its own manual.
 - **Law composes in; it is never routed around.** Forums rule on the open process's data before
   resolve and cannot call resolve themselves. Fiscal routing composes the same way, and demonstrating
   compliance is cheap from the data. Do not advise a user to avoid legal structure.
-- **Your duty before signing is hash coverage.** Recompute the agreement hash from the document you
-  actually hold (`computeAgreementHash`) and compare it to what you are being asked to sign and to
+- **Your duty before signing is hash coverage.** Recompute the checkout hash from the document you
+  actually hold (`computeCheckoutHash`) and compare it to what you are being asked to sign and to
   what the chain holds. A mismatch is a refusal and a report to your owner. Full procedure:
   `sdk/README.md` § "Verifying what you are about to sign".

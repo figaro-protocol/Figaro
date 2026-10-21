@@ -127,10 +127,10 @@ function snapshotToInitial(snap: DesignSnapshot): InitialState {
 
 /**
  * Spec gate. `buildBlankInitial` — and every subsequent canvas edit — builds
- * synthetic agreements whose sections are projected and hashed through the
+ * synthetic agreements whose clauses are projected and hashed through the
  * chain-loaded clause specs (default fill, sentinel filtering, range checks
  * all live in the spec, never in code). Built against a half-warm cache the
- * sections come out unprojected and the hash path rejects them — so the
+ * clauses come out unprojected and the hash path rejects them — so the
  * canvas honors the `useClauseSpecs` contract and gates its render on
  * `loaded`. Latched: a clause registered mid-session flips `loaded` false on
  * the registry append, which must never unmount a live canvas.
@@ -335,10 +335,10 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
      *  (`null`). Binding leaves the order's composed clauses where they are:
      *  an agreement that both binds and composes is the build's refusal,
      *  surfaced in the identity readout and the review. */
-    const bindAgreement = useCallback((orderId: string, agreementKey: `0x${string}` | null) => {
+    const bindAgreement = useCallback((orderId: string, agreementHash: `0x${string}` | null) => {
         setRegisteredByOrderId((prev) => {
             const next = { ...prev };
-            if (agreementKey) next[orderId] = agreementKey;
+            if (agreementHash) next[orderId] = agreementHash;
             else delete next[orderId];
             return next;
         });
@@ -347,8 +347,8 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
     /** Pick, for one order, a registered agreement the drawer's mandatory
      *  article lists: its clauses merge into the order's agreement,
      *  and a bound agreement must already carry them. */
-    const pickMandatory = useCallback((orderId: string, agreementKey: `0x${string}`) => {
-        setMandatoryByOrderId((prev) => ({ ...prev, [orderId]: agreementKey }));
+    const pickMandatory = useCallback((orderId: string, agreementHash: `0x${string}`) => {
+        setMandatoryByOrderId((prev) => ({ ...prev, [orderId]: agreementHash }));
     }, []);
 
     /** Register one order's agreement on its own (the drawer's
@@ -360,9 +360,9 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
     type ComposedClauses = Parameters<typeof publishAgreement>[0]["clauses"];
     const registerOrderAgreement = useCallback(async (orderId: string): Promise<`0x${string}`> => {
         const index = orders.findIndex((o) => o.orderHash === orderId);
-        const { agreementKey } = await publishAgreement({
+        const { agreementHash } = await publishAgreement({
             clauses: (clausesByOrderId[orderId] ?? {}) as ComposedClauses,
-            mandatoryAgreementKey: mandatoryByOrderId[orderId],
+            mandatoryAgreementHash: mandatoryByOrderId[orderId],
             ...(name ? { name: `${name} · order ${index + 1}` } : {}),
         });
         setClausesByOrderId((prev) => {
@@ -370,8 +370,8 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
             delete next[orderId];
             return next;
         });
-        bindAgreement(orderId, agreementKey);
-        return agreementKey;
+        bindAgreement(orderId, agreementHash);
+        return agreementHash;
     }, [orders, clausesByOrderId, mandatoryByOrderId, name, publishAgreement, bindAgreement]);
 
     const setClauseField = useCallback(
@@ -890,13 +890,13 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
                     onToggleClause={(clauseKey, next) => {
                         if (selectedOrderId) toggleClause(selectedOrderId, clauseKey, next);
                     }}
-                    boundAgreementKey={selectedOrderId ? registeredByOrderId[selectedOrderId] : undefined}
-                    mandatoryAgreementKey={selectedOrderId ? mandatoryByOrderId[selectedOrderId] : undefined}
-                    onPickMandatory={(agreementKey) => {
-                        if (selectedOrderId) pickMandatory(selectedOrderId, agreementKey);
+                    boundAgreementHash={selectedOrderId ? registeredByOrderId[selectedOrderId] : undefined}
+                    mandatoryAgreementHash={selectedOrderId ? mandatoryByOrderId[selectedOrderId] : undefined}
+                    onPickMandatory={(agreementHash) => {
+                        if (selectedOrderId) pickMandatory(selectedOrderId, agreementHash);
                     }}
-                    onBindAgreement={(agreementKey) => {
-                        if (selectedOrderId) bindAgreement(selectedOrderId, agreementKey);
+                    onBindAgreement={(agreementHash) => {
+                        if (selectedOrderId) bindAgreement(selectedOrderId, agreementHash);
                     }}
                     onRegisterAgreement={
                         selectedOrderId ? () => registerOrderAgreement(selectedOrderId) : undefined

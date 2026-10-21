@@ -5,7 +5,7 @@
  *
  * `useProcessOrders` builds its list exclusively from `OrderCommitted` logs on
  * `FigaroCore`. A batch-resolved order never emits one — its buyer, seller,
- * payment and `agreementHash` exist only under `FigaroBatchVerifier`'s proven
+ * payment and `checkoutHash` exist only under `FigaroBatchVerifier`'s proven
  * state root — so every `/audit` surface built on that hook renders NOTHING for
  * batched trade. This hook adds the second universe: the batch relay's
  * published orders, each re-derived and chain-anchored by

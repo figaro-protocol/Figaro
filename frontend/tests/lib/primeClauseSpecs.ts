@@ -16,7 +16,7 @@ import {
     canonicalize,
     computeClauseKey,
     resolveAuthoredClauseKeys,
-    agreementKeyOf,
+    agreementHashOf,
     assembleAuthored,
     composeAuthoredAgreement,
     composeAuthoredAgreements,
@@ -182,9 +182,9 @@ export function hydrateAuthored(authored: object, opts: { pick?: boolean } = {})
             clauses[key] = composed;
             if (Array.isArray(parentOrderHashes)) fills[key] = { parentOrderHashes: [...parentOrderHashes] };
         }
-        const agreementKey = agreementKeyOf({ clauses });
-        byKey[agreementKey.toLowerCase() as Hex] = { clauses };
-        return { id: entry.id, agreementKey, clauses: fills };
+        const agreementHash = agreementHashOf({ clauses });
+        byKey[agreementHash.toLowerCase() as Hex] = { clauses };
+        return { id: entry.id, agreementHash, clauses: fills };
     });
     return { assembly: { ...rest, agreements: entries }, agreements: byKey };
 }

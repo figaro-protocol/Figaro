@@ -296,8 +296,8 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
         expect(assemblyCompositionHash(aerial!.hydrated.assembly), 'the pinned assembly re-hashes to its anchored identity')
             .toBe(aerial!.compositionHash);
         // CHAIN FACT: the agreement's agreement is a live registration, read by key.
-        const aerialAgreementKey = aerial!.agreements[0].agreementKey;
-        expect(await readAgreementBinding(aerialAgreementKey), 'the agreement binds a registered agreement').not.toBeNull();
+        const aerialAgreementHash = aerial!.agreements[0].agreementHash;
+        expect(await readAgreementBinding(aerialAgreementHash), 'the agreement binds a registered agreement').not.toBeNull();
         const assemblyName = aerial!.name ?? '';
         expect(assemblyName, 'the anchored assembly carries its registered display name').not.toBe('');
 
@@ -352,7 +352,7 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
         // Mechanical at checkout: the walk sets the agreement's provenance
         // leaf to the adopted assembly's own verified identity.
         expect(order.agreement.provenance, 'the agreement names its registered agreement and the adopted assembly')
-            .toEqual({ agreementKey: aerialAgreementKey, compositionHash: aerial!.compositionHash });
+            .toEqual({ agreementHash: aerialAgreementHash, compositionHash: aerial!.compositionHash });
 
         const buyerSig = await clientWallet.signTypedData(order.typedData);
         const sellerSig = await surveyorWallet.signTypedData(order.typedData);
@@ -393,7 +393,7 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
             spec: ClauseSpec;
             publish: boolean;
         }) => {
-            const clauseEntry = order.agreement.sections.find((s) => s.clause.toLowerCase() === opts.clauseKey.toLowerCase());
+            const clauseEntry = order.agreement.clauses.find((s) => s.clause.toLowerCase() === opts.clauseKey.toLowerCase());
             expect(clauseEntry, `the agreement commits a ${opts.spec.clauseId} clauseEntry`).toBeTruthy();
             const clauseKey = clauseEntry!.clause as Hex;
             const stage = 1;
@@ -434,7 +434,7 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
         // the agreement format's leaf under its reserved key, its own bytes
         // published at their fingerprint, filed while the process is open.
         const prov = provenanceLeafAttestation(order.agreement);
-        const provBytes = provenanceLeafBytes(aerialAgreementKey, aerial!.compositionHash);
+        const provBytes = provenanceLeafBytes(aerialAgreementHash, aerial!.compositionHash);
         expect(keccak256(provBytes), "the leaf's content reference is its bytes' hash").toBe(prov.contentRef);
         await pinWitnessBytes(provBytes);
         expect(await fetchWitnessBytes(prov.contentRef), 'the published provenance resolves from its own fingerprint')
@@ -945,7 +945,7 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
                 const bytes = await fetchWitnessBytes(ev.args.contentRef as string);
                 const pair = bytes ? decodeProvenanceContent(bytes as Hex) : null;
                 if (!pair) continue;
-                if (provenanceContentRef(pair.agreementKey, pair.compositionHash).toLowerCase() !== (ev.args.contentRef as string).toLowerCase()) continue;
+                if (provenanceContentRef(pair.agreementHash, pair.compositionHash).toLowerCase() !== (ev.args.contentRef as string).toLowerCase()) continue;
                 expectedAttribution.set(processId, pair.compositionHash.toLowerCase());
             }
             expect(expectedAttribution.size, 'the seed test published a buyer-attested provenance leaf').toBeGreaterThan(0);

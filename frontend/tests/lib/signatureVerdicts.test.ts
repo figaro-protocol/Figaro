@@ -87,7 +87,7 @@ const commitment: Commitment = {
     currency: "0x5FbDB2315678afecb367f032d93F642f64180aa3",
     payment: 1_000_000_000_000_000_000n,
     expectedCumulativeValue: 1_000_000_000_000_000_000n,
-    agreementHash: `0x${"ab".repeat(32)}`,
+    checkoutHash: `0x${"ab".repeat(32)}`,
     salt: 7n,
     deadline: 4_000_000_000n,
 };

@@ -78,7 +78,7 @@ test.describe('Designer mandatory article (devnet)', () => {
         await page.getByTestId(`drawer-node-tab-${subId}`).click();
         await page.getByTestId('drawer-tab-registry').click();
         const article = page.getByTestId('drawer-mandatory-article');
-        const seededRow = page.getByTestId(`drawer-mandatory-agreement-${seeded.agreementKey}`);
+        const seededRow = page.getByTestId(`drawer-mandatory-agreement-${seeded.agreementHash}`);
         await expect(seededRow, 'the article lists the seeded registration').toBeVisible({ timeout: 30000 });
         await expect(article.locator('input[type="radio"]'), 'one row per registration the chain lists').toHaveCount(listed.length);
         for (const radio of await article.locator('input[type="radio"]').all()) {
@@ -110,7 +110,7 @@ test.describe('Designer mandatory article (devnet)', () => {
         // ── 5. Pick on every order, publish, read back out of band ──────────
         await page.goto(`/assemblies/designer/edit?slug=${handle}&e2e=devnet`, { waitUntil: 'domcontentloaded' });
         await page.getByTestId('designer-canvas-toolbar').waitFor({ timeout: 30000 });
-        await pickMandatoryForEveryOrder(page, seeded.agreementKey);
+        await pickMandatoryForEveryOrder(page, seeded.agreementHash);
         await expect(review).toBeEnabled({ timeout: 10000 });
         await review.click();
         await page.waitForURL(/\/assemblies\/designer\/view\/?\?slug=asm-/, { timeout: 15000 });

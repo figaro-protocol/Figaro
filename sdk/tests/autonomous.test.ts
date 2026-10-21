@@ -27,7 +27,7 @@ function mkOrder(overrides: Partial<Order> = {}): Order {
         currency: TOKEN,
         payment: 100n,
         cumulativeValue: 250n,
-        agreementHash: AGREEMENT,
+        checkoutHash: AGREEMENT,
         salt: 7n,
         deadline: 999n,
         state: OrderState.Active,

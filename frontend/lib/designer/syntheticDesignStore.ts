@@ -30,7 +30,7 @@ interface SerializedOrder {
     buyer: string;
     seller: string;
     currency?: string;
-    agreementHash?: string;
+    checkoutHash?: string;
     payment: string;
     state: number;
     salt: string;

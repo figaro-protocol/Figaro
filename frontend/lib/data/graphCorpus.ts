@@ -32,7 +32,7 @@
  *   reserved leaf (`PROVENANCE_LEAF_KEY`) and the attestation names a
  *   composition hash — its recovered bytes decode to one, or its fingerprint
  *   is the `provenanceContentRef` of a loaded assembly's agreement (its
- *   agreement key and its composition root). No such attestation, no
+ *   agreement hash and its composition root). No such attestation, no
  *   attribution: the process is counted as unattributed and said to be.
  */
 
@@ -134,7 +134,7 @@ export interface GraphCorpus {
 interface CorpusAssembly {
     compositionHash: `0x${string}`;
     /** The registered agreement each agreement binds, in assembly order. */
-    agreementKeys: readonly `0x${string}`[];
+    agreementHashes: readonly `0x${string}`[];
     name: string;
     clauseSets: readonly {
         clauses: Record<string, Record<string, unknown>>;
@@ -241,23 +241,23 @@ async function readCommitFundingLegs(
  * attributes a process without holding anyone's agreement body. The graph is
  * the one the SDK marks `provenanceLeaf` (the format constant, never a clause
  * name or a spec field). An entry attributes by its decoded
- * `{ agreementKey, compositionHash }` when its bytes recovered, else by its
- * fingerprint matching `provenanceContentRef` of an (agreement key,
+ * `{ agreementHash, compositionHash }` when its bytes recovered, else by its
+ * fingerprint matching `provenanceContentRef` of an (agreement hash,
  * composition root) pair the page loaded — an agreement of a loaded
  * assembly; the bytes are reproducible from the two keys, so the match is
  * exact.
  */
 export function attributionFromOverlays(
     overlays: readonly OverlayGraph[],
-    assemblies: readonly { compositionHash: Hex; agreementKeys: readonly Hex[] }[],
+    assemblies: readonly { compositionHash: Hex; agreementHashes: readonly Hex[] }[],
 ): Map<string, string> {
     const hashByContentRef = new Map<string, string>();
-    for (const { compositionHash, agreementKeys } of assemblies) {
+    for (const { compositionHash, agreementHashes } of assemblies) {
         if (!isBytes32Hex(compositionHash)) continue;
-        for (const agreementKey of agreementKeys) {
-            if (!isBytes32Hex(agreementKey)) continue;
+        for (const agreementHash of agreementHashes) {
+            if (!isBytes32Hex(agreementHash)) continue;
             hashByContentRef.set(
-                provenanceContentRef(agreementKey, compositionHash).toLowerCase(),
+                provenanceContentRef(agreementHash, compositionHash).toLowerCase(),
                 compositionHash.toLowerCase(),
             );
         }
@@ -433,7 +433,7 @@ export function useGraphCorpus(): { corpus: GraphCorpus | null; isLoading: boole
                 .flatMap((a) => (a.hydratedAssembly === null ? [] : [{ a, hydrated: a.hydratedAssembly }]))
                 .map(({ a, hydrated }) => ({
                     compositionHash: a.compositionHash,
-                    agreementKeys: hydrated.assembly.agreements.map((entry) => entry.agreementKey),
+                    agreementHashes: hydrated.assembly.agreements.map((entry) => entry.agreementHash),
                     name: a.name,
                     clauseSets: [
                         // Assembly-scoped clauses compose ONCE for the whole

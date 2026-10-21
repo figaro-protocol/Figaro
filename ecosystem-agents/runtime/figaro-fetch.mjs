@@ -7,7 +7,7 @@
  * mistake for instructions. Errors are terse and never echo fetched bytes.
  *
  *   figaro-fetch clause <clauseKey>              spec via ClauseRegistry → IPFS
- *   figaro-fetch agreement <agreementKey>        registered agreement via AgreementRegistry → IPFS
+ *   figaro-fetch agreement <agreementHash>        registered agreement via AgreementRegistry → IPFS
  *   figaro-fetch assembly <compositionHash>      assembly via AssemblyRegistry → IPFS
  *   figaro-fetch profile <address>               profile via MembersRegistry → IPFS
  *   figaro-fetch ipfs <cid>                      raw content by CID
@@ -110,16 +110,16 @@ async function main() {
     }
 
     if (mode === "agreement") {
-        const agreementKey = args[0] ?? fail("usage: figaro-fetch agreement <agreementKey>");
-        if (!/^0x[0-9a-fA-F]{64}$/.test(agreementKey)) fail(`a registered agreement is read by its 32-byte key: ${agreementKey}`);
+        const agreementHash = args[0] ?? fail("usage: figaro-fetch agreement <agreementHash>");
+        if (!/^0x[0-9a-fA-F]{64}$/.test(agreementHash)) fail(`a registered agreement is read by its 32-byte key: ${agreementHash}`);
         const graph = await discovery();
         // The binding whatever its stake: a binding is never cleared, so an
         // assembly composed from a withdrawn agreement still reads it.
-        const agreement = graph.getAgreementBinding(agreementKey);
-        if (!agreement) fail(`agreement ${agreementKey} is not registered`);
+        const agreement = graph.getAgreementBinding(agreementHash);
+        if (!agreement) fail(`agreement ${agreementHash} is not registered`);
         // Verified against its key before it is printed.
         const hit = await fetchAnchoredRegisteredAgreement(agreement);
-        if (hit.absent) fail(`agreement ${agreementKey}: no anchored document at ${agreement.contentURI} — ${hit.absent} (absence, not the registry's content)`);
+        if (hit.absent) fail(`agreement ${agreementHash}: no anchored document at ${agreement.contentURI} — ${hit.absent} (absence, not the registry's content)`);
         console.log(frame({
             source: "agreement-registry", refKind: "cid", ref: cidOf(agreement.contentURI), content: hit.text,
         }));

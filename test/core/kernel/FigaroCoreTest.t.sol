@@ -81,7 +81,7 @@ contract FigaroCoreTest is Test {
             currency: address(token),
             payment: payment,
             expectedCumulativeValue: payment,
-            agreementHash: keccak256("root-agreement"),
+            checkoutHash: keccak256("root-agreement"),
             salt: salt,
             deadline: block.timestamp + 1 hours
         });
@@ -109,7 +109,7 @@ contract FigaroCoreTest is Test {
             currency: address(token),
             payment: payment,
             expectedCumulativeValue: expectedCum,
-            agreementHash: keccak256(abi.encodePacked("sub-agreement-", salt)),
+            checkoutHash: keccak256(abi.encodePacked("sub-agreement-", salt)),
             salt: salt,
             deadline: block.timestamp + 1 hours
         });
@@ -296,7 +296,7 @@ contract FigaroCoreTest is Test {
             currency: address(otherToken),
             payment: 10 ether,
             expectedCumulativeValue: 60 ether,
-            agreementHash: keccak256("sub"),
+            checkoutHash: keccak256("sub"),
             salt: 2,
             deadline: block.timestamp + 1 hours
         });
@@ -326,7 +326,7 @@ contract FigaroCoreTest is Test {
             currency: address(otherToken),
             payment: 10 ether,
             expectedCumulativeValue: 60 ether,
-            agreementHash: keccak256("sub"),
+            checkoutHash: keccak256("sub"),
             salt: 2,
             deadline: block.timestamp + 1 hours
         });
@@ -368,7 +368,7 @@ contract FigaroCoreTest is Test {
             currency: address(token),
             payment: 50 ether,
             expectedCumulativeValue: 99 ether,
-            agreementHash: keccak256("root"),
+            checkoutHash: keccak256("root"),
             salt: 1,
             deadline: block.timestamp + 1 hours
         });
@@ -390,7 +390,7 @@ contract FigaroCoreTest is Test {
             currency: address(token),
             payment: 10 ether,
             expectedCumulativeValue: 60 ether,
-            agreementHash: keccak256("sub"),
+            checkoutHash: keccak256("sub"),
             salt: 2,
             deadline: block.timestamp + 1 hours
         });
@@ -694,7 +694,7 @@ contract FigaroCoreTest is Test {
             currency: address(token),
             payment: payment,
             expectedCumulativeValue: payment,
-            agreementHash: keccak256("self-deal"),
+            checkoutHash: keccak256("self-deal"),
             salt: 1,
             deadline: block.timestamp + 1 hours
         });

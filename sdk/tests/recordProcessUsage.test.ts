@@ -17,8 +17,8 @@ const COUNTER = "0x00000000000000000000000000000000000c0de5" as Address;
 const CORE = "0x0000000000000000000000000000000000c0ffee" as Address;
 const COMMERCE = keyOf("figaro-commerce");
 const MODALITIES = keyOf("figaro-modalities");
-const AGREEMENT_KEY = keccak256(encodePacked(["string"], ["an-agreement"]));
-const ASSEMBLY: Assembly = { agreements: [{ id: "order-0", agreementKey: AGREEMENT_KEY, clauses: {} }] };
+const AGREEMENT_HASH = keccak256(encodePacked(["string"], ["an-agreement"]));
+const ASSEMBLY: Assembly = { agreements: [{ id: "order-0", agreementHash: AGREEMENT_HASH, clauses: {} }] };
 const COMPOSITION = assemblyCompositionHash(ASSEMBLY);
 
 function order(salt: bigint): Commitment {
@@ -29,17 +29,17 @@ function order(salt: bigint): Commitment {
         currency: "0x00000000000000000000000000000000000007ed" as Address,
         payment: 100n,
         expectedCumulativeValue: 100n,
-        agreementHash: `0x${"a".repeat(64)}` as Hex,
+        checkoutHash: `0x${"a".repeat(64)}` as Hex,
         salt,
         deadline: 2n,
     };
 }
 
-function agreement(provenance: Agreement["provenance"] = { agreementKey: AGREEMENT_KEY, compositionHash: COMPOSITION }): Agreement {
+function agreement(provenance: Agreement["provenance"] = { agreementHash: AGREEMENT_HASH, compositionHash: COMPOSITION }): Agreement {
     const o = order(1n);
     return {
         version: "a1", buyer: o.buyer, seller: o.seller,
-        sections: [
+        clauses: [
             { clause: keyOf("figaro-modalities"), data: { modality: "pickup" } },
             { clause: keyOf("figaro-commerce"), data: { payment: "100", currency: o.currency, lineItems: [] } },
         ],
@@ -77,7 +77,7 @@ function clients(opts: { failOn?: Hex } = {}) {
 }
 
 describe("recordProcessUsage", () => {
-    it("sends every clause's clause leg, and the agreement and assembly legs from the agreement's provenance leaf", async () => {
+    it("sends every clause's leg, and the agreement and assembly legs from the agreement's provenance leaf", async () => {
         const { publicClient, walletClient, sent } = clients();
         const report = await recordProcessUsage(walletClient, publicClient, COUNTER, [{ commitment: order(1n), agreement: agreement(), assembly: ASSEMBLY }]);
 
@@ -87,12 +87,12 @@ describe("recordProcessUsage", () => {
         const assembly = sent.filter((s) => s.functionName === "recordAssemblyUsage");
         expect(assembly.map((s) => s.key)).toEqual([COMPOSITION]);
         const membership = buildAgreementInclusionProof(ASSEMBLY, 0);
-        // (order, compositionHash, agreementKey, slotContentHash, leafProof, membershipProof)
-        expect(assembly[0].args[2]).toBe(AGREEMENT_KEY);
+        // (order, compositionHash, agreementHash, slotContentHash, leafProof, membershipProof)
+        expect(assembly[0].args[2]).toBe(AGREEMENT_HASH);
         expect(assembly[0].args[3]).toBe(membership.slotContentHash);
         expect(assembly[0].args[5]).toEqual(membership.proof);
         const agreementLeg = sent.filter((s) => s.functionName === "recordAgreementUsage");
-        expect(agreementLeg.map((s) => s.key)).toEqual([AGREEMENT_KEY]);
+        expect(agreementLeg.map((s) => s.key)).toEqual([AGREEMENT_HASH]);
         expect(agreementLeg[0].args[2]).toBe(COMPOSITION);
         expect(report).toEqual({ attempted: 2, recorded: 2, assemblyRecorded: true, agreementRecorded: true, failures: [] });
     });
@@ -100,7 +100,7 @@ describe("recordProcessUsage", () => {
     it("an agreement whose provenance is malformed has no provable leg: nothing is sent and the report says so", async () => {
         const { publicClient, walletClient, sent } = clients();
         const report = await recordProcessUsage(walletClient, publicClient, COUNTER, [
-            { commitment: order(1n), agreement: agreement({ agreementKey: AGREEMENT_KEY, compositionHash: "0x12" }), assembly: ASSEMBLY },
+            { commitment: order(1n), agreement: agreement({ agreementHash: AGREEMENT_HASH, compositionHash: "0x12" }), assembly: ASSEMBLY },
         ]);
 
         expect(sent).toHaveLength(0);

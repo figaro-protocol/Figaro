@@ -8,7 +8,7 @@
  * — with no mandatory pick, so a test's clause set is the one it wrote.
  */
 import type { Hex } from "viem";
-import { agreementKeyOf, assemblyCompositionHash, type RegisteredAgreement, type HydratedAssembly, type AssemblyAgreement } from "../src/assembly.js";
+import { agreementHashOf, assemblyCompositionHash, type RegisteredAgreement, type HydratedAssembly, type AssemblyAgreement } from "../src/assembly.js";
 import type { MemberProfileReader } from "../src/memberProfile.js";
 
 export interface AuthoredAssembly {
@@ -30,9 +30,9 @@ export function hydrateAuthored(authored: AuthoredAssembly): HydratedAssembly {
             clauses[key] = rest;
             if (Array.isArray(parentOrderHashes)) fills[key] = { parentOrderHashes };
         }
-        const agreementKey = agreementKeyOf({ clauses });
-        agreements[agreementKey.toLowerCase() as Hex] = { clauses };
-        return { id: entry.id, agreementKey, clauses: fills };
+        const agreementHash = agreementHashOf({ clauses });
+        agreements[agreementHash.toLowerCase() as Hex] = { clauses };
+        return { id: entry.id, agreementHash, clauses: fills };
     });
     const { agreements: _authored, ...rest } = authored;
     return { assembly: { ...rest, agreements: entries }, agreements };

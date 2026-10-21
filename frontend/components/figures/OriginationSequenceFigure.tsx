@@ -32,7 +32,7 @@ export type OriginationSequenceFigureProps = BaseFigureProps;
  *  - Deadline: `computeDeadline(await readChainTimestamp(client))` — chain
  *    time, never the machine clock.
  *  - Seller gate: `validateOffer` — buyer signature present, named seller is
- *    me, the agreement re-hashes to the committed `agreementHash`, parties
+ *    me, the agreement re-hashes to the committed `checkoutHash`, parties
  *    match; with `specs`, the same merkle-leaf seam runs on the seller's side.
  *    A tampered/forged offer THROWS; the two opt-in floors (`accept` business
  *    rule, `policy` economic bound) DECLINE with `null` instead, and a decline
@@ -41,7 +41,7 @@ export type OriginationSequenceFigureProps = BaseFigureProps;
  *    counter-signed offer (`approveBond`, default true); the buyer approves its
  *    own 2× payment bond before submitting `commit`.
  *  - Attestation: `AttestationCoordinator` binds each attestation to the signed
- *    `agreementHash` by merkle inclusion proof (`docs/CONTRACTS.md`).
+ *    `checkoutHash` by merkle inclusion proof (`docs/CONTRACTS.md`).
  *  - Close: `resolveProcess` is buyer-only and atomic, and the usage count
  *    belongs in the same breath (`sdk/README.md` step 5).
  */
@@ -127,7 +127,7 @@ const ROWS: readonly Row[] = [
         from: "seller",
         label: "validate — validateOffer()",
         detail: [
-            "The agreement must re-hash to the committed agreementHash, the named",
+            "The agreement must re-hash to the committed checkoutHash, the named",
             "seller must be me, and the buyer signature must recover to the named",
             "buyer. With specs, the same merkle-leaf seam runs on this side too.",
         ],
@@ -175,7 +175,7 @@ const ROWS: readonly Row[] = [
         label: "attest — AttestationCoordinator",
         detail: [
             "A merkle inclusion proof binds each attestation to the signed",
-            "agreementHash; the evidence is content-hashed, and the chain",
+            "checkoutHash; the evidence is content-hashed, and the chain",
             "validates no content shape.",
         ],
     },
@@ -260,7 +260,7 @@ export function OriginationSequenceFigure({
                     clause spec, and signs an EIP-712 commitment over a
                     chain-time deadline. The offer crosses a coordination
                     channel to the seller, who re-hashes the agreement against
-                    the committed agreement hash, checks the buyer signature and
+                    the committed checkout hash, checks the buyer signature and
                     its own floors, approves its bond of twice the cumulative
                     value, and counter-signs. The buyer approves twice the
                     payment and submits the commit, which pulls both bonds. The
@@ -268,7 +268,7 @@ export function OriginationSequenceFigure({
                     resolves the process and counts the usage. Two refusals end
                     the handshake before anything is committed: the buyer&apos;s
                     own gate refuses to sign a non-conforming agreement, and the
-                    seller throws on an agreement-hash or signature mismatch.
+                    seller throws on an checkout-hash or signature mismatch.
                 </>
             }
             caption={
@@ -277,7 +277,7 @@ export function OriginationSequenceFigure({
                     twice before either: once when the buyer&apos;s own gate finds an
                     agreement that does not conform to its specs, and once when the
                     seller&apos;s re-hash of that agreement fails to reproduce the
-                    committed <code>agreementHash</code>.
+                    committed <code>checkoutHash</code>.
                 </>
             }
         >

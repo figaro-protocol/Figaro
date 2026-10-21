@@ -74,7 +74,7 @@ contract ReentrancyAdversarialTest is Test {
             currency: address(token),
             payment: payment,
             expectedCumulativeValue: payment,
-            agreementHash: keccak256("reentry-agreement"),
+            checkoutHash: keccak256("reentry-agreement"),
             salt: 1,
             deadline: block.timestamp + 1 hours
         });

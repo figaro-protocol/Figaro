@@ -5,7 +5,7 @@
  * agreement terms, shared by every surface that asks a party to review
  * before signing or committing.
  *
- * The wallet prompt shows only the 32-byte agreementHash; this component
+ * The wallet prompt shows only the 32-byte checkoutHash; this component
  * renders the terms that hash to it — parties, payment, line items,
  * consent documents, every clause — next to the hash itself, so
  * the reviewer can verify "the hash I'm about to bind to corresponds to
@@ -54,7 +54,7 @@ export function commerceLineItems(agreement: Agreement | null): Array<{
     // commerce-equivalent clause gets the same rendering. All such clauses are
     // flattened (not just the first): the table is a readability layer, and the
     // exhaustive JSON dump below is what guarantees nothing signed is hidden.
-    return agreement.sections.flatMap((s) => {
+    return agreement.clauses.flatMap((s) => {
         const items = s.data?.lineItems;
         if (!Array.isArray(items)) return [];
         return items.map((item: Record<string, unknown>) => ({
@@ -77,13 +77,13 @@ export function commerceLineItems(agreement: Agreement | null): Array<{
  * this dump is the guarantee that no author-controlled key (an extra field on
  * a commerce clause, a second `lineItems`-bearing clause) can suppress
  * merkle-committed content from the review. Do NOT filter by clause shape:
- * the whole `clauseEntry.data` is bound into `agreementHash`
+ * the whole `clauseEntry.data` is bound into `checkoutHash`
  * (`getClauseDataBytes` hashes every key), so the whole `clauseEntry.data` is
  * shown.
  */
 export function fullDumpClauses(agreement: Agreement | null): AgreementClause[] {
     if (!agreement) return [];
-    return agreement.sections;
+    return agreement.clauses;
 }
 
 /** Clauses whose clause declares the `consent` ARTICLE — the spec's own
@@ -91,7 +91,7 @@ export function fullDumpClauses(agreement: Agreement | null): AgreementClause[] 
  *  gets the same notice. */
 function consentClauses(agreement: Agreement | null): AgreementClause[] {
     if (!agreement) return [];
-    return agreement.sections.filter((s) => getClauseSpec(s.clause)?.block?.design.article === "consent");
+    return agreement.clauses.filter((s) => getClauseSpec(s.clause)?.block?.design.article === "consent");
 }
 
 /** A described value token, linkified when it is a fetchable locator so the
@@ -118,7 +118,7 @@ export function AgreementReview({ commitment, agreement }: Props) {
             {!hasAgreement && (
                 <div className="rounded border border-warning/30 bg-warning/10 px-3 py-2 text-xs text-warning-fg">
                     ⚠ The full agreement document isn&apos;t available locally. Verify the
-                    <code className="font-mono mx-1">agreementHash</code> below against the source you trust
+                    <code className="font-mono mx-1">checkoutHash</code> below against the source you trust
                     before continuing.
                 </div>
             )}
@@ -169,7 +169,7 @@ export function AgreementReview({ commitment, agreement }: Props) {
             {/* Consent terms — the /faq framing, verbatim register:
                 consent is an AGREEMENT concern (the assembly composes a
                 consent clause and affixes its documents to the trade);
-                the signature over the agreementHash IS the recorded
+                the signature over the checkoutHash IS the recorded
                 acceptance — no separate ceremony, no checkbox. */}
             {consented.length > 0 && (
                 <section data-testid="preview-consent-terms">
@@ -178,7 +178,7 @@ export function AgreementReview({ commitment, agreement }: Props) {
                         <p>
                             This agreement composes a consent clause and affixes its
                             documents to the trade. Your signature over the{" "}
-                            <code className="font-mono">agreementHash</code> cryptographically
+                            <code className="font-mono">checkoutHash</code> cryptographically
                             binds your acceptance of each document listed below — consent as
                             an agreement term, the pattern the European Data Protection Board
                             recommends for blockchains (Guidelines 02/2025): the documents stay
@@ -223,14 +223,14 @@ export function AgreementReview({ commitment, agreement }: Props) {
 
             {/* Provenance — the registered agreement this order instantiates and
                 the assembly's composition root, both committed under the
-                agreementHash as the provenance leaf. */}
+                checkoutHash as the provenance leaf. */}
             {agreement?.provenance && (
                 <section data-testid="preview-provenance">
                     <h3 className="text-xs font-semibold text-ink-muted mb-2">Provenance</h3>
                     <dl className="grid grid-cols-[140px_1fr] gap-y-1 text-xs">
-                        <dt className="text-ink-muted">Agreement key</dt>
-                        <dd className="font-mono text-ink-primary break-all" data-testid="preview-provenance-agreement-key">
-                            {agreement.provenance.agreementKey}
+                        <dt className="text-ink-muted">Agreement hash</dt>
+                        <dd className="font-mono text-ink-primary break-all" data-testid="preview-provenance-agreement-hash">
+                            {agreement.provenance.agreementHash}
                         </dd>
                         <dt className="text-ink-muted">Composition root</dt>
                         <dd className="font-mono text-ink-primary break-all" data-testid="preview-provenance-composition-hash">
@@ -243,10 +243,10 @@ export function AgreementReview({ commitment, agreement }: Props) {
             {/* Hash */}
             <section className="border-t border-default pt-4">
                 <h3 className="text-xs font-semibold text-ink-muted mb-2">
-                    agreementHash (signed value)
+                    checkoutHash (signed value)
                 </h3>
-                <p className="font-mono text-xs text-ink-primary break-all bg-subtle border border-default rounded p-2" data-testid="preview-agreement-hash">
-                    {commitment.agreementHash}
+                <p className="font-mono text-xs text-ink-primary break-all bg-subtle border border-default rounded p-2" data-testid="preview-checkout-hash">
+                    {commitment.checkoutHash}
                 </p>
                 <p className="text-xs text-ink-muted mt-1">
                     This is the exact 32-byte value the signatures bind to. Proceed only if it matches the agreement above.

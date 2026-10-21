@@ -4,11 +4,11 @@
 //
 // The coordinator owns no storage. All role checks are reads from the linked
 // FigaroCore instance (no new FigaroCore state). Every runtime attestation carries
-// a merkle inclusion proof against the signed `agreementHash` — the call reverts
-// unless the caller's sectionHash and proof open to a committed clause. There is
+// a merkle inclusion proof against the signed `checkoutHash` — the call reverts
+// unless the caller's clauseDataHash and proof open to a committed clause. There is
 // no on-chain clause-content validator; well-formedness is an off-chain concern.
-// The coordinator takes only fingerprints (`sectionHash`, `contentRef`), never
-// preimages, so a private section's plaintext never touches calldata.
+// The coordinator takes only fingerprints (`clauseDataHash`, `contentRef`), never
+// preimages, so a private clause's plaintext never touches calldata.
 //
 // Rules are organized into two groups:
 //   A) Role-gate invariants on attestAsBuyer (takes a Commitment struct; caller
@@ -22,7 +22,7 @@
 // Foundry-covered invariants NOT re-proven here:
 //   • contentRef emitted verbatim from the caller → test_contentRefIsKeccakOfContent
 //   • invalid inclusion proof → revert → test_attestAsSeller_revertsOnClauseNotInAgreement
-//     / test_attestAsBuyer_revertsOnSectionDataMismatch (the `sectionHash`/`proof`
+//     / test_attestAsBuyer_revertsOnClauseDataMismatch (the `clauseDataHash`/`proof`
 //     route through OZ `MerkleProof.verify` in `_verifyInclusion`; any successful
 //     attestation must have opened the proof).
 
@@ -52,7 +52,7 @@ rule nonBuyerCannotAttestAsBuyer(
     CommitmentTypes.Commitment c,
     bytes32 clauseId,
     uint8   stage,
-    bytes32 sectionHash,
+    bytes32 clauseDataHash,
     bytes32[] proof,
     bytes32 contentRef
 ) {
@@ -60,7 +60,7 @@ rule nonBuyerCannotAttestAsBuyer(
 
     require e.msg.sender != c.buyer;
 
-    attestAsBuyer@withrevert(e, c, clauseId, stage, sectionHash, proof, contentRef);
+    attestAsBuyer@withrevert(e, c, clauseId, stage, clauseDataHash, proof, contentRef);
 
     assert lastReverted,
         "attestAsBuyer must revert when caller is not the commitment's buyer";
@@ -76,13 +76,13 @@ rule successfulBuyerAttestationImpliesBuyer(
     CommitmentTypes.Commitment c,
     bytes32 clauseId,
     uint8   stage,
-    bytes32 sectionHash,
+    bytes32 clauseDataHash,
     bytes32[] proof,
     bytes32 contentRef
 ) {
     env e;
 
-    attestAsBuyer@withrevert(e, c, clauseId, stage, sectionHash, proof, contentRef);
+    attestAsBuyer@withrevert(e, c, clauseId, stage, clauseDataHash, proof, contentRef);
     bool reverted = lastReverted;
 
     assert !reverted => e.msg.sender == c.buyer,

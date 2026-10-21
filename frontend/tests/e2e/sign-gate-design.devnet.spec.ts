@@ -41,7 +41,7 @@ import {
     reconstructOrdersFromAssembly,
     specDesignFills,
     validateCommitmentAgreement,
-    computeAgreementHash,
+    computeCheckoutHash,
     buildCommitment,
     type Agreement,
     type Commitment,
@@ -157,7 +157,7 @@ test.describe('the sign gate reads the design an agreement names (devnet)', () =
                     } catch {
                         continue; // the walk itself refuses (a pinned denomination forged) — not this case
                     }
-                    const check = validateCommitmentAgreement(built.order.agreement, built.order.agreementHash, specSource(), built.order.commitment, found.hydrated);
+                    const check = validateCommitmentAgreement(built.order.agreement, built.order.checkoutHash, specSource(), built.order.commitment, found.hydrated);
                     const designer = check.issues.filter((i) => i.path === field && /designer/.test(i.message));
                     if (designer.length === 0) continue;
                     const onlyDesigner = designer.length === check.issues.length;
@@ -179,8 +179,8 @@ test.describe('the sign gate reads the design an agreement names (devnet)', () =
         const unread = forgedCase!.order.agreement;
         const unanchored = keccak256(toHex(`sign-gate-design:${Date.now()}`));
         const { order: cleanOrder } = await rootOrder(forgedCase!.found, {});
-        const unreadAgreement: Agreement = { ...cleanOrder.agreement, provenance: { agreementKey: cleanOrder.agreement.provenance!.agreementKey, compositionHash: unanchored } };
-        const unreadCommitment: Commitment = { ...cleanOrder.commitment, agreementHash: computeAgreementHash(unreadAgreement) };
+        const unreadAgreement: Agreement = { ...cleanOrder.agreement, provenance: { agreementHash: cleanOrder.agreement.provenance!.agreementHash, compositionHash: unanchored } };
+        const unreadCommitment: Commitment = { ...cleanOrder.commitment, checkoutHash: computeCheckoutHash(unreadAgreement) };
         expect(unread.provenance?.compositionHash).toBe(forgedCase!.found.compositionHash);
 
         // The seller binds both assemblies the payloads name — its own act,
@@ -239,14 +239,14 @@ test.describe('the sign gate reads the design an agreement names (devnet)', () =
         // with one clause of its design removed and rehashed, preferring a
         // clause whose absence is the order's only refusal.
         let dropped: { clauseKey: Hex; agreement: Agreement; commitment: Commitment; onlyMissing: boolean } | undefined;
-        for (const section of cleanOrder.agreement.sections) {
-            const agreement: Agreement = { ...cleanOrder.agreement, sections: cleanOrder.agreement.sections.filter((s) => s !== section) };
-            const commitment: Commitment = { ...cleanOrder.commitment, agreementHash: computeAgreementHash(agreement) };
-            const check = validateCommitmentAgreement(agreement, commitment.agreementHash, specSource(), commitment, forgedCase!.found.hydrated);
-            const missing = check.issues.filter((i) => i.clause.toLowerCase() === section.clause.toLowerCase() && /does not carry this clause/.test(i.message));
+        for (const clauseEntry of cleanOrder.agreement.clauses) {
+            const agreement: Agreement = { ...cleanOrder.agreement, clauses: cleanOrder.agreement.clauses.filter((s) => s !== clauseEntry) };
+            const commitment: Commitment = { ...cleanOrder.commitment, checkoutHash: computeCheckoutHash(agreement) };
+            const check = validateCommitmentAgreement(agreement, commitment.checkoutHash, specSource(), commitment, forgedCase!.found.hydrated);
+            const missing = check.issues.filter((i) => i.clause.toLowerCase() === clauseEntry.clause.toLowerCase() && /does not carry this clause/.test(i.message));
             if (missing.length === 0) continue;
             const onlyMissing = missing.length === check.issues.length;
-            if (!dropped || (onlyMissing && !dropped.onlyMissing)) dropped = { clauseKey: section.clause as Hex, agreement, commitment, onlyMissing };
+            if (!dropped || (onlyMissing && !dropped.onlyMissing)) dropped = { clauseKey: clauseEntry.clause as Hex, agreement, commitment, onlyMissing };
         }
         expect(dropped, 'the gate refuses the order with a clause of its design dropped').toBeDefined();
         const droppedClauseId = specSource().get(dropped!.clauseKey)?.clauseId ?? dropped!.clauseKey;

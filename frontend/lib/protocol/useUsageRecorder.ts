@@ -8,7 +8,7 @@
  * The three calls — a clause, a registered agreement, an assembly — are
  * PERMISSIONLESS by design: UsageCounter re-verifies every fact from state
  * the chain already holds (order RESOLVED + merkle proof against the signed
- * agreementHash; for an assembly, the agreement's membership under its
+ * checkoutHash; for an assembly, the agreement's membership under its
  * composition root too), so nothing about the caller is trusted.
  * The resolve capability plans these before the buyer resolves
  * (`planUsageRecords`, from the counter's own facts read by
@@ -33,7 +33,7 @@ type Hex = `0x${string}`;
 
 /** One usage write, by the family it credits — the counter's three entry
  *  points. `proof` is the provenance leaf's (agreement, assembly) or the
- *  clause leaf's (clause) sorted-pair proof under the order's agreementHash. */
+ *  clause leaf's (clause) sorted-pair proof under the order's checkoutHash. */
 export type UsageWrite =
     | {
           kind: "clause";
@@ -48,7 +48,7 @@ export type UsageWrite =
     | {
           kind: "agreement";
           order: Commitment;
-          /** The registered agreement's key (`AgreementRegistry`). */
+          /** The registered agreement's hash (`AgreementRegistry`). */
           key: Hex;
           /** The composition root the provenance leaf names beside it. */
           compositionHash: Hex;
@@ -59,8 +59,8 @@ export type UsageWrite =
           order: Commitment;
           /** The assembly's compositionHash. */
           key: Hex;
-          /** The agreement's agreement key and the hash of its entry bytes. */
-          agreementKey: Hex;
+          /** The agreement's agreement hash and the hash of its entry bytes. */
+          agreementHash: Hex;
           slotContentHash: Hex;
           proof: readonly Hex[];
           /** The agreement leaf's proof under `key`. */
@@ -102,7 +102,7 @@ export function useUsageRecorder() {
                 return {
                     ...base,
                     functionName: "recordAssemblyUsage" as const,
-                    args: [write.order, write.key, write.agreementKey, write.slotContentHash, [...write.proof], [...write.membershipProof]] as const,
+                    args: [write.order, write.key, write.agreementHash, write.slotContentHash, [...write.proof], [...write.membershipProof]] as const,
                 };
         }
     };

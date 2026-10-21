@@ -323,7 +323,7 @@ test.describe('VALUE-ADDED CHAIN — one buyer binds three sellers; one resolve 
         // The buyer signs ALL THREE orders through the SAME pre-sign gate every
         // order uses (no checkout bypass): the walk signs + relays each sub-order
         // to its bound seller first, the root last (its relay is the share panel).
-        // One confirm per distinct displayed agreementHash — modal instances can
+        // One confirm per distinct displayed checkoutHash — modal instances can
         // replace each other faster than a hidden-state observation.
         await confirmAgreementPreviews(page, 3);
         await page.getByTestId('send-commitment-xmtp').click();

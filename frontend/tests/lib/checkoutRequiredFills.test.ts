@@ -199,7 +199,7 @@ describe("unfilledRequiredFills — a value already composed on the assembly cou
     it("a term the designer valued on the assembly is not asked of the buyer again", () => {
         const composed = hydrated("tradelens.json");
         // The designer's value sits in order-0's registered agreement.
-        const order0 = composed.agreements[composed.assembly.agreements[0].agreementKey.toLowerCase() as `0x${string}`];
+        const order0 = composed.agreements[composed.assembly.agreements[0].agreementHash.toLowerCase() as `0x${string}`];
         order0.clauses[keyOf("figaro-acceptance-criteria")] = { acceptanceBasis: "AQL 2.5 per ISO 2859-1" };
         const groups = deriveAgreementGroups({
             pickedAssembly: { hydratedAssembly: composed, counterpartyBindings: [] },

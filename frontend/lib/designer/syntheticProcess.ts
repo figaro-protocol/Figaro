@@ -6,7 +6,7 @@
  * (localStorage) so that the existing topology derivation and lens summaries
  * pick them up without any code path changes.
  *
- * IDs are deterministically generated within a session by counter; agreement
+ * IDs are deterministically generated within a session by counter; checkout
  * hashes are computed from the agreement contents the same way live commits
  * compute them.
  */
@@ -52,7 +52,7 @@ export function startSyntheticSession(): SyntheticProcessSession {
 export interface CreatedOrder {
     order: Order;
     /** Persists the agreement to localStorage so loadAgreement(...) finds it. */
-    agreementHash: Hex;
+    checkoutHash: Hex;
 }
 
 /**
@@ -96,7 +96,7 @@ export function buildSyntheticOrder(params: {
 }): CreatedOrder {
     // The clause map IS the seller's pinned assembly, valued for this order —
     // buildOrderAgreement projects it, names no clause.
-    const { agreement, agreementHash } = buildOrderAgreement(
+    const { agreement, checkoutHash } = buildOrderAgreement(
         params.buyer,
         params.seller,
         params.clauseFields,
@@ -113,7 +113,7 @@ export function buildSyntheticOrder(params: {
         buyer: params.buyer,
         seller: params.seller,
         currency: params.currency,
-        agreementHash,
+        checkoutHash,
         // First-class topology edges (the topology clause's data) — read directly by
         // the topology deriver, never recovered from the agreement.
         parentOrderHashes: params.parentOrderHashes ?? [],
@@ -131,7 +131,7 @@ export function buildSyntheticOrder(params: {
         deadline: BigInt(Math.floor(Date.now() / 1000) + 3600),
     };
 
-    return { order, agreementHash };
+    return { order, checkoutHash };
 }
 
 export function createSyntheticRootOrder(
@@ -200,7 +200,7 @@ export type MergeResult =
  *
  * Rebuilds the child's agreement with the extended parent list, recomputes
  * its hash, and persists. The child's order id is preserved (acts as a
- * stable label in synthetic mode); only `agreementHash` changes.
+ * stable label in synthetic mode); only `checkoutHash` changes.
  */
 export function mergeSyntheticParent(
     child: Order,
@@ -238,7 +238,7 @@ export function mergeSyntheticParent(
     const nextParents = [...existingParents, newParentId];
     // Topology is first-class on the order (parentOrderHashes below); the
     // agreement projects the node's assembly clauses.
-    const { agreement: newAgreement, agreementHash: newAgreementHash } = buildOrderAgreement(
+    const { agreement: newAgreement, checkoutHash: newCheckoutHash } = buildOrderAgreement(
         child.buyer as `0x${string}`,
         child.seller as `0x${string}`,
         defaultNodeClauseFields(),
@@ -248,7 +248,7 @@ export function mergeSyntheticParent(
 
     return {
         ok: true,
-        child: { ...child, agreementHash: newAgreementHash, parentOrderHashes: nextParents },
+        child: { ...child, checkoutHash: newCheckoutHash, parentOrderHashes: nextParents },
     };
 }
 

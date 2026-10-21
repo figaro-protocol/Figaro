@@ -12,7 +12,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
-    agreementKeyOf,
+    agreementHashOf,
     assemblyCompositionHash,
     assertAgreementSignable,
     buildAssembly,
@@ -21,7 +21,7 @@ import {
     withholdClauseContent,
     buildOrderAgreement,
     canonicalize,
-    computeAgreementHash,
+    computeCheckoutHash,
     publicForm,
     clauseByField,
     hashClauseData,
@@ -69,40 +69,40 @@ function commerceData() {
 
 describe("assertAgreementSignable — the shared sign gate", () => {
     it("passes a conforming agreement whose hash matches its merkle root", () => {
-        const { agreement, agreementHash } = buildOrderAgreement(BUYER, SELLER, {
+        const { agreement, checkoutHash } = buildOrderAgreement(BUYER, SELLER, {
             [keyOf("figaro-commerce")]: commerceData(),
             [keyOf("figaro-applicable-law")]: { applicableLaw: "US-NY" },
         }, SPECS);
-        expect(() => assertAgreementSignable(agreement, agreementHash, SPECS, STRUCT, null)).not.toThrow();
+        expect(() => assertAgreementSignable(agreement, checkoutHash, SPECS, STRUCT, null)).not.toThrow();
     });
 
     it("signs the provenance leaf under the root and refuses a provenance that is not two 32-byte keys", () => {
         const { agreement } = buildOrderAgreement(BUYER, SELLER, { [keyOf("figaro-commerce")]: commerceData() }, SPECS);
         const registered = { clauses: { [keyOf("figaro-commerce")]: {} } };
-        const agreementKey = agreementKeyOf(registered);
+        const agreementHash = agreementHashOf(registered);
         const design: HydratedAssembly = {
-            assembly: { agreements: [{ id: "order-0", agreementKey, clauses: {} }] },
-            agreements: { [agreementKey.toLowerCase() as `0x${string}`]: registered },
+            assembly: { agreements: [{ id: "order-0", agreementHash, clauses: {} }] },
+            agreements: { [agreementHash.toLowerCase() as `0x${string}`]: registered },
         };
-        const named = { ...agreement, provenance: { agreementKey, compositionHash: assemblyCompositionHash(design.assembly) } };
-        expect(() => assertAgreementSignable(named, computeAgreementHash(named), SPECS, STRUCT, design)).not.toThrow();
+        const named = { ...agreement, provenance: { agreementHash, compositionHash: assemblyCompositionHash(design.assembly) } };
+        expect(() => assertAgreementSignable(named, computeCheckoutHash(named), SPECS, STRUCT, design)).not.toThrow();
         // The root without the provenance leaf is not this agreement's.
-        expect(() => assertAgreementSignable(named, computeAgreementHash(agreement), SPECS, STRUCT, design)).toThrow(/merkle/);
+        expect(() => assertAgreementSignable(named, computeCheckoutHash(agreement), SPECS, STRUCT, design)).toThrow(/merkle/);
         // An agreement naming a design no one read is refused.
-        expect(() => assertAgreementSignable(named, computeAgreementHash(named), SPECS, STRUCT, null)).toThrow(/was not read/);
-        const malformed = { ...agreement, provenance: { agreementKey: `0x${"6f".repeat(32)}`, compositionHash: "0x5e" } as const };
-        expect(() => assertAgreementSignable(malformed, computeAgreementHash(agreement), SPECS, STRUCT, null))
+        expect(() => assertAgreementSignable(named, computeCheckoutHash(named), SPECS, STRUCT, null)).toThrow(/was not read/);
+        const malformed = { ...agreement, provenance: { agreementHash: `0x${"6f".repeat(32)}`, compositionHash: "0x5e" } as const };
+        expect(() => assertAgreementSignable(malformed, computeCheckoutHash(agreement), SPECS, STRUCT, null))
             .toThrow(/32-byte/);
     });
 
     it("throws on a clause violating its clause spec, naming clause + path", () => {
         // Prose fails applicable-law's jurisdiction-token pattern — the exact
         // shape a counter-signer must refuse even when the hash matches.
-        const { agreement, agreementHash } = buildOrderAgreement(BUYER, SELLER, {
+        const { agreement, checkoutHash } = buildOrderAgreement(BUYER, SELLER, {
             [keyOf("figaro-commerce")]: commerceData(),
             [keyOf("figaro-applicable-law")]: { applicableLaw: "State of New York, USA" },
         }, SPECS);
-        expect(() => assertAgreementSignable(agreement, agreementHash, SPECS, STRUCT, null))
+        expect(() => assertAgreementSignable(agreement, checkoutHash, SPECS, STRUCT, null))
             .toThrow(/figaro-applicable-law \$\.applicableLaw/);
     });
 
@@ -112,18 +112,18 @@ describe("assertAgreementSignable — the shared sign gate", () => {
         }, SPECS);
         const wrongHash = `0x${"ab".repeat(32)}` as `0x${string}`;
         expect(() => assertAgreementSignable(agreement, wrongHash, SPECS, STRUCT, null))
-            .toThrow(/\(merkle\) agreementHash/);
+            .toThrow(/\(merkle\) checkoutHash/);
     });
 
     it("reports every issue through validateCommitmentAgreement, not just the first", () => {
-        const { agreement, agreementHash } = buildOrderAgreement(BUYER, SELLER, {
+        const { agreement, checkoutHash } = buildOrderAgreement(BUYER, SELLER, {
             [keyOf("figaro-commerce")]: commerceData(),
             [keyOf("figaro-applicable-law")]: {
                 applicableLaw: "State of New York, USA",
                 language: "not-a-language-code!",
             },
         }, SPECS);
-        const check = validateCommitmentAgreement(agreement, agreementHash, SPECS, STRUCT, null);
+        const check = validateCommitmentAgreement(agreement, checkoutHash, SPECS, STRUCT, null);
         expect(check.ok).toBe(false);
         const paths = check.issues.map((i) => `${i.clause} ${i.path}`);
         expect(paths.some((p) => p.includes("applicableLaw"))).toBe(true);
@@ -138,12 +138,12 @@ describe("assertAgreementSignable — the shared sign gate", () => {
         // The attack: keep the benign `data` a review renders, and ALSO attach a
         // `dataHash` fingerprint of hidden content, which the merkle leaf would
         // sign verbatim — sign one thing, show another.
-        const clauseEntries = agreement.sections.map((s) =>
+        const clauseEntries = agreement.clauses.map((s) =>
             s.clause === keyOf("figaro-applicable-law")
                 ? { ...s, dataHash: `0x${"ee".repeat(32)}` as `0x${string}` }
                 : s,
         );
-        const evil = { ...agreement, sections: clauseEntries };
+        const evil = { ...agreement, clauses: clauseEntries };
         const dual = clauseEntries.find((s) => s.clause === keyOf("figaro-applicable-law"));
         // Refused at the hashing locus …
         expect(() => hashClauseData(dual!)).toThrow(/both plaintext data and a dataHash/);
@@ -165,72 +165,72 @@ describe("the sign gate's denomination chain — pin == leaf == struct", () => {
         buildOrderAgreement(BUYER, SELLER, clauses, SPECS);
 
     it("passes when the commerce leaf equals the commitment's currency", () => {
-        const { agreement, agreementHash } = build({ [keyOf("figaro-commerce")]: commerceData() });
-        expect(() => assertAgreementSignable(agreement, agreementHash, SPECS, STRUCT, null)).not.toThrow();
+        const { agreement, checkoutHash } = build({ [keyOf("figaro-commerce")]: commerceData() });
+        expect(() => assertAgreementSignable(agreement, checkoutHash, SPECS, STRUCT, null)).not.toThrow();
     });
 
     it("throws when the leaf and the struct name different tokens", () => {
-        const { agreement, agreementHash } = build({ [keyOf("figaro-commerce")]: commerceData() });
-        expect(() => assertAgreementSignable(agreement, agreementHash, SPECS, OTHER_STRUCT, null))
+        const { agreement, checkoutHash } = build({ [keyOf("figaro-commerce")]: commerceData() });
+        expect(() => assertAgreementSignable(agreement, checkoutHash, SPECS, OTHER_STRUCT, null))
             .toThrow(/figaro-commerce currency: the signed term names .* contradicts it/);
     });
 
     it("compares the leaf case-insensitively — an address is not a string", () => {
-        const { agreement, agreementHash } = build({
+        const { agreement, checkoutHash } = build({
             [keyOf("figaro-commerce")]: { ...commerceData(), currency: "0x000000000000000000000000000000000000000A" },
         });
         expect(() => assertAgreementSignable(
-            agreement, agreementHash, SPECS, { currency: "0x000000000000000000000000000000000000000a", payment: 1n }, null,
+            agreement, checkoutHash, SPECS, { currency: "0x000000000000000000000000000000000000000a", payment: 1n }, null,
         )).not.toThrow();
     });
 
     it("passes an unpinned assembly: the commerce leaf alone carries the term", () => {
-        const { agreement, agreementHash } = build({
+        const { agreement, checkoutHash } = build({
             [keyOf("figaro-commerce")]: commerceData(),
             [keyOf("figaro-topology")]: { parentOrderHashes: [] },
         });
-        const check = validateCommitmentAgreement(agreement, agreementHash, SPECS, STRUCT, null);
+        const check = validateCommitmentAgreement(agreement, checkoutHash, SPECS, STRUCT, null);
         expect(check.ok).toBe(true);
     });
 
     it("passes a pinned assembly whose pin, leaf and struct all match", () => {
-        const { agreement, agreementHash } = build({
+        const { agreement, checkoutHash } = build({
             [keyOf("figaro-commerce")]: commerceData(),
             [keyOf("figaro-utility-token")]: { currency: CURRENCY },
         });
-        expect(() => assertAgreementSignable(agreement, agreementHash, SPECS, STRUCT, null)).not.toThrow();
+        expect(() => assertAgreementSignable(agreement, checkoutHash, SPECS, STRUCT, null)).not.toThrow();
     });
 
     it("throws when the pin contradicts the commerce leaf", () => {
-        const { agreement, agreementHash } = build({
+        const { agreement, checkoutHash } = build({
             [keyOf("figaro-commerce")]: commerceData(),
             [keyOf("figaro-utility-token")]: { currency: OTHER_TOKEN },
         });
-        expect(() => assertAgreementSignable(agreement, agreementHash, SPECS, STRUCT, null))
+        expect(() => assertAgreementSignable(agreement, checkoutHash, SPECS, STRUCT, null))
             .toThrow(/figaro-utility-token currency: this assembly is denominated by design/);
     });
 
     it("throws when the payment leaf and the struct disagree — payment mirrors like currency", () => {
-        const { agreement, agreementHash } = build({ [keyOf("figaro-commerce")]: commerceData() });
+        const { agreement, checkoutHash } = build({ [keyOf("figaro-commerce")]: commerceData() });
         expect(() => assertAgreementSignable(
-            agreement, agreementHash, SPECS, { currency: CURRENCY, payment: 1000n }, null,
+            agreement, checkoutHash, SPECS, { currency: CURRENCY, payment: 1000n }, null,
         )).toThrow(/figaro-commerce payment: the signed term names 1 as the payment; the commitment payment 1000 contradicts it/);
     });
 
     it("reports a malformed payment leaf as its own spec failure, never a mismatch", () => {
-        const { agreement, agreementHash } = build({
+        const { agreement, checkoutHash } = build({
             [keyOf("figaro-commerce")]: { ...commerceData(), payment: "not-a-number" },
         });
-        const check = validateCommitmentAgreement(agreement, agreementHash, SPECS, STRUCT, null);
+        const check = validateCommitmentAgreement(agreement, checkoutHash, SPECS, STRUCT, null);
         expect(check.ok).toBe(false);
         expect(check.issues.some((i) => i.message.includes("commitment payment"))).toBe(false);
     });
 
     it("reports a missing leaf as the ordinary required-field failure, not a mismatch", () => {
-        const { agreement, agreementHash } = build({
+        const { agreement, checkoutHash } = build({
             [keyOf("figaro-commerce")]: { payment: "1", lineItems: [] },
         });
-        const check = validateCommitmentAgreement(agreement, agreementHash, SPECS, STRUCT, null);
+        const check = validateCommitmentAgreement(agreement, checkoutHash, SPECS, STRUCT, null);
         expect(check.ok).toBe(false);
         expect(check.issues).toHaveLength(1);
         expect(check.issues[0].message).toMatch(/required/i);
@@ -242,24 +242,24 @@ describe("projection — golden-vector byte-exactness", () => {
         readFileSync(path.resolve(__dirname, "fixtures/promotion-golden-vectors.json"), "utf8"),
     ) as {
         agreementProjection: {
-            defaults: { canonicalAgreement: string; agreementHash: string };
-            processLog: { canonicalAgreement: string; agreementHash: string };
+            defaults: { canonicalAgreement: string; checkoutHash: string };
+            processLog: { canonicalAgreement: string; checkoutHash: string };
         };
         assembly: { canonicalJson: string; compositionHash: string; agreements: Record<string, string> };
     };
 
     it("spec-default injection reproduces the frozen agreement + hash", () => {
-        const { agreement, agreementHash } = buildOrderAgreement(BUYER, SELLER, {
+        const { agreement, checkoutHash } = buildOrderAgreement(BUYER, SELLER, {
             [keyOf("figaro-commerce")]: commerceData(),
             [keyOf("figaro-topology")]: { parentOrderHashes: [] },
             [keyOf("figaro-applicable-law")]: { applicableLaw: "US-NY" },
         }, SPECS);
         expect(canonicalize(agreement)).toBe(vectors.agreementProjection.defaults.canonicalAgreement);
-        expect(agreementHash).toBe(vectors.agreementProjection.defaults.agreementHash);
+        expect(checkoutHash).toBe(vectors.agreementProjection.defaults.checkoutHash);
     });
 
     it("the process-log empty anchor reproduces the frozen agreement + hash", () => {
-        const { agreement, agreementHash } = buildOrderAgreement(BUYER, SELLER, {
+        const { agreement, checkoutHash } = buildOrderAgreement(BUYER, SELLER, {
             [keyOf("figaro-commerce")]: commerceData(),
             [keyOf("figaro-topology")]: { parentOrderHashes: [] },
             [keyOf("figaro-merchant-process")]: {},
@@ -267,7 +267,7 @@ describe("projection — golden-vector byte-exactness", () => {
         expect(canonicalize(agreement)).toBe(
             vectors.agreementProjection.processLog.canonicalAgreement,
         );
-        expect(agreementHash).toBe(vectors.agreementProjection.processLog.agreementHash);
+        expect(checkoutHash).toBe(vectors.agreementProjection.processLog.checkoutHash);
     });
 
     it("the mandatory pick + relabeling + assembly terms reproduce the frozen assembly + compositionHash", () => {
@@ -351,7 +351,7 @@ describe("publicForm — the public/private disposition seam", () => {
         version: "a1" as const,
         buyer: BUYER,
         seller: SELLER,
-        sections: [
+        clauses: [
             { clause: KEYS["pub-clause"], data: { f0: "open", f1: "map" } },
             { clause: KEYS["priv-clause"], data: { f0: "secret-coordinate" } },
         ],
@@ -359,28 +359,28 @@ describe("publicForm — the public/private disposition seam", () => {
 
     it("withholds a private clauseEntry, keeps a public one plaintext", () => {
         const withheld = publicForm(agreement, specs);
-        const pub = withheld.sections.find((s) => s.clause === KEYS["pub-clause"])!;
-        const priv = withheld.sections.find((s) => s.clause === KEYS["priv-clause"])!;
+        const pub = withheld.clauses.find((s) => s.clause === KEYS["pub-clause"])!;
+        const priv = withheld.clauses.find((s) => s.clause === KEYS["priv-clause"])!;
         expect(pub.data).toBeDefined(); // public coordination commons stays open
         expect(priv.data).toBeUndefined(); // paid-edge plaintext removed
         expect(priv.dataHash).toBe(hashClauseData({ clause: KEYS["priv-clause"], data: { f0: "secret-coordinate" } }));
     });
 
-    it("leaves the agreementHash unchanged — the withheld leaf is identical", () => {
-        expect(computeAgreementHash(publicForm(agreement, specs))).toBe(computeAgreementHash(agreement));
+    it("leaves the checkoutHash unchanged — the withheld leaf is identical", () => {
+        expect(computeCheckoutHash(publicForm(agreement, specs))).toBe(computeCheckoutHash(agreement));
     });
 
     it("withholds a clause whose clause spec is not loaded (fail-closed)", () => {
         const unknown = {
             ...agreement,
-            sections: [{ clause: KEYS["unknown-clause"], data: { f0: "could-be-private" } }],
+            clauses: [{ clause: KEYS["unknown-clause"], data: { f0: "could-be-private" } }],
         };
         // Unknown spec → WITHHELD: a permissionlessly-registered clause could be a
         // PRIVATE one, and keeping it plaintext would leak on any cold-cache pin
         // (notably the receiver re-pin, which never loaded the clause). The pin
         // caller warms the specs first (`warmAgreementSpecs`), so a known public
         // clause is not over-redacted; an unknown one fails closed here.
-        const projected = publicForm(unknown, specs).sections[0];
+        const projected = publicForm(unknown, specs).clauses[0];
         expect(projected.data).toBeUndefined();
         expect(projected.dataHash).toBe(
             hashClauseData({ clause: KEYS["unknown-clause"], data: { f0: "could-be-private" } }),
@@ -489,8 +489,8 @@ describe("buildAssembly — the mandatory article's pick: a registered agreement
             specs: base,
         });
         const [root, child] = assembly.agreements;
-        expect(Object.keys(agreements[root.agreementKey].clauses).sort()).toEqual(Object.keys(MANDATORY.clauses).sort());
-        expect(agreements[child.agreementKey].clauses).toEqual({ ...MANDATORY.clauses, [keyOf("figaro-geolocation")]: {} });
+        expect(Object.keys(agreements[root.agreementHash].clauses).sort()).toEqual(Object.keys(MANDATORY.clauses).sort());
+        expect(agreements[child.agreementHash].clauses).toEqual({ ...MANDATORY.clauses, [keyOf("figaro-geolocation")]: {} });
     });
 
     it("refuses an agreement with no pick, naming the agreement", () => {
@@ -518,12 +518,12 @@ describe("buildAssembly — the mandatory article's pick: a registered agreement
         const specs = specSourceWithRegistrations(base, [fake]);
         const { assembly, agreements } = buildAssembly({ orders: ORDERS, clausesByOrderId: {}, mandatoryByOrderId: picks(), specs });
         for (const entry of assembly.agreements) {
-            expect(agreements[entry.agreementKey].clauses).not.toHaveProperty(fake.clauseKey);
+            expect(agreements[entry.agreementHash].clauses).not.toHaveProperty(fake.clauseKey);
         }
         // Picked, the stranger's agreement merges like any other.
         const theirs = { clauses: { [fake.clauseKey]: {}, [keyOf("figaro-topology")]: {} } };
         const picked = buildAssembly({ orders: ORDERS, clausesByOrderId: {}, mandatoryByOrderId: picks(theirs), specs });
-        const composed = picked.agreements[picked.assembly.agreements[0].agreementKey].clauses;
+        const composed = picked.agreements[picked.assembly.agreements[0].agreementHash].clauses;
         expect(composed).toHaveProperty(fake.clauseKey);
         expect(composed).not.toHaveProperty(keyOf("figaro-commerce"));
     });
@@ -549,7 +549,7 @@ describe("buildAssembly — the mandatory article's pick: a registered agreement
             mandatoryByOrderId: picks(),
             specs,
         });
-        const composed = agreements[assembly.agreements[0].agreementKey].clauses;
+        const composed = agreements[assembly.agreements[0].agreementHash].clauses;
         expect(composed).toHaveProperty(keyOf("figaro-geolocation"));
         expect(composed).not.toHaveProperty(fake.clauseKey);
     });
@@ -579,13 +579,13 @@ describe("buildAssembly — the mandatory article's pick: a registered agreement
         // Both agreements compose the same clauses, so they bind one agreement.
         expect(Object.keys(agreements)).toHaveLength(1);
         const [root, child] = assembly.agreements;
-        expect(root.agreementKey).toBe(child.agreementKey);
-        expect(agreements[root.agreementKey].clauses[keyOf("figaro-topology")]).toEqual({});
+        expect(root.agreementHash).toBe(child.agreementHash);
+        expect(agreements[root.agreementHash].clauses[keyOf("figaro-topology")]).toEqual({});
         expect(root.clauses).toEqual({ [keyOf("figaro-topology")]: { parentOrderHashes: [] } });
         expect(child.clauses).toEqual({ [keyOf("figaro-topology")]: { parentOrderHashes: ["order-0"] } });
-        expect(agreementKeyOf(agreements[root.agreementKey])).toBe(root.agreementKey);
+        expect(agreementHashOf(agreements[root.agreementHash])).toBe(root.agreementHash);
         // The agreement the pick yields is the pick itself: same key.
-        expect(root.agreementKey).toBe(agreementKeyOf(MANDATORY));
+        expect(root.agreementHash).toBe(agreementHashOf(MANDATORY));
     });
 
     it("binds a registered agreement as is, and refuses one lacking a clause of its pick", () => {
@@ -597,10 +597,10 @@ describe("buildAssembly — the mandatory article's pick: a registered agreement
             mandatoryByOrderId: picks(),
             specs: base,
         });
-        expect(assembly.agreements[1].agreementKey).toBe(agreementKeyOf(registered));
+        expect(assembly.agreements[1].agreementHash).toBe(agreementHashOf(registered));
         expect(assembly.agreements[1].clauses).toEqual({ [keyOf("figaro-topology")]: { parentOrderHashes: ["order-0"] } });
         // Only the newly composed agreement is returned to register.
-        expect(Object.keys(agreements)).toEqual([assembly.agreements[0].agreementKey]);
+        expect(Object.keys(agreements)).toEqual([assembly.agreements[0].agreementHash]);
         // A registered agreement missing a clause of its pick is refused…
         const lacking = { clauses: { [keyOf("figaro-commerce")]: {} } };
         expect(() => buildAssembly({
@@ -631,16 +631,16 @@ describe("buildOrderAgreement — every clause reads the spec its key names", ()
 
     it("the real key signs the real spec's defaults, whatever else is loaded", () => {
         const clauses = { [keyOf("figaro-applicable-law")]: { applicableLaw: "US-NY" } };
-        const { agreement, agreementHash } = buildOrderAgreement(BUYER, SELLER, clauses, specs);
-        const clauseEntry = agreement.sections.find((s) => s.clause === keyOf("figaro-applicable-law"))!;
+        const { agreement, checkoutHash } = buildOrderAgreement(BUYER, SELLER, clauses, specs);
+        const clauseEntry = agreement.clauses.find((s) => s.clause === keyOf("figaro-applicable-law"))!;
         expect(clauseEntry.data?.language).not.toBe("xx");
-        expect(agreementHash).toBe(buildOrderAgreement(BUYER, SELLER, clauses, real).agreementHash);
+        expect(checkoutHash).toBe(buildOrderAgreement(BUYER, SELLER, clauses, real).checkoutHash);
     });
 
     it("the lookalike's key signs the lookalike's defaults", () => {
         const { agreement } = buildOrderAgreement(BUYER, SELLER, { [fake.clauseKey]: { applicableLaw: "US-NY" } }, specs);
-        expect(agreement.sections[0].clause).toBe(fake.clauseKey);
-        expect(agreement.sections[0].data?.language).toBe("xx");
+        expect(agreement.clauses[0].clause).toBe(fake.clauseKey);
+        expect(agreement.clauses[0].data?.language).toBe("xx");
     });
 });
 
@@ -654,8 +654,8 @@ describe("composeOrderAgreement — one agreement's registered agreement, on its
             mandatoryByOrderId: { "synthetic-root": MANDATORY },
             specs: SPECS,
         });
-        expect(built.assembly.agreements[0].agreementKey).toBe(alone.agreementKey);
-        expect(built.agreements[alone.agreementKey]).toEqual(alone.composed);
+        expect(built.assembly.agreements[0].agreementHash).toBe(alone.agreementHash);
+        expect(built.agreements[alone.agreementHash]).toEqual(alone.composed);
     });
 
     it("merges the pick's clauses and keeps the composition value-free", () => {
@@ -669,7 +669,7 @@ describe("composeOrderAgreement — one agreement's registered agreement, on its
         expect(() => composeOrderAgreement({ clauses: { [keyOf("figaro-geolocation")]: {} }, specs: SPECS }))
             .toThrow(/no registered agreement picked in the mandatory article/);
         // The agreement a pick names: the mandatory clauses alone, composed with no pick.
-        expect(composeOrderAgreement({ clauses: MANDATORY.clauses, specs: SPECS }).agreementKey).toBe(agreementKeyOf(MANDATORY));
+        expect(composeOrderAgreement({ clauses: MANDATORY.clauses, specs: SPECS }).agreementHash).toBe(agreementHashOf(MANDATORY));
         expect(() => composeOrderAgreement({ clauses: {}, specs: SPECS })).toThrow(/no registered agreement picked/);
     });
 
@@ -685,48 +685,48 @@ describe("the sign gate's design check — the designer's values against the des
     const DESIGN_SPECS = specSourceFromFixtures(["figaro-commerce", "figaro-consent", "figaro-applicable-law"]);
     const DOCS = [{ documentHash: `0x${"d0".repeat(32)}`, documentVersion: "1.0.0", documentTitle: "Terms of Service" }];
     const registered = { clauses: { [keyOf("figaro-commerce")]: {}, [keyOf("figaro-consent")]: { documents: DOCS } } };
-    const agreementKey = agreementKeyOf(registered);
+    const agreementHash = agreementHashOf(registered);
     const design: HydratedAssembly = {
         assembly: {
             assemblyClauses: { [keyOf("figaro-applicable-law")]: { applicableLaw: "England-Wales" } },
-            agreements: [{ id: "order-0", agreementKey, clauses: {} }],
+            agreements: [{ id: "order-0", agreementHash, clauses: {} }],
         },
-        agreements: { [agreementKey.toLowerCase() as `0x${string}`]: registered },
+        agreements: { [agreementHash.toLowerCase() as `0x${string}`]: registered },
     };
     const compositionHash = assemblyCompositionHash(design.assembly);
-    const instantiate = (consent: Record<string, unknown>, law: Record<string, unknown>, provenance = { agreementKey, compositionHash }) => {
+    const instantiate = (consent: Record<string, unknown>, law: Record<string, unknown>, provenance = { agreementHash, compositionHash }) => {
         const { agreement } = buildOrderAgreement(BUYER, SELLER, {
             [keyOf("figaro-commerce")]: commerceData(),
             [keyOf("figaro-consent")]: consent,
             [keyOf("figaro-applicable-law")]: law,
         }, DESIGN_SPECS);
         const named = { ...agreement, provenance };
-        return { agreement: named, agreementHash: computeAgreementHash(named) };
+        return { agreement: named, checkoutHash: computeCheckoutHash(named) };
     };
 
     it("passes an agreement carrying the design's values", () => {
-        const { agreement, agreementHash } = instantiate({ documents: DOCS }, { applicableLaw: "England-Wales" });
-        expect(validateCommitmentAgreement(agreement, agreementHash, DESIGN_SPECS, STRUCT, design).ok).toBe(true);
+        const { agreement, checkoutHash } = instantiate({ documents: DOCS }, { applicableLaw: "England-Wales" });
+        expect(validateCommitmentAgreement(agreement, checkoutHash, DESIGN_SPECS, STRUCT, design).ok).toBe(true);
     });
 
     it("refuses a designer value a party changed, agreement-scoped and assembly-scoped alike", () => {
         const forged = [{ ...DOCS[0], documentHash: `0x${"ee".repeat(32)}` }];
         const a = instantiate({ documents: forged }, { applicableLaw: "England-Wales" });
-        expect(() => assertAgreementSignable(a.agreement, a.agreementHash, DESIGN_SPECS, STRUCT, design))
+        expect(() => assertAgreementSignable(a.agreement, a.checkoutHash, DESIGN_SPECS, STRUCT, design))
             .toThrow(/figaro-consent documents: .*designer/);
         const b = instantiate({ documents: DOCS }, { applicableLaw: "US-NY" });
-        expect(() => assertAgreementSignable(b.agreement, b.agreementHash, DESIGN_SPECS, STRUCT, design))
+        expect(() => assertAgreementSignable(b.agreement, b.checkoutHash, DESIGN_SPECS, STRUCT, design))
             .toThrow(/figaro-applicable-law applicableLaw: .*designer/);
     });
 
     it("refuses an order missing a clause of the registered agreement it names, agreement-scoped and assembly-scoped alike, by slug and full hash", () => {
         const { agreement: full } = instantiate({ documents: DOCS }, { applicableLaw: "England-Wales" });
         for (const dropped of ["figaro-consent", "figaro-applicable-law"]) {
-            const short = { ...full, sections: full.sections.filter((s) => s.clause !== keyOf(dropped)) };
-            const check = validateCommitmentAgreement(short, computeAgreementHash(short), DESIGN_SPECS, STRUCT, design);
+            const short = { ...full, clauses: full.clauses.filter((s) => s.clause !== keyOf(dropped)) };
+            const check = validateCommitmentAgreement(short, computeCheckoutHash(short), DESIGN_SPECS, STRUCT, design);
             expect(check.ok).toBe(false);
             expect(check.issues).toHaveLength(1);
-            expect(() => assertAgreementSignable(short, computeAgreementHash(short), DESIGN_SPECS, STRUCT, design))
+            expect(() => assertAgreementSignable(short, computeCheckoutHash(short), DESIGN_SPECS, STRUCT, design))
                 .toThrow(new RegExp(`${dropped} clause: the order does not carry this clause, which assembly ${deriveAssemblySlug(compositionHash)} \\(${compositionHash}\\) composes`));
         }
     });
@@ -734,26 +734,26 @@ describe("the sign gate's design check — the designer's values against the des
     it("passes a process-log clause carried as an empty anchor, and refuses the order that drops it", () => {
         const LOG_SPECS = specSourceFromFixtures(["figaro-commerce", "figaro-merchant-process"]);
         const withLog = { clauses: { [keyOf("figaro-commerce")]: {}, [keyOf("figaro-merchant-process")]: {} } };
-        const logKey = agreementKeyOf(withLog);
+        const logKey = agreementHashOf(withLog);
         const logDesign: HydratedAssembly = {
-            assembly: { agreements: [{ id: "order-0", agreementKey: logKey, clauses: {} }] },
+            assembly: { agreements: [{ id: "order-0", agreementHash: logKey, clauses: {} }] },
             agreements: { [logKey.toLowerCase() as `0x${string}`]: withLog },
         };
-        const provenance = { agreementKey: logKey, compositionHash: assemblyCompositionHash(logDesign.assembly) };
+        const provenance = { agreementHash: logKey, compositionHash: assemblyCompositionHash(logDesign.assembly) };
         const { agreement } = buildOrderAgreement(BUYER, SELLER, {
             [keyOf("figaro-commerce")]: commerceData(),
             [keyOf("figaro-merchant-process")]: {},
         }, LOG_SPECS);
         const anchored = { ...agreement, provenance };
-        expect(validateCommitmentAgreement(anchored, computeAgreementHash(anchored), LOG_SPECS, STRUCT, logDesign).issues).toEqual([]);
+        expect(validateCommitmentAgreement(anchored, computeCheckoutHash(anchored), LOG_SPECS, STRUCT, logDesign).issues).toEqual([]);
         // Carried is a check on keys: a withheld clause and a clause whose
         // spec is not loaded each count as carried.
-        const withheld = { ...anchored, sections: anchored.sections.map((s) => s.clause === keyOf("figaro-merchant-process") ? withholdClauseContent(s) : s) };
-        expect(validateCommitmentAgreement(withheld, computeAgreementHash(withheld), LOG_SPECS, STRUCT, logDesign).issues).toEqual([]);
+        const withheld = { ...anchored, clauses: anchored.clauses.map((s) => s.clause === keyOf("figaro-merchant-process") ? withholdClauseContent(s) : s) };
+        expect(validateCommitmentAgreement(withheld, computeCheckoutHash(withheld), LOG_SPECS, STRUCT, logDesign).issues).toEqual([]);
         const commerceOnly = specSourceFromFixtures(["figaro-commerce"]);
-        expect(validateCommitmentAgreement(anchored, computeAgreementHash(anchored), commerceOnly, STRUCT, logDesign).issues).toEqual([]);
-        const dropped = { ...anchored, sections: anchored.sections.filter((s) => s.clause !== keyOf("figaro-merchant-process")) };
-        expect(() => assertAgreementSignable(dropped, computeAgreementHash(dropped), LOG_SPECS, STRUCT, logDesign))
+        expect(validateCommitmentAgreement(anchored, computeCheckoutHash(anchored), commerceOnly, STRUCT, logDesign).issues).toEqual([]);
+        const dropped = { ...anchored, clauses: anchored.clauses.filter((s) => s.clause !== keyOf("figaro-merchant-process")) };
+        expect(() => assertAgreementSignable(dropped, computeCheckoutHash(dropped), LOG_SPECS, STRUCT, logDesign))
             .toThrow(/figaro-merchant-process clause: the order does not carry this clause/);
     });
 
@@ -770,31 +770,31 @@ describe("the sign gate's design check — the designer's values against the des
         const [entry] = built.assembly.agreements;
         const picked: HydratedAssembly = {
             assembly: built.assembly,
-            agreements: { [entry.agreementKey.toLowerCase() as `0x${string}`]: built.agreements[entry.agreementKey] },
+            agreements: { [entry.agreementHash.toLowerCase() as `0x${string}`]: built.agreements[entry.agreementHash] },
         };
-        const provenance = { agreementKey: entry.agreementKey, compositionHash: assemblyCompositionHash(built.assembly) };
+        const provenance = { agreementHash: entry.agreementHash, compositionHash: assemblyCompositionHash(built.assembly) };
         const { agreement } = buildOrderAgreement(BUYER, SELLER, {
             [keyOf("figaro-commerce")]: commerceData(),
             [keyOf("figaro-topology")]: { parentOrderHashes: [] },
             [keyOf("figaro-merchant-process")]: {},
         }, SPECS);
         const full = { ...agreement, provenance };
-        expect(validateCommitmentAgreement(full, computeAgreementHash(full), SPECS, STRUCT, picked).issues).toEqual([]);
-        const dropped = { ...full, sections: full.sections.filter((s) => s.clause !== keyOf("figaro-topology")) };
-        expect(() => assertAgreementSignable(dropped, computeAgreementHash(dropped), SPECS, STRUCT, picked))
+        expect(validateCommitmentAgreement(full, computeCheckoutHash(full), SPECS, STRUCT, picked).issues).toEqual([]);
+        const dropped = { ...full, clauses: full.clauses.filter((s) => s.clause !== keyOf("figaro-topology")) };
+        expect(() => assertAgreementSignable(dropped, computeCheckoutHash(dropped), SPECS, STRUCT, picked))
             .toThrow(/figaro-topology clause: the order does not carry this clause/);
     });
 
     it("refuses a design that is not the one the agreement's provenance names", () => {
-        const { agreement, agreementHash } = instantiate({ documents: DOCS }, { applicableLaw: "England-Wales" },
-            { agreementKey, compositionHash: `0x${"5e".repeat(32)}` });
-        expect(() => assertAgreementSignable(agreement, agreementHash, DESIGN_SPECS, STRUCT, design))
+        const { agreement, checkoutHash } = instantiate({ documents: DOCS }, { applicableLaw: "England-Wales" },
+            { agreementHash, compositionHash: `0x${"5e".repeat(32)}` });
+        expect(() => assertAgreementSignable(agreement, checkoutHash, DESIGN_SPECS, STRUCT, design))
             .toThrow(/provenance/);
     });
 
     it("refuses an agreement naming no design when a design is supplied", () => {
         const { agreement } = buildOrderAgreement(BUYER, SELLER, { [keyOf("figaro-commerce")]: commerceData() }, DESIGN_SPECS);
-        expect(() => assertAgreementSignable(agreement, computeAgreementHash(agreement), DESIGN_SPECS, STRUCT, design))
+        expect(() => assertAgreementSignable(agreement, computeCheckoutHash(agreement), DESIGN_SPECS, STRUCT, design))
             .toThrow(/provenance/);
     });
 });

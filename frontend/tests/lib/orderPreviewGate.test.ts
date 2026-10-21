@@ -18,7 +18,7 @@ const COMMITMENT: Commitment = {
     currency: "0x" + "ab".repeat(20) as `0x${string}`,
     payment: 1000000000000000000n,
     expectedCumulativeValue: 1000000000000000000n,
-    agreementHash: "0x" + "cd".repeat(32) as `0x${string}`,
+    checkoutHash: "0x" + "cd".repeat(32) as `0x${string}`,
     salt: 1n,
     deadline: 9999999999n,
 };
@@ -27,7 +27,7 @@ const AGREEMENT: Agreement = {
     version: "a1",
     buyer: COMMITMENT.buyer,
     seller: COMMITMENT.seller,
-    sections: [
+    clauses: [
         { clause: `0x${"0c".repeat(32)}`, data: { currency: COMMITMENT.currency, payment: "1000000000000000000", lineItems: [] } },
     ],
 };

@@ -109,13 +109,13 @@ describe("DiscoveryGraph — registered agreements", () => {
     it("surfaces live agreements, de-surfaces on withdraw, and keeps the binding readable whatever the stake", () => {
         const g = reconstructDiscovery(mkEvents({
             agreementRegistered: [
-                { agreementKey: AGR_1, registeredBy: ASM_REGISTERED_BY, contentURI: "ipfs://g1", blockNumber: 3, logIndex: 0, transactionHash: null },
-                { agreementKey: AGR_2, registeredBy: ASM_REGISTERED_BY, contentURI: "ipfs://g2", blockNumber: 4, logIndex: 1, transactionHash: null },
+                { agreementHash: AGR_1, registeredBy: ASM_REGISTERED_BY, contentURI: "ipfs://g1", blockNumber: 3, logIndex: 0, transactionHash: null },
+                { agreementHash: AGR_2, registeredBy: ASM_REGISTERED_BY, contentURI: "ipfs://g2", blockNumber: 4, logIndex: 1, transactionHash: null },
             ],
-            agreementWithdrawn: [{ agreementKey: AGR_1, registeredBy: ASM_REGISTERED_BY, blockNumber: 9, logIndex: 0 }],
+            agreementWithdrawn: [{ agreementHash: AGR_1, registeredBy: ASM_REGISTERED_BY, blockNumber: 9, logIndex: 0 }],
         }));
         expect(g.getAgreements()).toEqual([{
-            agreementKey: AGR_2, contentURI: "ipfs://g2", registeredBy: ASM_REGISTERED_BY, registeredAt: 4, stakeWithdrawn: false,
+            agreementHash: AGR_2, contentURI: "ipfs://g2", registeredBy: ASM_REGISTERED_BY, registeredAt: 4, stakeWithdrawn: false,
         }]);
         expect(g.getAgreement(AGR_1)).toBeUndefined();
         expect(g.getAgreement(AGR_2.toUpperCase().replace("0X", "0x") as Hex)?.contentURI).toBe("ipfs://g2");
@@ -127,8 +127,8 @@ describe("DiscoveryGraph — registered agreements", () => {
     it("first-seen wins for a key", () => {
         const g = reconstructDiscovery(mkEvents({
             agreementRegistered: [
-                { agreementKey: AGR_1, registeredBy: ASM_REGISTERED_BY, contentURI: "ipfs://first", blockNumber: 1, logIndex: 0, transactionHash: null },
-                { agreementKey: AGR_1, registeredBy: MEMBER_A, contentURI: "ipfs://second", blockNumber: 2, logIndex: 0, transactionHash: null },
+                { agreementHash: AGR_1, registeredBy: ASM_REGISTERED_BY, contentURI: "ipfs://first", blockNumber: 1, logIndex: 0, transactionHash: null },
+                { agreementHash: AGR_1, registeredBy: MEMBER_A, contentURI: "ipfs://second", blockNumber: 2, logIndex: 0, transactionHash: null },
             ],
         }));
         expect(g.getAgreements().map((a) => a.contentURI)).toEqual(["ipfs://first"]);
@@ -253,16 +253,16 @@ describe("registry log parsers (decode round-trip — no chain)", () => {
         expect(parsed.withdrawn[0].compositionHash).toBe(COMP_1);
     });
 
-    it("parses AgreementRegistered + DepositWithdrawn keyed by agreementKey", () => {
+    it("parses AgreementRegistered + DepositWithdrawn keyed by agreementHash", () => {
         const AGR = ("0x" + "e1".repeat(32)) as Hex;
         const reg = mkLog("AgreementRegistered(bytes32,address,string)", [AGR, addrTopic(ASM_REGISTERED_BY)],
             [{ type: "string" }], ["ipfs://g"], 5n, 2);
         const wd = mkLog("DepositWithdrawn(bytes32,address,uint256)", [AGR, addrTopic(ASM_REGISTERED_BY)],
             [{ type: "uint256" }], [10n], 6n, 0);
         const parsed = parseAgreementRegistryLogs([reg, wd]);
-        expect(parsed.registered[0]).toMatchObject({ agreementKey: AGR, contentURI: "ipfs://g", blockNumber: 5, logIndex: 2 });
+        expect(parsed.registered[0]).toMatchObject({ agreementHash: AGR, contentURI: "ipfs://g", blockNumber: 5, logIndex: 2 });
         expect(parsed.registered[0].registeredBy.toLowerCase()).toBe(ASM_REGISTERED_BY);
-        expect(parsed.withdrawn[0].agreementKey).toBe(AGR);
+        expect(parsed.withdrawn[0].agreementHash).toBe(AGR);
         // A clause registry's event is not an agreement registration.
         const clause = mkLog("ClauseRegistered(bytes32,string,address)", [KEY_1, addrTopic(CLAUSE_REGISTERED_BY)],
             [{ type: "string" }], ["ipfs://c"], 1n, 0);

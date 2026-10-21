@@ -22,7 +22,7 @@ const mkOrder = (o: Partial<Order> & Pick<Order, "orderHash" | "seller">): Order
 });
 
 const agreement = (clauseEntries: { clause: string; data: Record<string, unknown> }[]): Agreement =>
-    ({ sections: clauseEntries.map((s) => ({ ...s, clause: keyOf(s.clause) })) } as unknown as Agreement);
+    ({ clauses: clauseEntries.map((s) => ({ ...s, clause: keyOf(s.clause) })) } as unknown as Agreement);
 
 const commerce = (lineItems: { name: string; quantity: number }[]) =>
     ({ clause: "figaro-commerce", data: { currency: "0xtoken", payment: "0", lineItems } });
@@ -33,8 +33,8 @@ describe("projectDocuments — generic engine over declared assemblies", () => {
     it("commercial-invoice: one per SELLER, applies where a commerce leaf exists", async () => {
         await primeClauseSpecs(ALL);
         const orders = [
-            mkOrder({ orderHash: "0xA", seller: "0xMERCHANT", payment: 100n, agreementHash: "0xhA" }),
-            mkOrder({ orderHash: "0xB", seller: "0xCOURIER", payment: 40n, agreementHash: "0xhB" }),
+            mkOrder({ orderHash: "0xA", seller: "0xMERCHANT", payment: 100n, checkoutHash: "0xhA" }),
+            mkOrder({ orderHash: "0xB", seller: "0xCOURIER", payment: 40n, checkoutHash: "0xhB" }),
         ];
         const agreements = new Map<string, Agreement>([
             ["0xhA", agreement([commerce([{ name: "Margherita", quantity: 1 }])])],
@@ -63,7 +63,7 @@ describe("projectDocuments — generic engine over declared assemblies", () => {
         ]);
         const docs = projectDocuments(
             DOCUMENT_LAYOUTS,
-            [mkOrder({ orderHash: "0xC", seller: "0xCOURIER", payment: 40n, agreementHash: "0xh" })],
+            [mkOrder({ orderHash: "0xC", seller: "0xCOURIER", payment: 40n, checkoutHash: "0xh" })],
             new Map([["0xh", carriage]]),
         );
         const bols = doc(docs, "bill-of-lading");
@@ -85,7 +85,7 @@ describe("projectDocuments — generic engine over declared assemblies", () => {
         await primeClauseSpecs(ALL);
         const docs = projectDocuments(
             DOCUMENT_LAYOUTS,
-            [mkOrder({ orderHash: "0xA", seller: "0xS", payment: 10n, agreementHash: "0xh" })],
+            [mkOrder({ orderHash: "0xA", seller: "0xS", payment: 10n, checkoutHash: "0xh" })],
             new Map([["0xh", agreement([commerce([{ name: "Item", quantity: 1 }])])]]),
         );
         expect(doc(docs, "bill-of-lading")).toHaveLength(0);
@@ -102,7 +102,7 @@ describe("projectDocuments — generic engine over declared assemblies", () => {
         };
         const docs = projectDocuments(
             [packingList],
-            [mkOrder({ orderHash: "0xA", seller: "0xS", agreementHash: "0xh" })],
+            [mkOrder({ orderHash: "0xA", seller: "0xS", checkoutHash: "0xh" })],
             new Map([["0xh", agreement([commerce([{ name: "Widget", quantity: 2 }])])]]),
         );
         expect(docs).toHaveLength(1);

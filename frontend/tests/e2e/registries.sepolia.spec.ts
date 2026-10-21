@@ -16,7 +16,7 @@
  */
 import { test, expect } from '@playwright/test';
 import { createPublicClient, http } from 'viem';
-import { AGREEMENT_REGISTRY_ABI, ASSEMBLY_REGISTRY_ABI, CLAUSE_REGISTRY_ABI, MEMBERS_REGISTRY_ABI, agreementKeyOf } from '@figaro-protocol/sdk';
+import { AGREEMENT_REGISTRY_ABI, ASSEMBLY_REGISTRY_ABI, CLAUSE_REGISTRY_ABI, MEMBERS_REGISTRY_ABI, agreementHashOf } from '@figaro-protocol/sdk';
 import { deriveAssemblySlug } from '@/lib/shared/assembly';
 import { E2E_CHAIN, LOCAL_ANVIL, RPC_URL, readLocalDeploymentConfig, readRegisteredAgreementDocument, scanContractEvents } from './devnet-helpers';
 
@@ -34,7 +34,7 @@ test.describe('PUBLIC REGISTRIES — the explorer shows exactly what the chain h
         const clauseEvents = await scanContractEvents(publicClient, { address: config.clauseRegistry as `0x${string}`, abi: CLAUSE_REGISTRY_ABI, eventName: 'ClauseRegistered' });
         const clauseKeys = new Set(clauseEvents.map((e) => String((e.args as { clauseKey?: string }).clauseKey ?? '').toLowerCase()).filter(Boolean));
         const agreementEvents = await scanContractEvents(publicClient, { address: config.agreementRegistry as `0x${string}`, abi: AGREEMENT_REGISTRY_ABI, eventName: 'AgreementRegistered' });
-        const agreementKeys = new Set(agreementEvents.map((e) => String((e.args as { agreementKey?: string }).agreementKey ?? '').toLowerCase()).filter(Boolean));
+        const agreementHashes = new Set(agreementEvents.map((e) => String((e.args as { agreementHash?: string }).agreementHash ?? '').toLowerCase()).filter(Boolean));
         const assemblyEvents = await scanContractEvents(publicClient, { address: config.assemblyRegistry as `0x${string}`, abi: ASSEMBLY_REGISTRY_ABI, eventName: 'AssemblyRegistered' });
         const slugs = new Set(assemblyEvents.map((e) => deriveAssemblySlug((e.args as { compositionHash: `0x${string}` }).compositionHash)));
         // A registration whose stake is withdrawn keeps its binding readable (a
@@ -44,13 +44,13 @@ test.describe('PUBLIC REGISTRIES — the explorer shows exactly what the chain h
         // it need not key to its registration and an assembly over it need not
         // hydrate.
         const withdrawnAgreements = new Set((await scanContractEvents(publicClient, { address: config.agreementRegistry as `0x${string}`, abi: AGREEMENT_REGISTRY_ABI, eventName: 'DepositWithdrawn' }))
-            .map((e) => String((e.args as { agreementKey?: string }).agreementKey ?? '').toLowerCase()).filter(Boolean));
+            .map((e) => String((e.args as { agreementHash?: string }).agreementHash ?? '').toLowerCase()).filter(Boolean));
         const withdrawnSlugs = new Set((await scanContractEvents(publicClient, { address: config.assemblyRegistry as `0x${string}`, abi: ASSEMBLY_REGISTRY_ABI, eventName: 'DepositWithdrawn' }))
             .map((e) => deriveAssemblySlug((e.args as { compositionHash: `0x${string}` }).compositionHash)));
         const memberEvents = await scanContractEvents(publicClient, { address: config.membersRegistry as `0x${string}`, abi: MEMBERS_REGISTRY_ABI, eventName: 'MemberRegistered' });
         const members = new Set(memberEvents.map((e) => String((e.args as { member?: string }).member ?? '').toLowerCase()).filter(Boolean));
         expect(clauseKeys.size, 'the registry holds clauses').toBeGreaterThan(0);
-        expect(agreementKeys.size, 'the registry holds agreements').toBeGreaterThan(0);
+        expect(agreementHashes.size, 'the registry holds agreements').toBeGreaterThan(0);
         expect(slugs.size, 'the registry holds assemblies').toBeGreaterThan(0);
         // The public network's genesis registers the founder's and the DAO's profiles; a bare devnet genesis registers none.
         if (E2E_CHAIN === 'sepolia') expect(members.size, 'the registry holds members').toBeGreaterThan(0);
@@ -72,21 +72,21 @@ test.describe('PUBLIC REGISTRIES — the explorer shows exactly what the chain h
         //    and its designer of record (the binding, read by key — a scan
         //    discovers, a state read decides). ──
         const agreementBindings = new Map<string, `0x${string}`>();
-        for (const key of agreementKeys) {
+        for (const key of agreementHashes) {
             const read = await readRegisteredAgreementDocument(key as `0x${string}`);
             expect(read, `${key} is bound on the AgreementRegistry`).not.toBeNull();
             if (withdrawnAgreements.has(key)) continue; // withdrawn: the binding stands, its content is not held to the key
-            expect(agreementKeyOf(read!.document).toLowerCase(), `the document pinned for ${key} keys to it`).toBe(key);
+            expect(agreementHashOf(read!.document).toLowerCase(), `the document pinned for ${key} keys to it`).toBe(key);
             agreementBindings.set(key, read!.binding.registeredBy);
         }
         await page.goto('/registries?family=agreements&stake=all');
         const agreementRows = page.locator('li[data-testid^="agreement-row-"]');
         await expect.poll(async () => (await agreementRows.evaluateAll((els) => els.map((e) => (e.getAttribute('data-testid') ?? '').replace(/^agreement-row-/, '')))).sort(), { timeout: 60_000 })
-            .toEqual([...agreementKeys].sort());
+            .toEqual([...agreementHashes].sort());
         await expect(page.getByTestId('content-resolving')).toHaveCount(0, { timeout: RESOLVE_TIMEOUT });
         for (const [key, registeredBy] of agreementBindings) {
             const row = page.getByTestId(`agreement-row-${key}`);
-            await expect(row.getByTestId(`agreement-key-${key}`)).toHaveText(new RegExp(key, 'i'));
+            await expect(row.getByTestId(`agreement-hash-${key}`)).toHaveText(new RegExp(key, 'i'));
             await expect(row, `${key} names its designer of record`).toContainText(new RegExp(registeredBy.slice(0, 6), 'i'));
         }
 

@@ -15,7 +15,7 @@
  */
 import { ZERO_ADDRESS } from "@/lib/shared/evm";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { agreementKeyOf, canonicalize, type RegisteredAgreement, type Hex } from "@figaro-protocol/sdk";
+import { agreementHashOf, canonicalize, type RegisteredAgreement, type Hex } from "@figaro-protocol/sdk";
 
 const reads = vi.hoisted(() => ({
     bindings: new Map<string, readonly [string, bigint, boolean, string]>(),
@@ -56,7 +56,7 @@ const REGISTRANT = "0x0000000000000000000000000000000000005e11";
 
 /** Register `doc` under its key at `uri` — the binding a registry read returns. */
 function register(doc: RegisteredAgreement, uri: string, body: string | null = canonicalize(doc)): Hex {
-    const key = agreementKeyOf(doc);
+    const key = agreementHashOf(doc);
     reads.bindings.set(key.toLowerCase(), [REGISTRANT, 7n, false, uri]);
     reads.documents.set(uri, body);
     return key;
@@ -124,10 +124,10 @@ describe("fetchRegisteredAgreement — the binding by key, the document verified
     it("hydrates an assembly only when every agreement's agreement reads", async () => {
         const present = { clauses: { [keyOf("figaro-commerce")]: {}, [keyOf("figaro-topology")]: {} } };
         const presentKey = register(present, "ipfs://present");
-        const absentKey = agreementKeyOf({ clauses: { [keyOf("figaro-commerce")]: { never: true } } });
+        const absentKey = agreementHashOf({ clauses: { [keyOf("figaro-commerce")]: { never: true } } });
         const entries = [
-            { id: "order-0", agreementKey: presentKey, clauses: {} },
-            { id: "order-1", agreementKey: absentKey, clauses: {} },
+            { id: "order-0", agreementHash: presentKey, clauses: {} },
+            { id: "order-1", agreementHash: absentKey, clauses: {} },
         ];
         expect(await hydrateAnchoredAssembly({ agreements: entries })).toBeNull();
         const whole = await hydrateAnchoredAssembly({ agreements: [entries[0]] });
@@ -178,7 +178,7 @@ describe("the designer binds a registered agreement to one agreement and compose
         };
         const review = projectSnapshotForReview(snap);
         if (!review.ok) throw new Error(review.error);
-        expect(review.entries.map((s) => [s.agreementKey === boundKey, s.bound])).toEqual([[true, true], [false, false]]);
+        expect(review.entries.map((s) => [s.agreementHash === boundKey, s.bound])).toEqual([[true, true], [false, false]]);
         const newKeys = Object.keys(review.newAgreements);
         expect(newKeys).toHaveLength(1);
         expect(newKeys[0]).not.toBe(boundKey);

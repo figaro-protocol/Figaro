@@ -31,7 +31,7 @@ export default function Attestations() {
                         An attestation is a signed statement one party makes about a process
                         while it is still running &mdash; a courier confirming a pickup, a
                         seller marking complete a stage the clause itself names, a carrier reporting a measured
-                        figure. It is bound by a merkle proof to the very order it concerns,
+                        figure. It is bound by a merkle proof to a clause of the order it concerns,
                         so nobody can attest against a clause they never signed. And it can
                         only be filed while that order is open: once its buyer resolves the
                         process, the window for evidence closes with it. Attestations are the
@@ -44,7 +44,7 @@ export default function Attestations() {
             <MarketingSection title="In plain words.">
                 <p className="text-sm text-ink-body leading-relaxed">
                     A <Link href="/clauses" className="underline">clause</Link> is a term
-                    signed at commit; an attestation is a fact filed while the order runs.
+                    signed at commit; an attestation is a statement filed while the order runs.
                     Whoever has standing on that order can file one &mdash; the seller
                     performing it, the buyer receiving it, or an agent the seller has
                     authorized to act on its behalf. Filing one moves no bond and ends

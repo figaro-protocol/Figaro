@@ -69,7 +69,7 @@ contract UsageCounterTest is Test {
     /// @dev The agreement format's reserved provenance leaf key — a plain-string
     ///      preimage, never the canonical JSON bytes of a spec a clause key hashes.
     bytes32 constant PROVENANCE_LEAF = keccak256("figaro-agreement-provenance");
-    bytes constant SECTION = hex"c0ffee";
+    bytes constant CLAUSE_DATA = hex"c0ffee";
 
     uint64 constant P0_END = 1_000_000;
     uint64 constant P1_END = 2_000_000;
@@ -160,7 +160,7 @@ contract UsageCounterTest is Test {
             currency: address(token),
             payment: 100 ether,
             expectedCumulativeValue: 100 ether,
-            agreementHash: AgreementTestHelper.singleClauseRoot(clauseOrAssembly, SECTION),
+            checkoutHash: AgreementTestHelper.singleClauseRoot(clauseOrAssembly, CLAUSE_DATA),
             salt: salt,
             deadline: block.timestamp + 1 hours
         });
@@ -181,7 +181,7 @@ contract UsageCounterTest is Test {
             currency: address(token),
             payment: 100 ether,
             expectedCumulativeValue: 100 ether,
-            agreementHash: AgreementTestHelper.singleClauseRoot(clauseOrAssembly, SECTION),
+            checkoutHash: AgreementTestHelper.singleClauseRoot(clauseOrAssembly, CLAUSE_DATA),
             salt: salt,
             deadline: block.timestamp + 1 hours
         });
@@ -189,25 +189,25 @@ contract UsageCounterTest is Test {
     }
 
     function _record(CommitmentTypes.Commitment memory c, bytes32 clauseOrAssembly) internal {
-        // The section FINGERPRINT (keccak256 of the committed bytes) — never the
+        // The clause data FINGERPRINT (keccak256 of the committed bytes) — never the
         // preimage — is what the merkle leaf needs and all the calldata carries.
-        counter.recordClauseUsage(c, clauseOrAssembly, keccak256(SECTION), new bytes32[](0));
+        counter.recordClauseUsage(c, clauseOrAssembly, keccak256(CLAUSE_DATA), new bytes32[](0));
     }
 
     /// @dev A resolved one-order process whose agreement carries a clause
-    ///      section and the format's reserved PROVENANCE leaf naming
-    ///      `agreementKey` (the registered agreement the order instantiates)
-    ///      and `compositionHash` (the assembly it came from). The section
+    ///      clause and the format's reserved PROVENANCE leaf naming
+    ///      `agreementHash` (the registered agreement the order instantiates)
+    ///      and `compositionHash` (the assembly it came from). The clause
     ///      commits as the canonical-JSON bytes the counter reproduces from
     ///      the two keys. Returns the provenance leaf's proof under the root.
-    function _settledUnderAgreement(bytes32 agreementKey, bytes32 compositionHash, uint256 salt)
+    function _settledUnderAgreement(bytes32 agreementHash, bytes32 compositionHash, uint256 salt)
         internal
         returns (CommitmentTypes.Commitment memory c, bytes32[] memory provenanceProof)
     {
         bytes32[] memory leaves = new bytes32[](2);
-        leaves[0] = AgreementTestHelper.leafFor(CARGO_KEY, SECTION);
+        leaves[0] = AgreementTestHelper.leafFor(CARGO_KEY, CLAUSE_DATA);
         leaves[1] = AgreementTestHelper.leafFor(
-            PROVENANCE_LEAF, AgreementTestHelper.provenanceLeaf(agreementKey, compositionHash)
+            PROVENANCE_LEAF, AgreementTestHelper.provenanceLeaf(agreementHash, compositionHash)
         );
         provenanceProof = AgreementTestHelper.proofFor(leaves, 1);
         c = CommitmentTypes.Commitment({
@@ -217,7 +217,7 @@ contract UsageCounterTest is Test {
             currency: address(token),
             payment: 100 ether,
             expectedCumulativeValue: 100 ether,
-            agreementHash: AgreementTestHelper.rootFor(leaves),
+            checkoutHash: AgreementTestHelper.rootFor(leaves),
             salt: salt,
             deadline: block.timestamp + 1 hours
         });
@@ -241,7 +241,7 @@ contract UsageCounterTest is Test {
     }
 
     /// @dev The test assembly's tree: one leaf per agreement (key = its
-    ///      agreementKey, bytes = the agreement section) and the terms leaf.
+    ///      agreementHash, bytes = the agreement clause) and the terms leaf.
     function _assemblyLeaves() internal pure returns (bytes32[] memory leaves) {
         leaves = new bytes32[](3);
         leaves[0] = AgreementTestHelper.leafFor(AGR_KEY, _agreementLeafBytes(0));
@@ -311,7 +311,7 @@ contract UsageCounterTest is Test {
             currency: address(token),
             payment: 1 ether,
             expectedCumulativeValue: 1 ether,
-            agreementHash: AgreementTestHelper.singleClauseRoot(CARGO_KEY, SECTION),
+            checkoutHash: AgreementTestHelper.singleClauseRoot(CARGO_KEY, CLAUSE_DATA),
             salt: 999,
             deadline: block.timestamp + 1 hours
         });
@@ -326,7 +326,7 @@ contract UsageCounterTest is Test {
         _record(c, GEO_KEY);
     }
 
-    function test_revertsOnWrongSectionHash() public {
+    function test_revertsOnWrongClauseDataHash() public {
         CommitmentTypes.Commitment memory c = _settledOrder(CARGO_KEY, buyer, BUYER_KEY, seller1, SELLER1_KEY, 1);
         vm.expectRevert(UsageCounter.InvalidInclusionProof.selector);
         counter.recordClauseUsage(c, CARGO_KEY, keccak256(hex"dead"), new bytes32[](0));
@@ -566,7 +566,7 @@ contract UsageCounterTest is Test {
     /// The two reserved keys are refused under the AGREEMENT kind too. The
     /// agreement registry refuses both as registrations, so the gate here
     /// stands in for a registry that took them: an order names a reserved key
-    /// as its agreementKey, the provenance leaf opens, the gate passes, and
+    /// as its agreementHash, the provenance leaf opens, the gate passes, and
     /// the counter's own check refuses the key on the direct path and skips
     /// it on the batch path.
     function test_theReservedKeysAreRefusedUnderTheAgreementKind() public {
@@ -596,7 +596,7 @@ contract UsageCounterTest is Test {
 
     /// The terms leaf shares the assembly's tree with the agreements and
     /// opens under its root, so a claim naming it as the agreement's
-    /// agreementKey, with the terms bytes as the agreement content and an order
+    /// agreementHash, with the terms bytes as the agreement content and an order
     /// whose provenance names it, would prove membership. It is refused: the
     /// terms leaf never passes as an agreement.
     function test_theTermsLeafNeverPassesAsAnAgreement() public {
@@ -725,7 +725,7 @@ contract UsageCounterTest is Test {
 
         // One use per kind, each through its own proof.
         CommitmentTypes.Commitment memory clauseOrder = _settledOrder(k, buyer, BUYER_KEY, seller1, SELLER1_KEY, 1);
-        real.recordClauseUsage(clauseOrder, k, keccak256(SECTION), new bytes32[](0));
+        real.recordClauseUsage(clauseOrder, k, keccak256(CLAUSE_DATA), new bytes32[](0));
         (CommitmentTypes.Commitment memory asmOrder, bytes32[] memory asmProof) = _settledUnderAgreement(AGR_KEY, k, 2);
         _recordAssembly(real, asmOrder, 0, asmProof);
         (CommitmentTypes.Commitment memory agrOrder, bytes32[] memory agrProof) = _settledUnderAgreement(k, k, 3);
@@ -1023,7 +1023,7 @@ contract UsageCounterTest is Test {
     function test_Gas_recordUsageStaysAtItsAnchor() public {
         CommitmentTypes.Commitment memory c = _settledOrder(CARGO_KEY, buyer, BUYER_KEY, seller1, SELLER1_KEY, 0xA45);
         uint256 before = gasleft();
-        counter.recordClauseUsage(c, CARGO_KEY, keccak256(SECTION), new bytes32[](0));
+        counter.recordClauseUsage(c, CARGO_KEY, keccak256(CLAUSE_DATA), new bytes32[](0));
         uint256 used = before - gasleft();
         emit log_named_uint("recordUsage_exec_gas", used);
 
@@ -1093,7 +1093,7 @@ contract UsageCounterTest is Test {
     }
 
     function _recordOn(UsageCounter target, CommitmentTypes.Commitment memory c, bytes32 clauseOrAssembly) internal {
-        target.recordClauseUsage(c, clauseOrAssembly, keccak256(SECTION), new bytes32[](0));
+        target.recordClauseUsage(c, clauseOrAssembly, keccak256(CLAUSE_DATA), new bytes32[](0));
     }
 
     function test_floor_belowFloorAccruesButScoresZero() public {

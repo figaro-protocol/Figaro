@@ -24,11 +24,11 @@ const PAYLOAD = {
         currency: "0x00000000000000000000000000000000000000c1",
         payment: 25_000_000n,
         expectedCumulativeValue: 25_000_000n,
-        agreementHash: `0x${"22".repeat(32)}`,
+        checkoutHash: `0x${"22".repeat(32)}`,
         salt: 7n,
         deadline: 1_893_456_000n,
     },
-    agreement: { sections: [] },
+    agreement: { clauses: [] },
     buyerSig: "0xabcdef",
 } as unknown as CommitmentPayload;
 

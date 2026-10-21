@@ -169,7 +169,7 @@ export default function Assemblies() {
                         </thead>
                         <tbody className="[&>tr]:border-b [&>tr]:border-default align-top">
                             <tr>
-                                <td className="py-2 pr-4"><code>agreements[].agreementKey</code> &mdash; the registered agreement each order holds</td>
+                                <td className="py-2 pr-4"><code>agreements[].agreementHash</code> &mdash; the registered agreement each order holds</td>
                                 <td className="py-2 pr-4 font-semibold">Yes</td>
                                 <td className="py-2">One leaf per order, in order, so one registered agreement may hold two orders. A different registered agreement in any order is a different assembly.</td>
                             </tr>

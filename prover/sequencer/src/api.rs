@@ -171,7 +171,7 @@ pub async fn record_dropped(
 #[derive(Clone, Copy, Debug)]
 pub struct ApiConfig {
     /// Per-request body cap in bytes. A full attestation witness (spec
-    /// JSON + content + agreement sections + inclusion proof) is tens of
+    /// JSON + content + agreement clauses + inclusion proof) is tens of
     /// KB; 1 MiB is generous headroom without inviting memory abuse.
     pub max_body_bytes: usize,
     /// A request that has not completed by then is answered `408`.

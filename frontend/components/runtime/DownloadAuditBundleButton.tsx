@@ -35,11 +35,11 @@ function triggerDownload(blob: Blob, filename: string): void {
 export function DownloadAuditBundleButton({ processId, orders }: DownloadAuditBundleButtonProps) {
     const publicClient = usePublicClient();
     const chainId = useChainId();
-    const agreementHashes = useMemo(
-        () => orders.map((o) => o.agreementHash).filter((h): h is string => Boolean(h)),
+    const checkoutHashes = useMemo(
+        () => orders.map((o) => o.checkoutHash).filter((h): h is string => Boolean(h)),
         [orders],
     );
-    const agreements = useProcessAgreements(agreementHashes);
+    const agreements = useProcessAgreements(checkoutHashes);
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState<string | null>(null);
 

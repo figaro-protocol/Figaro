@@ -46,11 +46,11 @@ export function useSemanticProcessWorkspace({ processId }: Options) {
     const walletProcesses = useWalletProcessIds(address);
     const effectiveProcessId = processId ?? walletProcesses[0]?.processId ?? null;
     const processOrders = useProcessOrders(effectiveProcessId);
-    const agreementHashes = useMemo(
-        () => processOrders.map((order) => order.agreementHash).filter((hash): hash is string => Boolean(hash)),
+    const checkoutHashes = useMemo(
+        () => processOrders.map((order) => order.checkoutHash).filter((hash): hash is string => Boolean(hash)),
         [processOrders],
     );
-    const processAgreements = useProcessAgreements(agreementHashes);
+    const processAgreements = useProcessAgreements(checkoutHashes);
     const selectedCurrency = processOrders[0]?.currency as `0x${string}` | undefined;
     // The active order's on-chain currency, or undefined — never a coined default.
     const approvalTokenAddress = selectedCurrency;

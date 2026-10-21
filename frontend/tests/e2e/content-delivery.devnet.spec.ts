@@ -253,19 +253,19 @@ test.describe('CONTENT DELIVERY — the digital hand-off ceremony, encrypted to 
         expect(coreAfter - coreBefore, 'FigaroCore escrow increased by both bonds').toBe(buyerBond + sellerBond);
 
         // Out-of-band: the committed agreement (its locator keyed on the
-        // committed agreementHash) carries the seller's locality as the
+        // committed checkoutHash) carries the seller's locality as the
         // geolocation origin — the offer wrote the value that was signed.
-        const agreementHash = event.args.agreementHash as `0x${string}`;
+        const checkoutHash = event.args.checkoutHash as `0x${string}`;
         const agreementUri = await page.evaluate(
             (key) => window.localStorage.getItem(key),
-            `figaro:agreement-uri:${agreementHash}`,
+            `figaro:agreement-uri:${checkoutHash}`,
         );
         expect(agreementUri, 'the committed agreement has a network (IPFS) locator').toMatch(/^ipfs:\/\//);
         const agreementIpfsApi = process.env.NEXT_PUBLIC_IPFS_API_URL ?? 'http://127.0.0.1:5001';
         const agreement = JSON.parse(await (await fetch(
             `${agreementIpfsApi}/api/v0/cat?arg=${agreementUri!.replace(/^ipfs:\/\//, '')}`, { method: 'POST' },
-        )).text()) as { sections: { clause: string; data: Record<string, unknown> }[] };
-        const geolocation = agreement.sections.find((sec) => sec.clause.toLowerCase() === keyOf('figaro-geolocation'));
+        )).text()) as { clauses: { clause: string; data: Record<string, unknown> }[] };
+        const geolocation = agreement.clauses.find((sec) => sec.clause.toLowerCase() === keyOf('figaro-geolocation'));
         expect(geolocation?.data.origin, "the committed origin is the seller's declared locality").toBe(SELLER_GEOHASH);
 
         // ── CEREMONY, buyer side: the declared interaction mounts on the

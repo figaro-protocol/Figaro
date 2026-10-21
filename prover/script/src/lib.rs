@@ -39,9 +39,9 @@ pub const TOKEN: Address = address!("5615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f");
 pub const CORE: Address = address!("2e234DAe75C793f67A35089C9d99245E1C58470b");
 pub const CHAIN_ID: u64 = 31337;
 
-/// The committed agreement section this batch attests against — the
-/// canonical-JSON sectionData for the figaro-modalities clause.
-pub const SECTION_DATA: &str = r#"{"modality":"delivery"}"#;
+/// The committed agreement clause this batch attests against — the
+/// canonical-JSON clauseData for the figaro-modalities clause.
+pub const CLAUSE_DATA: &str = r#"{"modality":"delivery"}"#;
 
 // ── Signing helpers ──────────────────────────────────────────────────
 
@@ -168,11 +168,11 @@ fn parse_spec(spec_json: &str) -> figaro_clause::ClauseSpec {
 /// Construct the canonical end-to-end batch the guest program exercises:
 /// commit → seller attest (RuntimeWitness: validate + generic-encode +
 /// keccak binding + agreement inclusion, all in-VM) → buyer attest
-/// (ReAssert: the committed sectionData re-anchored) → resolve.
+/// (ReAssert: the committed clauseData re-anchored) → resolve.
 ///
 /// Attestations precede the resolve because the evidence window closes at
-/// resolution (the mirror's OrderResolved gate). The single-section
-/// agreement makes `agreement_hash` the lone section leaf, so both
+/// resolution (the mirror's OrderResolved gate). The single-clause
+/// agreement makes `checkout_hash` the lone clause leaf, so both
 /// inclusion proofs are empty.
 pub fn build_canonical_batch_input() -> BatchInput {
     let buyer_key = make_signing_key(BUYER_KEY);
@@ -186,7 +186,7 @@ pub fn build_canonical_batch_input() -> BatchInput {
 
     // RuntimeWitness content_ref = keccak256 of the canonical ABI
     // encoding of the content under the spec at stage 0.
-    let content: serde_json::Value = serde_json::from_str(SECTION_DATA).unwrap();
+    let content: serde_json::Value = serde_json::from_str(CLAUSE_DATA).unwrap();
     let canonical_bytes = figaro_clause::encode_content_from_spec(
         &spec,
         &content,
@@ -195,11 +195,11 @@ pub fn build_canonical_batch_input() -> BatchInput {
     .expect("script-time encoding must succeed");
     let witness_content_ref = keccak256(canonical_bytes.as_slice());
 
-    // ReAssert content_ref = keccak256 of the committed sectionData bytes.
-    let re_assert_content_ref = keccak256(SECTION_DATA.as_bytes());
+    // ReAssert content_ref = keccak256 of the committed clauseData bytes.
+    let re_assert_content_ref = keccak256(CLAUSE_DATA.as_bytes());
 
-    // Single-section agreement: agreement_hash IS the lone section leaf
-    // keccak256(keccak256(clauseKey ++ keccak256(sectionData))) — double-
+    // Single-clause agreement: checkout_hash IS the lone clause leaf
+    // keccak256(keccak256(clauseKey ++ keccak256(clauseData))) — double-
     // hashed for leaf/node domain separation.
     let mut leaf_preimage = [0u8; 64];
     leaf_preimage[..32].copy_from_slice(clause_key.as_slice());
@@ -213,7 +213,7 @@ pub fn build_canonical_batch_input() -> BatchInput {
         currency: TOKEN,
         payment: U256::from(100_000_000_000_000_000_000u128),
         expected_cumulative_value: U256::from(100_000_000_000_000_000_000u128),
-        agreement_hash: agreement_leaf,
+        checkout_hash: agreement_leaf,
         salt: U256::from(42u64),
         deadline: U256::from(2000u64),
     };
@@ -254,8 +254,8 @@ pub fn build_canonical_batch_input() -> BatchInput {
                 seller_sig: attest_sig,
                 proof: AttestationContentProof {
                     spec_json: spec_json.clone(),
-                    content_json: SECTION_DATA.to_string(),
-                    section_data: SECTION_DATA.to_string(),
+                    content_json: CLAUSE_DATA.to_string(),
+                    clause_data: CLAUSE_DATA.to_string(),
                     inclusion_proof: vec![],
                     content_kind: ContentKind::RuntimeWitness,
                 },
@@ -268,8 +268,8 @@ pub fn build_canonical_batch_input() -> BatchInput {
                 buyer_sig: buyer_attest_sig,
                 proof: AttestationContentProof {
                     spec_json,
-                    content_json: SECTION_DATA.to_string(),
-                    section_data: SECTION_DATA.to_string(),
+                    content_json: CLAUSE_DATA.to_string(),
+                    clause_data: CLAUSE_DATA.to_string(),
                     inclusion_proof: vec![],
                     content_kind: ContentKind::ReAssert,
                 },
@@ -291,13 +291,13 @@ pub fn build_canonical_batch_input() -> BatchInput {
         // RPGF: credit the clause for the process this batch just resolved.
         // The claim is proved against the POST-state, which is why an order
         // committed and resolved inside one batch can still be counted by it.
-        // Single-section agreement, so the section leaf IS the agreement hash
+        // Single-clause agreement, so the clause leaf IS the checkout hash
         // and the inclusion proof is empty.
         usage_claims: vec![UsageClaim {
             order: root,
             clause_or_assembly: clause_key,
             kind: UsageClaimKind::Clause {
-                section_hash: re_assert_content_ref,
+                clause_data_hash: re_assert_content_ref,
             },
             inclusion_proof: vec![],
         }],

@@ -32,7 +32,7 @@ function mkCommit(overrides: Partial<OrderCommittedEvent> = {}): OrderCommittedE
         currency: TOKEN,
         payment: 100n,
         cumulativeValue: 100n,
-        agreementHash: "0x" as Hex,
+        checkoutHash: "0x" as Hex,
         salt: 1n,
         deadline: 999999999n,
         blockNumber: 1,

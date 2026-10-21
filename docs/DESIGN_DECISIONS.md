@@ -220,7 +220,7 @@ a withdrawn clause for new compositions because that is how it chose to read
 the registry; another frontend may keep surfacing it and its users may keep
 composing it, so the registry clears nothing on any frontend's account. The
 same permanence is what every committed agreement and the batch verifier read:
-integrity routes through `agreementHash` and the clause key, never through
+integrity routes through `checkoutHash` and the clause key, never through
 the registry, so a garbage entry can pollute discovery only, and the stake
 prices that. There is nothing to squat but bytes: the registry holds no name,
 a reader verifies a fetched spec by checking `keccak256(bytes) == clauseKey`,
@@ -243,9 +243,9 @@ registration pins the spec to the designer's OWN node and registers in one atomi
 action, so nothing is publicly observable before the register tx hits the mempool.
 The residual — a mempool front-run of that tx — is the accepted,
 stake-priced cost; no registry has a guessable id to claim in advance,
-since a clause key, an `agreementKey` and an assembly's `compositionHash` are all derived from
+since a clause key, an `agreementHash` and an assembly's `compositionHash` are all derived from
 content. The same holds on `AgreementRegistry` and `AssemblyRegistry`: anyone can
-compute a pinned agreement's key or an assembly's root from the document, so a
+compute a pinned agreement's hash or an assembly's root from the document, so a
 front-runner can become designer of record there too, at the same stake and
 under the same usage-only reward, and both contracts accept it as stated. Revisit only if reward-capture griefing is
 observed in the wild; the fallback is commit-reveal on `AssemblyRegistry` alone.
@@ -765,8 +765,8 @@ content, so the bytes look like they should suffice.
 
 **Why it is correct**: Each registry takes any `bytes32` but its own reserved
 keys, so a stranger can register an existing assembly's `compositionHash` as a
-clause key or an agreement key. Nothing on chain tells a clause key, an
-`agreementKey` and a `compositionHash` apart by their bytes, and no registry
+clause key or an agreement hash. Nothing on chain tells a clause key, an
+`agreementHash` and a `compositionHash` apart by their bytes, and no registry
 knows another exists, so the separation cannot live in a registry;
 it lives in the reward's own accounting. With one keyspace, the stranger's
 clause registration at the assembly's bytes would make them a designer of record
@@ -807,18 +807,18 @@ kind; `test_theThreeKindsNeverShareACount`
 (`test/build/rewards/RpgfMinterTest.t.sol`) — no kind's count or claim is
 read from another kind's registry.
 
-## 25. The assembly root is a merkle tree over registered agreement keys — membership is proved, never looked up
+## 25. The assembly root is a merkle tree over registered agreement hashes — membership is proved, never looked up
 
 **Pattern**: An assembly's `compositionHash` is a merkle root built with the
 agreement format's leaf convention over one leaf per agreement — key the
-agreement's `agreementKey`, content the canonical `{"clauses":{…},"slot":i}`
+agreement's `agreementHash`, content the canonical `{"clauses":{…},"slot":i}`
 — plus, when any are composed, the assembly terms leaf
 (`keccak256("figaro-assembly-terms")`). `AssemblyRegistry` stores the root and
 a URI and checks nothing about the agreements inside it; `AgreementRegistry`
 knows no assembly. The counter's assembly leg takes the agreement's
-`agreementKey`, its `slotContentHash` and a membership proof, and proves the
+`agreementHash`, its `slotContentHash` and a membership proof, and proves the
 agreement leaf under `compositionHash` after proving the order's provenance leaf
-under `agreementHash`.
+under `checkoutHash`.
 
 **Why it looks wrong**: An assembly that composes registered agreements reads
 like it should hold an on-chain list of them, and the assembly registry like
@@ -832,12 +832,12 @@ Concerns"): assemblies use agreements, agreements use clauses, and neither
 knows what uses it. The root carries the membership instead: a agreement leaf
 either hashes up to the registered `compositionHash` or it does not, so the
 caller can supply nothing the root did not already commit, and a wrong
-`agreementKey` or agreement content derives a leaf that is not in the tree. An
+`agreementHash` or agreement content derives a leaf that is not in the tree. An
 assembly that names an agreement nobody registered is published like any
 other content; the agreement leg simply never counts it (the kind's own gate,
 § 19, § 24), and readers that cannot hydrate an agreement do not offer the
 assembly. The reserved assembly terms key is refused as an agreement's
-`agreementKey`, so the terms leaf can never be proved as a member.
+`agreementHash`, so the terms leaf can never be proved as a member.
 
 **Tests**: the SDK, the counter and the guest each rebuild the agreement
 leaves, the terms leaf, the root and the membership proofs of
@@ -846,17 +846,17 @@ leaves, the terms leaf, the root and the membership proofs of
 `test_aSlotLeafUnderADifferentCompositionHashFails` and
 `test_aSlotLeafWithAnotherSlotsBytesFails` refuse a membership proof that the
 root did not commit, and `test_theTermsLeafNeverPassesAsAnAgreement` refuses
-the reserved terms key as an agreement's `agreementKey`; the guest's twins
+the reserved terms key as an agreement's `agreementHash`; the guest's twins
 are in `prover/lib/tests/usage.rs`.
 
 ## 26. An assembly's agreements are ordered — one registered agreement may hold two agreements
 
 **Pattern**: The agreements of an assembly are a sequence, and each agreement leaf
 carries its 0-based index in its content (`"slot":i`). Two agreements may
-name the same `agreementKey`; their leaves differ by index and by the order
+name the same `agreementHash`; their leaves differ by index and by the order
 agreement's own fills.
 
-**Why it looks wrong**: A set of agreement keys is the smaller structure and
+**Why it looks wrong**: A set of agreement hashes is the smaller structure and
 needs no index; a repeated key in a merkle tree looks like a duplicate leaf an
 indexer would double-count.
 
@@ -870,7 +870,7 @@ process per (kind, key) (`CONTRACTS.md` § "Usage accounting", idempotence),
 so a repeated agreement earns for the process, not per agreement.
 
 **Tests**: the third vector assembly in `test/fixtures/assembly-vectors.json`
-holds one `agreementKey` in two of its three agreements, and every parity leg
+holds one `agreementHash` in two of its three agreements, and every parity leg
 rebuilds its distinct leaves and its root.
 
 ---
@@ -903,5 +903,5 @@ rebuilds its distinct leaves and its root.
 | 22 | Batch resolve: nonce-less, deadline-less `ResolveProcess` signature | batch-path | The canonical EIP-712 replay shape | Resolution is terminal and single-shot — the guest's root-chained state rejects a second resolve; the domain pins chain + verifier so the signature travels nowhere; the message authorizes one time-invariant transition, leaving nothing for a nonce to price |
 | 23 | Pinata pin key in the public site bundle | site/pinning | A credential in a public bundle reads as a leaked secret | The testnet key is pin-only (dashboard-confirmed: unpin, list, data and every V3 resource inactive) and disposable; every registry read is digest-checked against the on-chain anchor, so a hostile pin never verifies; testnet only — per-party pinning at mainnet, the keys revoked at the account split |
 | 24 | Reward keyed by (kind, key), three kinds | reward-path | A family discriminator looks like the reward crossing the registries' boundary | Each registry takes any bytes32 and nothing tells the families apart by bytes; without the kind a stranger staking an assembly's hash as a clause or an agreement would take its reward; the kind keeps a stake in one family from earning another's, and no kind's gate reads another kind's registry |
-| 25 | The assembly root is a merkle tree over registered agreement keys | registry/reward-path | No stored list of an assembly's agreements; a caller-supplied proof | A stored list or a cross-registry lookup is an edge between parallel families; the root commits membership, so a proof either reaches the registered root or fails |
+| 25 | The assembly root is a merkle tree over registered agreement hashes | registry/reward-path | No stored list of an assembly's agreements; a caller-supplied proof | A stored list or a cross-registry lookup is an edge between parallel families; the root commits membership, so a proof either reaches the registered root or fails |
 | 26 | Ordered agreements; one agreement may hold two | registry | A repeated key looks like a duplicate leaf | Designs repeat terms; the index makes each leaf distinct and the root commits the multiplicity; usage counts once per process per (kind, key) |

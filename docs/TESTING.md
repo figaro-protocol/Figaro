@@ -28,7 +28,7 @@ not by this paragraph. Current: `FigaroCoreTest`, `FigaroCore_RevertBranch`,
 `WeirdTokenTest`, `DeployWiringTest`, `HalmosFigaroCore`, `FlorinToken.t.sol`.
 
 `UsageCounterTest` covers the reward-accrual counter: the RESOLVED-order gate, merkle
-inclusion against the signed `agreementHash`, per-(clause-or-assembly, process) GLOBAL idempotence (a
+inclusion against the signed `checkoutHash`, per-(clause-or-assembly, process) GLOBAL idempotence (a
 process counts once ever — re-recording it in a later period reverts, and a later period
 counts only trade new to it), the **member-stake gate on the seller of record** (`SellerNotStaked` when the seller-of-record is
 not registered; a seller who leaves the registry stops counting), **uniform scoring across clauses, agreements and assemblies** (no
@@ -277,8 +277,8 @@ usage bridge in
 replay rejection (the reason the counted set rides the state root), breadth
 vs depth, the agreement leg via the two-key provenance reproduction
 (`credits_an_agreement_through_the_provenance_leaf`, refused on a wrong
-`agreementKey` or `compositionHash`), the assembly leg via the same leaf plus
-the agreement's membership proof (refused on another agreement's key, a proof
+`agreementHash` or `compositionHash`), the assembly leg via the same leaf plus
+the agreement's membership proof (refused on another agreement's hash, a proof
 under another root, or the wrong agreement content), one provenance leaf crediting
 the agreement and the assembly apart, both reserved keys refused on every kind
 (`every_kind_keyed_on_a_reserved_key_is_refused`) and the terms leaf never
@@ -402,7 +402,7 @@ agreement.
 
 **Merkle parity — the three-way agreement-tree lock.**
 `sdk/tests/merkleParity.test.ts` freezes SDK-built roots, leaves and inclusion
-proofs (a three-section agreement and a one-clause one) into
+proofs (a three-clause agreement and a one-clause one) into
 `test/fixtures/merkle-vectors.json` (`HARVEST_MERKLE_VECTORS=1` regenerates).
 `test/core/attestation/MerkleParityTest.t.sol` rebuilds every leaf the way
 `AttestationCoordinator` and `UsageCounter` do and verifies every proof with
@@ -410,23 +410,23 @@ the OpenZeppelin library they call; `prover/lib/tests/merkle_parity.rs` does
 the same through the guest's verifier. Three implementations, one fixture.
 Each clause in the fixture carries its `clauseKey`, the leaf's key, and its
 provenance entries carry the two-key bytes
-(`{"agreementKey":…,"compositionHash":…}`).
+(`{"agreementHash":…,"compositionHash":…}`).
 
 **Assembly parity — the three-way composition-tree lock.**
 `sdk/tests/assemblyParity.test.ts` freezes, for the three vector composed
-agreements, each `agreementKey` with its key bytes, the agreement bytes and
+agreements, each `agreementHash` with its key bytes, the agreement bytes and
 leaves, the assembly terms leaf, the composition root, every agreement's
 membership proof, and the provenance bytes and leaf for each agreement's two keys
 into `test/fixtures/assembly-vectors.json` (`HARVEST_ASSEMBLY_VECTORS=1`
 regenerates); it also asserts a membership proof does not verify under
 another assembly's root. `test/core/attestation/MerkleParityTest.t.sol`
-(`test_everyAgreementKeyIsTheRootOverItsClauseLeaves`,
+(`test_everyAgreementHashIsTheRootOverItsClauseLeaves`,
 `test_everyAssemblyVectorOpensUnderItsRoot`) rebuilds them the way
 `UsageCounter` does; `prover/lib/tests/merkle_parity.rs`
 (`every_agreement_opens_under_its_own_root_and_no_other`, the terms leaf on
 its reserved key, a one-agreement root equal to its leaf) and
 `prover/lib/tests/parity.rs` (`every_vector_agreement_credits_its_agreement_and_its_assembly`,
-and the refusals of a foreign membership proof, a wrong `agreementKey` and the
+and the refusals of a foreign membership proof, a wrong `agreementHash` and the
 terms leaf as an agreement) do the same through the guest. The properties
 behind the fixture — every membership proof verifies under its own root and no
 other, editorial prose never moves the root or the key, any clause value moves
@@ -479,7 +479,7 @@ against them and against the commitment vectors.
 did, and both Merkle verifiers open generated agreements.**
 `scripts/test-cross-impl-fuzz.sh` runs two streams under one seed. The
 agreement stream: `sdk/tests/merkleParity.test.ts` under `AGREEMENT_FUZZ_SEED`
-generates agreements of one to six sections (`agreementArb`, the SDK's own
+generates agreements of one to six clauses (`agreementArb`, the SDK's own
 property generator) and writes each root, leaf and inclusion proof to
 `test/fixtures/streams/agreements.json` in the Merkle fixture's format;
 `MerkleParityTest` and `prover/lib/tests/merkle_parity.rs` read that file
@@ -599,8 +599,8 @@ select only the other projects, and `E2E_CHAIN=sepolia`, pass through silently.
   the real UI against the live Sepolia deployment (wizard registration → discover →
   order → accept/commit → resolve → audit), every step asserted out-of-band from
   Sepolia; the resolved order's committed agreement, fetched from IPFS and verified
-  against its `agreementHash`, carries a provenance leaf that decodes to
-  `{ agreementKey, compositionHash }`, each bound on its own registry. `E2E_CHAIN=sepolia SMOKE_SELLER_KEY=… SMOKE_BUYER_KEY=… npx playwright
+  against its `checkoutHash`, carries a provenance leaf that decodes to
+  `{ agreementHash, compositionHash }`, each bound on its own registry. `E2E_CHAIN=sepolia SMOKE_SELLER_KEY=… SMOKE_BUYER_KEY=… npx playwright
   test --project=sepolia` builds the site from the committed deployment record
   (`deployments/11155111.json`, publicnode RPC, test helpers on, dist
   `.next-e2e-sepolia`, port 3200) and drives it with the local-key signer bridge
@@ -614,7 +614,7 @@ select only the other projects, and `E2E_CHAIN=sepolia`, pass through silently.
   assembly / registered member from the chain and holds the `/registries`
   explorer to exactly that row set with every row's pinned content RESOLVED
   through the site's gateway chain; each agreement's pinned document re-keys to
-  its registry key (`agreementKeyOf`) and its row names that key and its
+  its registry key (`agreementHashOf`) and its row names that key and its
   designer of record (pass `NEXT_PUBLIC_IPFS_GATEWAY_URL` + `NEXT_PUBLIC_IPFS_FALLBACK_GATEWAY_URL`
   as the deploy bakes them). Free to run after every nudge. The `devnet-e2e-ci`
   lane runs this spec on every trigger against the bare devnet genesis

@@ -132,7 +132,7 @@ describe("CommitmentPayload — buyerFunding wire format", () => {
             currency: "0x4444444444444444444444444444444444444444",
             payment: 1000n,
             expectedCumulativeValue: 1000n,
-            agreementHash: keccak256(toHex("agreement")),
+            checkoutHash: keccak256(toHex("agreement")),
             salt: 7n,
             deadline: ARGS.deadline,
         },

@@ -4,7 +4,7 @@ import path from "node:path";
 import { keccak256, toHex, type Hex } from "viem";
 import {
     ASSEMBLY_TERMS_LEAF_KEY,
-    agreementKeyOf,
+    agreementHashOf,
     assertNotReservedKey,
     buildAgreementInclusionProof,
     resolveAuthoredClauseKeys,
@@ -46,43 +46,43 @@ describe("assemblyComposedClauseKeys", () => {
     });
 });
 
-describe("the registered agreement key", () => {
+describe("the registered agreement hash", () => {
     const composed = { clauses: { [keyOf("figaro-commerce")]: {}, [keyOf("figaro-topology")]: {} } };
 
     it("is the merkle root over one leaf per composed clause, editorial prose excluded", () => {
         const leaves = Object.entries(composed.clauses).map(([clauseKey, fills]) =>
             computeClauseLeaf({ clause: clauseKey as Hex, data: fills }),
         );
-        expect(agreementKeyOf(composed)).toBe(buildMerkleRoot(sortLeaves(leaves)));
+        expect(agreementHashOf(composed)).toBe(buildMerkleRoot(sortLeaves(leaves)));
         expect(agreementClauseLeaves(composed)).toEqual(sortLeaves(leaves));
-        expect(agreementKeyOf({ ...composed, name: "A", summary: "B", description: "C" })).toBe(agreementKeyOf(composed));
+        expect(agreementHashOf({ ...composed, name: "A", summary: "B", description: "C" })).toBe(agreementHashOf(composed));
     });
 
-    it("a one-clause agreement's key is its clause's leaf", () => {
+    it("a one-clause agreement's hash is its clause's leaf", () => {
         const one = { clauses: { [keyOf("figaro-commerce")]: { x: 1 } } };
-        expect(agreementKeyOf(one)).toBe(computeClauseLeaf({ clause: keyOf("figaro-commerce"), data: { x: 1 } }));
+        expect(agreementHashOf(one)).toBe(computeClauseLeaf({ clause: keyOf("figaro-commerce"), data: { x: 1 } }));
     });
 
-    it("every composed clause opens under the key, and under no other agreement's key", () => {
+    it("every composed clause opens under the key, and under no other agreement's hash", () => {
         for (const clauseKey of Object.keys(composed.clauses) as Hex[]) {
             const { leaf, proof, fillsHash } = buildRegisteredClauseInclusionProof(composed, clauseKey);
             expect(fillsHash).toBe(keccak256(toHex(canonicalize(composed.clauses[clauseKey]))));
             expect(leaf).toBe(computeClauseLeaf({ clause: clauseKey, dataHash: fillsHash }));
-            expect(verifyInclusionProof(agreementKeyOf(composed), leaf, proof)).toBe(true);
-            expect(verifyInclusionProof(agreementKeyOf({ clauses: { [clauseKey]: {} } }), leaf, proof)).toBe(false);
+            expect(verifyInclusionProof(agreementHashOf(composed), leaf, proof)).toBe(true);
+            expect(verifyInclusionProof(agreementHashOf({ clauses: { [clauseKey]: {} } }), leaf, proof)).toBe(false);
         }
         expect(() => buildRegisteredClauseInclusionProof(composed, keyOf("figaro-handoff"))).toThrow(/not composed/);
     });
 
     it("refuses a duplicate clause key and a reserved format key", () => {
         const k = keyOf("figaro-commerce");
-        expect(() => agreementKeyOf({ clauses: { [k]: {}, [k.toUpperCase().replace("0X", "0x") as Hex]: {} } })).toThrow(/Duplicate/);
-        expect(() => agreementKeyOf({ clauses: { [ASSEMBLY_TERMS_LEAF_KEY]: {} } })).toThrow(/reserved/);
+        expect(() => agreementHashOf({ clauses: { [k]: {}, [k.toUpperCase().replace("0X", "0x") as Hex]: {} } })).toThrow(/Duplicate/);
+        expect(() => agreementHashOf({ clauses: { [ASSEMBLY_TERMS_LEAF_KEY]: {} } })).toThrow(/reserved/);
     });
 
     it("moves with any clause or value", () => {
-        expect(agreementKeyOf({ clauses: { ...composed.clauses, [keyOf("figaro-handoff")]: {} } })).not.toBe(agreementKeyOf(composed));
-        expect(agreementKeyOf({ clauses: { ...composed.clauses, [keyOf("figaro-commerce")]: { x: 1 } } })).not.toBe(agreementKeyOf(composed));
+        expect(agreementHashOf({ clauses: { ...composed.clauses, [keyOf("figaro-handoff")]: {} } })).not.toBe(agreementHashOf(composed));
+        expect(agreementHashOf({ clauses: { ...composed.clauses, [keyOf("figaro-commerce")]: { x: 1 } } })).not.toBe(agreementHashOf(composed));
     });
 });
 
@@ -99,7 +99,7 @@ describe("the composition tree", () => {
     });
 
     it("a one-entry assembly's root is its agreement's leaf; terms add a leaf", () => {
-        const one: Assembly = { agreements: [{ id: "order-0", agreementKey: A, clauses: {} }] };
+        const one: Assembly = { agreements: [{ id: "order-0", agreementHash: A, clauses: {} }] };
         const { leaf, proof, slotContentHash } = buildAgreementInclusionProof(one, 0);
         expect(proof).toEqual([]);
         expect(assemblyCompositionHash(one)).toBe(leaf);
@@ -118,8 +118,8 @@ describe("the composition tree", () => {
     it("the same agreement in two agreements is two leaves; editorial prose never moves the root", () => {
         const two: Assembly = {
             agreements: [
-                { id: "order-0", agreementKey: A, clauses: { [TOPO]: { parentOrderHashes: [] } } },
-                { id: "order-1", agreementKey: A, clauses: { [TOPO]: { parentOrderHashes: ["order-0"] } } },
+                { id: "order-0", agreementHash: A, clauses: { [TOPO]: { parentOrderHashes: [] } } },
+                { id: "order-1", agreementHash: A, clauses: { [TOPO]: { parentOrderHashes: ["order-0"] } } },
             ],
         };
         expect(new Set(assemblyLeaves(two)).size).toBe(2);
@@ -132,15 +132,15 @@ describe("the composition tree", () => {
     });
 
     it("a membership proof under a different root does not verify", () => {
-        const t1: Assembly = { agreements: [{ id: "order-0", agreementKey: A, clauses: {} }, { id: "order-1", agreementKey: B, clauses: {} }] };
-        const t2: Assembly = { agreements: [{ id: "order-0", agreementKey: B, clauses: {} }, { id: "order-1", agreementKey: A, clauses: {} }] };
+        const t1: Assembly = { agreements: [{ id: "order-0", agreementHash: A, clauses: {} }, { id: "order-1", agreementHash: B, clauses: {} }] };
+        const t2: Assembly = { agreements: [{ id: "order-0", agreementHash: B, clauses: {} }, { id: "order-1", agreementHash: A, clauses: {} }] };
         const { leaf, proof } = buildAgreementInclusionProof(t1, 0);
         expect(verifyInclusionProof(assemblyCompositionHash(t2), leaf, proof)).toBe(false);
     });
 
-    it("refuses the two reserved format keys as an agreement's agreement key", () => {
+    it("refuses the two reserved format keys as an agreement's agreement hash", () => {
         for (const reserved of [PROVENANCE_LEAF_KEY, ASSEMBLY_TERMS_LEAF_KEY]) {
-            const t: Assembly = { agreements: [{ id: "order-0", agreementKey: reserved, clauses: {} }] };
+            const t: Assembly = { agreements: [{ id: "order-0", agreementHash: reserved, clauses: {} }] };
             expect(() => assemblyCompositionHash(t)).toThrow(/reserved format key/);
             expect(() => assertNotReservedKey(reserved)).toThrow(/reserved format key/);
         }
@@ -160,7 +160,7 @@ describe("an agreement's clauses at checkout", () => {
 
     it("one registered agreement serves both agreements; each agreement's fill merges over it", () => {
         const [s0, s1] = hydrated.assembly.agreements;
-        expect(s0.agreementKey).toBe(s1.agreementKey);
+        expect(s0.agreementHash).toBe(s1.agreementHash);
         expect(agreementClauses(hydrated, s1)).toEqual({ [COMMERCE]: {}, [TOPO]: { parentOrderHashes: ["order-0"] } });
         expect(assemblyParentOrderHashes(s1)).toEqual(["order-0"]);
         expect(assemblyParentOrderHashes(s0)).toEqual([]);
@@ -180,7 +180,7 @@ describe("composeAuthoredAgreement + assembleAuthored (seed-time derivation)", (
     const base = composeAuthoredAgreement({ name: "Mandatory clauses", clauses: { "figaro-commerce": {}, "figaro-topology": {} } }, specs).document;
 
     it("composes an authored agreement by name: its pick's clauses merge, the words ride beside the clauses, outside the key", () => {
-        const { document, agreementKey } = composeAuthoredAgreement(
+        const { document, agreementHash } = composeAuthoredAgreement(
             { name: "A hand-off", summary: "one hand-off", clauses: { "figaro-handoff": {} }, mandatory: "base" },
             specs,
             { base },
@@ -188,10 +188,10 @@ describe("composeAuthoredAgreement + assembleAuthored (seed-time derivation)", (
         expect(document.clauses).toEqual({ [keyOf("figaro-handoff")]: {}, [keyOf("figaro-commerce")]: {}, [keyOf("figaro-topology")]: {} });
         expect(document.name).toBe("A hand-off");
         expect(document).not.toHaveProperty("mandatory");
-        expect(agreementKey).toBe(agreementKeyOf({ clauses: document.clauses }));
-        expect(agreementKeyOf(document)).toBe(agreementKey);
+        expect(agreementHash).toBe(agreementHashOf({ clauses: document.clauses }));
+        expect(agreementHashOf(document)).toBe(agreementHash);
         // Written with or without a clause of its pick, the same agreement.
-        expect(composeAuthoredAgreement({ clauses: { "figaro-handoff": {}, "figaro-commerce": {} }, mandatory: "base" }, specs, { base }).agreementKey).toBe(agreementKey);
+        expect(composeAuthoredAgreement({ clauses: { "figaro-handoff": {}, "figaro-commerce": {} }, mandatory: "base" }, specs, { base }).agreementHash).toBe(agreementHash);
         expect(() => composeAuthoredAgreement({ name: "none" }, specs)).toThrow(/no clauses/);
         // An authored agreement naming no pick composes only mandatory-article clauses…
         expect(() => composeAuthoredAgreement({ clauses: { "figaro-handoff": {} } }, specs)).toThrow(/no registered agreement picked in the mandatory article/);
@@ -205,13 +205,13 @@ describe("composeAuthoredAgreement + assembleAuthored (seed-time derivation)", (
             handoff: { clauses: { "figaro-handoff": {} }, mandatory: "base" },
             base: { name: "Mandatory clauses", clauses: { "figaro-commerce": {}, "figaro-topology": {} } },
         }, specs);
-        expect(composed.base.agreementKey).toBe(agreementKeyOf(base));
+        expect(composed.base.agreementHash).toBe(agreementHashOf(base));
         expect(composed.handoff.document.clauses).toEqual({ [keyOf("figaro-handoff")]: {}, ...base.clauses });
         expect(() => composeAuthoredAgreements({ handoff: { clauses: { "figaro-handoff": {} }, mandatory: "handoff" } }, specs))
             .toThrow(/names "handoff" as its mandatory pick/);
     });
 
-    it("assembles an authored assembly over named agreements: the entry binds the agreement's key and carries its own parents", () => {
+    it("assembles an authored assembly over named agreements: the entry binds the agreement's hash and carries its own parents", () => {
         const handoff = composeAuthoredAgreement({ clauses: { "figaro-handoff": {} }, mandatory: "base" }, specs, { base }).document;
         const bare = base;
         const { assembly, agreements } = assembleAuthored({
@@ -227,12 +227,12 @@ describe("composeAuthoredAgreement + assembleAuthored (seed-time derivation)", (
         expect(assembly.assemblyClauses).toEqual({ [keyOf("figaro-applicable-law")]: { applicableLaw: "ch" } });
         // Two agreements bind one agreement; the set holds each distinct one once.
         expect(Object.keys(agreements)).toHaveLength(2);
-        expect(assembly.agreements[0].agreementKey).toBe(assembly.agreements[1].agreementKey);
-        expect(assembly.agreements[0].agreementKey).toBe(agreementKeyOf(bare));
-        expect(assembly.agreements[2].agreementKey).toBe(agreementKeyOf(handoff));
+        expect(assembly.agreements[0].agreementHash).toBe(assembly.agreements[1].agreementHash);
+        expect(assembly.agreements[0].agreementHash).toBe(agreementHashOf(bare));
+        expect(assembly.agreements[2].agreementHash).toBe(agreementHashOf(handoff));
         expect(assembly.agreements[0].clauses).toEqual({ [keyOf("figaro-topology")]: { parentOrderHashes: [] } });
         expect(assembly.agreements[1].clauses).toEqual({ [keyOf("figaro-topology")]: { parentOrderHashes: ["order-0"] } });
-        for (const entry of assembly.agreements) expect(agreementKeyOf(agreements[entry.agreementKey])).toBe(entry.agreementKey);
+        for (const entry of assembly.agreements) expect(agreementHashOf(agreements[entry.agreementHash])).toBe(entry.agreementHash);
     });
 
     it("refuses a entry that names no agreement, an unknown one, inline clauses, or an agreement short of the mandatory clauses", () => {
@@ -259,9 +259,9 @@ describe("composeAuthoredAgreement + assembleAuthored (seed-time derivation)", (
             authoredByName[file.replace(/\.json$/, "")] = JSON.parse(readFileSync(path.join(agreementsDir, file), "utf8"));
         }
         const byName: Record<string, RegisteredAgreement> = {};
-        for (const [name, { document, agreementKey }] of Object.entries(composeAuthoredAgreements(authoredByName, all))) {
+        for (const [name, { document, agreementHash }] of Object.entries(composeAuthoredAgreements(authoredByName, all))) {
             expect(document.name, `${name}.json carries its name`).toBeTruthy();
-            expect(agreementKeyOf(document)).toBe(agreementKey);
+            expect(agreementHashOf(document)).toBe(agreementHash);
             byName[name] = document;
         }
         const used = new Set<string>(Object.values(authoredByName).flatMap((a) => (a.mandatory ? [a.mandatory] : [])));
@@ -272,7 +272,7 @@ describe("composeAuthoredAgreement + assembleAuthored (seed-time derivation)", (
             const { assembly, agreements } = assembleAuthored(authored, byName, all);
             for (const key of assemblyComposedClauseKeys(assembly, agreements)) expect(all.get(key), `${file} ${key}`).toBeDefined();
             expect(assemblyCompositionHash(assembly)).toMatch(/^0x[0-9a-f]{64}$/);
-            for (const entry of assembly.agreements) expect(agreements[entry.agreementKey], `${file} ${entry.id}`).toBeDefined();
+            for (const entry of assembly.agreements) expect(agreements[entry.agreementHash], `${file} ${entry.id}`).toBeDefined();
         }
         for (const name of Object.keys(byName)) expect(used.has(name), `agreements/${name}.json is bound by a reference assembly or picked`).toBe(true);
     });

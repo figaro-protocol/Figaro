@@ -53,7 +53,7 @@ Originating a process is a two-party commit: the buyer builds a commitment and s
 it; the seller must counter-sign the **same** EIP-712 struct before it can land. The
 message that carries this is the offer envelope (`CommitmentPayload`): the EIP-712
 commitment, the full off-chain agreement pinned inline (its merkle root ==
-`agreementHash`, so the recipient hydrates everything from one message), the two
+`checkoutHash`, so the recipient hydrates everything from one message), the two
 signatures, and two optional legs (the buyer's witness-signed swap-funding leg; an
 RFQ `quoteRequest` naming the priced fields). It serializes to compact JSON
 (bigints → hex) and is the entire wire payload — there is no side channel. The wire
@@ -63,7 +63,7 @@ deadline-is-CHAIN-time rule — is `sdk/README.md` § "The offer envelope".
 ### The exchange
 
 1. **Buyer** instantiates a discovered assembly's root order (fills the registered
-   agreement the root agreement holds, hydrated against its `agreementKey`, with
+   agreement the root agreement holds, hydrated against its `agreementHash`, with
    its own values; it adds and drops no clause), signs its half, and sends the envelope to the
    seller over a coordination channel.
 2. **Seller** runs the anti-tamper gate (below), applies BOTH of its decision floors
@@ -84,16 +84,16 @@ never silently declines — on a tampered one:
 
 - the buyer signature is present, and **cryptographically recovers to the named buyer**;
 - the named seller is *me*;
-- the agreement **hashes to the committed `agreementHash`** (a buyer cannot sign one
+- the agreement **hashes to the committed `checkoutHash`** (a buyer cannot sign one
   agreement and pin another);
 - the agreement's parties match the commitment;
 - **and, when the checker holds the clause specs, the terms inside the agreement do not
   contradict the struct.** The hash check above proves the document is the one the buyer
   signed; it says nothing about whether that document's TERMS match the execution data.
   Currency and payment live in both places at once — as merkle leaves under
-  `agreementHash` and as fields of the commitment — so the gate additionally
+  `checkoutHash` and as fields of the commitment — so the gate additionally
   asserts leaf == struct on both, plus pin == leaf wherever the assembly composes a
-  denomination pin, and refuses any section that violates its own clause spec (a missing
+  denomination pin, and refuses any clause that violates its own spec (a missing
   required term included). In the SDK this is `validateOffer`'s fourth parameter, a
   `SpecSource` built from the live `ClauseRegistry → IPFS` specs; **a leaf/struct
   contradiction is treated as TAMPER — it throws, exactly like a forged signature.**
@@ -220,13 +220,13 @@ over the orders they chose to treat as comparable, and the protocol neither
 publishes that comparison nor endorses it.
 
 **Provenance rides committed leaves.** The agreement format's reserved
-provenance leaf carries the `agreementKey` and the `compositionHash` that name
+provenance leaf carries the `agreementHash` and the `compositionHash` that name
 which registered agreement and which registered assembly an order instantiated —
 the same values the once-per-process agreement and assembly credits are claimed
 from, each counting only while its own registry holds a live binding, the
 assembly credit with the agreement's membership proof under the root — and `figaro-topology`'s
 `parentOrderHashes` carries the edges the Core does not store. Both are merkle
-leaves under `agreementHash`, so a provenance claim is verifiable by inclusion proof
+leaves under `checkoutHash`, so a provenance claim is verifiable by inclusion proof
 against the on-chain root instead of trusted from an index. That supports asking
 which processes instantiated a given assembly and how their orders relate. It does
 not support "assembly compliance": nothing on chain compares a live agreement
@@ -241,7 +241,7 @@ chain — agreement bodies, evidence pre-images, the books a process leaves behi
 stay with the wallets that produced them. An agent that needs that substance buys it
 from its owner on the owner's terms, through the same bonded commitment as any other
 trade, and verifies each disclosed term by merkle inclusion against the source
-process's on-chain `agreementHash`, and each delivered datum against the content
+process's on-chain `checkoutHash`, and each delivered datum against the content
 hash a party attested under a clause leaf while the process was open. The buyer checks provenance against the chain
 rather than the seller's word; what no chain testifies to is whether the data is
 true about the world. Each declared or attested value is a party's declaration or attestation.
@@ -283,11 +283,11 @@ What is emitted, and what each thing is evidence of:
 - **New terms and new shapes of trade exist.** `ClauseRegistry.ClauseRegistered`,
   `AgreementRegistry.AgreementRegistered` and `AssemblyRegistry.AssemblyRegistered` carry
   the designer and a `contentURI`; the content resolves chain → IPFS, and a reader
-  verifies it against the key (a agreement by recomputing its `agreementKey`). Either registry's `DepositWithdrawn` de-surfaces the entry for new
+  verifies it against the key (a agreement by recomputing its `agreementHash`). Either registry's `DepositWithdrawn` de-surfaces the entry for new
   compositions while every order already committed against it still resolves.
 - **Someone bonded.** `FigaroCore.OrderCommitted`, with `OrderSeller` and `OrderCurrency`
   beside it: a value at one link of a chain, in a named token, backed 2×. The TERMS behind
-  it are merkle leaves under `agreementHash` — the chain holds the root; the document is
+  it are merkle leaves under `checkoutHash` — the chain holds the root; the document is
   fetched from wherever it was pinned, and a fingerprint whose pre-image is unreachable is
   party-private by design, not a hole in the data.
 - **A party signed a claim that work advanced.** `AttestationCoordinator.Attestation(orderHash,
@@ -304,7 +304,7 @@ What is emitted, and what each thing is evidence of:
   plus `BatchUsageRecorded` on the batch path (cumulative — it REPLACES rather than adds);
   `scoreOf(kind, clauseOrAssembly, period)` sums both, kind `0` for a clause key,
   `1` for an assembly's `compositionHash` and `2` for a registered agreement's
-  `agreementKey`. The `d` term counts DISTINCT LIVE-STAKED
+  `agreementHash`. The `d` term counts DISTINCT LIVE-STAKED
   sellers, so it reads as adoption breadth priced at one deposit per seller — the nearest
   thing on the network to a demand signal for a clause, an agreement or an assembly. It exists only
   because buyers call `recordProcessUsage` at resolution; uncounted usage is permanently
@@ -354,7 +354,7 @@ composes.
   a status.
 - **Agreement** — the clauses composed for ONE order, every field filled: the terms. It is
   never the order, which is the commitment that carries the agreement's merkle root.
-  `buildOrderAgreement` returns `{ agreement, agreementHash }`; `computeAgreementHash` is
+  `buildOrderAgreement` returns `{ agreement, checkoutHash }`; `computeCheckoutHash` is
   the root a counterparty recomputes before it signs; `assertAgreementSignable` is the gate
   every signature passes.
 - **Clause designer** — no process role at all:
@@ -363,7 +363,7 @@ composes.
   those bytes (`computeClauseKey(spec)`), and the spec's `clauseId` and `version` are
   its label. Permissionless, first-write-wins,
   deposit-backed; the capacity's prompt is `ecosystem-agents/figaro-clause-author.md`.
-- **Assembly designer** — `AgreementRegistry.registerAgreement(agreementKey, contentURI)`
+- **Assembly designer** — `AgreementRegistry.registerAgreement(agreementHash, contentURI)`
   for each agreement no registration already carries, then
   `AssemblyRegistry.registerAssembly(compositionHash, contentURI)` over a published
   assembly whose agreements name registered agreements. Composition is the designer's act and happens only there,

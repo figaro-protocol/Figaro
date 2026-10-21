@@ -10,7 +10,7 @@ import { encodePacked, keccak256, type Address, type Hex } from "viem";
 import {
     ASSEMBLY_TERMS_LEAF_KEY,
     PROVENANCE_LEAF_KEY,
-    agreementKeyOf,
+    agreementHashOf,
     buildAgreementInclusionProof,
     provenanceContentRef,
     provenanceLeafBytes,
@@ -36,8 +36,8 @@ const COMMERCE = keccak256(encodePacked(["string"], ["a commerce spec's bytes"])
 const MODALITIES = keccak256(encodePacked(["string"], ["a modalities spec's bytes"]));
 // The registered agreement the agreement binds, and the one-entry assembly
 // whose root is the composition hash the provenance names.
-const AGREEMENT_KEY = agreementKeyOf({ clauses: { [COMMERCE]: {}, [MODALITIES]: {} } });
-const ASSEMBLY: Assembly = { agreements: [{ id: "order-0", agreementKey: AGREEMENT_KEY, clauses: {} }] };
+const AGREEMENT_HASH = agreementHashOf({ clauses: { [COMMERCE]: {}, [MODALITIES]: {} } });
+const ASSEMBLY: Assembly = { agreements: [{ id: "order-0", agreementHash: AGREEMENT_HASH, clauses: {} }] };
 const COMPOSITION = assemblyCompositionHash(ASSEMBLY);
 const BUYER = "0x0000000000000000000000000000000000000b0b" as Address;
 const CURRENCY = "0x00000000000000000000000000000000000007ed" as Address;
@@ -49,14 +49,14 @@ function commitment(salt: bigint, seller: Address): Commitment {
     return {
         processId: PROCESS, buyer: BUYER, seller, currency: CURRENCY,
         payment: 100n, expectedCumulativeValue: 100n * salt,
-        agreementHash: `0x${salt.toString(16).padStart(64, "a")}` as Hex, salt, deadline: 2n,
+        checkoutHash: `0x${salt.toString(16).padStart(64, "a")}` as Hex, salt, deadline: 2n,
     };
 }
 
-function agreement(seller: Address, provenance: unknown = { agreementKey: AGREEMENT_KEY, compositionHash: COMPOSITION }, modalities: Hex = MODALITIES): Agreement {
+function agreement(seller: Address, provenance: unknown = { agreementHash: AGREEMENT_HASH, compositionHash: COMPOSITION }, modalities: Hex = MODALITIES): Agreement {
     return {
         version: "a1", buyer: BUYER, seller,
-        sections: [
+        clauses: [
             { clause: modalities, data: { modality: "pickup" } },
             { clause: COMMERCE, data: { payment: "100", currency: CURRENCY, lineItems: [] } },
         ],
@@ -78,14 +78,14 @@ describe("planUsageRecords", () => {
         expect(writes.filter((w) => w.kind === "clause").map((w) => w.key.toLowerCase()).sort())
             .toEqual([COMMERCE.toLowerCase(), MODALITIES.toLowerCase()].sort());
         const agreementWrite = writes.find((w) => w.kind === "agreement");
-        expect(agreementWrite).toMatchObject({ key: AGREEMENT_KEY, compositionHash: COMPOSITION });
+        expect(agreementWrite).toMatchObject({ key: AGREEMENT_HASH, compositionHash: COMPOSITION });
     });
 
     it("carries the agreement's membership proof on the assembly write", () => {
         const { writes } = planUsageRecords([entry(1n, SELLER_A)]);
         const assembly = writes.find((w) => w.kind === "assembly");
         const { proof, slotContentHash } = buildAgreementInclusionProof(ASSEMBLY, 0);
-        expect(assembly).toMatchObject({ key: COMPOSITION, agreementKey: AGREEMENT_KEY, slotContentHash, membershipProof: proof });
+        expect(assembly).toMatchObject({ key: COMPOSITION, agreementHash: AGREEMENT_HASH, slotContentHash, membershipProof: proof });
     });
 
     it("says a provenance with no assembly out loud and plans nothing for that order", () => {
@@ -117,7 +117,7 @@ describe("planUsageRecords", () => {
         expect(assembly[0].key.toLowerCase()).toBe(COMPOSITION.toLowerCase());
         const agreements = writes.filter((w) => w.kind === "agreement");
         expect(agreements).toHaveLength(1);
-        expect(agreements[0].key.toLowerCase()).toBe(AGREEMENT_KEY.toLowerCase());
+        expect(agreements[0].key.toLowerCase()).toBe(AGREEMENT_HASH.toLowerCase());
     });
 
     it("says a malformed provenance out loud and plans nothing for that order", () => {
@@ -137,7 +137,7 @@ describe("planUsageRecords", () => {
         // A registry accepts any bytes32, so a clause may carry the very
         // bytes of the assembly's composition hash; it plans as a clause
         // write AND the provenance plans as the assembly write.
-        const provenance = { agreementKey: AGREEMENT_KEY, compositionHash: COMPOSITION };
+        const provenance = { agreementHash: AGREEMENT_HASH, compositionHash: COMPOSITION };
         const { writes } = planUsageRecords([entry(1n, SELLER_A, agreement(SELLER_A, provenance, COMPOSITION))]);
         expect(writes.filter((w) => w.key.toLowerCase() === COMPOSITION.toLowerCase()).map((w) => w.kind).sort())
             .toEqual(["assembly", "clause"]);
@@ -152,14 +152,14 @@ function order(salt: bigint, seller: Address): Order {
     const c = commitment(salt, seller);
     return {
         orderHash: `order-${salt}`, processId: PROCESS, buyer: BUYER, seller, currency: CURRENCY,
-        agreementHash: c.agreementHash, cumulativeValue: c.expectedCumulativeValue, payment: c.payment,
+        checkoutHash: c.checkoutHash, cumulativeValue: c.expectedCumulativeValue, payment: c.payment,
         state: OrderState.Active, sellerBond: 0n, buyerBond: 0n, salt: c.salt, deadline: c.deadline,
     };
 }
 
 function deps(overrides: Partial<CapabilityExecutorDeps> = {}) {
     const orders = [order(1n, SELLER_A), order(2n, SELLER_B)];
-    const agreements = new Map<string, Agreement>(orders.map((o) => [o.agreementHash!, agreement(o.seller as Address)]));
+    const agreements = new Map<string, Agreement>(orders.map((o) => [o.checkoutHash!, agreement(o.seller as Address)]));
     const sent: Hex[] = [];
     const base: CapabilityExecutorDeps = {
         isE2EMock: false,
@@ -222,14 +222,14 @@ describe("createCapabilityExecutors — resolve with usage writes", () => {
         const errors = vi.spyOn(console, "error").mockImplementation(() => {});
         await createCapabilityExecutors(d).executorCallbacks.resolveProcess(PROCESS);
         expect(sent.map((k) => k.toLowerCase())).not.toContain(MODALITIES.toLowerCase());
-        expect(sent.map((k) => k.toLowerCase()).sort()).toEqual([COMMERCE.toLowerCase(), AGREEMENT_KEY.toLowerCase(), COMPOSITION.toLowerCase()].sort());
+        expect(sent.map((k) => k.toLowerCase()).sort()).toEqual([COMMERCE.toLowerCase(), AGREEMENT_HASH.toLowerCase(), COMPOSITION.toLowerCase()].sort());
         expect(errors.mock.calls.map((c) => String(c[0])).join("\n")).toMatch(/recorded 3\/4 planned \(1 skipped after a reverted simulation\) \+ agreement \+ assembly/);
         errors.mockRestore();
     });
 
     it("stays loud about an order whose agreement is not hydrated, and plans the others", async () => {
         const { deps: d } = deps();
-        d.processAgreements.delete(d.processOrders[0].agreementHash!);
+        d.processAgreements.delete(d.processOrders[0].checkoutHash!);
         const errors = vi.spyOn(console, "error").mockImplementation(() => {});
         await createCapabilityExecutors(d).executorCallbacks.resolveProcess(PROCESS);
         expect(errors.mock.calls.map((c) => String(c[0])).join("\n")).toMatch(/no hydrated agreement for order order-1/);
@@ -243,14 +243,14 @@ describe("createCapabilityExecutors — the provenance leaf attestation", () => 
         const { deps: d } = deps();
         await createCapabilityExecutors(d).executorCallbacks.attestProvenanceLeaf({
             executionType: "transaction", kind: "attest-provenance-leaf",
-            orderHash: "order-1", agreementKey: AGREEMENT_KEY, compositionHash: COMPOSITION, party: "buyer",
+            orderHash: "order-1", agreementHash: AGREEMENT_HASH, compositionHash: COMPOSITION, party: "buyer",
         });
         expect(d.submitAttestation).toHaveBeenCalledWith("buyer", expect.objectContaining({
             orderHash: "order-1",
             clauseId: PROVENANCE_LEAF_KEY,
             stage: 0,
-            content: provenanceLeafBytes(AGREEMENT_KEY, COMPOSITION),
+            content: provenanceLeafBytes(AGREEMENT_HASH, COMPOSITION),
         }));
-        expect(keccak256(provenanceLeafBytes(AGREEMENT_KEY, COMPOSITION))).toBe(provenanceContentRef(AGREEMENT_KEY, COMPOSITION));
+        expect(keccak256(provenanceLeafBytes(AGREEMENT_HASH, COMPOSITION))).toBe(provenanceContentRef(AGREEMENT_HASH, COMPOSITION));
     });
 });

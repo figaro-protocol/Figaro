@@ -85,7 +85,7 @@ export function RegistryExplorer() {
     // verified against its key; the rows re-derive as documents verify.
     const agreementsVersion = useRegisteredAgreementsVersion();
     useEffect(() => {
-        for (const a of agreements ?? []) void fetchRegisteredAgreement(a.agreementKey, a.contentURI);
+        for (const a of agreements ?? []) void fetchRegisteredAgreement(a.agreementHash, a.contentURI);
     }, [agreements]);
 
     const rows = useMemo<Array<ExplorerRow & RowText>>(() => {
@@ -108,17 +108,17 @@ export function RegistryExplorer() {
         }
         for (const a of agreements ?? []) {
             // A row is one registration, keyed and anchored by its agreement
-            // key; its pinned document's name is its label.
-            const doc = getRegisteredAgreement(a.agreementKey);
+            // hash; its pinned document's name is its label.
+            const doc = getRegisteredAgreement(a.agreementHash);
             const clauses = doc ? Object.keys(doc.clauses) : [];
-            const name = doc?.name ?? truncateHex(a.agreementKey, { head: 10, tail: 4 });
+            const name = doc?.name ?? truncateHex(a.agreementHash, { head: 10, tail: 4 });
             const description = doc?.summary ?? doc?.description ?? "";
             out.push({
-                family: "agreements", key: `agreement-${a.agreementKey}`, id: a.agreementKey, name, article: "", description,
-                content: doc ? "resolved" : getRegisteredAgreementLoadError(a.agreementKey) ? "unavailable" : "resolving",
+                family: "agreements", key: `agreement-${a.agreementHash}`, id: a.agreementHash, name, article: "", description,
+                content: doc ? "resolved" : getRegisteredAgreementLoadError(a.agreementHash) ? "unavailable" : "resolving",
                 registeredBy: a.registeredBy, blockNumber: a.blockNumber, stakeWithdrawn: a.stakeWithdrawn, clauses,
-                contentURI: a.contentURI, anchoredHash: a.agreementKey,
-                text: [a.agreementKey, name, description, a.registeredBy, ...clauses,
+                contentURI: a.contentURI, anchoredHash: a.agreementHash,
+                text: [a.agreementHash, name, description, a.registeredBy, ...clauses,
                     ...clauses.map((k) => getClauseSpec(k)?.clauseId ?? "")].join(" "),
             });
         }
@@ -321,7 +321,7 @@ function ClauseRows({ rows, state, onFacet }: { rows: Array<ExplorerRow & RowTex
 /** Registered agreements — one row per `AgreementRegistry` registration: its
  *  pinned document's name, its key, its designer of record, its stake state,
  *  the clauses it composes, and the pinned document checked against the key.
- *  Row ids are `agreement-<agreementKey>`. */
+ *  Row ids are `agreement-<agreementHash>`. */
 function AgreementRows({ rows, onFacet }: { rows: Array<ExplorerRow & RowText>; onFacet: (p: Partial<ExplorerQuery>) => void }) {
     if (rows.length === 0) return <Empty family="agreements" />;
     return (
@@ -330,7 +330,7 @@ function AgreementRows({ rows, onFacet }: { rows: Array<ExplorerRow & RowText>; 
                 <li key={r.key} id={r.key} className="flex flex-col gap-1 scroll-mt-24" data-testid={`agreement-row-${r.id.toLowerCase()}`}>
                     <div className="flex flex-col sm:flex-row sm:items-baseline sm:gap-3">
                         <span className="text-sm font-semibold text-ink-heading">{r.name}</span>
-                        <code className="font-mono text-xs text-ink-muted break-all" data-testid={`agreement-key-${r.id.toLowerCase()}`}>{r.id}</code>
+                        <code className="font-mono text-xs text-ink-muted break-all" data-testid={`agreement-hash-${r.id.toLowerCase()}`}>{r.id}</code>
                     </div>
                     {r.description ? <p className="text-sm text-ink-body">{r.description}</p> : null}
                     {r.clauses.length > 0 ? (

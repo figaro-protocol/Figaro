@@ -223,7 +223,7 @@ describe("/orders/view — §2 H1, §4 radius, §7 target size", () => {
                 ? {
                       rootOrderId: "o1",
                       rootModality: null,
-                      orders: [{ orderId: "o1", buyer: BUYER, seller: SELLER, state, agreementHash: `0x${"cd".repeat(32)}` }],
+                      orders: [{ orderId: "o1", buyer: BUYER, seller: SELLER, state, checkoutHash: `0x${"cd".repeat(32)}` }],
                   }
                 : null,
             runtimeCapabilities: [],

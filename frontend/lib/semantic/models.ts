@@ -78,7 +78,7 @@ export interface SubmitClauseAttestationCapabilityAction {
 
 /** The buyer's attestation of the agreement FORMAT's provenance leaf — the
  *  reserved key (`PROVENANCE_LEAF_KEY`), not a clause: its clause data is
- *  `provenanceLeafBytes(agreementKey, compositionHash)` and its content
+ *  `provenanceLeafBytes(agreementHash, compositionHash)` and its content
  *  reference their hash. Filed while the process is open, like every
  *  attestation. */
 export interface AttestProvenanceLeafCapabilityAction {
@@ -87,7 +87,7 @@ export interface AttestProvenanceLeafCapabilityAction {
     orderHash: string;
     /** The agreement's `provenance`: the registered agreement the order
      *  instantiated, and the composition root of its registered assembly. */
-    agreementKey: `0x${string}`;
+    agreementHash: `0x${string}`;
     compositionHash: `0x${string}`;
     party: "buyer";
 }
@@ -199,10 +199,10 @@ export interface OrderNodeModel {
     payment: bigint;
     state: string;
     parentOrderHashes: string[]; // bytes32 order hashes
-    /** The order's committed agreement hash — lets consumers load the
+    /** The order's committed checkout hash — lets consumers load the
      *  agreement and read its clauses (e.g. a courier handoff's
      *  proximity-policy band). */
-    agreementHash: `0x${string}`;
+    checkoutHash: `0x${string}`;
     capabilities: CapabilityModel[];
     resolutionBreakdown?: EconomicBreakdownModel;
 }

@@ -17,11 +17,11 @@ function payloadFor(processId: `0x${string}`): CommitmentPayload {
             currency: `0x${"33".repeat(20)}`,
             payment: 100n,
             expectedCumulativeValue: 100n,
-            agreementHash: `0x${"44".repeat(32)}`,
+            checkoutHash: `0x${"44".repeat(32)}`,
             salt: 1n,
             deadline: 2n ** 40n,
         } as Commitment,
-        agreement: { sections: [] } as never,
+        agreement: { clauses: [] } as never,
         buyerSig: SIG,
         sellerSig: SIG,
     };

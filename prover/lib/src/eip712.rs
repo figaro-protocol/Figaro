@@ -36,7 +36,7 @@ pub fn domain_separator(chain_id: u64, verifying_contract: Address) -> B256 {
 /// COMMITMENT_TYPEHASH matching `CommitmentTypes.sol`.
 fn commitment_typehash() -> B256 {
     keccak256(
-        b"Commitment(bytes32 processId,address buyer,address seller,address currency,uint256 payment,uint256 expectedCumulativeValue,bytes32 agreementHash,uint256 salt,uint256 deadline)",
+        b"Commitment(bytes32 processId,address buyer,address seller,address currency,uint256 payment,uint256 expectedCumulativeValue,bytes32 checkoutHash,uint256 salt,uint256 deadline)",
     )
 }
 
@@ -51,7 +51,7 @@ pub fn commitment_struct_hash(c: &Commitment) -> B256 {
     data.extend_from_slice(&abi_encode_address(&c.currency));
     data.extend_from_slice(&c.payment.to_be_bytes::<32>());
     data.extend_from_slice(&c.expected_cumulative_value.to_be_bytes::<32>());
-    data.extend_from_slice(c.agreement_hash.as_slice());
+    data.extend_from_slice(c.checkout_hash.as_slice());
     data.extend_from_slice(&c.salt.to_be_bytes::<32>());
     data.extend_from_slice(&c.deadline.to_be_bytes::<32>());
     keccak256(&data)

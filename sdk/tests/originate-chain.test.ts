@@ -43,8 +43,8 @@ const policy: OfferPolicy = { currencyAllowlist: [CURRENCY], maxValue: 10_000n }
 // Every seller's own profile binds the chain's assembly.
 const BOUND = profileBinding(assembly);
 
-function topologyParents(offer: { agreement: { sections: { clause: string; data: Record<string, unknown> }[] } }): unknown {
-    return offer.agreement.sections.find((s) => s.clause === keyOf("figaro-topology"))?.data.parentOrderHashes;
+function topologyParents(offer: { agreement: { clauses: { clause: string; data: Record<string, unknown> }[] } }): unknown {
+    return offer.agreement.clauses.find((s) => s.clause === keyOf("figaro-topology"))?.data.parentOrderHashes;
 }
 
 describe("buildChainOffers — the value-added chain walk", () => {
@@ -87,7 +87,7 @@ describe("buildChainOffers — the value-added chain walk", () => {
             "figaro-commerce", "figaro-topology", "figaro-courier-process", "figaro-merchant-process",
         ]);
         const offers = await buildChainOffers(buyerW, { ...params, specs: SPECS });
-        const commerce = offers[0].offer.agreement.sections.find((s) => s.clause === keyOf("figaro-commerce"));
+        const commerce = offers[0].offer.agreement.clauses.find((s) => s.clause === keyOf("figaro-commerce"));
         expect(commerce?.data?.currency).toBe(CURRENCY);
         expect(offers.every((o) => !!o.offer.buyerSig)).toBe(true);
         // A contradicting root override refuses to build — the walk throws

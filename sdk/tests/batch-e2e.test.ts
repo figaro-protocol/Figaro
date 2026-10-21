@@ -60,7 +60,7 @@ import {
     USAGE_KIND_CLAUSE,
     buildUsageClaims,
     fetchUsageClaimContext,
-    computeAgreementHash,
+    computeCheckoutHash,
     type Agreement,
 } from "../src/index.js";
 import { parseClauseSpec, encodeContentFromSpec } from "../src/clauses/index.js";
@@ -112,7 +112,7 @@ const deployerAccount = privateKeyToAccount(DEPLOYER_KEY);
 const buyerAccount = privateKeyToAccount(BUYER_KEY);
 const sellerAccount = privateKeyToAccount(SELLER_KEY);
 
-const SECTION_DATA = `{"modality":"delivery"}`;
+const CLAUSE_DATA = `{"modality":"delivery"}`;
 
 /** The relay's state file for this run: the preimage of the verifier's root. */
 const STATE_PATH = path.join(os.tmpdir(), `sequencer-state-e2e-${process.pid}.json`);
@@ -177,7 +177,7 @@ describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
 
     // The witness clause, prepared once: exact spec bytes, clause key,
     // content_ref (canonical ABI encoding at stage 0), and the clause
-    // leaf that becomes the single-section agreementHash.
+    // leaf that becomes the single-clause checkoutHash.
     const specJson = loadSpecJson("figaro-modalities");
     const parsedSpec = (() => {
         const r = parseClauseSpec(JSON.parse(specJson));
@@ -187,19 +187,19 @@ describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
     // The key is the hash of the pinned (canonical) bytes the witness carries.
     const clauseKey = keccak256(stringToHex(specJson));
     const contentRef = keccak256(
-        encodeContentFromSpec(parsedSpec, JSON.parse(SECTION_DATA), { stage: 0 }),
+        encodeContentFromSpec(parsedSpec, JSON.parse(CLAUSE_DATA), { stage: 0 }),
     );
     // Double-hashed leaf (leaf/node domain separation) — must mirror
     // computeClauseLeaf / the coordinator / the prover's Gate I.
     const clauseLeaf = keccak256(
         keccak256(
-            encodePacked(["bytes32", "bytes32"], [clauseKey, keccak256(stringToHex(SECTION_DATA))]),
+            encodePacked(["bytes32", "bytes32"], [clauseKey, keccak256(stringToHex(CLAUSE_DATA))]),
         ),
     );
     const witnessProof: SequencerContentProof = {
         spec_json: specJson,
-        content_json: SECTION_DATA,
-        section_data: SECTION_DATA,
+        content_json: CLAUSE_DATA,
+        clause_data: CLAUSE_DATA,
         inclusion_proof: [],
         content_kind: "RuntimeWitness",
     };
@@ -339,7 +339,7 @@ describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
         if (!alive || !hasBinary) return;
 
         // ── 1. Build commitment ─────────────────────────────────
-        // The single-section agreement: agreementHash IS the clause
+        // The single-clause agreement: checkoutHash IS the clause
         // leaf, so the attestation's inclusion proof is empty.
 
         const domain = buildDomain(31337, batchVerifierAddress);
@@ -352,7 +352,7 @@ describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
                 currency: tokenAddress,
                 payment: PAYMENT,
                 expectedCumulativeValue: PAYMENT,
-                agreementHash: clauseLeaf,
+                checkoutHash: clauseLeaf,
                 salt: 42n,
                 deadline: BigInt(Math.floor(Date.now() / 1000) + 3600),
             },
@@ -528,17 +528,17 @@ describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
             version: "a1",
             buyer: buyerAccount.address,
             seller: sellerAccount.address,
-            sections: [
+            clauses: [
                 {
                     clause: clauseKey,
-                    data: JSON.parse(SECTION_DATA),
+                    data: JSON.parse(CLAUSE_DATA),
                 },
             ],
         };
-        // The SDK's agreement hash must equal the leaf this test signed by hand;
+        // The SDK's checkout hash must equal the leaf this test signed by hand;
         // if it did not, the inclusion proof below would be proving a different
         // agreement than the one on chain.
-        expect(computeAgreementHash(agreement)).toBe(clauseLeaf);
+        expect(computeCheckoutHash(agreement)).toBe(clauseLeaf);
 
         const claimContext = await fetchUsageClaimContext(publicClient, usageCounterAddress);
         const claims = buildUsageClaims(commitment, agreement, claimContext);

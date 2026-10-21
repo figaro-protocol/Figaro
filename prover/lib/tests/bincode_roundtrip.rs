@@ -35,7 +35,7 @@ fn dummy_commitment() -> Commitment {
         currency: TOKEN,
         payment: U256::from(100u64),
         expected_cumulative_value: U256::from(100u64),
-        agreement_hash: keccak256("test"),
+        checkout_hash: keccak256("test"),
         salt: U256::from(1u64),
         deadline: U256::from(1000u64),
     }
@@ -46,7 +46,7 @@ fn dummy_proof(kind: ContentKind) -> AttestationContentProof {
         spec_json: r#"{"clauseId":"t","version":1,"title":"T","description":"D","fields":[]}"#
             .to_string(),
         content_json: r#"{"scope":1}"#.to_string(),
-        section_data: r#"{"k":"v"}"#.to_string(),
+        clause_data: r#"{"k":"v"}"#.to_string(),
         inclusion_proof: vec![B256::repeat_byte(0xcc)],
         content_kind: kind,
     }
@@ -244,13 +244,13 @@ fn bincode_roundtrip_every_usage_claim_kind() {
         prev_state: empty_snapshot(),
         usage_claims: vec![
             claim(UsageClaimKind::Clause {
-                section_hash: B256::repeat_byte(0x01),
+                clause_data_hash: B256::repeat_byte(0x01),
             }),
             claim(UsageClaimKind::Agreement {
                 composition_hash: B256::repeat_byte(0x02),
             }),
             claim(UsageClaimKind::Assembly {
-                agreement_key: B256::repeat_byte(0x03),
+                agreement_hash: B256::repeat_byte(0x03),
                 slot_content_hash: B256::repeat_byte(0x04),
                 membership_proof: vec![B256::repeat_byte(0x05), B256::repeat_byte(0x06)],
             }),
@@ -274,11 +274,11 @@ fn bincode_roundtrip_every_usage_claim_kind() {
     }
     match &decoded.usage_claims[2].kind {
         UsageClaimKind::Assembly {
-            agreement_key,
+            agreement_hash,
             slot_content_hash,
             membership_proof,
         } => {
-            assert_eq!(*agreement_key, B256::repeat_byte(0x03));
+            assert_eq!(*agreement_hash, B256::repeat_byte(0x03));
             assert_eq!(*slot_content_hash, B256::repeat_byte(0x04));
             assert_eq!(
                 membership_proof,

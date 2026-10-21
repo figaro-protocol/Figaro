@@ -123,7 +123,7 @@ describe("usePendingSellerSignature does not pin a stranger's payload (finding 2
         // attacker-chosen agreement content.
         const inboundBody = JSON.stringify({
                     commitment: { buyer: BUYER, seller: STRANGER_B },
-                    agreement: { sections: [{ clause: "x", version: 1, data: { evil: true } }] },
+                    agreement: { clauses: [{ clause: "x", version: 1, data: { evil: true } }] },
                     buyerSig: "0xdeadbeef",
                 });
 
@@ -143,7 +143,7 @@ describe("usePendingSellerSignature does not pin a stranger's payload (finding 2
 
         const inboundBody = JSON.stringify({
                     commitment: { buyer: BUYER, seller: SELLER },
-                    agreement: { sections: [] },
+                    agreement: { clauses: [] },
                     buyerSig: "0xdeadbeef",
                 });
 
@@ -176,7 +176,7 @@ describe("pin gate also requires a REAL counterparty signature", () => {
 
         const inboundBody = JSON.stringify({
                     commitment: { buyer: BUYER, seller: SELLER },
-                    agreement: { sections: [] },
+                    agreement: { clauses: [] },
                     buyerSig: "0xforged",
                 });
 
@@ -196,7 +196,7 @@ describe("pin gate also requires a REAL counterparty signature", () => {
 
         const inboundBody = JSON.stringify({
                     commitment: { buyer: BUYER, seller: SELLER },
-                    agreement: { sections: [] },
+                    agreement: { clauses: [] },
                     buyerSig: "0xrealbuyersig",
                 });
 

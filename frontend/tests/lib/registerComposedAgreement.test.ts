@@ -7,7 +7,7 @@
  * stake, written, and held to a `success` receipt.
  */
 import { describe, expect, it, vi } from "vitest";
-import { agreementKeyOf, type RegisteredAgreement } from "@figaro-protocol/sdk";
+import { agreementHashOf, type RegisteredAgreement } from "@figaro-protocol/sdk";
 
 vi.mock("@/lib/kernel/contracts", async (importOriginal) => {
     const actual = await importOriginal<typeof import("@/lib/kernel/contracts")>();
@@ -25,7 +25,7 @@ const DOC: RegisteredAgreement = {
     name: "Probe",
     clauses: { [`0x${"ab".repeat(32)}`]: {}, [`0x${"cd".repeat(32)}`]: { regime: "open" } },
 };
-const KEY = agreementKeyOf(DOC);
+const KEY = agreementHashOf(DOC);
 const STAKE = 50_000_000_000_000_000n;
 
 function fakes(receiptStatus = "success") {
@@ -45,10 +45,10 @@ describe("registerAgreement", () => {
     it("pins, simulates with the registry's stake, writes and waits for a success receipt", async () => {
         const { calls, client, writeContractAsync, ipfs } = fakes();
         const out = await registerAgreement({
-            client: client as never, writeContractAsync, address: DESIGNER, doc: DOC, agreementKey: KEY,
+            client: client as never, writeContractAsync, address: DESIGNER, doc: DOC, agreementHash: KEY,
             ipfs, readBinding: async () => null,
         });
-        expect(out).toEqual({ agreementKey: KEY, hash: `0x${"77".repeat(32)}`, ipfsURI: "ipfs://bafy" });
+        expect(out).toEqual({ agreementHash: KEY, hash: `0x${"77".repeat(32)}`, ipfsURI: "ipfs://bafy" });
         expect(calls).toEqual(["readContract", "pin", "simulate", "write", "receipt"]);
         const write = writeContractAsync.mock.calls[0][0];
         expect(write.functionName).toBe("registerAgreement");
@@ -62,17 +62,17 @@ describe("registerAgreement", () => {
     it("skips a key the registry already binds — nothing is pinned or sent", async () => {
         const { calls, client, writeContractAsync, ipfs } = fakes();
         const out = await registerAgreement({
-            client: client as never, writeContractAsync, address: DESIGNER, doc: DOC, agreementKey: KEY,
+            client: client as never, writeContractAsync, address: DESIGNER, doc: DOC, agreementHash: KEY,
             ipfs, readBinding: async () => ({ registeredBy: DESIGNER, registeredAt: 1n, stakeWithdrawn: false, contentURI: "ipfs://old" }),
         });
-        expect(out).toEqual({ agreementKey: KEY, hash: null, ipfsURI: null });
+        expect(out).toEqual({ agreementHash: KEY, hash: null, ipfsURI: null });
         expect(calls).toEqual([]);
     });
 
     it("a mined-but-reverted registration throws and is never reported as registered", async () => {
         const { client, writeContractAsync, ipfs } = fakes("reverted");
         await expect(registerAgreement({
-            client: client as never, writeContractAsync, address: DESIGNER, doc: DOC, agreementKey: KEY,
+            client: client as never, writeContractAsync, address: DESIGNER, doc: DOC, agreementHash: KEY,
             ipfs, readBinding: async () => null,
         })).rejects.toThrow(/registration was not created/);
     });

@@ -53,7 +53,7 @@ export default function Clauses() {
 
             <MarketingSection title="Registered clauses.">
                 <p className="text-sm text-ink-body leading-relaxed mb-6">
-                    Every clause declares the article it belongs to, and the registry explorer sorts and facets whatever is registered by that declaration rather than by any list kept here. Today the reference set runs from the mandatory terms every agreement carries, through logistics, coordination and attestations, consent and credentials, data and emissions, to dispute resolution and the denomination. One &mdash; <code>figaro-topology</code> &mdash; carries the process&apos;s shape, which seller follows which, and is <em>agreement-only</em>: committed at signing like every other clause, as a merkle leaf under the <code>agreementHash</code> that anyone can prove inclusion of on chain, but never re-asserted as a runtime attestation in the assemblies published so far. A long chain can attest topology as evidence that one seller performed after another; today&apos;s published assemblies simply have not.
+                    Every clause declares the article it belongs to, and the registry explorer sorts and facets whatever is registered by that declaration rather than by any list kept here. Today the reference set runs from the mandatory terms every agreement carries, through logistics, coordination and attestations, consent and credentials, data and emissions, to dispute resolution and the denomination. One &mdash; <code>figaro-topology</code> &mdash; carries the process&apos;s shape, which seller follows which, and is <em>agreement-only</em>: committed at signing like every other clause, as a merkle leaf under the <code>checkoutHash</code> that anyone can prove inclusion of on chain, but never re-asserted as a runtime attestation in the assemblies published so far. A long chain can attest topology as evidence that one seller performed after another; today&apos;s published assemblies simply have not.
                  Every registered clause has its own URL: <code>/registries#clause-&lt;clauseKey&gt;</code> lands on its row and opens the document as stored, with the anchored hash beside it.</p>
                 <RegistryCountLink family="clauses" />
             </MarketingSection>
@@ -63,7 +63,7 @@ export default function Clauses() {
                     <strong>The shape has a name: a clause spec is a <a href="https://iang.org/papers/ricardian_contract.html" target="_blank" rel="noopener noreferrer" className="underline">Ricardian contract</a></strong> &mdash; Grigg&apos;s single document that people read, programs parse, and a hash over its own content identifies: <code>block</code> is the half people read, <code>fields</code> the half programs parse, and the clause key, the hash of the pinned document that <code>ClauseRegistry</code> registers, is both its identity and its integrity anchor. What Figaro does not take from that lineage is the issuer and the legal backstop &mdash; a clause&apos;s designer is not a party to the trades that use it, and what makes those trades hold is the bonding equilibrium rather than anything the document says; clause design as a discipline is treated on <Link href="/composition" className="underline">Composition</Link>.
                 </p>
                 <p className="text-sm text-ink-body leading-relaxed mb-4">
-                    Four different hashes are computed over what you write, and mixing them up is the single most expensive authoring mistake &mdash; registration is permanent and first-write-wins. The <strong>clause key</strong> is the hash of the whole pinned document, and it is the registry key. The <strong><code>agreementKey</code></strong> is what a registered agreement is &mdash; clauses composed once for one order, with the designer&apos;s fills, for any assembly to reuse. The <strong><code>agreementHash</code></strong> is what a buyer and a seller actually sign, and the <strong><code>compositionHash</code></strong> is what a designer&apos;s assembly is: a merkle root over the registered agreements it holds. Here is exactly which part of your spec reaches which:
+                    Four different hashes are computed over what you write, and mixing them up is the single most expensive authoring mistake &mdash; registration is permanent and first-write-wins. The <strong>clause key</strong> is the hash of the whole pinned document, and it is the registry key. The <strong><code>agreementHash</code></strong> is what a registered agreement is &mdash; clauses composed once for one order, with the designer&apos;s fills, for any assembly to reuse. The <strong><code>checkoutHash</code></strong> is what a buyer and a seller actually sign, and the <strong><code>compositionHash</code></strong> is what a designer&apos;s assembly is: a merkle root over the registered agreements it holds. Here is exactly which part of your spec reaches which:
                 </p>
                 <div className="overflow-x-auto -mx-6 px-6">
                     <table className="w-full text-sm">
@@ -82,32 +82,32 @@ export default function Clauses() {
                             </tr>
                             <tr>
                                 <td className="py-2 pr-4"><code>block.design.article: &quot;mandatory&quot;</code></td>
-                                <td className="py-2 pr-4"><strong><code>agreementKey</code></strong> + <strong><code>agreementHash</code></strong></td>
+                                <td className="py-2 pr-4"><strong><code>agreementHash</code></strong> + <strong><code>checkoutHash</code></strong></td>
                                 <td className="py-2">Makes your clause one a designer never selects on its own. A registered agreement whose clauses are all mandatory is what the designer&apos;s mandatory article lists, whoever registered it; the designer picks one for every agreement of an assembly, and its clauses merge into that agreement. This is how the two mandatory clauses &mdash; <code>figaro-commerce</code> and <code>figaro-topology</code> &mdash; reach every order. Which registered agreement and which assembly an order instantiates is carried by the agreement itself, as one reserved leaf of its merkle tree, and by no clause.</td>
                             </tr>
                             <tr>
                                 <td className="py-2 pr-4"><code>block.design.article: &quot;attestations&quot;</code></td>
-                                <td className="py-2 pr-4"><strong><code>agreementHash</code></strong></td>
-                                <td className="py-2">Makes the clause a process log: its section is committed as an <em>empty anchor</em> &mdash; a convention the SDK warns on rather than enforces &mdash; and filled by attestation afterwards. Field <code>default</code>s are <strong>not</strong> applied to it.</td>
+                                <td className="py-2 pr-4"><strong><code>checkoutHash</code></strong></td>
+                                <td className="py-2">Makes the clause a process log: its clause data is committed as an <em>empty anchor</em> &mdash; a convention the SDK warns on rather than enforces &mdash; and filled by attestation afterwards. Field <code>default</code>s are <strong>not</strong> applied to it.</td>
                             </tr>
                             <tr>
                                 <td className="py-2 pr-4"><code>block.design.scope: &quot;assembly&quot;</code></td>
-                                <td className="py-2 pr-4"><strong><code>compositionHash</code></strong> + <strong><code>agreementHash</code></strong></td>
+                                <td className="py-2 pr-4"><strong><code>compositionHash</code></strong> + <strong><code>checkoutHash</code></strong></td>
                                 <td className="py-2">Marks a term of the composition itself (a denomination pin, a dispute forum): composed <em>once</em> for the whole design, then folded into <em>every</em> agreement at checkout, so every party signs it. Composing it on a single order is a build error, not a silent no-op.</td>
                             </tr>
                             <tr>
                                 <td className="py-2 pr-4"><code>block.design.fills</code></td>
-                                <td className="py-2 pr-4"><strong><code>agreementKey</code></strong></td>
+                                <td className="py-2 pr-4"><strong><code>agreementHash</code></strong></td>
                                 <td className="py-2">Names the fields whose <em>design-time</em> values survive into the registered agreement &mdash; the tailoring. Name nothing here and the agreement carries <code>{"{}"}</code> for your clause: the fields become transaction particulars, filled at checkout.</td>
                             </tr>
                             <tr>
                                 <td className="py-2 pr-4"><code>block.checkout.catalogueFills</code> · <code>block.checkout.profileFills</code></td>
-                                <td className="py-2 pr-4"><strong><code>agreementHash</code></strong></td>
+                                <td className="py-2 pr-4"><strong><code>checkoutHash</code></strong></td>
                                 <td className="py-2">Names which of your fields the seller&apos;s catalog (per-item) and profile (master data) folds write onto the leaf at checkout. A field not named here is never folded &mdash; it stays empty unless a party types it.</td>
                             </tr>
                             <tr>
                                 <td className="py-2 pr-4">a field&apos;s <code>default</code></td>
-                                <td className="py-2 pr-4"><strong><code>agreementHash</code></strong></td>
+                                <td className="py-2 pr-4"><strong><code>checkoutHash</code></strong></td>
                                 <td className="py-2"><strong>Typed as composition metadata; it is not inert.</strong> When the composing input omits the field, the spec&apos;s own <code>default</code> fills it &mdash; and that value lands in the signed clause, changing the merkle leaf and therefore the hash both parties sign. Declare a default only when you would be content for a party to sign it having never seen it.</td>
                             </tr>
                             <tr>
@@ -119,7 +119,7 @@ export default function Clauses() {
                     </table>
                 </div>
                 <p className="text-sm text-ink-body leading-relaxed mt-5">
-                    You do not have to take this on trust &mdash; every row is a pure function you can call. <code>parseProjectionHints(spec)</code> returns exactly the five hash-load-bearing hints it found in your <code>block</code>; <code>buildOrderAgreement</code> shows you the section a party would sign; <code>computeClauseKey</code> is the registry key. All from <code>@figaro-protocol/sdk</code>, no chain needed:
+                    You do not have to take this on trust &mdash; every row is a pure function you can call. <code>parseProjectionHints(spec)</code> returns exactly the five hash-load-bearing hints it found in your <code>block</code>; <code>buildOrderAgreement</code> shows you the clause a party would sign; <code>computeClauseKey</code> is the registry key. All from <code>@figaro-protocol/sdk</code>, no chain needed:
                 </p>
                 <pre className="text-xs font-mono text-ink-body bg-paper border border-default rounded-section p-4 overflow-x-auto mt-3"><code>{`import { parseProjectionHints, buildOrderAgreement,
          computeClauseKey } from "@figaro-protocol/sdk";
@@ -140,7 +140,7 @@ const verified = keccak256(fetchedBytes) === clauseKey;
 const view = { ...spec, clauseKey };
 const specs = { get: () => view, list: () => [view] };
 buildOrderAgreement(buyer, seller, { [clauseKey]: {} }, specs);
-// → { agreement, agreementHash } — inspect agreement.sections[0].data
+// → { agreement, checkoutHash } — inspect agreement.clauses[0].data
 //   to see which \`default\`s got filled in before signing.`}</code></pre>
                 <p className="text-sm text-ink-body leading-relaxed mt-5">
                     <strong>Two <code>article</code> values are reserved &mdash; and picking one by accident is silent.</strong> The group a clause files under, <code>block.design.article</code>, is free text, but <code>&quot;mandatory&quot;</code> and <code>&quot;attestations&quot;</code> mean something to the SDK &mdash; the two rows above say exactly what. Both are read straight off your spec &mdash; nothing warns you, nothing throws, and the clause simply behaves differently than you meant. The trap is that the reserved words are the natural ones: an attestation clause grouped, reasonably, under &ldquo;attestations&rdquo; silently commits empty. Registration is <strong>permanent and first-write-wins</strong>, so if that is not what you want, group it under any other word before you register. This is the first entry on <Link href="/pitfalls" className="underline">Sharp edges</Link>, which indexes the rest of the silent ones &mdash; the traps that bite at commit, at resolve, and when you read resolved state back.
@@ -158,7 +158,7 @@ buildOrderAgreement(buyer, seller, { [clauseKey]: {} }, specs);
                     </li>
                     <li className="flex gap-4">
                         <span className="font-mono text-xs text-ink-muted mt-1 w-24 shrink-0 uppercase">On-chain</span>
-                        <span><strong>Registration + merkle binding.</strong> <code>ClauseRegistry</code> registers the clause key and its spec locator (first-write-wins, immutable); the attestation coordinator binds every attestation to the signed <code>agreementHash</code> by merkle inclusion proof and content-hashes the evidence. On this direct attestation path the chain validates <em>no</em> content shape, so a never-seen clause is attestable the moment it is registered. The batched, proof-based resolution path adds the on-chain content check &mdash; see below.</span>
+                        <span><strong>Registration + merkle binding.</strong> <code>ClauseRegistry</code> registers the clause key and its spec locator (first-write-wins, immutable); the attestation coordinator binds every attestation to the signed <code>checkoutHash</code> by merkle inclusion proof and content-hashes the evidence. On this direct attestation path the chain validates <em>no</em> content shape, so a never-seen clause is attestable the moment it is registered. The batched, proof-based resolution path adds the on-chain content check &mdash; see below.</span>
                     </li>
                 </ul>
                 <p className="mt-6 text-sm text-ink-body leading-relaxed">

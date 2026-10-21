@@ -14,11 +14,11 @@ this directory follows; here it is narrowed to one job — a correct, user-owned
 **What an assembly IS.** Registered agreements composed into something anyone can USE and
 REUSE, anywhere, anytime — a **assembly** of agreements (an `Assembly` from
 `@figaro-protocol/sdk`: one agreement per future `FigaroCore` order, each naming the
-`agreementKey` of a **registered agreement** — a reusable composition of clauses, registered once
+`agreementHash` of a **registered agreement** — a reusable composition of clauses, registered once
 on `AgreementRegistry` — plus the agreement's own fills, the topology) **plus the assembly-scoped
 clauses composed once for the whole design**. Its identity IS its composition:
 `compositionHash = assemblyCompositionHash(assembly)` — a merkle root over one leaf per order
-agreement (keyed by its `agreementKey`) and one leaf for `assemblyClauses` when any are composed;
+agreement (keyed by its `agreementHash`) and one leaf for `assemblyClauses` when any are composed;
 editorial prose — `name`, `summary`, `description` — excluded, so renaming never forks
 identity. Concretely: pick a registered agreement for each agreement, or compose and register
 a new one where none fits → compose the **assembly** → pin it to IPFS (`contentURI`) → register
@@ -105,8 +105,8 @@ Do not soften — a softened anti-pattern still degrades the equilibrium.
 **First, per agreement: a registered agreement, or a new one.** Discover the live
 registrations on `AgreementRegistry` (`parseAgreementRegistryLogs`, or `getAgreements()` on the graph
 `reconstructDiscovery` returns — the live-staked ones), hydrate each by its binding's `contentURI` with
-`anchorRegisteredAgreement(raw, agreementKey)` — it parses the agreement and returns it
-only if `agreementKeyOf(doc)` equals the registered key; `null` (a failed fetch, parse or
+`anchorRegisteredAgreement(raw, agreementHash)` — it parses the agreement and returns it
+only if `agreementHashOf(doc)` equals the registered key; `null` (a failed fetch, parse or
 match) is absence, never a reason to fall back to a copy — and bind one as is where its clauses
 are the terms that order needs. Compose a new agreement only when no live registration fits.
 A withdrawn registration still hydrates, but it is not one to bind into a new design.
@@ -115,7 +115,7 @@ The published assembly document is the **exact assembly shape `@figaro-protocol/
 canvas sketch. `assemblyCompositionHash(assembly)` is the registry key, so any other shape
 computes a hash that matches nothing and cannot be registered. The assembly is
 `{ name?, summary?, description?, faq?, assemblyClauses?, agreements: AssemblyAgreement[] }`, each
-`AssemblyAgreement` `{ id: "order-<i>", agreementKey, clauses }`, every clause map keyed by clause
+`AssemblyAgreement` `{ id: "order-<i>", agreementHash, clauses }`, every clause map keyed by clause
 KEY — `keccak256` of the clause spec's pinned bytes, the `clauseKey` each registry row carries
 — never by the name a spec displays.
 
@@ -124,7 +124,7 @@ per order, the registered agreement you pick in the mandatory article (`mandator
 hydrated — any wallet's registration whose clauses are all mandatory-article), and EITHER the
 registered agreement it binds (`registeredByOrderId`, hydrated) OR the clauses composed for a
 new one (`clausesByOrderId`), plus the assembly-scoped selection and a `SpecSource`, and returns `{ assembly, agreements }` — `agreements` being every NEW composed
-agreement keyed by its `agreementKey`, to register before the assembly. It enforces the rules
+agreement keyed by its `agreementHash`, to register before the assembly. It enforces the rules
 below BY CONSTRUCTION rather than by your care: it REFUSES an order with no pick, merges each
 pick's clauses into the new agreement composed for that order, REFUSES a bound registered
 agreement that lacks a clause of its order's pick (compose a new agreement for that order
@@ -156,7 +156,7 @@ derive identity.
 - **Each agreement is a `clauses` map: `clauseKey → design-time fields`.** An empty
   `{}` = the clause is composed with no fields set (seller fills at first-use, buyer at
   checkout). Per-node clause choices AND the per-edge mechanism both live in this map. Its
-  key is `agreementKeyOf({ clauses })`.
+  key is `agreementHashOf({ clauses })`.
 - **Topology is a clause like any other — filled by the agreement.** A agreement
   carries `figaro-topology` as `{}`, so one registered agreement fits any position; the order
   agreement's own `clauses` carry `{ parentOrderHashes: [...] }` — the root order is `[]`; a child
@@ -185,7 +185,7 @@ derive identity.
   `clauseId` matches; write `name@version` to match the `version` too), merges the clauses of
   the agreement the document names as its pick (`mandatory`, a name in `picks` — or compose
   the whole set by name with `composeAuthoredAgreements(docsByName, specs)`) and keys the agreement, and `assembleAuthored(doc, agreementsByName, specs)`
-  binds each one to the named agreement's key and returns `{ assembly, agreements }` with each
+  binds each one to the named agreement's hash and returns `{ assembly, agreements }` with each
   DISTINCT agreement once. They refuse a name two loaded specs share unless the file
   says which, and a name no loaded spec carries. Run them once, before
   pinning, over a spec set you chose and inspected; it is never a read path, and the pinned
@@ -204,19 +204,19 @@ catalog values, not assembly fields.
   "agreements": [
     {
       "id": "order-0",
-      "agreementKey": "0x<registered agreement key>",
+      "agreementHash": "0x<registered agreement hash>",
       "clauses": { "0x<topology clause key>": { "parentOrderHashes": [] } }
     },
     {
       "id": "order-1",
-      "agreementKey": "0x<registered agreement key>",
+      "agreementHash": "0x<registered agreement hash>",
       "clauses": { "0x<topology clause key>": { "parentOrderHashes": ["order-0"] } }
     }
   ]
 }
 ```
 
-Each `agreementKey` names a agreement registered on `AgreementRegistry`, pinned as
+Each `agreementHash` names a agreement registered on `AgreementRegistry`, pinned as
 `{ "name": "<optional>", "clauses": { "0x<commerce clause key>": {}, "0x<handoff clause key>": {},
 "0x<topology clause key>": {} } }`.
 
@@ -226,7 +226,7 @@ picked for its order; anyone can register one, so read each pick's clauses by ke
 every mandatory key in each agreement before you register it.
 
 No clause is composed for the link back to your design. Every agreement instantiated from
-the assembly carries, as `agreement.provenance`, the `agreementKey` of the agreement it
+the assembly carries, as `agreement.provenance`, the `agreementHash` of the agreement it
 fills and the assembly's `compositionHash` — the agreement format's reserved provenance leaf
 (key `PROVENANCE_LEAF_KEY`, `keccak256("figaro-agreement-provenance")`), written by the
 instantiation, never by the assembly. At resolution `UsageCounter.recordAgreementUsage`
@@ -235,7 +235,7 @@ binding is live, and `UsageCounter.recordAssemblyUsage` proves it plus the agree
 membership proof under `compositionHash` (`buildAgreementInclusionProof(assembly, i)`) to credit
 you as the assembly's designer while your `AssemblyRegistry` binding is live. The two
 reserved keys of the format — the provenance key and `ASSEMBLY_TERMS_LEAF_KEY` — are never
-an `agreementKey`.
+an `agreementHash`.
 
 Track any NEW clauses separately (Step 2 / Step 6 output) — the assembly composes only
 clauses that already exist on the registry; it carries no "clauses-to-author" list.
@@ -245,8 +245,8 @@ clauses that already exist on the registry; it carries no "clauses-to-author" li
 Validate the composition off-chain (clauses exist / are registerable; topology is a
 resolvable chain within the per-process resolve ceiling). Register in order — clauses, then
 agreements, then the assembly: for each NEW agreement in `agreements`, read
-`AgreementRegistry.bindings(agreementKey)` and skip it if already registered, else pin the
-document and call `AgreementRegistry.registerAgreement(agreementKey, contentURI)` with
+`AgreementRegistry.bindings(agreementHash)` and skip it if already registered, else pin the
+document and call `AgreementRegistry.registerAgreement(agreementHash, contentURI)` with
 `msg.value == registrationDeposit()` (one stake per distinct agreement; the registry refuses a
 reserved key). Then pin the canonical assembly to IPFS → `contentURI`; compute `compositionHash = assemblyCompositionHash(assembly)` and the
 slug with `deriveAssemblySlug(compositionHash)` (both from `@figaro-protocol/sdk` — never hand-roll
@@ -279,7 +279,7 @@ user at them and read the outcome.
 - Bond posture: <real-number example scenario>
 - Clauses used (on registry): <list>
 - Clauses to author (invoke figaro-clause-author): <list + rationale>
-- Agreements: <per agreement: agreementKey 0x… (bound | newly registered, tx 0x…)>
+- Agreements: <per agreement: agreementHash 0x… (bound | newly registered, tx 0x…)>
 - compositionHash: 0x…   contentURI: ipfs://…   tx: 0x… (designer of record = <user wallet>)
 - Refusals: <any Core-changing patterns refused, invariant named>
 - Surfacing note: valid on-chain now; surfaces in any UI that reads AgreementRegistry and AssemblyRegistry.

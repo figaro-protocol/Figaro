@@ -4,7 +4,7 @@
  * bundle.
  *
  * The "contract" in Figaro is the off-chain document referenced by
- * `agreementHash`. Both parties signed an EIP-712 commitment that bound
+ * `checkoutHash`. Both parties signed an EIP-712 commitment that bound
  * them to its byte-exact content. This extractor produces a structured
  * view of that document — parties, monetary terms, every clause
  * with its merkle-leaf hash anchor.
@@ -38,9 +38,9 @@ interface ContractClause {
      *  content-withheld (`private`) clauseEntry: only its fingerprint is public,
      *  so there is no cleartext body to show; the `leafHash` still binds it. */
     body?: Record<string, unknown>;
-    /** Merkle leaf hash of this clause under the agreementHash root.
+    /** Merkle leaf hash of this clause under the checkoutHash root.
      *  Auditor recomputes this from the body and verifies it appears in
-     *  the agreementHash merkle tree. */
+     *  the checkoutHash merkle tree. */
     leafHash: `0x${string}`;
 }
 
@@ -137,7 +137,7 @@ export function extractContract(
     order: Order,
     agreement: Agreement,
 ): ContractDocument {
-    // Currency: prefer the agreement's commerce-section currency (signed by both
+    // Currency: prefer the agreement's commerce-clause currency (signed by both
     // parties) over the order's currency field (which is event-derived, normally
     // identical, but the commerce clause is the authoritative party-signed
     // source). When the commerce clause is absent, fall back to order.currency
@@ -149,7 +149,7 @@ export function extractContract(
         title: "Bonded commitment",
         orderHash: order.orderHash,
         processId: order.processId,
-        agreementHash: order.agreementHash ?? "0x",
+        checkoutHash: order.checkoutHash ?? "0x",
         buyer: order.buyer,
         seller: order.seller,
         parties: { buyer: order.buyer, seller: order.seller },
@@ -158,7 +158,7 @@ export function extractContract(
         cumulativeValue: order.cumulativeValue,
         salt: order.salt,
         deadline: order.deadline,
-        clauses: agreement.sections.map(contractClauseFrom),
+        clauses: agreement.clauses.map(contractClauseFrom),
         jurisdiction: extractJurisdictionSummary(agreement),
         topology: extractTopology(agreement),
         method: extractMethodSummary(agreement),

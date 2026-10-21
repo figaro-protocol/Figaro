@@ -69,7 +69,7 @@ contract WitnessSwapAndCommitCoordinatorTest is Test {
             currency: address(bond),
             payment: P,
             expectedCumulativeValue: P,
-            agreementHash: keccak256("witness-swap-commit-root"),
+            checkoutHash: keccak256("witness-swap-commit-root"),
             salt: salt,
             deadline: block.timestamp + 1 hours
         });

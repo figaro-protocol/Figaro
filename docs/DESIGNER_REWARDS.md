@@ -20,7 +20,7 @@ clause, a registered agreement or an assembly; it is the designer of record
 for as long as it holds a live stake against that entry in the entry's own
 registry. An entry is a (kind, key) pair — a clause key under the clause kind
 (0), an assembly's `compositionHash` under the assembly kind (1), a registered
-agreement's `agreementKey` under the agreement kind (2) — and the meter, the
+agreement's `agreementHash` under the agreement kind (2) — and the meter, the
 claim and the check of the designer of record are all keyed by it, so a stake
 in one family never earns another family's usage at the same bytes
 (`DESIGN_DECISIONS.md` § 24). Clauses, registered agreements and assemblies
@@ -80,7 +80,7 @@ usage at resolution, permissionlessly, from facts the chain already holds: the
 order is resolved, and the clause — or the provenance leaf naming the
 registered agreement and the assembly, with the agreement's membership proof
 under the assembly's root — was merkle-committed in the signed
-`agreementHash`.
+`checkoutHash`.
 Anyone may call it; the proof is what is trusted, never the caller. Trade
 resolved in a proved batch is counted by the batch's own proof and written by
 the verifier alone, with the counter checking the open period, each seller's

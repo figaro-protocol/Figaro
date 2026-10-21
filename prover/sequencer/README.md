@@ -28,7 +28,7 @@ transaction's calldata, readable by anyone. The batch path resolves the same
 trade but publishes none of it — `FigaroBatchVerifier`'s public values carry
 no order hashes, its storage is `stateRoot` + `batchCount`, and `BatchSettled`
 names no order — so a batched order's buyer, seller, payment and
-`agreementHash` exist only under the proven state root. The read routes below
+`checkoutHash` exist only under the proven state root. The read routes below
 close that gap: they mirror `FigaroCore`'s publication role for the batch
 universe.
 

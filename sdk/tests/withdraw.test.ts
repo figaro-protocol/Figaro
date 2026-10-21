@@ -25,7 +25,7 @@ const PROC_A = ("0x" + "a".repeat(64)) as Hex;
 const PROC_B = ("0x" + "b".repeat(64)) as Hex;
 const ORDER_1 = ("0x" + "11".repeat(32)) as Hex;
 const ORDER_2 = ("0x" + "22".repeat(32)) as Hex;
-const AGREEMENT_HASH = ("0x" + "99".repeat(32)) as Hex;
+const CHECKOUT_HASH = ("0x" + "99".repeat(32)) as Hex;
 
 function committed(overrides: Partial<OrderCommittedEvent> = {}): OrderCommittedEvent {
     return {
@@ -36,7 +36,7 @@ function committed(overrides: Partial<OrderCommittedEvent> = {}): OrderCommitted
         currency: CURRENCY,
         payment: 1000n,
         cumulativeValue: 1000n,
-        agreementHash: AGREEMENT_HASH,
+        checkoutHash: CHECKOUT_HASH,
         salt: 0n,
         deadline: 0n,
         blockNumber: 1,
@@ -61,7 +61,7 @@ function agreementWith(clauses: string[]): Agreement {
         version: "a1",
         buyer: BUYER,
         seller: SELLER,
-        sections: clauses.map((name) => ({ clause: keyOf(name), data: {} })),
+        clauses: clauses.map((name) => ({ clause: keyOf(name), data: {} })),
     };
 }
 
@@ -75,7 +75,7 @@ describe("deriveInFlightOrders", () => {
     it("surfaces a committed, unresolved order as in-flight", () => {
         const refs = deriveInFlightOrders(coreEvents({ orderCommitted: [committed()] }));
         expect(refs).toHaveLength(1);
-        expect(refs[0]).toMatchObject({ orderHash: ORDER_1, processId: PROC_A, agreementHash: AGREEMENT_HASH });
+        expect(refs[0]).toMatchObject({ orderHash: ORDER_1, processId: PROC_A, checkoutHash: CHECKOUT_HASH });
     });
 
     it("drops orders whose process resolved (atomic resolution)", () => {
@@ -154,21 +154,21 @@ describe("deriveClauseWithdrawGate", () => {
 
 const COMPOSITION = ("0x" + "c0".repeat(32)) as Hex;
 const OTHER_COMPOSITION = ("0x" + "c1".repeat(32)) as Hex;
-const AGREEMENT_KEY = ("0x" + "a0".repeat(32)) as Hex;
-const OTHER_AGREEMENT_KEY = ("0x" + "a1".repeat(32)) as Hex;
+const AGREEMENT_HASH = ("0x" + "a0".repeat(32)) as Hex;
+const OTHER_AGREEMENT_HASH = ("0x" + "a1".repeat(32)) as Hex;
 
 /** An agreement whose provenance leaf names the given registered agreement
  *  and assembly. */
-function instantiated(agreementKey: Hex, compositionHash: Hex): Agreement {
-    return { ...agreementWith(["figaro-commerce", "figaro-topology"]), provenance: { agreementKey, compositionHash } };
+function instantiated(agreementHash: Hex, compositionHash: Hex): Agreement {
+    return { ...agreementWith(["figaro-commerce", "figaro-topology"]), provenance: { agreementHash, compositionHash } };
 }
 
 for (const [label, derive, key, other] of [
     ["deriveAssemblyWithdrawGate", deriveAssemblyWithdrawGate, COMPOSITION, OTHER_COMPOSITION],
-    ["deriveAgreementWithdrawGate", deriveAgreementWithdrawGate, AGREEMENT_KEY, OTHER_AGREEMENT_KEY],
+    ["deriveAgreementWithdrawGate", deriveAgreementWithdrawGate, AGREEMENT_HASH, OTHER_AGREEMENT_HASH],
 ] as const) {
     const named = (k: Hex) => label === "deriveAssemblyWithdrawGate"
-        ? instantiated(AGREEMENT_KEY, k)
+        ? instantiated(AGREEMENT_HASH, k)
         : instantiated(k, COMPOSITION);
 
     describe(label, () => {

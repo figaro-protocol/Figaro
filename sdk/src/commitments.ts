@@ -40,7 +40,7 @@ export const COMMITMENT_TYPES = {
         { name: "currency", type: "address" },
         { name: "payment", type: "uint256" },
         { name: "expectedCumulativeValue", type: "uint256" },
-        { name: "agreementHash", type: "bytes32" },
+        { name: "checkoutHash", type: "bytes32" },
         { name: "salt", type: "uint256" },
         { name: "deadline", type: "uint256" },
     ],
@@ -216,7 +216,7 @@ export function orderToCommitment(order: Order): Commitment {
         currency: order.currency,
         payment: order.payment,
         expectedCumulativeValue: order.cumulativeValue,
-        agreementHash: order.agreementHash,
+        checkoutHash: order.checkoutHash,
         salt: order.salt,
         deadline: order.deadline,
     };
@@ -323,7 +323,7 @@ export interface CommitmentParams {
      * For sub-orders: must match the current on-chain cumulativeValue.
      */
     expectedCumulativeValue: bigint;
-    agreementHash: Hex;
+    checkoutHash: Hex;
     /** Override random salt. Useful for deterministic testing. */
     salt?: bigint;
     /** Deadline in CHAIN time — `computeDeadline(await readChainTimestamp(client))`.
@@ -344,7 +344,7 @@ export function buildCommitment(params: CommitmentParams, domain: EIP712Domain) 
         currency: params.currency,
         payment: params.payment,
         expectedCumulativeValue: params.expectedCumulativeValue,
-        agreementHash: params.agreementHash,
+        checkoutHash: params.checkoutHash,
         salt: params.salt ?? generateSalt(),
         deadline: params.deadline,
     };

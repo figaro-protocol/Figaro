@@ -164,7 +164,7 @@ contract EchidnaFuzzer {
             currency: address(token),
             payment: p,
             expectedCumulativeValue: p,
-            agreementHash: keccak256(abi.encodePacked("fuzz-b2", saltCounter)),
+            checkoutHash: keccak256(abi.encodePacked("fuzz-b2", saltCounter)),
             salt: ++saltCounter,
             deadline: block.timestamp + 1 hours
         });
@@ -198,7 +198,7 @@ contract EchidnaFuzzer {
             currency: address(token),
             payment: p,
             expectedCumulativeValue: p, // root: cumVal == payment
-            agreementHash: keccak256(abi.encodePacked("fuzz", saltCounter)),
+            checkoutHash: keccak256(abi.encodePacked("fuzz", saltCounter)),
             salt: ++saltCounter,
             deadline: block.timestamp + 1 hours
         });
@@ -237,7 +237,7 @@ contract EchidnaFuzzer {
             currency: address(token),
             payment: p,
             expectedCumulativeValue: expectedCum,
-            agreementHash: keccak256(abi.encodePacked("fuzz-sub", saltCounter)),
+            checkoutHash: keccak256(abi.encodePacked("fuzz-sub", saltCounter)),
             salt: ++saltCounter,
             deadline: block.timestamp + 1 hours
         });
@@ -271,7 +271,7 @@ contract EchidnaFuzzer {
             currency: address(token),
             payment: p1,
             expectedCumulativeValue: p1,
-            agreementHash: keccak256(abi.encodePacked("fuzz-multi", saltCounter)),
+            checkoutHash: keccak256(abi.encodePacked("fuzz-multi", saltCounter)),
             salt: ++saltCounter,
             deadline: block.timestamp + 1 hours
         });
@@ -304,7 +304,7 @@ contract EchidnaFuzzer {
             currency: address(token),
             payment: p2,
             expectedCumulativeValue: expectedCum,
-            agreementHash: keccak256(abi.encodePacked("fuzz-multi-sub", saltCounter)),
+            checkoutHash: keccak256(abi.encodePacked("fuzz-multi-sub", saltCounter)),
             salt: ++saltCounter,
             deadline: block.timestamp + 1 hours
         });

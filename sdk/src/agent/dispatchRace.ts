@@ -32,7 +32,7 @@
 
 import type { WalletClient } from "viem";
 import { buildCommitment, buildDomain, hashCommitmentStruct, ZERO_PROCESS_ID } from "../commitments.js";
-import { computeAgreementHash, type Agreement, type AgreementProvenance } from "../agreement.js";
+import { computeCheckoutHash, type Agreement, type AgreementProvenance } from "../agreement.js";
 import type { Hex, Address } from "../types.js";
 import type { CommitmentPayload, CoordinationChannel, PricedField, QuoteRequestTerms } from "./coordination.js";
 import { checkOfferPolicy, checkPayloadTerms, checkSellerSignature, countersignUnderFloors, gateSeller, instantiateRootAgreement, readOfferDesign, signCommitmentAs, verifyRaceReply, type OfferCheck, type OfferPolicy } from "./originate.js";
@@ -52,7 +52,7 @@ import type { MemberProfileReader } from "../memberProfile.js";
  * agreement or assembly is the designer's, before registration).
  *
  * Checks: no signatures present, the draft names me as seller, the agreement
- * hashes to the committed `agreementHash` (the sender cannot pin one agreement
+ * hashes to the committed `checkoutHash` (the sender cannot pin one agreement
  * and commit another), and the agreement's parties match the commitment. With
  * `specs`, ALSO runs the merkle-leaf seam (`assertAgreementSignable` —
  * docs/CLAUSES.md § "Every clause is a merkle leaf"), exactly as
@@ -166,7 +166,7 @@ export function substitutePricedValue(
     value: bigint,
 ): Agreement {
     if (pricedFields.length === 0) throw new Error("substitutePricedValue: the request names no priced fields");
-    let clauseEntries = agreement.sections;
+    let clauseEntries = agreement.clauses;
     for (const field of pricedFields) {
         const index = clauseEntries.findIndex((s) => s.clause.toLowerCase() === field.clause.toLowerCase());
         if (index === -1) throw new Error(`substitutePricedValue: agreement has no "${field.clause}" clauseEntry`);
@@ -175,7 +175,7 @@ export function substitutePricedValue(
         const data = setAtPath(clauseEntries[index].data, field.path.split("."), value.toString()) as Record<string, unknown>;
         clauseEntries = clauseEntries.map((s, i) => (i === index ? { ...s, data } : s));
     }
-    return { ...agreement, sections: clauseEntries };
+    return { ...agreement, clauses: clauseEntries };
 }
 
 /** Immutable set at a dotted path (numeric segments index arrays). Throws if
@@ -246,7 +246,7 @@ export function buildQuoteRequest(params: BuildQuoteRequestParams): CommitmentPa
         currency: params.currency,
         payment: params.ceiling,
         expectedCumulativeValue: params.ceiling,
-        agreementHash: computeAgreementHash(agreement),
+        checkoutHash: computeCheckoutHash(agreement),
         salt: params.salt,
         deadline: params.deadline,
     }, domain);
@@ -297,7 +297,7 @@ export async function quoteDraft(
 
     const { commitment: quoted, agreement } = buildCounterDraft(draft, terms, q);
     if (specs) {
-        assertAgreementSignable(agreement, quoted.agreementHash, specs, quoted, design, "This quote");
+        assertAgreementSignable(agreement, quoted.checkoutHash, specs, quoted, design, "This quote");
     }
     const sellerSig = await signCommitmentAs(wallet, ctx, quoted, "quoteDraft");
     return { commitment: quoted, agreement, sellerSig };
@@ -307,7 +307,7 @@ export async function quoteDraft(
  *  quote and the buyer's reconstruction, so the two are equal by construction
  *  or the quote is dishonest. Only the priced fields, `payment`, the
  *  re-derived `expectedCumulativeValue` (same upstream base), and
- *  `agreementHash` move; salt, deadline, parties, currency, processId are the
+ *  `checkoutHash` move; salt, deadline, parties, currency, processId are the
  *  draft's. Exported for human-driven quote surfaces (a person entering the
  *  figure IS the pricing function; the confirm gate replaces the autonomous
  *  floors, exactly as accept does). */
@@ -323,7 +323,7 @@ export function buildCounterDraft(
             ...draft.commitment,
             payment: q,
             expectedCumulativeValue: base + q,
-            agreementHash: computeAgreementHash(agreement),
+            checkoutHash: computeCheckoutHash(agreement),
         },
         agreement,
     };
@@ -333,7 +333,7 @@ export function buildCounterDraft(
  * Buyer-side verification of a quote — by RECONSTRUCTION, never diffing: the
  * buyer applies the same substitution to their OWN draft at the quoted figure
  * and requires the reply to match hash-for-hash (struct hash pins the
- * agreement hash, and the inline agreement must hash to it). The cap rule and
+ * checkout hash, and the inline agreement must hash to it). The cap rule and
  * payment floor are checked against the BUYER's copy of the request — the
  * reply's echo of anything is never trusted. Then signature recovery to the
  * drafted candidate.
@@ -353,8 +353,8 @@ export async function verifyQuoteReply(
     if (hashCommitmentStruct(reply.commitment) !== hashCommitmentStruct(expected.commitment)) {
         return { ok: false, reason: "quote does not match the reconstruction — something beyond the price moved" };
     }
-    if (computeAgreementHash(reply.agreement).toLowerCase() !== expected.commitment.agreementHash.toLowerCase()) {
-        return { ok: false, reason: "quote's inline agreement does not hash to its committed agreementHash" };
+    if (computeCheckoutHash(reply.agreement).toLowerCase() !== expected.commitment.checkoutHash.toLowerCase()) {
+        return { ok: false, reason: "quote's inline agreement does not hash to its committed checkoutHash" };
     }
     // Recover against the buyer's OWN reconstruction of the quoted struct.
     return checkSellerSignature(expected.commitment, reply.sellerSig as Hex, draft.commitment.seller, ctx);

@@ -13,7 +13,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import type { Hex } from "viem";
 import type { Assembly, RegisteredAgreement } from "../src/assembly.js";
-import { agreementKeyOf } from "../src/assembly.js";
+import { agreementHashOf } from "../src/assembly.js";
 import { computeClauseKey } from "../src/discovery.js";
 
 const CLAUSES_DIR = path.resolve(__dirname, "../../clauses");
@@ -39,12 +39,12 @@ export const REGISTERED_DESIGN: RegisteredAgreement = {
 };
 
 export const ASSEMBLY_ONE: Assembly = {
-    agreements: [{ id: "order-0", agreementKey: agreementKeyOf(REGISTERED_ONE), clauses: {} }],
+    agreements: [{ id: "order-0", agreementHash: agreementHashOf(REGISTERED_ONE), clauses: {} }],
 };
 export const ASSEMBLY_TWO: Assembly = {
     agreements: [
-        { id: "order-0", agreementKey: agreementKeyOf(REGISTERED_THREE), clauses: {} },
-        { id: "order-1", agreementKey: agreementKeyOf(REGISTERED_ONE), clauses: {} },
+        { id: "order-0", agreementHash: agreementHashOf(REGISTERED_THREE), clauses: {} },
+        { id: "order-1", agreementHash: agreementHashOf(REGISTERED_ONE), clauses: {} },
     ],
 };
 export const ASSEMBLY_THREE: Assembly = {
@@ -52,8 +52,8 @@ export const ASSEMBLY_THREE: Assembly = {
         [K("figaro-applicable-law")]: { applicableLaw: "ch", forum: "Zurich", language: "en" },
     },
     agreements: [
-        { id: "order-0", agreementKey: agreementKeyOf(REGISTERED_DESIGN), clauses: { [K("figaro-topology")]: { parentOrderHashes: [] } } },
-        { id: "order-1", agreementKey: agreementKeyOf(REGISTERED_DESIGN), clauses: { [K("figaro-topology")]: { parentOrderHashes: ["order-0"] } } },
-        { id: "order-2", agreementKey: agreementKeyOf(REGISTERED_THREE), clauses: {} },
+        { id: "order-0", agreementHash: agreementHashOf(REGISTERED_DESIGN), clauses: { [K("figaro-topology")]: { parentOrderHashes: [] } } },
+        { id: "order-1", agreementHash: agreementHashOf(REGISTERED_DESIGN), clauses: { [K("figaro-topology")]: { parentOrderHashes: ["order-0"] } } },
+        { id: "order-2", agreementHash: agreementHashOf(REGISTERED_THREE), clauses: {} },
     ],
 };

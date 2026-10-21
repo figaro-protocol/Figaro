@@ -44,7 +44,7 @@ import {
     buildDomain,
     buildSignedClauseInclusionProof,
     calculateBonds,
-    computeAgreementHash,
+    computeCheckoutHash,
     generateSalt,
     hashClauseData,
     USAGE_KIND_CLAUSE,
@@ -154,7 +154,7 @@ test.describe('designer rewards — usage accrues, the UI reads it (devnet)', ()
                 version: 'a1',
                 buyer: buyerAccount.address,
                 seller: sellerAccount.address,
-                sections: [
+                clauses: [
                     { clause: TOPOLOGY_CLAUSE, data: { parentOrderHashes: [] } },
                     {
                         clause: COMMERCE_CLAUSE,
@@ -170,12 +170,12 @@ test.describe('designer rewards — usage accrues, the UI reads it (devnet)', ()
                     },
                 ],
             };
-            const agreementHash = computeAgreementHash(agreement);
+            const checkoutHash = computeCheckoutHash(agreement);
             // THE MERKLE-LEAF SEAM (docs/CLAUSES.md § "Every clause is a merkle
             // leaf"): the commerce clause's currency and payment TERMS must
             // equal the commitment struct's mirrors BEFORE either party signs.
             // The agreement names no design (no provenance leaf), so no design is read.
-            assertAgreementSignable(agreement, agreementHash, specSource(), { currency: token, payment }, null);
+            assertAgreementSignable(agreement, checkoutHash, specSource(), { currency: token, payment }, null);
 
             // 3. Sign + commit (both parties bond; the buyer broadcasts). Root
             //    orders sign processId = 0 — the chain derives the real id.
@@ -189,7 +189,7 @@ test.describe('designer rewards — usage accrues, the UI reads it (devnet)', ()
                     currency: token,
                     payment,
                     expectedCumulativeValue: payment,
-                    agreementHash,
+                    checkoutHash,
                     salt: generateSalt(),
                     deadline: chainNow + 3600n,
                 },
@@ -223,7 +223,7 @@ test.describe('designer rewards — usage accrues, the UI reads it (devnet)', ()
             });
             const processId = committed[committed.length - 1].args.processId as Hex;
 
-            const clauseEntry = agreement.sections.find((s) => s.clause === USED_CLAUSE)!;
+            const clauseEntry = agreement.clauses.find((s) => s.clause === USED_CLAUSE)!;
             const { proof } = buildSignedClauseInclusionProof(agreement, USED_CLAUSE);
             // Only the clause FINGERPRINT reaches calldata — never the preimage.
             const clauseDataHash = hashClauseData(clauseEntry);

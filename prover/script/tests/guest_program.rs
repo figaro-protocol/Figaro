@@ -12,7 +12,7 @@
 
 use alloy_primitives::{keccak256, B256, U256};
 use figaro_kernel::eip712::{commitment_struct_hash, domain_separator, resolve_struct_hash, typed_data_hash};
-use figaro_kernel::kernel::{apply_batch, provenance_section_bytes};
+use figaro_kernel::kernel::{apply_batch, provenance_leaf_bytes};
 use figaro_kernel::state::KernelState;
 use figaro_kernel::types::{
     BatchInput, Commitment, KernelOp, KernelStateSnapshot, PublicValues, UsageClaim, UsageClaimKind,
@@ -189,7 +189,7 @@ fn provenance_batch(membership_root_is_the_claimed_one: bool) -> BatchInput {
         vec![format_leaf(&keccak256(b"some-other-agreement"), &slot0)]
     };
 
-    let section = keccak256(provenance_section_bytes(&agreement, &composition));
+    let clause_data_hash = keccak256(provenance_leaf_bytes(&agreement, &composition));
     let order = Commitment {
         process_id: B256::ZERO,
         buyer: BUYER,
@@ -197,7 +197,7 @@ fn provenance_batch(membership_root_is_the_claimed_one: bool) -> BatchInput {
         currency: TOKEN,
         payment: U256::from(100u64),
         expected_cumulative_value: U256::from(100u64),
-        agreement_hash: format_leaf(&provenance_key, &section),
+        checkout_hash: format_leaf(&provenance_key, &clause_data_hash),
         salt: U256::from(77u64),
         deadline: U256::from(2000u64),
     };
@@ -239,7 +239,7 @@ fn provenance_batch(membership_root_is_the_claimed_one: bool) -> BatchInput {
                 order,
                 clause_or_assembly: composition,
                 kind: UsageClaimKind::Assembly {
-                    agreement_key: agreement,
+                    agreement_hash: agreement,
                     slot_content_hash: slot0,
                     membership_proof: membership,
                 },

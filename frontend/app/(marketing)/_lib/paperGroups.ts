@@ -218,7 +218,7 @@ export const PAPER_GROUPS: PaperGroup[] = [
         name: "Philosophy, Law and Ethics",
         discipline: "Contract theory · evidence law · labor law · stateless subjecthood · political philosophy",
         intro: "The normative layer: any choice of coordination objective is a subjective choice, so whose values a system encodes, the accountability of its designers, and the ethics of decision algorithms in social systems come before the engineering.",
-        definition: "A Figaro commitment is a signed contract: payment = consideration, clauses = terms and conditions, agreementHash = the contract document. Resolution happens on-chain by nature; adjudication happens off-chain by nature; and the mechanism asks for a signing key and a bond where commerce asked for civil-legal recognition. The papers here ask what lawyers, philosophers, and ethicists ask.",
+        definition: "A Figaro commitment is a signed contract: payment = consideration, clauses = terms and conditions, checkoutHash = the contract document. Resolution happens on-chain by nature; adjudication happens off-chain by nature; and the mechanism asks for a signing key and a bond where commerce asked for civil-legal recognition. The papers here ask what lawyers, philosophers, and ethicists ask.",
         papers: [
             {
                 title: "On-Chain Evidence, Off-Chain Adjudication",

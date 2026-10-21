@@ -124,7 +124,7 @@ narrates the same run from nothing to a bonded order. Skip any step here and the
 either reverts on chain or lands binding terms nobody checked.
 
 **1. Build a `SpecSource` — the fuel of the merkle-leaf sign gate.** Every clause's terms
-are merkle leaves under the `agreementHash` both parties sign, so the gate that refuses a
+are merkle leaves under the `checkoutHash` both parties sign, so the gate that refuses a
 bad agreement needs the clause SPECS. The SDK holds no spec cache: you build the source
 from the live registry → IPFS, from the same specs any UI reads. It is ~15 lines, and it is
 the whole difference between a gated signature and a blind one.
@@ -206,9 +206,9 @@ const result = await originateProcess(buyerWallet, publicClient, addresses, {
 
 **4. Write the transaction particulars — ROUTED BY DECLARED FIELD, never by clause name.**
 A published assembly arrives value-free and is passed HYDRATED (`HydratedAssembly {
-assembly, agreements }`): each agreement names a registered agreement by `agreementKey`, and
+assembly, agreements }`): each agreement names a registered agreement by `agreementHash`, and
 you hydrate it from its `AgreementRegistry` binding with `anchorRegisteredAgreement(raw,
-agreementKey)`, which returns the agreement only when its recomputed key matches —
+agreementHash)`, which returns the agreement only when its recomputed key matches —
 `null` (a failed fetch, parse or match) means the assembly is not offered, never a fallback.
 The designer composed the clause SELECTION and their own tailoring; the remaining required content fields are the BUYER's to fill at
 origination. Route each value by the field a clause DECLARES, read from its spec — a clause
@@ -236,13 +236,13 @@ the gate stops objecting.
 
 Two of them are not yours to write. The **denomination** — the `currency` leaf — is a TERM
 that the commitment struct MIRRORS: write the same address into both, or the gate refuses.
-And the **provenance** — the agreement's `agreementKey` and the assembly's
+And the **provenance** — the agreement's `agreementHash` and the assembly's
 `compositionHash` — is written by the instantiation itself, with or without `specs`:
 `instantiateRootAgreement` and the assembly walk set `agreement.provenance` on every order to
 the registered agreement its agreement holds and `assemblyCompositionHash(assembly)` — the
 agreement format's reserved provenance leaf (key `PROVENANCE_LEAF_KEY`,
 `keccak256("figaro-agreement-provenance")`; bytes
-`{"agreementKey":"0x<lowercase hex>","compositionHash":"0x<lowercase hex>"}`), a leaf of the
+`{"agreementHash":"0x<lowercase hex>","compositionHash":"0x<lowercase hex>"}`), a leaf of the
 agreement and never a clause. Do not hand-write provenance: an agreement naming a
 different pair than the agreement you instantiated is a claim to a different design, and the
 SDK throws on it. Instantiation adds and drops no clause: it fills values and writes the
@@ -251,7 +251,7 @@ While the process is OPEN you may attest that leaf as the buyer —
 `attestAsBuyer(walletClient, coordinator, target, p.clauseId, p.stage, p.clauseDataHash,
 p.proof, p.contentRef)` with `p = provenanceLeafAttestation(agreement)` — which makes the
 process-to-design link public: a reader matches the attestation's `contentRef` against
-`provenanceContentRef(agreementKey, compositionHash)` for a registered agreement and assembly. The coordinator refuses
+`provenanceContentRef(agreementHash, compositionHash)` for a registered agreement and assembly. The coordinator refuses
 every attestation once the order is resolved (`OrderResolved`).
 
 **5. Resolve — and count the usage in the same breath.** Only the buyer can end a process,
@@ -295,7 +295,7 @@ profile's `disclosurePolicy` — offered or explicitly withheld, to whom, from w
 catalog item's `dataSold` plus its `clauseValues` — the price and the license terms),
 an encrypted per-order delivery, and the property the owner is actually selling: every
 disclosed leaf verifies by merkle inclusion against the source process's ON-CHAIN
-`agreementHash`, so the buyer checks provenance against the chain instead of the owner's
+`checkoutHash`, so the buyer checks provenance against the chain instead of the owner's
 word. **The recipe is the SDK README, "Data products — sell, deliver, verify,
 stream"** — sell, compose, deliver, verify, stream, executable as written. Two
 things to keep straight when you report to the owner: the proof is provenance and
@@ -331,14 +331,14 @@ README. Read the section; never reconstruct one from the ABI.
 - **Claiming what the owner's clauses, agreements and assemblies earned** — `RpgfMinter.claim`, once
   per wallet per CLOSED period, carrying every `(kind, key)` pair the wallet designed —
   `{ kind: USAGE_KIND_CLAUSE, key: clauseKey }`, `{ kind: USAGE_KIND_ASSEMBLY, key:
-  compositionHash }` or `{ kind: USAGE_KIND_AGREEMENT, key: agreementKey }`, each checked
+  compositionHash }` or `{ kind: USAGE_KIND_AGREEMENT, key: agreementHash }`, each checked
   against the one registry its kind names (a duplicate
   pair or a key it did not register under that kind reverts): "Claiming the designer's mint".
 
 ## Reclaiming a registration stake — apply the K4 withdraw gate yourself
 
 If the owner registered a clause, an agreement or an assembly, its stake comes back with one call
-(`ClauseRegistry.withdrawDeposit(clauseKey)` / `AgreementRegistry.withdrawDeposit(agreementKey)` /
+(`ClauseRegistry.withdrawDeposit(clauseKey)` / `AgreementRegistry.withdrawDeposit(agreementHash)` /
 `AssemblyRegistry.withdrawDeposit(compositionHash)`)
 — which **de-surfaces the entry for new compositions while the binding stays permanent**,
 because orders already committed against it still resolve. The rule the stake
@@ -361,7 +361,7 @@ const inFlight = deriveInFlightOrders(
 const gate = deriveClauseWithdrawGate(clauseKey, agreements);  // the key you registered, never a name
 if (!gate.canWithdraw) { /* report inFlightCount + unverifiedCount; do not withdraw */ }
 // an agreement or an assembly: the same shape, attributed by each verified agreement's
-// decoded provenance { agreementKey, compositionHash }
+// decoded provenance { agreementHash, compositionHash }
 ```
 
 `canWithdraw === (inFlightCount === 0)`; `unverifiedCount` is a caveat to surface, never a
@@ -371,7 +371,7 @@ the enforcement, or there is none.
 
 ## Verify before you sign — the hash is the whole of what you agree to
 
-`FigaroCore` verifies both EIP-712 signatures itself, over a struct whose `agreementHash` is
+`FigaroCore` verifies both EIP-712 signatures itself, over a struct whose `checkoutHash` is
 the **merkle root** of the agreement's clauses. So resolution is independent of any UI —
 but **what you were SHOWN is not**. Whoever hands you an agreement (a page, a channel
 message, a counterparty's payload) can present document *D* while the struct binds
@@ -380,8 +380,8 @@ message, a counterparty's payload) can present document *D* while the struct bin
 **So never sign a hash you did not recompute.** Before every commitment signature, from
 root `@figaro-protocol/sdk` exports and the document you were handed:
 
-1. `computeAgreementHash(agreement)` — recompute the root.
-2. Compare, case-insensitively, against `commitment.agreementHash` in the struct you are
+1. `computeCheckoutHash(agreement)` — recompute the root.
+2. Compare, case-insensitively, against `commitment.checkoutHash` in the struct you are
    about to sign. **Not equal ⇒ REFUSE and tell the owner.** This is not an advisory
    check; it is the only moment the substitution is catchable.
 3. `hashClauseData(clause)` / `computeClauseLeaf(clause)` per clause when you need to
@@ -393,7 +393,7 @@ root `@figaro-protocol/sdk` exports and the document you were handed:
 correctly and still be wrong: the terms inside it can contradict the struct you bond
 against, omit a term the clause requires, drop a clause of its design, or change a designer's
 value.
-`assertAgreementSignable(agreement, agreementHash, specs, commitment, design, label)` is the
+`assertAgreementSignable(agreement, checkoutHash, specs, commitment, design, label)` is the
 one off-chain gate every signature in the SDK routes through, and it refuses five things the
 hash comparison cannot see:
 
@@ -401,7 +401,7 @@ hash comparison cannot see:
   agreement can carry a clause the designer composed and the buyer never filled; the gate
   refuses to sign it rather than committing an empty term.
 - **A leaf that contradicts the struct, on BOTH mirrored terms.** `currency` and `payment`
-  live in two places at once: as merkle leaves under `agreementHash` (the commerce clause's
+  live in two places at once: as merkle leaves under `checkoutHash` (the commerce clause's
   fields — the TERMS) and as fields of the commitment (the EXECUTION data). The gate
   asserts each leaf equals its struct mirror; a mismatch on either is a refusal.
 - **A broken pin chain.** Where the assembly composes a denomination pin (an
@@ -486,7 +486,7 @@ deployment record's `batchVerifier` address, with `BATCH_VERIFIER_ABI` from
 Exactly one thing crosses the seam: the usage accrual behind designer rewards, carried by
 the proof into `UsageCounter.applyBatchAccrual` as proved numbers. So if the owner asks what
 their clauses, agreements and assemblies earned, read `scoreOf(kind, clauseOrAssembly, period)` — kind `0`
-a clause key, `1` an assembly `compositionHash`, `2` an `agreementKey` — (it sums both
+a clause key, `1` an assembly `compositionHash`, `2` an `agreementHash` — (it sums both
 paths) — never `accrualOf` alone, and if you mirror the events off-chain, fold
 `UsageRecorded` **and** `BatchUsageRecorded` (the batch one is CUMULATIVE — it REPLACES, it
 does not add).
@@ -627,7 +627,7 @@ sentence is something to get RIGHT in front of an owner who arrives with platfor
   the deadline), the merkle-bound attestations each side filed, and the agreement's own
   clauses. Any SINGLE term is provable to an outsider without revealing the rest:
   disclose that clause with `buildSignedClauseInclusionProof` + `verifyInclusionProof`
-  against the committed `agreementHash`, and put every other clause into its
+  against the committed `checkoutHash`, and put every other clause into its
   content-withheld form with `withholdClauseContent` — same root, plaintext never
   travels (the worked recipe is the SDK README's data-products section, step 3). A
   counterparty cannot deny a term that verifies against the root they signed. Walletless
@@ -743,7 +743,7 @@ live risk, rather than reporting a guarantee the launch did not actually give.
   stuck-fund recovery path — each breaks an invariant. If the owner asks, refuse and
   explain which one.
 - You do not fabricate a counterparty signature, ever. No counter-signature ⇒ no commit.
-- You do not sign an `agreementHash` you did not recompute from the document you were
+- You do not sign an `checkoutHash` you did not recompute from the document you were
   handed. A mismatch is a refusal, not a warning (see "Verify before you sign" above).
 - Chain time, not the host clock, governs every deadline you sign
   (`ecosystem-agents/README.md` § "Three habits, stated once"); every signature you emit

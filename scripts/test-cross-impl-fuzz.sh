@@ -18,7 +18,7 @@
 # THE AGREEMENT STREAM — three legs under the same seed:
 #
 #   1. The SDK (sdk/tests/merkleParity.test.ts, AGREEMENT_FUZZ_SEED) generates
-#      agreements of one to six sections and writes each root, leaf and
+#      agreements of one to six clauses and writes each root, leaf and
 #      inclusion proof to test/fixtures/streams/agreements.json.
 #   2. Foundry (MerkleParityTest, MERKLE_VECTORS) rebuilds every leaf the way
 #      AttestationCoordinator and UsageCounter do and opens every proof with

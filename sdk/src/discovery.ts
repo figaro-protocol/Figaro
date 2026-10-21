@@ -197,7 +197,7 @@ export function parseAgreementRegistryLogs(logs: Log[]): AgreementRegistryEvents
             const a = decoded.args as Record<string, unknown>;
             if (decoded.eventName === "AgreementRegistered") {
                 registered.push({
-                    agreementKey: a.agreementKey as Hex,
+                    agreementHash: a.agreementHash as Hex,
                     registeredBy: a.registeredBy as Address,
                     contentURI: a.contentURI as string,
                     blockNumber: Number(log.blockNumber ?? 0),
@@ -206,7 +206,7 @@ export function parseAgreementRegistryLogs(logs: Log[]): AgreementRegistryEvents
                 });
             } else if (decoded.eventName === "DepositWithdrawn") {
                 withdrawn.push({
-                    agreementKey: a.agreementKey as Hex,
+                    agreementHash: a.agreementHash as Hex,
                     registeredBy: a.registeredBy as Address,
                     blockNumber: Number(log.blockNumber ?? 0),
                     logIndex: Number(log.logIndex ?? 0),
@@ -323,7 +323,7 @@ interface MemberEntry {
 export class DiscoveryGraph {
     private readonly clauses = new Map<string, ClauseEntry>(); // key: lowercased clause key
     private readonly assemblies = new Map<Hex, AssemblyEntry>(); // key: compositionHash
-    private readonly agreements = new Map<string, AgreementEntry>(); // key: lowercased agreement key
+    private readonly agreements = new Map<string, AgreementEntry>(); // key: lowercased agreement hash
     private readonly members = new Map<string, MemberEntry>(); // key: lowercased address
 
     /** Apply a batch of registry events (e.g. from fetchDiscoveryEvents). */
@@ -354,8 +354,8 @@ export class DiscoveryGraph {
 
     /** A single registered agreement by key; undefined if unknown or
      *  de-surfaced. */
-    getAgreement(agreementKey: Hex): AgreementBinding | undefined {
-        const e = this.agreements.get(agreementKey.toLowerCase());
+    getAgreement(agreementHash: Hex): AgreementBinding | undefined {
+        const e = this.agreements.get(agreementHash.toLowerCase());
         return e && !e.agreement.stakeWithdrawn ? e.agreement : undefined;
     }
 
@@ -363,8 +363,8 @@ export class DiscoveryGraph {
      *  binding is never cleared, so hydration of an assembly composed from a
      *  withdrawn agreement reads its `contentURI` here; `stakeWithdrawn` says
      *  whether it is still offered. Undefined only if never registered. */
-    getAgreementBinding(agreementKey: Hex): AgreementBinding | undefined {
-        return this.agreements.get(agreementKey.toLowerCase())?.agreement;
+    getAgreementBinding(agreementHash: Hex): AgreementBinding | undefined {
+        return this.agreements.get(agreementHash.toLowerCase())?.agreement;
     }
 
     /** All live-staked members. */
@@ -438,12 +438,12 @@ export class DiscoveryGraph {
 
     private applyAgreementEvents(registered: AgreementRegisteredEvent[], withdrawn: AgreementWithdrawnEvent[]): void {
         for (const e of registered) {
-            const key = e.agreementKey.toLowerCase();
-            // agreementKey is first-write-wins and permanent — first-seen wins.
+            const key = e.agreementHash.toLowerCase();
+            // agreementHash is first-write-wins and permanent — first-seen wins.
             if (!this.agreements.has(key)) {
                 this.agreements.set(key, {
                     agreement: {
-                        agreementKey: e.agreementKey,
+                        agreementHash: e.agreementHash,
                         contentURI: e.contentURI,
                         registeredBy: e.registeredBy,
                         registeredAt: e.blockNumber,
@@ -453,8 +453,8 @@ export class DiscoveryGraph {
             }
         }
         for (const w of withdrawn) {
-            const entry = this.agreements.get(w.agreementKey.toLowerCase());
-            if (entry) entry.agreement = { ...entry.agreement, stakeWithdrawn: true }; // withdraw is terminal for an agreement key
+            const entry = this.agreements.get(w.agreementHash.toLowerCase());
+            if (entry) entry.agreement = { ...entry.agreement, stakeWithdrawn: true }; // withdraw is terminal for an agreement hash
         }
     }
 

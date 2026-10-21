@@ -47,7 +47,7 @@ export interface PublishOutcome {
     /** Each agreement this publish registered on `AgreementRegistry` before
      *  the assembly (a newly agreement no registry bound yet): its
      *  key, the registration's transaction and the pinned document's URI. */
-    agreements: { agreementKey: `0x${string}`; hash: `0x${string}`; ipfsURI: string }[];
+    agreements: { agreementHash: `0x${string}`; hash: `0x${string}`; ipfsURI: string }[];
 }
 
 // ── Read hooks (event-derived) ────────────────────────────────────────────────
@@ -231,11 +231,11 @@ export async function fetchHydratedAssembly(
     if (hydrated === null) {
         // Absence that can never resolve: an agreement's agreement was served
         // and is not the agreement its key names.
-        const failed = assembly.agreements.find((entry) => getRegisteredAgreementLoadError(entry.agreementKey));
+        const failed = assembly.agreements.find((entry) => getRegisteredAgreementLoadError(entry.agreementHash));
         if (failed) {
             loadErrors.set(
                 expectedCompositionHash.toLowerCase(),
-                `agreement ${failed.id} binds ${failed.agreementKey}, whose document is not the agreement the key names`,
+                `agreement ${failed.id} binds ${failed.agreementHash}, whose document is not the agreement the key names`,
             );
         }
     }

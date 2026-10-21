@@ -115,7 +115,7 @@ function assertSigningDomain(core: string | undefined, chainId: number): asserts
 
 /** The design the agreement names in its provenance leaf, read from the
  *  chain and IPFS and verified against its composition root and every
- *  registered agreement's key — the input the sign gate checks the
+ *  registered agreement's hash — the input the sign gate checks the
  *  designer's values against. Null when the agreement names none or the read
  *  fails; the gate then refuses an agreement naming a design (fail-closed:
  *  an agreement it cannot fetch or verify is never signed or broadcast). */
@@ -161,7 +161,7 @@ export function useOrderCommitmentFlow() {
         // here — both sides of the bilateral commit get the same check. The
         // design the agreement names is read and verified here, so the
         // designer's values are checked against it.
-        assertAgreementSignable(agreement, commitment.agreementHash, specSource(), commitment, await readSigningDesign(agreement));
+        assertAgreementSignable(agreement, commitment.checkoutHash, specSource(), commitment, await readSigningDesign(agreement));
         // When the bond is swap-funded, `swap` surfaces the leg's maxInput in
         // the SAME confirm — one approval covers the commitment sign AND the
         // Permit2 witness sign the caller does right after.
@@ -178,7 +178,7 @@ export function useOrderCommitmentFlow() {
                 currency: commitment.currency,
                 payment: commitment.payment,
                 expectedCumulativeValue: commitment.expectedCumulativeValue,
-                agreementHash: commitment.agreementHash,
+                checkoutHash: commitment.checkoutHash,
                 salt: commitment.salt,
                 deadline: commitment.deadline,
             },
@@ -497,7 +497,7 @@ export function useOrderCommitmentFlow() {
      * case where both signatures are present and anyone may submit it on-chain.
      *
      * Gated like the sign step: off-chain validation first (a payload whose inline agreement
-     * doesn't merkle to the signed agreementHash is never broadcast — the chain
+     * doesn't merkle to the signed checkoutHash is never broadcast — the chain
      * can't check it, so this is the last integrity gate), then the same
      * review-before-commit confirmation the sign step uses.
      */
@@ -508,7 +508,7 @@ export function useOrderCommitmentFlow() {
         try {
             assertAgreementSignable(
                 payload.agreement,
-                payload.commitment.agreementHash,
+                payload.commitment.checkoutHash,
                 specSource(),
                 payload.commitment,
                 await readSigningDesign(payload.agreement),

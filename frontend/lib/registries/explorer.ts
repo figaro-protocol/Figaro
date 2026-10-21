@@ -14,7 +14,7 @@
  * speak one shape.
  */
 
-import { agreementKeyOf, canonicalize, assemblyCompositionHash } from "@figaro-protocol/sdk";
+import { agreementHashOf, canonicalize, assemblyCompositionHash } from "@figaro-protocol/sdk";
 import { keccak256 } from "viem";
 import type { BreadcrumbItem } from "@/components/shared/Breadcrumb";
 import { safeJsonParse, strippingReviver } from "@/lib/shared/safeJson";
@@ -91,7 +91,7 @@ export interface ExplorerRow {
     /** Stable id for the DOM anchor and the React key. */
     key: string;
     name: string;
-    /** Clauses: the clause key; agreements: the agreement key; assemblies:
+    /** Clauses: the clause key; agreements: the agreement hash; assemblies:
      *  the slug; members: the address. */
     id: string;
     article: string;
@@ -113,7 +113,7 @@ export interface ExplorerRow {
     contentURI: string;
     /** The digest the CHAIN anchors for this row: the clause key (the hash of
      *  the pinned spec bytes) for a clause, `AgreementRegistry`'s agreement
-     *  key for an agreement, `AssemblyRegistry`'s `compositionHash` for an
+     *  hash for an agreement, `AssemblyRegistry`'s `compositionHash` for an
      *  assembly.
      *  Empty where the family anchors none. */
     anchoredHash: string;
@@ -163,20 +163,20 @@ function compareRows(a: ExplorerRow, b: ExplorerRow, sort: RegistrySort): number
  *   JSON), so hashing the bytes the gateway served — as served, nothing
  *   re-canonicalized — must reproduce it.
  *
- *   `agreement-key` — registered agreements. `AgreementRegistry`'s key is the
+ *   `agreement-hash` — registered agreements. `AgreementRegistry`'s key is the
  *   merkle root over the document's composed clauses alone
- *   (`agreementKeyOf`); the designer's editorial fields ride in the same
+ *   (`agreementHashOf`); the designer's editorial fields ride in the same
  *   document outside the key.
  *
  *   `composition-hash` — assemblies. `AssemblyRegistry`'s `compositionHash` is
  *   the merkle root over the assembly's agreements (each agreement's agreement
- *   key and its own fills) and, where composed, its assembly-scoped clauses
+ *   hash and its own fills) and, where composed, its assembly-scoped clauses
  *   (`assemblyCompositionHash`). The designer's editorial
  *   fields (name, summary, description) ride in the same document and are
  *   deliberately NOT covered: a differently-worded assembly is the same
  *   assembly, a differently-termed one is not.
  */
-export type StoredDocumentAnchor = "content-hash" | "agreement-key" | "composition-hash";
+export type StoredDocumentAnchor = "content-hash" | "agreement-hash" | "composition-hash";
 
 /** Which digest a family anchors. Members anchor none — a profile is the
  *  member's own declaration, re-pinnable at will, not a registration. */
@@ -184,7 +184,7 @@ export function anchorForFamily(family: RegistryFamily): StoredDocumentAnchor | 
     return family === "clauses"
         ? "content-hash"
         : family === "agreements"
-            ? "agreement-key"
+            ? "agreement-hash"
             : family === "assemblies" ? "composition-hash" : null;
 }
 
@@ -193,8 +193,8 @@ export function anchorForFamily(family: RegistryFamily): StoredDocumentAnchor | 
 export const STORED_DOCUMENT_NOTE: Record<StoredDocumentAnchor, string> = {
     "content-hash":
         "The hash on chain is the clause key: the keccak256 of exactly these bytes, as pinned. The designer pins the spec's canonical form — object keys sorted at every depth, no whitespace — so anyone can hash the bytes the gateway serves and reproduce the key; the same document in any other byte form is another key.",
-    "agreement-key":
-        "The hash on chain is the agreement key: the keccak256 of the canonical form of this document's clauses — the clauses composed for one agreement. The designer's editorial wording rides in the same document and is deliberately outside the key.",
+    "agreement-hash":
+        "The hash on chain is the agreement hash: the keccak256 of the canonical form of this document's clauses — the clauses composed for one agreement. The designer's editorial wording rides in the same document and is deliberately outside the key.",
     "composition-hash":
         "The hash on chain is the composition root: the merkle root over this document's agreements — each one the key of the registered agreement it binds and its own fills — and the assembly-scoped clauses where it composes any. The designer's editorial wording rides in the same document and is deliberately outside the anchor.",
 };
@@ -283,8 +283,8 @@ export function storedDocument(fetched: Uint8Array | string, anchored: string, a
         recomputed =
             anchor === "content-hash"
                 ? keccak256(bytes)
-                : anchor === "agreement-key"
-                    ? agreementKeyOf(parsed as unknown as Parameters<typeof agreementKeyOf>[0])
+                : anchor === "agreement-hash"
+                    ? agreementHashOf(parsed as unknown as Parameters<typeof agreementHashOf>[0])
                     : assemblyCompositionHash(parsed as unknown as Parameters<typeof assemblyCompositionHash>[0]);
     } catch {
         // A document that parses but carries no composition to hash cannot

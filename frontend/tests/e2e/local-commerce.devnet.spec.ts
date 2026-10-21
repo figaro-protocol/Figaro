@@ -64,7 +64,7 @@
  *              at resolve — 8 exactly); the clause evidence with every
  *              committed leaf, all EIGHT ladder stages and the TWO decoded hand-off witnesses; BOTH agreements
  *              pinned to IPFS with the hash verifier recomputing each merkle
- *              root to the on-chain agreementHash; the audit-bundle PDF
+ *              root to the on-chain checkoutHash; the audit-bundle PDF
  *              downloaded (real %PDF bytes) and the dispute panel's evidence
  *              bundle pinned to IPFS, verified out-of-band.
  *
@@ -568,7 +568,7 @@ test.describe('LOCAL COMMERCE — item delivery: canvas → bind → order → a
         });
         expect(
             (anchorEvents.at(-1)!.args as { orderHash?: string }).orderHash?.toLowerCase(),
-            "the anchor binds the courier order's geolocation section",
+            "the anchor binds the courier order's geolocation clause",
         ).toBe(courierEvent.args.orderHash!.toLowerCase());
 
         // The courier decrypts and the panel verifies the received blob
@@ -626,7 +626,7 @@ test.describe('LOCAL COMMERCE — item delivery: canvas → bind → order → a
         });
         expect(
             (sellerAnchorEvents.at(-1)!.args as { orderHash?: string }).orderHash?.toLowerCase(),
-            "the seller anchor binds the same courier order's geolocation section",
+            "the seller anchor binds the same courier order's geolocation clause",
         ).toBe(courierEvent.args.orderHash!.toLowerCase());
 
         // The BUYER decrypts the pickup point and the panel verifies it
@@ -817,34 +817,34 @@ test.describe('LOCAL COMMERCE — item delivery: canvas → bind → order → a
         // ── THE SIGNED CONTRACTS: each order's agreement is pinned to IPFS
         //    (the network SSoT, not a local cache) and the audit's hash
         //    verifier recomputes each merkle root over EVERY leaf to match the
-        //    agreementHash FigaroCore stored — for BOTH orders. ──
+        //    checkoutHash FigaroCore stored — for BOTH orders. ──
         const ipfsApi = process.env.NEXT_PUBLIC_IPFS_API_URL ?? 'http://127.0.0.1:5001';
         let deliveryClauses: AgreementClause[] = [];
         for (const [event, label, expectedLeaves] of [
             [merchantEvent, 'item', [COMMERCE_CLAUSE, TOPOLOGY_CLAUSE, MERCHANT_CLAUSE, MODALITIES_CLAUSE]],
             [courierEvent, 'delivery', [COMMERCE_CLAUSE, TOPOLOGY_CLAUSE, COURIER_CLAUSE, HANDOFF_CLAUSE, GEO_CLAUSE, PROXIMITY_CLAUSE]],
         ] as const) {
-            const agreementHash = event.args.agreementHash as `0x${string}`;
+            const checkoutHash = event.args.checkoutHash as `0x${string}`;
             const agreementUri = await page.evaluate(
                 (key) => window.localStorage.getItem(key),
-                `figaro:agreement-uri:${agreementHash}`,
+                `figaro:agreement-uri:${checkoutHash}`,
             );
             expect(agreementUri, `the ${label} agreement has a network (IPFS) locator`).toMatch(/^ipfs:\/\//);
             const agreementCid = agreementUri!.replace(/^ipfs:\/\//, '');
             await assertPinnedInIpfs(agreementCid);
             const agreementJson = await (await fetch(`${ipfsApi}/api/v0/cat?arg=${agreementCid}`, { method: 'POST' })).text();
-            const agreement = JSON.parse(agreementJson) as { sections: AgreementClause[] };
-            if (label === 'delivery') deliveryClauses = agreement.sections;
+            const agreement = JSON.parse(agreementJson) as { clauses: AgreementClause[] };
+            if (label === 'delivery') deliveryClauses = agreement.clauses;
             expect(
-                agreement.sections.map((s) => s.clause.toLowerCase()),
+                agreement.clauses.map((s) => s.clause.toLowerCase()),
                 `the ${label} merkle tree carries every committed leaf`,
             ).toEqual(expect.arrayContaining([...expectedLeaves]));
             await page.getByTestId('verify-mode-agreement').click();
             await page.getByTestId('verify-agreement-input').fill(agreementJson);
-            await page.getByTestId('verify-agreement-expected').fill(agreementHash);
+            await page.getByTestId('verify-agreement-expected').fill(checkoutHash);
             await expect(
                 page.getByTestId('verify-result-status'),
-                `the recomputed ${label} root matches the on-chain agreementHash`,
+                `the recomputed ${label} root matches the on-chain checkoutHash`,
             ).toHaveText(/Matches expected hash/, { timeout: 15000 });
         }
 

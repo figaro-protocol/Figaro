@@ -11,7 +11,7 @@ import {
 import { InProcessChannel, type CommitmentPayload, type PricedField } from "../src/agent/coordination.js";
 import { keyOf, specSourceFromFixtures } from "./specFixtures.js";
 import { buildDomain, hashCommitmentStruct, COMMITMENT_TYPES } from "../src/commitments.js";
-import { computeAgreementHash } from "../src/agreement.js";
+import { computeCheckoutHash } from "../src/agreement.js";
 import type { Address, Hex } from "../src/types.js";
 import { hydrateAuthored, profileBinding } from "./hydrate.js";
 import { assemblyCompositionHash, deriveAssemblySlug } from "../src/assembly.js";
@@ -137,7 +137,7 @@ describe("verifyRaceReply", () => {
                     { name: "processId", type: "bytes32" }, { name: "buyer", type: "address" },
                     { name: "seller", type: "address" }, { name: "currency", type: "address" },
                     { name: "payment", type: "uint256" }, { name: "expectedCumulativeValue", type: "uint256" },
-                    { name: "agreementHash", type: "bytes32" }, { name: "salt", type: "uint256" },
+                    { name: "checkoutHash", type: "bytes32" }, { name: "salt", type: "uint256" },
                     { name: "deadline", type: "uint256" },
                 ],
             },
@@ -205,7 +205,7 @@ describe("buildQuoteRequest + substitutePricedValue", () => {
         expect(req.commitment.payment).toBe(CEILING);
         expect(req.commitment.expectedCumulativeValue).toBe(CEILING);
         expect(req.quoteRequest?.pricedFields).toEqual(PRICED);
-        const commerce = req.agreement.sections.find((s) => s.clause === keyOf("figaro-commerce"))!;
+        const commerce = req.agreement.clauses.find((s) => s.clause === keyOf("figaro-commerce"))!;
         expect(commerce.data.payment).toBe(CEILING.toString());
         expect((commerce.data.lineItems as Array<{ unitPrice: string }>)[0].unitPrice).toBe(CEILING.toString());
         expect((await validateDraft(req, COURIER_A.address, undefined, undefined, null, BOUND)).ok).toBe(true);
@@ -228,7 +228,7 @@ describe("quoteDraft (real signatures, no chain)", () => {
         expect(reply?.sellerSig).toBeDefined();
         expect(reply?.commitment.payment).toBe(700n);
         expect(reply?.commitment.expectedCumulativeValue).toBe(700n);
-        const commerce = reply!.agreement.sections.find((s) => s.clause === keyOf("figaro-commerce"))!;
+        const commerce = reply!.agreement.clauses.find((s) => s.clause === keyOf("figaro-commerce"))!;
         expect(commerce.data.payment).toBe("700");
         expect((commerce.data.lineItems as Array<{ unitPrice: string }>)[0].unitPrice).toBe("700");
         expect((await verifyQuoteReply(reply!, req, CTX)).ok).toBe(true);
@@ -272,14 +272,14 @@ describe("verifyQuoteReply — the reconstruction gate", () => {
         const agreement = substitutePricedValue(req.agreement, PRICED, 700n);
         const doctored = {
             ...agreement,
-            sections: agreement.sections.map((s) =>
+            clauses: agreement.clauses.map((s) =>
                 s.clause === keyOf("figaro-commerce")
                     ? { ...s, data: { ...s.data, lineItems: [{ ...(s.data.lineItems as Array<Record<string, unknown>>)[0], quantity: 3 }] } }
                     : s),
         };
         const commitment = {
             ...req.commitment, payment: 700n, expectedCumulativeValue: 700n,
-            agreementHash: computeAgreementHash(doctored),
+            checkoutHash: computeCheckoutHash(doctored),
         };
         const reply: CommitmentPayload = { commitment, agreement: doctored, sellerSig: await signedBy(courierAW, commitment) };
         const check = await verifyQuoteReply(reply, req, CTX);
@@ -292,7 +292,7 @@ describe("verifyQuoteReply — the reconstruction gate", () => {
         const agreement = substitutePricedValue(req.agreement, PRICED, CEILING + 500n);
         const commitment = {
             ...req.commitment, payment: CEILING + 500n, expectedCumulativeValue: CEILING + 500n,
-            agreementHash: computeAgreementHash(agreement),
+            checkoutHash: computeCheckoutHash(agreement),
         };
         const reply: CommitmentPayload = { commitment, agreement, sellerSig: await signedBy(courierAW, commitment) };
         const check = await verifyQuoteReply(reply, req, CTX);
@@ -421,8 +421,8 @@ describe("the merkle-leaf seam on the race + quote legs (docs/CLAUSES.md § 'Eve
     /** `payload` with the topology clause the registered agreement composes
      *  dropped, rehashed so only the missing clause is wrong. */
     function withoutTopology(payload: CommitmentPayload): CommitmentPayload {
-        const agreement = { ...payload.agreement, sections: payload.agreement.sections.filter((s) => s.clause !== keyOf("figaro-topology")) };
-        return { ...payload, agreement, commitment: { ...payload.commitment, agreementHash: computeAgreementHash(agreement) } };
+        const agreement = { ...payload.agreement, clauses: payload.agreement.clauses.filter((s) => s.clause !== keyOf("figaro-topology")) };
+        return { ...payload, agreement, commitment: { ...payload.commitment, checkoutHash: computeCheckoutHash(agreement) } };
     }
     const draftHash = assemblyCompositionHash(assembly.assembly);
     const missing = new RegExp(`figaro-topology clause: the order does not carry this clause, which assembly ${deriveAssemblySlug(draftHash)} \\(${draftHash}\\) composes`);
@@ -462,7 +462,7 @@ describe("the seller's bound assemblies — the race and quote legs refuse a dra
     it("validateDraft refuses a draft whose agreement carries no provenance leaf", async () => {
         const draft = await draftFor(COURIER_A.address, 1000n);
         const { provenance: _dropped, ...bare } = draft.agreement;
-        const unprovenanced: CommitmentPayload = { agreement: bare, commitment: { ...draft.commitment, agreementHash: computeAgreementHash(bare) } };
+        const unprovenanced: CommitmentPayload = { agreement: bare, commitment: { ...draft.commitment, checkoutHash: computeCheckoutHash(bare) } };
         expect((await validateDraft(unprovenanced, COURIER_A.address, undefined, undefined, null, BOUND)).reason).toMatch(/names no assembly/);
     });
 

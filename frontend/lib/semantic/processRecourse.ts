@@ -49,9 +49,9 @@ export function deriveProcessRecourse(
     const seen = new Set<string>();
     const out: RecourseClause[] = [];
     for (const order of orders) {
-        const agreement = order.agreementHash ? agreements.get(order.agreementHash) : undefined;
+        const agreement = order.checkoutHash ? agreements.get(order.checkoutHash) : undefined;
         if (!agreement) continue;
-        for (const clauseEntry of agreement.sections) {
+        for (const clauseEntry of agreement.clauses) {
             if (getClauseSpec(clauseEntry.clause)?.block?.design.article !== RECOURSE_ARTICLE) continue;
             const data = ((clauseEntry as { data?: Record<string, unknown> }).data) ?? {};
             const key = `${clauseEntry.clause.toLowerCase()}:${JSON.stringify(data)}`;

@@ -57,7 +57,7 @@
             "internalType": "uint256"
           },
           {
-            "name": "agreementHash",
+            "name": "checkoutHash",
             "type": "bytes32",
             "internalType": "bytes32"
           },
@@ -258,7 +258,7 @@
             "internalType": "uint256"
           },
           {
-            "name": "agreementHash",
+            "name": "checkoutHash",
             "type": "bytes32",
             "internalType": "bytes32"
           },
@@ -331,7 +331,7 @@
         "internalType": "uint256"
       },
       {
-        "name": "agreementHash",
+        "name": "checkoutHash",
         "type": "bytes32",
         "indexed": false,
         "internalType": "bytes32"

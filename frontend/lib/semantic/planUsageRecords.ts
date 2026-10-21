@@ -16,7 +16,7 @@
  *  - ONE write per DISTINCT `(kind, key)` pair across the whole process —
  *    `UsageCounter` counts a pair once per process (`AlreadyCounted`), so the
  *    first order that carries it is the one planned. The kind keeps the three
- *    families apart: a clause key, an agreement key and an assembly
+ *    families apart: a clause key, an agreement hash and an assembly
  *    composition hash with the same bytes are three pairs, each counted under
  *    its own registry;
  *  - an order whose claims do not build (a malformed provenance, a missing or
@@ -68,7 +68,7 @@ export function planUsageRecords(entries: readonly UsagePlanEntry[]): UsagePlan 
         const provenance = agreement.provenance as unknown;
         if (provenance !== undefined && (
             provenance === null || typeof provenance !== "object"
-            || !isBytes32Hex((provenance as { agreementKey?: unknown }).agreementKey)
+            || !isBytes32Hex((provenance as { agreementHash?: unknown }).agreementHash)
             || !isBytes32Hex((provenance as { compositionHash?: unknown }).compositionHash))) {
             problems.push(`order ${orderHash}: provenance present but malformed: ${JSON.stringify(provenance)}`);
             continue;
@@ -91,7 +91,7 @@ export function planUsageRecords(entries: readonly UsagePlanEntry[]): UsagePlan 
                     orderHash,
                     order: commitment,
                     key: claim.clause_or_assembly,
-                    clauseDataHash: kind.Clause.section_hash,
+                    clauseDataHash: kind.Clause.clause_data_hash,
                     proof: claim.inclusion_proof,
                 });
             } else if ("Agreement" in kind) {
@@ -109,7 +109,7 @@ export function planUsageRecords(entries: readonly UsagePlanEntry[]): UsagePlan 
                     orderHash,
                     order: commitment,
                     key: claim.clause_or_assembly,
-                    agreementKey: kind.Assembly.agreement_key,
+                    agreementHash: kind.Assembly.agreement_hash,
                     slotContentHash: kind.Assembly.slot_content_hash,
                     proof: claim.inclusion_proof,
                     membershipProof: kind.Assembly.membership_proof,

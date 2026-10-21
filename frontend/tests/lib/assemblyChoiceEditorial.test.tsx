@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { act, renderHook } from "@testing-library/react";
-import { agreementKeyOf } from "@figaro-protocol/sdk";
+import { agreementHashOf } from "@figaro-protocol/sdk";
 
 /**
  * The editorial projection: an assembly reaches a reader as the designer's
@@ -42,9 +42,9 @@ const flush = () =>
 function hydrated(assembly: Record<string, unknown> & { agreements: { id: string; clauses: Record<string, Record<string, unknown>> }[] }) {
     const agreements: Record<string, { clauses: Record<string, Record<string, unknown>> }> = {};
     const entries = assembly.agreements.map((entry) => {
-        const agreementKey = agreementKeyOf({ clauses: entry.clauses as Record<`0x${string}`, Record<string, unknown>> });
-        agreements[agreementKey.toLowerCase()] = { clauses: entry.clauses };
-        return { id: entry.id, agreementKey, clauses: {} };
+        const agreementHash = agreementHashOf({ clauses: entry.clauses as Record<`0x${string}`, Record<string, unknown>> });
+        agreements[agreementHash.toLowerCase()] = { clauses: entry.clauses };
+        return { id: entry.id, agreementHash, clauses: {} };
     });
     return { assembly: { ...assembly, agreements: entries }, agreements };
 }

@@ -48,10 +48,10 @@ import type { DesignSnapshot } from "@/lib/designer/syntheticDesignStore";
  *  an agreement it cannot read. */
 function readAgreements(byOrderId: Record<string, `0x${string}`> | undefined, use: string): Record<string, RegisteredAgreement> {
     const out: Record<string, RegisteredAgreement> = {};
-    for (const [orderId, agreementKey] of Object.entries(byOrderId ?? {})) {
-        const doc = getRegisteredAgreement(agreementKey);
+    for (const [orderId, agreementHash] of Object.entries(byOrderId ?? {})) {
+        const doc = getRegisteredAgreement(agreementHash);
         if (!doc) {
-            throw new Error(`the registered agreement ${agreementKey} ${use} has not been read from the AgreementRegistry yet`);
+            throw new Error(`the registered agreement ${agreementHash} ${use} has not been read from the AgreementRegistry yet`);
         }
         out[orderId] = doc;
     }
@@ -86,7 +86,7 @@ function builtToHydrated(built: BuiltAssembly): HydratedAssembly {
     const agreements: Record<Hex, RegisteredAgreement> = {};
     for (const [key, doc] of Object.entries(built.agreements)) agreements[key.toLowerCase() as Hex] = doc;
     for (const entry of built.assembly.agreements) {
-        const key = entry.agreementKey.toLowerCase() as Hex;
+        const key = entry.agreementHash.toLowerCase() as Hex;
         const doc = agreements[key] ?? getRegisteredAgreement(key);
         if (doc) agreements[key] = doc;
     }
@@ -213,9 +213,9 @@ export type SnapshotReview =
          *  skipped) before the assembly. */
         newAgreements: Record<Hex, RegisteredAgreement>;
         /** Per agreement, in assembly order: the canvas order id, the
-         *  agreement key it binds, and whether that agreement was bound as
+         *  agreement hash it binds, and whether that agreement was bound as
          *  registered or composed here. */
-        entries: { orderId: string; agreementKey: Hex; bound: boolean }[];
+        entries: { orderId: string; agreementHash: Hex; bound: boolean }[];
         compositionHash: `0x${string}`;
         slug: string;
         /** canvas order id → clause key → composed values (the mandatory clauses listed apart). */
@@ -259,7 +259,7 @@ export function projectSnapshotForReview(snapshot: DesignSnapshot): SnapshotRevi
             newAgreements: built.agreements,
             entries: snapshot.orders.map((order, index) => ({
                 orderId: order.orderHash,
-                agreementKey: assembly.agreements[index].agreementKey,
+                agreementHash: assembly.agreements[index].agreementHash,
                 bound: boundIds.has(order.orderHash),
             })),
             compositionHash,
@@ -279,11 +279,11 @@ export function projectSnapshotForReview(snapshot: DesignSnapshot): SnapshotRevi
 
 /** The composition's IDENTITY, derived from the draft exactly as publish
  *  derives it: `compositionHash` = the merkle root over the agreements (each
- *  agreement's agreement key and its own fills) and the assembly terms (the
+ *  agreement's agreement hash and its own fills) and the assembly terms (the
  *  AssemblyRegistry key), and the slug that is a pure function of it. The
  *  editorial prose is excluded, so renaming never forks identity; any change
  *  to the composed clauses — a design fill's value included, which moves the
- *  agreement's agreement key — does.
+ *  agreement's agreement hash — does.
  *
  *  The identity face of `projectSnapshotForReview`, so the canvas readout and
  *  the review screen can never disagree about which assembly this is.

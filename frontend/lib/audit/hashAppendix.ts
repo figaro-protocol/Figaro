@@ -10,8 +10,8 @@
  *      to its `leafHash` via `computeClauseLeaf(clause)`; the agreement's
  *      `provenance`, when it names its assembly, hashes to the format's
  *      reserved leaf via `computeProvenanceLeaf(provenance)`.
- *   2. The leaves combine into the merkle root = `agreementHash`.
- *   3. The `agreementHash` matches the `agreementHash` field on the
+ *   2. The leaves combine into the merkle root = `checkoutHash`.
+ *   3. The `checkoutHash` matches the `checkoutHash` field on the
  *      `OrderCommitted` event emitted at `transactionHash` for the order.
  *   4. Each lifecycle attestation's content hashes to its `contentRef`
  *      via `keccak256(content)`. The contentRef is logged by the
@@ -44,7 +44,7 @@ interface HashAnchor {
     /** The hex hash itself. */
     hash: string;
     /** Where on chain this hash appears. Free-form description for the
-     *  reader: e.g. "OrderCommitted.agreementHash" or
+     *  reader: e.g. "OrderCommitted.checkoutHash" or
      *  "Attestation.contentRef (stage 3)". */
     sourceLocation: string;
     /** Optional — the transaction hash where this anchor was logged, if
@@ -81,18 +81,18 @@ export function buildHashAppendix(
     anchors.push({
         kind: "agreement-root",
         label: "Agreement merkle root",
-        hash: order.agreementHash ?? "0x",
-        sourceLocation: "OrderCommitted.agreementHash (matches keccak256 of canonical agreement JSON, computed as merkle root over clause leaves and the provenance leaf)",
+        hash: order.checkoutHash ?? "0x",
+        sourceLocation: "OrderCommitted.checkoutHash (matches keccak256 of canonical agreement JSON, computed as merkle root over clause leaves and the provenance leaf)",
     });
 
     // 3. Each agreement clause's leaf — every clause is cleartext (the IPFS
     //    body carries them in full), so the leaf is recomputed on the fly.
-    for (const clauseEntry of agreement.sections) {
+    for (const clauseEntry of agreement.clauses) {
         anchors.push({
             kind: "agreement-clause-leaf",
             label: `Clause leaf — ${clauseEntry.clause}`,
             hash: computeClauseLeaf(clauseEntry),
-            sourceLocation: `Merkle leaf under agreementHash root. Reader recomputes via computeClauseLeaf({clause: "${clauseEntry.clause}", data}) and verifies inclusion in the agreementHash tree.`,
+            sourceLocation: `Merkle leaf under checkoutHash root. Reader recomputes via computeClauseLeaf({clause: "${clauseEntry.clause}", data}) and verifies inclusion in the checkoutHash tree.`,
         });
     }
 
@@ -101,12 +101,12 @@ export function buildHashAppendix(
     //     under the reserved key. A leaf of the same tree: without it the
     //     listed leaves do not rebuild the root.
     if (agreement.provenance !== undefined) {
-        const { agreementKey, compositionHash } = agreement.provenance;
+        const { agreementHash, compositionHash } = agreement.provenance;
         anchors.push({
             kind: "agreement-provenance-leaf",
             label: "Provenance leaf — the registered agreement and the assembly this order instantiated",
-            hash: computeProvenanceLeaf(agreementKey, compositionHash),
-            sourceLocation: `Merkle leaf under agreementHash root. Reader recomputes via computeProvenanceLeaf("${agreementKey}", "${compositionHash}") and verifies inclusion in the agreementHash tree.`,
+            hash: computeProvenanceLeaf(agreementHash, compositionHash),
+            sourceLocation: `Merkle leaf under checkoutHash root. Reader recomputes via computeProvenanceLeaf("${agreementHash}", "${compositionHash}") and verifies inclusion in the checkoutHash tree.`,
         });
     }
 
@@ -126,7 +126,7 @@ export function buildHashAppendix(
         title: "Hash appendix — verification anchors",
         orderHash: order.orderHash,
         processId: order.processId,
-        agreementHash: order.agreementHash ?? "0x",
+        checkoutHash: order.checkoutHash ?? "0x",
         buyer: order.buyer,
         seller: order.seller,
         anchors,

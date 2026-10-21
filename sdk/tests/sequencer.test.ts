@@ -27,7 +27,7 @@ const testCommitment: Commitment = {
     currency: "0x0000000000000000000000000000000000000003",
     payment: 100n,
     expectedCumulativeValue: 100n,
-    agreementHash: ZERO_HASH,
+    checkoutHash: ZERO_HASH,
     salt: 42n,
     deadline: 9999n,
 };
@@ -35,7 +35,7 @@ const testCommitment: Commitment = {
 const testProof: SequencerContentProof = {
     spec_json: `{"clauseId":"t","version":1,"title":"T","description":"D","fields":[]}`,
     content_json: `{"modality":"delivery"}`,
-    section_data: `{"modality":"delivery"}`,
+    clause_data: `{"modality":"delivery"}`,
     inclusion_proof: [],
     content_kind: "RuntimeWitness",
 };

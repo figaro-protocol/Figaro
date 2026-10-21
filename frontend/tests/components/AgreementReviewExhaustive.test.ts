@@ -5,7 +5,7 @@ import { commerceLineItems, fullDumpClauses } from "@/components/runtime/Agreeme
 /**
  * Regression for the signing-integrity finding (frontend security audit,
  * finding 1): the whole `clauseEntry.data` is merkle-committed into
- * `agreementHash`, so the review surface must render EVERY clause's data in
+ * `checkoutHash`, so the review surface must render EVERY clause's data in
  * full. The pre-fix classifier rendered only the FIRST `lineItems`-bearing
  * clause (name/qty/unitPrice) and EXCLUDED every `lineItems`-bearing clause
  * from the raw dump — letting an author hide committed terms behind a
@@ -14,7 +14,7 @@ import { commerceLineItems, fullDumpClauses } from "@/components/runtime/Agreeme
  */
 describe("AgreementReview renders every committed clauseEntry (finding 1)", () => {
     const agreement: Agreement = {
-        sections: [
+        clauses: [
             {
                 clause: "figaro-commerce",
                 version: 1,
@@ -40,7 +40,7 @@ describe("AgreementReview renders every committed clauseEntry (finding 1)", () =
     it("dumps EVERY clause in full, hiding no committed key", () => {
         const dumped = fullDumpClauses(agreement);
         // Every clause is present — nothing is filtered by shape.
-        expect(dumped.length).toBe(agreement.sections.length);
+        expect(dumped.length).toBe(agreement.clauses.length);
         const serialized = JSON.stringify(dumped);
         // The adverse extra key is visible.
         expect(serialized).toContain("hiddenPenalty");

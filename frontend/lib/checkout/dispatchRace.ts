@@ -404,7 +404,7 @@ export function useDispatchRace() {
                 if (!order) throw new Error(`The walk produced no order for node "${racedNodeId}".`);
                 let payload: CommitmentPayload = { commitment: order.commitment, agreement: order.agreement };
                 if (args.quote) {
-                    const pricedFields = derivePricedFields(order.agreement.sections, specs);
+                    const pricedFields = derivePricedFields(order.agreement.clauses, specs);
                     if (pricedFields.length === 0) {
                         throw new Error("This order composes no commercial clause to quote against.");
                     }

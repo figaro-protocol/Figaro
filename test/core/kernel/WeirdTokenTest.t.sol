@@ -198,7 +198,7 @@ contract WeirdTokenTest is Test {
             currency: currency,
             payment: payment,
             expectedCumulativeValue: payment,
-            agreementHash: keccak256("root-agreement"),
+            checkoutHash: keccak256("root-agreement"),
             salt: salt,
             deadline: block.timestamp + 1 hours
         });
@@ -221,7 +221,7 @@ contract WeirdTokenTest is Test {
             currency: currency,
             payment: payment,
             expectedCumulativeValue: expectedCum,
-            agreementHash: keccak256("sub-agreement"),
+            checkoutHash: keccak256("sub-agreement"),
             salt: salt,
             deadline: block.timestamp + 1 hours
         });

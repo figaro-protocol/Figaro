@@ -27,7 +27,7 @@
  *   - LEAF DISCLOSURE (the thing this market sells): the data-terms
  *     clause of process 1 and the data-license clause of process 2 are
  *     SELF-AUTHENTICATING — their inclusion proofs verify against the
- *     on-chain committed agreementHash, and a tampered clause does NOT.
+ *     on-chain committed checkoutHash, and a tampered clause does NOT.
  *   - Both members hold LIVE MembersRegistry stakes (registered if absent,
  *     idempotent — the rpgf-rewards pattern).
  *   - The open-record sibling (disclosure `open`) is anchored under a
@@ -248,10 +248,10 @@ test.describe('DATA MARKET — dual-posture value legs over the anchored data as
             expect(orders, `${opts.label}: the reference is a single-order composition`).toHaveLength(1);
             const order: ReconstructedOrder = orders[0];
             // The provenance leaf is MECHANICAL, never authored: the walk sets
-            // the agreement's provenance to its agreement's agreement key and
+            // the agreement's provenance to its agreement's agreement hash and
             // the adopted assembly's own root.
             expect(order.agreement.provenance, `${opts.label}: the agreement names its registered agreement and the adopted assembly`)
-                .toEqual({ agreementKey: opts.adopted.agreements[0].agreementKey, compositionHash: opts.adopted.compositionHash });
+                .toEqual({ agreementHash: opts.adopted.agreements[0].agreementHash, compositionHash: opts.adopted.compositionHash });
 
             const buyerSig = await opts.buyerWallet.signTypedData(order.typedData);
             const sellerSig = await opts.sellerWallet.signTypedData(order.typedData);
@@ -279,8 +279,8 @@ test.describe('DATA MARKET — dual-posture value legs over the anchored data as
             });
             expect(committed, `${opts.label}: OrderCommitted lands on-chain`).toHaveLength(1);
             const event = committed[0];
-            expect(event.args.agreementHash, `${opts.label}: the chain committed the signed agreement root`)
-                .toBe(order.agreementHash);
+            expect(event.args.checkoutHash, `${opts.label}: the chain committed the signed agreement root`)
+                .toBe(order.checkoutHash);
 
             // VALUE LEG, bond lock: buyer 2×payment, seller 2×cumulative,
             // escrow up by both — read from the token contract.
@@ -316,7 +316,7 @@ test.describe('DATA MARKET — dual-posture value legs over the anchored data as
 
         /** The self-authenticating leaf — what this market SELLS: the
          *  disclosed clause + its inclusion proof verify against the
-         *  process's ON-CHAIN committed agreementHash; a tampered clause
+         *  process's ON-CHAIN committed checkoutHash; a tampered clause
          *  does not. Root read fresh from the OrderCommitted event. */
         const assertSelfAuthenticatingLeaf = async (
             committed: Awaited<ReturnType<typeof commitProcess>>, clauseKey: Hex, label: string,
@@ -325,8 +325,8 @@ test.describe('DATA MARKET — dual-posture value legs over the anchored data as
                 address: core, abi: CORE_ABI, eventName: 'OrderCommitted',
                 args: { buyer: committed.event.args.buyer }, fromBlock: committed.event.blockNumber,
             });
-            const chainRoot = eventBack.args.agreementHash as Hex;
-            const clauseEntry = committed.order.agreement.sections.find((s) => s.clause.toLowerCase() === clauseKey)!;
+            const chainRoot = eventBack.args.checkoutHash as Hex;
+            const clauseEntry = committed.order.agreement.clauses.find((s) => s.clause.toLowerCase() === clauseKey)!;
             expect(clauseEntry, `${label}: the agreement carries the ${clauseKey} clauseEntry`).toBeTruthy();
             const { leaf, proof } = buildSignedClauseInclusionProof(committed.order.agreement, clauseEntry.clause);
             expect(
@@ -335,7 +335,7 @@ test.describe('DATA MARKET — dual-posture value legs over the anchored data as
             ).toBe(keccak256(keccak256(concat([clauseEntry.clause as Hex, hashClauseData(clauseEntry)]))));
             expect(
                 verifyInclusionProof(chainRoot, leaf, proof),
-                `${label}: the ${clauseKey} clause verifies against the ON-CHAIN agreementHash — self-authenticating`,
+                `${label}: the ${clauseKey} clause verifies against the ON-CHAIN checkoutHash — self-authenticating`,
             ).toBe(true);
             const tampered = keccak256(keccak256(concat([
                 clauseEntry.clause as Hex,
@@ -426,7 +426,7 @@ test.describe('DATA MARKET — dual-posture value legs over the anchored data as
         const expectedContentRef = keccak256(
             encodeContentFromSpec(handoffSpec!, { contentHash: CREDENTIAL_HASH }, { stage: 1 }),
         );
-        const handoffClause = stream.order.agreement.sections.find((s) => s.clause.toLowerCase() === CONTENT_HANDOFF)!;
+        const handoffClause = stream.order.agreement.clauses.find((s) => s.clause.toLowerCase() === CONTENT_HANDOFF)!;
         const { proof: handoffProof } = buildSignedClauseInclusionProof(stream.order.agreement, handoffClause.clause);
         await receipt(await walletB.writeContract({
             address: coordinator, abi: ATTESTATION_COORDINATOR_ABI, functionName: 'attestAsSeller',

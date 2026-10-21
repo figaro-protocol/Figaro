@@ -18,21 +18,21 @@ import { getInteractionSurface } from "@/components/runtime/interactionSurfaces"
 export function OrderInteractionSurfaces({
     processId,
     orderHash,
-    agreementHash,
+    checkoutHash,
     buyer,
     seller,
 }: {
     processId: string;
     orderHash: string;
-    agreementHash: `0x${string}`;
+    checkoutHash: `0x${string}`;
     buyer: `0x${string}`;
     seller: `0x${string}`;
 }) {
-    const agreements = useProcessAgreements([agreementHash]);
-    const agreement = agreements.get(agreementHash);
+    const agreements = useProcessAgreements([checkoutHash]);
+    const agreement = agreements.get(checkoutHash);
     if (!agreement) return null;
 
-    const mounts = agreement.sections
+    const mounts = agreement.clauses
         .map((clauseEntry) => {
             const interfaceId = getClauseSpec(clauseEntry.clause)?.block?.runtime.interaction?.interface;
             const Surface = getInteractionSurface(interfaceId);

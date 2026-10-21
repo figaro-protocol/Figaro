@@ -4,7 +4,7 @@
  * CompositionIdentity — the canvas's live identity readout.
  *
  * The assembly's identity IS its composition: `compositionHash` = the merkle
- * root over its agreements (each agreement's agreement key and its own fills) and
+ * root over its agreements (each agreement's agreement hash and its own fills) and
  * its assembly terms, which is the AssemblyRegistry key (first-write-wins,
  * immutable), and the published slug is a pure function of it. Editorial prose (name / summary / description) is excluded from the
  * subset, so renaming never forks identity.

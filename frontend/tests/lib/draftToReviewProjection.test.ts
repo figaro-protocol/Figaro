@@ -175,7 +175,7 @@ describe("projectSnapshotForReview — the review reads the bytes publish sends"
             ).not.toHaveProperty(clauseId);
             const entry = review.assembly.agreements[0];
             expect(
-                review.newAgreements[entry.agreementKey].clauses,
+                review.newAgreements[entry.agreementHash].clauses,
                 "…but the agreement the agreement binds carries it",
             ).toHaveProperty(clauseId);
         }
@@ -357,7 +357,7 @@ describe("the mandatory pick — its clauses merged, each listed on the review",
             const composed = Object.keys(assemblyComposedByAgreement(review.hydrated)[entry.id]);
             const mandatory = assemblyMandatoryClauses(review.hydrated)
                 .filter((f) => f.carriedBy.includes(entry.id)).map((f) => f.clauseKey);
-            const carried = review.hydrated.agreements[entry.agreementKey.toLowerCase() as `0x${string}`].clauses;
+            const carried = review.hydrated.agreements[entry.agreementHash.toLowerCase() as `0x${string}`].clauses;
             expect([...composed, ...mandatory].sort()).toEqual(Object.keys(carried).sort());
         }
     });

@@ -92,7 +92,7 @@ fn commitment(o: &serde_json::Value) -> Commitment {
         currency: addr(&o["currency"]),
         payment: u256(&o["payment"]),
         expected_cumulative_value: u256(&o["expectedCumulativeValue"]),
-        agreement_hash: b256(&o["agreementHash"]),
+        checkout_hash: b256(&o["checkoutHash"]),
         salt: u256(&o["salt"]),
         deadline: u256(&o["deadline"]),
     }

@@ -2,7 +2,7 @@
  * projection.ts — from composed clauses to the canonical Agreement, and from
  * a design's orders to the assembly. The deterministic projection
  * rules BOTH parties (and any second frontend) must reproduce byte-exactly,
- * because their outputs are hashed: `agreementHash` (the merkle root the
+ * because their outputs are hashed: `checkoutHash` (the merkle root the
  * commitment signs) and `compositionHash` (assembly identity).
  *
  * The SDK holds NO clause-spec cache. Every function takes a `SpecSource` —
@@ -16,31 +16,31 @@
  * Five `block` hints are HASH-LOAD-BEARING and therefore projection
  * vocabulary, not presentation: `design.article: "mandatory"` (the clauses
  * of the registered agreements a designer picks in the mandatory article,
- * merged into each agreement → agreementKey),
+ * merged into each agreement → agreementHash),
  * `design.article: "attestations"` (process-log clauses stay empty anchors at
- * commit → agreementHash), `design.scope: "assembly"` (composed once for the
+ * commit → checkoutHash), `design.scope: "assembly"` (composed once for the
  * whole design, folded into EVERY agreement at checkout → compositionHash +
- * agreementHash), `design.fills` (the fields whose values the
+ * checkoutHash), `design.fills` (the fields whose values the
  * DESIGNER composes into the assembly — the tailoring; every other clause's
  * assembly values are `{}` and the fields fill at checkout →
  * compositionHash), and the `checkout` fills (`catalogueFills` /
  * `profileFills` — which clauses the catalog and member-profile folds
- * write → agreementHash). `parseProjectionHints` extracts exactly those from
+ * write → checkoutHash). `parseProjectionHints` extracts exactly those from
  * a raw spec document; everything else in `block` remains presentation the
  * SDK never reads. (A field's `default` is the sixth thing that reaches a
  * hash without living in `block`: `withSpecDefaults` fills omitted fields
- * from the spec, so the default lands in the signed clause → agreementHash.)
+ * from the spec, so the default lands in the signed clause → checkoutHash.)
  */
 
 import {
     canonicalize,
-    computeAgreementHash,
+    computeCheckoutHash,
     withholdClauseContent,
     type Agreement,
     type AgreementClause,
 } from "./agreement.js";
 import {
-    agreementKeyOf,
+    agreementHashOf,
     assertNotReservedKey,
     resolveAuthoredClauseKeys,
     assemblyCompositionHash,
@@ -178,7 +178,7 @@ export function specHasPrivateField(spec: ProjectionSpecView): boolean {
  *  `private`-disposition field is content-WITHHELD (its plaintext `data` replaced
  *  by the `dataHash` fingerprint), so a paid-edge value never lands on public
  *  IPFS or in a shareable audit bundle. The withheld clause contributes the
- *  IDENTICAL merkle leaf, so `agreementHash` is unchanged and any reader still
+ *  IDENTICAL merkle leaf, so `checkoutHash` is unchanged and any reader still
  *  verifies the root and every public clause. Clauses whose clause is entirely
  *  public pass through as plaintext — that is the free coordination commons.
  *
@@ -202,7 +202,7 @@ export function specHasPrivateField(spec: ProjectionSpecView): boolean {
 export function publicForm(agreement: Agreement, specs: SpecSource): Agreement {
     return {
         ...agreement,
-        sections: agreement.sections.map((clauseEntry) => {
+        clauses: agreement.clauses.map((clauseEntry) => {
             if (clauseEntry.data === undefined) return clauseEntry; // already withheld
             const spec = specs.get(clauseEntry.clause);
             const isPrivate = spec ? specHasPrivateField(spec) : true;
@@ -322,7 +322,7 @@ export function warnProcessLogFillsTrap(spec: ProjectionSpecView): readonly stri
 
 export interface OrderAgreement {
     agreement: Agreement;
-    agreementHash: `0x${string}`;
+    checkoutHash: `0x${string}`;
 }
 
 /** Fill fields the composing input omitted with the clause spec's OWN declared
@@ -367,8 +367,8 @@ export function buildOrderAgreement(
         .map((clause) => ({ clause, data: withSpecDefaults(specs, clause, clauses[clause] ?? {}) }))
         .sort((a, b) => (a.clause < b.clause ? -1 : a.clause > b.clause ? 1 : 0));
 
-    const agreement: Agreement = { version: "a1", buyer, seller, sections: clauseEntries };
-    return { agreement, agreementHash: computeAgreementHash(agreement) };
+    const agreement: Agreement = { version: "a1", buyer, seller, clauses: clauseEntries };
+    return { agreement, checkoutHash: computeCheckoutHash(agreement) };
 }
 
 /** A single off-chain validation issue found before signing: which clause (its key, or
@@ -409,7 +409,7 @@ function commerceCurrencyClause(
     agreement: Agreement,
     specs: SpecSource,
 ): AgreementClause | undefined {
-    return agreement.sections.find((s) => {
+    return agreement.clauses.find((s) => {
         const spec = specs.get(s.clause);
         return !!spec && specDeclaresField(spec, "payment") && specDeclaresContentField(spec, "currency");
     });
@@ -421,7 +421,7 @@ function currencyPinClause(
     agreement: Agreement,
     specs: SpecSource,
 ): AgreementClause | undefined {
-    return agreement.sections.find((s) => {
+    return agreement.clauses.find((s) => {
         const spec = specs.get(s.clause);
         return !!spec && specDeclaresDesignFill(spec, "currency");
     });
@@ -441,7 +441,7 @@ function currencyPinClause(
  * unchanged — `design` is the hydrated assembly the agreement's provenance
  * names, `null` when none was read, and an agreement naming a design then
  * fails (a buyer or a seller never drops a designed clause or changes a
- * designer's value); and the `agreementHash` about to be signed equals
+ * designer's value); and the `checkoutHash` about to be signed equals
  * the merkle root recomputed from the clauses. Catches a malformed agreement
  * before a chain round-trip.
  *
@@ -473,11 +473,11 @@ interface DesignOrderBag {
  *  assembly walk builds every order's bag (`planAssemblyOrders`). */
 function designClauseBags(
     design: HydratedAssembly,
-    agreementKey: Hex,
+    agreementHash: Hex,
 ): DesignOrderBag[] {
     const assemblyClauses = design.assembly.assemblyClauses ?? {};
     return design.assembly.agreements
-        .filter((entry) => entry.agreementKey.toLowerCase() === agreementKey.toLowerCase())
+        .filter((entry) => entry.agreementHash.toLowerCase() === agreementHash.toLowerCase())
         .map((entry) => {
             const composed = agreementClauses(design, entry);
             const clauses: Record<string, Record<string, unknown>> = {};
@@ -504,7 +504,7 @@ function designerValueIssues(
     specs: SpecSource,
 ): CommitmentAgreementIssue[] {
     const issues: CommitmentAgreementIssue[] = [];
-    for (const clauseEntry of agreement.sections) {
+    for (const clauseEntry of agreement.clauses) {
         const spec = specs.get(clauseEntry.clause);
         if (!spec) continue;
         const designed = bag[clauseEntry.clause.toLowerCase()];
@@ -547,7 +547,7 @@ function designIssues(
     const provenance = agreement.provenance;
     // A provenance that is not two 32-byte keys does not encode: the merkle
     // check reports it.
-    if (provenance !== undefined && !(isBytes32Hex(provenance.agreementKey) && isBytes32Hex(provenance.compositionHash))) return [];
+    if (provenance !== undefined && !(isBytes32Hex(provenance.agreementHash) && isBytes32Hex(provenance.compositionHash))) return [];
     if (design == null) {
         return provenance === undefined ? [] : [{
             clause: "(provenance)",
@@ -573,15 +573,15 @@ function designIssues(
     }
     let bags: DesignOrderBag[];
     try {
-        bags = designClauseBags(design, provenance.agreementKey);
+        bags = designClauseBags(design, provenance.agreementHash);
     } catch (cause) {
-        return [{ clause: "(provenance)", path: "agreementKey", message: `the design cannot be read: ${cause instanceof Error ? cause.message : String(cause)}` }];
+        return [{ clause: "(provenance)", path: "agreementHash", message: `the design cannot be read: ${cause instanceof Error ? cause.message : String(cause)}` }];
     }
     if (bags.length === 0) {
         return [{
             clause: "(provenance)",
-            path: "agreementKey",
-            message: `assembly ${provenance.compositionHash} binds no registered agreement ${provenance.agreementKey}`,
+            path: "agreementHash",
+            message: `assembly ${provenance.compositionHash} binds no registered agreement ${provenance.agreementHash}`,
         }];
     }
     // The order matches one of the design's orders for that registered
@@ -590,7 +590,7 @@ function designIssues(
     // KEYS alone: a withheld clause (`dataHash`), a clause whose spec is not
     // loaded and a value-free clause (a process-log clause's empty anchor)
     // each count, so an order never names a design it does not carry.
-    const carried = new Set(agreement.sections.map((s) => s.clause.toLowerCase()));
+    const carried = new Set(agreement.clauses.map((s) => s.clause.toLowerCase()));
     const named = `assembly ${deriveAssemblySlug(provenance.compositionHash)} (${provenance.compositionHash})`;
     let first: CommitmentAgreementIssue[] | undefined;
     for (const bag of bags) {
@@ -599,7 +599,7 @@ function designIssues(
             .map((clause) => ({
                 clause,
                 path: "clause",
-                message: `the order does not carry this clause, which ${named} composes for registered agreement ${provenance.agreementKey}`,
+                message: `the order does not carry this clause, which ${named} composes for registered agreement ${provenance.agreementHash}`,
             }));
         found.push(...designerValueIssues(agreement, bag.clauses, specs));
         if (found.length === 0) return [];
@@ -617,7 +617,7 @@ export function validateCommitmentAgreement(
 ): { ok: boolean; issues: CommitmentAgreementIssue[] } {
     const issues: CommitmentAgreementIssue[] = [];
 
-    for (const clauseEntry of agreement.sections) {
+    for (const clauseEntry of agreement.clauses) {
         // Structural, before any spec lookup (an attacker can withhold the spec
         // by naming an unregistered clause id): a clause carries EITHER
         // plaintext `data` OR a content-withheld `dataHash`, never both. The
@@ -692,18 +692,18 @@ export function validateCommitmentAgreement(
     if (issues.length === 0) {
         let computed: `0x${string}` | null = null;
         try {
-            computed = computeAgreementHash(agreement);
+            computed = computeCheckoutHash(agreement);
         } catch (cause) {
             issues.push({
                 clause: "(merkle)",
-                path: "agreementHash",
+                path: "checkoutHash",
                 message: `agreement content failed to encode: ${cause instanceof Error ? cause.message : String(cause)}`,
             });
         }
         if (computed && computed.toLowerCase() !== expectedHash.toLowerCase()) {
             issues.push({
                 clause: "(merkle)",
-                path: "agreementHash",
+                path: "checkoutHash",
                 message: `signed hash ${expectedHash} does not match the agreement's computed root ${computed}`,
             });
         }
@@ -754,7 +754,7 @@ export function clausesByField(
     fieldName: string,
     specs: SpecSource,
 ): AgreementClause[] {
-    return agreement.sections.filter((s) => {
+    return agreement.clauses.filter((s) => {
         const spec = specs.get(s.clause);
         return spec
             ? specDeclaresField(spec, fieldName)
@@ -879,7 +879,7 @@ function clauseLabel(clauseKey: string, spec: ProjectionSpecView | undefined): s
 
 /** What a design-time build produces: the assembly (one agreement per
  *  canvas order, each binding a registered agreement by key) and the
- *  agreements newly composed for it, keyed by `agreementKeyOf` — the ones to
+ *  agreements newly composed for it, keyed by `agreementHashOf` — the ones to
  *  pin and register on `AgreementRegistry` (one stake each; a key already
  *  registered is skipped) before the assembly is registered. */
 export interface BuiltAssembly {
@@ -910,7 +910,7 @@ export function composeOrderAgreement(args: {
      *  against its key. Its clauses merge into the composition. */
     mandatory?: RegisteredAgreement;
     specs: SpecSource;
-}): { composed: RegisteredAgreement; agreementKey: Hex } {
+}): { composed: RegisteredAgreement; agreementHash: Hex } {
     const { clauses: composedClauses, mandatory, specs } = args;
     for (const clauseKey of Object.keys(composedClauses) as Hex[]) {
         const spec = specs.get(clauseKey);
@@ -945,7 +945,7 @@ export function composeOrderAgreement(args: {
         clauses = selection;
     }
     const composed: RegisteredAgreement = { clauses };
-    return { composed, agreementKey: agreementKeyOf(composed) };
+    return { composed, agreementHash: agreementHashOf(composed) };
 }
 
 /** Build the assembly from the design's orders. Each canvas order
@@ -1037,31 +1037,31 @@ export function buildAssembly(args: {
             if (Object.keys(clausesByOrderId[order.orderHash] ?? {}).length > 0) {
                 throw new Error(`${id} binds a registered agreement and also composes clauses — choose one`);
             }
-            const agreementKey = agreementKeyOf(bound);
-            assertNotReservedKey(agreementKey, `${id} agreementKey`);
+            const agreementHash = agreementHashOf(bound);
+            assertNotReservedKey(agreementHash, `${id} agreementHash`);
             const carried = new Set(Object.keys(bound.clauses).map((k) => k.toLowerCase()));
             const missing = (Object.keys(pickedMandatoryClauses(pick, specs, id)) as Hex[])
                 .filter((clauseKey) => !carried.has(clauseKey.toLowerCase()));
             if (missing.length > 0) {
                 throw new Error(
-                    `${id}: registered agreement ${agreementKey} lacks ` +
+                    `${id}: registered agreement ${agreementHash} lacks ` +
                     `${missing.map((clauseKey) => clauseLabel(clauseKey, specs.get(clauseKey))).join(", ")} of the registered agreement ` +
                     `picked in the mandatory article — compose a new agreement for this order`,
                 );
             }
-            return { id, agreementKey, clauses: agreementTopologyFills(bound.clauses, parents, specs) };
+            return { id, agreementHash, clauses: agreementTopologyFills(bound.clauses, parents, specs) };
         }
         // The one composition rule (`composeOrderAgreement`): the designer's
         // clause SELECTION, value-free but for design fills, the pick's
         // clauses merged in.
-        const { composed: registeredAgreement, agreementKey } = composeOrderAgreement({
+        const { composed: registeredAgreement, agreementHash } = composeOrderAgreement({
             clauses: clausesByOrderId[order.orderHash] ?? {},
             mandatory: pick,
             specs,
         });
         const { clauses } = registeredAgreement;
-        agreements[agreementKey] = registeredAgreement;
-        return { id, agreementKey, clauses: agreementTopologyFills(clauses, parents, specs) };
+        agreements[agreementHash] = registeredAgreement;
+        return { id, agreementHash, clauses: agreementTopologyFills(clauses, parents, specs) };
     });
     return {
         assembly: {
@@ -1106,7 +1106,7 @@ export function composeAuthoredAgreement(
     authored: object,
     specs: SpecSource,
     picks: Readonly<Record<string, RegisteredAgreement>> = {},
-): { document: RegisteredAgreement; agreementKey: Hex } {
+): { document: RegisteredAgreement; agreementHash: Hex } {
     const doc = resolveAuthoredClauseKeys(authored, specs) as Partial<AuthoredAgreement> & {
         clauses?: Record<Hex, Record<string, unknown>>;
     };
@@ -1120,14 +1120,14 @@ export function composeAuthoredAgreement(
             throw new Error(`the authored agreement names "${doc.mandatory}" as its mandatory pick, which is not among the agreements a pick names`);
         }
     }
-    const { composed, agreementKey } = composeOrderAgreement({ clauses: doc.clauses, mandatory, specs });
+    const { composed, agreementHash } = composeOrderAgreement({ clauses: doc.clauses, mandatory, specs });
     const document: RegisteredAgreement = {
         ...(doc.name !== undefined ? { name: doc.name } : {}),
         ...(doc.summary !== undefined ? { summary: doc.summary } : {}),
         ...(doc.description !== undefined ? { description: doc.description } : {}),
         clauses: composed.clauses,
     };
-    return { document, agreementKey };
+    return { document, agreementHash };
 }
 
 /**
@@ -1140,8 +1140,8 @@ export function composeAuthoredAgreement(
 export function composeAuthoredAgreements(
     authoredByName: Readonly<Record<string, object>>,
     specs: SpecSource,
-): Record<string, { document: RegisteredAgreement; agreementKey: Hex }> {
-    const out: Record<string, { document: RegisteredAgreement; agreementKey: Hex }> = {};
+): Record<string, { document: RegisteredAgreement; agreementHash: Hex }> {
+    const out: Record<string, { document: RegisteredAgreement; agreementHash: Hex }> = {};
     const named = (doc: object): boolean => (doc as { mandatory?: unknown }).mandatory !== undefined;
     for (const [name, doc] of Object.entries(authoredByName)) {
         if (!named(doc)) out[name] = composeAuthoredAgreement(doc, specs);
@@ -1158,7 +1158,7 @@ export function composeAuthoredAgreements(
  * each agreement names the agreement it binds (`agreements[].agreement`,
  * the authored agreement's name) and carries its own topology as
  * `parentOrderHashes` (`order-<j>` labels); `assemblyClauses` are written by
- * clause name. The entry binds the named agreement's key — the same key
+ * clause name. The entry binds the named agreement's hash — the same key
  * whether a designer registers that agreement on its own or this seeding
  * registers it — and its fill is the topology clause's parents
  * (`agreementTopologyFills`). A bound agreement must carry every clause of
@@ -1195,8 +1195,8 @@ export function assembleAuthored(
         }
         const bound = agreementsByName[entry.agreement];
         if (!bound) throw new Error(`${id} names agreement "${entry.agreement}", which is not among the authored agreements`);
-        const agreementKey = agreementKeyOf(bound);
-        assertNotReservedKey(agreementKey, `${id} agreementKey`);
+        const agreementHash = agreementHashOf(bound);
+        assertNotReservedKey(agreementHash, `${id} agreementHash`);
         const carried = new Set(Object.keys(bound.clauses).map((k) => k.toLowerCase()));
         if (!mandatoryAgreements.some((m) => Object.keys(m.clauses).every((k) => carried.has(k.toLowerCase())))) {
             throw new Error(
@@ -1205,8 +1205,8 @@ export function assembleAuthored(
             );
         }
         const parents = Array.isArray(entry.parentOrderHashes) ? [...entry.parentOrderHashes] : [];
-        agreements[agreementKey] = { clauses: bound.clauses };
-        return { id, agreementKey, clauses: agreementTopologyFills(bound.clauses, parents, specs) };
+        agreements[agreementHash] = { clauses: bound.clauses };
+        return { id, agreementHash, clauses: agreementTopologyFills(bound.clauses, parents, specs) };
     });
     return {
         assembly: {

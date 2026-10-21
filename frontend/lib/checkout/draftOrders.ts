@@ -4,7 +4,7 @@
  * A draft is an order the buyer is still composing: a seller, the payment, and
  * the filled clause values for the seller's pinned assembly. It is NOT final.
  *
- * It carries NO `agreementHash` and NO signature — those exist only AFTER the
+ * It carries NO `checkoutHash` and NO signature — those exist only AFTER the
  * buyer finalizes (builds the agreement and hashes it) and signs. Once an order
  * is signed, shared with the seller, or broadcast, it does NOT live here.
  *

@@ -13,7 +13,7 @@ import {
     agreementLeaves,
     buildProvenanceInclusionProof,
     buildSignedClauseInclusionProof,
-    computeAgreementHash,
+    computeCheckoutHash,
     computeProvenanceLeaf,
     computeClauseLeaf,
     provenanceLeafBytes,
@@ -32,12 +32,12 @@ const bare: Agreement = {
     version: "a1",
     buyer: "0x0000000000000000000000000000000000000001",
     seller: "0x0000000000000000000000000000000000000002",
-    sections: [
+    clauses: [
         { clause: K("figaro-commerce"), data: { payment: "10", currency: "0x00" } },
         { clause: K("figaro-topology"), data: { parentOrderHashes: [] } },
     ],
 };
-const withDesign: Agreement = { ...bare, provenance: { agreementKey: AGREEMENT, compositionHash: COMPOSITION } };
+const withDesign: Agreement = { ...bare, provenance: { agreementHash: AGREEMENT, compositionHash: COMPOSITION } };
 
 describe("the reserved provenance leaf", () => {
     it("keys on the hash of the label, a shape no registered clause key can take", () => {
@@ -47,7 +47,7 @@ describe("the reserved provenance leaf", () => {
     it("commits exactly the bytes the counter reproduces: both keys, lowercase, canonical JSON", () => {
         const upper = (h: string) => h.toUpperCase().replace("0X", "0x") as `0x${string}`;
         expect(provenanceLeafBytes(upper(AGREEMENT), upper(COMPOSITION))).toBe(
-            toHex(new TextEncoder().encode(`{"agreementKey":"${AGREEMENT}","compositionHash":"${COMPOSITION}"}`)),
+            toHex(new TextEncoder().encode(`{"agreementHash":"${AGREEMENT}","compositionHash":"${COMPOSITION}"}`)),
         );
         expect(computeProvenanceLeaf(AGREEMENT, COMPOSITION)).toBe(
             keccak256(keccak256(concat([PROVENANCE_LEAF_KEY, keccak256(provenanceLeafBytes(AGREEMENT, COMPOSITION))]))),
@@ -57,27 +57,27 @@ describe("the reserved provenance leaf", () => {
     });
 
     it("enters the root: an agreement that names its design hashes differently from the same terms without one", () => {
-        expect(computeAgreementHash(withDesign)).not.toBe(computeAgreementHash(bare));
+        expect(computeCheckoutHash(withDesign)).not.toBe(computeCheckoutHash(bare));
         expect(agreementLeaves(withDesign)).toHaveLength(3);
         expect(agreementLeaves(withDesign)).toContain(computeProvenanceLeaf(AGREEMENT, COMPOSITION));
     });
 
     it("is provable under the signed root, beside every clause's own proof", () => {
-        const root = computeAgreementHash(withDesign);
+        const root = computeCheckoutHash(withDesign);
         const { leaf, proof } = buildProvenanceInclusionProof(withDesign);
         expect(leaf).toBe(computeProvenanceLeaf(AGREEMENT, COMPOSITION));
         expect(verifyInclusionProof(root, leaf, proof)).toBe(true);
-        // A wrong agreement key in the provenance bytes derives a leaf that is not in the tree.
+        // A wrong agreement hash in the provenance bytes derives a leaf that is not in the tree.
         expect(verifyInclusionProof(root, computeProvenanceLeaf(`0x${"33".repeat(32)}`, COMPOSITION), proof)).toBe(false);
         const clauseEntry = buildSignedClauseInclusionProof(withDesign, K("figaro-commerce"));
-        expect(clauseEntry.leaf).toBe(computeClauseLeaf(withDesign.sections[0]));
+        expect(clauseEntry.leaf).toBe(computeClauseLeaf(withDesign.clauses[0]));
         expect(verifyInclusionProof(root, clauseEntry.leaf, clauseEntry.proof)).toBe(true);
     });
 
     it("refuses a provenance key that is not 32 bytes, as the counter's bytes32 does", () => {
-        expect(() => provenanceLeafBytes("0x1234", COMPOSITION)).toThrow(/agreementKey is not a 32-byte/);
+        expect(() => provenanceLeafBytes("0x1234", COMPOSITION)).toThrow(/agreementHash is not a 32-byte/);
         expect(() => provenanceLeafBytes(AGREEMENT, "0x1234")).toThrow(/compositionHash is not a 32-byte/);
-        expect(() => computeAgreementHash({ ...bare, provenance: { agreementKey: AGREEMENT, compositionHash: "0xzz" } })).toThrow(/32-byte/);
+        expect(() => computeCheckoutHash({ ...bare, provenance: { agreementHash: AGREEMENT, compositionHash: "0xzz" } })).toThrow(/32-byte/);
     });
 
     it("refuses to prove a design the agreement does not name", () => {
@@ -95,7 +95,7 @@ describe("attesting the provenance leaf", () => {
         expect(inputs.stage).toBe(0);
         // The coordinator's leaf shape over (clauseId, clauseDataHash) opens against the signed root.
         const leaf = keccak256(keccak256(concat([inputs.clauseId, inputs.clauseDataHash])));
-        expect(verifyInclusionProof(computeAgreementHash(withDesign), leaf, inputs.proof)).toBe(true);
+        expect(verifyInclusionProof(computeCheckoutHash(withDesign), leaf, inputs.proof)).toBe(true);
     });
 
     it("refuses an agreement that names no assembly", () => {
@@ -104,13 +104,13 @@ describe("attesting the provenance leaf", () => {
 
     it("decodes the leaf's bytes back to both keys only when they are the format's bytes exactly", () => {
         expect(decodeProvenanceContent(provenanceLeafBytes(AGREEMENT, COMPOSITION)))
-            .toEqual({ agreementKey: AGREEMENT, compositionHash: COMPOSITION });
+            .toEqual({ agreementHash: AGREEMENT, compositionHash: COMPOSITION });
         const enc = (text: string) => toHex(new TextEncoder().encode(text));
-        expect(decodeProvenanceContent(enc(`{ "agreementKey": "${AGREEMENT}", "compositionHash": "${COMPOSITION}" }`))).toBeNull();
-        expect(decodeProvenanceContent(enc(`{"agreementKey":"0x${"AB".repeat(32)}","compositionHash":"${COMPOSITION}"}`))).toBeNull();
+        expect(decodeProvenanceContent(enc(`{ "agreementHash": "${AGREEMENT}", "compositionHash": "${COMPOSITION}" }`))).toBeNull();
+        expect(decodeProvenanceContent(enc(`{"agreementHash":"0x${"AB".repeat(32)}","compositionHash":"${COMPOSITION}"}`))).toBeNull();
         // The single-key bytes, and the keys in the wrong order, are not the format's.
         expect(decodeProvenanceContent(enc(`{"compositionHash":"${COMPOSITION}"}`))).toBeNull();
-        expect(decodeProvenanceContent(enc(`{"compositionHash":"${COMPOSITION}","agreementKey":"${AGREEMENT}"}`))).toBeNull();
+        expect(decodeProvenanceContent(enc(`{"compositionHash":"${COMPOSITION}","agreementHash":"${AGREEMENT}"}`))).toBeNull();
         expect(decodeProvenanceContent(toHex(new TextEncoder().encode("not json")))).toBeNull();
         expect(decodeProvenanceContent("0xzz" as `0x${string}`)).toBeNull();
     });

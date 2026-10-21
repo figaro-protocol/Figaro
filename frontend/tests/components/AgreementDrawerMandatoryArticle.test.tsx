@@ -13,7 +13,7 @@ import { beforeAll, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 import type { Hex, RegisteredAgreement } from "@figaro-protocol/sdk";
 
-const rows = vi.hoisted(() => ({ agreements: [] as { agreementKey: `0x${string}`; contentURI: string; stakeWithdrawn: boolean }[] }));
+const rows = vi.hoisted(() => ({ agreements: [] as { agreementHash: `0x${string}`; contentURI: string; stakeWithdrawn: boolean }[] }));
 
 vi.mock("@/lib/protocol/useAgreementRegistry", async (importOriginal) => {
     const actual = await importOriginal<typeof import("@/lib/protocol/useAgreementRegistry")>();
@@ -53,7 +53,7 @@ beforeAll(async () => {
         name: "Scheduled work",
         clauses: { [keyOf("figaro-commerce")]: {}, [keyOf("figaro-topology")]: {}, [keyOf("figaro-schedule")]: {} },
     } as RegisteredAgreement);
-    rows.agreements = [daoPick, otherPick, notMandatory].map((agreementKey) => ({ agreementKey, contentURI: "", stakeWithdrawn: false }));
+    rows.agreements = [daoPick, otherPick, notMandatory].map((agreementHash) => ({ agreementHash, contentURI: "", stakeWithdrawn: false }));
 });
 
 function renderDrawer(props: Partial<React.ComponentProps<typeof AgreementDrawer>> = {}) {
@@ -85,7 +85,7 @@ describe("AgreementDrawer — the mandatory article lists registered agreements"
     });
 
     it("shows the order's pick as checked", () => {
-        renderDrawer({ mandatoryAgreementKey: daoPick });
+        renderDrawer({ mandatoryAgreementHash: daoPick });
         expect((screen.getByTestId(`drawer-mandatory-agreement-${daoPick}`) as HTMLInputElement).checked).toBe(true);
         expect((screen.getByTestId(`drawer-mandatory-agreement-${otherPick}`) as HTMLInputElement).checked).toBe(false);
     });

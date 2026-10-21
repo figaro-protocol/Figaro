@@ -120,7 +120,7 @@ export function derivePricedFields(
  * `currency` — the RESOLVED denomination (the assembly's utility-token
  * pin when composed, else the buyer's pick from the seller's accepted tokens,
  * else the seller's default) — is written exactly as `payment` is: it is a
- * TERM of the agreement, a merkle leaf under `agreementHash`, which the
+ * TERM of the agreement, a merkle leaf under `checkoutHash`, which the
  * commitment's currency field then mirrors. Written only where the
  * commerce clause declares `currency` as content, so a third-party commerce
  * clause that declares no such field keeps its closed shape.
@@ -623,7 +623,7 @@ function resolveOrderGeodistance(ctx: RateQuantityContext): number | null {
     // geocodeStandard with origin/destination participates. Distance is
     // derivable only for standards this resolver knows — geohash today
     // (the geolocation clause is standards-agnostic; the
-    // standard is committed content, so the gate reads the SECTION, not the
+    // standard is committed content, so the gate reads the CLAUSE_DATA, not the
     // spec). An unknown standard is unresolvable, never junk-priced.
     const geoClauseId = composedClauseWhere(
         ctx.clauses,

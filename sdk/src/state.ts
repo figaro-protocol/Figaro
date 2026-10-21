@@ -137,7 +137,7 @@ export class Topology {
             currency: e.currency,
             payment: e.payment,
             cumulativeValue: e.cumulativeValue,
-            agreementHash: e.agreementHash,
+            checkoutHash: e.checkoutHash,
             salt: e.salt,
             deadline: e.deadline,
             state: OS.Active,

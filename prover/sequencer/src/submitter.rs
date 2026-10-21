@@ -486,7 +486,7 @@ sol! {
 sol! {
     #[sol(rpc)]
     interface IAgreementRegistry {
-        function bindings(bytes32 agreementKey)
+        function bindings(bytes32 agreementHash)
             external
             view
             returns (address registeredBy, uint64 registeredAt, bool depositWithdrawn, string contentURI);
@@ -571,8 +571,8 @@ pub async fn filter_usage_claims(
 ) -> (Vec<UsageClaim>, Vec<(UsageClaim, String)>) {
     // The format's two reserved keys (the provenance leaf's and the
     // assembly terms leaf's) are never registrations: the guest refuses a
-    // claim keyed on either (any kind), and an assembly claim whose order
-    // slot names either as its agreementKey, so one such claim would cost
+    // claim keyed on either (any kind), and an assembly claim whose agreement
+    // position names either as its agreementHash, so one such claim would cost
     // the whole batch its proof. A constant comparison, no chain read — it
     // runs whether or not a counter is set.
     let (reserved, claims): (Vec<UsageClaim>, Vec<UsageClaim>) =
@@ -662,11 +662,11 @@ pub async fn filter_usage_claims(
 
 /// Whether a claim names one of the format's reserved keys where the guest
 /// refuses it: as the claim's key, of any kind, or as an assembly claim's
-/// order-slot agreementKey.
+/// agreement-position agreementHash.
 fn names_a_reserved_key(claim: &UsageClaim) -> bool {
     use figaro_kernel::kernel::is_reserved_key;
     is_reserved_key(&claim.clause_or_assembly)
-        || matches!(&claim.kind, UsageClaimKind::Assembly { agreement_key, .. } if is_reserved_key(agreement_key))
+        || matches!(&claim.kind, UsageClaimKind::Assembly { agreement_hash, .. } if is_reserved_key(agreement_hash))
 }
 
 /// Submit a proved batch to the on-chain FigaroBatchVerifier.
@@ -1116,13 +1116,13 @@ mod tests {
                 currency: Address::ZERO,
                 payment: U256::from(1),
                 expected_cumulative_value: U256::from(1),
-                agreement_hash: B256::ZERO,
+                checkout_hash: B256::ZERO,
                 salt: U256::ZERO,
                 deadline: U256::ZERO,
             },
             clause_or_assembly: B256::repeat_byte(0xAB),
             kind: UsageClaimKind::Clause {
-                section_hash: B256::ZERO,
+                clause_data_hash: B256::ZERO,
             },
             inclusion_proof: Vec::new(),
         }
@@ -1300,16 +1300,16 @@ mod tests {
 
     // The format's two reserved keys are dropped before any chain read,
     // whether a claim is keyed on one or an assembly claim's agreement
-    // names one as its agreementKey (the terms leaf is not an agreement).
+    // names one as its agreementHash (the terms leaf is not an agreement).
     // Pure: the rpc here is unreachable.
     #[tokio::test]
     async fn drops_claims_naming_either_reserved_key_without_touching_the_chain() {
         use figaro_kernel::kernel::{ASSEMBLY_TERMS_LEAF_KEY, PROVENANCE_LEAF_KEY};
         let config = dummy_config(Address::ZERO, Address::ZERO, Address::ZERO);
-        let slot_naming = |agreement_key: B256| {
+        let slot_naming = |agreement_hash: B256| {
             let mut claim = dummy_claim();
             claim.kind = UsageClaimKind::Assembly {
-                agreement_key,
+                agreement_hash,
                 slot_content_hash: B256::repeat_byte(0x5C),
                 membership_proof: vec![],
             };

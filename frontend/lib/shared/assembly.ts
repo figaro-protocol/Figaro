@@ -19,7 +19,7 @@
  * orders' FigaroCore order hashes). A reader hydrates the assembly with each
  * agreement's agreement before checkout plans from it. The assembly carries
  * NO party addresses (PARTY-AGNOSTIC — parties bind at adoption/checkout), NO
- * agreement hashes, NO sentinels: the fingerprint forms later, at checkout,
+ * checkout hashes, NO sentinels: the fingerprint forms later, at checkout,
  * when the real parties fill the clause fields.
  */
 

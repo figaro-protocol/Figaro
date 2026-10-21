@@ -7,11 +7,11 @@ import {Vm} from "forge-std/Vm.sol";
 /// @notice Pure-function merkle helpers for building test agreements and their
 ///         inclusion proofs. Mirrors the off-chain
 ///         `frontend*/lib/core/agreement.ts` layout:
-///           leaf_i = keccak256(clauseId_i || keccak256(sectionData_i))
+///           leaf_i = keccak256(clauseId_i || keccak256(clauseData_i))
 ///           root   = OZ-style sorted-pair merkle root over sorted leaves
 ///           proof  = sibling hashes walking the leaf up to the root
 ///         Used by AttestationCoordinator tests so each commitment's
-///         `agreementHash` is a real merkle root and attestations can carry
+///         `checkoutHash` is a real merkle root and attestations can carry
 ///         valid inclusion proofs, and by the reward tests for an assembly's
 ///         tree: the same leaf convention and root over the entry leaves and
 ///         the terms leaf, whose root is the compositionHash.
@@ -24,13 +24,17 @@ library AgreementTestHelper {
     /// @dev The key of an assembly tree's terms leaf (the assembly-scoped clauses).
     bytes32 internal constant ASSEMBLY_TERMS_LEAF_KEY = keccak256("figaro-assembly-terms");
 
-    /// @dev The provenance section's canonical-JSON bytes: the registered
+    /// @dev The provenance leaf's canonical-JSON bytes: the registered
     ///      agreement an order instantiates and the assembly it came from,
     ///      both as 0x-prefixed lowercase hex (keys sorted, as canonical JSON
     ///      sorts them).
-    function provenanceLeaf(bytes32 agreementKey, bytes32 compositionHash) internal pure returns (bytes memory) {
+    function provenanceLeaf(bytes32 agreementHash, bytes32 compositionHash) internal pure returns (bytes memory) {
         return abi.encodePacked(
-            '{"agreementKey":"', VM.toString(agreementKey), '","compositionHash":"', VM.toString(compositionHash), '"}'
+            '{"agreementHash":"',
+            VM.toString(agreementHash),
+            '","compositionHash":"',
+            VM.toString(compositionHash),
+            '"}'
         );
     }
 
@@ -41,7 +45,7 @@ library AgreementTestHelper {
         return abi.encodePacked('{"clauses":', clausesJson, ',"slot":', VM.toString(entry), "}");
     }
 
-    /// @dev Compute the merkle leaf for one clause clause.
+    /// @dev Compute the merkle leaf for one clause.
     function leafFor(bytes32 clauseId, bytes memory clauseData) internal pure returns (bytes32) {
         return keccak256(bytes.concat(keccak256(abi.encodePacked(clauseId, keccak256(clauseData)))));
     }
@@ -90,7 +94,7 @@ library AgreementTestHelper {
         }
     }
 
-    /// @dev Convenience: for a single-section agreement (one clause clause),
+    /// @dev Convenience: for a single-clause agreement (one clause),
     ///      the merkle root equals the leaf and the proof is empty.
     function singleClauseRoot(bytes32 clauseId, bytes memory clauseData) internal pure returns (bytes32) {
         return leafFor(clauseId, clauseData);

@@ -42,7 +42,7 @@ interface IAssemblyStake {
 ///         registered agreement's binding. Live iff registered and the stake
 ///         is not withdrawn.
 interface IAgreementStake {
-    function bindings(bytes32 agreementKey)
+    function bindings(bytes32 agreementHash)
         external
         view
         returns (address registeredBy, uint64 registeredAt, bool depositWithdrawn, string memory contentURI);
@@ -66,9 +66,9 @@ interface IAgreementStake {
 ///         from data the chain already holds:
 ///           1. the order is real and RESOLVED (`core.orderStatus == 2`), and
 ///           2. what it credits is committed in that order's signed agreement
-///              (merkle inclusion against `agreementHash`): a clause by its
+///              (merkle inclusion against `checkoutHash`): a clause by its
 ///              own leaf; a registered agreement by the reserved provenance
-///              leaf, whose bytes name the agreementKey and the
+///              leaf, whose bytes name the agreementHash and the
 ///              compositionHash; an assembly by the same provenance leaf plus
 ///              the agreement's membership proof under the compositionHash.
 ///         Same check `AttestationCoordinator` performs, with the status gate
@@ -120,7 +120,7 @@ contract UsageCounter {
     ///         read is registry PRIOR KNOWLEDGE: each accepts ANY live-staked
     ///         key, derived from the live registry, never a hardcoded set. A
     ///         `clauseOrAssembly` is a clause key, an assembly compositionHash
-    ///         or an agreementKey, and every count names which by its KIND
+    ///         or an agreementHash, and every count names which by its KIND
     ///         (`KIND_CLAUSE`, `KIND_ASSEMBLY`, `KIND_AGREEMENT`): each kind's
     ///         count reads its own registry only, never another's.
     IClauseStake public immutable clauses;
@@ -152,7 +152,7 @@ contract UsageCounter {
     /// @notice The kind of a CLAUSE count: its key is a `ClauseRegistry` clause key.
     /// @dev    The three families are kept apart by kind, never by the bytes of
     ///         a key: nothing on chain can tell a clause key from a
-    ///         compositionHash or an agreementKey, and each registry takes any
+    ///         compositionHash or an agreementHash, and each registry takes any
     ///         bytes32, so a wallet can stake one family's key in another's
     ///         registry. Every accrual, count and score is therefore keyed by
     ///         (kind, key), and each kind's gate reads its own registry only — a
@@ -163,7 +163,7 @@ contract UsageCounter {
     ///         compositionHash.
     uint8 public constant KIND_ASSEMBLY = 1;
     /// @notice The kind of an AGREEMENT count: its key is an `AgreementRegistry`
-    ///         agreementKey.
+    ///         agreementHash.
     uint8 public constant KIND_AGREEMENT = 2;
 
     /// @notice The key of the agreement format's reserved PROVENANCE leaf —
@@ -177,9 +177,9 @@ contract UsageCounter {
     ///         registries take a key as given, so a wallet can stake this key in
     ///         either; `_accrue` and the batch path refuse it on every kind
     ///         whatever any registry holds. The leaf's committed bytes are exactly
-    ///         `{"agreementKey":"0x<64 lowercase hex>","compositionHash":"0x<64
+    ///         `{"agreementHash":"0x<64 lowercase hex>","compositionHash":"0x<64
     ///         lowercase hex>"}`, reproduced here from the two keys claimed. An
-    ///         agreementKey or a compositionHash is never itself an agreement's
+    ///         agreementHash or a compositionHash is never itself an agreement's
     ///         leaf key, so both are proved through this leaf; fixing the key as
     ///         a constant rather than taking it per call is what stops a caller
     ///         passing some clause whose committed bytes happen to name the two keys.
@@ -193,7 +193,7 @@ contract UsageCounter {
     /// @dev    A constant of the assembly format, beside the agreements'
     ///         leaves under the compositionHash, and never a registration:
     ///         `_accrue` refuses it on every kind, the batch path skips it, and
-    ///         `recordAssemblyUsage` refuses it as an agreementKey, so the terms
+    ///         `recordAssemblyUsage` refuses it as an agreementHash, so the terms
     ///         leaf never passes as an agreement.
     bytes32 public constant assemblyTermsLeaf = keccak256("figaro-assembly-terms");
 
@@ -237,7 +237,7 @@ contract UsageCounter {
     /// @notice kind → key → period → accrual. The key is the `ClauseRegistry`
     ///         clause key under `KIND_CLAUSE`, the `AssemblyRegistry`
     ///         compositionHash under `KIND_ASSEMBLY`, or the `AgreementRegistry`
-    ///         agreementKey under `KIND_AGREEMENT` — the same identity each
+    ///         agreementHash under `KIND_AGREEMENT` — the same identity each
     ///         family's own anchor uses, never a new identifier.
     mapping(uint8 => mapping(bytes32 => mapping(uint8 => Accrual))) public accrualOf;
 
@@ -311,7 +311,7 @@ contract UsageCounter {
     // ── Events ──────────────────────────────────────────────────────
 
     /// @param kind      `KIND_CLAUSE`, `KIND_ASSEMBLY` or `KIND_AGREEMENT`.
-    /// @param clauseOrAssembly  Clause key, assembly compositionHash or agreementKey.
+    /// @param clauseOrAssembly  Clause key, assembly compositionHash or agreementHash.
     /// @param period    The accrual period the usage landed in.
     /// @param processId The resolved process that used it.
     /// @param seller    The recorded order's seller of record (live-staked).
@@ -338,7 +338,7 @@ contract UsageCounter {
     ///         — it must fold both events, and this one REPLACES rather than
     ///         adds (the values are cumulative, not deltas).
     /// @param kind     `KIND_CLAUSE`, `KIND_ASSEMBLY` or `KIND_AGREEMENT`.
-    /// @param clauseOrAssembly Clause key, assembly compositionHash or agreementKey.
+    /// @param clauseOrAssembly Clause key, assembly compositionHash or agreementHash.
     /// @param period   The accrual period.
     /// @param c        Cumulative distinct resolved processes, batch path.
     /// @param d        Cumulative distinct staked sellers in this period, batch
@@ -471,18 +471,18 @@ contract UsageCounter {
     /// @param order       The order's commitment struct, exactly as signed.
     /// @param clauseOrAssembly    The clause key — the bytes32 key committed in the
     ///                    agreement's merkle leaf; counted under KIND_CLAUSE.
-    /// @param sectionHash `keccak256` of the clause's committed bytes — the
+    /// @param clauseDataHash `keccak256` of the clause's committed bytes — the
     ///                    FINGERPRINT, never the preimage. The merkle leaf
     ///                    needs only this hash, so the clause's CONTENT never
     ///                    touches public calldata: a `private`-disposition
     ///                    clause's plaintext stays off-chain (encrypted IPFS),
     ///                    the chain sees the fingerprint alone. Matches the
     ///                    batched path's `bytes32` convention, byte for byte.
-    /// @param proof       Merkle proof of the clause leaf against `order.agreementHash`.
+    /// @param proof       Merkle proof of the clause leaf against `order.checkoutHash`.
     function recordClauseUsage(
         CommitmentTypes.Commitment calldata order,
         bytes32 clauseOrAssembly,
-        bytes32 sectionHash,
+        bytes32 clauseDataHash,
         bytes32[] calldata proof
     ) external {
         uint8 period = currentPeriod();
@@ -494,10 +494,10 @@ contract UsageCounter {
         // 2. The clause is committed in the agreement both parties signed.
         //    Leaf shape is AttestationCoordinator's, byte for byte — one leaf
         //    convention across the protocol, double-hashed for leaf/node domain
-        //    separation. A wrong `sectionHash` simply fails to open the proof, so
+        //    separation. A wrong `clauseDataHash` simply fails to open the proof, so
         //    taking the hash is exactly as sound as taking the preimage.
-        bytes32 leaf = keccak256(bytes.concat(keccak256(abi.encodePacked(clauseOrAssembly, sectionHash))));
-        if (!MerkleProof.verify(proof, order.agreementHash, leaf)) revert InvalidInclusionProof();
+        bytes32 leaf = keccak256(bytes.concat(keccak256(abi.encodePacked(clauseOrAssembly, clauseDataHash))));
+        if (!MerkleProof.verify(proof, order.checkoutHash, leaf)) revert InvalidInclusionProof();
 
         // 3. DESIGNER-SIDE STAKE GATE. A clause earns only while its own
         //    registration stake is live. Without it an agreement a seller wrote
@@ -510,60 +510,60 @@ contract UsageCounter {
 
     /// @notice Count one resolved process's use of a REGISTERED AGREEMENT,
     ///         under `KIND_AGREEMENT` and gated by `AgreementRegistry` alone. An
-    ///         agreementKey is never a leaf key; what IS a leaf is the agreement
+    ///         agreementHash is never a leaf key; what IS a leaf is the agreement
     ///         format's reserved provenance leaf, whose committed bytes name
-    ///         exactly the agreementKey and the compositionHash — so proving
+    ///         exactly the agreementHash and the compositionHash — so proving
     ///         that leaf proves the order instantiated this agreement, with no
-    ///         new trust and no change to `agreementHash`. The assembly named
+    ///         new trust and no change to `checkoutHash`. The assembly named
     ///         beside it is part of the bytes only: its stake is never read here.
     ///
     /// @param order            The order's commitment struct, exactly as signed.
-    /// @param agreementKey     The AgreementRegistry agreement being credited.
+    /// @param agreementHash     The AgreementRegistry agreement being credited.
     /// @param compositionHash  The assembly the order's provenance names.
     /// @param proof            Merkle proof of the provenance leaf against
-    ///                         `agreementHash`.
+    ///                         `checkoutHash`.
     function recordAgreementUsage(
         CommitmentTypes.Commitment calldata order,
-        bytes32 agreementKey,
+        bytes32 agreementHash,
         bytes32 compositionHash,
         bytes32[] calldata proof
     ) external {
         uint8 period = currentPeriod();
         (, bytes32 processId) = _requireResolvedOrder(order);
 
-        _requireProvenance(order.agreementHash, agreementKey, compositionHash, proof);
+        _requireProvenance(order.checkoutHash, agreementHash, compositionHash, proof);
 
         // DESIGNER-SIDE STAKE GATE, agreement form — the agreement must hold a
         // live AgreementRegistry binding (registered, stake un-withdrawn).
-        if (!_agreementLive(agreementKey)) revert ClauseAgreementOrAssemblyNotRegistered(agreementKey);
+        if (!_agreementLive(agreementHash)) revert ClauseAgreementOrAssemblyNotRegistered(agreementHash);
 
-        _accrue(KIND_AGREEMENT, agreementKey, period, processId, order.seller);
+        _accrue(KIND_AGREEMENT, agreementHash, period, processId, order.seller);
     }
 
     /// @notice Count one resolved process's use of an ASSEMBLY, under
     ///         `KIND_ASSEMBLY` and gated by `AssemblyRegistry` alone. Proved in
     ///         two steps: the provenance leaf, exactly as `recordAgreementUsage`
     ///         proves it, shows the order names this compositionHash and the
-    ///         agreementKey of the agreement it instantiated; the agreement's
-    ///         leaf `keccak256(keccak256(agreementKey ‖ slotContentHash))` then
+    ///         agreementHash of the agreement it instantiated; the agreement's
+    ///         leaf `keccak256(keccak256(agreementHash ‖ slotContentHash))` then
     ///         opens under the compositionHash, which is the root of the
     ///         assembly's tree — so the assembly composes that agreement.
     ///         The agreement's own stake is never read here.
     ///
     /// @param order            The order's commitment struct, exactly as signed.
     /// @param compositionHash  The AssemblyRegistry composition being credited.
-    /// @param agreementKey     The agreementKey of the agreement the order
+    /// @param agreementHash     The agreementHash of the agreement the order
     ///                         instantiated.
     /// @param slotContentHash  `keccak256` of the agreement's committed bytes
     ///                         (the agreement's own clause fills and its index).
     /// @param leafProof        Merkle proof of the provenance leaf against
-    ///                         `agreementHash`.
+    ///                         `checkoutHash`.
     /// @param membershipProof  Merkle proof of the agreement's leaf against
     ///                         `compositionHash`.
     function recordAssemblyUsage(
         CommitmentTypes.Commitment calldata order,
         bytes32 compositionHash,
-        bytes32 agreementKey,
+        bytes32 agreementHash,
         bytes32 slotContentHash,
         bytes32[] calldata leafProof,
         bytes32[] calldata membershipProof
@@ -572,17 +572,17 @@ contract UsageCounter {
         (, bytes32 processId) = _requireResolvedOrder(order);
 
         // The terms leaf shares the assembly's tree with the agreements; a
-        // reserved key is never an agreement's agreementKey, so neither passes
+        // reserved key is never an agreement's agreementHash, so neither passes
         // as one.
-        if (agreementKey == provenanceLeaf || agreementKey == assemblyTermsLeaf) {
-            revert ReservedKeyIsNotARegistration(agreementKey);
+        if (agreementHash == provenanceLeaf || agreementHash == assemblyTermsLeaf) {
+            revert ReservedKeyIsNotARegistration(agreementHash);
         }
 
-        _requireProvenance(order.agreementHash, agreementKey, compositionHash, leafProof);
+        _requireProvenance(order.checkoutHash, agreementHash, compositionHash, leafProof);
 
         // The agreement's leaf, by the agreement format's leaf convention —
-        // the same functions that make `agreementHash` make the assembly root.
-        bytes32 slotLeaf = keccak256(bytes.concat(keccak256(abi.encodePacked(agreementKey, slotContentHash))));
+        // the same functions that make `checkoutHash` make the assembly root.
+        bytes32 slotLeaf = keccak256(bytes.concat(keccak256(abi.encodePacked(agreementHash, slotContentHash))));
         if (!MerkleProof.verify(membershipProof, compositionHash, slotLeaf)) revert InvalidMembershipProof();
 
         // DESIGNER-SIDE STAKE GATE, assembly form — the composition must hold a
@@ -592,33 +592,33 @@ contract UsageCounter {
         _accrue(KIND_ASSEMBLY, compositionHash, period, processId, order.seller);
     }
 
-    /// @dev Require the reserved provenance leaf naming `agreementKey` and
-    ///      `compositionHash` under `agreementHash`. No preimage is taken —
+    /// @dev Require the reserved provenance leaf naming `agreementHash` and
+    ///      `compositionHash` under `checkoutHash`. No preimage is taken —
     ///      the provenance leaf's content is FULLY DETERMINED by the two keys.
     ///      A leaf's content commits as CANONICAL JSON bytes (object keys
     ///      sorted), and the provenance leaf carries exactly two fields, so
     ///      the committed bytes are reproducible verbatim:
-    ///        {"agreementKey":"0x<64 lowercase hex>","compositionHash":"0x<64 lowercase hex>"}
+    ///        {"agreementHash":"0x<64 lowercase hex>","compositionHash":"0x<64 lowercase hex>"}
     ///      Reproduction, never parsing — the content FINGERPRINT is derived
     ///      here, never supplied. One check does both inclusion and content
     ///      match: a wrong key on either side derives a content hash whose leaf
     ///      is simply not in the tree. The leaf is keyed by the format's
     ///      constant `provenanceLeaf`, so no clause can stand in for it.
     function _requireProvenance(
+        bytes32 checkoutHash,
         bytes32 agreementHash,
-        bytes32 agreementKey,
         bytes32 compositionHash,
         bytes32[] calldata proof
     ) internal pure {
         bytes memory expected = abi.encodePacked(
-            '{"agreementKey":"',
-            _toLowerHexString(agreementKey),
+            '{"agreementHash":"',
+            _toLowerHexString(agreementHash),
             '","compositionHash":"',
             _toLowerHexString(compositionHash),
             '"}'
         );
         bytes32 leaf = keccak256(bytes.concat(keccak256(abi.encodePacked(provenanceLeaf, keccak256(expected)))));
-        if (!MerkleProof.verify(proof, agreementHash, leaf)) revert InvalidInclusionProof();
+        if (!MerkleProof.verify(proof, checkoutHash, leaf)) revert InvalidInclusionProof();
     }
 
     // ── Recording (batch path, proof-gated) ─────────────────────────
@@ -643,7 +643,7 @@ contract UsageCounter {
     /// @dev    WHAT THE PROOF ALREADY ESTABLISHED, so this function does not
     ///         re-check it: every credited order is real and RESOLVED in the
     ///         batch path's state, every clause, agreement or assembly was committed in the signed
-    ///         agreement (merkle inclusion against `agreementHash`), and no
+    ///         agreement (merkle inclusion against `checkoutHash`), and no
     ///         (kind, key, process) triple is counted twice — the guest's counted
     ///         set rides the batch state root, so idempotence holds ACROSS
     ///         batches, not merely within one. `FigaroBatchVerifier` has
@@ -884,10 +884,10 @@ contract UsageCounter {
         return registeredBy != address(0) && registeredAt != 0 && !depositWithdrawn;
     }
 
-    /// @dev Whether `agreementKey` holds a LIVE AgreementRegistry binding —
+    /// @dev Whether `agreementHash` holds a LIVE AgreementRegistry binding —
     ///      registered and its stake un-withdrawn.
-    function _agreementLive(bytes32 agreementKey) internal view returns (bool) {
-        (address registeredBy, uint64 registeredAt, bool depositWithdrawn,) = agreements.bindings(agreementKey);
+    function _agreementLive(bytes32 agreementHash) internal view returns (bool) {
+        (address registeredBy, uint64 registeredAt, bool depositWithdrawn,) = agreements.bindings(agreementHash);
         return registeredBy != address(0) && registeredAt != 0 && !depositWithdrawn;
     }
 

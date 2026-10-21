@@ -81,7 +81,7 @@ const commitment: Commitment = {
     currency: "0x5FbDB2315678afecb367f032d93F642f64180aa3",
     payment: 1_000_000_000_000_000_000n,
     expectedCumulativeValue: 2_000_000_000_000_000_000n,
-    agreementHash: `0x${"ab".repeat(32)}`,
+    checkoutHash: `0x${"ab".repeat(32)}`,
     salt: 7n,
     deadline: 4_000_000_000n,
 };
@@ -207,7 +207,7 @@ describe("verifyBatchOrder — an honest relay record", () => {
         expect(result.order?.seller).toBe(seller.address);
         expect(result.order?.payment).toBe(commitment.payment);
         expect(result.order?.cumulativeValue).toBe(commitment.expectedCumulativeValue);
-        expect(result.order?.agreementHash).toBe(commitment.agreementHash);
+        expect(result.order?.checkoutHash).toBe(commitment.checkoutHash);
         expect(result.payouts).toEqual({
             sellerPayout: SELLER_PAYOUT,
             buyerPayout: BUYER_PAYOUT,
@@ -1087,20 +1087,22 @@ describe("readVerifiedBatchProcess — the default inclusion check reads the rel
     });
 });
 
-// ── A REAL relay payload, produced by the Rust sequencer ────────────────────
+// ── A relay payload whose bytes come from Foundry's signer ──────────────────
 //
-// Captured verbatim from `sdk/sequencer-archive.jsonl` after the live
-// `sdk/tests/batch-e2e.test.ts` run (SDK → sequencer → FigaroBatchVerifier on
-// devnet). This is the cross-language lock: the bytes come from the OTHER
-// implementation, so if the TypeScript derivation ever drifts from the Rust
-// guest's — a different typehash, the wrong domain, a decimal reading of a hex
-// quantity — these assertions break. Regenerating this fixture from TypeScript
-// would make it test itself; it must always come from the relay.
+// The commitment fields, the order hash, the process id and both signatures
+// were computed with `cast` (Foundry's Rust signer): the EIP-712 digest over
+// the verifier's domain, signed with `cast wallet sign --no-hash` by anvil
+// accounts 1 and 2. This is the cross-language lock: the bytes come from an
+// implementation other than the TypeScript one, so if the TypeScript
+// derivation ever drifts — a different typehash, the wrong domain, a decimal
+// reading of a hex quantity — these assertions break. Regenerating them from
+// TypeScript would make the test check itself. The batch reference's state
+// roots and resolution tx below are illustrative: no assertion reads them.
 
 const REAL_VERIFIER = "0xe45a1e7f99aaa9854ef947c218d4eeedb214dc92" as const;
 const REAL_COMMIT = {
-    order_hash: "0x8853275dd8a7844b6cf5731d3d779516bb90d36aa1de667a54b4938f7c129e11",
-    process_id: "0x270f060a49ad7e153f39d07027826f89d1ae172a5bf98c79c21238cffc0328b2",
+    order_hash: "0x2a4816b4025d086ff8750296175188242786a92a9c6e1c253aa6f79d72fde3e6",
+    process_id: "0x13dca04d6ed7de2287a4a2693c6fd0f68fef0b8040f30b48fddd0f763ba0fef2",
     commitment: {
         process_id: ZERO_BYTES32,
         buyer: "0x70997970c51812dc3a010c7d01b50e0d17dc79c8",
@@ -1108,19 +1110,19 @@ const REAL_COMMIT = {
         currency: "0xac9bf8120e173525a0c7779b96466f5455ca9280",
         payment: "0x56bc75e2d63100000",
         expected_cumulative_value: "0x56bc75e2d63100000",
-        agreement_hash: "0x8fc2dbb8825e453a9be2595f9037f6ef1e7dae3c8779f2a5b03647286c8dc31d",
+        checkout_hash: "0x8fc2dbb8825e453a9be2595f9037f6ef1e7dae3c8779f2a5b03647286c8dc31d",
         salt: "0x2a",
         deadline: "0x6a6d1d0c",
     },
     buyer_signature: {
         v: 27,
-        r: "0xc69c5ba484472c8cf758a4ab86b50e08eec430adbeff9854e66ed4463f1f0e1b",
-        s: "0x0f067c769444563c4d5b257794ff06870ff0b335c0ab6fdef5c0dd570f6dbed0",
+        r: "0x0bdcd4ba55d89b4a39d180063bdef0c47abd1d80d7aeadfe655dd59b88fe6dd2",
+        s: "0x1f1514df3e473c00ba9af4ef924519d89a4082b72ae3d81dd2f0f335baa75274",
     },
     seller_signature: {
-        v: 28,
-        r: "0x973b89b7a4b021b8a80ae2c1ad1a4d98369816131b558c8df8e6a1451e14b8ea",
-        s: "0x4a6cd309a3f43ccf21a420bc867398cdabf177fe71be623920423af7d25aa392",
+        v: 27,
+        r: "0x4b9c061088bf917efe36aba5dc6c59f6330d9f1bc3641c7fe0ca70143b0fed46",
+        s: "0x3be6ef5198555a0de1f9ec713737319bf2c21aadd7a6b83ab6f91d0644c348c8",
     },
 } as const;
 // The resolution leg the relay published for that same order.
@@ -1136,7 +1138,7 @@ const REAL_BATCH: SequencerBatchRef = {
     block_timestamp: 1785532158,
 };
 
-describe("a REAL payload from the Rust relay", () => {
+describe("a payload from Foundry's signer", () => {
     const realView = (): SequencerOrderView => ({
         order_hash: REAL_COMMIT.order_hash,
         process_id: REAL_COMMIT.process_id,

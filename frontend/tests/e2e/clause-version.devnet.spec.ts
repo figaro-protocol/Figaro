@@ -105,7 +105,7 @@ test.describe('clause lookalike (devnet)', () => {
         const anchored = (await discoverAnchoredAssemblies()).find((a) => a.slug === slug);
         expect(anchored, 'the published composition is anchored on-chain, its agreements registered').toBeTruthy();
         for (const entry of anchored!.agreements) {
-            expect(await readAgreementBinding(entry.agreementKey), `agreement ${entry.id} binds a registered agreement`).not.toBeNull();
+            expect(await readAgreementBinding(entry.agreementHash), `agreement ${entry.id} binds a registered agreement`).not.toBeNull();
         }
         const composedKeys = anchored!.agreements.flatMap((a) => Object.keys(a.clauses).map((k) => k.toLowerCase()));
         expect(composedKeys, 'the pinned assembly is keyed by the lookalike').toContain(lookalikeKey.toLowerCase());

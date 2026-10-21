@@ -117,7 +117,7 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
         hash: `0x${string}`;
         ipfsURI: string;
         slug: string;
-        agreements: { agreementKey: `0x${string}`; hash: `0x${string}`; ipfsURI: string }[];
+        agreements: { agreementHash: `0x${string}`; hash: `0x${string}`; ipfsURI: string }[];
     } | null>(null);
     const [publishError, setPublishError] = useState<string | null>(null);
     const { publish } = usePublishAssembly();
@@ -491,7 +491,7 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                 proseClassName="text-sm text-ink-body"
                 rows={[
                     ...receipt.agreements.flatMap((a, i) => [
-                        { label: `Agreement ${i + 1} key`, value: a.agreementKey },
+                        { label: `Agreement ${i + 1} key`, value: a.agreementHash },
                         { label: `Agreement ${i + 1} transaction`, value: a.hash },
                         { label: `Agreement ${i + 1} IPFS URI`, value: a.ipfsURI },
                     ]),
@@ -642,7 +642,7 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
         </div>
     );
 
-    // The composition root and each agreement's agreement key — read from
+    // The composition root and each agreement's agreement hash — read from
     // the pinned assembly (published) or the review's build (draft).
     const entryAssembly = resolved.kind === "published"
         ? resolved.hydratedAssembly.assembly
@@ -652,18 +652,18 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
             compositionHash: resolved.kind === "published"
                 ? resolved.compositionHash
                 : (review?.ok ? review.compositionHash : ("0x" as `0x${string}`)),
-            agreementKeys: entryAssembly.agreements.map((entry) => entry.agreementKey),
+            agreementHashes: entryAssembly.agreements.map((entry) => entry.agreementHash),
         }
         : null;
-    // canvas order id → the agreement key its agreement binds: a published
+    // canvas order id → the agreement hash its agreement binds: a published
     // assembly's canvas orders carry the agreement ids; a draft's are the
     // canvas orders in assembly order.
-    const agreementKeyByOrderId: Record<string, `0x${string}`> = Object.fromEntries(
+    const agreementHashByOrderId: Record<string, `0x${string}`> = Object.fromEntries(
         orders.flatMap((order, index) => {
             const entry = resolved.kind === "published"
                 ? entryAssembly?.agreements.find((a) => a.id === order.orderHash)
                 : entryAssembly?.agreements[index];
-            return entry ? [[order.orderHash, entry.agreementKey]] : [];
+            return entry ? [[order.orderHash, entry.agreementHash]] : [];
         }),
     );
 
@@ -713,9 +713,9 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                             </p>
                             <ul className="text-xs text-warning-fg font-mono space-y-0.5">
                                 {review.entries.map((entry, index) => (
-                                    <li key={entry.orderId} data-testid={`review-entry-${index}`} data-agreement-key={entry.agreementKey}>
+                                    <li key={entry.orderId} data-testid={`review-entry-${index}`} data-agreement-hash={entry.agreementHash}>
                                         <span className="font-sans">Order {index + 1}: </span>
-                                        <span title={entry.agreementKey}>{truncateHex(entry.agreementKey, { head: 10, tail: 6 })}</span>
+                                        <span title={entry.agreementHash}>{truncateHex(entry.agreementHash, { head: 10, tail: 6 })}</span>
                                         <span className="font-sans">
                                             {entry.bound
                                                 ? " — registered agreement, bound as is"
@@ -891,7 +891,7 @@ export function ViewAssemblyClient({ slug }: { slug: string }) {
                     selectedClauseValues={
                         selectedOrderId ? (composedByOrderId[selectedOrderId] ?? {}) : undefined
                     }
-                    boundAgreementKey={selectedOrderId ? agreementKeyByOrderId[selectedOrderId] : undefined}
+                    boundAgreementHash={selectedOrderId ? agreementHashByOrderId[selectedOrderId] : undefined}
                     embedded
                     readOnly
                 />

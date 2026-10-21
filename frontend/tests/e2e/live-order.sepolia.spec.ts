@@ -311,21 +311,21 @@ test.describe('LIVE ORDER — a public deployment traded through the real UI', (
             //    agreement and its assembly, each bound on its registry ═══════
             // The committed agreement, fetched through the gateway at the URI
             // the buyer's app pinned it under and verified against the
-            // commitment's agreementHash; its provenance leaf is one of the
+            // commitment's checkoutHash; its provenance leaf is one of the
             // tree's leaves, and the leaf's bytes decode back to both keys.
-            const agreementHash = event.args.agreementHash as Hex;
-            const agreementUri = await page.evaluate((key) => window.localStorage.getItem(key), `figaro:agreement-uri:${agreementHash}`);
+            const checkoutHash = event.args.checkoutHash as Hex;
+            const agreementUri = await page.evaluate((key) => window.localStorage.getItem(key), `figaro:agreement-uri:${checkoutHash}`);
             expect(agreementUri, 'the committed agreement has a network (IPFS) locator').toMatch(/^ipfs:\/\//);
-            const committedAgreement = anchorAgreement(await (await fetch(resolveIpfsURI(agreementUri!))).json(), agreementHash);
-            expect(committedAgreement, 'the pinned agreement hashes to the committed agreementHash').not.toBeNull();
+            const committedAgreement = anchorAgreement(await (await fetch(resolveIpfsURI(agreementUri!))).json(), checkoutHash);
+            expect(committedAgreement, 'the pinned agreement hashes to the committed checkoutHash').not.toBeNull();
             const provenance = committedAgreement!.provenance;
             expect(provenance, 'the order names the assembly it instantiates').toBeTruthy();
             expect(agreementLeaves(committedAgreement!), 'the provenance leaf is a leaf of the committed tree')
-                .toContain(computeProvenanceLeaf(provenance!.agreementKey, provenance!.compositionHash));
-            const decoded = decodeProvenanceContent(provenanceLeafBytes(provenance!.agreementKey, provenance!.compositionHash));
+                .toContain(computeProvenanceLeaf(provenance!.agreementHash, provenance!.compositionHash));
+            const decoded = decodeProvenanceContent(provenanceLeafBytes(provenance!.agreementHash, provenance!.compositionHash));
             expect(decoded, 'the provenance leaf decodes to both keys').toEqual(provenance);
             expect(deriveAssemblySlug(decoded!.compositionHash), 'the assembly is the bound pos reference').toBe(posSlug);
-            expect(await readAgreementBinding(decoded!.agreementKey), 'the agreement key is registered on the AgreementRegistry').not.toBeNull();
+            expect(await readAgreementBinding(decoded!.agreementHash), 'the agreement hash is registered on the AgreementRegistry').not.toBeNull();
             const [, assemblyRegisteredAt] = await publicClient.readContract({
                 address: config.assemblyRegistry as Hex, abi: ASSEMBLY_REGISTRY_ABI, functionName: 'bindings', args: [decoded!.compositionHash],
             }) as readonly [Hex, bigint, boolean, string];

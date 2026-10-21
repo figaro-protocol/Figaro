@@ -85,8 +85,8 @@ export interface RenderedDocument {
 
 /** A committed clause's data, found by a declared field — never by clause id. */
 function leafByField(agreement: Agreement | undefined, fieldName: string): Record<string, unknown> | undefined {
-    const section = agreement?.sections.find((s) => clauseDeclaresField(s.clause, fieldName));
-    return section?.data as Record<string, unknown> | undefined;
+    const clauseEntry = agreement?.clauses.find((s) => clauseDeclaresField(s.clause, fieldName));
+    return clauseEntry?.data as Record<string, unknown> | undefined;
 }
 
 /** A "unit" a document is scoped to: its primary order/agreement (for header +
@@ -94,7 +94,7 @@ function leafByField(agreement: Agreement | undefined, fieldName: string): Recor
 interface Unit { primary: Order; agreement: Agreement | undefined; orders: readonly Order[]; agreements: ReadonlyMap<string, Agreement>; }
 
 function agreementOf(order: Order, agreements: ReadonlyMap<string, Agreement>): Agreement | undefined {
-    return order.agreementHash ? agreements.get(order.agreementHash) : undefined;
+    return order.checkoutHash ? agreements.get(order.checkoutHash) : undefined;
 }
 
 function resolve(ref: ValueRef, order: Order, unit: Unit): string {
@@ -125,11 +125,11 @@ function resolve(ref: ValueRef, order: Order, unit: Unit): string {
 function appliesTo(pred: Predicate, agreement: Agreement | undefined): boolean {
     if (!agreement) return false;
     if ("always" in pred) return true;
-    if ("hasLeafField" in pred) return agreement.sections.some((s) => clauseDeclaresField(s.clause, pred.hasLeafField));
+    if ("hasLeafField" in pred) return agreement.clauses.some((s) => clauseDeclaresField(s.clause, pred.hasLeafField));
     // isCarriageLeg: topology declares parents AND a process-log ladder is composed.
     const parents = leafByField(agreement, "parentOrderHashes")?.parentOrderHashes;
     const hasParents = Array.isArray(parents) && parents.length > 0;
-    return hasParents && agreement.sections.some((s) => clauseIsProcessLog(s.clause));
+    return hasParents && agreement.clauses.some((s) => clauseIsProcessLog(s.clause));
 }
 
 function render(layout: DocumentLayout, unit: Unit): RenderedDocument {
@@ -155,7 +155,7 @@ function render(layout: DocumentLayout, unit: Unit): RenderedDocument {
 
 /**
  * Project every applicable document for a process from its committed data.
- * `orders` are the process's orders; `agreements` maps agreementHash → agreement.
+ * `orders` are the process's orders; `agreements` maps checkoutHash → agreement.
  * Order-scoped layouts emit one document per matching order; seller-scoped emit
  * one per seller (orders grouped by seller). Layouts are applied in catalog
  * order; genres are added by adding a layout, never engine code.

@@ -57,8 +57,8 @@ an address outside the Core. All five files are in the audit's scope (`AUDITOR_H
 
 ### `src/core/kernel/` — `FigaroCore` and `CommitmentTypes`
 
-**`src/core/kernel/FigaroCore.sol`** — Holds every deposit and resolves a process
-when its buyer signs.
+**`src/core/kernel/FigaroCore.sol`** — Holds each bond on the direct path and resolves
+a process when its buyer calls it.
 - Two state-changing entry points: `commit(Commitment c, bytes buyerSig,
   bytes sellerSig)` and `resolveProcess(bytes32 processId, Commitment[]
   commitments)`.
@@ -79,7 +79,7 @@ when its buyer signs.
 
 **`src/core/kernel/CommitmentTypes.sol`** — The `Commitment` struct and its EIP-712
 hashing: `{processId, buyer, seller, currency, payment, expectedCumulativeValue,
-agreementHash, salt, deadline}`. `salt` makes repeat orders hash distinctly;
+checkoutHash, salt, deadline}`. `salt` makes repeat orders hash distinctly;
 `deadline` bounds the window in which an unconsummated pair of signatures can
 be committed (`DeadlineExpired`) — a signature cannot be revoked, so it ages
 out; nothing expires after commit. `DESIGN_DECISIONS.md` §13 owns the
@@ -90,7 +90,7 @@ reasoning.
 `AttestationCoordinator` has the coordinator shape (§ Coordinators).
 
 **`src/core/attestation/AttestationCoordinator.sol`** — Zero-storage
-attestation, merkle-only, bound to the signed `agreementHash`. Two modes, and
+attestation, merkle-only, bound to the signed `checkoutHash`. Two modes, and
 a party attests for itself:
 - `attestAsSeller(Commitment role, Commitment target, bytes32 clauseId, uint8
   stage, bytes32 clauseDataHash, bytes32[] proof, bytes32 contentRef)` — role and
@@ -105,7 +105,7 @@ keccak256(clauseData)`, `contentRef = keccak256(content)`; a private clause's
 plaintext never touches the chain. For every call the coordinator verifies an
 OpenZeppelin-style merkle inclusion proof of `leaf =
 keccak256(keccak256(clauseId || clauseDataHash))` (double-hashed for leaf/node
-domain separation) against `target.agreementHash`, then emits
+domain separation) against `target.checkoutHash`, then emits
 `Attestation(orderHash, processId, attester, clauseId, stage, contentRef)`.
 `_requireKnownCommitment` checks the caller-supplied commitment against a
 committed `orderHash` via `core.orderStatus`. It validates no content shape;
@@ -195,9 +195,9 @@ anchoring under a stake.
 **`src/build/registries/AgreementRegistry.sol`** — Permissionless agreement
 anchoring under a stake: the registered agreement, the reusable unit a
 designer composes an assembly from.
-- Identity is the composition: `agreementKey` is the merkle root over one leaf
+- Identity is the composition: `agreementHash` is the merkle root over one leaf
   per composed clause, `keccak256(keccak256(clauseKey ‖ keccak256(fills)))`
-  under the agreement format's leaf convention (the SDK's `agreementKeyOf(doc)`;
+  under the agreement format's leaf convention (the SDK's `agreementHashOf(doc)`;
   a clause's membership is proved by `buildRegisteredClauseInclusionProof`), where
   `clauses` maps each clause key to
   the designer's fills for ONE agreement — value-free, the topology clause
@@ -206,27 +206,27 @@ designer composes an assembly from.
   summary?, description?, clauses }`); the editorial fields are excluded from
   the key. A reader fetches the document from `contentURI`, parses it, and
   requires the key recomputed from its `clauses` to equal the registered key;
-  a mismatch is absence. The design-time `agreementKey` is never the runtime
-  `agreementHash` a commitment carries.
-- `registerAgreement(bytes32 agreementKey, string contentURI)` — `payable`,
+  a mismatch is absence. The design-time `agreementHash` is never the runtime
+  `checkoutHash` a commitment carries.
+- `registerAgreement(bytes32 agreementHash, string contentURI)` — `payable`,
   first-write-wins, requires exactly `registrationDeposit`
   (`WrongDeposit(provided, required)`); refuses the zero key
-  (`ZeroAgreementKey`), either reserved key of the agreement format — its
+  (`ZeroAgreementHash`), either reserved key of the agreement format — its
   public constants `PROVENANCE_LEAF_KEY = keccak256("figaro-agreement-provenance")`
   and `ASSEMBLY_TERMS_LEAF_KEY = keccak256("figaro-assembly-terms")` —
   (`ReservedKeyIsNotARegistration(key)`), an
   empty URI (`EmptyContentURI`) and a second registration
-  (`AgreementAlreadyRegistered(agreementKey)`); emits
-  `AgreementRegistered(agreementKey, registeredBy, contentURI)`.
-- `withdrawDeposit(agreementKey)` — the registering wallet only
+  (`AgreementAlreadyRegistered(agreementHash)`); emits
+  `AgreementRegistered(agreementHash, registeredBy, contentURI)`.
+- `withdrawDeposit(agreementHash)` — the registering wallet only
   (`NotRegisteredBy`), once (`AlreadyWithdrawn`), no time lock; refunds the
   stake (`TransferFailed` if the refund is refused) and emits
-  `DepositWithdrawn(agreementKey, registeredBy, amount)`. The binding is
+  `DepositWithdrawn(agreementHash, registeredBy, amount)`. The binding is
   permanent: the assemblies that compose the agreement and the orders that
   instantiate it rely on its content staying stable, so a withdrawn agreement
   stays hydratable; readers stop offering it for new compositions, and it
   stops counting toward designer rewards.
-- State: `bindings: agreementKey → AgreementBinding{registeredBy,
+- State: `bindings: agreementHash → AgreementBinding{registeredBy,
   registeredAt, depositWithdrawn, contentURI}`. No admin, no transfer, no
   removal, no edge to any other registry. The contract validates no content.
 - Deployment: every full deploy script (`LOCAL_DEV.md` § "Deployment scripts")
@@ -240,7 +240,7 @@ anchoring under a stake.
   assembly's agreements, built with the agreement format's leaf convention
   (`leaf = keccak256(keccak256(key ‖ keccak256(bytes)))`, sorted-pair
   hashing): one leaf per agreement `i`, keyed by the agreement's
-  `agreementKey`, whose bytes are the canonical JSON
+  `agreementHash`, whose bytes are the canonical JSON
   `{"clauses":{…},"slot":i}` (the agreement's own fills — the topology
   clause's `parentOrderHashes` naming the agreements it follows); and one
   assembly terms leaf, keyed by `ASSEMBLY_TERMS_LEAF_KEY =
@@ -284,31 +284,31 @@ Three permissionless functions and one proof-gated writer:
 - `recordClauseUsage(order, clauseOrAssembly, clauseDataHash, proof)` — proves
   the order is RESOLVED (`core.orderStatus == 2`) and that the clause was
   committed in that order's signed agreement (merkle inclusion against
-  `agreementHash`). Fingerprint only, never the preimage. The same check
+  `checkoutHash`). Fingerprint only, never the preimage. The same check
   `AttestationCoordinator` performs, with the status gate inverted:
   attestation is evidence during an open process; usage is counted once it
   has resolved. Recording is opt-in and gas-paid by whoever benefits. It
   counts under the clause kind and checks `ClauseRegistry` only.
-- `recordAgreementUsage(order, agreementKey, compositionHash, proof)` —
+- `recordAgreementUsage(order, agreementHash, compositionHash, proof)` —
   credits a registered agreement. Agreement leaves are keyed by clause, so
   neither key is ever a leaf key; what is a leaf is the agreement format's
   reserved provenance leaf, whose committed content is exactly
-  `{"agreementKey":"0x<lowercase>","compositionHash":"0x<lowercase>"}`,
+  `{"agreementHash":"0x<lowercase>","compositionHash":"0x<lowercase>"}`,
   written at checkout from the agreement the order instantiates. The contract
   rebuilds those bytes from both keys and proves that one leaf under
-  `order.agreementHash`; a wrong key derives a leaf that is not in the tree.
+  `order.checkoutHash`; a wrong key derives a leaf that is not in the tree.
   The leaf's key is the public constant `provenanceLeaf =
   keccak256("figaro-agreement-provenance")`, a constant of the agreement
   format registered nowhere. It counts under the agreement kind and checks
   `AgreementRegistry` only (`ClauseAgreementOrAssemblyNotRegistered` when the agreement
   holds no live binding). The counter exposes the registry it reads as
   `agreements()` and the terms constant as `assemblyTermsLeaf()`.
-- `recordAssemblyUsage(order, compositionHash, agreementKey, slotContentHash,
+- `recordAssemblyUsage(order, compositionHash, agreementHash, slotContentHash,
   leafProof, membershipProof)` — credits an assembly. It proves the
-  provenance leaf the same way (`leafProof`), refuses an `agreementKey` equal
+  provenance leaf the same way (`leafProof`), refuses an `agreementHash` equal
   to either reserved key (the assembly terms leaf is not an agreement), then
   proves the agreement's leaf
-  `keccak256(keccak256(agreementKey ‖ slotContentHash))` under
+  `keccak256(keccak256(agreementHash ‖ slotContentHash))` under
   `compositionHash` (`membershipProof`, else `InvalidMembershipProof`, distinct
   from the leaf's `InvalidInclusionProof`), so the agreement the order names is
   a member of the assembly it names. It counts under the assembly kind and

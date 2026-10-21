@@ -71,13 +71,13 @@ fn encode_content(spec_json: &str, content: &serde_json::Value, stage: u8) -> Ve
     .expect("canonical encoder must succeed")
 }
 
-/// The agreement Merkle leaf for a clause section:
+/// The agreement Merkle leaf for a clause:
 /// `keccak256(keccak256(clauseId ++ keccak256(clauseData)))` — double-hashed
 /// for leaf/node domain separation.
-fn clause_leaf(clause_key: &B256, section_data: &str) -> B256 {
+fn clause_leaf(clause_key: &B256, clause_data: &str) -> B256 {
     let mut preimage = [0u8; 64];
     preimage[..32].copy_from_slice(clause_key.as_slice());
-    preimage[32..].copy_from_slice(keccak256(section_data.as_bytes()).as_slice());
+    preimage[32..].copy_from_slice(keccak256(clause_data.as_bytes()).as_slice());
     keccak256(keccak256(preimage))
 }
 
@@ -100,13 +100,13 @@ const CHAIN_ID: u64 = 31337;
 // ── Expected values from Foundry ──────────────────────────────────
 
 const DOMAIN_SEP: B256 = b256!("6325a49af8b05e724de86f3ff9397854cd7733afbdaf519b96ee7b6816891bc4");
-const ROOT_STRUCT_HASH: B256 = b256!("20b9c54e9ae96ab9aa9f559c0f5ddda02c2245b76ef7b8c6997c68ae5fae2b54");
-const ROOT_DIGEST: B256 = b256!("83118784bdf5c22406e4bd1877f8a6cc53da421295721b5fdc99cd7a5dc4f3c4");
-const PROCESS_ID: B256 = b256!("83118784bdf5c22406e4bd1877f8a6cc53da421295721b5fdc99cd7a5dc4f3c4");
-const ROOT_ORDER_HASH: B256 = b256!("a7b65d509f68373b4351ee7ca65b967723cc8ba5d69db1ece31f4b5f403410ca");
-const SUB_STRUCT_HASH: B256 = b256!("79c2f3be4fcecb869aacb3fca5baf99d1ea2b9757a8243e8ab5d97696b0bb84c");
-const SUB_DIGEST: B256 = b256!("41c4dfb44eaadd4254dfce1ccf7caaf32df06a587cdf761380adaf2fa04a586f");
-const SUB_ORDER_HASH: B256 = b256!("4ab8b13d6589e595e04b7858c75ee32c0293b49f92b38d8f4a25480e75e5e5ea");
+const ROOT_STRUCT_HASH: B256 = b256!("f61125bef0f1916de4d1fd36fe243e3b513e6489b2b8827a4e62deb87e340da9");
+const ROOT_DIGEST: B256 = b256!("a809fe3f6ab3509a130c6cd20bf910767b4ccafce5d46f8ad99d0e62f367c83b");
+const PROCESS_ID: B256 = b256!("a809fe3f6ab3509a130c6cd20bf910767b4ccafce5d46f8ad99d0e62f367c83b");
+const ROOT_ORDER_HASH: B256 = b256!("b9a9afa9c257441ff216d7f9abea2edbab8db358f55896bf4be58f9d9a76f8ea");
+const SUB_STRUCT_HASH: B256 = b256!("d9a5cb004387bfb22c64bf61d3d263df2689df6b51144cd3ad18f684af1c3231");
+const SUB_DIGEST: B256 = b256!("1536806c68219bb71421f3f57af5806054f8e5c21c207923234a45a103248845");
+const SUB_ORDER_HASH: B256 = b256!("da9af386b03e8c5787b58f31ae5a4f5556f1142f40e2a2508af62d3ba2637e59");
 
 // ── Signing helpers ───────────────────────────────────────────────
 
@@ -358,7 +358,7 @@ fn root_commitment() -> Commitment {
         currency: TOKEN,
         payment: U256::from(100_000_000_000_000_000_000u128),   // 100 ether
         expected_cumulative_value: U256::from(100_000_000_000_000_000_000u128),
-        agreement_hash: keccak256("test-agreement"),
+        checkout_hash: keccak256("test-agreement"),
         salt: U256::from(42u64),
         deadline: U256::from(2000u64),
     }
@@ -372,7 +372,7 @@ fn sub_commitment() -> Commitment {
         currency: TOKEN,
         payment: U256::from(50_000_000_000_000_000_000u128),    // 50 ether
         expected_cumulative_value: U256::from(150_000_000_000_000_000_000u128), // 150 ether
-        agreement_hash: keccak256("sub-agreement"),
+        checkout_hash: keccak256("sub-agreement"),
         salt: U256::from(43u64),
         deadline: U256::from(2000u64),
     }
@@ -391,12 +391,12 @@ fn empty_snapshot() -> KernelStateSnapshot {
 
 // ── Attestation fixtures ──────────────────────────────────────────
 //
-// A single-section agreement whose one leaf commits the
-// figaro-modalities section `{"modality":"delivery"}` — so
-// agreementHash == leaf and the inclusion proof is empty, exactly the
+// A single-clause agreement whose one leaf commits the
+// figaro-modalities clause `{"modality":"delivery"}` — so
+// checkoutHash == leaf and the inclusion proof is empty, exactly the
 // shape the coordinator verifies on the direct path.
 
-const SECTION_DATA: &str = r#"{"modality":"delivery"}"#;
+const CLAUSE_DATA: &str = r#"{"modality":"delivery"}"#;
 
 struct AttestFixture {
     spec_json: String,
@@ -410,10 +410,10 @@ fn attest_fixture() -> AttestFixture {
     let spec_json = load_spec_json("figaro-modalities");
     // The clause key is keccak256 of the spec bytes the witness carries.
     let clause_key = keccak256(spec_json.as_bytes());
-    let leaf = clause_leaf(&clause_key, SECTION_DATA);
+    let leaf = clause_leaf(&clause_key, CLAUSE_DATA);
 
     let root = Commitment {
-        agreement_hash: leaf,
+        checkout_hash: leaf,
         salt: U256::from(4242u64),
         ..root_commitment()
     };
@@ -425,15 +425,15 @@ fn attest_fixture() -> AttestFixture {
     AttestFixture { spec_json, clause_key, root, process_id, root_order_hash }
 }
 
-/// A RuntimeWitness content proof for the fixture's section at stage 0.
+/// A RuntimeWitness content proof for the fixture's clause at stage 0.
 fn runtime_witness_proof(f: &AttestFixture) -> (AttestationContentProof, B256) {
-    let content: serde_json::Value = serde_json::from_str(SECTION_DATA).unwrap();
+    let content: serde_json::Value = serde_json::from_str(CLAUSE_DATA).unwrap();
     let content_ref = keccak256(encode_content(&f.spec_json, &content, 0).as_slice());
     (
         AttestationContentProof {
             spec_json: f.spec_json.clone(),
-            content_json: SECTION_DATA.to_string(),
-            section_data: SECTION_DATA.to_string(),
+            content_json: CLAUSE_DATA.to_string(),
+            clause_data: CLAUSE_DATA.to_string(),
             inclusion_proof: vec![],
             content_kind: ContentKind::RuntimeWitness,
         },
@@ -443,12 +443,12 @@ fn runtime_witness_proof(f: &AttestFixture) -> (AttestationContentProof, B256) {
 
 /// A ReAssert content proof: the content IS the committed clauseData.
 fn re_assert_proof(f: &AttestFixture) -> (AttestationContentProof, B256) {
-    let content_ref = keccak256(SECTION_DATA.as_bytes());
+    let content_ref = keccak256(CLAUSE_DATA.as_bytes());
     (
         AttestationContentProof {
             spec_json: f.spec_json.clone(),
-            content_json: SECTION_DATA.to_string(),
-            section_data: SECTION_DATA.to_string(),
+            content_json: CLAUSE_DATA.to_string(),
+            clause_data: CLAUSE_DATA.to_string(),
             inclusion_proof: vec![],
             content_kind: ContentKind::ReAssert,
         },
@@ -574,7 +574,7 @@ fn attest_as_buyer_re_assert_passes() {
     let (_pv, _positions, events) = run_attest_batch(&f, op).unwrap();
     assert_eq!(events.attestations.len(), 1);
     assert_eq!(events.attestations[0].attester, BUYER);
-    assert_eq!(events.attestations[0].content_ref, keccak256(SECTION_DATA.as_bytes()));
+    assert_eq!(events.attestations[0].content_ref, keccak256(CLAUSE_DATA.as_bytes()));
 }
 
 #[test]
@@ -642,7 +642,7 @@ fn attest_invalid_content_fails() {
     let proof = AttestationContentProof {
         spec_json: f.spec_json.clone(),
         content_json: bad_content.to_string(),
-        section_data: SECTION_DATA.to_string(),
+        clause_data: CLAUSE_DATA.to_string(),
         inclusion_proof: vec![],
         content_kind: ContentKind::RuntimeWitness,
     };
@@ -695,11 +695,11 @@ fn attest_lookalike_spec_under_the_same_name_fails() {
 
 #[test]
 fn attest_wrong_inclusion_proof_fails() {
-    // Commit an order whose agreementHash does NOT contain the clause
+    // Commit an order whose checkoutHash does NOT contain the clause
     // leaf — the mandatory inclusion gate must reject.
     let f = attest_fixture();
     let mut stranger = f.root.clone();
-    stranger.agreement_hash = keccak256("some other agreement");
+    stranger.checkout_hash = keccak256("some other agreement");
     stranger.salt = U256::from(777u64);
 
     let domain = domain_separator(CHAIN_ID, CORE);
@@ -801,7 +801,7 @@ fn attest_on_resolved_order_fails() {
 #[test]
 fn attest_cross_order_same_process_passes() {
     // role = the seller's own sub-order; target = the root order. The
-    // inclusion proof opens against the TARGET's agreementHash.
+    // inclusion proof opens against the TARGET's checkoutHash.
     let f = attest_fixture();
     let buyer_key = make_signing_key(BUYER_KEY);
     let seller1_key = make_signing_key(SELLER1_KEY);
@@ -815,7 +815,7 @@ fn attest_cross_order_same_process_passes() {
         currency: TOKEN,
         payment: U256::from(50_000_000_000_000_000_000u128),
         expected_cumulative_value: U256::from(150_000_000_000_000_000_000u128),
-        agreement_hash: keccak256("sub-agreement"),
+        checkout_hash: keccak256("sub-agreement"),
         salt: U256::from(43u64),
         deadline: U256::from(2000u64),
     };
@@ -1014,7 +1014,7 @@ fn a_bond_accumulation_overflow_is_rejected_not_a_panic() {
         currency: TOKEN,
         payment: huge,
         expected_cumulative_value: huge,
-        agreement_hash: keccak256("overflow"),
+        checkout_hash: keccak256("overflow"),
         salt: U256::from(1u64),
         deadline: U256::from(1_000_000u64),
     };
@@ -1061,8 +1061,8 @@ fn hex32(v: &serde_json::Value) -> B256 {
     v.as_str().expect("hex").parse().expect("bytes32")
 }
 
-/// A resolved order under `agreement_hash`, and the batch's operations.
-fn resolved_order_under(agreement_hash: B256, salt: u64) -> (Commitment, Vec<KernelOp>) {
+/// A resolved order under `checkout_hash`, and the batch's operations.
+fn resolved_order_under(checkout_hash: B256, salt: u64) -> (Commitment, Vec<KernelOp>) {
     let buyer_key = make_signing_key(BUYER_KEY);
     let seller_key = make_signing_key(SELLER1_KEY);
     let domain = domain_separator(CHAIN_ID, CORE);
@@ -1073,7 +1073,7 @@ fn resolved_order_under(agreement_hash: B256, salt: u64) -> (Commitment, Vec<Ker
         currency: TOKEN,
         payment: U256::from(100u64),
         expected_cumulative_value: U256::from(100u64),
-        agreement_hash,
+        checkout_hash,
         salt: U256::from(salt),
         deadline: U256::from(2000u64),
     };
@@ -1109,7 +1109,7 @@ fn claims_batch(ops: Vec<KernelOp>, claims: Vec<UsageClaim>) -> BatchInput {
 fn kind2(order: &Commitment, entry: &serde_json::Value) -> UsageClaim {
     UsageClaim {
         order: order.clone(),
-        clause_or_assembly: hex32(&entry["agreementKey"]),
+        clause_or_assembly: hex32(&entry["agreementHash"]),
         kind: UsageClaimKind::Agreement {
             composition_hash: hex32(&entry["provenance"]["compositionHash"]),
         },
@@ -1117,12 +1117,12 @@ fn kind2(order: &Commitment, entry: &serde_json::Value) -> UsageClaim {
     }
 }
 
-fn kind1(order: &Commitment, composition: B256, agreement_key: B256, slot_content_hash: B256, proof: Vec<B256>) -> UsageClaim {
+fn kind1(order: &Commitment, composition: B256, agreement_hash: B256, slot_content_hash: B256, proof: Vec<B256>) -> UsageClaim {
     UsageClaim {
         order: order.clone(),
         clause_or_assembly: composition,
         kind: UsageClaimKind::Assembly {
-            agreement_key,
+            agreement_hash,
             slot_content_hash,
             membership_proof: proof,
         },
@@ -1148,7 +1148,7 @@ fn every_vector_agreement_credits_its_agreement_and_its_assembly() {
                 kind1(
                     &order,
                     composition,
-                    hex32(&entry["agreementKey"]),
+                    hex32(&entry["agreementHash"]),
                     hex32(&entry["slotContentHash"]),
                     proof_list(&entry["membershipProof"]),
                 ),
@@ -1159,7 +1159,7 @@ fn every_vector_agreement_credits_its_agreement_and_its_assembly() {
                 events.usage_accruals.iter().map(|a| (a.clause_or_assembly, a.kind)).collect();
             got.sort();
             let mut want = vec![
-                (hex32(&entry["agreementKey"]), USAGE_KIND_AGREEMENT),
+                (hex32(&entry["agreementHash"]), USAGE_KIND_AGREEMENT),
                 (composition, USAGE_KIND_ASSEMBLY),
             ];
             want.sort();
@@ -1178,12 +1178,12 @@ fn a_vector_membership_proof_from_another_assembly_is_refused() {
     let two = &assemblies[1];
     let one = &assemblies[0];
     let entry = &two["agreements"][1];
-    assert_eq!(entry["agreementKey"], one["agreements"][0]["agreementKey"]);
+    assert_eq!(entry["agreementHash"], one["agreements"][0]["agreementHash"]);
     let (order, ops) = resolved_order_under(hex32(&entry["provenance"]["leaf"]), 1);
     let claim = kind1(
         &order,
         hex32(&two["compositionHash"]),
-        hex32(&entry["agreementKey"]),
+        hex32(&entry["agreementHash"]),
         hex32(&one["agreements"][0]["slotContentHash"]),
         proof_list(&one["agreements"][0]["membershipProof"]),
     );
@@ -1193,15 +1193,15 @@ fn a_vector_membership_proof_from_another_assembly_is_refused() {
     }
 }
 
-/// A kind-2 claim naming the wrong agreementKey against a vector's
+/// A kind-2 claim naming the wrong agreementHash against a vector's
 /// provenance leaf derives other bytes and opens nothing.
 #[test]
-fn a_vector_agreement_claim_with_the_wrong_agreement_key_is_refused() {
+fn a_vector_agreement_claim_with_the_wrong_agreement_hash_is_refused() {
     let fx = assembly_vectors();
     let entry = &fx["assemblies"][2]["agreements"][2];
     let (order, ops) = resolved_order_under(hex32(&entry["provenance"]["leaf"]), 1);
     let mut claim = kind2(&order, entry);
-    claim.clause_or_assembly = hex32(&fx["assemblies"][2]["agreements"][0]["agreementKey"]);
+    claim.clause_or_assembly = hex32(&fx["assemblies"][2]["agreements"][0]["agreementHash"]);
     match apply_batch(&claims_batch(ops, vec![claim])).map(|_| ()) {
         Err(KernelError::UsageInvalidInclusionProof) => {}
         other => panic!("expected UsageInvalidInclusionProof, got {other:?}"),
@@ -1210,7 +1210,7 @@ fn a_vector_agreement_claim_with_the_wrong_agreement_key_is_refused() {
 
 /// The vector's terms leaf IS a leaf of its assembly root — its sorted-pair
 /// proof opens — yet an assembly claim passing it as an agreement (the
-/// terms key as agreementKey, the terms bytes' hash as the order-entry content) is
+/// terms key as agreementHash, the terms bytes' hash as the order-entry content) is
 /// refused by its key: the terms leaf is not an agreement.
 #[test]
 fn the_vector_terms_leaf_never_passes_as_an_agreement() {
@@ -1236,7 +1236,7 @@ fn the_vector_terms_leaf_never_passes_as_an_agreement() {
     );
 
     let terms_key = hex32(&terms["leafKey"]);
-    let bytes = figaro_kernel::kernel::provenance_section_bytes(&terms_key, &composition);
+    let bytes = figaro_kernel::kernel::provenance_leaf_bytes(&terms_key, &composition);
     let mut preimage = [0u8; 64];
     preimage[..32].copy_from_slice(keccak256(b"figaro-agreement-provenance").as_slice());
     preimage[32..].copy_from_slice(keccak256(&bytes).as_slice());

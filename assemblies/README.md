@@ -13,11 +13,11 @@ that shape; the populate path builds the registered shape from it at deploy:
 `composeAuthoredAgreement` (in the SDK) composes each written agreement —
 names resolved to keys, the clauses of its mandatory pick merged, the key derived — and
 `assembleAuthored` builds each assembly over the agreements its agreements
-name (each binds the agreement's key; its fill is the topology clause's
+name (each binds the agreement's hash; its fill is the topology clause's
 parents), then the seeding pins and registers each DISTINCT agreement once on
 `AgreementRegistry` (one stake each; a key already registered is skipped) and
 registers the assembly on `AssemblyRegistry`. Identity is content-derived on
-both registries (the `agreementKey`, a merkle root over the composed clauses;
+both registries (the `agreementHash`, a merkle root over the composed clauses;
 the `compositionHash`, a merkle root over the agreements), first-write-wins,
 so re-anchoring is a no-op and independently composing the same design
 collapses onto the same on-chain bindings. This directory and `agreements/`
@@ -45,7 +45,7 @@ asserted from chain:
 `documents/` ships the raw bytes of every document a assembly affixes (consent
 anchors commit the document's keccak256 and `ipfs://` locator INSIDE the
 agreement — the bytes must pin byte-identical on any network for the
-`agreementKey`, and so the composition hash, to reproduce; the populate path
+`agreementHash`, and so the composition hash, to reproduce; the populate path
 pins them first).
 
 A reference that composes `figaro-utility-token` (`equipment-hire.json`) is the

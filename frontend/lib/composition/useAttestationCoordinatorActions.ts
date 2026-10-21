@@ -24,7 +24,7 @@ import { publishWitnessContent } from "@/lib/composition/witnessContent";
 import type { PartyRole } from "@/lib/kernel/walletProcessQueries";
 
 type AttestationInput = {
-    /** The order being attested — its `agreementHash` anchors the inclusion
+    /** The order being attested — its `checkoutHash` anchors the inclusion
      *  proof. On the buyer path the caller must equal `c.buyer` (which equals
      *  the process's rootBuyer by commit invariant). */
     orderHash: Hex;
@@ -37,7 +37,7 @@ type AttestationInput = {
      * emissions-disclosure). Supply an explicit value when the runtime witness DIFFERS
      * from the committed clause (merchant-process / courier-process ladders,
      * proximity proof, measurement). Either way the attestation is merkle-bound
-     * to the committed clause under `agreementHash` — that binding is the check,
+     * to the committed clause under `checkoutHash` — that binding is the check,
      * uniform across both; there is no "cross-checked" vs "runtime" clause tier.
      */
     content?: Hex;
@@ -87,7 +87,7 @@ export function useAttestationCoordinatorActions() {
             currency: String(args.currency) as Hex,
             payment: BigInt((args.payment as bigint | string | number) ?? 0),
             expectedCumulativeValue: BigInt((args.cumulativeValue as bigint | string | number) ?? 0),
-            agreementHash: String(args.agreementHash) as Hex,
+            checkoutHash: String(args.checkoutHash) as Hex,
             salt: BigInt((args.salt as bigint | string | number) ?? 0),
             deadline: BigInt((args.deadline as bigint | string | number) ?? 0),
         };
@@ -98,17 +98,17 @@ export function useAttestationCoordinatorActions() {
 
     /**
      * Build the `clauseDataHash` + inclusion `proof` arguments for an attestation
-     * against a target order's `agreementHash`. Reads the signed agreement
+     * against a target order's `checkoutHash`. Reads the signed agreement
      * (from localStorage or IPFS), finds the clause for `clauseId`,
      * and produces the merkle inclusion proof the coordinator verifies. Returns
      * the clause FINGERPRINT (`keccak256` of its canonical bytes), never the
      * preimage — the coordinator takes only the hash, so a private clause's
      * plaintext never touches calldata.
      */
-    const buildReceipt = useCallback(async (targetAgreementHash: Hex, clauseId: Hex) => {
-        const agreement = await fetchAgreement(targetAgreementHash);
+    const buildReceipt = useCallback(async (targetCheckoutHash: Hex, clauseId: Hex) => {
+        const agreement = await fetchAgreement(targetCheckoutHash);
         if (!agreement) {
-            const message = `Agreement unavailable for ${truncateHex(targetAgreementHash, { head: 10, tail: 0 })} — `
+            const message = `Agreement unavailable for ${truncateHex(targetCheckoutHash, { head: 10, tail: 0 })} — `
                 + `cannot generate inclusion proof`;
             setError(message);
             throw new Error(message);
@@ -126,7 +126,7 @@ export function useAttestationCoordinatorActions() {
         }
         // The clauseId here is a runtime value (the clause being attested), not a
         // hardcoded literal — find its clause by matching the on-chain id.
-        const clauseEntry = agreement.sections.find((s) => hexEqual(s.clause, clauseId));
+        const clauseEntry = agreement.clauses.find((s) => hexEqual(s.clause, clauseId));
         if (!clauseEntry) {
             const message = `Clause ${truncateHex(clauseId, { head: 10, tail: 0 })} not committed in the signed agreement`;
             setError(message);
@@ -151,7 +151,7 @@ export function useAttestationCoordinatorActions() {
         setError("");
         try {
             const target = await loadCommitment(orderHash);
-            const { clauseDataHash, proof } = await buildReceipt(target.agreementHash as Hex, clauseId);
+            const { clauseDataHash, proof } = await buildReceipt(target.checkoutHash as Hex, clauseId);
             // Re-assert (content omitted) ⇒ contentRef IS the committed clause's
             // fingerprint; otherwise bind the runtime content by its hash. The
             // content preimage lives off-chain, never in calldata.

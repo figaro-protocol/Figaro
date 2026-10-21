@@ -21,7 +21,7 @@ reader shows; nothing on chain reads them, and two specs sharing a name are two 
 no validator contract, no Solidity.** Well-formedness is validated off-chain at
 author time; consumers load the clause from `ClauseRegistry → IPFS` at runtime.
 Designers compose clauses into **registered agreements** — one order's clauses with the
-designer's fills, registered on `AgreementRegistry` under their `agreementKey` — and compose
+designer's fills, registered on `AgreementRegistry` under their `agreementHash` — and compose
 assemblies from those (`figaro-assembly-designer`); a clause is reused through every
 agreement that composes it, and it earns for its designer of record on each one.
 
@@ -89,11 +89,11 @@ these five and nothing else:
 
 | Hint | Reaches | Effect |
 |---|---|---|
-| `block.design.article: "mandatory"` | `agreementKey` + `agreementHash` | the clause is never selected on its own: a registered agreement whose clauses are all mandatory-article is what a designer picks for each agreement of an assembly (any wallet's registration), and its clauses merge into that agreement; a registered agreement bound as is must already carry its pick's clauses |
-| `block.design.article: "attestations"` | `agreementHash` | the clause is committed as an EMPTY anchor, filled by attestation later; field `default`s are NOT applied |
-| `block.design.scope: "assembly"` | `compositionHash` + `agreementHash` | composed ONCE for the whole design, folded into EVERY agreement at checkout; composing it on one order is a build error |
-| `block.design.fills` | `agreementKey` | names the fields whose DESIGN-TIME values survive into a agreement; name nothing and the agreement carries `{}` |
-| `block.checkout.catalogueFills` / `profileFills` | `agreementHash` | names which fields the seller's catalog / profile folds write onto the leaf at checkout |
+| `block.design.article: "mandatory"` | `agreementHash` + `checkoutHash` | the clause is never selected on its own: a registered agreement whose clauses are all mandatory-article is what a designer picks for each agreement of an assembly (any wallet's registration), and its clauses merge into that agreement; a registered agreement bound as is must already carry its pick's clauses |
+| `block.design.article: "attestations"` | `checkoutHash` | the clause is committed as an EMPTY anchor, filled by attestation later; field `default`s are NOT applied |
+| `block.design.scope: "assembly"` | `compositionHash` + `checkoutHash` | composed ONCE for the whole design, folded into EVERY agreement at checkout; composing it on one order is a build error |
+| `block.design.fills` | `agreementHash` | names the fields whose DESIGN-TIME values survive into a agreement; name nothing and the agreement carries `{}` |
+| `block.checkout.catalogueFills` / `profileFills` | `checkoutHash` | names which fields the seller's catalog / profile folds write onto the leaf at checkout |
 
 **The reserved-article trap — picking one by accident is silent.** The group name is free
 text, but `"mandatory"` and `"attestations"` mean the two things above to the SDK. Both are
@@ -121,10 +121,10 @@ only on that specific combination.
 **And one field attribute is mis-typed as UI metadata: `default`.** A field's `default`
 is documented as composition metadata, but it is NOT inert — when the composing input
 omits the field, the spec's own `default` fills it, and that value lands in the signed
-clause, changing the merkle leaf and the `agreementHash` both parties sign. Declare a
+clause, changing the merkle leaf and the `checkoutHash` both parties sign. Declare a
 default only where the user would be content for a stranger to sign it having never seen
 it. Show them: `buildOrderAgreement(buyer, seller, { [clauseKey]: {} }, specs)` and inspect
-`agreement.sections[0].data`.
+`agreement.clauses[0].data`.
 
 Public statement of all of this, for the user: `/clauses` § "What the hash covers".
 

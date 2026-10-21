@@ -97,7 +97,7 @@ contract GasCeilingTest is Test {
             currency: address(token),
             payment: PAYMENT,
             expectedCumulativeValue: PAYMENT,
-            agreementHash: keccak256(abi.encodePacked("g-root-", keyBase)),
+            checkoutHash: keccak256(abi.encodePacked("g-root-", keyBase)),
             salt: keyBase,
             deadline: block.timestamp + 1 hours
         });
@@ -120,7 +120,7 @@ contract GasCeilingTest is Test {
                 currency: address(token),
                 payment: PAYMENT,
                 expectedCumulativeValue: cumulative,
-                agreementHash: keccak256(abi.encodePacked("g-sub-", keyBase, i)),
+                checkoutHash: keccak256(abi.encodePacked("g-sub-", keyBase, i)),
                 salt: sk,
                 deadline: block.timestamp + 1 hours
             });

@@ -378,8 +378,8 @@ describe("checkSellerBindsAssembly — the seller's own bound assemblies, read a
         version: "a1",
         buyer: BUYER,
         seller: SELLER,
-        sections: [],
-        ...(compositionHash ? { provenance: { agreementKey: KEY, compositionHash } } : {}),
+        clauses: [],
+        ...(compositionHash ? { provenance: { agreementHash: KEY, compositionHash } } : {}),
     });
     const profileBinding = (compositionHash: `0x${string}`): MemberProfileMetadata => ({
         name: "Seller",

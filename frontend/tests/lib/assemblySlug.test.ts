@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { agreementKeyOf, serializeAssembly } from "@figaro-protocol/sdk";
+import { agreementHashOf, serializeAssembly } from "@figaro-protocol/sdk";
 import { deriveAssemblySlug, type Assembly } from "@/lib/shared/assembly";
 
 // Construct assemblies directly (no spec cache needed) to test the
@@ -9,7 +9,7 @@ import { deriveAssemblySlug, type Assembly } from "@/lib/shared/assembly";
 const CLAUSE = `0x${"c1".repeat(32)}` as const;
 const LOOKALIKE = `0x${"c2".repeat(32)}` as const;
 const composition = (x: number, clauseKey: `0x${string}` = CLAUSE): Assembly => ({
-    agreements: [{ id: "order-0", agreementKey: agreementKeyOf({ clauses: { [clauseKey]: { x } } }), clauses: {} }],
+    agreements: [{ id: "order-0", agreementHash: agreementHashOf({ clauses: { [clauseKey]: { x } } }), clauses: {} }],
 });
 
 const slugOf = (t: Assembly) => deriveAssemblySlug(serializeAssembly(t).compositionHash);
@@ -24,9 +24,9 @@ describe("content-derived assembly slug", () => {
     });
 
     it("slug is stable under object-key reordering (canonicalization)", () => {
-        const agreementKey = composition(1).agreements[0].agreementKey;
-        const ordered: Assembly = { agreements: [{ id: "order-0", agreementKey, clauses: { [CLAUSE]: { a: 1, b: 2 } } }] };
-        const reordered = { agreements: [{ clauses: { [CLAUSE]: { b: 2, a: 1 } }, agreementKey, id: "order-0" }] } as Assembly;
+        const agreementHash = composition(1).agreements[0].agreementHash;
+        const ordered: Assembly = { agreements: [{ id: "order-0", agreementHash, clauses: { [CLAUSE]: { a: 1, b: 2 } } }] };
+        const reordered = { agreements: [{ clauses: { [CLAUSE]: { b: 2, a: 1 } }, agreementHash, id: "order-0" }] } as Assembly;
         expect(serializeAssembly(ordered).compositionHash).toBe(serializeAssembly(reordered).compositionHash);
     });
 

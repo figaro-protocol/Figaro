@@ -5,7 +5,7 @@
  * time (`composeAuthoredAgreement` over `clauses/`: names resolved to keys,
  * the mandatory clauses folded, keyed); each reference assembly names the
  * agreements its agreements bind and is built over them (`assembleAuthored`:
- * the entry binds the agreement's key and carries its own parents). Built, it
+ * the entry binds the agreement's hash and carries its own parents). Built, it
  * must parse, hash, resolve its topology, compose only clauses that exist,
  * carry the mandatory clauses on every order, and carry the editorial
  * identity a stranger reads first; every authored agreement must be bound

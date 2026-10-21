@@ -3,8 +3,8 @@
  * the clause document, on the frontend side of the UI/protocol seam.
  *
  * A clause spec has two halves. The TOP LEVEL is the protocol half — identity,
- * registration, and the content `fields`/`stages` that become sections of
- * signed agreements (merkle leaves under the on-chain `agreementHash`).
+ * registration, and the content `fields`/`stages` that become clauses of
+ * signed agreements (merkle leaves under the on-chain `checkoutHash`).
  * `block` is the UI half: instructions to frontends, organized into PHASE
  * SECTIONS, each named for its reader —
  *

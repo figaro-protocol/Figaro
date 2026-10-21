@@ -263,9 +263,9 @@ contract RpgfMinterTest is Test {
     /// another family's accrual.
     function test_theThreeKindsPayOnlyTheirOwnDesignerOfRecord() public {
         vm.prank(bob);
-        clauses.registerClause(AGR, "ipfs://bob-stakes-daves-agreement-key-as-a-clause");
+        clauses.registerClause(AGR, "ipfs://bob-stakes-daves-agreement-hash-as-a-clause");
         vm.prank(carol);
-        assemblies.registerAssembly(AGR, "ipfs://carol-stakes-daves-agreement-key-as-an-assembly");
+        assemblies.registerAssembly(AGR, "ipfs://carol-stakes-daves-agreement-hash-as-an-assembly");
         counter.setScore(KIND_AGREEMENT, AGR, 0, 500);
         counter.setClosed(0, true);
 

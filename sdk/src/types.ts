@@ -46,7 +46,7 @@ export interface Order {
     currency: Address;
     payment: bigint;
     cumulativeValue: bigint;
-    agreementHash: Hex;
+    checkoutHash: Hex;
     /** Salt from the commitment (for full reconstruction at resolution). */
     salt: bigint;
     /** Deadline from the commitment (for full reconstruction at resolution). */
@@ -88,7 +88,7 @@ export interface OrderCommittedEvent {
     currency: Address;
     payment: bigint;
     cumulativeValue: bigint;
-    agreementHash: Hex;
+    checkoutHash: Hex;
     salt: bigint;
     deadline: bigint;
     blockNumber: number;
@@ -197,11 +197,11 @@ export interface AssemblyWithdrawnEvent {
     logIndex: number;
 }
 
-/** AgreementRegistry `AgreementRegistered`. Identity IS `agreementKey`
- *  (`agreementKeyOf`, the merkle root over the clauses composed for one
+/** AgreementRegistry `AgreementRegistered`. Identity IS `agreementHash`
+ *  (`agreementHashOf`, the merkle root over the clauses composed for one
  *  agreement). */
 export interface AgreementRegisteredEvent {
-    agreementKey: Hex;
+    agreementHash: Hex;
     registeredBy: Address;
     contentURI: string;
     blockNumber: number;
@@ -210,9 +210,9 @@ export interface AgreementRegisteredEvent {
     transactionHash: Hex | null;
 }
 
-/** AgreementRegistry `DepositWithdrawn` — keyed by `agreementKey` directly. */
+/** AgreementRegistry `DepositWithdrawn` — keyed by `agreementHash` directly. */
 export interface AgreementWithdrawnEvent {
-    agreementKey: Hex;
+    agreementHash: Hex;
     registeredBy: Address;
     blockNumber: number;
     logIndex: number;
@@ -247,14 +247,14 @@ export interface RegisteredAssembly {
 }
 
 export interface AgreementBinding {
-    /** The agreement key — `agreementKeyOf` of the pinned document at
+    /** The agreement hash — `agreementHashOf` of the pinned document at
      *  `contentURI`; a reader verifies the fetched document against it
      *  (`anchorRegisteredAgreement`). */
-    agreementKey: Hex;
+    agreementHash: Hex;
     contentURI: string;
     registeredBy: Address;
     /** The block the `AgreementRegistered` event landed in — the event
-     *  carries no timestamp; `bindings(agreementKey).registeredAt` holds the
+     *  carries no timestamp; `bindings(agreementHash).registeredAt` holds the
      *  chain time. */
     registeredAt: number;
     /** True once the registrant withdrew the stake (`DepositWithdrawn`). */
@@ -272,7 +272,7 @@ export interface Commitment {
     currency: Address;
     payment: bigint;
     expectedCumulativeValue: bigint;
-    agreementHash: Hex;
+    checkoutHash: Hex;
     salt: bigint;
     deadline: bigint;
 }

@@ -203,7 +203,7 @@ contract KernelTransitionVectorsTest is Test {
                 currency: address(token),
                 payment: ord.payment,
                 expectedCumulativeValue: cumulative[i],
-                agreementHash: keccak256(abi.encodePacked("agreement-", r.name, "-", vm.toString(i))),
+                checkoutHash: keccak256(abi.encodePacked("agreement-", r.name, "-", vm.toString(i))),
                 salt: i + 1,
                 deadline: DEADLINE
             });
@@ -242,7 +242,7 @@ contract KernelTransitionVectorsTest is Test {
             vm.serializeAddress(ok, "currency", c.currency);
             vm.serializeString(ok, "payment", vm.toString(c.payment));
             vm.serializeString(ok, "expectedCumulativeValue", vm.toString(c.expectedCumulativeValue));
-            vm.serializeBytes32(ok, "agreementHash", c.agreementHash);
+            vm.serializeBytes32(ok, "checkoutHash", c.checkoutHash);
             vm.serializeString(ok, "salt", vm.toString(c.salt));
             string memory oj = vm.serializeString(ok, "deadline", vm.toString(c.deadline));
             vm.serializeString(r.key, string.concat("o", vm.toString(i)), oj);

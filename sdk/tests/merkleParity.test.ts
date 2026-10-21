@@ -2,7 +2,7 @@
  * Merkle parity vectors — the three-way cross-language lock for the
  * agreement tree.
  *
- * The SDK builds the agreement's merkle root (`agreementHash`) and each
+ * The SDK builds the agreement's merkle root (`checkoutHash`) and each
  * clause's inclusion proof; `AttestationCoordinator` and `UsageCounter`
  * verify those proofs on the direct path through OpenZeppelin `MerkleProof`,
  * and the guest verifies them on the batch path through
@@ -40,12 +40,12 @@ import {
     buildProvenanceInclusionProof,
     buildSignedClauseInclusionProof,
     canonicalize,
-    computeAgreementHash,
+    computeCheckoutHash,
     provenanceLeafBytes,
     type Agreement,
 } from "../src/agreement.js";
 import { agreementArb } from "./propertyArbs.js";
-import { agreementKeyOf, assemblyCompositionHash } from "../src/assembly.js";
+import { agreementHashOf, assemblyCompositionHash } from "../src/assembly.js";
 import { ASSEMBLY_THREE, REGISTERED_DESIGN, K } from "./assemblyVectors.js";
 
 const FUZZ_PATH = path.resolve(__dirname, "../../test/fixtures/streams/agreements.json");
@@ -55,7 +55,7 @@ const THREE: Agreement = {
     version: "a1",
     buyer: "0x0376AAc07Ad725E01357B1725B5ceC61aE10473c",
     seller: "0xAd29D7a8aD3639F97798c768202F27C1dE81DC55",
-    sections: [
+    clauses: [
         { clause: K("figaro-modalities"), data: { modality: "delivery" } },
         { clause: K("figaro-geolocation"), data: { hops: 2, origin: "site-7" } },
         { clause: K("figaro-applicable-law"), data: { law: "ch" } },
@@ -66,18 +66,18 @@ const ONE: Agreement = {
     version: "a1",
     buyer: "0x0376AAc07Ad725E01357B1725B5ceC61aE10473c",
     seller: "0xAd29D7a8aD3639F97798c768202F27C1dE81DC55",
-    sections: [{ clause: K("figaro-modalities"), data: { modality: "pickup" } }],
+    clauses: [{ clause: K("figaro-modalities"), data: { modality: "pickup" } }],
 };
 /** Two clauses and the design they were instantiated from. */
 const WITH_DESIGN: Agreement = {
     version: "a1",
     buyer: "0x0376AAc07Ad725E01357B1725B5ceC61aE10473c",
     seller: "0xAd29D7a8aD3639F97798c768202F27C1dE81DC55",
-    sections: [
+    clauses: [
         { clause: K("figaro-commerce"), data: { currency: "0x0000000000000000000000000000000000000000", payment: "7" } },
         { clause: K("figaro-topology"), data: { parentOrderHashes: [] } },
     ],
-    provenance: { agreementKey: agreementKeyOf(REGISTERED_DESIGN), compositionHash: assemblyCompositionHash(ASSEMBLY_THREE) },
+    provenance: { agreementHash: agreementHashOf(REGISTERED_DESIGN), compositionHash: assemblyCompositionHash(ASSEMBLY_THREE) },
 };
 
 function vectorFor(label: string, agreement: Agreement) {
@@ -87,10 +87,10 @@ function vectorFor(label: string, agreement: Agreement) {
             // The reserved key and the bytes the leaf hashes: both consumers
             // rebuild the leaf from these two, exactly as for a clause.
             leafKey: PROVENANCE_LEAF_KEY,
-            agreementKey: agreement.provenance.agreementKey,
+            agreementHash: agreement.provenance.agreementHash,
             compositionHash: agreement.provenance.compositionHash,
             clauseData: Buffer.from(
-                provenanceLeafBytes(agreement.provenance.agreementKey, agreement.provenance.compositionHash).slice(2),
+                provenanceLeafBytes(agreement.provenance.agreementHash, agreement.provenance.compositionHash).slice(2),
                 "hex",
             ).toString("utf8"),
             leaf,
@@ -99,10 +99,10 @@ function vectorFor(label: string, agreement: Agreement) {
     })();
     return {
         label,
-        agreementHash: computeAgreementHash(agreement),
-        clauseCount: agreement.sections.length,
+        checkoutHash: computeCheckoutHash(agreement),
+        clauseCount: agreement.clauses.length,
         ...(provenance ? { provenance } : {}),
-        sections: agreement.sections.map((clauseEntry) => {
+        clauses: agreement.clauses.map((clauseEntry) => {
             const { leaf, proof } = buildSignedClauseInclusionProof(agreement, clauseEntry.clause);
             return {
                 clauseKey: clauseEntry.clause,

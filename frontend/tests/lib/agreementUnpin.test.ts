@@ -15,7 +15,7 @@ const AGREEMENT: Agreement = {
     version: "a1",
     buyer: "0x23618e81E3f5cdF7f54C3d65f7FBc0aBf5B21E8f",
     seller: "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
-    sections: [{ clause: `0x${"0c".repeat(32)}`, data: { payment: "1" } }],
+    clauses: [{ clause: `0x${"0c".repeat(32)}`, data: { payment: "1" } }],
 };
 
 function seedTransport(cid: string) {
@@ -29,35 +29,35 @@ function seedTransport(cid: string) {
 describe("unpinAgreement", () => {
     it("unpins the pinned CID and forgets the pointer (a later fetch is null)", async () => {
         const transport = seedTransport("QmAgreementBody");
-        const { agreementHash } = await publishAgreement(AGREEMENT, { evidenceTransport: transport });
+        const { checkoutHash } = await publishAgreement(AGREEMENT, { evidenceTransport: transport });
 
         const unpin = vi.fn().mockResolvedValue(undefined);
-        await unpinAgreement(agreementHash, { unpin });
+        await unpinAgreement(checkoutHash, { unpin });
 
         expect(unpin).toHaveBeenCalledExactlyOnceWith("QmAgreementBody");
         // Pointer forgotten: with no URI, fetch can no longer resolve a body.
-        expect(await fetchAgreement(agreementHash, undefined, { evidenceTransport: transport })).toBeNull();
+        expect(await fetchAgreement(checkoutHash, undefined, { evidenceTransport: transport })).toBeNull();
     });
 
     it("rejects a refused unpin with the service's answer and keeps the pointer, so a retry unpins the same CID", async () => {
         const transport = seedTransport("QmRefusedBody");
-        const { agreementHash } = await publishAgreement(AGREEMENT, { evidenceTransport: transport });
+        const { checkoutHash } = await publishAgreement(AGREEMENT, { evidenceTransport: transport });
 
         const refusal = new Error("403 Forbidden");
         const refused = vi.fn().mockRejectedValue(refusal);
 
-        await expect(unpinAgreement(agreementHash, { unpin: refused })).rejects.toBe(refusal);
+        await expect(unpinAgreement(checkoutHash, { unpin: refused })).rejects.toBe(refusal);
         expect(refused).toHaveBeenCalledExactlyOnceWith("QmRefusedBody");
 
         // The retry finds the pointer, unpins the same CID, then forgets it.
         const retry = vi.fn().mockResolvedValue(undefined);
-        await unpinAgreement(agreementHash, { unpin: retry });
+        await unpinAgreement(checkoutHash, { unpin: retry });
         expect(retry).toHaveBeenCalledExactlyOnceWith("QmRefusedBody");
-        expect(await fetchAgreement(agreementHash, undefined, { evidenceTransport: transport })).toBeNull();
+        expect(await fetchAgreement(checkoutHash, undefined, { evidenceTransport: transport })).toBeNull();
 
         // Forgotten after the successful unpin: a third erase has nothing to unpin.
         const third = vi.fn().mockResolvedValue(undefined);
-        await unpinAgreement(agreementHash, { unpin: third });
+        await unpinAgreement(checkoutHash, { unpin: third });
         expect(third).not.toHaveBeenCalled();
     });
 

@@ -112,12 +112,12 @@ describe("HttpChannel — offer round-trip over a real HTTP socket", () => {
             const channel = new HttpChannel({ resolveEndpoint: async () => url });
             const offer = await buildOffer();
             // Mutate the agreement after signing → it no longer hashes to the committed
-            // agreementHash → the anti-tamper gate throws → 422, not a silent decline.
+            // checkoutHash → the anti-tamper gate throws → 422, not a silent decline.
             const tampered: CommitmentPayload = {
                 ...offer,
                 agreement: {
                     ...offer.agreement,
-                    sections: offer.agreement.sections.map((s) => ({ ...s, data: { ...s.data, injected: "evil" } })),
+                    clauses: offer.agreement.clauses.map((s) => ({ ...s, data: { ...s.data, injected: "evil" } })),
                 },
             };
             await expect(channel.sendOffer(SELLER.address, tampered)).rejects.toThrow(/HTTP 422/);

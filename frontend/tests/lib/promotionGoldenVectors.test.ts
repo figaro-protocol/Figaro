@@ -9,7 +9,7 @@
  *      since encryption draws a random IV),
  *   2. CommitmentPayload serialization (lib/kernel/signedCommitment.ts —
  *      bigint→hex replacer + prototype-pollution stripping on deserialize),
- *   3. agreement projection → agreementHash (since Phase 3: @figaro-protocol/sdk
+ *   3. agreement projection → checkoutHash (since Phase 3: @figaro-protocol/sdk
  *      projection — spec-default injection, process-log skip, clause sort),
  *   4. assembly composition → compositionHash (since Phase 3: @figaro-protocol/sdk
  *      projection — the mandatory pick's clauses merged, sparse-version
@@ -96,7 +96,7 @@ function projectionCases() {
 
 /** Two-node parent-edged design (root + child) exercising the mandatory pick
  *  (each order picks the reference agreement holding the mandatory clauses
- *  alone, so the agreement keys are the ones frozen before the pick existed),
+ *  alone, so the agreement hashes are the ones frozen before the pick existed),
  *  the local relabeling, the sparse-version normalization, and the
  *  ASSEMBLY-SCOPE placement (applicable-law declares design.scope "assembly"
  *  — so it composes once at the assembly level and its
@@ -124,7 +124,7 @@ function assemblyCase() {
     };
 }
 
-function payloadCase(agreement: Agreement, agreementHash: `0x${string}`): CommitmentPayload {
+function payloadCase(agreement: Agreement, checkoutHash: `0x${string}`): CommitmentPayload {
     const commitment: Commitment = {
         processId: `0x${"00".repeat(32)}`,
         buyer: BUYER,
@@ -132,7 +132,7 @@ function payloadCase(agreement: Agreement, agreementHash: `0x${string}`): Commit
         currency: "0x0000000000000000000000000000000000000001",
         payment: 25_000000000000000000n,
         expectedCumulativeValue: 25_000000000000000000n,
-        agreementHash,
+        checkoutHash,
         salt: 0x1234n,
         deadline: 1770000000n,
     };
@@ -155,8 +155,8 @@ interface GoldenVectors {
     };
     commitmentPayload: { serialized: string };
     agreementProjection: {
-        defaults: { canonicalAgreement: string; agreementHash: string };
-        processLog: { canonicalAgreement: string; agreementHash: string };
+        defaults: { canonicalAgreement: string; checkoutHash: string };
+        processLog: { canonicalAgreement: string; checkoutHash: string };
     };
     assembly: { canonicalJson: string; compositionHash: string; agreements: Record<string, string> };
 }
@@ -194,17 +194,17 @@ beforeAll(async () => {
             },
             commitmentPayload: {
                 serialized: serializeCommitmentPayload(
-                    payloadCase(defaults.agreement, defaults.agreementHash),
+                    payloadCase(defaults.agreement, defaults.checkoutHash),
                 ),
             },
             agreementProjection: {
                 defaults: {
                     canonicalAgreement: canonicalize(defaults.agreement),
-                    agreementHash: defaults.agreementHash,
+                    checkoutHash: defaults.checkoutHash,
                 },
                 processLog: {
                     canonicalAgreement: canonicalize(processLog.agreement),
-                    agreementHash: processLog.agreementHash,
+                    checkoutHash: processLog.checkoutHash,
                 },
             },
             assembly: {
@@ -249,7 +249,7 @@ describe("SDK-promotion golden vectors — the live bytes, frozen", () => {
     it("CommitmentPayload: serialization reproduces the frozen envelope and round-trips", () => {
         const v = loadVectors();
         const { defaults } = projectionCases();
-        const payload = payloadCase(defaults.agreement, defaults.agreementHash);
+        const payload = payloadCase(defaults.agreement, defaults.checkoutHash);
         expect(serializeCommitmentPayload(payload)).toBe(v.commitmentPayload.serialized);
         expect(deserializeCommitmentPayload(v.commitmentPayload.serialized)).toEqual(payload);
     });
@@ -267,16 +267,16 @@ describe("SDK-promotion golden vectors — the live bytes, frozen", () => {
 
     it("agreement projection: spec-default injection reproduces the frozen agreement + hash", () => {
         const v = loadVectors().agreementProjection.defaults;
-        const { agreement, agreementHash } = projectionCases().defaults;
+        const { agreement, checkoutHash } = projectionCases().defaults;
         expect(canonicalize(agreement)).toBe(v.canonicalAgreement);
-        expect(agreementHash).toBe(v.agreementHash);
+        expect(checkoutHash).toBe(v.checkoutHash);
     });
 
     it("agreement projection: the process-log empty anchor reproduces the frozen agreement + hash", () => {
         const v = loadVectors().agreementProjection.processLog;
-        const { agreement, agreementHash } = projectionCases().processLog;
+        const { agreement, checkoutHash } = projectionCases().processLog;
         expect(canonicalize(agreement)).toBe(v.canonicalAgreement);
-        expect(agreementHash).toBe(v.agreementHash);
+        expect(checkoutHash).toBe(v.checkoutHash);
     });
 
     it("assembly: the mandatory pick + relabeling reproduce the frozen assembly, its agreements + compositionHash", () => {

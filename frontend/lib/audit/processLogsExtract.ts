@@ -97,7 +97,7 @@ export function extractProcessLogs(
         title: "Sovereign process logs",
         orderHash: order.orderHash,
         processId: order.processId,
-        agreementHash: order.agreementHash ?? "0x",
+        checkoutHash: order.checkoutHash ?? "0x",
         buyer: order.buyer,
         seller: order.seller,
         logs: Array.from(groups.values()),

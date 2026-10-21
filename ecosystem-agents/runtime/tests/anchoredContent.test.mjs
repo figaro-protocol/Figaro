@@ -11,7 +11,7 @@ import * as http from "node:http";
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
 import { keccak256, toBytes } from "viem";
-import { agreementKeyOf, canonicalize, assemblyCompositionHash } from "@figaro-protocol/sdk";
+import { agreementHashOf, canonicalize, assemblyCompositionHash } from "@figaro-protocol/sdk";
 import { fetchAnchoredClauseSpec, fetchAnchoredRegisteredAgreement, fetchAnchoredAssembly } from "../anchoredContent.mjs";
 import { fetchIpfsBytes } from "../ipfsRead.mjs";
 
@@ -25,7 +25,7 @@ const COMMERCE = SPEC_KEY;
 const TOPOLOGY = `0x${"7c".repeat(32)}`;
 const COMPOSED = { name: "One order", clauses: { [COMMERCE]: {}, [TOPOLOGY]: {} } };
 const ASSEMBLY = {
-    agreements: [{ id: "order-0", agreementKey: agreementKeyOf(COMPOSED), clauses: { [TOPOLOGY]: { parentOrderHashes: [] } } }],
+    agreements: [{ id: "order-0", agreementHash: agreementHashOf(COMPOSED), clauses: { [TOPOLOGY]: { parentOrderHashes: [] } } }],
 };
 
 /** A gateway serving `bodies[cid]` at /ipfs/<cid>; anything else 404s. */
@@ -88,14 +88,14 @@ test("a assembly that hashes to its composition hash is read; a substituted one 
     } finally { await gw.close(); }
 });
 
-test("a registered agreement whose { clauses } key to its agreement key is read, editorial prose aside; another is absence", async () => {
+test("a registered agreement whose { clauses } key to its agreement hash is read, editorial prose aside; another is absence", async () => {
     const forged = { ...COMPOSED, clauses: { ...COMPOSED.clauses, [COMMERCE]: { payment: "1" } } };
     const gw = await gateway({
         g: JSON.stringify(COMPOSED), renamed: JSON.stringify({ ...COMPOSED, name: "Renamed" }),
         forged: JSON.stringify(forged), notAgreement: "{\"x\":1}",
     });
     try {
-        const agreement = { contentURI: "ipfs://g", agreementKey: agreementKeyOf(COMPOSED) };
+        const agreement = { contentURI: "ipfs://g", agreementHash: agreementHashOf(COMPOSED) };
         const hit = await fetchAnchoredRegisteredAgreement(agreement, { gateways: [gw.url] });
         assert.equal(hit.absent, undefined, hit.absent);
         assert.deepEqual(hit.composed.clauses, COMPOSED.clauses);

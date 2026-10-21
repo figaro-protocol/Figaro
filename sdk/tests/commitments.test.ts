@@ -67,7 +67,7 @@ describe("buildCommitment", () => {
                 currency: TOKEN,
                 payment: 1000n,
                 expectedCumulativeValue: 1000n,
-                agreementHash: AGREEMENT,
+                checkoutHash: AGREEMENT,
                 salt: 42n,
                 deadline: 9999n,
             },
@@ -80,7 +80,7 @@ describe("buildCommitment", () => {
         expect(commitment.currency).toBe(TOKEN);
         expect(commitment.payment).toBe(1000n);
         expect(commitment.expectedCumulativeValue).toBe(1000n);
-        expect(commitment.agreementHash).toBe(AGREEMENT);
+        expect(commitment.checkoutHash).toBe(AGREEMENT);
         expect(commitment.salt).toBe(42n);
         expect(commitment.deadline).toBe(9999n);
 
@@ -99,7 +99,7 @@ describe("buildCommitment", () => {
                 currency: TOKEN,
                 payment: 1000n,
                 expectedCumulativeValue: 1000n,
-                agreementHash: AGREEMENT,
+                checkoutHash: AGREEMENT,
                 deadline: 1_900_000_000n,
             },
             domain,
@@ -118,7 +118,7 @@ describe("buildCommitment", () => {
                 currency: TOKEN,
                 payment: 500n,
                 expectedCumulativeValue: 1000n,
-                agreementHash: AGREEMENT,
+                checkoutHash: AGREEMENT,
                 salt: 7n,
                 deadline: 5000n,
             },
@@ -143,7 +143,7 @@ describe("order-hash derivation (mirrors CommitmentTypes.sol)", () => {
         currency: TOKEN,
         payment: 500n,
         expectedCumulativeValue: 500n,
-        agreementHash: AGREEMENT,
+        checkoutHash: AGREEMENT,
         salt: 12345n,
         deadline: 1700000000n,
     };
@@ -151,7 +151,7 @@ describe("order-hash derivation (mirrors CommitmentTypes.sol)", () => {
     it("COMMITMENT_TYPEHASH equals FigaroCore's literal type string", () => {
         const literal =
             "Commitment(bytes32 processId,address buyer,address seller,address currency," +
-            "uint256 payment,uint256 expectedCumulativeValue,bytes32 agreementHash," +
+            "uint256 payment,uint256 expectedCumulativeValue,bytes32 checkoutHash," +
             "uint256 salt,uint256 deadline)";
         expect(COMMITMENT_TYPEHASH).toBe(keccak256(toBytes(literal)));
     });
@@ -168,7 +168,7 @@ describe("order-hash derivation (mirrors CommitmentTypes.sol)", () => {
                 [
                     COMMITMENT_TYPEHASH, root.processId, root.buyer, root.seller,
                     root.currency, root.payment, root.expectedCumulativeValue,
-                    root.agreementHash, root.salt, root.deadline,
+                    root.checkoutHash, root.salt, root.deadline,
                 ],
             ),
         );

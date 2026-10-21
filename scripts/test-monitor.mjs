@@ -162,7 +162,7 @@ async function main() {
     const { commitment, typedData } = buildCommitment({
         processId: `0x${"00".repeat(32)}`, buyer, seller, currency: rbs.address,
         payment, expectedCumulativeValue: payment,
-        agreementHash: keccak256(toHex(`monitor-test-${stamp}`)),
+        checkoutHash: keccak256(toHex(`monitor-test-${stamp}`)),
         deadline: computeDeadline(await readChainTimestamp(pub)),
     }, domain);
     const buyerSig = await wallet(KEYS.buyer).signTypedData(typedData);

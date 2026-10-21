@@ -86,7 +86,7 @@ export interface AssemblyCheckoutDeps {
  *  sign step itself (`signAs`) runs the same gate — this call is the UX
  *  courtesy, not the enforcement. */
 function assertValidToSign(preview: OrderPreview, design: HydratedAssembly, label: string): void {
-    assertAgreementSignable(preview.agreement, preview.agreementHash, specSource(), preview.commitment, design, label);
+    assertAgreementSignable(preview.agreement, preview.checkoutHash, specSource(), preview.commitment, design, label);
 }
 
 /** The entries the fills actually CHANGED — passed to the walk as overrides so
@@ -231,7 +231,7 @@ export async function executeAssemblyCheckout(
 
     const previewOf = (order: ReconstructedOrder): OrderPreview => ({
         agreement: order.agreement,
-        agreementHash: order.agreementHash,
+        checkoutHash: order.checkoutHash,
         commitment: order.commitment,
     });
 

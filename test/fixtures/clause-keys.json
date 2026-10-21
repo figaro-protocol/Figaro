@@ -6,12 +6,12 @@
     "figaro-cargo": "0x3af042f4e7fe9797604adcb54a2381ad2e6f81e8bcc40f68633409ed805f951d",
     "figaro-chain-of-custody": "0x1f7b9bc841b2f0564aee19e3c7f2e349132f3c44a92485fa64e0d4880806cec5",
     "figaro-cold-chain": "0xfb78b6f8df5ee36da7061e16bb6b6bb92fc4547fba9b1d1aaa7b66de11dd9a4d",
-    "figaro-commerce": "0x87e7c774689da74878b6353c9a244d04c50765f775b64c288eef70145d3b47b9",
-    "figaro-consent": "0x6e96e86c2085e2f77365750921de62fd996891626f00187475897d37761c415e",
+    "figaro-commerce": "0xa0713b585d8e3dbf9b23bf942b4360025d0dc0035c62325c96a8a717e5b0ed99",
+    "figaro-consent": "0x076dac9330d4e64def0fba5f2e7c10e2cf4d0615c26d22cc750c91e51f497bcf",
     "figaro-content-handoff": "0x94661b1144e7fccc829ecac9e3250fbbe348debb6978a654f6c11774670d8426",
     "figaro-courier-process": "0xb2bfeb9544a4a85911b9552ab1cc5a09df14643bd57fddbde68ba153687d15bf",
     "figaro-credential": "0xfe7afaba6fe4f95063a8b77c47ae5c4041e951901c1d907466ff7bbd046c64a7",
-    "figaro-data-license": "0xe01463c7d35ccda4f93bc53474191e8c0a31bb069d22758b2a72225990b35d97",
+    "figaro-data-license": "0xa55a66d4f48b3ed9f61c089a2ed35caa22dc73ee8a69704fb866ae65195a091a",
     "figaro-data-terms": "0xdac3d19501721fc84fe446e1e25d1352496aeeb89dfdb71fd64645dea55e5375",
     "figaro-dimweight": "0x701a16d443b1055c18bf02b51fdd756cc1cff26e6268df29ac60b7a6db785300",
     "figaro-emissions": "0xbad0c34690c679576c3a210fe03bd2d5bbfd31f6e470e4ea56bb8bb448de6add",
@@ -24,6 +24,6 @@
     "figaro-modalities": "0x26dfedc69af302c56c47938b5e71f00ea2426b34f7add7ffcf73a3bac950e042",
     "figaro-proximity-policy": "0x79d1219d6ed719b8613d998ec222dc32376b3a7f66bd217b63b49fe0d6f9613e",
     "figaro-schedule": "0xe5ea29a1885e18f22d53572578a29333c610c8078f39c0e2983af1d54798bada",
-    "figaro-topology": "0xd7555453daf821f5fdf852d3c1cb7d88d6cd741dbdfb631c3406114bbf2d91bc",
+    "figaro-topology": "0x63c71d25d0aa1a36dffb9e5303aaa48ae132d7403be72cc6c3cdc3eccd168f5c",
     "figaro-utility-token": "0x26a1a60cc173b5f157be0dad853cab9789363d31f4857e57338a0d0c3ae4a367"
 }

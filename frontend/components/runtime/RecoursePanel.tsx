@@ -54,11 +54,11 @@ export function RecoursePanel({
     const chainId = useChainId();
     const { evidenceTransport } = useRuntimeServices();
 
-    const agreementHashes = useMemo(
-        () => (orders ?? []).map((o) => o.agreementHash).filter((h): h is string => Boolean(h)),
+    const checkoutHashes = useMemo(
+        () => (orders ?? []).map((o) => o.checkoutHash).filter((h): h is string => Boolean(h)),
         [orders],
     );
-    const agreements = useProcessAgreements(agreementHashes);
+    const agreements = useProcessAgreements(checkoutHashes);
 
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);

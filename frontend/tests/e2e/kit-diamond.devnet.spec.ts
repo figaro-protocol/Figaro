@@ -430,16 +430,16 @@ test.describe('KIT DIAMOND — a DAG join: one buyer, four orders, two parents o
         await page.getByTestId('order-timeline-view').waitFor({ timeout: 30000 });
         const dAgreementUri = await page.evaluate(
             (key) => window.localStorage.getItem(key),
-            `figaro:agreement-uri:${dEvent.args.agreementHash}`,
+            `figaro:agreement-uri:${dEvent.args.checkoutHash}`,
         );
         expect(dAgreementUri, "the leaf's committed agreement has a network (IPFS) locator").toMatch(/^ipfs:\/\//);
         const dCid = dAgreementUri!.replace(/^ipfs:\/\//, '');
         await assertPinnedInIpfs(dCid);
         const ipfsApi = process.env.NEXT_PUBLIC_IPFS_API_URL ?? 'http://127.0.0.1:5001';
         const dAgreement = await (await fetch(`${ipfsApi}/api/v0/cat?arg=${dCid}`, { method: 'POST' })).json() as {
-            sections: { clause: string; data: Record<string, unknown> }[];
+            clauses: { clause: string; data: Record<string, unknown> }[];
         };
-        const topoClause = dAgreement.sections.find((s) => s.clause === TOPOLOGY_CLAUSE);
+        const topoClause = dAgreement.clauses.find((s) => s.clause === TOPOLOGY_CLAUSE);
         const parents = ((topoClause?.data.parentOrderHashes ?? []) as string[]).map((h) => h.toLowerCase());
         expect(parents, 'the leaf commits exactly TWO parents').toHaveLength(2);
         expect(

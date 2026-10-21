@@ -155,8 +155,7 @@ Tiered, bottom to top; each tier imports only what sits below it (enforced by th
     show; the buyer may change the amount, and the amount in the pick is what the
     buyer signs and the seller countersigns at `/sign` beside its listed price.
     `useSwapAndCommitActions.ts` carries the `swapAndCommit` broadcast either
-    funded form routes through. `LEXICON.md` (**denomination**, **coordination
-    token**, **utility token**) owns the model.
+    funded form routes through.
   - *The attestation choke point:* `useAttestationCoordinatorActions.ts`, which
     every attest surface routes through; calldata carries fingerprints only.
   - *The witness-content seam behind it:* `witnessContent.ts` publishes a
@@ -182,7 +181,7 @@ Tiered, bottom to top; each tier imports only what sits below it (enforced by th
 The Designer is a DAG editor — assembly designers start blank or fork an existing published assembly, modify the bonded-process DAG on the canvas, edit per-node clauses in a side drawer, save drafts to local storage, and publish to the on-chain `AssemblyRegistry` when ready. The canvas DAG is an assembly-tier composition; `FigaroCore` itself only ever sees the linear `commit` chains that result at runtime. It is not a three-column palette/canvas/inspector tool, and is not to be rebuilt as one.
 
 **Routes:**
-- `/assemblies/designer` — landing. Three sections: drafts (`<DraftsList>`, localStorage), the wallet's published assemblies (`<PublishedList>`, reconstructed from `AssemblyRegistered` events), and the clauses catalog (`<ClausesList>`, read from `ClauseRegistry`).
+- `/assemblies/designer` — landing. Three clauses: drafts (`<DraftsList>`, localStorage), the wallet's published assemblies (`<PublishedList>`, reconstructed from `AssemblyRegistered` events), and the clauses catalog (`<ClausesList>`, read from `ClauseRegistry`).
 - `/assemblies/designer/new` — blank DAG editor. Three init paths: `?draft=slug` query, autosaved current session, or fresh blank.
 - `/assemblies/designer/edit?slug=<slug>` — fork an existing published assembly into the editor.
 - `/assemblies/designer/view?slug=<slug>` — read-only view of a published assembly, and (with `&intent=publish`, where the Review button lands) the review-before-publish surface for a local draft. Everything it shows — node clauses, drawer ticks, assembly-scoped terms, composition identity — is read out of the assembly; publish is reachable only while that assembly builds and the stored draft still hashes to the composition on screen.
@@ -207,7 +206,7 @@ The Designer is a DAG editor — assembly designers start blank or fork an exist
   order's pick in the mandatory article. Publish pins and registers each new agreement
   (`registerAgreement`, one stake per distinct new agreement, a receipt row per
   registration) before the assembly. The review lists each agreement's
-  `agreementKey`, whether it is bound or composed, and the composition root;
+  `agreementHash`, whether it is bound or composed, and the composition root;
   `AssemblyTermsPanel` takes a `composition` prop.
   - *Parties:* buyer, seller, DAG position (the agreement's topology fill).
   - *Registry — the mandatory article first:* every LIVE `AgreementRegistry`
@@ -353,7 +352,7 @@ Y", not as an open-ended build.)
   (`REGISTRY_FAMILIES` in `explorer.ts`) — clauses, agreements, assemblies,
   members; an agreement row shows its key, designer of record, stake state,
   composed clauses, and the pinned document checked against the key (anchor type
-  `agreement-key`), and `RegistryCountLink` counts the family. Every row carries the state of the pinned content behind
+  `agreement-hash`), and `RegistryCountLink` counts the family. Every row carries the state of the pinned content behind
   its on-chain pointer (`ExplorerRow.content`: resolved / resolving /
   unavailable) and renders an unresolved row as unresolved — the identity
   alone, never a name or article it does not have; "(unclassified)" is a

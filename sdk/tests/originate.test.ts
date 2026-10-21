@@ -15,7 +15,7 @@ import {
     type OfferPolicy,
 } from "../src/agent/originate.js";
 import { InProcessChannel } from "../src/agent/coordination.js";
-import { computeAgreementHash } from "../src/agreement.js";
+import { computeCheckoutHash } from "../src/agreement.js";
 import { buildDomain, COMMITMENT_TYPES } from "../src/commitments.js";
 import { assemblyCompositionHash } from "../src/assembly.js";
 import type { Address } from "../src/types.js";
@@ -57,7 +57,7 @@ const policy: OfferPolicy = { requireRootShape: true, currencyAllowlist: [CURREN
 describe("instantiateRootAgreement", () => {
     it("merges overrides onto the assembly's root clause bag", () => {
         const a = instantiateRootAgreement(assembly, { buyer: BUYER.address, seller: SELLER.address, overrides });
-        const commerce = a.sections.find((s) => s.clause === keyOf("figaro-commerce"));
+        const commerce = a.clauses.find((s) => s.clause === keyOf("figaro-commerce"));
         expect(commerce?.data.payment).toBe("1000");
         expect(commerce?.data.currency).toBe(CURRENCY);
         expect(a.buyer).toBe(BUYER.address);
@@ -72,7 +72,7 @@ describe("instantiateRootAgreement", () => {
             ],
         });
         const a = instantiateRootAgreement(multi, { buyer: BUYER.address, seller: SELLER.address });
-        expect(a.sections.some((s) => s.clause === keyOf("figaro-commerce"))).toBe(true);
+        expect(a.clauses.some((s) => s.clause === keyOf("figaro-commerce"))).toBe(true);
     });
 
 });
@@ -82,7 +82,7 @@ describe("origination handshake (real signatures, no chain)", () => {
         const offer = await buildBuyerOffer(buyerW, offerParams());
         expect(offer.buyerSig).toBeDefined();
         expect(offer.commitment.buyer.toLowerCase()).toBe(BUYER.address.toLowerCase());
-        expect(offer.commitment.agreementHash).toBe(computeAgreementHash(offer.agreement));
+        expect(offer.commitment.checkoutHash).toBe(computeCheckoutHash(offer.agreement));
         expect((await validateOffer(offer, SELLER.address, undefined, undefined, null, BOUND)).ok).toBe(true);
     });
 
@@ -169,8 +169,8 @@ describe("validateOffer — the economic floor (operator policy)", () => {
 describe("origination handshake — the anti-tamper gate (security)", () => {
     it("rejects an offer whose agreement was mutated after the buyer signed", async () => {
         const offer = await buildBuyerOffer(buyerW, offerParams());
-        // Tamper: change the agreement so it no longer hashes to the committed agreementHash.
-        offer.agreement.sections.find((s) => s.clause === keyOf("figaro-commerce"))!.data.payment = "1";
+        // Tamper: change the agreement so it no longer hashes to the committed checkoutHash.
+        offer.agreement.clauses.find((s) => s.clause === keyOf("figaro-commerce"))!.data.payment = "1";
         expect((await validateOffer(offer, SELLER.address, undefined, undefined, null, BOUND)).ok).toBe(false);
         await expect(counterSignOffer(sellerW, offer, { chainId: CHAIN, core: CORE }, undefined, undefined, undefined, null, BOUND)).rejects.toThrow(/agreement does not hash/i);
     });
@@ -283,21 +283,21 @@ describe("the assembly-scope fold at root instantiation (audit hole (a), closed)
 
     it("instantiateRootAgreement folds assemblyClauses into the root agreement", () => {
         const a = instantiateRootAgreement(pinned, { buyer: BUYER.address, seller: SELLER.address, overrides });
-        const ids = a.sections.map((s) => s.clause);
+        const ids = a.clauses.map((s) => s.clause);
         expect(ids).toEqual(expect.arrayContaining([
             keyOf("figaro-utility-token"), keyOf("figaro-commerce"), keyOf("figaro-topology"),
         ]));
-        expect(a.sections.find((s) => s.clause === keyOf("figaro-utility-token"))?.data.currency).toBe(PIN);
+        expect(a.clauses.find((s) => s.clause === keyOf("figaro-utility-token"))?.data.currency).toBe(PIN);
     });
 
     it("the instantiated agreement carries the assembly's own composition hash as agreement.provenance", () => {
         const a = instantiateRootAgreement(pinned, { buyer: BUYER.address, seller: SELLER.address, overrides });
         expect(a.provenance).toEqual({
-            agreementKey: pinned.assembly.agreements[0].agreementKey,
+            agreementHash: pinned.assembly.agreements[0].agreementHash,
             compositionHash: assemblyCompositionHash(pinned.assembly),
         });
         // The provenance leaf is the format's, not a clause: no clause carries it.
-        expect(a.sections.some((s) => "compositionHash" in (s.data ?? {}))).toBe(false);
+        expect(a.clauses.some((s) => "compositionHash" in (s.data ?? {}))).toBe(false);
     });
 
     it("the folded pin now REACHES the sign gate: a pin contradicting the struct refuses to sign", async () => {
@@ -320,7 +320,7 @@ describe("the assembly-scope fold at root instantiation (audit hole (a), closed)
         });
         expect(offer.buyerSig).toBeDefined();
         expect(offer.agreement.provenance?.compositionHash).toBe(assemblyCompositionHash(pinned.assembly));
-        expect(offer.commitment.agreementHash).toBe(computeAgreementHash(offer.agreement));
+        expect(offer.commitment.checkoutHash).toBe(computeCheckoutHash(offer.agreement));
     });
 });
 
@@ -376,8 +376,8 @@ describe("the designer's values — never changed by a buyer or a seller", () =>
 
     it("the seller refuses an offer missing a clause of the registered agreement it names, before any signature", async () => {
         const clean = await buildBuyerOffer(buyerW, params({}));
-        const agreement = { ...clean.agreement, sections: clean.agreement.sections.filter((s) => s.clause !== keyOf("figaro-consent")) };
-        const commitment = { ...clean.commitment, agreementHash: computeAgreementHash(agreement) };
+        const agreement = { ...clean.agreement, clauses: clean.agreement.clauses.filter((s) => s.clause !== keyOf("figaro-consent")) };
+        const commitment = { ...clean.commitment, checkoutHash: computeCheckoutHash(agreement) };
         const buyerSig = await buyerW.signTypedData({
             account: BUYER, domain: buildDomain(CHAIN, CORE), types: COMMITMENT_TYPES, primaryType: "Commitment", message: commitment,
         });
@@ -430,7 +430,7 @@ describe("the seller's bound assemblies — the offer leg refuses an order under
         const offer = await buildBuyerOffer(buyerW, offerParams());
         const { provenance: _dropped, ...bare } = offer.agreement;
         const unprovenanced: CommitmentPayload = {
-            ...offer, agreement: bare, commitment: { ...offer.commitment, agreementHash: computeAgreementHash(bare) },
+            ...offer, agreement: bare, commitment: { ...offer.commitment, checkoutHash: computeCheckoutHash(bare) },
         };
         await expect(counterSignOffer(sellerW, unprovenanced, CTX, () => true, policy, undefined, null, BOUND))
             .rejects.toThrow(/names no assembly/);
@@ -472,7 +472,7 @@ describe("checkPayloadTerms — the one term check the offer leg and the race dr
         expect(draftSide).toEqual({ ok: false, reason: "draft names a different seller" });
     });
 
-    it("refuses an agreement that does not hash to the committed agreementHash, and a seller whose profile does not bind", async () => {
+    it("refuses an agreement that does not hash to the committed checkoutHash, and a seller whose profile does not bind", async () => {
         const offer = await buildBuyerOffer(buyerW, offerParams());
         const tampered = { ...offer, agreement: { ...offer.agreement, buyer: SELLER.address } };
         expect((await checkPayloadTerms(tampered, SELLER.address, "offer", undefined, undefined, null, BOUND)).ok).toBe(false);

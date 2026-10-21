@@ -1,15 +1,15 @@
 /**
- * Property tests for the composition tree and the agreement key: every agreement
+ * Property tests for the composition tree and the agreement hash: every agreement
  * own membership proof verifies under its own assembly's root and under
  * no other; every composed clause's proof verifies under its own agreement
- * key and under no other; the agreement key ignores editorial prose and
+ * hash and under no other; the agreement hash ignores editorial prose and
  * moves with any clause value; the two-key provenance bytes decode back to
  * their keys.
  */
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import {
-    agreementKeyOf,
+    agreementHashOf,
     buildRegisteredClauseInclusionProof,
     buildAgreementInclusionProof,
     assemblyCompositionHash,
@@ -45,10 +45,10 @@ describe("the composition tree", () => {
     });
 });
 
-describe("the agreement key", () => {
-    it("every composed clause's membership proof verifies under the agreement key", () => {
+describe("the agreement hash", () => {
+    it("every composed clause's membership proof verifies under the agreement hash", () => {
         fc.assert(fc.property(registeredAgreementArb, (doc) => {
-            const key = agreementKeyOf(doc);
+            const key = agreementHashOf(doc);
             for (const clauseKey of Object.keys(doc.clauses) as `0x${string}`[]) {
                 const { leaf, proof } = buildRegisteredClauseInclusionProof(doc, clauseKey);
                 expect(verifyInclusionProof(key, leaf, proof)).toBe(true);
@@ -56,10 +56,10 @@ describe("the agreement key", () => {
         }));
     });
 
-    it("a clause's proof does not verify under a different agreement's key", () => {
+    it("a clause's proof does not verify under a different agreement's hash", () => {
         fc.assert(fc.property(registeredAgreementArb, registeredAgreementArb, (a, b) => {
-            const keyA = agreementKeyOf(a);
-            const keyB = agreementKeyOf(b);
+            const keyA = agreementHashOf(a);
+            const keyB = agreementHashOf(b);
             fc.pre(keyA !== keyB);
             const [first] = Object.keys(a.clauses) as `0x${string}`[];
             const { leaf, proof } = buildRegisteredClauseInclusionProof(a, first);
@@ -69,7 +69,7 @@ describe("the agreement key", () => {
 
     it("ignores the editorial fields", () => {
         fc.assert(fc.property(registeredAgreementArb, fc.string(), (doc, description) => {
-            expect(agreementKeyOf({ ...doc, description, name: `${doc.name ?? ""}!` })).toBe(agreementKeyOf({ clauses: doc.clauses }));
+            expect(agreementHashOf({ ...doc, description, name: `${doc.name ?? ""}!` })).toBe(agreementHashOf({ clauses: doc.clauses }));
         }));
     });
 
@@ -77,16 +77,16 @@ describe("the agreement key", () => {
         fc.assert(fc.property(registeredAgreementArb, (doc) => {
             const [first] = Object.keys(doc.clauses) as `0x${string}`[];
             const changed = { clauses: { ...doc.clauses, [first]: { ...doc.clauses[first], __moved: true } } };
-            expect(agreementKeyOf(changed)).not.toBe(agreementKeyOf(doc));
+            expect(agreementHashOf(changed)).not.toBe(agreementHashOf(doc));
         }));
     });
 });
 
 describe("the two-key provenance bytes", () => {
     it("decode back to the two keys they name", () => {
-        fc.assert(fc.property(bytes32Arb, bytes32Arb, (agreementKey, compositionHash) => {
-            expect(decodeProvenanceContent(provenanceLeafBytes(agreementKey, compositionHash)))
-                .toEqual({ agreementKey, compositionHash });
+        fc.assert(fc.property(bytes32Arb, bytes32Arb, (agreementHash, compositionHash) => {
+            expect(decodeProvenanceContent(provenanceLeafBytes(agreementHash, compositionHash)))
+                .toEqual({ agreementHash, compositionHash });
         }));
     });
 });

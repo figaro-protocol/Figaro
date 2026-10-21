@@ -71,7 +71,7 @@ import {
     BATCH_VERIFIER_ABI, CLAUSE_REGISTRY_ABI, ERC20_ABI,
     MEMBERS_REGISTRY_ABI, USAGE_COUNTER_ABI,
     buildCommitment, buildDomain, calculateBonds, computeOrderHash,
-    computeAgreementHash, computeClauseKey, canonicalize,
+    computeCheckoutHash, computeClauseKey, canonicalize,
     fetchUsageClaimContext, buildUsageClaims, USAGE_KIND_CLAUSE,
 } from '@figaro-protocol/sdk';
 import { parseClauseSpec, encodeContentFromSpec } from '@figaro-protocol/sdk/clauses';
@@ -154,14 +154,14 @@ const agreement = {
     version: 'a1',
     buyer: buyerAccount.address,
     seller: sellerAccount.address,
-    sections: [{ clause: clauseKey, data: clauseObject }],
+    clauses: [{ clause: clauseKey, data: clauseObject }],
 };
-const agreementHash = computeAgreementHash(agreement);
+const checkoutHash = computeCheckoutHash(agreement);
 
 const witnessProof = {
     spec_json: specJson,
     content_json: clauseData,
-    section_data: clauseData,
+    clause_data: clauseData,
     inclusion_proof: [],
     content_kind: 'RuntimeWitness',
 };
@@ -289,7 +289,7 @@ const { commitment, typedData } = buildCommitment({
     currency: TOKEN,
     payment: PAYMENT,
     expectedCumulativeValue: PAYMENT,
-    agreementHash,
+    checkoutHash,
     salt,
     deadline: chainNow + 7200n,
 }, domain);

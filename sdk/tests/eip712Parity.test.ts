@@ -66,7 +66,7 @@ const ROOT: Commitment = {
     currency: "0x5615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f",
     payment: 100_000_000_000_000_000_000n,
     expectedCumulativeValue: 100_000_000_000_000_000_000n,
-    agreementHash: keccak256(toBytes("root-agreement")),
+    checkoutHash: keccak256(toBytes("root-agreement")),
     salt: 42n,
     deadline: 2000n,
 };
@@ -74,13 +74,13 @@ const ROOT: Commitment = {
 // A sub-order: processId is a real (non-zero) value the party targets, so the
 // order hash uses that processId directly rather than the derived digest.
 const SUB: Commitment = {
-    processId: "0x83118784bdf5c22406e4bd1877f8a6cc53da421295721b5fdc99cd7a5dc4f3c4",
+    processId: "0xa809fe3f6ab3509a130c6cd20bf910767b4ccafce5d46f8ad99d0e62f367c83b",
     buyer: "0x0376AAc07Ad725E01357B1725B5ceC61aE10473c",
     seller: "0xC22667C5926d1C9af6C0fa8Cedc4ea3e489F6F70",
     currency: "0x5615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f",
     payment: 50_000_000_000_000_000_000n,
     expectedCumulativeValue: 150_000_000_000_000_000_000n,
-    agreementHash: keccak256(toBytes("sub-agreement")),
+    checkoutHash: keccak256(toBytes("sub-agreement")),
     salt: 43n,
     deadline: 2000n,
 };
@@ -93,7 +93,7 @@ function commitmentToJson(c: Commitment) {
         currency: c.currency,
         payment: c.payment.toString(),
         expectedCumulativeValue: c.expectedCumulativeValue.toString(),
-        agreementHash: c.agreementHash,
+        checkoutHash: c.checkoutHash,
         salt: c.salt.toString(),
         deadline: c.deadline.toString(),
     };

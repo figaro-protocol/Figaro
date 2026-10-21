@@ -89,7 +89,7 @@ export function extractMembersRegistry(
         title: `Members registry entry — the ${party}`,
         orderHash: order.orderHash,
         processId: order.processId,
-        agreementHash: order.agreementHash ?? "0x",
+        checkoutHash: order.checkoutHash ?? "0x",
         buyer: order.buyer,
         seller: order.seller,
         party,

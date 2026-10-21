@@ -12,7 +12,7 @@ import {
     reconstructOrdersFromAssembly,
 } from "../src/reconstructOrders.js";
 import { assemblyCompositionHash } from "../src/assembly.js";
-import { computeAgreementHash, buildProvenanceInclusionProof, verifyInclusionProof } from "../src/agreement.js";
+import { computeCheckoutHash, buildProvenanceInclusionProof, verifyInclusionProof } from "../src/agreement.js";
 import { keyOf, rawSpecOf, specSourceFromFixtures, specSourceWithRegistrations, viewOf } from "./specFixtures.js";
 import { hydrateAuthored } from "./hydrate.js";
 
@@ -94,13 +94,13 @@ describe("reconstructOrdersFromAssembly — realization", () => {
         expect(sub.commitment.processId).toBe(root.processId);
         expect(sub.processId).toBe(root.processId);
         // The sub's topology clause carries the root's REAL order hash.
-        const topo = sub.agreement.sections.find((s) => s.clause === keyOf("figaro-topology"));
+        const topo = sub.agreement.clauses.find((s) => s.clause === keyOf("figaro-topology"));
         expect(topo?.data.parentOrderHashes).toEqual([root.orderHash]);
         // THE MERKLE-LEAF SEAM: with specs supplied, the walk fills the
         // commerce clause's currency leaf to match the commitment struct —
         // on EVERY realized order, root and sub alike.
         for (const order of orders) {
-            const commerceClause = order.agreement.sections.find((s) => s.clause === keyOf("figaro-commerce"));
+            const commerceClause = order.agreement.clauses.find((s) => s.clause === keyOf("figaro-commerce"));
             expect(commerceClause?.data.currency).toBe(order.commitment.currency);
         }
     });
@@ -123,13 +123,13 @@ describe("reconstructOrdersFromAssembly — realization", () => {
             for (const order of orders) {
                 const entry = assembly.assembly.agreements.find((a) => a.id === order.nodeId)!;
                 expect(order.agreement.provenance).toEqual({
-                    agreementKey: entry.agreementKey,
+                    agreementHash: entry.agreementHash,
                     compositionHash: assemblyCompositionHash(assembly.assembly),
                 });
-                expect(order.agreementHash).toBe(computeAgreementHash(order.agreement));
-                expect(order.commitment.agreementHash).toBe(order.agreementHash);
+                expect(order.checkoutHash).toBe(computeCheckoutHash(order.agreement));
+                expect(order.commitment.checkoutHash).toBe(order.checkoutHash);
                 const { leaf, proof } = buildProvenanceInclusionProof(order.agreement);
-                expect(verifyInclusionProof(order.agreementHash, leaf, proof)).toBe(true);
+                expect(verifyInclusionProof(order.checkoutHash, leaf, proof)).toBe(true);
             }
         }
     });
@@ -180,7 +180,7 @@ describe("reconstructOrdersFromAssembly — the walk's fills read the spec each 
             hydrateAuthored({ agreements: [{ id: "only", clauses: { [keyOf("figaro-commerce")]: {} } }] }),
             params,
         );
-        const commerce = root.agreement.sections.find((s) => s.clause === keyOf("figaro-commerce"));
+        const commerce = root.agreement.clauses.find((s) => s.clause === keyOf("figaro-commerce"));
         expect(commerce?.data?.currency).toBe(CURRENCY);
     });
 
@@ -189,7 +189,7 @@ describe("reconstructOrdersFromAssembly — the walk's fills read the spec each 
             hydrateAuthored({ agreements: [{ id: "only", clauses: { [lookalike.clauseKey]: {} } }] }),
             params,
         );
-        const commerce = root.agreement.sections.find((s) => s.clause === lookalike.clauseKey);
+        const commerce = root.agreement.clauses.find((s) => s.clause === lookalike.clauseKey);
         expect(commerce?.data?.currency).toBeUndefined();
     });
 });

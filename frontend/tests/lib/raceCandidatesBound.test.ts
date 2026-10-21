@@ -50,7 +50,7 @@ function bound(designated: Hex[]): BoundAssembly {
 function courierNodeId(): string {
     const courierKey = keyOf("figaro-courier-process").toLowerCase();
     const node = hydrated.assembly.agreements.find((a) =>
-        Object.keys(hydrated.agreements[a.agreementKey.toLowerCase() as Hex]?.clauses ?? {})
+        Object.keys(hydrated.agreements[a.agreementHash.toLowerCase() as Hex]?.clauses ?? {})
             .some((k) => k.toLowerCase() === courierKey));
     if (!node) throw new Error("the reference assembly composes no courier sub-order");
     return node.id;

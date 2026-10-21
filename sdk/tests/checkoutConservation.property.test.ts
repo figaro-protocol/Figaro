@@ -112,7 +112,7 @@ describe("reconstructOrdersFromAssembly — payment conservation", () => {
                     expect(order.commitment.payment).toBe(order.payment);
                     // THE MERKLE-LEAF SEAM: the commerce clause's currency leaf
                     // never diverges from the commitment struct, on every order.
-                    const commerce = order.agreement.sections.find((s) => s.clause === keyOf("figaro-commerce"));
+                    const commerce = order.agreement.clauses.find((s) => s.clause === keyOf("figaro-commerce"));
                     expect(commerce?.data.currency).toBe(order.commitment.currency);
                 }
                 // The final order's total is the sum of ALL node payments.
@@ -140,12 +140,12 @@ describe("reconstructOrdersFromAssembly — payment conservation", () => {
                 const hashOf = new Map(orders.map((o) => [o.nodeId, o.orderHash]));
                 for (const order of orders) {
                     const i = Number(order.nodeId.slice(1));
-                    const topo = order.agreement.sections.find((s) => s.clause === keyOf("figaro-topology"));
+                    const topo = order.agreement.clauses.find((s) => s.clause === keyOf("figaro-topology"));
                     expect(topo?.data.parentOrderHashes).toEqual(
                         parents[i].map((p) => hashOf.get(`n${p}`)),
                     );
                     // THE MERKLE-LEAF SEAM: same guarantee on this property too.
-                    const commerce = order.agreement.sections.find((s) => s.clause === keyOf("figaro-commerce"));
+                    const commerce = order.agreement.clauses.find((s) => s.clause === keyOf("figaro-commerce"));
                     expect(commerce?.data.currency).toBe(order.commitment.currency);
                 }
             }),

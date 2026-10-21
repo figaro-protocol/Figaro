@@ -230,7 +230,7 @@ test.describe('CATALOG→LEAF fold — physical catalog data derives onto the ca
         const event = committed[committed.length - 1];
         expect(event.args.seller?.toLowerCase(), 'committed against the cargo seller').toBe(SELLER.toLowerCase());
         const processId = event.args.processId!;
-        const agreementHash = event.args.agreementHash as `0x${string}`;
+        const checkoutHash = event.args.checkoutHash as `0x${string}`;
 
         // ── Funds actually moved: buyer↓ buyerBond, seller↓ sellerBond, escrow↑
         //    both — read from the token contract, not the UI. ──
@@ -249,15 +249,15 @@ test.describe('CATALOG→LEAF fold — physical catalog data derives onto the ca
         //    its committed clause key; the values are what the fold derived, not authored. ──
         const agreementUri = await page.evaluate(
             (key) => window.localStorage.getItem(key),
-            `figaro:agreement-uri:${agreementHash}`,
+            `figaro:agreement-uri:${checkoutHash}`,
         );
         expect(agreementUri, 'the committed agreement has a network (IPFS) locator').toMatch(/^ipfs:\/\//);
         const agreementCid = agreementUri!.replace(/^ipfs:\/\//, '');
         await assertPinnedInIpfs(agreementCid);
         const ipfsApi = process.env.NEXT_PUBLIC_IPFS_API_URL ?? 'http://127.0.0.1:5001';
         const agreementJson = await (await fetch(`${ipfsApi}/api/v0/cat?arg=${agreementCid}`, { method: 'POST' })).text();
-        const agreement = JSON.parse(agreementJson) as { sections: { clause: string; data: Record<string, unknown> }[] };
-        const cargo = agreement.sections.find((s) => s.clause.toLowerCase() === keyOf('figaro-cargo'));
+        const agreement = JSON.parse(agreementJson) as { clauses: { clause: string; data: Record<string, unknown> }[] };
+        const cargo = agreement.clauses.find((s) => s.clause.toLowerCase() === keyOf('figaro-cargo'));
         expect(cargo, 'the committed tree carries a folded cargo leaf').toBeTruthy();
         expect(cargo!.data, 'the fold derived mass + volume + packaged dimensions onto the cargo leaf').toMatchObject({
             massGrams: MASS_G,
@@ -287,10 +287,10 @@ test.describe('CATALOG→LEAF fold — physical catalog data derives onto the ca
         // Merkle proof: the whole committed tree (cargo included) ties to the on-chain root.
         await page.getByTestId('verify-mode-agreement').click();
         await page.getByTestId('verify-agreement-input').fill(agreementJson);
-        await page.getByTestId('verify-agreement-expected').fill(agreementHash);
+        await page.getByTestId('verify-agreement-expected').fill(checkoutHash);
         await expect(
             page.getByTestId('verify-result-status'),
-            'the recomputed root over every leaf — cargo included — matches the on-chain agreementHash',
+            'the recomputed root over every leaf — cargo included — matches the on-chain checkoutHash',
         ).toHaveText(/Matches expected hash/, { timeout: 15000 });
     });
 });

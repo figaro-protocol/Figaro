@@ -75,7 +75,7 @@
     "name": "registerAgreement",
     "inputs": [
       {
-        "name": "agreementKey",
+        "name": "agreementHash",
         "type": "bytes32",
         "internalType": "bytes32"
       },
@@ -106,7 +106,7 @@
     "name": "withdrawDeposit",
     "inputs": [
       {
-        "name": "agreementKey",
+        "name": "agreementHash",
         "type": "bytes32",
         "internalType": "bytes32"
       }
@@ -119,7 +119,7 @@
     "name": "AgreementRegistered",
     "inputs": [
       {
-        "name": "agreementKey",
+        "name": "agreementHash",
         "type": "bytes32",
         "indexed": true,
         "internalType": "bytes32"
@@ -144,7 +144,7 @@
     "name": "DepositWithdrawn",
     "inputs": [
       {
-        "name": "agreementKey",
+        "name": "agreementHash",
         "type": "bytes32",
         "indexed": true,
         "internalType": "bytes32"
@@ -169,7 +169,7 @@
     "name": "AgreementAlreadyRegistered",
     "inputs": [
       {
-        "name": "agreementKey",
+        "name": "agreementHash",
         "type": "bytes32",
         "internalType": "bytes32"
       }
@@ -240,7 +240,7 @@
   },
   {
     "type": "error",
-    "name": "ZeroAgreementKey",
+    "name": "ZeroAgreementHash",
     "inputs": []
   }
 ]

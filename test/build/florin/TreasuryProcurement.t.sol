@@ -95,7 +95,7 @@ contract TreasuryProcurementTest is Test {
             currency: address(florin),
             payment: PAYMENT,
             expectedCumulativeValue: PAYMENT,
-            agreementHash: keccak256("procurement-agreement"),
+            checkoutHash: keccak256("procurement-agreement"),
             salt: 1,
             deadline: block.timestamp + 1 hours
         });

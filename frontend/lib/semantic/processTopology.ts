@@ -4,7 +4,7 @@
  * Topology is a clause like any other, and a STRUCTURAL one: every committed
  * agreement carries the topology clause (mandatory, like commerce), so an
  * order's parents are always readable BY FIELD NAME (`parentOrderHashes`) via
- * `agreementSections` — no privileged topology read path, no stored mode, and
+ * `agreement.clauses` — no privileged topology read path, no stored mode, and
  * NO invented edges: an agreement not yet hydrated from IPFS renders edgeless
  * until it loads (loading, never fabrication). Topology is an organizational
  * element of a process — UI reconstruction + seller coordination — and is
@@ -52,7 +52,7 @@ export function deriveOrderTopology(
             topology.set(order.orderHash, order.parentOrderHashes);
             continue;
         }
-        const agreement = order.agreementHash ? (agreements.get(order.agreementHash) ?? null) : null;
+        const agreement = order.checkoutHash ? (agreements.get(order.checkoutHash) ?? null) : null;
         topology.set(order.orderHash, topologyParentOrderHashes(agreement) ?? []);
     }
     return topology;

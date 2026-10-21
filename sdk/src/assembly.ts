@@ -3,12 +3,12 @@
  *
  * Two design-time registry families key by content, each a merkle ROOT built
  * with the agreement format's own leaf convention. `AgreementRegistry` keys
- * a registered agreement by `agreementKeyOf(composed)` — the root over one
+ * a registered agreement by `agreementHashOf(composed)` — the root over one
  * leaf per composed clause (the clause key and the designer's fills), so
  * membership of a clause in a registered agreement is a merkle proof
  * (`buildRegisteredClauseInclusionProof`). `AssemblyRegistry` keys an assembly by
  * `compositionHash` — the root over its agreements (each a registered
- * agreement key and the agreement's own fills) and its assembly-scoped
+ * agreement hash and the agreement's own fills) and its assembly-scoped
  * terms, so membership of an agreement in an assembly is a merkle proof
  * (`buildAgreementInclusionProof`).
  * This module is both families' key derivation — pure functions over the
@@ -30,7 +30,7 @@ import {
 } from "./agreement.js";
 import type { ProjectionSpecView } from "./projection.js";
 
-// ── The registered agreement (the pinned document behind an agreement key) ──
+// ── The registered agreement (the pinned document behind an agreement hash) ──
 
 /** A registered agreement's pinned document: the clauses composed for ONE
  *  agreement, value-free, with the designer's fills. The topology clause is
@@ -68,18 +68,18 @@ export function agreementClauseLeaves(doc: RegisteredAgreement): Hex[] {
     return sortLeaves(Object.entries(doc.clauses).map(([clauseKey, fills]) => composedClauseLeaf(clauseKey as Hex, fills)));
 }
 
-/** A registered agreement's key — the merkle root over its composed clause
+/** A registered agreement's hash — the merkle root over its composed clause
  *  leaves (`agreementClauseLeaves`), built by the agreement format's own tree
- *  (`buildMerkleRoot`): a one-clause agreement's key is its leaf. This is the
+ *  (`buildMerkleRoot`): a one-clause agreement's hash is its leaf. This is the
  *  key `AgreementRegistry.registerAgreement` takes. Editorial prose is
  *  excluded, so renaming never forks the key. A reader recomputes it from a
  *  fetched document (`anchorRegisteredAgreement`); a clause's membership in it
  *  is a proof under it (`buildRegisteredClauseInclusionProof`). */
-export function agreementKeyOf(doc: RegisteredAgreement): Hex {
+export function agreementHashOf(doc: RegisteredAgreement): Hex {
     return buildMerkleRoot(agreementClauseLeaves(doc));
 }
 
-/** The membership proof of one composed clause under `agreementKeyOf`: its
+/** The membership proof of one composed clause under `agreementHashOf`: its
  *  leaf, its sorted-pair proof, and `fillsHash` = `keccak256` of the canonical
  *  bytes of the designer's fills for it. Throws for a clause the agreement
  *  does not compose. The clause key is compared case-insensitively. */
@@ -107,7 +107,7 @@ export interface AssemblyAgreement {
     id: string;
     /** The registered agreement this agreement binds (`AgreementRegistry`
      *  key). */
-    agreementKey: Hex;
+    agreementHash: Hex;
     /** The agreement's own fills, clauseKey → values, merged over the
      *  registered agreement's `clauses` at checkout (the agreement's fill
      *  wins for the keys it names): the topology clause's
@@ -150,7 +150,7 @@ export interface Assembly {
 }
 
 /** An assembly with every agreement's registered agreement
- *  beside it, keyed by lowercased `agreementKey` — what checkout plans from.
+ *  beside it, keyed by lowercased `agreementHash` — what checkout plans from.
  *  Each document is read from the agreement registry's binding and verified
  *  against its key (`anchorRegisteredAgreement`) before it lands here. */
 export interface HydratedAssembly {
@@ -162,10 +162,10 @@ export interface HydratedAssembly {
  *  map does not carry it — a checkout never plans an agreement it cannot
  *  read. */
 export function boundAgreement(hydrated: HydratedAssembly, entry: AssemblyAgreement): RegisteredAgreement {
-    const doc = hydrated.agreements[entry.agreementKey.toLowerCase() as Hex]
-        ?? hydrated.agreements[entry.agreementKey];
+    const doc = hydrated.agreements[entry.agreementHash.toLowerCase() as Hex]
+        ?? hydrated.agreements[entry.agreementHash];
     if (!doc) {
-        throw new Error(`agreement ${entry.id} binds agreement ${entry.agreementKey}, which is not hydrated`);
+        throw new Error(`agreement ${entry.id} binds agreement ${entry.agreementHash}, which is not hydrated`);
     }
     return doc;
 }
@@ -182,7 +182,7 @@ export function agreementClauses(hydrated: HydratedAssembly, entry: AssemblyAgre
     for (const [clauseKey, values] of Object.entries(entry.clauses ?? {}) as [Hex, Record<string, unknown>][]) {
         const key = carried.get(clauseKey.toLowerCase());
         if (!key) {
-            throw new Error(`agreement ${entry.id} fills clause ${clauseKey}, which its agreement ${entry.agreementKey} does not compose`);
+            throw new Error(`agreement ${entry.id} fills clause ${clauseKey}, which its agreement ${entry.agreementHash} does not compose`);
         }
         out[key] = { ...out[key], ...values };
     }
@@ -236,21 +236,21 @@ export function agreementLeafBytes(entry: Pick<AssemblyAgreement, "clauses">, i:
     return toHex(new TextEncoder().encode(canonicalize({ clauses: entry.clauses ?? {}, slot: i })));
 }
 
-/** The two format keys an agreement key may never be: the provenance leaf's
+/** The two format keys an agreement hash may never be: the provenance leaf's
  *  and the assembly-terms leaf's. Throws for either. */
-export function assertNotReservedKey(agreementKey: Hex, where = "agreementKey"): void {
-    const k = agreementKey.toLowerCase();
+export function assertNotReservedKey(agreementHash: Hex, where = "agreementHash"): void {
+    const k = agreementHash.toLowerCase();
     if (k === PROVENANCE_LEAF_KEY.toLowerCase() || k === ASSEMBLY_TERMS_LEAF_KEY.toLowerCase()) {
-        throw new Error(`${where} ${agreementKey} is a reserved format key, never a registered agreement`);
+        throw new Error(`${where} ${agreementHash} is a reserved format key, never a registered agreement`);
     }
 }
 
 /** An agreement's leaf — the agreement leaf convention with the agreement
- *  own `agreementKey` as the key and `keccak256(agreementLeafBytes)` as the
+ *  own `agreementHash` as the key and `keccak256(agreementLeafBytes)` as the
  *  clause data hash. Throws for a reserved key. */
 function agreementLeaf(entry: AssemblyAgreement, i: number): Hex {
-    assertNotReservedKey(entry.agreementKey, `agreement ${i} agreementKey`);
-    return computeClauseLeaf({ clause: entry.agreementKey, dataHash: keccak256(agreementLeafBytes(entry, i)) });
+    assertNotReservedKey(entry.agreementHash, `agreement ${i} agreementHash`);
+    return computeClauseLeaf({ clause: entry.agreementHash, dataHash: keccak256(agreementLeafBytes(entry, i)) });
 }
 
 /** Every leaf of the composition tree, sorted as the tree is built: one per
@@ -281,7 +281,7 @@ export function assemblyCompositionHash(
  *  its leaf, its sorted-pair proof, and `slotContentHash` =
  *  `keccak256(agreementLeafBytes(entry, i))` — what
  *  `UsageCounter.recordAssemblyUsage` and the batch path's assembly claim
- *  take beside the agreement's agreement key. Throws for an index outside
+ *  take beside the agreement's agreement hash. Throws for an index outside
  *  the assembly. */
 export function buildAgreementInclusionProof(
     assembly: Assembly,

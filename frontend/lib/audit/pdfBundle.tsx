@@ -5,7 +5,7 @@
  * logs, members registry, Hash appendix) plus every projected document —
  * invoice, bill of lading, financial statements — into one
  * cryptographically-verifiable PDF. Every page footer carries the
- * `agreementHash` (or `processId`) so a reader lands on each page already
+ * `checkoutHash` (or `processId`) so a reader lands on each page already
  * oriented to the on-chain anchor it derives from.
  *
  * Implementation notes:
@@ -195,12 +195,12 @@ function shortAddr(addr: string | undefined): string {
 
 // ── Footer ──────────────────────────────────────────────────────────────────
 
-function PageFooter({ agreementHash, processId }: { agreementHash?: string; processId?: string }) {
+function PageFooter({ checkoutHash, processId }: { checkoutHash?: string; processId?: string }) {
     return (
         <View style={styles.footer} fixed>
             <View>
                 <Text style={styles.footerHash}>
-                    agreementHash {shortHex(agreementHash, 14, 8)}
+                    checkoutHash {shortHex(checkoutHash, 14, 8)}
                 </Text>
                 <Text style={styles.footerHash}>
                     processId {shortHex(processId, 14, 8)}
@@ -222,7 +222,7 @@ function PageFooter({ agreementHash, processId }: { agreementHash?: string; proc
 function AuditPage({ label, title, footer, children }: {
     label: string;
     title: string;
-    footer?: { agreementHash?: string; processId?: string };
+    footer?: { checkoutHash?: string; processId?: string };
     children: ReactNode;
 }) {
     return (
@@ -232,7 +232,7 @@ function AuditPage({ label, title, footer, children }: {
                 <Text style={styles.h1}>{title}</Text>
             </View>
             {children}
-            {footer && <PageFooter agreementHash={footer.agreementHash} processId={footer.processId} />}
+            {footer && <PageFooter checkoutHash={footer.checkoutHash} processId={footer.processId} />}
         </Page>
     );
 }
@@ -297,7 +297,7 @@ function ContractPage({ contract }: { contract: AuditBundle["contract"] }) {
         <AuditPage
             label="Contract"
             title={contract.title}
-            footer={{ agreementHash: contract.agreementHash, processId: contract.processId }}
+            footer={{ checkoutHash: contract.checkoutHash, processId: contract.processId }}
         >
             <View style={styles.section}>
                 <MetaRow k="orderHash" v={contract.orderHash} mono />
@@ -367,7 +367,7 @@ function ContractPage({ contract }: { contract: AuditBundle["contract"] }) {
             </View>
             <Text style={styles.note}>
                 Each clause leaf hash is a node in the merkle tree under
-                agreementHash. Reader recomputes via computeClauseLeaf and
+                checkoutHash. Reader recomputes via computeClauseLeaf and
                 verifies inclusion.
             </Text>
         </AuditPage>
@@ -384,7 +384,7 @@ function ClauseDataPage({ doc }: { doc: AuditBundle["clauseData"] }) {
         <AuditPage
             label="Clause data"
             title={doc.title}
-            footer={{ agreementHash: doc.agreementHash, processId: doc.processId }}
+            footer={{ checkoutHash: doc.checkoutHash, processId: doc.processId }}
         >
             <View style={styles.section}>
                 <MetaRow k="orderHash" v={doc.orderHash} mono />
@@ -427,7 +427,7 @@ function ProcessLogsPage({ doc }: { doc: AuditBundle["processLogs"] }) {
         <AuditPage
             label="Process logs"
             title={doc.title}
-            footer={{ agreementHash: doc.agreementHash, processId: doc.processId }}
+            footer={{ checkoutHash: doc.checkoutHash, processId: doc.processId }}
         >
             <View style={styles.section}>
                 <MetaRow k="orderHash" v={doc.orderHash} mono />
@@ -492,7 +492,7 @@ function MembersRegistryPage({ doc }: { doc: AuditBundle["membersRegistry"]["sel
         <AuditPage
             label="Members registry"
             title={doc.title}
-            footer={{ agreementHash: doc.agreementHash, processId: doc.processId }}
+            footer={{ checkoutHash: doc.checkoutHash, processId: doc.processId }}
         >
             <View style={styles.section}>
                 <MetaRow k="orderHash" v={doc.orderHash} mono />
@@ -621,14 +621,14 @@ function HashAppendixPage({ appendix }: { appendix: AuditBundle["hashAppendix"] 
         <AuditPage
             label="Verification"
             title={appendix.title}
-            footer={{ agreementHash: appendix.agreementHash, processId: appendix.processId }}
+            footer={{ checkoutHash: appendix.checkoutHash, processId: appendix.processId }}
         >
             <Text style={styles.note}>
                 Reader recomputes each hash from the cited content / location and
-                verifies against chain. agreementHash = merkle root over section
+                verifies against chain. checkoutHash = merkle root over clause
                 leaves and the provenance leaf. Each clause leaf =
-                computeClauseLeaf(section); the provenance leaf =
-                computeProvenanceLeaf(agreementKey, compositionHash). Each
+                computeClauseLeaf(clause); the provenance leaf =
+                computeProvenanceLeaf(agreementHash, compositionHash). Each
                 attestation contentRef = keccak256(content) where content sits
                 in the transaction calldata.
             </Text>

@@ -53,14 +53,14 @@ export const clauseArb: fc.Arbitrary<AgreementClause> = fc.record({
     data: clauseDataArb,
 });
 
-/** A valid Agreement: unique clause keys (computeAgreementHash rejects
+/** A valid Agreement: unique clause keys (computeCheckoutHash rejects
  *  duplicates), any wallet as buyer/seller. */
 export function agreementArb(minClauses: number): fc.Arbitrary<Agreement> {
     return fc.record({
         version: fc.constant("a1" as const),
         buyer: addressArb,
         seller: addressArb,
-        sections: fc.uniqueArray(clauseArb, {
+        clauses: fc.uniqueArray(clauseArb, {
             selector: (s) => s.clause,
             minLength: minClauses,
             maxLength: 6,
@@ -77,7 +77,7 @@ export const commitmentArb: fc.Arbitrary<Commitment> = fc.record({
     currency: addressArb,
     payment: uint256Arb,
     expectedCumulativeValue: uint256Arb,
-    agreementHash: bytes32Arb,
+    checkoutHash: bytes32Arb,
     salt: uint256Arb,
     deadline: uint256Arb,
 });
@@ -96,7 +96,7 @@ export const registeredAgreementArb: fc.Arbitrary<RegisteredAgreement> = fc.reco
 }));
 
 /** An assembly: one to six agreements, each binding a random
- *  agreement key (a key may repeat across agreements), each agreement
+ *  agreement hash (a key may repeat across agreements), each agreement
  *  after the root naming earlier agreements as parents through one
  *  topology-shaped fill, and optional assembly-scoped terms. */
 export const assemblyArb: fc.Arbitrary<Assembly> = fc.record({
@@ -105,9 +105,9 @@ export const assemblyArb: fc.Arbitrary<Assembly> = fc.record({
     edges: fc.array(fc.array(fc.nat(), { maxLength: 2 }), { minLength: 6, maxLength: 6 }),
     terms: fc.option(fc.dictionary(bytes32Arb, clauseDataArb, { minKeys: 1, maxKeys: 2 }), { nil: undefined }),
 }).map(({ topologyKey, keys, edges, terms }) => {
-    const agreements: AssemblyAgreement[] = keys.map((agreementKey, i) => {
+    const agreements: AssemblyAgreement[] = keys.map((agreementHash, i) => {
         const parents = i === 0 ? [] : [...new Set(edges[i].map((n) => `order-${n % i}`))];
-        return { id: `order-${i}`, agreementKey, clauses: { [topologyKey]: { parentOrderHashes: parents } } };
+        return { id: `order-${i}`, agreementHash, clauses: { [topologyKey]: { parentOrderHashes: parents } } };
     });
     return { ...(terms ? { assemblyClauses: terms as Assembly["assemblyClauses"] } : {}), agreements };
 });

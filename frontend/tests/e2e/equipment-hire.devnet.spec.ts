@@ -10,7 +10,7 @@
  * token picker renders — even for a seller who accepts more than one token —
  * and the commitment mirrors it. The provenance the clause exists to
  * record: the commerce leaf and the pin leaf, both committed under the same
- * agreementHash, carrying the SAME address.
+ * checkoutHash, carrying the SAME address.
  *
  *   discover → the reference is identified by IDENTITY (compositionHash →
  *              slug), computed from the checked-in assembly with its
@@ -299,10 +299,10 @@ test.describe('THE UTILITY-TOKEN REFERENCE — equipment hire, denominated by de
         // ── (c) THE PROVENANCE PAIR: the committed agreement (network SSoT,
         //    IPFS-pinned) carries the commerce leaf AND the figaro-utility-token
         //    leaf, both with the SAME currency as the pin. ──
-        const agreementHash = event.args.agreementHash as `0x${string}`;
+        const checkoutHash = event.args.checkoutHash as `0x${string}`;
         const agreementUri = await page.evaluate(
             (key) => window.localStorage.getItem(key),
-            `figaro:agreement-uri:${agreementHash}`,
+            `figaro:agreement-uri:${checkoutHash}`,
         );
         expect(agreementUri, 'the committed agreement has a network (IPFS) locator').toMatch(/^ipfs:\/\//);
         const agreementCid = agreementUri!.replace(/^ipfs:\/\//, '');
@@ -310,12 +310,12 @@ test.describe('THE UTILITY-TOKEN REFERENCE — equipment hire, denominated by de
         const ipfsApi = process.env.NEXT_PUBLIC_IPFS_API_URL ?? 'http://127.0.0.1:5001';
         const agreementJson = await (await fetch(`${ipfsApi}/api/v0/cat?arg=${agreementCid}`, { method: 'POST' })).text();
         const agreement = JSON.parse(agreementJson) as {
-            sections: { clause: string; data: Record<string, unknown> }[];
+            clauses: { clause: string; data: Record<string, unknown> }[];
         };
-        const commerceLeaf = agreement.sections.find((s) => s.clause.toLowerCase() === keyOf('figaro-commerce'));
-        const pinLeaf = agreement.sections.find((s) => s.clause.toLowerCase() === keyOf('figaro-utility-token'));
-        expect(commerceLeaf, 'the commerce leaf is committed under agreementHash').toBeTruthy();
-        expect(pinLeaf, 'the figaro-utility-token leaf is committed under agreementHash').toBeTruthy();
+        const commerceLeaf = agreement.clauses.find((s) => s.clause.toLowerCase() === keyOf('figaro-commerce'));
+        const pinLeaf = agreement.clauses.find((s) => s.clause.toLowerCase() === keyOf('figaro-utility-token'));
+        expect(commerceLeaf, 'the commerce leaf is committed under checkoutHash').toBeTruthy();
+        expect(pinLeaf, 'the figaro-utility-token leaf is committed under checkoutHash').toBeTruthy();
         expect(String(commerceLeaf!.data.currency).toLowerCase(), 'the commerce leaf carries the pinned currency')
             .toBe(mockToken.toLowerCase());
         expect(String(pinLeaf!.data.currency).toLowerCase(), 'the pin leaf matches — the designer-determined provenance')

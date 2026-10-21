@@ -12,7 +12,7 @@ import {AgreementRegistry} from "src/build/registries/AgreementRegistry.sol";
 /// @notice `ClauseRegistry`, `AssemblyRegistry` and `AgreementRegistry` are
 ///         `MembersRegistry`'s siblings minus the cooldown: each key (the
 ///         clause key, keccak256 of the spec's pinned bytes / the
-///         compositionHash / the agreementKey) is bound FIRST-WRITE-WINS and
+///         compositionHash / the agreementHash) is bound FIRST-WRITE-WINS and
 ///         PERMANENTLY — there is no `requestWithdrawal` two-step and nothing
 ///         to recycle, because a withdrawn key can never be re-registered by
 ///         anyone (`AlreadyRegistered` / `CompositionAlreadyRegistered` /
@@ -514,7 +514,7 @@ contract HalmosAssemblyRegistry is Test {
 }
 
 /// @notice Same five properties, restated for `AgreementRegistry`'s shape:
-///         the key is the caller-supplied `agreementKey`, and both keys are
+///         the key is the caller-supplied `agreementHash`, and both keys are
 ///         left symbolic over every key the registry takes (any but zero and
 ///         the two reserved format keys).
 contract HalmosAgreementRegistry is Test {
@@ -627,7 +627,7 @@ contract HalmosAgreementRegistry is Test {
         (bool ok,) =
             address(r).call{value: stake}(abi.encodeCall(AgreementRegistry.registerAgreement, (keyA, "ipfs://hijack")));
 
-        assertFalse(ok, "no second registration for this agreementKey ever succeeds, withdrawn or not");
+        assertFalse(ok, "no second registration for this agreementHash ever succeeds, withdrawn or not");
         (address registeredBy, uint64 registeredAt,, string memory uri) = r.bindings(keyA);
         assertEq(registeredBy, ALICE, "the registeredBy of record is permanent");
         assertEq(uri, "ipfs://original", "contentURI never changes on a failed hijack");
@@ -653,7 +653,7 @@ contract HalmosAgreementRegistry is Test {
         vm.prank(ALICE);
         (bool ok,) = address(r).call(abi.encodeCall(AgreementRegistry.withdrawDeposit, (keyA)));
 
-        assertFalse(ok, "a second withdraw for this agreementKey cannot succeed");
+        assertFalse(ok, "a second withdraw for this agreementHash cannot succeed");
         assertEq(ALICE.balance, balAfterFirst, "no ETH moves on the second attempt");
         assertEq(address(r).balance, contractBalAfterFirst, "contract balance is unchanged");
     }

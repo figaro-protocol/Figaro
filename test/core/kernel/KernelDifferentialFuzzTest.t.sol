@@ -143,7 +143,7 @@ contract KernelDifferentialFuzzTest is Test {
             currency: _next() % 4 == 0 ? address(tokenB) : address(tokenA),
             payment: payment,
             expectedCumulativeValue: payment,
-            agreementHash: bytes32(_next()),
+            checkoutHash: bytes32(_next()),
             salt: ++saltCounter,
             deadline: timestamp + _next() % 1000
         });
@@ -164,7 +164,7 @@ contract KernelDifferentialFuzzTest is Test {
             currency: p.currency,
             payment: payment,
             expectedCumulativeValue: p.cumulative + payment,
-            agreementHash: bytes32(_next()),
+            checkoutHash: bytes32(_next()),
             salt: ++saltCounter,
             deadline: timestamp + _next() % 1000
         });
@@ -232,7 +232,7 @@ contract KernelDifferentialFuzzTest is Test {
         vm.serializeAddress(key, "currency", d.c.currency);
         vm.serializeString(key, "payment", vm.toString(d.c.payment));
         vm.serializeString(key, "expectedCumulativeValue", vm.toString(d.c.expectedCumulativeValue));
-        vm.serializeBytes32(key, "agreementHash", d.c.agreementHash);
+        vm.serializeBytes32(key, "checkoutHash", d.c.checkoutHash);
         vm.serializeString(key, "salt", vm.toString(d.c.salt));
         vm.serializeString(key, "deadline", vm.toString(d.c.deadline));
         bytes memory buyerSig = _reform(_sign(d.c, d.buyerSignerKey), d.sigForm);

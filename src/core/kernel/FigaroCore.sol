@@ -40,7 +40,7 @@ contract FigaroCore is EIP712, ReentrancyGuard {
         address currency,
         uint256 payment,
         uint256 cumulativeValue,
-        bytes32 agreementHash,
+        bytes32 checkoutHash,
         uint256 salt,
         uint256 deadline
     );
@@ -225,7 +225,7 @@ contract FigaroCore is EIP712, ReentrancyGuard {
             c.currency,
             c.payment,
             c.expectedCumulativeValue,
-            c.agreementHash,
+            c.checkoutHash,
             c.salt,
             c.deadline
         );

@@ -10,15 +10,15 @@
  * agreement whose content does not match its key, an order missing a clause
  * of the registered agreement it names, a designer value a party changed, and
  * a relayed agreement whose content does not match its
- * `agreementHash` are each refused before anything is signed or broadcast.
+ * `checkoutHash` are each refused before anything is signed or broadcast.
  */
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { renderHook } from "@testing-library/react";
 import {
-    agreementKeyOf,
+    agreementHashOf,
     assemblyCompositionHash,
     buildOrderAgreement,
-    computeAgreementHash,
+    computeCheckoutHash,
     deriveAssemblySlug,
     type Agreement,
     type Assembly,
@@ -119,17 +119,17 @@ function design() {
     caseId += 1;
     const documents = [{ documentHash: `0x${"d0".repeat(32)}`, documentVersion: "1.0.0", documentTitle: `Terms ${caseId}` }];
     const registered: RegisteredAgreement = { clauses: { [keyOf("figaro-commerce")]: {}, [keyOf("figaro-consent")]: { documents } } };
-    const agreementKey = agreementKeyOf(registered);
-    const assembly: Assembly = { agreements: [{ id: "order-0", agreementKey, clauses: {} }] };
+    const agreementHash = agreementHashOf(registered);
+    const assembly: Assembly = { agreements: [{ id: "order-0", agreementHash, clauses: {} }] };
     const compositionHash = assemblyCompositionHash(assembly);
     designed.push(compositionHash);
     const anchor = () => {
         bindings.set(compositionHash.toLowerCase(), `ipfs://assembly-${caseId}`);
-        bindings.set(agreementKey.toLowerCase(), `ipfs://agreement-${caseId}`);
+        bindings.set(agreementHash.toLowerCase(), `ipfs://agreement-${caseId}`);
         pinned.set(`ipfs://assembly-${caseId}`, JSON.stringify(assembly));
         pinned.set(`ipfs://agreement-${caseId}`, JSON.stringify(registered));
     };
-    return { documents, registered, agreementKey, assembly, compositionHash, anchor, id: caseId };
+    return { documents, registered, agreementHash, assembly, compositionHash, anchor, id: caseId };
 }
 
 /** The order `d` designs, its consent clause carrying `consent` — or, with
@@ -144,7 +144,7 @@ function payloadFor(d: ReturnType<typeof design>, consent: Record<string, unknow
         },
         ...(consent === null ? {} : { [keyOf("figaro-consent")]: consent }),
     }, specSource());
-    const agreement: Agreement = { ...built, provenance: { agreementKey: d.agreementKey, compositionHash: d.compositionHash } };
+    const agreement: Agreement = { ...built, provenance: { agreementHash: d.agreementHash, compositionHash: d.compositionHash } };
     const commitment: Commitment = {
         processId: `0x${"00".repeat(32)}` as Hex,
         buyer: BUYER,
@@ -152,7 +152,7 @@ function payloadFor(d: ReturnType<typeof design>, consent: Record<string, unknow
         currency: CURRENCY,
         payment: 1000n,
         expectedCumulativeValue: 1000n,
-        agreementHash: computeAgreementHash(agreement),
+        checkoutHash: computeCheckoutHash(agreement),
         salt: 1n,
         deadline: 9_999_999_999n,
     };
@@ -222,15 +222,15 @@ describe("both sign flows read and verify the design the agreement names", () =>
         expect(commitSignedOrder).not.toHaveBeenCalled();
     });
 
-    it("refuses a relayed agreement whose content does not match its agreementHash", async () => {
+    it("refuses a relayed agreement whose content does not match its checkoutHash", async () => {
         const d = design();
         d.anchor();
         const p = payloadFor(d);
         const other = payloadFor(d, { documents: [{ ...d.documents[0], documentVersion: "1.0.1" }] });
-        const tampered = { ...p, commitment: { ...p.commitment, agreementHash: other.commitment.agreementHash } };
+        const tampered = { ...p, commitment: { ...p.commitment, checkoutHash: other.commitment.checkoutHash } };
         const { result } = renderHook(() => useOrderCommitmentFlow());
-        await expect(result.current.acceptOrder(tampered)).rejects.toThrow(/agreementHash/);
-        await expect(result.current.commitOrder(signed(tampered))).rejects.toThrow(/agreementHash/);
+        await expect(result.current.acceptOrder(tampered)).rejects.toThrow(/checkoutHash/);
+        await expect(result.current.commitOrder(signed(tampered))).rejects.toThrow(/checkoutHash/);
         expect(commitSignedOrder).not.toHaveBeenCalled();
     });
 });

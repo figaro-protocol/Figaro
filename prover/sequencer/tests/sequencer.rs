@@ -211,11 +211,11 @@ async fn mempool_rejects_content_hash_mismatch() {
 
 #[tokio::test]
 async fn mempool_rejects_corrupt_clause_data() {
-    // section_data is not under the signature either; corrupting it
+    // clause_data is not under the signature either; corrupting it
     // breaks the agreement-inclusion leaf (Gate I).
     let mut ops = canonical_ops();
     if let KernelOp::AttestAsSeller { proof, .. } = &mut ops[1] {
-        proof.section_data = r#"{"modality":"pickup"}"#.to_string();
+        proof.clause_data = r#"{"modality":"pickup"}"#.to_string();
     }
     let err = mempool()
         .submit(ops[1].clone())
@@ -431,7 +431,7 @@ fn two_order_process() -> (KernelOp, KernelOp, Commitment, Commitment, B256, Sig
         currency: root.currency,
         payment,
         expected_cumulative_value: root.payment + payment,
-        agreement_hash: root.agreement_hash,
+        checkout_hash: root.checkout_hash,
         salt: root.salt + alloy_primitives::U256::from(1u64),
         deadline: root.deadline,
     };

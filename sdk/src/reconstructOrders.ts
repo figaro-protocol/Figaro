@@ -27,7 +27,7 @@
 import { agreementClauses, assemblyParentOrderHashes, assemblyCompositionHash } from "./assembly.js";
 import type { HydratedAssembly, AssemblyAgreement } from "./assembly.js";
 import {
-    computeAgreementHash,
+    computeCheckoutHash,
     type Agreement,
     type AgreementProvenance,
     type AgreementClause,
@@ -57,7 +57,7 @@ export interface PlannedAssemblyOrder {
     /** Agreement id (matches `assembly.agreements[].id`). */
     nodeId: string;
     /** The registered agreement the agreement binds. */
-    agreementKey: Hex;
+    agreementHash: Hex;
     /** The agreement's clause bag (clauseKey → values): the assembly-scoped
      *  clauses, the registered agreement's clauses and the agreement's own
      *  fills over them (parents still assembly-local). */
@@ -93,7 +93,7 @@ export function planAssemblyOrders(hydrated: HydratedAssembly): PlannedAssemblyO
         const entry = byId.get(id) as AssemblyAgreement;
         return {
             nodeId: id,
-            agreementKey: entry.agreementKey,
+            agreementHash: entry.agreementHash,
             clauses: { ...assemblyClauses, ...agreementClauses(hydrated, entry) },
             parentLocalIds: [...assemblyParentOrderHashes(entry)],
             index,
@@ -114,7 +114,7 @@ export function agreementFromClauses(
         clause: clauseKey as Hex,
         data: { ...data, ...(overrides?.[clauseKey] ?? {}) },
     }));
-    return { version: "a1", buyer, seller, sections: clauseEntries };
+    return { version: "a1", buyer, seller, clauses: clauseEntries };
 }
 
 // ── Layer 2: full realization ───────────────────────────────────────────────
@@ -186,7 +186,7 @@ export interface ReconstructedOrder {
      *  `expectedCumulativeValue` names. */
     cumulativeValue: bigint;
     agreement: Agreement;
-    agreementHash: Hex;
+    checkoutHash: Hex;
     commitment: Commitment;
     /** The EIP-712 payload the buyer (and the seller, via `signAs`) signs. */
     typedData: ReturnType<typeof buildCommitment>["typedData"];
@@ -215,7 +215,7 @@ export async function reconstructOrdersFromAssembly(
     let rootProcessId: Hex | null = null;
     let cumulative = 0n;
     // The assembly's OWN composition hash — every realized order carries it,
-    // beside its agreement's agreement key, as the agreement's provenance
+    // beside its agreement's agreement hash, as the agreement's provenance
     // leaf (see fillWalkProvenance).
     const compositionHash = assemblyCompositionHash(hydrated.assembly);
     const out: ReconstructedOrder[] = [];
@@ -250,8 +250,8 @@ export async function reconstructOrdersFromAssembly(
                   spec.seller,
                   spec.overrides,
               );
-        const agreement = fillWalkProvenance(built, { agreementKey: node.agreementKey, compositionHash }, node.nodeId);
-        const agreementHash = computeAgreementHash(agreement);
+        const agreement = fillWalkProvenance(built, { agreementHash: node.agreementHash, compositionHash }, node.nodeId);
+        const checkoutHash = computeCheckoutHash(agreement);
 
         const { commitment, typedData } = buildCommitment(
             {
@@ -261,7 +261,7 @@ export async function reconstructOrdersFromAssembly(
                 currency: params.currency,
                 payment: spec.payment,
                 expectedCumulativeValue: cumulative,
-                agreementHash,
+                checkoutHash,
                 salt: params.salt?.(node.nodeId),
                 deadline: params.deadline,
             },
@@ -282,7 +282,7 @@ export async function reconstructOrdersFromAssembly(
             payment: spec.payment,
             cumulativeValue: cumulative,
             agreement,
-            agreementHash,
+            checkoutHash,
             commitment,
             typedData,
             orderHash,
@@ -386,16 +386,16 @@ export function fillWalkProvenance(
     const existing = agreement.provenance;
     if (
         existing !== undefined &&
-        (existing.agreementKey.toLowerCase() !== provenance.agreementKey.toLowerCase() ||
+        (existing.agreementHash.toLowerCase() !== provenance.agreementHash.toLowerCase() ||
             existing.compositionHash.toLowerCase() !== provenance.compositionHash.toLowerCase())
     ) {
         throw new Error(
-            `node "${nodeId}": the agreement names provenance ${existing.agreementKey} / ${existing.compositionHash}, ` +
-            `which contradicts this agreement's ${provenance.agreementKey} / ${provenance.compositionHash} — ` +
+            `node "${nodeId}": the agreement names provenance ${existing.agreementHash} / ${existing.compositionHash}, ` +
+            `which contradicts this agreement's ${provenance.agreementHash} / ${provenance.compositionHash} — ` +
             `refusing to claim a different provenance`,
         );
     }
-    return { ...agreement, provenance: { agreementKey: provenance.agreementKey, compositionHash: provenance.compositionHash } };
+    return { ...agreement, provenance: { agreementHash: provenance.agreementHash, compositionHash: provenance.compositionHash } };
 }
 
 /** The one clause-bag ∪ overrides merge (per-clause shallow spread) — shared

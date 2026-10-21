@@ -381,7 +381,7 @@ describe("processRows — the id a reader carries into the audit view", () => {
         currency: TOKEN_A,
         payment: 5n,
         cumulativeValue: 5n,
-        agreementHash: `0x${"99".repeat(32)}`,
+        checkoutHash: `0x${"99".repeat(32)}`,
         salt: 0n,
         deadline: 0n,
         state: OrderState.Active,

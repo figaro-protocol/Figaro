@@ -13,7 +13,7 @@ the review's is its own.
 | | |
 |---|---|
 | Repository | https://github.com/figaro-protocol/Figaro |
-| Baseline commit | `eeb903b7` (§ "The baseline commit"); no tag names a commit under audit — one is placed when an audit is engaged |
+| Baseline commit | set when an audit is engaged; the figures stand for `eeb903b7` (§ "The baseline commit") |
 | Languages in scope | Solidity (`src/`, three deploy scripts) and Rust (`prover/`, four crates) |
 | Solidity in scope | 14 contract files, 1,423 lines of code (3,544 physical); 3 deploy scripts, 401 lines of code (840 physical) |
 | Rust in scope | 4 crates, 21 files under `src/`, 6,981 lines of code (9,797 physical) net of their inline test modules |
@@ -73,7 +73,7 @@ ones this document uses; `docs/LEXICON.md` defines every other.
   order, every field filled; its merkle root is what the commitment carries.
   A **registered agreement** is the clauses composed for one agreement with
   the designer's fills, value-free, registered in `AgreementRegistry` under
-  its **agreementKey** (the merkle root over one leaf per composed clause, the
+  its **agreementHash** (the merkle root over one leaf per composed clause, the
   clause key and the designer's fills, under the agreement format's leaf
   convention). An
   **assembly** is registered agreements composed into a reusable design, its
@@ -247,14 +247,12 @@ came from the program with that key. The other external dependencies are in
 
 ## The baseline commit
 
-**Every figure in this document stands for the code at commit
-`eeb903b7`**, the baseline, which covers the
-whole scope, Solidity and Rust together. A figure is measured at the baseline,
-or at a commit whose in-scope code equals the baseline's once comments and
-NatSpec are stripped — the comparison `scripts/frozen-scope.sh` makes — and a
-figure measured elsewhere names its commit. No external audit has been
-engaged, so no tag names a commit under audit; when one is engaged, a tag is
-placed at the commit it reviews and this section names it.
+No external audit is engaged, so no commit is under audit. The figures below
+were measured at `eeb903b7`, the last commit at which they were produced; the
+code has moved since, and they stand for that commit alone. When an audit is
+engaged, this section names the commit it reviews, the line counts and the
+results are measured there once, and a tag is placed at it. The descriptive
+sections of this document stay true of the code throughout.
 
 ```bash
 git show --no-patch eeb903b7
@@ -862,7 +860,7 @@ read it first.
   (`KIND_CLAUSE = 0`, `KIND_ASSEMBLY = 1`, `KIND_AGREEMENT = 2`,
   `UsageCounter.sol:161-167`). Each registry takes any `bytes32` but the
   reserved keys, so a stranger can register an existing assembly's
-  `compositionHash` as a clause key or an agreementKey; nothing on chain
+  `compositionHash` as a clause key or an agreementHash; nothing on chain
   tells the families apart by bytes. `UsageCounter` keys every accrual,
   count, counted process and score by (kind, key); `recordClauseUsage` checks
   `ClauseRegistry` only, `recordAgreementUsage` `AgreementRegistry` only,
@@ -917,18 +915,18 @@ read it first.
   one reserved merkle leaf beside the clause leaves, keyed by
   `keccak256("figaro-agreement-provenance")` (`0x26dc18a2…7dc6`), whose
   committed bytes are exactly
-  `{"agreementKey":"0x<64 lowercase hex>","compositionHash":"0x<64 lowercase hex>"}`
-  and whose leaf follows the section convention. `UsageCounter.provenanceLeaf`
+  `{"agreementHash":"0x<64 lowercase hex>","compositionHash":"0x<64 lowercase hex>"}`
+  and whose leaf follows the clause-leaf convention. `UsageCounter.provenanceLeaf`
   is that key as a public constant, taken from no constructor argument
   (`test_provenanceLeafIsAConstantOfTheFormat`,
   `test/build/rewards/UsageCounterTest.t.sol`). `_requireProvenance`
   reproduces the bytes from the two claimed keys and proves that one leaf
-  under `agreementHash` (`UsageCounter.sol:607-622`); a claim naming another
+  under `checkoutHash` (`UsageCounter.sol:607-622`); a claim naming another
   agreement or another assembly derives a leaf that is not in the tree
   (`test_aProvenanceLeafNamingAnotherAgreementIsNotInTheTree`).
-  `recordAgreementUsage` proves that leaf alone and credits the agreementKey
-  (`:525-541`). `recordAssemblyUsage` proves it, then proves the order
-  slot's leaf `keccak256(keccak256(agreementKey ‖ slotContentHash))` under
+  `recordAgreementUsage` proves that leaf alone and credits the agreementHash
+  (`:525-541`). `recordAssemblyUsage` proves it, then proves the
+  agreement's leaf `keccak256(keccak256(agreementHash ‖ slotContentHash))` under
   `compositionHash` and reverts `InvalidMembershipProof` when it does not
   open (`:581-586`); one order credits its agreement and its assembly apart
   (`test_oneOrderCreditsItsAgreementAndItsAssembly`). `ClauseRegistry` and
@@ -943,7 +941,7 @@ read it first.
   the guest's side of the same fixture.
 - The assembly root is a merkle tree over its agreements, with the agreement
   format's leaf convention: one leaf per agreement, keyed by the agreement's
-  agreementKey over the canonical bytes `{"clauses":{…},"slot":i}`, and one
+  agreementHash over the canonical bytes `{"clauses":{…},"slot":i}`, and one
   terms leaf keyed by `keccak256("figaro-assembly-terms")` over the
   assembly-scoped clauses when there are any (`DESIGN_DECISIONS.md` § 25,
   § 26). Membership is proved, never looked up: `AssemblyRegistry` holds no
@@ -954,7 +952,7 @@ read it first.
   with its own bytes only (`test_anAgreementLeafWithAnotherAgreementsBytesFails`).
   `test/fixtures/assembly-vectors.json` carries three agreements and three
   assemblies (keys, agreement leaves, terms leaf, roots, membership proofs and
-  provenance bytes); `test_everyAgreementKeyIsTheRootOverItsClauseLeaves` and
+  provenance bytes); `test_everyAgreementHashIsTheRootOverItsClauseLeaves` and
   `test_everyAssemblyVectorOpensUnderItsRoot` (`MerkleParityTest`) and the
   `merkle_parity.rs` and `parity.rs` vector tests hold the counter and the
   guest to it.
@@ -966,11 +964,11 @@ read it first.
   direct path reverts: `_accrue` reverts
   `ReservedKeyIsNotARegistration(bytes32)` on either under every kind
   (`UsageCounter.sol:769-771`; the error at `:375`), and
-  `recordAssemblyUsage` refuses either as an agreement's agreementKey
+  `recordAssemblyUsage` refuses either as an agreement's agreementHash
   (`:577-579`). `AgreementRegistry.registerAgreement` refuses both as
   registrations (`AgreementRegistry.sol:162-164`). The guest refuses a claim
   keyed on either, of any kind, and an assembly claim naming either as its
-  agreementKey (`prover/lib/src/kernel.rs:795-802`, `apply_usage_claims`).
+  agreementHash (`prover/lib/src/kernel.rs:795-802`, `apply_usage_claims`).
   The counter's batch path skips either: `applyBatchAccrual` continues past
   them before the registration gate (`UsageCounter.sol:714`). The relay drops
   such a claim before proving (`submitter.rs`, `names_a_reserved_key`;
@@ -996,9 +994,9 @@ read it first.
   (`test_batchAccrualRejectsAForeignProvenanceLeaf`); the verifier's
   try/catch around the call lets the batch resolve with its accrual dropped.
 - The guest verifies an attestation on the provenance key by the format's
-  own rule: the committed bytes are reproduced from the agreementKey and the
+  own rule: the committed bytes are reproduced from the agreementHash and the
   compositionHash they carry, the attestation's `contentRef` is their
-  keccak, and the leaf opens against the signed `agreementHash`; it consults
+  keccak, and the leaf opens against the signed `checkoutHash`; it consults
   no clause spec and emits no spec binding (`prover/lib/src/kernel.rs:361`,
   `validate_provenance_attestation`, reached at `:438`;
   `the_provenance_leaf_is_attestable_without_a_spec`). It refuses bytes that
@@ -1502,7 +1500,7 @@ four rounds on every push, seeded from the run id.
 | Stream | Generated by | Checked by | One round |
 |---|---|---|---|
 | Core operations: commits and resolutions, valid and malformed, over five wallets and two tokens | Foundry, on `FigaroCore` itself | the Rust mirror: same acceptance, same error, same ids, bonds, payouts and process states | 400 operations |
-| Agreements: one to six sections, their root, leaves and inclusion proofs | the SDK | OpenZeppelin `MerkleProof` and the guest's verifier | 64 agreements |
+| Agreements: one to six clauses, their root, leaves and inclusion proofs | the SDK | OpenZeppelin `MerkleProof` and the guest's verifier | 64 agreements |
 | Clauses: every protocol clause, generated specs nobody has seen, specs of one random `pattern`; content inside each bound and across it | the SDK | the Rust clause engine: same parse verdict, same validation verdict, same bytes | about 6,000 cases |
 
 The generator asserts nothing about what a case deserves: the reference

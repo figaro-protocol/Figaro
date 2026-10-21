@@ -13,7 +13,7 @@ pub struct Commitment {
     pub currency: Address,
     pub payment: U256,
     pub expected_cumulative_value: U256,
-    pub agreement_hash: B256,
+    pub checkout_hash: B256,
     pub salt: U256,
     pub deadline: U256,
 }
@@ -48,8 +48,8 @@ pub enum ContentKind {
     /// (`contentRef = keccak256(abi bytes)`).
     RuntimeWitness,
     /// A re-asserting attestation: `content` IS the committed
-    /// canonical-JSON `sectionData` (`contentRef = keccak256(sectionData)`),
-    /// re-anchoring the signed section as runtime evidence.
+    /// canonical-JSON `clauseData` (`contentRef = keccak256(clauseData)`),
+    /// re-anchoring the signed clause as runtime evidence.
     ReAssert,
 }
 
@@ -70,17 +70,17 @@ pub enum ContentKind {
 ///      trust anchor, the vkey covers the ENGINE, and a caller cannot
 ///      weaken validation with a permissive spec.
 ///   C. Content — per `content_kind` (validate + generic-encode for a
-///      runtime witness; sectionData hash + default-fields validation
+///      runtime witness; clauseData hash + default-fields validation
 ///      for a re-assert). Binds `content_ref` to validated content.
 ///   I. Agreement inclusion — the sorted-pair Merkle `inclusion_proof`
-///      verifies leaf `keccak256(clause_id ++ keccak256(section_data))`
-///      against the TARGET commitment's signed `agreement_hash`,
+///      verifies leaf `keccak256(clause_id ++ keccak256(clause_data))`
+///      against the TARGET commitment's signed `checkout_hash`,
 ///      mirroring the coordinator's mandatory `_verifyInclusion`.
 ///
 /// The one key the gates do not run for is the agreement format's
 /// reserved provenance leaf (`kernel::PROVENANCE_LEAF_KEY`): it is not a
-/// clause, so S and C give way to the format's own rule — `section_data`
-/// is the reproduction of the agreementKey and compositionHash it carries, `content_ref` is
+/// clause, so S and C give way to the format's own rule — `clause_data`
+/// is the reproduction of the agreementHash and compositionHash it carries, `content_ref` is
 /// its keccak — and I runs as for any leaf; no spec binding is committed.
 ///
 /// JSON crosses the SP1 stdin boundary as pre-serialized `String`s —
@@ -96,11 +96,11 @@ pub struct AttestationContentProof {
     /// The structured content the engine validates and (for a runtime
     /// witness) re-encodes to canonical ABI bytes.
     pub content_json: String,
-    /// Canonical-JSON `sectionData` bytes (as a UTF-8 string) — the
-    /// committed agreement section this attestation declares against.
-    pub section_data: String,
-    /// Sorted-pair Merkle proof binding the section leaf to the target
-    /// order's signed `agreement_hash`. Empty for a single-section
+    /// Canonical-JSON `clauseData` bytes (as a UTF-8 string) — the
+    /// committed agreement clause this attestation declares against.
+    pub clause_data: String,
+    /// Sorted-pair Merkle proof binding the clause leaf to the target
+    /// order's signed `checkout_hash`. Empty for a single-clause
     /// agreement, where the leaf is the root itself.
     pub inclusion_proof: Vec<B256>,
     /// Which content convention `content_ref` follows.
@@ -137,7 +137,7 @@ pub enum KernelOp {
     // ── AttestationCoordinator ────────────────────────────────────
     /// Seller attestation. Batched equivalent of attestAsSeller():
     /// `role` proves seller identity + process membership; `target`
-    /// carries the order being attested and the signed agreementHash
+    /// carries the order being attested and the signed checkoutHash
     /// the inclusion proof opens against. For same-order attestation
     /// the two commitments are identical.
     AttestAsSeller {
@@ -178,27 +178,27 @@ pub enum KernelOp {
 /// identified.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum UsageClaimKind {
-    /// Clause usage. The leaf key IS the clause, and the section's
+    /// Clause usage. The leaf key IS the clause, and the clause's
     /// committed bytes are supplied as a FINGERPRINT — the preimage
     /// never enters the batch, exactly as on the direct path.
-    Clause { section_hash: B256 },
-    /// Agreement usage; the claim's key is the registered agreementKey.
+    Clause { clause_data_hash: B256 },
+    /// Agreement usage; the claim's key is the registered agreementHash.
     /// The leaf is the reserved PROVENANCE leaf, a constant of the
     /// agreement format, and its bytes are REPRODUCED from both keys rather
-    /// than supplied: `{"agreementKey":"0x…","compositionHash":"0x…"}`, the
+    /// than supplied: `{"agreementHash":"0x…","compositionHash":"0x…"}`, the
     /// compositionHash of the assembly whose order slot the order instantiates. A
     /// wrong key on either side derives a leaf that is simply not in the
     /// tree.
     Agreement { composition_hash: B256 },
     /// Assembly usage; the claim's key is the compositionHash. The
     /// provenance leaf is proved exactly as for an agreement claim, from
-    /// `agreement_key` and the compositionHash; then the order-slot leaf
-    /// `keccak256(keccak256(agreement_key ‖ slot_content_hash))` is proved
+    /// `agreement_hash` and the compositionHash; then the agreement's leaf
+    /// `keccak256(keccak256(agreement_hash ‖ slot_content_hash))` is proved
     /// under the compositionHash by `membership_proof`, with the same
     /// sorted-pair verifier — the assembly's root is a merkle tree over its
     /// order slots.
     Assembly {
-        agreement_key: B256,
+        agreement_hash: B256,
         slot_content_hash: B256,
         membership_proof: Vec<B256>,
     },
@@ -208,7 +208,7 @@ pub enum UsageClaimKind {
 pub const USAGE_KIND_CLAUSE: u8 = 0;
 /// The reward family of an assembly key, as the accrual carries it.
 pub const USAGE_KIND_ASSEMBLY: u8 = 1;
-/// The reward family of an agreement key, as the accrual carries it.
+/// The reward family of an agreement hash, as the accrual carries it.
 pub const USAGE_KIND_AGREEMENT: u8 = 2;
 
 impl UsageClaimKind {
@@ -228,18 +228,18 @@ impl UsageClaimKind {
 
 /// A claim that one RESOLVED order used one clause, agreement or assembly.
 /// The guest proves it against the batch's own post-state and the order's
-/// signed `agreement_hash`; nothing here is taken on the sequencer's word.
+/// signed `checkout_hash`; nothing here is taken on the sequencer's word.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct UsageClaim {
     /// The order's commitment struct, exactly as signed.
     pub order: Commitment,
     /// The key the claim credits, each family's own registry key: the
-    /// clause key (keccak256 of the spec's pinned bytes), the agreementKey,
+    /// clause key (keccak256 of the spec's pinned bytes), the agreementHash,
     /// or the compositionHash — never a new identifier.
     pub clause_or_assembly: B256,
     pub kind: UsageClaimKind,
-    /// Sorted-pair Merkle proof of the section leaf against the order's
-    /// signed `agreement_hash`.
+    /// Sorted-pair Merkle proof of the clause leaf against the order's
+    /// signed `checkout_hash`.
     pub inclusion_proof: Vec<B256>,
 }
 
@@ -328,7 +328,7 @@ pub struct BatchInput {
     /// `UsageCounter.provenanceLeaf()`; the guest takes it as witness and
     /// the chain checks it. It is the leaf key an assembly claim proves
     /// against, COMMITTED in the usage hash, so a prover cannot nominate
-    /// some clause whose section happens to equal the provenance bytes.
+    /// some clause whose clause happens to equal the provenance bytes.
     /// The attestation path does not read it: an attestation of the
     /// provenance leaf is recognized by the guest's own constant
     /// (`kernel::PROVENANCE_LEAF_KEY`), because the chain's check of this
@@ -516,8 +516,8 @@ pub enum KernelError {
     /// at resolution (coordinator's `OrderResolved` gate).
     OrderResolved,
     /// Gate I: the sorted-pair Merkle `inclusion_proof` does not verify
-    /// the clause's section leaf against the target order's signed
-    /// `agreement_hash` — the attested clause was not part of the
+    /// the clause leaf against the target order's signed
+    /// `checkout_hash` — the attested clause was not part of the
     /// agreement both parties signed.
     InvalidInclusionProof,
     // In-proof clause gates (figaro-clause engine)
@@ -527,7 +527,7 @@ pub enum KernelError {
     /// Gate S: the witness spec's bytes do not hash to the op's
     /// `clause_id` — the caller supplied the spec of a different clause.
     SpecIdentityMismatch(B256),
-    /// Gate C: `content_json` (or a re-assert's `section_data`) fails
+    /// Gate C: `content_json` (or a re-assert's `clause_data`) fails
     /// the spec's validation.
     ClauseContentInvalid(String),
     /// Gate C: the generic encoder could not derive canonical ABI bytes
@@ -544,19 +544,19 @@ pub enum KernelError {
     /// batch (or earlier in this one). Once ever, whatever the period —
     /// the guest's mirror of `UsageCounter.AlreadyCounted`.
     UsageAlreadyCounted { clause_or_assembly: B256, process_id: B256 },
-    /// The claimed section is not a leaf of the order's signed
+    /// The claimed clause is not a leaf of the order's signed
     /// agreement — for an agreement or assembly claim, the usual cause is
-    /// an agreementKey or compositionHash that does not match the committed
-    /// provenance section — or, for an assembly claim, the order-slot leaf is not
+    /// an agreementHash or compositionHash that does not match the committed
+    /// provenance leaf — or, for an assembly claim, the agreement's leaf is not
     /// a leaf of the compositionHash.
     UsageInvalidInclusionProof,
     /// An attestation of the reserved provenance leaf whose bytes are not
-    /// `{"agreementKey":"0x<64 lowercase hex>","compositionHash":"0x<64 lowercase hex>"}`
+    /// `{"agreementHash":"0x<64 lowercase hex>","compositionHash":"0x<64 lowercase hex>"}`
     /// reproduced from the two keys they carry.
     ProvenanceLeafNotCanonical,
     /// A usage claim keyed on a reserved key of the format (the
     /// provenance leaf's or the assembly terms leaf's), or an assembly
-    /// claim whose order slot names one as its agreementKey. Neither key is
+    /// claim whose agreement position names one as its agreementHash. Neither key is
     /// ever a clause, an agreement or an assembly, so no claim is credited
     /// under it — the guest's mirror of the counter's refusal of both.
     ReservedKeyIsNotARegistration(B256),

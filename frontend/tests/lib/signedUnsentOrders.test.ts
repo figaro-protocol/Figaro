@@ -31,7 +31,7 @@ const payload = (salt: bigint): CommitmentPayload => ({
         currency: `0x${"44".repeat(20)}`,
         payment: 3n,
         expectedCumulativeValue: 3n,
-        agreementHash: `0x${"ab".repeat(32)}`,
+        checkoutHash: `0x${"ab".repeat(32)}`,
         salt,
         deadline: 4_000_000_000n,
     },

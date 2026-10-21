@@ -316,7 +316,7 @@ test.describe('TRADELENS RUNTIME — six sellers bond, the container story attes
         //    clause's, agreement's and assembly's use on the UsageCounter — one
         //    UsageRecorded per DISTINCT (kind, key) in the process (a key two
         //    orders carry is planned once), INCLUDING each agreement's
-        //    agreement key and the assembly's compositionHash via the
+        //    agreement hash and the assembly's compositionHash via the
         //    agreement's provenance leaf, which the checkout walk sets. Verified out-of-band
         //    from the chain, never from the UI. ──
         const usageCounter = config.usageCounter as Hex;
@@ -353,12 +353,12 @@ test.describe('TRADELENS RUNTIME — six sellers bond, the container story attes
         // Every write has landed: each agreement's registered agreement is
         // recorded under its own kind — the agreement designer's credit leg,
         // beside the assembly's.
-        const agreementKeys = (await usageEvents())
+        const agreementHashes = (await usageEvents())
             .filter((e) => Number(e.args.kind) === USAGE_KIND_AGREEMENT)
             .map((e) => (e.args.clauseOrAssembly as string).toLowerCase());
         for (const entry of adopted!.agreements) {
-            expect(agreementKeys, `agreement ${entry.id}'s agreement is a recorded agreement`)
-                .toContain(entry.agreementKey.toLowerCase());
+            expect(agreementHashes, `agreement ${entry.id}'s agreement is a recorded agreement`)
+                .toContain(entry.agreementHash.toLowerCase());
         }
         const resolveEvents = await publicClient.getContractEvents({
             address: core, abi: CORE_ABI, eventName: 'ProcessResolved', args: { processId }, fromBlock: 0n,

@@ -20,7 +20,7 @@ import { keccak256, toHex, type Hex } from "viem";
 import { describe, expect, it } from "vitest";
 import {
     ASSEMBLY_TERMS_LEAF_KEY,
-    agreementKeyOf,
+    agreementHashOf,
     buildRegisteredClauseInclusionProof,
     buildAgreementInclusionProof,
     agreementLeafBytes,
@@ -48,25 +48,25 @@ const FIXTURE_PATH = path.resolve(__dirname, "../../test/fixtures/assembly-vecto
 const utf8 = (hex: Hex): string => Buffer.from(hex.slice(2), "hex").toString("utf8");
 
 const SHAPE =
-    "agreements[]: { label, agreementKey, clauses[] } — clauses[j]: { clauseKey, fillsBytes, fillsHash, leaf, " +
+    "agreements[]: { label, agreementHash, clauses[] } — clauses[j]: { clauseKey, fillsBytes, fillsHash, leaf, " +
     "membershipProof }: fillsBytes is the canonical JSON of the designer's fills for that clause, fillsHash = " +
     "keccak256(fillsBytes), leaf = keccak256(keccak256(clauseKey ‖ fillsHash)), membershipProof is the sorted-pair " +
-    "proof of leaf under agreementKey, and agreementKey is the sorted-pair merkle root over every clause leaf " +
-    "(a one-clause agreement's key is its leaf). assemblies[]: { label, compositionHash, entries[], terms|null }. " +
-    "slots[i]: { id, agreementKey, agreementBytes, slotContentHash, leaf, membershipProof, provenance } — " +
+    "proof of leaf under agreementHash, and agreementHash is the sorted-pair merkle root over every clause leaf " +
+    "(a one-clause agreement's hash is its leaf). assemblies[]: { label, compositionHash, entries[], terms|null }. " +
+    "slots[i]: { id, agreementHash, agreementBytes, slotContentHash, leaf, membershipProof, provenance } — " +
     "agreementBytes is the canonical JSON {\"clauses\":{…},\"slot\":i}, slotContentHash = keccak256(agreementBytes), " +
-    "leaf = keccak256(keccak256(agreementKey ‖ slotContentHash)), membershipProof is the sorted-pair proof of leaf " +
+    "leaf = keccak256(keccak256(agreementHash ‖ slotContentHash)), membershipProof is the sorted-pair proof of leaf " +
     "under compositionHash. terms: { leafKey (keccak256(\"figaro-assembly-terms\")), termsBytes (canonical JSON of " +
     "assemblyClauses), clauseDataHash, leaf } or null when no assembly-scoped clause is composed. " +
-    "provenance: { leafKey (keccak256(\"figaro-agreement-provenance\")), agreementKey, compositionHash, clauseData " +
-    "(canonical JSON {\"agreementKey\":\"0x…\",\"compositionHash\":\"0x…\"}, lowercase hex), clauseDataHash = " +
+    "provenance: { leafKey (keccak256(\"figaro-agreement-provenance\")), agreementHash, compositionHash, clauseData " +
+    "(canonical JSON {\"agreementHash\":\"0x…\",\"compositionHash\":\"0x…\"}, lowercase hex), clauseDataHash = " +
     "keccak256(clauseData), leaf = keccak256(keccak256(leafKey ‖ clauseDataHash)) }. compositionHash is the " +
     "sorted-pair merkle root over every entry leaf and the terms leaf; a one-leaf tree's root is its leaf.";
 
 function agreementVector(label: string, composed: RegisteredAgreement) {
     return {
         label,
-        agreementKey: agreementKeyOf(composed),
+        agreementHash: agreementHashOf(composed),
         clauses: Object.entries(composed.clauses).map(([clauseKey, fills]) => {
             const { leaf, proof, fillsHash } = buildRegisteredClauseInclusionProof(composed, clauseKey as Hex);
             return { clauseKey, fillsBytes: canonicalize(fills), fillsHash, leaf, membershipProof: proof };
@@ -92,21 +92,21 @@ function assemblyVector(label: string, assembly: Assembly) {
         compositionHash,
         agreements: assembly.agreements.map((entry, i) => {
             const { leaf, proof, slotContentHash } = buildAgreementInclusionProof(assembly, i);
-            const clauseData = utf8(provenanceLeafBytes(entry.agreementKey, compositionHash));
+            const clauseData = utf8(provenanceLeafBytes(entry.agreementHash, compositionHash));
             return {
                 id: entry.id,
-                agreementKey: entry.agreementKey,
+                agreementHash: entry.agreementHash,
                 agreementBytes: utf8(agreementLeafBytes(entry, i)),
                 slotContentHash,
                 leaf,
                 membershipProof: proof,
                 provenance: {
                     leafKey: PROVENANCE_LEAF_KEY,
-                    agreementKey: entry.agreementKey,
+                    agreementHash: entry.agreementHash,
                     compositionHash,
                     clauseData,
-                    clauseDataHash: provenanceContentRef(entry.agreementKey, compositionHash),
-                    leaf: computeProvenanceLeaf(entry.agreementKey, compositionHash),
+                    clauseDataHash: provenanceContentRef(entry.agreementHash, compositionHash),
+                    leaf: computeProvenanceLeaf(entry.agreementHash, compositionHash),
                 },
             };
         }),
@@ -151,14 +151,14 @@ describe("Assembly parity vectors — the composition tree's lock", () => {
             for (const c of a.clauses) {
                 expect(keccak256(toHex(c.fillsBytes))).toBe(c.fillsHash);
                 expect(computeClauseLeaf({ clause: c.clauseKey, dataHash: c.fillsHash })).toBe(c.leaf);
-                expect(verifyInclusionProof(a.agreementKey, c.leaf, c.membershipProof)).toBe(true);
+                expect(verifyInclusionProof(a.agreementHash, c.leaf, c.membershipProof)).toBe(true);
             }
-            expect(buildMerkleRoot(sortLeaves(a.clauses.map((c: { leaf: Hex }) => c.leaf)))).toBe(a.agreementKey);
+            expect(buildMerkleRoot(sortLeaves(a.clauses.map((c: { leaf: Hex }) => c.leaf)))).toBe(a.agreementHash);
         }
         for (const asm of frozen.assemblies) {
             for (const entry of asm.agreements) {
                 expect(keccak256(toHex(entry.agreementBytes))).toBe(entry.slotContentHash);
-                expect(computeClauseLeaf({ clause: entry.agreementKey, dataHash: entry.slotContentHash })).toBe(entry.leaf);
+                expect(computeClauseLeaf({ clause: entry.agreementHash, dataHash: entry.slotContentHash })).toBe(entry.leaf);
                 expect(verifyInclusionProof(asm.compositionHash, entry.leaf, entry.membershipProof)).toBe(true);
                 expect(keccak256(toHex(entry.provenance.clauseData))).toBe(entry.provenance.clauseDataHash);
                 expect(computeClauseLeaf({ clause: entry.provenance.leafKey, dataHash: entry.provenance.clauseDataHash }))

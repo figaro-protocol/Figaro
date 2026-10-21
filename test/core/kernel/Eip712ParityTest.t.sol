@@ -54,7 +54,7 @@ contract Eip712ParityTest is Test {
         c.currency = vm.parseJsonAddress(json, string.concat(base, ".currency"));
         c.payment = vm.parseJsonUint(json, string.concat(base, ".payment"));
         c.expectedCumulativeValue = vm.parseJsonUint(json, string.concat(base, ".expectedCumulativeValue"));
-        c.agreementHash = vm.parseJsonBytes32(json, string.concat(base, ".agreementHash"));
+        c.checkoutHash = vm.parseJsonBytes32(json, string.concat(base, ".checkoutHash"));
         c.salt = vm.parseJsonUint(json, string.concat(base, ".salt"));
         c.deadline = vm.parseJsonUint(json, string.concat(base, ".deadline"));
     }

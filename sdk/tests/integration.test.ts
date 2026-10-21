@@ -187,7 +187,7 @@ describe.skipIf(SKIP)("SDK Integration (Anvil)", () => {
 
         // ── 3. Build commitment via SDK ─────────────────────────────────
         const domain = buildDomain(31337, coreAddress);
-        const agreementHash = "0x0000000000000000000000000000000000000000000000000000000000000001" as Hex;
+        const checkoutHash = "0x0000000000000000000000000000000000000000000000000000000000000001" as Hex;
 
         // Deadline derives from CHAIN time — block.timestamp is FigaroCore's
         // clock, and a persisted devnet (or a skewed device clock) can sit
@@ -202,7 +202,7 @@ describe.skipIf(SKIP)("SDK Integration (Anvil)", () => {
                 currency: tokenAddress,
                 payment: PAYMENT,
                 expectedCumulativeValue: PAYMENT,
-                agreementHash,
+                checkoutHash,
                 deadline: chainNow + 3600n,
             },
             domain,

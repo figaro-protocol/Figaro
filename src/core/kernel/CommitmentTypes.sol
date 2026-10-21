@@ -23,13 +23,13 @@ library CommitmentTypes {
         address currency;
         uint256 payment;
         uint256 expectedCumulativeValue;
-        bytes32 agreementHash;
+        bytes32 checkoutHash;
         uint256 salt;
         uint256 deadline;
     }
 
     bytes32 internal constant COMMITMENT_TYPEHASH = keccak256(
-        "Commitment(bytes32 processId,address buyer,address seller,address currency,uint256 payment,uint256 expectedCumulativeValue,bytes32 agreementHash,uint256 salt,uint256 deadline)"
+        "Commitment(bytes32 processId,address buyer,address seller,address currency,uint256 payment,uint256 expectedCumulativeValue,bytes32 checkoutHash,uint256 salt,uint256 deadline)"
     );
 
     /// @notice Compute the EIP-712 struct hash for a Commitment.
@@ -44,7 +44,7 @@ library CommitmentTypes {
                 c.currency,
                 c.payment,
                 c.expectedCumulativeValue,
-                c.agreementHash,
+                c.checkoutHash,
                 c.salt,
                 c.deadline
             )

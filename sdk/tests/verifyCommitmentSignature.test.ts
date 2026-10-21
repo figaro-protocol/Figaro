@@ -27,7 +27,7 @@ const commitment: Commitment = {
     payment: 1000n,
     expectedCumulativeValue: 1000n,
     deadline: 9_999_999_999n,
-    agreementHash: `0x${"ab".repeat(32)}`,
+    checkoutHash: `0x${"ab".repeat(32)}`,
     salt: 42n,
 };
 

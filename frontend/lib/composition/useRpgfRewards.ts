@@ -19,7 +19,7 @@
  * open-world read the minter's `_isAuthor` performs on chain, never a bundled
  * list. Every read and the claim name a `(kind, key)` pair: a registry accepts
  * any bytes32, so the kind — which registry the key was found in — is what
- * keeps a clause key, an agreement key and an assembly composition hash of
+ * keeps a clause key, an agreement hash and an assembly composition hash of
  * the same bytes apart.
  */
 
@@ -49,7 +49,7 @@ import { truncateHex } from "@/lib/shared/formatHex";
  *  `d` = distinct staked sellers, `score` = the uniform breadth
  *  measure (`icbrt(c·d²·1e18)`) the payout divides by. */
 export interface RpgfClauseOrAssemblyAccrual {
-    /** Clause key, agreement key or assembly compositionHash. */
+    /** Clause key, agreement hash or assembly compositionHash. */
     clauseOrAssembly: `0x${string}`;
     /** The registry the key was found in — `USAGE_KIND_CLAUSE`,
      *  `USAGE_KIND_AGREEMENT` or `USAGE_KIND_ASSEMBLY`; every read and the
@@ -142,7 +142,7 @@ export function useRpgfRewards(subject?: `0x${string}`) {
             }),
         ]);
         type ClauseArgs = { registeredBy?: string; clauseKey?: `0x${string}` };
-        type AgreementArgs = { registeredBy?: string; agreementKey?: `0x${string}` };
+        type AgreementArgs = { registeredBy?: string; agreementHash?: `0x${string}` };
         type AssemblyArgs = { registeredBy?: string; compositionHash?: `0x${string}` };
         const clauseEvents = allClauseEvents.filter((l) => hexEqual(String((l.args as ClauseArgs | undefined)?.registeredBy ?? ""), account));
         const agreementEvents = allAgreementEvents.filter((l) => hexEqual(String((l.args as AgreementArgs | undefined)?.registeredBy ?? ""), account));
@@ -160,7 +160,7 @@ export function useRpgfRewards(subject?: `0x${string}`) {
             });
         }
         for (const ev of agreementEvents) {
-            const clauseOrAssembly = (ev.args as AgreementArgs | undefined)?.agreementKey;
+            const clauseOrAssembly = (ev.args as AgreementArgs | undefined)?.agreementHash;
             if (!clauseOrAssembly) continue;
             out.set(usageKeyId(USAGE_KIND_AGREEMENT, clauseOrAssembly), {
                 clauseOrAssembly,

@@ -4,7 +4,7 @@
  * The chain stores only an agreement's 32-byte merkle hash; the body lives on
  * IPFS, the SSoT. `fetchAgreement` resolves the body by the URI that traveled
  * in the order's payload, then VERIFIES the fetched bytes against the on-chain
- * `agreementHash` before trusting them — so a tampered IPFS copy is rejected.
+ * `checkoutHash` before trusting them — so a tampered IPFS copy is rejected.
  *
  * No body cache, no authoritative store: the in-memory `useProcessAgreements`
  * singleton holds bodies for the session (pure UX), and re-fetches from IPFS
@@ -15,7 +15,7 @@
  * correct: you can't fetch a body you were never pointed at.
  */
 import type { Hex } from "viem";
-import { anchorAgreement, computeAgreementHash, parseClauseRegistryLogs, publicForm, type Agreement, type Anchored } from "@figaro-protocol/sdk";
+import { anchorAgreement, computeCheckoutHash, parseClauseRegistryLogs, publicForm, type Agreement, type Anchored } from "@figaro-protocol/sdk";
 import { DEFAULT_IPFS_SERVICE, extractIpfsCid, fetchCappedContent, type IpfsService } from "@/lib/shared/ipfsService";
 import { safeJsonFromResponse } from "@/lib/shared/safeJson";
 import { getClauseSpec, loadClauseSpec, specSource } from "@/lib/shared/clauseSpecSource";
@@ -33,52 +33,52 @@ export interface AgreementFetchOptions {
 
 const transport = (o?: AgreementFetchOptions) => o?.evidenceTransport ?? DEFAULT_IPFS_SERVICE;
 
-/** Store the IPFS URI a wallet witnessed for an agreementHash (event-driven).
+/** Store the IPFS URI a wallet witnessed for an checkoutHash (event-driven).
  *  Internal: the witnessed-URI pointer is written via `publishAgreement` and read
  *  via `fetchAgreement` — both in this file. */
-function saveAgreementUri(agreementHash: Hex | string, uri: string): void {
+function saveAgreementUri(checkoutHash: Hex | string, uri: string): void {
     if (!canUseStorage() || !uri) return;
     try {
-        localStorage.setItem(uriKey(agreementHash), uri);
+        localStorage.setItem(uriKey(checkoutHash), uri);
     } catch { /* non-fatal */ }
 }
 
-function loadAgreementUri(agreementHash: Hex | string | undefined | null): string | null {
-    if (!canUseStorage() || !agreementHash) return null;
+function loadAgreementUri(checkoutHash: Hex | string | undefined | null): string | null {
+    if (!canUseStorage() || !checkoutHash) return null;
     try {
-        return localStorage.getItem(uriKey(agreementHash));
+        return localStorage.getItem(uriKey(checkoutHash));
     } catch {
         return null;
     }
 }
 
 /** Drop the witnessed-URI pointer for a hash (the "forget" half of erasure). */
-function forgetAgreementUri(agreementHash: Hex | string): void {
+function forgetAgreementUri(checkoutHash: Hex | string): void {
     if (!canUseStorage()) return;
     try {
-        localStorage.removeItem(uriKey(agreementHash));
+        localStorage.removeItem(uriKey(checkoutHash));
     } catch { /* non-fatal */ }
 }
 
 const inflight = new Map<string, Promise<Anchored<Agreement> | null>>();
 
 /**
- * Fetch a committed agreement from IPFS and verify it against `agreementHash`.
+ * Fetch a committed agreement from IPFS and verify it against `checkoutHash`.
  * `uri` defaults to the witnessed URI for the hash. Returns null when there is
- * no URI (un-witnessed) or the fetched bytes don't hash to `agreementHash`.
+ * no URI (un-witnessed) or the fetched bytes don't hash to `checkoutHash`.
  * Concurrent calls for the same target share one in-flight fetch.
  */
 export async function fetchAgreement(
-    agreementHash: Hex | string | undefined | null,
+    checkoutHash: Hex | string | undefined | null,
     uri?: string | null,
     options: AgreementFetchOptions = {},
 ): Promise<Anchored<Agreement> | null> {
-    if (!agreementHash) return null;
-    const resolvedUri = uri ?? loadAgreementUri(agreementHash);
+    if (!checkoutHash) return null;
+    const resolvedUri = uri ?? loadAgreementUri(checkoutHash);
     const fetchUrl = resolvedUri ? transport(options).resolveFetchUrl(resolvedUri) : null;
     if (!fetchUrl) return null;
 
-    const cacheKey = `${agreementHash}:${fetchUrl}`;
+    const cacheKey = `${checkoutHash}:${fetchUrl}`;
     const pending = inflight.get(cacheKey);
     if (pending) return pending;
 
@@ -87,10 +87,10 @@ export async function fetchAgreement(
             // Size-capped: an attacker-pinned multi-GB body aborts mid-stream
             // (throws → the catch below → null) before the hash check buffers it.
             const res = await fetchCappedContent(fetchUrl);
-            const agreement = anchorAgreement(await safeJsonFromResponse<unknown>(res), agreementHash);
+            const agreement = anchorAgreement(await safeJsonFromResponse<unknown>(res), checkoutHash);
             if (agreement === null) return null;
             // Remember the URI we just proved good (witnessed-pointer only).
-            if (resolvedUri) saveAgreementUri(agreementHash, resolvedUri);
+            if (resolvedUri) saveAgreementUri(checkoutHash, resolvedUri);
             return agreement;
         } catch {
             return null;
@@ -103,7 +103,7 @@ export async function fetchAgreement(
 }
 
 export interface PublishedAgreement {
-    agreementHash: Hex;
+    checkoutHash: Hex;
     cid: string;
     uri: string;
 }
@@ -128,13 +128,13 @@ export interface PublishedAgreement {
  * pointer is absence, not an error.
  */
 export async function unpinAgreement(
-    agreementHash: Hex | string,
+    checkoutHash: Hex | string,
     ipfs: Pick<IpfsService, "unpin"> = DEFAULT_IPFS_SERVICE,
 ): Promise<void> {
-    const uri = loadAgreementUri(agreementHash);
+    const uri = loadAgreementUri(checkoutHash);
     const cid = uri ? extractIpfsCid(uri) : null;
     if (cid) await ipfs.unpin(cid);
-    forgetAgreementUri(agreementHash);
+    forgetAgreementUri(checkoutHash);
 }
 
 /** Warm the clause specs the agreement's clauses reference into the module
@@ -148,7 +148,7 @@ export async function unpinAgreement(
  *  a spec load fails, the fail-closed projection over-redacts rather than leaking
  *  — the correct privacy-first direction, never a plaintext-private pin. */
 async function warmAgreementSpecs(agreement: Agreement): Promise<void> {
-    const missing = agreement.sections.filter(
+    const missing = agreement.clauses.filter(
         (s) => getClauseSpec(s.clause) === undefined,
     );
     if (missing.length === 0) return;
@@ -184,11 +184,11 @@ export async function publishAgreement(
     agreement: Agreement,
     options: AgreementFetchOptions = {},
 ): Promise<PublishedAgreement> {
-    const agreementHash = computeAgreementHash(agreement);
+    const checkoutHash = computeCheckoutHash(agreement);
     const t = transport(options);
     // Withhold every `private`-disposition clause from the PUBLIC pin — a paid-
     // edge value's plaintext never lands on public IPFS or in a shareable audit
-    // bundle. The withheld leaf is identical, so `agreementHash` is unchanged and
+    // bundle. The withheld leaf is identical, so `checkoutHash` is unchanged and
     // any reader still verifies the root + every public clause. The signed and
     // counterparty-relayed forms keep plaintext; only this standalone pin is
     // redacted. Warm the specs first so the FAIL-CLOSED projection is exact —
@@ -196,6 +196,6 @@ export async function publishAgreement(
     await warmAgreementSpecs(agreement);
     const cid = await t.pinJSON(publicForm(agreement, specSource()));
     const uri = t.buildURI(cid);
-    saveAgreementUri(agreementHash, uri);
-    return { agreementHash, cid, uri };
+    saveAgreementUri(checkoutHash, uri);
+    return { checkoutHash, cid, uri };
 }

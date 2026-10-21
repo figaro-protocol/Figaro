@@ -19,7 +19,7 @@
 import { useSyncExternalStore } from "react";
 import {
     AGREEMENT_REGISTRY_ABI,
-    agreementKeyOf,
+    agreementHashOf,
     anchorRegisteredAgreement,
     canonicalize,
     hydrateAssembly,
@@ -49,7 +49,7 @@ export function getAgreementRegistry(): `0x${string}` | null {
 /** One registered agreement, reconstructed from an `AgreementRegistered`
  *  event; `stakeWithdrawn` folds the registry's `DepositWithdrawn` events. */
 export interface PublishedAgreement {
-    agreementKey: `0x${string}`;
+    agreementHash: `0x${string}`;
     registeredBy: `0x${string}`;
     contentURI: string;
     blockNumber: bigint;
@@ -58,15 +58,15 @@ export interface PublishedAgreement {
 }
 
 /** Map an `AgreementRegistry.registerAgreement` revert into a readable Error. */
-export function translateAgreementRegisterRevert(err: unknown, agreementKey: string): Error {
+export function translateAgreementRegisterRevert(err: unknown, agreementHash: string): Error {
     return translateContractRevert(err, (name, args) => {
         switch (name) {
             case "AgreementAlreadyRegistered":
-                return `Agreement ${agreementKey} is already registered — the same clauses always key to one registration; bind the existing one.`;
+                return `Agreement ${agreementHash} is already registered — the same clauses always key to one registration; bind the existing one.`;
             case "ReservedKeyIsNotARegistration":
-                return `${agreementKey} is a reserved format key, never an agreement.`;
-            case "ZeroAgreementKey":
-                return "Computed an empty agreement key.";
+                return `${agreementHash} is a reserved format key, never an agreement.`;
+            case "ZeroAgreementHash":
+                return "Computed an empty agreement hash.";
             default:
                 return sharedRegisterRevertMessage(name, args);
         }
@@ -77,7 +77,7 @@ export function translateAgreementRegisterRevert(err: unknown, agreementKey: str
  *  The binding is permanent; withdraw de-surfaces the agreement for new
  *  compositions while every assembly already composed from it keeps reading it.
  *  @public pending consumer: the designer of record's reclaim affordance,
- *  gated by `useWithdrawGate({ kind: "agreement", agreementKey })`. */
+ *  gated by `useWithdrawGate({ kind: "agreement", agreementHash })`. */
 export const useWithdrawAgreement = createUseWithdrawStake({
     getRegistry: getAgreementRegistry,
     abi: AGREEMENT_REGISTRY_ABI,
@@ -93,15 +93,15 @@ const useAgreementRegistryScan = createRegistryEventScan<PublishedAgreement>({
     label: "usePublishedAgreements",
     toRows: (registeredLogs, withdrawnLogs) => {
         const withdrawn = new Set(
-            parseAgreementRegistryLogs(withdrawnLogs).withdrawn.map((w) => w.agreementKey.toLowerCase()),
+            parseAgreementRegistryLogs(withdrawnLogs).withdrawn.map((w) => w.agreementHash.toLowerCase()),
         );
         const items: PublishedAgreement[] = parseAgreementRegistryLogs(registeredLogs).registered.map((row) => ({
-            agreementKey: row.agreementKey,
+            agreementHash: row.agreementHash,
             registeredBy: row.registeredBy,
             contentURI: row.contentURI,
             blockNumber: BigInt(row.blockNumber),
             transactionHash: (row.transactionHash ?? "0x") as `0x${string}`,
-            stakeWithdrawn: withdrawn.has(row.agreementKey.toLowerCase()),
+            stakeWithdrawn: withdrawn.has(row.agreementHash.toLowerCase()),
         }));
         items.sort((a, b) => Number(b.blockNumber - a.blockNumber));
         return items;
@@ -123,12 +123,12 @@ export function usePublishedAgreements(
  *  not bound (resolved-empty), the registry is not configured, or the read
  *  fails. */
 export async function readAgreementBinding(
-    agreementKey: `0x${string}`,
+    agreementHash: `0x${string}`,
     client: Pick<typeof publicClient, "readContract"> = publicClient,
 ): Promise<{ registeredBy: `0x${string}`; registeredAt: bigint; stakeWithdrawn: boolean; contentURI: string } | null> {
     const registry = getAgreementRegistry();
     if (!registry) return null;
-    const binding = await readRegistryBinding(registry, AGREEMENT_REGISTRY_ABI, agreementKey, client);
+    const binding = await readRegistryBinding(registry, AGREEMENT_REGISTRY_ABI, agreementHash, client);
     if (!binding) return null;
     const [registeredBy, registeredAt, stakeWithdrawn, contentURI] = binding;
     return { registeredBy, registeredAt, stakeWithdrawn, contentURI };
@@ -145,10 +145,10 @@ const listeners = new Set<() => void>();
  *  A gateway miss keeps nothing and is read again; this is never re-read. */
 const loadErrors = new Map<string, string>();
 
-/** The permanent load failure recorded for an agreement key, if any — the
+/** The permanent load failure recorded for an agreement hash, if any — the
  *  document behind the binding was served and is not the agreement. */
-export function getRegisteredAgreementLoadError(agreementKey: string): string | undefined {
-    return loadErrors.get(agreementKey.toLowerCase());
+export function getRegisteredAgreementLoadError(agreementHash: string): string | undefined {
+    return loadErrors.get(agreementHash.toLowerCase());
 }
 
 function noteVerified(): void {
@@ -159,20 +159,20 @@ function noteVerified(): void {
 /** The registered agreement for a key, when this tab has read and verified it
  *  — the synchronous face the design-time build reads (`snapshotToAssembly`),
  *  as the clause build reads the warm spec cache. Undefined while unread. */
-export function getRegisteredAgreement(agreementKey: string): Anchored<RegisteredAgreement> | undefined {
-    return verified.get(agreementKey.toLowerCase());
+export function getRegisteredAgreement(agreementHash: string): Anchored<RegisteredAgreement> | undefined {
+    return verified.get(agreementHash.toLowerCase());
 }
 
 /** Test-only — put a registered agreement into this tab's verified cache, as
  *  a read of its binding and pinned document would: verified against its own
  *  key (`anchorRegisteredAgreement` over its canonical bytes). Returns the key. */
 export function _primeRegisteredAgreement_TESTING_ONLY(doc: RegisteredAgreement): `0x${string}` {
-    const agreementKey = agreementKeyOf(doc);
-    const anchored = anchorRegisteredAgreement(canonicalize(doc), agreementKey);
-    if (!anchored) throw new Error(`the document does not verify against its key ${agreementKey}`);
-    verified.set(agreementKey.toLowerCase(), anchored);
+    const agreementHash = agreementHashOf(doc);
+    const anchored = anchorRegisteredAgreement(canonicalize(doc), agreementHash);
+    if (!anchored) throw new Error(`the document does not verify against its key ${agreementHash}`);
+    verified.set(agreementHash.toLowerCase(), anchored);
     noteVerified();
-    return agreementKey;
+    return agreementHash;
 }
 
 /** Bumps each time a registered agreement is read and verified in this tab —
@@ -190,19 +190,19 @@ export function useRegisteredAgreementsVersion(): number {
     );
 }
 
-/** The pinned document at `contentURI`, verified against `agreementKey`, or
+/** The pinned document at `contentURI`, verified against `agreementHash`, or
  *  null (unreachable, not JSON, or not the agreement the key names). */
 async function fetchAgreementDocument(
     contentURI: string,
-    agreementKey: `0x${string}`,
+    agreementHash: `0x${string}`,
 ): Promise<Anchored<RegisteredAgreement> | null> {
     return fetchPinnedDocument(
         contentURI,
-        (text) => anchorRegisteredAgreement(text, agreementKey),
+        (text) => anchorRegisteredAgreement(text, agreementHash),
         () => {
-            const detail = `integrity failure at ${contentURI}: the document is not the agreement the key ${agreementKey} names`;
+            const detail = `integrity failure at ${contentURI}: the document is not the agreement the key ${agreementHash} names`;
             console.warn(`[fetchRegisteredAgreement] ${detail} — dropping`);
-            loadErrors.set(agreementKey.toLowerCase(), detail);
+            loadErrors.set(agreementHash.toLowerCase(), detail);
             noteVerified();
         },
     );
@@ -217,10 +217,10 @@ async function fetchAgreementDocument(
  * share one fetch.
  */
 export async function fetchRegisteredAgreement(
-    agreementKey: `0x${string}`,
+    agreementHash: `0x${string}`,
     contentURI?: string,
 ): Promise<Anchored<RegisteredAgreement> | null> {
-    const key = agreementKey.toLowerCase();
+    const key = agreementHash.toLowerCase();
     const known = verified.get(key);
     if (known) return known;
     if (loadErrors.has(key)) return null;
@@ -228,9 +228,9 @@ export async function fetchRegisteredAgreement(
     if (pending) return pending;
     const run = (async () => {
         try {
-            const uri = contentURI ?? (await readAgreementBinding(agreementKey))?.contentURI;
+            const uri = contentURI ?? (await readAgreementBinding(agreementHash))?.contentURI;
             if (!uri) return null;
-            const doc = await fetchAgreementDocument(uri, agreementKey);
+            const doc = await fetchAgreementDocument(uri, agreementHash);
             if (doc) {
                 verified.set(key, doc);
                 noteVerified();
@@ -250,5 +250,5 @@ export async function fetchRegisteredAgreement(
 export function hydrateAnchoredAssembly(
     assembly: Anchored<Assembly> | Assembly,
 ): Promise<HydratedAssembly | null> {
-    return hydrateAssembly(assembly, (agreementKey) => fetchRegisteredAgreement(agreementKey));
+    return hydrateAssembly(assembly, (agreementHash) => fetchRegisteredAgreement(agreementHash));
 }

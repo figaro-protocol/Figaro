@@ -102,7 +102,7 @@ function roleCapabilities(
     // carries AND the attestation state. Labels are the clause's own event
     // codes (one source — the clause), never frontend copy.
     const orderIdStr = order.orderHash.toString();
-    const agreement = order.agreementHash ? agreements.get(order.agreementHash) : undefined;
+    const agreement = order.checkoutHash ? agreements.get(order.checkoutHash) : undefined;
 
     // GENERIC runtime attestation: any PROCESS-LOG clause (attestations
     // article — the clause's own declared kind) advances its transfer ladder,
@@ -112,7 +112,7 @@ function roleCapabilities(
     // classifying by "has an enum" fabricated seller capabilities for them.
     if (agreement) {
         const orderAttestations = indexes.attestationsByOrder.get(orderIdStr) ?? [];
-        for (const clauseEntry of agreement.sections) {
+        for (const clauseEntry of agreement.clauses) {
             const clauseKey = clauseEntry.clause;
             if (!clauseIsProcessLog(clauseKey)) continue; // only attestations-article ladders are lifecycles
             const ladder = clauseLadderField(clauseKey);
@@ -180,7 +180,7 @@ function roleCapabilities(
         // every order of its process and the rail lists every order's cards
         // together, so one clause's witness card repeats once per order.
         const orderLabel = `Order ${indexes.positionByOrder.get(orderIdStr)} of ${indexes.positionByOrder.size} · seller ${truncateHex(order.seller)}`;
-        for (const clauseEntry of agreement.sections) {
+        for (const clauseEntry of agreement.clauses) {
             const clauseKey = clauseEntry.clause;
             if (clauseIsProcessLog(clauseKey)) continue; // a ladder's stage overrides shape its content, not a witness
             for (const witness of clauseWitnessStages(clauseKey)) {
@@ -233,7 +233,7 @@ function roleCapabilities(
         for (const party of ["seller", "buyer"] as const) {
             if (party === "seller" ? !isSeller : !isBuyer) continue;
             const choices: CapabilityModel[] = [];
-            for (const clauseEntry of agreement.sections) {
+            for (const clauseEntry of agreement.clauses) {
                 const clauseKey = clauseEntry.clause;
                 if (clauseIsProcessLog(clauseKey)) continue;
                 if (clauseWitnessStages(clauseKey).some((w) => w.stage === 0)) continue;
@@ -283,7 +283,7 @@ function roleCapabilities(
                             executionType: "transaction",
                             kind: "attest-provenance-leaf",
                             orderHash: orderIdStr,
-                            agreementKey: agreement.provenance.agreementKey,
+                            agreementHash: agreement.provenance.agreementHash,
                             compositionHash: agreement.provenance.compositionHash,
                             party: "buyer",
                         },
@@ -468,7 +468,7 @@ function deriveOrderNodeModelFromOrder(
         payment: order.payment,
         state: OrderState[order.state],
         parentOrderHashes,
-        agreementHash: (order.agreementHash ?? ZERO_BYTES32) as `0x${string}`,
+        checkoutHash: (order.checkoutHash ?? ZERO_BYTES32) as `0x${string}`,
         capabilities: roleCapabilities(order, agreements, indexes, address),
         resolutionBreakdown: deriveResolutionBreakdown(order, parentOrderHashes, address),
     };
@@ -492,7 +492,7 @@ export function deriveProcessModelFromRuntime(
     const semanticOrders = processOrders.map((order) => deriveOrderNodeModelFromOrder(order, topology, agreements, indexes, address));
     const rootOrderId = semanticOrders.find((order) => order.parentOrderHashes.length === 0)?.orderId ?? semanticOrders[0]?.orderId ?? "";
     const rootOrder = processOrders.find((order) => order.orderHash.toString() === rootOrderId);
-    const rootAgreement = rootOrder?.agreementHash ? agreements.get(rootOrder.agreementHash) : undefined;
+    const rootAgreement = rootOrder?.checkoutHash ? agreements.get(rootOrder.checkoutHash) : undefined;
     // The modality clause is found by its declared field, never by name.
     // Single-select: one scalar value per order.
     const rootModality = rootAgreement

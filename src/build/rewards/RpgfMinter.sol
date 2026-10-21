@@ -29,7 +29,7 @@ interface IAssemblyAuthor {
 
 /// @notice Designer of record for a registered agreement — `AgreementRegistry.bindings`.
 interface IAgreementAuthor {
-    function bindings(bytes32 agreementKey)
+    function bindings(bytes32 agreementHash)
         external
         view
         returns (address registeredBy, uint64 registeredAt, bool depositWithdrawn, string memory contentURI);
@@ -105,7 +105,7 @@ contract RpgfMinter {
     ///         key is an `AssemblyRegistry` compositionHash.
     uint8 public constant KIND_ASSEMBLY = 1;
     /// @notice The kind of an agreement entry — `UsageCounter.KIND_AGREEMENT`;
-    ///         its key is an `AgreementRegistry` agreementKey.
+    ///         its key is an `AgreementRegistry` agreementHash.
     uint8 public constant KIND_AGREEMENT = 2;
 
     /// @notice One entry of a claim: the family a key belongs to and the key.
@@ -211,7 +211,7 @@ contract RpgfMinter {
     /// @param periodId  The accrual period being claimed.
     /// @param clausesOrAssemblies (kind, key) pairs — clause keys under
     ///                  `KIND_CLAUSE`, assembly compositionHashes under
-    ///                  `KIND_ASSEMBLY`, agreementKeys under `KIND_AGREEMENT` —
+    ///                  `KIND_ASSEMBLY`, agreementHashes under `KIND_AGREEMENT` —
     ///                  the caller is designer of record for.
     ///                  Each is verified against the one registry its kind
     ///                  names — the caller's list is a lookup key, never a claim

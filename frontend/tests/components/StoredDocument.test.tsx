@@ -190,7 +190,7 @@ describe("StoredDocument — the pinned document, verbatim", () => {
         const assembly = {
             name: "Equipment hire",
             summary: "Editorial wording, outside the anchor.",
-            agreements: [{ id: "order-0", agreementKey: `0x${"a1".repeat(32)}`, clauses: {} }],
+            agreements: [{ id: "order-0", agreementHash: `0x${"a1".repeat(32)}`, clauses: {} }],
         };
         const hash = assemblyCompositionHash(assembly as Parameters<typeof assemblyCompositionHash>[0]);
         fetchCappedContentMock.mockResolvedValue(served(JSON.stringify(assembly, null, 2)));

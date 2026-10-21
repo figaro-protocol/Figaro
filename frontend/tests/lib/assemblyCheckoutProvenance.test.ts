@@ -1,7 +1,7 @@
 /**
  * assemblyCheckoutProvenance.test.ts — the link from a realized order to the
  * assembly it instantiates is the agreement FORMAT's provenance leaf, set by
- * the checkout walk from the agreement's registered agreement key and the
+ * the checkout walk from the agreement's registered agreement hash and the
  * assembly's own composition root; no clause carries it.
  */
 import { beforeAll, describe, expect, it, vi } from "vitest";
@@ -26,7 +26,7 @@ describe("assembly checkout — the provenance leaf", () => {
         await primeClauseSpecs();
     });
 
-    it("every realized order names its agreement's agreement key and the composition root as its provenance, in no clause section", async () => {
+    it("every realized order names its agreement's agreement hash and the composition root as its provenance, in no clause", async () => {
         const hydratedAssembly = referenceAssembly("pos.json");
         const assembly = hydratedAssembly.assembly;
         const bound: BoundAssembly = {
@@ -54,9 +54,9 @@ describe("assembly checkout — the provenance leaf", () => {
         expect(orders.length).toBe(assembly.agreements.length);
         for (const order of orders) {
             const entry = assembly.agreements.find((s) => s.id === order.nodeId)!;
-            expect(order.agreement.provenance).toEqual({ agreementKey: entry.agreementKey, compositionHash });
-            expect(agreementLeaves(order.agreement)).toContain(computeProvenanceLeaf(entry.agreementKey, compositionHash));
-            for (const clauseEntry of order.agreement.sections) {
+            expect(order.agreement.provenance).toEqual({ agreementHash: entry.agreementHash, compositionHash });
+            expect(agreementLeaves(order.agreement)).toContain(computeProvenanceLeaf(entry.agreementHash, compositionHash));
+            for (const clauseEntry of order.agreement.clauses) {
                 expect(JSON.stringify(clauseEntry.data)).not.toContain(compositionHash.slice(2));
             }
         }

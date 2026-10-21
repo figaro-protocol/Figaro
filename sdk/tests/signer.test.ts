@@ -80,7 +80,7 @@ function commitmentMessage(payment: bigint, buyer: Address, seller: Address) {
         currency: TOKEN,
         payment: payment.toString(),
         expectedCumulativeValue: payment.toString(),
-        agreementHash: "0x" + "11".repeat(32),
+        checkoutHash: "0x" + "11".repeat(32),
         salt: "1",
         deadline: "9999999999",
     };
@@ -513,7 +513,7 @@ describe("daemon and socket account", () => {
             processId: ("0x" + "00".repeat(32)) as Hex,
             buyer: WALLET, seller: OTHER, currency: TOKEN,
             payment: 500_000n, expectedCumulativeValue: 500_000n,
-            agreementHash: ("0x" + "11".repeat(32)) as Hex,
+            checkoutHash: ("0x" + "11".repeat(32)) as Hex,
             salt: 7n, deadline: 9_999_999_999n,
         }, domain);
 
@@ -597,7 +597,7 @@ describe("daemon rolling ceiling under pipelined requests", () => {
                     processId: ("0x" + "00".repeat(32)) as Hex,
                     buyer: WALLET, seller: OTHER, currency: TOKEN,
                     payment: 500_000n, expectedCumulativeValue: 500_000n,
-                    agreementHash: ("0x" + "11".repeat(32)) as Hex,
+                    checkoutHash: ("0x" + "11".repeat(32)) as Hex,
                     salt, deadline: 9_999_999_999n,
                 }, domain);
                 return wireStringify({ id, op: "signTypedData", params: typedData });

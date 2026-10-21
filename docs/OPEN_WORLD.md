@@ -152,7 +152,7 @@ every composition.
   AgreementRegistry; assemblies → AssemblyRegistry; members → MembersRegistry) — parallel,
   never nested. Arrows point one way, off-chain: assemblies use agreements; agreements use
   clauses; neither knows what uses it. An assembly's `compositionHash` is a merkle root
-  over its agreements' `agreementKey`s, so membership is proved against the root, never
+  over its agreements' `agreementHash`s, so membership is proved against the root, never
   looked up in another registry. (This is the
   open-world restatement of the Separation of Concerns — Registry Families discipline.)
 
@@ -163,7 +163,7 @@ Relative to the bilateral signature, a composed contract stands in exactly four 
 
 | # | Placement | Relative to the signature | What the contract supplies |
 |---|---|---|---|
-| 1 | **Terms in** | before | deterministic output that becomes content `fields` both parties sign under `agreementHash` |
+| 1 | **Terms in** | before | deterministic output that becomes content `fields` both parties sign under `checkoutHash` |
 | 2 | **Funding at the Core's pull** | inside the `commit` tx | bond currency, delivered to the party's own EOA |
 | 3 | **Attested auxiliary** (Path A) | after commit, off the bond path | an external receipt, attested against the root order under a purpose-built clause |
 | 4 | **Resolution consumer** | after resolution | consequences derived from Core state |
@@ -207,7 +207,7 @@ equilibrium — that is `THEORY.md`'s, and a contract meeting the five inherits 
    Core's terms only.
 4. **Content it accepts under a clauseId is content the parties signed for.** It admits such
    content only against an order whose signed agreement included that clause, proved by
-   merkle inclusion against `agreementHash`; content for a clause absent from the agreement
+   merkle inclusion against `checkoutHash`; content for a clause absent from the agreement
    is refused.
 5. **It promises no off-Core payout indexed to how the Core resolves.** A contract can
    meet 1–4, hold a stake of its own beside the Core, and pay a party out of it according
@@ -285,7 +285,7 @@ metadata — not through bespoke app forks.)
 
 - **Registered agreement** — the clauses composed for one agreement with the designer's
   fills, value-free: the reusable unit an assembly is composed from, anchored on-chain via
-  `src/build/registries/AgreementRegistry.sol` under its `agreementKey`.
+  `src/build/registries/AgreementRegistry.sol` under its `agreementHash`.
 - **Assembly** — the structural declaration (roles, mechanisms, view definitions, module
   placement, narrative defaults): ordered agreements of registered agreements plus the
   assembly-scoped terms. Composed in `frontend/lib/designer/`, anchored on-chain via
@@ -343,7 +343,7 @@ The shipped shapes (`frontend/lib/semantic/models.ts`):
 - **ProcessModel** — a FigaroCore process (orders, topology root, committed
   modality, process-level capabilities).
 - **OrderNodeModel** — one operational commitment node (counterparties, payment,
-  state, topology parents, agreement hash, capabilities, the resolution breakdown).
+  state, topology parents, checkout hash, capabilities, the resolution breakdown).
 - **CapabilityModel** — one valid next action for an actor (action descriptor,
   generic input fields, scope, preconditions, provenance source).
 - **EconomicBreakdownModel** — economically meaningful values for one

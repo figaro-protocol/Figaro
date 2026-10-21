@@ -14,14 +14,14 @@ release lives under **Unreleased**.
 
 ### Changed
 
-- **SDK: the registered agreement and the assembly as a merkle tree over agreement keys.**
+- **SDK: the registered agreement and the assembly as a merkle tree over agreement hashes.**
   A designer composes the clauses for ONE agreement into a `ComposedAgreement`
   (`{ name?, summary?, description?, clauses }`, the topology clause composed as `{}`), keyed by
-  `agreementKeyOf(doc)` = `canonicalContentHash({ clauses })` and registered in its own family,
+  `agreementHashOf(doc)` = `canonicalContentHash({ clauses })` and registered in its own family,
   `AgreementRegistry` (`AGREEMENT_REGISTRY_ABI`, `parseAgreementRegistryLogs`,
   `RegisteredAgreement`, `DiscoveryGraph.getAgreements()`, `FigaroAddresses.agreementRegistry`,
   `deriveAgreementWithdrawGate`). An assembly is ordered `TemplateSlot`s
-  (`{ id, agreementKey, clauses }`, the slot's own fills carrying the topology parents) and its
+  (`{ id, agreementHash, clauses }`, the slot's own fills carrying the topology parents) and its
   `compositionHash` is the merkle root over the slot leaves and the assembly-terms leaf
   (`ASSEMBLY_TERMS_LEAF_KEY`, `slotSectionBytes`, `templateLeaves`, `buildSlotInclusionProof`);
   `TemplateAgreement` is gone. A template is consumed hydrated (`HydratedAssembly`,
@@ -31,16 +31,16 @@ release lives under **Unreleased**.
   `{ template, agreements }` (the newly agreements to register) and takes
   `registeredByOrderId` to bind a registered agreement as is; `slotsFromAuthoredAgreements`
   derives both from an authored document at seed time. The provenance leaf's bytes carry both keys
-  (`AgreementProvenance`, `provenanceSectionBytes(agreementKey, compositionHash)`,
+  (`AgreementProvenance`, `provenanceSectionBytes(agreementHash, compositionHash)`,
   `decodeProvenanceContent`). Designer rewards gain the agreement kind
   (`USAGE_KIND_AGREEMENT = 2`); `buildUsageClaims(order, agreement, context, template?)` emits the
   clause, agreement and assembly claims, the assembly claim with its membership proof;
   `recordProcessUsage` sends `recordAgreementUsage` and the six-argument `recordAssemblyUsage`;
-  `UsageClaimContext` carries both reserved keys, which are refused as an agreement key
+  `UsageClaimContext` carries both reserved keys, which are refused as an agreement hash
   everywhere (`assertNotReservedKey`).
 - **SDK: a clause is its spec — the clause key is `keccak256` of the spec's pinned
   canonical bytes.** `computeClauseKey(spec)` replaces the name-and-version derivation; a
-  section is `{ clause: <clauseKey>, data }` with no `version`; `SpecSource.get(clauseKey)`
+  clause entry is `{ clause: <clauseKey>, data }` with no `version`; `SpecSource.get(clauseKey)`
   and `ProjectionSpecView.clauseKey`; templates are keyed by clause key and the sparse
   `clauseVersions` / `assemblyClauseVersions` maps, `templateClauseVersion` and
   `templateClauseVersionMap` are gone; `RegisteredClause` is `{ clauseKey, contentURI,

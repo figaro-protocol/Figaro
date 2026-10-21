@@ -26,7 +26,7 @@ npm install   # once; pulls @figaro-protocol/sdk from ../../sdk
 
 RPC_URL=… DEPLOYMENT_RECORD=…/deployments/11155111.json \
 IPFS_GATEWAY_URL=… npx figaro-fetch clause <clauseKey>
-npx figaro-fetch agreement <agreementKey>
+npx figaro-fetch agreement <agreementHash>
 npx figaro-fetch assembly <compositionHash>
 npx figaro-fetch profile <address>
 npx figaro-fetch ipfs <cid>
@@ -40,8 +40,8 @@ keccak-256), so the fingerprint is the lookup, and the bytes are verified to
 hash back to it before anything is printed. `clause`, `agreement` and `assembly`
 verify the same way, against the registry's key: a clause is read by its 32-byte key, and the
 bytes fetched from its `contentURI` must hash (`keccak256`, as fetched, never
-re-canonicalized) to that clause key, a registered agreement (`agreementKeyOf`,
-its `{ clauses }`) to its agreement key, read from the binding whatever its
+re-canonicalized) to that clause key, a registered agreement (`agreementHashOf`,
+its `{ clauses }`) to its agreement hash, read from the binding whatever its
 stake, and a assembly (`assemblyCompositionHash`) to its composition hash, so a gateway that serves
 other bytes is read as absence, never as the registry's content. `profile` and
 `ipfs` print what the gateway served, framed as untrusted, and check nothing:

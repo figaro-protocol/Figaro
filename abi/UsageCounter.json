@@ -481,7 +481,7 @@
             "internalType": "uint256"
           },
           {
-            "name": "agreementHash",
+            "name": "checkoutHash",
             "type": "bytes32",
             "internalType": "bytes32"
           },
@@ -498,7 +498,7 @@
         ]
       },
       {
-        "name": "agreementKey",
+        "name": "agreementHash",
         "type": "bytes32",
         "internalType": "bytes32"
       },
@@ -556,7 +556,7 @@
             "internalType": "uint256"
           },
           {
-            "name": "agreementHash",
+            "name": "checkoutHash",
             "type": "bytes32",
             "internalType": "bytes32"
           },
@@ -578,7 +578,7 @@
         "internalType": "bytes32"
       },
       {
-        "name": "agreementKey",
+        "name": "agreementHash",
         "type": "bytes32",
         "internalType": "bytes32"
       },
@@ -641,7 +641,7 @@
             "internalType": "uint256"
           },
           {
-            "name": "agreementHash",
+            "name": "checkoutHash",
             "type": "bytes32",
             "internalType": "bytes32"
           },
@@ -663,7 +663,7 @@
         "internalType": "bytes32"
       },
       {
-        "name": "sectionHash",
+        "name": "clauseDataHash",
         "type": "bytes32",
         "internalType": "bytes32"
       },

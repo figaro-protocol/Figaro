@@ -13,10 +13,10 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { renderHook } from "@testing-library/react";
 import {
-    agreementKeyOf,
+    agreementHashOf,
     assemblyCompositionHash,
     buildOrderAgreement,
-    computeAgreementHash,
+    computeCheckoutHash,
     deriveAssemblySlug,
     type Agreement,
     type Assembly,
@@ -125,14 +125,14 @@ function design() {
     caseId += 1;
     const documents = [{ documentHash: `0x${"d0".repeat(32)}`, documentVersion: "1.0.0", documentTitle: `Terms ${caseId}` }];
     const registered: RegisteredAgreement = { clauses: { [keyOf("figaro-commerce")]: {}, [keyOf("figaro-consent")]: { documents } } };
-    const agreementKey = agreementKeyOf(registered);
-    const assembly: Assembly = { agreements: [{ id: "order-0", agreementKey, clauses: {} }] };
+    const agreementHash = agreementHashOf(registered);
+    const assembly: Assembly = { agreements: [{ id: "order-0", agreementHash, clauses: {} }] };
     const compositionHash = assemblyCompositionHash(assembly);
     bindings.set(compositionHash.toLowerCase(), `ipfs://bound-assembly-${caseId}`);
-    bindings.set(agreementKey.toLowerCase(), `ipfs://bound-agreement-${caseId}`);
+    bindings.set(agreementHash.toLowerCase(), `ipfs://bound-agreement-${caseId}`);
     pinned.set(`ipfs://bound-assembly-${caseId}`, JSON.stringify(assembly));
     pinned.set(`ipfs://bound-agreement-${caseId}`, JSON.stringify(registered));
-    return { agreementKey, compositionHash, documents };
+    return { agreementHash, compositionHash, documents };
 }
 
 function profileBinding(...compositionHashes: Hex[]): MemberProfileMetadata {
@@ -152,7 +152,7 @@ function payloadUnder(d: ReturnType<typeof design> | null, opts: { buyerSig?: bo
         },
         ...(d ? { [keyOf("figaro-consent")]: { documents: d.documents } } : {}),
     }, specSource());
-    const agreement: Agreement = d ? { ...built, provenance: { agreementKey: d.agreementKey, compositionHash: d.compositionHash } } : built;
+    const agreement: Agreement = d ? { ...built, provenance: { agreementHash: d.agreementHash, compositionHash: d.compositionHash } } : built;
     const commitment: Commitment = {
         processId: `0x${"00".repeat(32)}` as Hex,
         buyer: BUYER,
@@ -160,7 +160,7 @@ function payloadUnder(d: ReturnType<typeof design> | null, opts: { buyerSig?: bo
         currency: CURRENCY,
         payment,
         expectedCumulativeValue: payment,
-        agreementHash: computeAgreementHash(agreement),
+        checkoutHash: computeCheckoutHash(agreement),
         salt: 1n,
         deadline: 9_999_999_999n,
     };

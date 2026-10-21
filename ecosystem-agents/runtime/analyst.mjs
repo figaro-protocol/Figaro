@@ -12,7 +12,7 @@
  *                own content address (`witnessContent.mjs`); agreement bodies
  *                are party-private and arrive only from the operator's own
  *                holdings or a data-market purchase, each verified against the
- *                chain's `agreementHash` before it is allowed to inform an
+ *                chain's `checkoutHash` before it is allowed to inform an
  *                answer.
  *   3. PROJECT — the graphs, each carrying its truth boundary.
  *   4. ANSWER  — canonical queries as folds over the graphs.
@@ -25,7 +25,7 @@ import * as path from "node:path";
 import { createPublicClient, http } from "viem";
 import {
     addressesFromDeploymentRecord,
-    computeAgreementHash,
+    computeCheckoutHash,
     fetchAttestationRecords,
     fetchCoreEvents,
     fetchEndpointLogAgreement,
@@ -136,7 +136,7 @@ async function loadSpecSource(discovery, { gateways } = {}) {
 /**
  * Load agreement documents the operator HOLDS — its own, or ones bought on the
  * data market — and admit only those that verify against a committed
- * `agreementHash` read from the chain. This is the provenance gate: a document
+ * `checkoutHash` read from the chain. This is the provenance gate: a document
  * whose recomputed root is not on chain informs nothing, whoever handed it
  * over. It proves provenance and integrity, never veracity: what a held
  * document declares is its parties' declaration, weighed by their
@@ -151,7 +151,7 @@ export function loadHeldAgreements(dir, events) {
     if (!dir || !fs.existsSync(dir)) return { byHash, rejected, committedRoots: 0 };
 
     const committed = new Map();
-    for (const e of events.orderCommitted) committed.set(e.agreementHash.toLowerCase(), e);
+    for (const e of events.orderCommitted) committed.set(e.checkoutHash.toLowerCase(), e);
 
     for (const name of fs.readdirSync(dir).filter((n) => n.endsWith(".json"))) {
         const file = path.join(dir, name);
@@ -164,14 +164,14 @@ export function loadHeldAgreements(dir, events) {
         }
         let root;
         try {
-            root = computeAgreementHash(doc).toLowerCase();
+            root = computeCheckoutHash(doc).toLowerCase();
         } catch {
             rejected.push({ file: name, reason: "not an agreement document" });
             continue;
         }
         const order = committed.get(root);
         if (!order) {
-            rejected.push({ file: name, reason: "recomputed root is not a committed agreementHash on this chain" });
+            rejected.push({ file: name, reason: "recomputed root is not a committed checkoutHash on this chain" });
             continue;
         }
         byHash.set(root, { agreement: doc, order });
@@ -362,9 +362,9 @@ export async function syncCorpus({
             const hit = await fetchAnchoredAssembly(assembly, { gateways });
             if (hit.absent) continue;
             for (const entry of hit.assembly.agreements ?? []) {
-                if (BYTES32.test(entry.agreementKey ?? "")) {
+                if (BYTES32.test(entry.agreementHash ?? "")) {
                     provenanceContentRefs.set(
-                        provenanceContentRef(entry.agreementKey, assembly.compositionHash).toLowerCase(),
+                        provenanceContentRef(entry.agreementHash, assembly.compositionHash).toLowerCase(),
                         assembly.compositionHash,
                     );
                 }
@@ -372,7 +372,7 @@ export async function syncCorpus({
                 // binding whatever its stake and verified against its key: an
                 // agreement a gateway substituted, or one not registered,
                 // contributes no pin.
-                const binding = discovery.getAgreementBinding(entry.agreementKey);
+                const binding = discovery.getAgreementBinding(entry.agreementHash);
                 const composed = binding ? await fetchAnchoredRegisteredAgreement(binding, { gateways }) : { absent: "not registered" };
                 // The pin is composed at the assembly level and folds into every
                 // agreement's bag, each clause read by its key.
@@ -433,7 +433,7 @@ export async function syncCorpus({
  * provenance leaf (the registered agreement and the composition hash of the
  * assembly the order instantiated — the format's own field, never a clause):
  *   - the agreements the operator holds (`agreement.provenance`), each
- *     verified against its committed `agreementHash`;
+ *     verified against its committed `checkoutHash`;
  *   - the public provenance-leaf overlay (`OverlayGraph.provenanceLeaf`): a
  *     buyer's attestation of the leaf, merkle-bound on chain to the order's
  *     agreement. Its pair is the decoded content when the content was
@@ -463,8 +463,8 @@ function assemblyAttribution(corpus) {
             const contentRef = entry.contentRef.toLowerCase();
             let key = refs.get(contentRef);
             const pair = entry.decoded;
-            if (pair && BYTES32.test(pair.agreementKey ?? "") && BYTES32.test(pair.compositionHash ?? "")
-                && provenanceContentRef(pair.agreementKey, pair.compositionHash).toLowerCase() === contentRef) {
+            if (pair && BYTES32.test(pair.agreementHash ?? "") && BYTES32.test(pair.compositionHash ?? "")
+                && provenanceContentRef(pair.agreementHash, pair.compositionHash).toLowerCase() === contentRef) {
                 key = pair.compositionHash;
             }
             if (typeof key === "string" && BYTES32.test(key)) byProcess.set(processId, key);
@@ -652,7 +652,7 @@ export function tradeStory(corpus, processId) {
         heldAgreements,
         agreementBodies: heldAgreements === 0
             ? "none held for this process — agreement bodies are party-private; buy access on the data market or read the fingerprints only"
-            : "verified against the on-chain agreementHash",
+            : "verified against the on-chain checkoutHash",
     });
 }
 

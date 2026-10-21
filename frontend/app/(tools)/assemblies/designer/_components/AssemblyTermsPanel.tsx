@@ -38,8 +38,8 @@ import {
 import { FieldControl } from "@/components/runtime/FieldControl";
 import { truncateHex } from "@/lib/shared/formatHex";
 
-/** The composition root and each agreement's agreement key. */
-function CompositionAgreements({ composition }: { composition: { compositionHash: `0x${string}`; agreementKeys: readonly `0x${string}`[] } }) {
+/** The composition root and each agreement's agreement hash. */
+function CompositionAgreements({ composition }: { composition: { compositionHash: `0x${string}`; agreementHashes: readonly `0x${string}`[] } }) {
     return (
         <section data-testid="assembly-composition" className="border border-default rounded bg-paper p-3 space-y-2">
             <p className="text-xs font-semibold text-ink-body">Composition</p>
@@ -51,15 +51,15 @@ function CompositionAgreements({ composition }: { composition: { compositionHash
                 {composition.compositionHash}
             </p>
             <ul className="space-y-0.5">
-                {composition.agreementKeys.map((agreementKey, index) => (
+                {composition.agreementHashes.map((agreementHash, index) => (
                     <li
-                        key={`${index}-${agreementKey}`}
+                        key={`${index}-${agreementHash}`}
                         className="text-[11px] text-ink-body"
                         data-testid={`assembly-composition-entry-${index}`}
-                        data-agreement-key={agreementKey}
+                        data-agreement-hash={agreementHash}
                     >
                         Order {index + 1}:{" "}
-                        <span className="font-mono" title={agreementKey}>{truncateHex(agreementKey, { head: 10, tail: 6 })}</span>
+                        <span className="font-mono" title={agreementHash}>{truncateHex(agreementHash, { head: 10, tail: 6 })}</span>
                     </li>
                 ))}
             </ul>
@@ -79,9 +79,9 @@ export function AssemblyTermsPanel({
     onToggleClause: (clauseKey: string, next: boolean) => void;
     onSetClauseField: (clauseKey: string, field: string, value: unknown) => void;
     readOnly?: boolean;
-    /** The composition root and each agreement's agreement key, in
+    /** The composition root and each agreement's agreement hash, in
      *  assembly order — shown by the read-only surfaces. */
-    composition?: { compositionHash: `0x${string}`; agreementKeys: readonly `0x${string}`[] };
+    composition?: { compositionHash: `0x${string}`; agreementHashes: readonly `0x${string}`[] };
 }) {
     const { data: registered } = useAllRegisteredClauses();
     const { version: specsVersion } = useClauseSpecs();

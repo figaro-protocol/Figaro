@@ -38,7 +38,7 @@ pragma solidity 0.8.26;
 ///         and carries no composition provenance, so there is no on-chain
 ///         hardening of this gate.
 ///
-///         Clauses anchor the off-chain vocabulary used by agreementHash
+///         Clauses anchor the off-chain vocabulary used by checkoutHash
 ///         pre-images, AttestationCoordinator attestations, and mechanism
 ///         modules: an agreement's leaf carries the clause key, and the batch
 ///         verifier accepts an in-proof clause validation only for a key

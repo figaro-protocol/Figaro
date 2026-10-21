@@ -10,7 +10,7 @@ contract AgreementRegistryTest is Test {
     address alice = address(0xA11CE);
     address bob = address(0xB0B);
 
-    bytes32 constant AGREEMENT_KEY = keccak256("canonical-agreement-clauses");
+    bytes32 constant AGREEMENT_HASH = keccak256("canonical-agreement-clauses");
     string constant CONTENT_URI = "ipfs://QmAgreement";
     uint256 constant DEPOSIT = 0.001 ether;
 
@@ -24,10 +24,10 @@ contract AgreementRegistryTest is Test {
 
     function test_registerAgreement_happy() public {
         vm.prank(alice);
-        registry.registerAgreement{value: DEPOSIT}(AGREEMENT_KEY, CONTENT_URI);
+        registry.registerAgreement{value: DEPOSIT}(AGREEMENT_HASH, CONTENT_URI);
 
         (address registeredBy, uint64 registeredAt, bool withdrawn, string memory uri) =
-            registry.bindings(AGREEMENT_KEY);
+            registry.bindings(AGREEMENT_HASH);
 
         assertEq(registeredBy, alice);
         assertGt(registeredAt, 0);
@@ -38,10 +38,10 @@ contract AgreementRegistryTest is Test {
 
     function test_registerAgreement_emitsEvent() public {
         vm.expectEmit(true, true, false, true, address(registry));
-        emit AgreementRegistry.AgreementRegistered(AGREEMENT_KEY, alice, CONTENT_URI);
+        emit AgreementRegistry.AgreementRegistered(AGREEMENT_HASH, alice, CONTENT_URI);
 
         vm.prank(alice);
-        registry.registerAgreement{value: DEPOSIT}(AGREEMENT_KEY, CONTENT_URI);
+        registry.registerAgreement{value: DEPOSIT}(AGREEMENT_HASH, CONTENT_URI);
     }
 
     // ── Registration — stake revert paths ───────────────────────────────
@@ -49,43 +49,43 @@ contract AgreementRegistryTest is Test {
     function test_registerAgreement_revertsOnUnderpay() public {
         vm.prank(alice);
         vm.expectRevert(abi.encodeWithSelector(AgreementRegistry.WrongDeposit.selector, DEPOSIT - 1, DEPOSIT));
-        registry.registerAgreement{value: DEPOSIT - 1}(AGREEMENT_KEY, CONTENT_URI);
+        registry.registerAgreement{value: DEPOSIT - 1}(AGREEMENT_HASH, CONTENT_URI);
     }
 
     function test_registerAgreement_revertsOnOverpay() public {
         vm.prank(alice);
         vm.expectRevert(abi.encodeWithSelector(AgreementRegistry.WrongDeposit.selector, DEPOSIT + 1 wei, DEPOSIT));
-        registry.registerAgreement{value: DEPOSIT + 1 wei}(AGREEMENT_KEY, CONTENT_URI);
+        registry.registerAgreement{value: DEPOSIT + 1 wei}(AGREEMENT_HASH, CONTENT_URI);
     }
 
     function test_registerAgreement_revertsOnZeroDeposit() public {
         vm.prank(alice);
         vm.expectRevert(abi.encodeWithSelector(AgreementRegistry.WrongDeposit.selector, 0, DEPOSIT));
-        registry.registerAgreement(AGREEMENT_KEY, CONTENT_URI);
+        registry.registerAgreement(AGREEMENT_HASH, CONTENT_URI);
     }
 
     // ── Registration — content revert paths ──────────────────────────────
 
     function test_registerAgreement_revertsOnDuplicateAgreement() public {
-        // Identity is the composition: the same agreementKey cannot anchor
+        // Identity is the composition: the same agreementHash cannot anchor
         // twice, regardless of who calls or which document URI they carry.
         vm.prank(alice);
-        registry.registerAgreement{value: DEPOSIT}(AGREEMENT_KEY, "ipfs://A");
+        registry.registerAgreement{value: DEPOSIT}(AGREEMENT_HASH, "ipfs://A");
 
-        vm.expectRevert(abi.encodeWithSelector(AgreementRegistry.AgreementAlreadyRegistered.selector, AGREEMENT_KEY));
+        vm.expectRevert(abi.encodeWithSelector(AgreementRegistry.AgreementAlreadyRegistered.selector, AGREEMENT_HASH));
         vm.prank(bob);
-        registry.registerAgreement{value: DEPOSIT}(AGREEMENT_KEY, "ipfs://B");
+        registry.registerAgreement{value: DEPOSIT}(AGREEMENT_HASH, "ipfs://B");
     }
 
     function test_registerAgreement_revertsOnEmptyContentURI() public {
         vm.prank(alice);
         vm.expectRevert(AgreementRegistry.EmptyContentURI.selector);
-        registry.registerAgreement{value: DEPOSIT}(AGREEMENT_KEY, "");
+        registry.registerAgreement{value: DEPOSIT}(AGREEMENT_HASH, "");
     }
 
-    function test_registerAgreement_revertsOnZeroAgreementKey() public {
+    function test_registerAgreement_revertsOnZeroAgreementHash() public {
         vm.prank(alice);
-        vm.expectRevert(AgreementRegistry.ZeroAgreementKey.selector);
+        vm.expectRevert(AgreementRegistry.ZeroAgreementHash.selector);
         registry.registerAgreement{value: DEPOSIT}(bytes32(0), CONTENT_URI);
     }
 
@@ -129,17 +129,17 @@ contract AgreementRegistryTest is Test {
 
     function test_withdrawDeposit_happy() public {
         vm.prank(alice);
-        registry.registerAgreement{value: DEPOSIT}(AGREEMENT_KEY, CONTENT_URI);
+        registry.registerAgreement{value: DEPOSIT}(AGREEMENT_HASH, CONTENT_URI);
 
         uint256 balanceBefore = alice.balance;
         vm.prank(alice);
-        registry.withdrawDeposit(AGREEMENT_KEY);
+        registry.withdrawDeposit(AGREEMENT_HASH);
 
         assertEq(alice.balance, balanceBefore + DEPOSIT);
         assertEq(address(registry).balance, 0);
 
         // Binding stays — only the withdrawn flag flips.
-        (address registeredBy,, bool withdrawn, string memory uri) = registry.bindings(AGREEMENT_KEY);
+        (address registeredBy,, bool withdrawn, string memory uri) = registry.bindings(AGREEMENT_HASH);
         assertEq(registeredBy, alice, "registeredBy preserved after withdraw");
         assertEq(withdrawn, true);
         assertEq(uri, CONTENT_URI, "contentURI preserved after withdraw");
@@ -147,13 +147,13 @@ contract AgreementRegistryTest is Test {
 
     function test_withdrawDeposit_emitsEvent() public {
         vm.prank(alice);
-        registry.registerAgreement{value: DEPOSIT}(AGREEMENT_KEY, CONTENT_URI);
+        registry.registerAgreement{value: DEPOSIT}(AGREEMENT_HASH, CONTENT_URI);
 
         vm.expectEmit(true, true, false, true, address(registry));
-        emit AgreementRegistry.DepositWithdrawn(AGREEMENT_KEY, alice, DEPOSIT);
+        emit AgreementRegistry.DepositWithdrawn(AGREEMENT_HASH, alice, DEPOSIT);
 
         vm.prank(alice);
-        registry.withdrawDeposit(AGREEMENT_KEY);
+        registry.withdrawDeposit(AGREEMENT_HASH);
     }
 
     function test_withdrawDeposit_immediately() public {
@@ -161,31 +161,31 @@ contract AgreementRegistryTest is Test {
         // round-trip is priced off-chain — a withdrawn agreement
         // de-surfaces from discovery (readers filter on the live stake).
         vm.prank(alice);
-        registry.registerAgreement{value: DEPOSIT}(AGREEMENT_KEY, CONTENT_URI);
+        registry.registerAgreement{value: DEPOSIT}(AGREEMENT_HASH, CONTENT_URI);
 
         vm.prank(alice);
-        registry.withdrawDeposit(AGREEMENT_KEY);
+        registry.withdrawDeposit(AGREEMENT_HASH);
     }
 
     function test_withdrawDeposit_revertsOnDoubleWithdraw() public {
         vm.prank(alice);
-        registry.registerAgreement{value: DEPOSIT}(AGREEMENT_KEY, CONTENT_URI);
+        registry.registerAgreement{value: DEPOSIT}(AGREEMENT_HASH, CONTENT_URI);
 
         vm.prank(alice);
-        registry.withdrawDeposit(AGREEMENT_KEY);
+        registry.withdrawDeposit(AGREEMENT_HASH);
 
         vm.prank(alice);
         vm.expectRevert(AgreementRegistry.AlreadyWithdrawn.selector);
-        registry.withdrawDeposit(AGREEMENT_KEY);
+        registry.withdrawDeposit(AGREEMENT_HASH);
     }
 
     function test_withdrawDeposit_revertsByNonRegisteredBy() public {
         vm.prank(alice);
-        registry.registerAgreement{value: DEPOSIT}(AGREEMENT_KEY, CONTENT_URI);
+        registry.registerAgreement{value: DEPOSIT}(AGREEMENT_HASH, CONTENT_URI);
 
         vm.prank(bob);
         vm.expectRevert(abi.encodeWithSelector(AgreementRegistry.NotRegisteredBy.selector, bob, alice));
-        registry.withdrawDeposit(AGREEMENT_KEY);
+        registry.withdrawDeposit(AGREEMENT_HASH);
     }
 
     function test_withdrawDeposit_revertsOnUnknownAgreement() public {
@@ -205,13 +205,13 @@ contract AgreementRegistryTest is Test {
         vm.deal(rejecter, DEPOSIT);
 
         vm.prank(rejecter);
-        registry.registerAgreement{value: DEPOSIT}(AGREEMENT_KEY, CONTENT_URI);
+        registry.registerAgreement{value: DEPOSIT}(AGREEMENT_HASH, CONTENT_URI);
 
         vm.prank(rejecter);
         vm.expectRevert(AgreementRegistry.TransferFailed.selector);
-        registry.withdrawDeposit(AGREEMENT_KEY);
+        registry.withdrawDeposit(AGREEMENT_HASH);
 
-        (,, bool withdrawn,) = registry.bindings(AGREEMENT_KEY);
+        (,, bool withdrawn,) = registry.bindings(AGREEMENT_HASH);
         assertFalse(withdrawn);
         assertEq(address(registry).balance, DEPOSIT);
     }
@@ -220,14 +220,14 @@ contract AgreementRegistryTest is Test {
         // Permanence guarantee: once an agreement is bound, withdrawing the
         // stake does NOT release the binding for re-registration.
         vm.prank(alice);
-        registry.registerAgreement{value: DEPOSIT}(AGREEMENT_KEY, CONTENT_URI);
+        registry.registerAgreement{value: DEPOSIT}(AGREEMENT_HASH, CONTENT_URI);
 
         vm.prank(alice);
-        registry.withdrawDeposit(AGREEMENT_KEY);
+        registry.withdrawDeposit(AGREEMENT_HASH);
 
         // Bob tries to take over the agreement — must fail.
         vm.prank(bob);
-        vm.expectRevert(abi.encodeWithSelector(AgreementRegistry.AgreementAlreadyRegistered.selector, AGREEMENT_KEY));
-        registry.registerAgreement{value: DEPOSIT}(AGREEMENT_KEY, "ipfs://hijack");
+        vm.expectRevert(abi.encodeWithSelector(AgreementRegistry.AgreementAlreadyRegistered.selector, AGREEMENT_HASH));
+        registry.registerAgreement{value: DEPOSIT}(AGREEMENT_HASH, "ipfs://hijack");
     }
 }

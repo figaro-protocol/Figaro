@@ -76,13 +76,13 @@ test.describe('COMPOSITION-ASSIST — export the draft, import a assembly, compo
         // The handoff is the assembly (one agreement per drawn order, each
         // binding an agreement by key) beside the agreements composed for it.
         const { assembly, agreements } = JSON.parse(exported) as {
-            assembly: { name?: string; agreements: Array<{ id: string; agreementKey: string }> };
+            assembly: { name?: string; agreements: Array<{ id: string; agreementHash: string }> };
             agreements: Record<string, { clauses: Record<string, unknown> }>;
         };
         expect(assembly.name, 'the editorial name rides the assembly').toBe('Assist round trip');
         expect(assembly.agreements, 'one agreement per drawn order').toHaveLength(2);
         expect(
-            assembly.agreements.some((entry) => PROCESS_CLAUSE in (agreements[entry.agreementKey]?.clauses ?? {})),
+            assembly.agreements.some((entry) => PROCESS_CLAUSE in (agreements[entry.agreementHash]?.clauses ?? {})),
             'the drawer selection lands in the exported composition',
         ).toBe(true);
 
