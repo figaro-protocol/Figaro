@@ -48,7 +48,7 @@ neither line does not delay either.
 6. **The stack is hardened.** The repository's secret scanning, push protection, Dependabot
    security updates and protection of `main` are on; the frontend's high security gaps are
    closed (the event cache an outside RPC can write, the SDK's sign gate when no clause specs are
-   passed, inline scripts in the content security policy, the personal-information guard); the
+   passed, inline scripts in the content security policy); the
    site is built from a clean checkout of a named commit; an automated accessibility check runs
    against WCAG AA; one public page states what is testnet-only, unaudited, or not yet built; and
    the SDK's next major version is published with the redeploy, so what a builder installs

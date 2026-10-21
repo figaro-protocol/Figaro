@@ -67,11 +67,12 @@ node scripts/check-deployment.mjs <record.json> deployments/<chainId>.expected.j
 ./scripts/check-sp1-gateway-route.sh     # both wrappers' Guard 4 (also standalone): SP1_VERIFIER_GATEWAY must ROUTE the proof form (SP1_PROOF_MODE groth16|plonk) for the sp1-sdk version prover/Cargo.lock pins — read live from the gateway + Succinct's sp1-contracts; fails closed offline
 
 # --- Public site export (the direct upload's file tree) ---
-# The maintainers' private site-build script runs these three steps in order and
+# The maintainers' private site-build script runs these four steps in order and
 # stops at the first failure; frontend/out/ is then the one tree a direct upload ships.
 cd frontend && env -u NEXT_DISTDIR -u FIGARO_ALLOW_TEST_HELPERS npm run build   # the site's static export → frontend/out/ (NEXT_DISTDIR unset, so the export lands in out/); its postbuild writes each paper's PDF beside its page and fails without Tectonic (§ "Paper PDFs"); a public-network build also sets NEXT_PUBLIC_CHAIN, the record's addresses and the pin key (§ Environment variables)
 cd docs-site && npm run build            # the docs-site's static export → docs-site/out/ (basePath /docs; prebuild assembles the content)
 rm -rf frontend/out/docs && cp -R docs-site/out frontend/out/docs   # the docs-site under the site's /docs: docs-site/out/index.html is served at /docs/
+node scripts/check-export-no-personal-info.mjs frontend/out   # refuses the upload if the export carries an email, a private-list name outside a citation, or a token whose decoded JSON holds a personal field; the testnet pinning key passes only while robots.txt disallows every crawler (RELEASE_READINESS § "Public on testnet", item 5)
 ```
 
 Full harness inventory (file lists, property names, rule counts) → `TESTING.md`.
