@@ -1151,7 +1151,7 @@ export function CheckoutView({ sellerAddress }: Props) {
                                     onChange={(e) =>
                                         setSelectedSlug(e.target.value === "" ? undefined : e.target.value)
                                     }
-                                    className="w-full rounded border border-default bg-surface px-3 py-2 text-sm text-ink-primary focus:outline-none focus:ring-2 focus:ring-focus focus:border-transparent"
+                                    className="w-full rounded border border-default bg-surface px-3 py-2 text-sm text-ink-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:border-transparent"
                                     data-testid="select-method"
                                 >
                                     <option value="" data-testid="option-method-unset">

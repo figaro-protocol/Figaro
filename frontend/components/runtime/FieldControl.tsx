@@ -420,7 +420,7 @@ export function FieldControl({
                         else onChange(numeric ? Number(raw) : raw);
                     }}
                     data-testid={testId}
-                    className="w-full rounded border border-default bg-surface px-2 py-1 text-xs text-ink-primary focus:outline-none focus:ring-1 focus:ring-accent"
+                    className="w-full rounded border border-default bg-surface px-2 py-1 text-xs text-ink-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
                 />
                 {guidance}
             </div>

@@ -45,7 +45,7 @@ export function DatetimeFieldInput({ value, onChange, testId }: FieldFormatInput
                 onChange={(e) => onChange(localToIso(e.target.value))}
                 data-testid={testId}
                 aria-describedby={utcHintId}
-                className="w-full rounded border border-default bg-surface px-2 py-1 text-xs text-ink-primary focus:outline-none focus:ring-1 focus:ring-accent"
+                className="w-full rounded border border-default bg-surface px-2 py-1 text-xs text-ink-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
             />
             <span id={utcHintId} className="text-[11px] text-ink-faint">UTC</span>
         </div>

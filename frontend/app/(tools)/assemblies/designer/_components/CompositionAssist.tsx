@@ -203,7 +203,7 @@ export function CompositionAssist({ getSnapshot, onImportAssembly }: Composition
                             placeholder='Paste the composition your agent returned — {"assembly": {...}, "agreements": {...}}'
                             aria-label="Assembly JSON to import"
                             data-testid="designer-assist-import-input"
-                            className="w-full text-[11px] font-mono px-2 py-1.5 rounded border border-default bg-paper text-ink-body placeholder:text-ink-muted resize-y focus:outline-none focus:ring-2 focus:ring-focus"
+                            className="w-full text-[11px] font-mono px-2 py-1.5 rounded border border-default bg-paper text-ink-body placeholder:text-ink-muted resize-y focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
                         />
                         {importError && (
                             <p className="text-xs text-error-fg" data-testid="designer-assist-import-error">

@@ -66,7 +66,7 @@ export function GeohashFieldInput({ value, onChange, testId, pattern, dispositio
                     }}
                     placeholder={`geohash (base32, ≤${maxChars} chars)`}
                     data-testid={testId}
-                    className={`w-full rounded border bg-surface px-2 py-1 text-xs font-mono text-ink-primary focus:outline-none focus:ring-1 focus:ring-accent ${
+                    className={`w-full rounded border bg-surface px-2 py-1 text-xs font-mono text-ink-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus ${
                         shapeOk ? "border-default" : "border-error"
                     }`}
                 />

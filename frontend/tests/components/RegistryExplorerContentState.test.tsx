@@ -103,3 +103,82 @@ describe("RegistryExplorer — the state of the content behind a pointer is show
         expect(screen.getByTestId("content-resolving").textContent).toMatch(/not served by the gateway yet/);
     });
 });
+
+describe("RegistryExplorer — the family tabs are a WAI-ARIA tab set with 44px targets", () => {
+    beforeEach(() => {
+        searchParams = "family=clauses";
+        clauseEventsMock.mockReturnValue({ data: [], failed: false });
+        assembliesMock.mockReturnValue({ data: [] });
+    });
+
+    it("each tab controls the one tabpanel, which is labeled by the selected tab and holds the results", () => {
+        render(<RegistryExplorer />);
+        const tabs = screen.getAllByRole("tab");
+        const panel = screen.getByRole("tabpanel");
+        for (const tab of tabs) expect(tab.getAttribute("aria-controls")).toBe(panel.id);
+        const selected = tabs.filter((t) => t.getAttribute("aria-selected") === "true");
+        expect(selected).toHaveLength(1);
+        expect(selected[0].id).toBeTruthy();
+        expect(panel.getAttribute("aria-labelledby")).toBe(selected[0].id);
+        expect(panel).toContainElement(screen.getByTestId("registry-search"));
+        expect(panel).toContainElement(screen.getByTestId("registry-count"));
+    });
+
+    it("roving tabindex: only the selected tab is in the tab order", () => {
+        render(<RegistryExplorer />);
+        for (const tab of screen.getAllByRole("tab")) {
+            expect(tab.getAttribute("tabindex")).toBe(tab.getAttribute("aria-selected") === "true" ? "0" : "-1");
+        }
+    });
+
+    it("arrow keys, Home and End move the selection along the row", () => {
+        replaceMock.mockClear();
+        render(<RegistryExplorer />);
+        const tabs = screen.getAllByRole("tab");
+        const familyOf = (t: HTMLElement) => t.dataset.testid!.replace("registry-family-", "");
+        const first = tabs[0];
+        expect(first.getAttribute("aria-selected")).toBe("true");
+        fireEvent.keyDown(first, { key: "ArrowRight" });
+        expect(replaceMock.mock.calls.at(-1)?.[0]).toContain(`family=${familyOf(tabs[1])}`);
+        fireEvent.keyDown(first, { key: "ArrowLeft" });
+        expect(replaceMock.mock.calls.at(-1)?.[0]).toContain(`family=${familyOf(tabs.at(-1)!)}`);
+        fireEvent.keyDown(first, { key: "Home" });
+        expect(replaceMock.mock.calls.at(-1)?.[0]).toContain(`family=${familyOf(tabs[0])}`);
+        fireEvent.keyDown(first, { key: "End" });
+        expect(replaceMock.mock.calls.at(-1)?.[0]).toContain(`family=${familyOf(tabs.at(-1)!)}`);
+    });
+
+    it("every tab is a 44px target (WCAG 2.5.5) on the tile radius", () => {
+        render(<RegistryExplorer />);
+        for (const tab of screen.getAllByRole("tab")) {
+            const cls = tab.getAttribute("class") ?? "";
+            expect(cls).toContain("min-h-11");
+            expect(cls).toContain("rounded-tile");
+            expect(cls).not.toMatch(/(^|\s)rounded(\s|$)/);
+        }
+    });
+});
+
+describe("RegistryExplorer — the search field and the facet selects are the §7 form controls", () => {
+    beforeEach(() => { _resetClauseSpecCache_TESTING_ONLY(); assembliesMock.mockReturnValue({ data: [] }); });
+    afterEach(() => { _resetClauseSpecCache_TESTING_ONLY(); });
+
+    it("each is a 44px target (WCAG 2.5.5) on the tile radius, with the focus token's ring", async () => {
+        searchParams = "family=clauses";
+        const cargo = pinSpec({ clauseId: "figaro-cargo", version: 1, title: "Cargo", description: "d", fields: [{ name: "x", type: "string", required: true }], block: { design: { article: "logistics" } } });
+        setClauseSpecFetcher(async () => cargo.bytes);
+        await loadClauseSpec(cargo.clauseKey, `ipfs://${cargo.clauseKey}`);
+        clauseEventsMock.mockReturnValue({ data: [ev(cargo.clauseKey)], failed: false });
+
+        render(<RegistryExplorer />);
+
+        for (const id of ["registry-search", "registry-sort", "registry-stake", "registry-article"]) {
+            const cls = screen.getByTestId(id).getAttribute("class") ?? "";
+            expect(cls).toContain("min-h-11");
+            expect(cls).toContain("rounded-tile");
+            expect(cls).toContain("focus-visible:ring-focus");
+            expect(cls).not.toMatch(/(^|\s)rounded(\s|$)/);
+            expect(cls).not.toMatch(/\[[^\]]*\]/);
+        }
+    });
+});

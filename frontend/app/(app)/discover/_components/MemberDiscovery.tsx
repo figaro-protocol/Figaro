@@ -113,7 +113,7 @@ export function MemberDiscovery() {
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Search members…"
                     aria-label="Search members"
-                    className="w-full max-w-md rounded-md border border-default px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-focus focus:border-transparent"
+                    className="w-full max-w-md rounded-md border border-default px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:border-transparent"
                 />
             </section>
 

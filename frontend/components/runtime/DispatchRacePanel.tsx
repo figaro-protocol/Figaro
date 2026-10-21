@@ -30,7 +30,7 @@ export interface RaceStartPolicy {
     ceiling?: string;
 }
 
-const FIELD = "w-full rounded border border-default bg-surface px-2 py-1.5 text-sm text-ink-primary focus:outline-none focus:ring-2 focus:ring-focus focus:border-transparent";
+const FIELD = "w-full rounded border border-default bg-surface px-2 py-1.5 text-sm text-ink-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:border-transparent";
 
 interface Props {
     race: ReturnType<typeof useDispatchRace>;

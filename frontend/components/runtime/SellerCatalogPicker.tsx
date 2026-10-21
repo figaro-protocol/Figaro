@@ -52,7 +52,7 @@ interface Props {
     onSelect: (selection: SellerSelection | null) => void;
 }
 
-const FIELD = "w-full rounded border border-default bg-surface px-3 py-2 text-sm text-ink-primary focus:outline-none focus:ring-2 focus:ring-focus focus:border-transparent";
+const FIELD = "w-full rounded border border-default bg-surface px-3 py-2 text-sm text-ink-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:border-transparent";
 
 export function SellerCatalogPicker({ tokenSymbol, compositionHash, onSelect }: Props) {
     const [selectedSellerAddress, setSelectedSellerAddress] = useState("");

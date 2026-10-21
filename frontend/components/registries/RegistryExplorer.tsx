@@ -30,6 +30,9 @@ import { useRegisteredMembers } from "@/lib/member/useRegisteredMembers";
 import { AssemblyShapeLine } from "@/components/assemblies/AssemblyShapeLine";
 import { getAssemblyLoadError } from "@/lib/protocol/useAssemblyRegistry";
 import { Breadcrumb } from "@/components/shared/Breadcrumb";
+import { Input } from "@/components/ui/Input";
+import { Select } from "@/components/ui/Select";
+import { Tabs } from "@/components/ui/Tabs";
 import { StoredDocument } from "@/components/registries/StoredDocument";
 import { truncateHex } from "@/lib/shared/formatHex";
 import {
@@ -44,6 +47,9 @@ const FAMILY_LABEL: Record<RegistryFamily, string> = { clauses: "Clauses", agree
 // the same per-wallet role); the reader sees one expression.
 const SORT_LABEL: Record<(typeof REGISTRY_SORTS)[number], string> = { article: "Article", name: "Name", block: "Most recent", registeredBy: "Registered by" };
 const STAKE_LABEL: Record<(typeof STAKE_VIEWS)[number], string> = { live: "Live stake", withdrawn: "Stake withdrawn", all: "All" };
+
+/** The family row, as the shared WAI-ARIA tab set's items. */
+const FAMILY_TABS = REGISTRY_FAMILIES.map((f) => ({ value: f, label: FAMILY_LABEL[f], testId: `registry-family-${f}` }));
 
 /** Row descriptions — the spec's / assembly's / profile's own short words. */
 type RowText = { description: string };
@@ -167,98 +173,90 @@ export function RegistryExplorer() {
             </p>
 
             {/* ── Family + facets ─────────────────────────────────────── */}
-            <div className="flex flex-wrap gap-2" role="tablist" aria-label="Registry">
-                {REGISTRY_FAMILIES.map((f) => (
-                    <button
-                        key={f}
-                        type="button"
-                        role="tab"
-                        aria-selected={state.family === f}
-                        data-testid={`registry-family-${f}`}
-                        onClick={() => setState({ family: f })}
-                        className={`px-3 py-1.5 text-sm rounded border ${state.family === f ? "border-ink-heading text-ink-heading" : "border-ink-muted/30 text-ink-muted hover:text-ink-heading"}`}
-                    >
-                        {FAMILY_LABEL[f]}
-                    </button>
-                ))}
-            </div>
-
-            <div className="flex flex-col sm:flex-row sm:flex-wrap gap-3">
-                <input
-                    type="search"
-                    value={state.q}
-                    onChange={(e) => setState({ q: e.target.value })}
-                    placeholder={`Search ${FAMILY_LABEL[state.family].toLowerCase()}…`}
-                    aria-label="Search"
-                    data-testid="registry-search"
-                    className="flex-1 min-w-[12rem] rounded border border-ink-muted/30 bg-transparent px-3 py-1.5 text-sm"
-                />
-                <label className="text-sm text-ink-muted flex items-center gap-2">
-                    Sort
-                    <select
-                        value={state.sort}
-                        onChange={(e) => setState({ sort: e.target.value as ExplorerQuery["sort"] })}
-                        data-testid="registry-sort"
-                        className="rounded border border-ink-muted/30 bg-transparent px-2 py-1 text-sm"
-                    >
-                        {REGISTRY_SORTS.filter((s) => s !== "article" || state.family === "clauses").map((s) => (
-                            <option key={s} value={s}>{SORT_LABEL[s]}</option>
-                        ))}
-                    </select>
-                </label>
-                <label className="text-sm text-ink-muted flex items-center gap-2">
-                    Stake
-                    <select
-                        value={state.stake}
-                        onChange={(e) => setState({ stake: e.target.value as ExplorerQuery["stake"] })}
-                        data-testid="registry-stake"
-                        className="rounded border border-ink-muted/30 bg-transparent px-2 py-1 text-sm"
-                    >
-                        {STAKE_VIEWS.map((s) => <option key={s} value={s}>{STAKE_LABEL[s]}</option>)}
-                    </select>
-                </label>
-                {state.family === "clauses" && articles.length > 0 ? (
+            <Tabs
+                label="Registry"
+                tabs={FAMILY_TABS}
+                selected={state.family}
+                onSelect={(family) => setState({ family })}
+                panelClassName="space-y-8"
+            >
+                <div className="flex flex-col sm:flex-row sm:flex-wrap gap-3">
+                    <Input
+                        type="search"
+                        value={state.q}
+                        onChange={(e) => setState({ q: e.target.value })}
+                        placeholder={`Search ${FAMILY_LABEL[state.family].toLowerCase()}…`}
+                        aria-label="Search"
+                        data-testid="registry-search"
+                        className="flex-1 w-auto min-w-48"
+                    />
                     <label className="text-sm text-ink-muted flex items-center gap-2">
-                        Article
-                        <select
-                            value={state.article}
-                            onChange={(e) => setState({ article: e.target.value })}
-                            data-testid="registry-article"
-                            className="rounded border border-ink-muted/30 bg-transparent px-2 py-1 text-sm"
+                        Sort
+                        <Select
+                            value={state.sort}
+                            onChange={(e) => setState({ sort: e.target.value as ExplorerQuery["sort"] })}
+                            data-testid="registry-sort"
+                            className="w-auto"
                         >
-                            <option value="">All</option>
-                            {articles.map((a) => <option key={a} value={a}>{a}</option>)}
-                        </select>
+                            {REGISTRY_SORTS.filter((s) => s !== "article" || state.family === "clauses").map((s) => (
+                                <option key={s} value={s}>{SORT_LABEL[s]}</option>
+                            ))}
+                        </Select>
                     </label>
-                ) : null}
-            </div>
+                    <label className="text-sm text-ink-muted flex items-center gap-2">
+                        Stake
+                        <Select
+                            value={state.stake}
+                            onChange={(e) => setState({ stake: e.target.value as ExplorerQuery["stake"] })}
+                            data-testid="registry-stake"
+                            className="w-auto"
+                        >
+                            {STAKE_VIEWS.map((s) => <option key={s} value={s}>{STAKE_LABEL[s]}</option>)}
+                        </Select>
+                    </label>
+                    {state.family === "clauses" && articles.length > 0 ? (
+                        <label className="text-sm text-ink-muted flex items-center gap-2">
+                            Article
+                            <Select
+                                value={state.article}
+                                onChange={(e) => setState({ article: e.target.value })}
+                                data-testid="registry-article"
+                                className="w-auto"
+                            >
+                                <option value="">All</option>
+                                {articles.map((a) => <option key={a} value={a}>{a}</option>)}
+                            </Select>
+                        </label>
+                    ) : null}
+                </div>
 
-            {(state.registeredBy || state.clause) ? (
-                <p className="text-sm text-ink-muted">
-                    {state.registeredBy ? <>Registered by <code className="font-mono">{truncateHex(state.registeredBy)}</code>{" "}</> : null}
-                    {state.clause ? <>Composing <code className="font-mono">{state.clause}</code>{" "}</> : null}
-                    <button type="button" className="underline" onClick={() => setState({ registeredBy: "", clause: "" })}>clear</button>
-                </p>
-            ) : null}
-
-            {/* ── Results ─────────────────────────────────────────────── */}
-            {familyLoading ? (
-                <p className="text-sm text-ink-muted" data-testid="registry-loading">Reading the registry&hellip;</p>
-            ) : familyFailed ? (
-                <p className="text-sm text-ink-muted">The registry read failed on this network &mdash; nothing is shown rather than a stale copy.</p>
-            ) : (
-                <>
-                    <p className="text-sm text-ink-body" data-testid="registry-count">
-                        {selected.length} of {familyTotal} {FAMILY_LABEL[state.family].toLowerCase()}
-                        {state.stake === "live" ? " with a live stake" : state.stake === "withdrawn" ? " whose stake was withdrawn" : ""}
-                        {state.q || state.article || state.registeredBy || state.clause ? " match" : ""}.
+                {(state.registeredBy || state.clause) ? (
+                    <p className="text-sm text-ink-muted">
+                        {state.registeredBy ? <>Registered by <code className="font-mono">{truncateHex(state.registeredBy)}</code>{" "}</> : null}
+                        {state.clause ? <>Composing <code className="font-mono">{state.clause}</code>{" "}</> : null}
+                        <button type="button" className="underline" onClick={() => setState({ registeredBy: "", clause: "" })}>clear</button>
                     </p>
-                    {state.family === "clauses" ? <ClauseRows rows={selected} state={state} onFacet={setState} /> : null}
-                    {state.family === "agreements" ? <AgreementRows rows={selected} onFacet={setState} /> : null}
-                    {state.family === "assemblies" ? <AssemblyRows rows={selected} assemblies={assemblies ?? []} onFacet={setState} /> : null}
-                    {state.family === "members" ? <MemberRows rows={selected} members={members ?? []} /> : null}
-                </>
-            )}
+                ) : null}
+
+                {/* ── Results ─────────────────────────────────────────────── */}
+                {familyLoading ? (
+                    <p className="text-sm text-ink-muted" data-testid="registry-loading">Reading the registry&hellip;</p>
+                ) : familyFailed ? (
+                    <p className="text-sm text-ink-muted">The registry read failed on this network &mdash; nothing is shown rather than a stale copy.</p>
+                ) : (
+                    <>
+                        <p className="text-sm text-ink-body" data-testid="registry-count">
+                            {selected.length} of {familyTotal} {FAMILY_LABEL[state.family].toLowerCase()}
+                            {state.stake === "live" ? " with a live stake" : state.stake === "withdrawn" ? " whose stake was withdrawn" : ""}
+                            {state.q || state.article || state.registeredBy || state.clause ? " match" : ""}.
+                        </p>
+                        {state.family === "clauses" ? <ClauseRows rows={selected} state={state} onFacet={setState} /> : null}
+                        {state.family === "agreements" ? <AgreementRows rows={selected} onFacet={setState} /> : null}
+                        {state.family === "assemblies" ? <AssemblyRows rows={selected} assemblies={assemblies ?? []} onFacet={setState} /> : null}
+                        {state.family === "members" ? <MemberRows rows={selected} members={members ?? []} /> : null}
+                    </>
+                )}
+            </Tabs>
         </div>
     );
 }

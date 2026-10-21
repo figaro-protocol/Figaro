@@ -88,9 +88,11 @@
         @apply border-default my-8;
     }
 
-    /* Container side-padding; matches space.lg / space.xl in the spec. */
-    .container,
-    .mx-auto {
+    /* Page-container side-padding; matches space.lg / space.xl in the spec.
+       The page container is `container mx-auto px-6`, so `.container` alone
+       carries the rule; a `mx-auto` that only centers (a figure frame, an
+       icon, a measure inside an already-padded shell) takes no padding. */
+    .container {
         @apply px-6 sm:px-10;
     }
 

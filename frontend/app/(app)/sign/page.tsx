@@ -385,7 +385,7 @@ function SignPageContent() {
                     </label>
                     <textarea
                         data-testid="input-commitment-payload"
-                        className="w-full bg-surface border border-default rounded-lg px-3 py-2 text-ink-primary text-sm font-mono placeholder-ink-faint focus:outline-none focus:ring-2 focus:ring-focus resize-none"
+                        className="w-full bg-surface border border-default rounded-lg px-3 py-2 text-ink-primary text-sm font-mono placeholder-ink-faint focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus resize-none"
                         rows={6}
                         placeholder='Paste the JSON payload here…'
                         value={rawInput}
@@ -596,7 +596,7 @@ function SignPageContent() {
                                 value={quotePrice}
                                 onChange={(e) => setQuotePrice(e.target.value)}
                                 placeholder="Your price"
-                                className="w-full rounded border border-default bg-surface px-3 py-2 text-sm text-ink-primary focus:outline-none focus:ring-2 focus:ring-focus focus:border-transparent"
+                                className="w-full rounded border border-default bg-surface px-3 py-2 text-sm text-ink-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:border-transparent"
                                 data-testid="quote-price-input"
                             />
                             <Button

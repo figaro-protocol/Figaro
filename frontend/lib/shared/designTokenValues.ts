@@ -34,12 +34,17 @@ export const colorTokens = {
 
     // ── Ink (text) ──────────────────────────────────────────────────────
     // Namespaced `ink.*` rather than `text.*` to avoid the `text-text-*`
-    // utility-prefix collision.
+    // utility-prefix collision. `muted` is text: the `info` hue darkened
+    // until it clears WCAG 1.4.3's 4.5:1 on `subtle`, the darkest surface
+    // prose sits on (4.56:1; canvas 4.88:1, paper 5.33:1) — the value of
+    // `info-fg`, by the same derivation. `heading` is the tawny amber at
+    // unchanged hue and saturation (hsl 29 60%), darkened by the same rule
+    // (subtle 4.57:1; canvas 4.89:1, paper 5.35:1).
     ink: {
-        heading: '#a16328',
+        heading: '#985d26',
         primary: '#3a322a',
         body: '#5a4f42',
-        muted: '#857c6e',
+        muted: '#726a5e',
         faint: '#a89e8d',
     },
 

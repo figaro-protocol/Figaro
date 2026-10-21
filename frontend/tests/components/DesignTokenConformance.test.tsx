@@ -9,10 +9,21 @@
  * - a page H1 is §2's `text-heading-h1`;
  * - a link styled as a control clears WCAG 2.5.5 through §7's `<Button>`
  *   shape (`min-h-11`, `rounded-tile`).
+ *
+ * And the tree-wide rules the references stand on:
+ *
+ * - `ink.muted` clears WCAG 1.4.3 as text on every ground prose sits on (§1);
+ * - a field's focus indicator is the `focus` token, never the CTA-only
+ *   accent (§1 Focus, §1 Accent);
+ * - the base side-padding rule pads the page container only, so a
+ *   `mx-auto` used for centering carries no padding (§3).
  */
 import React from "react";
+import { readdirSync, readFileSync, statSync } from "node:fs";
+import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render, screen } from "@testing-library/react";
+import { colorTokens } from "@/lib/shared/designTokenValues";
 
 const accountMock = vi.fn(() => ({ address: undefined as string | undefined }));
 vi.mock("wagmi", () => ({ useAccount: () => accountMock() }));
@@ -67,6 +78,93 @@ describe("BackToTop — §1 hover fill, §5 shadow", () => {
         expect(cls).toContain("shadow-section");
         expect(cls).not.toMatch(/(^|\s)shadow-sm(\s|$)/);
         Object.defineProperty(window, "scrollY", { value: 0, configurable: true });
+    });
+
+    it("is a 44×44px target (WCAG 2.5.5) on an opaque surface token", () => {
+        render(<BackToTop />);
+        Object.defineProperty(window, "scrollY", { value: 900, configurable: true });
+        act(() => {
+            fireEvent.scroll(window);
+        });
+        const cls = classesOf(screen.getByRole("button", { name: "Back to top" }));
+        expect(cls).toContain("min-h-11");
+        expect(cls).toContain("min-w-11");
+        expect(cls).toContain("bg-paper");
+        // An alpha fill or a backdrop blur composites over the scrolling page.
+        expect(cls).not.toMatch(/(^|\s)bg-[\w-]+\/\d+(\s|$)/);
+        expect(cls).not.toMatch(/backdrop-blur/);
+        Object.defineProperty(window, "scrollY", { value: 0, configurable: true });
+    });
+});
+
+/** WCAG 2.x relative luminance of a `#rrggbb` hex. */
+function luminance(hex: string): number {
+    const [r, g, b] = [1, 3, 5]
+        .map((i) => parseInt(hex.slice(i, i + 2), 16) / 255)
+        .map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+/** WCAG 2.x contrast ratio between two `#rrggbb` hexes. */
+function contrast(a: string, b: string): number {
+    const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
+    return (hi + 0.05) / (lo + 0.05);
+}
+
+describe("ink.muted and ink.heading — §1, WCAG 1.4.3 text contrast", () => {
+    const cases = (["muted", "heading"] as const).flatMap((ink) =>
+        (["canvas", "paper", "subtle"] as const).map((ground) => [ink, ground] as const),
+    );
+    it.each(cases)("ink.%s clears 4.5:1 on %s", (ink, ground) => {
+        expect(contrast(colorTokens.ink[ink], colorTokens[ground])).toBeGreaterThanOrEqual(4.5);
+    });
+});
+
+/** Every .ts/.tsx source file under the given frontend directories. */
+function sourceFiles(...dirs: string[]): string[] {
+    const out: string[] = [];
+    const walk = (dir: string) => {
+        for (const name of readdirSync(dir)) {
+            const full = path.join(dir, name);
+            if (statSync(full).isDirectory()) walk(full);
+            else if (/\.tsx?$/.test(name)) out.push(full);
+        }
+    };
+    for (const d of dirs) walk(path.resolve(process.cwd(), d));
+    return out;
+}
+
+describe("Field focus — §1 Focus, §1 Accent", () => {
+    it("no input in app/ or components/ takes its focus ring from the CTA-only accent", () => {
+        const offenders = sourceFiles("app", "components").filter((f) =>
+            readFileSync(f, "utf8").includes("focus:ring-accent"),
+        );
+        expect(offenders).toEqual([]);
+    });
+
+    it("every focus ring in app/ or components/ is `focus-visible:`, never `focus:`", () => {
+        const offenders = sourceFiles("app", "components").flatMap((f) =>
+            readFileSync(f, "utf8")
+                .split("\n")
+                .flatMap((line, i) => (/(^|[\s"'`:])focus:ring-/.test(line) ? [`${path.relative(process.cwd(), f)}:${i + 1}`] : [])),
+        );
+        expect(offenders).toEqual([]);
+    });
+});
+
+describe("globals.css — §3 container side-padding", () => {
+    const css = readFileSync(path.resolve(process.cwd(), "app/globals.css"), "utf8");
+    /** Every selector list in the stylesheet, split into its selectors. */
+    const selectors = [...css.replace(/\/\*[\s\S]*?\*\//g, "").matchAll(/([^{}]+)\{/g)].flatMap((m) =>
+        m[1].split(",").map((s) => s.trim()),
+    );
+
+    it("no rule selects `.mx-auto`, so a centered element gets no padding", () => {
+        expect(selectors).not.toContain(".mx-auto");
+    });
+
+    it("the page container keeps its side padding", () => {
+        expect(css).toMatch(/\.container\s*\{\s*@apply px-6 sm:px-10;/);
     });
 });
 

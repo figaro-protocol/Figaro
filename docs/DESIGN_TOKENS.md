@@ -35,13 +35,15 @@ Do not use these as text utilities (`text-paper`, `text-subtle`, etc.) — the v
 
 The ink ramp is namespaced `ink.*` rather than `text.*` to avoid the `text-text-*` utility-prefix collision. Read top-down as decreasing emphasis.
 
-| Token         | Hex       | Tailwind utility    | Use                                                      |
-|---------------|-----------|---------------------|----------------------------------------------------------|
-| `ink.heading` | `#a16328` | `text-ink-heading`  | Page H1, strong heading emphasis. Tawny amber.           |
-| `ink.primary` | `#3a322a` | `text-ink-primary`  | Default body text — set on `<body>`.                     |
-| `ink.body`    | `#5a4f42` | `text-ink-body`     | Lead paragraphs, body text on subtle surfaces.           |
-| `ink.muted`   | `#857c6e` | `text-ink-muted`    | Captions, secondary metadata.                            |
-| `ink.faint`   | `#a89e8d` | `text-ink-faint`    | Decorative only — fails WCAG AA on canvas for body text. |
+| Token         | Hex       | Tailwind utility    | On `canvas` | On `paper` | On `subtle` | Use                                                      |
+|---------------|-----------|---------------------|-------------|------------|-------------|----------------------------------------------------------|
+| `ink.heading` | `#985d26` | `text-ink-heading`  | 4.89:1      | 5.35:1     | 4.57:1      | Page H1, strong heading emphasis. Tawny amber.           |
+| `ink.primary` | `#3a322a` | `text-ink-primary`  | 11.52:1     | 12.58:1    | 10.75:1     | Default body text — set on `<body>`.                     |
+| `ink.body`    | `#5a4f42` | `text-ink-body`     | 7.31:1      | 7.98:1     | 6.82:1      | Lead paragraphs, body text on subtle surfaces.           |
+| `ink.muted`   | `#726a5e` | `text-ink-muted`    | 4.88:1      | 5.33:1     | 4.56:1      | Captions, secondary metadata.                            |
+| `ink.faint`   | `#a89e8d` | `text-ink-faint`    | 2.42:1      | 2.64:1     | 2.26:1      | Decorative only — fails WCAG AA on canvas for body text. |
+
+**Derivation of `ink.muted` and `ink.heading`.** Both are text, so each clears WCAG 1.4.3's 4.5:1 on every ground prose sits on — solved against `subtle`, the darkest, which leaves canvas and paper with margin. Each is its hue at unchanged hue and saturation, darkened until it clears 4.55:1 on `subtle`. `ink.muted` is the `info` hue so derived — the derivation that gives `info-fg`, so the two share one value; `info` keeps the lighter `#857c6e`: it is the fill and icon channel, judged against 1.4.11's 3:1, not a text color. `ink.heading` is the tawny amber (hsl 29 60%) so derived, which holds at normal text size the H3s, run-in labels, table headers and inline links that carry it. `frontend/tests/components/DesignTokenConformance.test.tsx` holds both to 4.5:1 on canvas, paper and subtle.
 
 ### Focus
 
@@ -65,7 +67,7 @@ The single CTA-only contrast color. Traditional MUJI aizome indigo: deep, cool, 
 
 **Discipline (load-bearing):**
 
-- **CTAs only.** `bg-accent` / `text-accent` / `border-accent` belong to a page's one primary call to action and to nothing else — not body text, captions, status surfaces, or decorative dividers. No page spends that surface: no page or component carries any of the three utilities, and the site's calls to action are outline-sumi (`CtaLink`, `<Button>`'s `default`). The live uses of the hue are the native checkbox and radio fill, `accent-accent` (`components/runtime/FieldControl.tsx`, `components/members/AssemblyChoiceRow.tsx`, `components/members/DisclosurePolicyEditor.tsx`), and a `focus:ring-accent` on five compact field inputs (`components/runtime/FieldControl.tsx`, `components/runtime/DatetimeFieldInput.tsx`, `components/runtime/GeohashFieldInput.tsx`, `components/runtime/PayoutRoutingPanel.tsx` ×2), where the Focus row above assigns `ring-focus`.
+- **CTAs only.** `bg-accent` / `text-accent` / `border-accent` belong to a page's one primary call to action and to nothing else — not body text, captions, status surfaces, or decorative dividers. No page spends that surface: no page or component carries any of the three utilities, and the site's calls to action are outline-sumi (`CtaLink`, `<Button>`'s `default`). The live use of the hue is the native checkbox and radio fill, `accent-accent` (`components/runtime/FieldControl.tsx`, `components/members/AssemblyChoiceRow.tsx`, `components/members/DisclosurePolicyEditor.tsx`). A focus indicator is never the accent: every field takes the Focus row's `focus-visible:ring-focus` (`frontend/tests/components/DesignTokenConformance.test.tsx` fails on any `focus:ring-accent` under `app/` or `components/`).
 - **Max one accent surface per page.** Two accent fills on one page produce CTA-stacking — neither reads as primary. The outline-strong-secondary pattern (`border-ink-heading`, paper fill) is the canonical companion shape for the secondary action.
 - **Never used as a text-on-canvas color** for prose. `text-accent` on canvas is decoratively visible but not body-text legible at small sizes. Reserve for short labels (button text uses `text-paper` on `bg-accent`).
 - **Two hover shapes, one per job** (both are correct; do not collapse them into one rule):
@@ -90,7 +92,7 @@ Each status is a **pair**, because a fill and a text run want different luminanc
 | `error`      | `#9c4a3c` | `bg-error`   | 5.56:1      | 6.07:1     | `error-fg`    | `#9c4a3c` | 5.56:1      | 6.07:1     |
 | `info`       | `#857c6e` | `bg-info`    | 3.77:1      | 4.11:1     | `info-fg`     | `#726a5e` | 4.88:1      | 5.33:1     |
 
-Intent: `success` muted moss green, `warning` muted ocher, `error` muted terracotta, `info` the `ink.muted` alias. All four bare tokens are ≥3:1 on both surfaces, so all four are valid as borders, rings, and icons (WCAG 1.4.11, Non-text Contrast) — including a Lucide icon colored by `text-warning`, which is the icon channel wearing a `text-` utility, not text.
+Intent: `success` muted moss green, `warning` muted ocher, `error` muted terracotta, `info` the warm gray whose text channel `info-fg` is also `ink.muted`. All four bare tokens are ≥3:1 on both surfaces, so all four are valid as borders, rings, and icons (WCAG 1.4.11, Non-text Contrast) — including a Lucide icon colored by `text-warning`, which is the icon channel wearing a `text-` utility, not text.
 
 **Derivation of the `-fg` set.** Each is its status hue at unchanged hue and saturation, darkened until it clears **4.55:1 on `subtle` (`#f0ede5`)** — the darkest surface prose sits on, which leaves canvas and paper with margin (measured above; on `subtle` the four read 4.57 / 4.57 / 5.19 / 4.56). `error-fg` **aliases `error`**: the terracotta already clears the text floor at its own lightness, so the derivation returns the value unchanged. The alias is kept rather than dropped so the rule has no exception — *status text is always `-fg`* — and so `text-error-fg` is a no-op recolor wherever `text-error` stood. `info-fg` is deliberately NOT `ink.body` (`#5a4f42`, 7.31:1): aliasing it would over-darken informational text into body-text weight and erase the register difference.
 
@@ -160,7 +162,7 @@ Six-step scale aliasing the muji-* density values. Coexists with Tailwind's defa
 | `xl`    | `p-xl`, ...      | `2.5rem`  |
 | `2xl`   | `p-2xl`, ...     | `3.5rem`  |
 
-Container side-padding is `px-6` (`1.5rem`, the value of `space.lg`) at every width: every page container is `container mx-auto px-6`. The `globals.css` base rule `.container, .mx-auto { @apply px-6 sm:px-10 }` pads only an element that sets no padding of its own; a `px-6` utility on the element wins at every width, because the utilities layer follows the base layer.
+Container side-padding is `px-6` (`1.5rem`, the value of `space.lg`) at every width: every page container is `container mx-auto px-6`. The `globals.css` base rule `.container { @apply px-6 sm:px-10 }` pads the page container, and only where it sets no padding of its own; `mx-auto` centers and carries no padding, so a centered figure, icon or measure keeps its own box; a `px-6` utility on the element wins at every width, because the utilities layer follows the base layer.
 
 ### Measure
 
@@ -253,7 +255,7 @@ disabled:pointer-events-none disabled:opacity-50
 
 Every variant declares a border — including the two transparent ones — so switching variants never shifts layout by the 1px the bordered variants add.
 
-`default` is filled-sumi, **not** `bg-accent`: accent is capped at one surface per page (§1) and this is the site-wide default variant, so accent here would stack CTAs on any page carrying two buttons. And filled-sumi means `ink-primary`, the dark warm ink — **never `ink-heading` under `text-paper`** (white on the amber, though a computed 4.8:1, is not legible to actual eyes; an amber-filled primary takes the dark fill, hovering to `ink-body` so the text stays high-contrast in both states). Amber is for text, borders, and current-markers on light grounds only.
+`default` is filled-sumi, **not** `bg-accent`: accent is capped at one surface per page (§1) and this is the site-wide default variant, so accent here would stack CTAs on any page carrying two buttons. And filled-sumi means `ink-primary`, the dark warm ink — **never `ink-heading` under `text-paper`** (white on the amber, though a computed 5.35:1, is not legible to actual eyes; an amber-filled primary takes the dark fill, hovering to `ink-body` so the text stays high-contrast in both states). Amber is for text, borders, and current-markers on light grounds only.
 
 | Size | Utilities | Height | Target-size standing |
 |---|---|---|---|
@@ -319,7 +321,7 @@ Three ORTHOGONAL channels, so no two interaction states are confusable:
 
 Never spend the fill channel on the current state — a hovered neighbor then reads as the current item. The current rule is `border-ink-heading` because the amber is already the nav's own text color; no hue family enters for a state.
 
-Row-level rule: `pl-3.5 border-l-2` on the current row against `pl-4` on the rest — 14px + the 2px rule restores the 16px inset, so the label does not shift. `text-ink-heading` is NOT a legible current-state text color at nav sizes (4.1:1 on `bg-subtle`, below WCAG AA 1.4.3); deepen within the ink ramp (`text-ink-body` → `text-ink-primary`) instead.
+Row-level rule: `pl-3.5 border-l-2` on the current row against `pl-4` on the rest — 14px + the 2px rule restores the 16px inset, so the label does not shift. `text-ink-heading` does not mark the current state: it is the nav's own text color (above), and at 4.57:1 on `bg-subtle` it sits at the WCAG 1.4.3 floor; deepen within the ink ramp (`text-ink-body` → `text-ink-primary`) instead.
 
 The rule must read as a straight rule: a row carrying `border-l-2` gets a SQUARE left corner (`rounded-r-tile rounded-l-none`, not `rounded-tile`), or the 2px stroke bends around the radius and reads as a decorative brace. On `<button>` rows, `rounded-l-none` is load-bearing rather than redundant — the `globals.css` base `button` rule already applied `rounded-tile` to all four corners.
 
@@ -338,6 +340,16 @@ focus-visible:ring-2 focus-visible:ring-focus
 `min-h-11` (44px) satisfies WCAG 2.5.5. The trigger carries `aria-expanded` + `aria-controls`; the panel carries the controlled `id` + `aria-labelledby` back at the trigger, and MOUNTS only while expanded, so collapsed content never enters a focus-trap query. The chevron is the primitive's own (`text-ink-muted`, `aria-hidden`, rotates 180° when open) — do not re-inline one.
 
 In a nav, the section trigger takes `text-heading-h3 text-ink-heading` against `text-ink-body` page rows: the section header must DOMINATE the links it governs. A caption-sized section header over body-sized links inverts the hierarchy.
+
+### Tabs (`components/ui/Tabs.tsx`)
+
+The shared WAI-ARIA tab set — one row of tabs over ONE tabpanel, caller-owned selection (`selected` + `onSelect`), the panel's content the caller's `children`. A `role="tablist"` row (`aria-label` names it) of `role="tab"` buttons, each with `aria-selected` and `aria-controls` naming the tabpanel, which `aria-labelledby` the selected tab; a roving `tabIndex`; ArrowRight / ArrowLeft (wrapping), Home and End move the selection and the focus, with automatic activation. Each tab:
+
+```
+inline-flex items-center min-h-11 px-3 text-sm rounded-tile border
+```
+
+the selected one `border-ink-heading text-ink-heading`, the rest `border-ink-muted/30 text-ink-muted hover:text-ink-heading`. `min-h-11` (44px) satisfies WCAG 2.5.5. `DataExplorer` and `RegistryExplorer` compose it; do not re-inline a tab set.
 
 ### Status surfaces
 
@@ -409,7 +421,7 @@ The page a landing's card opens, which owns the how of one subject — a concept
 A page of the reference / read-only tier (`docs/FRONTEND.md` § "Wallet-provider scope per route"): it reads the network with no wallet and mounts the provider. `frontend/app/(app)/data/explore/page.tsx`:
 
 - The shell `container mx-auto px-6 py-10 max-w-3xl space-y-8`; a `header space-y-2` with the H1 `text-heading-h2 text-ink-heading` and one statement `text-sm text-ink-body max-w-2xl`. `/audit` (`frontend/app/(app)/audit/page.tsx`) carries the same shell and header strings.
-- The reader inside `Suspense`, fallback `text-sm text-ink-muted`. `DataExplorer` (`frontend/components/data/DataExplorer.tsx`) composes `Breadcrumb` (`frontend/components/shared/Breadcrumb.tsx`); one view at a time behind a WAI-ARIA tab set — a `role="tablist"` row of `role="tab"` buttons, each with `aria-selected` and `aria-controls` naming the one `role="tabpanel"`, which `aria-labelledby` the selected tab; a roving `tabIndex` and the arrow keys, Home and End move the selection; each tab `inline-flex items-center min-h-11 px-3 text-sm rounded-tile border`, the selected one `border-ink-heading text-ink-heading`; each view headed `text-heading-h3 text-ink-heading`; `Input` and `Card` from `components/ui/`; reading, failed and resolved as three distinct states, the first two each one `text-sm text-ink-muted` line. The view rides the query string (`frontend/lib/data/explorer.ts`), so every view is a permalink.
+- The reader inside `Suspense`, fallback `text-sm text-ink-muted`. `DataExplorer` (`frontend/components/data/DataExplorer.tsx`) composes `Breadcrumb` (`frontend/components/shared/Breadcrumb.tsx`); one view at a time behind `Tabs` (`frontend/components/ui/Tabs.tsx`, §7); each view headed `text-heading-h3 text-ink-heading`; `Input` and `Card` from `components/ui/`; reading, failed and resolved as three distinct states, the first two each one `text-sm text-ink-muted` line. The view rides the query string (`frontend/lib/data/explorer.ts`), so every view is a permalink.
 
 A page that is an inventory of registrations takes its read path from `docs/FRONTEND.md` § "Canonical exemplars — copy these shapes", the event-driven inventory page (`/registries`).
 

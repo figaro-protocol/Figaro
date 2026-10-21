@@ -92,7 +92,7 @@ export function PayoutRoutingPanel({ currency }: Props) {
                             onChange={(e) => setLeg(i, { recipient: e.target.value })}
                             placeholder="0x recipient"
                             data-testid={`payout-routing-recipient-${i}`}
-                            className="flex-1 rounded border border-default bg-surface px-2 py-1 text-xs font-mono text-ink-primary focus:outline-none focus:ring-1 focus:ring-accent"
+                            className="flex-1 rounded border border-default bg-surface px-2 py-1 text-xs font-mono text-ink-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
                         />
                         <input
                             type="text"
@@ -101,7 +101,7 @@ export function PayoutRoutingPanel({ currency }: Props) {
                             onChange={(e) => setLeg(i, { amount: e.target.value })}
                             placeholder={`amount${symbol ? ` (${symbol})` : ""}`}
                             data-testid={`payout-routing-amount-${i}`}
-                            className="w-36 rounded border border-default bg-surface px-2 py-1 text-xs font-mono text-ink-primary focus:outline-none focus:ring-1 focus:ring-accent"
+                            className="w-36 rounded border border-default bg-surface px-2 py-1 text-xs font-mono text-ink-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
                         />
                         {legs.length > 1 && (
                             <button

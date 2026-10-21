@@ -786,7 +786,7 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
                             placeholder="A short, memorable name for this assembly"
                             aria-label="Assembly name"
                             data-testid="designer-name-input"
-                            className="mt-1 w-full text-xs px-2 py-1.5 rounded border border-default bg-paper text-ink-heading placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-focus"
+                            className="mt-1 w-full text-xs px-2 py-1.5 rounded border border-default bg-paper text-ink-heading placeholder:text-ink-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
                         />
                     </label>
                     <label className="block">
@@ -802,7 +802,7 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
                             placeholder="One line on what this assembly is for"
                             aria-label="Assembly summary"
                             data-testid="designer-summary-input"
-                            className="mt-1 w-full text-xs px-2 py-1.5 rounded border border-default bg-paper text-ink-heading placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-focus"
+                            className="mt-1 w-full text-xs px-2 py-1.5 rounded border border-default bg-paper text-ink-heading placeholder:text-ink-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
                         />
                     </label>
                     <label className="block">
@@ -818,7 +818,7 @@ function DesignerCanvasInner({ seed }: { seed: DesignerSeed }) {
                             aria-label="Assembly description"
                             rows={3}
                             data-testid="designer-description-input"
-                            className="mt-1 w-full text-xs px-2 py-1.5 rounded border border-default bg-paper text-ink-heading placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-focus resize-y"
+                            className="mt-1 w-full text-xs px-2 py-1.5 rounded border border-default bg-paper text-ink-heading placeholder:text-ink-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus resize-y"
                         />
                     </label>
                     </div>
