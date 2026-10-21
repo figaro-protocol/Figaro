@@ -345,7 +345,7 @@ saveRecord({
     attestation: { clauseId: clauseKey, stage: 0, contentRef, clauseData, sellerSig: attestSig },
 });
 const attestResult = await sequencer.submitAttestAsSeller({
-    role: commitment, target: commitment,
+    target: commitment,
     clauseId: clauseKey, stage: 0, contentRef,
     sellerSig: attestSig, proof: witnessProof,
 });

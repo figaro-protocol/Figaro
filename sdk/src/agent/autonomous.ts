@@ -132,7 +132,7 @@ export interface UsageRecordingReport {
  * Record direct-path usage for a just-resolved process — the headless twin of
  * the frontend's at-resolution recording, and the step the RPGF path depends
  * on: usage is recorded AT RESOLUTION or the credit is deniable later
- * (docs/DESIGN_DECISIONS.md §21 — a seller can unstake, a period can close;
+ * (docs/DESIGN_DECISIONS.md §20 — a seller can unstake, a period can close;
  * a deferred record is permanently refusable). A buyer agent that resolves
  * without calling this credits no clause author and no assembly designer.
  *
@@ -267,18 +267,15 @@ export function prepareAttestationContent(
 }
 
 /**
- * Submit an attestation as a seller.
+ * Submit an attestation as a seller. Caller must equal `target.seller`: a
+ * seller attests about a clause of its own order.
  *
- * @param role   Commitment proving seller identity in the target's process.
- *               Pass the SIGNED commitment struct (a root order carries
- *               `processId = 0`), not the reconstruction-derived form whose
- *               root `processId` is the DERIVED id — the coordinator re-hashes
- *               and recovery would miss.
- * @param target Commitment for the order being attested (carries the
- *               `checkoutHash` the merkle proof opens against). Also the SIGNED
- *               struct (root: `processId = 0`). For SAME-ORDER attestation pass
- *               the SAME commitment as both `role` and `target` — one struct in
- *               both args, not two distinct commitments.
+ * @param target The seller's own order's commitment (carries the
+ *               `checkoutHash` the merkle proof opens against). Pass the SIGNED
+ *               commitment struct (a root order carries `processId = 0`), not
+ *               the reconstruction-derived form whose root `processId` is the
+ *               DERIVED id — the coordinator re-hashes the struct, and a
+ *               derived-id root would miss.
  * @param clauseId The clause key (`clauseEntry.clause`) — the same
  *               bytes32 `buildSignedClauseInclusionProof` takes and the merkle leaf id.
  * @param clauseDataHash The clause FINGERPRINT — `hashClauseData(clause)` =
@@ -293,7 +290,6 @@ export function prepareAttestationContent(
 export async function attestAsSeller(
     walletClient: WalletClient,
     coordinatorAddress: Address,
-    role: Commitment,
     target: Commitment,
     clauseId: Hex,
     stage: number,
@@ -301,17 +297,16 @@ export async function attestAsSeller(
     proof: readonly Hex[],
     contentRef: Hex,
 ): Promise<TxResult> {
-    return submitAttestation(walletClient, coordinatorAddress, role, target, clauseId, stage, clauseDataHash, proof, contentRef);
+    return submitAttestation(walletClient, coordinatorAddress, "attestAsSeller", target, clauseId, stage, clauseDataHash, proof, contentRef);
 }
 
-/** The ONE coordinator submit both attest roles share. The role commitment
- *  selects the function and its argument arity: the seller path carries a
- *  role-proving commitment the buyer path structurally lacks (the buyer IS
- *  `target.buyer` — the coordinator checks the caller, no second struct). */
+/** The ONE coordinator submit both attest roles share: the two entry points
+ *  take the same arguments — the attested order's commitment, whose seller
+ *  or buyer the coordinator checks the caller against. */
 async function submitAttestation(
     walletClient: WalletClient,
     coordinatorAddress: Address,
-    role: Commitment | undefined,
+    functionName: "attestAsSeller" | "attestAsBuyer",
     target: Commitment,
     clauseId: Hex,
     stage: number,
@@ -325,17 +320,11 @@ async function submitAttestation(
         address: coordinatorAddress,
         abi: ATTESTATION_COORDINATOR_ABI,
     } as const;
-    const hash = role
-        ? await walletClient.writeContract({
-              ...base,
-              functionName: "attestAsSeller",
-              args: [role, target, clauseId, stage, clauseDataHash, proof, contentRef],
-          })
-        : await walletClient.writeContract({
-              ...base,
-              functionName: "attestAsBuyer",
-              args: [target, clauseId, stage, clauseDataHash, proof, contentRef],
-          });
+    const hash = await walletClient.writeContract({
+        ...base,
+        functionName,
+        args: [target, clauseId, stage, clauseDataHash, proof, contentRef],
+    });
     return { hash };
 }
 
@@ -360,7 +349,7 @@ export async function attestAsBuyer(
     proof: readonly Hex[],
     contentRef: Hex,
 ): Promise<TxResult> {
-    return submitAttestation(walletClient, coordinatorAddress, undefined, target, clauseId, stage, clauseDataHash, proof, contentRef);
+    return submitAttestation(walletClient, coordinatorAddress, "attestAsBuyer", target, clauseId, stage, clauseDataHash, proof, contentRef);
 }
 
 // ── Action-based execution ──────────────────────────────────────────────────
@@ -383,9 +372,8 @@ export interface ActionExecutionInputs {
     /** attest-as-seller / attest-as-buyer: the merkle-bound payload the agent
      *  builds from its hydrated agreement (proof + content + clause bytes). */
     attestation?: {
-        /** seller-attest only: distinct role commitment for cross-order
-         *  attestation; omit for same-order (role = target). */
-        role?: Commitment;
+        /** The attested order's commitment — the seller's own order for
+         *  attest-as-seller, any order of the process for attest-as-buyer. */
         target: Commitment;
         /** The clause key (`clauseEntry.clause`) — the same bytes32
          *  `buildSignedClauseInclusionProof` takes. */
@@ -469,7 +457,7 @@ export async function executeAction(
             return action.type === "attest-as-seller"
                 ? attestAsSeller(
                     walletClient, addresses.attestationCoordinator,
-                    at.role ?? at.target, at.target, at.clauseId, at.stage, at.clauseDataHash, at.proof, at.contentRef,
+                    at.target, at.clauseId, at.stage, at.clauseDataHash, at.proof, at.contentRef,
                 )
                 : attestAsBuyer(
                     walletClient, addresses.attestationCoordinator,

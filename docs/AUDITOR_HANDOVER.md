@@ -13,10 +13,10 @@ the review's is its own.
 | | |
 |---|---|
 | Repository | https://github.com/figaro-protocol/Figaro |
-| Baseline commit | set when an audit is engaged; the figures stand for `eeb903b7` (§ "The baseline commit") |
+| Baseline commit | set when an audit is engaged; the line counts are the tree's at the latest commit, the results the commits their rows name (§ "The baseline commit") |
 | Languages in scope | Solidity (`src/`, three deploy scripts) and Rust (`prover/`, four crates) |
-| Solidity in scope | 14 contract files, 1,423 lines of code (3,544 physical); 3 deploy scripts, 401 lines of code (840 physical) |
-| Rust in scope | 4 crates, 21 files under `src/`, 6,981 lines of code (9,797 physical) net of their inline test modules |
+| Solidity in scope | 14 contract files, 1,419 lines of code (3,530 physical); 3 deploy scripts, 401 lines of code (840 physical) |
+| Rust in scope | 4 crates, 21 files under `src/`, 6,966 lines of code (9,776 physical) net of their inline test modules |
 | Configuration in scope | `foundry.toml`, the `Cargo.toml` files and `Cargo.lock`, the Rust toolchain pin (§ "In scope — configuration") |
 | Trusted, not reviewed | SP1 (the zkVM, its crates, its on-chain verifier gateway), OpenZeppelin Contracts, Permit2, Uniswap SwapRouter02 |
 | Out of scope | mocks, fuzz harnesses, tests and formal specs, the proving harness crate, the Sepolia deploy script, `frontend/`, `sdk/` |
@@ -138,7 +138,7 @@ program: the Rust that decides what a valid proof proves.
 | Directory / file | Contents | Lines |
 |---|---|---|
 | `src/core/kernel/` | `FigaroCore.sol`, `CommitmentTypes.sol` | 306, 53 |
-| `src/core/attestation/` | `AttestationCoordinator.sol` | 209 |
+| `src/core/attestation/` | `AttestationCoordinator.sol` | 195 |
 | `src/core/verifier/` | `FigaroBatchVerifier.sol`, `ISP1Verifier.sol` | 609, 15 |
 | `src/build/registries/` | `ClauseRegistry.sol`, `AssemblyRegistry.sol`, `AgreementRegistry.sol` | 196, 188, 201 |
 | `src/build/rewards/` | `UsageCounter.sol`, `RpgfMinter.sol` | 914, 312 |
@@ -158,9 +158,9 @@ in scope.
 | Crate | Package | Lines | What it is | What a defect costs |
 |---|---|---|---|---|
 | `prover/program/` | `figaro-prover` | 13 | The guest's entry point: reads the batch input, runs the Core mirror, commits the public values | A batch the chain resolves wrongly |
-| `prover/lib/` | `figaro-kernel` | 2,046 | The mirror of `FigaroCore`'s commit and resolve logic, the witness gates, the public-values encoding, the state root, the usage accrual | A batch the chain resolves wrongly |
+| `prover/lib/` | `figaro-kernel` | 2,033 | The mirror of `FigaroCore`'s commit and resolve logic, the witness gates, the public-values encoding, the state root, the usage accrual | A batch the chain resolves wrongly |
 | `prover/clause/` | `figaro-clause` | 1,939 | The generic clause engine: parses any clause spec supplied as witness input, validates content against it, encodes it | An attestation the batch path reads differently from the party who signed it |
-| `prover/sequencer/` | `figaro-sequencer` | 5,799 | The relay: collects signed operations, forms batches, proves them, calls `settleBatch`, publishes what it resolved | Liveness and griefing; a reader misled by what the relay publishes |
+| `prover/sequencer/` | `figaro-sequencer` | 5,791 | The relay: collects signed operations, forms batches, proves them, calls `settleBatch`, publishes what it resolved | Liveness and griefing; a reader misled by what the relay publishes |
 
 The Lines column counts physical lines under each crate's `src/`, net of the
 inline test modules.
@@ -247,9 +247,14 @@ came from the program with that key. The other external dependencies are in
 
 ## The baseline commit
 
-No external audit is engaged, so no commit is under audit. The figures below
-were measured at `eeb903b7`, the last commit at which they were produced; the
-code has moved since, and they stand for that commit alone. When an audit is
+No external audit is engaged, so no commit is under audit. The line counts
+in § "At a glance" and § "Scope" are the tree's at the latest commit. The
+results — every figure under § "Verification evidence" — are those measured
+at the commits each row names, the last full production at `eeb903b7`; the
+code has moved since, and each result stands for its own commit alone. The
+guest has changed since `eeb903b7`: a seller's attestation is checked
+against the attested order's own seller, so the verification key moves and
+the Sepolia verifier's pinned key is the earlier guest's. When an audit is
 engaged, this section names the commit it reviews, the line counts and the
 results are measured there once, and a tag is placed at it. The descriptive
 sections of this document stay true of the code throughout.
@@ -383,7 +388,7 @@ the guest's test files under `prover/lib/tests/`.
   reproduces the two-key bytes, an assembly claim verifies its membership
   proof under the compositionHash with the same sorted-pair verifier, and a
   claim keyed on either reserved key, or an assembly claim naming either as
-  its agreementKey, is refused (`kernel.rs:795-802`).
+  its agreementKey, is refused (`kernel.rs:787-794`).
 - The relay reads `AgreementRegistry.bindings` for a kind-2 claim
   (`AGREEMENT_REGISTRY_ADDRESS`, `main.rs`) and drops a claim naming either
   reserved key before proving (`submitter.rs`, `names_a_reserved_key`).
@@ -594,7 +599,7 @@ never reads `msg.sender`, and `resolveProcess` is gated by presence
 | Designer / registrant | register a clause, registered agreement or assembly under a stake; withdraw that stake (the binding stays); claim designer rewards on the keys it registered while its member stake is live | edit or remove a registration; earn on an unstaked key |
 | Member | register, update, request withdrawal, withdraw after the cooldown | act for another wallet |
 | Batch submitter (the relay or anyone) | call `settleBatch` with a valid proof over the current root | fabricate an operation, move a token the proof does not commit to, replay a proof (`SCALING_STRATEGY.md` § Trust analysis) |
-| `FigaroBatchVerifier` | write accrual into `UsageCounter` (sole caller, immutable) | mint, edit a score, block a resolution (`DESIGN_DECISIONS.md` #16, #20) |
+| `FigaroBatchVerifier` | write accrual into `UsageCounter` (sole caller, immutable) | mint, edit a score, block a resolution (`DESIGN_DECISIONS.md` #15, #19) |
 | `RpgfMinter` | mint florins up to its 600M cap, pro rata to score | exceed the cap; mint outside a closed period |
 | Florin deployer | register minters until `renounceDeployerMint`; the mainnet script renounces in the same broadcast | anything after the renounce |
 | DAO treasury multisig | spend the 300M it holds | any protocol write; it is upstream of every contract |
@@ -643,7 +648,7 @@ and pure functions are omitted.
 |---|---|---|
 | `FigaroCore` | `commit` | anyone carrying both parties' signatures; the bonds are pulled from the signers, the gas is the caller's |
 | `FigaroCore` | `resolveProcess` | the process's `rootBuyer`, over every active order |
-| `AttestationCoordinator` | `attestAsSeller` | the seller named in a committed order of the same process (`msg.sender == role.seller`) |
+| `AttestationCoordinator` | `attestAsSeller` | the order's seller (`msg.sender == target.seller`) |
 | `AttestationCoordinator` | `attestAsBuyer` | the order's buyer (`msg.sender == target.buyer`) |
 | `FigaroBatchVerifier` | `settleBatch` | anyone, with a valid proof over the current state root |
 | `ClauseRegistry` | `registerClause` | anyone, with the registration stake; first write wins |
@@ -752,7 +757,7 @@ direct path would have refused.
    prover can carry state across batches that the root does not cover?
 8. Is the batch path's resolve authorization — a bare
    `ResolveProcess(processId)` signature, no nonce and no deadline
-   (`DESIGN_DECISIONS.md` #22) — replayable to any effect?
+   (`DESIGN_DECISIONS.md` #21) — replayable to any effect?
 9. Can one client stall the relay, or exhaust its re-queue, at a cost below its
    own rate-limit budget?
 
@@ -820,7 +825,7 @@ read it first.
   mirror enforces the same two rules itself.
 - The batch path's resolve authorization is a signature over
   `ResolveProcess(processId)` under the VERIFIER's EIP-712 domain, with no nonce
-  and no deadline (`DESIGN_DECISIONS.md` #22): a process resolves once, so the
+  and no deadline (`DESIGN_DECISIONS.md` #21): a process resolves once, so the
   authorization has one use.
 - The two paths share no state. A batch-resolved process never acquires Core
   status; `UsageCounter` is the one place the two meet, and only accrual crosses.
@@ -874,7 +879,7 @@ read it first.
   names (`RpgfMinter.sol:297-311`). The verifier's `_hashUsage` packs
   `key(32) ‖ kind(1) ‖ c(8) ‖ d(8)` per accrual, span `49 + 49n + 20m`
   (`FigaroBatchVerifier.sol:488-516`), and the guest's
-  `compute_usage_accrual_hash` mirrors it. `DESIGN_DECISIONS.md` § 24 states
+  `compute_usage_accrual_hash` mirrors it. `DESIGN_DECISIONS.md` § 23 states
   the pattern. Tests:
   `test_aStrangerWhoStakesAnAssemblysKeyAsAClauseTakesNothingOfIt`,
   `test_aStrangerWhoStakesAClausesKeyAsAnAssemblyTakesNothingOfIt`,
@@ -904,8 +909,14 @@ read it first.
   treated as satisfied by both engines — the safe direction for a check whose
   binding form is the merkle commitment.
 - The coordinator has two entry points, `attestAsSeller` and `attestAsBuyer`:
-  a party attests for itself, from its own address; a seller's own EIP-7702
-  code files through `attestAsSeller`. No caller files for another address.
+  a party attests for itself, from its own address, about a clause of its own
+  order — each takes the attested order's commitment and checks the caller
+  against its `seller` or its `buyer`, and the batch path's `AttestAsSeller`
+  checks the recovered signer against `target.seller` alike; a seller's own
+  EIP-7702 code files through `attestAsSeller`. No caller files for another
+  address, and no seller files on another seller's order
+  (`test_sellerCannotAttestAgainstAnotherSellersOrder`,
+  `attest_as_seller_against_another_sellers_order_fails`).
   `test_attestViaResolver_selectorIsNotDispatched`
   (`test/core/attestation/AttestationCoordinatorTest.t.sol`) holds that a
   low-level call carrying selector `0x3ef7b1fb` against a committed order does
@@ -943,8 +954,8 @@ read it first.
   format's leaf convention: one leaf per agreement, keyed by the agreement's
   agreementHash over the canonical bytes `{"clauses":{…},"slot":i}`, and one
   terms leaf keyed by `keccak256("figaro-assembly-terms")` over the
-  assembly-scoped clauses when there are any (`DESIGN_DECISIONS.md` § 25,
-  § 26). Membership is proved, never looked up: `AssemblyRegistry` holds no
+  assembly-scoped clauses when there are any (`DESIGN_DECISIONS.md` § 24,
+  § 25). Membership is proved, never looked up: `AssemblyRegistry` holds no
   edge to `AgreementRegistry`. The terms leaf opens under the root
   (`test_theTermsLeafIsALeafOfTheAssemblyTree`) and never passes as an order
   agreement (`test_theTermsLeafNeverPassesAsAnAgreement`); an agreement leaf opens under
@@ -968,7 +979,7 @@ read it first.
   (`:577-579`). `AgreementRegistry.registerAgreement` refuses both as
   registrations (`AgreementRegistry.sol:162-164`). The guest refuses a claim
   keyed on either, of any kind, and an assembly claim naming either as its
-  agreementHash (`prover/lib/src/kernel.rs:795-802`, `apply_usage_claims`).
+  agreementHash (`prover/lib/src/kernel.rs:787-794`, `apply_usage_claims`).
   The counter's batch path skips either: `applyBatchAccrual` continues past
   them before the registration gate (`UsageCounter.sol:714`). The relay drops
   such a claim before proving (`submitter.rs`, `names_a_reserved_key`;
@@ -1011,12 +1022,11 @@ read it first.
 (`prover/sequencer/tests/sequencer.rs` unless named otherwise):
 
 - A submission's identity in the mempool covers every input the proof or the
-  verifier judges and admission does not: the signer, the order list, the role
-  order and the witness spec bytes. A stranger's resolve for an open process,
-  a buyer's signature replayed over another order list, a seller attestation
-  under another role order, or an attestation copied with other spec bytes
-  cannot take the party's own position (`mempool.rs`, `op_key`; the five
-  `mempool_*` slot tests).
+  verifier judges and admission does not: the signer, the order list and the
+  witness spec bytes. A stranger's resolve for an open process, a buyer's
+  signature replayed over another order list, or an attestation copied with
+  other spec bytes cannot take the party's own position (`mempool.rs`,
+  `op_key`; the `mempool_*` slot tests).
 - A batch takes at most `MAX_BATCH_OPS` operations, oldest first
   (`mempool.rs`, `drain_up_to`;
   `mempool_drains_at_most_the_batch_cap_and_keeps_the_rest_queued`), and its
@@ -1075,10 +1085,9 @@ read it first.
   order behind a deferred commit applies again once the commit is restored
   and moves with it, in its group (`assembler.rs`, `refilter_after_drops`;
   `what_was_built_on_a_deferred_operation_moves_with_it`). A tick's deferrals
-  are grouped by the processes they touch — a commit's, a resolve's, an
-  attestation's role and target orders' — and operations share a group when
-  a chain of them, each touching a process the next touches, joins them, so
-  an operation never shares one with what no such chain joins it to (`mempool.rs`, `defer`, `group_by_process`;
+  are grouped by the process they touch — a commit's, a resolve's, an
+  attestation's target order's — and each operation touches one process, so
+  a group is one process's operations (`mempool.rs`, `defer`, `group_by_process`;
   `deferred_operations_are_grouped_by_the_process_they_touch`). A deferred group
   waits apart from the queue, its keys held, and is drained again only into
   the room the queue leaves, whole (`mempool.rs`, `drain_up_to`,
@@ -1109,9 +1118,7 @@ read it first.
   `expire_deferred`, `take_expired`;
   `a_deferral_is_bounded_in_time_from_first_deferral_not_in_attempts`,
   `a_dependent_deferred_with_its_parent_is_dead_lettered_with_it`,
-  `an_operation_that_never_applies_does_not_cut_an_honest_window_short`,
-  `a_bridge_does_not_cut_either_processs_window_short`,
-  `what_is_left_of_a_group_is_grouped_again`). The
+  `an_operation_that_never_applies_does_not_cut_an_honest_window_short`). The
   first deferral's time rides on the operation (`PendingOp::deferred_since`),
   so it ends when the operation lands or is dead-lettered and spends nothing
   of the re-queue count (`a_deferral_spends_nothing_of_the_requeue_count`);
@@ -1120,8 +1127,8 @@ read it first.
   (`deferring_drops_a_copy_resubmitted_meanwhile_and_holds_the_key`,
   `requeue_drops_a_copy_resubmitted_meanwhile`). `formal/RelayState.tla`,
   `DeferSpec` (`formal/RelayStateDeferral.cfg`), checks the deferral as ten
-  invariants, each of ten switches set FALSE failing the one it names: drain
-  groups closed under touching a common process, transitively, each
+  invariants, each of nine switches set FALSE failing the one it names: drain
+  groups that are each one process's operations, each
   operation expiring on its own window with what was filtered behind it, so
   no honest operation's window is cut short by operations that never apply
   naming its process.
@@ -1235,7 +1242,7 @@ Current design realities accepted by the protocol surface, not accidental defect
 
 1. buyer key loss is terminal for an active process because the Core has no timeout or admin recovery path
 2. very large processes are gas-bounded, so institution design should compose across processes instead of pushing single-process fanout toward the ceiling
-3. fee-on-transfer tokens are unsupported by design and are rejected explicitly by the Core; rebasing tokens are unsupported and NOT detected (`_pullExact` sees only the delta inside its own transfer call — `DESIGN_DECISIONS.md` #10 states the consequence); a token with an issuer blocklist holds any process a blocked party sits in until the issuer relents, since resolution is atomic (`WeirdTokenTest`; the same entry)
+3. fee-on-transfer tokens are unsupported by design and are rejected explicitly by the Core; rebasing tokens are unsupported and NOT detected (`_pullExact` sees only the delta inside its own transfer call — `DESIGN_DECISIONS.md` #9 states the consequence); a token with an issuer blocklist holds any process a blocked party sits in until the issuer relents, since resolution is atomic (`WeirdTokenTest`; the same entry)
 4. a commitment can be bonded on the batch path up to one hour after its deadline: `settleBatch` accepts a batch timestamp up to `MAX_BATCH_STALENESS` (one hour, `FigaroBatchVerifier.sol:101`, checked at `:307`) behind its block, from any prover, and the guest checks deadlines against that timestamp; the Core refuses an expired commitment at once. Both parties signed the commitment and both fund its bonds, so nothing moves that they did not agree to; a party that needs a hard cut-off signs a deadline one hour earlier. Closing it is a verifier change, so a new key and a new deployment
 
 ## Known limitations
@@ -1305,9 +1312,8 @@ Stated so the review does not spend hours finding them.
    empty: under a queue that stays longer than `MAX_BATCH_OPS` for the whole
    window it is never retried, and a dependency that arrives later than the
    window finds it dead-lettered, recorded with its reason and
-   re-submittable. Operations share a drain group when a chain of them, each
-   touching a process the next touches, joins them, and a group is drained
-   whole. An operation that never applies, which anyone may submit free,
+   re-submittable. Each operation touches one process, so a drain group is
+   one process's operations, and a group is drained whole. An operation that never applies, which anyone may submit free,
    naming an honest process (a resolve of a process not yet landed, signed
    by any key) still joins that process's group and takes drain capacity:
    the group needs room for that many more operations to be retried. It cannot
@@ -1520,13 +1526,13 @@ Slither's 50 results at the baseline, triaged (eight High and Medium):
 | Severity | Detector | Where | Verdict |
 |---|---|---|---|
 | High | arbitrary-send-erc20 | `_pullExact` in `FigaroCore` and `FigaroBatchVerifier` | Designed. The `from` is a recovered EIP-712 signer (Core) or a net position hashed into the proof's public values (verifier), never a caller-supplied address. |
-| Medium | incorrect-equality | `MembersRegistry.withdraw` (`unlockAt == 0`) | Sentinel for "nothing pending"; `DESIGN_DECISIONS.md` #15. |
+| Medium | incorrect-equality | `MembersRegistry.withdraw` (`unlockAt == 0`) | Sentinel for "nothing pending"; `DESIGN_DECISIONS.md` #14. |
 | Medium | reentrancy-no-eth | `settleBatch` writes `stateRoot` after calling `UsageCounter` | `nonReentrant`; the callee is an immutable address that accepts only this caller and calls nothing back; the call sits in a try/catch so its revert cannot unwind the token legs. |
 | Medium | unused-return | tuple destructuring of `assemblies.bindings` and `agreements.bindings`, in `UsageCounter` and in `RpgfMinter._isAuthor` (four results) | Reads the fields it needs. |
 | Low | missing-zero-check | `WitnessSwapAndCommitCoordinator` constructor `router_` | A zero router yields a coordinator whose swap leg always reverts and holds nothing; the deploy scripts probe the router before construction. |
 | Low | reentrancy-benign | `settleBatch` increments `batchCount` after the token legs and the accrual call | `nonReentrant`; the same reasoning as the Medium above. |
 | Low | calls-loop | accrual, spec-binding, position, and entitlement loops | Designed; loops are over caller-sized calldata and gas-bounded (accepted risk 2). No loop body reverts on a third party's action. |
-| Low | timestamp | `deadline` in `commit`; the batch's clock in `settleBatch`; registry cooldowns; reward periods | `deadline` is the expiry of the unconsummated signature window (`DESIGN_DECISIONS.md` #13); the batch's clock is bounded to an hour; the rest are day-scale comparisons. |
+| Low | timestamp | `deadline` in `commit`; the batch's clock in `settleBatch`; registry cooldowns; reward periods | `deadline` is the expiry of the unconsummated signature window (`DESIGN_DECISIONS.md` #12); the batch's clock is bounded to an hour; the rest are day-scale comparisons. |
 | Info | assembly, cyclomatic-complexity, low-level-calls, missing-inheritance, naming | verifier hashing helpers; `commit`, `settleBatch` and `applyBatchAccrual`; the swap call and the four ETH refunds; local interfaces; `DOMAIN_SEPARATOR` | Calldata hashing mirrored by the prover's parity tests; the three largest functions; checks-effects-interactions on every refund; style. |
 
 **Rust.** In CI on every push (`.github/workflows/prover-ci.yml`): Clippy with its correctness

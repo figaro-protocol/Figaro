@@ -431,7 +431,7 @@ test.describe('DATA MARKET — dual-posture value legs over the anchored data as
         await receipt(await walletB.writeContract({
             address: coordinator, abi: ATTESTATION_COORDINATOR_ABI, functionName: 'attestAsSeller',
             args: [
-                stream.order.commitment, stream.order.commitment,
+                stream.order.commitment,
                 handoffClause.clause as Hex, 1,
                 hashClauseData(handoffClause), handoffProof, expectedContentRef,
             ],

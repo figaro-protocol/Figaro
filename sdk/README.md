@@ -191,7 +191,7 @@ await executeAction(walletClient, publicClient, addresses, resolve);
 
 // AND RECORD THE USAGE — at resolution, not later. The designer-rewards path pays the designers of record from recordings the BUYER's side writes when the
 // process resolves; a deferred record is permanently deniable (a seller can
-// unstake, a period can close — docs/DESIGN_DECISIONS.md §21). One call, the
+// unstake, a period can close — docs/DESIGN_DECISIONS.md §20). One call, the
 // headless twin of what the frontend does at the same moment. Every committed
 // clause EARNS — commerce and topology are scored for their author of record
 // like any other — and the designers of the registered agreement and of the
@@ -997,21 +997,19 @@ const contentRef = keccak256(content);
 // ladder attests its enum's index as the stage. The vocabulary is the
 // clause spec's data — the SDK and the chain assign it no meaning.
 const clauseId = signedClause.clause;
-// `roleCommitment`/`targetCommitment` are the SIGNED commitment structs (a root
-// order carries processId = 0), NOT the reconstruction-derived form. For
-// SAME-ORDER attestation pass the SAME commitment as both role and target
-// (one struct in both slots) — two distinct commitments are only the
-// cross-order case (seller attesting from a different order in the process).
+// `targetCommitment` is the SIGNED commitment struct of the seller's own order
+// (a root order carries processId = 0), NOT the reconstruction-derived form.
 await attestAsSeller(
   walletClient, addresses.attestationCoordinator!,
-  roleCommitment, targetCommitment, clauseId, /* stage */ 0, clauseDataHash, proof, contentRef,
+  targetCommitment, clauseId, /* stage */ 0, clauseDataHash, proof, contentRef,
 );
-// The coordinator has TWO attest entry points, both merkle-binding identically
-// to the signed agreement — they differ only in how caller authority is proven:
-//   • attestAsSeller     — the order's seller attests (role + target commitments;
-//                          pass the same struct twice for same-order attestation).
-//   • attestAsBuyer      — the root buyer attests (target commitment only; the
-//                          commit invariant makes msg.sender == c.buyer the check).
+// The coordinator has TWO attest entry points, both taking the attested
+// order's commitment and merkle-binding identically to the signed agreement —
+// they differ only in which party of that order the caller must be:
+//   • attestAsSeller     — the order's seller (msg.sender == c.seller): a
+//                          seller attests about a clause of its own order.
+//   • attestAsBuyer      — the root buyer (the commit invariant makes
+//                          msg.sender == c.buyer the check).
 // A party attests for itself. The SDK wraps both (attestAsSeller / attestAsBuyer,
 // from @figaro-protocol/sdk/agent).
 
@@ -1219,7 +1217,7 @@ const { id } = await seq.submitCommit(commitment, buyerSig, sellerSig);
 // blind to everything that resolves here; see docs/SCALING_STRATEGY.md §
 // "The two paths share no state".
 await seq.submitResolve(processId, commitments, buyerSig);
-await seq.submitAttestAsSeller({ role, target, clauseId, stage, contentRef, sellerSig, proof });
+await seq.submitAttestAsSeller({ target, clauseId, stage, contentRef, sellerSig, proof });
 await seq.submitUsageClaim(claim);  // the usage-claim leg — build with buildUsageClaims
 await seq.status();  // { state_root, pending_ops, pending_usage_claims, batches_settled, archive }
 

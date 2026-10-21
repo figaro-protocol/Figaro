@@ -216,8 +216,7 @@ All errors are structured JSON: `{ "error": "<reason>" }`.
   operation (same order hash / process id / attestation identity) returns the
   original id and enqueues nothing. The identity covers every input the proof
   or the verifier judges and admission cannot — a resolve's signer and its
-  order list, a seller attestation's role order, an attestation's witness
-  spec bytes — so a submission that will be refused never makes the one that
+  order list, an attestation's witness spec bytes — so a submission that will be refused never makes the one that
   will be accepted a duplicate. `400` on signature or witness-gate
   rejection, or on a resolve that lists an order twice (the Core resolves the
   first listing and refuses the second, whatever the state), `422` on valid JSON that is not a `KernelOp` (wrong shape, unknown
@@ -480,10 +479,9 @@ drain's cut, ride a batch still in flight, not be submitted yet, or never
 come — and a commit whose funding could not be read are **deferred**, not
 dead-lettered, and what was filtered into an order
 behind a deferred commit moves with it, in its group. A tick's deferrals are
-grouped by the processes they touch (a commit's, a resolve's, an
-attestation's role and target orders' processes): operations share a group
-when a chain of them, each touching a process the next touches, joins them,
-so an operation never shares one with what no such chain joins it to. A
+grouped by the process they touch (a commit's, a resolve's, an
+attestation's target order's process): each operation touches one process,
+so a group is one process's operations. A
 deferred operation
 waits apart from the queue, its key held (a resubmission is a duplicate of
 it, and a copy resubmitted while it was drained is dropped), and is drained
@@ -506,7 +504,7 @@ attempts, and the deferral spends nothing of the re-queue count. The time
 and the edge to what an operation was filtered behind ride on the
 operation, so they end when the operation lands or is dead-lettered.
 `formal/RelayState.tla` (`DeferSpec`, `formal/RelayStateDeferral.cfg`)
-models the deferral; each of its ten switches set FALSE restores one defect
+models the deferral; each of its nine switches set FALSE restores one defect
 the model then finds.
 
 ## The batch's bound

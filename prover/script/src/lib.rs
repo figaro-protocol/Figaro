@@ -246,7 +246,6 @@ pub fn build_canonical_batch_input() -> BatchInput {
                 seller_sig: root_seller_sig,
             },
             KernelOp::AttestAsSeller {
-                role: root.clone(),
                 target: root.clone(),
                 clause_id: clause_key,
                 stage: 0,

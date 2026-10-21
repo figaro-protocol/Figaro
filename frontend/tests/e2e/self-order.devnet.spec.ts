@@ -2,7 +2,7 @@
  * self-order.devnet.spec.ts
  *
  * A wallet orders from its OWN listing and accepts its own order. The Core
- * ADMITS buyer == seller (DESIGN_DECISIONS entry 3), so the client must too:
+ * ADMITS buyer == seller (DESIGN_DECISIONS entry 2), so the client must too:
  * the accepting role is the entry whose signature is still empty, never "buyer"
  * by address alone (`acceptOrder`, lib/checkout/orderCommitmentFlow.ts). The
  * walk: register a member → order from its own listing → relay → accept on

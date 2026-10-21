@@ -120,7 +120,6 @@ describe("SequencerClient.toRustEnum", () => {
         // spec bytes, content, clauseData, inclusion proof, content kind.
         const op: SequencerOp = {
             type: "AttestAsSeller",
-            role: toSequencerCommitment(testCommitment),
             target: toSequencerCommitment(testCommitment),
             clause_id: ZERO_HASH,
             stage: 0,
@@ -133,7 +132,6 @@ describe("SequencerClient.toRustEnum", () => {
         expect(result.AttestAsSeller).toMatchObject({
             proof: { content_kind: "RuntimeWitness" },
         });
-        expect(result.AttestAsSeller).toHaveProperty("role");
         expect(result.AttestAsSeller).toHaveProperty("target");
     });
 });
@@ -170,6 +168,28 @@ describe("SequencerClient", () => {
         });
         const body = captured as { operation: { AttestAsBuyer: { proof: { content_kind: string } } } };
         expect(body.operation.AttestAsBuyer.proof.content_kind).toBe("ReAssert");
+    });
+
+    it("submitAttestAsSeller posts the target order alone, the seller's own order", async () => {
+        let captured: unknown;
+        const client = new SequencerClient({
+            url: "http://localhost:3001",
+            fetch: (async (_input: RequestInfo | URL, init?: RequestInit) => {
+                captured = JSON.parse(init?.body as string);
+                return new Response(JSON.stringify({ id: 4 }), { status: 200 });
+            }) as typeof globalThis.fetch,
+        });
+        await client.submitAttestAsSeller({
+            target: testCommitment,
+            clauseId: ZERO_HASH,
+            stage: 0,
+            contentRef: ZERO_HASH,
+            sellerSig: DUMMY_SIG,
+            proof: testProof,
+        });
+        const body = captured as { operation: { AttestAsSeller: Record<string, unknown> } };
+        expect(body.operation.AttestAsSeller).toHaveProperty("target");
+        expect(body.operation.AttestAsSeller).not.toHaveProperty("role");
     });
 
     it("submit throws SequencerError on 400", async () => {

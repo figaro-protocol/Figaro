@@ -69,9 +69,9 @@
  *       PeriodMismatch when the sequencer's period is not the open one
  *       (UsageCounter.sol:548-549), and FigaroBatchVerifier catches that
  *       revert and resolves the tokens anyway (FigaroBatchVerifier.sol:322-327,
- *       DESIGN_DECISIONS.md §20). The GUEST state has already advanced — its
+ *       DESIGN_DECISIONS.md §19). The GUEST state has already advanced — its
  *       usage_process_counted set rides the state root and is GLOBAL, once
- *       ever, whatever the period (kernel.rs:855) — so the dropped processes
+ *       ever, whatever the period (kernel.rs:847) — so the dropped processes
  *       can never be re-counted, in that period or any later one.
  *       WHAT IT CARRIES: AccrualNotLost. Note what it does NOT carry:
  *       AccrualNeverOverPays holds unconditionally. The failure mode is
@@ -451,7 +451,7 @@ GClaimUsage(a, o) ==
 \*   5. _executePositions  — net pull/push per (token, user)
 \*   7. usageCounter.applyBatchAccrual, wrapped in try/catch
 \*   8. advance state
-\* Step 7's failure NEVER unwinds step 5 (DESIGN_DECISIONS.md §20).
+\* Step 7's failure NEVER unwinds step 5 (DESIGN_DECISIONS.md §19).
 SettleBatch ==
   LET netSum  == SumFn(Participants, penNet)
       pp      == penPeriod
@@ -702,7 +702,7 @@ AccrualNeverOverPays == BatchWriteReplacesNeverAdds
 \* With the assumption removed the period can advance while a batch is in
 \* flight; applyBatchAccrual reverts PeriodMismatch, settleBatch catches it and
 \* resolves the tokens anyway, and the guest's GLOBAL counted set has already
-\* absorbed those processes (kernel.rs:855, once ever, whatever the period).
+\* absorbed those processes (kernel.rs:847, once ever, whatever the period).
 \* So the accrual is not "recovered by the next batch" for those processes —
 \* it is permanently forgone.
 AccrualNotLost ==

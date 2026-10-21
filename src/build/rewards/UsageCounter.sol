@@ -138,7 +138,7 @@ contract UsageCounter {
     ///         and cannot be repointed — no setter exists. What it CAN do is
     ///         exactly what the direct path lets anyone do permissionlessly:
     ///         present proof that resolved trade used a clause, agreement or assembly. See
-    ///         `DESIGN_DECISIONS.md` #16 "`UsageCounter.applyBatchAccrual` has
+    ///         `DESIGN_DECISIONS.md` #15 "`UsageCounter.applyBatchAccrual` has
     ///         one privileged caller — a proof-gated writer, not an admin".
     ///
     ///         Why a privileged caller at all: the batched path's accrual is

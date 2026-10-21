@@ -181,7 +181,6 @@ pub fn is_permanent_refusal(e: &KernelError, op: &KernelOp, domain: &B256) -> bo
         | KernelError::NotProcessBuyer
         | KernelError::CurrencyMismatch
         | KernelError::NotAuthorized
-        | KernelError::ProcessMismatch
         | KernelError::InvalidInclusionProof
         | KernelError::ClauseSpecParseFailed(_)
         | KernelError::SpecIdentityMismatch(_)
@@ -271,8 +270,8 @@ pub fn split_permanent_refusals(
 }
 
 /// The processes and orders an operation needs to exist: a sub-order's
-/// process, a resolve's process and listed orders, an attestation's role and
-/// target orders.
+/// process, a resolve's process and listed orders, an attestation's target
+/// order.
 fn referenced_ids(domain: &B256, op: &KernelOp) -> Vec<B256> {
     let order = |c: &figaro_kernel::types::Commitment| figaro_kernel::kernel::derive_commitment_ids(domain, c).0;
     match op {
@@ -290,7 +289,7 @@ fn referenced_ids(domain: &B256, op: &KernelOp) -> Vec<B256> {
             }));
             ids
         }
-        KernelOp::AttestAsSeller { role, target, .. } => vec![order(role), order(target)],
+        KernelOp::AttestAsSeller { target, .. } => vec![order(target)],
         KernelOp::AttestAsBuyer { target, .. } => vec![order(target)],
     }
 }

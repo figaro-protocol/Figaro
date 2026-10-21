@@ -117,6 +117,13 @@ release lives under **Unreleased**.
 - **SDK 0.2.0 (breaking): `SyncResult.newSellers` is renamed to `newMembers`.**
   The field counts member registrations and profile updates; a member may
   buy, sell, or both.
+- **SDK 0.2.0 (breaking): a seller attests only about a clause of its own order.**
+  `attestAsSeller` takes the attested order's commitment alone —
+  `(walletClient, coordinator, target, clauseId, stage, clauseDataHash, proof, contentRef)`,
+  the caller `target.seller` — as `AttestationCoordinator.attestAsSeller` does;
+  `ActionExecutionInputs.attestation.role`, `SequencerClient.submitAttestAsSeller`'s
+  `role` and the `AttestAsSeller` operation's `role` are gone, and
+  `ATTESTATION_COORDINATOR_ABI` no longer names `ProcessMismatch`.
 - **SDK 0.2.0: `recordProcessUsage` plans its legs before it sends any.** It
   reads the counter's excluded set off the deployment and never sends a record
   the counter is certain to refuse; a key two orders carry is sent once.

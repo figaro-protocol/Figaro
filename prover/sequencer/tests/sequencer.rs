@@ -167,16 +167,14 @@ async fn mempool_rejects_content_hash_mismatch() {
     // Re-sign over a content_ref the content does not hash to — the
     // signature gate passes, Gate C must reject.
     let ops = canonical_ops();
-    let (role, target, clause_id, stage, proof) = match &ops[1] {
+    let (target, clause_id, stage, proof) = match &ops[1] {
         KernelOp::AttestAsSeller {
-            role,
             target,
             clause_id,
             stage,
             proof,
             ..
         } => (
-            role.clone(),
             target.clone(),
             *clause_id,
             *stage,
@@ -195,7 +193,6 @@ async fn mempool_rejects_content_hash_mismatch() {
 
     let err = mempool()
         .submit(KernelOp::AttestAsSeller {
-            role,
             target,
             clause_id,
             stage,
@@ -228,11 +225,10 @@ async fn mempool_rejects_corrupt_clause_data() {
 #[tokio::test]
 async fn mempool_rejects_attest_signed_by_stranger() {
     // The buyer signs a seller attestation — recovery succeeds but the
-    // recovered address is not role.seller.
+    // recovered address is not target.seller.
     let ops = canonical_ops();
-    let (role, target, clause_id, stage, content_ref, proof) = match &ops[1] {
+    let (target, clause_id, stage, content_ref, proof) = match &ops[1] {
         KernelOp::AttestAsSeller {
-            role,
             target,
             clause_id,
             stage,
@@ -240,7 +236,6 @@ async fn mempool_rejects_attest_signed_by_stranger() {
             proof,
             ..
         } => (
-            role.clone(),
             target.clone(),
             *clause_id,
             *stage,
@@ -260,7 +255,6 @@ async fn mempool_rejects_attest_signed_by_stranger() {
 
     let err = mempool()
         .submit(KernelOp::AttestAsSeller {
-            role,
             target,
             clause_id,
             stage,
@@ -271,7 +265,47 @@ async fn mempool_rejects_attest_signed_by_stranger() {
         .await
         .unwrap_err()
         .to_string();
-    assert!(err.contains("role.seller"), "{err}");
+    assert!(err.contains("target.seller"), "{err}");
+}
+
+#[tokio::test]
+async fn mempool_refuses_a_seller_attestation_not_signed_by_the_targets_seller() {
+    // A wallet other than the target's seller signs a seller attestation
+    // against the canonical order, whose seller is SELLER1. Admission is
+    // stateless: it reads no other order, and refuses any signer but
+    // `target.seller` at the door.
+    let ops = canonical_ops();
+    let (target, clause_id, stage, content_ref, proof) = match &ops[1] {
+        KernelOp::AttestAsSeller {
+            target,
+            clause_id,
+            stage,
+            content_ref,
+            proof,
+            ..
+        } => (target.clone(), *clause_id, *stage, *content_ref, proof.clone()),
+        other => panic!("expected AttestAsSeller, got {other:?}"),
+    };
+    let co_seller_key = make_signing_key(0x5E12);
+    let domain = domain_separator(CHAIN_ID, CORE);
+    let (target_order_hash, _) = figaro_kernel::kernel::derive_commitment_ids(&domain, &target);
+    let struct_hash =
+        attest_seller_struct_hash(&target_order_hash, &clause_id, stage, &content_ref);
+    let co_seller_sig = sign_digest(&co_seller_key, &typed_data_hash(&domain, &struct_hash));
+
+    let err = mempool()
+        .submit(KernelOp::AttestAsSeller {
+            target,
+            clause_id,
+            stage,
+            content_ref,
+            seller_sig: co_seller_sig,
+            proof,
+        })
+        .await
+        .unwrap_err()
+        .to_string();
+    assert!(err.contains("target.seller"), "{err}");
 }
 
 // ── State mirror ──────────────────────────────────────────────────
@@ -1811,43 +1845,6 @@ async fn mempool_duplicate_resolve_is_idempotent() {
     assert_eq!(mp.len().await, 1);
 }
 
-#[tokio::test]
-async fn mempool_seller_attest_under_another_role_does_not_take_the_slot() {
-    // `role` rides unsigned beside the seller's signature. The same signature
-    // over a role order the proof refuses must not make the real attestation
-    // a duplicate.
-    let real_op = canonical_ops()[1].clone();
-    let forged_op = match &real_op {
-        KernelOp::AttestAsSeller {
-            role,
-            target,
-            clause_id,
-            stage,
-            content_ref,
-            seller_sig,
-            proof,
-        } => {
-            let mut forged_role = role.clone();
-            forged_role.salt += alloy_primitives::U256::from(1u64);
-            KernelOp::AttestAsSeller {
-                role: forged_role,
-                target: target.clone(),
-                clause_id: *clause_id,
-                stage: *stage,
-                content_ref: *content_ref,
-                seller_sig: seller_sig.clone(),
-                proof: proof.clone(),
-            }
-        }
-        other => panic!("canonical ops[1] is the seller attestation, got {other:?}"),
-    };
-    let mp = mempool();
-    let squat = mp.submit(forged_op).await.unwrap();
-    let real = mp.submit(real_op).await.unwrap();
-    assert!(!real.duplicate);
-    assert_ne!(real.id, squat.id);
-}
-
 // ── The state on disk: the verifier's root has a preimage on this host ──
 
 fn temp_state(tag: &str) -> std::path::PathBuf {
@@ -2974,9 +2971,9 @@ fn what_was_built_on_a_permanently_refused_operation_is_dead_lettered_at_once() 
 
 // ── A deferred group is drained together; each operation keeps its window ──
 //
-// Each tick's deferrals are grouped by the processes they touch: operations
-// share a group when a chain of them, each touching a process the next
-// touches, joins them. An operation that never applies, which anyone may
+// Each tick's deferrals are grouped by the process they touch: each
+// operation touches one process, so a group is one process's operations.
+// An operation that never applies, which anyone may
 // submit free, on other processes never makes an honest group larger, and
 // an honest group needs no more room than its own process's operations. The
 // groups decide what is drained together and nothing else: each operation
@@ -3306,62 +3303,6 @@ async fn an_operation_that_never_applies_does_not_cut_an_honest_window_short() {
     let expired = mp.defer(both, t0 + WINDOW).await;
     assert_eq!(expired.iter().map(|(p, _)| p.id).collect::<Vec<_>>(), vec![201]);
     assert_eq!(mp.len().await, 1);
-}
-
-/// A seller attestation with its role in the canonical process and its
-/// target in the process of `commit_on_its_own_process(1)`: a bridge.
-fn bridge() -> PendingOp {
-    let other = match commit_on_its_own_process(1).op {
-        KernelOp::Commit { commitment, .. } => commitment,
-        other => panic!("a commit, got {other:?}"),
-    };
-    let mut op = pend(canonical_ops())[1].clone();
-    match &mut op.op {
-        KernelOp::AttestAsSeller { target, .. } => *target = other,
-        other => panic!("canonical ops[1] is the seller attestation, got {other:?}"),
-    }
-    PendingOp { id: 300, key: B256::with_last_byte(250), ..op }
-}
-
-/// The bridge deferred at `t0`, then deferred again at `t0 + 1s` with an
-/// honest commit on each of the two processes it touches: one group.
-async fn bridged(t0: std::time::Instant) -> (Mempool, PendingOp, PendingOp) {
-    let mp = mempool().with_defer_window(WINDOW);
-    let a1 = pend(canonical_ops())[0].clone();
-    let a2 = commit_on_its_own_process(1);
-    assert!(mp.defer(vec![bridge()], t0).await.is_empty());
-    let b = mp.drain_up_to(10).await;
-    assert!(mp.defer(vec![a1.clone(), b[0].clone(), a2.clone()], t0 + secs(1)).await.is_empty());
-    (mp, a1, a2)
-}
-
-#[tokio::test]
-async fn a_bridge_does_not_cut_either_processs_window_short() {
-    let t0 = std::time::Instant::now();
-    let (mp, a1, a2) = bridged(t0).await;
-    let expired = mp.expire_deferred(t0 + WINDOW).await;
-    assert_eq!(expired.iter().map(|(p, _)| p.id).collect::<Vec<_>>(), vec![300]);
-    assert_eq!(mp.len().await, 2, "both honest operations keep their windows");
-    let expired = mp.expire_deferred(t0 + secs(1) + WINDOW).await;
-    let mut ids: Vec<u64> = expired.iter().map(|(p, _)| p.id).collect();
-    ids.sort_unstable();
-    assert_eq!(ids, vec![a1.id, a2.id]);
-}
-
-#[tokio::test]
-async fn what_is_left_of_a_group_is_grouped_again() {
-    let t0 = std::time::Instant::now();
-    let (mp, a1, a2) = bridged(t0).await;
-    // One group of three: room for two takes none of it. Drained and
-    // deferred again, nothing of it moves.
-    let none = mp.drain_up_to(2).await;
-    assert!(none.is_empty(), "the bridge joins the two processes: {none:?}");
-    assert_eq!(mp.expire_deferred(t0 + WINDOW).await.len(), 1);
-    // The bridge gone, the two processes are two groups of one.
-    let first = mp.drain_up_to(1).await;
-    assert_eq!(first.iter().map(|p| p.id).collect::<Vec<_>>(), vec![a1.id]);
-    let second = mp.drain_up_to(1).await;
-    assert_eq!(second.iter().map(|p| p.id).collect::<Vec<_>>(), vec![a2.id]);
 }
 
 // ── A sub-order filtered behind an earlier sub-order rides behind it ───

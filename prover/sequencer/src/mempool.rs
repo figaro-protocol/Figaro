@@ -121,9 +121,9 @@ struct MempoolInner {
     /// `requeue`, which dead-letters a key past `max_requeues`.
     requeues: HashMap<B256, u32>,
     /// Operations batch formation deferred ([`Mempool::defer`]), in groups,
-    /// oldest first: each group is a class of one tick's deferrals under
-    /// the touched-process chain, an operation with what was filtered into an
-    /// order behind it. They wait apart from `pending` and are drained again
+    /// oldest first: each operation touches one process, so each group is
+    /// one process's deferrals of one tick, an operation with what was
+    /// filtered into an order behind it. They wait apart from `pending` and are drained again
     /// only into the room `pending` leaves empty, a group whole; their keys
     /// stay in `index`. A group decides what is drained together and nothing
     /// else: each operation expires on its own window.
@@ -259,8 +259,8 @@ impl Mempool {
     /// not unique per digest) still deduplicates.
     ///
     /// The key covers every input the proof or the verifier judges and
-    /// admission cannot: a resolve's signer and its order list, a seller
-    /// attestation's role order, an attestation's witness spec bytes (the
+    /// admission cannot: a resolve's signer and its order list, an
+    /// attestation's witness spec bytes (the
     /// guest requires them to hash to the clause key). Two submissions
     /// share a slot only when both are accepted or both are refused, so one
     /// that will be refused never makes the one that will be accepted a
@@ -295,7 +295,6 @@ impl Mempool {
                 }
             }
             KernelOp::AttestAsSeller {
-                role,
                 target,
                 clause_id,
                 stage,
@@ -304,12 +303,7 @@ impl Mempool {
                 ..
             } => {
                 let (order_hash, _) = derive_commitment_ids(&domain, target);
-                // `role` rides unsigned: admission checks the signature
-                // against `role.seller`, and whether that order is live in
-                // the target's process is state.
-                let (role_order_hash, _) = derive_commitment_ids(&domain, role);
                 buf.extend_from_slice(b"attest-seller");
-                buf.extend_from_slice(role_order_hash.as_slice());
                 buf.extend_from_slice(order_hash.as_slice());
                 buf.extend_from_slice(clause_id.as_slice());
                 buf.push(*stage);
@@ -417,9 +411,9 @@ impl Mempool {
     /// that applies against no order of its drain, a commit whose funding
     /// could not be read, and what was filtered into an order behind either
     /// — apart from the queue (drained again only into the room the queue
-    /// leaves, [`Mempool::drain_up_to`]), in drain groups: operations share a
-    /// group when a chain of them, each touching a process the next touches,
-    /// joins them (`touched_processes`). The groups decide what is drained
+    /// leaves, [`Mempool::drain_up_to`]), in drain groups: each operation
+    /// touches one process (`touched_processes`), so a group is one
+    /// process's operations. The groups decide what is drained
     /// together and nothing else. Each operation keeps the time it was first
     /// deferred; one deferred for the window or longer since then is not
     /// deferred but returned, with the reason, for the caller to
@@ -452,7 +446,7 @@ impl Mempool {
     /// first deferral, retried or not, and what was filtered behind it,
     /// transitively, for the caller to dead-letter; their keys are freed.
     /// What is left of a group is grouped again, in the group's place. An
-    /// operation and what was filtered behind it touch a common process, so
+    /// operation and what was filtered behind it touch the same process, so
     /// they share a group, and each group is judged alone.
     pub async fn expire_deferred(&self, now: Instant) -> Vec<(PendingOp, String)> {
         let mut inner = self.inner.lock().await;
@@ -512,15 +506,15 @@ impl Mempool {
     }
 
     /// The processes an operation touches: a commit's own (a root order's
-    /// derived from its struct), a resolve's, an attestation's role and
-    /// target orders' processes.
+    /// derived from its struct), a resolve's, an attestation's target
+    /// order's process.
     fn touched_processes(&self, op: &KernelOp) -> Vec<B256> {
         let domain = domain_separator(self.chain_id, self.verifying_contract);
         let process = |c: &Commitment| derive_commitment_ids(&domain, c).1;
         match op {
             KernelOp::Commit { commitment, .. } => vec![process(commitment)],
             KernelOp::Resolve { process_id, .. } => vec![*process_id],
-            KernelOp::AttestAsSeller { role, target, .. } => vec![process(role), process(target)],
+            KernelOp::AttestAsSeller { target, .. } => vec![process(target)],
             KernelOp::AttestAsBuyer { target, .. } => vec![process(target)],
         }
     }
@@ -639,10 +633,10 @@ impl Mempool {
         reruns
     }
 
-    /// Partition `ops` into groups that touch a common process, transitively:
-    /// two operations share a group when a chain of operations, each touching
-    /// a process the next touches, joins them. Groups are ordered by their
-    /// first operation, and each keeps the operations' order.
+    /// Partition `ops` into groups that touch a common process, transitively.
+    /// Each operation touches one process, so a group is one process's
+    /// operations. Groups are ordered by their first operation, and each
+    /// keeps the operations' order.
     fn group_by_process(&self, ops: Vec<PendingOp>) -> Vec<Vec<PendingOp>> {
         // Each group: the processes it touches, and its operations' positions.
         let mut groups: Vec<(HashSet<B256>, Vec<usize>)> = Vec::new();
@@ -823,7 +817,6 @@ impl Mempool {
                 Ok(())
             }
             KernelOp::AttestAsSeller {
-                role,
                 target,
                 clause_id,
                 stage,
@@ -838,8 +831,8 @@ impl Mempool {
                 let digest = typed_data_hash(&domain, &struct_hash);
                 let recovered = recover_signer(&digest, seller_sig)
                     .map_err(|e| format!("invalid attest-seller signature: {e}"))?;
-                if recovered != role.seller {
-                    return Err("attest-seller sig does not match role.seller".into());
+                if recovered != target.seller {
+                    return Err("attest-seller sig does not match target.seller".into());
                 }
                 // The mirror's witness gates (spec identity, content,
                 // agreement inclusion) — the same code the guest runs.
@@ -909,8 +902,8 @@ fn commit_precedes(domain: &B256, c: &KernelOp, f: &KernelOp, touched: &HashSet<
 /// The slice of `state` an operation of these processes reads: the
 /// processes, and the orders filed under them. The Core's rules read
 /// nothing else for an operation — a commit reads its process and its own
-/// order (an order's hash binds its process), an attestation its role and
-/// target orders, a resolve its process and listed orders — and no
+/// order (an order's hash binds its process), an attestation its target
+/// order, a resolve its process and listed orders — and no
 /// operation reads the usage state, so an operation applies against the
 /// slice exactly as against the whole. One assumption: every key in
 /// `order_status` is also in `order_process_id`, filed under the process its

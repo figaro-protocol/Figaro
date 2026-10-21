@@ -24,19 +24,16 @@ interface IFigaroCore {
 ///         struct; the coordinator recomputes the orderHash to verify
 ///         the order exists and extracts the role from the struct.
 ///
-/// @dev Two attestation modes — each caller supplies one or two `Commitment`
-///      structs so the coordinator can (a) verify role authority, (b) read the
-///      signed `checkoutHash` without new FigaroCore state, and (c) verify the
-///      attestation matches a clause in the signed agreement.
-///      - attestAsSeller:    caller supplies role + target commitments
-///                           (role proves seller identity + process; target
-///                           carries the order being attested and its
-///                           checkoutHash for the receipt). For same-order
-///                           attestation pass the same commitment twice.
-///      - attestAsBuyer:     caller supplies the target commitment only
+/// @dev Two attestation modes — each caller supplies the `Commitment` struct of
+///      the order it attests about, so the coordinator can (a) verify the caller
+///      is that order's party, (b) read the signed `checkoutHash` without new
+///      FigaroCore state, and (c) verify the attestation matches a clause in the
+///      signed agreement. A party attests about its own obligation, on its own
+///      order.
+///      - attestAsSeller:    `msg.sender == target.seller` authorizes the call.
+///      - attestAsBuyer:     `msg.sender == target.buyer` authorizes the call
 ///                           (`c.buyer == processes[c.processId].rootBuyer` by
-///                           commit invariant, so `msg.sender == c.buyer`
-///                           authorizes the call).
+///                           commit invariant).
 ///
 /// @dev Agreement binding (mandatory):
 ///      Every `attest*` call carries an inclusion proof showing the attestation's
@@ -88,7 +85,6 @@ contract AttestationCoordinator {
     // ── Errors ──────────────────────────────────────────────────────
 
     error NotAuthorized();
-    error ProcessMismatch();
     error UnknownOrder();
     error OrderResolved();
     error InvalidInclusionProof(bytes32 checkoutHash, bytes32 clauseId);
@@ -102,17 +98,11 @@ contract AttestationCoordinator {
 
     // ── Seller attestations ─────────────────────────────────────────
 
-    /// @notice Attest as the seller of `role`, against the order in `target`.
-    /// @dev For same-order attestation pass the same commitment twice. For
-    ///      cross-order attestation within the same process (e.g. a seller
-    ///      attesting a lifecycle stage against the root order using their
-    ///      sub-order commitment as role), pass distinct `role` and `target`
-    ///      commitments — the coordinator verifies both are committed and in
-    ///      the same process. The inclusion proof is verified against
-    ///      `target.checkoutHash` (the clause being declared lives in the
-    ///      target's signed agreement, not the role's).
+    /// @notice Attest as the seller of the target order.
+    /// @dev `msg.sender` must equal `target.seller`: a seller attests about a
+    ///      clause of its own order, and of no other. The inclusion proof is
+    ///      verified against `target.checkoutHash`.
     function attestAsSeller(
-        CommitmentTypes.Commitment calldata role,
         CommitmentTypes.Commitment calldata target,
         bytes32 clauseId,
         uint8 stage,
@@ -120,11 +110,8 @@ contract AttestationCoordinator {
         bytes32[] calldata proof,
         bytes32 contentRef
     ) external {
-        (, bytes32 roleProcessId) = _requireKnownCommitment(role);
-        if (role.seller != msg.sender) revert NotAuthorized();
-
         (bytes32 targetOrderHash, bytes32 targetProcessId) = _requireKnownCommitment(target);
-        if (roleProcessId != targetProcessId) revert ProcessMismatch();
+        if (msg.sender != target.seller) revert NotAuthorized();
 
         _verifyInclusion(target.checkoutHash, clauseId, clauseDataHash, proof);
         emit Attestation(targetOrderHash, targetProcessId, msg.sender, clauseId, stage, contentRef);
@@ -135,9 +122,8 @@ contract AttestationCoordinator {
     /// @notice Attest as the buyer of the target order.
     /// @dev `msg.sender` must equal `target.buyer`. By commit invariant,
     ///      `target.buyer == processes[target.processId].rootBuyer` for every
-    ///      committed order, so this authorizes the rootBuyer for any order
-    ///      in their process (covering the cross-order case implicitly —
-    ///      pass the target order's commitment).
+    ///      committed order: the buyer is a party to every order of its
+    ///      process, and attests on each by passing that order's commitment.
     function attestAsBuyer(
         CommitmentTypes.Commitment calldata target,
         bytes32 clauseId,
@@ -183,7 +169,7 @@ contract AttestationCoordinator {
     ///      transaction-scoped institution, so the evidence window closes with
     ///      it — a post-resolve attestation would dilute the finality the
     ///      resolve mechanism is designed to produce. Resolution is
-    ///      process-atomic, so this gate is uniform across role and target.
+    ///      process-atomic, so this gate is uniform across a process's orders.
     function _requireKnownCommitment(CommitmentTypes.Commitment calldata c)
         internal
         view

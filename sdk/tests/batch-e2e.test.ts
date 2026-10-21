@@ -387,7 +387,6 @@ describe.skipIf(SKIP)("Batch E2E: SDK → Sequencer → BatchVerifier", () => {
         });
 
         const attestResult = await sequencerClient.submitAttestAsSeller({
-            role: commitment,
             target: commitment,
             clauseId: clauseKey,
             stage: 0,

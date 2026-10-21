@@ -74,8 +74,8 @@
 (* dead-lettered at first sight; what was filtered into an order behind a  *)
 (* deferred operation moves with it. A tick's deferrals wait apart from    *)
 (* the queue in drain groups                                               *)
-(* (`group_by_process`): operations share a group when a chain of them,    *)
-(* each touching a process the next touches, joins them. A group is        *)
+(* (`group_by_process`): each operation touches one process, so a group   *)
+(* is one process's operations. A group is                                 *)
 (* drained again only into the slots the queue leaves empty, whole; the    *)
 (* groups decide what is drained together and nothing else. Each         *)
 (* operation is dead-lettered once `DWindow` ticks have passed since its   *)
@@ -83,15 +83,15 @@
 (* is left of its group is grouped again. The ops are fixed: "a" a commit, *)
 (* "b" an operation on a's order, both of process P1 and honest; "f" and   *)
 (* "g" operations that never apply, which anyone may submit free, each     *)
-(* once at any tick — f a seller attestation with its role in P1 and its   *)
-(* target in P2, g one naming P2; "r" a resolve of P1 listing one order    *)
+(* once at any tick — f one naming P1, g one naming P2; "r" a resolve of   *)
+(* P1 listing one order                                                    *)
 (* twice, which never applies and which admission (`pre_check`) refuses.  *)
 (* An operation the kernel refuses for good against the landed state (it  *)
 (* exists, is resolved, is past its deadline, fails a signature or a       *)
 (* witness) is dead-lettered at once and never enters the deferral, so it  *)
 (* is not modeled here.                                                    *)
 (*                                                                         *)
-(* TEN MORE SWITCHES, each FALSE restoring one defect the deferral must   *)
+(* NINE MORE SWITCHES, each FALSE restoring one defect the deferral must  *)
 (* not have:                                                               *)
 (*   DeferBoundedInTime       — FALSE: the bound is in attempts, so an     *)
 (*                              operation retried every tick expires       *)
@@ -116,10 +116,6 @@
 (*                              the deferred one (fails `NoTwoCopies`)     *)
 (*   DeferGroupsByProcess     — FALSE: a tick's deferrals are one group,   *)
 (*                              whatever processes they touch (fails       *)
-(*                              `DrainGroupIsAClass`)                      *)
-(*   DeferGroupsTransitive    — FALSE: grouped by one touched process, so  *)
-(*                              a chain of operations touching common      *)
-(*                              processes is split (fails                  *)
 (*                              `DrainGroupIsAClass`)                      *)
 (*   DeferOwnWindow           — FALSE: a group with an operation past its  *)
 (*                              window is dead-lettered whole, so an       *)
@@ -161,7 +157,6 @@ CONSTANTS
     DeferMovesDependents,
     DeferDropsCopy,
     DeferGroupsByProcess,
-    DeferGroupsTransitive,
     DeferOwnWindow,
     DeferDependentEdge,
     AdmitRefusesDoubleListing
@@ -440,13 +435,12 @@ DCommits == {"a"}
 DHonest == {"a", "b"}
 \* The resolve listing an order twice, which admission refuses.
 DDoubleListed == {"r"}
-\* The processes each operation touches (`touched_processes`): a commit
-\* its own, a resolve its process, a seller attestation its role and
-\* target orders' processes. f is a seller attestation with its role in P1
-\* and its target in P2, so it joins P1's operations to P2's.
+\* The process each operation touches (`touched_processes`): a commit its
+\* own, a resolve its process, an attestation its target order's process.
+\* Each operation touches one process. f names P1, so it shares a group with
+\* P1's honest operations; g names P2.
 DTouch == [o \in DOps |->
-             CASE o = "f" -> {"P1", "P2"}
-               [] o = "g" -> {"P2"}
+             CASE o = "g" -> {"P2"}
                [] OTHER   -> {"P1"}]
 DReasons == {"no", "expired", "requeueCap", "unfunded", "builtOn"}
 
@@ -500,19 +494,14 @@ Close(S, C) ==
     LET N == C \cup {y \in S : \E x \in C : Linked(x, y)}
     IN IF N = C THEN C ELSE Close(S, N)
 
-\* The one process DeferGroupsTransitive = FALSE keys an operation by.
-Key(o) == CHOOSE p \in DTouch[o] : TRUE
-
-\* Drain groups (`group_by_process`): operations share a group when a chain
-\* of them, each touching a process the next touches, joins them — the
-\* classes of the transitive closure of `Linked`. The groups decide what
-\* is drained together and nothing else. DeferGroupsByProcess = FALSE: one
-\* group; DeferGroupsTransitive = FALSE: grouped by one touched process.
+\* Drain groups (`group_by_process`): the classes of the transitive closure
+\* of `Linked`; each operation touches one process, so a class is one
+\* process's operations. The groups decide what is drained together and
+\* nothing else. DeferGroupsByProcess = FALSE: one group.
 Groups(S) ==
     IF S = {} THEN {}
     ELSE IF ~DeferGroupsByProcess THEN {S}
-    ELSE IF DeferGroupsTransitive THEN {Close(S, {o}) : o \in S}
-    ELSE {{x \in S : Key(x) = Key(o)} : o \in S}
+    ELSE {Close(S, {o}) : o \in S}
 
 Parcel(S, t) == {[ops |-> G, at |-> t] : G \in Groups(S)}
 

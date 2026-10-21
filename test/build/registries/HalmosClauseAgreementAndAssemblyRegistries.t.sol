@@ -57,7 +57,7 @@ import {AgreementRegistry} from "src/build/registries/AgreementRegistry.sol";
 ///
 ///         Halmos convention: `check_` prefix, not `test_`. No `vm.warp` /
 ///         cooldown anywhere in this file — that parameter does not exist on
-///         these three contracts (`docs/DESIGN_DECISIONS.md` §15 "Scope").
+///         these three contracts (`docs/DESIGN_DECISIONS.md` §14 "Scope").
 ///
 /// @dev    WHAT THIS DOES NOT PROVE: that the stake is priced correctly, or
 ///         anything about `RpgfMinter`'s reward arithmetic. It proves the three

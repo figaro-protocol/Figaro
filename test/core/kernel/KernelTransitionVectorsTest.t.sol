@@ -112,7 +112,7 @@ contract KernelTransitionVectorsTest is Test {
         o[1] = Order(seller1, SELLER1_KEY, 5 ether, 0);
         vm.serializeString(top, "s3", _run(3, "one-seller-two-orders", o, true));
 
-        // 4: buyer and seller are the same wallet (DESIGN_DECISIONS #3) — net zero.
+        // 4: buyer and seller are the same wallet (DESIGN_DECISIONS #2) — net zero.
         o = new Order[](1);
         o[0] = Order(buyer, BUYER_KEY, 3 ether, 0);
         vm.serializeString(top, "s4", _run(4, "self-deal", o, true));

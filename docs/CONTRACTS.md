@@ -82,7 +82,7 @@ hashing: `{processId, buyer, seller, currency, payment, expectedCumulativeValue,
 checkoutHash, salt, deadline}`. `salt` makes repeat orders hash distinctly;
 `deadline` bounds the window in which an unconsummated pair of signatures can
 be committed (`DeadlineExpired`) — a signature cannot be revoked, so it ages
-out; nothing expires after commit. `DESIGN_DECISIONS.md` §13 owns the
+out; nothing expires after commit. `DESIGN_DECISIONS.md` §12 owns the
 reasoning.
 
 ### `src/core/attestation/` — `AttestationCoordinator`
@@ -92,10 +92,9 @@ reasoning.
 **`src/core/attestation/AttestationCoordinator.sol`** — Zero-storage
 attestation, merkle-only, bound to the signed `checkoutHash`. Two modes, and
 a party attests for itself:
-- `attestAsSeller(Commitment role, Commitment target, bytes32 clauseId, uint8
-  stage, bytes32 clauseDataHash, bytes32[] proof, bytes32 contentRef)` — role and
-  target commitments; the same commitment twice for same-order attestation,
-  distinct commitments for cross-order attestation within a process.
+- `attestAsSeller(Commitment target, bytes32 clauseId, uint8 stage, bytes32
+  clauseDataHash, bytes32[] proof, bytes32 contentRef)` — caller must equal
+  `target.seller`: a seller attests about a clause of its own order.
 - `attestAsBuyer(Commitment target, bytes32 clauseId, uint8 stage, bytes32
   clauseDataHash, bytes32[] proof, bytes32 contentRef)` — caller must equal
   `target.buyer`.
@@ -278,7 +277,7 @@ minSellers, periodEnd)`, every argument fixed at deploy; no setter exists.
 
 Every accrual, count and score is keyed by (kind, key), kind
 `KIND_CLAUSE = 0`, `KIND_ASSEMBLY = 1` or `KIND_AGREEMENT = 2`, and each kind's
-gate reads only its own registry (`DESIGN_DECISIONS.md` § 24).
+gate reads only its own registry (`DESIGN_DECISIONS.md` § 23).
 
 Three permissionless functions and one proof-gated writer:
 - `recordClauseUsage(order, clauseOrAssembly, clauseDataHash, proof)` — proves
@@ -318,7 +317,7 @@ Three permissionless functions and one proof-gated writer:
 - `applyBatchAccrual(period, claimedProvenanceLeaf, accruals, sellers)` — callable
   only by `batchVerifier` (immutable). A proof-gated writer, not an admin: the
   caller has no discretion, only numbers an immutable vkey committed
-  (`DESIGN_DECISIONS.md` §16). Each accrual is `BatchAccrual{bytes32
+  (`DESIGN_DECISIONS.md` §15). Each accrual is `BatchAccrual{bytes32
   clauseOrAssembly, uint8 kind, uint64 c, uint64 d}` and is gated by its own
   kind's registry — kind 2 by `AgreementRegistry` — and an unknown kind is skipped. The write overwrites the
   clause's, agreement's or assembly's cumulative `(c, d)` for the period, so the batch path keeps no

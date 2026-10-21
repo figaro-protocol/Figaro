@@ -115,12 +115,11 @@ export const ATTESTATION_COORDINATOR_ABI = parseAbi([
     // preimage, so a `private` clause's plaintext never touches public calldata;
     // it lives off-chain (encrypted IPFS) bound to this hash. There is no on-chain
     // clause-content validator. Matches the batched path's bytes32 convention.
-    `function attestAsSeller(${COMMITMENT_TUPLE} role, ${COMMITMENT_TUPLE} target, bytes32 clauseId, uint8 stage, bytes32 clauseDataHash, bytes32[] proof, bytes32 contentRef) external`,
+    `function attestAsSeller(${COMMITMENT_TUPLE} target, bytes32 clauseId, uint8 stage, bytes32 clauseDataHash, bytes32[] proof, bytes32 contentRef) external`,
     `function attestAsBuyer(${COMMITMENT_TUPLE} target, bytes32 clauseId, uint8 stage, bytes32 clauseDataHash, bytes32[] proof, bytes32 contentRef) external`,
     "event Attestation(bytes32 indexed orderHash, bytes32 indexed processId, address indexed attester, bytes32 clauseId, uint8 stage, bytes32 contentRef)",
     "error InvalidInclusionProof(bytes32 checkoutHash, bytes32 clauseId)",
     "error NotAuthorized()",
-    "error ProcessMismatch()",
     "error UnknownOrder()",
     "error OrderResolved()",
 ]);

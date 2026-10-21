@@ -55,12 +55,6 @@
  *              Fernhill Nursery (anvil[11]), Sterling Goods (anvil[12]) —
  *              their catalogs price the sub-orders live.
  *
- * K3 note: cross-order sibling attest has no client plumbing — no sister-
- * clause pairing produces it, and no consumer leg reads it. The on-chain
- * attestAsSeller(role, target) surface remains (DESIGN_DECISIONS §2); a
- * cross-order verb, if ever needed, derives from a composed clause's spec —
- * never a hardcoded affordance.
- *
  * No evmSnapshot/evmRevert — devnet is a mainnet rehearsal; the gates are
  * idempotent and the run leaves its state on-chain for out-of-band checks.
  *

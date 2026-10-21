@@ -15,7 +15,7 @@
 //                                                          → withdrawal-burst-…
 //   insolvency     an order committed in a rebasing token, then rebased down:
 //                  FigaroCore holds less than its open bonds (the rebasing
-//                  risk DESIGN_DECISIONS #10 accepts and nothing on chain
+//                  risk DESIGN_DECISIONS #9 accepts and nothing on chain
 //                  detects)                                → insolvent-…
 //   no code        a record address that holds no code     → the watcher fails
 //   relays         a relay holding no work                 → no alert

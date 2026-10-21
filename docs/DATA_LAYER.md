@@ -107,7 +107,7 @@ against three forward-looking stress tests:
 
 These tests are the WORKING instrument, not decoration: they are what declined the
 per-count charge routed to the DAO (inserts an institution into the identity-free
-mechanical path — fails tests 2 and 3; see `DESIGN_DECISIONS.md` §18, "Recording costs
+mechanical path — fails tests 2 and 3; see `DESIGN_DECISIONS.md` §17, "Recording costs
 gas and nothing else"), and they are why the whole reward path is permissionless,
 identity-free, and adjudication-free end to end. A future proposal that passes
 benchmark reasoning but fails one of the three is wrong here.

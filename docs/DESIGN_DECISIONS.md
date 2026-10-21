@@ -50,29 +50,7 @@ cumulative-bonding property for any new orders.
 
 ---
 
-## 2. Seller of order X can attest against order Y in the same process
-
-**Pattern**: `AttestationCoordinator.attestAsSeller` allows cross-order
-attestation. A seller who holds any committed order in process P can attest
-against any other order in process P, even if that order has a different seller.
-
-**Why it looks wrong**: Standard access control would require the attester to
-be the seller of the specific order being attested.
-
-**Why it is correct**: The `Attestation` event always sets `attester =
-msg.sender` truthfully. There is no identity forgery. Off-chain indexers
-consuming the event can always determine who attested and compare that against
-the on-chain commitment events for the target order.
-
-Enforcing "attester must be seller of this specific order" on-chain would
-require storing per-order seller data — state `FigaroCore` explicitly avoids.
-The on-chain gate correctly answers "is this a process participant?"; the
-semantic question "does this attester have authority over this order?" is
-answered off-chain by indexing commitment events.
-
----
-
-## 3. Buyer and seller can be the same address
+## 2. Buyer and seller can be the same address
 
 **Pattern**: `commit()` does not check `c.buyer != c.seller`.
 
@@ -90,7 +68,7 @@ is a choice, not an exploit.
 
 ---
 
-## 4. No admin, no escape hatch — by design
+## 3. No admin, no escape hatch — by design
 
 **Pattern**: FigaroCore, AttestationCoordinator, ClauseRegistry,
 MembersRegistry, AgreementRegistry, and AssemblyRegistry have no admin, no
@@ -113,7 +91,7 @@ is the safety guarantee, not a liability.
 
 ---
 
-## 5. Buyer key loss permanently locks bonds — by design
+## 4. Buyer key loss permanently locks bonds — by design
 
 **Pattern**: If the root buyer loses their private key, the process cannot be
 resolved and all bonds are permanently locked. There is no timeout, no
@@ -154,7 +132,7 @@ same reason: each needs a fresh signature from the lost key.
 
 ---
 
-## 6. `prevrandao` is not used as a salt — by design
+## 5. `prevrandao` is not used as a salt — by design
 
 **Pattern**: The `salt` field in the `Commitment` struct is party-chosen and
 not seeded from `block.prevrandao`.
@@ -178,7 +156,7 @@ between the same parties with the same terms.
 
 ---
 
-## 7. Attestations are confined to active orders — the evidence window closes at resolve
+## 6. Attestations are confined to active orders — the evidence window closes at resolve
 
 **Pattern**: `AttestationCoordinator._requireKnownCommitment` reverts with
 `OrderResolved` for orders with `orderStatus == 2` (resolved); only
@@ -197,7 +175,7 @@ receive the resolved process's complete, closed evidentiary data as input.
 
 ---
 
-## 8. ClauseRegistry is fully permissionless
+## 7. ClauseRegistry is fully permissionless
 
 **Pattern**: Anyone can call `registerClause(clauseKey, contentURI)` with any
 key and any URI, placing the fixed registration stake
@@ -252,7 +230,7 @@ observed in the wild; the fallback is commit-reveal on `AssemblyRegistry` alone.
 
 ---
 
-## 9. No competitive-pricing mechanism — pricing is a catalog concern
+## 8. No competitive-pricing mechanism — pricing is a catalog concern
 
 **Pattern**: there is no auction, order-book, or price-discovery contract
 anywhere in `src/`; every payment is a figure both parties sign.
@@ -270,7 +248,7 @@ concern (e.g. rate × geohash distance).
 
 ---
 
-## 10. `_pullExact` rejects fee-on-transfer tokens — permanently; rebasing and blocklisting tokens carry their own terms
+## 9. `_pullExact` rejects fee-on-transfer tokens — permanently; rebasing and blocklisting tokens carry their own terms
 
 **Pattern**: `_pullExact` uses a before/after balance check with strict equality
 around the one `transferFrom` call. Any token that delivers less than requested
@@ -303,7 +281,7 @@ the state root does not move.
 
 ---
 
-## 11. Single currency per process — multi-token is a composition concern
+## 10. Single currency per process — multi-token is a composition concern
 
 **Pattern**: `commit` binds every order in a process to one `currency` address;
 sub-orders with a mismatched currency revert (`CurrencyMismatch`). Two parties
@@ -345,7 +323,7 @@ three composition patterns above.
 
 ---
 
-## 12. No MLETR-style transferable records — by design
+## 11. No MLETR-style transferable records — by design
 
 **Pattern**: Figaro's audit bundle assembles a Bill-of-Lading view (and
 contract-of-carriage, invoice, and stage-progression views) from the
@@ -432,7 +410,7 @@ buyer commits upfront.
 
 ---
 
-## 13. `deadline` is not auction residue and not redundant with `salt`
+## 12. `deadline` is not auction residue and not redundant with `salt`
 
 **Pattern**: The `Commitment` struct carries both a `salt` and a `deadline`;
 `commit` rejects expired commitments (`DeadlineExpired`,
@@ -457,7 +435,7 @@ so it is the mirror image of an escape hatch, not an instance of one.
 
 ---
 
-## 14. Committed `lineItems.name` and `cargo.marks` are public — accepted
+## 13. Committed `lineItems.name` and `cargo.marks` are public — accepted
 
 **Pattern**: `figaro-commerce.lineItems[].name` (and free-text `figaro-cargo.marks`)
 are committed public fields, so a wallet's purchase content is publicly linkable to
@@ -480,7 +458,7 @@ description says so). Pseudonymity of the wallet does the rest.
 
 ---
 
-## 15. `MembersRegistry` time-locks a requested withdrawal — that ETH is not stuck
+## 14. `MembersRegistry` time-locks a requested withdrawal — that ETH is not stuck
 
 **Pattern**: `requestWithdrawal()` clears the registration guard and schedules the
 deposit; the ETH itself is only claimable via `withdraw()` once the immutable
@@ -489,7 +467,7 @@ its owner has explicitly asked for and cannot yet take. There is no admin path, 
 early release, and no way for anyone — including the depositor — to shorten it.
 
 **Why it looks wrong**: it reads as two separate red flags. First, held ETH with a
-timer look like §5's stuck-fund shape, and this file is emphatic that the Core has
+timer look like §4's stuck-fund shape, and this file is emphatic that the Core has
 no time locks. Second, a mandatory waiting period on someone's own capital looks like
 the "escape hatch in reverse" — a protocol asserting a hold it has no business
 asserting.
@@ -528,7 +506,7 @@ binding is permanent, so there is nothing to recycle.
 
 ---
 
-## 16. `UsageCounter.applyBatchAccrual` has one privileged caller — a proof-gated writer, not an admin
+## 15. `UsageCounter.applyBatchAccrual` has one privileged caller — a proof-gated writer, not an admin
 
 **Pattern**: every other write in the protocol is permissionless. This one is
 not: `applyBatchAccrual` reverts unless `msg.sender == batchVerifier`, an
@@ -581,7 +559,7 @@ holds counts, not the pair sets needed to union them.
 
 ---
 
-## 17. `UsageCounter` scores nothing below the minimum-support floor — real usage, zero score
+## 16. `UsageCounter` scores nothing below the minimum-support floor — real usage, zero score
 
 **Looks wrong because:** a clause or assembly with genuinely resolved, genuinely recorded trade shows
 `c > 0`, `d > 0` and `score = 0` — which reads like lost accrual, or like the counter
@@ -602,7 +580,7 @@ straddle the two paths
 and count twice; flooring each side separately can only ever
 under-pay a boundary case. Conservative by construction, like the score merge itself.
 
-## 18. Recording costs gas and nothing else — no protocol charge, no burn
+## 17. Recording costs gas and nothing else — no protocol charge, no burn
 
 **Looks wrong because:** `recordClauseUsage` costs only gas, so fabricating `c` looks
 underpriced — an auditor's natural fix is a flat per-recording burn, or a
@@ -631,7 +609,7 @@ is the residual anti-Sybil bite, and in the positive-sum frame that residual is 
 leak, not a hole. Do not "fix" it by adding a protocol-side cost — both variants above
 are declined and the door is closed on the family.
 
-## 19. Usage accrual requires the clause, agreement or assembly to hold a live registration stake — an unregistered key scores nothing
+## 18. Usage accrual requires the clause, agreement or assembly to hold a live registration stake — an unregistered key scores nothing
 
 **Looks wrong because:** `recordClauseUsage` proves a real, resolved order committed the
 clause or assembly and its seller is staked — yet still reverts `ClauseAgreementOrAssemblyNotRegistered` (direct path)
@@ -644,9 +622,9 @@ denominator — at gas cost, diluting every honest designer. The gate is the CLA
 of the member-stake gate on the seller of record: score counts only what a live stake has priced. It does
 not eliminate the paid replication lever (register N keys for N deposits) — that is the accepted, stake-priced cost the reward's uniform pro-rata already dilutes — it closes the
 FREE variant. Direct path reverts (a standalone tx with nothing to unwind); the batch path
-skips (see §20).
+skips (see §19).
 
-## 20. The rewards accrual never blocks batch resolution — a reverting reward gate does not unwind trade
+## 19. The rewards accrual never blocks batch resolution — a reverting reward gate does not unwind trade
 
 **Looks wrong because:** `applyBatchAccrual` `continue`s past the two reserved keys and past clauses, agreements or assemblies without a live
 registration instead of reverting, and `settleBatch` wraps the whole accrual call in try/catch, emitting
@@ -662,10 +640,10 @@ assembly; or a seller who unstakes between prove and submit). Tier separation is
 the doctrine: resolution must never be hostage to the reward. A dropped batch's accrual is
 recovered by the next batch that touches the same clauses or assemblies (the counter's write is a
 cumulative overwrite) or forgone — conservative under-pay, never over-pay, the same posture as
-the per-path floor (§17). The sequencer additionally pre-filters poison claims so the catch
+the per-path floor (§16). The sequencer additionally pre-filters poison claims so the catch
 only ever fires on the genuine stake-race.
 
-## 21. The member-stake gate on the seller of record is retroactive — usage must be recorded while the stake is live
+## 20. The member-stake gate on the seller of record is retroactive — usage must be recorded while the stake is live
 
 **Looks wrong because:** a seller who requests withdrawal doesn't merely stop FUTURE trades
 counting — every one of their resolved-but-not-yet-recorded processes becomes permanently
@@ -682,7 +660,7 @@ window. The residual grief is self-limiting — to deny a designer the griefer m
 through the period end, forfeiting their own eligibility and locking their deposit. Accepted as
 the cost of the stateless Core.
 
-## 22. Batch-path resolve is a bare `ResolveProcess(processId)` signature — no nonce, no deadline
+## 21. Batch-path resolve is a bare `ResolveProcess(processId)` signature — no nonce, no deadline
 
 **Pattern**: `FigaroCore` authorizes resolution by presence — `resolveProcess`
 requires `msg.sender == ps.rootBuyer`. The batch path replaces presence with an
@@ -712,7 +690,7 @@ be carried as a signature, in its minimal sufficient form.
 
 ---
 
-## 23. The public site bundle ships a Pinata pin key — a disposable courtesy, testnet only
+## 22. The public site bundle ships a Pinata pin key — a disposable courtesy, testnet only
 
 **Pattern**: `frontend/lib/shared/ipfsService.ts` inlines
 `NEXT_PUBLIC_IPFS_PIN_SERVICE_JWT` — a scoped Pinata key — into the public
@@ -739,7 +717,7 @@ keys are revoked.
 
 ---
 
-## 24. The reward keys every accrual by (kind, key) — the registries have no edge between them
+## 23. The reward keys every accrual by (kind, key) — the registries have no edge between them
 
 **Pattern**: `UsageCounter` keys every accrual, count, counted process and
 score by `(kind, key)`, kind `KIND_CLAUSE = 0`, `KIND_ASSEMBLY = 1` or
@@ -774,7 +752,7 @@ for the assembly's accrual. With the kind, a stake in one family
 earns only what accrues under that family: the stranger's clause-kind slot at
 that key holds only what processes committing a clause leaf under that key
 accrue, priced by the seller stake and the floor like any squatted key
-(§ 8, § 17). The registries still reference nothing; the counter and the
+(§ 7, § 16). The registries still reference nothing; the counter and the
 minter each read all three, and the kind names the one that answers for a
 given key — never a second one: no kind's gate consults another kind's
 registry. The two reserved keys of the agreement format, the provenance leaf
@@ -807,7 +785,7 @@ kind; `test_theThreeKindsNeverShareACount`
 (`test/build/rewards/RpgfMinterTest.t.sol`) — no kind's count or claim is
 read from another kind's registry.
 
-## 25. The assembly root is a merkle tree over registered agreement hashes — membership is proved, never looked up
+## 24. The assembly root is a merkle tree over registered agreement hashes — membership is proved, never looked up
 
 **Pattern**: An assembly's `compositionHash` is a merkle root built with the
 agreement format's leaf convention over one leaf per agreement — key the
@@ -835,7 +813,7 @@ caller can supply nothing the root did not already commit, and a wrong
 `agreementHash` or agreement content derives a leaf that is not in the tree. An
 assembly that names an agreement nobody registered is published like any
 other content; the agreement leg simply never counts it (the kind's own gate,
-§ 19, § 24), and readers that cannot hydrate an agreement do not offer the
+§ 18, § 23), and readers that cannot hydrate an agreement do not offer the
 assembly. The reserved assembly terms key is refused as an agreement's
 `agreementHash`, so the terms leaf can never be proved as a member.
 
@@ -849,7 +827,7 @@ root did not commit, and `test_theTermsLeafNeverPassesAsAnAgreement` refuses
 the reserved terms key as an agreement's `agreementHash`; the guest's twins
 are in `prover/lib/tests/usage.rs`.
 
-## 26. An assembly's agreements are ordered — one registered agreement may hold two agreements
+## 25. An assembly's agreements are ordered — one registered agreement may hold two agreements
 
 **Pattern**: The agreements of an assembly are a sequence, and each agreement leaf
 carries its 0-based index in its content (`"slot":i`). Two agreements may
@@ -880,28 +858,27 @@ rebuilds its distinct leaves and its root.
 | # | Pattern | Blast radius | Looks wrong because | Is correct because |
 |---|---|---|---|---|
 | 1 | Resolved processId is permanently closed | Core-critical | Closure-less extension "sounds protocol-aligned" | The closure IS the institution dissolving; follow-on rounds sign a fresh root; the gate derives from existing state |
-| 2 | Cross-order seller attestation | evidence-layer | Wrong role for target order | Attester recorded truthfully; semantics off-chain |
-| 3 | buyer == seller allowed | Core-critical | Self-dealing vector | Bond math balances; bilateral signature required |
-| 4 | No admin/pause | Core-critical | No incident response | Admin = trusted third party = breaks mechanism |
-| 5 | Buyer key loss is terminal | Core-critical | No stuck-fund recovery | Timeout = escape hatch = breaks MAD equilibrium |
-| 6 | No prevrandao salt | Core-critical | Missing on-chain entropy | Validators predict prevrandao; party-chosen salt sufficient |
-| 7 | Attestation reverts on resolved orders | evidence-layer | Rejecting legitimate late evidence | Evidence window closes with the institution; forums get the closed data |
-| 8 | Permissionless clause registry | registry/discovery | Namespace squatting | The key is the hash of the spec's pinned bytes: there is nothing to squat but bytes, two specs with one name are two clauses; integrity routes through the key, never the registry; garbage pollutes discovery only, priced by the stake |
-| 9 | No competitive-pricing contract | — | A market protocol without a price primitive looks unfinished | Mid-chain unknown price or counterparty is incompatible with the exact-match accumulator; pricing is a catalog concern |
-| 10 | Strict token compatibility rejection | Core-critical | Overly restrictive | Bond math requires exact amounts; wrapping is the solution |
-| 11 | Single currency per process | Core-critical | Can't do multi-token commerce | 2:1 bond ratio is Nash-stable only in one currency; multi-token lives at composition layer (process / wallet swap / Level-3 bundler) |
-| 12 | No `transferTitle` / `endorse` / `nominate` for BoLs | Core-critical | Industry-standard MLETR-aligned eBLs are negotiable; CargoX / TradeTrust / TradeLens all implement this | Single-buyer invariant + parties-fixed-at-commit + no-escape-hatches each separately rule it out; cargo doesn't carry rights, the commitment does |
-| 13 | `deadline` alongside `salt` | Core-critical | Redundant / auction residue | Salt is identity, deadline is expiry of the unconsummated signature window; no-cancel `FigaroCore` needs signatures to age out |
-| 14 | Committed `lineItems.name` / `cargo.marks` are public | privacy/evidence | Wallet-linkable purchase content leaks | Mechanism needs line items beyond the endpoints (invoices, disputes, price checks); mitigation is compositional (discreet catalog naming, coded marks) + wallet pseudonymity |
-| 15 | `MembersRegistry` withdrawal cooldown holds ETH on a timer | registry/stake | Looks like stuck funds + a Core-forbidden time lock | PROTOCOL tier, not the Core — no bond or commitment involved; without it one stake is recycled across identities and prices nothing; bounded, immutable, and unconditionally claimable after `releaseAt` |
-| 16 | `applyBatchAccrual` has one privileged caller | reward-path | A named writer on the reward path is the shape of an admin backdoor | Discretion, not permission, is the test: the caller may only relay numbers an immutable vkey committed; the counter still enforces period, seller stake and live registration itself |
-| 17 | Recorded usage can score zero (`minSellers` floor) | reward-path | Real resolved trade with `score = 0` reads like lost accrual | Below 3 staked sellers sits what one actor fabricates alone; sub-floor accrual defers within the period (full score springs at the third seller) and expires when the period closes; per-path because the paths' seller sets cannot be unioned |
-| 18 | No per-recording charge or burn | reward-path | Fabricating `c` costs only gas | `c^(1/3)` already crushes volume farming; breadth is deposit-priced; an ETH burn destroys value needlessly and a DAO-routed charge inserts an institution + usage-coupled revenue into an identity-free mechanism |
-| 19 | Usage needs a live clause, agreement or assembly registration stake | reward-path | A proven, resolved use that scores nothing reads like lost accrual | The clause-or-assembly key is otherwise a free-choice merkle leaf; without the gate a self-dealt process inflates the shared denominator at gas cost; closes the FREE dilution, leaves the accepted stake-priced replication lever |
-| 20 | Rewards accrual never reverts resolution (skip + try/catch) | reward-path | A silently-droppable reward write looks like lost/manipulable accrual | A reward-tier gate must not unwind resolution-tier trade; a dropped batch is recovered by the next cumulative overwrite or forgone (conservative under-pay); sequencer pre-filters so the catch fires only on the stake-race |
-| 21 | Member-stake gate on the seller of record is retroactive | reward-path | A withdrawal makes resolved-but-unrecorded trades unrecordable — looks like a grief hole | Chain can't see resolve time (`FigaroCore` stores none), so the gate is record-time only; record-at-resolution closes the normal window; residual grief is self-limiting (griefer forfeits own eligibility through period end) |
-| 22 | Batch resolve: nonce-less, deadline-less `ResolveProcess` signature | batch-path | The canonical EIP-712 replay shape | Resolution is terminal and single-shot — the guest's root-chained state rejects a second resolve; the domain pins chain + verifier so the signature travels nowhere; the message authorizes one time-invariant transition, leaving nothing for a nonce to price |
-| 23 | Pinata pin key in the public site bundle | site/pinning | A credential in a public bundle reads as a leaked secret | The testnet key is pin-only (dashboard-confirmed: unpin, list, data and every V3 resource inactive) and disposable; every registry read is digest-checked against the on-chain anchor, so a hostile pin never verifies; testnet only — per-party pinning at mainnet, the keys revoked at the account split |
-| 24 | Reward keyed by (kind, key), three kinds | reward-path | A family discriminator looks like the reward crossing the registries' boundary | Each registry takes any bytes32 and nothing tells the families apart by bytes; without the kind a stranger staking an assembly's hash as a clause or an agreement would take its reward; the kind keeps a stake in one family from earning another's, and no kind's gate reads another kind's registry |
-| 25 | The assembly root is a merkle tree over registered agreement hashes | registry/reward-path | No stored list of an assembly's agreements; a caller-supplied proof | A stored list or a cross-registry lookup is an edge between parallel families; the root commits membership, so a proof either reaches the registered root or fails |
-| 26 | Ordered agreements; one agreement may hold two | registry | A repeated key looks like a duplicate leaf | Designs repeat terms; the index makes each leaf distinct and the root commits the multiplicity; usage counts once per process per (kind, key) |
+| 2 | buyer == seller allowed | Core-critical | Self-dealing vector | Bond math balances; bilateral signature required |
+| 3 | No admin/pause | Core-critical | No incident response | Admin = trusted third party = breaks mechanism |
+| 4 | Buyer key loss is terminal | Core-critical | No stuck-fund recovery | Timeout = escape hatch = breaks MAD equilibrium |
+| 5 | No prevrandao salt | Core-critical | Missing on-chain entropy | Validators predict prevrandao; party-chosen salt sufficient |
+| 6 | Attestation reverts on resolved orders | evidence-layer | Rejecting legitimate late evidence | Evidence window closes with the institution; forums get the closed data |
+| 7 | Permissionless clause registry | registry/discovery | Namespace squatting | The key is the hash of the spec's pinned bytes: there is nothing to squat but bytes, two specs with one name are two clauses; integrity routes through the key, never the registry; garbage pollutes discovery only, priced by the stake |
+| 8 | No competitive-pricing contract | — | A market protocol without a price primitive looks unfinished | Mid-chain unknown price or counterparty is incompatible with the exact-match accumulator; pricing is a catalog concern |
+| 9 | Strict token compatibility rejection | Core-critical | Overly restrictive | Bond math requires exact amounts; wrapping is the solution |
+| 10 | Single currency per process | Core-critical | Can't do multi-token commerce | 2:1 bond ratio is Nash-stable only in one currency; multi-token lives at composition layer (process / wallet swap / Level-3 bundler) |
+| 11 | No `transferTitle` / `endorse` / `nominate` for BoLs | Core-critical | Industry-standard MLETR-aligned eBLs are negotiable; CargoX / TradeTrust / TradeLens all implement this | Single-buyer invariant + parties-fixed-at-commit + no-escape-hatches each separately rule it out; cargo doesn't carry rights, the commitment does |
+| 12 | `deadline` alongside `salt` | Core-critical | Redundant / auction residue | Salt is identity, deadline is expiry of the unconsummated signature window; no-cancel `FigaroCore` needs signatures to age out |
+| 13 | Committed `lineItems.name` / `cargo.marks` are public | privacy/evidence | Wallet-linkable purchase content leaks | Mechanism needs line items beyond the endpoints (invoices, disputes, price checks); mitigation is compositional (discreet catalog naming, coded marks) + wallet pseudonymity |
+| 14 | `MembersRegistry` withdrawal cooldown holds ETH on a timer | registry/stake | Looks like stuck funds + a Core-forbidden time lock | PROTOCOL tier, not the Core — no bond or commitment involved; without it one stake is recycled across identities and prices nothing; bounded, immutable, and unconditionally claimable after `releaseAt` |
+| 15 | `applyBatchAccrual` has one privileged caller | reward-path | A named writer on the reward path is the shape of an admin backdoor | Discretion, not permission, is the test: the caller may only relay numbers an immutable vkey committed; the counter still enforces period, seller stake and live registration itself |
+| 16 | Recorded usage can score zero (`minSellers` floor) | reward-path | Real resolved trade with `score = 0` reads like lost accrual | Below 3 staked sellers sits what one actor fabricates alone; sub-floor accrual defers within the period (full score springs at the third seller) and expires when the period closes; per-path because the paths' seller sets cannot be unioned |
+| 17 | No per-recording charge or burn | reward-path | Fabricating `c` costs only gas | `c^(1/3)` already crushes volume farming; breadth is deposit-priced; an ETH burn destroys value needlessly and a DAO-routed charge inserts an institution + usage-coupled revenue into an identity-free mechanism |
+| 18 | Usage needs a live clause, agreement or assembly registration stake | reward-path | A proven, resolved use that scores nothing reads like lost accrual | The clause-or-assembly key is otherwise a free-choice merkle leaf; without the gate a self-dealt process inflates the shared denominator at gas cost; closes the FREE dilution, leaves the accepted stake-priced replication lever |
+| 19 | Rewards accrual never reverts resolution (skip + try/catch) | reward-path | A silently-droppable reward write looks like lost/manipulable accrual | A reward-tier gate must not unwind resolution-tier trade; a dropped batch is recovered by the next cumulative overwrite or forgone (conservative under-pay); sequencer pre-filters so the catch fires only on the stake-race |
+| 20 | Member-stake gate on the seller of record is retroactive | reward-path | A withdrawal makes resolved-but-unrecorded trades unrecordable — looks like a grief hole | Chain can't see resolve time (`FigaroCore` stores none), so the gate is record-time only; record-at-resolution closes the normal window; residual grief is self-limiting (griefer forfeits own eligibility through period end) |
+| 21 | Batch resolve: nonce-less, deadline-less `ResolveProcess` signature | batch-path | The canonical EIP-712 replay shape | Resolution is terminal and single-shot — the guest's root-chained state rejects a second resolve; the domain pins chain + verifier so the signature travels nowhere; the message authorizes one time-invariant transition, leaving nothing for a nonce to price |
+| 22 | Pinata pin key in the public site bundle | site/pinning | A credential in a public bundle reads as a leaked secret | The testnet key is pin-only (dashboard-confirmed: unpin, list, data and every V3 resource inactive) and disposable; every registry read is digest-checked against the on-chain anchor, so a hostile pin never verifies; testnet only — per-party pinning at mainnet, the keys revoked at the account split |
+| 23 | Reward keyed by (kind, key), three kinds | reward-path | A family discriminator looks like the reward crossing the registries' boundary | Each registry takes any bytes32 and nothing tells the families apart by bytes; without the kind a stranger staking an assembly's hash as a clause or an agreement would take its reward; the kind keeps a stake in one family from earning another's, and no kind's gate reads another kind's registry |
+| 24 | The assembly root is a merkle tree over registered agreement hashes | registry/reward-path | No stored list of an assembly's agreements; a caller-supplied proof | A stored list or a cross-registry lookup is an edge between parallel families; the root commits membership, so a proof either reaches the registered root or fails |
+| 25 | Ordered agreements; one agreement may hold two | registry | A repeated key looks like a duplicate leaf | Designs repeat terms; the index makes each leaf distinct and the root commits the multiplicity; usage counts once per process per (kind, key) |

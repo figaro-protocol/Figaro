@@ -225,10 +225,11 @@ describe("re-assert committed clauses — several orders in one process", () => 
         expect(byOrder.get(ORDER_B)).toBe(`Order 2 of 2 · seller ${truncateHex(SELLER_B)}`);
     });
 
-    it("a co-seller's cross-order attestation stands for its own order, not this order's seller", () => {
-        // attestAsSeller lets SELLER_B attest on order A (same process).
-        const crossOrder = reasserted(1, SELLER_B);
-        const [sellerCard] = cardsFor(SELLER, [crossOrder]);
+    it("an attestation on order A by another wallet does not stand for order A's seller", () => {
+        // The reader keys a filing on its attester: a record on order A whose
+        // attester is not A's seller leaves A's seller card open.
+        const byOtherWallet = reasserted(1, SELLER_B);
+        const [sellerCard] = cardsFor(SELLER, [byOtherWallet]);
         expect(choicesOf(sellerCard)).toHaveLength(K);
     });
 });

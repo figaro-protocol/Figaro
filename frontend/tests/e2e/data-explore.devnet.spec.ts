@@ -410,7 +410,7 @@ test.describe('DATA EXPLORER — every layer of /data/explore against out-of-ban
             if (opts.verb === 'attestAsSeller') {
                 await receipt(await opts.wallet.writeContract({
                     address: coordinator, abi: ATTESTATION_COORDINATOR_ABI, functionName: 'attestAsSeller',
-                    args: [order.commitment, order.commitment, clauseKey, stage, clauseDataHash, proof, contentRef],
+                    args: [order.commitment, clauseKey, stage, clauseDataHash, proof, contentRef],
                 }));
             } else {
                 await receipt(await opts.wallet.writeContract({

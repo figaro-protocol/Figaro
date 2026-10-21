@@ -499,7 +499,6 @@ fn seller_attest_op(
     let struct_hash = attest_seller_struct_hash(&f.root_order_hash, &f.clause_key, 0, &content_ref);
     let digest = typed_data_hash(&domain, &struct_hash);
     KernelOp::AttestAsSeller {
-        role: f.root.clone(),
         target: f.root.clone(),
         clause_id: f.clause_key,
         stage: 0,
@@ -581,7 +580,7 @@ fn attest_as_buyer_re_assert_passes() {
 fn attest_as_seller_wrong_signer_fails() {
     let f = attest_fixture();
     let (proof, content_ref) = runtime_witness_proof(&f);
-    // SELLER2 signs, but role.seller is SELLER1.
+    // SELLER2 signs, but target.seller is SELLER1.
     let seller2_key = make_signing_key(SELLER2_KEY);
     let op = seller_attest_op(&f, proof, content_ref, &seller2_key);
 
@@ -724,7 +723,6 @@ fn attest_wrong_inclusion_proof_fails() {
                 seller_sig: sign_commitment(&stranger, &domain, &seller1_key),
             },
             KernelOp::AttestAsSeller {
-                role: stranger.clone(),
                 target: stranger.clone(),
                 clause_id: f.clause_key,
                 stage: 0,
@@ -777,7 +775,6 @@ fn attest_on_resolved_order_fails() {
                 buyer_sig: resolve_sig,
             },
             KernelOp::AttestAsSeller {
-                role: f.root.clone(),
                 target: f.root.clone(),
                 clause_id: f.clause_key,
                 stage: 0,
@@ -799,9 +796,10 @@ fn attest_on_resolved_order_fails() {
 }
 
 #[test]
-fn attest_cross_order_same_process_passes() {
-    // role = the seller's own sub-order; target = the root order. The
-    // inclusion proof opens against the TARGET's checkoutHash.
+fn attest_as_seller_against_another_sellers_order_fails() {
+    // SELLER2 holds a committed sub-order in the process and signs a
+    // seller attestation against the ROOT order, whose seller is SELLER1.
+    // A seller attests only about its own order: NotAuthorized.
     let f = attest_fixture();
     let buyer_key = make_signing_key(BUYER_KEY);
     let seller1_key = make_signing_key(SELLER1_KEY);
@@ -840,7 +838,6 @@ fn attest_cross_order_same_process_passes() {
                 seller_sig: sign_commitment(&sub, &domain, &seller2_key),
             },
             KernelOp::AttestAsSeller {
-                role: sub,
                 target: f.root.clone(),
                 clause_id: f.clause_key,
                 stage: 0,
@@ -855,10 +852,10 @@ fn attest_cross_order_same_process_passes() {
         provenance_leaf: B256::ZERO,
     };
 
-    let (_pv, _positions, events) = apply_batch(&input).unwrap();
-    assert_eq!(events.attestations.len(), 1);
-    assert_eq!(events.attestations[0].attester, SELLER2);
-    assert_eq!(events.attestations[0].order_hash, f.root_order_hash);
+    match apply_batch(&input) {
+        Err(KernelError::NotAuthorized) => {}
+        other => panic!("expected NotAuthorized, got {other:?}"),
+    }
 }
 
 // ── The boundaries a mutant crosses unseen ────────────────────────

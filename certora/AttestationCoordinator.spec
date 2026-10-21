@@ -11,13 +11,10 @@
 // preimages, so a private clause's plaintext never touches calldata.
 //
 // Rules are organized into two groups:
-//   A) Role-gate invariants on attestAsBuyer (takes a Commitment struct; caller
-//      must equal `c.buyer`, which equals rootBuyer by commit invariant)
+//   A) Role-gate invariants on attestAsBuyer and attestAsSeller (each takes the
+//      attested order's Commitment struct; the caller must equal `c.buyer`,
+//      which equals rootBuyer by commit invariant, or `c.seller`)
 //   B) Parametric rules: no AC call can modify FigaroCore state
-//
-// The seller path (attestAsSeller — takes role + target commitments) is
-// covered by the Foundry suite in
-// test/core/attestation/AttestationCoordinatorTest.t.sol.
 //
 // Foundry-covered invariants NOT re-proven here:
 //   • contentRef emitted verbatim from the caller → test_contentRefIsKeccakOfContent
@@ -36,7 +33,7 @@ methods {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// GROUP A — Role-gate invariants (attestAsBuyer)
+// GROUP A — Role-gate invariants (attestAsBuyer, attestAsSeller)
 // ═══════════════════════════════════════════════════════════════════
 
 // ═══════════════════════════════════════════════════════════════════
@@ -87,6 +84,86 @@ rule successfulBuyerAttestationImpliesBuyer(
 
     assert !reverted => e.msg.sender == c.buyer,
         "If attestAsBuyer succeeds, msg.sender must equal the commitment's buyer";
+}
+
+// Non-vacuity of the rule above, by construction: some call succeeds, so the
+// implication is not proved over an empty set of successful runs.
+rule successfulBuyerAttestationIsReachable(
+    CommitmentTypes.Commitment c,
+    bytes32 clauseId,
+    uint8   stage,
+    bytes32 clauseDataHash,
+    bytes32[] proof,
+    bytes32 contentRef
+) {
+    env e;
+
+    attestAsBuyer@withrevert(e, c, clauseId, stage, clauseDataHash, proof, contentRef);
+
+    satisfy !lastReverted;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// RULE 2a: Non-seller cannot attest as seller
+//
+// If msg.sender is not the target commitment's seller, attestAsSeller reverts:
+// a seller attests about a clause of its own order, and of no other.
+// ═══════════════════════════════════════════════════════════════════
+
+rule nonSellerCannotAttestAsSeller(
+    CommitmentTypes.Commitment c,
+    bytes32 clauseId,
+    uint8   stage,
+    bytes32 clauseDataHash,
+    bytes32[] proof,
+    bytes32 contentRef
+) {
+    env e;
+
+    require e.msg.sender != c.seller;
+
+    attestAsSeller@withrevert(e, c, clauseId, stage, clauseDataHash, proof, contentRef);
+
+    assert lastReverted,
+        "attestAsSeller must revert when caller is not the commitment's seller";
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// RULE 2b: Successful attestAsSeller implies msg.sender == c.seller
+// ═══════════════════════════════════════════════════════════════════
+
+rule successfulSellerAttestationImpliesSeller(
+    CommitmentTypes.Commitment c,
+    bytes32 clauseId,
+    uint8   stage,
+    bytes32 clauseDataHash,
+    bytes32[] proof,
+    bytes32 contentRef
+) {
+    env e;
+
+    attestAsSeller@withrevert(e, c, clauseId, stage, clauseDataHash, proof, contentRef);
+    bool reverted = lastReverted;
+
+    assert !reverted => e.msg.sender == c.seller,
+        "If attestAsSeller succeeds, msg.sender must equal the commitment's seller";
+}
+
+// Non-vacuity of the rule above, by construction: some call succeeds, so the
+// implication is not proved over an empty set of successful runs.
+rule successfulSellerAttestationIsReachable(
+    CommitmentTypes.Commitment c,
+    bytes32 clauseId,
+    uint8   stage,
+    bytes32 clauseDataHash,
+    bytes32[] proof,
+    bytes32 contentRef
+) {
+    env e;
+
+    attestAsSeller@withrevert(e, c, clauseId, stage, clauseDataHash, proof, contentRef);
+
+    satisfy !lastReverted;
 }
 
 // ═══════════════════════════════════════════════════════════════════

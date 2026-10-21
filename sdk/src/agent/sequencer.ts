@@ -67,7 +67,6 @@ export type SequencerOp =
     }
     | {
         type: "AttestAsSeller";
-        role: SequencerCommitment;
         target: SequencerCommitment;
         clause_id: Hex;
         stage: number;
@@ -453,13 +452,11 @@ export class SequencerClient {
     }
 
     /**
-     * Submit a seller attestation using SDK types. `role` proves seller
-     * identity + process membership; `target` carries the attested order
-     * and the checkoutHash the witness proof opens against (pass the
-     * same commitment twice for same-order attestation).
+     * Submit a seller attestation using SDK types. `target` is the seller's
+     * own order — the signer must be `target.seller` — and carries the
+     * checkoutHash the witness proof opens against.
      */
     async submitAttestAsSeller(args: {
-        role: Commitment;
         target: Commitment;
         clauseId: Hex;
         stage: number;
@@ -469,7 +466,6 @@ export class SequencerClient {
     }): Promise<SubmitResult> {
         return this.submit({
             type: "AttestAsSeller",
-            role: toSequencerCommitment(args.role),
             target: toSequencerCommitment(args.target),
             clause_id: args.clauseId,
             stage: args.stage,

@@ -137,9 +137,9 @@ export function useAttestationCoordinatorActions() {
         return { clauseDataHash, proof };
     }, []);
 
-    /** File one attestation as either party — the coordinator entry point
-     *  (`attestAsSeller` / `attestAsBuyer`) and its argument tuple are the
-     *  only role-dependent parts. */
+    /** File one attestation as either party of the order — the coordinator
+     *  entry point (`attestAsSeller` / `attestAsBuyer`) is the only
+     *  role-dependent part; both take the attested order's commitment. */
     const submitAttestation = useCallback(async (role: PartyRole, {
         orderHash,
         clauseId,
@@ -172,15 +172,8 @@ export function useAttestationCoordinatorActions() {
             return await writeContractAsync({
                 address: attestationCoordinator,
                 abi: ATTESTATION_COORDINATOR_ABI,
-                ...(role === "seller"
-                    ? {
-                        functionName: "attestAsSeller" as const,
-                        args: [target, target, clauseId, stage, clauseDataHash, proof, contentRef] as const,
-                    }
-                    : {
-                        functionName: "attestAsBuyer" as const,
-                        args: [target, clauseId, stage, clauseDataHash, proof, contentRef] as const,
-                    }),
+                functionName: role === "seller" ? "attestAsSeller" : "attestAsBuyer",
+                args: [target, clauseId, stage, clauseDataHash, proof, contentRef],
                 account,
                 chain,
             });

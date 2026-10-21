@@ -136,17 +136,15 @@ pub enum KernelOp {
 
     // ── AttestationCoordinator ────────────────────────────────────
     /// Seller attestation. Batched equivalent of attestAsSeller():
-    /// `role` proves seller identity + process membership; `target`
-    /// carries the order being attested and the signed checkoutHash
-    /// the inclusion proof opens against. For same-order attestation
-    /// the two commitments are identical.
+    /// authorized by `target.seller` — a seller attests about a clause of
+    /// its own order; `target` carries that order and the signed
+    /// checkoutHash the inclusion proof opens against.
     AttestAsSeller {
-        role: Commitment,
         target: Commitment,
         clause_id: B256,
         stage: u8,
         content_ref: B256,
-        /// Proves the caller is `role.seller` (replaces msg.sender).
+        /// Proves the caller is `target.seller` (replaces msg.sender).
         seller_sig: Signature,
         proof: AttestationContentProof,
     },
@@ -510,7 +508,6 @@ pub enum KernelError {
     InvalidSignature,
     // AttestationCoordinator gates
     NotAuthorized,
-    ProcessMismatch,
     UnknownOrder,
     /// Attestation against a resolved order — the evidence window closes
     /// at resolution (coordinator's `OrderResolved` gate).

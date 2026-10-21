@@ -196,7 +196,7 @@ declared fields, validates and encodes at the stage, and files through
 `AttestationCoordinator`; readers decode the recovered calldata against the
 same declaration. Who witnesses is never engine policy — either party may file,
 and sufficiency is derived at read time against the committed terms. The
-evidence window closes at resolution (`DESIGN_DECISIONS.md` §7).
+evidence window closes at resolution (`DESIGN_DECISIONS.md` §6).
 
 Process-log ladders (clauses under the `attestations` article) are the other
 runtime-evidence shape: their stage is the enum ordinal, and no `stages` key is

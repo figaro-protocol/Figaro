@@ -23,7 +23,7 @@ registry. An entry is a (kind, key) pair — a clause key under the clause kind
 agreement's `agreementHash` under the agreement kind (2) — and the meter, the
 claim and the check of the designer of record are all keyed by it, so a stake
 in one family never earns another family's usage at the same bytes
-(`DESIGN_DECISIONS.md` § 24). Clauses, registered agreements and assemblies
+(`DESIGN_DECISIONS.md` § 23). Clauses, registered agreements and assemblies
 earn on the same terms, from the same pool, through the same call — there is no seniority
 between them, and no distinction between a designer who registered one clause
 and one who registered fifty.

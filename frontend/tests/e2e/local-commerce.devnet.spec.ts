@@ -725,7 +725,7 @@ test.describe('LOCAL COMMERCE — item delivery: canvas → bind → order → a
         expect(courierF - courier0, 'courier net earned exactly the delivery price').toBe(parseEther('1'));
         expect(coreF, 'FigaroCore escrow returned to its baseline').toBe(core0);
 
-        // ── THE EVIDENCE WINDOW CLOSES AT RESOLVE (DESIGN_DECISIONS §7): the
+        // ── THE EVIDENCE WINDOW CLOSES AT RESOLVE (DESIGN_DECISIONS §6): the
         //    resolved institution accepts no further attestations — the rail
         //    derives nothing for any party, witness capabilities included
         //    (on-chain, AttestationCoordinator reverts OrderResolved). ──

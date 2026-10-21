@@ -82,6 +82,26 @@ describe("executeAction — honest input gates (never fabricate)", () => {
         await expect(executeAction(wallet, pub, addresses, action)).rejects.toThrow(/inputs\.attestation/i);
     });
 
+    it("files attest-as-seller against the target order alone, the seller's own order", async () => {
+        const action = { type: "attest-as-seller", processId: "0x09" as Hex, attester: SELLER, orderHashes: [] } as AttestAction;
+        const target = orderToCommitment(mkOrder());
+        const attestation = { target, clauseId: "0xdd" as Hex, stage: 1, clauseDataHash: `0x${"00".repeat(32)}` as Hex, proof: [], contentRef: `0x${"00".repeat(32)}` as Hex };
+        const calls: { functionName: string; args: readonly unknown[] }[] = [];
+        const recordingWallet = {
+            chain: null,
+            account: SELLER,
+            writeContract: async (req: { functionName: string; args: readonly unknown[] }) => {
+                calls.push(req);
+                return `0x${"11".repeat(32)}` as Hex;
+            },
+        } as unknown as WalletClient;
+        const withCoordinator: FigaroAddresses = { core: CORE, attestationCoordinator: "0x000000000000000000000000000000000000a77e" as Address };
+        await executeAction(recordingWallet, pub, withCoordinator, action, { attestation });
+        expect(calls).toHaveLength(1);
+        expect(calls[0].functionName).toBe("attestAsSeller");
+        expect(calls[0].args).toEqual([target, "0xdd", 1, attestation.clauseDataHash, [], attestation.contentRef]);
+    });
+
     it("throws on attest when the coordinator address is unconfigured", async () => {
         const action = { type: "attest-as-buyer", processId: "0x09" as Hex, attester: BUYER, orderHashes: [] } as AttestAction;
         const attestation = { target: orderToCommitment(mkOrder()), clauseId: "0xdd" as Hex, stage: 1, clauseDataHash: `0x${"00".repeat(32)}` as Hex, proof: [], contentRef: `0x${"00".repeat(32)}` as Hex };

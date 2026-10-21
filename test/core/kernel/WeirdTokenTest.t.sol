@@ -12,7 +12,7 @@ import {MockERC20SixDecimals} from "src/mocks/MockERC20SixDecimals.sol";
 /// @title WeirdTokenTest — FigaroCore against the ERC-20 shapes beyond the
 ///        fee-on-transfer rejection
 /// @notice The currency is the parties' choice and its terms ride into the
-///         process (`DESIGN_DECISIONS.md` #10). Four shapes: no return value
+///         process (`DESIGN_DECISIONS.md` #9). Four shapes: no return value
 ///         (settles, through SafeERC20), six decimals (settles exactly, the
 ///         FigaroCore never reads `decimals()`), an issuer blocklist (a blocked
 ///         party's leg holds the whole atomic resolution until the issuer

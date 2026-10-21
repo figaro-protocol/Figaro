@@ -64,7 +64,7 @@
 #      (RebatchDropsRevoker) SendsExcludeKnownRevoked.
 #      The same module's second spec, DeferSpec (formal/RelayStateDeferral.cfg),
 #      models the deferral of an operation dropped at batch formation: 10
-#      invariants, ten switches, each FALSE failing the invariant it names.
+#      invariants, nine switches, each FALSE failing the invariant it names.
 #
 # All five models complete exhaustive state exploration in under 20 minutes
 # total with -workers auto on a modern laptop.

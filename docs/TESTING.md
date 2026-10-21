@@ -56,7 +56,7 @@ them (`test_aRegisteredAgreementsDesignerIsPaidForItsUse`).
 `WeirdTokenTest` hands `FigaroCore` the ERC-20 shapes beyond fee-on-transfer —
 no return value, six decimals, an issuer blocklist, a rebase — and
 `FigaroBatchVerifierTest` the no-return and blocklist shapes on the batch
-path (`DESIGN_DECISIONS.md` #10 owns what each shape means). `DeployWiringTest`
+path (`DESIGN_DECISIONS.md` #9 owns what each shape means). `DeployWiringTest`
 runs both deploy scripts as they would broadcast and reads every immutable
 and genesis parameter back from the deployed contracts.
 `ReentrancyAdversarialTest` hands the protocol a `MockReentrantToken` that
@@ -111,7 +111,7 @@ it *could* fail.
 | Spec | Rules | Covers |
 |---|---|---|
 | `FigaroCore.spec` | 10 | Status monotonicity, transitions, active count, buyer dominance, no double-commit, cumulative monotonicity, rootBuyer immutable, currency immutable, and the A-10 binding: a committed order has a process and its `orderProcessId` never changes. |
-| `AttestationCoordinator.spec` | 4 | Role-gate on `attestAsBuyer` (non-buyer reverts; success ⟹ caller is buyer) + parametric Core-immutability (AC cannot change orderStatus or processes[]). No on-chain clause-content validator — well-formedness is an off-chain concern. |
+| `AttestationCoordinator.spec` | 8 | Role-gate on `attestAsBuyer` and `attestAsSeller` (non-party reverts; success ⟹ caller is the commitment's buyer or seller; a `satisfy` twin shows each success reachable) + parametric Core-immutability (AC cannot change orderStatus or processes[]). No on-chain clause-content validator — well-formedness is an off-chain concern. |
 | `TokenOpsVerification.spec` | 7 | Universal FigaroCore token-flow: exact commit deltas (buyer/seller/Core), allowance-drain safety (∀ address), commit + single-order resolve conservation, single-order resolve exact payouts. Generalizes Halmos root-only coverage to arbitrary sub-orders. |
 | `FlorinToken.spec` | 6 | Supply cap, registered-cap bound, registered-cap monotonicity, renounce one-way latch, minter cap immutability, minter within cap |
 | `BatchVerifierTokenOps.spec` | 4 | FigaroBatchVerifier net positions: user delta = payout−deposit, contract delta = deposit−payout, allowance-drain safety, conservation (single-position; inductive generalization documented in-spec). Aligned to the witness model and the usage-bridge `settleBatch` signature (`BatchUsageData` threaded, usage loops bounded). |
@@ -197,12 +197,12 @@ deferral of an operation dropped at batch formation
 (`prover/sequencer/src/main.rs`, `mempool.rs`) — five operations (a commit
 and one built on its order, honest, of one process; two operations that
 never apply, which anyone may submit free, each once at any tick, one
-naming that process and a second, the other naming the second; and a
+naming that process, the other naming a second; and a
 resolve listing one order twice), a drain cap of 3, a window of 2 ticks in
 4, a re-queue cap of 1, funding reads that fail or show a shortfall,
 transient send failures, and a copy resubmitted while a tick runs.
-Deferrals wait in drain groups — operations share a group when a chain of
-them, each touching a process the next touches, joins them — which decide
+Deferrals wait in drain groups — each operation touches one process, so a
+group is one process's operations — which decide
 what is drained together and nothing else; each operation expires on its
 own window, and what was filtered behind it goes with it.
 10 invariants — `DeferralBoundedInTime` (nothing deferred is held past its
@@ -216,20 +216,19 @@ closure of touching a common process over its formation's deferrals),
 `DoubleListingNeverAdmitted`, `RequeueCapCountsTransients`,
 `NoExtraDraining` (a drain that retries a deferred operation leaves nothing
 queued behind it), `BuiltOnOnlyBehindDead`, `NoTwoCopies`, `DTypeOK`:
-388,784 states / 112,528 distinct, depth 19, about 16 minutes.
-Mutation-checked through ten more `.cfg` switches, each FALSE failing the
+445,431 states / 116,190 distinct, depth 19, about 21 minutes.
+Mutation-checked through nine more `.cfg` switches, each FALSE failing the
 invariant it names: `DeferBoundedInTime` → `DeferralBoundedInTime`,
 `DeferOwnCounter` → `RequeueCapCountsTransients`,
 `DeferDrainsOnlyFreeSlots` → `NoExtraDraining`, `DeferMovesDependents` →
 `BuiltOnOnlyBehindDead`, `DeferDropsCopy` → `NoTwoCopies`,
-`DeferGroupsByProcess` and `DeferGroupsTransitive` →
-`DrainGroupIsAClass`, `DeferOwnWindow` (whole-group expiry) →
+`DeferGroupsByProcess` → `DrainGroupIsAClass`, `DeferOwnWindow` (whole-group expiry) →
 `HonestWindowKept` (checked alone, with the honest side held to the commit
 so the window is cut by an operation that never applies),
 `DeferDependentEdge` (each operation on its own window alone) →
 `DependentLeavesWithItsDependency`, `AdmitRefusesDoubleListing` →
-`DoubleListingNeverAdmitted`; the counterexamples are 6, 6, 8, 5, 5, 5, 6,
-8, 8 and 2 states long. `Spec` holds the deferral's variables at their
+`DoubleListingNeverAdmitted`; the counterexamples are 6, 6, 8, 5, 5, 5, 8,
+8 and 2 states long. `Spec` holds the deferral's variables at their
 initial values, so the lifecycle's figures above are unchanged by it.
 
 ## Lean 4 (`formal/lean/`) — the equilibrium, machine-checked
@@ -296,9 +295,8 @@ rejection; `SP1_REAL_PROOF=1` generates + verifies a real local Core proof;
 asserts it hashes to the SDK's key in `test/fixtures/clause-keys.json`),
 and `figaro-sequencer` (mempool runs the mirror's own witness gates at the
 door; a dedup slot belongs to the submission that will be accepted — a
-stranger's resolve, the buyer's signature over another order list, a seller
-attestation under another role order, and an attestation with other witness
-spec bytes each leave the real one queued; the state store — the kept state
+stranger's resolve, the buyer's signature over another order list, and an
+attestation with other witness spec bytes each leave the real one queued; the state store — the kept state
 survives a restart with its root, a batch's state is held across a crash
 before its receipt and for as long as the batch can land, a held root is not
 replaced, a damaged state file or journal is refused, a verifier root the

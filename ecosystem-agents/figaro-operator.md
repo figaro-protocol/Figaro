@@ -268,7 +268,7 @@ const report = await recordProcessUsage(walletClient, publicClient, addresses.us
 ```
 
 Usage is counted **at resolution or it is permanently deniable** (`docs/DESIGN_DECISIONS.md`
-§21 — a seller can unstake, a period can close, and a late claim is refusable). A buyer
+§20 — a seller can unstake, a period can close, and a late claim is refusable). A buyer
 agent that resolves without this credits no clause, agreement or assembly designer, and
 the 600M reward's uniformity across actors is exactly this call. Only the clause FINGERPRINT
 reaches calldata, so a private clause's plaintext never becomes public. Read the report,

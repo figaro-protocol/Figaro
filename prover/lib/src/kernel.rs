@@ -531,14 +531,13 @@ pub fn validate_attestation_content(
 
 /// Apply a seller attestation. Matches the authorization logic in
 /// `AttestationCoordinator.attestAsSeller()` with msg.sender replaced
-/// by EIP-712 signature verification: `role` proves seller identity +
-/// process; `target` carries the attested order and the checkoutHash
-/// the inclusion proof opens against.
+/// by EIP-712 signature verification: the attester must be
+/// `target.seller` — a seller attests about a clause of its own order —
+/// and the inclusion proof opens against the target's checkoutHash.
 #[allow(clippy::too_many_arguments)]
 fn apply_attest_as_seller(
     state: &KernelState,
     domain: &B256,
-    role: &Commitment,
     target: &Commitment,
     clause_id: &B256,
     stage: u8,
@@ -548,27 +547,20 @@ fn apply_attest_as_seller(
     events: &mut Vec<AttestationEventData>,
     bindings: &mut BTreeSet<SpecBinding>,
 ) -> Result<(), KernelError> {
-    // ── Role + target must be committed, active, same process ──
-    let (_role_order_hash, role_process_id) =
-        require_known_active_commitment(state, domain, role)?;
+    // ── Target must be committed and active ──
     let (target_order_hash, target_process_id) =
         require_known_active_commitment(state, domain, target)?;
-    if role_process_id != target_process_id {
-        return Err(KernelError::ProcessMismatch);
-    }
 
-    // ── Recover signer (replaces msg.sender); must be role.seller ──
+    // ── Recover signer (replaces msg.sender); must be target.seller ──
     let struct_hash =
         attest_seller_struct_hash(&target_order_hash, clause_id, stage, content_ref);
     let digest = typed_data_hash(domain, &struct_hash);
     let attester = recover_signer(&digest, seller_sig)?;
-    if role.seller != attester {
+    if target.seller != attester {
         return Err(KernelError::NotAuthorized);
     }
 
     // ── Witness gates: spec identity, content, agreement inclusion ──
-    // The inclusion proof opens against the TARGET's checkoutHash —
-    // the clause being declared lives in the target's signed contract.
     let binding =
         validate_attestation_content(proof, content_ref, clause_id, stage, &target.checkout_hash)?;
     bindings.extend(binding);
@@ -969,7 +961,6 @@ fn apply_batch_inner(
                 )?;
             }
             KernelOp::AttestAsSeller {
-                role,
                 target,
                 clause_id,
                 stage,
@@ -980,7 +971,6 @@ fn apply_batch_inner(
                 apply_attest_as_seller(
                     &state,
                     &domain,
-                    role,
                     target,
                     clause_id,
                     *stage,

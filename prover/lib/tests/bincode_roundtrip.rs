@@ -76,7 +76,6 @@ fn bincode_roundtrip_full_batchinput() {
                 seller_sig: dummy_sig(),
             },
             KernelOp::AttestAsSeller {
-                role: dummy_commitment(),
                 target: dummy_commitment(),
                 clause_id: B256::ZERO,
                 stage: 1,
@@ -135,7 +134,6 @@ fn bincode_roundtrip_single_attest_seller() {
         verifying_contract: BUYER,
         block_timestamp: 1000,
         operations: vec![KernelOp::AttestAsSeller {
-            role: dummy_commitment(),
             target: dummy_commitment(),
             clause_id: B256::ZERO,
             stage: 0,
