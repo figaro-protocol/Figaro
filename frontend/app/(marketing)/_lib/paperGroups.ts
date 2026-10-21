@@ -287,8 +287,8 @@ export const PAPER_GROUPS: PaperGroup[] = [
                 keywords: ["statelessness", "refugee economies", "displaced populations", "consideration", "Arendt", "humanitarian economics", "commerce without recognition"],
                 industries: ["Humanitarian"],
                 question: "What does a mechanism whose precondition is a key and a bond, not recognition by a state, offer refugees, stateless people and others beyond stable banking and courts?",
-                result: "Argued: between strangers the element of a contract that fails is consideration, and a bonded commitment makes it hold by two acts no state is asked about, a signature and a bond, so it supplies a credible promise where the right to have rights is denied; legality, a forum and status stay the state's.",
-                scope: "Rests on the equilibrium proved for any number of orders the network resolves in one call, and holds only for those who can lock a bond; seven constraints are named (keeping the key, the on-ramp, counterparty and currency gatekeeping, the absence of a forum, legality, exposure of the data, the funding of the bond), and no use of the mechanism by displaced participants has been observed.",
+                result: "Argued: between strangers the element of a contract that fails is consideration, and a bonded commitment makes it hold by two acts no state is asked about, a signature and a bond, so it supplies a credible promise where the right to have rights is denied; legality, a forum and status stay the state's, acting on persons, never on the process.",
+                scope: "Rests on the equilibrium proved for any number of orders the network resolves in one call, and holds only for those who can lock a bond; eight constraints are named (keeping the key, the on-ramp, counterparty and currency gatekeeping, the absence of a forum, legality, exposure of the data, a counterparty's coercive reach, the funding of the bond), and no use of the mechanism by displaced participants has been observed.",
             },
             {
                 title: "The Subordination Variable",
