@@ -17,10 +17,34 @@ Kleros courts are live on Ethereum mainnet.
 
 ## Current Verdict
 
-Public release is blocked on exactly one gate: the in-house security program's pass
-over the audit scope (Task 2); an external audit runs the day one is affordable, against
-the same handover and tag. Everything else below is deploy-day work or sequenced
-behind that gate.
+There are two finish lines, in order. **Public on testnet** is the launch flip: the site
+leaves noindex, and strangers read it and trade on Sepolia; it is blocked on the five
+items below. **Mainnet** is blocked on the in-house security program's pass over the
+audit scope (Task 2); an external audit runs the day one is affordable. Everything else
+under Open Tasks is deploy-day work or sequenced behind that gate. Work that blocks
+neither line does not delay either.
+
+## Public on testnet
+
+1. **The model is coherent.** Each open design thread is ruled, built, and held by a
+   test that fails on the old behavior: the mandatory clauses; dispute resolution set by
+   the buyer for every agreement of the process or by each seller when it pins an
+   assembly; the utility token as the designer's pin of the commerce clause's currency,
+   with nothing left assembly-wide; topology's labels and field name; and a seller's
+   attestation only about a clause of its own order.
+2. **The site tells it correctly.** The maintainer has corrected the home page and the
+   three landings, and every door page has had its copy sitting.
+3. **The papers stand.** The corpus passes the peer-review-ready gates, and each paper
+   under external review has had its passes.
+4. **Sepolia works end to end.** The stack is redeployed on the current commitment type,
+   every reference assembly is registered, and one trade is resolved through the site
+   with a real wallet.
+5. **The flip.** Robots' `Disallow` and the noindex meta are lifted, a sitemap of the
+   canonical public pages is published, and the deployed headers are checked on the
+   live host (Task 12). Before it, the testnet pinning key the bundle ships is reissued
+   from a separate pinning account registered with an address that names no one, the
+   old key is revoked, and the build is refused if any shipped token carries a personal
+   field: a pinning service writes its account owner's email into every key it issues.
 
 ## Open Tasks
 

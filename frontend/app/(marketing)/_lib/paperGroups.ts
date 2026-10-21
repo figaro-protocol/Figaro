@@ -127,7 +127,7 @@ export const PAPER_GROUPS: PaperGroup[] = [
                 keywords: ["comparative institutional analysis", "discriminating alignment", "transaction cost economics", "contract enforcement", "two-sided markets", "private ordering", "bonded commitment", "institutional substrates", "regulatory reporting", "unit of account"],
                 industries: ["Regulation and licensing", "E-invoicing and tax", "Platforms"],
                 question: "Of four substrates (the firm, the platform, the court, and the parties' own bonds), which makes a stranger's promise worth acting on at least cost, and where?",
-                result: "A comparison on ten institutional axes, with a discriminating-alignment result that follows from the two proved mechanisms and four cost shapes: against a platform the bond is cheaper for every trade open less than τ/(4r), against a court at small value, and where a party is no person any legal order recognizes the bond is the only one of the four substrates available.",
+                result: "A comparison on ten institutional axes, with a discriminating-alignment result that follows from the two proved mechanisms and four cost shapes: against a platform the bond is cheaper for every trade among a buyer and N sellers open less than τ/((N+3)r), against a court at small value, and where a party is no person any legal order recognizes the bond is the only one of the four substrates available.",
                 scope: "A comparison of substrates, not a theory of the firm; the data a platform collects and its power to revoke admission are set aside; the shared infrastructure and any token are left out; analytic throughout, with no play by independent participants observed.",
             },
             {
@@ -288,7 +288,7 @@ export const PAPER_GROUPS: PaperGroup[] = [
                 industries: ["Humanitarian"],
                 question: "What does a mechanism whose precondition is a key and a bond, not recognition by a state, offer refugees, stateless people and others beyond stable banking and courts?",
                 result: "Argued: between strangers the element of a contract that fails is consideration, and a bonded commitment makes it hold by two acts no state is asked about, a signature and a bond, so it supplies a credible promise where the right to have rights is denied; legality, a forum and status stay the state's.",
-                scope: "Rests on the equilibrium proved for any number of orders the network resolves in one call, and holds only for those who can deposit a bond; seven constraints are named (keeping the key, the on-ramp, counterparty and currency gatekeeping, the absence of a forum, legality, exposure of the data, the funding of the bond), and no play by displaced participants has been observed.",
+                scope: "Rests on the equilibrium proved for any number of orders the network resolves in one call, and holds only for those who can lock a bond; seven constraints are named (keeping the key, the on-ramp, counterparty and currency gatekeeping, the absence of a forum, legality, exposure of the data, the funding of the bond), and no use of the mechanism by displaced participants has been observed.",
             },
             {
                 title: "The Subordination Variable",
